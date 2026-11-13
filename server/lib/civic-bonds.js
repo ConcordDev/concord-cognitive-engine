@@ -21,6 +21,7 @@ import { debitSparks, creditSparks } from "./sparks-service.js";
 import { makeConstraintSet, isFeasible } from "./viability/index.js";
 import { adjustTreasury, adjustLegitimacy } from "./kingdoms.js";
 import { proposeDecree } from "./kingdom-decrees.js";
+import { readingOrNull } from "./finite-input.js";
 
 export const MAX_SINGLE_ENTITY_RATIO = 0.05;     // 5% cap per entity per bond
 export const DEFAULT_SPILLOVER_RATE = 0.05;
@@ -44,8 +45,13 @@ export function createBond(db, opts = {}) {
   if (!db) return { ok: false, reason: "no_db" };
   const worldId = String(opts.worldId || "").trim();
   const title = String(opts.title || "").trim();
-  const target = Math.max(1, Math.trunc(Number(opts.targetAmount) || 0));
-  if (!worldId || !title || target < 1) return { ok: false, reason: "missing_inputs" };
+  const targetMissing = opts.targetAmount === undefined || opts.targetAmount === null || opts.targetAmount === "";
+  const targetRaw = targetMissing ? 1 : readingOrNull(opts.targetAmount, { min: 1, max: 1e12, fallback: null });
+  const target = targetRaw === null ? null : Math.trunc(targetRaw);
+  if (target === null || target < 1) {
+    return { ok: false, reason: "invalid_input", field: "targetAmount", message: "targetAmount must be a whole number of at least 1" };
+  }
+  if (!worldId || !title) return { ok: false, reason: "missing_inputs" };
 
   const id = uid("cbond");
   const returnRate = Math.min(RETURN_RATE_MAX, Math.max(0, Number(opts.returnRate ?? RETURN_RATE_MAX)));
@@ -296,6 +302,33 @@ export function failBond(db, id, reason = "failed") {
     }
     db.prepare(`UPDATE civic_bonds SET status='failed' WHERE id=?`).run(String(id));
     return { ok: true, refunded };
+  });
+  try { return tx(); } catch (e) { return { ok: false, reason: String(e?.message || e) }; }
+}
+
+// Creator withdraws a drive that has not been funded yet. Escrowed pledges
+// are refunded, same as a failure, and the drive is marked cancelled so it
+// is no longer a live proposal. A funded (active) bond is left alone.
+export function cancelBond(db, id) {
+  const bond = db.prepare(`SELECT * FROM civic_bonds WHERE id=?`).get(String(id));
+  if (!bond) return { ok: false, reason: "bond_not_found" };
+  if (bond.status === "active") return { ok: false, reason: "already_funded" };
+  if (["completed", "failed", "cancelled"].includes(bond.status)) return { ok: false, reason: "terminal" };
+
+  const tx = db.transaction(() => {
+    const pledges = db.prepare(`SELECT * FROM civic_bond_pledges WHERE bond_id=? AND status='escrowed'`).all(String(id));
+    const markRefunded = db.prepare(`UPDATE civic_bond_pledges SET status='refunded' WHERE id=?`);
+    let refunded = 0;
+    for (const p of pledges) {
+      if (p.amount > 0) {
+        creditSparks(db, { holderKind: p.entity_kind, holderId: p.entity_id, amount: p.amount,
+          refId: `civic_cancel:${id}:${p.entity_kind}:${p.entity_id}`, reason: `civic_cancel:${id}` });
+        refunded += p.amount;
+      }
+      markRefunded.run(p.id);
+    }
+    db.prepare(`UPDATE civic_bonds SET status='cancelled' WHERE id=?`).run(String(id));
+    return { ok: true, refunded, status: "cancelled" };
   });
   try { return tx(); } catch (e) { return { ok: false, reason: String(e?.message || e) }; }
 }

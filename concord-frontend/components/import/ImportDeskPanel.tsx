@@ -14,6 +14,7 @@ import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { ErrorState } from '@/components/common/EmptyState';
 import { UniversalImport } from '@/components/import/UniversalImport';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 // Mirrors server/domains/importdomain.js `validateImport`'s actual return
 // shape exactly (status is "pass"|"warning"|"fail"; errors are grouped per
@@ -151,7 +152,11 @@ export function ImportDeskPanel() {
     isLoading: jobsLoading, isError: isError, error: error, refetch: refetch,
     create: createJob,
     update: updateJob,
+    remove: removeJob,
   } = useLensData<ImportJob>('import', 'import-job', { seed: [] });
+
+  // FIX-import-004: history is searchable — filter rows by filename.
+  const [historyFilter, setHistoryFilter] = useState('');
 
   const importJobs: ImportJob[] = importJobItems.map(item => ({
     id: item.id,
@@ -167,6 +172,10 @@ export function ImportDeskPanel() {
     started_at: item.data.started_at ?? item.createdAt,
     completed_at: item.data.completed_at,
   } as ImportJob));
+
+  const visibleJobs: ImportJob[] = historyFilter.trim()
+    ? importJobs.filter((j) => j.filename.toLowerCase().includes(historyFilter.trim().toLowerCase()))
+    : importJobs;
 
   const [importActionResult, setImportActionResult] = useState<{ action: string; data: unknown } | null>(null);
   const [actionBusy, setActionBusy] = useState(false);
@@ -188,6 +197,15 @@ export function ImportDeskPanel() {
 
   const handleImportAction = useCallback(async (action: string) => {
     if (analysisRows.length === 0) return;
+    // FIX-import-005: Map Fields with a blank 'Map to fields' input ran
+    // anyway and rendered a silent '0 mapped' — the form now refuses
+    // with the requirement stated, in the result area. (Dedup keys are
+    // deliberately NOT guarded: blank there means 'all columns', as
+    // its placeholder documents.)
+    if (action === 'mapFields' && targetFieldsInput.split(',').map((s) => s.trim()).filter(Boolean).length === 0) {
+      setImportActionResult({ action, data: { error: 'Enter at least one target field to map to (comma-separated).' } });
+      return;
+    }
     setActionBusy(true);
     try {
       let input: Record<string, unknown> = { rows: analysisRows };
@@ -229,8 +247,27 @@ export function ImportDeskPanel() {
     setImportActionResult(null);
     try {
       const text = await file.text();
+      const kind = file.name.toLowerCase();
+      const structured = kind.endsWith('.json') || kind.endsWith('.jsonl') || kind.endsWith('.csv');
       let rows: Record<string, unknown>[] = [];
-      try { rows = parseImportFile(file.name, text); } catch { rows = []; }
+      let parseError: string | null = null;
+      if (structured && !text.trim()) parseError = 'The file is empty.';
+      else {
+        try { rows = parseImportFile(file.name, text); }
+        catch (e) { parseError = e instanceof Error ? e.message : 'Could not parse the file.'; }
+      }
+      if (parseError || (structured && rows.length === 0)) {
+        setValidationResult({
+          valid: false,
+          type: 'tabular',
+          record_count: 0,
+          warnings: [],
+          errors: [parseError || 'JSON must be an array of records, or { rows: [...] }.'],
+          schema_version: 'n/a',
+          compatible: false,
+        });
+        return;
+      }
 
       if (rows.length > 0) {
         // Real path: CSV or a row-shaped JSON array. Infer a schema, then
@@ -319,9 +356,24 @@ export function ImportDeskPanel() {
     }
   };
 
+  const [dupWarning, setDupWarning] = useState<string | null>(null);
+  const [dupWarnedKey, setDupWarnedKey] = useState<string | null>(null);
   const startImport = async () => {
     if (!selectedFile || !validationResult) return;
 
+    // FIX-import-003: re-importing a file that already completed created a
+    // duplicate job with no warning. Same filename + same record count in
+    // the completed history now stops for an explicit confirmation first.
+    const fileKey = `${selectedFile.name}|${validationResult.record_count}`;
+    if (dupWarnedKey !== fileKey) {
+      const prior = importJobs.find(j => j.filename === selectedFile.name && j.status === 'completed' && j.records_total === validationResult.record_count);
+      if (prior) {
+        setDupWarning(`"${selectedFile.name}" was already imported (${prior.records_imported} records). Import it again?`);
+        setDupWarnedKey(fileKey);
+        return;
+      }
+    }
+    setDupWarning(null);
     setImporting(true);
     try {
       const fileText = await selectedFile.text();
@@ -598,6 +650,8 @@ export function ImportDeskPanel() {
               onDragLeave={handleDrag}
               onDragOver={handleDrag}
               onDrop={handleDrop}
+              role="region"
+              aria-label="Structured data import: drop backup or data files here, or browse to choose one"
             >
               {validating ? (
                 <Loader2 className="w-8 h-8 mx-auto mb-2 text-neon-blue animate-spin" />
@@ -610,6 +664,7 @@ export function ImportDeskPanel() {
               <label className="btn-secondary cursor-pointer text-xs">
                 <input
                   type="file"
+                  aria-label="Choose a backup or data file"
                   className="hidden"
                   accept=".json,.jsonl,.zip"
                   onChange={handleFileSelect}
@@ -649,13 +704,18 @@ export function ImportDeskPanel() {
                     </button>
                   ))}
                 </div>
+                {dupWarning && (
+                  <p role="alert" className="mb-2 flex items-start gap-1.5 text-[11px] text-amber-300">
+                    <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {dupWarning}
+                  </p>
+                )}
                 <button
                   onClick={startImport}
                   disabled={!validationResult.valid || importing}
                   className="btn-primary w-full flex items-center justify-center gap-1 text-xs py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-500"
                 >
                   {importing && <Loader2 className="w-3 h-3 animate-spin" />}
-                  {importing ? 'Importing...' : 'Import'}
+                  {importing ? 'Importing...' : dupWarning ? 'Import anyway' : 'Import'}
                 </button>
               </div>
             )}
@@ -736,6 +796,7 @@ export function ImportDeskPanel() {
               </div>
               <input
                 type="file"
+                aria-label="Choose a substrate archive to import"
                 className="hidden"
                 accept=".gz,.gzip"
                 disabled={importing}
@@ -781,10 +842,19 @@ export function ImportDeskPanel() {
 
       {/* Import History */}
       <div className="lens-card mt-6">
-        <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-          <FileJson className="w-5 h-5 text-neon-green" />
-          Import History
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+            <FileJson className="w-5 h-5 text-neon-green" />
+            Import History
+          </h2>
+          <input
+            value={historyFilter}
+            onChange={(e) => setHistoryFilter(e.target.value)}
+            placeholder="Filter history by filename…"
+            aria-label="Filter import history by filename"
+            className="bg-void-800 border border-void-700 rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-void-500 w-64"
+          />
+        </div>
 
         {jobsLoading ? (
           <div className="flex items-center justify-center p-8 text-void-400">
@@ -795,9 +865,13 @@ export function ImportDeskPanel() {
           <div className="text-center p-8 text-void-500">
             No import jobs yet. Upload a file or use quick import to get started.
           </div>
+        ) : visibleJobs.length === 0 ? (
+          <div className="text-center p-8 text-void-500">
+            No import jobs match “{historyFilter}”.
+          </div>
         ) : (
           <div className="space-y-3">
-            {importJobs.map((job, index) => (
+            {visibleJobs.map((job, index) => (
               <motion.div key={job.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }} className="p-4 bg-void-800 rounded-lg">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-3">
@@ -859,14 +933,23 @@ export function ImportDeskPanel() {
                     Started: {new Date(job.started_at).toLocaleString()}
                     {job.completed_at && ` | Completed: ${new Date(job.completed_at).toLocaleString()}`}
                   </p>
-                  {(job.status === 'importing' || job.status === 'pending') && (
-                    <button
-                      onClick={() => updateJob(job.id, { data: { ...job, status: 'completed', progress: 100, completed_at: new Date().toISOString() } as unknown as Record<string, unknown> })}
-                      className="text-xs px-2 py-1 bg-neon-green/10 text-neon-green rounded hover:bg-neon-green/20 transition-colors"
-                    >
-                      Mark Complete
-                    </button>
-                  )}
+                  <span className="flex items-center gap-2">
+                    {(job.status === 'importing' || job.status === 'pending') && (
+                      <button
+                        onClick={() => updateJob(job.id, { data: { ...job, status: 'completed', progress: 100, completed_at: new Date().toISOString() } as unknown as Record<string, unknown> })}
+                        className="text-xs px-2 py-1 bg-neon-green/10 text-neon-green rounded hover:bg-neon-green/20 transition-colors"
+                      >
+                        Mark Complete
+                      </button>
+                    )}
+                    <StickyDeleteConfirm
+                      onConfirm={() => { void removeJob(job.id); }}
+                      armLabel="Delete"
+                      confirmLabel={`Delete "${job.filename}"?`}
+                      armAriaLabel={`Delete import job ${job.filename} from history`}
+                      confirmAriaLabel={`Confirm delete import job ${job.filename}`}
+                    />
+                  </span>
                 </div>
               </motion.div>
             ))}
@@ -969,7 +1052,14 @@ export function ImportDeskPanel() {
             );
           }
           if (importActionResult.action === 'mapFields') {
-            const d = importActionResult.data as MapFieldsResult;
+            const d = importActionResult.data as MapFieldsResult & { error?: string };
+            if (d.error) {
+              return (
+                <div className="pt-2 border-t border-lattice-border">
+                  <p role="alert" className="text-xs text-red-400">{d.error}</p>
+                </div>
+              );
+            }
             return (
               <div className="space-y-3 pt-2 border-t border-lattice-border">
                 <h3 className="text-sm font-semibold text-neon-cyan">Field Mappings — {d.mappingCount} mapped</h3>

@@ -163,7 +163,10 @@ export default function registerSponsorshipActions(registerLensAction) {
     try {
       const userId = actor(ctx);
       const s = getState();
-      const sponsorships = (s.sponsorships.get(userId) || []).filter((sp) => sp.status !== "cancelled");
+      const rank = { active: 0, paused: 1, cancelled: 2 };
+      const sponsorships = (s.sponsorships.get(userId) || []).slice().sort(
+        (a, b) => (rank[a.status] ?? 3) - (rank[b.status] ?? 3) || b.startedAt - a.startedAt,
+      );
       return { ok: true, result: { sponsorships, count: sponsorships.length } };
     } catch (e) { return { ok: false, error: String(e.message || e) }; }
   });
@@ -232,16 +235,19 @@ export default function registerSponsorshipActions(registerLensAction) {
   });
 
   // ── Sponsor-only content: creator publishes a post ─────────────────────
-  // ADMIN ONLY — see the authz note at the top of this file. `creatorId` is
-  // a fixed seeded NPC with no real-account ownership, so an unrestricted
-  // caller could broadcast content into any creator's sponsor-gated feed.
+  // A caller may publish on their own hub (`asSelf`, or creatorId equal to
+  // their user id). Publishing as a seeded NPC creator stays admin-only:
+  // those ids have no player account, so an open caller could broadcast
+  // into that creator's sponsor-gated feed.
   registerLensAction("sponsorship", "publish_post", (ctx, artifact, params = {}) => {
     try {
-      if (!isAdmin(ctx)) return { ok: false, error: "admin_only" };
-      const s = getState();
-      const creatorId = String(params.creatorId || "");
+      const userId = actor(ctx);
+      const asSelf = params.asSelf === true;
+      const creatorId = asSelf ? userId : String(params.creatorId || "");
       const title = String(params.title || "").trim();
       if (!creatorId || !title) return { ok: false, error: "creatorId and title required" };
+      if (!asSelf && creatorId !== userId && !isAdmin(ctx)) return { ok: false, error: "admin_only" };
+      const s = getState();
       const post = {
         id: nextId(s, "post"),
         creatorId,
@@ -268,15 +274,16 @@ export default function registerSponsorshipActions(registerLensAction) {
       const out = [];
       for (const cid of creators) {
         const sp = activeSponsorshipFor(s, userId, cid);
-        // tier name → rank
+        // tier name → rank. The author always reads what they published.
         let myRank = 0;
         if (sp && sp.status === "active") {
           const tn = (sp.tierName || "").toLowerCase();
           myRank = tierRank[tn] !== undefined ? tierRank[tn] : 1;
         }
+        const own = cid === userId;
         for (const p of (s.posts.get(cid) || [])) {
           const needRank = tierRank[p.minTier] || 0;
-          const locked = needRank > myRank;
+          const locked = !own && needRank > myRank;
           out.push({
             id: p.id, creatorId: cid, title: p.title,
             body: locked ? null : p.body,
@@ -362,6 +369,8 @@ export default function registerSponsorshipActions(registerLensAction) {
           monthlyCommitted, totalContributed,
           activeCount: active.length,
           pausedCount: sponsorships.filter((sp) => sp.status === "paused").length,
+          cancelledCount: sponsorships.filter((sp) => sp.status === "cancelled").length,
+          pledgedOnSponsorships: round2(sponsorships.reduce((sum, sp) => sum + (Number(sp.totalContributed) || 0), 0)),
           upcomingCharges: upcoming,
           paymentHistory: history,
           trend,

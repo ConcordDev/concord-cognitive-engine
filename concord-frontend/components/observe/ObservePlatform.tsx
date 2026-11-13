@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit, TimelineView } from '@/components/viz';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 const DOMAIN = 'observe';
 
@@ -73,6 +74,7 @@ function MetricsTab() {
   const [stats, setStats] = useState<any>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+  const [confirmDeleteMetric, setConfirmDeleteMetric] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const d = await run('metricList');
@@ -87,6 +89,21 @@ function MetricsTab() {
     setBusy(false);
     if (d.ok) { setSeries(d.result?.series || []); setStats(d.result?.stats || null); }
   }, [agg, win]);
+
+  // Two-step delete (FIX-observe-003): the first click arms the confirm
+  // on that row; the second removes the whole series server-side.
+  const delMetric = async (metricName: string) => {
+    if (confirmDeleteMetric !== metricName) { setConfirmDeleteMetric(metricName); return; }
+    setConfirmDeleteMetric(null);
+    setBusy(true);
+    const d = await run('metricDelete', { metric: metricName });
+    setBusy(false);
+    if (d.ok) {
+      setNotice({ kind: 'ok', text: `Deleted ${metricName} (${d.result?.points ?? 0} points).` });
+      if (sel === metricName) { setSel(''); setSeries([]); setStats(null); }
+      refresh();
+    } else setNotice({ kind: 'err', text: d.error || 'delete failed' });
+  };
 
   const ingest = async () => {
     const v = parseFloat(value);
@@ -118,11 +135,20 @@ function MetricsTab() {
           <div className="space-y-1 max-h-72 overflow-y-auto">
             {metrics.length === 0 && <div className="text-[11px] text-zinc-400">No metrics yet.</div>}
             {metrics.map((m) => (
-              <button key={m.name} onClick={() => query(m.name)}
-                className={`w-full text-left px-2 py-1 rounded text-[11px] flex justify-between ${sel === m.name ? 'bg-cyan-500/15 text-cyan-200' : 'bg-zinc-900 text-zinc-300 hover:bg-zinc-800'}`}>
-                <span className="font-mono truncate">{m.name}</span>
-                <span className="text-zinc-400">{m.points}pt</span>
-              </button>
+              <div key={m.name} className={`w-full rounded flex items-stretch ${sel === m.name ? 'bg-cyan-500/15' : 'bg-zinc-900 hover:bg-zinc-800'}`}>
+                <button onClick={() => query(m.name)}
+                  className={`flex-1 min-w-0 text-left px-2 py-1 text-[11px] flex justify-between ${sel === m.name ? 'text-cyan-200' : 'text-zinc-300'}`}>
+                  <span className="font-mono truncate">{m.name}</span>
+                  <span className="text-zinc-400">{m.points}pt</span>
+                </button>
+                {confirmDeleteMetric === m.name ? (
+                  <button aria-label={`Confirm delete ${m.name}`} onClick={() => void delMetric(m.name)} disabled={busy}
+                    className="px-1.5 text-[10px] font-medium text-rose-300 hover:text-rose-200 disabled:opacity-40">Confirm</button>
+                ) : (
+                  <button aria-label={`Delete ${m.name}`} onClick={() => void delMetric(m.name)}
+                    className="px-1.5 text-zinc-500 hover:text-rose-300"><Trash2 className="w-3 h-3" /></button>
+                )}
+              </div>
             ))}
           </div>
         </div>
@@ -171,7 +197,8 @@ function DashboardsTab() {
   useEffect(() => { refresh(); }, [refresh]);
 
   const create = async () => {
-    if (!title.trim()) { setNotice({ kind: 'err', text: 'Title required.' }); return; }
+    if (!title.trim()) { setNotice({ kind: 'err', text: 'Dashboard title is required.' }); return; }
+    if (title.trim().length > 120) { setNotice({ kind: 'err', text: 'Title must be 120 characters or fewer.' }); return; }
     setBusy(true);
     const d = await run('dashboardSave', { title: title.trim(), widgets: [] });
     setBusy(false);
@@ -222,7 +249,7 @@ function DashboardsTab() {
               <div key={d.id} className={`flex items-center gap-1 px-2 py-1 rounded ${active?.id === d.id ? 'bg-cyan-500/15' : 'bg-zinc-900'}`}>
                 <button onClick={() => setActive(d)} className="flex-1 text-left text-[11px] text-zinc-200 truncate">{d.title}</button>
                 <span className="text-[10px] text-zinc-400">{d.widgets?.length || 0}w</span>
-                <button aria-label="Delete" onClick={() => del(d.id)} className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <StickyDeleteConfirm onConfirm={() => del(d.id)} armAriaLabel={`Delete ${d.title}`} confirmAriaLabel={`Confirm delete ${d.title}`} className="text-zinc-600 hover:text-rose-400" armLabel={<Trash2 className="w-3 h-3" />} />
               </div>
             ))}
           </div>
@@ -243,7 +270,7 @@ function DashboardsTab() {
                   <div key={w.id} className="rounded border border-zinc-800 bg-zinc-900/60 p-2">
                     <div className="flex items-center justify-between">
                       <span className="text-[11px] font-semibold text-zinc-200">{w.title}</span>
-                      <button aria-label="Delete" onClick={() => removeWidget(w.id)} className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                      <StickyDeleteConfirm onConfirm={() => removeWidget(w.id)} armAriaLabel={`Delete ${w.title}`} confirmAriaLabel={`Confirm delete ${w.title}`} className="text-zinc-600 hover:text-rose-400" armLabel={<Trash2 className="w-3 h-3" />} />
                     </div>
                     <div className="text-[10px] text-zinc-400 mt-0.5">{w.kind}{w.metric ? ` · ${w.metric} (${w.agg})` : ''}</div>
                   </div>
@@ -464,8 +491,9 @@ function MonitorsTab() {
 
   const save = async () => {
     if (!metric.trim()) { setNotice({ kind: 'err', text: 'Metric required.' }); return; }
+    if (threshold.trim() && !Number.isFinite(Number(threshold))) { setNotice({ kind: 'err', text: 'Threshold must be a number.' }); return; }
     setBusy(true);
-    const d = await run('monitorSave', { metric: metric.trim(), type, op, agg, severity, threshold: parseFloat(threshold) || 0, windowMinutes: 15 });
+    const d = await run('monitorSave', { metric: metric.trim(), type, op, agg, severity, threshold: threshold.trim() ? Number(threshold) : 0, windowMinutes: 15 });
     setBusy(false);
     if (d.ok) { setNotice({ kind: 'ok', text: 'Monitor saved.' }); refresh(); }
     else setNotice({ kind: 'err', text: d.error || 'save failed' });
@@ -524,7 +552,7 @@ function MonitorsTab() {
                 <span className="text-[11px] text-zinc-200 flex-1 truncate">{m.name}</span>
                 <span className="text-[10px] text-zinc-400">{m.type} · {m.severity}</span>
                 {ev && <span className={`text-[10px] ${ev.breached ? 'text-rose-400' : 'text-emerald-400'}`}>{ev.reason}</span>}
-                <button aria-label="Delete" onClick={() => del(m.id)} className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <StickyDeleteConfirm onConfirm={() => del(m.id)} armAriaLabel={`Delete ${m.name}`} confirmAriaLabel={`Confirm delete ${m.name}`} className="text-zinc-600 hover:text-rose-400" armLabel={<Trash2 className="w-3 h-3" />} />
               </div>
             );
           })}
@@ -603,7 +631,7 @@ function SyntheticsTab() {
               <button onClick={() => runCheck(c.id)} disabled={busy === c.id} className="text-cyan-400 hover:text-cyan-300">
                 {busy === c.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
               </button>
-              <button aria-label="Delete" onClick={() => del(c.id)} className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+              <StickyDeleteConfirm onConfirm={() => del(c.id)} armAriaLabel={`Delete ${c.name}`} confirmAriaLabel={`Confirm delete ${c.name}`} className="text-zinc-600 hover:text-rose-400" armLabel={<Trash2 className="w-3 h-3" />} />
             </div>
             );
           })}

@@ -47,7 +47,7 @@ export function InsurancePoliciesPanel({ onChange, clients = [], onClientCreated
   const [error, setError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ carrier: '', policyNumber: '', kind: 'auto', annualPremium: '', deductible: '' });
+  const [form, setForm] = useState({ carrier: '', policyNumber: '', kind: 'auto', annualPremium: '', deductible: '', effectiveDate: '', renewalDate: '' });
   const [clientText, setClientText] = useState('');
   const [clientId, setClientId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Policy | null>(null);
@@ -117,10 +117,14 @@ export function InsurancePoliciesPanel({ onChange, clients = [], onClientCreated
     const r = await lensRun('insurance', 'policy-add', {
       carrier: form.carrier.trim(), policyNumber: form.policyNumber.trim(), kind: form.kind,
       annualPremium: Number(form.annualPremium) || 0, deductible: Number(form.deductible) || 0,
+      // FIX-insurance-006: the create form had no date fields at all —
+      // the server always defaulted start/renewal. Send the picked
+      // dates when set; blank keeps the server defaults.
+      effectiveDate: form.effectiveDate || undefined, renewalDate: form.renewalDate || undefined,
       clientId: clientId || undefined, insuredName: clientId ? undefined : (clientText.trim() || undefined),
     });
     if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
-    setForm({ carrier: '', policyNumber: '', kind: 'auto', annualPremium: '', deductible: '' });
+    setForm({ carrier: '', policyNumber: '', kind: 'auto', annualPremium: '', deductible: '', effectiveDate: '', renewalDate: '' });
     setClientText(''); setClientId(null);
     setShowAdd(false); setError(null);
     await refresh(); onChange();
@@ -361,9 +365,9 @@ export function InsurancePoliciesPanel({ onChange, clients = [], onClientCreated
 
       {showAdd && (
         <div className="grid grid-cols-2 gap-2 bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
-          <input placeholder="Carrier" value={form.carrier} onChange={(e) => setForm({ ...form, carrier: e.target.value })}
+          <input placeholder="Carrier" maxLength={120} value={form.carrier} onChange={(e) => setForm({ ...form, carrier: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-          <input placeholder="Policy number" value={form.policyNumber} onChange={(e) => setForm({ ...form, policyNumber: e.target.value })}
+          <input placeholder="Policy number" maxLength={64} value={form.policyNumber} onChange={(e) => setForm({ ...form, policyNumber: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <select value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
@@ -374,6 +378,14 @@ export function InsurancePoliciesPanel({ onChange, clients = [], onClientCreated
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <input placeholder="Deductible ($)" inputMode="decimal" value={form.deductible} onChange={(e) => setForm({ ...form, deductible: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+          <label className="text-[11px] text-zinc-400">Start date
+            <input type="date" aria-label="Start date" value={form.effectiveDate} onChange={(e) => setForm({ ...form, effectiveDate: e.target.value })}
+              className="mt-0.5 w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+          </label>
+          <label className="text-[11px] text-zinc-400">Renewal date
+            <input type="date" aria-label="Renewal date" value={form.renewalDate} onChange={(e) => setForm({ ...form, renewalDate: e.target.value })}
+              className="mt-0.5 w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+          </label>
           <button type="button" onClick={addPolicy}
             className="col-span-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium rounded-lg px-2 py-1.5">Save policy</button>
         </div>

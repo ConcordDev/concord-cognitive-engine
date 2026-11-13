@@ -15,6 +15,7 @@ import {
   WifiOff, Wifi, Loader2, Plus, FolderTree, Gauge, Clock, GitMerge, Download,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { downloadFile } from '@/lib/utils';
 import { TimelineView, type TimelineEvent } from '@/components/viz';
 import { useSmartPolling } from '@/hooks/useSmartPolling';
@@ -168,9 +169,11 @@ export function SyncDashboard() {
 
   const registerDevice = async () => {
     const label = newLabel.trim();
-    if (!label) return;
+    // FIX-sync-003: a blank label silently did nothing; say so.
+    if (!label) { flash('Enter a device label'); return; }
+    if (label.length > 200) { flash('Device label must be 200 characters or fewer'); return; }
     setBusy('register');
-    const r = await lensRun(DOMAIN, 'register_device', { deviceLabel: label, autoSync: true });
+    const r = await lensRun(DOMAIN, 'register_device', { deviceLabel: label, autoSync: false });
     setBusy(null);
     if (r.data?.ok) {
       setNewLabel('');
@@ -250,6 +253,8 @@ export function SyncDashboard() {
   const applyQuota = async (id: string) => {
     const gb = Number(quotaInput);
     if (!Number.isFinite(gb) || gb <= 0) { flash('Enter a positive GB value'); return; }
+    // FIX-sync-003: the ceiling the server enforces, stated before sending.
+    if (gb > 1000000) { flash('Quota must be no more than 1,000,000 GB'); return; }
     setBusy(`quota:${id}`);
     const r = await lensRun(DOMAIN, 'set_quota', { deviceId: id, quotaGb: gb });
     setBusy(null);
@@ -438,7 +443,7 @@ export function SyncDashboard() {
         </h2>
         <div className="flex gap-2">
           <input
-            type="text" value={newLabel}
+            type="text" value={newLabel} maxLength={200} aria-label="Device label"
             onChange={(e) => setNewLabel(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') void registerDevice(); }}
             placeholder="Device label (e.g. 'MacBook Pro')"
@@ -468,7 +473,7 @@ export function SyncDashboard() {
                   <div className="flex items-center gap-2">
                     {d.online
                       ? <Wifi className="h-5 w-5 text-emerald-400" aria-label="online" />
-                      : <WifiOff className="h-5 w-5 text-zinc-600" aria-label="offline" />}
+                      : <WifiOff className="h-5 w-5 text-zinc-400" aria-label="offline" />}
                     <div>
                       <p className="text-sm font-semibold text-zinc-100">{d.label}</p>
                       <p className="text-[11px] text-zinc-400">
@@ -508,13 +513,15 @@ export function SyncDashboard() {
                       />
                       Auto-sync
                     </label>
-                    <button
-                      type="button" onClick={() => revokeDevice(d.id, d.label)}
+                    <StickyDeleteConfirm
+                      onConfirm={() => revokeDevice(d.id, d.label)}
                       disabled={busy === `revoke:${d.id}`}
                       className="flex items-center gap-1 rounded-lg border border-rose-800/60 bg-rose-950/40 px-2.5 py-1.5 text-xs text-rose-300 hover:bg-rose-900/50 disabled:opacity-50"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" /> Revoke
-                    </button>
+                      armLabel={<><Trash2 className="h-3.5 w-3.5" /> Revoke</>}
+                      armAriaLabel={`Revoke device ${d.label}`}
+                      confirmLabel={`Revoke "${d.label}"?`}
+                      confirmAriaLabel={`Confirm revoke device ${d.label}`}
+                    />
                   </div>
                 </div>
 
@@ -544,7 +551,7 @@ export function SyncDashboard() {
                   {quotaEditor === d.id && (
                     <div className="mt-2 flex items-center gap-2">
                       <input
-                        type="number" min={1} value={quotaInput}
+                        type="number" min={1} max={1000000} value={quotaInput}
                         onChange={(e) => setQuotaInput(e.target.value)}
                         className="w-24 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-100"
                       />
@@ -606,7 +613,18 @@ export function SyncDashboard() {
 
       {/* Activity feed */}
       <section>
-        <h2 className="mb-2 text-xs font-bold uppercase tracking-wider text-zinc-400">Sync activity</h2>
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-400">Sync activity</h2>
+          {timeline.length > 0 && (
+            <StickyDeleteConfirm
+              onConfirm={async () => { await lensRun(DOMAIN, 'clear_history', {}); await refresh(); }}
+              armLabel="Clear history"
+              confirmLabel="Clear sync activity?"
+              armAriaLabel="Clear sync activity history"
+              confirmAriaLabel="Confirm clear sync activity history"
+            />
+          )}
+        </div>
         {timeline.length === 0 ? (
           <p className="rounded-lg border border-dashed border-zinc-800 p-4 text-center text-sm text-zinc-400">
             No sync activity yet.

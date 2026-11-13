@@ -171,14 +171,30 @@ describe("anon — differential-privacy epsilon budget (real cross-session track
     assert.equal(r.result.budgetTracking.exhausted, false);
     assert.ok(r.result.budgetTracking.warning, "over 80% of budget spent should surface a warning");
 
-    const r2 = await lensRun(
+    const over = await lensRun(
       "anon", "differentialPrivacy",
       { data: { values: [4, 5] }, params: { epsilon: 4.0 } },
       ctxA,
     );
-    assert.equal(r2.result.budgetTracking.cumulative, 12.5);
-    assert.equal(r2.result.budgetTracking.remaining, 0, "remaining floors at 0, never negative");
-    assert.equal(r2.result.budgetTracking.exhausted, true);
+    assert.equal(over.ok, false);
+    assert.equal(over.result.error, "privacy_budget_exhausted");
+    assert.equal(over.result.budgetTracking.refused, true);
+    assert.equal(over.result.budgetTracking.cumulative, 8.5, "a refused query does not spend");
+    assert.equal(over.result.budgetTracking.remaining, 1.5);
+
+    const fill = await lensRun(
+      "anon", "differentialPrivacy",
+      { data: { values: [6] }, params: { epsilon: 1.5 } },
+      ctxA,
+    );
+    assert.equal(fill.ok, true);
+    assert.equal(fill.result.budgetTracking.cumulative, 10);
+    assert.equal(fill.result.budgetTracking.remaining, 0);
+    assert.equal(fill.result.budgetTracking.exhausted, true);
+
+    const after = await lensRun("anon", "privacyBudgetStatus", {}, ctxA);
+    assert.equal(after.result.totalSpent, 10);
+    assert.equal(after.result.callCount, 2);
   });
 
   it("remaining-budget arithmetic respects a caller-supplied totalBudget override", async () => {

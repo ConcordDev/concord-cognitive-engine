@@ -6,6 +6,7 @@
  * mint/DM/publish/agent.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import { ShoppingCart, Target, Users, Clock, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -147,8 +148,8 @@ export function RetailActionPanel() {
     try {
       const task = `Retail ops review. ${reorderResult ? `${reorderResult.criticalCount} critical stockouts, ${reorderResult.reorderCount} below reorder.` : ''} ${pipeResult ? `Weighted pipeline $${pipeResult.totalWeighted?.toLocaleString()}.` : ''} ${ltvResult ? `LTV $${ltvResult.ltv} on CAC $${ltvResult.cac} (${ltvResult.ltvToCacRatio?.toFixed(1)}× ratio).` : ''} ${slaResult ? `SLA ${slaResult.complianceRate}% compliance.` : ''} Identify the single most urgent operational lever. Plain text, 3 sentences max.`;
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Lever ready.'); } else err('Agent returned empty.');
+      const reply = readAgentReply(r.data);
+      if (reply.ok) { setAgentReply(reply.text); ok('Lever ready.'); } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 
@@ -174,23 +175,23 @@ export function RetailActionPanel() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <div>
           <label className="text-[10px] uppercase tracking-wider text-red-400 font-semibold">Products JSON</label>
-          <textarea value={productsText} onChange={(e) => setProductsText(e.target.value)} rows={5} className="w-full bg-lattice-surface border border-lattice-border rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
+          <textarea id="retail-productstext" name="productstext" value={productsText} onChange={(e) => setProductsText(e.target.value)} rows={5} className="w-full bg-lattice-surface border border-lattice-border rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
         </div>
         <div>
           <label className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold">Deals JSON</label>
-          <textarea value={dealsText} onChange={(e) => setDealsText(e.target.value)} rows={5} className="w-full bg-lattice-surface border border-lattice-border rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
+          <textarea id="retail-dealstext" name="dealstext" value={dealsText} onChange={(e) => setDealsText(e.target.value)} rows={5} className="w-full bg-lattice-surface border border-lattice-border rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
         </div>
         <div className="space-y-1.5">
           <div className="text-[10px] uppercase tracking-wider text-green-400 font-semibold">LTV inputs</div>
           <div className="grid grid-cols-2 gap-1">
-            <input type="text" value={aov} onChange={(e) => setAov(e.target.value)} className="bg-lattice-surface border border-lattice-border rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="AOV $" />
-            <input type="text" value={freq} onChange={(e) => setFreq(e.target.value)} className="bg-lattice-surface border border-lattice-border rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Freq/yr" />
-            <input type="text" value={lifespan} onChange={(e) => setLifespan(e.target.value)} className="bg-lattice-surface border border-lattice-border rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Span yr" />
-            <input type="text" value={cac} onChange={(e) => setCac(e.target.value)} className="bg-lattice-surface border border-lattice-border rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="CAC $" />
+            <input id="retail-aov" name="aov" aria-label="AOV $" type="text" value={aov} onChange={(e) => setAov(e.target.value)} className="bg-lattice-surface border border-lattice-border rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="AOV $" />
+            <input id="retail-freqyr" name="freqyr" aria-label="Freq/yr" type="text" value={freq} onChange={(e) => setFreq(e.target.value)} className="bg-lattice-surface border border-lattice-border rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Freq/yr" />
+            <input id="retail-span-yr" name="span-yr" aria-label="Span yr" type="text" value={lifespan} onChange={(e) => setLifespan(e.target.value)} className="bg-lattice-surface border border-lattice-border rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Span yr" />
+            <input id="retail-cac" name="cac" aria-label="CAC $" type="text" value={cac} onChange={(e) => setCac(e.target.value)} className="bg-lattice-surface border border-lattice-border rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="CAC $" />
           </div>
           <div className="text-[10px] uppercase tracking-wider text-amber-400 font-semibold mt-1.5">Incidents JSON</div>
-          <textarea value={incidentsText} onChange={(e) => setIncidentsText(e.target.value)} rows={2} className="w-full bg-lattice-surface border border-lattice-border rounded px-3 py-1 text-[10px] text-white font-mono" />
-          <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-lattice-surface border border-lattice-border rounded px-3 py-1 text-[11px] text-white" placeholder="DM recipient" />
+          <textarea id="retail-incidentstext" name="incidentstext" value={incidentsText} onChange={(e) => setIncidentsText(e.target.value)} rows={2} className="w-full bg-lattice-surface border border-lattice-border rounded px-3 py-1 text-[10px] text-white font-mono" />
+          <input id="retail-dm-recipient" name="dm-recipient" aria-label="DM recipient" type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-lattice-surface border border-lattice-border rounded px-3 py-1 text-[11px] text-white" placeholder="DM recipient" />
           <div className="flex items-center gap-2 flex-wrap">
             <RecallSlot ctl={dmRecall} />
             <RecallSlot ctl={publishRecall} />

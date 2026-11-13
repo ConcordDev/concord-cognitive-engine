@@ -57,6 +57,7 @@ import {
   MessagingChannelsPanelPanel, PersonalAgentPanelPanel, FlywheelDashboardPanel,
   PredictionCardsPanel, RegionalLeaderboardPanel,
 } from './panels/SubstrateRevealPanels';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 const PANEL_REGISTRY: Record<string, { label: string; Component: React.ComponentType }> = {
   bloodline:    { label: 'Bloodline',  Component: BloodlinePanel },
@@ -150,16 +151,17 @@ export function PanelHost() {
       data-panel-id={activeId}
       role="dialog"
       aria-label={label}
-      onClick={(e) => { if (e.target === e.currentTarget) setActiveId(null); }} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+      onClick={(e) => { if (e.target === e.currentTarget) setActiveId(null); }} tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
       <div className="w-[28rem] max-w-[90vw] max-h-[80vh] bg-lattice-void border border-lattice-border rounded-lg shadow-2xl flex flex-col">
         <header className="flex items-center justify-between px-4 py-2 border-b border-lattice-border">
           <h2 className="text-sm font-bold text-white">{label}</h2>
           <button
             type="button"
+            data-overlay-close=""
             onClick={() => setActiveId(null)}
             aria-label="Close panel"
             className="text-xs text-gray-300 hover:text-white"
-          >✕ Esc</button>
+          >Close</button>
         </header>
         <div className="flex-1 overflow-auto p-3">
           <Component />

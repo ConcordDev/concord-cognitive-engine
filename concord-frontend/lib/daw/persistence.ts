@@ -33,6 +33,7 @@ export interface StudioTransport {
   save(project: DAWProject, baseRev: number): Promise<ProjectRecord>;
   get(id: string): Promise<ProjectRecord | null>;
   list(): Promise<ProjectRecord[]>;
+  delete(id: string): Promise<void>;
   versions(id: string): Promise<VersionMeta[]>;
   snapshot(id: string, label: string): Promise<VersionMeta | null>;
   restore(id: string, versionId: string): Promise<ProjectRecord | null>;

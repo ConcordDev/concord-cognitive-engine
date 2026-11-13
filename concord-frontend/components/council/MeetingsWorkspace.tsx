@@ -22,6 +22,7 @@ import { lensRun } from '@/lib/api/client';
 import { calendarDateKey } from '@/lib/calendar-date';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 // ---------------------------------------------------------------------------
 // Types — mirror the council-domain macro result shapes
@@ -255,7 +256,7 @@ export function MeetingsWorkspace() {
               )}
             </div>
             <div className="flex items-center gap-1 flex-shrink-0">
-              <select
+              <select aria-label="Meeting status"
                 value={selected.status}
                 onChange={(e) => run('meeting-update', { id: selected.id, status: e.target.value }, loadMeetings)}
                 className={cn(ds.select, '!w-36 !text-xs')}
@@ -329,7 +330,7 @@ export function MeetingsWorkspace() {
                     {item.presenter ? `${item.presenter} · ` : ''}{item.durationMin} min
                   </p>
                 </div>
-                <select
+                <select aria-label="Agenda item status"
                   value={item.status}
                   onChange={(e) => run('agenda-update', {
                     meetingId: selected.id, itemId: item.id, status: e.target.value,
@@ -377,19 +378,19 @@ export function MeetingsWorkspace() {
             ))}
           </div>
           <div className="flex gap-2 mt-3 flex-wrap">
-            <input
+            <input aria-label="Agenda topic"
               value={agendaDraft.topic}
               onChange={(e) => setAgendaDraft((d) => ({ ...d, topic: e.target.value }))}
               placeholder="Agenda topic…"
               className={cn(ds.input, 'flex-1 !min-w-[160px]')}
             />
-            <input
+            <input aria-label="Presenter"
               value={agendaDraft.presenter}
               onChange={(e) => setAgendaDraft((d) => ({ ...d, presenter: e.target.value }))}
               placeholder="Presenter"
               className={cn(ds.input, '!w-32')}
             />
-            <input
+            <input aria-label="Min"
               type="number"
               min={1}
               value={agendaDraft.durationMin}
@@ -468,13 +469,13 @@ export function MeetingsWorkspace() {
             ))}
           </div>
           <div className="flex gap-2 mt-3 flex-wrap">
-            <input
+            <input aria-label="Attendee name"
               value={attendeeDraft.name}
               onChange={(e) => setAttendeeDraft((d) => ({ ...d, name: e.target.value }))}
               placeholder="Attendee name…"
               className={cn(ds.input, 'flex-1 !min-w-[160px]')}
             />
-            <input
+            <input aria-label="Role"
               value={attendeeDraft.role}
               onChange={(e) => setAttendeeDraft((d) => ({ ...d, role: e.target.value }))}
               placeholder="Role"
@@ -540,19 +541,19 @@ export function MeetingsWorkspace() {
             ))}
           </div>
           <div className="flex gap-2 mt-3 flex-wrap">
-            <input
+            <input aria-label="Document name"
               value={packetDraft.name}
               onChange={(e) => setPacketDraft((d) => ({ ...d, name: e.target.value }))}
               placeholder="Document name…"
               className={cn(ds.input, 'flex-1 !min-w-[140px]')}
             />
-            <input
+            <input aria-label="URL (optional)"
               value={packetDraft.url}
               onChange={(e) => setPacketDraft((d) => ({ ...d, url: e.target.value }))}
               placeholder="URL (optional)"
               className={cn(ds.input, 'flex-1 !min-w-[140px]')}
             />
-            <select
+            <select aria-label="Packet kind"
               value={packetDraft.kind}
               onChange={(e) => setPacketDraft((d) => ({ ...d, kind: e.target.value }))}
               className={cn(ds.select, '!w-32')}
@@ -679,9 +680,9 @@ export function MeetingsWorkspace() {
 
       {/* Schedule meeting modal */}
       {showCreate && (
-        <div className={ds.modalBackdrop} onClick={() => setShowCreate(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className={ds.modalBackdrop} onClick={() => setShowCreate(false)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <div className={ds.modalContainer}>
-            <div className={cn(ds.modalPanel, 'max-w-lg')} onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            <div className={cn(ds.modalPanel, 'max-w-lg')} onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
               <div className="flex items-center justify-between px-5 py-4 border-b border-lattice-border">
                 <h2 className={ds.heading2}>Schedule Meeting</h2>
                 <button onClick={() => setShowCreate(false)} className="text-gray-400 hover:text-white" aria-label="Close">
@@ -691,7 +692,7 @@ export function MeetingsWorkspace() {
               <div className="p-5 space-y-4">
                 <div>
                   <label className={ds.label}>Title</label>
-                  <input
+                  <input aria-label="Title"
                     value={form.title}
                     onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                     placeholder="e.g. Q3 Board Session"
@@ -701,7 +702,7 @@ export function MeetingsWorkspace() {
                 <div className={ds.grid2}>
                   <div>
                     <label className={ds.label}>Date & Time</label>
-                    <input
+                    <input aria-label="Date & Time"
                       type="datetime-local"
                       value={form.scheduledAt}
                       onChange={(e) => setForm((f) => ({ ...f, scheduledAt: e.target.value }))}
@@ -710,7 +711,7 @@ export function MeetingsWorkspace() {
                   </div>
                   <div>
                     <label className={ds.label}>Quorum Threshold</label>
-                    <input
+                    <input aria-label="Quorum Threshold"
                       type="number"
                       min={0}
                       value={form.quorumThreshold}
@@ -721,7 +722,7 @@ export function MeetingsWorkspace() {
                 </div>
                 <div>
                   <label className={ds.label}>Location</label>
-                  <input
+                  <input aria-label="Location"
                     value={form.location}
                     onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
                     placeholder="e.g. Council Hall / video link"
@@ -730,7 +731,7 @@ export function MeetingsWorkspace() {
                 </div>
                 <div>
                   <label className={ds.label}>Description</label>
-                  <textarea
+                  <textarea aria-label="Description"
                     value={form.description}
                     onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                     rows={3}
@@ -827,7 +828,7 @@ function MeetingActions({ meeting, actions, meetings, busy, draft, setDraft, run
                 </p>
               </div>
               {a.status === 'open' && otherMeetings.length > 0 && (
-                <select
+                <select aria-label="Carry forward to meeting"
                   defaultValue=""
                   onChange={(e) => {
                     if (e.target.value) {
@@ -859,19 +860,19 @@ function MeetingActions({ meeting, actions, meetings, busy, draft, setDraft, run
         })}
       </div>
       <div className="flex gap-2 mt-3 flex-wrap">
-        <input
+        <input aria-label="Action item"
           value={draft.description}
           onChange={(e) => setDraft({ ...draft, description: e.target.value })}
           placeholder="Action item…"
           className={cn(ds.input, 'flex-1 !min-w-[160px]')}
         />
-        <input
+        <input aria-label="Owner"
           value={draft.owner}
           onChange={(e) => setDraft({ ...draft, owner: e.target.value })}
           placeholder="Owner"
           className={cn(ds.input, '!w-28')}
         />
-        <input
+        <input aria-label="Due date"
           type="date"
           value={draft.dueDate}
           onChange={(e) => setDraft({ ...draft, dueDate: e.target.value })}

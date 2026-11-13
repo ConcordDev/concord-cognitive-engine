@@ -326,7 +326,7 @@ export function deleteAlbum(db, userId, albumId) {
     if (!own.ok) return own;
     db.transaction(() => {
       db.prepare(`DELETE FROM photo_album_items WHERE album_id = ?`).run(albumId);
-      db.prepare(`DELETE FROM photo_albums WHERE id = ?`).run(albumId);
+      db.prepare(`DELETE FROM photo_albums WHERE id = ? AND user_id = ?`).run(albumId, userId);
     })();
     return { ok: true };
   } catch (err) {

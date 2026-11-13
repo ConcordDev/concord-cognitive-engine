@@ -36,6 +36,7 @@ import { LensShell } from '@/components/lens/LensShell';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface PageRow {
   id: string;
@@ -83,6 +84,24 @@ async function fetchFullPage(id: string): Promise<ProjectGetResult> {
     throw new Error(res.data?.error || 'Could not read that page for export.');
   }
   return res.data.result;
+}
+
+// FIX-creative-writing-007: the CSV export now carries the body in
+// both shapes. The JSON export is project-get's result verbatim —
+// project.body is the manuscript prose and scenes carry their own
+// body — but the hand-rolled CSV dropped both, so a CSV of a page
+// lost the writing itself. csvCell already quotes multiline prose.
+export function buildPageCsv(full: ProjectGetResult): string {
+  const scenes = Array.isArray(full.scenes) ? full.scenes : [];
+  if (scenes.length > 0) {
+    const header = csvRow(['id', 'title', 'chapterId', 'order', 'wordCount', 'status', 'body']);
+    const rows = scenes.map((sc) => csvRow([sc.id, sc.title, sc.chapterId, sc.order, sc.wordCount, sc.status, sc.body]));
+    return [header, ...rows].join('\n');
+  }
+  const p = full.project || {};
+  const header = csvRow(['id', 'title', 'genre', 'targetWords', 'wordCount', 'createdAt', 'updatedAt', 'body']);
+  const row = csvRow([p.id, p.title, p.genre, p.targetWords, full.wordCount ?? 0, p.createdAt, p.updatedAt, p.body]);
+  return [header, row].join('\n');
 }
 
 type Phase = 'loading' | 'ready' | 'error';
@@ -138,6 +157,8 @@ export default function CreativeWritingPage() {
   const bodyRef = useRef<HTMLTextAreaElement | null>(null);
   const [exportingId, setExportingId] = useState<string | null>(null);
   const [exportError, setExportError] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [armedId, setArmedId] = useState<string | null>(null);
 
   const pull = useCallback(async () => readPages(), []);
 
@@ -183,6 +204,18 @@ export default function CreativeWritingPage() {
 
   const startCompose = useCallback(() => {
     if (busy || phase !== 'ready' || composing) return;
+    setEditingId(null);
+    setTitle('');
+    setBody('');
+    setComposing(true);
+    setActionError('');
+  }, [busy, phase, composing]);
+
+  const beginEdit = useCallback((item: PageRow) => {
+    if (busy || phase !== 'ready' || composing) return;
+    setEditingId(item.id);
+    setTitle(item.title);
+    setBody(item.body);
     setComposing(true);
     setActionError('');
   }, [busy, phase, composing]);
@@ -190,6 +223,7 @@ export default function CreativeWritingPage() {
   const cancelCompose = useCallback(() => {
     if (pages.length === 0) return; // nothing to go back to
     setComposing(false);
+    setEditingId(null);
     setTitle('');
     setBody('');
     setActionError('');
@@ -205,12 +239,18 @@ export default function CreativeWritingPage() {
     setBusy(true);
     setActionError('');
     try {
-      const created = await lensRun<{ project?: { id?: string; title?: string; body?: string } }>(
-        'creative-writing',
-        'project-create',
-        { title: trimmedTitle, body },
-      );
-      const id = created.data?.result?.project?.id;
+      const created = editingId
+        ? await lensRun<{ project?: { id?: string; title?: string; body?: string } }>(
+          'creative-writing',
+          'project-update',
+          { id: editingId, title: trimmedTitle, body },
+        )
+        : await lensRun<{ project?: { id?: string; title?: string; body?: string } }>(
+          'creative-writing',
+          'project-create',
+          { title: trimmedTitle, body },
+        );
+      const id = editingId || created.data?.result?.project?.id;
       if (!created.data?.ok || !id) {
         throw new Error(created.data?.error || 'Could not open that page.');
       }
@@ -222,13 +262,14 @@ export default function CreativeWritingPage() {
       setPages(rows);
       setTitle('');
       setBody('');
+      setEditingId(null);
       setComposing(false);
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Could not open that page.');
     } finally {
       setBusy(false);
     }
-  }, [busy, phase, title, body]);
+  }, [busy, phase, title, body, editingId]);
 
   const primaryAction = useCallback(() => {
     if (composing) { void savePage(); } else { startCompose(); }
@@ -273,19 +314,7 @@ export default function CreativeWritingPage() {
     setExportError('');
     try {
       const full = await fetchFullPage(id);
-      const scenes = Array.isArray(full.scenes) ? full.scenes : [];
-      let csv: string;
-      if (scenes.length > 0) {
-        const header = csvRow(['id', 'title', 'chapterId', 'order', 'wordCount', 'status']);
-        const rows = scenes.map((sc) => csvRow([sc.id, sc.title, sc.chapterId, sc.order, sc.wordCount, sc.status]));
-        csv = [header, ...rows].join('\n');
-      } else {
-        const p = full.project || {};
-        const header = csvRow(['id', 'title', 'genre', 'targetWords', 'wordCount', 'createdAt', 'updatedAt']);
-        const row = csvRow([p.id, p.title, p.genre, p.targetWords, full.wordCount ?? 0, p.createdAt, p.updatedAt]);
-        csv = [header, row].join('\n');
-      }
-      downloadFile(`${slug(itemTitle)}.csv`, csv, 'text/csv');
+      downloadFile(`${slug(itemTitle)}.csv`, buildPageCsv(full), 'text/csv');
     } catch (err) {
       setExportError(err instanceof Error ? err.message : 'Could not export that page as CSV.');
     } finally {
@@ -358,6 +387,38 @@ export default function CreativeWritingPage() {
                         >
                           Export CSV
                         </button>
+                        <button
+                          type="button"
+                          data-testid={`edit-page-${item.id}`}
+                          onClick={() => beginEdit(item)}
+                          className="underline decoration-dotted hover:text-zinc-200"
+                        >
+                          Edit
+                        </button>
+                        <StickyDeleteConfirm
+                          armed={armedId === item.id}
+                          onArm={() => setArmedId(item.id)}
+                          onCancel={() => setArmedId(null)}
+                          onConfirm={async () => {
+                            const res = await lensRun('creative-writing', 'project-delete', { id: item.id });
+                            if (!res.data?.ok) {
+                              setActionError(res.data?.error || 'Could not delete that page.');
+                              return;
+                            }
+                            const rows = await readPages();
+                            setPages(rows);
+                            setArmedId(null);
+                            if (rows.length === 0) {
+                              setEditingId(null);
+                              setTitle('');
+                              setBody('');
+                              setComposing(true);
+                            }
+                          }}
+                          armLabel="Delete"
+                          confirmLabel={`Delete “${item.title}”?`}
+                          className="underline decoration-dotted hover:text-zinc-200"
+                        />
                       </span>
                     </li>
                   ))}

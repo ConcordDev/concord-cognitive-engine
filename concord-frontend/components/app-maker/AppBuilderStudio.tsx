@@ -27,6 +27,7 @@ import {
   CheckCircle, XCircle, Loader2, GripVertical, FileCode,
   Link2, Unlink, Store, GitBranch, AlertTriangle, Info, Pencil,
 } from 'lucide-react';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 const DOMAIN = 'app-maker';
 
@@ -81,6 +82,7 @@ export function AppBuilderStudio() {
   const [tab, setTab] = useState<Tab>('canvas');
   const [busy, setBusy] = useState<string | null>(null);
   const [newProjName, setNewProjName] = useState('');
+  const [createError, setCreateError] = useState('');
   const { setActiveProjectId } = useAppMakerProject();
 
   // ── helpers ──────────────────────────────────────────────────────
@@ -110,9 +112,14 @@ export function AppBuilderStudio() {
 
   const createProject = async () => {
     if (!newProjName.trim()) return;
+    // FIX-app-maker-006: a refused create used to show nothing at all — no
+    // message, no stated limit. The refusal now speaks, with the limit.
+    if (newProjName.trim().length > 200) { setCreateError(`Project names can be up to 200 characters — yours is ${newProjName.trim().length}.`); return; }
     setBusy('create');
     const d = await run('projectCreate', { name: newProjName.trim() });
     setBusy(null);
+    if (!d?.ok) { setCreateError(d?.error ? `Project not created: ${d.error}` : 'Project not created — the server refused it.'); return; }
+    setCreateError('');
     if (d?.ok) {
       setNewProjName('');
       await loadProjects();
@@ -162,6 +169,7 @@ export function AppBuilderStudio() {
           onChange={(e) => setNewProjName(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && createProject()}
           placeholder="New project name…"
+          maxLength={200}
           className="bg-lattice-deep border border-lattice-edge rounded px-3 py-1.5 text-sm flex-1 min-w-[160px]"
         />
         <button
@@ -172,7 +180,9 @@ export function AppBuilderStudio() {
           {busy === 'create' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
           New Project
         </button>
+        {newProjName.length > 160 && <span className="text-[11px] text-zinc-400">{newProjName.length}/200</span>}
       </div>
+      {createError && <p role="alert" className="text-[11px] text-rose-300">{createError}</p>}
 
       {projects.length > 0 && (
         <div className="flex items-center gap-2 flex-wrap">
@@ -403,7 +413,7 @@ function CanvasEditor({ project, run, reload }: SubProps) {
           onMouseLeave={() => setDragId(null)}
           onClick={(e) => { if (e.target === canvasRef.current) setSelected(null); }}
           className="relative bg-[#020617] border border-lattice-edge rounded-lg overflow-hidden h-[460px]"
-          style={{ backgroundImage: 'radial-gradient(circle, #1e293b 1px, transparent 1px)', backgroundSize: '20px 20px' }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          style={{ backgroundImage: 'radial-gradient(circle, #1e293b 1px, transparent 1px)', backgroundSize: '20px 20px' }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           {elements.length === 0 && (
             <p className="absolute inset-0 flex items-center justify-center text-xs text-gray-400 pointer-events-none">
               Click an element from the palette to add it, then drag to position.

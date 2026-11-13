@@ -84,7 +84,7 @@ test("every remove + restore works on a legacy-shaped state", async () => {
   assert.equal(rmTg.ok, true);
 
   // recurring goal remove (via a template with a cadence)
-  const applied = await templates({ op: "apply", templateId: "tpl_okr_quarter" });
+  const applied = await templates({ op: "apply", templateId: "tpl_okr_quarter", alsoRecurring: true });
   assert.equal(applied.ok, true);
   assert.ok(applied.result.recurring);
   const rmRec = await templates({ op: "recurring-remove", id: applied.result.recurring.id });

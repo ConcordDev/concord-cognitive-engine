@@ -25,6 +25,12 @@ export function QuoteCompare() {
   const [error, setError] = useState<string | null>(null);
 
   async function getQuotes() {
+    if (!/^\d{5}$/.test(zip.trim())) {
+      setError('ZIP must be 5 digits.');
+      setQuotes([]);
+      setSearched(true);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -61,6 +67,7 @@ export function QuoteCompare() {
         <DollarSign className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Quote shopping</span>
       </header>
+      <p className="px-4 pt-3 text-xs text-zinc-300">Live carrier quotes need a broker key. Concord does not invent premiums. Compare names that requirement instead of showing made-up prices.</p>
       <div className="p-3 border-b border-white/10 grid grid-cols-4 gap-2 text-xs">
         <select value={kind} onChange={e => setKind(e.target.value as 'auto' | 'home' | 'renters' | 'life' | 'umbrella')} className="px-2 py-1.5 bg-lattice-deep border border-lattice-border rounded text-white">
           <option value="auto">Auto</option><option value="home">Home</option><option value="renters">Renters</option><option value="life">Life</option><option value="umbrella">Umbrella</option>

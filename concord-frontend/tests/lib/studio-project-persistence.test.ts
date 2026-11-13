@@ -19,6 +19,7 @@ function fakeServer() {
     async save(p) { const r = projects.get(p.id)!; r.daw = sanitize(toServerDaw(p)); r.rev += 1; r.updatedAt = new Date(Date.now() + 1).toISOString(); return { ...r, daw: undefined }; },
     async get(id) { const r = projects.get(id); return r ? JSON.parse(JSON.stringify(r)) : null; },
     async list() { return [...projects.values()]; },
+    async delete(id) { projects.delete(id); },
     async versions() { return []; },
     async snapshot() { return null; },
     async restore() { return null; },

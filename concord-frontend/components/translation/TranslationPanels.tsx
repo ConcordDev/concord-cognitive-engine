@@ -194,6 +194,7 @@ export function SingleTranslatePanel({
         <button aria-label="Detect language" onClick={handleDetect} disabled={busy || !text.trim()} style={btnStyle(false)}>
           Detect language
         </button>
+        {!text.trim() && <span role="note" style={{ fontSize: 12, opacity: 0.7 }}>Enter text to translate.</span>}
         {detected && (
           <span data-testid="translation-detected" style={{ fontSize: 13, opacity: 0.8 }}>
             Detected: {detected}
@@ -316,6 +317,7 @@ export function BatchTranslatePanel({
           {batchBusy ? 'Working…' : `Translate all${batchLines.length ? ` (${batchLines.length})` : ''}`}
         </button>
         <span style={{ fontSize: 12, opacity: 0.6 }}>{batchLines.length}/50 lines</span>
+        {!batchLines.length && <span role="note" style={{ fontSize: 12, opacity: 0.7 }}>Add at least one line to translate.</span>}
       </div>
 
       {batchError && (

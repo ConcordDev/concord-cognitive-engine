@@ -17,6 +17,7 @@ import { calendarDateKey } from '@/lib/calendar-date';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz';
 import { CalendarClock, Plus, Loader2, CheckCircle2, AlertTriangle, Users } from 'lucide-react';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface Job {
   id: string;
@@ -114,6 +115,14 @@ export function JobDispatchBoard() {
     } else setErr(r.data.error || 'job-schedule failed');
   };
 
+  const deleteJob = async (id: string) => {
+    setBusy(true);
+    const r = await lensRun('landscaping', 'job-delete', { id });
+    setBusy(false);
+    if (!r.data.ok) setErr(r.data.error || 'job-delete failed');
+    await load();
+  };
+
   const completeJob = async (id: string) => {
     setBusy(true);
     const notesPrompt = typeof window !== 'undefined' ? window.prompt('Completion notes (optional)', '') : '';
@@ -173,6 +182,9 @@ export function JobDispatchBoard() {
           </div>
           <input className={`${inputCls} md:col-span-4`} placeholder="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
         </div>
+        {!title.trim() && (
+          <p role="alert" className="mt-2 text-[11px] text-rose-300">Enter a job title. Schedule stays off until there is one.</p>
+        )}
         <button onClick={scheduleJob} disabled={!title.trim() || busy} className={`${btnCls} mt-2`}>
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />} Schedule job
         </button>
@@ -225,7 +237,7 @@ export function JobDispatchBoard() {
               <span className="text-zinc-400">{lane.loadHours}h scheduled</span>
             </div>
             <div className="divide-y divide-zinc-900">
-              {lane.jobs.map((j) => <JobRow key={j.id} job={j} onComplete={completeJob} />)}
+              {lane.jobs.map((j) => <JobRow key={j.id} job={j} onComplete={completeJob} onDelete={deleteJob} onSaved={load} />)}
             </div>
           </div>
         ))}
@@ -236,7 +248,7 @@ export function JobDispatchBoard() {
               Unassigned ({board.unassigned.length})
             </div>
             <div className="divide-y divide-zinc-900">
-              {board.unassigned.map((j) => <JobRow key={j.id} job={j} onComplete={completeJob} />)}
+              {board.unassigned.map((j) => <JobRow key={j.id} job={j} onComplete={completeJob} onDelete={deleteJob} onSaved={load} />)}
             </div>
           </div>
         )}
@@ -251,7 +263,11 @@ export function JobDispatchBoard() {
   );
 }
 
-function JobRow({ job, onComplete }: { job: Job; onComplete: (id: string) => void }) {
+function JobRow({ job, onComplete, onDelete, onSaved }: { job: Job; onComplete: (id: string) => void; onDelete: (id: string) => void; onSaved: () => void }) {
+  const [armed, setArmed] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draftTitle, setDraftTitle] = useState(job.title);
+  const [draftCrew, setDraftCrew] = useState(job.crew);
   return (
     <div className="flex items-center justify-between gap-2 px-3 py-2 text-xs">
       <div className="min-w-0">
@@ -265,15 +281,45 @@ function JobRow({ job, onComplete }: { job: Job; onComplete: (id: string) => voi
         {job.status === 'completed' && job.completionNotes && (
           <div className="mt-0.5 truncate text-[11px] text-emerald-300/80">✓ {job.completionNotes}</div>
         )}
+        {editing && (
+          <div className="mt-1 flex gap-1">
+            <input value={draftTitle} onChange={(e) => setDraftTitle(e.target.value)} className="w-32 rounded border border-zinc-700 bg-zinc-950 px-1 py-0.5 text-[11px] text-white" aria-label="Job title" />
+            <input value={draftCrew} onChange={(e) => setDraftCrew(e.target.value)} className="w-24 rounded border border-zinc-700 bg-zinc-950 px-1 py-0.5 text-[11px] text-white" aria-label="Crew" />
+          </div>
+        )}
       </div>
-      {job.status !== 'completed' && job.status !== 'cancelled' && (
-        <button
-          onClick={() => onComplete(job.id)}
-          className="inline-flex shrink-0 items-center gap-1 rounded bg-emerald-600 px-2 py-1 text-[11px] font-medium text-white hover:bg-emerald-500"
-        >
-          <CheckCircle2 className="h-3 w-3" /> Complete
-        </button>
-      )}
+      <div className="flex shrink-0 items-center gap-1.5">
+        {job.status !== 'completed' && (
+          <button
+            type="button"
+            onClick={async () => {
+              if (!editing) { setEditing(true); return; }
+              const r = await lensRun('landscaping', 'job-update', { id: job.id, title: draftTitle, crew: draftCrew });
+              if (r.data?.ok) { setEditing(false); onSaved(); }
+            }}
+            className="text-[11px] text-emerald-300 underline"
+          >
+            {editing ? 'Save' : 'Edit'}
+          </button>
+        )}
+        <StickyDeleteConfirm
+          armed={armed}
+          onArm={() => setArmed(true)}
+          onCancel={() => setArmed(false)}
+          onConfirm={() => { setArmed(false); onDelete(job.id); }}
+          armLabel="Delete"
+          confirmLabel={`Delete “${job.title}”?`}
+          className="text-[11px] text-zinc-400 underline"
+        />
+        {job.status !== 'completed' && job.status !== 'cancelled' && (
+          <button
+            onClick={() => onComplete(job.id)}
+            className="inline-flex shrink-0 items-center gap-1 rounded bg-emerald-600 px-2 py-1 text-[11px] font-medium text-white hover:bg-emerald-500"
+          >
+            <CheckCircle2 className="h-3 w-3" /> Complete
+          </button>
+        )}
+      </div>
     </div>
   );
 }

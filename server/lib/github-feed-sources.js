@@ -256,9 +256,9 @@ export async function githubTopicSearch({ topic, perPage } = {}) {
   return { ok: true, items: r.data.items || [], stale: !!r.stale, fetchedAt: r.fetchedAt };
 }
 
-async function viaCache(sourceId, key, ttlMs) {
+async function viaCache(sourceId, key, ttlMs, opts = {}) {
   ensureGithubFeedSources();
-  const r = await get(sourceId, key, { ttlMs });
+  const r = await get(sourceId, key, { ttlMs, force: !!opts.force });
   if (r.status === "unavailable" || r.data == null) {
     return { ok: false, status: "unavailable", reason: String(r.reason || "") || "unavailable", lastOkAt: r.lastOkAt ?? null };
   }
@@ -283,8 +283,12 @@ export async function githubRepoMeta({ owner, repo, kind } = {}) {
   return viaCache(GITHUB_CORE_SOURCE, `${kind}|${owner}|${repo}`, TTL_BY_KIND[kind]);
 }
 
-export async function githubGistsPublic() {
-  return viaCache(GITHUB_CORE_SOURCE, "gists", TTL_BY_KIND.gists);
+export async function githubGistsPublic({ force } = {}) {
+  // force (FIX-custom-004): the gist gallery's Refresh asks for a real
+  // re-fetch — feed-cache still applies the source budget and serves
+  // the stale entry (marked stale) when the upstream fetch fails, so a
+  // forced read can cost budget but can never fabricate freshness.
+  return viaCache(GITHUB_CORE_SOURCE, "gists", TTL_BY_KIND.gists, { force: !!force });
 }
 
 /** Global security advisories, optionally narrowed by allowlisted ecosystem / severity. */

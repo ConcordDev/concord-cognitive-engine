@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Library, Plus, Trash2, Quote, Link2, FileText, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface ChannelMeta { id: string; title: string; description: string; blockCount: number; role?: 'owner' | 'collaborator' }
 interface Block { id: string; kind: string; content: string; source: string | null; channelIds: string[]; canDelete?: boolean }
@@ -87,7 +88,7 @@ export function PhilosophyChannels() {
     <div>
       <div className="flex items-center gap-2 mb-3">
         <Library className="w-4 h-4 text-indigo-400" />
-        <h3 className="text-sm font-bold text-zinc-100">Idea Channels</h3>
+        <h2 className="text-sm font-bold text-zinc-100">Idea Channels</h2>
       </div>
 
       <div className="flex gap-1.5 mb-3">
@@ -98,6 +99,7 @@ export function PhilosophyChannels() {
           className="px-3 py-1.5 text-xs rounded bg-indigo-600 hover:bg-indigo-500 text-white font-semibold disabled:opacity-40">New channel</button>
       </div>
 
+      {!newTitle.trim() && <p className="text-[11px] text-zinc-500 mb-3" role="note">Give the channel a title to create it.</p>}
       {notice && <p className="text-[11px] text-amber-300 mb-3" role="status">{notice}</p>}
 
       <div className="grid sm:grid-cols-[200px_1fr] gap-3">
@@ -110,26 +112,29 @@ export function PhilosophyChannels() {
                 <p className="text-xs font-semibold text-zinc-100 truncate">{c.title}</p>
                 <p className="text-[10px] text-zinc-400">{c.blockCount} blocks</p>
               </button>
-              {c.role !== 'collaborator' && (confirmChannelId === c.id ? (
-                <span className="flex items-center gap-1 shrink-0">
-                  <button aria-label="Confirm delete" onClick={() => deleteChannel(c.id)} className="px-1.5 py-0.5 text-[10px] rounded bg-rose-600 text-white font-semibold">Delete?</button>
-                  <button aria-label="Cancel delete" onClick={() => setConfirmChannelId(null)} className="px-1.5 py-0.5 text-[10px] rounded bg-zinc-800 text-zinc-300">Keep</button>
-                </span>
-              ) : (
-                <button aria-label="Delete" onClick={() => setConfirmChannelId(c.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
-              ))}
+              {c.role !== 'collaborator' && (
+                <StickyDeleteConfirm
+                  armed={confirmChannelId === c.id}
+                  onArm={() => setConfirmChannelId(c.id)}
+                  onConfirm={() => { void deleteChannel(c.id); }}
+                  onCancel={() => setConfirmChannelId(null)}
+                  armLabel={<Trash2 className="w-3 h-3" />}
+                  confirmLabel={`Delete "${c.title}"?`}
+                  className="opacity-0 group-hover:opacity-100 p-1 text-rose-400 shrink-0"
+                />
+              )}
             </li>
           ))}
         </ul>
 
         {active ? (
           <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-3">
-            <h4 className="text-sm font-bold text-zinc-100 mb-2">{active.channel.title}</h4>
+            <h3 className="text-sm font-bold text-zinc-100 mb-2">{active.channel.title}</h3>
 
             <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-2 mb-3 space-y-1.5">
               <div className="flex gap-1.5">
-                <select value={draft.kind} onChange={e => setDraft({ ...draft, kind: e.target.value })}
-                  className="bg-zinc-900 border border-zinc-800 rounded px-1.5 py-1 text-xs text-zinc-200">
+                <select aria-label="Block kind" value={draft.kind} onChange={e => setDraft({ ...draft, kind: e.target.value })}
+                  className="min-h-11 bg-zinc-900 border border-zinc-800 rounded px-1.5 py-1 text-xs text-zinc-200">
                   <option value="text">Text</option>
                   <option value="quote">Quote</option>
                   <option value="link">Link</option>

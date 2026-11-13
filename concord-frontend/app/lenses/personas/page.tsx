@@ -13,6 +13,7 @@
 // Empty state: handled inline when data is empty (Sprint 17 invariant).
 
 import { useEffect, useState, useCallback } from 'react';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
@@ -163,7 +164,7 @@ export default function PersonasPage() {
       <div data-lens-theme="personas" className="relative min-h-full px-8 pb-28 pt-6">
         <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Personas</h1>
 
-        <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Persona views">
+        <nav className="mb-6 flex max-w-full flex-wrap items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Persona views">
           {TABS.map((t) => {
             const Icon = t.icon;
             const on = tab === t.id;
@@ -236,7 +237,7 @@ export default function PersonasPage() {
                   </div>
                 ) : mine.length === 0 ? (
                   <div className="flex min-h-[14rem] items-center justify-center rounded-2xl border border-white/10 bg-[#111] p-8 text-center italic text-zinc-400">
-                    No personas yet. Use the <strong>Create</strong> tab to author your first.
+                    <p>No personas yet. Use the <strong>Create</strong> tab to author your first.</p>
                   </div>
                 ) : (
                   <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -261,10 +262,11 @@ export default function PersonasPage() {
                             type="button" onClick={() => setSelectedId(p.id)}
                             className="text-[11px] text-purple-300 hover:text-purple-200"
                           >Open</button>
-                          <button
-                            type="button" onClick={() => deletePersona(p.id)}
+                          <StickyDeleteConfirm
+                            onConfirm={() => deletePersona(p.id)}
+                            armLabel="Delete"
                             className="text-[11px] text-red-400 hover:text-red-300"
-                          >Delete</button>
+                          />
                         </div>
                       </li>
                     ))}
@@ -305,13 +307,17 @@ export default function PersonasPage() {
                 <div className="bg-[#111] border border-white/10 rounded-2xl p-5 space-y-3">
                   <h2 className="text-sm font-bold text-purple-300">Package an NPC</h2>
                   <input
+                    id="npc-pack-id" name="npcId"
                     type="text" placeholder="NPC id (e.g. tully_vex)"
+                    aria-label="NPC id"
                     value={packForm.npcId}
                     onChange={(e) => setPackForm({ ...packForm, npcId: e.target.value })}
                     className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100"
                   />
                   <input
+                    id="npc-pack-summary" name="summary"
                     type="text" placeholder="Summary (optional)"
+                    aria-label="Package summary"
                     value={packForm.summary}
                     onChange={(e) => setPackForm({ ...packForm, summary: e.target.value })}
                     className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100"
@@ -324,13 +330,17 @@ export default function PersonasPage() {
                 <div className="bg-[#111] border border-white/10 rounded-2xl p-5 space-y-3">
                   <h2 className="text-sm font-bold text-cyan-300">Install a Persona DTU</h2>
                   <input
+                    id="npc-install-dtu" name="dtuId"
                     type="text" placeholder="DTU id"
+                    aria-label="DTU id"
                     value={installForm.dtuId}
                     onChange={(e) => setInstallForm({ ...installForm, dtuId: e.target.value })}
                     className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100"
                   />
                   <input
+                    id="npc-install-world" name="worldId"
                     type="text" placeholder="World id"
+                    aria-label="World id"
                     value={installForm.worldId}
                     onChange={(e) => setInstallForm({ ...installForm, worldId: e.target.value })}
                     className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100"
@@ -355,6 +365,8 @@ export default function PersonasPage() {
                             <span className="text-zinc-400 font-mono">{new Date(p.created_at * 1000).toLocaleDateString()}</span>
                           </div>
                           <div className="mt-1 text-[10px] text-zinc-400 font-mono break-all">{p.dtu_id}</div>
+                          <button type="button" onClick={() => { setInstallForm((f) => ({ ...f, dtuId: p.dtu_id })); setPackForm((f) => ({ ...f, npcId: p.origin_npc_id })); }}
+                            className="mt-1 text-[11px] text-cyan-300 hover:text-cyan-200">Use these ids</button>
                           <div className="text-[10px] text-zinc-400 font-mono break-all">sha {p.package_sha256.slice(0, 16)}…</div>
                         </li>
                       ))}

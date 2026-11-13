@@ -72,7 +72,7 @@ export function LabelManagerPanel({ className }: { className?: string }) {
       <div className="flex items-center gap-2 mb-3">
         <Tag className="w-4 h-4 text-sky-400" />
         <h3 className="text-sm font-semibold text-zinc-100">Labels</h3>
-        {loading && <Loader2 className="w-3.5 h-3.5 animate-spin text-zinc-500" />}
+        {loading && <Loader2 className="w-3.5 h-3.5 animate-spin text-zinc-400" />}
       </div>
 
       {error && (
@@ -84,7 +84,7 @@ export function LabelManagerPanel({ className }: { className?: string }) {
       {/* Existing labels */}
       <div className="flex flex-wrap gap-1.5 mb-3 min-h-[1.5rem]">
         {labels.length === 0 && !loading && (
-          <span className="text-xs text-zinc-500">No labels yet — create one below.</span>
+          <span className="text-xs text-zinc-400">No labels yet — create one below.</span>
         )}
         {labels.map((l) => (
           <span
@@ -104,6 +104,7 @@ export function LabelManagerPanel({ className }: { className?: string }) {
         className="flex items-center gap-2"
       >
         <input
+          aria-label="New label name"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="New label name…"

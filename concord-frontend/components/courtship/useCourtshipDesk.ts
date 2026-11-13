@@ -24,6 +24,7 @@ import {
   type LoadState,
   DEFAULT_ENGAGE_THRESHOLD,
   DEFAULT_MARRY_THRESHOLD,
+  partnerLabel,
 } from '@/components/courtship/courtship-types';
 
 export function useCourtshipDesk() {
@@ -160,7 +161,17 @@ export function useCourtshipDesk() {
       } else if (j?.heartEvent) {
         setHeartEvent({
           scene: j.heartEvent as HeartEventScene,
-          partnerLabel: `${c.partner_kind}:${String(c.partner_id ?? "").slice(0, 14)}`,
+          partnerLabel: partnerLabel(c),
+        });
+      } else if (j?.capped) {
+        // FIX-courtship-007: at the affinity cap (or floor) the
+        // interaction changes nothing — say so instead of silently
+        // refreshing to the same numbers.
+        addToast({
+          type: 'info',
+          message: sentiment > 0
+            ? 'Affinity is already at its peak with this partner.'
+            : 'Affinity is already at its lowest with this partner.',
         });
       }
       await refresh();
@@ -171,6 +182,18 @@ export function useCourtshipDesk() {
       setPending(false);
     }
   }, [refresh, addToast]);
+  // FIX-courtship-001: there was no way to START a courtship from the
+  // lens — the panel only listed existing ones and its empty state
+  // sent users out to an NPC's context menu in the world. A first
+  // interaction is what creates the courtship server-side
+  // (courtInteraction inserts the row), so beginning one is a single
+  // positive interaction with a partner not yet courted.
+  const startCourtship = useCallback(async (partnerKind: string, partnerId: string) => {
+    const id = partnerId.trim();
+    if (!id) return;
+    await interact({ partner_kind: partnerKind, partner_id: id } as Courtship, 1);
+  }, [interact]);
+
   const propose = (c: Courtship) =>
     act('/api/courtship/propose', { partnerKind: c.partner_kind, partnerId: c.partner_id });
   const wed = (c: Courtship) =>
@@ -200,6 +223,7 @@ export function useCourtshipDesk() {
           pregnancyId: result.pregnancyId,
           partnerKind: m.partner_kind,
           partnerId: m.partner_id,
+          partnerName: m.partner_name ?? null,
           dueAt: result.dueAt,
           conceivedAt: Math.floor(Date.now() / 1000),
         };
@@ -313,6 +337,7 @@ export function useCourtshipDesk() {
     setDissolveTarget,
     refresh,
     interact,
+    startCourtship,
     propose,
     wed,
     conceive,

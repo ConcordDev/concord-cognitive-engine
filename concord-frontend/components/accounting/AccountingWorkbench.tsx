@@ -241,7 +241,7 @@ function ChartOfAccountsTab() {
               className="col-span-2 px-2 py-1.5 text-sm bg-black/40 border border-white/10 rounded text-gray-100"
             />
           </div>
-          <select
+          <select aria-label="Entry category"
             value={draft.category}
             onChange={(e) => setDraft({ ...draft, category: e.target.value as Account['category'] })}
             className="w-full px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100"
@@ -274,9 +274,9 @@ function ChartOfAccountsTab() {
         if (grouped[cat].length === 0) return null;
         return (
           <div key={cat} className="space-y-1">
-            <h3 className="text-[10px] uppercase tracking-wider text-gray-400 mt-3">
+            <h2 className="text-[10px] uppercase tracking-wider text-gray-400 mt-3">
               {CATEGORY_LABEL[cat]}
-            </h3>
+            </h2>
             {grouped[cat].map((a) => (
               <div
                 key={a.id}
@@ -442,7 +442,7 @@ function JournalEntryTab() {
             {lines.map((l, i) => (
               <tr key={i} className="border-t border-white/5">
                 <td className="px-2 py-1">
-                  <select
+                  <select aria-label="Journal line account"
                     value={l.accountId}
                     onChange={(e) => updateLine(i, { accountId: e.target.value })}
                     className="w-full bg-black/40 border border-white/10 rounded px-1 py-1 text-xs text-gray-100"
@@ -617,7 +617,7 @@ function LedgerTab() {
   return (
     <div className="p-3 space-y-2">
       <div className="flex items-center gap-2 flex-wrap">
-        <select
+        <select aria-label="Filter by account"
           value={accountFilter}
           onChange={(e) => setAccountFilter(e.target.value)}
           className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 w-full max-w-xs"
@@ -678,7 +678,7 @@ function LedgerTab() {
                       ))}
                       {dims.length > 0 && (
                         tagMenuFor === r.entryId ? (
-                          <select
+                          <select aria-label="Apply dimension tag"
                             autoFocus
                             defaultValue=""
                             onChange={(e) => applyTag(r.entryId, e.target.value)}
@@ -848,12 +848,17 @@ function AgingTab() {
 
   useEffect(() => { refresh(); }, [refresh]);
 
+  const [invoiceError, setInvoiceError] = useState<string | null>(null);
   const createInvoice = async () => {
+    if (!draft.customerName.trim()) { setInvoiceError('Customer name is required.'); return; }
+    if (!(Number(draft.total) > 0)) { setInvoiceError('Total must be a number greater than 0.'); return; }
+    setInvoiceError(null);
     try {
-      await lensRun({
+      const res = await lensRun({
         domain: 'accounting', action: 'invoice-create',
         input: draft,
       });
+      if (res.data?.ok === false) { setInvoiceError(res.data?.message || res.data?.error || 'Could not save that invoice.'); return; }
       setCreating(false);
       setDraft({
         customerName: '',
@@ -923,6 +928,7 @@ function AgingTab() {
             placeholder="Customer name"
             className="w-full px-2 py-1.5 text-sm bg-black/40 border border-white/10 rounded text-gray-100"
           />
+          {invoiceError && <p role="alert" className="text-xs text-rose-300">{invoiceError}</p>}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <input
               type="number"

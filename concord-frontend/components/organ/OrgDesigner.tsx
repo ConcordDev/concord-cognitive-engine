@@ -447,6 +447,7 @@ function ReassignModal({
         <div>
           <label className="text-xs text-gray-400">New manager</label>
           <select
+            aria-label="New manager"
             value={newMgr}
             onChange={(e) => setNewMgr(e.target.value)}
             className="w-full mt-0.5 px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-sm"
@@ -557,6 +558,7 @@ function ImportTab({ onImported }: { onImported: () => void }) {
           <input type="file" accept=".csv,text/csv" onChange={onFile} className="hidden" />
         </label>
         <select
+          aria-label="Import mode"
           value={mode}
           onChange={(e) => setMode(e.target.value as 'replace' | 'merge')}
           className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs"
@@ -566,6 +568,7 @@ function ImportTab({ onImported }: { onImported: () => void }) {
         </select>
       </div>
       <textarea
+        aria-label="Roster CSV"
         value={csv}
         onChange={(e) => setCsv(e.target.value)}
         placeholder={'name,title,department,manager,compensation,startDate,status\nAda Lovelace,VP Engineering,Engineering,,210000,2021-03-01,active'}
@@ -743,12 +746,14 @@ function ScenarioTab({ roster }: { roster: RosterResult | null }) {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Scenario name (e.g. FY27 Q1 expansion)"
+            aria-label="Scenario name"
             className="flex-1 min-w-[200px] px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-sm"
           />
           <div>
             <input
               type="number"
               step="0.05"
+              aria-label="Load factor"
               value={loadFactor}
               onChange={(e) => setLoadFactor(e.target.value)}
               className="w-24 px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-sm"
@@ -760,15 +765,15 @@ function ScenarioTab({ roster }: { roster: RosterResult | null }) {
           <p className="text-xs text-gray-400">Open requisitions to model:</p>
           {reqs.map((r, i) => (
             <div key={i} className="grid grid-cols-5 gap-1.5">
-              <input value={r.title} onChange={(e) => setReq(i, 'title', e.target.value)} placeholder="Title"
+              <input value={r.title} onChange={(e) => setReq(i, 'title', e.target.value)} placeholder="Title" aria-label="Requisition title"
                 className="px-2 py-1 bg-lattice-surface border border-lattice-border rounded text-xs" />
-              <input value={r.department} onChange={(e) => setReq(i, 'department', e.target.value)} placeholder="Dept"
+              <input value={r.department} onChange={(e) => setReq(i, 'department', e.target.value)} placeholder="Dept" aria-label="Requisition department"
                 className="px-2 py-1 bg-lattice-surface border border-lattice-border rounded text-xs" />
-              <input value={r.level} onChange={(e) => setReq(i, 'level', e.target.value)} placeholder="Level"
+              <input value={r.level} onChange={(e) => setReq(i, 'level', e.target.value)} placeholder="Level" aria-label="Requisition level"
                 className="px-2 py-1 bg-lattice-surface border border-lattice-border rounded text-xs" />
-              <input type="number" value={r.baseComp} onChange={(e) => setReq(i, 'baseComp', e.target.value)} placeholder="Base comp"
+              <input type="number" value={r.baseComp} onChange={(e) => setReq(i, 'baseComp', e.target.value)} placeholder="Base comp" aria-label="Requisition base compensation"
                 className="px-2 py-1 bg-lattice-surface border border-lattice-border rounded text-xs" />
-              <input type="number" value={r.count} onChange={(e) => setReq(i, 'count', e.target.value)} placeholder="#"
+              <input type="number" value={r.count} onChange={(e) => setReq(i, 'count', e.target.value)} placeholder="#" aria-label="Requisition count"
                 className="px-2 py-1 bg-lattice-surface border border-lattice-border rounded text-xs" />
             </div>
           ))}
@@ -955,6 +960,7 @@ function SnapshotTab({ roster }: { roster: RosterResult | null }) {
             value={label}
             onChange={(e) => setLabel(e.target.value)}
             placeholder="Label (defaults to today's date)"
+            aria-label="Snapshot label"
             className="flex-1 px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-sm"
           />
           <button onClick={capture} disabled={busy} className="btn-neon text-sm flex items-center gap-1">
@@ -995,12 +1001,12 @@ function SnapshotTab({ roster }: { roster: RosterResult | null }) {
             <div className="panel p-3 space-y-3">
               <h3 className="text-sm font-semibold">Diff Snapshots</h3>
               <div className="flex gap-2 items-center flex-wrap text-sm">
-                <select value={fromId} onChange={(e) => setFromId(e.target.value)}
+                <select aria-label="Diff from snapshot" value={fromId} onChange={(e) => setFromId(e.target.value)}
                   className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-sm">
                   {snapshots.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
                 </select>
                 <span className="text-gray-400">→</span>
-                <select value={toId} onChange={(e) => setToId(e.target.value)}
+                <select aria-label="Diff to snapshot" value={toId} onChange={(e) => setToId(e.target.value)}
                   className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-sm">
                   <option value="live">Live roster</option>
                   {snapshots.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}

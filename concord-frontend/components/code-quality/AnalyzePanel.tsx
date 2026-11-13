@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import type { CQScan } from './types';
 import { CQ_SEVERITIES, CQ_SEVERITY_STYLE } from './types';
@@ -24,6 +24,13 @@ export function AnalyzePanel({
   const [source, setSource] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const file = scan?.files?.[0];
+    if (!file?.source) return;
+    setSource((current) => current || file.source || '');
+    setPath((current) => (current === 'snippet.js' ? file.file : current));
+  }, [scan]);
 
   async function analyze() {
     const content = source.trim();

@@ -188,7 +188,7 @@ export function GoalTrackerPanel() {
               {g.deadline && ` · by ${g.deadline}`}
               {g.metricKind === 'computed'
                 ? <span className="text-neon-cyan"> · counted from your lens record</span>
-                : <span className="text-gray-500"> · self-reported</span>}
+                : <span className="text-gray-400"> · self-reported</span>}
             </p>
             <div className="h-1.5 bg-lattice-void rounded-full overflow-hidden mt-1.5">
               <div className="h-full bg-yellow-400 rounded-full transition-all"
@@ -196,7 +196,7 @@ export function GoalTrackerPanel() {
             </div>
             {g.status === 'active' && g.metricKind === 'computed' && (
               <div className="flex gap-2 mt-2 items-center">
-                <p className="text-[11px] text-gray-500 flex-1">This goal counts itself — reviews, mastered cards and journal entries move it as you work.</p>
+                <p className="text-[11px] text-gray-400 flex-1">This goal counts itself — reviews, mastered cards and journal entries move it as you work.</p>
                 <button onClick={() => refreshComputed(g.id)} disabled={busy === g.id}
                   className="btn-secondary text-xs px-2 disabled:opacity-50">
                   {busy === g.id ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Refresh'}
@@ -223,7 +223,7 @@ export function GoalTrackerPanel() {
                 </button>
               ) : (
                 <button onClick={() => setConfirmDeleteId(g.id)}
-                  className="text-gray-500 hover:text-red-400 transition-colors" title="Delete goal" aria-label={`Delete goal ${g.title}`}>
+                  className="text-gray-400 hover:text-red-400 transition-colors" title="Delete goal" aria-label={`Delete goal ${g.title}`}>
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               )}

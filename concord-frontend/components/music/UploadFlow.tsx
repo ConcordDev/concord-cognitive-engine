@@ -8,6 +8,7 @@ import {
 import { cn } from '@/lib/utils';
 import type { UploadTrackData, TierConfig, ArtifactTier, TrackCredit, UploadProgress } from '@/lib/music/types';
 import { ROYALTY_CONSTANTS } from '@/lib/music/royalty-cascade';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 const GENRES = [
   'electronic', 'hip-hop', 'pop', 'rock', 'r&b', 'jazz', 'classical',
@@ -185,7 +186,7 @@ export function UploadFlow({ onUpload, onCancel, progress, onDismissError }: Upl
           className="border-2 border-dashed border-white/10 rounded-xl p-12 text-center hover:border-neon-cyan/30 transition-colors cursor-pointer"
           onDragOver={e => e.preventDefault()}
           onDrop={handleFileDrop}
-          onClick={() => fileRef.current?.click()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          onClick={() => fileRef.current?.click()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <input ref={fileRef} type="file" accept="audio/*" className="hidden" onChange={handleFileSelect} />
           <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
           <p className="text-sm text-gray-300">Drop an audio file or click to browse</p>

@@ -63,15 +63,15 @@ export function DiscountsManager() {
       </header>
 
       <div className="p-3 border-b border-white/10 grid grid-cols-7 gap-2">
-        <input value={form.code} onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })} placeholder="CODE" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
-        <select value={form.kind} onChange={e => setForm({ ...form, kind: e.target.value as Discount['kind'] })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+        <input id="retail-code" name="code" aria-label="CODE" value={form.code} onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })} placeholder="CODE" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+        <select id="retail-kind" name="kind" value={form.kind} onChange={e => setForm({ ...form, kind: e.target.value as Discount['kind'] })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
           <option value="percentage">% off</option>
           <option value="fixed_amount">$ off</option>
           <option value="free_shipping">Free ship</option>
         </select>
-        <input type="number" value={form.value} onChange={e => setForm({ ...form, value: e.target.value })} placeholder="Value" disabled={form.kind === 'free_shipping'} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white disabled:opacity-40" />
-        <input type="number" value={form.minSubtotal} onChange={e => setForm({ ...form, minSubtotal: e.target.value })} placeholder="Min $" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-        <input type="number" value={form.usageLimit} onChange={e => setForm({ ...form, usageLimit: e.target.value })} placeholder="Usage cap" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <input id="retail-value" name="value" aria-label="Value" type="number" value={form.value} onChange={e => setForm({ ...form, value: e.target.value })} placeholder="Value" disabled={form.kind === 'free_shipping'} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white disabled:opacity-40" />
+        <input id="retail-min" name="min" aria-label="Min $" type="number" value={form.minSubtotal} onChange={e => setForm({ ...form, minSubtotal: e.target.value })} placeholder="Min $" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <input id="retail-usage-cap" name="usage-cap" aria-label="Usage cap" type="number" value={form.usageLimit} onChange={e => setForm({ ...form, usageLimit: e.target.value })} placeholder="Usage cap" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <button onClick={create} className="px-3 py-1.5 text-xs rounded bg-emerald-500 text-black font-bold hover:bg-emerald-400 inline-flex items-center justify-center gap-1"><Plus className="w-3 h-3" />Add</button>
       </div>
 

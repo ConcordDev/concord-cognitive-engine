@@ -88,6 +88,27 @@ export function PortfolioAssessment() {
       return row;
     });
     if (modules.length === 0) { setErr('Add at least one module with a name.'); return; }
+    // FIX-legacy-004: refuse a negative metric at the form, naming the
+    // module and field, instead of running the analysis on it silently.
+    for (const m of debtModules.filter((x) => x.name.trim())) {
+      const checks: Array<[string, string, number, number | null]> = [
+        ['lines of code', m.linesOfCode, 0, null],
+        ['cyclomatic complexity', m.cyclomaticComplexity, 0, null],
+        ['test coverage', m.testCoverage, 0, 100],
+        ['dependency count', m.dependencyCount, 0, null],
+        ['dependency age (years)', m.dependencyAgeYears, 0, null],
+        ['duplicate ratio', m.duplicateRatio, 0, 100],
+        ['last modified (days ago)', m.lastModifiedDaysAgo, 0, null],
+      ];
+      for (const [words, raw, min, max] of checks) {
+        if (raw.trim() === '') continue;
+        const n = Number(raw);
+        if (!Number.isFinite(n) || n < min || (max != null && n > max)) {
+          setErr(`Module "${m.name.trim()}": ${words} must be ${max != null ? `between ${min} and ${max}` : '0 or more'}.`);
+          return;
+        }
+      }
+    }
     setErr(null); setBusy(true);
     const r = await lensRun('legacy', 'technicalDebt', { modules });
     setBusy(false);

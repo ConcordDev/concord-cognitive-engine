@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { usePerfBudget, type PerfTier } from '@/hooks/usePerfBudget';
 import { getActiveMixer } from '@/lib/daw/engine';
 import type { DAWTrack } from '@/lib/daw/types';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 // Honest degradation for the VU-meter ticker, keyed off usePerfBudget's REAL
 // measured tier for THIS strip's own rAF loop (never fabricated — see
@@ -312,7 +313,7 @@ export default function MixerPeekStrip({
                 className={cn(
                   'rounded border p-2 flex flex-col items-center gap-2 cursor-pointer transition-colors',
                   isSelected ? 'border-white/30 bg-white/[0.04]' : 'border-white/10 hover:bg-white/[0.02]'
-                )} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                )} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                 <div className="text-[10px] font-mono text-zinc-300 truncate w-full text-center">{t.name}</div>
                 <div className="flex gap-1 text-[8px]">
                   <button

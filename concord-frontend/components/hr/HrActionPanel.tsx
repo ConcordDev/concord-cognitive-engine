@@ -6,6 +6,7 @@
  * ptoBalance + mint/DM/publish/agent.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import {
   Users, DollarSign, TrendingDown, ClipboardList, Calendar,
@@ -154,8 +155,8 @@ export function HrActionPanel() {
     try {
       const task = `HR context: ${role} in ${location}, headcount ${headcount}. ${turnoverResult ? `Turnover ${turnoverResult.ratePct}% (${turnoverResult.band}).` : ''} ${interviewResult ? `Latest candidate: ${interviewResult.recommendation}.` : ''} Recommend the single most-leveraged retention move for this team this quarter. Plain text, concrete.`;
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Retention move ready.'); } else err('Agent returned empty.');
+      const reply = readAgentReply(r.data);
+      if (reply.ok) { setAgentReply(reply.text); ok('Retention move ready.'); } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 

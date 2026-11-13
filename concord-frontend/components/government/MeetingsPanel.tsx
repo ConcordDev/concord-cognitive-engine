@@ -96,7 +96,7 @@ export function MeetingsPanel() {
         <CalendarDays className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Public meeting calendar</span>
         <label className="ml-auto text-[10px] text-gray-400 inline-flex items-center gap-1 cursor-pointer">
-          <input type="checkbox" checked={showUpcoming} onChange={e => setShowUpcoming(e.target.checked)} className="accent-cyan-500" />
+          <input aria-label="Show upcoming only" type="checkbox" checked={showUpcoming} onChange={e => setShowUpcoming(e.target.checked)} className="accent-cyan-500" />
           Upcoming only
         </label>
       </header>
@@ -104,17 +104,17 @@ export function MeetingsPanel() {
       {/* Schedule a meeting */}
       <div className="p-3 border-b border-white/10 space-y-2">
         <div className="grid grid-cols-6 gap-2">
-          <input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Meeting title" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <select value={form.body} onChange={e => setForm({ ...form, body: e.target.value })} className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+          <input aria-label="Meeting title" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Meeting title" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <select aria-label="Governing body" value={form.body} onChange={e => setForm({ ...form, body: e.target.value })} className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
             {BODIES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
-          <input value={form.scheduledAt} onChange={e => setForm({ ...form, scheduledAt: e.target.value })} type="datetime-local" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input aria-label="Scheduled at" value={form.scheduledAt} onChange={e => setForm({ ...form, scheduledAt: e.target.value })} type="datetime-local" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         </div>
         <div className="grid grid-cols-2 gap-2">
-          <input value={form.location} onChange={e => setForm({ ...form, location: e.target.value })} placeholder="Location (e.g. Council Chambers)" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <input value={form.virtualUrl} onChange={e => setForm({ ...form, virtualUrl: e.target.value })} placeholder="Virtual meeting URL (optional)" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input aria-label="Location (e.g. Council Chambers)" value={form.location} onChange={e => setForm({ ...form, location: e.target.value })} placeholder="Location (e.g. Council Chambers)" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input aria-label="Virtual meeting URL (optional)" value={form.virtualUrl} onChange={e => setForm({ ...form, virtualUrl: e.target.value })} placeholder="Virtual meeting URL (optional)" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         </div>
-        <textarea value={form.agenda} onChange={e => setForm({ ...form, agenda: e.target.value })} placeholder="Agenda items, one per line" rows={2} className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <textarea aria-label="Agenda items, one per line" value={form.agenda} onChange={e => setForm({ ...form, agenda: e.target.value })} placeholder="Agenda items, one per line" rows={2} className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <button onClick={schedule} className="px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 inline-flex items-center gap-1"><Plus className="w-3 h-3" />Schedule meeting</button>
       </div>
 
@@ -162,7 +162,7 @@ export function MeetingsPanel() {
                         </div>
                         {editingAgenda ? (
                           <div className="space-y-1">
-                            <textarea value={agendaDraft} onChange={e => setAgendaDraft(e.target.value)} placeholder="Agenda items, one per line" rows={3} className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                            <textarea aria-label="Agenda items, one per line" value={agendaDraft} onChange={e => setAgendaDraft(e.target.value)} placeholder="Agenda items, one per line" rows={3} className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
                             <button onClick={() => saveAgenda(m.id)} disabled={agendaSaving} className="px-3 py-1 text-[10px] rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 disabled:opacity-40">
                               {agendaSaving ? 'Saving…' : 'Save agenda'}
                             </button>
@@ -181,7 +181,7 @@ export function MeetingsPanel() {
                           <p className="text-xs text-gray-300 whitespace-pre-wrap">{m.minutes}</p>
                         ) : (
                           <>
-                            <textarea value={minutesDraft} onChange={e => setMinutesDraft(e.target.value)} placeholder="Draft minutes…" rows={3} className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                            <textarea aria-label="Draft minutes" value={minutesDraft} onChange={e => setMinutesDraft(e.target.value)} placeholder="Draft minutes…" rows={3} className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
                             <button onClick={() => publishMinutes(m.id)} disabled={!minutesDraft.trim()} className="mt-1 px-3 py-1 text-[10px] rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 disabled:opacity-40">Publish minutes</button>
                           </>
                         )}

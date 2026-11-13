@@ -208,9 +208,26 @@ export default function registerAviationActions(registerLensAction) {
 });
 
   registerLensAction("aviation", "flightSummary", (ctx, artifact, _params) => {
-    const flights = artifact.data?.flights || [];
+    let flights = artifact.data?.flights || [];
+    if (!Array.isArray(flights) || flights.length === 0) {
+      // FIX-aviation-007: the Dashboard's Flight Summary quick action
+      // targets a single flight record, whose data holds that flight's
+      // own hobbs/fuel fields — not a logbook's flights array — so the
+      // summary came back "no data" and the result panel rendered
+      // nothing at all. A flight record summarizes as a one-flight
+      // summary of itself.
+      const d = artifact.data || {};
+      const hobbsDelta = Number(d.hobbsEnd ?? 0) - Number(d.hobbsStart ?? 0);
+      const hours = hobbsDelta > 0 ? hobbsDelta : (Number(d.hobbsTime ?? d.duration ?? d.hours ?? 0) || 0);
+      const fuel = Number(d.fuelBurn ?? d.fuelUsed ?? d.fuelConsumed ?? 0) || 0;
+      flights = (hours > 0 || fuel > 0 || d.date || d.hobbsStart != null || d.hobbsEnd != null)
+        ? [{ hobbsTime: hours, fuelUsed: fuel, legs: d.legs || 1 }]
+        : [];
+    }
     if (flights.length === 0) {
-      return { ok: true, result: { totalFlights: 0, totalHours: 0, message: "No flight data available." } };
+      // The full field set, so the panel's summary grid can render the
+      // zero state and its message instead of an empty panel.
+      return { ok: true, result: { totalFlights: 0, totalHours: 0, averageDuration: 0, longestFlight: 0, shortestFlight: 0, totalFuelConsumed: 0, avgFuelPerHour: 0, message: "No flight data available." } };
     }
     let totalHours = 0, totalFuel = 0;
     const durations = [];

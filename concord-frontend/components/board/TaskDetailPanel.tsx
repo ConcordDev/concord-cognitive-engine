@@ -89,9 +89,14 @@ export function TaskDetailPanel({
       </div>
 
       {/* Description */}
-      <p className="text-sm text-gray-400 leading-relaxed">
-        {task.description || 'No description.'}
-      </p>
+      <textarea
+        value={task.description}
+        onChange={(e) => onUpdate(task.id, { description: e.target.value })}
+        placeholder="Add a description"
+        rows={3}
+        className="w-full text-sm text-gray-200 leading-relaxed bg-white/5 border border-white/10 rounded-md px-2 py-1.5 focus:outline-none focus:border-purple-500/50"
+        aria-label="Task description"
+      />
 
       {/* Meta grid */}
       <div className="grid grid-cols-2 gap-3">
@@ -282,7 +287,7 @@ export function TaskDetailPanel({
                   }
                 }}
                 className="p-1 rounded-md bg-white/5 hover:bg-white/10 text-gray-400"
-              aria-label="Add">
+              aria-label="Add subtask">
                 <Plus className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -356,7 +361,7 @@ export function TaskDetailPanel({
                   }
                 }}
                 className="p-1 rounded-md bg-purple-500/20 hover:bg-purple-500/30 text-purple-300"
-              aria-label="Message">
+              aria-label="Post comment">
                 <MessageSquare className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -400,6 +405,11 @@ export function TaskDetailPanel({
             onClick={() => {
               const input = document.createElement('input');
               input.type = 'file';
+              input.onchange = () => {
+                const file = input.files?.[0];
+                if (!file) return;
+                onUpdate(task.id, { files: [...(task.files || []), file.name] });
+              };
               input.click();
             }}
             className="flex items-center gap-1.5 px-3 py-1.5 w-full rounded-md border border-dashed border-white/10 text-xs text-gray-400 hover:text-gray-300 hover:border-white/20 transition-colors justify-center"

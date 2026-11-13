@@ -146,7 +146,11 @@ export function QualityLoopPanel() {
     },
   });
   const dtus = useMemo(() => corpus.data || [], [corpus.data]);
-  const scored = useMemo(() => dtus.filter((d) => d.creti), [dtus]);
+  // FIX-cri-001: "scored" means creti is a score OBJECT — a DTU's creti
+  // TEXT (a string present on nearly every record) is not a score. This
+  // matches the server's trend-snapshot normDtu and the Scores panel,
+  // so the badge count and the per-DTU scores finally agree.
+  const scored = useMemo(() => dtus.filter((d) => d.creti && typeof d.creti === 'object'), [dtus]);
 
   return (
     <div className="rounded-xl border border-cyan-500/20 bg-zinc-950/60 p-4 space-y-4">

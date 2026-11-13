@@ -119,7 +119,7 @@ export function QualitySPC() {
       <form onSubmit={logSample} className="px-3 py-2 border-b border-white/5 flex flex-wrap items-end gap-2">
         <label className="text-[10px] uppercase tracking-wider text-gray-500">
           Product
-          <input
+          <input id="manufacturing-product" name="product"
             value={product}
             onChange={(e) => {
               const next = e.target.value;
@@ -133,19 +133,19 @@ export function QualitySPC() {
         </label>
         <label className="text-[10px] uppercase tracking-wider text-gray-500">
           Value
-          <input value={value} onChange={(e) => setValue(e.target.value)} inputMode="decimal" required className={fieldCls} />
+          <input id="manufacturing-value" name="value" value={value} onChange={(e) => setValue(e.target.value)} inputMode="decimal" required className={fieldCls} />
         </label>
         <label className="text-[10px] uppercase tracking-wider text-gray-500">
           Subgroup
-          <input value={subgroup} onChange={(e) => setSubgroup(e.target.value)} className={fieldCls} />
+          <input id="manufacturing-subgroup" name="subgroup" value={subgroup} onChange={(e) => setSubgroup(e.target.value)} className={fieldCls} />
         </label>
         <label className="text-[10px] uppercase tracking-wider text-gray-500">
           Upper spec (optional)
-          <input value={upperSpec} onChange={(e) => setUpperSpec(e.target.value)} inputMode="decimal" className={fieldCls} />
+          <input id="manufacturing-upperspec" name="upperspec" value={upperSpec} onChange={(e) => setUpperSpec(e.target.value)} inputMode="decimal" className={fieldCls} />
         </label>
         <label className="text-[10px] uppercase tracking-wider text-gray-500">
           Lower spec (optional)
-          <input value={lowerSpec} onChange={(e) => setLowerSpec(e.target.value)} inputMode="decimal" className={fieldCls} />
+          <input id="manufacturing-lowerspec" name="lowerspec" value={lowerSpec} onChange={(e) => setLowerSpec(e.target.value)} inputMode="decimal" className={fieldCls} />
         </label>
         <button type="submit" disabled={saving} className="px-2 py-1 text-[10px] uppercase tracking-wider font-semibold rounded bg-cyan-500/20 text-cyan-200 hover:bg-cyan-500/30 disabled:opacity-50">
           {saving ? 'Logging…' : 'Log sample'}

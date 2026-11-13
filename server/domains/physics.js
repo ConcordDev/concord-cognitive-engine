@@ -25,6 +25,25 @@ export default function registerPhysicsActions(registerLensAction) {
   const kinematicsSimHandler = (ctx, artifact, params) => {
     const bodies = artifact.data?.bodies || [];
     if (bodies.length === 0) return { ok: false, error: "No bodies defined." };
+    // FIX-physics-003: a negative mass silently flipped the drag
+    // direction (drag acceleration divides by mass), inflating the
+    // range. Mass must be a positive finite number, named per body;
+    // position/velocity components must be finite.
+    for (const b of bodies) {
+      const bName = b.name || "body";
+      const m = Number(b.mass ?? 1);
+      if (!Number.isFinite(m) || m <= 0) {
+        return { ok: false, error: `body "${bName}": mass must be > 0 (got ${b.mass}) — a negative mass is non-physical and flips the drag direction` };
+      }
+      for (const vec of ["position", "velocity"]) {
+        for (const axis of ["x", "y", "z"]) {
+          const v = b[vec]?.[axis];
+          if (v != null && !Number.isFinite(Number(v))) {
+            return { ok: false, error: `body "${bName}": ${vec}.${axis} must be a finite number` };
+          }
+        }
+      }
+    }
 
     const dt = params.dt || 0.01;
     const steps = Math.min(params.steps || 1000, 10000);
@@ -498,6 +517,16 @@ export default function registerPhysicsActions(registerLensAction) {
     const a  = params.a  != null ? Number(params.a)  : null;
     const t  = params.t  != null ? Number(params.t)  : null;
     const x  = params.x  != null ? Number(params.x)  : null;
+    // FIX-physics-003: a 300-digit input used to sail through and come
+    // back as v = 1e+300 m/s. Inputs (and anything solved from them)
+    // are capped at a generous physical scale — 1e12 (m, m/s, m/s², s)
+    // is ~6.7 AU / ~3000× light-speed — and refused BY NAME beyond it.
+    const KIN_LIMIT = 1e12;
+    for (const [k, val] of Object.entries({ v0, v, a, t, x })) {
+      if (val != null && (!Number.isFinite(val) || Math.abs(val) > KIN_LIMIT)) {
+        return { ok: false, error: `${k} is out of range — this solver accepts magnitudes up to 1e12 (got ${val})` };
+      }
+    }
     const provided = [v0, v, a, t, x].filter((n) => n != null && Number.isFinite(n)).length;
     if (provided < 3) return { ok: false, error: "provide at least 3 of: v0, v, a, t, x" };
     const out = { v0, v, a, t, x };
@@ -512,6 +541,13 @@ export default function registerPhysicsActions(registerLensAction) {
       if (vsq >= 0) out.v = Math.sqrt(vsq);
     }
     if (out.v0 == null && out.v != null && out.a != null && out.t != null) out.v0 = out.v - out.a * out.t;
+    // Solved values get the same range check (products of in-range
+    // inputs can still overflow the physical scale).
+    for (const k of Object.keys(out)) {
+      if (out[k] != null && (!Number.isFinite(out[k]) || Math.abs(out[k]) > KIN_LIMIT)) {
+        return { ok: false, error: `solved ${k} is out of range (over 1e12) — the inputs combine to a non-physical result` };
+      }
+    }
     // Round
     for (const k of Object.keys(out)) {
       if (out[k] != null && Number.isFinite(out[k])) out[k] = Math.round(out[k] * 10000) / 10000;
@@ -805,6 +841,25 @@ export default function registerPhysicsActions(registerLensAction) {
         portable: { spec: "concord-physics-scene/v1", ...s.shares.get(scene.shareCode).scene },
       },
     };
+  });
+
+  // FIX-physics-007: sharing minted a code with no way to take it back.
+  // scene-unshare revokes the calling owner's code: the shares entry is
+  // deleted (the code stops loading for everyone) and the scene's
+  // shareCode is cleared. Owner-scoped like scene-share itself.
+  registerLensAction("physics", "scene-unshare", (ctx, _artifact, params = {}) => {
+    const s = getPhysState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const map = s.scenes.get(physActor(ctx));
+    const scene = map?.get(String(params.id));
+    if (!scene) return { ok: false, error: "scene not found" };
+    if (!scene.shareCode) return { ok: true, result: { revoked: false, shareCode: null } };
+    const code = scene.shareCode;
+    s.shares.delete(code);
+    scene.shareCode = null;
+    scene.updatedAt = nowIsoPhys();
+    savePhysState();
+    return { ok: true, result: { revoked: true, shareCode: code } };
   });
 
   registerLensAction("physics", "scene-load-shared", (ctx, _artifact, params = {}) => {

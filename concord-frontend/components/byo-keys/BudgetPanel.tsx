@@ -28,6 +28,7 @@ export function BudgetPanel() {
   const [editing, setEditing] = useState<string | null>(null);
   const [form, setForm] = useState({ usd: '', tokens: '' });
   const [busy, setBusy] = useState(false);
+  const [formError, setFormError] = useState('');
 
   const refresh = useCallback(async () => {
     const r = await lensRun<{ month: string; slots: BudgetRow[] }>('byo_keys', 'budget_status', {});
@@ -51,11 +52,15 @@ export function BudgetPanel() {
   };
 
   const save = async (slot: string) => {
-    setBusy(true);
     const usd = form.usd.trim() === '' ? null : Number(form.usd);
     const tokens = form.tokens.trim() === '' ? null : Number(form.tokens);
-    await lensRun('byo_keys', 'set_budget', { slot, monthlyUsdCap: usd, monthlyTokenCap: tokens });
+    if (usd != null && !(usd >= 0)) { setFormError('Monthly USD cap must be a number that is 0 or greater.'); return; }
+    if (tokens != null && !(tokens >= 0)) { setFormError('Monthly token cap must be a number that is 0 or greater.'); return; }
+    setFormError('');
+    setBusy(true);
+    const r = await lensRun('byo_keys', 'set_budget', { slot, monthlyUsdCap: usd, monthlyTokenCap: tokens });
     setBusy(false);
+    if (!r.data?.ok) { setFormError(r.data?.message || r.data?.error || 'That cap was not saved.'); return; }
     setEditing(null);
     refresh();
   };
@@ -149,7 +154,7 @@ export function BudgetPanel() {
                   <div>
                     <label className="block text-[10px] text-zinc-400 mb-1">Monthly USD cap</label>
                     <input
-                      type="number" min="0" step="0.01"
+                      type="number" aria-label="Monthly USD cap" min="0" step="0.01"
                       value={form.usd}
                       onChange={(e) => setForm((f) => ({ ...f, usd: e.target.value }))}
                       placeholder="(no cap)"
@@ -159,13 +164,14 @@ export function BudgetPanel() {
                   <div>
                     <label className="block text-[10px] text-zinc-400 mb-1">Monthly token cap</label>
                     <input
-                      type="number" min="0" step="1000"
+                      type="number" aria-label="Monthly token cap" min="0" step="1000"
                       value={form.tokens}
                       onChange={(e) => setForm((f) => ({ ...f, tokens: e.target.value }))}
                       placeholder="(no cap)"
                       className="w-full px-2 py-1 rounded-md bg-zinc-900 text-zinc-100 text-xs ring-1 ring-zinc-700 focus:ring-amber-500 focus:outline-none"
                     />
                   </div>
+                  {formError && <p className="col-span-2 text-[11px] text-rose-300" role="alert">{formError}</p>}
                   <div className="col-span-2">
                     <button
                       onClick={() => save(slot)}

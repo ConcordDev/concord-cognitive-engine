@@ -59,7 +59,10 @@ export default function TrustGraphView() {
       } catch { /* network silent */ }
     }
     load();
-    const id = window.setInterval(load, 30_000);
+    // FIX-federation-008: the 30s poll ran in background tabs too,
+    // holding the page's Finish open for minutes with nothing to show
+    // for it. Poll only while the page is visible.
+    const id = window.setInterval(() => { if (document.visibilityState === 'visible') load(); }, 30_000);
     return () => { cancelled = true; window.clearInterval(id); };
   }, []);
 
@@ -151,7 +154,7 @@ export default function TrustGraphView() {
   if (graph.nodes.length <= 1) {
     return (
       <div className="text-gray-400 italic">
-        No peers yet. Use <code className="text-amber-300">POST /api/federation/register</code> to peer with another instance.
+        No peers yet. Peering is set up by an instance admin — <code className="text-amber-300">POST /api/federation/register</code> is admin-only. If you run another instance, ask an admin here to register it.
       </div>
     );
   }

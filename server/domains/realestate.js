@@ -491,11 +491,14 @@ export default function registerRealEstateActions(registerLensAction) {
     const s = getREState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = reActor(ctx);
     const address = String(params.address || "").trim();
+    const title = String(params.title || "").trim();
     const price = Number(params.price);
     if (!address) return { ok: false, error: "address required" };
+    if (title.length > 200) return { ok: false, error: "title too long (max 200 characters)" };
     if (!Number.isFinite(price) || price <= 0) return { ok: false, error: "price required" };
     const listing = {
       id: uidRE("lst"),
+      title,
       address,
       city: String(params.city || ""),
       state: String(params.state || ""),

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Bell, Loader2, MapPin, Plus, Trash2, Crosshair, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface SavedLocation {
   id: string;
@@ -85,8 +86,10 @@ export function EnvAlerts() {
   const save = useCallback(async () => {
     const latN = Number(lat);
     const lngN = Number(lng);
-    if (!label.trim() || !isFinite(latN) || !isFinite(lngN)) {
-      setError('Enter a label and valid coordinates.');
+    if (!label.trim()) { setError('A label is required.'); return; }
+    if (label.trim().length > 80) { setError('Label must be at most 80 characters.'); return; }
+    if (!isFinite(latN) || latN < -90 || latN > 90 || !isFinite(lngN) || lngN < -180 || lngN > 180) {
+      setError('Latitude must be from -90 to 90 and longitude from -180 to 180.');
       return;
     }
     setBusy('save');
@@ -98,7 +101,7 @@ export function EnvAlerts() {
       setLng('');
       await loadLocations();
     } else {
-      setError(r.data?.error || 'Could not save location.');
+      setError(r.data?.message || r.data?.error || 'Could not save location.');
     }
     setBusy(null);
   }, [label, lat, lng, loadLocations]);
@@ -234,14 +237,13 @@ export function EnvAlerts() {
                       )}
                       Check alerts
                     </button>
-                    <button
-                      onClick={() => remove(loc.id)}
+                    <StickyDeleteConfirm
+                      onConfirm={() => remove(loc.id)}
                       disabled={busy === loc.id}
+                      armLabel={<Trash2 className="w-3.5 h-3.5" />}
+                      armAriaLabel="Delete location"
                       className="p-1 rounded hover:bg-red-500/10 text-gray-400 hover:text-red-400 disabled:opacity-50"
-                      aria-label="Delete location"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    />
                   </div>
 
                   {res && (

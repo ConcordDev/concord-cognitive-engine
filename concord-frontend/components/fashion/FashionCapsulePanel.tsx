@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Package, Target, Trash2, ChevronRight } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 
 interface Item { id: string; name: string; category: string }
@@ -97,7 +98,7 @@ export function FashionCapsulePanel() {
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
           <input value={capForm.name} onChange={(e) => setCapForm({ ...capForm, name: e.target.value })}
-            placeholder="Capsule name" className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+            placeholder="Capsule name" maxLength={120} className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <select value={capForm.season} onChange={(e) => setCapForm({ ...capForm, season: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100 capitalize">
             {SEASONS.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -126,9 +127,13 @@ export function FashionCapsulePanel() {
                     </div>
                   </button>
                   <span className="text-[11px] text-fuchsia-300 mr-2">{c.pctFilled}%</span>
-                  <button aria-label="Delete" type="button" onClick={() => delCapsule(c.id)} className="text-zinc-600 hover:text-rose-400">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  <StickyDeleteConfirm
+                    onConfirm={() => delCapsule(c.id)}
+                    armAriaLabel="Delete"
+                    confirmAriaLabel="Confirm delete"
+                    className="text-zinc-600 hover:text-rose-400"
+                    armLabel={<Trash2 className="w-3.5 h-3.5" />}
+                  />
                 </div>
                 <div className="h-1 bg-zinc-800">
                   <div className="h-full bg-fuchsia-500" style={{ width: `${Math.min(100, c.pctFilled)}%` }} />

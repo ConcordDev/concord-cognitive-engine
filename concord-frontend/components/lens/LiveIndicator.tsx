@@ -69,7 +69,7 @@ export function LiveIndicator({ isLive, lastUpdated, compact }: LiveIndicatorPro
 
   if (compact) {
     return (
-      <span className="inline-flex items-center gap-1 text-xs">
+      <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-xs">
         <span
           className={`w-2 h-2 rounded-full ${
             claim === 'live'

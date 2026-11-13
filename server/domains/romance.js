@@ -54,7 +54,7 @@ export default function registerRomanceMacros(register) {
     if (!userId) return { ok: false, reason: "no_user" };
     const c = getCourtship(db, userId, String(input?.partnerKind || "npc"), String(input?.partnerId || ""));
     if (!c) return { ok: false, reason: "no_courtship" };
-    return { ok: true, courtship: presentCourtship(c, userId) };
+    return { ok: true, courtship: presentCourtship(c, userId, db) };
   });
 
   register("romance", "list_courtships", async (ctx, input = {}) => {
@@ -64,7 +64,7 @@ export default function registerRomanceMacros(register) {
     if (!userId) return { ok: false, reason: "no_user" };
     return {
       ok: true,
-      courtships: listMyCourtships(db, userId, input?.status || null).map((row) => presentCourtship(row, userId)),
+      courtships: listMyCourtships(db, userId, input?.status || null).map((row) => presentCourtship(row, userId, db)),
     };
   });
 

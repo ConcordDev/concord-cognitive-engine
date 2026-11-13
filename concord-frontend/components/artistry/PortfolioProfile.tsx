@@ -7,6 +7,7 @@ import {
   User, Edit3, X, Loader2, Eye, Heart, FolderOpen, Users, Briefcase, Save, Link2,
 } from 'lucide-react';
 import { AnalyticsTrendChart } from './AnalyticsTrendChart';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface ProfileLink { label: string; url: string }
 interface Profile {
@@ -203,8 +204,8 @@ export function PortfolioProfile() {
 
       {/* Edit modal */}
       {editing && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setEditing(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-          <div className="bg-gray-900 border border-white/10 rounded-lg p-6 w-full max-w-lg max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setEditing(false)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
+          <div className="bg-gray-900 border border-white/10 rounded-lg p-6 w-full max-w-lg max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-semibold">Edit Portfolio Profile</h3>
               <button onClick={() => setEditing(false)} aria-label="Close"><X className="w-4 h-4" /></button>

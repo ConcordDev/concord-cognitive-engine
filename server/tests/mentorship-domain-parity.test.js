@@ -104,6 +104,26 @@ describe("mentorship directory / discovery", () => {
     assert.equal(dir.result.count, 1);
     assert.ok(dir.result.skills.includes("rust"));
     assert.equal(dir.result.mentors[0].hasAccount, true);
+    assert.equal(dir.result.mentors[0].sample, false);
+  });
+
+  it("a QA-harness mentor profile is labelled a sample in directory, profile, and its hosted sessions", () => {
+    const qa = { actor: { userId: "user_qa", displayName: "QA Harness" }, userId: "user_qa" };
+    call("mentor-register", qa, { name: "QA mentor smtmv820475", headline: "QA bio smtmv820475 is the only mentor acctl may request.", skills: ["rust"] });
+    call("mentor-register", ctxM, { name: "Ada", skills: ["rust"] });
+    const dir = call("mentor-directory", ctxE, {});
+    const qaRow = dir.result.mentors.find((m) => m.name.startsWith("QA mentor"));
+    const adaRow = dir.result.mentors.find((m) => m.name === "Ada");
+    assert.equal(qaRow.sample, true);
+    assert.equal(adaRow.sample, false);
+    const prof = call("mentor-profile", ctxE, { mentorId: "user_qa" });
+    assert.equal(prof.result.mentor.sample, true);
+    // A group session hosted by the harness mentor carries the flag
+    // so the sessions surface can label it too.
+    call("group-session-create", qa, { title: "QA session", startAt: "2030-01-01T10:00:00Z", durationMin: 60, capacity: 5 });
+    const sessions = call("group-session-list", qa, { filter: "hosting" });
+    assert.equal(sessions.result.sessions.length, 1);
+    assert.equal(sessions.result.sessions[0].hostSample, true);
   });
 
   it("a profile with no user row is a dataset profile", () => {

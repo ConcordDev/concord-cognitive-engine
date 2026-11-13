@@ -770,6 +770,9 @@ export default function registerWhiteboardActions(registerLensAction) {
     const userId = wbActor(ctx);
     const id = String(params.id || "");
     const b = s.sharedBoards.get(id);
+    if (b && b.ownerId !== userId && !wbParticipants(b).has(userId)) {
+      return { ok: false, error: "not_a_member" };
+    }
     if (!b) {
       // S10: the collab hook joins on mount for EVERY open board,
       // shared or not, and broadcasts cursor/scene on activity.

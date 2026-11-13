@@ -97,21 +97,21 @@ export function ServiceRequestReporter() {
         {/* Form */}
         <div className="space-y-2">
           <div className="grid grid-cols-2 gap-2">
-            <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+            <select aria-label="Request category" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
               {CATEGORIES.map(c => <option key={c} value={c}>{c.replace(/_/g, ' ')}</option>)}
             </select>
-            <select value={form.priority} onChange={e => setForm({ ...form, priority: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+            <select aria-label="Priority" value={form.priority} onChange={e => setForm({ ...form, priority: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
               <option value="low">Low priority</option>
               <option value="medium">Medium priority</option>
               <option value="high">High priority</option>
               <option value="urgent">Urgent</option>
             </select>
           </div>
-          <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Describe the issue (e.g. deep pothole blocking the bike lane)" rows={3} className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <input value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} placeholder="Nearest address / cross street (optional)" className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <textarea aria-label="Describe the issue (e.g. deep pothole blocking the bike lane)" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Describe the issue (e.g. deep pothole blocking the bike lane)" rows={3} className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input aria-label="Nearest address / cross street (optional)" value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} placeholder="Nearest address / cross street (optional)" className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <div className="grid grid-cols-2 gap-2">
-            <input value={form.reporterName} onChange={e => setForm({ ...form, reporterName: e.target.value })} placeholder="Your name (optional)" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-            <input value={form.reporterEmail} onChange={e => setForm({ ...form, reporterEmail: e.target.value })} placeholder="Email for updates (optional)" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+            <input aria-label="Your name (optional)" value={form.reporterName} onChange={e => setForm({ ...form, reporterName: e.target.value })} placeholder="Your name (optional)" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+            <input aria-label="Email for updates (optional)" value={form.reporterEmail} onChange={e => setForm({ ...form, reporterEmail: e.target.value })} placeholder="Email for updates (optional)" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           </div>
           <LocalRecordNotice>
             Local record only — this report is not sent to your city or county 311 or to any agency. It is saved only in your Concord workspace.

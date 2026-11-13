@@ -4,6 +4,7 @@
 
 import { TimelineView, ChartKit } from '@/components/viz';
 import { useEstate } from './EstateContext';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 export function ExecutorsPanel() {
   const {
@@ -130,7 +131,7 @@ export function ExecutorsPanel() {
                             <button type="button" className="text-xs text-amber-400 hover:text-amber-300" onClick={() => respondConsent(x.id, 'declined')}>Decline</button>
                           </>
                         )}
-                        <button type="button" className="text-xs text-rose-400 hover:text-rose-300" onClick={() => removeExecutor(x.id)}>Remove</button>
+                        <StickyDeleteConfirm onConfirm={() => removeExecutor(x.id)} className="text-xs text-rose-400 hover:text-rose-300" armLabel="Remove" armAriaLabel={`Remove executor ${x.name}`} confirmLabel={`Remove ${x.name}?`} confirmAriaLabel={`Confirm remove executor ${x.name}`} />
                       </li>
                     ))}
                   </ul>

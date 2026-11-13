@@ -17,6 +17,7 @@ import { debounce } from '@/lib/utils';
 import { api } from '@/lib/api/client';
 import { GroupCard } from '@/components/social/GroupCard';
 import type { GroupData } from '@/components/social/GroupCard';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 // ── Create Group Modal ───────────────────────────────────────────────────────
 
@@ -64,7 +65,7 @@ function CreateGroupModal({
   return (
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm"
-      onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+      onClick={onClose} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}

@@ -27,6 +27,8 @@ import {
   Gavel, Loader2, Lock, MessageSquare, Paperclip, Plus, Scale, Search,
   Send, Trash2, Unlock, UserCheck, X, XCircle,
 } from 'lucide-react';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -40,6 +42,7 @@ interface PublicCase {
   status: string;
   disputeAmount: number;
   claimantId: string;
+  claimantIsMe?: boolean;
   respondentId: string | null;
   mediatorId: string | null;
   escrowFrozen: boolean;
@@ -181,6 +184,7 @@ export function CaseWorkbench() {
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [showNew, setShowNew] = useState(false);
+  const [armedId, setArmedId] = useState<string | null>(null);
 
   /* ---- list ---- */
   const refreshList = useCallback(async () => {
@@ -273,8 +277,9 @@ export function CaseWorkbench() {
             </div>
           ) : (
             cases.map((c) => (
+              <div key={c.id}>
               <button
-                key={c.id}
+                type="button"
                 onClick={() => setSelectedId(c.id)}
                 className={`w-full text-left rounded-lg border px-3 py-2.5 transition-colors ${
                   selectedId === c.id
@@ -303,6 +308,25 @@ export function CaseWorkbench() {
                   {c.slaBreached && <span className="text-rose-400 flex items-center gap-0.5"><AlertTriangle className="w-3 h-3" />SLA</span>}
                 </div>
               </button>
+              {c.claimantIsMe && !['resolved', 'dismissed', 'withdrawn'].includes(c.status) && (
+                <div className="px-1 pb-1">
+                  <StickyDeleteConfirm
+                    armed={armedId === c.id}
+                    onArm={() => setArmedId(c.id)}
+                    onCancel={() => setArmedId(null)}
+                    onConfirm={async () => {
+                      await lensRun('disputes', 'case-withdraw', { id: c.id });
+                      setArmedId(null);
+                      await refreshList();
+                    }}
+                    armLabel="Withdraw"
+                    confirmLabel={`Withdraw “${c.title}”?`}
+                    armAriaLabel={`Withdraw case ${c.title}`}
+                    className="text-[11px] text-rose-300 underline"
+                  />
+                </div>
+              )}
+              </div>
             ))
           )}
         </div>
@@ -502,8 +526,8 @@ function NewCaseModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-      <div className="w-full max-w-lg rounded-xl border border-zinc-800 bg-zinc-950" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
+      <div className="w-full max-w-lg rounded-xl border border-zinc-800 bg-zinc-950" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
         <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
           <h3 className="text-sm font-semibold text-zinc-200 flex items-center gap-2">
             <Plus className="w-4 h-4 text-indigo-400" /> Open Dispute Case
@@ -535,6 +559,9 @@ function NewCaseModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
             Freeze escrow on the disputed amount immediately
           </label>
           {error && <p className="text-sm text-rose-400 flex items-center gap-1"><XCircle className="w-3.5 h-3.5" />{error}</p>}
+          {!title.trim() && !error && (
+            <p role="note" className="text-xs text-zinc-500">A case title is required — Open Case unlocks once the case has a title.</p>
+          )}
         </div>
         <div className="flex justify-end gap-2 border-t border-zinc-800 px-4 py-3">
           <button className={btnGhost} onClick={onClose}>Cancel</button>
@@ -567,7 +594,7 @@ function CaseDetailPanel({
   const closed = c.status === 'resolved' || c.status === 'dismissed';
 
   return (
-    <div className="rounded-lg border border-zinc-800 bg-zinc-950/40">
+    <div className="min-w-0 overflow-x-auto rounded-lg border border-zinc-800 bg-zinc-950/40 [&_button:focus-visible]:outline [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-amber-300 [&_input:focus-visible]:outline [&_input:focus-visible]:outline-2 [&_input:focus-visible]:outline-amber-300 [&_select:focus-visible]:outline [&_select:focus-visible]:outline-2 [&_select:focus-visible]:outline-amber-300">
       {/* header */}
       <div className="border-b border-zinc-800 px-4 py-3">
         <div className="flex items-start justify-between gap-3">

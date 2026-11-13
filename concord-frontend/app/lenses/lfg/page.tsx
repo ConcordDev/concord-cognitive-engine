@@ -18,6 +18,8 @@ import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useSmartPolling } from '@/hooks/useSmartPolling';
 import { useAuth } from '@/hooks/useAuth';
+import { lfgPostDisabled } from '@/lib/lfg-post';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 /** Server refusal codes → the words the surface answers with. */
 const ERROR_COPY: Record<string, string> = {
@@ -223,7 +225,7 @@ export default function LfgLensPage() {
 
             {/* STATE: empty */}
             {loadState === 'ready' && requests.length === 0 && (
-              <div role="status" className="rounded-md border border-slate-700 bg-slate-900/30 p-6 text-center text-[11px] text-slate-500">
+              <div role="status" className="rounded-md border border-slate-700 bg-slate-900/30 p-6 text-center text-[11px] text-slate-400">
                 No open requests in this filter. Post one yourself →
               </div>
             )}
@@ -247,9 +249,16 @@ export default function LfgLensPage() {
                         {r.note && <p className="mt-0.5 text-[11px] text-cyan-200/80">{r.note}</p>}
                       </div>
                       {mine ? (
-                        <button onClick={() => handleCancel(r.id)} disabled={busy === `cancel-${r.id}`} aria-label="Cancel your request" className="shrink-0 rounded-md bg-rose-500/20 px-3 py-1 text-[11px] text-rose-100 hover:bg-rose-500/30 disabled:opacity-40">
-                          <X className="mr-1 inline h-3 w-3" aria-hidden="true" /> Cancel
-                        </button>
+                        <StickyDeleteConfirm
+                          onConfirm={() => handleCancel(r.id)}
+                          armLabel={<><X className="mr-1 inline h-3 w-3" aria-hidden="true" /> Cancel</>}
+                          confirmLabel="Cancel this request?"
+                          armAriaLabel="Cancel your request"
+                          confirmAriaLabel="Confirm cancel your request"
+                          cancelAriaLabel="Keep your request"
+                          disabled={busy === `cancel-${r.id}`}
+                          className="shrink-0 rounded-md bg-rose-500/20 px-3 py-1 text-[11px] text-rose-100 hover:bg-rose-500/30 disabled:opacity-40"
+                        />
                       ) : (
                         <button onClick={() => handleInvite(r.id)} disabled={busy === `invite-${r.id}`} aria-label={`Invite ${r.role} from ${r.worldId}`} className="shrink-0 rounded-md bg-emerald-500/20 px-3 py-1 text-[11px] text-emerald-100 hover:bg-emerald-500/30 disabled:opacity-40">
                           <Send className="mr-1 inline h-3 w-3" aria-hidden="true" /> Invite
@@ -288,13 +297,15 @@ export default function LfgLensPage() {
             </label>
             <label className="mb-2 block">
               <span className="text-[10px] uppercase tracking-wider text-slate-400">Note (optional)</span>
-              <textarea ref={noteRef} aria-label="Request note" value={postForm.note} onChange={(e) => setPostForm({ ...postForm, note: e.target.value })} rows={3} maxLength={240} className="mt-0.5 block w-full rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-100" />
+              <textarea ref={noteRef} aria-label="Request note" aria-describedby="lfg-note-count" value={postForm.note} onChange={(e) => setPostForm({ ...postForm, note: e.target.value })} rows={3} maxLength={240} className="mt-0.5 block w-full rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-100" />
+              {/* FIX-lfg-004: the 240-char cap was silent. The bound is named. */}
+              <span id="lfg-note-count" className="mt-0.5 block text-right text-[10px] text-slate-400">{postForm.note.length}/240</span>
             </label>
-            <button onClick={handlePost} disabled={busy === 'post'} className="flex w-full items-center justify-center gap-1 rounded-md border border-fuchsia-500/40 bg-fuchsia-500/20 px-2 py-1 text-[11px] text-fuchsia-100 hover:bg-fuchsia-500/30 disabled:opacity-40">
+            <button onClick={handlePost} disabled={lfgPostDisabled(busy)} className="flex w-full items-center justify-center gap-1 rounded-md border border-fuchsia-500/40 bg-fuchsia-500/20 px-2 py-1 text-[11px] text-fuchsia-100 hover:bg-fuchsia-500/30 disabled:opacity-40">
               {busy === 'post' && <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />}
               Post request
             </button>
-            <p className="mt-2 text-[10px] text-slate-500">Posting again in the same world replaces your previous open request.</p>
+            <p className="mt-2 text-[10px] text-slate-400">Posting again in the same world replaces your previous open request.</p>
           </div>
         </section>
       </NorthStarFrame>

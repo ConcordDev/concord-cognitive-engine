@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { Loader2, SmilePlus } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
 
@@ -30,6 +31,10 @@ export function MhMoodPanel({ onChange }: { onChange: () => void }) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [mood, setMood] = useState(3);
   const [note, setNote] = useState('');
+  const [armedId, setArmedId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editMood, setEditMood] = useState('3');
+  const [editNote, setEditNote] = useState('');
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -87,7 +92,7 @@ export function MhMoodPanel({ onChange }: { onChange: () => void }) {
           ))}
         </div>
         <div className="flex gap-1">
-          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional note…"
+          <input aria-label="Check-in note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional note…"
             className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <button type="button" onClick={log}
             className="px-3 py-1.5 text-xs bg-sky-600 hover:bg-sky-500 text-white rounded-lg">Check in</button>
@@ -129,6 +134,47 @@ export function MhMoodPanel({ onChange }: { onChange: () => void }) {
           <p className="text-[11px] text-zinc-400 italic py-8 text-center">Check in for a few days to see your trend.</p>
         )}
       </div>
+      {series.length > 0 && (
+        <ul className="space-y-1">
+          {[...series].reverse().map((m) => (
+            <li key={m.id} className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900/70 px-3 py-2 text-xs">
+              {editingId === m.id ? (
+                <span className="flex min-w-0 flex-1 items-center gap-1">
+                  <input aria-label="Edit mood (1 to 5)" type="number" min={1} max={5} value={editMood} onChange={(e) => setEditMood(e.target.value)}
+                    className="w-12 rounded border border-zinc-700 bg-zinc-950 px-1 py-0.5 text-zinc-100" />
+                  <input aria-label="Edit note" value={editNote} onChange={(e) => setEditNote(e.target.value)}
+                    className="min-w-0 flex-1 rounded border border-zinc-700 bg-zinc-950 px-1 py-0.5 text-zinc-100" />
+                  <button type="button" className="text-sky-300 underline" onClick={async () => {
+                    await lensRun('mental-health', 'mood-update', { id: m.id, mood: Number(editMood), note: editNote });
+                    setEditingId(null);
+                    await refresh();
+                  }}>Save</button>
+                </span>
+              ) : (
+                <span className="text-zinc-200">{m.date} · mood {m.mood}{m.note ? ` · ${m.note}` : ''}</span>
+              )}
+              <span className="flex shrink-0 items-center gap-2">
+              {editingId !== m.id && (
+                <button type="button" className="text-[11px] text-zinc-300 underline" onClick={() => { setEditingId(m.id); setEditMood(String(m.mood)); setEditNote(m.note || ''); }}>Edit</button>
+              )}
+              <StickyDeleteConfirm
+                armed={armedId === m.id}
+                onArm={() => setArmedId(m.id)}
+                onCancel={() => setArmedId(null)}
+                onConfirm={async () => {
+                  await lensRun('mental-health', 'mood-delete', { id: m.id });
+                  setArmedId(null);
+                  await refresh();
+                }}
+                armLabel="Delete"
+                confirmLabel="Delete this check-in?"
+                className="text-[11px] text-rose-300 underline"
+              />
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

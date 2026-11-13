@@ -26,6 +26,7 @@
  *                          journaling prompt based on recent themes"
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import {
   PenLine, Sparkles, Send, Globe, Wand2, Heart,
@@ -179,11 +180,11 @@ export function JournalActionPanel() {
         domain: 'chat_agent', name: 'do',
         input: { task, maxTurns: 3 },
       });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
-      if (reply) {
-        setAgentPrompt(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2));
+      const reply = readAgentReply(r.data);
+      if (reply.ok) {
+        setAgentPrompt(reply.text);
         ok('Prompt ready.');
-      } else err('Agent returned empty.');
+      } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }

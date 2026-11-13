@@ -60,9 +60,9 @@ export function PetWellnessPanel({ petId, onChange }: { petId: string; onChange:
 
   const logWeight = async () => {
     const kg = Number(weightInput);
-    if (!kg || kg <= 0) { setError('Enter a weight greater than zero.'); return; }
+    if (!weightInput.trim() || !Number.isFinite(kg) || kg <= 0) { setError('Weight must be a number greater than 0.'); return; }
     const r = await lensRun('pets', 'weight-log', { petId, weightKg: kg });
-    if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
+    if (r.data?.ok === false) { setError(r.data?.message || r.data?.error || 'Could not log that weight.'); return; }
     setWeightInput('');
     setError(null);
     await refresh(); onChange();

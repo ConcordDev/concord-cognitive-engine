@@ -73,6 +73,18 @@ function SuggestedFollows({ currentUserId, onNavigateToUser, className }: Sugges
     enabled: !!currentUserId,
   });
 
+  // The card stays on screen after a follow (it flips to "Following"),
+  // so the count it renders has to move with the action. Update the
+  // cached suggestion in place; before this, the fetched number stayed
+  // frozen until a full reload (FIX-social-021).
+  const bumpFollowerCount = (userId: string, delta: number) => {
+    queryClient.setQueryData<SuggestedCreator[]>(['suggested-follows', currentUserId], (prev) =>
+      (prev || []).map((c) =>
+        c.userId === userId ? { ...c, followerCount: Math.max(0, c.followerCount + delta) } : c,
+      ),
+    );
+  };
+
   const followMutation = useMutation({
     mutationFn: async (userId: string) => {
       await api.post('/api/social/follow', { followedId: userId });
@@ -80,6 +92,7 @@ function SuggestedFollows({ currentUserId, onNavigateToUser, className }: Sugges
     },
     onSuccess: (userId) => {
       setFollowed((prev) => new Set(prev).add(userId));
+      bumpFollowerCount(userId, 1);
       queryClient.invalidateQueries({ queryKey: ['following'] });
     },
   });
@@ -95,6 +108,7 @@ function SuggestedFollows({ currentUserId, onNavigateToUser, className }: Sugges
         next.delete(userId);
         return next;
       });
+      bumpFollowerCount(userId, -1);
     },
   });
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { TimelineView } from '@/components/viz';
 import type { TimelineEvent } from '@/components/viz';
 import { GanttChartSquare, Plus, Trash2, Loader2, Link2 } from 'lucide-react';
@@ -172,7 +173,7 @@ export function ProjectGantt() {
                             </span>
                           )}
                           <span>{b.durationDays}d · {b.progress}%</span>
-                          <button aria-label="Delete" onClick={() => deletePhase(b.id)} disabled={busy} className="text-gray-400 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
+                          <StickyDeleteConfirm onConfirm={() => deletePhase(b.id)} armAriaLabel="Delete" confirmAriaLabel="Confirm delete" className="text-gray-400 hover:text-red-400" armLabel={<Trash2 className="w-3 h-3" />} disabled={busy} />
                         </span>
                       </div>
                       <div className="relative h-5 bg-lattice-deep rounded">

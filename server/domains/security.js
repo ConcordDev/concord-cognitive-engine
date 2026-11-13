@@ -1,5 +1,6 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { fetchJsonWithTimeout } from "../lib/external-fetch.js";
+import { badNumber, readingOrNull } from "../lib/finite-input.js";
 
 // secFin — fail-CLOSED numeric coercion for the threat/incident scoring
 // calculators. A poisoned input ("Infinity"/"1e999"/NaN/"abc") must NEVER leak
@@ -362,12 +363,16 @@ export default function registerSecurityActions(registerLensAction) {
     const s = getSecurityState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const title = secClean(params.title, 240);
     if (!title) return { ok: false, error: "vulnerability title required" };
-    const cvss = secNum(params.cvss);
+    let cvss = null;
+    if (params.cvss !== undefined && params.cvss !== null && params.cvss !== "") {
+      cvss = readingOrNull(params.cvss, { min: 0, max: 10, fallback: null });
+      if (cvss === null) return badNumber("cvss", "must be from 0 to 10");
+    }
     const vuln = {
       id: secId("vln"),
       cveId: secClean(params.cveId, 30) || null,
       title,
-      cvss: cvss != null ? Math.max(0, Math.min(10, cvss)) : null,
+      cvss,
       severity: severityOf(cvss),
       status: VULN_STATUS.includes(params.status) ? params.status : "open",
       affectedAssetIds: Array.isArray(params.affectedAssetIds) ? params.affectedAssetIds.map(String).slice(0, 50) : [],

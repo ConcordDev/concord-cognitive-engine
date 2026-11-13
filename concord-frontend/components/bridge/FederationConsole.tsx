@@ -153,6 +153,12 @@ function PeerBar({ peers, busy, setBusy, setErr, reload }: {
   const [region, setRegion] = useState('concordia-hub');
   const [endpoint, setEndpoint] = useState('');
   const [confirmPeer, setConfirmPeer] = useState<string | null>(null);
+  const [editingPeer, setEditingPeer] = useState<Peer | null>(null);
+
+  const resetPeerForm = () => {
+    setEditingPeer(null);
+    setName(''); setKind('world'); setRegion('concordia-hub'); setEndpoint('');
+  };
 
   const addPeer = async () => {
     if (!name.trim()) return;
@@ -160,6 +166,22 @@ function PeerBar({ peers, busy, setBusy, setErr, reload }: {
     const r = await lensRun('bridge', 'peerRegister', { name, kind, region, endpoint });
     if (!r.data.ok) setErr(r.data.error);
     else { setName(''); setEndpoint(''); await reload(); }
+    setBusy(false);
+  };
+
+  const startEditPeer = (p: Peer) => {
+    setEditingPeer(p);
+    setName(p.name); setKind(p.kind); setRegion(p.region); setEndpoint(p.endpoint || '');
+    setConfirmPeer(null);
+    setErr(null);
+  };
+
+  const savePeer = async () => {
+    if (!editingPeer || !name.trim()) return;
+    setBusy(true);
+    const r = await lensRun('bridge', 'peerUpdate', { peerId: editingPeer.id, name, kind, region, endpoint });
+    if (!r.data.ok) setErr(r.data.error);
+    else { resetPeerForm(); await reload(); }
     setBusy(false);
   };
 
@@ -189,11 +211,20 @@ function PeerBar({ peers, busy, setBusy, setErr, reload }: {
           className="w-32 bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200 placeholder-zinc-600" />
         <input value={endpoint} onChange={e => setEndpoint(e.target.value)} placeholder="Endpoint (optional)"
           className="flex-1 min-w-[140px] bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200 placeholder-zinc-600" />
-        <button onClick={addPeer} disabled={busy || !name.trim()}
+        <button onClick={editingPeer ? savePeer : addPeer} disabled={busy || !name.trim()}
           className="flex items-center gap-1 px-3 py-1.5 rounded bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 text-xs disabled:opacity-40">
-          {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />} Add Peer
+          {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />} {editingPeer ? 'Save Peer' : 'Add Peer'}
         </button>
+        {editingPeer && (
+          <button onClick={resetPeerForm} disabled={busy}
+            className="px-3 py-1.5 rounded bg-zinc-800 text-zinc-300 hover:bg-zinc-700 text-xs disabled:opacity-40">
+            Cancel
+          </button>
+        )}
       </div>
+      {editingPeer && (
+        <p className="text-[11px] text-cyan-300 mb-3">Editing peer {editingPeer.name} — Save Peer updates it in place.</p>
+      )}
       {peers.length === 0 ? (
         <p className="text-[11px] text-zinc-400">No peers registered yet. Add a world or federation peer to bridge to.</p>
       ) : (
@@ -202,7 +233,7 @@ function PeerBar({ peers, busy, setBusy, setErr, reload }: {
             <div key={p.id} className="flex items-center gap-2 px-2 py-1 rounded bg-zinc-900 border border-zinc-800 text-xs">
               <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
               <span className="text-zinc-200">{p.name}</span>
-              <span className="text-zinc-600">{p.kind}</span>
+              <span className="text-zinc-400">{p.kind}</span>
               {confirmPeer === p.id ? (
                 <>
                   <span className="text-red-300">Delete {p.name} and its recorded flows?</span>
@@ -210,12 +241,17 @@ function PeerBar({ peers, busy, setBusy, setErr, reload }: {
                     className="px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 hover:bg-red-500/30 disabled:opacity-40">
                     Confirm
                   </button>
-                  <button onClick={() => setConfirmPeer(null)} className="text-zinc-500 hover:text-zinc-300">Cancel</button>
+                  <button onClick={() => setConfirmPeer(null)} className="text-zinc-400 hover:text-zinc-300">Cancel</button>
                 </>
               ) : (
-                <button aria-label="Delete" onClick={() => setConfirmPeer(p.id)} className="text-zinc-600 hover:text-red-400">
-                  <Trash2 className="w-3 h-3" />
-                </button>
+                <>
+                  <button aria-label={`Edit ${p.name}`} onClick={() => startEditPeer(p)} className="text-zinc-400 hover:text-cyan-300 text-[11px]">
+                    Edit
+                  </button>
+                  <button aria-label="Delete" onClick={() => setConfirmPeer(p.id)} className="text-zinc-400 hover:text-red-400">
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </>
               )}
             </div>
           ))}
@@ -366,9 +402,14 @@ function FlowsTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | null)
 
   const record = async () => {
     if (!peerId) { setErr('select a peer to record a flow against'); return; }
+    const recordsN = records.trim() === '' ? 0 : Number(records);
+    if (!Number.isFinite(recordsN) || recordsN < 0) {
+      setErr('Records must be a number that is 0 or more.');
+      return;
+    }
     const r = await lensRun('bridge', 'recordFlow', {
       peerId, action,
-      records: parseInt(records, 10) || 0,
+      records: recordsN,
       durationMs: parseInt(duration, 10) || 1000,
       status: outcome,
       error: outcome === 'failed' ? recErr : undefined,
@@ -457,7 +498,7 @@ function FlowsTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | null)
                 <div className="flex items-center gap-2 text-xs">
                   <span className="font-medium text-zinc-200">{f.peerName}</span>
                   <span className="text-zinc-400">{f.action}</span>
-                  <span className="text-zinc-600">{f.records} rec · {f.rps} rps</span>
+                  <span className="text-zinc-400">{f.records} rec · {f.rps} rps</span>
                   {f.attempts > 1 && <span className="text-amber-400">×{f.attempts}</span>}
                 </div>
                 {f.error && <p className="text-[11px] text-red-400/80 mt-0.5 truncate">{f.error}</p>}
@@ -476,10 +517,10 @@ function FlowsTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | null)
                     className="px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 hover:bg-red-500/30">
                     Confirm
                   </button>
-                  <button onClick={() => setConfirmFlow(null)} className="text-zinc-500 hover:text-zinc-300">Cancel</button>
+                  <button onClick={() => setConfirmFlow(null)} className="text-zinc-400 hover:text-zinc-300">Cancel</button>
                 </span>
               ) : (
-                <button aria-label="Delete flow" onClick={() => setConfirmFlow(f.id)} className="text-zinc-600 hover:text-red-400">
+                <button aria-label="Delete flow" onClick={() => setConfirmFlow(f.id)} className="text-zinc-400 hover:text-red-400">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               )}
@@ -519,13 +560,30 @@ function MappingsTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | nu
 
   useEffect(() => { load(); }, [load]);
 
+  const [editingMapping, setEditingMapping] = useState<FieldMapping | null>(null);
+
+  const resetMappingForm = () => {
+    setEditingMapping(null);
+    setSource(''); setTarget(''); setTransform('direct'); setDataType('string');
+    setPeerId(''); setRequired(false);
+  };
+
+  const startEditMapping = (m: FieldMapping) => {
+    setEditingMapping(m);
+    setSource(m.source); setTarget(m.target); setTransform(m.transform);
+    setDataType(m.dataType); setPeerId(m.peerId || ''); setRequired(!!m.required);
+    setConfirmMapping(null);
+    setErr(null);
+  };
+
   const upsert = async () => {
     if (!source.trim() || !target.trim()) { setErr('source and target fields required'); return; }
     const r = await lensRun('bridge', 'mappingUpsert', {
       source, target, transform, dataType, required, peerId: peerId || undefined,
+      mappingId: editingMapping?.id,
     });
     if (!r.data.ok) setErr(r.data.error);
-    else { setSource(''); setTarget(''); await load(); }
+    else { resetMappingForm(); await load(); }
   };
 
   const [confirmMapping, setConfirmMapping] = useState<string | null>(null);
@@ -573,9 +631,18 @@ function MappingsTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | nu
           </label>
           <button onClick={upsert}
             className="flex items-center gap-1 px-3 py-1.5 rounded bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 text-xs">
-            <Plus className="w-3.5 h-3.5" /> Save Mapping
+            <Plus className="w-3.5 h-3.5" /> {editingMapping ? 'Save Changes' : 'Save Mapping'}
           </button>
+          {editingMapping && (
+            <button onClick={resetMappingForm}
+              className="px-3 py-1.5 rounded bg-zinc-800 text-zinc-300 hover:bg-zinc-700 text-xs">
+              Cancel
+            </button>
+          )}
         </div>
+        {editingMapping && (
+          <p className="text-[11px] text-cyan-300 mt-2">Editing mapping {editingMapping.source} → {editingMapping.target} — Save Changes updates it in place.</p>
+        )}
       </div>
 
       {/* mapping list */}
@@ -586,10 +653,10 @@ function MappingsTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | nu
           {mappings.map(m => (
             <div key={m.id} className="flex items-center gap-2 p-2 rounded-lg bg-zinc-950/60 border border-zinc-800 text-xs">
               <span className="font-mono text-zinc-300">{m.source}</span>
-              <GitMerge className="w-3 h-3 text-zinc-600" />
+              <GitMerge className="w-3 h-3 text-zinc-400" />
               <span className="font-mono text-zinc-300">{m.target}</span>
               <span className="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300">{m.transform}</span>
-              <span className="text-zinc-600">{m.dataType}</span>
+              <span className="text-zinc-400">{m.dataType}</span>
               {m.required && <span className="text-amber-400">required</span>}
               {confirmMapping === m.id ? (
                 <span className="ml-auto flex items-center gap-1.5">
@@ -598,12 +665,17 @@ function MappingsTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | nu
                     className="px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 hover:bg-red-500/30">
                     Confirm
                   </button>
-                  <button onClick={() => setConfirmMapping(null)} className="text-zinc-500 hover:text-zinc-300">Cancel</button>
+                  <button onClick={() => setConfirmMapping(null)} className="text-zinc-400 hover:text-zinc-300">Cancel</button>
                 </span>
               ) : (
-                <button aria-label="Delete" onClick={() => setConfirmMapping(m.id)} className="ml-auto text-zinc-600 hover:text-red-400">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                <span className="ml-auto flex items-center gap-2">
+                  <button aria-label={`Edit mapping ${m.source} to ${m.target}`} onClick={() => startEditMapping(m)} className="text-zinc-400 hover:text-cyan-300 text-[11px]">
+                    Edit
+                  </button>
+                  <button aria-label="Delete" onClick={() => setConfirmMapping(m.id)} className="text-zinc-400 hover:text-red-400">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </span>
               )}
             </div>
           ))}
@@ -629,7 +701,7 @@ function MappingsTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | nu
                   <div key={r.mappingId} className="flex items-center gap-2 text-[11px] p-1.5 rounded bg-zinc-900">
                     {r.ok ? <CheckCircle2 className="w-3 h-3 text-green-400" /> : <XCircle className="w-3 h-3 text-red-400" />}
                     <span className="font-mono text-zinc-400">{r.source}</span>
-                    <span className="text-zinc-600">{JSON.stringify(r.inputValue)}</span>
+                    <span className="text-zinc-400">{JSON.stringify(r.inputValue)}</span>
                     <GitMerge className="w-3 h-3 text-zinc-700" />
                     <span className="font-mono text-zinc-300">{r.target}</span>
                     <span className="text-cyan-300">{r.ok ? JSON.stringify(r.outputValue) : '—'}</span>
@@ -840,7 +912,7 @@ function AlertsTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | null
               <Bell className="w-3.5 h-3.5 text-zinc-400" />
               <span className="text-zinc-300">{METRIC_LABEL[r.metric] || r.metric}</span>
               <span className="font-bold text-amber-400">{r.threshold}{METRIC_SUFFIX[r.metric] || ''}</span>
-              <span className="text-zinc-600">
+              <span className="text-zinc-400">
                 {r.peerId ? (peers.find(p => p.id === r.peerId)?.name || 'peer') : 'all peers'}
               </span>
               {confirmRule === r.id ? (
@@ -850,10 +922,10 @@ function AlertsTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | null
                     className="px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 hover:bg-red-500/30">
                     Confirm
                   </button>
-                  <button onClick={() => setConfirmRule(null)} className="text-zinc-500 hover:text-zinc-300">Cancel</button>
+                  <button onClick={() => setConfirmRule(null)} className="text-zinc-400 hover:text-zinc-300">Cancel</button>
                 </span>
               ) : (
-                <button aria-label="Delete" onClick={() => setConfirmRule(r.id)} className="ml-auto text-zinc-600 hover:text-red-400">
+                <button aria-label="Delete" onClick={() => setConfirmRule(r.id)} className="ml-auto text-zinc-400 hover:text-red-400">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               )}
@@ -959,7 +1031,7 @@ function ThroughputTab({ peers }: { peers: Peer[] }) {
         )}
       </div>
       {stats && (
-        <p className="text-[10px] text-zinc-600">avg rps is the mean of the recorded per-flow rates (not total records ÷ total time).</p>
+        <p className="text-[10px] text-zinc-400">avg rps is the mean of the recorded per-flow rates (not total records ÷ total time).</p>
       )}
 
       {chartData.length === 0 ? (

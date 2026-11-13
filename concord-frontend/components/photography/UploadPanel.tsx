@@ -9,6 +9,7 @@ import { useUIStore } from '@/store/ui';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import type { PhotoItem } from './photo-types';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 /** Upload form — media API + lens artifact create. Extracted from page.tsx. */
 export function UploadPanel({ onUploaded }: { onUploaded?: () => void }) {
@@ -109,12 +110,7 @@ export function UploadPanel({ onUploaded }: { onUploaded?: () => void }) {
         }}
         role="button"
         tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            (e.currentTarget as HTMLElement).click();
-          }
-        }}
+        onKeyDown={activateOnEnterOrSpace}
       >
         <input
           ref={fileInputRef}

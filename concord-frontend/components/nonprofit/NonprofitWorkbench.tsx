@@ -26,6 +26,8 @@ import {
   CheckCircle2, FileText, Send, PauseCircle, PlayCircle, Pencil, Target,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
+import { formatCalendarDate } from '@/lib/calendar-date';
 import { ChartKit } from '@/components/viz';
 import { commSendFeedback, commStatusLabel, thankYouSweepLines } from '@/components/nonprofit/nonprofitMail';
 
@@ -69,7 +71,11 @@ const TABS = WB_TABS;
 function money(n: number): string { return `$${(n || 0).toLocaleString()}`; }
 function shortDate(d: string | null | undefined): string {
   if (!d) return '—';
-  try { return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); } catch { return String(d); }
+  const calendar = formatCalendarDate(d);
+  if (calendar) return calendar;
+  const parsed = new Date(d);
+  if (Number.isNaN(parsed.getTime())) return d;
+  return parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 // Small shared input style
@@ -270,7 +276,7 @@ function CRMTab({ donors, loaded, loading, reload }: { donors: Donor[]; loaded: 
                 </p>
               </button>
               <button onClick={() => startEdit(d)} className="opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-zinc-200" aria-label="Edit donor"><Pencil className="w-3 h-3" /></button>
-              <button onClick={() => delDonor(d.id)} className="opacity-0 group-hover:opacity-100 text-rose-400" aria-label="Delete donor"><Trash2 className="w-3 h-3" /></button>
+              <StickyDeleteConfirm onConfirm={() => { void delDonor(d.id); }} className="opacity-0 group-hover:opacity-100 text-rose-400" armAriaLabel={`Delete donor ${d.name}`} confirmLabel={d.pledges.length > 0 ? `Delete “${d.name}”? Also removes ${d.pledges.length} pledge(s).` : `Delete “${d.name}”?`} confirmAriaLabel={`Confirm delete donor ${d.name}`} armLabel={<Trash2 className="w-3 h-3" />} />
             </div>
             {editingId === d.id && (
               <div className="mt-2 pt-2 border-t border-zinc-800 flex flex-wrap gap-1.5 items-center">
@@ -454,12 +460,37 @@ function RecurringTab({ donors, reloadDonors }: { donors: Donor[]; reloadDonors:
 // ===========================================================================
 // Communications
 // ===========================================================================
+const COMM_DRAFT_KEY = 'concord-nonprofit-comm-draft';
+
 function CommsTab({ donors, reloadDonors }: { donors: Donor[]; reloadDonors: () => Promise<void> }) {
   const [donorId, setDonorId] = useState('');
   const [kind, setKind] = useState<'thank_you' | 'appeal' | 'receipt' | 'custom'>('thank_you');
   const [cause, setCause] = useState('');
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
+  // FIX-nonprofit-012: a failed send used to strand the writer twice —
+  // "connect Gmail" with no route to connect, and the composed draft
+  // gone when the panel unmounted. The draft now persists locally and
+  // restores on return; a successful send clears it.
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(COMM_DRAFT_KEY);
+      if (!raw) return;
+      const d = JSON.parse(raw) as { donorId?: string; kind?: typeof kind; cause?: string; subject?: string; body?: string };
+      if (d.donorId) setDonorId(d.donorId);
+      if (d.kind) setKind(d.kind);
+      if (d.cause) setCause(d.cause);
+      if (d.subject) setSubject(d.subject);
+      if (d.body) setBody(d.body);
+    } catch { /* a corrupt draft is just no draft */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    try {
+      if (!donorId && !subject && !body && !cause) window.localStorage.removeItem(COMM_DRAFT_KEY);
+      else window.localStorage.setItem(COMM_DRAFT_KEY, JSON.stringify({ donorId, kind, cause, subject, body }));
+    } catch { /* storage unavailable — the form still works in place */ }
+  }, [donorId, kind, cause, subject, body]);
   const [preview, setPreview] = useState<{ subject: string; body: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [autoLines, setAutoLines] = useState<string[] | null>(null);
@@ -483,10 +514,17 @@ function CommsTab({ donors, reloadDonors }: { donors: Donor[]; reloadDonors: () 
   };
   const send = async () => {
     if (!donorId) { setFeedback('Pick a donor to send to.'); return; }
+    // FIX-nonprofit-013: a custom message needs its subject and body —
+    // say so at the form instead of sending substituted defaults.
+    if (kind === 'custom' && (!subject.trim() || !body.trim())) { setFeedback('Subject and body are required for a custom message.'); return; }
     setBusy(true); setFeedback(null);
     const r = await lensRun('nonprofit', 'comm-send', { donorId, kind, cause, subject, body });
     setFeedback(commSendFeedback(kind, r.data));
-    if (r.data?.ok && (r.data.result?.status === 'sent' || r.data.result?.comm?.status === 'sent')) setPreview(null);
+    if (r.data?.ok && (r.data.result?.status === 'sent' || r.data.result?.comm?.status === 'sent')) {
+      setPreview(null);
+      try { window.localStorage.removeItem(COMM_DRAFT_KEY); } catch { /* best effort */ }
+      setSubject(''); setBody('');
+    }
     if (r.data?.ok) await reloadDonors();
     setBusy(false);
   };
@@ -553,6 +591,9 @@ function CommsTab({ donors, reloadDonors }: { donors: Donor[]; reloadDonors: () 
           </div>
         )}
         {feedback && <p role="status" className={`text-[11px] ${feedback.startsWith('Sent ') ? 'text-emerald-400' : 'text-amber-300'}`}>{feedback}</p>}
+        {feedback === 'Not sent: connect Gmail' && (
+          <p className="text-[11px] text-zinc-300">Sending runs through your own Gmail. <a href="/lenses/integrations" className="text-sky-300 underline">Connect Gmail in the Integrations lens</a>, then come back — your draft is kept here.</p>
+        )}
       </div>
     </div>
   );
@@ -688,7 +729,7 @@ function PagesTab() {
                 <p className="text-xs font-bold text-zinc-100 truncate">{p.title}</p>
                 <p className="text-[10px] text-zinc-400 font-mono">{p.publicUrl}</p>
               </div>
-              <button onClick={() => del(p.id)} className="text-rose-400" aria-label="Delete page"><Trash2 className="w-3 h-3" /></button>
+              <StickyDeleteConfirm onConfirm={() => { void del(p.id); }} className="text-rose-400" armAriaLabel={`Delete page ${p.title}`} confirmLabel={`Delete “${p.title}”?`} confirmAriaLabel={`Confirm delete page ${p.title}`} armLabel={<Trash2 className="w-3 h-3" />} />
             </div>
             {p.story && <p className="text-[10px] text-zinc-400 mt-1 line-clamp-2">{p.story}</p>}
             <p className="text-sm font-bold mt-1.5" style={{ color: p.accentColor }}>{money(p.raised)}<span className="text-[10px] text-zinc-400"> raised{p.goal > 0 ? ` of ${money(p.goal)}` : ''}</span></p>
@@ -799,7 +840,7 @@ function VolunteersTab() {
                 </p>
                 <p className="text-[10px] text-zinc-400">{Math.round(v.totalHours)} hrs · {v.shifts.length} shift(s) · {v.availability || 'availability n/a'}</p>
               </button>
-              <button onClick={() => del(v.id)} className="opacity-0 group-hover:opacity-100 text-rose-400" aria-label="Delete volunteer"><Trash2 className="w-3 h-3" /></button>
+              <StickyDeleteConfirm onConfirm={() => { void del(v.id); }} className="opacity-0 group-hover:opacity-100 text-rose-400" armAriaLabel={`Delete volunteer ${v.name}`} confirmLabel={`Delete “${v.name}”?`} confirmAriaLabel={`Confirm delete volunteer ${v.name}`} armLabel={<Trash2 className="w-3 h-3" />} />
             </div>
             {expanded === v.id && (
               <div className="mt-2 pt-2 border-t border-zinc-800 space-y-2">
@@ -874,7 +915,7 @@ function VolunteerMatchTool({ volunteer }: { volunteer: Volunteer }) {
         <div className="mt-1.5 text-[11px] text-zinc-300">
           <span className="text-rose-300 font-bold">{result.matchScore}%</span> match
           {result.matches.map((m, i) => (
-            <p key={i} className={m.matched ? 'text-emerald-400' : 'text-zinc-500'}>{m.program}: {m.requiredSkill} {m.matched ? '✓' : '✗'}{m.matched && !m.availabilityMatch ? ' (schedule conflict)' : ''}</p>
+            <p key={i} className={m.matched ? 'text-emerald-400' : 'text-zinc-400'}>{m.program}: {m.requiredSkill} {m.matched ? '✓' : '✗'}{m.matched && !m.availabilityMatch ? ' (schedule conflict)' : ''}</p>
           ))}
         </div>
       )}
@@ -957,7 +998,7 @@ function EventsTab() {
                   </div>
                 )}
               </button>
-              <button onClick={() => del(ev.id)} className="opacity-0 group-hover:opacity-100 text-rose-400" aria-label="Delete event"><Trash2 className="w-3 h-3" /></button>
+              <StickyDeleteConfirm onConfirm={() => { void del(ev.id); }} className="opacity-0 group-hover:opacity-100 text-rose-400" armAriaLabel={`Delete event ${ev.name}`} confirmLabel={`Delete “${ev.name}”?`} confirmAriaLabel={`Confirm delete event ${ev.name}`} armLabel={<Trash2 className="w-3 h-3" />} />
             </div>
             {expanded === ev.id && (
               <div className="mt-2 pt-2 border-t border-zinc-800 space-y-2">

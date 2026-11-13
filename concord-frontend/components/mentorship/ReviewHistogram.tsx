@@ -62,7 +62,7 @@ export function ReviewHistogram({ histogram, avgRating, count, className }: Revi
                 />
               </div>
               <span className="w-16 shrink-0 text-right font-mono text-zinc-400">
-                {c} <span className="text-zinc-600">({pct}%)</span>
+                {c} <span className="text-zinc-400">({pct}%)</span>
               </span>
             </div>
           );

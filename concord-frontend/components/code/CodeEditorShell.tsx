@@ -16,6 +16,7 @@ import {
   X as CloseIcon, Circle, AlertCircle, CheckCircle2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 export interface FileTreeNode {
   id: string;
@@ -134,7 +135,7 @@ export function CodeEditorShell({
                     ? 'bg-[#1e1e1e] text-[#d4d4d4]'
                     : 'bg-[#2d2d30] text-[#858585] hover:text-[#d4d4d4]'
                 )}
-                onClick={() => onSelectTab?.(tab)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                onClick={() => onSelectTab?.(tab)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                 <span className="truncate max-w-[160px]">
                   {tab.modified && <span className="text-yellow-400">●</span>}
                   {tab.label}

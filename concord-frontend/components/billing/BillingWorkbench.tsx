@@ -23,6 +23,7 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 export type BillingView = 'overview' | 'transactions' | 'subscriptions' | 'billing' | 'economy';
 
@@ -265,6 +266,12 @@ export function BillingWorkbench({ tab }: { tab: BillingView }) {
         </div>
       </div>
 
+      {/* FIX-billing-015: the stat cards, transaction breakdown and
+          7-Day Token Flow chart are Overview content. They used to render
+          unconditionally above EVERY tab — the Economy tab repeated the
+          whole Overview above Live economy. They belong to Overview. */}
+      {tab === 'overview' && (
+      <>
       {/* Stat Cards Row */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {[
@@ -286,7 +293,7 @@ export function BillingWorkbench({ tab }: { tab: BillingView }) {
               </div>
               <div>
                 <p className="text-sm text-gray-400">{stat.label}</p>
-                <p className={`text-2xl font-bold text-white ${stat.capitalize ? 'capitalize' : ''}`}>{stat.value}</p>
+                <p className={`min-w-0 break-all text-2xl font-bold text-white ${stat.capitalize ? 'capitalize' : ''}`}>{stat.value}</p>
               </div>
             </div>
           </motion.div>
@@ -301,6 +308,7 @@ export function BillingWorkbench({ tab }: { tab: BillingView }) {
             const typeMap = new Map<string, number>();
             transactions.forEach(t => typeMap.set(t.type || 'other', (typeMap.get(t.type || 'other') || 0) + 1));
             const badgeColors: Record<string, string> = { purchase: 'bg-green-500/20 text-green-400', credit: 'bg-cyan-500/20 text-cyan-400', usage: 'bg-pink-500/20 text-pink-400', spend: 'bg-pink-500/20 text-pink-400', debit: 'bg-red-500/20 text-red-400' };
+            if (typeMap.size === 0) return <p className="text-sm text-zinc-400">No transactions yet. Purchases, credits and spend will be broken down by type here.</p>;
             return Array.from(typeMap.entries()).map(([type, count]) => (
               <span key={type} className={`px-3 py-1.5 rounded-lg text-sm font-medium capitalize ${badgeColors[type] || 'bg-gray-500/20 text-gray-400'}`}>
                 {type}: {count}
@@ -335,7 +343,10 @@ export function BillingWorkbench({ tab }: { tab: BillingView }) {
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500/60" />Income</span>
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-pink-500/60" />Spending</span>
         </div>
+        {transactions.length === 0 && <p className="mt-2 text-sm text-zinc-400">No token movement yet. Income and spending appear here once you have transactions.</p>}
       </motion.div>
+      </>
+      )}
 
       {tab === 'overview' && (
         <div className="space-y-6">
@@ -401,7 +412,7 @@ export function BillingWorkbench({ tab }: { tab: BillingView }) {
       {tab === 'transactions' && (
         <div className="space-y-4">
           {/* Filter + Export bar */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex gap-2">
               {(['all', 'purchase', 'usage', 'credit'] as const).map((f) => (
                 <button
@@ -419,13 +430,20 @@ export function BillingWorkbench({ tab }: { tab: BillingView }) {
             </div>
             <div className="flex items-center gap-2">
               <button
+                // FIX-billing-011: with zero transactions there is nothing
+                // to summarize — the button disables (like Export CSV
+                // beside it) instead of minting an empty record, and the
+                // result speaks through the in-app toast, never a native
+                // browser alert.
+                disabled={transactions.length === 0}
+                title={transactions.length === 0 ? 'No transactions yet — a tax summary needs at least one' : undefined}
                 onClick={async () => {
                   try {
                     const resp = await apiHelpers.economy.createTaxSummary({ year: new Date().getFullYear() });
-                    alert(`Tax Summary DTU created: ${(resp.data as Record<string, unknown>)?.dtuId || 'success'}`);
+                    useUIStore.getState().addToast({ type: 'success', message: `Tax Summary DTU created: ${(resp.data as Record<string, unknown>)?.dtuId || 'success'}` });
                   } catch (e) { console.error('[Billing] Failed to create tax summary:', e); useUIStore.getState().addToast({ type: 'error', message: 'Failed to create tax summary' }); }
                 }}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30 transition-colors"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <BarChart3 className="w-4 h-4" />
                 Tax Summary DTU
@@ -578,7 +596,7 @@ export function BillingWorkbench({ tab }: { tab: BillingView }) {
                       ? 'border-neon-cyan shadow-lg shadow-neon-cyan/20'
                       : 'border-lattice-border hover:border-gray-600'
                   }`}
-                  onClick={() => setSelectedPackage(pkg.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                  onClick={() => setSelectedPackage(pkg.id)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                   {pkg.bonus > 0 && (
                     <div className="absolute -top-2 -right-2 px-2 py-1 bg-neon-green text-white text-xs font-bold rounded-full">
                       +{Math.round(pkg.bonus * 100)}%

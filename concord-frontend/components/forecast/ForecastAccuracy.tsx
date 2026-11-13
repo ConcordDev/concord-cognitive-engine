@@ -124,7 +124,7 @@ export function ForecastAccuracy({ worldId, refreshKey = 0 }: { worldId: string;
               {c.temp_abs_error_c !== null && (
                 <span className="text-zinc-400">
                   temp drift: <span className="font-mono text-amber-300">{c.temp_abs_error_c}°C</span>
-                  <span className="text-zinc-600"> ({c.predicted_temp_c}° → {c.realized_temp_c}°)</span>
+                  <span className="text-zinc-400"> ({c.predicted_temp_c}° → {c.realized_temp_c}°)</span>
                 </span>
               )}
             </div>

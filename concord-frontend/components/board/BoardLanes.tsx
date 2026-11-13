@@ -52,6 +52,7 @@ export function BoardLanes({
 }) {
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState('');
+  const [addError, setAddError] = useState('');
   const [over, setOver] = useState<LaneId | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -59,7 +60,12 @@ export function BoardLanes({
 
   const submit = () => {
     const title = draft.trim();
-    if (title) onAdd(title);
+    if (!title) {
+      setAddError('A task title is required.');
+      return;
+    }
+    setAddError('');
+    onAdd(title);
     setDraft('');
     setAdding(false);
   };
@@ -89,7 +95,7 @@ export function BoardLanes({
               <header className="mb-3 flex items-center gap-2 px-1">
                 <span className={cn('h-2 w-2 rounded-full', lane.dot)} aria-hidden="true" />
                 <h2 className="text-[15px] text-zinc-200">{lane.name}</h2>
-                <span className="ml-auto text-[13px] text-zinc-500">{laneTasks.length}</span>
+                <span className="ml-auto text-[13px] text-zinc-300">{laneTasks.length}</span>
               </header>
 
               {lane.id === 'todo' && adding && (
@@ -99,13 +105,16 @@ export function BoardLanes({
                   onChange={(e) => setDraft(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') submit();
-                    if (e.key === 'Escape') { setDraft(''); setAdding(false); }
+                    if (e.key === 'Escape') { setDraft(''); setAddError(''); setAdding(false); }
                   }}
                   onBlur={submit}
                   placeholder="Task title, then Enter"
                   aria-label="New task title"
                   className="mb-3 w-full rounded-xl border border-teal-400/30 bg-black/40 px-4 py-3 text-[14px] text-zinc-100 placeholder:text-zinc-500 focus:outline-none"
                 />
+              )}
+              {lane.id === 'todo' && addError && (
+                <p className="mb-3 text-[12px] text-rose-300" role="alert">{addError}</p>
               )}
 
               <div className="flex flex-col gap-3">
@@ -128,10 +137,22 @@ export function BoardLanes({
                       <span className={cn('h-1.5 w-1.5 rounded-full', STATUS_PILL[task.status] ?? 'bg-zinc-400')} aria-hidden="true" />
                       {statusName(task.status)}
                     </span>
+                    <div className="mt-2 flex flex-wrap gap-1 md:hidden">
+                      {LANES.filter((other) => other.id !== lane.id).map((other) => (
+                        <button
+                          key={other.id}
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); onMove(task.id, other.dropStatus); }}
+                          className="rounded-full border border-white/10 px-2 py-1 text-[11px] text-zinc-300"
+                        >
+                          Move to {other.name}
+                        </button>
+                      ))}
+                    </div>
                   </article>
                 ))}
                 {laneTasks.length === 0 && !(lane.id === 'todo' && adding) && (
-                  <p className="px-1 pt-2 text-[13px] text-zinc-600">
+                  <p className="px-1 pt-2 text-[13px] text-zinc-300">
                     {lane.id === 'todo' ? 'Nothing queued.' : lane.id === 'doing' ? 'Drag a task here to start it.' : 'Finished work lands here.'}
                   </p>
                 )}

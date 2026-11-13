@@ -921,6 +921,24 @@ export default function registerCouncilActions(registerLensAction) {
     return { ok: true, result: { member, total: cShared(s.members).length } };
   });
 
+  // FIX-council-008 — membership is explicit (founder ruling A,
+  // 2026-11-13): opening the lens never joins anyone, and leaving is
+  // the caller's own opt-out. Removes ONLY the caller's member record;
+  // idempotent — leaving while not a member is a no-op success.
+  registerLensAction("council", "member-leave", (ctx, _a, _params = {}) => {
+    const s = getCouncilState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const gate = cNeedUser(ctx);
+    if (gate) return gate;
+    const userId = cUser(ctx);
+    const list = cShared(s.members);
+    const idx = list.findIndex((m) => m && (m.userId === userId || m.id === userId));
+    if (idx < 0) return { ok: true, result: { member: null, total: list.length, alreadyLeft: true } };
+    list.splice(idx, 1);
+    cSave();
+    return { ok: true, result: { member: null, total: list.length } };
+  });
+
   registerLensAction("council", "proposal-create", (ctx, _a, params = {}) => {
     const s = getCouncilState();
     if (!s) return { ok: false, error: "STATE unavailable" };
@@ -960,7 +978,10 @@ export default function registerCouncilActions(registerLensAction) {
       authorName,
       action: "Created proposal",
       target: proposal.id,
-      details: proposal.title,
+      // FIX-council-001 — a fresh proposal is a draft, and a draft is
+      // the author's alone: the shared audit trail records the act,
+      // never the draft's title.
+      details: "Draft proposal",
       category: "proposal",
     });
     cSave();
@@ -971,11 +992,20 @@ export default function registerCouncilActions(registerLensAction) {
     const s = getCouncilState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     if (!cUser(ctx)) return { ok: true, result: { proposals: [], total: 0, signedIn: false } };
+    const viewerId = cUser(ctx);
     const proposals = cShared(s.proposals).slice()
+      .filter((p) => cCanSeeProposal(p, viewerId))
       .sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")))
       .map((p) => cPublicProposal(s, p));
     return { ok: true, result: { proposals, total: proposals.length, signedIn: true } };
   });
+
+  // FIX-council-001 — drafts are author-only. Every other status is
+  // the council's shared business; a draft is visible to its author
+  // alone until the author moves it on.
+  function cCanSeeProposal(p, userId) {
+    return !!p && (p.status !== "draft" || p.authorId === userId);
+  }
 
   function findProposal(s, id) {
     if (!id) return null;
@@ -1020,7 +1050,7 @@ export default function registerCouncilActions(registerLensAction) {
     if (gate) return gate;
     const userId = cUser(ctx);
     const p = findProposal(s, params.id);
-    if (!p) return { ok: false, error: "proposal not found" };
+    if (!p || !cCanSeeProposal(p, userId)) return { ok: false, error: "proposal not found" };
     if (!cIsMember(s, userId)) return { ok: false, error: "not eligible" };
     const choice = String(params.choice || params.vote || "").trim();
     if (!C_VOTE_CHOICES.includes(choice)) return { ok: false, error: "vote invalid" };

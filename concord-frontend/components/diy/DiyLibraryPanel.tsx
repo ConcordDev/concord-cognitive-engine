@@ -20,6 +20,7 @@ import {
   type ModeTab, type ArtifactType, type Status, type DIYArtifact,
   STATUS_CONFIG, CATEGORIES, DIFFICULTIES, TOOL_CONDITIONS, MATERIAL_UNITS,
 } from '@/components/diy/diy-shared';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 const MODE_TABS: { id: ModeTab; label: string; icon: typeof Wrench; artifactType: ArtifactType }[] = [
   { id: 'projects', label: 'Projects', icon: Hammer, artifactType: 'Project' },
@@ -29,6 +30,13 @@ const MODE_TABS: { id: ModeTab; label: string; icon: typeof Wrench; artifactType
   { id: 'ideas', label: 'Ideas', icon: Lightbulb, artifactType: 'Idea' },
   { id: 'gallery', label: 'Gallery', icon: Camera, artifactType: 'GalleryItem' },
 ];
+
+function optionalNonNegative(label: string, raw: string): string | null {
+  if (!raw.trim()) return null;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0) return `${label} has to be a number that is 0 or more.`;
+  return null;
+}
 
 export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -59,6 +67,15 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
   const [formInstruction, setFormInstruction] = useState('');
   const [formSafetyNotes, setFormSafetyNotes] = useState('');
   const [formTags, setFormTags] = useState('');
+
+  const formProblems = [
+    optionalNonNegative('Estimated hours', formEstimatedHours),
+    optionalNonNegative('Hours spent', formHoursSpent),
+    optionalNonNegative('Cost', formCost),
+    optionalNonNegative('Budget', formBudget),
+    optionalNonNegative('Quantity', formQuantity),
+    optionalNonNegative('Unit price', formUnitPrice),
+  ].filter((msg): msg is string => !!msg);
 
   const activeArtifactType = MODE_TABS.find((t) => t.id === (mode === 'dashboard' ? 'projects' : mode))?.artifactType || 'Project';
   const { items, isLoading, isError, error, refetch, create, update, remove } =
@@ -151,6 +168,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
   };
 
   const handleSave = async () => {
+    if (!formName.trim() || formProblems.length > 0) return;
     const data: Record<string, unknown> = {
       name: formName,
       type: activeArtifactType,
@@ -226,10 +244,10 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
     return (
       <div
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-        onClick={() => setEditorOpen(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        onClick={() => setEditorOpen(false)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
         <div
           className={cn(ds.panel, 'w-full max-w-lg max-h-[85vh] overflow-y-auto')}
-          onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={`${editingItem ? 'Edit' : 'New'} ${activeArtifactType}`}>
           <div className="flex items-center justify-between mb-4">
             <h3 className={ds.heading3}>
               {editingItem ? 'Edit' : 'New'} {activeArtifactType}
@@ -243,6 +261,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
               <label className={ds.label}>Name</label>
               <input
                 className={ds.input}
+                aria-label="Name"
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
               />
@@ -252,6 +271,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
               <textarea
                 className={ds.textarea}
                 rows={2}
+                aria-label="Description"
                 value={formDescription}
                 onChange={(e) => setFormDescription(e.target.value)}
               />
@@ -261,6 +281,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                 <label className={ds.label}>Status</label>
                 <select
                   className={ds.select}
+                  aria-label="Status"
                   value={formStatus}
                   onChange={(e) => setFormStatus(e.target.value as Status)}
                 >
@@ -275,6 +296,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                 <label className={ds.label}>Category</label>
                 <select
                   className={ds.select}
+                  aria-label="Category"
                   value={formCategory}
                   onChange={(e) => setFormCategory(e.target.value)}
                 >
@@ -294,6 +316,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                     <label className={ds.label}>Difficulty</label>
                     <select
                       className={ds.select}
+                      aria-label="Difficulty"
                       value={formDifficulty}
                       onChange={(e) => setFormDifficulty(e.target.value)}
                     >
@@ -309,6 +332,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                     <input
                       type="number"
                       className={ds.input}
+                      aria-label="Budget"
                       value={formBudget}
                       onChange={(e) => setFormBudget(e.target.value)}
                     />
@@ -320,6 +344,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                     <input
                       type="number"
                       className={ds.input}
+                      aria-label="Estimated hours"
                       value={formEstimatedHours}
                       onChange={(e) => setFormEstimatedHours(e.target.value)}
                     />
@@ -329,6 +354,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                     <input
                       type="number"
                       className={ds.input}
+                      aria-label="Hours spent"
                       value={formHoursSpent}
                       onChange={(e) => setFormHoursSpent(e.target.value)}
                     />
@@ -338,6 +364,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                     <input
                       type="number"
                       className={ds.input}
+                      aria-label="Cost"
                       value={formCost}
                       onChange={(e) => setFormCost(e.target.value)}
                     />
@@ -353,6 +380,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                     <label className={ds.label}>Brand</label>
                     <input
                       className={ds.input}
+                      aria-label="Brand"
                       value={formBrand}
                       onChange={(e) => setFormBrand(e.target.value)}
                     />
@@ -361,6 +389,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                     <label className={ds.label}>Condition</label>
                     <select
                       className={ds.select}
+                      aria-label="Condition"
                       value={formCondition}
                       onChange={(e) => setFormCondition(e.target.value)}
                     >
@@ -376,6 +405,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                   <label className={ds.label}>Storage Location</label>
                   <input
                     className={ds.input}
+                    aria-label="Storage location"
                     value={formLocation}
                     onChange={(e) => setFormLocation(e.target.value)}
                   />
@@ -391,6 +421,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                     <input
                       type="number"
                       className={ds.input}
+                      aria-label="Quantity"
                       value={formQuantity}
                       onChange={(e) => setFormQuantity(e.target.value)}
                     />
@@ -399,6 +430,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                     <label className={ds.label}>Unit</label>
                     <select
                       className={ds.select}
+                      aria-label="Unit"
                       value={formUnit}
                       onChange={(e) => setFormUnit(e.target.value)}
                     >
@@ -414,6 +446,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                     <input
                       type="number"
                       className={ds.input}
+                      aria-label="Unit price"
                       value={formUnitPrice}
                       onChange={(e) => setFormUnitPrice(e.target.value)}
                     />
@@ -423,6 +456,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                   <label className={ds.label}>Supplier</label>
                   <input
                     className={ds.input}
+                    aria-label="Supplier"
                     value={formSupplier}
                     onChange={(e) => setFormSupplier(e.target.value)}
                   />
@@ -431,6 +465,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                   <label className={ds.label}>Storage Location</label>
                   <input
                     className={ds.input}
+                    aria-label="Storage location"
                     value={formLocation}
                     onChange={(e) => setFormLocation(e.target.value)}
                   />
@@ -445,6 +480,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                   <input
                     type="number"
                     className={ds.input}
+                    aria-label="Step number"
                     value={formStep}
                     onChange={(e) => setFormStep(e.target.value)}
                   />
@@ -454,6 +490,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                   <textarea
                     className={ds.textarea}
                     rows={3}
+                    aria-label="Instruction"
                     value={formInstruction}
                     onChange={(e) => setFormInstruction(e.target.value)}
                   />
@@ -463,6 +500,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                   <textarea
                     className={ds.textarea}
                     rows={2}
+                    aria-label="Safety notes"
                     value={formSafetyNotes}
                     onChange={(e) => setFormSafetyNotes(e.target.value)}
                   />
@@ -476,6 +514,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                   <label className={ds.label}>Difficulty</label>
                   <select
                     className={ds.select}
+                    aria-label="Difficulty"
                     value={formDifficulty}
                     onChange={(e) => setFormDifficulty(e.target.value)}
                   >
@@ -491,6 +530,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                   <input
                     type="number"
                     className={ds.input}
+                    aria-label="Estimated budget"
                     value={formBudget}
                     onChange={(e) => setFormBudget(e.target.value)}
                   />
@@ -502,6 +542,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
               <label className={ds.label}>Tags</label>
               <input
                 className={ds.input}
+                aria-label="Tags"
                 value={formTags}
                 onChange={(e) => setFormTags(e.target.value)}
                 placeholder="Comma-separated..."
@@ -512,16 +553,20 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
               <textarea
                 className={ds.textarea}
                 rows={2}
+                aria-label="Notes"
                 value={formNotes}
                 onChange={(e) => setFormNotes(e.target.value)}
               />
             </div>
           </div>
+          {formProblems.length > 0 && (
+            <p role="alert" className="mt-3 text-xs text-rose-300">{formProblems[0]}</p>
+          )}
           <div className="flex justify-end gap-2 mt-4">
             <button onClick={() => setEditorOpen(false)} className={ds.btnSecondary}>
               Cancel
             </button>
-            <button onClick={handleSave} className={ds.btnPrimary} disabled={!formName.trim()}>
+            <button onClick={handleSave} className={ds.btnPrimary} disabled={!formName.trim() || formProblems.length > 0}>
               Save
             </button>
           </div>
@@ -537,6 +582,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             className={cn(ds.input, 'pl-10')}
+            aria-label="Search items"
             placeholder="Search..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -544,6 +590,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
         </div>
         <select
           className={cn(ds.select, 'w-auto')}
+          aria-label="Filter by status"
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
         >

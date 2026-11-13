@@ -1,6 +1,7 @@
 {
   "id": "vela_reveal",
   "name": "Vela Reveal",
+  "summary": "In the Akeia matriarchy, a figure long spoken of in hints and glances steps forward at last. The player meets Vela — and nothing about the story is quite the same afterward.",
   "trigger": "vela:reveal",
   "comment": "Concordia Phase 15 — bespoke cinematic for the Vela reveal beat. Triggered when the player first interacts with the Vela NPC in the Akeia matriarchy.",
   "shots": [

@@ -29,6 +29,7 @@ import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ChartKit } from '@/components/viz/ChartKit';
 import { ProducerCompliance } from '@/components/insurance/ProducerCompliance';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -1202,6 +1203,24 @@ function ESignBinder({ policies }: { policies: PolicyLite[] }) {
     finally { setBusy(false); }
   }
 
+  async function voidEnvelope(envelopeId: string) {
+    setBusy(true);
+    try {
+      const r = await lensRun('insurance', 'esign-void', { id: envelopeId });
+      if (r.data?.ok) await refresh();
+    } catch (e) { console.error('[AMS] esign-void', e); }
+    finally { setBusy(false); }
+  }
+
+  async function deleteEnvelope(envelopeId: string) {
+    setBusy(true);
+    try {
+      const r = await lensRun('insurance', 'esign-delete', { id: envelopeId });
+      if (r.data?.ok) await refresh();
+    } catch (e) { console.error('[AMS] esign-delete', e); }
+    finally { setBusy(false); }
+  }
+
   async function sign(envelopeId: string, signerName: string) {
     setBusy(true);
     try {
@@ -1249,7 +1268,7 @@ function ESignBinder({ policies }: { policies: PolicyLite[] }) {
           {signers.map((s, i) => (
             <div key={i} className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
               <input className={inputCls} placeholder="Signer name" value={s.name} onChange={e => updateSigner(i, { name: e.target.value })} />
-              <input className={inputCls} placeholder="Email" value={s.email} onChange={e => updateSigner(i, { email: e.target.value })} />
+              <input className={inputCls} placeholder="Email (saved on the envelope, not sent)" value={s.email} onChange={e => updateSigner(i, { email: e.target.value })} />
               <select className={inputCls} value={s.role} onChange={e => updateSigner(i, { role: e.target.value })}>
                 <option value="applicant">Applicant</option>
                 <option value="producer">Producer</option>
@@ -1301,7 +1320,15 @@ function ESignBinder({ policies }: { policies: PolicyLite[] }) {
                       {s.signed
                         ? <span className="ml-auto text-[9px] text-green-300">signed</span>
                         : (
-                          <button onClick={() => sign(env.id, s.name)} disabled={busy} className={cn(btnGhost, 'ml-auto')}>
+                          <button
+                            onClick={() => {
+                              const typed = window.prompt(`Type “${s.name}” to sign this envelope`);
+                              if (!typed || typed.trim() !== s.name) return;
+                              void sign(env.id, s.name);
+                            }}
+                            disabled={busy}
+                            className={cn(btnGhost, 'ml-auto')}
+                          >
                             Sign now
                           </button>
                         )}
@@ -1321,6 +1348,32 @@ function ESignBinder({ policies }: { policies: PolicyLite[] }) {
                   <div className="mt-2 px-2.5 py-2 rounded bg-green-500/[0.06] border border-green-500/20 text-[11px] text-green-200">
                     Binder issued · {env.binder.termDays}-day term · effective {env.binder.effectiveDate} → {env.binder.expiryDate}
                     {env.binder.carrier ? ` · ${env.binder.carrier}` : ''}
+                  </div>
+                )}
+                {(env.status === 'awaiting_signatures' || env.status === 'sent') && (
+                  <div className="mt-2 flex items-center gap-1.5 pt-2 border-t border-white/5">
+                    <span className="text-[10px] text-gray-400">No longer needed?</span>
+                    <StickyDeleteConfirm
+                      armLabel="Void envelope"
+                      confirmLabel={`Void “${env.title}”?`}
+                      armAriaLabel={`Void envelope ${env.title}`}
+                      confirmAriaLabel={`Confirm void envelope ${env.title}`}
+                      onConfirm={() => void voidEnvelope(env.id)}
+                      disabled={busy}
+                    />
+                  </div>
+                )}
+                {env.status === 'voided' && (
+                  <div className="mt-2 flex items-center gap-1.5 pt-2 border-t border-white/5">
+                    <span className="text-[10px] text-gray-400">This envelope is void.</span>
+                    <StickyDeleteConfirm
+                      armLabel="Delete envelope"
+                      confirmLabel={`Delete “${env.title}”?`}
+                      armAriaLabel={`Delete envelope ${env.title}`}
+                      confirmAriaLabel={`Confirm delete envelope ${env.title}`}
+                      onConfirm={() => void deleteEnvelope(env.id)}
+                      disabled={busy}
+                    />
                   </div>
                 )}
               </li>

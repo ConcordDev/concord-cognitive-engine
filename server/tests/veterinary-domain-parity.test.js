@@ -541,3 +541,22 @@ describe("veterinary — inventory management", () => {
     assert.equal(call("inventory-add", ctxA, {}, {}).ok, false);
   });
 });
+
+describe("veterinary deletes — FIX-veterinary-012 investigation pin", () => {
+  it("a delete survives the platform snapshot round-trip and stays deleted", async () => {
+    const { serializeLensState, hydrateLensState } = await import("../lib/lens-state-persistence.js");
+    const ctx = { actor: { userId: "vet_user" }, userId: "vet_user" };
+    const added = call("inventory-add", ctx, { name: "Rabies vaccine", category: "vaccine", quantity: 5 });
+    assert.equal(added.ok, true);
+    const keep = call("inventory-add", ctx, { name: "Bandages", category: "supply", quantity: 10 });
+    assert.equal(keep.ok, true);
+    assert.equal(call("inventory-delete", ctx, { id: added.result.item.id }).ok, true);
+    assert.equal(call("inventory-list", ctx, {}).result.count, 1);
+    const snap = JSON.parse(JSON.stringify(serializeLensState(globalThis._concordSTATE)));
+    globalThis._concordSTATE = { dtus: new Map() };
+    hydrateLensState(globalThis._concordSTATE, snap);
+    const after = call("inventory-list", ctx, {});
+    assert.equal(after.result.count, 1);
+    assert.equal(after.result.items[0].id, keep.result.item.id);
+  });
+});

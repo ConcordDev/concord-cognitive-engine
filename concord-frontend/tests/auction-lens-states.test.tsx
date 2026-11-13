@@ -190,6 +190,11 @@ describe('auction lens — four UX states', () => {
     const dialog = view!.getByRole('dialog');
     const idInput = dialog.querySelectorAll('input')[0] as HTMLInputElement;
     await act(async () => { fireEvent.change(idInput, { target: { value: 'item_xyz' } }); });
+    // FIX-auction-004: Start CC now opens empty (it used to be
+    // pre-filled with '1', which mangled typed values), so the flow
+    // types a start price explicitly.
+    const startInput = dialog.querySelector('input[type="number"]') as HTMLInputElement;
+    await act(async () => { fireEvent.change(startInput, { target: { value: '25' } }); });
     await act(async () => { fireEvent.click(view!.getByText('Post auction')); });
     await waitFor(() => expect(view!.getByText(/Auction posted/i)).toBeInTheDocument());
   });

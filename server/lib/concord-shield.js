@@ -207,7 +207,7 @@ export function createThreatDTU(opts) {
     subtype,
     title: `${subtype.toUpperCase()} threat: ${opts.hash?.sha256?.slice(0, 16) || "unknown"}`,
     tier: "regular",
-    scope: "global", // Threats propagate globally — collective immunity
+    scope: opts.scope || "global", // Verified threats propagate globally — collective immunity
 
     // Pain memory — NEVER pruned by forgetting engine
     tags: [
@@ -296,8 +296,8 @@ export function createThreatDTU(opts) {
 
     createdAt: now,
     updatedAt: now,
-    createdBy: "shield",
-    ownerId: "system",
+    createdBy: opts.createdBy || "shield",
+    ownerId: opts.ownerId || "system",
     // A user-reported threat with no visibility used to read as public
     // (scope global, legacy path). User-sourced rows default to private.
     ...(typeof opts.source === "string" && opts.source.startsWith("user:") ? { visibility: "private" } : {}),
@@ -1264,6 +1264,9 @@ export function computeSecurityScore(userId, STATE) {
 
   for (const dtu of STATE.dtus.values()) {
     if (dtu.createdBy === "shield" || dtu.source === "shield") {
+      // An unverified user report must not move the shared score.
+      if (dtu.verified === false) continue;
+      if (typeof dtu.source === "string" && dtu.source.startsWith("user:") && dtu.verified !== true) continue;
       if (dtu.type === "THREAT") {
         threatCount++;
         if (new Date(dtu.createdAt).getTime() > recentCutoff) recentThreats++;
@@ -1570,7 +1573,7 @@ export function processUserReport(report, userId, STATE) {
     }
   }
 
-  // New report — create a threat DTU from the report
+  // New report — kept private and out of the score until someone triages it.
   const threatDtu = createThreatDTU({
     subtype: report.subtype || "exploit",
     severity: report.severity || 5,
@@ -1584,22 +1587,46 @@ export function processUserReport(report, userId, STATE) {
     behavior: report.indicators || [],
     affected: report.affected || [],
     source: `user:${userId}`,
+    createdBy: `user:${userId}`,
+    ownerId: userId,
+    scope: "local",
     tags: ["user_reported"],
   });
+  threatDtu.verified = false;
+  threatDtu.reporterUserId = userId;
+  threatDtu.visibility = "private";
+  threatDtu.description = String(report.description || "").slice(0, 2000);
 
-  // Store and propagate
   if (STATE?.dtus) {
     STATE.dtus.set(threatDtu.id, threatDtu);
   }
-  propagateThreatToLattice(threatDtu, STATE);
 
   return {
     ok: true,
     reportId,
-    status: "new_threat",
+    status: "pending_review",
     threatDtu,
-    message: "Thank you for reporting. This threat has been added to the collective threat lattice.",
+    message: "Report saved privately. It does not change the Shield score, and you can retract it.",
   };
+}
+
+/**
+ * Remove the reporter's own unverified threat report.
+ * A triaged (verified) row stays; a stranger cannot delete it.
+ */
+export function retractUserReport(id, userId, STATE) {
+  if (!STATE?.dtus || !id || !userId) return { ok: false, error: "not_found" };
+  const dtu = STATE.dtus.get(id);
+  if (!dtu) return { ok: false, error: "not_found" };
+  const owner = dtu.reporterUserId
+    || (typeof dtu.source === "string" && dtu.source.startsWith("user:") ? dtu.source.slice(5) : null);
+  if (owner !== userId) return { ok: false, error: "not_your_report" };
+  if (dtu.verified === true) return { ok: false, error: "already_triaged" };
+  STATE.dtus.delete(id);
+  if (dtu.hash?.sha256 && _shieldState.threatIndex.get(dtu.hash.sha256) === dtu.id) {
+    _shieldState.threatIndex.delete(dtu.hash.sha256);
+  }
+  return { ok: true, retracted: id };
 }
 
 // ── Initialization ──────────────────────────────────────────────────────────

@@ -14,6 +14,7 @@ import {
   Lightbulb, Save, Loader2, ChevronDown, ChevronUp, MessageSquareText, Flame,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface Prompt { id: string; question: string }
 interface SavedAnswer { question: string; answer: string }
@@ -113,6 +114,7 @@ export function ReflectionPrompts({ decisionId }: { decisionId?: string }) {
           Answer the structured prompts to turn a decision into a lesson. Saving counts toward your reflection streak.
         </p>
         <input
+          aria-label="Reflection title"
           className="input-lattice w-full"
           placeholder="Reflection title (optional)"
           value={title}
@@ -123,6 +125,7 @@ export function ReflectionPrompts({ decisionId }: { decisionId?: string }) {
             <div key={p.id}>
               <label className="text-sm text-gray-300 block mb-1">{p.question}</label>
               <textarea
+                aria-label={p.question}
                 className="input-lattice w-full"
                 rows={2}
                 placeholder="Your answer..."
@@ -135,6 +138,7 @@ export function ReflectionPrompts({ decisionId }: { decisionId?: string }) {
         <div>
           <label className="text-sm text-gray-300 block mb-1">Free-form note</label>
           <textarea
+            aria-label="Free-form note"
             className="input-lattice w-full"
             rows={2}
             placeholder="Anything else worth recording..."
@@ -179,7 +183,7 @@ export function ReflectionPrompts({ decisionId }: { decisionId?: string }) {
                 <div key={r.id} className="lens-card">
                   <div
                     className="flex items-center gap-2 cursor-pointer"
-                    onClick={() => setExpanded(isExp ? null : r.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                    onClick={() => setExpanded(isExp ? null : r.id)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{r.title}</p>
                       <p className="text-xs text-gray-400">

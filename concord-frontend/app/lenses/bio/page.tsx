@@ -234,7 +234,7 @@ export default function BioLensPage() {
                     <p className="py-4 text-center text-gray-400">No metrics reported for this system yet — run the simulation to produce them.</p>
                   )}
                   {simBySystem[selectedSystem] && (
-                    <p className="text-[10px] text-gray-500">Simulated model output (deterministic, 60 steps) — a teaching model, not a measurement. {simBySystem[selectedSystem].note}</p>
+                    <p className="text-[10px] text-gray-400">Simulated model output (deterministic, 60 steps) — a teaching model, not a measurement. {simBySystem[selectedSystem].note}</p>
                   )}
                 </div>
 

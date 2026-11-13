@@ -20,6 +20,7 @@ interface Parsed {
   project: string | null;
   labels: string[];
   recurring: string | null;
+  invalidDate?: string | null;
 }
 
 const PRIORITY_COLOR: Record<number, string> = {
@@ -76,6 +77,7 @@ export function ProductivityQuickAddPanel({ onChange }: { onChange: () => void }
 
       <div className="flex gap-2">
         <input
+          aria-label="Quick add task"
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') void add(); }}
@@ -105,6 +107,11 @@ export function ProductivityQuickAddPanel({ onChange }: { onChange: () => void }
             <div className="flex flex-wrap gap-1.5">
               <Chip className={PRIORITY_COLOR[parsed.priority]}>P{parsed.priority}</Chip>
               {parsed.dueDate && <Chip className="text-sky-400">{parsed.dueDate}</Chip>}
+              {parsed.invalidDate && (
+                <span role="note" className="text-[11px] text-amber-300">
+                  &ldquo;{parsed.invalidDate}&rdquo; isn&rsquo;t a real date — fix it or remove it; no due date will be set.
+                </span>
+              )}
               {parsed.dueTime && <Chip className="text-cyan-400">{parsed.dueTime}</Chip>}
               {parsed.project && <Chip className="text-violet-400">#{parsed.project}</Chip>}
               {parsed.recurring && <Chip className="text-emerald-400">↻ {parsed.recurring.replace(/_/g, ' ')}</Chip>}

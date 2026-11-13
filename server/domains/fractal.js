@@ -770,26 +770,40 @@ export default function registerFractalActions(registerLensAction) {
       if (!name) return { ok: false, error: "preset name required" };
       const cfg = params.config && typeof params.config === "object" ? params.config : {};
       const list = fxPresetList(s, fxActor(ctx));
+      const config = {
+        type: FRACTAL_TYPES.includes(cfg.type) ? cfg.type : "mandelbrot",
+        centerX: fxNum(cfg.centerX, -0.5),
+        centerY: fxNum(cfg.centerY, 0),
+        scale: fxNum(cfg.scale, 0.005),
+        maxIter: Math.max(16, Math.min(4000, Math.floor(fxNum(cfg.maxIter, 200)))),
+        palette: typeof cfg.palette === "string" ? fxClean(cfg.palette, 40) : "spectral",
+        juliaRe: fxNum(cfg.juliaRe, -0.7),
+        juliaIm: fxNum(cfg.juliaIm, 0.27015),
+        power: Math.max(2, Math.min(8, Math.floor(fxNum(cfg.power, 2)))),
+      };
+      // Same trimmed name replaces the saved view instead of stacking a second preset.
+      const existing = list.find((p) => String(p.name || "").trim() === name);
+      if (existing) {
+        existing.config = config;
+        existing.updatedAt = fxNow();
+        const idx = list.indexOf(existing);
+        if (idx > 0) {
+          list.splice(idx, 1);
+          list.unshift(existing);
+        }
+        saveFractalState();
+        return { ok: true, result: { preset: existing, count: list.length, updated: true } };
+      }
       const preset = {
         id: fxId("fxp"),
         name,
-        config: {
-          type: FRACTAL_TYPES.includes(cfg.type) ? cfg.type : "mandelbrot",
-          centerX: fxNum(cfg.centerX, -0.5),
-          centerY: fxNum(cfg.centerY, 0),
-          scale: fxNum(cfg.scale, 0.005),
-          maxIter: Math.max(16, Math.min(4000, Math.floor(fxNum(cfg.maxIter, 200)))),
-          palette: typeof cfg.palette === "string" ? fxClean(cfg.palette, 40) : "spectral",
-          juliaRe: fxNum(cfg.juliaRe, -0.7),
-          juliaIm: fxNum(cfg.juliaIm, 0.27015),
-          power: Math.max(2, Math.min(8, Math.floor(fxNum(cfg.power, 2)))),
-        },
+        config,
         createdAt: fxNow(),
       };
       list.unshift(preset);
       if (list.length > 100) list.length = 100;
       saveFractalState();
-      return { ok: true, result: { preset, count: list.length } };
+      return { ok: true, result: { preset, count: list.length, updated: false } };
     } catch (e) {
       return { ok: false, error: e?.message || "savePreset failed" };
     }

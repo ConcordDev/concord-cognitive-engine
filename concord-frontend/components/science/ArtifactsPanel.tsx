@@ -44,6 +44,7 @@ import {
   REPRODUCIBILITY,
   getStatusesForArtifact,
 } from '@/components/science/science-types';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 function statusBadge(status: string) {
   const color = STATUS_COLORS[status] || 'gray-400';
@@ -1269,12 +1270,7 @@ export function ArtifactsPanel({ artifactType }: { artifactType: ArtifactType })
           onClick={() => setShowEditor(false)}
           role="button"
           tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              (e.currentTarget as HTMLElement).click();
-            }
-          }}
+          onKeyDown={activateOnEnterOrSpace}
         >
           <div className={ds.modalContainer}>
             <div
@@ -1282,12 +1278,7 @@ export function ArtifactsPanel({ artifactType }: { artifactType: ArtifactType })
               onClick={(e) => e.stopPropagation()}
               role="button"
               tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  (e.currentTarget as HTMLElement).click();
-                }
-              }}
+              onKeyDown={activateOnEnterOrSpace}
             >
               <div className="p-6 border-b border-lattice-border">
                 <div className={ds.sectionHeader}>

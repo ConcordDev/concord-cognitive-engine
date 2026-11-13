@@ -38,7 +38,7 @@ const TOOLS: { id: ToolId; label: string; icon: typeof Spline; macro: string; bl
 const EASINGS = ['linear', 'ease-in', 'ease-out', 'ease-in-out', 'ease-in-cubic', 'ease-out-cubic', 'bounce-out'];
 
 function fieldClass() {
-  return 'bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-100 placeholder:text-zinc-600 w-full';
+  return 'min-h-11 bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-100 placeholder:text-zinc-500 w-full';
 }
 
 // ── Keyframe rows ──────────────────────────────────────────────────────
@@ -360,7 +360,7 @@ export function AnimationMotionToolkit() {
           </button>
         ))}
       </div>
-      <p className="text-[11px] text-zinc-500 italic">{active.blurb}</p>
+      <p className="text-[11px] text-zinc-400 italic">{active.blurb}</p>
       <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
         {tool === 'interpolate' && <KeyframeTool />}
         {tool === 'timing' && <TimingTool />}

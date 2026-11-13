@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { FileText, Loader2, Trash2, Check, Download, Plus } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface LineItem { timeEntryId: string; hours: number; date: string; note: string; rate: number; amount: number }
 interface Invoice {
@@ -102,8 +103,8 @@ export function InvoiceManager({ engagements }: { engagements: EngagementOption[
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-3 flex flex-wrap items-end gap-2">
         <div className="flex-1 min-w-[160px]">
           <label className="block text-[10px] text-zinc-400 mb-1 uppercase">Engagement</label>
-          <select value={engId} onChange={e => setEngId(e.target.value)}
-            className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200">
+          <select aria-label="Engagement" onChange={e => setEngId(e.target.value)}
+            className="min-h-11 w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200">
             <option value="">Select engagement…</option>
             {engagements.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
           </select>
@@ -141,7 +142,7 @@ export function InvoiceManager({ engagements }: { engagements: EngagementOption[
               {inv.status !== 'paid' && (
                 <button onClick={() => markPaid(inv.id)} aria-label="Mark paid" className="text-zinc-400 hover:text-emerald-400"><Check className="w-3.5 h-3.5" /></button>
               )}
-              <button onClick={() => del(inv.id)} aria-label="Delete" className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+              <StickyDeleteConfirm onConfirm={() => { void del(inv.id); }} armLabel={<Trash2 className="w-3.5 h-3.5" />} armAriaLabel={`Delete invoice ${inv.number}`} confirmAriaLabel={`Confirm delete invoice ${inv.number}`} className="opacity-0 group-hover:opacity-100 text-rose-400" />
             </div>
           </li>
         ))}
@@ -151,7 +152,7 @@ export function InvoiceManager({ engagements }: { engagements: EngagementOption[
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setExportDoc(null)} role="button" tabIndex={0}>
           <div className="w-full max-w-md bg-zinc-950 border border-zinc-800 rounded-xl p-4" onClick={e => e.stopPropagation()} role="button" tabIndex={0}>
             <div className="flex items-center justify-between mb-2">
-              <h4 className="text-sm font-bold text-zinc-100">{exportDoc.number}</h4>
+              <h2 className="text-sm font-bold text-zinc-100">{exportDoc.number}</h2>
               <button onClick={downloadDoc} className="px-2 py-1 text-xs rounded bg-indigo-600 hover:bg-indigo-500 text-white inline-flex items-center gap-1">
                 <Download className="w-3 h-3" />Download
               </button>

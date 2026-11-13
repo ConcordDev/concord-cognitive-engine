@@ -38,6 +38,7 @@ export function IntrospectionPanel() {
             </p>
             <div className="flex gap-3">
               <input
+                aria-label="Introspection focus area"
                 type="text"
                 value={introspectFocus}
                 onChange={(e) => setIntrospectFocus(e.target.value)}

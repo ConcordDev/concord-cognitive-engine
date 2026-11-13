@@ -209,9 +209,11 @@ export function ScenarioStudio({ onDataChanged }: { onDataChanged?: () => void }
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Scenario name"
+            aria-label="Scenario name"
             className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder-zinc-600"
           />
           <select
+            aria-label="Zone type"
             value={zoneType}
             onChange={(e) => setZoneType(e.target.value)}
             className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white"
@@ -223,6 +225,7 @@ export function ScenarioStudio({ onDataChanged }: { onDataChanged?: () => void }
             ))}
           </select>
           <select
+            aria-label="Use mix"
             value={useMix}
             onChange={(e) => setUseMix(e.target.value)}
             className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white"
@@ -238,6 +241,7 @@ export function ScenarioStudio({ onDataChanged }: { onDataChanged?: () => void }
             onChange={(e) => setLotSizeSqFt(e.target.value)}
             type="number"
             placeholder="Lot size (sqft)"
+            aria-label="Lot size (sqft)"
             className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder-zinc-600"
           />
           <input
@@ -248,12 +252,14 @@ export function ScenarioStudio({ onDataChanged }: { onDataChanged?: () => void }
             min="0.4"
             max="1"
             placeholder="Floor efficiency 0.4-1"
+            aria-label="Floor efficiency"
             className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder-zinc-600"
           />
           <input
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Description (optional)"
+            aria-label="Scenario description"
             className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder-zinc-600"
           />
         </div>

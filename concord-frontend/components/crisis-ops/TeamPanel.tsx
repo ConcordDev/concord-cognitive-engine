@@ -9,6 +9,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Users, Loader2, UserPlus, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { crisisRefusal } from '@/components/crisis-ops/refusal';
 
 interface TeamMember {
@@ -107,7 +108,7 @@ export function TeamPanel({ crisisId }: { crisisId?: string }) {
           type="button"
           disabled={busy || !name.trim()}
           onClick={assign}
-          className="flex items-center gap-1 rounded bg-rose-600/30 px-2 py-1 text-xs text-rose-100 hover:bg-rose-600/50 disabled:opacity-40"
+          className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded bg-rose-600/30 px-3 text-xs text-rose-100 hover:bg-rose-600/50 disabled:opacity-40"
         >
           <UserPlus className="h-3 w-3" /> Assign
         </button>
@@ -171,14 +172,7 @@ export function TeamPanel({ crisisId }: { crisisId?: string }) {
                       )}
                     </span>
                     {m.canUnassign !== false && (
-                      <button
-                        type="button"
-                        onClick={() => unassign(m.id)}
-                        className="rounded p-0.5 text-zinc-400 hover:bg-rose-600/30 hover:text-rose-200"
-                        aria-label="Remove"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
+                      <StickyDeleteConfirm onConfirm={() => { void unassign(m.id); }} className="rounded p-0.5 text-zinc-400 hover:bg-rose-600/30 hover:text-rose-200" armAriaLabel={`Remove ${m.responder}`} confirmLabel={`Remove ${m.responder}?`} confirmAriaLabel={`Confirm remove ${m.responder}`} armLabel={<X className="h-3.5 w-3.5" />} />
                     )}
                   </li>
                 ))}

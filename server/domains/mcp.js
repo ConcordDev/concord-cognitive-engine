@@ -42,6 +42,8 @@ export default function registerMcpMacros(register) {
   register("mcp", "connect", async (ctx, input = {}) => {
     const { serverId, kind, command, args, url, env } = input || {};
     if (!serverId || !kind) return { ok: false, reason: "missing_inputs" };
+    // A server id is a slug, not a document (FIX-byo-keys-011).
+    if (typeof serverId !== "string" || serverId.trim().length > 64) return { ok: false, reason: "server_id_too_long" };
     if (kind === "stdio") {
       const denied = requireAdminRole(ctx);
       if (denied) return denied;

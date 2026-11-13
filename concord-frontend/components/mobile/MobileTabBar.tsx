@@ -44,7 +44,7 @@ export function MobileTabBar({ tabs, active, onSelect, className }: MobileTabBar
   return (
     <nav
       className={cn(
-        'fixed bottom-0 left-0 right-0 z-40 bg-zinc-950/95 border-t border-zinc-800 backdrop-blur',
+        'fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px))] left-0 right-0 z-40 bg-zinc-950/95 border-t border-zinc-800 backdrop-blur md:bottom-0',
         'flex items-stretch justify-around safe-area-bottom',
         className,
       )}

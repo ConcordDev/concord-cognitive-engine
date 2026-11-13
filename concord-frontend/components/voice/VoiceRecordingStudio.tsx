@@ -253,7 +253,7 @@ export function VoiceRecordingStudio({ refreshKey }: { refreshKey?: number }) {
 
           {/* Summary controls */}
           <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-3">
-            <div className="flex flex-wrap items-center gap-2 mb-2">
+            <div className="flex flex-wrap items-center gap-2 mb-2 min-w-0">
               <h4 className="text-sm font-bold text-zinc-100 flex-1 truncate">{active.title}</h4>
               <button onClick={() => summarize(false)} disabled={busy !== null}
                 className="px-2.5 py-1 text-xs rounded bg-zinc-700/60 text-zinc-200 hover:bg-zinc-700 inline-flex items-center gap-1 disabled:opacity-40">
@@ -371,8 +371,8 @@ export function VoiceRecordingStudio({ refreshKey }: { refreshKey?: number }) {
                         <MessageSquare className="w-3 h-3 text-violet-400 mt-0.5 shrink-0" />
                         <span className="text-violet-300 font-medium">{c.authorId}</span>
                         <span className="text-zinc-300 flex-1">{c.body}</span>
-                        <button onClick={() => deleteComment(c.id)} className="text-rose-400 hover:text-rose-300" aria-label="Delete comment">
-                          <Trash2 className="w-2.5 h-2.5" />
+                        <button onClick={() => deleteComment(c.id)} className="inline-flex min-h-11 min-w-11 items-center justify-center text-rose-400 hover:text-rose-300" aria-label="Delete comment">
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
                     ))}

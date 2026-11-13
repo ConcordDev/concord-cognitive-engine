@@ -774,6 +774,12 @@ export default function registerLabActions(registerLensAction) {
         if (!gate.ok) return gate;
         store = "orgNotebook"; key = orgId;
       }
+      // FIX-lab-003: a title past the 200 cap was silently sliced by
+      // labClean and the entry created under a different title than
+      // typed. Refuse by name instead; the form caps at 200 too.
+      if (String(params.title == null ? "" : params.title).trim().length > 200) {
+        return { ok: false, error: "entry title must be 200 characters or fewer" };
+      }
       const title = labClean(params.title, 200);
       if (!title) return { ok: false, error: "entry title required" };
       const entry = {
@@ -795,6 +801,22 @@ export default function registerLabActions(registerLensAction) {
       labArr(L, store, key).push(entry);
       saveLab();
       return { ok: true, result: { entry: labPresentEntry(ctx, entry) } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("lab", "notebook-delete", (ctx, _a, params = {}) => {
+    try {
+      const L = getLabState(); if (!L) return { ok: false, error: "STATE unavailable" };
+      const userId = labActor(ctx);
+      const arr = labArr(L, "notebook", userId);
+      const i = arr.findIndex((entry) => entry.id === String(params.id || ""));
+      if (i < 0) return { ok: false, error: "entry not found" };
+      if (arr[i].status === "signed" || arr[i].status === "witnessed") {
+        return { ok: false, error: "signed entry stays on the record", message: "A signed or witnessed entry stays on the record." };
+      }
+      arr.splice(i, 1);
+      saveLab();
+      return { ok: true, result: { deleted: params.id } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 

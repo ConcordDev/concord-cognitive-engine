@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Flag, X, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface ReportButtonProps {
   /** ID of the content being reported */
@@ -100,7 +101,7 @@ export function ReportButton({
       <AnimatePresence>
         {open && (
           <>
-            <div className="fixed inset-0 z-50 bg-black/50" onClick={handleClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
+            <div className="fixed inset-0 z-50 bg-black/50" onClick={handleClose} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace} />
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}

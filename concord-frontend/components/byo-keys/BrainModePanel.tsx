@@ -190,6 +190,7 @@ export function BrainModePanel({ onModeChange, compact = false }: Props = {}) {
               <button
                 type="button"
                 data-testid="brain-mode-cancel-high-power"
+                data-overlay-close=""
                 onClick={() => setConfirmHighPower(false)}
                 className="rounded-md bg-zinc-800 px-3 py-1.5 text-xs text-zinc-200"
               >
@@ -282,7 +283,7 @@ export function BrainModePanel({ onModeChange, compact = false }: Props = {}) {
             not, Gemini and Mistral&apos;s free tiers do.
           </p>
           {!highPowerAllowed && (
-            <p className="mt-1 text-[10px] text-zinc-500" data-testid="brain-mode-high-power-gated">Not available on your account yet.</p>
+            <p className="mt-1 text-[10px] text-zinc-400" data-testid="brain-mode-high-power-gated">Not available on your account yet.</p>
           )}
         </button>
       </div>
@@ -313,6 +314,7 @@ export function BrainModePanel({ onModeChange, compact = false }: Props = {}) {
             <button
               type="button"
               data-testid="brain-mode-cancel-high-power"
+              data-overlay-close=""
               onClick={() => setConfirmHighPower(false)}
               className="rounded-md bg-zinc-800 px-3 py-1.5 text-xs text-zinc-200"
             >
@@ -329,7 +331,7 @@ export function BrainModePanel({ onModeChange, compact = false }: Props = {}) {
         </p>
       )}
       {isPrivate && (
-        <p className="mt-3 text-[11px] text-zinc-500" data-testid="brain-mode-private-note">
+        <p className="mt-3 text-[11px] text-zinc-400" data-testid="brain-mode-private-note">
           The 5 slot cards below are inert while Private Mode is active — Concord never checks them at
           inference time. Switch to High Power to use a configured key.
         </p>

@@ -112,7 +112,16 @@ export default function DebateLensPage() {
         activeTab={active}
         onTab={(id) => setActive(id as DebateView)}
         tabsLabel="Debate views"
-        cta={{ label: 'Open the floor', icon: Timer, onClick: () => { exitShare(); setActive('floor'); }, title: 'Open the timed debate floor (1)' }}
+        cta={{
+          label: 'Open the floor',
+          icon: Timer,
+          onClick: () => {
+            exitShare();
+            setActive('floor');
+            window.dispatchEvent(new Event('debate:open-floor'));
+          },
+          title: 'Open the timed debate floor and the new-debate form',
+        }}
       >
         {shareToken ? (
           <section className="rounded-2xl border border-white/10 bg-[#111] p-4">

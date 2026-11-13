@@ -56,3 +56,39 @@ describe("economy-flows (Ledger lens data)", () => {
     assert.ok(m.has("ledger.flow_summary"));
   });
 });
+
+// FIX-ledger-001: a dossier opened from the managed-parity row for the
+// FUNDER (the_tessera) must show the factions it funds — the parity flow
+// itself — not 'unknown / none on record' on every field.
+describe("factionEconomyState — funder-side dossier (FIX-ledger-001)", () => {
+  function seedFunderDb() {
+    const db = new Database(":memory:");
+    db.exec(`
+      CREATE TABLE realms (id TEXT, world_id TEXT, faction_id TEXT, treasury REAL);
+      CREATE TABLE faction_funding (id TEXT, world_id TEXT, funder_id TEXT, war_faction_a TEXT, war_faction_b TEXT, active INTEGER);
+      CREATE TABLE extraction_loans (id TEXT, world_id TEXT, creditor_id TEXT, debtor_id TEXT, amount REAL, collateral_id TEXT, status TEXT);
+      INSERT INTO realms VALUES ('realm-a','sere','faction_a', 4200);
+      INSERT INTO faction_funding VALUES ('ff1','sere','the_tessera','faction_a','faction_b',1);
+      INSERT INTO extraction_loans VALUES ('el1','sere','the_tessera','faction_b', 750, NULL, 'active');
+    `);
+    return db;
+  }
+
+  it("the funder's dossier lists the factions it funds and the liens it holds", () => {
+    const db = seedFunderDb();
+    const out = factionEconomyState(db, "sere", "the_tessera");
+    assert.equal(out.ok, true);
+    assert.deepEqual([...out.funds].sort(), ["faction_a", "faction_b"]);
+    assert.equal(out.liensHeld.length, 1);
+    assert.equal(out.liensHeld[0].debtor_id, "faction_b");
+    db.close();
+  });
+
+  it("the faction's dossier still reads its treasury and its funder", () => {
+    const db = seedFunderDb();
+    const out = factionEconomyState(db, "sere", "faction_a");
+    assert.equal(out.treasury, 4200);
+    assert.deepEqual(out.fundedBy, ["the_tessera"]);
+    db.close();
+  });
+});

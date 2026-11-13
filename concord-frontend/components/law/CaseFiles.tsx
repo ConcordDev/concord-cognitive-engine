@@ -34,6 +34,8 @@ import {
   FileText, Quote, Loader2,
 } from 'lucide-react';
 import { useLensData } from '@/lib/hooks/use-lens-data';
+import { daysUntilCalendarDate, formatCalendarDate } from '@/lib/calendar-date';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { EmptyState, ErrorState, Skeleton } from '@/components/ui';
 import { cn } from '@/lib/utils';
@@ -62,9 +64,7 @@ interface CaseData {
 }
 
 function deadlineDays(deadlineStr: string): number | null {
-  if (!deadlineStr) return null;
-  const diff = new Date(deadlineStr).getTime() - Date.now();
-  return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  return daysUntilCalendarDate(deadlineStr);
 }
 
 export function CaseFiles({ onCasesChange }: { onCasesChange?: (cases: CaseFileSummary[]) => void }) {
@@ -88,7 +88,7 @@ export function CaseFiles({ onCasesChange }: { onCasesChange?: (cases: CaseFileS
   const caseSearchInputRef = useRef<HTMLInputElement>(null);
   const newCaseInputRef = useRef<HTMLInputElement>(null);
 
-  const { isLoading, isError, error, refetch, items: caseItems, create: createCase, update: updateCase } =
+  const { isLoading, isError, error, refetch, items: caseItems, create: createCase, update: updateCase, remove: removeCase } =
     useLensData<CaseData>('law', 'case', { noSeed: true });
 
   // `law.draft` / `law.cite` (server.js:40502-40515) mutate a real, live
@@ -411,7 +411,13 @@ export function CaseFiles({ onCasesChange }: { onCasesChange?: (cases: CaseFileS
                         {daysLeft > 0 ? `${daysLeft}d` : daysLeft === 0 ? 'Today' : 'Overdue'}
                       </span>
                     )}
-                    <span className="text-xs text-gray-400">{new Date(item.createdAt).toLocaleDateString()}</span>
+                    <span className="text-xs text-gray-400">{formatCalendarDate(item.createdAt) || new Date(item.createdAt).toLocaleDateString()}</span>
+                    <StickyDeleteConfirm
+                      onConfirm={() => { void removeCase(item.id); }}
+                      armLabel="Delete"
+                      confirmLabel="Delete this case?"
+                      className="text-[11px] text-rose-300"
+                    />
                   </div>
                 </div>
 
@@ -459,7 +465,7 @@ export function CaseFiles({ onCasesChange }: { onCasesChange?: (cases: CaseFileS
                         >
                           <Calendar className="w-3.5 h-3.5 shrink-0" />
                           <span>
-                            Filing deadline: {new Date(deadline).toLocaleDateString()}
+                            Filing deadline: {formatCalendarDate(deadline) || deadline}
                             {daysLeft !== null && (
                               <span className="font-semibold ml-1">
                                 ({daysLeft > 0 ? `${daysLeft} days remaining` : daysLeft === 0 ? 'Due today' : 'OVERDUE'})

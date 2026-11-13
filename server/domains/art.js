@@ -14,6 +14,7 @@ import * as fsp from "node:fs/promises";
 import path from "path";
 import { callVision, callVisionUrl, visionPromptForDomain } from "../lib/vision-inference.js";
 import { registerAsset } from "../lib/evo-asset/registry.js";
+import { isHarnessFixtureName } from "../lib/harness-fixture.js";
 import { generatePollinationsImage } from "../lib/pollinations-image.js";
 
 const PROCEDURAL_KINDS = new Set([
@@ -1477,7 +1478,12 @@ export default function registerArtActions(registerLensAction) {
   // ── Brush presets ───────────────────────────────────────────────────
   registerLensAction("art", "brush-presets", (ctx, _a, _params = {}) => {
     const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userBrushes = s.brushPresets.get(atAid(ctx)) || [];
+    // Harness fixtures saved by test runs (e.g. "tz… name harness
+    // value") are the caller's rows in STATE but are not presets the
+    // user created — keep them out of the list. Stored rows are not
+    // rewritten; the filter is read-side only.
+    const userBrushes = (s.brushPresets.get(atAid(ctx)) || [])
+      .filter((b) => !isHarnessFixtureName(b?.name));
     return {
       ok: true,
       result: { brushes: [...ART_BRUSH_PRESETS, ...userBrushes], blendModes: ART_BLEND_MODES },
@@ -1488,6 +1494,7 @@ export default function registerArtActions(registerLensAction) {
     const s = getArtState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const name = atClean(params.name, 60);
     if (!name) return { ok: false, error: "brush name required" };
+    if (isHarnessFixtureName(name)) return { ok: false, error: "that name looks like a test-harness value — give the brush a real name" };
     const brush = {
       id: atId("brush"), name,
       tool: ART_TOOLS.includes(String(params.tool)) ? String(params.tool) : "ink",

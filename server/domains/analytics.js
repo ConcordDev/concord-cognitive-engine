@@ -85,7 +85,22 @@ export default function registerAnalyticsActions(registerLensAction) {
     try {
       const dataPoints = benchPoints(artifact.data);
       if (dataPoints.length < 3) return { ok: true, result: { message: "Need at least 3 data points for forecasting." } };
-      const values = dataPoints.map(d => finNum(d?.value));
+      const values = [];
+      for (let i = 0; i < dataPoints.length; i++) {
+        const point = dataPoints[i] || {};
+        const raw = point.value;
+        const n = typeof raw === "number" ? raw : parseFloat(raw);
+        if (raw == null || raw === "" || !Number.isFinite(n)) {
+          return { ok: true, result: { message: `Point ${i + 1} needs a finite value.` } };
+        }
+        if (point.date != null && point.date !== "") {
+          const parsed = Date.parse(String(point.date));
+          if (!Number.isFinite(parsed)) {
+            return { ok: true, result: { message: `Point ${i + 1} has a date that cannot be read.` } };
+          }
+        }
+        values.push(n);
+      }
       const n = values.length;
       // Simple linear regression
       const xMean = (n - 1) / 2;
@@ -444,6 +459,8 @@ export default function registerAnalyticsActions(registerLensAction) {
 
   registerLensAction("analytics", "dashboard-save", (ctx, _a, params = {}) => {
     const s = getAnalyticsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const rawName = String(params.name || "").trim();
+    if (rawName.length > 100) return { ok: false, error: "dashboard name must be at most 100 characters" };
     const name = anClean(params.name, 100);
     if (!name) return { ok: false, error: "dashboard name required" };
     const arr = anDashboards(s, anActor(ctx));

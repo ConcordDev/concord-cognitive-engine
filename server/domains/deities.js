@@ -92,6 +92,8 @@ export default function registerDeitiesActions(registerLensAction) {
       createdAt: d.createdAt,
       updatedAt: d.updatedAt,
       revision: d.revision,
+      retired: !!d.retired,
+      retiredAt: d.retiredAt || null,
       pilgrim_count: d.pilgrimCount,
       pilgrimCount: d.pilgrimCount,
       originPeer: d.originPeer || null,
@@ -184,6 +186,7 @@ export default function registerDeitiesActions(registerLensAction) {
       const s = getDeitiesState();
       const limit = Math.min(100, Math.max(1, Math.round(dNum(params.limit, 50))));
       const deities = [...s.deities.values()]
+        .filter((d) => !d.retired)
         .sort((a, b) => b.pilgrimCount - a.pilgrimCount || b.createdAt - a.createdAt)
         .slice(0, limit)
         .map(summarise);
@@ -204,7 +207,7 @@ export default function registerDeitiesActions(registerLensAction) {
       const minPilgrims = Math.max(0, Math.round(dNum(params.minPilgrims, 0)));
       const sort = ["popularity", "newest", "tone"].includes(params.sort)
         ? params.sort : "popularity";
-      let list = [...s.deities.values()];
+      let list = [...s.deities.values()].filter((d) => !d.retired);
       if (q) {list = list.filter((d) =>
         d.name.toLowerCase().includes(q) ||
         (d.domainTitle || "").toLowerCase().includes(q) ||
@@ -238,6 +241,9 @@ export default function registerDeitiesActions(registerLensAction) {
       const d = s.deities.get(deityId);
       if (!d) return { ok: false, error: "deity not found" };
       const userId = dAid(ctx);
+      // A retired deity is gone from the pantheon; only its author can
+      // still open the detail (to see the retired state).
+      if (d.retired && d.authorUserId !== userId) return { ok: false, error: "deity not found" };
       const roster = [...s.pilgrimages.values()]
         .filter((p) => p.deityId === deityId)
         .sort((a, b) => b.arrivedAt - a.arrivedAt)
@@ -298,6 +304,31 @@ export default function registerDeitiesActions(registerLensAction) {
       d.updatedAt = dNow();
       saveState();
       return { ok: true, result: { deity: summarise(d), revision: d.revision } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  // ───────────────────────────────────────────────────────────────────────
+  // 5b. Retire — the lifecycle exit. Only the author may retire their
+  //     own deity. A retired deity leaves the pantheon (list / search /
+  //     detail for everyone else); the record is kept so pilgrimage and
+  //     blessing history still resolves, and the author can still open
+  //     the detail to see the retired state.
+  // ───────────────────────────────────────────────────────────────────────
+  registerLensAction("deity", "retire", (ctx, _a, params = {}) => {
+    try {
+      const s = getDeitiesState();
+      const userId = dAid(ctx);
+      const deityId = dClean(params.deityId, 64);
+      if (!deityId) return { ok: false, error: "deityId required" };
+      const d = s.deities.get(deityId);
+      if (!d) return { ok: false, error: "deity not found" };
+      if (d.authorUserId !== userId) return { ok: false, error: "only the author may retire this deity" };
+      if (d.retired) return { ok: false, error: "deity already retired" };
+      d.retired = true;
+      d.retiredAt = dNow();
+      d.updatedAt = dNow();
+      saveState();
+      return { ok: true, result: { deity: summarise(d), retired: true } };
     } catch (e) { return { ok: false, error: e.message }; }
   });
 
@@ -409,6 +440,35 @@ export default function registerDeitiesActions(registerLensAction) {
       || templates[0]
       || null;
   }
+  // Colour a reply by intent — FIX-deities-003: the four commune
+  // intents used to differ only in the params; the reply text was the
+  // reception template alone, so greet/petition/offering/question all
+  // read identically. A deity whose author wrote an intent template
+  // speaks that; otherwise this deterministic line, derived from
+  // intent + reception + the dominant tone axis, answers the intent.
+  // Pure-compute, no LLM, in the module's voice.
+  function intentLine(intent, reception, d) {
+    const tone = d.toneVector || {};
+    if (intent === "petition") {
+      if (reception === "received") return "Your petition is heard, and weighed kindly.";
+      if (reception === "refused") return "Your petition goes unheard.";
+      return "Your petition is heard; no answer is given yet.";
+    }
+    if (intent === "question") {
+      if (reception === "refused") return "Your question is not answered.";
+      if (reception === "received") {
+        if (tone.mystery >= 0.66) return "An answer forms, veiled: watch what changes first.";
+        if (tone.refusal >= 0.66) return "An answer is given, edged with warning.";
+        if (tone.warmth >= 0.66) return "An answer is given plainly, and it is enough for now.";
+        return "An answer is given, brief and certain.";
+      }
+      return tone.mystery >= 0.66
+        ? "The answer stays veiled, for now."
+        : "No answer comes; the silence itself is the reply.";
+    }
+    if (intent === "offering") return "You come empty-handed; that, too, is noted.";
+    return null;
+  }
   // Colour an utterance by tone — prefix/suffix flourishes derived from the
   // three axes. Pure-compute, deterministic, no LLM.
   function toneFlourish(tone) {
@@ -441,12 +501,22 @@ export default function registerDeitiesActions(registerLensAction) {
       else { reception = "neutral"; trigger = "greet"; }
       // Intent shifts the trigger lookup for a petition/offering when received.
       if (reception === "received" && intent === "offering") trigger = "commune_high_alignment";
-      const tmpl = pickTemplate(d.dialogueTemplates, trigger);
+      // An author-written intent template (trigger = the intent) speaks
+      // for that intent directly; otherwise the reception template
+      // answers and intentLine adds the intent's own colour.
+      const intentTmpl = intent !== "greet"
+        ? d.dialogueTemplates.find((t) => t.trigger === intent)
+        : null;
+      const tmpl = intentTmpl || pickTemplate(d.dialogueTemplates, trigger);
       const flourish = toneFlourish(d.toneVector);
       const lines = [];
       if (flourish.length) lines.push(flourish[0]);
       lines.push(tmpl ? tmpl.text : `${d.name} is silent.`);
-      if (reception === "received" && offering) {
+      if (!intentTmpl && !(intent === "offering" && offering)) {
+        const il = intentLine(intent, reception, d);
+        if (il) lines.push(il);
+      }
+      if (reception !== "refused" && offering) {
         lines.push(`Your offering — "${offering}" — is acknowledged.`);
       }
       if (reception === "refused") {

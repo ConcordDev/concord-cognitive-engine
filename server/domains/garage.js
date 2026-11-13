@@ -32,6 +32,38 @@ import {
 } from "../lib/world-vehicles.js";
 import { actorId as authzActorId, isAdmin } from "../lib/lens-authz.js";
 import { resolveUserDisplay } from "../lib/friend-presence.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
+
+function garageExportRows(ctx) {
+  const db = ctx?.db;
+  const userId = actorId(ctx);
+  if (!db || !userId) return [];
+  try {
+    const vehicles = db.prepare(`
+      SELECT id, world_id, kind, owner_kind, owner_id, capacity, fare_cc, condition_pct, created_at
+      FROM world_vehicles
+      WHERE owner_kind = 'player' AND owner_id = ?
+      ORDER BY created_at DESC LIMIT 500
+    `).all(userId);
+    return vehicles.map((row) => ({
+      id: row.id,
+      type: "vehicle",
+      title: row.kind || "Vehicle",
+      createdAt: row.created_at || null,
+      updatedAt: row.created_at || null,
+      data: {
+        id: row.id,
+        worldId: row.world_id,
+        kind: row.kind,
+        capacity: row.capacity,
+        fareCc: row.fare_cc,
+        conditionPct: row.condition_pct,
+      },
+    }));
+  } catch {
+    return [];
+  }
+}
 
 function actorId(ctx) {
   return authzActorId(ctx);
@@ -63,6 +95,7 @@ function clampStr(v, n, fallback) {
 }
 
 export default function registerGarageMacros(register) {
+  registerLensExportProvider("garage", garageExportRows);
   // ── reads (headless-safe) ──────────────────────────────────────────────
 
   /**

@@ -12,6 +12,7 @@ const emptySubscribe = () => () => {};
 const getTrue = () => true;
 const getFalse = () => false;
 import { usePathname } from 'next/navigation';
+import { installOverlayKeyboard } from '@/lib/a11y/overlay-keyboard';
 import dynamic from 'next/dynamic';
 import { useDiegetic } from '@/hooks/useDiegetic';
 import { useWorldHudHidden } from '@/hooks/useWorldHudHidden';
@@ -162,6 +163,7 @@ export function AppShell({ children }: AppShellProps) {
   // dispatched across the app and routes it to the right macro /
   // navigation / toast. See lib/event-router.ts for the table.
   useEventRouter();
+  useEffect(() => installOverlayKeyboard(), []);
 
   // Phase 11 (Item 4) — pan-social notification toasts. Subscribes
   // to the social:notification socket event so reactions / comments /
@@ -339,7 +341,19 @@ export function AppShell({ children }: AppShellProps) {
       */}
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:top-4 focus:left-4 focus:px-4 focus:py-2 focus:bg-neon-blue focus:text-white focus:rounded-lg focus:outline-none"
+        onClick={(e) => {
+          // The anchor jump alone only scrolls — sequential focus stays
+          // wherever it was, so the next Tab walks the sidebar anyway.
+          // Move focus into main (it carries tabIndex={-1} for exactly
+          // this) so the skip actually bypasses the chrome: FIX-mining-012
+          // · FIX-eco-010 · FIX-dx-platform-008 · FIX-schema-013.
+          const main = document.getElementById('main-content');
+          if (main) {
+            e.preventDefault();
+            main.focus();
+          }
+        }}
+        className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:top-4 focus:left-4 focus:px-4 focus:py-2 focus:bg-neon-blue focus:text-white focus:rounded-lg focus:outline-none focus:shadow-2xl focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black"
       >
         Skip to main content
       </a>
@@ -377,7 +391,7 @@ export function AppShell({ children }: AppShellProps) {
           id="main-content"
           role="main"
           tabIndex={-1}
-          className={`flex-1 overflow-auto transition-all duration-300 mobile-nav-pad ${
+          className={`flex-1 overflow-auto transition-all duration-300 mobile-nav-pad focus-visible:ring-inset focus-visible:ring-offset-0 ${
             sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'
           }`}
           style={installBannerFootprint > 0 ? { paddingBottom: `${installBannerFootprint + 16}px` } : undefined}

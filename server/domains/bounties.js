@@ -13,6 +13,7 @@
 // the acting user but a global index makes the open board cross-user.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { badNumber, readingOrNull } from "../lib/finite-input.js";
 import { lookupUserIdentity } from "../lib/user-identity.js";
 import { isAdmin, requireActor } from "../lib/lens-authz.js";
 
@@ -131,7 +132,10 @@ export default function registerBountiesActions(registerLensAction) {
       const userId = actor(ctx);
       // Fail-CLOSED on poisoned money inputs before any state write.
       const badTop = badNumericField(params, ["rewardCc"]);
-      if (badTop) return { ok: false, error: `invalid numeric field: ${badTop}` };
+      // FIX-bounties-003: the refusal named the internal field
+      // ('invalid numeric field: rewardCc'). It now states the bound
+      // that governs in this domain (REWARD_MAX) in words.
+      if (badTop) return { ok: false, error: "Reward must be a whole number between 1 and 1,000,000 CC" };
       const title = clean(params.title, 160);
       if (title.length < 6) return { ok: false, error: "title must be at least 6 characters" };
       const description = clean(params.description, 6000);
@@ -139,22 +143,46 @@ export default function registerBountiesActions(registerLensAction) {
       const category = CATEGORIES.includes(params.category) ? params.category : "other";
       const difficulty = DIFFICULTIES.includes(params.difficulty) ? params.difficulty : "intermediate";
       const tags = parseTags(params.tags);
+      // FIX-bounties-004: the deadline was free text stored verbatim, so a
+      // past date (2020-01-01) was accepted silently. It is a date now:
+      // strict ISO YYYY-MM-DD (round-trip checked) and not in the past.
+      let deadline = null;
+      if (params.deadline !== undefined && params.deadline !== null && String(params.deadline).trim() !== "") {
+        const d = String(params.deadline).trim();
+        const parsed = /^\d{4}-\d{2}-\d{2}$/.test(d) ? new Date(`${d}T00:00:00Z`) : null;
+        if (!parsed || Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== d) {
+          return { ok: false, error: "deadline must be a date (YYYY-MM-DD)" };
+        }
+        if (d < new Date().toISOString().slice(0, 10)) {
+          return { ok: false, error: "deadline must be today or later" };
+        }
+        deadline = d;
+      }
       const rawMilestones = Array.isArray(params.milestones) ? params.milestones : [];
       const badMilestone = rawMilestones.findIndex((m) => badNumericField(m, ["rewardCc"]));
-      if (badMilestone !== -1) return { ok: false, error: `invalid numeric field: milestones[${badMilestone}].rewardCc` };
-      const milestones = rawMilestones
-        .map((m, i) => ({
+      if (badMilestone !== -1) return { ok: false, error: `Milestone ${badMilestone + 1}'s reward must be a whole number between 1 and 1,000,000 CC` };
+      const wholeReward = (v) => {
+        if (v === undefined || v === null || v === "") return null;
+        const n = readingOrNull(v, { min: 1, max: 1e12, fallback: null });
+        if (n === null || n !== Math.floor(n)) return null;
+        return n;
+      };
+      const milestones = [];
+      for (const m of rawMilestones.slice(0, 12)) {
+        const reward = wholeReward(m && m.rewardCc);
+        if (reward === null) return badNumber("rewardCc", "must be a whole number of at least 1");
+        milestones.push({
           id: id("ms"),
-          index: i,
-          title: clean(m && m.title, 120) || `Milestone ${i + 1}`,
-          rewardCc: Math.max(1, Math.floor(num(m && m.rewardCc, 0))),
-          status: "open", // open -> submitted -> paid
-        }))
-        .slice(0, 12);
+          index: milestones.length,
+          title: clean(m && m.title, 120) || `Milestone ${milestones.length + 1}`,
+          rewardCc: reward,
+          status: "open",
+        });
+      }
       const rewardCc = milestones.length
         ? milestones.reduce((sum, m) => sum + m.rewardCc, 0)
-        : Math.max(1, Math.floor(num(params.rewardCc, 0)));
-      if (rewardCc < 1) return { ok: false, error: "rewardCc must be at least 1 (or supply milestones)" };
+        : wholeReward(params.rewardCc);
+      if (rewardCc === null) return badNumber("rewardCc", "must be a whole number of at least 1");
       const bounty = {
         id: id("bty"),
         title,
@@ -169,7 +197,7 @@ export default function registerBountiesActions(registerLensAction) {
         submissions: [],
         acceptedSubmissionId: null,
         dispute: null,
-        deadline: params.deadline ? clean(params.deadline, 40) : null,
+        deadline,
         createdAt: now(),
         updatedAt: now(),
       };

@@ -255,9 +255,9 @@ export function ConsultingDeskPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
           className={cn(ds.panel, 'w-full max-w-lg max-h-[85vh] overflow-y-auto')}
           onClick={(e) => e.stopPropagation()} role="button" tabIndex={0}>
           <div className="flex items-center justify-between mb-4">
-            <h3 className={ds.heading3}>
+            <h2 className={ds.heading3}>
               {editingItem ? 'Edit' : 'New'} {activeArtifactType}
-            </h3>
+            </h2>
             <button onClick={() => setEditorOpen(false)} className={ds.btnGhost} aria-label="Close">
               <X className="w-4 h-4" />
             </button>
@@ -282,8 +282,8 @@ export function ConsultingDeskPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
             </div>
             <div>
               <label className={ds.label}>Status</label>
-              <select
-                className={ds.select}
+              <select aria-label="Status"
+                className={cn(ds.select, 'min-h-11')}
                 value={formStatus}
                 onChange={(e) => setFormStatus(e.target.value as Status)}
               >
@@ -306,8 +306,8 @@ export function ConsultingDeskPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
               <>
                 <div>
                   <label className={ds.label}>Engagement Type</label>
-                  <select
-                    className={ds.select}
+                  <select aria-label="Engagement type"
+                    className={cn(ds.select, 'min-h-11')}
                     value={formEngType}
                     onChange={(e) => setFormEngType(e.target.value)}
                   >
@@ -508,8 +508,8 @@ export function ConsultingDeskPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <select
-          className={cn(ds.select, 'w-auto')}
+        <select aria-label="Filter by status"
+          className={cn(ds.select, 'w-auto min-h-11')}
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
         >
@@ -667,9 +667,9 @@ export function ConsultingDeskPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
         transition={{ delay: 0.35 }}
         className={ds.panel}
       >
-        <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+        <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
           <ArrowRight className="w-4 h-4 text-amber-400" /> Engagement Pipeline
-        </h3>
+        </h2>
         <div className="flex items-center gap-2">
           {[
             { stage: 'Proposal', count: (practice?.proposals || []).filter((p) => p.status === 'draft').length, color: 'bg-gray-500' },

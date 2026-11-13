@@ -6,9 +6,12 @@
  * panels. All mutations go through lensRun().
  */
 
+import { useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { Check, Flag, Trash2 } from 'lucide-react';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
+import { ProductivityTaskDetail } from './ProductivityTaskDetail';
 
 export interface ProdTask {
   id: string;
@@ -30,6 +33,7 @@ const DUE_COLOR: Record<string, string> = {
 export function ProductivityTaskRow({ task, onChange, showDelete = true }: {
   task: ProdTask; onChange: () => void; showDelete?: boolean;
 }) {
+  const [editing, setEditing] = useState(false);
   const complete = async () => {
     await lensRun('productivity', 'task-complete', { id: task.id });
     onChange();
@@ -40,25 +44,46 @@ export function ProductivityTaskRow({ task, onChange, showDelete = true }: {
   };
 
   return (
-    <li className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
-      <button aria-label="Confirm" type="button" onClick={complete}
-        className="w-4 h-4 rounded-full border border-zinc-600 hover:border-red-500 flex items-center justify-center shrink-0">
-        <Check className="w-3 h-3 text-transparent hover:text-red-400" />
-      </button>
-      <Flag className={cn('w-3 h-3 shrink-0', PRIORITY_COLOR[task.priority] || 'text-zinc-600')} />
-      <div className="min-w-0 flex-1">
-        <p className="text-xs text-zinc-200 truncate">{task.content}</p>
-        {(task.dueDate || task.labels.length > 0) && (
-          <p className="text-[10px] text-zinc-400">
-            {task.dueDate && <span className={DUE_COLOR[task.dueState || 'none']}>{task.dueDate}</span>}
-            {task.labels.length > 0 && <span className="ml-1">{task.labels.map((l) => `#${l}`).join(' ')}</span>}
-          </p>
+    <li className="bg-zinc-900/70 border border-zinc-800 rounded-lg">
+      <div className="flex items-center gap-2 px-3 py-2">
+        <button aria-label="Confirm" type="button" onClick={complete}
+          className="w-4 h-4 rounded-full border border-zinc-600 hover:border-red-500 flex items-center justify-center shrink-0">
+          <Check className="w-3 h-3 text-transparent hover:text-red-400" />
+        </button>
+        <Flag className={cn('w-3 h-3 shrink-0', PRIORITY_COLOR[task.priority] || 'text-zinc-600')} />
+        <div className="min-w-0 flex-1">
+          <p className="text-xs text-zinc-200 truncate">{task.content}</p>
+          {(task.dueDate || task.labels.length > 0) && (
+            <p className="text-[10px] text-zinc-400">
+              {task.dueDate && <span className={DUE_COLOR[task.dueState || 'none']}>{task.dueDate}</span>}
+              {task.labels.length > 0 && <span className="ml-1">{task.labels.map((l) => `#${l}`).join(' ')}</span>}
+            </p>
+          )}
+        </div>
+        <button
+          type="button"
+          aria-expanded={editing}
+          aria-label={editing ? `Close ${task.content}` : `Edit ${task.content}`}
+          onClick={() => setEditing((v) => !v)}
+          className="text-[11px] text-zinc-400 hover:text-zinc-100 shrink-0"
+        >
+          {editing ? 'Close' : 'Edit'}
+        </button>
+        {showDelete && (
+          <StickyDeleteConfirm
+            onConfirm={del}
+            className="text-zinc-600 hover:text-rose-400 shrink-0"
+            armLabel={<Trash2 className="w-3.5 h-3.5" />}
+            armAriaLabel={`Delete task ${task.content}`}
+            confirmLabel="Delete this task?"
+            confirmAriaLabel="Confirm delete task"
+          />
         )}
       </div>
-      {showDelete && (
-        <button aria-label="Delete" type="button" onClick={del} className="text-zinc-600 hover:text-rose-400 shrink-0">
-          <Trash2 className="w-3.5 h-3.5" />
-        </button>
+      {editing && (
+        <div className="border-t border-zinc-800 px-2 pb-2">
+          <ProductivityTaskDetail taskId={task.id} onChange={onChange} />
+        </div>
       )}
     </li>
   );

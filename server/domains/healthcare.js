@@ -847,13 +847,20 @@ export default function registerHealthcareActions(registerLensAction) {
     const firstName = String(params.firstName || "").trim();
     const lastName = String(params.lastName || "").trim();
     if (!firstName || !lastName) return { ok: false, error: "firstName + lastName required" };
+    if (firstName.length > 80 || lastName.length > 80) return { ok: false, error: "name must be at most 80 characters" };
+    const dob = String(params.dob || "");
+    if (dob) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dob)) return { ok: false, error: "dob must be YYYY-MM-DD" };
+      const born = new Date(`${dob}T00:00:00Z`);
+      if (Number.isNaN(born.getTime()) || born.getTime() > Date.now()) return { ok: false, error: "dob cannot be in the future" };
+    }
     const seq = ensureSeqH(s, userId);
     const mrn = String(params.mrn || `MRN-${String(seq.pat).padStart(6, "0")}`);
     const patient = {
       id: uidH("pat"),
       mrn,
       firstName, lastName,
-      dob: String(params.dob || ""),                   // YYYY-MM-DD
+      dob,
       sex: ['M','F','X','U'].includes(params.sex) ? params.sex : 'U',
       pronouns: String(params.pronouns || ""),
       phone: String(params.phone || ""),
@@ -869,6 +876,16 @@ export default function registerHealthcareActions(registerLensAction) {
     bucketH(s.patients, userId).push(patient);
     saveStateIfAvailable();
     return { ok: true, result: { patient } };
+  });
+
+  registerLensAction("healthcare", "patients-delete", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = bucketH(s.patients, aidH(ctx));
+    const i = arr.findIndex((x) => x.id === String(params.id || ""));
+    if (i < 0) return { ok: false, error: "patient not found" };
+    const [removed] = arr.splice(i, 1);
+    saveStateIfAvailable();
+    return { ok: true, result: { deleted: removed.id } };
   });
 
   registerLensAction("healthcare", "patients-update", (ctx, _a, params = {}) => {
@@ -1129,6 +1146,14 @@ export default function registerHealthcareActions(registerLensAction) {
     const patientId = String(params.patientId || "");
     if (!patientId) return { ok: false, error: "patientId required" };
     const seq = ensureSeqH(s, userId);
+    const hr = Number(params.heartRate);
+    if (params.heartRate != null && params.heartRate !== '' && Number.isFinite(hr) && (hr < 20 || hr > 250)) {
+      return { ok: false, error: "heart rate must be between 20 and 250" };
+    }
+    const temp = Number(params.tempF);
+    if (params.tempF != null && params.tempF !== '' && Number.isFinite(temp) && (temp < 90 || temp > 110)) {
+      return { ok: false, error: "temperature must be between 90 and 110 °F" };
+    }
     const v = {
       id: uidH("vit"),
       number: `V-${String(seq.vit).padStart(6, "0")}`,

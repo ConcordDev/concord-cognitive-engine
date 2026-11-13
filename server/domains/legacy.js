@@ -15,6 +15,30 @@ export default function registerLegacyActions(registerLensAction) {
   try {
     const modules = artifact.data?.modules || [];
     if (modules.length === 0) return { ok: true, result: { message: "No modules to analyze." } };
+    // FIX-legacy-004: module metrics were read with no sign checks, so
+    // a -5 line count (or negative coverage, which INFLATES the debt
+    // score) ran to completion with no word. Counts and ages can't be
+    // negative; coverage is a percent; duplication is a ratio.
+    const METRIC_RULES = [
+      ["linesOfCode", "lines of code", 0, null],
+      ["cyclomaticComplexity", "cyclomatic complexity", 0, null],
+      ["dependencyCount", "dependency count", 0, null],
+      ["dependencyAgeYears", "dependency age (years)", 0, null],
+      ["testCoverage", "test coverage", 0, 100],
+      ["duplicateRatio", "duplicate ratio", 0, 1],
+      ["lastModifiedDaysAgo", "last modified (days ago)", 0, null],
+    ];
+    for (const mod of modules) {
+      const label = mod && mod.name ? `Module "${mod.name}"` : "A module";
+      for (const [key, words, min, max] of METRIC_RULES) {
+        const v = mod ? mod[key] : undefined;
+        if (v == null || v === "") continue;
+        const n = Number(v);
+        if (!Number.isFinite(n) || n < min || (max != null && n > max)) {
+          return { ok: false, error: `${label}: ${words} must be ${max != null ? `between ${min} and ${max}` : "0 or more"}` };
+        }
+      }
+    }
 
     const analyzed = modules.map(mod => {
       const loc = mod.linesOfCode || 0;
@@ -429,6 +453,35 @@ export default function registerLegacyActions(registerLensAction) {
    * metrics, and persist as a named codebase snapshot.
    * params = { name, files: [{ path, content?, language?, churn?, lastModifiedDaysAgo?, testCoverage? }] }
    */
+  // Shared by scanCodebase (first scan) and rescanCodebase (in-place
+  // rescan) so both produce the identical languages/summary shape.
+  function computeScanSummary(scanned) {
+    const totalLoc = scanned.reduce((a, f) => a + f.linesOfCode, 0);
+    const langTotals = {};
+    for (const f of scanned) {
+      langTotals[f.language] = (langTotals[f.language] || 0) + f.linesOfCode;
+    }
+    const languages = Object.entries(langTotals)
+      .map(([lang, loc]) => ({ language: lang, linesOfCode: loc, pctOfCodebase: totalLoc > 0 ? r2(loc / totalLoc * 100) : 0, legacy: LEGACY_LANGS.has(lang) }))
+      .sort((a, b) => b.linesOfCode - a.linesOfCode);
+    const testFiles = scanned.filter(f => f.isTest);
+    const prodFiles = scanned.filter(f => !f.isTest);
+    const prodLoc = prodFiles.reduce((a, f) => a + f.linesOfCode, 0);
+    const testLoc = testFiles.reduce((a, f) => a + f.linesOfCode, 0);
+    const summary = {
+      fileCount: scanned.length,
+      totalLinesOfCode: totalLoc,
+      productionFiles: prodFiles.length,
+      testFiles: testFiles.length,
+      testToCodeRatio: prodLoc > 0 ? r2(testLoc / prodLoc) : 0,
+      avgComplexity: scanned.length > 0 ? r2(scanned.reduce((a, f) => a + f.cyclomaticComplexity, 0) / scanned.length) : 0,
+      totalTodos: scanned.reduce((a, f) => a + f.todoCount, 0),
+      legacyLanguageFiles: scanned.filter(f => f.isLegacyLanguage).length,
+      avgCommentRatio: scanned.length > 0 ? r2(scanned.reduce((a, f) => a + f.commentRatio, 0) / scanned.length) : 0,
+    };
+    return { languages, summary };
+  }
+
   registerLensAction("legacy", "scanCodebase", (ctx, _artifact, params = {}) => {
     try {
       const s = lgState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -437,30 +490,7 @@ export default function registerLegacyActions(registerLensAction) {
       const name = lgClean(params.name, 120) || "untitled-codebase";
       const scanned = files.slice(0, 5000).map(scanFile);
 
-      const totalLoc = scanned.reduce((a, f) => a + f.linesOfCode, 0);
-      const langTotals = {};
-      for (const f of scanned) {
-        langTotals[f.language] = (langTotals[f.language] || 0) + f.linesOfCode;
-      }
-      const languages = Object.entries(langTotals)
-        .map(([lang, loc]) => ({ language: lang, linesOfCode: loc, pctOfCodebase: totalLoc > 0 ? r2(loc / totalLoc * 100) : 0, legacy: LEGACY_LANGS.has(lang) }))
-        .sort((a, b) => b.linesOfCode - a.linesOfCode);
-      const testFiles = scanned.filter(f => f.isTest);
-      const prodFiles = scanned.filter(f => !f.isTest);
-      const prodLoc = prodFiles.reduce((a, f) => a + f.linesOfCode, 0);
-      const testLoc = testFiles.reduce((a, f) => a + f.linesOfCode, 0);
-
-      const summary = {
-        fileCount: scanned.length,
-        totalLinesOfCode: totalLoc,
-        productionFiles: prodFiles.length,
-        testFiles: testFiles.length,
-        testToCodeRatio: prodLoc > 0 ? r2(testLoc / prodLoc) : 0,
-        avgComplexity: scanned.length > 0 ? r2(scanned.reduce((a, f) => a + f.cyclomaticComplexity, 0) / scanned.length) : 0,
-        totalTodos: scanned.reduce((a, f) => a + f.todoCount, 0),
-        legacyLanguageFiles: scanned.filter(f => f.isLegacyLanguage).length,
-        avgCommentRatio: scanned.length > 0 ? r2(scanned.reduce((a, f) => a + f.commentRatio, 0) / scanned.length) : 0,
-      };
+      const { languages, summary } = computeScanSummary(scanned);
 
       const codebase = {
         id: lgId("cb"), name,
@@ -506,8 +536,51 @@ export default function registerLegacyActions(registerLensAction) {
       const i = arr.findIndex(c => c.id === params.id);
       if (i < 0) return { ok: false, error: "codebase not found" };
       arr.splice(i, 1);
+      // The codebase's debt snapshots go with it — left behind they are
+      // orphaned rows no surface can reach in context (debtTrend would
+      // keep charting a codebase that no longer exists). Snapshots with
+      // no codebaseId are manual, label-keyed records and stay.
+      const snaps = s.snapshots.get(lgUid(ctx)) || [];
+      const kept = snaps.filter(sn => sn.codebaseId !== params.id);
+      const snapshotsRemoved = snaps.length - kept.length;
+      if (snapshotsRemoved > 0) s.snapshots.set(lgUid(ctx), kept);
       lgSave();
-      return { ok: true, result: { deleted: params.id } };
+      return { ok: true, result: { deleted: params.id, snapshotsRemoved } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /** updateCodebase — rename a scanned codebase. params = { id, name } */
+  registerLensAction("legacy", "updateCodebase", (ctx, _a, params = {}) => {
+    try {
+      const s = lgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const cb = (s.codebases.get(lgUid(ctx)) || []).find(c => c.id === params.id);
+      if (!cb) return { ok: false, error: "codebase not found" };
+      const name = lgClean(params.name, 120);
+      if (!name) return { ok: false, error: "codebase name required" };
+      cb.name = name;
+      lgSave();
+      return { ok: true, result: { codebase: { id: cb.id, name: cb.name, languages: cb.languages, summary: cb.summary, scannedAt: cb.scannedAt } } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /** rescanCodebase — rescan in place: same id, same list position, same
+   *  name; files/languages/summary recomputed from the supplied files.
+   *  params = { id, files } */
+  registerLensAction("legacy", "rescanCodebase", (ctx, _a, params = {}) => {
+    try {
+      const s = lgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const cb = (s.codebases.get(lgUid(ctx)) || []).find(c => c.id === params.id);
+      if (!cb) return { ok: false, error: "codebase not found" };
+      const files = Array.isArray(params.files) ? params.files : [];
+      if (files.length === 0) return { ok: false, error: "no files supplied to scan" };
+      const scanned = files.slice(0, 5000).map(scanFile);
+      const { languages, summary } = computeScanSummary(scanned);
+      cb.files = scanned;
+      cb.languages = languages;
+      cb.summary = summary;
+      cb.scannedAt = lgNow();
+      lgSave();
+      return { ok: true, result: { codebase: { id: cb.id, name: cb.name, languages, summary, scannedAt: cb.scannedAt }, files: scanned } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 

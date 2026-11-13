@@ -266,7 +266,7 @@ export default function registerIntegrationsActions(registerLensAction) {
    */
   registerLensAction("integrations", "compatibilityCheck", (ctx, artifact, params) => {
   try {
-    const apis = artifact.data?.apis || [];
+    const apis = artifact?.data?.apis || params?.apis || [];
     if (apis.length === 0) return { ok: true, result: { message: "No APIs to check." } };
 
     function parseSemver(version) {
@@ -284,6 +284,32 @@ export default function registerIntegrationsActions(registerLensAction) {
     const results = apis.map(api => {
       const current = parseSemver(api.currentVersion);
       const target = parseSemver(api.targetVersion);
+      // FIX-integrations-008: blank or malformed versions used to be
+      // coerced to 0.0.0 on both sides, so an untouched form (whose
+      // placeholders read 1.0.0 → 2.0.0) analysed as "(same) ·
+      // compatible · trivial · 0h". An entry whose versions are not
+      // semantic versions is reported as unusable, in words, and
+      // counts as neither compatible nor breaking.
+      // (parseSemver coerces a blank to 0.0.0 and calls it valid, so
+      // validity is judged on the raw typed value.)
+      const SEMVER_RE = /^v?\d+\.\d+\.\d+(?:-.+)?$/;
+      const currentOk = SEMVER_RE.test(String(api.currentVersion ?? "").trim());
+      const targetOk = SEMVER_RE.test(String(api.targetVersion ?? "").trim());
+      if (!currentOk || !targetOk) {
+        const bad = [];
+        if (!currentOk) bad.push(`current version "${api.currentVersion ?? ""}"`);
+        if (!targetOk) bad.push(`target version "${api.targetVersion ?? ""}"`);
+        return {
+          name: api.name || "(unnamed api)",
+          currentVersion: api.currentVersion ?? "",
+          targetVersion: api.targetVersion ?? "",
+          versionsValid: false,
+          backwardCompatible: false,
+          problem: `${bad.join(" and ")} ${bad.length > 1 ? "are" : "is"} not a semantic version — type both versions (like 1.0.0 → 2.0.0) to run the check.`,
+          changes: { total: 0, breaking: 0, nonBreaking: 0, added: [], removed: [], modified: [] },
+          migration: { effortScore: 0, level: "unknown", estimatedHours: 0, breakingChangeDetails: [] },
+        };
+      }
 
       // Version comparison
       const comparison = compareVersions(target, current);
@@ -347,9 +373,11 @@ export default function registerIntegrationsActions(registerLensAction) {
       };
     });
 
-    // Aggregate
-    const totalBreaking = results.reduce((s, r) => s + r.changes.breaking, 0);
-    const allCompatible = results.every(r => r.backwardCompatible);
+    // Aggregate (invalid-version entries are neither compatible nor
+    // breaking — they are unusable, and the summary says how many)
+    const usable = results.filter(r => r.versionsValid !== false);
+    const totalBreaking = usable.reduce((s, r) => s + r.changes.breaking, 0);
+    const allCompatible = usable.length > 0 && usable.every(r => r.backwardCompatible);
     const totalMigrationEffort = results.reduce((s, r) => s + r.migration.effortScore, 0);
 
     return {
@@ -357,12 +385,13 @@ export default function registerIntegrationsActions(registerLensAction) {
         apis: results,
         summary: {
           totalApis: apis.length,
-          compatible: results.filter(r => r.backwardCompatible).length,
-          incompatible: results.filter(r => !r.backwardCompatible).length,
+          compatible: usable.filter(r => r.backwardCompatible).length,
+          incompatible: usable.filter(r => !r.backwardCompatible).length,
+          invalidVersions: results.length - usable.length,
           totalBreakingChanges: totalBreaking,
           allBackwardCompatible: allCompatible,
           aggregateMigrationEffort: Math.min(100, totalMigrationEffort),
-          totalEstimatedHours: Math.round(results.reduce((s, r) => s + r.migration.estimatedHours, 0) * 10) / 10,
+          totalEstimatedHours: Math.round(usable.reduce((s, r) => s + r.migration.estimatedHours, 0) * 10) / 10,
         },
       },
     };

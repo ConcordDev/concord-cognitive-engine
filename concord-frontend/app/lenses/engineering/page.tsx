@@ -155,7 +155,25 @@ function EngineeringDesk() {
           </div>
         )}
 
-        {summary && (
+        {summary && (() => {
+          // FIX-engineering-011: the solver returns support reactions
+          // and per-member end moments, and the factor of safety is
+          // 1/maxUtilization — the summary strip showed none of them.
+          const fr = feaResult as unknown as {
+            reactions?: Array<{ nodeId: string; dof: string; force: number }>;
+            memberForces?: Array<{ momentI?: number; momentJ?: number }>;
+          } | null;
+          const reactionsByNode = new Map<string, Array<{ dof: string; force: number }>>();
+          for (const r of fr?.reactions ?? []) {
+            if (Math.abs(r.force) < 1e-9) continue;
+            const arr = reactionsByNode.get(r.nodeId) ?? [];
+            arr.push({ dof: r.dof, force: r.force });
+            reactionsByNode.set(r.nodeId, arr);
+          }
+          const maxMoment = Math.max(0, ...(fr?.memberForces ?? []).flatMap((m) => [Math.abs(m.momentI ?? 0), Math.abs(m.momentJ ?? 0)]));
+          const fos = summary.maxUtilization > 0 ? 1 / summary.maxUtilization : null;
+          return (
+          <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div className="rounded-2xl border border-white/10 bg-[#111] p-4 text-center">
               <p className="mb-1 text-xs text-gray-400">Max Displacement</p>
@@ -174,7 +192,33 @@ function EngineeringDesk() {
               </p>
             </div>
           </div>
-        )}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="rounded-2xl border border-white/10 bg-[#111] p-4 text-center">
+              <p className="mb-1 text-xs text-gray-400">Factor of Safety</p>
+              <p className="font-mono text-lg font-bold text-neon-cyan">{fos !== null ? fos.toFixed(2) : '—'}</p>
+              <p className="text-[10px] text-gray-400">1 ÷ max utilization</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-[#111] p-4 text-center">
+              <p className="mb-1 text-xs text-gray-400">Max Bending Moment</p>
+              <p className="font-mono text-lg font-bold text-neon-cyan">{maxMoment.toFixed(2)}</p>
+              <p className="text-[10px] text-gray-400">largest member end moment</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-[#111] p-4 text-left">
+              <p className="mb-1 text-center text-xs text-gray-400">Support Reactions</p>
+              {reactionsByNode.size === 0 ? (
+                <p className="text-center font-mono text-sm text-gray-400">none</p>
+              ) : (
+                <ul className="space-y-0.5 font-mono text-[11px] text-gray-300">
+                  {[...reactionsByNode.entries()].map(([nodeId, rs]) => (
+                    <li key={nodeId}><span className="text-neon-cyan">{nodeId}</span>: {rs.map((r) => `${r.dof} ${r.force.toFixed(2)}`).join(' · ')}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+          </>
+          );
+        })()}
 
         <div className="flex justify-end">
           <DTUExportButton domain="engineering" data={{}} prepare={prepareExport} />

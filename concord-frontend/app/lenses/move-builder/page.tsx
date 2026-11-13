@@ -10,6 +10,7 @@ import { Hammer, Library, Sparkles } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { ExportMenu } from '@/components/common/ExportMenu';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { ComposePanel } from '@/components/move-builder/ComposePanel';
 import { MintedMovesPanel, type MintedMovesHandle } from '@/components/move-builder/MintedMovesPanel';
@@ -50,6 +51,7 @@ export default function MoveBuilderLensPage() {
         activeTab={active}
         onTab={(id) => go(id as MoveView)}
         tabsLabel="Move builder"
+        actions={<ExportMenu domain="move-builder" />}
         cta={active === 'library' ? { label: 'Compose a new move', icon: Sparkles, onClick: () => go('compose') } : undefined}
       >
         {active === 'compose' && (

@@ -109,8 +109,18 @@ export function resolveMarket(db, marketId, outcome) {
 export function listOpenMarkets(db, worldId = null, limit = 50) {
   if (!db) return [];
   try {
+    // FIX-spectate-001: a market with no world (NULL/empty world_id)
+    // belongs to the hub. spectate.list's grouping has always counted
+    // it under "concordia-hub", but this world-scoped query demanded
+    // an exact world_id match — so the index card promised "2 markets"
+    // that the world detail then denied ("No open markets"). One
+    // attribution, read the same way by both paths.
     const args = worldId ? [worldId, limit] : [limit];
-    const where = worldId ? "WHERE world_id = ? AND status = 'open'" : "WHERE status = 'open'";
+    const where = worldId
+      ? worldId === "concordia-hub"
+        ? "WHERE (world_id = ? OR world_id IS NULL OR world_id = '') AND status = 'open'"
+        : "WHERE world_id = ? AND status = 'open'"
+      : "WHERE status = 'open'";
     return db.prepare(`
       SELECT id, world_id, question, resolution_kind, pool_yes_sparks, pool_no_sparks,
              opened_at, closes_at

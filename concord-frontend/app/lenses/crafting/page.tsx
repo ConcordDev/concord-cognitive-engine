@@ -60,6 +60,7 @@ import {
 export default function CraftingPage() {
   const nameId = useId();
   const [recipes, setRecipes] = useState<BenchPiece[]>([]);
+  const [pieceQuery, setPieceQuery] = useState('');
   const [phase, setPhase] = useState<'loading' | 'ready' | 'error'>('loading');
   const [loadError, setLoadError] = useState('');
   const [open, setOpen] = useState(false);
@@ -188,8 +189,12 @@ export default function CraftingPage() {
 
   const putOnBench = useCallback(async () => {
     const title = name.trim();
-    if (!title || saving) {
-      setOpen(true);
+    if (saving) return;
+    // FIX-crafting-005: an empty or whitespace name used to vanish here
+    // — the click did nothing and said nothing. Refuse out loud, the
+    // same words the rename path already uses for the same case.
+    if (!title) {
+      setSaveError('A piece needs a name.');
       return;
     }
     setSaving(true);
@@ -232,20 +237,24 @@ export default function CraftingPage() {
   }, [name, saving, registerPiece, recipes, clearDraft]);
 
   const [publishingId, setPublishingId] = useState<string | null>(null);
+  const [confirmPublishId, setConfirmPublishId] = useState<string | null>(null);
 
   // D1's publish act: the piece's canonical artifact is what publish acts
   // on (POST /api/lens/crafting/:artifactId/publish flips its visibility).
   // A piece with no artifact yet has nothing to publish — no button.
-  const publishPiece = useCallback(async (piece: BenchPiece) => {
+  const publishPiece = useCallback(async (piece: BenchPiece, unpublish = false) => {
     if (!piece.artifactId || publishingId) return;
     setPublishingId(piece.id);
     try {
-      const res = await api.post(`/api/lens/crafting/${piece.artifactId}/publish`, {});
+      const res = await api.post(`/api/lens/crafting/${piece.artifactId}/publish`, unpublish ? { unpublish: true } : {});
       const body = res.data as { ok?: boolean } | null;
       if (!body || body.ok === false) throw new Error('publish refused');
-      setRecipes((prev) => prev.map((p) => (p.id === piece.id ? { ...p, published: true } : p)));
+      setRecipes((prev) => prev.map((p) => (p.id === piece.id ? { ...p, published: !unpublish } : p)));
+      setConfirmPublishId(null);
     } catch {
-      setNotice('That piece could not be published. It is still on your bench.');
+      setNotice(unpublish
+        ? 'That piece could not be unpublished. It is still marked published.'
+        : 'That piece could not be published. It is still on your bench.');
     } finally {
       setPublishingId(null);
     }
@@ -350,6 +359,11 @@ export default function CraftingPage() {
     { lensId: 'crafting' },
   );
 
+  const pq = pieceQuery.trim().toLowerCase();
+  const visiblePieces = pq
+    ? recipes.filter((p) => p.title.toLowerCase().includes(pq))
+    : recipes;
+
 
   return (
     <LensShell lensId="crafting" asMain={false}>
@@ -377,18 +391,48 @@ export default function CraftingPage() {
           {phase === 'ready' && recipes.length === 0 && !open && (
             <p className="text-[14px] text-zinc-500">The bench is clear.</p>
           )}
+          {phase === 'ready' && recipes.length > 1 && (
+            <input value={pieceQuery} onChange={(e) => setPieceQuery(e.target.value)}
+              placeholder="Search your pieces" aria-label="Search your pieces"
+              className="mb-3 w-full max-w-xl self-stretch rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500" />
+          )}
+          {phase === 'ready' && recipes.length > 0 && visiblePieces.length === 0 && (
+            <p className="text-[14px] text-zinc-500">No pieces match &ldquo;{pieceQuery}&rdquo;.</p>
+          )}
           {phase === 'ready' && recipes.length > 0 && (
             <ul className="w-full max-w-xl self-stretch">
-              {recipes.map((row) => (
+              {visiblePieces.map((row) => (
                 <li key={row.id} className="flex items-baseline justify-between gap-4 border-b border-white/10 py-3 text-[16px] text-zinc-100">
                   <span>{row.title}</span>
                   <span className="flex shrink-0 items-baseline gap-3">
                     {row.published ? (
-                      <span className="text-[12px] text-zinc-500">Published</span>
+                      <button
+                        type="button"
+                        onClick={() => void publishPiece(row, true)}
+                        disabled={publishingId === row.id}
+                        className="text-[13px] text-zinc-300 underline disabled:opacity-60"
+                      >
+                        Unpublish
+                      </button>
+                    ) : row.artifactId && confirmPublishId === row.id ? (
+                      <span className="flex items-baseline gap-2">
+                        <span className="text-[12px] text-zinc-500">Anyone who can list published pieces will see this. It is not posted to a feed or a market.</span>
+                        <button
+                          type="button"
+                          onClick={() => void publishPiece(row)}
+                          disabled={publishingId === row.id}
+                          className="text-[13px] text-zinc-100 underline disabled:opacity-60"
+                        >
+                          Confirm publish
+                        </button>
+                        <button type="button" onClick={() => setConfirmPublishId(null)} className="text-[13px] text-zinc-400 underline">
+                          Cancel
+                        </button>
+                      </span>
                     ) : row.artifactId ? (
                       <button
                         type="button"
-                        onClick={() => void publishPiece(row)}
+                        onClick={() => setConfirmPublishId(row.id)}
                         disabled={publishingId === row.id}
                         className="text-[13px] text-zinc-300 underline disabled:opacity-60"
                       >
@@ -434,6 +478,8 @@ export default function CraftingPage() {
               <input
                 id={nameId}
                 value={editingId ? editName : name}
+                aria-invalid={saveError ? true : undefined}
+                aria-describedby={saveError ? 'crafting-name-error' : undefined}
                 onChange={(event) => {
                   if (editingId) setEditName(event.target.value);
                   else setName(event.target.value);
@@ -451,7 +497,10 @@ export default function CraftingPage() {
               {isDuplicateName(editingId ? editName : name, recipes, editingId ?? undefined) ? (
                 <p className="mt-2 text-[13px] text-zinc-400">A piece with this name is already on the bench.</p>
               ) : null}
-              {saveError ? <p role="alert" className="mt-3 text-[14px] text-zinc-300">{saveError}</p> : null}
+              {!editingId && !(editingId ? editName : name).trim() ? (
+                <p className="mt-2 text-[13px] text-zinc-500">Give the piece a name to put it on the bench.</p>
+              ) : null}
+              {saveError ? <p role="alert" id="crafting-name-error" className="mt-3 text-[14px] text-zinc-300">{saveError}</p> : null}
               {saving ? <p role="status" className="mt-3 text-[14px] text-zinc-500">Saving the piece.</p> : null}
             </form>
           )}
@@ -460,7 +509,7 @@ export default function CraftingPage() {
         <button
           type="button"
           onClick={onPrimary}
-          disabled={saving || phase !== 'ready'}
+          disabled={saving || phase !== 'ready' || (open && !(editingId ? editName : name).trim())}
           title="Start a piece (N)"
           className="fixed bottom-8 right-8 z-30 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black disabled:opacity-60"
         >

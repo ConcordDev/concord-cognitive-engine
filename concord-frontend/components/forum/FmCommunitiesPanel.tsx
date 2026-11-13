@@ -109,17 +109,17 @@ export function FmCommunitiesPanel({
 
       <section className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-2">
         <div className="flex gap-2">
-          <input placeholder="Icon" value={form.icon} maxLength={4}
+          <input aria-label="Community icon" placeholder="Icon" value={form.icon} maxLength={4}
             onChange={(e) => setForm({ ...form, icon: e.target.value })}
             className="w-14 text-center bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-          <input placeholder="Community name" value={form.name}
+          <input aria-label="Community name" placeholder="Community name" value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
         </div>
-        <input placeholder="Description" value={form.description}
+        <input aria-label="Community description" placeholder="Description" value={form.description}
           onChange={(e) => setForm({ ...form, description: e.target.value })}
           className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-        <textarea placeholder="Rules — one per line" value={form.rules} rows={2}
+        <textarea aria-label="Community rules" placeholder="Rules — one per line" value={form.rules} rows={2}
           onChange={(e) => setForm({ ...form, rules: e.target.value })}
           className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100 resize-y" />
         <button type="button" onClick={create}
@@ -177,7 +177,7 @@ export function FmCommunitiesPanel({
                     )}
                     {canEdit(sf) && (
                       <div className="flex gap-2 mt-1.5">
-                        <input placeholder="Add a rule" value={ruleDraft}
+                        <input aria-label="Add a rule" placeholder="Add a rule" value={ruleDraft}
                           onChange={(e) => setRuleDraft(e.target.value)}
                           onKeyDown={(e) => { if (e.key === 'Enter') void addRule(sf); }}
                           className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-100" />
@@ -198,7 +198,7 @@ export function FmCommunitiesPanel({
                     </div>
                     {canEdit(sf) && (
                       <div className="flex gap-2 mt-1.5">
-                        <input placeholder="Add moderator" value={modDraft}
+                        <input aria-label="Add moderator" placeholder="Add moderator" value={modDraft}
                           onChange={(e) => setModDraft(e.target.value)}
                           onKeyDown={(e) => { if (e.key === 'Enter') void addMod(sf); }}
                           className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-100" />

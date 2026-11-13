@@ -116,14 +116,14 @@ export function CampaignManager() {
                   </div>
                 )}
               </button>
-              <button aria-label="Edit" onClick={() => startEdit(c)} className="opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-zinc-200"><Pencil className="w-3 h-3" /></button>
+              <button aria-label={`Edit campaign ${c.name}`} onClick={() => startEdit(c)} className="opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-zinc-200"><Pencil className="w-3 h-3" /></button>
               {confirmingDelete === c.id ? (
                 <span className="flex items-center gap-1">
-                  <button aria-label="Confirm delete" onClick={() => delCampaign(c.id)} className="px-1.5 py-0.5 rounded bg-rose-600/30 text-rose-200 hover:bg-rose-600/50 text-[10px]">Delete?</button>
-                  <button aria-label="Keep campaign" onClick={() => setConfirmingDelete(null)} className="px-1.5 py-0.5 rounded bg-zinc-700/40 text-zinc-300 text-[10px]">Keep</button>
+                  <button aria-label={`Confirm delete campaign ${c.name}`} onClick={() => delCampaign(c.id)} className="px-1.5 py-0.5 rounded bg-rose-600/30 text-rose-200 hover:bg-rose-600/50 text-[10px]">Delete?</button>
+                  <button aria-label={`Keep campaign ${c.name}`} onClick={() => setConfirmingDelete(null)} className="px-1.5 py-0.5 rounded bg-zinc-700/40 text-zinc-300 text-[10px]">Keep</button>
                 </span>
               ) : (
-                <button aria-label="Delete" onClick={() => setConfirmingDelete(c.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <button aria-label={`Delete campaign ${c.name}`} onClick={() => setConfirmingDelete(c.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
               )}
             </div>
             {editing === c.id && (

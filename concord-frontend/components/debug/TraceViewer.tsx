@@ -15,6 +15,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { useDebugProject } from './ProjectContext';
 import { Activity, Loader2, Plus, RefreshCw } from 'lucide-react';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface Span {
   spanId: string;
@@ -89,6 +90,21 @@ export function TraceViewer() {
       setRollup(r.data.result.serviceBreakdown || []);
     }
   }, [projectId]);
+
+  // Delete a captured trace (FIX-debug-013) — the store had record /
+  // list / detail but no way to remove one.
+  const deleteTrace = useCallback(async (id: string) => {
+    const r = await lensRun('debug', 'trace-delete', { id });
+    if (r.data?.ok) {
+      if (detail?.id === id) {
+        setDetail(null);
+        setRollup([]);
+      }
+      load();
+    } else {
+      setError(r.data?.error || 'Trace delete failed');
+    }
+  }, [detail, load]);
 
   // Records a real span tree captured from the running lens stack.
   const recordSample = useCallback(async () => {
@@ -182,25 +198,35 @@ export function TraceViewer() {
           ) : (
             <div className="space-y-2 max-h-[440px] overflow-y-auto">
               {traces.map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => openTrace(t.id)}
-                  className={`w-full text-left p-2.5 rounded-lg border ${
-                    detail?.id === t.id
-                      ? 'border-neon-cyan/40 bg-neon-cyan/[0.06]'
-                      : 'border-lattice-border bg-lattice-deep hover:border-lattice-border/80'
-                  }`}
-                >
-                  <p className="text-xs font-mono text-gray-200 truncate">{t.name}</p>
-                  <div className="flex items-center gap-2 mt-1 text-[10px] text-gray-400">
-                    <span className="text-yellow-400">{t.totalDurationMs}ms</span>
-                    <span>{t.spanCount} spans</span>
-                    {t.errorCount > 0 && (
-                      <span className="text-red-400">{t.errorCount} err</span>
-                    )}
-                    <span className="text-neon-purple">{t.rootService}</span>
+                <div key={t.id} className="relative">
+                  <button
+                    onClick={() => openTrace(t.id)}
+                    className={`w-full text-left p-2.5 pr-16 rounded-lg border ${
+                      detail?.id === t.id
+                        ? 'border-neon-cyan/40 bg-neon-cyan/[0.06]'
+                        : 'border-lattice-border bg-lattice-deep hover:border-lattice-border/80'
+                    }`}
+                  >
+                    <p className="text-xs font-mono text-gray-200 truncate">{t.name}</p>
+                    <div className="flex items-center gap-2 mt-1 text-[10px] text-gray-400">
+                      <span className="text-yellow-400">{t.totalDurationMs}ms</span>
+                      <span>{t.spanCount} spans</span>
+                      {t.errorCount > 0 && (
+                        <span className="text-red-400">{t.errorCount} err</span>
+                      )}
+                      <span className="text-neon-purple">{t.rootService}</span>
+                    </div>
+                  </button>
+                  <div className="absolute right-2 top-2">
+                    <StickyDeleteConfirm
+                      onConfirm={() => deleteTrace(t.id)}
+                      confirmLabel="Delete trace?"
+                      armAriaLabel={`Delete trace ${t.name}`}
+                      confirmAriaLabel="Confirm delete trace"
+                      className="text-[10px] px-1.5 py-0.5 rounded border border-red-500/30 text-red-300 hover:bg-red-500/10 bg-lattice-deep"
+                    />
                   </div>
-                </button>
+                </div>
               ))}
             </div>
           )}

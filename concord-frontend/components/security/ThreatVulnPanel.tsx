@@ -117,15 +117,15 @@ export function ThreatVulnPanel() {
         </div>
         {threats.map((t, i) => (
           <div key={i} className="grid grid-cols-[1fr_90px_60px_60px_60px_90px_30px] gap-1.5">
-            <input className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white" placeholder="Threat name" value={t.name} onChange={(e) => updateThreat(i, 'name', e.target.value)} />
-            <input className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white" placeholder="Type" value={t.type} onChange={(e) => updateThreat(i, 'type', e.target.value)} />
-            <input type="number" min={1} max={5} className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white font-mono" value={t.probability} onChange={(e) => updateThreat(i, 'probability', Math.max(1, Math.min(5, Number(e.target.value) || 3)))} />
-            <input type="number" min={1} max={5} className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white font-mono" value={t.impact} onChange={(e) => updateThreat(i, 'impact', Math.max(1, Math.min(5, Number(e.target.value) || 3)))} />
-            <input type="number" min={0} className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white font-mono" value={t.vulnerabilities} onChange={(e) => updateThreat(i, 'vulnerabilities', Math.max(0, Number(e.target.value) || 0))} />
+            <input aria-label="Threat name" className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white" placeholder="Threat name" value={t.name} onChange={(e) => updateThreat(i, 'name', e.target.value)} />
+            <input aria-label="Type" className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white" placeholder="Type" value={t.type} onChange={(e) => updateThreat(i, 'type', e.target.value)} />
+            <input aria-label="Probability (1-5)" type="number" min={1} max={5} className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white font-mono" value={t.probability} onChange={(e) => updateThreat(i, 'probability', Math.max(1, Math.min(5, Number(e.target.value) || 3)))} />
+            <input aria-label="Impact (1-5)" type="number" min={1} max={5} className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white font-mono" value={t.impact} onChange={(e) => updateThreat(i, 'impact', Math.max(1, Math.min(5, Number(e.target.value) || 3)))} />
+            <input aria-label="Vulnerabilities" type="number" min={0} className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white font-mono" value={t.vulnerabilities} onChange={(e) => updateThreat(i, 'vulnerabilities', Math.max(0, Number(e.target.value) || 0))} />
             <div className="flex items-center gap-1">
-              <input type="number" min={0} className="w-12 rounded border border-zinc-800 bg-zinc-950 px-1 py-1 text-xs text-white font-mono" value={t.activeControls} onChange={(e) => updateThreat(i, 'activeControls', Math.max(0, Number(e.target.value) || 0))} />
+              <input aria-label="Active controls" type="number" min={0} className="w-12 rounded border border-zinc-800 bg-zinc-950 px-1 py-1 text-xs text-white font-mono" value={t.activeControls} onChange={(e) => updateThreat(i, 'activeControls', Math.max(0, Number(e.target.value) || 0))} />
               <span className="text-[10px] text-zinc-400">/</span>
-              <input type="number" min={0} className="w-12 rounded border border-zinc-800 bg-zinc-950 px-1 py-1 text-xs text-white font-mono" value={t.totalControls} onChange={(e) => updateThreat(i, 'totalControls', Math.max(0, Number(e.target.value) || 0))} />
+              <input aria-label="Total controls" type="number" min={0} className="w-12 rounded border border-zinc-800 bg-zinc-950 px-1 py-1 text-xs text-white font-mono" value={t.totalControls} onChange={(e) => updateThreat(i, 'totalControls', Math.max(0, Number(e.target.value) || 0))} />
             </div>
             <button type="button" onClick={() => removeThreat(i)} className="rounded border border-zinc-800 text-xs text-zinc-400 hover:text-rose-300" aria-label="Remove"><Trash2 className="mx-auto h-3 w-3" /></button>
           </div>
@@ -140,11 +140,11 @@ export function ThreatVulnPanel() {
         </div>
         {systems.map((s, i) => (
           <div key={i} className="grid grid-cols-[1fr_50px_50px_50px_70px_30px] gap-1.5">
-            <input className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white font-mono" placeholder="hostname" value={s.hostname} onChange={(e) => updateSystem(i, 'hostname', e.target.value)} />
-            <label className="flex items-center justify-center rounded border border-zinc-800 bg-zinc-950"><input type="checkbox" checked={s.firewall} onChange={(e) => updateSystem(i, 'firewall', e.target.checked)} /></label>
-            <label className="flex items-center justify-center rounded border border-zinc-800 bg-zinc-950"><input type="checkbox" checked={s.encryption} onChange={(e) => updateSystem(i, 'encryption', e.target.checked)} /></label>
-            <label className="flex items-center justify-center rounded border border-zinc-800 bg-zinc-950"><input type="checkbox" checked={s.mfa} onChange={(e) => updateSystem(i, 'mfa', e.target.checked)} /></label>
-            <label className="flex items-center justify-center rounded border border-zinc-800 bg-zinc-950"><input type="checkbox" checked={s.defaultCredentials} onChange={(e) => updateSystem(i, 'defaultCredentials', e.target.checked)} /></label>
+            <input aria-label="hostname" className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white font-mono" placeholder="hostname" value={s.hostname} onChange={(e) => updateSystem(i, 'hostname', e.target.value)} />
+            <label className="flex items-center justify-center rounded border border-zinc-800 bg-zinc-950"><input aria-label="Firewall" type="checkbox" checked={s.firewall} onChange={(e) => updateSystem(i, 'firewall', e.target.checked)} /></label>
+            <label className="flex items-center justify-center rounded border border-zinc-800 bg-zinc-950"><input aria-label="Encryption" type="checkbox" checked={s.encryption} onChange={(e) => updateSystem(i, 'encryption', e.target.checked)} /></label>
+            <label className="flex items-center justify-center rounded border border-zinc-800 bg-zinc-950"><input aria-label="MFA" type="checkbox" checked={s.mfa} onChange={(e) => updateSystem(i, 'mfa', e.target.checked)} /></label>
+            <label className="flex items-center justify-center rounded border border-zinc-800 bg-zinc-950"><input aria-label="Default credentials" type="checkbox" checked={s.defaultCredentials} onChange={(e) => updateSystem(i, 'defaultCredentials', e.target.checked)} /></label>
             <button type="button" onClick={() => removeSystem(i)} className="rounded border border-zinc-800 text-xs text-zinc-400 hover:text-rose-300" aria-label="Remove"><Trash2 className="mx-auto h-3 w-3" /></button>
           </div>
         ))}

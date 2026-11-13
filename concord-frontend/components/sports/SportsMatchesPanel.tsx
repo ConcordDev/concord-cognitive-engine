@@ -18,6 +18,7 @@ import { useLensData } from '@/lib/hooks/use-lens-data';
 import { calendarDateKey } from '@/lib/calendar-date';
 import { EmptyState, ErrorState, StatTile } from '@/components/ui';
 import { ds } from '@/lib/design-system';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 import {
   badgeForStored,
@@ -136,6 +137,13 @@ export function SportsMatchesPanel() {
   const handleCreate = useCallback(async () => {
     if (!newGame.title.trim()) return;
     const pair = scorePair(newGame.scoreHome, newGame.scoreAway);
+    // FIX-sports-003: junk in both score fields used to parse to 'blank'
+    // and the match saved scoreless, silently discarding what was typed.
+    if (pair.kind === 'blank' && (newGame.scoreHome.trim() || newGame.scoreAway.trim())) {
+      const bad = [newGame.scoreHome, newGame.scoreAway].map((v) => v.trim()).filter(Boolean)[0];
+      setFormError(`Scores must be whole numbers of 0 or more — "${bad}" can't be used. Clear the score fields to save the match without a score.`);
+      return;
+    }
     if (pair.kind === 'partial') {
       setFormError('Enter both scores, or leave both blank.');
       return;
@@ -293,7 +301,7 @@ export function SportsMatchesPanel() {
           >
             <div className={cn(ds.panel, 'space-y-3')}>
               <div className="flex items-center justify-between">
-                <h3 className={ds.heading3}>Log a match</h3>
+                <h2 className={ds.heading3}>Log a match</h2>
                 <button
                   type="button"
                   onClick={() => setShowCreate(false)}
@@ -469,19 +477,15 @@ export function SportsMatchesPanel() {
                   >
                     {editingId === g.id ? 'Close' : 'Score'}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => remove(g.id)}
+                  <StickyDeleteConfirm
+                    onConfirm={() => remove(g.id)}
                     disabled={deleteMut.isPending}
-                    className="text-gray-500 hover:text-red-400 p-1"
-                    aria-label="Delete match"
-                  >
-                    {deleteMut.isPending ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="w-4 h-4" />
-                    )}
-                  </button>
+                    armLabel={deleteMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                    armAriaLabel={`Delete match ${g.title}`}
+                    confirmAriaLabel={`Confirm delete match ${g.title}`}
+                    confirmLabel={`Delete ${g.title}?`}
+                    className="inline-flex min-h-11 min-w-11 items-center justify-center text-gray-400 hover:text-red-400 p-1"
+                  />
                 </div>
               </div>
               {editingId === g.id && (

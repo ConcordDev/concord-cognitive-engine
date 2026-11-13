@@ -79,7 +79,10 @@ export default function ForecastPage() {
       setForecast(r.data.result.forecast || null);
     } else {
       setForecast(null);
-      if (r.data?.error) setError(r.data.error);
+      // An unknown world id must read as an error, not a silent empty
+      // card (FIX-forecast-006): fall back to a worded message naming
+      // the id when the run carries no error text of its own.
+      setError(r.data?.error || `No forecast could be loaded for world "${worldId}" — the world id may not exist.`);
     }
     setLoading(false);
   };
@@ -94,8 +97,8 @@ export default function ForecastPage() {
     if (r.data?.ok && r.data.result?.ok) {
       setForecast(r.data.result.forecast || null);
       setForecastVersion((v) => v + 1);
-    } else if (r.data?.error) {
-      setError(r.data.error);
+    } else {
+      setError(r.data?.error || `Couldn't compose a forecast for world "${worldId}" — the world id may not exist.`);
     }
     setComposing(false);
   };
@@ -148,7 +151,7 @@ export default function ForecastPage() {
                 aria-current={on ? 'page' : undefined}
                 className={cn(
                   'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
-                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-400 hover:text-zinc-200',
                 )}
               >
                 <Icon className="h-3.5 w-3.5" />
@@ -176,7 +179,7 @@ export default function ForecastPage() {
             </div>
           ) : !forecast ? (
             <div className="text-center text-zinc-400 italic py-12 border border-white/10 rounded-2xl">
-              No forecast yet. Use Refresh forecast to compose one.
+              No forecast yet for world &ldquo;{worldId}&rdquo;. Check the world id, or use Refresh forecast to compose the first one.
             </div>
           ) : (
             <div className="space-y-4">

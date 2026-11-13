@@ -49,6 +49,10 @@ export default function CrisisOpsPage() {
   const [suggestions, setSuggestions] = useState<SkillSuggestion[]>([]);
   const [crisisTypes, setCrisisTypes] = useState<string[]>([]);
   const [declareType, setDeclareType] = useState('');
+  // FIX-crisis-ops-007: Resolve is a two-step confirm (sticky — it stays
+  // armed until Confirm or Cancel; it cannot be a real <button> because
+  // the crisis row itself is a button, so the step lives on the span).
+  const [confirmResolveId, setConfirmResolveId] = useState<string | null>(null);
   const [declaring, setDeclaring] = useState(false);
   const [loading, setLoading] = useState(true);
   const [forbidden, setForbidden] = useState(false);
@@ -149,15 +153,41 @@ export default function CrisisOpsPage() {
                       >
                         <div className="flex items-center justify-between gap-2">
                           <span className="text-sm font-semibold text-rose-200">{c.type}</span>
-                          <span
-                            role="button"
-                            tabIndex={0}
-                            onClick={(e) => { e.stopPropagation(); resolve(c.id); }}
-                            onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); resolve(c.id); } }}
-                            className="rounded border border-rose-500/40 bg-rose-600/30 px-2 py-0.5 text-[10px] text-rose-100 hover:bg-rose-600/50"
-                          >
-                            Resolve
-                          </span>
+                          {confirmResolveId === c.id ? (
+                            <span className="inline-flex items-center gap-1">
+                              <span
+                                role="button"
+                                tabIndex={0}
+                                aria-label={`Confirm resolve ${c.type}`}
+                                onClick={(e) => { e.stopPropagation(); setConfirmResolveId(null); resolve(c.id); }}
+                                onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); setConfirmResolveId(null); resolve(c.id); } }}
+                                className="rounded border border-rose-400/60 bg-rose-600/50 px-2 py-0.5 text-[10px] font-semibold text-rose-50 hover:bg-rose-600/70"
+                              >
+                                Resolve {c.type}? Confirm
+                              </span>
+                              <span
+                                role="button"
+                                tabIndex={0}
+                                aria-label="Cancel resolve"
+                                onClick={(e) => { e.stopPropagation(); setConfirmResolveId(null); }}
+                                onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); setConfirmResolveId(null); } }}
+                                className="rounded border border-zinc-500/40 bg-zinc-700/40 px-2 py-0.5 text-[10px] text-zinc-200 hover:bg-zinc-700/60"
+                              >
+                                Cancel
+                              </span>
+                            </span>
+                          ) : (
+                            <span
+                              role="button"
+                              tabIndex={0}
+                              aria-label={`Resolve ${c.type}`}
+                              onClick={(e) => { e.stopPropagation(); setConfirmResolveId(c.id); }}
+                              onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); setConfirmResolveId(c.id); } }}
+                              className="rounded border border-rose-500/40 bg-rose-600/30 px-2 py-0.5 text-[10px] text-rose-100 hover:bg-rose-600/50"
+                            >
+                              Resolve
+                            </span>
+                          )}
                         </div>
                         <p className="mt-1 text-[12px] text-gray-300">{c.description}</p>
                       </button>

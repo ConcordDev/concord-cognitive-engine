@@ -149,8 +149,8 @@ export function TravelDocsPanel() {
       <div className="grid grid-cols-2 gap-2 bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
         <input placeholder="Document title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
           className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-        <select value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })}
-          className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
+        <select aria-label="Document kind" value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })}
+          className="min-h-11 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
           {KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
         </select>
         <input placeholder="Number / reference" value={form.number} onChange={(e) => setForm({ ...form, number: e.target.value })}
@@ -202,7 +202,7 @@ export function TravelDocsPanel() {
                           <FileDown className="w-3 h-3 text-emerald-400 shrink-0" />
                           <button type="button" onClick={() => downloadAttachment(a.id, a.fileName)}
                             className="flex-1 truncate text-emerald-400 hover:underline text-left">{a.fileName}</button>
-                          <span className="text-[9px] text-zinc-500">{formatBytes(a.bytes)}</span>
+                          <span className="text-[9px] text-zinc-400">{formatBytes(a.bytes)}</span>
                           <button aria-label="Delete attachment" type="button" onClick={() => deleteAttachment(a.id)}
                             className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
                         </li>

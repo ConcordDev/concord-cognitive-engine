@@ -98,7 +98,7 @@ export function EnviroPanel() {
             {aqiMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Load AQI'}
           </button>
         </div>
-        <p className="text-[10px] text-zinc-500">Open-Meteo modeled CAMS data, not EPA monitor readings.</p>
+        <p className="text-[10px] text-zinc-400">Open-Meteo modeled CAMS data, not EPA monitor readings.</p>
         {error && <div className="text-[11px] text-red-300">{error}</div>}
         {sourceNote && observations.length > 0 && (
           <p className="text-[10px] text-zinc-400">{sourceNote}</p>

@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Lock } from 'lucide-react';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 export interface LensPortal {
   id: string;
@@ -39,7 +40,7 @@ export function LensPortalMarker({ portal, isNearby, onEnter }: LensPortalMarker
     <div
       className="relative flex flex-col items-center cursor-pointer group"
       onClick={() => portal.accessible && isNearby && onEnter(portal)}
-      title={portal.label} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+      title={portal.label} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
       {/* Portal building icon */}
       <div
         className={`

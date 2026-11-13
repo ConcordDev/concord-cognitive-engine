@@ -14,6 +14,7 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
 
 const WB_BASE = "https://api.worldbank.org/v2";
 const WB_TTL = 30 * 60 * 1000; // 30-min cache — WB data is annual
@@ -119,7 +120,56 @@ function validIndicatorCode(raw) {
   return INDICATOR_CODE_RE.test(raw);
 }
 
+
+// ── lens export provider (FIX-society-012) ─────────────────────────────
+// The Society export said "Nothing to export" over records the lens itself
+// stores: saved charts live in STATE.societyCharts (a share-id registry,
+// not a STATE.societyLens bag), and the agent schedules the autonomy tab's
+// AgentBuilder manages live in STATE.agentsLens.schedules — neither is a
+// store the shared export's legs read. This provider emits the caller's
+// own charts and agent schedules. Caller-scoped throughout; the chart
+// registry is shared by design (permalinks), so ownership is checked per
+// record, exactly as wb-list-charts checks it.
+function societyExportRows(ctx) {
+  const uid = userId(ctx);
+  if (!uid || uid === "anon") return [];
+  const rows = [];
+  for (const r of chartStore().values()) {
+    if (!r || r.owner !== uid) continue;
+    rows.push({
+      id: r.id,
+      type: "chart",
+      title: r.title || r.id,
+      createdAt: r.createdAt || null,
+      updatedAt: r.createdAt || null,
+      data: { spec: r.spec || null, permalink: `/lenses/society?chart=${r.id}` },
+    });
+  }
+  const bag = globalThis._concordSTATE?.agentsLens;
+  const schedules = bag?.schedules instanceof Map ? (bag.schedules.get(uid) || []) : [];
+  for (const sched of schedules) {
+    if (!sched || !sched.id) continue;
+    rows.push({
+      id: sched.id,
+      type: "agent-schedule",
+      title: sched.agentName || sched.agentId || sched.id,
+      createdAt: sched.createdAt || null,
+      updatedAt: sched.lastFiredAt || sched.createdAt || null,
+      data: {
+        agentId: sched.agentId || null,
+        kind: sched.kind || null,
+        spec: sched.spec || null,
+        goal: sched.goal || null,
+        enabled: sched.enabled !== false,
+        fireCount: sched.fireCount ?? 0,
+      },
+    });
+  }
+  return rows;
+}
+
 export default function registerSocietyActions(register) {
+  registerLensExportProvider("society", societyExportRows);
   register = guardAnonWrites(register); // anonymous callers can read, not write (lib/lens-authz.js)
   // Legacy-convention shim: adapt the canonical register(ctx, input) the MACROS
   // registry (and runMacro / the contract engine / macro-assassin) drive → the
@@ -627,6 +677,24 @@ export default function registerSocietyActions(register) {
       .map((r) => ({ id: r.id, title: r.title, createdAt: r.createdAt, permalink: `/lenses/society?chart=${r.id}` }))
       .sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1));
     return { ok: true, result: { charts, count: charts.length } };
+  });
+
+  /**
+   * wb-delete-chart — Remove one of the caller's own saved charts.
+   * Loading a chart by id stays ownerless (permalinks are shareable by
+   * design); deleting is owner-only, so a shared link can never be
+   * used to erase the chart it points at.
+   * params: { id }
+   */
+  registerLensAction("society", "wb-delete-chart", (ctx, _artifact, params = {}) => {
+    const id = String(params.id || "").trim();
+    if (!id) return { ok: false, error: "id required" };
+    const store = chartStore();
+    const record = store.get(id);
+    if (!record) return { ok: false, error: "chart not found" };
+    if (record.owner !== userId(ctx)) return { ok: false, error: "only the chart's owner can delete it" };
+    store.delete(id);
+    return { ok: true, result: { deleted: id } };
   });
 
   // ── Feature: Region / income-group aggregates and rankings ──────────

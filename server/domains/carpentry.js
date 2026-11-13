@@ -1,4 +1,5 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { badNumber, readingOrNull } from "../lib/finite-input.js";
 import { newShareToken, isStrongShareToken } from "../lib/share-token.js";
 // server/domains/carpentry.js
 // Domain actions for carpentry: board foot calculation, joint strength analysis,
@@ -121,6 +122,7 @@ export default function registerCarpentryActions(registerLensAction) {
     if (!(s.invoices instanceof Map)) s.invoices = new Map();      // userId -> Array<invoice>
     if (!(s.portalShares instanceof Map)) s.portalShares = new Map(); // token -> share
     if (!(s.signatures instanceof Map)) s.signatures = new Map();  // userId -> Map<estimateId, signature>
+    if (!(s.estimates instanceof Map)) s.estimates = new Map();    // userId -> Array<estimate>
     return s;
   }
   function saveCarpentry() {
@@ -204,15 +206,20 @@ export default function registerCarpentryActions(registerLensAction) {
   // labor, overhead and margin applied. Deterministic.
   registerLensAction("carpentry", "materialTakeoff", (ctx, _a, params = {}) => {
     try {
+      const rawProject = String(params.projectName ?? "").trim();
+      if (rawProject.length > 160) return badNumber("projectName", "must be 160 characters or fewer");
       const rawItems = Array.isArray(params.items) ? params.items : [];
       const items = [];
       for (const it of rawItems) {
-        const qty = cpNum(it.quantity);
+        const rawName = String(it?.name ?? "").trim();
+        if (rawName.length > 120) return badNumber("name", "must be 120 characters or fewer");
+        if (it?.quantity === undefined || it?.quantity === null || it?.quantity === "") continue;
+        const qty = readingOrNull(it.quantity, { min: 0.0001, max: 1_000_000, fallback: null });
+        if (qty === null) return badNumber("quantity", "must be a number greater than 0");
         const unitCost = cpNum(it.unitCost);
-        if (qty <= 0) continue;
         const lineTotal = Math.round(qty * unitCost * 100) / 100;
         items.push({
-          name: cpClean(it.name || "item", 120) || "item",
+          name: rawName || "item",
           quantity: qty,
           unit: cpClean(it.unit || "ea", 16) || "ea",
           unitCost: Math.round(unitCost * 100) / 100,
@@ -233,27 +240,39 @@ export default function registerCarpentryActions(registerLensAction) {
       const subtotal = baseCost + overhead;
       const margin = Math.round(subtotal * (marginPct / 100) * 100) / 100;
       const total = Math.round((subtotal + margin) * 100) / 100;
-      return {
-        ok: true,
-        result: {
-          projectName: cpClean(params.projectName || "Untitled Project", 160),
-          items,
-          materialSubtotal: Math.round(materialSubtotal * 100) / 100,
-          wastePct,
-          materialWithWaste,
-          laborHours,
-          laborRate,
-          laborCost,
-          overheadPct,
-          overhead,
-          marginPct,
-          margin,
-          total,
-        },
+      const result = {
+        projectName: rawProject || "Untitled Project",
+        items,
+        materialSubtotal: Math.round(materialSubtotal * 100) / 100,
+        wastePct,
+        materialWithWaste,
+        laborHours,
+        laborRate,
+        laborCost,
+        overheadPct,
+        overhead,
+        marginPct,
+        margin,
+        total,
       };
+      const s = getCarpentryState();
+      if (s) {
+        const estimate = { id: cpId("est"), savedAt: new Date().toISOString(), ...result };
+        cpArr(s.estimates, cpActor(ctx)).unshift(estimate);
+        saveCarpentry();
+        result.estimateId = estimate.id;
+      }
+      return { ok: true, result };
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }
+  });
+
+  registerLensAction("carpentry", "estimate-list", (ctx, _a, _params = {}) => {
+    const s = getCarpentryState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const estimates = cpArr(s.estimates, cpActor(ctx));
+    return { ok: true, result: { estimates, count: estimates.length } };
   });
 
   // ─── Feature: Photo job-log with before/after per job ────────────────
@@ -579,6 +598,30 @@ export default function registerCarpentryActions(registerLensAction) {
     }
   });
 
+  registerLensAction("carpentry", "timeEntryUpdate", (ctx, _a, params = {}) => {
+    try {
+      const s = getCarpentryState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const entry = cpArr(s.timeEntries, cpActor(ctx)).find((e) => e.id === params.id);
+      if (!entry) return { ok: false, error: "time entry not found" };
+      if (params.hours != null) {
+        const hours = cpNum(params.hours);
+        if (hours <= 0) return { ok: false, error: "hours must be positive" };
+        entry.hours = Math.round(hours * 100) / 100;
+      }
+      if (params.rate != null) entry.rate = Math.max(0, cpNum(params.rate));
+      if (params.date != null) entry.date = cpClean(params.date, 30) || entry.date;
+      if (params.crewId != null) entry.crewId = cpClean(params.crewId, 80);
+      if (params.jobName != null) entry.jobName = cpClean(params.jobName, 160) || entry.jobName;
+      // cost is derived (hours x rate) — recompute from the merged values
+      entry.cost = Math.round(entry.hours * entry.rate * 100) / 100;
+      saveCarpentry();
+      return { ok: true, result: { entry } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
   registerLensAction("carpentry", "timeEntryDelete", (ctx, _a, params = {}) => {
     try {
       const s = getCarpentryState();
@@ -671,6 +714,32 @@ export default function registerCarpentryActions(registerLensAction) {
       const [removed] = arr.splice(i, 1);
       saveCarpentry();
       return { ok: true, result: { deleted: removed.id, invoiceNumber: removed.invoiceNumber } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("carpentry", "invoiceUpdate", (ctx, _a, params = {}) => {
+    try {
+      const s = getCarpentryState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const inv = cpArr(s.invoices, cpActor(ctx)).find((i) => i.id === params.id);
+      if (!inv) return { ok: false, error: "invoice not found" };
+      if (params.client != null) inv.client = cpClean(params.client, 160) || inv.client;
+      if (params.clientEmail != null) inv.clientEmail = cpClean(params.clientEmail, 200);
+      if (params.dueDate != null) inv.dueDate = cpClean(params.dueDate, 30);
+      if (params.amount != null) {
+        const amount = cpNum(params.amount);
+        if (amount <= 0) return { ok: false, error: "invoice amount must be positive" };
+        // recompute the derived money from the invoice's own percentages,
+        // exactly as estimateToInvoice derived them at issue time
+        inv.subtotal = Math.round(amount * 100) / 100;
+        inv.tax = Math.round(amount * (inv.taxPct / 100) * 100) / 100;
+        inv.total = Math.round((inv.subtotal + inv.tax) * 100) / 100;
+        inv.depositDue = Math.round(inv.total * (inv.depositPct / 100) * 100) / 100;
+      }
+      saveCarpentry();
+      return { ok: true, result: { invoice: inv } };
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }

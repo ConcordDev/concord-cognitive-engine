@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit, MapView, type MapMarker } from '@/components/viz';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface SeriesPoint { year: number; value: number }
@@ -94,6 +95,14 @@ type View = 'chart' | 'bubble' | 'map' | 'dashboard' | 'rankings' | 'saved';
 export function DataExplorer() {
   const [view, setView] = useState<View>('chart');
   const [aliases, setAliases] = useState<Record<string, string>>({});
+  // FIX-society-007: the country/indicator selection lives HERE, not in
+  // each view. Views unmount on switch, so per-view state reset the
+  // selection to USA · gdpPerCapita on every switch — a chart plotted
+  // in one view was silently replaced by the defaults when the user
+  // opened the Chart view and clicked Share link. Shared selection
+  // survives switching; Share saves the chart actually being viewed.
+  const [country, setCountry] = useState('USA');
+  const [indicator, setIndicator] = useState('gdpPerCapita');
 
   useEffect(() => {
     (async () => {
@@ -160,11 +169,11 @@ export function DataExplorer() {
         ))}
       </nav>
 
-      {view === 'chart' && <ChartView aliases={aliases} />}
+      {view === 'chart' && <ChartView aliases={aliases} country={country} indicator={indicator} onCountryChange={setCountry} onIndicatorChange={setIndicator} />}
       {view === 'bubble' && <BubbleView aliases={aliases} />}
       {view === 'map' && <MapChoroView aliases={aliases} />}
-      {view === 'dashboard' && <DashboardView />}
-      {view === 'rankings' && <RankingsView aliases={aliases} />}
+      {view === 'dashboard' && <DashboardView country={country} onCountryChange={setCountry} />}
+      {view === 'rankings' && <RankingsView aliases={aliases} indicator={indicator} onIndicatorChange={setIndicator} />}
       {view === 'saved' && <SavedView />}
     </div>
   );
@@ -293,9 +302,13 @@ function downloadCsv(filename: string, csv: string) {
 // toggling recomputes instantly client-side via `wb-transform-series`
 // against the cached raw series (+ a population series fetched once and
 // cached per-country for per-capita).
-function ChartView({ aliases }: { aliases: Record<string, string> }) {
-  const [country, setCountry] = useState('USA');
-  const [indicator, setIndicator] = useState('gdpPerCapita');
+function ChartView({ aliases, country, indicator, onCountryChange, onIndicatorChange }: {
+  aliases: Record<string, string>;
+  country: string; indicator: string;
+  onCountryChange: (v: string) => void; onIndicatorChange: (v: string) => void;
+}) {
+  const setCountry = onCountryChange;
+  const setIndicator = onIndicatorChange;
   const [kind, setKind] = useState<'line' | 'bar' | 'area'>('line');
   const [perCapita, setPerCapita] = useState(false);
   const [inflationAdjust, setInflationAdjust] = useState(false);
@@ -318,11 +331,15 @@ function ChartView({ aliases }: { aliases: Record<string, string> }) {
   // toggle changes — via wb-transform-series, not a re-fetch.
   useEffect(() => {
     if (!rawData) { setData(null); return; }
-    if (!perCapita && !inflationAdjust) { setData(rawData); return; }
+    // FIX-society-008: transforms never apply to the population series,
+    // even when a toggle was left on from another indicator.
+    const effPerCapita = perCapita && indicator !== 'population';
+    const effInflation = inflationAdjust && indicator !== 'population';
+    if (!effPerCapita && !effInflation) { setData(rawData); return; }
     let cancelled = false;
     (async () => {
       let population = populationCache.current.get(country);
-      if (perCapita && !population) {
+      if (effPerCapita && !population) {
         const popEnv = await macro<ChartSeriesResult>('wb-chart-series', { country, indicator: 'population', perCapita: false, inflationAdjust: false });
         if (popEnv.ok && popEnv.result) {
           population = popEnv.result.series;
@@ -330,14 +347,14 @@ function ChartView({ aliases }: { aliases: Record<string, string> }) {
         }
       }
       if (cancelled) return;
-      if (perCapita && !population) {
+      if (effPerCapita && !population) {
         setError('per-capita requires population data, which failed to load');
         setData(rawData);
         return;
       }
       const env = await macro<{ series: SeriesPoint[]; transforms: string[]; min: number | null; max: number | null }>(
         'wb-transform-series',
-        { series: rawData.series, population, perCapita, inflationAdjust },
+        { series: rawData.series, population, perCapita: effPerCapita, inflationAdjust: effInflation },
       );
       if (cancelled) return;
       if (env.ok && env.result) {
@@ -358,7 +375,7 @@ function ChartView({ aliases }: { aliases: Record<string, string> }) {
       }
     })();
     return () => { cancelled = true; };
-  }, [rawData, perCapita, inflationAdjust, country]);
+  }, [rawData, perCapita, inflationAdjust, country, indicator]);
 
   const exportCsv = useCallback(async () => {
     if (!data) return;
@@ -398,11 +415,14 @@ function ChartView({ aliases }: { aliases: Record<string, string> }) {
             </button>
           ))}
         </div>
-        <label className="flex items-center gap-1 text-zinc-400">
-          <input type="checkbox" checked={perCapita} onChange={(e) => setPerCapita(e.target.checked)} /> per-capita
+        {/* FIX-society-008: neither transform applies to the population
+            series itself — per-capita divides it by itself (a flat 1)
+            and a price deflator on a headcount is meaningless. */}
+        <label className={`flex items-center gap-1 ${indicator === 'population' ? 'text-zinc-600' : 'text-zinc-400'}`} title={indicator === 'population' ? 'Not applicable to the population series' : undefined}>
+          <input type="checkbox" checked={perCapita && indicator !== 'population'} disabled={indicator === 'population'} onChange={(e) => setPerCapita(e.target.checked)} /> per-capita
         </label>
-        <label className="flex items-center gap-1 text-zinc-400">
-          <input type="checkbox" checked={inflationAdjust} onChange={(e) => setInflationAdjust(e.target.checked)} /> inflation-adjusted (USD 2024)
+        <label className={`flex items-center gap-1 ${indicator === 'population' ? 'text-zinc-600' : 'text-zinc-400'}`} title={indicator === 'population' ? 'Not applicable to the population series' : undefined}>
+          <input type="checkbox" checked={inflationAdjust && indicator !== 'population'} disabled={indicator === 'population'} onChange={(e) => setInflationAdjust(e.target.checked)} /> inflation-adjusted (USD 2024)
         </label>
         <button onClick={run} disabled={loading}
           className="inline-flex items-center gap-1.5 rounded border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-50">
@@ -626,8 +646,8 @@ function MapChoroView({ aliases }: { aliases: Record<string, string> }) {
 }
 
 // ─── Country dashboard ───────────────────────────────────────────────────────
-function DashboardView() {
-  const [country, setCountry] = useState('USA');
+function DashboardView({ country, onCountryChange }: { country: string; onCountryChange: (v: string) => void }) {
+  const setCountry = onCountryChange;
   const [data, setData] = useState<DashResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -699,8 +719,11 @@ function DashboardView() {
 }
 
 // ─── Rankings (region / income aggregates) ───────────────────────────────────
-function RankingsView({ aliases }: { aliases: Record<string, string> }) {
-  const [indicator, setIndicator] = useState('gdpPerCapita');
+function RankingsView({ aliases, indicator, onIndicatorChange }: {
+  aliases: Record<string, string>;
+  indicator: string; onIndicatorChange: (v: string) => void;
+}) {
+  const setIndicator = onIndicatorChange;
   const [data, setData] = useState<RankResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -785,6 +808,15 @@ function SavedView() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Delete one of the caller's own saved charts (FIX-society-006) —
+  // the server checks ownership; a shared permalink alone never
+  // authorizes a delete.
+  const remove = useCallback(async (id: string) => {
+    const env = await macro<{ deleted: string }>('wb-delete-chart', { id });
+    if (env.ok) load();
+    else setError(env.error || 'could not delete the chart');
+  }, [load]);
+
   // Four mutually-exclusive UX states (honest by construction — every branch is
   // a pure function of the real wb-list-charts macro result): LOADING (role=
   // status), ERROR (role=alert + working Retry), EMPTY, POPULATED.
@@ -834,6 +866,14 @@ function SavedView() {
                   className="ml-auto rounded border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-200 hover:bg-cyan-500/20">
                   Copy link
                 </button>
+                <StickyDeleteConfirm
+                  onConfirm={() => remove(c.id)}
+                  armLabel="Delete"
+                  confirmLabel="Delete chart?"
+                  armAriaLabel={`Delete saved chart ${c.title}`}
+                  confirmAriaLabel="Confirm delete saved chart"
+                  className="rounded border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-[10px] text-red-200 hover:bg-red-500/20"
+                />
               </li>
             );
           })}

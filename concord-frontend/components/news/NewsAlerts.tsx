@@ -119,6 +119,7 @@ export function NewsAlerts() {
           {kind !== 'breaking' && (
             <input
               type="text"
+              aria-label={kind === 'topic' ? 'Topic to watch' : 'Source or channel name'}
               value={target}
               onChange={(e) => setTarget(e.target.value)}
               placeholder={kind === 'topic' ? 'Topic to watch (e.g. politics)' : 'Source / channel name'}

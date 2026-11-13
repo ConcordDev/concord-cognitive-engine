@@ -6,6 +6,7 @@ import {
   Shield, Trophy, Check, CheckCheck, Settings, Filter,
   ChevronRight, Sparkles, ExternalLink,
 } from 'lucide-react';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 const panel = 'bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg';
 
@@ -277,7 +278,7 @@ export default function NotificationFeed({
                   className={`px-4 py-3 hover:bg-white/5 transition-colors cursor-pointer ${
                     !notif.read ? 'bg-white/[0.02]' : ''
                   }`}
-                  onClick={() => !notif.read && onRead(notif.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                  onClick={() => !notif.read && onRead(notif.id)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                   <div className="flex items-start gap-2.5">
                     {/* Unread dot */}
                     <div className="mt-1 flex-shrink-0 w-4 flex justify-center">

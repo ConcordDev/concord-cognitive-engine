@@ -100,7 +100,7 @@ function HealthIndicator({
       }`}
     >
       {neutral ? (
-        <span className="w-5 text-center text-xs text-gray-500 shrink-0" aria-hidden="true">—</span>
+        <span className="w-5 text-center text-xs text-gray-400 shrink-0" aria-hidden="true">—</span>
       ) : pass ? (
         <CheckCircle className="w-5 h-5 text-neon-green shrink-0" />
       ) : (

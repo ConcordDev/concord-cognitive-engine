@@ -50,14 +50,14 @@ export interface ShopfrontShellProps {
 export function ShopfrontShell({ activeNav, onNavChange, badges = {}, shopName, currency, children }: ShopfrontShellProps) {
   return (
     <div className="flex h-[calc(100vh-180px)] min-h-[640px] bg-lattice-deep border border-orange-500/15 rounded-lg overflow-hidden">
-      <aside className="w-48 bg-lattice-void border-r border-white/5 flex flex-col flex-shrink-0">
+      <aside className="w-14 sm:w-48 bg-lattice-void border-r border-white/5 flex flex-col flex-shrink-0">
         <header className="px-3 py-3 border-b border-white/5">
           <div className="flex items-center gap-2">
             <Wallet className="w-4 h-4 text-orange-400" />
-            <span className="text-xs font-semibold text-gray-200">Shop Manager</span>
+            <span className="hidden text-xs font-semibold text-gray-200 sm:inline">Shop Manager</span>
           </div>
           {shopName && (
-            <div className="mt-1 text-[10px] text-gray-400 truncate">{shopName} · {currency || 'USD'}</div>
+            <div className="mt-1 hidden text-[10px] text-gray-400 truncate sm:block">{shopName} · {currency || 'USD'}</div>
           )}
         </header>
         <nav className="flex-1 overflow-y-auto py-2">
@@ -70,16 +70,17 @@ export function ShopfrontShell({ activeNav, onNavChange, badges = {}, shopName, 
                 <li key={n.id}>
                   <button
                     type="button"
+                    aria-label={n.label}
                     onClick={() => onNavChange(n.id)}
                     className={cn(
                       'w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors',
                       active ? 'bg-orange-500/10 text-orange-200 border-l-2 border-orange-400' : 'text-gray-400 hover:text-white hover:bg-white/[0.04] border-l-2 border-transparent',
                     )}
                   >
-                    <Icon className="w-3.5 h-3.5" />
-                    <span className="truncate flex-1 text-left">{n.label}</span>
+                    <Icon className="w-3.5 h-3.5 shrink-0" />
+                    <span className="hidden truncate flex-1 text-left sm:inline">{n.label}</span>
                     {badge !== undefined && badge !== 0 && (
-                      <span className="px-1.5 py-0.5 rounded text-[9px] bg-orange-500/20 text-orange-300 font-mono">{badge}</span>
+                      <span className="hidden px-1.5 py-0.5 rounded text-[9px] bg-orange-500/20 text-orange-300 font-mono sm:inline">{badge}</span>
                     )}
                   </button>
                 </li>
@@ -88,7 +89,7 @@ export function ShopfrontShell({ activeNav, onNavChange, badges = {}, shopName, 
           </ul>
         </nav>
       </aside>
-      <main className="flex-1 overflow-y-auto p-4">{children}</main>
+      <main className="min-w-0 flex-1 overflow-y-auto p-4">{children}</main>
     </div>
   );
 }

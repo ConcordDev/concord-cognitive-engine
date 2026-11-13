@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
@@ -79,6 +79,7 @@ import CouncilTheaterPanel from '@/components/council/CouncilTheaterPanel';
 import { EntityCard } from '@/components/entity/EntityCard';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import { FileText as MobileTabFileText, Vote as MobileTabVote, MessageSquare as MobileTabMessage, DollarSign as MobileTabDollar, ScrollText as MobileTabScroll, UsersRound as MobileTabPeople, CalendarClock as MobileTabMeetings, Archive as MobileTabArchive, Gavel as MobileTabGavel } from 'lucide-react';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -387,17 +388,41 @@ export default function CouncilLensPage() {
     return queryClient.invalidateQueries({ queryKey: ['council', 'shared'] });
   }, [queryClient]);
 
-  useEffect(() => {
-    if (!user?.id) return;
-    let cancelled = false;
-    void (async () => {
-      const joined = await lensRun('council', 'member-join', {
-        authorName: actorName || user.username,
-      });
-      if (!cancelled && joined.data.ok) await reloadShared();
-    })();
-    return () => { cancelled = true; };
-  }, [user?.id, user?.username, actorName, reloadShared]);
+  // FIX-council-008 — membership is explicit (founder ruling A,
+  // 2026-11-13): opening this lens NEVER joins the viewer. The
+  // mount-effect auto-join that used to live here is retired entire;
+  // joining and leaving happen only through the Join / Leave controls
+  // in the membership bar under the header.
+  const [membershipBusy, setMembershipBusy] = useState(false);
+  const [membershipError, setMembershipError] = useState<string | null>(null);
+
+  const handleJoinCouncil = useCallback(async () => {
+    if (!user?.id || membershipBusy) return;
+    setMembershipBusy(true);
+    setMembershipError(null);
+    const joined = await lensRun('council', 'member-join', {
+      authorName: actorName || user.username,
+    });
+    setMembershipBusy(false);
+    if (joined.data.ok) {
+      await reloadShared();
+    } else {
+      setMembershipError(joined.data.error || 'Could not join the council.');
+    }
+  }, [user?.id, user?.username, actorName, membershipBusy, reloadShared]);
+
+  const handleLeaveCouncil = useCallback(async () => {
+    if (!user?.id || membershipBusy) return;
+    setMembershipBusy(true);
+    setMembershipError(null);
+    const left = await lensRun('council', 'member-leave', {});
+    setMembershipBusy(false);
+    if (left.data.ok) {
+      await reloadShared();
+    } else {
+      setMembershipError(left.data.error || 'Could not leave the council.');
+    }
+  }, [user?.id, membershipBusy, reloadShared]);
 
   const {
     items: budgetLensItems,
@@ -434,6 +459,7 @@ export default function CouncilLensPage() {
 
   const proposals: Proposal[] = useMemo(() => sharedCouncil?.proposals ?? [], [sharedCouncil]);
   const members: CouncilMember[] = useMemo(() => sharedCouncil?.members ?? [], [sharedCouncil]);
+  const viewerIsCouncilMember = !!user?.id && members.some((m) => m.userId === user.id);
   const auditLog: AuditEntry[] = useMemo(() => sharedCouncil?.audit ?? [], [sharedCouncil]);
   const budgetItems: BudgetItem[] = useMemo(
     () => budgetLensItems.map((i) => ({ ...(i.data as unknown as BudgetItem), id: i.id })),
@@ -1190,7 +1216,7 @@ export default function CouncilLensPage() {
           <div className="flex items-center gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
+              <input aria-label="Search proposals…  /"
                 ref={searchInputRef}
                 type="text"
                 value={searchQuery}
@@ -1199,7 +1225,7 @@ export default function CouncilLensPage() {
                 className={cn(ds.input, 'pl-10 !w-64')}
               />
             </div>
-            <select
+            <select aria-label="Filter by status"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as ProposalStatus | 'all')}
               className={cn(ds.select, '!w-40')}
@@ -1344,7 +1370,7 @@ export default function CouncilLensPage() {
               </span>
             )}
           </div>
-          <h1 className={cn(ds.heading1, 'mb-2')}>{p.title}</h1>
+          <h2 className={cn(ds.heading1, 'mb-2')}>{p.title}</h2>
           <p className="text-gray-300 text-sm leading-relaxed mb-4">{p.description}</p>
 
           <div className="flex items-center gap-6 text-xs text-gray-400 border-t border-lattice-border pt-3">
@@ -1464,7 +1490,11 @@ export default function CouncilLensPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-gray-400">Sign in to cast your vote. Only council members are eligible.</p>
+                <p className="text-xs text-gray-400">
+                  {user?.id
+                    ? 'Join the council (top of this page) to cast your vote. Only council members are eligible.'
+                    : 'Sign in to cast your vote. Only council members are eligible.'}
+                </p>
               )}
             </div>
           )}
@@ -1507,13 +1537,13 @@ export default function CouncilLensPage() {
           </div>
           {showAmendmentForm && (
             <div className="mt-3 p-3 bg-lattice-elevated rounded-lg space-y-2">
-              <input
+              <input aria-label="Amendment title"
                 value={amendmentForm.title}
                 onChange={(e) => setAmendmentForm((f) => ({ ...f, title: e.target.value }))}
                 placeholder="Amendment title"
                 className={ds.input}
               />
-              <textarea
+              <textarea aria-label="Describe the proposed change"
                 value={amendmentForm.description}
                 onChange={(e) => setAmendmentForm((f) => ({ ...f, description: e.target.value }))}
                 placeholder="Describe the proposed change..."
@@ -1601,7 +1631,7 @@ export default function CouncilLensPage() {
             ))}
           </div>
           <div className="flex gap-2">
-            <input
+            <input aria-label="Add to the discussion"
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleAddComment(p.id)}
@@ -1881,7 +1911,7 @@ export default function CouncilLensPage() {
               onClick={() => {
                 setSelectedProposalId(p.id);
                 setActiveTab('proposals');
-              }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+              }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
               <div className="flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
@@ -2078,7 +2108,7 @@ export default function CouncilLensPage() {
             {d.status === 'active' && (
               <div className="space-y-2">
                 <div className="flex gap-2">
-                  <input
+                  <input aria-label="Add a point to the debate"
                     value={debatePointText}
                     onChange={(e) => setDebatePointText(e.target.value)}
                     placeholder="Add a point to the debate..."
@@ -2152,7 +2182,7 @@ export default function CouncilLensPage() {
               <DollarSign className="w-5 h-5 text-green-400" />
               Budget Modeler
             </h2>
-            <select
+            <select aria-label="Budget scenario"
               value={budgetScenario}
               onChange={(e) => setBudgetScenario(e.target.value as typeof budgetScenario)}
               className={cn(ds.select, '!w-36')}
@@ -2371,7 +2401,7 @@ export default function CouncilLensPage() {
               <Shield className="w-5 h-5 text-orange-400" />
               Audit Trail
             </h2>
-            <select
+            <select aria-label="Audit category"
               value={auditCategory}
               onChange={(e) => setAuditCategory(e.target.value as AuditEntry['category'] | 'all')}
               className={cn(ds.select, '!w-40')}
@@ -2466,7 +2496,7 @@ export default function CouncilLensPage() {
                     className={cn(
                       'text-[10px] mt-1 flex-shrink-0 w-32',
                       ds.textMono,
-                      'text-gray-600'
+                      'text-gray-400'
                     )}
                   >
                     {formatDateTime(entry.timestamp)}
@@ -2628,6 +2658,7 @@ export default function CouncilLensPage() {
               <div className="flex gap-1 mt-3 pt-2 border-t border-lattice-border">
                 {!s.delegatedTo ? (
                   <select
+                    aria-label={`Delegate ${stakeholderName(s.id)}'s vote to`}
                     onChange={(e) => {
                       if (e.target.value) handleDelegate(s.id, e.target.value);
                       e.target.value = '';
@@ -2770,7 +2801,7 @@ export default function CouncilLensPage() {
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-[22rem]">
             <h1 className="mb-1 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Council</h1>
-            <p className="text-[14px] text-zinc-500">
+            <p className="text-[14px] text-zinc-400">
               Governance, deliberation, and collective decision-making
             </p>
           </div>
@@ -2810,6 +2841,51 @@ export default function CouncilLensPage() {
           </div>
         </div>
       </header>
+
+      {/* Membership — FIX-council-008: explicit Join / Leave only.
+          Opening this page never joins anyone. */}
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+        {user?.id ? (
+          viewerIsCouncilMember ? (
+            <>
+              <p className="text-sm text-zinc-300">
+                You are a council member — one of {members.length} eligible{' '}
+                {members.length === 1 ? 'voter' : 'voters'}.
+              </p>
+              <button
+                onClick={handleLeaveCouncil}
+                disabled={membershipBusy}
+                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-[14px] text-zinc-300 transition-colors hover:bg-white/10 hover:text-zinc-50 disabled:opacity-50"
+              >
+                Leave the council
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-zinc-300">
+                You are viewing the council as a guest. Join to become an
+                eligible voter — opening this page never joins you.
+              </p>
+              <button
+                onClick={handleJoinCouncil}
+                disabled={membershipBusy}
+                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-[14px] text-zinc-300 transition-colors hover:bg-white/10 hover:text-zinc-50 disabled:opacity-50"
+              >
+                Join the council
+              </button>
+            </>
+          )
+        ) : (
+          <p className="text-sm text-zinc-400">
+            Sign in, then join the council to become an eligible voter.
+          </p>
+        )}
+        {membershipError && (
+          <p role="alert" className="text-sm text-red-300">
+            {membershipError}
+          </p>
+        )}
+      </div>
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
@@ -2935,9 +3011,9 @@ export default function CouncilLensPage() {
 
       {/* Create Proposal Modal */}
       {showCreateProposal && (
-        <div className={ds.modalBackdrop} onClick={() => setShowCreateProposal(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className={ds.modalBackdrop} onClick={() => setShowCreateProposal(false)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <div className={ds.modalContainer}>
-            <div className={cn(ds.modalPanel, 'max-w-2xl')} onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            <div className={cn(ds.modalPanel, 'max-w-2xl')} onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
               <div className="flex items-center justify-between px-5 py-4 border-b border-lattice-border">
                 <h2 className={ds.heading2}>New Proposal</h2>
                 <button
@@ -2950,17 +3026,19 @@ export default function CouncilLensPage() {
               <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
                 <div>
                   <label className={ds.label}>Title</label>
-                  <input
+                  <input aria-label="Title"
                     value={newProposal.title}
                     onChange={(e) => setNewProposal((p) => ({ ...p, title: e.target.value }))}
                     placeholder="Proposal title..."
+                    maxLength={200}
                     className={ds.input}
                   />
+                  {newProposal.title.length > 0 && <span className="text-[10px] text-gray-400">{newProposal.title.length}/200</span>}
                 </div>
                 <div className={ds.grid2}>
                   <div>
                     <label className={ds.label}>Type</label>
-                    <select
+                    <select aria-label="Proposal type"
                       value={newProposal.type}
                       onChange={(e) =>
                         setNewProposal((p) => ({ ...p, type: e.target.value as ProposalType }))
@@ -2976,7 +3054,7 @@ export default function CouncilLensPage() {
                   </div>
                   <div>
                     <label className={ds.label}>Voting Method</label>
-                    <select
+                    <select aria-label="Voting method"
                       value={newProposal.votingMethod}
                       onChange={(e) =>
                         setNewProposal((p) => ({
@@ -2996,7 +3074,7 @@ export default function CouncilLensPage() {
                 </div>
                 <div>
                   <label className={ds.label}>Description</label>
-                  <textarea
+                  <textarea aria-label="Description"
                     value={newProposal.description}
                     onChange={(e) => setNewProposal((p) => ({ ...p, description: e.target.value }))}
                     rows={5}
@@ -3006,7 +3084,7 @@ export default function CouncilLensPage() {
                 </div>
                 <div>
                   <label className={ds.label}>Impact Assessment</label>
-                  <textarea
+                  <textarea aria-label="Impact Assessment"
                     value={newProposal.impactAssessment}
                     onChange={(e) =>
                       setNewProposal((p) => ({ ...p, impactAssessment: e.target.value }))
@@ -3018,7 +3096,7 @@ export default function CouncilLensPage() {
                 </div>
                 <div>
                   <label className={ds.label}>Tags (comma-separated)</label>
-                  <input
+                  <input aria-label="Tags (comma-separated)"
                     value={newProposal.tags}
                     onChange={(e) => setNewProposal((p) => ({ ...p, tags: e.target.value }))}
                     placeholder="governance, policy, transparency"
@@ -3045,9 +3123,9 @@ export default function CouncilLensPage() {
 
       {/* Create Budget Item Modal */}
       {showCreateBudgetItem && (
-        <div className={ds.modalBackdrop} onClick={() => setShowCreateBudgetItem(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className={ds.modalBackdrop} onClick={() => setShowCreateBudgetItem(false)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <div className={ds.modalContainer}>
-            <div className={cn(ds.modalPanel, 'max-w-lg')} onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            <div className={cn(ds.modalPanel, 'max-w-lg')} onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
               <div className="flex items-center justify-between px-5 py-4 border-b border-lattice-border">
                 <h2 className={ds.heading2}>Add Budget Line Item</h2>
                 <button
@@ -3061,7 +3139,7 @@ export default function CouncilLensPage() {
                 <div className={ds.grid2}>
                   <div>
                     <label className={ds.label}>Category</label>
-                    <select
+                    <select aria-label="Budget item category"
                       value={newBudgetItem.category}
                       onChange={(e) =>
                         setNewBudgetItem((b) => ({ ...b, category: e.target.value }))
@@ -3077,7 +3155,7 @@ export default function CouncilLensPage() {
                   </div>
                   <div>
                     <label className={ds.label}>Type</label>
-                    <select
+                    <select aria-label="Budget item type"
                       value={newBudgetItem.type}
                       onChange={(e) =>
                         setNewBudgetItem((b) => ({
@@ -3094,7 +3172,7 @@ export default function CouncilLensPage() {
                 </div>
                 <div>
                   <label className={ds.label}>Description</label>
-                  <input
+                  <input aria-label="Description"
                     value={newBudgetItem.description}
                     onChange={(e) =>
                       setNewBudgetItem((b) => ({ ...b, description: e.target.value }))
@@ -3106,7 +3184,7 @@ export default function CouncilLensPage() {
                 <div className={ds.grid2}>
                   <div>
                     <label className={ds.label}>Amount ($)</label>
-                    <input
+                    <input aria-label="Amount ($)"
                       type="number"
                       value={newBudgetItem.amount}
                       onChange={(e) => setNewBudgetItem((b) => ({ ...b, amount: e.target.value }))}
@@ -3116,7 +3194,7 @@ export default function CouncilLensPage() {
                   </div>
                   <div>
                     <label className={ds.label}>Scenario</label>
-                    <select
+                    <select aria-label="Budget scenario"
                       value={newBudgetItem.scenario}
                       onChange={(e) =>
                         setNewBudgetItem((b) => ({
@@ -3134,7 +3212,7 @@ export default function CouncilLensPage() {
                 </div>
                 <div>
                   <label className={ds.label}>Justification</label>
-                  <textarea
+                  <textarea aria-label="Justification"
                     value={newBudgetItem.justification}
                     onChange={(e) =>
                       setNewBudgetItem((b) => ({ ...b, justification: e.target.value }))
@@ -3164,9 +3242,9 @@ export default function CouncilLensPage() {
 
       {/* Create Committee Modal */}
       {showCreateCommittee && (
-        <div className={ds.modalBackdrop} onClick={() => setShowCreateCommittee(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className={ds.modalBackdrop} onClick={() => setShowCreateCommittee(false)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <div className={ds.modalContainer}>
-            <div className={cn(ds.modalPanel, 'max-w-md')} onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            <div className={cn(ds.modalPanel, 'max-w-md')} onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
               <div className="flex items-center justify-between px-5 py-4 border-b border-lattice-border">
                 <h2 className={ds.heading2}>Create Committee</h2>
                 <button
@@ -3179,7 +3257,7 @@ export default function CouncilLensPage() {
               <div className="p-5 space-y-4">
                 <div>
                   <label className={ds.label}>Committee Name</label>
-                  <input
+                  <input aria-label="Committee Name"
                     value={newCommittee.name}
                     onChange={(e) => setNewCommittee((c) => ({ ...c, name: e.target.value }))}
                     placeholder="e.g. Ethics Review Committee"
@@ -3188,7 +3266,7 @@ export default function CouncilLensPage() {
                 </div>
                 <div>
                   <label className={ds.label}>Description</label>
-                  <textarea
+                  <textarea aria-label="Description"
                     value={newCommittee.description}
                     onChange={(e) =>
                       setNewCommittee((c) => ({ ...c, description: e.target.value }))
@@ -3218,9 +3296,9 @@ export default function CouncilLensPage() {
 
       {/* Create Debate Modal */}
       {showCreateDebate && (
-        <div className={ds.modalBackdrop} onClick={() => setShowCreateDebate(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className={ds.modalBackdrop} onClick={() => setShowCreateDebate(false)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <div className={ds.modalContainer}>
-            <div className={cn(ds.modalPanel, 'max-w-md')} onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            <div className={cn(ds.modalPanel, 'max-w-md')} onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
               <div className="flex items-center justify-between px-5 py-4 border-b border-lattice-border">
                 <h2 className={ds.heading2}>Start Debate</h2>
                 <button
@@ -3233,7 +3311,7 @@ export default function CouncilLensPage() {
               <div className="p-5 space-y-4">
                 <div>
                   <label className={ds.label}>Debate Topic</label>
-                  <textarea
+                  <textarea aria-label="Debate Topic"
                     value={newDebate.topic}
                     onChange={(e) => setNewDebate((d) => ({ ...d, topic: e.target.value }))}
                     rows={3}
@@ -3243,7 +3321,7 @@ export default function CouncilLensPage() {
                 </div>
                 <div>
                   <label className={ds.label}>Time per Speaker (seconds)</label>
-                  <input
+                  <input aria-label="Time per Speaker (seconds)"
                     type="number"
                     value={newDebate.timePerSpeaker}
                     onChange={(e) =>

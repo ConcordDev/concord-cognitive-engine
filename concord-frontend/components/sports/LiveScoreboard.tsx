@@ -97,7 +97,7 @@ export function LiveScoreboard() {
               <div className="mb-2 flex items-center justify-between gap-2 text-[10px] uppercase tracking-wider text-zinc-400">
                 <span className="min-w-0">
                   <span className="block truncate">{e.shortName || e.name}</span>
-                  {when && <span className="mt-0.5 block font-mono normal-case tracking-normal text-zinc-500">{when}</span>}
+                  {when && <span className="mt-0.5 block font-mono normal-case tracking-normal text-zinc-400">{when}</span>}
                 </span>
                 <span className={`flex shrink-0 items-center gap-1 font-mono ${live ? 'text-red-300' : completed ? 'text-zinc-400' : 'text-cyan-300'}`}>
                   {live && <Circle className="h-2 w-2 animate-pulse fill-red-300 text-red-300" />}

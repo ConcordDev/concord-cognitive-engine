@@ -131,6 +131,7 @@ export function statusLabel(status: string | null | undefined): string {
 export function BillTracker() {
   const [bills, setBills] = useState<Bill[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'watched' | BillStatus>('all');
   const [topic, setTopic] = useState('');
   const [watched, setWatched] = useState<string[]>([]);
@@ -139,11 +140,20 @@ export function BillTracker() {
 
   async function refresh(searchTopic: string) {
     setLoading(true);
+    setLoadError(null);
     try {
-      const res = await lensRun({ domain: 'government', action: 'bills-list', input: { topic: searchTopic, limit: 40 } });
+      const res = await Promise.race([
+        lensRun({ domain: 'government', action: 'bills-list', input: { topic: searchTopic, limit: 40 } }),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Bills are taking too long. Search again.')), 20000)),
+      ]);
+      if (res.data?.ok === false) {
+        setBills([]);
+        setLoadError(res.data?.message || res.data?.error || 'Bills could not be loaded.');
+        return;
+      }
       const rows = (res.data?.result?.bills || []) as BillsListRow[];
       setBills(rows.map(normalizeBill));
-    } catch (e) { console.error('[Bills] failed', e); }
+    } catch (e) { setLoadError(e instanceof Error ? e.message : 'Bills could not be loaded.'); }
     finally { setLoading(false); }
   }
 
@@ -169,7 +179,7 @@ export function BillTracker() {
         <span className="ml-auto text-[10px] text-gray-400">{watched.length} watching</span>
       </header>
       <div className="px-3 py-2 border-b border-white/10 flex items-center gap-2 flex-wrap text-xs">
-        <input
+        <input aria-label="Search by topic (climate, AI, healthcare…)"
           value={topic}
           onChange={e => setTopic(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') refresh(topic); }}
@@ -177,7 +187,7 @@ export function BillTracker() {
           className="flex-1 px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white"
         />
         <button onClick={() => refresh(topic)} className="px-3 py-1 rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400">Search</button>
-        <select value={filter} onChange={e => setFilter(e.target.value as 'all' | 'watched' | BillStatus)} className="px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white">
+        <select aria-label="Filter bills" value={filter} onChange={e => setFilter(e.target.value as 'all' | 'watched' | BillStatus)} className="px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white">
           <option value="all">All status</option>
           <option value="watched">Watched only</option>
           <option value="introduced">Introduced</option>
@@ -194,6 +204,8 @@ export function BillTracker() {
       <div className="max-h-[600px] overflow-y-auto">
         {loading ? (
           <div className="flex items-center justify-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading bills…</div>
+        ) : loadError ? (
+          <div className="px-3 py-10 text-center text-xs text-rose-300" role="alert">{loadError}</div>
         ) : visible.length === 0 ? (
           <div className="px-3 py-10 text-center text-xs text-gray-400">No bills match.</div>
         ) : (

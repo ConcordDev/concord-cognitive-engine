@@ -3,10 +3,12 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import {
   Coins, Swords, Target, Search, Plus, Loader2, Tag, Filter,
   CheckCircle2, Clock, X,
 } from 'lucide-react';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface Quest {
   id: string;
@@ -65,12 +67,17 @@ export function QuestBoard({
   const [mine, setMine] = useState(false);
 
   const [showPost, setShowPost] = useState(false);
+  const [balance, setBalance] = useState<number | null>(null);
   const [pTitle, setPTitle] = useState('');
   const [pDesc, setPDesc] = useState('');
   const [pReward, setPReward] = useState('');
   const [pDiff, setPDiff] = useState('medium');
   const [pTags, setPTags] = useState('');
   const [pMax, setPMax] = useState('1');
+  const [armedId, setArmedId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDesc, setEditDesc] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -96,14 +103,33 @@ export function QuestBoard({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, [kind, sort, difficulty, status, minReward, tag, mine, guildId]);
 
+  useEffect(() => {
+    if (!showPost) return;
+    let cancel = false;
+    void lensRun<any>('questmarket', 'walletGet', {}).then((r) => {
+      if (cancel) return;
+      const next = r.data?.result?.balance;
+      setBalance(typeof next === 'number' ? next : null);
+    });
+    return () => { cancel = true; };
+  }, [showPost]);
+
+  const rewardError = (() => {
+    if (!pReward.trim()) return 'Enter a reward of at least 1.';
+    const n = Number(pReward);
+    if (!Number.isFinite(n) || n < 1) return 'Reward has to be at least 1.';
+    if (balance != null && n > balance) return `Reward is above your balance of ${balance}.`;
+    return null;
+  })();
+
   const post = async () => {
-    if (!pTitle.trim()) return;
+    if (!pTitle.trim() || rewardError) return;
     setBusy('post');
     const r = await lensRun<any>('questmarket', 'postQuest', {
       title: pTitle.trim(),
       description: pDesc.trim(),
       kind,
-      reward: Number(pReward) || 0,
+      reward: Number(pReward),
       difficulty: pDiff,
       tags: pTags.split(',').map((t) => t.trim()).filter(Boolean),
       maxClaimants: Number(pMax) || 1,
@@ -210,11 +236,19 @@ export function QuestBoard({
                       {q.kind === 'bounty'
                         ? <Target className="h-4 w-4 shrink-0 text-amber-400" />
                         : <Swords className="h-4 w-4 shrink-0 text-fuchsia-400" />}
-                      <span className="truncate text-sm font-medium text-white">{q.title}</span>
+                      {editingId === q.id ? (
+                        <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)}
+                          className="min-w-0 flex-1 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-sm text-white" />
+                      ) : (
+                        <span className="truncate text-sm font-medium text-white">{q.title}</span>
+                      )}
                     </div>
-                    {q.description && (
+                    {editingId === q.id ? (
+                      <textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} rows={2}
+                        className="mt-1 w-full rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-200" />
+                    ) : q.description ? (
                       <p className="mt-1 line-clamp-2 text-xs text-zinc-400">{q.description}</p>
-                    )}
+                    ) : null}
                     <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[10px]">
                       <span className={`rounded-full border px-1.5 py-0.5 ${dc}`}>{q.difficulty}</span>
                       <span className={`rounded-full bg-zinc-800 px-1.5 py-0.5 ${STATUS_COLOR[q.status] || 'text-zinc-400'}`}>
@@ -240,8 +274,33 @@ export function QuestBoard({
                       <span className="flex items-center gap-1 rounded bg-sky-500/15 px-2 py-1 text-[10px] text-sky-300">
                         <CheckCircle2 className="h-3 w-3" /> claim {q.myClaimStatus}
                       </span>
-                    ) : q.isMine ? (
-                      <span className="text-[10px] text-zinc-500">your posting</span>
+                    ) : q.isMine && q.status !== 'cancelled' && q.status !== 'resolved' ? (
+                      <>
+                      {editingId === q.id ? (
+                        <button type="button" onClick={async () => {
+                          await lensRun('questmarket', 'updateQuest', { questId: q.id, title: editTitle, description: editDesc });
+                          setEditingId(null);
+                          await load();
+                        }} className="text-[11px] text-amber-200 underline">Save</button>
+                      ) : (
+                        <button type="button" onClick={() => { setEditingId(q.id); setEditTitle(q.title); setEditDesc(q.description || ''); }}
+                          className="text-[11px] text-zinc-300 underline">Edit</button>
+                      )}
+                      <StickyDeleteConfirm
+                        armed={armedId === q.id}
+                        onArm={() => setArmedId(q.id)}
+                        onCancel={() => setArmedId(null)}
+                        onConfirm={async () => {
+                          setArmedId(null);
+                          await lensRun('questmarket', 'cancelQuest', { questId: q.id });
+                          await load();
+                        }}
+                        armLabel="Cancel"
+                        confirmLabel={`Cancel “${q.title}” and refund escrow?`}
+                        armAriaLabel={`Cancel ${q.title}`}
+                        className="text-[11px] text-amber-200 underline"
+                      />
+                      </>
                     ) : (q.status === 'open' || q.status === 'in_progress') ? (
                       <button onClick={() => accept(q)} disabled={busy === q.id}
                         className="rounded bg-amber-500/20 px-3 py-1 text-[11px] font-semibold text-amber-200 hover:bg-amber-500/30 disabled:opacity-50">
@@ -268,9 +327,9 @@ export function QuestBoard({
 
       {showPost && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-          onClick={() => setShowPost(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          onClick={() => setShowPost(false)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <div className="w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-900 p-5"
-            onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-white">
                 Post {kind === 'bounty' ? 'Bounty' : 'Quest'}
@@ -316,18 +375,20 @@ export function QuestBoard({
                     className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 text-xs text-white" />
                 </div>
               </div>
-              {Number(pReward) > 0 && (
+              {rewardError ? (
+                <p role="alert" className="text-[10px] text-rose-300">{rewardError}</p>
+              ) : Number(pReward) > 0 ? (
                 <p className="text-[10px] text-amber-400/80">
                   {pReward} QC will be locked in escrow and released to the verified claimant.
                 </p>
-              )}
+              ) : null}
             </div>
             <div className="mt-4 flex justify-end gap-2">
               <button onClick={() => setShowPost(false)}
                 className="rounded border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300">
                 Cancel
               </button>
-              <button onClick={post} disabled={!pTitle.trim() || busy === 'post'}
+              <button onClick={post} disabled={!pTitle.trim() || !!rewardError || busy === 'post'}
                 className="rounded bg-amber-500/20 px-4 py-1.5 text-xs font-semibold text-amber-200 hover:bg-amber-500/30 disabled:opacity-50">
                 {busy === 'post' ? 'Posting…' : 'Post'}
               </button>

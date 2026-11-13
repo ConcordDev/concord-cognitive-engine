@@ -154,7 +154,7 @@ describe("dx-platform.createTeam + joinTeam + teamDashboard", () => {
     assertNoRawUserIds(dash);
   });
   it("rejects non-members and unknown teams", () => {
-    const t = call("createTeam", ctxA, { name: "T" });
+    const t = call("createTeam", ctxA, { name: "Ops" });
     assert.equal(call("teamDashboard", ctxB, { teamId: t.result.teamId }).ok, false);
     assert.equal(call("teamDashboard", ctxA, { teamId: "nope" }).ok, false);
     assert.equal(call("createTeam", ctxA, { name: "" }).ok, false);

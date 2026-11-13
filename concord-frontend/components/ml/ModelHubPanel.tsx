@@ -11,6 +11,7 @@ import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 import {
   Brain, Search, Download, Heart, Loader2, ExternalLink, X, RefreshCw, FileText, History,
 } from 'lucide-react';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface HubModel {
   id: string;
@@ -146,7 +147,7 @@ export function ModelHubPanel({ onUseInPlayground }: { onUseInPlayground?: (mode
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {models.map((m) => (
             <div key={m.id} className="panel p-4 cursor-pointer hover:border-neon-purple/50 transition-colors"
-              onClick={() => openCard(m.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+              onClick={() => openCard(m.id)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
               <div className="flex items-start gap-2 mb-2">
                 <Brain className="w-4 h-4 text-neon-purple mt-0.5 shrink-0" />
                 <div className="min-w-0">
@@ -172,9 +173,9 @@ export function ModelHubPanel({ onUseInPlayground }: { onUseInPlayground?: (mode
 
       {(card || cardLoading) && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
-          onClick={() => setCard(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          onClick={() => setCard(null)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <div className="bg-lattice-bg border border-lattice-border rounded-xl w-full max-w-2xl max-h-[85vh] overflow-hidden"
-            onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             {cardLoading ? (
               <div className="p-12 text-center text-gray-400">
                 <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" /> Loading card...

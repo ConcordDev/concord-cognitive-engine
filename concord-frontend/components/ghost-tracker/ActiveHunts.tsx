@@ -79,7 +79,7 @@ export function ActiveHunts({
                       ? 'bg-emerald-600/25 text-emerald-200'
                       : i === h.stageIndex
                         ? 'bg-violet-600/40 text-violet-100'
-                        : 'bg-white/5 text-gray-600'
+                        : 'bg-white/5 text-gray-400'
                   }`}
                 >
                   {STAGE_LABEL[s] || s}

@@ -10,6 +10,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { TreeDiagram, TreeNode } from '@/components/viz';
 import { SchemaCanvas } from './SchemaCanvas';
 import {
@@ -17,6 +18,7 @@ import {
   Network, Download, Loader2, X, Save, RefreshCw, AlertTriangle, Check,
   GitCompareArrows, History,
 } from 'lucide-react';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 export type FieldType = 'string' | 'integer' | 'number' | 'boolean' | 'array' | 'object';
 
@@ -40,6 +42,7 @@ interface RegistryEntry {
   description: string;
   versionCount: number;
   latestVersion: string;
+  versionLabels?: string[];
   fieldCount: number;
   createdAt: string;
   updatedAt: string;
@@ -304,6 +307,8 @@ function RegistryPanel({
 }) {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [history, setHistory] = useState<FullEntry | null>(null);
+  const [registryQuery, setRegistryQuery] = useState('');
+  const [registrySort, setRegistrySort] = useState<'default' | 'name-az' | 'name-za' | 'recent'>('default');
 
   const handleDelete = async (id: string) => {
     setDeleting(id);
@@ -316,6 +321,17 @@ function RegistryPanel({
     const r = await lensRun('schema', 'registryGet', { id });
     if (r.data?.ok && r.data.result) setHistory(r.data.result as FullEntry);
   };
+
+  const rq = registryQuery.trim().toLowerCase();
+  const visibleRegistry = (() => {
+    const filtered = rq
+      ? registry.filter((s) => s.name.toLowerCase().includes(rq) || (s.description || '').toLowerCase().includes(rq))
+      : [...registry];
+    if (registrySort === 'name-az') filtered.sort((a, b) => a.name.localeCompare(b.name));
+    else if (registrySort === 'name-za') filtered.sort((a, b) => b.name.localeCompare(a.name));
+    else if (registrySort === 'recent') filtered.sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+    return filtered;
+  })();
 
   return (
     <div className="space-y-3">
@@ -339,8 +355,29 @@ function RegistryPanel({
         </div>
       )}
 
+      {!loading && !err && registry.length > 1 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <input value={registryQuery} onChange={(e) => setRegistryQuery(e.target.value)} placeholder="Search schemas…"
+            aria-label="Search schemas"
+            className="flex-1 min-w-[140px] rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-xs text-zinc-200" />
+          <select value={registrySort} onChange={(e) => setRegistrySort(e.target.value as typeof registrySort)}
+            aria-label="Sort schemas"
+            className="rounded border border-zinc-700 bg-zinc-950 px-1.5 py-1.5 text-xs text-zinc-200">
+            <option value="default">Delivered order</option>
+            <option value="name-az">Name A–Z</option>
+            <option value="name-za">Name Z–A</option>
+            <option value="recent">Recently updated</option>
+          </select>
+        </div>
+      )}
+      {!loading && !err && registry.length > 0 && visibleRegistry.length === 0 && (
+        <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-xs text-zinc-400">
+          No schemas match &ldquo;{registryQuery.trim()}&rdquo;.
+        </div>
+      )}
+
       <div className="space-y-2">
-        {registry.map((s) => (
+        {visibleRegistry.map((s) => (
           <div key={s.id} className="rounded-lg border border-cyan-500/15 bg-cyan-500/5 p-3">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
@@ -349,18 +386,21 @@ function RegistryPanel({
                   <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] text-cyan-300">v{s.latestVersion}</span>
                 </div>
                 {s.description && <p className="mt-0.5 text-[11px] text-zinc-400">{s.description}</p>}
-                <div className="mt-1 flex gap-3 text-[10px] text-zinc-400">
-                  <span>{s.fieldCount} fields</span>
-                  <span>{s.versionCount} version{s.versionCount !== 1 ? 's' : ''}</span>
-                  <span>updated {new Date(s.updatedAt).toLocaleDateString()}</span>
+                <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-zinc-400">
+                  <span className="whitespace-nowrap">{s.fieldCount} fields</span>
+                  <span className="whitespace-nowrap">{s.versionCount} version{s.versionCount !== 1 ? 's' : ''}</span>
+                  <span className="whitespace-nowrap">updated {new Date(s.updatedAt).toLocaleDateString()}</span>
                 </div>
               </div>
               <div className="flex shrink-0 gap-1">
-                <button onClick={() => viewHistory(s.id)} className="rounded border border-zinc-700 px-2 py-1 text-[10px] text-zinc-300 hover:bg-zinc-800">History</button>
-                <button onClick={() => onOpen(s.id)} className="rounded border border-cyan-500/30 px-2 py-1 text-[10px] text-cyan-300 hover:bg-cyan-500/15">Edit</button>
-                <button onClick={() => handleDelete(s.id)} disabled={deleting === s.id} className="rounded border border-red-500/30 px-2 py-1 text-red-300 hover:bg-red-500/15 disabled:opacity-50">
-                  {deleting === s.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
-                </button>
+                <button onClick={() => viewHistory(s.id)} className="inline-flex min-h-11 items-center rounded border border-zinc-700 px-2 py-1 text-[10px] text-zinc-300 hover:bg-zinc-800">History</button>
+                <button onClick={() => onOpen(s.id)} className="inline-flex min-h-11 items-center rounded border border-cyan-500/30 px-2 py-1 text-[10px] text-cyan-300 hover:bg-cyan-500/15">Edit</button>
+                <StickyDeleteConfirm
+                  onConfirm={() => handleDelete(s.id)}
+                  disabled={deleting === s.id}
+                  armLabel={<Trash2 className="h-3 w-3" />}
+                  className="inline-flex min-h-11 items-center rounded border border-red-500/30 px-2 py-1 text-red-300 hover:bg-red-500/15 disabled:opacity-50"
+                />
               </div>
             </div>
           </div>
@@ -368,8 +408,8 @@ function RegistryPanel({
       </div>
 
       {history && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setHistory(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-          <div className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-lg border border-cyan-500/20 bg-zinc-950 p-4" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setHistory(null)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
+          <div className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-lg border border-cyan-500/20 bg-zinc-950 p-4" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <div className="mb-3 flex items-center justify-between">
               <h4 className="text-sm font-semibold text-white">{history.name} — version history</h4>
               <button aria-label="Close" onClick={() => setHistory(null)} className="text-zinc-400 hover:text-zinc-200"><X className="h-4 w-4" /></button>
@@ -487,38 +527,41 @@ function VisualEditor({
                   value={f.name}
                   onChange={(e) => update(idx, { name: e.target.value })}
                   placeholder="field name"
-                  className="flex-1 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white"
+                  className="min-h-11 flex-1 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white"
                 />
                 <select
                   value={f.type}
                   onChange={(e) => update(idx, { type: e.target.value as FieldType })}
-                  className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white"
+                  className="min-h-11 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white"
                 >
                   {FIELD_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
                 </select>
-                <label className="flex items-center gap-1 text-[10px] text-zinc-400">
-                  <input type="checkbox" checked={f.required} onChange={(e) => update(idx, { required: e.target.checked })} />
+                {/* Mobile 390 (FIX-schema-011): the req label is the checkbox's
+                    tap target — it now carries the 44px floor, and the remove
+                    button beside it is a full 44px box. */}
+                <label className="flex min-h-11 items-center gap-1.5 px-1 -mx-1 text-[10px] text-zinc-400">
+                  <input type="checkbox" className="h-5 w-5 shrink-0" checked={f.required} onChange={(e) => update(idx, { required: e.target.checked })} />
                   req
                 </label>
-                <button aria-label="Remove" onClick={() => removeField(idx)} className="text-zinc-600 hover:text-red-400"><X className="h-3.5 w-3.5" /></button>
+                <button aria-label="Remove" onClick={() => removeField(idx)} className="-mr-2 flex h-11 w-11 shrink-0 items-center justify-center text-zinc-600 hover:text-red-400"><X className="h-3.5 w-3.5" /></button>
               </div>
               <div className="grid grid-cols-2 gap-1.5">
                 {f.type === 'string' && (
                   <>
-                    <input value={f.pattern || ''} onChange={(e) => update(idx, { pattern: e.target.value })} placeholder="regex pattern" className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-[10px] text-zinc-300" />
-                    <input value={f.enumStr || ''} onChange={(e) => update(idx, { enumStr: e.target.value })} placeholder="enum: a, b, c" className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-[10px] text-zinc-300" />
-                    <input type="number" value={f.minLength ?? ''} onChange={(e) => update(idx, { minLength: e.target.value === '' ? undefined : Number(e.target.value) })} placeholder="minLength" className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-[10px] text-zinc-300" />
-                    <input type="number" value={f.maxLength ?? ''} onChange={(e) => update(idx, { maxLength: e.target.value === '' ? undefined : Number(e.target.value) })} placeholder="maxLength" className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-[10px] text-zinc-300" />
+                    <input value={f.pattern || ''} onChange={(e) => update(idx, { pattern: e.target.value })} placeholder="regex pattern" className="min-h-11 rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-[10px] text-zinc-300" />
+                    <input value={f.enumStr || ''} onChange={(e) => update(idx, { enumStr: e.target.value })} placeholder="enum: a, b, c" className="min-h-11 rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-[10px] text-zinc-300" />
+                    <input type="number" value={f.minLength ?? ''} onChange={(e) => update(idx, { minLength: e.target.value === '' ? undefined : Number(e.target.value) })} placeholder="minLength" className="min-h-11 rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-[10px] text-zinc-300" />
+                    <input type="number" value={f.maxLength ?? ''} onChange={(e) => update(idx, { maxLength: e.target.value === '' ? undefined : Number(e.target.value) })} placeholder="maxLength" className="min-h-11 rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-[10px] text-zinc-300" />
                   </>
                 )}
                 {(f.type === 'integer' || f.type === 'number') && (
                   <>
-                    <input type="number" value={f.min ?? ''} onChange={(e) => update(idx, { min: e.target.value === '' ? undefined : Number(e.target.value) })} placeholder="min" className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-[10px] text-zinc-300" />
-                    <input type="number" value={f.max ?? ''} onChange={(e) => update(idx, { max: e.target.value === '' ? undefined : Number(e.target.value) })} placeholder="max" className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-[10px] text-zinc-300" />
+                    <input type="number" value={f.min ?? ''} onChange={(e) => update(idx, { min: e.target.value === '' ? undefined : Number(e.target.value) })} placeholder="min" className="min-h-11 rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-[10px] text-zinc-300" />
+                    <input type="number" value={f.max ?? ''} onChange={(e) => update(idx, { max: e.target.value === '' ? undefined : Number(e.target.value) })} placeholder="max" className="min-h-11 rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-[10px] text-zinc-300" />
                   </>
                 )}
                 {(f.type === 'object' || f.type === 'array') && (
-                  <input value={f.ref || ''} onChange={(e) => update(idx, { ref: e.target.value })} placeholder="ref: target schema name" className="col-span-2 rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-[10px] text-zinc-300" />
+                  <input value={f.ref || ''} onChange={(e) => update(idx, { ref: e.target.value })} placeholder="ref: target schema name" className="col-span-2 min-h-11 rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-[10px] text-zinc-300" />
                 )}
               </div>
             </div>
@@ -579,6 +622,46 @@ function SchemaPicker({
       {registry.map((s) => <option key={s.id} value={s.id}>{s.name} (v{s.latestVersion})</option>)}
     </select>
   );
+}
+
+/** Diff and migration pick one saved version, not only the latest. Value is `id::version`. */
+function VersionPicker({
+  registry, value, onChange, label,
+}: {
+  registry: RegistryEntry[];
+  value: string;
+  onChange: (key: string) => void;
+  label: string;
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white"
+    >
+      <option value="">{label}</option>
+      {registry.flatMap((s) => {
+        const labels = s.versionLabels?.length ? s.versionLabels : [s.latestVersion];
+        return labels.map((v) => (
+          <option key={`${s.id}::${v}`} value={`${s.id}::${v}`}>{s.name} v{v}</option>
+        ));
+      })}
+    </select>
+  );
+}
+
+async function fetchSchemaVersion(key: string): Promise<{ fields: Record<string, any> } | null> {
+  const sep = key.lastIndexOf('::');
+  const id = sep >= 0 ? key.slice(0, sep) : key;
+  const version = sep >= 0 ? key.slice(sep + 2) : '';
+  if (!id) return null;
+  const r = await lensRun('schema', 'registryGet', { id });
+  if (!r.data?.ok || !r.data.result) return null;
+  const entry = r.data.result as FullEntry;
+  const hit = version
+    ? entry.versions.find((v) => v.version === version)
+    : entry.versions[entry.versions.length - 1];
+  return hit?.schema ?? null;
 }
 
 function SamplePanel({
@@ -658,23 +741,13 @@ function MigrationPanel({ registry }: { registry: RegistryEntry[] }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  // Resolve a registry id to its latest schema fields object.
-  const fetchSchema = async (id: string) => {
-    const r = await lensRun('schema', 'registryGet', { id });
-    if (r.data?.ok && r.data.result) {
-      const entry = r.data.result as FullEntry;
-      return entry.versions[entry.versions.length - 1].schema;
-    }
-    return null;
-  };
-
   const run = async () => {
     setBusy(true);
     setErr(null);
     setResult(null);
     if (!fromId || !toId) { setErr('Pick a source and target schema'); setBusy(false); return; }
-    const a = await fetchSchema(fromId);
-    const b = await fetchSchema(toId);
+    const a = await fetchSchemaVersion(fromId);
+    const b = await fetchSchemaVersion(toId);
     if (!a || !b) { setErr('Failed to resolve schemas'); setBusy(false); return; }
     const r = await lensRun('schema', 'migrationGenerate', { schemaA: a, schemaB: b, dialect, table });
     if (r.data?.ok && r.data.result) setResult(r.data.result);
@@ -689,9 +762,9 @@ function MigrationPanel({ registry }: { registry: RegistryEntry[] }) {
         <h3 className="text-sm font-semibold text-white">Migration Generator</h3>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <SchemaPicker registry={registry} value={fromId} onChange={setFromId} label="From schema" />
+        <VersionPicker registry={registry} value={fromId} onChange={setFromId} label="From version" />
         <span className="text-zinc-600">→</span>
-        <SchemaPicker registry={registry} value={toId} onChange={setToId} label="To schema" />
+        <VersionPicker registry={registry} value={toId} onChange={setToId} label="To version" />
         <select value={dialect} onChange={(e) => setDialect(e.target.value as 'sql' | 'json')} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">
           <option value="sql">SQL</option>
           <option value="json">JSON ops</option>
@@ -739,22 +812,13 @@ function DiffPanel({ registry }: { registry: RegistryEntry[] }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  const fetchSchema = async (id: string) => {
-    const r = await lensRun('schema', 'registryGet', { id });
-    if (r.data?.ok && r.data.result) {
-      const entry = r.data.result as FullEntry;
-      return entry.versions[entry.versions.length - 1].schema;
-    }
-    return null;
-  };
-
   const run = async () => {
     setBusy(true);
     setErr(null);
     setResult(null);
     if (!fromId || !toId) { setErr('Pick a source and target schema'); setBusy(false); return; }
-    const schemaA = await fetchSchema(fromId);
-    const schemaB = await fetchSchema(toId);
+    const schemaA = await fetchSchemaVersion(fromId);
+    const schemaB = await fetchSchemaVersion(toId);
     if (!schemaA || !schemaB) { setErr('Failed to resolve schemas'); setBusy(false); return; }
     const r = await lensRun('schema', 'schemaDiff', { schemaA, schemaB });
     if (r.data?.ok && r.data.result) setResult(r.data.result);
@@ -773,9 +837,9 @@ function DiffPanel({ registry }: { registry: RegistryEntry[] }) {
         changes, a backward-compatibility verdict, and an estimated migration effort.
       </p>
       <div className="flex flex-wrap items-center gap-2">
-        <SchemaPicker registry={registry} value={fromId} onChange={setFromId} label="From schema" />
+        <VersionPicker registry={registry} value={fromId} onChange={setFromId} label="From version" />
         <span className="text-zinc-600">→</span>
-        <SchemaPicker registry={registry} value={toId} onChange={setToId} label="To schema" />
+        <VersionPicker registry={registry} value={toId} onChange={setToId} label="To version" />
         <button onClick={run} disabled={busy} className="flex items-center gap-1 rounded bg-cyan-500/20 border border-cyan-500/40 px-3 py-1 text-xs text-cyan-200 hover:bg-cyan-500/30 disabled:opacity-50">
           {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <GitCompareArrows className="h-3 w-3" />}
           Diff

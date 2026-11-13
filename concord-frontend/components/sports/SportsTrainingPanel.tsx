@@ -82,10 +82,10 @@ export function SportsTrainingPanel() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className={cn(ds.heading3, 'flex items-center gap-2')}>
+        <h2 className={cn(ds.heading3, 'flex items-center gap-2')}>
           <Target className="w-4 h-4" style={{ color: 'var(--lens-accent)' }} />
           Training log
-        </h3>
+        </h2>
         <button type="button" onClick={() => setShowAdd((v) => !v)} className={ds.btnSecondary}>
           <Plus className="w-3 h-3" /> Log session
         </button>
@@ -120,7 +120,7 @@ export function SportsTrainingPanel() {
                   placeholder="Duration (min)"
                   className={ds.input}
                 />
-                <select
+                <select aria-label="Intensity"
                   value={form.intensity}
                   onChange={(e) =>
                     setForm((p) => ({
@@ -128,7 +128,7 @@ export function SportsTrainingPanel() {
                       intensity: e.target.value as TrainingLog['intensity'],
                     }))
                   }
-                  className={ds.select}
+                  className={cn('min-h-11', ds.select)}
                 >
                   <option value="light">Light</option>
                   <option value="moderate">Moderate</option>
@@ -203,7 +203,7 @@ export function SportsTrainingPanel() {
                     type="button"
                     onClick={() => removeSession(item.id)}
                     disabled={pendingId === item.id}
-                    className="text-gray-500 hover:text-red-400 p-1"
+                    className="inline-flex min-h-11 min-w-11 items-center justify-center text-gray-400 hover:text-red-400 p-1"
                     aria-label={`Delete ${item.title || log.name || 'session'}`}
                   >
                     <Trash2 className="w-4 h-4" />

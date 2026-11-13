@@ -9,17 +9,24 @@ import { useCallback, useEffect, useState } from 'react';
 import { Plus, Coins, Clock, X, Check, AlertCircle, RefreshCcw, BarChart3 } from 'lucide-react';
 import { subscribe } from '@/lib/realtime/socket';
 import { type AuctionRow, fmtTime } from '@/components/auction/auction-shared';
+import { useWalletBalance } from '@/hooks/useWalletBalance';
 
 export function BoardPanel({ onCheckMarket }: { onCheckMarket?: (itemId: string) => void }) {
+  // FIX-auction-009: bids and escrow draw on the wallet, but the lens
+  // showed no balance anywhere. Display-only, via the shared hook.
+  const ccBalance = useWalletBalance();
   const [auctions, setAuctions] = useState<AuctionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [bidTarget, setBidTarget] = useState<AuctionRow | null>(null);
   const [bidAmount, setBidAmount] = useState('');
-  const [createForm, setCreateForm] = useState({ title: '', itemKind: 'dtu' as 'dtu' | 'inventory', itemId: '', startCc: 1, buyoutCc: '', durationS: 3600 });
+  const [createForm, setCreateForm] = useState({ title: '', itemKind: 'dtu' as 'dtu' | 'inventory', itemId: '', startCc: '', buyoutCc: '', durationS: '3600' });
+  const [createError, setCreateError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [flash, setFlash] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null);
+  const [bidError, setBidError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [owned, setOwned] = useState<Array<{ id: string; title?: string }>>([]);
 
   const showFlash = useCallback((kind: 'ok' | 'err', msg: string) => {
     setFlash({ kind, msg });
@@ -76,40 +83,78 @@ export function BoardPanel({ onCheckMarket }: { onCheckMarket?: (itemId: string)
         setBidAmount('');
         refresh();
       } else {
-        showFlash('err', j.error || 'bid failed');
+        const msg = j.error || 'bid failed';
+        setBidError(msg);
+        showFlash('err', msg);
       }
     } finally { setBusy(null); }
   }, [refresh, showFlash]);
 
+  const listingError = (form: typeof createForm): string | null => {
+    if (!form.itemId.trim()) return 'Pick an item, or paste its id.';
+    if (form.title.trim().length > 120) return 'Title has to be 120 characters or fewer.';
+    const start = Number(form.startCc);
+    if (form.startCc.trim() === '' || !Number.isFinite(start) || start <= 0) return 'Starting price has to be more than 0 CC.';
+    const duration = Number(form.durationS);
+    if (form.durationS.trim() === '' || !Number.isFinite(duration) || duration < 60 || duration > 86400) {
+      return 'Duration has to be between 60 seconds and 24 hours.';
+    }
+    if (form.buyoutCc.trim() !== '') {
+      const buyout = Number(form.buyoutCc);
+      if (!Number.isFinite(buyout) || buyout < start) return 'Buyout has to be at least the starting price.';
+    }
+    return null;
+  };
+
   const handleCreate = useCallback(async () => {
-    if (!createForm.itemId.trim()) return;
+    const problem = listingError(createForm);
+    setCreateError(problem);
+    if (problem) return;
     setBusy('create');
     try {
       const r = await fetch('/api/auctions', {
         method: 'POST', credentials: 'include',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          title: createForm.title || createForm.itemId,
+          title: createForm.title.trim() || createForm.itemId,
           itemKind: createForm.itemKind,
-          itemId: createForm.itemId,
-          startCc: Number(createForm.startCc) || 0,
-          buyoutCc: createForm.buyoutCc ? Number(createForm.buyoutCc) : null,
-          durationS: Number(createForm.durationS) || 3600,
+          itemId: createForm.itemId.trim(),
+          startCc: Number(createForm.startCc),
+          buyoutCc: createForm.buyoutCc.trim() ? Number(createForm.buyoutCc) : null,
+          durationS: Number(createForm.durationS),
         }),
       });
-      const j = await r.json();
+      const j = await r.json().catch(() => ({}));
       if (j.ok) { showFlash('ok', 'Auction posted.'); setShowCreate(false); refresh(); }
-      else showFlash('err', j.error || 'create failed');
+      else {
+        const raw = j.error ?? j.message ?? j.reason;
+        const msg = typeof raw === 'string' ? raw : raw?.message || `Could not post the auction (${r.status}).`;
+        showFlash('err', msg);
+      }
+    } catch {
+      showFlash('err', 'Could not reach the auction house.');
     } finally { setBusy(null); }
   }, [createForm, refresh, showFlash]);
 
   return (
     <div>
       <div className="mb-3 flex items-center justify-end gap-2">
+        <span className="mr-auto flex items-center gap-1.5 text-[11px] text-amber-200/90" aria-label={`Your balance: ${ccBalance} CC`}>
+          <Coins className="h-3.5 w-3.5 text-amber-300" /> Balance: <span className="font-mono font-semibold">{ccBalance.toLocaleString()} CC</span>
+        </span>
         <button onClick={refresh} aria-label="Refresh" className="rounded-full border border-amber-500/30 bg-amber-500/10 p-1.5 text-amber-300 hover:bg-amber-500/20">
           <RefreshCcw className="h-3.5 w-3.5" />
         </button>
-        <button onClick={() => setShowCreate(true)} className="flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/20 px-3 py-1 text-[11px] text-amber-100 hover:bg-amber-500/30">
+        <button onClick={() => {
+          setShowCreate(true);
+          void fetch('/api/dtus/mine', { credentials: 'include' })
+            .then((res) => res.json())
+            .then((body) => {
+              const rows = body?.dtus || body?.items || body?.results || [];
+              if (Array.isArray(rows)) setOwned(rows.map((d: { id?: string; title?: string }) => ({ id: String(d.id || ''), title: d.title })).filter((d) => d.id));
+            })
+            .catch(() => setOwned([]));
+        }} className="flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/20 px-3 py-1 text-[11px] text-amber-100 hover:bg-amber-500/30">
           <Plus className="h-3 w-3" />
           List item
         </button>
@@ -156,7 +201,7 @@ export function BoardPanel({ onCheckMarket }: { onCheckMarket?: (itemId: string)
               </div>
               <div className="mt-3 flex gap-1">
                 <button
-                  onClick={() => { setBidTarget(a); setBidAmount(String(nextBid)); }}
+                  onClick={() => { setBidError(null); setBidTarget(a); setBidAmount(String(nextBid)); }}
                   aria-label={`Bid on ${a.title || a.itemId}, minimum ${nextBid} CC`}
                   className="flex-1 rounded-md bg-amber-500/30 px-3 py-1 text-[11px] text-amber-100 hover:bg-amber-500/40 focus:outline-none focus:ring-2 focus:ring-amber-400">
                   Bid {nextBid}+
@@ -185,7 +230,7 @@ export function BoardPanel({ onCheckMarket }: { onCheckMarket?: (itemId: string)
 
       {bidTarget && (
         <div role="button" tabIndex={0} aria-label="Close bid dialog"
-          className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur"
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 backdrop-blur"
           onClick={() => setBidTarget(null)}
           onKeyDown={(e) => { if (e.key === 'Escape' || e.key === 'Enter') setBidTarget(null); }}>
           <div role="dialog" aria-modal="true" tabIndex={-1}
@@ -196,10 +241,11 @@ export function BoardPanel({ onCheckMarket }: { onCheckMarket?: (itemId: string)
               <h2 className="text-sm font-semibold text-amber-100">Bid on {bidTarget.title || bidTarget.itemId}</h2>
               <button onClick={() => setBidTarget(null)} aria-label="Close" className="rounded p-1 text-slate-400 hover:bg-slate-800"><X className="h-3.5 w-3.5" /></button>
             </header>
-            <p className="mb-3 text-[11px] text-amber-300/80">Current bid: {bidTarget.currentBidCc} CC. Next bid must exceed this.</p>
+            <p className="mb-3 text-[11px] text-amber-300/80">Current bid: {bidTarget.currentBidCc} CC. Next bid must exceed this. Your balance: {ccBalance.toLocaleString()} CC.</p>
             <input type="number" min={bidTarget.currentBidCc + 1} step={1} value={bidAmount}
               onChange={(e) => setBidAmount(e.target.value)}
               className="block w-full rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-[12px] text-slate-100 focus:border-amber-500/50 focus:outline-none" />
+            {bidError && <p role="alert" className="mt-2 text-[12px] text-rose-200">{bidError}</p>}
             <button onClick={() => handleBid(bidTarget.id, Number(bidAmount))}
               disabled={busy === `bid-${bidTarget.id}` || Number(bidAmount) <= bidTarget.currentBidCc}
               className="mt-3 w-full rounded-md border border-amber-500/40 bg-amber-500/20 px-3 py-1.5 text-[12px] text-amber-100 hover:bg-amber-500/30 disabled:opacity-40">
@@ -211,7 +257,7 @@ export function BoardPanel({ onCheckMarket }: { onCheckMarket?: (itemId: string)
 
       {showCreate && (
         <div role="button" tabIndex={0} aria-label="Close listing dialog"
-          className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur"
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 backdrop-blur"
           onClick={() => setShowCreate(false)}
           onKeyDown={(e) => { if (e.key === 'Escape' || e.key === 'Enter') setShowCreate(false); }}>
           <div role="dialog" aria-modal="true" tabIndex={-1} aria-label="List an item"
@@ -230,8 +276,16 @@ export function BoardPanel({ onCheckMarket }: { onCheckMarket?: (itemId: string)
                 </select>
               </label>
               <label className="block">
-                <span className="text-[10px] uppercase tracking-wider text-slate-400">Item id</span>
-                <input value={createForm.itemId} onChange={(e) => setCreateForm({ ...createForm, itemId: e.target.value })} className="mt-0.5 block w-full rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-[12px] text-slate-100" />
+                <span className="text-[10px] uppercase tracking-wider text-slate-400">Owned item</span>
+                <select
+                  value={owned.some((d) => d.id === createForm.itemId) ? createForm.itemId : ''}
+                  onChange={(e) => setCreateForm({ ...createForm, itemId: e.target.value, title: createForm.title || owned.find((d) => d.id === e.target.value)?.title || '' })}
+                  className="mt-0.5 block w-full rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-[12px] text-slate-100"
+                >
+                  <option value="">{owned.length ? 'Pick one of your items' : 'No owned items loaded'}</option>
+                  {owned.map((d) => <option key={d.id} value={d.id}>{d.title || d.id}</option>)}
+                </select>
+                <input value={createForm.itemId} onChange={(e) => setCreateForm({ ...createForm, itemId: e.target.value })} placeholder="Or paste an item id" className="mt-1 block w-full rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-[12px] text-slate-100" />
               </label>
               <label className="block">
                 <span className="text-[10px] uppercase tracking-wider text-slate-400">Title (optional)</span>
@@ -239,8 +293,8 @@ export function BoardPanel({ onCheckMarket }: { onCheckMarket?: (itemId: string)
               </label>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 <label className="block">
-                  <span className="text-[10px] uppercase tracking-wider text-slate-400">Start CC</span>
-                  <input type="number" value={createForm.startCc} onChange={(e) => setCreateForm({ ...createForm, startCc: Number(e.target.value) || 0 })} className="mt-0.5 block w-full rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-[12px] text-slate-100" />
+                  <span className="text-[10px] uppercase tracking-wider text-slate-400">Start CC (more than 0)</span>
+                  <input type="number" min={1} placeholder="e.g. 25" value={createForm.startCc} onChange={(e) => setCreateForm({ ...createForm, startCc: e.target.value })} className="mt-0.5 block w-full rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-[12px] text-slate-100" />
                 </label>
                 <label className="block">
                   <span className="text-[10px] uppercase tracking-wider text-slate-400">Buyout (opt)</span>
@@ -248,10 +302,11 @@ export function BoardPanel({ onCheckMarket }: { onCheckMarket?: (itemId: string)
                 </label>
                 <label className="block">
                   <span className="text-[10px] uppercase tracking-wider text-slate-400">Duration (s)</span>
-                  <input type="number" value={createForm.durationS} onChange={(e) => setCreateForm({ ...createForm, durationS: Number(e.target.value) || 3600 })} className="mt-0.5 block w-full rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-[12px] text-slate-100" />
+                  <input type="number" value={createForm.durationS} onChange={(e) => setCreateForm({ ...createForm, durationS: e.target.value })} className="mt-0.5 block w-full rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-[12px] text-slate-100" />
                 </label>
               </div>
-              <button onClick={handleCreate} disabled={!createForm.itemId.trim() || busy === 'create'} className="w-full rounded-md border border-amber-500/40 bg-amber-500/20 px-3 py-1.5 text-[12px] text-amber-100 hover:bg-amber-500/30 disabled:opacity-40">
+              {createError && <p role="alert" className="text-[11px] text-rose-300">{createError}</p>}
+              <button onClick={handleCreate} disabled={busy === 'create' || listingError(createForm) != null} className="w-full rounded-md border border-amber-500/40 bg-amber-500/20 px-3 py-1.5 text-[12px] text-amber-100 hover:bg-amber-500/30 disabled:opacity-40">
                 Post auction
               </button>
             </div>

@@ -75,7 +75,7 @@ export function MeshSignal() {
         <div className="mb-2 flex items-center gap-2">
           <SignalHigh className="h-4 w-4 text-teal-400" aria-hidden />
           <h3 className="text-sm font-semibold text-teal-200">Per-transport signal quality</h3>
-          {signal.data && <span className="text-[11px] text-teal-700">{signal.data.sampledNodes} node samples</span>}
+          {signal.data && <span className="text-[11px] text-teal-500">{signal.data.sampledNodes} node samples</span>}
         </div>
         {signal.isLoading ? (
           <Loader2 className="h-4 w-4 animate-spin text-teal-500" />
@@ -92,6 +92,11 @@ export function MeshSignal() {
                   showLegend={false}
                 />
               </div>
+            )}
+            {metrics.length > 0 && metrics.every((m) => m.rssiDbm == null) && (
+              <p className="mb-2 text-xs text-teal-300/80">
+                No signal readings yet. Strength (RSSI) appears once a transport reports a peer; until then each row shows &quot;no data&quot;.
+              </p>
             )}
             <div className="overflow-x-auto rounded-lg border border-teal-900/40">
               <table className="w-full text-left text-xs">
@@ -110,7 +115,7 @@ export function MeshSignal() {
                   {metrics.map((m) => (
                     <tr key={m.transport} className="text-teal-200">
                       <td className="px-3 py-1.5 font-mono">{m.name}</td>
-                      <td className="px-3 py-1.5">{m.rssiDbm != null ? `${m.rssiDbm} dBm` : <span className="text-teal-700">no data</span>}</td>
+                      <td className="px-3 py-1.5">{m.rssiDbm != null ? `${m.rssiDbm} dBm` : <span className="text-teal-500">no data</span>}</td>
                       <td className="px-3 py-1.5">{m.quality != null ? `${(m.quality * 100).toFixed(0)}%` : '—'}</td>
                       <td className="px-3 py-1.5">{m.maxHopCount || '—'}</td>
                       <td className="px-3 py-1.5">{m.latencyMs != null ? `${m.latencyMs}ms` : '—'}</td>

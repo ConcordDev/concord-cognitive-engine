@@ -200,7 +200,7 @@ function ExportPanel({ anim }: { anim: Anim }) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <select value={format} onChange={(e) => setFormat(e.target.value as typeof format)}
+        <select aria-label="Export format" onChange={(e) => setFormat(e.target.value as typeof format)}
           className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
           <option value="mp4">MP4 video</option>
           <option value="webm">WebM video</option>
@@ -220,7 +220,7 @@ function ExportPanel({ anim }: { anim: Anim }) {
       </div>
       {status && <p className="text-[11px] text-zinc-400">{status}</p>}
       <div>
-        <h4 className="text-[11px] font-semibold text-zinc-400 mb-1">Export history</h4>
+        <h3 className="text-[11px] font-semibold text-zinc-400 mb-1">Export history</h3>
         {exports.length === 0 ? (
           <p className="text-[11px] text-zinc-400 italic">No exports yet.</p>
         ) : (
@@ -502,7 +502,7 @@ function TweenPanel({ anim, onChange }: { anim: Anim; onChange: () => void }) {
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <select value={easing} onChange={(e) => setEasing(e.target.value)}
+        <select aria-label="Easing" onChange={(e) => setEasing(e.target.value)}
           className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
           {(easings.length ? easings : [easing]).map((e) => <option key={e} value={e}>{e}</option>)}
         </select>
@@ -607,7 +607,7 @@ function CanvasPanel({ anim, onChange }: { anim: Anim; onChange: () => void }) {
   return (
     <div className="space-y-3">
       <div>
-        <h4 className="text-[11px] font-semibold text-zinc-400 mb-1">Canvas size presets</h4>
+        <h3 className="text-[11px] font-semibold text-zinc-400 mb-1">Canvas size presets</h3>
         <p className="text-[10px] text-zinc-400 mb-1.5">
           Current: {anim.width}×{anim.height} · {anim.fps} fps. Presets seed new projects from the gallery.
         </p>
@@ -625,7 +625,7 @@ function CanvasPanel({ anim, onChange }: { anim: Anim; onChange: () => void }) {
         </div>
       </div>
       <div>
-        <h4 className="text-[11px] font-semibold text-zinc-400 mb-1">Frame rate</h4>
+        <h3 className="text-[11px] font-semibold text-zinc-400 mb-1">Frame rate</h3>
         <div className="flex flex-wrap gap-1.5">
           {fpsPresets.map((f) => (
             <button key={f} type="button" onClick={() => applyFps(f)}
@@ -637,7 +637,7 @@ function CanvasPanel({ anim, onChange }: { anim: Anim; onChange: () => void }) {
         </div>
       </div>
       <div>
-        <h4 className="text-[11px] font-semibold text-zinc-400 mb-1">Onscreen guides</h4>
+        <h3 className="text-[11px] font-semibold text-zinc-400 mb-1">Onscreen guides</h3>
         <div className="space-y-1.5">
           <label className="flex items-center gap-2 text-[11px] text-zinc-300">
             <input type="checkbox" checked={guides.grid}
@@ -683,6 +683,7 @@ function RigPanel({ anim, onChange }: { anim: Anim; onChange: () => void }) {
   const [segments, setSegments] = useState<RigSegment[]>([]);
   const [selFrame, setSelFrame] = useState(anim.frames[0]?.id || '');
   const [name, setName] = useState('');
+  const [boneError, setBoneError] = useState<string | null>(null);
   const [parentId, setParentId] = useState('');
   const previewRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -724,13 +725,20 @@ function RigPanel({ anim, onChange }: { anim: Anim; onChange: () => void }) {
   }, [segments, anim.width, anim.height]);
 
   const addBone = async () => {
+    // FIX-animation-002: a blank name silently became 'Bone N' on the
+    // server and a refusal showed nothing at all. The name is required
+    // and the panel now says so; refusals surface in the same line.
+    if (!name.trim()) { setBoneError('Give the bone a name.'); return; }
     const r = await lensRun('animation', 'rig-bone-add', {
       animId: anim.id, name: name.trim(), parentId: parentId || undefined,
     });
     if (r.data?.ok) {
       setName('');
+      setBoneError(null);
       await loadRig();
       onChange();
+    } else {
+      setBoneError(r.data?.error || 'Could not add the bone.');
     }
   };
 
@@ -762,7 +770,7 @@ function RigPanel({ anim, onChange }: { anim: Anim; onChange: () => void }) {
       <div className="flex flex-wrap items-center gap-2">
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Bone name"
           className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-        <select value={parentId} onChange={(e) => setParentId(e.target.value)}
+        <select aria-label="Parent bone" onChange={(e) => setParentId(e.target.value)}
           className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
           <option value="">No parent (root)</option>
           {bones.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
@@ -771,13 +779,16 @@ function RigPanel({ anim, onChange }: { anim: Anim; onChange: () => void }) {
           className="flex items-center gap-1 px-3 py-1.5 text-xs bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg">
           <Plus className="w-3.5 h-3.5" /> Bone
         </button>
-        <select value={selFrame} onChange={(e) => setSelFrame(e.target.value)}
+        <select aria-label="Pose frame" onChange={(e) => setSelFrame(e.target.value)}
           className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100 ml-auto">
           {anim.frames.map((f, i) => <option key={f.id} value={f.id}>Pose frame {i + 1}</option>)}
         </select>
       </div>
       <canvas ref={previewRef} width={W} height={H}
         className="w-full rounded border border-zinc-700 bg-zinc-900" />
+      {boneError && (
+        <p role="alert" className="text-[11px] text-rose-400">{boneError}</p>
+      )}
       {bones.length === 0 ? (
         <p className="text-[11px] text-zinc-400 italic">No bones yet. Add a root bone to start the armature.</p>
       ) : (
@@ -977,7 +988,7 @@ function SharePanel({ anim }: { anim: Anim }) {
           <div className="flex items-center gap-2 bg-zinc-950/50 rounded-lg px-2 py-1.5">
             <Share2 className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
             <span className="text-[11px] text-zinc-300 flex-1 truncate font-mono">{fullUrl}</span>
-            <button type="button" onClick={copy} className="text-zinc-400 hover:text-cyan-300">
+            <button aria-label="Copy share link" type="button" onClick={copy} className="inline-flex min-h-11 min-w-11 items-center justify-center text-zinc-400 hover:text-cyan-300">
               {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
             </button>
           </div>

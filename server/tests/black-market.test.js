@@ -21,7 +21,7 @@ function setupDB() {
     CREATE TABLE users (id TEXT PRIMARY KEY, sparks INTEGER NOT NULL DEFAULT 0);
 
     CREATE TABLE concord_link_messages (
-      id TEXT PRIMARY KEY, payload TEXT, encryption_level TEXT,
+      id TEXT PRIMARY KEY, payload TEXT, encryption_level TEXT, sender_kind TEXT,
       source_world TEXT, dest_world TEXT, status TEXT NOT NULL DEFAULT 'sent',
       sent_at INTEGER NOT NULL DEFAULT (unixepoch())
     );
@@ -54,9 +54,11 @@ function setupDB() {
 }
 
 function seedIntercepted(db, id = "msg1", encryption = "high", payload = "Vault Seventeen manifest: …") {
+  // FIX-black-market-010: intercepts are fictional NPC traffic — the seed
+  // declares the kind the ruling requires (it always modelled fiction).
   db.prepare(`
-    INSERT INTO concord_link_messages (id, payload, encryption_level, source_world, dest_world, status)
-    VALUES (?, ?, ?, 'concordia', 'fantasy', 'intercepted')
+    INSERT INTO concord_link_messages (id, payload, encryption_level, sender_kind, source_world, dest_world, status)
+    VALUES (?, ?, ?, 'npc', 'concordia', 'fantasy', 'intercepted')
   `).run(id, payload, encryption);
 }
 

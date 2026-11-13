@@ -25,6 +25,7 @@ interface Topic {
   id: string; categoryId: string | null; subforumId: string | null; title: string;
   body: string; format?: string; images?: string[]; tags: string[];
   author: string; authorId?: string; pinned: boolean; locked: boolean; score: number; replyCount?: number;
+  createdAt?: string;
   editedAt?: string;
   awards?: { id: string; icon: string; name: string }[];
 }
@@ -39,6 +40,15 @@ const FLAG_REASONS = [
 
 const EMPTY_DRAFT: RichDraft = { body: '', format: 'plain', images: [] };
 
+function timeAgo(iso?: string) {
+  if (!iso) return '';
+  const diff = Date.now() - new Date(iso).getTime();
+  const h = Math.floor(diff / 3600000);
+  if (h < 1) return 'just now';
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
 let composeRequested = false;
 export const FORUM_COMPOSE_EVENT = 'forum:new-topic';
 export function requestForumCompose() {
@@ -47,13 +57,14 @@ export function requestForumCompose() {
 }
 
 export function FmTopicsPanel({
-  onChange, initialTopicId, onTopicConsumed, canModerate = false, viewerId = null,
+  onChange, initialTopicId, onTopicConsumed, canModerate = false, viewerId = null, viewerName = null,
 }: {
   onChange: () => void;
   initialTopicId?: string | null;
   onTopicConsumed?: () => void;
   canModerate?: boolean;
   viewerId?: string | null;
+  viewerName?: string | null;
 }) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [subforums, setSubforums] = useState<Subforum[]>([]);
@@ -142,6 +153,7 @@ export function FmTopicsPanel({
   const addTopic = async () => {
     if (!form.title.trim()) { setError('Topic title is required.'); return; }
     const r = await lensRun('forum', 'topic-create', {
+      author: viewerName || undefined,
       title: form.title.trim(),
       body: draft.body.trim(),
       format: draft.format,
@@ -196,6 +208,7 @@ export function FmTopicsPanel({
   const submitReply = async (parentId: string | null, d: RichDraft) => {
     if (!openTopic || !d.body.trim()) return;
     const r = await lensRun('forum', 'post-reply', {
+      author: viewerName || undefined,
       topicId: openTopic.id, parentId: parentId || undefined,
       body: d.body.trim(), format: d.format, images: d.images,
     });
@@ -346,8 +359,8 @@ export function FmTopicsPanel({
             {openTopic.body && !editingTopic && (
               <div className="mt-1.5"><FmMarkdown text={openTopic.body} format={openTopic.format} /></div>
             )}
-            <p className="mt-1 text-[10px] text-zinc-500">
-              by {openTopic.author}{openTopic.editedAt ? ' · edited' : ''}
+            <p className="mt-1 text-[10px] text-zinc-400">
+              by {openTopic.author}{openTopic.createdAt ? ` · ${timeAgo(openTopic.createdAt)}` : ''}{openTopic.editedAt ? ' · edited' : ''}
             </p>
             {editingTopic && (
               <div className="mt-2 space-y-2">
@@ -433,7 +446,7 @@ export function FmTopicsPanel({
                     </button>
                   ))}
                 </div>
-                <input value={flagNote} onChange={(e) => setFlagNote(e.target.value)} placeholder="Note for the moderators (optional)"
+                <input aria-label="Note for the moderators" value={flagNote} onChange={(e) => setFlagNote(e.target.value)} placeholder="Note for the moderators (optional)"
                   className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-[11px] text-zinc-100" />
                 <div className="flex justify-end gap-2">
                   <button type="button" onClick={() => setFlagOpen(false)} className="px-2.5 py-1 text-[11px] text-zinc-400 hover:text-zinc-200">Cancel</button>
@@ -485,21 +498,21 @@ export function FmTopicsPanel({
 
       {composeOpen ? (
         <section className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-2">
-          <input placeholder="Topic title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
+          <input aria-label="Topic title" placeholder="Topic title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
             className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <FmRichEditor value={draft} onChange={setDraft} rows={4} placeholder="Body — supports markdown and image embeds" />
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <select value={form.categoryId} onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
+            <select aria-label="Topic category" value={form.categoryId} onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
               className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
               <option value="">No category</option>
               {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
-            <select value={form.subforumId} onChange={(e) => setForm({ ...form, subforumId: e.target.value })}
+            <select aria-label="Topic community" value={form.subforumId} onChange={(e) => setForm({ ...form, subforumId: e.target.value })}
               className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
               <option value="">No community</option>
               {subforums.map((s) => <option key={s.id} value={s.id}>{s.icon} {s.name}</option>)}
             </select>
-            <input placeholder="Tags (comma-sep)" value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })}
+            <input aria-label="Tags (comma-separated)" placeholder="Tags (comma-sep)" value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })}
               className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
             <button type="button" onClick={addTopic}
               className="flex items-center justify-center gap-1 bg-orange-600 hover:bg-orange-500 text-white text-xs font-medium rounded-lg">
@@ -512,12 +525,12 @@ export function FmTopicsPanel({
       ) : null}
 
       <div className="flex items-center gap-2 flex-wrap">
-        <select value={filterCat} onChange={(e) => setFilterCat(e.target.value)}
+        <select aria-label="Filter by category" value={filterCat} onChange={(e) => setFilterCat(e.target.value)}
           className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-100">
           <option value="">All categories</option>
           {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
-        <select value={filterSub} onChange={(e) => setFilterSub(e.target.value)}
+        <select aria-label="Filter by community" value={filterSub} onChange={(e) => setFilterSub(e.target.value)}
           className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-100">
           <option value="">All communities</option>
           {subforums.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -551,7 +564,7 @@ export function FmTopicsPanel({
                   {(t.awards || []).map((a) => <span key={a.id} className="text-[11px]">{a.icon}</span>)}
                 </p>
                 <p className="text-[10px] text-zinc-400">
-                  {t.replyCount || 0} replies · by {t.author}{t.editedAt ? ' · edited' : ''}
+                  {t.replyCount || 0} replies · by {t.author}{t.createdAt ? ` · ${timeAgo(t.createdAt)}` : ''}{t.editedAt ? ' · edited' : ''}
                   {t.subforumId && subforumName[t.subforumId] && (
                     <span className="text-orange-400/70"> · {subforumName[t.subforumId]}</span>
                   )}

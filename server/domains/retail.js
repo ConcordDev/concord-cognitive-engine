@@ -1373,7 +1373,10 @@ export default function registerRetailActions(registerLensAction) {
     const name = String(params.name || "").trim();
     const email = String(params.email || "").trim().toLowerCase();
     if (!name) return { ok: false, error: "name required" };
-    if (!email) return { ok: false, error: "email required" };
+    if (!email) return { ok: false, error: "email required", message: "Email is required." };
+    if (!/^[^\s@]+@[^\s@]+$/.test(email)) {
+      return { ok: false, error: "invalid_input", field: "email", message: "Email must include a name and a domain, like name@example.com." };
+    }
     const customer = {
       id: nextRetailId("cust"), name, email,
       phone: String(params.phone || ""),
@@ -2156,11 +2159,14 @@ export default function registerRetailActions(registerLensAction) {
     if (!sf.published) return { ok: true, result: { published: false, products: [] } };
     const productMap = s.products.get(userId);
     const reviews = ensureRetailBucket(s, "reviews", userId);
-    const skuFilter = sf.publishedSkus.length > 0 ? new Set(sf.publishedSkus) : null;
+    // Founder ruling (FIX-retail-002): an empty selection publishes
+    // NOTHING. A product is public only when the owner explicitly
+    // selected it — there is no whole-catalog default.
+    const skuFilter = new Set(sf.publishedSkus);
     const products = [];
     if (productMap) {
       for (const p of productMap.values()) {
-        if (skuFilter && !skuFilter.has(p.sku)) continue;
+        if (!skuFilter.has(p.sku)) continue;
         const skuReviews = reviews.filter((r) => r.sku === p.sku && r.status === "published");
         const avgRating = skuReviews.length > 0
           ? Math.round((skuReviews.reduce((sum, r) => sum + r.rating, 0) / skuReviews.length) * 10) / 10
@@ -2202,6 +2208,7 @@ export default function registerRetailActions(registerLensAction) {
       const qty = Math.max(1, Math.round(Number(ln.qty) || 1));
       const product = productMap.get(sku);
       if (!product) return { ok: false, error: `product not found: ${sku}` };
+      if (!new Set(sf.publishedSkus).has(sku)) return { ok: false, error: `product is not published on this storefront: ${sku}` };
       if (product.stock < qty) return { ok: false, error: `insufficient stock for ${product.name} (${product.stock} available)` };
       orderLines.push({ sku, name: product.name, unitPrice: product.price, qty });
     }

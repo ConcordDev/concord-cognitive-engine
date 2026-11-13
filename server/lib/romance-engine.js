@@ -16,6 +16,7 @@
 
 import crypto from "node:crypto";
 import { checkHeartEvent } from "./heart-events.js";
+import { lookupUserIdentity } from "./user-identity.js";
 import { gatherAttendees } from "./social-gatherings.js";
 import { getActiveWorldForPlayer } from "./world-loader.js";
 
@@ -82,18 +83,49 @@ function notePlayerInteraction(db, playerUserId, partnerKind, partnerId) {
   return { ok: true };
 }
 
+/**
+ * FIX-courtship-003: attach the partner's public identity to a row.
+ * The presenters below strip the other player's raw account id (by
+ * design), which left the lens rendering a bare "player:" — and the
+ * raw REST lists rendered the id itself. A partner is now named the
+ * way mail names correspondents (F3): players resolve through the
+ * users table to a display name / @handle, never the raw id; an NPC's
+ * id IS its world-visible name, so it carries as the name. A player
+ * who does not resolve carries nulls and the UI falls back to a
+ * neutral label.
+ */
+export function withPartnerName(db, row, viewerId) {
+  if (!row) return row;
+  let kind = row.partner_kind;
+  let id = row.partner_id;
+  // In a row the viewer figures as the partner (a marriage listed from
+  // the other side), the partner to name is the row's owner.
+  if (kind === "player" && id && String(id) === String(viewerId)) {
+    kind = "player";
+    id = row.player_user_id;
+  }
+  if (!id) return { ...row, partner_name: null, partner_handle: null };
+  if (kind !== "player") return { ...row, partner_name: String(id), partner_handle: null };
+  const identity = lookupUserIdentity(db, id);
+  return { ...row, partner_name: identity.displayName, partner_handle: identity.username };
+}
+
 /** Drop the other player's raw account id from a row the viewer did not author as themselves. */
-export function presentCourtship(row, viewerId) {
-  if (!row || row.partner_kind !== "player") return row;
-  const out = { ...row };
+export function presentCourtship(row, viewerId, db) {
+  if (!row) return row;
+  const named = db ? withPartnerName(db, row, viewerId) : row;
+  if (row.partner_kind !== "player") return named;
+  const out = { ...named };
   if (out.player_user_id && out.player_user_id !== viewerId) delete out.player_user_id;
   if (out.partner_id && out.partner_id !== viewerId) delete out.partner_id;
   return out;
 }
 
-function presentMarriage(row, viewerId) {
-  if (!row || row.partner_kind !== "player") return row;
-  const out = { ...row };
+function presentMarriage(db, row, viewerId) {
+  if (!row) return row;
+  const named = withPartnerName(db, row, viewerId);
+  if (row.partner_kind !== "player") return named;
+  const out = { ...named };
   if (out.player_user_id && out.player_user_id !== viewerId) delete out.player_user_id;
   if (out.partner_id && out.partner_id !== viewerId) delete out.partner_id;
   return out;
@@ -140,11 +172,16 @@ export function courtInteraction(db, playerUserId, partnerKind, partnerId, senti
     UPDATE player_courtship SET affinity = ?, status = ?, last_interaction = unixepoch()
     WHERE player_user_id = ? AND partner_kind = ? AND partner_id = ?
   `).run(next, status, playerUserId, partnerKind, partnerId);
-  return { ok: true, affinity: next, status, new: false, delta, heartEvent: heartEvent || null };
+  // FIX-courtship-007: an interaction the affinity cap (or floor)
+  // swallowed whole used to return a plain ok — the UI refreshed to
+  // identical numbers and said nothing. capped tells the caller the
+  // interaction landed on the bound so it can say so.
+  const capped = delta !== 0 && next === existing.affinity;
+  return { ok: true, affinity: next, status, new: false, delta, heartEvent: heartEvent || null, capped };
 }
 
 export function listMyCourtships(db, playerUserId, status = null) {
-  return status
+  const rows = status
     ? db.prepare(`
         SELECT * FROM player_courtship WHERE player_user_id = ? AND status = ?
         ORDER BY last_interaction DESC LIMIT 200
@@ -153,6 +190,7 @@ export function listMyCourtships(db, playerUserId, status = null) {
         SELECT * FROM player_courtship WHERE player_user_id = ?
         ORDER BY last_interaction DESC LIMIT 200
       `).all(playerUserId);
+  return rows.map((row) => withPartnerName(db, row, playerUserId));
 }
 
 /* ───────── Engagement + marriage ───────────────────────────────────── */
@@ -165,6 +203,7 @@ export function propose(db, playerUserId, partnerKind, partnerId) {
   if (!c) return { ok: false, reason: "no_courtship" };
   if (c.affinity < ENGAGE_THRESHOLD) return { ok: false, reason: "affinity_too_low", required: ENGAGE_THRESHOLD, got: c.affinity };
   if (c.status === "married") return { ok: false, reason: "already_married" };
+  if (c.status === "widowed") return { ok: false, reason: "widowed" };
   if (partnerKind === "player") return openPlayerProposal(db, playerUserId, String(partnerId));
   db.prepare(`
     UPDATE player_courtship SET status = 'engaged', last_interaction = unixepoch()
@@ -360,7 +399,7 @@ export function listMyMarriages(db, playerUserId, activeOnly = true) {
   for (const row of [...owned, ...asPartner]) {
     if (!row || seen.has(row.id)) continue;
     seen.add(row.id);
-    out.push(presentMarriage(row, playerUserId));
+    out.push(presentMarriage(db, row, playerUserId));
   }
   return out;
 }

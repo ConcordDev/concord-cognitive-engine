@@ -160,6 +160,29 @@ export default function registerBridgeActions(registerLensAction) {
     } catch (e) { return { ok: false, error: e.message }; }
   });
 
+  registerLensAction("bridge", "peerUpdate", (ctx, _a, params = {}) => {
+    try {
+      const s = bridgeState();
+      const userId = aid(ctx);
+      const peers = listFor(s.peers, userId);
+      const peer = peers.find(p => p.id === params.peerId);
+      if (!peer) return { ok: false, error: "peer not found" };
+      const name = String(params.name || "").trim();
+      if (!name) return { ok: false, error: "peer name required" };
+      if (peers.some(p => p.id !== peer.id && p.name.toLowerCase() === name.toLowerCase())) {
+        return { ok: false, error: "a peer with that name already exists" };
+      }
+      peer.name = name;
+      peer.kind = ["world", "federation-peer", "external-api", "dtu-organism"].includes(params.kind)
+        ? params.kind : peer.kind;
+      peer.endpoint = String(params.endpoint ?? peer.endpoint ?? "").trim();
+      peer.region = String(params.region || peer.region || "concordia-hub").trim();
+      peer.updatedAt = nowIso();
+      saveState();
+      return { ok: true, result: { peer, totalPeers: peers.length } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
   registerLensAction("bridge", "peerList", (ctx, _a, _params = {}) => {
     try {
       const s = bridgeState();
@@ -254,7 +277,12 @@ export default function registerBridgeActions(registerLensAction) {
       const peer = peers.find(p => p.id === params.peerId);
       if (!peer) return { ok: false, error: "peer not found" };
       const action = String(params.action || "sync").trim() || "sync";
-      const records = Math.max(0, parseInt(params.records, 10) || 0);
+      const recordsRaw = params.records;
+      const recordsN = recordsRaw === undefined || recordsRaw === null || recordsRaw === "" ? 0 : Number(recordsRaw);
+      if (!Number.isFinite(recordsN) || recordsN < 0) {
+        return { ok: false, error: "records must be a number that is 0 or more" };
+      }
+      const records = Math.trunc(recordsN);
       const status = ["succeeded", "failed", "pending"].includes(params.status)
         ? params.status : "succeeded";
       const flows = listFor(s.flows, userId);

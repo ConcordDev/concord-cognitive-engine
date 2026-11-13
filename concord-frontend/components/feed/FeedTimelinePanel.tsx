@@ -9,6 +9,7 @@ import { useFeedPosts, type FeedTab } from '@/components/feed/useFeedPosts';
 import { Virtuoso } from 'react-virtuoso';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Heart,
@@ -1203,14 +1204,13 @@ export function FeedTimelinePanel({
                                 className="absolute right-0 top-8 z-20 w-44 bg-lattice-surface border border-lattice-border rounded-xl shadow-lg overflow-hidden"
                               >
                                 {feedUser?.id && post.author?.id === feedUser.id && (
-                                <button
-                                  onClick={() => {
-                                    deletePostMutation.mutate(post.id);
-                                  }}
+                                <StickyDeleteConfirm
+                                  onConfirm={() => { deletePostMutation.mutate(post.id); setPostMenuOpen(null); }}
+                                  armLabel={<><Trash2 className="w-4 h-4" /> Delete Post</>}
+                                  armAriaLabel="Delete post"
+                                  confirmAriaLabel="Confirm delete post"
                                   className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
-                                >
-                                  <Trash2 className="w-4 h-4" /> Delete Post
-                                </button>
+                                />
                                 )}
                                 <button
                                   onClick={() => {

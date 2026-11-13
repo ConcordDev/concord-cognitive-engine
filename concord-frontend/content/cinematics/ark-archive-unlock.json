@@ -1,6 +1,7 @@
 {
   "id": "ark_archive_unlock",
   "name": "Ark Archive Unlock",
+  "summary": "Deep in the Asbir Ark sleeps the memory of a world from before arrival — songs, names, and records carried across the dark. When enough solar charge has been gathered, the archive wakes, and what was saved can be remembered again.",
   "trigger": "ark:archive_unlocked",
   "comment": "Concordia Phase 15 — bespoke cinematic for unlocking the Asbir Ark archive. Triggered when player accumulates enough solar charge to access the pre-arrival N.A. cultural memory store.",
   "shots": [

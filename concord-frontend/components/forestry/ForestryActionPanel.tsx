@@ -6,6 +6,7 @@
  * mint/DM/publish/agent.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState, useRef } from 'react';
 import { Trees, Ruler, Flame, Axe, Leaf, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -27,7 +28,7 @@ type Feedback = { kind: 'ok' | 'err'; text: string } | null;
 type ActionId = 'volume' | 'risk' | 'harvest' | 'carbon' | 'mint' | 'dm' | 'publish' | 'agent';
 function pickMessage(e: unknown): string { const ax = e as { response?: { data?: { error?: string } }; message?: string }; return ax?.response?.data?.error ?? ax?.message ?? 'request failed'; }
 
-interface VolumeResult { boardFeet?: number; cubicFeet?: number; valuation?: number }
+interface VolumeResult { boardFeet?: number; cubicFeet?: number; valuation?: number; formula?: string; boardFeetPerTree?: number; boardFeetPerAcre?: number }
 interface RiskResult { riskLevel?: string; score?: number; factors?: string[] }
 interface HarvestResult { schedule?: Array<{ year: number; acres: number; volume: number }>; rotation?: number }
 interface CarbonResult { tonsPerYear?: number; lifetimeTons?: number; equivalentCars?: number }
@@ -156,8 +157,8 @@ export function ForestryActionPanel() {
     try {
       const task = `Forest stand: ${standName || species} (${acres}ac, age ${age}y). ${riskResult ? `Fire risk: ${riskResult.riskLevel}.` : ''} ${carbonResult ? `Sequestration: ${carbonResult.tonsPerYear} t/yr.` : ''} Suggest the single best stewardship move for this season (thinning, fuel reduction, replant, or hold). Plain text.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Stewardship move ready.'); } else err('Agent returned empty.');
+      const reply = readAgentReply(r.data);
+      if (reply.ok) { setAgentReply(reply.text); ok('Stewardship move ready.'); } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 
@@ -215,11 +216,12 @@ export function ForestryActionPanel() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        {volumeResult && <Tile label="Volume" big={`${(volumeResult.boardFeet ?? 0).toLocaleString()}`} sub={`bf · $${volumeResult.valuation?.toLocaleString()}`} accent="#22c55e" />}
+        {volumeResult && <Tile label="Volume" big={`${(volumeResult.boardFeet ?? 0).toLocaleString()}`} sub={`bf · ${volumeResult.boardFeetPerTree ?? '—'} bf/tree · ${volumeResult.boardFeetPerAcre?.toLocaleString() ?? '—'} bf/ac · $${volumeResult.valuation?.toLocaleString()}`} accent="#22c55e" />}
         {riskResult && <Tile label="Fire risk" big={riskResult.riskLevel ?? '—'} sub={`score ${riskResult.score}`} accent={riskResult.riskLevel === 'high' || riskResult.riskLevel === 'extreme' ? '#ef4444' : riskResult.riskLevel === 'moderate' ? '#eab308' : '#22c55e'} />}
         {harvestResult && <Tile label="Harvest" big={`${harvestResult.schedule?.length}y`} sub={`rotation ${harvestResult.rotation}y`} accent="#f97316" />}
         {carbonResult && <Tile label="Carbon" big={`${carbonResult.tonsPerYear}t`} sub={`/yr · ${carbonResult.equivalentCars} cars equiv`} accent="#06b6d4" />}
       </div>
+      {volumeResult?.formula && <p className="text-[10px] text-zinc-400 leading-snug">{volumeResult.formula} This estimate uses site index 80.</p>}
 
       {agentReply && (<div className="rounded-md border border-yellow-500/30 bg-yellow-500/5 p-3 max-h-60 overflow-y-auto"><div className="flex items-center gap-1.5 text-yellow-400 font-semibold mb-1.5 uppercase tracking-wider text-[10px]"><Wand2 className="w-3 h-3" /> Stewardship</div><pre className="whitespace-pre-wrap font-sans text-[11px] text-zinc-200 leading-relaxed">{agentReply}</pre></div>)}
 

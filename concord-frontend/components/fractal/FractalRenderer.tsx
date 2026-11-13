@@ -12,6 +12,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import {
   Play, Save, Download, Upload, Trash2, Crosshair, Box,
   RotateCcw, Loader2, Film, Palette, Image as ImageIcon,
@@ -143,6 +144,38 @@ function colorFor(iter: number, maxIter: number, lut: Uint8ClampedArray): [numbe
   const t = Math.sqrt(iter / maxIter); // gamma-like spread for low-iter detail
   const idx = Math.min(steps - 1, Math.floor(t * steps));
   return [lut[idx * 3], lut[idx * 3 + 1], lut[idx * 3 + 2]];
+}
+
+// FIX-fractal-003: the view coordinate fields were controlled inputs
+// bound straight to numeric state with `parseFloat(x) || 0` on every
+// keystroke — an intermediate '-' parsed to NaN and snapped the field
+// to 0 (so '-1' became '01'), and clearing the field forced a 0 back
+// in. This input keeps the typed text while it is being edited and
+// commits only values that parse; on blur it shows the canonical
+// number again. External changes (drag, zoom) still reflect live
+// whenever the field is not being edited.
+function ViewNumberInput({ value, step, className, onCommit }: {
+  value: number;
+  step: string;
+  className?: string;
+  onCommit: (n: number) => void;
+}) {
+  const [text, setText] = useState<string | null>(null);
+  return (
+    <input
+      type="number"
+      step={step}
+      className={className}
+      value={text ?? String(value)}
+      onFocus={() => setText(String(value))}
+      onChange={(e) => {
+        setText(e.target.value);
+        const n = parseFloat(e.target.value);
+        if (Number.isFinite(n)) onCommit(n);
+      }}
+      onBlur={() => setText(null)}
+    />
+  );
 }
 
 export function FractalRenderer() {
@@ -425,7 +458,7 @@ export function FractalRenderer() {
     setBusy(null);
     if (res.data?.ok) {
       setPresetName('');
-      setStatus(`Saved preset "${name}"`);
+      setStatus(`${res.data.result?.updated ? 'Updated' : 'Saved'} preset "${name}"`);
       await loadPresets();
     } else setStatus(res.data?.error || 'Save failed');
   };
@@ -760,18 +793,18 @@ export function FractalRenderer() {
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className={lbl}>Julia Re</label>
-                    <input
-                      type="number" step="0.001" className={inputCls}
+                    <ViewNumberInput
+                      step="0.001" className={inputCls}
                       value={view.juliaRe}
-                      onChange={e => setView(v => ({ ...v, juliaRe: parseFloat(e.target.value) || 0 }))}
+                      onCommit={(n) => setView(v => ({ ...v, juliaRe: n }))}
                     />
                   </div>
                   <div>
                     <label className={lbl}>Julia Im</label>
-                    <input
-                      type="number" step="0.001" className={inputCls}
+                    <ViewNumberInput
+                      step="0.001" className={inputCls}
                       value={view.juliaIm}
-                      onChange={e => setView(v => ({ ...v, juliaIm: parseFloat(e.target.value) || 0 }))}
+                      onCommit={(n) => setView(v => ({ ...v, juliaIm: n }))}
                     />
                   </div>
                 </div>
@@ -790,18 +823,18 @@ export function FractalRenderer() {
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className={lbl}>Center X</label>
-                  <input
-                    type="number" step="0.0001" className={inputCls}
+                  <ViewNumberInput
+                    step="0.0001" className={inputCls}
                     value={view.centerX}
-                    onChange={e => setView(v => ({ ...v, centerX: parseFloat(e.target.value) || 0 }))}
+                    onCommit={(n) => setView(v => ({ ...v, centerX: n }))}
                   />
                 </div>
                 <div>
                   <label className={lbl}>Center Y</label>
-                  <input
-                    type="number" step="0.0001" className={inputCls}
+                  <ViewNumberInput
+                    step="0.0001" className={inputCls}
                     value={view.centerY}
-                    onChange={e => setView(v => ({ ...v, centerY: parseFloat(e.target.value) || 0 }))}
+                    onCommit={(n) => setView(v => ({ ...v, centerY: n }))}
                   />
                 </div>
               </div>
@@ -826,6 +859,7 @@ export function FractalRenderer() {
                 className={inputCls}
                 placeholder="preset name…"
                 value={presetName}
+                maxLength={120}
                 onChange={e => setPresetName(e.target.value)}
               />
               <button onClick={savePreset} disabled={busy === 'save'} className={btn}>
@@ -849,9 +883,7 @@ export function FractalRenderer() {
                   <button onClick={() => exportPreset(p.id)} className="text-zinc-400 hover:text-cyan-400" title="Export">
                     <Download className="h-3 w-3" />
                   </button>
-                  <button onClick={() => deletePreset(p.id)} disabled={busy === p.id} className="text-zinc-400 hover:text-red-400" title="Delete">
-                    <Trash2 className="h-3 w-3" />
-                  </button>
+                  <StickyDeleteConfirm onConfirm={() => { void deletePreset(p.id); }} disabled={busy === p.id} className="text-zinc-400 hover:text-red-400" armAriaLabel={`Delete preset ${p.name}`} confirmLabel={`Delete “${p.name}”?`} confirmAriaLabel={`Confirm delete preset ${p.name}`} armLabel={<Trash2 className="h-3 w-3" />} />
                 </div>
               ))}
             </div>

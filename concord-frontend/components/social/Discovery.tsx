@@ -427,7 +427,16 @@ function Discovery({
       const res = await api.get<{ posts?: unknown; trending?: unknown }>('/api/social/trending', { params: { limit: 20 } });
       const posts = res.data?.posts;
       const rows = Array.isArray(posts) ? jsonArray(posts) : jsonArray(res.data?.trending);
-      return rows.map((row) => asTrendingCard(asTrendingInput(row)));
+      const cards = rows.map((row) => asTrendingCard(asTrendingInput(row)));
+      // FIX-feed-005: the Filters bar is global to Explore, but this
+      // query only carried categoryFilter in its key — it refetched
+      // the same unfiltered list, so Audio/Video/Images/Docs/Text
+      // changed nothing on the default Trending tab (the Media tab
+      // already filters server-side). Apply the filter here: a card's
+      // type is its mediaType, and a post with no media attachment is
+      // a text post.
+      if (categoryFilter === 'all') return cards;
+      return cards.filter((c) => (c.mediaType || 'text') === categoryFilter);
     },
     enabled: activeTab === 'trending',
   });
@@ -494,7 +503,14 @@ function Discovery({
         params.mediaType = categoryFilter;
       }
       const res = await api.get('/api/media/feed', { params });
-      return (res.data.feed || []) as TrendingDTU[];
+      // The media feed's rows are media-DTU shaped ({ id, author, ... }),
+      // NOT TrendingDTU shaped — casting them raw left dtuId undefined
+      // and MediaCard crashed reading 'length' in pickGradient on every
+      // row (FIX-feed-004). Normalize through the same card adapter the
+      // trending tab uses, which maps id → dtuId and defaults the rest.
+      const feed = (res.data as { feed?: unknown } | undefined)?.feed;
+      const rows = Array.isArray(feed) ? jsonArray(feed) : [];
+      return rows.map((row) => asTrendingCard(asTrendingInput(row)));
     },
     enabled: activeTab === 'media',
   });
@@ -561,7 +577,7 @@ function Discovery({
           onFocus={() => setIsSearchFocused(true)}
           onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
           className={cn(
-            'w-full pl-11 pr-4 py-3 rounded-xl bg-lattice-deep border text-white placeholder-gray-500 focus:outline-none transition-all',
+            'w-full pl-11 pr-4 py-3 rounded-xl bg-lattice-deep border text-white placeholder-gray-400 focus:outline-none transition-all',
             isSearchFocused
               ? 'border-neon-cyan/40 shadow-lg shadow-neon-cyan/5'
               : 'border-lattice-border'
@@ -585,7 +601,7 @@ function Discovery({
                 <div>
                   {searchQuery_.data.people.length > 0 && (
                     <div className="py-1">
-                      <p className="px-4 pt-2 pb-1 text-[10px] uppercase tracking-wider text-gray-500">People</p>
+                      <p className="px-4 pt-2 pb-1 text-[10px] uppercase tracking-wider text-gray-400">People</p>
                       {searchQuery_.data.people.map((person) => (
                         <button
                           key={person.id}
@@ -608,7 +624,7 @@ function Discovery({
                   )}
                   {searchQuery_.data.posts.length > 0 && (
                     <div className="py-1">
-                      <p className="px-4 pt-2 pb-1 text-[10px] uppercase tracking-wider text-gray-500">Posts</p>
+                      <p className="px-4 pt-2 pb-1 text-[10px] uppercase tracking-wider text-gray-400">Posts</p>
                       {searchQuery_.data.posts.map((post) => (
                         <button
                           key={post.id}
@@ -629,7 +645,7 @@ function Discovery({
                   )}
                   {searchQuery_.data.hashtags.length > 0 && (
                     <div className="py-1">
-                      <p className="px-4 pt-2 pb-1 text-[10px] uppercase tracking-wider text-gray-500">Topics</p>
+                      <p className="px-4 pt-2 pb-1 text-[10px] uppercase tracking-wider text-gray-400">Topics</p>
                       {searchQuery_.data.hashtags.map((tag) => (
                         <button
                           key={tag.tag}

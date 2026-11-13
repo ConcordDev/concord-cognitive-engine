@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Trash2, Repeat, Scissors, Eye, Shirt, Pencil } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
 import { closetItemEditInput } from './closet-item-edit';
@@ -159,8 +160,8 @@ export function FashionClosetPanel({ onChange }: { onChange: () => void }) {
       </div>
 
       <div className="flex items-center gap-1.5">
-        <Shirt className="w-3 h-3 text-zinc-500 shrink-0" />
-        <span className="text-[10px] text-zinc-500 shrink-0">What can I wear:</span>
+        <Shirt className="w-3 h-3 text-zinc-400 shrink-0" />
+        <span className="text-[10px] text-zinc-400 shrink-0">What can I wear:</span>
         <div className="flex flex-wrap gap-1">
           <button type="button" onClick={() => setLaundryFilter('')}
             aria-pressed={laundryFilter === ''}
@@ -181,7 +182,7 @@ export function FashionClosetPanel({ onChange }: { onChange: () => void }) {
 
       {showAdd && (
         <div className="grid grid-cols-3 gap-2 bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
-          <input placeholder="Item name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+          <input placeholder="Item name" maxLength={120} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
             className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
@@ -193,6 +194,7 @@ export function FashionClosetPanel({ onChange }: { onChange: () => void }) {
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <input placeholder="Cost ($)" inputMode="decimal" value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+          {form.cost.trim() !== '' && Number(form.cost) < 0 && <span role="note" className="col-span-full text-xs text-rose-300">Cost can&apos;t be negative.</span>}
           <input placeholder="Photo URL (optional)" value={form.photo} onChange={(e) => { setForm({ ...form, photo: e.target.value }); setVisionNote(null); }}
             className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <button type="button" onClick={analyzePhoto} disabled={visionBusy || !form.photo.trim()}
@@ -240,12 +242,16 @@ export function FashionClosetPanel({ onChange }: { onChange: () => void }) {
                   </p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <button aria-label={`Edit ${i.name}`} type="button" onClick={() => beginEdit(i)} className="text-zinc-500 hover:text-fuchsia-300">
+                  <button aria-label={`Edit ${i.name}`} type="button" onClick={() => beginEdit(i)} className="text-zinc-400 hover:text-fuchsia-300">
                     <Pencil className="w-3.5 h-3.5" />
                   </button>
-                  <button aria-label={`Delete ${i.name}`} type="button" onClick={() => del(i.id)} className="text-zinc-600 hover:text-rose-400">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  <StickyDeleteConfirm
+                    onConfirm={() => del(i.id)}
+                    armAriaLabel={`Delete ${i.name}`}
+                    confirmAriaLabel={`Confirm delete ${i.name}`}
+                    className="text-zinc-600 hover:text-rose-400"
+                    armLabel={<Trash2 className="w-3.5 h-3.5" />}
+                  />
                 </div>
               </div>
               {editingId === i.id && (

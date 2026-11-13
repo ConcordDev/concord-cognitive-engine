@@ -41,6 +41,25 @@ function makeBounty(ctx = owner, extra = {}) {
 }
 
 describe("bounties.create", () => {
+  it("FIX-bounties-003: an over-max reward is refused in words naming the bound, not the field name", () => {
+    const r = call("create", owner, {
+      title: "Huge reward bounty", description: "a long enough description", rewardCc: 999999999,
+    });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /between 1 and 1,000,000 CC/);
+    assert.doesNotMatch(r.error, /invalid numeric field/);
+    const ms = call("create", owner, {
+      title: "Huge milestone bounty", description: "a long enough description",
+      milestones: [{ title: "M1", rewardCc: 999999999 }],
+    });
+    assert.equal(ms.ok, false);
+    assert.match(ms.error, /Milestone 1's reward must be a whole number between 1 and 1,000,000 CC/);
+    const atMax = call("create", owner, {
+      title: "At max bounty", description: "a long enough description", rewardCc: 1000000,
+    });
+    assert.equal(atMax.ok, true);
+  });
+
   it("creates a custom bounty with category/tags/difficulty", () => {
     const b = makeBounty();
     assert.equal(b.category, "bug");
@@ -49,6 +68,20 @@ describe("bounties.create", () => {
     assert.equal(b.poolCc, 250);
     assert.equal(b.status, "open");
     assert.deepEqual(b.tags.sort(), ["auth", "race", "security"]);
+  });
+
+  it("FIX-bounties-004: rejects a past or non-date deadline, accepts a future one", () => {
+    const past = call("create", owner, { title: "Valid title here", description: "long enough description", rewardCc: 10, deadline: "2020-01-01" });
+    assert.equal(past.ok, false);
+    assert.match(past.error, /today or later/);
+    const junk = call("create", owner, { title: "Valid title here", description: "long enough description", rewardCc: 10, deadline: "next friday" });
+    assert.equal(junk.ok, false);
+    const impossible = call("create", owner, { title: "Valid title here", description: "long enough description", rewardCc: 10, deadline: "2027-02-30" });
+    assert.equal(impossible.ok, false);
+    const future = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+    const ok = call("create", owner, { title: "Valid title here", description: "long enough description", rewardCc: 10, deadline: future });
+    assert.equal(ok.ok, true);
+    assert.equal(ok.result.bounty.deadline, future);
   });
 
   it("rejects short titles", () => {

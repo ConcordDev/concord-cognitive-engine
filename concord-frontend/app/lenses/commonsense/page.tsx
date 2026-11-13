@@ -385,7 +385,7 @@ export default function CommonsenseLensPage() {
 
         <section aria-label="Thread" className="min-h-[22rem] rounded-2xl border border-white/10 bg-zinc-950 px-6 py-5">
           {phase === 'loading' && (
-            <p data-testid="cs-loading" role="status" aria-busy="true" className="text-[14px] text-zinc-500">
+            <p data-testid="cs-loading" role="status" aria-busy="true" className="text-[14px] text-zinc-400">
               Reading the thread.
             </p>
           )}
@@ -400,7 +400,7 @@ export default function CommonsenseLensPage() {
           {empty && (
             <div data-testid="cs-empty" className="flex min-h-[16rem] flex-col items-center justify-center gap-2 text-center">
               <p className="text-[15px] text-zinc-300">The thread is empty.</p>
-              <p className="max-w-md text-[14px] text-zinc-500">
+              <p className="max-w-md text-[14px] text-zinc-400">
                 Ask a question below. Then state the obvious answer, in your own words — and note the exception, where the obvious breaks.
                 Nothing here answers for you: what you write is stated by you, dated, and kept.
               </p>
@@ -412,7 +412,7 @@ export default function CommonsenseLensPage() {
               {selected.finding ? (
                 <>
                   <p data-testid="cs-finding" className="mt-3 text-[15px] text-zinc-300">{selected.finding}</p>
-                  <p className="mt-1 text-[12px] text-zinc-500">
+                  <p className="mt-1 text-[12px] text-zinc-400">
                     Stated by you{provenanceDate(selected, 'findingAt') ? `, ${provenanceDate(selected, 'findingAt')}` : ''}
                     {selected.flagged ? <span className="text-red-300"> · disputed by you</span> : null}
                   </p>
@@ -421,7 +421,7 @@ export default function CommonsenseLensPage() {
               {selected.exception ? (
                 <>
                   <p data-testid="cs-exception" className="mt-3 text-[15px] text-zinc-300">{selected.exception}</p>
-                  <p className="mt-1 text-[12px] text-zinc-500">
+                  <p className="mt-1 text-[12px] text-zinc-400">
                     Noted by you{provenanceDate(selected, 'exceptionAt') ? `, ${provenanceDate(selected, 'exceptionAt')}` : ''}
                   </p>
                 </>
@@ -450,7 +450,7 @@ export default function CommonsenseLensPage() {
           {phase === 'ready' && mode === 'view' && checks.some((item) => item.exception) && (
             <section aria-label="Exceptions" className="mt-8 border-t border-white/10 pt-4">
               <h3 className="font-vault text-[1.125rem] text-zinc-100">Where the obvious breaks</h3>
-              <p className="mt-1 text-[12px] text-zinc-500">
+              <p className="mt-1 text-[12px] text-zinc-400">
                 {checks.filter((item) => item.exception).length} {checks.filter((item) => item.exception).length === 1 ? 'entry carries' : 'entries carry'} an exception — the boundary of what you stated.
               </p>
               <ul className="mt-3 space-y-3">
@@ -546,13 +546,13 @@ export default function CommonsenseLensPage() {
         </section>
 
         {actionError ? <p role="alert" className="mt-4 text-[14px] text-zinc-300">{actionError}</p> : null}
-        {savedNote ? <p data-testid="cs-saved" className="mt-4 text-[13px] text-zinc-500">{savedNote}</p> : null}
+        {savedNote ? <p data-testid="cs-saved" className="mt-4 text-[13px] text-zinc-400">{savedNote}</p> : null}
 
         <button
           type="button"
           onClick={() => { void ask(); }}
           disabled={phase === 'loading' || busy}
-          className="fixed bottom-8 right-8 z-30 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-60"
+          className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] right-[4.75rem] z-30 rounded-full bg-teal-400 min-h-[44px] max-w-[calc(100vw-6.5rem)] px-4 py-2.5 sm:px-6 sm:py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-60 md:bottom-8 lg:right-8"
         >
           {mode === 'ask' ? 'Ask this' : 'Ask'}
         </button>

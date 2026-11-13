@@ -50,6 +50,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
 import type { DTU } from '@/lib/api/generated-types';
 import { LensContextPanel } from '@/components/lens/LensContextPanel';
@@ -896,14 +897,13 @@ export function ArtMarketDesk({ mode }: { mode: 'gallery' | 'canvas' | 'marketpl
             <div className="absolute inset-0 bg-gradient-to-br from-purple-600/20 to-pink-600/20 flex items-center justify-center p-2">
               <span className="text-sm font-medium text-center">{artDtuTitle(piece)}</span>
             </div>
-            <button
-              type="button"
-              aria-label={`Delete ${artDtuTitle(piece)}`}
-              onClick={() => void deleteMyArtPiece(String(piece.id))}
+            <StickyDeleteConfirm
+              onConfirm={() => void deleteMyArtPiece(String(piece.id))}
+              armLabel="Delete"
+              armAriaLabel={`Delete ${artDtuTitle(piece)}`}
+              confirmAriaLabel={`Confirm delete ${artDtuTitle(piece)}`}
               className="absolute bottom-2 right-2 px-2 py-1 text-[11px] rounded bg-black/60 text-rose-300 hover:bg-black/80"
-            >
-              Delete
-            </button>
+            />
           </div>
         ))}
         {(artAssets as ArtAsset[]).filter((a: ArtAsset) => a.type === 'artwork').map((art: ArtAsset) => (

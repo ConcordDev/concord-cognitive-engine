@@ -23,6 +23,7 @@
  * lookup, not a fabricated match.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState, useEffect, useRef } from 'react';
 import { Shield, MapPin, FileText, BarChart3, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle, Plus, X, FolderSearch } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -265,8 +266,8 @@ export function LawEnforcementActionPanel() {
       } catch { /* keep the not-run wording — honest either way */ }
       const task = `Watch commander brief. Use ONLY the figures in this prompt; do not invent detections, counts, or places. ${mapFact} ${caseResult ? `Case strength: ${caseResult.caseStrength}/100 (${caseResult.status})${caseResult.scope ? ` — ${caseResult.scope}` : ''}` : 'No case analysis run.'} ${statsResult ? `Crime stats: ${statsResult.totalIncidents} incidents, ${statsResult.clearanceRate}% clearance${statsResult.scope ? ` — ${statsResult.scope}` : ''}` : 'No crime stats run.'} ${patrolResult ? `Patrol plan (staged workbench zones, planning figures only): ${patrolResult.totalCurrentUnits}/${patrolResult.totalUnitsNeeded} units allocated.` : ''} Identify single highest-leverage allocation change for next shift + one community-engagement opportunity. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Brief ready.'); } else err('Agent returned empty.');
+      const reply = readAgentReply(r.data);
+      if (reply.ok) { setAgentReply(reply.text); ok('Brief ready.'); } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 

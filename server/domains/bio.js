@@ -808,7 +808,8 @@ export default function registerBioActions(registerLensAction) {
   // 90 nt suits whole-sequence analysis; the plasmid map passes a
   // construct-scale floor and STATES it in its result — a silent floor is
   // how the map's "auto-annotates ORFs" note came to be half-kept.
-  function findOrfs(seq, minOrfNt = 90) {
+  const ORF_MIN_NT_DEFAULT = 90;
+  function findOrfs(seq, minOrfNt = ORF_MIN_NT_DEFAULT) {
     const upper = seq.toUpperCase();
     const orfs = [];
     // Forward frames only (simplified)
@@ -841,6 +842,21 @@ export default function registerBioActions(registerLensAction) {
     if (seq.length > 100_000) return { ok: false, error: "sequence too long (max 100000)" };
     const kind = String(params.kind || "dna");
     if (!["dna", "rna", "protein"].includes(kind)) return { ok: false, error: "kind must be dna/rna/protein" };
+    // Alphabet validation (FIX-bio-001): GC%/Tm were computed over any
+    // characters at all — 'ATGXYZ' reported GC 16.7% / Tm 8.0 °C as DNA
+    // with no word that X/Y/Z are not nucleotides. IUPAC ambiguity codes
+    // (N, R, Y, …) stay valid; anything outside the kind's alphabet is
+    // refused BY NAME so the user sees exactly which characters fail.
+    const ALPHABETS = {
+      dna: new Set("ACGTRYSWKMBDHVN"),
+      rna: new Set("ACGURYSWKMBDHVN"),
+      protein: new Set("ACDEFGHIKLMNPQRSTVWYBJOUXZ"),
+    };
+    const invalidChars = [...new Set([...seq].filter((c) => !ALPHABETS[kind].has(c)))];
+    if (invalidChars.length > 0) {
+      const noun = kind === "protein" ? "amino-acid codes" : "nucleotides";
+      return { ok: false, error: `${invalidChars.join(", ")} ${invalidChars.length === 1 ? "is" : "are"} not valid ${noun} for a ${kind.toUpperCase()} sequence` };
+    }
     const result = {
       length: seq.length,
       kind,
@@ -853,7 +869,7 @@ export default function registerBioActions(registerLensAction) {
       // Unlabelled, two surfaces quoting different rules for similar
       // sequences read as two models disagreeing.
       result.tmModel = seq.length < 14 ? "Wallace rule (2·AT + 4·GC), sequences < 14 nt" : "Basic formula 64.9 + 41·(GC − 16.4)/N, sequences ≥ 14 nt";
-      if (kind === "dna") result.orfs = findOrfs(seq);
+      if (kind === "dna") { result.orfs = findOrfs(seq); result.orfMinNt = ORF_MIN_NT_DEFAULT; }
     } else {
       // Protein composition
       const composition = {};

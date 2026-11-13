@@ -872,6 +872,33 @@ export default function registerParentingActions(registerLensAction) {
     return { ok: true, result: { children, count: children.length } };
   });
 
+  registerLensAction("parenting", "child-update", (ctx, _a, params = {}) => {
+    const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const callerId = pgAid(ctx);
+    const arr = s.children.get(callerId) || [];
+    const child = arr.find((c) => c.id === params.id);
+    if (!child) {
+      const access = pgAccess(s, ctx, params.id);
+      if (access.shared) return { ok: false, error: "only the owner can edit this child" };
+      return { ok: false, error: "child not found" };
+    }
+    if (params.name != null) {
+      const nm = pgClean(params.name, 60);
+      if (!nm) return { ok: false, error: "child name required" };
+      child.name = nm;
+    }
+    if (params.birthDate != null) {
+      const bd = pgClean(params.birthDate, 10).slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(bd)) return { ok: false, error: "birthDate must be YYYY-MM-DD" };
+      child.birthDate = bd;
+    }
+    if (params.sex != null && ["boy", "girl"].includes(String(params.sex).toLowerCase())) {
+      child.sex = String(params.sex).toLowerCase();
+    }
+    savePgState();
+    return { ok: true, result: { child: { ...child, ageMonths: Math.round(pgAgeMonths(child.birthDate) * 10) / 10, ageDisplay: pgAgeDisplay(child.birthDate) } } };
+  });
+
   registerLensAction("parenting", "child-delete", (ctx, _a, params = {}) => {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const callerId = pgAid(ctx);
@@ -1112,6 +1139,9 @@ export default function registerParentingActions(registerLensAction) {
     if (weightKg <= 0 && heightCm <= 0 && headCm <= 0) {
       return { ok: false, error: "provide at least one measurement" };
     }
+    if (weightKg > 500) return { ok: false, error: "weightKg must be at most 500" };
+    if (heightCm > 300) return { ok: false, error: "heightCm must be at most 300" };
+    if (headCm > 80) return { ok: false, error: "headCm must be at most 80" };
     const entry = {
       id: pgId("grw"), childId: String(params.childId),
       weightKg: weightKg > 0 ? Math.round(weightKg * 100) / 100 : null,

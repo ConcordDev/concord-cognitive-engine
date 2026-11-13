@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 const DOMAIN = 'black-market';
 const TIERS = ['none', 'basic', 'high', 'shadow'] as const;
@@ -152,6 +153,11 @@ export function UndergroundExchange() {
 
   // Watchlist form.
   const [watchKeyword, setWatchKeyword] = useState('');
+  // FIX-black-market-012: inline edit state for a saved search.
+  const [editWatchId, setEditWatchId] = useState<string | null>(null);
+  const [editKeyword, setEditKeyword] = useState('');
+  const [editMaxPrice, setEditMaxPrice] = useState('');
+  const [editTier, setEditTier] = useState<'' | Tier>('');
   const [watchMaxPrice, setWatchMaxPrice] = useState('');
   const [watchTier, setWatchTier] = useState<'' | Tier>('');
 
@@ -321,7 +327,14 @@ export function UndergroundExchange() {
     }
     setBusy('add-watch');
     const params: Record<string, unknown> = { keyword: watchKeyword.trim() };
-    if (watchMaxPrice) params.maxPrice = Number(watchMaxPrice);
+    if (String(watchMaxPrice).trim()) {
+      const price = Number(watchMaxPrice);
+      if (!Number.isFinite(price) || price < 1) {
+        setError('Max price must be a number that is 1 or greater.');
+        return;
+      }
+      params.maxPrice = price;
+    }
     if (watchTier) params.tier = watchTier;
     const res = await run<{ watch: Watch }>('watch-add', params);
     setBusy(null);
@@ -333,6 +346,32 @@ export function UndergroundExchange() {
       await reload();
     }
   }, [run, watchKeyword, watchMaxPrice, watchTier, flash, reload]);
+
+  const saveWatchEdit = useCallback(async (w: Watch) => {
+    if (!editKeyword.trim()) {
+      setError('Enter a keyword to watch.');
+      return;
+    }
+    setBusy(`edit-watch-${w.id}`);
+    const params: Record<string, unknown> = { watchId: w.id, keyword: editKeyword.trim() };
+    if (String(editMaxPrice).trim()) {
+      const price = Number(editMaxPrice);
+      if (!Number.isFinite(price) || price < 1) {
+        setBusy(null);
+        setError('Max price must be a number that is 1 or greater.');
+        return;
+      }
+      params.maxPrice = Math.round(price);
+    }
+    if (editTier) params.tier = editTier;
+    const res = await run<{ watch: Watch }>('watch-update', params);
+    setBusy(null);
+    if (res) {
+      flash(`Watch updated to "${res.watch.keyword}".`);
+      setEditWatchId(null);
+      await reload();
+    }
+  }, [run, editKeyword, editMaxPrice, editTier, flash, reload]);
 
   const removeWatch = useCallback(async (w: Watch) => {
     setBusy(`rm-watch-${w.id}`);
@@ -862,15 +901,82 @@ export function UndergroundExchange() {
                       {w.maxPrice != null && <span className="text-slate-400"> · ≤{w.maxPrice}✦</span>}
                       {w.tier && <span className="text-slate-400"> · {w.tier}</span>}
                     </span>
+                    <span className="flex items-center gap-2">
                     <button
-                      onClick={() => void removeWatch(w)}
-                      disabled={busy === `rm-watch-${w.id}`}
-                      className="text-slate-400 hover:text-rose-300 disabled:opacity-50"
+                      type="button"
+                      aria-label={`Edit watch ${w.keyword}`}
+                      onClick={() => {
+                        setEditWatchId(w.id);
+                        setEditKeyword(w.keyword);
+                        setEditMaxPrice(w.maxPrice != null ? String(w.maxPrice) : '');
+                        setEditTier((w.tier as '' | Tier) || '');
+                      }}
+                      className="text-slate-400 hover:text-teal-300"
                     >
-                      remove
+                      edit
                     </button>
+                    <StickyDeleteConfirm
+                      onConfirm={() => void removeWatch(w)}
+                      disabled={busy === `rm-watch-${w.id}`}
+                      armLabel="remove"
+                      confirmLabel="Remove this search?"
+                      armAriaLabel={`Remove watch ${w.keyword}`}
+                      confirmAriaLabel={`Confirm remove watch ${w.keyword}`}
+                      className="text-slate-400 hover:text-rose-300"
+                    />
+                    </span>
                   </div>
                 ))}
+                {editWatchId && watches.some((w) => w.id === editWatchId) && (
+                  <div className="flex flex-wrap items-center gap-2 rounded border border-teal-800 bg-slate-950/60 px-2.5 py-2">
+                    <input
+                      value={editKeyword}
+                      onChange={(e) => setEditKeyword(e.target.value)}
+                      placeholder="keyword (title / preview)"
+                      maxLength={60}
+                      aria-label="Edit watch keyword"
+                      className="min-w-[160px] flex-1 rounded border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-white"
+                    />
+                    <input
+                      type="number"
+                      min={1}
+                      value={editMaxPrice}
+                      onChange={(e) => setEditMaxPrice(e.target.value)}
+                      placeholder="max price (optional)"
+                      aria-label="Edit watch max price"
+                      className="w-36 rounded border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-white"
+                    />
+                    <select
+                      value={editTier}
+                      onChange={(e) => setEditTier(e.target.value as '' | Tier)}
+                      className="rounded border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-slate-300"
+                      aria-label="Edit watch tier filter"
+                    >
+                      <option value="">any tier</option>
+                      {TIERS.map((t) => (
+                        <option key={t} value={t}>{t} only</option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const w = watches.find((x) => x.id === editWatchId);
+                        if (w) void saveWatchEdit(w);
+                      }}
+                      disabled={busy === `edit-watch-${editWatchId}`}
+                      className="rounded bg-teal-600/80 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-500 disabled:opacity-50"
+                    >
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditWatchId(null)}
+                      className="rounded px-2 py-1.5 text-xs text-slate-400 hover:text-white"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
               </div>
             </section>
           )}

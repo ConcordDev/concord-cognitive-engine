@@ -102,6 +102,13 @@ export interface LensManifest {
    *  share shape, unchanged. */
   minorData?: boolean;
 
+  /** This lens's content is the member's private records by default
+   *  (notes, journals). The shared Share & Publish dialog reads it:
+   *  the visibility starts at its non-public option instead of Public
+   *  (FIX-understanding-004). The member can still choose Public
+   *  explicitly. Absent means the generic share shape, unchanged. */
+  sharePrivateByDefault?: boolean;
+
   /** Socket event names this lens listens to for live tile updates. useTilePush key list. */
   realtimeEvents?: string[];
 
@@ -3729,7 +3736,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'healthcare',
-    dataTier: 'REAL_LIVE',
+    dataTier: 'REAL_WORKSPACE',
     emptyState: {
       headline: 'No sessions logged.',
       caption: 'Log a session, run an assessment, draft a plan. NIH MedlinePlus powers the resource browser (free, real federal health info).',
@@ -4536,6 +4543,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['parse', 'compose', 'recompose', 'record_evidence', 'evaluate_promotion', 'apply_promotion', 'consolidate', 'lineage', 'evolution_tick', 'sweep'],
     category: 'knowledge',
     dataTier: 'REAL_LIVE',
+    sharePrivateByDefault: true,
     emptyState: {
       headline: "Understanding substrate.",
       caption: "Understandings, evidence, lineage, consolidation, compose-sessions \u2014 the substrate's reasoning layer.",

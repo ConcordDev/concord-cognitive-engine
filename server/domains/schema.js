@@ -592,6 +592,7 @@ export default function registerSchemaActions(registerLensAction) {
           description: e.description,
           versionCount: e.versions.length,
           latestVersion: latest.version,
+          versionLabels: e.versions.map((v) => v.version),
           fieldCount: Object.keys(latest.schema.fields).length,
           createdAt: e.createdAt,
           updatedAt: e.updatedAt,

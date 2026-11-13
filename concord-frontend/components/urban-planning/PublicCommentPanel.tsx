@@ -146,6 +146,7 @@ export function PublicCommentPanel({ onDataChanged }: { onDataChanged?: () => vo
         </h3>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
           <select
+            aria-label="Subject scenario"
             value={subjectId}
             onChange={(e) => setSubjectId(e.target.value)}
             className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white"
@@ -161,9 +162,11 @@ export function PublicCommentPanel({ onDataChanged }: { onDataChanged?: () => vo
             value={author}
             onChange={(e) => setAuthor(e.target.value)}
             placeholder="Your name (optional)"
+            aria-label="Your name"
             className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder-zinc-600"
           />
           <select
+            aria-label="Stance"
             value={stance}
             onChange={(e) => setStance(e.target.value)}
             className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white"
@@ -179,6 +182,7 @@ export function PublicCommentPanel({ onDataChanged }: { onDataChanged?: () => vo
           value={body}
           onChange={(e) => setBody(e.target.value)}
           placeholder="Comment on this development proposal…"
+          aria-label="Comment body"
           rows={3}
           className="mt-2 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder-zinc-600"
         />

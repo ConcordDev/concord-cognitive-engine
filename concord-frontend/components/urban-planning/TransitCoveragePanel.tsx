@@ -121,9 +121,11 @@ export function TransitCoveragePanel() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Stop name"
+            aria-label="Stop name"
             className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder-zinc-600"
           />
           <select
+            aria-label="Transit mode"
             value={mode}
             onChange={(e) => setMode(e.target.value)}
             className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white"
@@ -140,6 +142,7 @@ export function TransitCoveragePanel() {
             type="number"
             step="0.0001"
             placeholder="Latitude"
+            aria-label="Latitude"
             className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder-zinc-600"
           />
           <input
@@ -148,6 +151,7 @@ export function TransitCoveragePanel() {
             type="number"
             step="0.0001"
             placeholder="Longitude"
+            aria-label="Longitude"
             className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder-zinc-600"
           />
         </div>

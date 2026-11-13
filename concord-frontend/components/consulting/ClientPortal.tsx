@@ -109,7 +109,7 @@ export function ClientPortal({ engagements }: { engagements: EngagementOption[] 
               <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold uppercase ${STATUS_COLOR[sh.approvalStatus] || 'text-zinc-400 bg-zinc-800'}`}>{sh.approvalStatus}</span>
               {sh.approvalStatus === 'awaiting' && (
                 <button onClick={() => { setRespondFor(sh); setRespForm({ decision: 'approved', respondedBy: '', note: '' }); }}
-                  className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300">Record reply</button>
+                  className="inline-flex min-h-11 items-center text-[10px] px-2.5 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300">Record reply</button>
               )}
               <button onClick={() => del(sh.id)} aria-label="Delete" className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
             </div>
@@ -131,12 +131,12 @@ export function ClientPortal({ engagements }: { engagements: EngagementOption[] 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)} role="button" tabIndex={0}>
           <div className="w-full max-w-sm bg-zinc-950 border border-zinc-800 rounded-xl p-4" onClick={e => e.stopPropagation()} role="button" tabIndex={0}>
-            <h4 className="text-sm font-bold text-zinc-100 mb-3">Share Deliverable</h4>
+            <h2 className="text-sm font-bold text-zinc-100 mb-3">Share Deliverable</h2>
             <div className="space-y-2">
               <input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Deliverable title"
                 className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200" />
-              <select value={form.engagementId} onChange={e => setForm({ ...form, engagementId: e.target.value })}
-                className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200">
+              <select aria-label="Engagement" onChange={e => setForm({ ...form, engagementId: e.target.value })}
+                className="min-h-11 w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200">
                 <option value="">No engagement</option>
                 {engagements.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
               </select>
@@ -159,11 +159,11 @@ export function ClientPortal({ engagements }: { engagements: EngagementOption[] 
       {respondFor && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setRespondFor(null)} role="button" tabIndex={0}>
           <div className="w-full max-w-xs bg-zinc-950 border border-zinc-800 rounded-xl p-4" onClick={e => e.stopPropagation()} role="button" tabIndex={0}>
-            <h4 className="text-sm font-bold text-zinc-100 mb-1">Client reply — {respondFor.title}</h4>
+            <h2 className="text-sm font-bold text-zinc-100 mb-1">Client reply — {respondFor.title}</h2>
             <p className="text-[10px] text-zinc-400 mb-3">Record the decision a client made on this shared deliverable.</p>
             <div className="space-y-2">
-              <select value={respForm.decision} onChange={e => setRespForm({ ...respForm, decision: e.target.value })}
-                className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200">
+              <select aria-label="Client decision" onChange={e => setRespForm({ ...respForm, decision: e.target.value })}
+                className="min-h-11 w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200">
                 <option value="approved">Approved</option>
                 <option value="changes-requested">Changes requested</option>
                 <option value="rejected">Rejected</option>

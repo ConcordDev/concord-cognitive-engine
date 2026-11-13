@@ -165,6 +165,8 @@ export default function registerWeldingActions(registerLensAction) {
   const wActorName = (ctx) => ctx?.actor?.name || ctx?.actor?.displayName || ctx?.userName || wActor(ctx);
   const wClean = (v, max = 400) => String(v == null ? "" : v).trim().slice(0, max);
   const wNum = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+  // A hyphen between two numbers is a range ("90-140"). A leading minus is a negative.
+  const wHasNegative = (v) => /(?:^|[^\d])-\d/.test(String(v ?? ""));
   const wList = (s, key, userId) => { if (!s[key].has(userId)) s[key].set(userId, []); return s[key].get(userId); };
   const noState = { ok: false, error: "state_unavailable" };
   const DAY_MS = 86400000;
@@ -372,7 +374,34 @@ export default function registerWeldingActions(registerLensAction) {
       if (!job) return { ok: false, error: "job_not_found" };
       const est = job.estimateId ? wList(s, "estimates", userId).find((e) => e.id === job.estimateId) : null;
       const invoices = wList(s, "invoices", userId);
-      const amount = est ? est.total : Math.max(0, wNum(params.amount));
+      const explicit = wNum(params.amount);
+      const hasExplicit = params.amount != null && String(params.amount).trim() !== "" && explicit > 0;
+      const contract = wNum(job.contractValue);
+      let lineItems;
+      let subtotal;
+      let tax;
+      let amount;
+      if (est) {
+        lineItems = est.lineItems;
+        subtotal = est.subtotal;
+        tax = est.tax;
+        amount = est.total;
+      } else if (hasExplicit) {
+        lineItems = [{ description: job.title || "Job", quantity: 1, unitPrice: explicit, kind: "labor" }];
+        subtotal = explicit;
+        tax = 0;
+        amount = explicit;
+      } else if (contract > 0) {
+        lineItems = [{ description: "Contract", quantity: 1, unitPrice: contract, kind: "labor" }];
+        subtotal = contract;
+        tax = 0;
+        amount = contract;
+      } else {
+        return { ok: false, error: "This job has no estimate, contract value, or amount. Enter an amount before generating an invoice." };
+      }
+      if (!(amount > 0)) {
+        return { ok: false, error: "Invoice total must be greater than zero. Enter an amount or use an estimate that has a price." };
+      }
       const seq = invoices.length + 1;
       const token = wPortalToken();
       const inv = {
@@ -382,9 +411,9 @@ export default function registerWeldingActions(registerLensAction) {
         estimateId: job.estimateId || null,
         client: job.client,
         title: job.title,
-        lineItems: est ? est.lineItems : [],
-        subtotal: est ? est.subtotal : amount,
-        tax: est ? est.tax : 0,
+        lineItems,
+        subtotal,
+        tax,
         amount,
         amountPaid: 0,
         balance: amount,
@@ -399,6 +428,23 @@ export default function registerWeldingActions(registerLensAction) {
       s.portal.set(token, { ownerId: userId, kind: "invoice", refId: inv.id });
       job.invoiceId = inv.id;
       job.status = "completed";
+      saveWeld();
+      return { ok: true, result: { invoice: inv } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // Unpaid invoices can change their due date. Paid ones stay as recorded.
+  registerLensAction("welding", "invoice-update", (ctx, _a, params = {}) => {
+    try {
+      const s = getWeldState(); if (!s) return noState;
+      const inv = wList(s, "invoices", wActor(ctx)).find((i) => i.id === params.invoiceId);
+      if (!inv) return { ok: false, error: "invoice_not_found" };
+      if (inv.status === "paid") return { ok: false, error: "Paid invoices can't be edited." };
+      if (params.dueDate != null && String(params.dueDate).trim() !== "") {
+        const d = wClean(params.dueDate, 40);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return { ok: false, error: "Due date must be YYYY-MM-DD." };
+        inv.dueDate = d;
+      }
       saveWeld();
       return { ok: true, result: { invoice: inv } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
@@ -457,6 +503,14 @@ export default function registerWeldingActions(registerLensAction) {
       const s = getWeldState(); if (!s) return noState;
       const userId = wActor(ctx);
       const list = wList(s, "wps", userId);
+      const missing = [];
+      if (!wClean(params.fillerMetal, 80)) missing.push("fillerMetal");
+      if (!wClean(params.amperageRange, 60)) missing.push("amperageRange");
+      if (!wClean(params.thicknessRange, 60)) missing.push("thicknessRange");
+      const negative = ["amperageRange", "voltageRange", "travelSpeed", "thicknessRange", "preheat"].filter((k) => wHasNegative(params[k]));
+      if (missing.length || negative.length) {
+        return { ok: false, error: "invalid_wps", result: { missing, negative } };
+      }
       const wps = {
         id: wId("wps"),
         wpsNumber: wClean(params.wpsNumber, 60) || `WPS-${String(list.length + 1).padStart(3, "0")}`,
@@ -526,6 +580,12 @@ export default function registerWeldingActions(registerLensAction) {
       const s = getWeldState(); if (!s) return noState;
       const userId = wActor(ctx);
       const list = wList(s, "pqr", userId);
+      if (!wClean(params.welder, 160) || !wClean(params.wpsNumber, 60)) {
+        return { ok: false, error: "invalid_pqr", result: { missing: [!wClean(params.welder, 160) ? "welder" : null, !wClean(params.wpsNumber, 60) ? "wpsNumber" : null].filter(Boolean) } };
+      }
+      if (wHasNegative(params.couponThickness) || wHasNegative(params.qualifiedRange)) {
+        return { ok: false, error: "negative_value" };
+      }
       const outcome = (v) => (v === "pass" || v === "fail" ? v : "not_recorded");
       const pqr = {
         id: wId("pqr"),
@@ -563,6 +623,14 @@ export default function registerWeldingActions(registerLensAction) {
     try {
       const s = getWeldState(); if (!s) return noState;
       const list = wList(s, "certs", wActor(ctx));
+      // FIX-welding-002: a certification whose expiry precedes its issued
+      // date was stored without a word. Both dates are ISO (the form's
+      // date inputs); a reversed pair is refused by name.
+      const issuedD = wClean(params.issuedDate, 40);
+      const expiryD = wClean(params.expiryDate, 40);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(issuedD) && /^\d{4}-\d{2}-\d{2}$/.test(expiryD) && expiryD < issuedD) {
+        return { ok: false, error: "expiry date must be on or after the issued date" };
+      }
       const cert = {
         id: wId("cert"),
         welder: wClean(params.welder, 160) || "Unnamed welder",
@@ -645,6 +713,11 @@ export default function registerWeldingActions(registerLensAction) {
       if (!Array.isArray(job.photos)) job.photos = [];
       const url = wClean(params.url, 2000);
       if (!url) return { ok: false, error: "url_required" };
+      let parsedUrl;
+      try { parsedUrl = new URL(url); } catch { parsedUrl = null; }
+      if (!parsedUrl || (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:")) {
+        return { ok: false, error: "url_must_be_http" };
+      }
       const photo = {
         id: wId("ph"),
         url,

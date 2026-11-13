@@ -161,6 +161,27 @@ export function mountChatAgentStream({ app, auth, runMacro, lensActions, retriev
       } catch { /* retrieval is additive */ }
     }
 
+    // GB-1500 CKPT-20: with CONCORD_COCKPIT_ROUTE on, the cockpit decides first. `handled` sends the reply as
+    // one token + done (carrying cockpitRunId); null falls through to the old loop unchanged.
+    try {
+      const { cockpitFlag } = await import("../lib/cockpit/flags.js");
+      if (cockpitFlag("ROUTE")) {
+        const { handleChatTurn } = await import("../lib/cockpit/chat-entry.js");
+        const turn = await handleChatTurn({
+          db, userId, chatSessionId: null, message, lensContext: null, surface,
+          runMacro, lensActions,
+          chatProgress: (e) => send(e.type, e),
+          deadlineMs: Date.now() + 25000,
+        });
+        if (turn?.handled) {
+          send("token", { chunk: withNotices(turn.reply) });
+          send("done", { ok: true, provider: null, model: null, turns: 0, route: "cockpit", cockpitRunId: turn.meta?.cockpit?.runId || null });
+          try { res.end(); } catch { /* noop */ }
+          return;
+        }
+      }
+    } catch (ckErr) { console.warn("[chat-agent-stream] cockpit turn failed, using the old loop:", ckErr?.message || ckErr); }
+
     try {
       const result = await runAgentLoop({
         db: req.db || req.app.locals.db,

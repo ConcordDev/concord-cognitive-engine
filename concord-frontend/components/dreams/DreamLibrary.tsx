@@ -83,12 +83,17 @@ export function DreamLibrary({ onOpen, reloadKey }: { onOpen: (dreamId: string) 
   }, []);
 
   const loadTimeline = useCallback(async () => {
-    const r = await lensRun<{ ok: boolean; days?: TimelineDay[] }>('dreams', 'timeline', {});
+    const r = await lensRun<{ ok: boolean; days?: TimelineDay[] }>('dreams', 'timeline', {
+      tzOffsetMin: new Date().getTimezoneOffset(),
+    });
     if (r.data.ok) setDays(r.data.result?.days || []);
   }, []);
 
   const loadBusiest = useCallback(async () => {
-    const r = await lensRun<BusiestNightResult>('dreams', 'busiest-night', { limit: 20 });
+    const r = await lensRun<BusiestNightResult>('dreams', 'busiest-night', {
+      limit: 20,
+      tzOffsetMin: new Date().getTimezoneOffset(),
+    });
     if (r.data.ok) setBusiest(r.data.result ?? null);
   }, []);
 
@@ -113,7 +118,7 @@ export function DreamLibrary({ onOpen, reloadKey }: { onOpen: (dreamId: string) 
         <button
           type="button"
           onClick={() => setMode('search')}
-          className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
+          className={`inline-flex min-h-11 items-center rounded-lg px-3 py-1.5 text-xs font-medium ${
             mode === 'search' ? 'bg-purple-700 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'
           }`}
         >
@@ -122,7 +127,7 @@ export function DreamLibrary({ onOpen, reloadKey }: { onOpen: (dreamId: string) 
         <button
           type="button"
           onClick={() => setMode('timeline')}
-          className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
+          className={`inline-flex min-h-11 items-center rounded-lg px-3 py-1.5 text-xs font-medium ${
             mode === 'timeline' ? 'bg-purple-700 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'
           }`}
         >
@@ -131,7 +136,7 @@ export function DreamLibrary({ onOpen, reloadKey }: { onOpen: (dreamId: string) 
         <button
           type="button"
           onClick={() => setMode('busiest')}
-          className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
+          className={`inline-flex min-h-11 items-center rounded-lg px-3 py-1.5 text-xs font-medium ${
             mode === 'busiest' ? 'bg-purple-700 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'
           }`}
         >
@@ -142,7 +147,7 @@ export function DreamLibrary({ onOpen, reloadKey }: { onOpen: (dreamId: string) 
       {mode === 'search' && (
         <>
           <div className="flex flex-wrap gap-2">
-            <input
+            <input id="dreams-search-dream-prose-titles-fragments" name="search-dream-prose-titles-fragments" aria-label="Search dream prose, titles, fragments…"
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -150,20 +155,20 @@ export function DreamLibrary({ onOpen, reloadKey }: { onOpen: (dreamId: string) 
               placeholder="Search dream prose, titles, fragments…"
               className="min-w-[12rem] flex-1 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-100 placeholder:text-zinc-600"
             />
-            <select
+            <select id="dreams-scope" name="scope"
               value={scope}
               onChange={(e) => setScope(e.target.value as '' | 'public' | 'personal')}
-              className="rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-300"
+              className="min-h-11 rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-300"
             >
               <option value="">All scopes</option>
-              <option value="personal">Personal</option>
+              <option value="personal">Mine — unpublished</option>
               <option value="public">Published</option>
             </select>
             <button
               type="button"
               onClick={() => void runSearch()}
               disabled={searching}
-              className="rounded-lg bg-purple-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-purple-600 disabled:opacity-50"
+              className="inline-flex min-h-11 items-center rounded-lg bg-purple-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-purple-600 disabled:opacity-50"
             >
               {searching ? '…' : 'Search'}
             </button>
@@ -274,7 +279,7 @@ export function DreamLibrary({ onOpen, reloadKey }: { onOpen: (dreamId: string) 
                       key={dr.id}
                       type="button"
                       onClick={() => onOpen(dr.id)}
-                      className="rounded-lg border border-zinc-800 bg-zinc-950 px-2 py-1 text-[11px] text-zinc-300 hover:border-purple-700/60 hover:text-zinc-100"
+                      className="inline-flex min-h-11 items-center rounded-lg border border-zinc-800 bg-zinc-950 px-3 text-[11px] text-zinc-300 hover:border-purple-700/60 hover:text-zinc-100"
                     >
                       {dr.title || 'Dream'} · {dr.fragmentCount ?? 0} events
                     </button>

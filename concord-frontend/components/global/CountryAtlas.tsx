@@ -44,7 +44,7 @@ export function CountryAtlas() {
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-cyan-500/15 pb-3">
         <div className="flex items-center gap-2"><Globe className="h-5 w-5 text-sky-400" /><h2 className="text-sm font-semibold text-white">Global atlas — countries by region</h2><span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">REST Countries · via Concord server</span></div>
         <div className="flex items-center gap-2">
-          <select value={region} onChange={(e) => setRegion(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">{REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}</select>
+          <select aria-label="Region" value={region} onChange={(e) => setRegion(e.target.value)} className="min-h-11 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">{REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}</select>
           {list.length > 0 && <SaveAsDtuButton compact apiSource="restcountries" apiUrl="https://restcountries.com/" title={`Country atlas — ${region} (${list.length} countries)`} content={list.slice(0, 30).map((c, i) => `${i + 1}. ${c.name.common} (${c.cca3}) · capital ${c.capital?.[0] || '—'} · pop ${c.population.toLocaleString()}`).join('\n')} extraTags={['global', 'countries', region.toLowerCase()]} rawData={{ region, countries: list }} />}
         </div>
       </header>

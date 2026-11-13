@@ -165,6 +165,16 @@ export default function FishingLensPage() {
     return [];
   }, []);
 
+  const deleteCatch = useCallback(async (catchId: string) => {
+    const res = await lensRun('fishing', 'catch-delete', { catchId });
+    if (res.data.ok) void loadCatches();
+  }, [loadCatches]);
+
+  const annotateCatch = useCallback(async (catchId: string, note: string) => {
+    const res = await lensRun('fishing', 'catch-annotate', { catchId, note });
+    if (res.data.ok) void loadCatches();
+  }, [loadCatches]);
+
   useEffect(() => {
     void Promise.resolve().then(() => {
       setActiveBiome(null);
@@ -339,6 +349,8 @@ export default function FishingLensPage() {
               justCaughtId={justCaughtId}
               density={tableDensity}
               speciesById={catalog.length > 0 ? speciesById : undefined}
+              onDeleteCatch={(catchId) => void deleteCatch(catchId)}
+              onAnnotateCatch={(catchId, note) => void annotateCatch(catchId, note)}
             />
           </div>
         </div>

@@ -288,6 +288,18 @@ function CompatTool() {
     setApis((a) => a.map((x, idx) => (idx === ai ? { ...x, changes: x.changes.map((c, j) => (j === ci ? { ...c, ...p } : c)) } : x)));
 
   const run = useCallback(async () => {
+    // FIX-integrations-008: the version fields' placeholders read
+    // 1.0.0 / 2.0.0 while their values start empty, and a blank pair
+    // analysed as (same) · compatible · 0h. Refuse in words at the
+    // form — both versions must be typed semantic versions.
+    const SEMVER = /^v?\d+\.\d+\.\d+(?:-.+)?$/;
+    for (let i = 0; i < apis.length; i++) {
+      const a = apis[i];
+      if (!SEMVER.test(a.currentVersion.trim()) || !SEMVER.test(a.targetVersion.trim())) {
+        setErr(`Row ${i + 1}${a.name ? ` (${a.name})` : ''}: type both versions as semantic versions (e.g. 1.0.0 → 2.0.0) — the greyed values are placeholders, not entries.`);
+        return;
+      }
+    }
     setBusy(true); setErr(null); setResult(null);
     const r = await lensRun('integrations', 'compatibilityCheck', { apis });
     if (r.data.ok === false) setErr(r.data.error || 'Analysis failed');
@@ -358,9 +370,15 @@ function CompatTool() {
                 {(result.apis as any[]).map((api, i) => (
                   <div key={i} className="flex items-center justify-between bg-lattice-surface rounded p-2 text-xs">
                     <span className="font-mono">{api.name}</span>
-                    <span className="text-gray-400">{api.currentVersion} → {api.targetVersion} <span className="text-gray-600">({api.versionJump})</span></span>
-                    <span className={api.backwardCompatible ? 'text-neon-green' : 'text-red-400'}>{api.backwardCompatible ? 'compatible' : 'breaking'}</span>
-                    <span className="text-gray-400">{api.migration.level} · {api.migration.estimatedHours}h</span>
+                    {api.versionsValid === false ? (
+                      <span className="text-amber-300">{api.problem}</span>
+                    ) : (
+                      <>
+                        <span className="text-gray-400">{api.currentVersion} → {api.targetVersion} <span className="text-gray-600">({api.versionJump})</span></span>
+                        <span className={api.backwardCompatible ? 'text-neon-green' : 'text-red-400'}>{api.backwardCompatible ? 'compatible' : 'breaking'}</span>
+                        <span className="text-gray-400">{api.migration.level} · {api.migration.estimatedHours}h</span>
+                      </>
+                    )}
                   </div>
                 ))}
               </div>

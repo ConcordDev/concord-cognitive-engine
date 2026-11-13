@@ -250,7 +250,7 @@ function CreatorAnalytics({ userId, className, hideFollowersCard }: CreatorAnaly
       {/* The rate's basis, printed: engagement over total views across
           your posts. At zero views there is no rate to report — the
           figure reads 0 rather than a manufactured percentage. */}
-      <p className="text-[11px] text-zinc-500">
+      <p className="text-[11px] text-zinc-400">
         {data.overview.engagementBasis
           ? data.overview.totalReach > 0
             ? `Engagement rate = engagement (${data.overview.engagementBasis.totalEngagement}) ÷ views (${formatNumber(data.overview.totalReach)}) across your posts.`

@@ -278,6 +278,43 @@ export function canVisit(db, visitorId, houseId, opts = {}) {
 
 // ── helpers ─────────────────────────────────────────────────────────────
 
+/**
+ * Rename your house. Owner-only (via _ownedHouse).
+ */
+export function renameHouse(db, userId, houseId, name) {
+  if (!db || !userId || !houseId) return { ok: false, error: "missing_inputs" };
+  const trimmed = String(name || "").trim();
+  if (!trimmed) return { ok: false, error: "name_required" };
+  if (trimmed.length > 120) return { ok: false, error: "name_too_long" };
+  const house = _ownedHouse(db, userId, houseId);
+  if (!house.ok) return house;
+  try {
+    db.prepare(`UPDATE player_houses SET name = ? WHERE id = ?`).run(trimmed, houseId);
+    return { ok: true, houseId, name: trimmed };
+  } catch (err) {
+    return { ok: false, error: err?.message || "db_error" };
+  }
+}
+
+/**
+ * Release (unclaim) your house: deletes the player_houses join row, the
+ * inverse of claimHouse — afterwards the building can be claimed again.
+ * Owner-only. World state the claim touched (building ownership, room
+ * furniture layouts) is world substrate and is NOT reverted here.
+ */
+export function unclaimHouse(db, userId, houseId) {
+  if (!db || !userId || !houseId) return { ok: false, error: "missing_inputs" };
+  const house = _ownedHouse(db, userId, houseId);
+  if (!house.ok) return house;
+  try {
+    db.prepare(`DELETE FROM player_houses WHERE id = ?`).run(houseId);
+    logger.info?.("player-housing", "house_unclaimed", { id: houseId, userId });
+    return { ok: true, houseId, unclaimed: true };
+  } catch (err) {
+    return { ok: false, error: err?.message || "db_error" };
+  }
+}
+
 function _ownedHouse(db, userId, houseId) {
   const row = db.prepare(`SELECT * FROM player_houses WHERE id = ?`).get(houseId);
   if (!row) return { ok: false, error: "no_house" };

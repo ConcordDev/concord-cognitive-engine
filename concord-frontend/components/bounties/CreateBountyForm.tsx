@@ -53,7 +53,25 @@ export function CreateBountyForm({ onCreated, prefill, onConsumePrefill }: {
   };
 
   const submit = async () => {
-    setBusy(true); setErr(null);
+    setErr(null);
+    // FIX-bounties-004: a past deadline was accepted silently. The field
+    // is a date picker now (min = today) and submit refuses a past date.
+    if (deadline && deadline < new Date().toISOString().slice(0, 10)) {
+      setErr('Deadline must be today or later.');
+      return;
+    }
+    // FIX-bounties-003: the field had no max, so a huge reward sailed
+    // through and died at the server as 'invalid numeric field:
+    // rewardCc'. The domain cap (REWARD_MAX, 1,000,000 CC) is stated
+    // at the field and enforced here in the same words.
+    const rewardOk = (n: number) => Number.isFinite(n) && n >= 1 && n <= 1000000 && n === Math.floor(n);
+    if (!useMilestones) {
+      if (!rewardOk(rewardCc)) { setErr('Reward must be a whole number between 1 and 1,000,000 CC.'); return; }
+    } else {
+      const priced = milestones.filter((m) => m.title.trim());
+      if (priced.some((m) => !rewardOk(m.rewardCc))) { setErr('Each milestone reward must be a whole number between 1 and 1,000,000 CC.'); return; }
+    }
+    setBusy(true);
     const params: Record<string, unknown> = {
       title, description, category, difficulty, tags, deadline: deadline || undefined,
     };
@@ -138,9 +156,11 @@ export function CreateBountyForm({ onCreated, prefill, onConsumePrefill }: {
           className="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm text-zinc-100 focus:ring-2 focus:ring-amber-500 focus:outline-none"
         />
         <input
+          type="date"
+          aria-label="Deadline (optional)"
+          min={new Date().toISOString().slice(0, 10)}
           value={deadline}
           onChange={(e) => setDeadline(e.target.value)}
-          placeholder="Deadline (optional, free text e.g. 2026-06-30)"
           className="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm text-zinc-100 focus:ring-2 focus:ring-amber-500 focus:outline-none"
         />
 
@@ -159,8 +179,8 @@ export function CreateBountyForm({ onCreated, prefill, onConsumePrefill }: {
           <label className="flex items-center gap-2 text-xs text-zinc-400">
             <Coins className="w-4 h-4 text-amber-400" /> Total reward CC
             <input
-              type="number" min={1} value={rewardCc}
-              onChange={(e) => setRewardCc(Math.max(1, Number(e.target.value) || 1))}
+              type="number" min={1} max={1000000} value={rewardCc}
+              onChange={(e) => setRewardCc(e.target.value === '' ? 0 : Number(e.target.value))}
               className="w-24 bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-sm text-zinc-100 focus:ring-2 focus:ring-amber-500 focus:outline-none"
             />
           </label>
@@ -176,8 +196,8 @@ export function CreateBountyForm({ onCreated, prefill, onConsumePrefill }: {
                   className="flex-1 bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-100 focus:ring-2 focus:ring-amber-500 focus:outline-none"
                 />
                 <input
-                  type="number" min={1} value={m.rewardCc}
-                  onChange={(e) => setMilestones((ms) => ms.map((x, j) => j === i ? { ...x, rewardCc: Math.max(1, Number(e.target.value) || 1) } : x))}
+                  type="number" min={1} max={1000000} value={m.rewardCc}
+                  onChange={(e) => setMilestones((ms) => ms.map((x, j) => j === i ? { ...x, rewardCc: e.target.value === '' ? 0 : Number(e.target.value) } : x))}
                   className="w-20 bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-100 focus:ring-2 focus:ring-amber-500 focus:outline-none"
                 />
                 {milestones.length > 1 && (

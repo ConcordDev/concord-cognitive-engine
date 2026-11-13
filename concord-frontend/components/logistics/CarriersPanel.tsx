@@ -78,7 +78,12 @@ export function CarriersPanel() {
               <li key={c.id} className="px-3 py-2 hover:bg-white/[0.03] group flex items-center gap-3">
                 <div className="w-10 h-10 rounded bg-cyan-500/15 text-cyan-300 flex items-center justify-center text-[10px] font-mono font-bold">{c.code}</div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm text-white truncate">{c.name}</div>
+                  <input defaultValue={c.name} aria-label={`Rename ${c.name}`} onBlur={async (e) => {
+                    const name = e.target.value.trim();
+                    if (!name || name === c.name) return;
+                    await lensRun({ domain: 'logistics', action: 'carriers-update', input: { id: c.id, name } });
+                    await refresh();
+                  }} className="w-full bg-transparent text-sm text-white truncate border-b border-transparent focus:border-cyan-500/40 outline-none" />
                   <div className="text-[10px] text-gray-400">SCAC {c.scac || '—'} · {c.modes.join(' / ')}</div>
                 </div>
                 <button aria-label="Delete" onClick={() => remove(c.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>

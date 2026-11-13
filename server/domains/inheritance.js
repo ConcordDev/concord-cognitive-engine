@@ -25,6 +25,35 @@
 // pattern. See that lib file's header for the full honesty rationale.
 
 import { getIntestacyForState, listIntestacyStateSummaries } from "../lib/intestacy-reference.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
+
+function inheritanceExportRows(ctx) {
+  const userId = actorId(ctx);
+  if (!userId) return [];
+  const estate = globalThis._concordSTATE?.inheritanceEstates?.get(userId);
+  if (!estate) return [];
+  const has =
+    (estate.beneficiaries || []).length
+    || (estate.assets || []).length
+    || (estate.wills || []).length
+    || (estate.executors || []).length
+    || (estate.locks || []).length;
+  if (!has) return [];
+  return [{
+    id: `estate_${userId}`,
+    type: "estate",
+    title: "Estate",
+    createdAt: estate.createdAt || null,
+    updatedAt: estate.updatedAt || null,
+    data: {
+      beneficiaries: estate.beneficiaries || [],
+      assets: estate.assets || [],
+      wills: estate.wills || [],
+      executors: estate.executors || [],
+      locks: estate.locks || [],
+    },
+  }];
+}
 
 function estateState() {
   const g = globalThis;
@@ -76,8 +105,30 @@ function badCc(v) {
   return !Number.isFinite(n) || n < 0 || n > MAX_CC;
 }
 
+function sharePctValue(v) {
+  if (v === undefined || v === null || v === "") return { sharePct: 0 };
+  const n = Number(v);
+  if (!Number.isFinite(n) || n < 0 || n > 100) {
+    return { error: "Share must be a number from 0 to 100." };
+  }
+  return { sharePct: n };
+}
+
 function actorId(ctx) {
   return ctx?.actor?.userId || ctx?.userId || null;
+}
+
+const HEIR_USER_ID = /^[A-Za-z0-9_.:@+-]{1,80}$/;
+function normalizeHeirUserId(raw, { required }) {
+  const s = String(raw ?? "").trim();
+  if (!s) return required ? { error: "missing_heir" } : { heirUserId: null };
+  if (!HEIR_USER_ID.test(s)) {
+    return {
+      error: "invalid_heir_user_id",
+      message: "Heir user ID can only use letters, numbers, and . _ : @ + - (up to 80 characters).",
+    };
+  }
+  return { heirUserId: s };
 }
 
 function pushNotice(heirUserId, notice) {
@@ -90,6 +141,7 @@ function pushNotice(heirUserId, notice) {
 
 import { saveAfterWrites } from "../lib/lens-save-on-write.js";
 export default function registerInheritanceActions(registerLensAction) {
+  registerLensExportProvider("inheritance", inheritanceExportRows);
   registerLensAction = saveAfterWrites(registerLensAction); // persist STATE after a successful write (lib/lens-save-on-write.js)
   // ── Estate overview ───────────────────────────────────────────────
   registerLensAction("inheritance", "estate_overview", (ctx) => {
@@ -126,7 +178,11 @@ export default function registerInheritanceActions(registerLensAction) {
       if (!userId) return { ok: false, error: "no_actor" };
       const name = String(params.name || "").trim();
       if (!name) return { ok: false, error: "missing_name" };
-      const sharePct = Math.max(0, Math.min(100, Number(params.sharePct) || 0));
+      const share = sharePctValue(params.sharePct);
+      if (share.error) return { ok: false, error: "invalid_input", field: "sharePct", message: share.error };
+      const sharePct = share.sharePct;
+      const heir = normalizeHeirUserId(params.heirUserId, { required: false });
+      if (heir.error) return { ok: false, error: heir.error, message: heir.message };
       const e = getEstate(userId);
       const ben = {
         id: uid("ben"),
@@ -135,7 +191,7 @@ export default function registerInheritanceActions(registerLensAction) {
         sharePct,
         contingent: !!params.contingent,
         contingentOn: params.contingentOn ? String(params.contingentOn).trim() : null,
-        heirUserId: params.heirUserId ? String(params.heirUserId) : null,
+        heirUserId: heir.heirUserId,
         addedAt: Date.now(),
       };
       e.beneficiaries.push(ben);
@@ -153,7 +209,11 @@ export default function registerInheritanceActions(registerLensAction) {
       if (!ben) return { ok: false, error: "beneficiary_not_found" };
       if (params.name !== undefined) ben.name = String(params.name).trim() || ben.name;
       if (params.relationship !== undefined) ben.relationship = String(params.relationship).trim();
-      if (params.sharePct !== undefined) ben.sharePct = Math.max(0, Math.min(100, Number(params.sharePct) || 0));
+      if (params.sharePct !== undefined) {
+        const share = sharePctValue(params.sharePct);
+        if (share.error) return { ok: false, error: "invalid_input", field: "sharePct", message: share.error };
+        ben.sharePct = share.sharePct;
+      }
       if (params.contingent !== undefined) ben.contingent = !!params.contingent;
       if (params.contingentOn !== undefined) ben.contingentOn = params.contingentOn ? String(params.contingentOn).trim() : null;
       e.updatedAt = Date.now();
@@ -225,7 +285,7 @@ export default function registerInheritanceActions(registerLensAction) {
       return {
         ok: true,
         result: {
-          versions: e.wills.map((w) => ({ ...w, bodyPreview: w.body.slice(0, 160) })),
+          versions: e.wills.filter((w) => w.status !== "deleted").map((w) => ({ ...w, bodyPreview: w.body.slice(0, 160) })),
           activeVersion: (e.wills.find((w) => w.status === "active") || {}).version || null,
         },
       };
@@ -238,7 +298,7 @@ export default function registerInheritanceActions(registerLensAction) {
       if (!userId) return { ok: false, error: "no_actor" };
       const e = getEstate(userId);
       const will = e.wills.find((w) => w.version === Number(params.version));
-      if (!will) return { ok: false, error: "version_not_found" };
+      if (!will || will.status === "deleted") return { ok: false, error: "version_not_found" };
       return { ok: true, result: { will } };
     } catch (err) { return { ok: false, error: String(err?.message || err) }; }
   });
@@ -249,7 +309,7 @@ export default function registerInheritanceActions(registerLensAction) {
       if (!userId) return { ok: false, error: "no_actor" };
       const e = getEstate(userId);
       const src = e.wills.find((w) => w.version === Number(params.version));
-      if (!src) return { ok: false, error: "version_not_found" };
+      if (!src || src.status === "deleted") return { ok: false, error: "version_not_found" };
       const version = e.wills.length + 1;
       for (const w of e.wills) if (w.status === "active") w.status = "superseded";
       const will = {
@@ -264,6 +324,27 @@ export default function registerInheritanceActions(registerLensAction) {
       e.wills.push(will);
       e.updatedAt = Date.now();
       return { ok: true, result: { will } };
+    } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+  });
+
+  // Delete a non-active will version. The ACTIVE version cannot be
+  // deleted (author a new will first — deleting it would leave the
+  // estate with a superseded will silently in force). Deleted versions
+  // are tombstoned, not spliced: version numbers are assigned as
+  // wills.length + 1, so removing a slot would let a later author_will
+  // reuse a number that restore/get already handed out.
+  registerLensAction("inheritance", "delete_will_version", (ctx, _artifact, params = {}) => {
+    try {
+      const userId = actorId(ctx);
+      if (!userId) return { ok: false, error: "no_actor" };
+      const e = getEstate(userId);
+      const will = e.wills.find((w) => w.version === Number(params.version));
+      if (!will || will.status === "deleted") return { ok: false, error: "version_not_found" };
+      if (will.status === "active") return { ok: false, error: "cannot_delete_active_version" };
+      will.status = "deleted";
+      will.deletedAt = Date.now();
+      e.updatedAt = Date.now();
+      return { ok: true, result: { deleted: will.version } };
     } catch (err) { return { ok: false, error: String(err?.message || err) }; }
   });
 
@@ -542,8 +623,9 @@ export default function registerInheritanceActions(registerLensAction) {
     try {
       const userId = actorId(ctx);
       if (!userId) return { ok: false, error: "no_actor" };
-      const heirUserId = String(params.heirUserId || "").trim();
-      if (!heirUserId) return { ok: false, error: "missing_heir" };
+      const heir = normalizeHeirUserId(params.heirUserId, { required: true });
+      if (heir.error) return { ok: false, error: heir.error, message: heir.message };
+      const heirUserId = heir.heirUserId;
       const e = getEstate(userId);
       const ben = params.beneficiaryId
         ? e.beneficiaries.find((b) => b.id === params.beneficiaryId)

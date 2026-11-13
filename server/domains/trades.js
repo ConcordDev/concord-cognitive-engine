@@ -833,6 +833,38 @@ export default function registerTradesActions(registerLensAction) {
     } catch (e) { return handlerFailure(e); }
 });
 
+  registerLensAction("trades", "quotes-update", (ctx, _a, params = {}) => {
+  try {
+    const s = getTradesState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tradesActor(ctx);
+    const id = String(params.id || "");
+    const quote = ensureTrBucket(s, "quotes", userId).find(q => q.id === id);
+    if (!quote) return { ok: false, error: "quote not found" };
+    // Only a draft is editable — a sent or decided quote is the customer's
+    // copy of record and never rewrites in place.
+    if (quote.status !== "draft") return { ok: false, error: `cannot edit quote in status '${quote.status}'` };
+    const customerId = String(params.customerId || "");
+    const title = String(params.title || "").trim();
+    const lineItems = Array.isArray(params.lineItems) ? params.lineItems : [];
+    if (!customerId || !title) return { ok: false, error: "customerId and title required" };
+    if (lineItems.length === 0) return { ok: false, error: "at least one line item required" };
+    const subtotal = lineItems.reduce((sum, l) => sum + (Number(l.qty) || 1) * (Number(l.unitPrice) || 0), 0);
+    const taxRate = Math.max(0, Math.min(50, Number(params.taxRate) || 0));
+    const tax = subtotal * (taxRate / 100);
+    quote.customerId = customerId;
+    quote.title = title;
+    quote.description = String(params.description || "");
+    quote.lineItems = lineItems;
+    quote.subtotal = Math.round(subtotal * 100) / 100;
+    quote.taxRate = taxRate;
+    quote.tax = Math.round(tax * 100) / 100;
+    quote.total = Math.round((subtotal + tax) * 100) / 100;
+    quote.updatedAt = nowIsoTrades();
+    saveTradesState();
+    return { ok: true, result: { quote } };
+    } catch (e) { return handlerFailure(e); }
+});
+
   registerLensAction("trades", "quotes-send", (ctx, _a, params = {}) => {
     const s = getTradesState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = tradesActor(ctx);
@@ -844,6 +876,29 @@ export default function registerTradesActions(registerLensAction) {
     quote.sentAt = nowIsoTrades();
     saveTradesState();
     return { ok: true, result: { quote } };
+  });
+
+  registerLensAction("trades", "quotes-delete", (ctx, _a, params = {}) => {
+    const s = getTradesState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tradesActor(ctx);
+    const list = ensureTrBucket(s, "quotes", userId);
+    const idx = list.findIndex(q => q.id === String(params.id || ""));
+    if (idx < 0) return { ok: false, error: "quote not found" };
+    if (list[idx].status === "accepted") return { ok: false, error: "invalid_input", message: "An accepted quote stays on the record." };
+    list.splice(idx, 1);
+    saveTradesState();
+    return { ok: true, result: { id: String(params.id), deleted: true } };
+  });
+
+  registerLensAction("trades", "customer-delete", (ctx, _a, params = {}) => {
+    const s = getTradesState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tradesActor(ctx);
+    const map = s.customers.get(userId);
+    const id = String(params.id || "");
+    if (!map || !map.has(id)) return { ok: false, error: "customer not found" };
+    map.delete(id);
+    saveTradesState();
+    return { ok: true, result: { id, deleted: true } };
   });
 
   registerLensAction("trades", "quotes-accept", (ctx, _a, params = {}) => {

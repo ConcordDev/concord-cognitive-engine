@@ -8,7 +8,7 @@
 import { useMemo, useState } from 'react';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, CheckCircle2, Clock, Zap, Swords } from 'lucide-react';
+import { Plus, CheckCircle2, Clock, Zap, Swords, Pencil } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import {
   type Challenge,
@@ -26,6 +26,7 @@ export function ChallengesPanel() {
   const [newChallengeTarget, setNewChallengeTarget] = useState(7);
   const [newChallengeDeadline, setNewChallengeDeadline] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [editingChallengeId, setEditingChallengeId] = useState<string | null>(null);
   const [undoChallenge, setUndoChallenge] = useState<{ title: string; data: Record<string, unknown> } | null>(null);
   const [deleteError, setDeleteError] = useState('');
 
@@ -73,17 +74,52 @@ export function ChallengesPanel() {
       .catch(() => setDeleteError('Undo failed — the challenge was not restored.'));
   };
 
+  const resetChallengeForm = () => {
+    setEditingChallengeId(null);
+    setNewChallengeTitle(''); setNewChallengeDesc(''); setNewChallengeDeadline('');
+    setNewChallengeType('daily'); setNewChallengeDifficulty('Easy'); setNewChallengeTarget(7);
+  };
+
+  // Edit (FIX-goals-010): prefill the create form from the challenge;
+  // saving updates in place and preserves progress / accepted state.
+  const startEditChallenge = (ch: Challenge) => {
+    setEditingChallengeId(ch.id);
+    setNewChallengeTitle(ch.title);
+    setNewChallengeDesc(ch.description || '');
+    setNewChallengeType(ch.type);
+    setNewChallengeDifficulty(ch.difficulty);
+    setNewChallengeTarget(ch.target);
+    setNewChallengeDeadline(ch.deadline || '');
+    setShowCreateChallenge(true);
+  };
+
   const handleCreateChallenge = () => {
     if (!newChallengeTitle.trim()) return;
+    const xp = { Easy: 50, Medium: 150, Hard: 300, Legendary: 750 }[newChallengeDifficulty];
+    if (editingChallengeId) {
+      const existing = challenges.find((c) => c.id === editingChallengeId);
+      updateChallengeItem(editingChallengeId, {
+        title: newChallengeTitle,
+        data: {
+          ...existing,
+          title: newChallengeTitle, description: newChallengeDesc, type: newChallengeType,
+          difficulty: newChallengeDifficulty, xp,
+          target: newChallengeTarget, deadline: newChallengeDeadline || undefined,
+        } as unknown as Record<string, unknown>,
+      }).then(() => {
+        setShowCreateChallenge(false); resetChallengeForm();
+      }).catch((err) => console.error('Failed to update challenge:', err instanceof Error ? err.message : err));
+      return;
+    }
     createChallengeItem({
       title: newChallengeTitle,
       data: {
         title: newChallengeTitle, description: newChallengeDesc, type: newChallengeType,
-        difficulty: newChallengeDifficulty, xp: { Easy: 50, Medium: 150, Hard: 300, Legendary: 750 }[newChallengeDifficulty],
+        difficulty: newChallengeDifficulty, xp,
         progress: 0, target: newChallengeTarget, deadline: newChallengeDeadline || undefined, accepted: false,
       } as unknown as Record<string, unknown>,
     }).then(() => {
-      setShowCreateChallenge(false); setNewChallengeTitle(''); setNewChallengeDesc(''); setNewChallengeDeadline('');
+      setShowCreateChallenge(false); resetChallengeForm();
     }).catch((err) => console.error('Failed to create challenge:', err instanceof Error ? err.message : err));
   };
 
@@ -131,7 +167,7 @@ export function ChallengesPanel() {
                 <span className="w-2 h-2 rounded-full bg-purple-400" /> Community: {challenges.filter((c) => c.type === 'community').length}
               </span>
             </div>
-            <button onClick={() => setShowCreateChallenge((v) => !v)} className="btn-neon purple flex items-center gap-1 text-xs">
+            <button onClick={() => { if (showCreateChallenge) { setShowCreateChallenge(false); resetChallengeForm(); } else { resetChallengeForm(); setShowCreateChallenge(true); } }} className="btn-neon purple flex items-center gap-1 text-xs">
               <Plus className="w-3.5 h-3.5" /> New Challenge
             </button>
           </div>
@@ -153,7 +189,10 @@ export function ChallengesPanel() {
                     </select>
                     <input type="number" min={1} value={newChallengeTarget} onChange={(e) => setNewChallengeTarget(Number(e.target.value))} className="input-lattice" placeholder="Target reps" />
                     <input type="date" value={newChallengeDeadline} onChange={(e) => setNewChallengeDeadline(e.target.value)} className="input-lattice" />
-                    <button onClick={handleCreateChallenge} disabled={!newChallengeTitle} className="btn-neon purple disabled:opacity-50">Create</button>
+                    <button onClick={handleCreateChallenge} disabled={!newChallengeTitle} className="btn-neon purple disabled:opacity-50">{editingChallengeId ? 'Save changes' : 'Create'}</button>
+                    {editingChallengeId && (
+                      <button onClick={() => { setShowCreateChallenge(false); resetChallengeForm(); }} className="btn-neon disabled:opacity-50">Cancel</button>
+                    )}
                   </div>
                 </div>
               </motion.div>
@@ -191,7 +230,7 @@ export function ChallengesPanel() {
                   {ch.deadline && (
                     <p className="text-[10px] text-gray-400 mt-1 flex items-center gap-1 justify-end">
                       <Clock className="w-3 h-3" />
-                      {daysUntil(ch.deadline) === 0 ? 'Due today' : `${daysUntil(ch.deadline)}d left`}
+                      {daysUntil(ch.deadline) < 0 ? `${-daysUntil(ch.deadline)}d overdue` : daysUntil(ch.deadline) === 0 ? 'Due today' : `${daysUntil(ch.deadline)}d left`}
                     </p>
                   )}
                   {confirmDeleteId === ch.id ? (
@@ -200,7 +239,12 @@ export function ChallengesPanel() {
                       <button type="button" onClick={() => setConfirmDeleteId(null)} className="text-[11px] text-gray-400">Cancel</button>
                     </div>
                   ) : (
-                    <button type="button" onClick={() => setConfirmDeleteId(ch.id)} className="mt-2 ml-auto block text-[11px] text-gray-500 hover:text-rose-300">Delete</button>
+                    <div className="mt-2 flex items-center gap-2 justify-end">
+                      <button type="button" onClick={() => startEditChallenge(ch)} aria-label={`Edit challenge ${ch.title}`} className="flex items-center gap-1 text-[11px] text-gray-500 hover:text-cyan-300">
+                        <Pencil className="h-3 w-3" /> Edit
+                      </button>
+                      <button type="button" onClick={() => setConfirmDeleteId(ch.id)} className="text-[11px] text-gray-500 hover:text-rose-300">Delete</button>
+                    </div>
                   )}
                 </div>
               </div>

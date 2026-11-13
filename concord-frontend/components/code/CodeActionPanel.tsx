@@ -15,6 +15,7 @@
  *   9. Refactor (agent) - chat_agent.do propose 3 refactors
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import { QuietSuccessEdge } from './delight';
 import {
@@ -241,16 +242,10 @@ export function CodeActionPanel() {
       ].filter(Boolean).join(' ');
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 4 } });
       if (r.data?.ok === false) { err(r.data?.error || 'Agent failed.'); return; }
-      // S12: the agent's text lands under several envelope shapes; read them all before
-      // concluding it "returned empty". chat_agent returns it as `answer` (#1920), so that
-      // field comes first.
-      const inner = (r.data?.result ?? {}) as Record<string, unknown>;
-      const nested = (inner.result ?? {}) as Record<string, unknown>;
-      const reply = inner.answer ?? inner.reply ?? inner.summary ?? inner.output ?? inner.text ?? inner.response ?? inner.message
-        ?? nested.answer ?? nested.reply ?? nested.summary ?? nested.output ?? nested.text
-        ?? (typeof inner === 'string' ? inner : null);
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('3 refactors ready.'); }
-      else err('Agent returned empty.');
+      // readAgentReply reads every envelope shape (answer first), so "empty" only means the agent wrote nothing.
+      const reply = readAgentReply(r.data);
+      if (reply.ok) { setAgentReply(reply.text); ok('3 refactors ready.'); }
+      else err(reply.reason);
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }

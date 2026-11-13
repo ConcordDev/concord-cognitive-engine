@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { showToast } from '@/components/common/Toasts';
+import { artifactTitleError } from '@/lib/form-guards';
 import { ArtifactBench } from './ArtifactBench';
 import {
   OpsKind, getTypeForKind, getStatusesForKind, computeWbTotals, type FormFields,
@@ -37,6 +38,7 @@ export function OpsRecordsPanel({ kind }: { kind: OpsKind }) {
   const [showEditor, setShowEditor] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormFields>({});
+  const [flightDraftScope, setFlightDraftScope] = useState('new');
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
 
   const query = useLensData('aviation', type, {
@@ -59,11 +61,13 @@ export function OpsRecordsPanel({ kind }: { kind: OpsKind }) {
   const openNew = useCallback(() => {
     setForm({});
     setEditingId(null);
+    setFlightDraftScope(`new-${Date.now()}`);
     setShowEditor(true);
   }, []);
 
   const openEdit = useCallback((item: LensItem) => {
     setEditingId(item.id);
+    setFlightDraftScope(item.id);
     const d = item.data as Record<string, unknown>;
     setForm({ ...d, _title: item.title, _status: item.meta?.status || '' });
     setShowEditor(true);
@@ -87,25 +91,61 @@ export function OpsRecordsPanel({ kind }: { kind: OpsKind }) {
 
   const handleSave = async () => {
     let data = { ...form };
-    const title = (data._title as string) || `New ${type}`;
+    const title = ((data._title as string) || `New ${type}`).trim();
+    const titleProblem = artifactTitleError(title);
+    if (titleProblem) {
+      showToast('error', titleProblem);
+      return;
+    }
     const status = (data._status as string) || defaultStatus(kind);
     delete data._title;
     delete data._status;
+    if (kind === 'flights') {
+      const icao = /^[A-Z]{3,4}$/;
+      const departure = String(data.departure || '').trim().toUpperCase();
+      const arrival = String(data.arrival || '').trim().toUpperCase();
+      if (!icao.test(departure) || !icao.test(arrival)) {
+        showToast('error', 'Departure and arrival must be 3 or 4 letter ICAO codes');
+        return;
+      }
+      const hobbsStart = Number(data.hobbsStart);
+      const hobbsEnd = Number(data.hobbsEnd);
+      if (!Number.isFinite(hobbsStart) || hobbsStart < 0 || !Number.isFinite(hobbsEnd) || hobbsEnd < hobbsStart || hobbsEnd - hobbsStart > 24) {
+        showToast('error', 'Hobbs end must be at least the start, and the flight at most 24 hours');
+        return;
+      }
+      const fuel = Number(data.fuelBurn);
+      if (data.fuelBurn !== '' && data.fuelBurn != null && (!Number.isFinite(fuel) || fuel < 0 || fuel > 5000)) {
+        showToast('error', 'Fuel burn must be between 0 and 5000 gallons');
+        return;
+      }
+      if (data.etd && data.eta && String(data.eta) < String(data.etd)) {
+        showToast('error', 'ETA cannot be before ETD on the same day');
+        return;
+      }
+      data.departure = departure;
+      data.arrival = arrival;
+    }
     if (kind === 'wb') {
       data = { ...data, ...computeWbTotals(form) };
     }
-    if (editingId) {
-      await update(editingId, {
-        title,
-        data: data as Record<string, unknown>,
-        meta: { status },
-      });
-    } else {
-      await create({
-        title,
-        data: data as Record<string, unknown>,
-        meta: { status, tags: [] },
-      });
+    try {
+      if (editingId) {
+        await update(editingId, {
+          title,
+          data: data as Record<string, unknown>,
+          meta: { status },
+        });
+      } else {
+        await create({
+          title,
+          data: data as Record<string, unknown>,
+          meta: { status, tags: [] },
+        });
+      }
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Could not save that record.');
+      return;
     }
     resetForm();
   };
@@ -140,7 +180,7 @@ export function OpsRecordsPanel({ kind }: { kind: OpsKind }) {
       onCloseEditor={resetForm}
       onSave={handleSave}
       onDelete={handleDelete}
-      editor={<KindEditor kind={kind} form={form} setField={setField} />}
+      editor={<KindEditor kind={kind} form={form} setField={setField} flightDraftScope={flightDraftScope} />}
       editorActions={editingId ? <KindEditorActions kind={kind} onAction={(a) => handleAction(a, editingId)} /> : null}
       renderCard={(item) => <KindCard kind={kind} item={item} onOpen={openEdit} />}
     />
@@ -174,9 +214,9 @@ function KindCard({ kind, item, onOpen }: { kind: OpsKind; item: LensItem; onOpe
   }
 }
 
-function KindEditor({ kind, form, setField }: { kind: OpsKind; form: FormFields; setField: (k: string, v: unknown) => void }) {
+function KindEditor({ kind, form, setField, flightDraftScope }: { kind: OpsKind; form: FormFields; setField: (k: string, v: unknown) => void; flightDraftScope: string }) {
   switch (kind) {
-    case 'flights': return <FlightEditor form={form} setField={setField} />;
+    case 'flights': return <FlightEditor form={form} setField={setField} draftScope={flightDraftScope} />;
     case 'pilots': return <PilotEditor form={form} setField={setField} />;
     case 'fleet': return <AircraftOpsEditor form={form} setField={setField} />;
     case 'maintenance': return <MaintenanceEditor form={form} setField={setField} />;

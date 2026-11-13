@@ -42,6 +42,7 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -700,9 +701,9 @@ export function HouseholdHome() {
                       )} onClick={() => {
                         setFormData({ day, mealType: mealType.toLowerCase() });
                         openNew();
-                      }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                      }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                         {meals.length > 0 ? meals.map(m => (
-                          <div key={m.id} className="text-xs p-1 rounded bg-neon-cyan/10 text-neon-cyan mb-1 truncate" onClick={e => { e.stopPropagation(); openEdit(m); }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                          <div key={m.id} className="text-xs p-1 rounded bg-neon-cyan/10 text-neon-cyan mb-1 truncate" onClick={e => { e.stopPropagation(); openEdit(m); }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                             {m.title}
                           </div>
                         )) : (
@@ -909,7 +910,7 @@ export function HouseholdHome() {
                 return d.season === season && i.meta.status === 'overdue';
               }).length;
               return (
-                <div key={season} className={cn(ds.panelHover, 'text-center')} onClick={() => setMaintenanceSeason(season)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                <div key={season} className={cn(ds.panelHover, 'text-center')} onClick={() => setMaintenanceSeason(season)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                   <SeasonIcon className={cn('w-8 h-8 mx-auto mb-2', season === maintenanceSeason ? 'text-neon-cyan' : 'text-gray-400')} />
                   <p className="text-sm font-medium text-white">{season}</p>
                   <p className={ds.textMuted}>{count} task{count !== 1 ? 's' : ''}</p>
@@ -1071,14 +1072,14 @@ export function HouseholdHome() {
                       !day.isCurrentMonth && 'opacity-40',
                       isToday && 'border-neon-cyan/50 bg-neon-cyan/5',
                       'hover:border-neon-cyan/30 transition-colors cursor-pointer'
-                    )} onClick={() => { setFormData({ date: day.date }); openNew(); }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                    )} onClick={() => { setFormData({ date: day.date }); openNew(); }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                       <p className={cn('text-xs font-medium mb-1', isToday ? 'text-neon-cyan' : 'text-gray-400')}>{day.day}</p>
                       {dayEvents.slice(0, 3).map(ev => {
                         const evd = ev.data as unknown as CalendarEvent;
                         return (
                           <div key={ev.id} className="text-xs p-0.5 rounded mb-0.5 truncate cursor-pointer"
                             style={{ backgroundColor: `${evd.color || '#3B82F6'}20`, color: evd.color || '#3B82F6' }}
-                            onClick={e => { e.stopPropagation(); openEdit(ev); }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                            onClick={e => { e.stopPropagation(); openEdit(ev); }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                             {ev.title}
                           </div>
                         );
@@ -1109,7 +1110,7 @@ export function HouseholdHome() {
                         return (
                           <div key={ev.id} className="p-1.5 rounded text-xs cursor-pointer hover:opacity-80 transition-opacity"
                             style={{ backgroundColor: `${evd.color || '#3B82F6'}20`, color: evd.color || '#3B82F6', borderLeft: `3px solid ${evd.color || '#3B82F6'}` }}
-                            onClick={() => openEdit(ev)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                            onClick={() => openEdit(ev)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                             <p className="font-medium truncate">{ev.title}</p>
                             {evd.time && <p className="opacity-70">{evd.time}</p>}
                             {evd.isShared && <span className="opacity-60">Shared</span>}
@@ -1852,9 +1853,9 @@ export function HouseholdHome() {
 
       {/* Editor modal */}
       {showEditor && (
-        <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <div className={ds.modalContainer}>
-            <div className={cn(ds.modalPanel, 'max-w-2xl')} onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            <div className={cn(ds.modalPanel, 'max-w-2xl')} onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
               <div className="p-6 border-b border-lattice-border">
                 <div className={ds.sectionHeader}>
                   <h2 className={ds.heading2}>{editingId ? 'Edit' : 'New'} {currentType}</h2>

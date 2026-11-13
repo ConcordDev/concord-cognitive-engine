@@ -184,7 +184,7 @@ export function SceneCanvas({
           </g>
         ))}
       </svg>
-      <div className="mt-1 flex justify-between text-[10px] text-stone-500">
+      <div className="mt-1 flex justify-between text-[10px] text-stone-400">
         <span>−250m</span>
         <span>Top-down scene · {BOX * 2}m × {BOX * 2}m</span>
         <span>+250m</span>

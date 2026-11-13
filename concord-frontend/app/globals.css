@@ -25,7 +25,7 @@
   /* ── Text — hierarchy through opacity ── */
   --text-primary: #F0EDE8;
   --text-secondary: #b5b0a8;
-  --text-tertiary: #79746c;
+  --text-tertiary: #948f83;  /* measured WCAG: 6.06:1 on --bg-base, 5.27:1 on --bg-raised (AA for text at every layer) */
 
   /* ── Accent — one dominant, two supporting ── */
   --accent-primary: #3ECFA0;   /* living green — the system is alive */
@@ -58,12 +58,28 @@
   --background-start-rgb: 10, 10, 15;
   --background-end-rgb: 13, 13, 20;
 
-  /* Lattice Empire Theme - Dark (Default) */
+  /* Lattice Empire Theme - Dark (Default).
+     Hex vars stay for direct var() consumers. The *-rgb channels are what
+     Tailwind utilities read (see tailwind.config.js), so bg-lattice-* flips
+     with .light instead of staying a compiled dark hex under dark text. */
   --lattice-void: #0a0a0f;
+  --lattice-void-rgb: 10 10 15;
   --lattice-deep: #0d0d14;
+  --lattice-deep-rgb: 13 13 20;
   --lattice-surface: #12121a;
+  --lattice-surface-rgb: 18 18 26;
   --lattice-elevated: #1a1a24;
+  --lattice-elevated-rgb: 26 26 36;
   --lattice-border: #2a2a3a;
+  --lattice-border-rgb: 42 42 58;
+  --lattice-bg: #0d0d14;
+  --lattice-bg-rgb: 13 13 20;
+  --lattice-base: #0a0a0f;
+  --lattice-base-rgb: 10 10 15;
+  --lattice-edge: #2a2a3a;
+  --lattice-edge-rgb: 42 42 58;
+  --lattice-text: #e4e4e7;
+  --lattice-text-rgb: 228 228 231;
 
   /* Neon Accents */
   --neon-blue: #00d4ff;
@@ -106,10 +122,23 @@
   --background-end-rgb: 245, 245, 250;
 
   --lattice-void: #fafafa;
+  --lattice-void-rgb: 250 250 250;
   --lattice-deep: #f5f5f7;
+  --lattice-deep-rgb: 245 245 247;
   --lattice-surface: #ffffff;
+  --lattice-surface-rgb: 255 255 255;
   --lattice-elevated: #f8f8fc;
+  --lattice-elevated-rgb: 248 248 252;
   --lattice-border: #e5e5e8;
+  --lattice-border-rgb: 229 229 232;
+  --lattice-bg: #f5f5f7;
+  --lattice-bg-rgb: 245 245 247;
+  --lattice-base: #fafafa;
+  --lattice-base-rgb: 250 250 250;
+  --lattice-edge: #e5e5e8;
+  --lattice-edge-rgb: 229 229 232;
+  --lattice-text: #18181b;
+  --lattice-text-rgb: 24 24 27;
 
   --neon-blue: #0095cc;
   --neon-cyan: #00b8b0;
@@ -786,6 +815,53 @@ button, a, input, textarea, select {
 .mobile-nav-pad { padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px)); }
 @media (min-width: 768px) { .mobile-nav-pad { padding-bottom: 0; } }
 
+/* Phones (390px audit width): corner FABs using Tailwind bottom-4..12 sit
+   under MobileNav (fixed, z-50, h-14 + safe area). Lift them by the same
+   offset as .mobile-nav-pad. Desktop is unchanged. Tab strips scroll
+   instead of clipping off the right edge. */
+@media (max-width: 767px) {
+  .fixed.bottom-4,
+  .fixed.bottom-5,
+  .fixed.bottom-6,
+  .fixed.bottom-8,
+  .fixed.bottom-10,
+  .fixed.bottom-12 {
+    bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+    z-index: 60;
+  }
+  [role="tablist"] {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+  /* A wide table's parent scrolls sideways so the right columns stay reachable. */
+  div:has(> table),
+  section:has(> table) {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+  div:has(> table) > table,
+  section:has(> table) > table {
+    width: max-content;
+    min-width: 100%;
+  }
+}
+
+/* 44px tap targets only for a coarse pointer on a phone. A fine pointer,
+   including a desktop window dragged narrow, keeps the dense toolbar. */
+@media (max-width: 767px) and (pointer: coarse) {
+  button,
+  [role="tab"],
+  [role="button"],
+  select,
+  input[type="checkbox"] {
+    min-height: 44px;
+  }
+  input[type="checkbox"] {
+    min-width: 44px;
+  }
+}
+
 /* ── Phase 8 — combat polish time-dilation overlay ───────────────────────
    Applied to <body> by CombatTimeDilationOverlay when a perfect dodge fires
    on a high-dilation profile (Cyberpunk = 0.35, Sifu = 0.15, etc).
@@ -1367,3 +1443,240 @@ html.a11y-reduce-motion .social-reveal-items > * {
 [data-theme="light"] .bg-white, .light .bg-white { background-color: #fafafa; }
 [data-theme="light"] .text-black, .light .text-black { color: #fafafa; }
 [data-theme="light"] .bg-black, .light .bg-black { background-color: #18181b; }
+
+/* bg-black stays a dark island, but the text invert above paints the
+   light zinc ramp the same near-black. Put the light ramp back inside
+   that island (higher specificity than `.light .text-white`). */
+[data-theme="light"] .bg-black .text-white, [data-theme="light"] .bg-black.text-white,
+.light .bg-black .text-white, .light .bg-black.text-white { color: #fafafa; }
+[data-theme="light"] .bg-black .text-zinc-50, [data-theme="light"] .bg-black.text-zinc-50,
+.light .bg-black .text-zinc-50, .light .bg-black.text-zinc-50 { color: #fafafa; }
+[data-theme="light"] .bg-black .text-zinc-100, [data-theme="light"] .bg-black.text-zinc-100,
+.light .bg-black .text-zinc-100, .light .bg-black.text-zinc-100 { color: #f4f4f5; }
+[data-theme="light"] .bg-black .text-zinc-200, [data-theme="light"] .bg-black.text-zinc-200,
+.light .bg-black .text-zinc-200, .light .bg-black.text-zinc-200 { color: #e4e4e7; }
+[data-theme="light"] .bg-black .text-zinc-300, [data-theme="light"] .bg-black.text-zinc-300,
+.light .bg-black .text-zinc-300, .light .bg-black.text-zinc-300 { color: #d4d4d8; }
+[data-theme="light"] .bg-black .text-zinc-400, [data-theme="light"] .bg-black.text-zinc-400,
+.light .bg-black .text-zinc-400, .light .bg-black.text-zinc-400 { color: #a1a1aa; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LIGHT THEME — TRANSLUCENT DARK SURFACES (H1, 2026-11-13)
+
+   The retrofit above flips the opaque zinc/gray/slate surface utilities, but
+   Tailwind emits an opacity variant (bg-zinc-900/60, bg-zinc-950/40) as its own
+   class, so those kept their dark rgba under Light and the lens stayed dark
+   (FIX-attention-006 and the 12 sibling tickets). Same neutral-scale flip as
+   above, alpha preserved. Generated: shades 700-950 x the opacities in use.
+   bg-black/* is left alone on purpose: it is the "island" / scrim convention.
+   ═══════════════════════════════════════════════════════════════════════════ */
+[data-theme="light"] .bg-zinc-700\/10, .light .bg-zinc-700\/10 { background-color: rgb(212 212 216 / 0.1); }
+[data-theme="light"] .bg-zinc-700\/20, .light .bg-zinc-700\/20 { background-color: rgb(212 212 216 / 0.2); }
+[data-theme="light"] .bg-zinc-700\/30, .light .bg-zinc-700\/30 { background-color: rgb(212 212 216 / 0.3); }
+[data-theme="light"] .bg-zinc-700\/40, .light .bg-zinc-700\/40 { background-color: rgb(212 212 216 / 0.4); }
+[data-theme="light"] .bg-zinc-700\/50, .light .bg-zinc-700\/50 { background-color: rgb(212 212 216 / 0.5); }
+[data-theme="light"] .bg-zinc-700\/60, .light .bg-zinc-700\/60 { background-color: rgb(212 212 216 / 0.6); }
+[data-theme="light"] .bg-zinc-700\/70, .light .bg-zinc-700\/70 { background-color: rgb(212 212 216 / 0.7); }
+[data-theme="light"] .bg-zinc-700\/80, .light .bg-zinc-700\/80 { background-color: rgb(212 212 216 / 0.8); }
+[data-theme="light"] .bg-zinc-700\/90, .light .bg-zinc-700\/90 { background-color: rgb(212 212 216 / 0.9); }
+[data-theme="light"] .bg-zinc-700\/95, .light .bg-zinc-700\/95 { background-color: rgb(212 212 216 / 0.95); }
+[data-theme="light"] .bg-zinc-800\/10, .light .bg-zinc-800\/10 { background-color: rgb(228 228 231 / 0.1); }
+[data-theme="light"] .bg-zinc-800\/20, .light .bg-zinc-800\/20 { background-color: rgb(228 228 231 / 0.2); }
+[data-theme="light"] .bg-zinc-800\/30, .light .bg-zinc-800\/30 { background-color: rgb(228 228 231 / 0.3); }
+[data-theme="light"] .bg-zinc-800\/40, .light .bg-zinc-800\/40 { background-color: rgb(228 228 231 / 0.4); }
+[data-theme="light"] .bg-zinc-800\/50, .light .bg-zinc-800\/50 { background-color: rgb(228 228 231 / 0.5); }
+[data-theme="light"] .bg-zinc-800\/60, .light .bg-zinc-800\/60 { background-color: rgb(228 228 231 / 0.6); }
+[data-theme="light"] .bg-zinc-800\/70, .light .bg-zinc-800\/70 { background-color: rgb(228 228 231 / 0.7); }
+[data-theme="light"] .bg-zinc-800\/80, .light .bg-zinc-800\/80 { background-color: rgb(228 228 231 / 0.8); }
+[data-theme="light"] .bg-zinc-800\/90, .light .bg-zinc-800\/90 { background-color: rgb(228 228 231 / 0.9); }
+[data-theme="light"] .bg-zinc-800\/95, .light .bg-zinc-800\/95 { background-color: rgb(228 228 231 / 0.95); }
+[data-theme="light"] .bg-zinc-900\/10, .light .bg-zinc-900\/10 { background-color: rgb(244 244 245 / 0.1); }
+[data-theme="light"] .bg-zinc-900\/20, .light .bg-zinc-900\/20 { background-color: rgb(244 244 245 / 0.2); }
+[data-theme="light"] .bg-zinc-900\/30, .light .bg-zinc-900\/30 { background-color: rgb(244 244 245 / 0.3); }
+[data-theme="light"] .bg-zinc-900\/40, .light .bg-zinc-900\/40 { background-color: rgb(244 244 245 / 0.4); }
+[data-theme="light"] .bg-zinc-900\/50, .light .bg-zinc-900\/50 { background-color: rgb(244 244 245 / 0.5); }
+[data-theme="light"] .bg-zinc-900\/60, .light .bg-zinc-900\/60 { background-color: rgb(244 244 245 / 0.6); }
+[data-theme="light"] .bg-zinc-900\/70, .light .bg-zinc-900\/70 { background-color: rgb(244 244 245 / 0.7); }
+[data-theme="light"] .bg-zinc-900\/80, .light .bg-zinc-900\/80 { background-color: rgb(244 244 245 / 0.8); }
+[data-theme="light"] .bg-zinc-900\/90, .light .bg-zinc-900\/90 { background-color: rgb(244 244 245 / 0.9); }
+[data-theme="light"] .bg-zinc-900\/95, .light .bg-zinc-900\/95 { background-color: rgb(244 244 245 / 0.95); }
+[data-theme="light"] .bg-zinc-950\/10, .light .bg-zinc-950\/10 { background-color: rgb(250 250 250 / 0.1); }
+[data-theme="light"] .bg-zinc-950\/20, .light .bg-zinc-950\/20 { background-color: rgb(250 250 250 / 0.2); }
+[data-theme="light"] .bg-zinc-950\/30, .light .bg-zinc-950\/30 { background-color: rgb(250 250 250 / 0.3); }
+[data-theme="light"] .bg-zinc-950\/40, .light .bg-zinc-950\/40 { background-color: rgb(250 250 250 / 0.4); }
+[data-theme="light"] .bg-zinc-950\/50, .light .bg-zinc-950\/50 { background-color: rgb(250 250 250 / 0.5); }
+[data-theme="light"] .bg-zinc-950\/60, .light .bg-zinc-950\/60 { background-color: rgb(250 250 250 / 0.6); }
+[data-theme="light"] .bg-zinc-950\/70, .light .bg-zinc-950\/70 { background-color: rgb(250 250 250 / 0.7); }
+[data-theme="light"] .bg-zinc-950\/80, .light .bg-zinc-950\/80 { background-color: rgb(250 250 250 / 0.8); }
+[data-theme="light"] .bg-zinc-950\/90, .light .bg-zinc-950\/90 { background-color: rgb(250 250 250 / 0.9); }
+[data-theme="light"] .bg-zinc-950\/95, .light .bg-zinc-950\/95 { background-color: rgb(250 250 250 / 0.95); }
+[data-theme="light"] .bg-gray-700\/10, .light .bg-gray-700\/10 { background-color: rgb(212 212 216 / 0.1); }
+[data-theme="light"] .bg-gray-700\/20, .light .bg-gray-700\/20 { background-color: rgb(212 212 216 / 0.2); }
+[data-theme="light"] .bg-gray-700\/30, .light .bg-gray-700\/30 { background-color: rgb(212 212 216 / 0.3); }
+[data-theme="light"] .bg-gray-700\/40, .light .bg-gray-700\/40 { background-color: rgb(212 212 216 / 0.4); }
+[data-theme="light"] .bg-gray-700\/50, .light .bg-gray-700\/50 { background-color: rgb(212 212 216 / 0.5); }
+[data-theme="light"] .bg-gray-700\/60, .light .bg-gray-700\/60 { background-color: rgb(212 212 216 / 0.6); }
+[data-theme="light"] .bg-gray-700\/70, .light .bg-gray-700\/70 { background-color: rgb(212 212 216 / 0.7); }
+[data-theme="light"] .bg-gray-700\/80, .light .bg-gray-700\/80 { background-color: rgb(212 212 216 / 0.8); }
+[data-theme="light"] .bg-gray-700\/90, .light .bg-gray-700\/90 { background-color: rgb(212 212 216 / 0.9); }
+[data-theme="light"] .bg-gray-700\/95, .light .bg-gray-700\/95 { background-color: rgb(212 212 216 / 0.95); }
+[data-theme="light"] .bg-gray-800\/10, .light .bg-gray-800\/10 { background-color: rgb(228 228 231 / 0.1); }
+[data-theme="light"] .bg-gray-800\/20, .light .bg-gray-800\/20 { background-color: rgb(228 228 231 / 0.2); }
+[data-theme="light"] .bg-gray-800\/30, .light .bg-gray-800\/30 { background-color: rgb(228 228 231 / 0.3); }
+[data-theme="light"] .bg-gray-800\/40, .light .bg-gray-800\/40 { background-color: rgb(228 228 231 / 0.4); }
+[data-theme="light"] .bg-gray-800\/50, .light .bg-gray-800\/50 { background-color: rgb(228 228 231 / 0.5); }
+[data-theme="light"] .bg-gray-800\/60, .light .bg-gray-800\/60 { background-color: rgb(228 228 231 / 0.6); }
+[data-theme="light"] .bg-gray-800\/70, .light .bg-gray-800\/70 { background-color: rgb(228 228 231 / 0.7); }
+[data-theme="light"] .bg-gray-800\/80, .light .bg-gray-800\/80 { background-color: rgb(228 228 231 / 0.8); }
+[data-theme="light"] .bg-gray-800\/90, .light .bg-gray-800\/90 { background-color: rgb(228 228 231 / 0.9); }
+[data-theme="light"] .bg-gray-800\/95, .light .bg-gray-800\/95 { background-color: rgb(228 228 231 / 0.95); }
+[data-theme="light"] .bg-gray-900\/10, .light .bg-gray-900\/10 { background-color: rgb(244 244 245 / 0.1); }
+[data-theme="light"] .bg-gray-900\/20, .light .bg-gray-900\/20 { background-color: rgb(244 244 245 / 0.2); }
+[data-theme="light"] .bg-gray-900\/30, .light .bg-gray-900\/30 { background-color: rgb(244 244 245 / 0.3); }
+[data-theme="light"] .bg-gray-900\/40, .light .bg-gray-900\/40 { background-color: rgb(244 244 245 / 0.4); }
+[data-theme="light"] .bg-gray-900\/50, .light .bg-gray-900\/50 { background-color: rgb(244 244 245 / 0.5); }
+[data-theme="light"] .bg-gray-900\/60, .light .bg-gray-900\/60 { background-color: rgb(244 244 245 / 0.6); }
+[data-theme="light"] .bg-gray-900\/70, .light .bg-gray-900\/70 { background-color: rgb(244 244 245 / 0.7); }
+[data-theme="light"] .bg-gray-900\/80, .light .bg-gray-900\/80 { background-color: rgb(244 244 245 / 0.8); }
+[data-theme="light"] .bg-gray-900\/90, .light .bg-gray-900\/90 { background-color: rgb(244 244 245 / 0.9); }
+[data-theme="light"] .bg-gray-900\/95, .light .bg-gray-900\/95 { background-color: rgb(244 244 245 / 0.95); }
+[data-theme="light"] .bg-gray-950\/10, .light .bg-gray-950\/10 { background-color: rgb(250 250 250 / 0.1); }
+[data-theme="light"] .bg-gray-950\/20, .light .bg-gray-950\/20 { background-color: rgb(250 250 250 / 0.2); }
+[data-theme="light"] .bg-gray-950\/30, .light .bg-gray-950\/30 { background-color: rgb(250 250 250 / 0.3); }
+[data-theme="light"] .bg-gray-950\/40, .light .bg-gray-950\/40 { background-color: rgb(250 250 250 / 0.4); }
+[data-theme="light"] .bg-gray-950\/50, .light .bg-gray-950\/50 { background-color: rgb(250 250 250 / 0.5); }
+[data-theme="light"] .bg-gray-950\/60, .light .bg-gray-950\/60 { background-color: rgb(250 250 250 / 0.6); }
+[data-theme="light"] .bg-gray-950\/70, .light .bg-gray-950\/70 { background-color: rgb(250 250 250 / 0.7); }
+[data-theme="light"] .bg-gray-950\/80, .light .bg-gray-950\/80 { background-color: rgb(250 250 250 / 0.8); }
+[data-theme="light"] .bg-gray-950\/90, .light .bg-gray-950\/90 { background-color: rgb(250 250 250 / 0.9); }
+[data-theme="light"] .bg-gray-950\/95, .light .bg-gray-950\/95 { background-color: rgb(250 250 250 / 0.95); }
+[data-theme="light"] .bg-slate-700\/10, .light .bg-slate-700\/10 { background-color: rgb(212 212 216 / 0.1); }
+[data-theme="light"] .bg-slate-700\/20, .light .bg-slate-700\/20 { background-color: rgb(212 212 216 / 0.2); }
+[data-theme="light"] .bg-slate-700\/30, .light .bg-slate-700\/30 { background-color: rgb(212 212 216 / 0.3); }
+[data-theme="light"] .bg-slate-700\/40, .light .bg-slate-700\/40 { background-color: rgb(212 212 216 / 0.4); }
+[data-theme="light"] .bg-slate-700\/50, .light .bg-slate-700\/50 { background-color: rgb(212 212 216 / 0.5); }
+[data-theme="light"] .bg-slate-700\/60, .light .bg-slate-700\/60 { background-color: rgb(212 212 216 / 0.6); }
+[data-theme="light"] .bg-slate-700\/70, .light .bg-slate-700\/70 { background-color: rgb(212 212 216 / 0.7); }
+[data-theme="light"] .bg-slate-700\/80, .light .bg-slate-700\/80 { background-color: rgb(212 212 216 / 0.8); }
+[data-theme="light"] .bg-slate-700\/90, .light .bg-slate-700\/90 { background-color: rgb(212 212 216 / 0.9); }
+[data-theme="light"] .bg-slate-700\/95, .light .bg-slate-700\/95 { background-color: rgb(212 212 216 / 0.95); }
+[data-theme="light"] .bg-slate-800\/10, .light .bg-slate-800\/10 { background-color: rgb(228 228 231 / 0.1); }
+[data-theme="light"] .bg-slate-800\/20, .light .bg-slate-800\/20 { background-color: rgb(228 228 231 / 0.2); }
+[data-theme="light"] .bg-slate-800\/30, .light .bg-slate-800\/30 { background-color: rgb(228 228 231 / 0.3); }
+[data-theme="light"] .bg-slate-800\/40, .light .bg-slate-800\/40 { background-color: rgb(228 228 231 / 0.4); }
+[data-theme="light"] .bg-slate-800\/50, .light .bg-slate-800\/50 { background-color: rgb(228 228 231 / 0.5); }
+[data-theme="light"] .bg-slate-800\/60, .light .bg-slate-800\/60 { background-color: rgb(228 228 231 / 0.6); }
+[data-theme="light"] .bg-slate-800\/70, .light .bg-slate-800\/70 { background-color: rgb(228 228 231 / 0.7); }
+[data-theme="light"] .bg-slate-800\/80, .light .bg-slate-800\/80 { background-color: rgb(228 228 231 / 0.8); }
+[data-theme="light"] .bg-slate-800\/90, .light .bg-slate-800\/90 { background-color: rgb(228 228 231 / 0.9); }
+[data-theme="light"] .bg-slate-800\/95, .light .bg-slate-800\/95 { background-color: rgb(228 228 231 / 0.95); }
+[data-theme="light"] .bg-slate-900\/10, .light .bg-slate-900\/10 { background-color: rgb(244 244 245 / 0.1); }
+[data-theme="light"] .bg-slate-900\/20, .light .bg-slate-900\/20 { background-color: rgb(244 244 245 / 0.2); }
+[data-theme="light"] .bg-slate-900\/30, .light .bg-slate-900\/30 { background-color: rgb(244 244 245 / 0.3); }
+[data-theme="light"] .bg-slate-900\/40, .light .bg-slate-900\/40 { background-color: rgb(244 244 245 / 0.4); }
+[data-theme="light"] .bg-slate-900\/50, .light .bg-slate-900\/50 { background-color: rgb(244 244 245 / 0.5); }
+[data-theme="light"] .bg-slate-900\/60, .light .bg-slate-900\/60 { background-color: rgb(244 244 245 / 0.6); }
+[data-theme="light"] .bg-slate-900\/70, .light .bg-slate-900\/70 { background-color: rgb(244 244 245 / 0.7); }
+[data-theme="light"] .bg-slate-900\/80, .light .bg-slate-900\/80 { background-color: rgb(244 244 245 / 0.8); }
+[data-theme="light"] .bg-slate-900\/90, .light .bg-slate-900\/90 { background-color: rgb(244 244 245 / 0.9); }
+[data-theme="light"] .bg-slate-900\/95, .light .bg-slate-900\/95 { background-color: rgb(244 244 245 / 0.95); }
+[data-theme="light"] .bg-slate-950\/10, .light .bg-slate-950\/10 { background-color: rgb(250 250 250 / 0.1); }
+[data-theme="light"] .bg-slate-950\/20, .light .bg-slate-950\/20 { background-color: rgb(250 250 250 / 0.2); }
+[data-theme="light"] .bg-slate-950\/30, .light .bg-slate-950\/30 { background-color: rgb(250 250 250 / 0.3); }
+[data-theme="light"] .bg-slate-950\/40, .light .bg-slate-950\/40 { background-color: rgb(250 250 250 / 0.4); }
+[data-theme="light"] .bg-slate-950\/50, .light .bg-slate-950\/50 { background-color: rgb(250 250 250 / 0.5); }
+[data-theme="light"] .bg-slate-950\/60, .light .bg-slate-950\/60 { background-color: rgb(250 250 250 / 0.6); }
+[data-theme="light"] .bg-slate-950\/70, .light .bg-slate-950\/70 { background-color: rgb(250 250 250 / 0.7); }
+[data-theme="light"] .bg-slate-950\/80, .light .bg-slate-950\/80 { background-color: rgb(250 250 250 / 0.8); }
+[data-theme="light"] .bg-slate-950\/90, .light .bg-slate-950\/90 { background-color: rgb(250 250 250 / 0.9); }
+[data-theme="light"] .bg-slate-950\/95, .light .bg-slate-950\/95 { background-color: rgb(250 250 250 / 0.95); }
+[data-theme="light"] .bg-neutral-700\/10, .light .bg-neutral-700\/10 { background-color: rgb(212 212 216 / 0.1); }
+[data-theme="light"] .bg-neutral-700\/20, .light .bg-neutral-700\/20 { background-color: rgb(212 212 216 / 0.2); }
+[data-theme="light"] .bg-neutral-700\/30, .light .bg-neutral-700\/30 { background-color: rgb(212 212 216 / 0.3); }
+[data-theme="light"] .bg-neutral-700\/40, .light .bg-neutral-700\/40 { background-color: rgb(212 212 216 / 0.4); }
+[data-theme="light"] .bg-neutral-700\/50, .light .bg-neutral-700\/50 { background-color: rgb(212 212 216 / 0.5); }
+[data-theme="light"] .bg-neutral-700\/60, .light .bg-neutral-700\/60 { background-color: rgb(212 212 216 / 0.6); }
+[data-theme="light"] .bg-neutral-700\/70, .light .bg-neutral-700\/70 { background-color: rgb(212 212 216 / 0.7); }
+[data-theme="light"] .bg-neutral-700\/80, .light .bg-neutral-700\/80 { background-color: rgb(212 212 216 / 0.8); }
+[data-theme="light"] .bg-neutral-700\/90, .light .bg-neutral-700\/90 { background-color: rgb(212 212 216 / 0.9); }
+[data-theme="light"] .bg-neutral-700\/95, .light .bg-neutral-700\/95 { background-color: rgb(212 212 216 / 0.95); }
+[data-theme="light"] .bg-neutral-800\/10, .light .bg-neutral-800\/10 { background-color: rgb(228 228 231 / 0.1); }
+[data-theme="light"] .bg-neutral-800\/20, .light .bg-neutral-800\/20 { background-color: rgb(228 228 231 / 0.2); }
+[data-theme="light"] .bg-neutral-800\/30, .light .bg-neutral-800\/30 { background-color: rgb(228 228 231 / 0.3); }
+[data-theme="light"] .bg-neutral-800\/40, .light .bg-neutral-800\/40 { background-color: rgb(228 228 231 / 0.4); }
+[data-theme="light"] .bg-neutral-800\/50, .light .bg-neutral-800\/50 { background-color: rgb(228 228 231 / 0.5); }
+[data-theme="light"] .bg-neutral-800\/60, .light .bg-neutral-800\/60 { background-color: rgb(228 228 231 / 0.6); }
+[data-theme="light"] .bg-neutral-800\/70, .light .bg-neutral-800\/70 { background-color: rgb(228 228 231 / 0.7); }
+[data-theme="light"] .bg-neutral-800\/80, .light .bg-neutral-800\/80 { background-color: rgb(228 228 231 / 0.8); }
+[data-theme="light"] .bg-neutral-800\/90, .light .bg-neutral-800\/90 { background-color: rgb(228 228 231 / 0.9); }
+[data-theme="light"] .bg-neutral-800\/95, .light .bg-neutral-800\/95 { background-color: rgb(228 228 231 / 0.95); }
+[data-theme="light"] .bg-neutral-900\/10, .light .bg-neutral-900\/10 { background-color: rgb(244 244 245 / 0.1); }
+[data-theme="light"] .bg-neutral-900\/20, .light .bg-neutral-900\/20 { background-color: rgb(244 244 245 / 0.2); }
+[data-theme="light"] .bg-neutral-900\/30, .light .bg-neutral-900\/30 { background-color: rgb(244 244 245 / 0.3); }
+[data-theme="light"] .bg-neutral-900\/40, .light .bg-neutral-900\/40 { background-color: rgb(244 244 245 / 0.4); }
+[data-theme="light"] .bg-neutral-900\/50, .light .bg-neutral-900\/50 { background-color: rgb(244 244 245 / 0.5); }
+[data-theme="light"] .bg-neutral-900\/60, .light .bg-neutral-900\/60 { background-color: rgb(244 244 245 / 0.6); }
+[data-theme="light"] .bg-neutral-900\/70, .light .bg-neutral-900\/70 { background-color: rgb(244 244 245 / 0.7); }
+[data-theme="light"] .bg-neutral-900\/80, .light .bg-neutral-900\/80 { background-color: rgb(244 244 245 / 0.8); }
+[data-theme="light"] .bg-neutral-900\/90, .light .bg-neutral-900\/90 { background-color: rgb(244 244 245 / 0.9); }
+[data-theme="light"] .bg-neutral-900\/95, .light .bg-neutral-900\/95 { background-color: rgb(244 244 245 / 0.95); }
+[data-theme="light"] .bg-neutral-950\/10, .light .bg-neutral-950\/10 { background-color: rgb(250 250 250 / 0.1); }
+[data-theme="light"] .bg-neutral-950\/20, .light .bg-neutral-950\/20 { background-color: rgb(250 250 250 / 0.2); }
+[data-theme="light"] .bg-neutral-950\/30, .light .bg-neutral-950\/30 { background-color: rgb(250 250 250 / 0.3); }
+[data-theme="light"] .bg-neutral-950\/40, .light .bg-neutral-950\/40 { background-color: rgb(250 250 250 / 0.4); }
+[data-theme="light"] .bg-neutral-950\/50, .light .bg-neutral-950\/50 { background-color: rgb(250 250 250 / 0.5); }
+[data-theme="light"] .bg-neutral-950\/60, .light .bg-neutral-950\/60 { background-color: rgb(250 250 250 / 0.6); }
+[data-theme="light"] .bg-neutral-950\/70, .light .bg-neutral-950\/70 { background-color: rgb(250 250 250 / 0.7); }
+[data-theme="light"] .bg-neutral-950\/80, .light .bg-neutral-950\/80 { background-color: rgb(250 250 250 / 0.8); }
+[data-theme="light"] .bg-neutral-950\/90, .light .bg-neutral-950\/90 { background-color: rgb(250 250 250 / 0.9); }
+[data-theme="light"] .bg-neutral-950\/95, .light .bg-neutral-950\/95 { background-color: rgb(250 250 250 / 0.95); }
+[data-theme="light"] .bg-stone-700\/10, .light .bg-stone-700\/10 { background-color: rgb(212 212 216 / 0.1); }
+[data-theme="light"] .bg-stone-700\/20, .light .bg-stone-700\/20 { background-color: rgb(212 212 216 / 0.2); }
+[data-theme="light"] .bg-stone-700\/30, .light .bg-stone-700\/30 { background-color: rgb(212 212 216 / 0.3); }
+[data-theme="light"] .bg-stone-700\/40, .light .bg-stone-700\/40 { background-color: rgb(212 212 216 / 0.4); }
+[data-theme="light"] .bg-stone-700\/50, .light .bg-stone-700\/50 { background-color: rgb(212 212 216 / 0.5); }
+[data-theme="light"] .bg-stone-700\/60, .light .bg-stone-700\/60 { background-color: rgb(212 212 216 / 0.6); }
+[data-theme="light"] .bg-stone-700\/70, .light .bg-stone-700\/70 { background-color: rgb(212 212 216 / 0.7); }
+[data-theme="light"] .bg-stone-700\/80, .light .bg-stone-700\/80 { background-color: rgb(212 212 216 / 0.8); }
+[data-theme="light"] .bg-stone-700\/90, .light .bg-stone-700\/90 { background-color: rgb(212 212 216 / 0.9); }
+[data-theme="light"] .bg-stone-700\/95, .light .bg-stone-700\/95 { background-color: rgb(212 212 216 / 0.95); }
+[data-theme="light"] .bg-stone-800\/10, .light .bg-stone-800\/10 { background-color: rgb(228 228 231 / 0.1); }
+[data-theme="light"] .bg-stone-800\/20, .light .bg-stone-800\/20 { background-color: rgb(228 228 231 / 0.2); }
+[data-theme="light"] .bg-stone-800\/30, .light .bg-stone-800\/30 { background-color: rgb(228 228 231 / 0.3); }
+[data-theme="light"] .bg-stone-800\/40, .light .bg-stone-800\/40 { background-color: rgb(228 228 231 / 0.4); }
+[data-theme="light"] .bg-stone-800\/50, .light .bg-stone-800\/50 { background-color: rgb(228 228 231 / 0.5); }
+[data-theme="light"] .bg-stone-800\/60, .light .bg-stone-800\/60 { background-color: rgb(228 228 231 / 0.6); }
+[data-theme="light"] .bg-stone-800\/70, .light .bg-stone-800\/70 { background-color: rgb(228 228 231 / 0.7); }
+[data-theme="light"] .bg-stone-800\/80, .light .bg-stone-800\/80 { background-color: rgb(228 228 231 / 0.8); }
+[data-theme="light"] .bg-stone-800\/90, .light .bg-stone-800\/90 { background-color: rgb(228 228 231 / 0.9); }
+[data-theme="light"] .bg-stone-800\/95, .light .bg-stone-800\/95 { background-color: rgb(228 228 231 / 0.95); }
+[data-theme="light"] .bg-stone-900\/10, .light .bg-stone-900\/10 { background-color: rgb(244 244 245 / 0.1); }
+[data-theme="light"] .bg-stone-900\/20, .light .bg-stone-900\/20 { background-color: rgb(244 244 245 / 0.2); }
+[data-theme="light"] .bg-stone-900\/30, .light .bg-stone-900\/30 { background-color: rgb(244 244 245 / 0.3); }
+[data-theme="light"] .bg-stone-900\/40, .light .bg-stone-900\/40 { background-color: rgb(244 244 245 / 0.4); }
+[data-theme="light"] .bg-stone-900\/50, .light .bg-stone-900\/50 { background-color: rgb(244 244 245 / 0.5); }
+[data-theme="light"] .bg-stone-900\/60, .light .bg-stone-900\/60 { background-color: rgb(244 244 245 / 0.6); }
+[data-theme="light"] .bg-stone-900\/70, .light .bg-stone-900\/70 { background-color: rgb(244 244 245 / 0.7); }
+[data-theme="light"] .bg-stone-900\/80, .light .bg-stone-900\/80 { background-color: rgb(244 244 245 / 0.8); }
+[data-theme="light"] .bg-stone-900\/90, .light .bg-stone-900\/90 { background-color: rgb(244 244 245 / 0.9); }
+[data-theme="light"] .bg-stone-900\/95, .light .bg-stone-900\/95 { background-color: rgb(244 244 245 / 0.95); }
+[data-theme="light"] .bg-stone-950\/10, .light .bg-stone-950\/10 { background-color: rgb(250 250 250 / 0.1); }
+[data-theme="light"] .bg-stone-950\/20, .light .bg-stone-950\/20 { background-color: rgb(250 250 250 / 0.2); }
+[data-theme="light"] .bg-stone-950\/30, .light .bg-stone-950\/30 { background-color: rgb(250 250 250 / 0.3); }
+[data-theme="light"] .bg-stone-950\/40, .light .bg-stone-950\/40 { background-color: rgb(250 250 250 / 0.4); }
+[data-theme="light"] .bg-stone-950\/50, .light .bg-stone-950\/50 { background-color: rgb(250 250 250 / 0.5); }
+[data-theme="light"] .bg-stone-950\/60, .light .bg-stone-950\/60 { background-color: rgb(250 250 250 / 0.6); }
+[data-theme="light"] .bg-stone-950\/70, .light .bg-stone-950\/70 { background-color: rgb(250 250 250 / 0.7); }
+[data-theme="light"] .bg-stone-950\/80, .light .bg-stone-950\/80 { background-color: rgb(250 250 250 / 0.8); }
+[data-theme="light"] .bg-stone-950\/90, .light .bg-stone-950\/90 { background-color: rgb(250 250 250 / 0.9); }
+[data-theme="light"] .bg-stone-950\/95, .light .bg-stone-950\/95 { background-color: rgb(250 250 250 / 0.95); }
+
+/* In-flow translucent black panels (bg-black/20..60) read as a faint tint under
+   Light so their flipped-dark text stays legible. Fixed/absolute layers (modal
+   scrims, image overlays) are excluded and keep their dark scrim. */
+[data-theme="light"] .bg-black\/10:not(.fixed):not(.absolute), .light .bg-black\/10:not(.fixed):not(.absolute) { background-color: rgb(0 0 0 / 0.012); }
+[data-theme="light"] .bg-black\/20:not(.fixed):not(.absolute), .light .bg-black\/20:not(.fixed):not(.absolute) { background-color: rgb(0 0 0 / 0.024); }
+[data-theme="light"] .bg-black\/30:not(.fixed):not(.absolute), .light .bg-black\/30:not(.fixed):not(.absolute) { background-color: rgb(0 0 0 / 0.036); }
+[data-theme="light"] .bg-black\/40:not(.fixed):not(.absolute), .light .bg-black\/40:not(.fixed):not(.absolute) { background-color: rgb(0 0 0 / 0.048); }
+[data-theme="light"] .bg-black\/50:not(.fixed):not(.absolute), .light .bg-black\/50:not(.fixed):not(.absolute) { background-color: rgb(0 0 0 / 0.060); }
+[data-theme="light"] .bg-black\/60:not(.fixed):not(.absolute), .light .bg-black\/60:not(.fixed):not(.absolute) { background-color: rgb(0 0 0 / 0.072); }

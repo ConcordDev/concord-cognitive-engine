@@ -307,6 +307,14 @@ export const LENS_ACTIVITY = {
     "stats-descriptive": Q, "stats-ttest": Q, "stats-correlation": Q,
     "dataset-list": Q,
   },
+  cri: {
+    // FIX-cri-014: the Quality Loop tabs load through these dispatches;
+    // opening a tab is a view, not an operator action. bulkRemediate is
+    // a real action for its mutating ops — only its list load is quiet.
+    "trend-history": Q, alerts: Q, compare: Q, "scoreRules-get": Q,
+    rootCause: Q,
+    bulkRemediate: { quietOps: ["list"] },
+  },
   hvac: {
     "tech-add": { object: { paths: ["result.technician.name", "input.name"] } },
     "appointment-create": { object: { paths: ["result.appointment.customer", "result.appointment.customerName", "result.appointment.title", "input.customer", "input.customerName", "input.title"] } },
@@ -320,8 +328,16 @@ function specFor(domain, action) {
   return d && typeof d === "object" ? d[action] : undefined;
 }
 
-export function isQuietLensAction(domain, action) {
-  return specFor(domain, action)?.quiet === true;
+export function isQuietLensAction(domain, action, input) {
+  const spec = specFor(domain, action);
+  if (spec?.quiet === true) return true;
+  // Op-dispatched actions can be reads for some ops and writes for
+  // others (cri's bulkRemediate loads with op 'list' on tab open and
+  // mutates on flag/queue/resolve). quietOps names the read ops.
+  if (Array.isArray(spec?.quietOps) && typeof input?.op === "string") {
+    return spec.quietOps.includes(input.op);
+  }
+  return false;
 }
 
 export function lensActivityLabel(domain, action) {

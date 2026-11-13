@@ -142,23 +142,53 @@ function TakeoffTab() {
   const [segments, setSegments] = useState<Segment[]>([newSeg()]);
   const [openings, setOpenings] = useState<Opening[]>([]);
   const [saved, setSaved] = useState<Takeoff[]>([]);
+  const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState<Takeoff | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const dims = [...segments.map((s) => [s.lengthFeet, s.heightFeet]), ...openings.map((o) => [o.widthFeet, o.heightFeet])].flat();
+  const takeoffError = !name.trim()
+    ? 'A takeoff name is required.'
+    : name.trim().length > 120
+      ? 'Name must be at most 120 characters.'
+      : dims.some((n) => !Number.isFinite(n) || n < 0 || n > 1000)
+        ? 'Each length and height must be a number from 0 to 1000 feet.'
+        : null;
 
   const load = useCallback(async () => {
     const r = await run<{ takeoffs: Takeoff[] }>('takeoff-list');
     if (r) setSaved(r.takeoffs || []);
+    setReady(true);
   }, []);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, []);
 
   const save = async () => {
+    if (takeoffError) { setFormError(takeoffError); return; }
     setBusy(true);
-    const r = await run<Takeoff>('takeoff-save', { name, material, wastePct: waste, segments, openings });
+    setFormError(null);
+    const r = await run<Takeoff>('takeoff-save', { id: editingId || undefined, name: name.trim(), material, wastePct: waste, segments, openings });
     setBusy(false);
-    if (r) { setPreview(r); await load(); }
+    if (r) { setPreview(r); setEditingId(null); await load(); }
+    else setFormError('Could not save that takeoff.');
   };
-  const del = async (id: string) => { await run('takeoff-delete', { id }); await load(); };
+  const beginEdit = (t: Takeoff) => {
+    setEditingId(t.id);
+    setName(t.name);
+    setMaterial(t.material);
+    setWaste(t.wastePct);
+    setSegments(t.segments.map((s) => ({ id: s.id, label: s.label, lengthFeet: s.lengthFeet, heightFeet: s.heightFeet })));
+    setOpenings((t.openings || []).map((o) => ({ id: o.id, label: o.label, widthFeet: o.widthFeet, heightFeet: o.heightFeet })));
+    setPreview(t);
+    setFormError(null);
+  };
+  const del = async (id: string) => {
+    const r = await run('takeoff-delete', { id });
+    if (!r) return;
+    setPreview((cur) => (cur?.id === id ? null : cur));
+    await load();
+  };
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1.1fr_1fr]">
@@ -188,8 +218,8 @@ function TakeoffTab() {
         {segments.map((sg, i) => (
           <div key={sg.id} className="mt-2 grid grid-cols-[1fr_60px_60px_28px] gap-1.5">
             <input className={inp} value={sg.label} onChange={(e) => setSegments((s) => s.map((x, idx) => idx === i ? { ...x, label: e.target.value } : x))} />
-            <input type="number" className={inp} placeholder="L ft" value={sg.lengthFeet || ''} onChange={(e) => setSegments((s) => s.map((x, idx) => idx === i ? { ...x, lengthFeet: Number(e.target.value) || 0 } : x))} />
-            <input type="number" className={inp} placeholder="H ft" value={sg.heightFeet || ''} onChange={(e) => setSegments((s) => s.map((x, idx) => idx === i ? { ...x, heightFeet: Number(e.target.value) || 0 } : x))} />
+            <input type="number" className={inp} placeholder="L ft" value={sg.lengthFeet} onChange={(e) => setSegments((s) => s.map((x, idx) => idx === i ? { ...x, lengthFeet: e.target.value === '' ? 0 : Number(e.target.value) } : x))} />
+            <input type="number" className={inp} placeholder="H ft" value={sg.heightFeet} onChange={(e) => setSegments((s) => s.map((x, idx) => idx === i ? { ...x, heightFeet: e.target.value === '' ? 0 : Number(e.target.value) } : x))} />
             <button className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300" onClick={() => setSegments((s) => s.filter((_, idx) => idx !== i))} aria-label="Remove segment"><Trash2 className="mx-auto h-3 w-3" /></button>
           </div>
         ))}
@@ -201,13 +231,14 @@ function TakeoffTab() {
         {openings.map((op, i) => (
           <div key={op.id} className="mt-2 grid grid-cols-[1fr_60px_60px_28px] gap-1.5">
             <input className={inp} value={op.label} onChange={(e) => setOpenings((s) => s.map((x, idx) => idx === i ? { ...x, label: e.target.value } : x))} />
-            <input type="number" className={inp} placeholder="W ft" value={op.widthFeet || ''} onChange={(e) => setOpenings((s) => s.map((x, idx) => idx === i ? { ...x, widthFeet: Number(e.target.value) || 0 } : x))} />
-            <input type="number" className={inp} placeholder="H ft" value={op.heightFeet || ''} onChange={(e) => setOpenings((s) => s.map((x, idx) => idx === i ? { ...x, heightFeet: Number(e.target.value) || 0 } : x))} />
+            <input type="number" className={inp} placeholder="W ft" value={op.widthFeet} onChange={(e) => setOpenings((s) => s.map((x, idx) => idx === i ? { ...x, widthFeet: e.target.value === '' ? 0 : Number(e.target.value) } : x))} />
+            <input type="number" className={inp} placeholder="H ft" value={op.heightFeet} onChange={(e) => setOpenings((s) => s.map((x, idx) => idx === i ? { ...x, heightFeet: e.target.value === '' ? 0 : Number(e.target.value) } : x))} />
             <button className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300" onClick={() => setOpenings((s) => s.filter((_, idx) => idx !== i))} aria-label="Remove opening"><Trash2 className="mx-auto h-3 w-3" /></button>
           </div>
         ))}
-        <button className={`${btnP} mt-4`} onClick={save} disabled={busy || !name.trim()}>
-          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Ruler className="h-3.5 w-3.5" />}Compute & save takeoff
+        { (formError || takeoffError) && <p role="alert" className="mt-3 text-[11px] text-rose-300">{formError || takeoffError}</p> }
+        <button className={`${btnP} mt-4`} onClick={save} disabled={busy || !!takeoffError}>
+          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Ruler className="h-3.5 w-3.5" />}{editingId ? 'Save changes' : 'Compute & save takeoff'}
         </button>
       </div>
 
@@ -234,14 +265,17 @@ function TakeoffTab() {
         )}
         <div className={card}>
           <h4 className="mb-2 text-sm font-semibold text-white">Saved takeoffs ({saved.length})</h4>
-          {saved.length === 0 && <p className="text-xs text-zinc-400">No takeoffs yet.</p>}
+          {!ready ? <p className="text-xs text-zinc-400">Loading takeoffs…</p> : saved.length === 0 && <p className="text-xs text-zinc-400">No takeoffs yet.</p>}
           {saved.map((t) => (
             <div key={t.id} className="mt-2 flex items-center justify-between rounded border border-zinc-800 bg-zinc-950 px-3 py-2">
               <button className="text-left" onClick={() => setPreview(t)}>
                 <p className="text-xs font-medium text-white">{t.name}</p>
                 <p className="text-[10px] text-zinc-400">{t.materialLabel} · {t.netAreaSqFt} sf · {t.unitsNeeded} units · {money(t.totalMaterialCost)}</p>
               </button>
-              <ConfirmDelete name={`takeoff "${t.name}"`} ariaLabel="Delete takeoff" className="text-zinc-600 hover:text-rose-400" onConfirm={() => del(t.id)}><Trash2 className="h-3.5 w-3.5" /></ConfirmDelete>
+              <div className="flex items-center gap-1">
+                <button type="button" aria-label="Edit takeoff" className="text-zinc-600 hover:text-white" onClick={() => beginEdit(t)}><ClipboardEdit className="h-3.5 w-3.5" /></button>
+                <ConfirmDelete name={`takeoff "${t.name}"`} ariaLabel="Delete takeoff" className="text-zinc-600 hover:text-rose-400" onConfirm={() => del(t.id)}><Trash2 className="h-3.5 w-3.5" /></ConfirmDelete>
+              </div>
             </div>
           ))}
         </div>
@@ -279,11 +313,14 @@ function ProposalsTab() {
   const [list, setList] = useState<Proposal[]>([]);
   const [busy, setBusy] = useState(false);
   const [rendered, setRendered] = useState<{ number: string; document: string } | null>(null);
+  const [renderError, setRenderError] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
   const invalidateStats = useInvalidateStats();
 
   const load = useCallback(async () => {
     const r = await run<{ proposals: Proposal[] }>('proposal-list');
     if (r) setList(r.proposals || []);
+    setReady(true);
   }, []);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, []);
@@ -298,9 +335,22 @@ function ProposalsTab() {
     if (r) { setClient(''); setTitle(''); setScope(''); setLines([newLine()]); await load(); invalidateStats(); }
   };
   const setStatus = async (id: string, status: string) => { await run('proposal-update-status', { id, status }); await load(); invalidateStats(); };
+  const del = async (id: string) => { await run('proposal-delete', { id }); await load(); invalidateStats(); };
   const render = async (id: string) => {
+    setRenderError(null);
     const r = await run<{ number: string; document: string }>('proposal-render', { id });
-    if (r) setRendered(r);
+    if (!r?.document) { setRenderError('That proposal did not render.'); return; }
+    setRendered(r);
+  };
+  const downloadRender = () => {
+    if (!rendered?.document) return;
+    const blob = new Blob([rendered.document], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${rendered.number || 'proposal'}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -337,7 +387,8 @@ function ProposalsTab() {
 
       <div className={card}>
         <h4 className="mb-2 text-sm font-semibold text-white">Proposals ({list.length})</h4>
-        {list.length === 0 && <p className="text-xs text-zinc-400">No proposals yet.</p>}
+        {renderError && <p role="alert" className="mb-2 text-xs text-rose-300">{renderError}</p>}
+        {!ready ? <p className="text-xs text-zinc-400">Loading proposals…</p> : list.length === 0 && <p className="text-xs text-zinc-400">No proposals yet.</p>}
         {list.map((p) => (
           <div key={p.id} className="mt-2 rounded border border-zinc-800 bg-zinc-950 px-3 py-2">
             <div className="flex items-center justify-between">
@@ -352,6 +403,7 @@ function ProposalsTab() {
                 <button key={st} className={btnS} onClick={() => setStatus(p.id, st)}>{st}</button>
               ))}
               <button className={btnS} onClick={() => render(p.id)}><Copy className="h-3 w-3" />Render PDF text</button>
+              <ConfirmDelete name={`proposal ${p.number}`} ariaLabel={`Delete proposal ${p.number}`} className={btnS} onConfirm={() => del(p.id)}><Trash2 className="h-3 w-3" />Delete</ConfirmDelete>
             </div>
           </div>
         ))}
@@ -360,7 +412,10 @@ function ProposalsTab() {
       {rendered && (
         <Modal title={`Proposal ${rendered.number}`} onClose={() => setRendered(null)}>
           <pre className="max-h-[60vh] overflow-auto whitespace-pre-wrap rounded border border-zinc-800 bg-zinc-950 p-3 font-mono text-[11px] text-zinc-200">{rendered.document}</pre>
-          <button className={`${btnS} mt-3`} onClick={() => navigator.clipboard?.writeText(rendered.document)}><Copy className="h-3 w-3" />Copy to clipboard</button>
+          <div className="mt-3 flex gap-2">
+            <button className={btnS} onClick={() => navigator.clipboard?.writeText(rendered.document)}><Copy className="h-3 w-3" />Copy</button>
+            <button className={btnS} onClick={downloadRender}><FileText className="h-3 w-3" />Download</button>
+          </div>
         </Modal>
       )}
     </div>
@@ -382,6 +437,8 @@ function ScheduleTab() {
   const [lowF, setLowF] = useState(55);
   const [precip, setPrecip] = useState(0);
   const [jobs, setJobs] = useState<SchedJob[]>([]);
+  const [ready, setReady] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [crewLoad, setCrewLoad] = useState<Record<string, number>>({});
   const [busy, setBusy] = useState(false);
   const invalidateStats = useInvalidateStats();
@@ -389,6 +446,7 @@ function ScheduleTab() {
   const load = useCallback(async () => {
     const r = await run<{ jobs: SchedJob[]; crewLoad: Record<string, number> }>('schedule-list');
     if (r) { setJobs(r.jobs || []); setCrewLoad(r.crewLoad || {}); }
+    setReady(true);
   }, []);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, []);
@@ -396,11 +454,21 @@ function ScheduleTab() {
   const add = async () => {
     setBusy(true);
     const r = await run('schedule-add', {
+      id: editingId || undefined,
       title, startDate: start, durationDays: days, forecastLowF: lowF, precipChancePct: precip,
       crew: crew.split(',').map((c) => c.trim()).filter(Boolean),
     });
     setBusy(false);
-    if (r) { setTitle(''); setStart(''); setCrew(''); await load(); invalidateStats(); }
+    if (r) { setEditingId(null); setTitle(''); setStart(''); setCrew(''); await load(); invalidateStats(); }
+  };
+  const beginEdit = (j: SchedJob) => {
+    setEditingId(j.id);
+    setTitle(j.title);
+    setStart(j.startDate);
+    setDays(j.durationDays);
+    setCrew(j.crew.join(', '));
+    setLowF(j.forecastLowF);
+    setPrecip(j.precipChancePct);
   };
   const del = async (id: string) => { await run('schedule-delete', { id }); await load(); invalidateStats(); };
 
@@ -427,7 +495,7 @@ function ScheduleTab() {
           <div><label className={lbl}>Precip chance %</label><input type="number" className={inp} value={precip} onChange={(e) => setPrecip(Number(e.target.value) || 0)} /></div>
         </div>
         <button className={`${btnP} mt-4`} onClick={add} disabled={busy || !title.trim() || !start}>
-          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CalendarDays className="h-3.5 w-3.5" />}Add to calendar
+          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CalendarDays className="h-3.5 w-3.5" />}{editingId ? 'Save job' : 'Add to calendar'}
         </button>
         {Object.keys(crewLoad).length > 0 && (
           <div className="mt-4">
@@ -442,7 +510,7 @@ function ScheduleTab() {
       <div className={card}>
         <h4 className="mb-2 text-sm font-semibold text-white">Job calendar ({jobs.length})</h4>
         {jobs.length > 0 && <TimelineView events={timeline} height={110} />}
-        {jobs.length === 0 && <p className="text-xs text-zinc-400">No jobs scheduled.</p>}
+        {!ready ? <p className="text-xs text-zinc-400">Loading jobs…</p> : jobs.length === 0 && <p className="text-xs text-zinc-400">No jobs scheduled.</p>}
         {jobs.map((j) => (
           <div key={j.id} className="mt-2 rounded border border-zinc-800 bg-zinc-950 px-3 py-2">
             <div className="flex items-center justify-between">
@@ -450,7 +518,10 @@ function ScheduleTab() {
                 <p className="text-xs font-medium text-white">{j.title}</p>
                 <p className="text-[10px] text-zinc-400">{j.startDate} · {j.durationDays}d · {j.crew.join(', ') || 'no crew'}</p>
               </div>
-              <ConfirmDelete name={`job "${j.title}"`} ariaLabel="Delete job" className="text-zinc-600 hover:text-rose-400" onConfirm={() => del(j.id)}><Trash2 className="h-3.5 w-3.5" /></ConfirmDelete>
+              <div className="flex items-center gap-1">
+                <button type="button" aria-label="Edit job" className="text-zinc-600 hover:text-white" onClick={() => beginEdit(j)}><ClipboardEdit className="h-3.5 w-3.5" /></button>
+                <ConfirmDelete name={`job "${j.title}"`} ariaLabel="Delete job" className="text-zinc-600 hover:text-rose-400" onConfirm={() => del(j.id)}><Trash2 className="h-3.5 w-3.5" /></ConfirmDelete>
+              </div>
             </div>
             {j.weather.advisories.length > 0 && (
               <div className={`mt-1.5 rounded px-2 py-1 text-[10px] ${j.weather.risk === 'high' ? 'bg-rose-500/15 text-rose-300' : 'bg-amber-500/15 text-amber-300'}`}>
@@ -575,6 +646,7 @@ function ChangeOrdersTab() {
     if (r) { setDesc(''); setHours(0); setMatCost(0); setImpact(0); await load(); }
   };
   const sign = async (id: string, status: string) => { await run('change-order-sign', { id, status, signedBy: 'Client' }); await load(); };
+  const del = async (id: string) => { await run('change-order-delete', { id }); await load(); };
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_1.1fr]">
@@ -610,12 +682,15 @@ function ChangeOrdersTab() {
             <p className="mt-0.5 text-[10px] text-zinc-400">{co.description}</p>
             <p className="text-[10px] text-zinc-400">{co.laborHours}h labor · {money(co.materialCost)} materials · {co.scheduleImpactDays}d impact</p>
             {co.signedBy && <p className="text-[10px] text-emerald-400">Signed off by {co.signedBy}</p>}
-            {co.status === 'pending' && (
-              <div className="mt-1.5 flex gap-1.5">
-                <button className={btnS} onClick={() => sign(co.id, 'approved')}><CheckCircle2 className="h-3 w-3" />Approve & sign</button>
-                <button className={btnS} onClick={() => sign(co.id, 'rejected')}>Reject</button>
-              </div>
-            )}
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {co.status === 'pending' && (
+                <>
+                  <button className={btnS} onClick={() => sign(co.id, 'approved')}><CheckCircle2 className="h-3 w-3" />Approve & sign</button>
+                  <button className={btnS} onClick={() => sign(co.id, 'rejected')}>Reject</button>
+                </>
+              )}
+              <ConfirmDelete name={`change order ${co.number}`} ariaLabel={`Delete change order ${co.number}`} className={btnS} onConfirm={() => del(co.id)}><Trash2 className="h-3 w-3" />Delete</ConfirmDelete>
+            </div>
           </div>
         ))}
       </div>
@@ -628,12 +703,14 @@ interface PriceItem { id: string; sku: string; name: string; unit: string; unitC
 
 function PriceBookTab() {
   const [list, setList] = useState<PriceItem[]>([]);
+  const [ready, setReady] = useState(false);
   const [editing, setEditing] = useState<Partial<PriceItem> | null>(null);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    const r = await run<{ items: PriceItem[] }>('pricebook-list');
+    const r = await run<{ items: PriceItem[]; note?: string | null }>('pricebook-list');
     if (r) setList(r.items || []);
+    setReady(true);
   }, []);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, []);
@@ -675,7 +752,7 @@ function PriceBookTab() {
           </tbody>
         </table>
       </div>
-      {list.length === 0 && <p className="mt-2 text-xs text-zinc-400">No price-book items.</p>}
+      {!ready ? <p className="mt-2 text-xs text-zinc-400">Loading the price book…</p> : list.length === 0 && <p className="mt-2 text-xs text-zinc-400">This price book has no rows. Add an item. Ask reads this list, not a built-in catalog.</p>}
 
       {editing && (
         <Modal title={editing.id ? 'Edit price item' : 'New price item'} onClose={() => setEditing(null)}>
@@ -1034,6 +1111,7 @@ function InspectionsTab() {
     setBusy(false);
     if (r) { setResultFor(null); await load(); }
   };
+  const del = async (id: string) => { await run('inspection-delete', { id }); await load(); };
 
   const badge = (i: Inspection) => {
     if (i.result === 'pass') return <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[10px] uppercase text-emerald-300">Pass</span>;
@@ -1089,8 +1167,9 @@ function InspectionsTab() {
                 {i.reInspectionDate && <span className="text-rose-400"> · re-inspect {i.reInspectionDate}</span>}
               </div>
             )}
-            <div className="mt-1.5">
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
               <button className={btnS} onClick={() => openResult(i)}><CheckCircle2 className="h-3 w-3" />Record result</button>
+              <ConfirmDelete name={`inspection ${i.number}`} ariaLabel={`Delete inspection ${i.number}`} className={btnS} onConfirm={() => del(i.id)}><Trash2 className="h-3 w-3" />Delete</ConfirmDelete>
             </div>
           </div>
         ))}

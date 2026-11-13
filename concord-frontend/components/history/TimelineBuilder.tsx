@@ -90,6 +90,19 @@ export function TimelineBuilder() {
       setBusyAction(null);
     }
   }
+  const [renameDraft, setRenameDraft] = useState('');
+  useEffect(() => { setRenameDraft(active?.title || ''); }, [active?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  async function renameTimeline() {
+    if (!active || !renameDraft.trim() || renameDraft.trim() === active.title) return;
+    const r = await lensRun('history', 'timeline-update', { id: active.id, title: renameDraft.trim() });
+    if (!r.data?.ok) {
+      setFormError(r.data?.error === 'duplicate_title' ? 'A timeline with this title already exists.' : (r.data?.error || 'Rename failed'));
+      return;
+    }
+    setFormError('');
+    await refresh();
+    await open(active.id);
+  }
   async function deleteTimeline(id: string) {
     // S2 (F2): the native confirm() gate is retired — it suppressed the
     // call entirely in the walked environment and the verb never fired.
@@ -203,6 +216,17 @@ export function TimelineBuilder() {
           {busyAction === 'create' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
         </button>
       </div>
+
+      {/* rename the open timeline (incl. imported ones — FIX-history-005) */}
+      {active && (
+        <div className="flex flex-wrap items-center gap-1.5 mb-3">
+          <input aria-label="Timeline title" value={renameDraft} onChange={(e) => setRenameDraft(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') void renameTimeline(); }}
+            className="w-48 min-h-[40px] bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1 text-xs text-zinc-200" />
+          <button onClick={() => void renameTimeline()} disabled={!renameDraft.trim() || renameDraft.trim() === active.title}
+            className="px-2.5 py-1 text-xs rounded-lg bg-zinc-800 text-zinc-200 disabled:opacity-50">Rename timeline</button>
+        </div>
+      )}
 
       {/* view tabs */}
       <div className="flex gap-1 mb-3 border-b border-zinc-800">

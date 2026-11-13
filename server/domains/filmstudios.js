@@ -1,5 +1,6 @@
 // server/domains/filmstudios.js
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { acceptSceneLocation } from "../lib/bounded-text.js";
 import { callVision, callVisionUrl, visionPromptForDomain } from "../lib/vision-inference.js";
 import { registerLensExportProvider } from "../lib/lens-export.js";
 
@@ -426,7 +427,11 @@ export default function registerFilmStudiosActions(registerLensAction) {
     if (!scene) return { ok: false, error: "scene not found" };
     if (params.intExt != null) scene.intExt = fmPick(params.intExt, FM_INT_EXT, scene.intExt);
     if (params.timeOfDay != null) scene.timeOfDay = fmPick(params.timeOfDay, FM_TIME_OF_DAY, scene.timeOfDay);
-    if (params.location != null) scene.location = fmClean(params.location, 120) || scene.location;
+    if (params.location != null) {
+      const loc = acceptSceneLocation(params.location);
+      if (!loc.ok) return loc;
+      scene.location = loc.location;
+    }
     if (params.number != null) scene.number = fmClean(params.number, 12) || scene.number;
     if (params.description != null) scene.description = fmClean(params.description, 2000) || null;
     if (params.pageEighths != null) scene.pageEighths = Math.max(0, Math.round(fmNum(params.pageEighths)));

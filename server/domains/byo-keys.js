@@ -23,6 +23,7 @@ import { BYO_PROVIDERS } from "../lib/byo-providers.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 import { setRateLimit, getRateLimitStatus, ensureByoKeysLensState } from "../lib/byo-rate-limit.js";
 import { isHighPowerModeAllowed } from "../lib/high-power-allowlist.js";
+import { lookupUserIdentity } from "../lib/user-identity.js";
 
 const VALID_SLOTS = new Set(["conscious", "subconscious", "utility", "repair", "vision"]);
 
@@ -97,7 +98,10 @@ export default function registerByoKeysMacros(register) {
     const db = ctx?.db;
     const userId = ctx?.actor?.userId;
     if (!db || !userId) return { ok: false, reason: "no_actor" };
-    return removeKey(db, userId, input?.slot);
+    const r = removeKey(db, userId, input?.slot);
+    // The key's health record dies with the key (FIX-byo-keys-008).
+    if (r?.ok) { const hm = userMap("health", userId); if (hm) hm.delete(input?.slot); }
+    return r;
   }, { note: "Delete a brain override (key + provider config)." });
 
   register("byo_keys", "set_active", async (ctx, input = {}) => {
@@ -111,7 +115,35 @@ export default function registerByoKeysMacros(register) {
     const db = ctx?.db;
     const userId = ctx?.actor?.userId;
     if (!db || !userId) return { ok: false, reason: "no_actor" };
-    const r = await testConnection(db, userId, input?.slot);
+    const raw = await testConnection(db, userId, input?.slot);
+    // A failed test always carries its reason in words (FIX-byo-keys-007):
+    // before this, the reason tokens ('no_override', 'key_undecryptable')
+    // surfaced raw when they surfaced at all, and a provider failure with
+    // no error string read as a bare 'test failed'.
+    const REASON_WORDS = {
+      missing_inputs: "That brain slot has no key saved yet.",
+      no_override: "That brain slot has no key saved yet.",
+      key_undecryptable: "The saved key could not be decrypted — save it again.",
+      no_actor: "Not signed in.",
+    };
+    let r = raw;
+    if (!raw?.ok) {
+      let words = REASON_WORDS[raw?.reason] || null;
+      if (!words && typeof raw?.error === "string" && raw.error.trim()) {
+        const t = raw.error.trim();
+        if (t.startsWith("{") || t.startsWith("[")) {
+          try {
+            const parsed = JSON.parse(t);
+            const obj = Array.isArray(parsed) ? parsed[0] : parsed;
+            const msg = obj && (typeof obj.message === "string" ? obj.message
+              : typeof obj.error === "string" ? obj.error
+              : obj.error?.message);
+            words = typeof msg === "string" && msg ? msg : "The provider returned an error.";
+          } catch { words = "The provider returned an error."; }
+        } else words = t;
+      }
+      r = { ...raw, error: words || "The provider did not answer — try again." };
+    }
     // Mirror the outcome into the health substrate so the list shows it.
     if (userId && VALID_SLOTS.has(input?.slot)) {
       const hm = userMap("health", userId);
@@ -212,8 +244,16 @@ export default function registerByoKeysMacros(register) {
     if (!VALID_SLOTS.has(slot)) return { ok: false, reason: "invalid_slot" };
     const bm = userMap("budgets", userId);
     if (!bm) return { ok: false, reason: "state_unavailable" };
-    const usd = monthlyUsdCap == null ? null : Math.max(0, Number(monthlyUsdCap));
-    const tok = monthlyTokenCap == null ? null : Math.max(0, Math.floor(Number(monthlyTokenCap)));
+    const usdGiven = monthlyUsdCap != null && monthlyUsdCap !== "";
+    const tokGiven = monthlyTokenCap != null && monthlyTokenCap !== "";
+    if (usdGiven && !(Number(monthlyUsdCap) >= 0)) {
+      return { ok: false, error: "invalid_input", message: "Monthly USD cap must be a number that is 0 or greater." };
+    }
+    if (tokGiven && !(Number(monthlyTokenCap) >= 0)) {
+      return { ok: false, error: "invalid_input", message: "Monthly token cap must be a number that is 0 or greater." };
+    }
+    const usd = usdGiven ? Number(monthlyUsdCap) : null;
+    const tok = tokGiven ? Math.floor(Number(monthlyTokenCap)) : null;
     if (usd == null && tok == null) {
       bm.delete(slot);
       return { ok: true, result: { slot, budget: null } };
@@ -460,8 +500,11 @@ export default function registerByoKeysMacros(register) {
     const slotProviders = new Map(overrides.map((o) => [o.slot, o.provider]));
     const rows = [];
     for (const slot of VALID_SLOTS) {
+      // A slot with no key configured has no health to show — a leftover
+      // health record for a removed key must not keep surfacing its last
+      // error as if the key still existed (FIX-byo-keys-008).
+      if (!slotProviders.has(slot)) continue;
       const h = hm.get(slot);
-      if (!h && !slotProviders.has(slot)) continue;
       rows.push({
         slot,
         provider: slotProviders.get(slot) || null,
@@ -482,7 +525,9 @@ export default function registerByoKeysMacros(register) {
     const root = stateRoot();
     if (!root) return { ok: false, reason: "state_unavailable" };
     const { label, provider, slot } = input || {};
-    if (!label || typeof label !== "string") return { ok: false, reason: "label_required" };
+    if (!label || typeof label !== "string" || label.trim().length === 0) return { ok: false, reason: "label_required" };
+    // A group label is a display name, not a document (FIX-byo-keys-011).
+    if (label.trim().length > 80) return { ok: false, reason: "label_too_long" };
     if (!BYO_PROVIDERS.list.includes(provider)) return { ok: false, reason: "invalid_provider" };
     if (slot != null && !VALID_SLOTS.has(slot)) return { ok: false, reason: "invalid_slot" };
     const orgId = `org_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
@@ -534,6 +579,34 @@ export default function registerByoKeysMacros(register) {
     return { ok: true, result: { orgId, removed: existed, memberCount: org.members.size } };
   }, { note: "Remove a member from an org key group. Owner/admin only; the owner cannot be removed." });
 
+  register("byo_keys", "org_key_delete", async (ctx, input = {}) => {
+    const userId = ctx?.actor?.userId;
+    if (!userId) return { ok: false, reason: "no_actor" };
+    const root = stateRoot();
+    if (!root) return { ok: false, reason: "state_unavailable" };
+    const { orgId } = input || {};
+    const org = root.orgKeys.get(orgId);
+    if (!org) return { ok: false, reason: "no_org" };
+    if (org.ownerId !== userId) return { ok: false, reason: "not_authorized" };
+    root.orgKeys.delete(orgId);
+    return { ok: true, result: { orgId, deleted: true } };
+  }, { note: "Delete an org key group. Owner only — the group and its membership end for everyone (FIX-byo-keys-004)." });
+
+  register("byo_keys", "org_key_leave", async (ctx, input = {}) => {
+    const userId = ctx?.actor?.userId;
+    if (!userId) return { ok: false, reason: "no_actor" };
+    const root = stateRoot();
+    if (!root) return { ok: false, reason: "state_unavailable" };
+    const { orgId } = input || {};
+    const org = root.orgKeys.get(orgId);
+    if (!org) return { ok: false, reason: "no_org" };
+    if (!org.members.has(userId)) return { ok: false, reason: "not_a_member" };
+    // The owner's exit is deleting the group, not leaving it headless.
+    if (org.ownerId === userId) return { ok: false, reason: "owner_must_delete" };
+    org.members.delete(userId);
+    return { ok: true, result: { orgId, left: true, memberCount: org.members.size } };
+  }, { note: "Leave an org key group: a member removes themselves. The owner cannot leave — they delete the group instead (FIX-byo-keys-004)." });
+
   register("byo_keys", "org_keys_list", async (ctx) => {
     const userId = ctx?.actor?.userId;
     if (!userId) return { ok: false, reason: "no_actor" };
@@ -550,7 +623,16 @@ export default function registerByoKeysMacros(register) {
         slot: org.slot,
         myRole,
         isOwner: org.ownerId === userId,
-        members: [...org.members.entries()].map(([id, role]) => ({ memberId: id, role })),
+        members: [...org.members.entries()].map(([id, role]) => {
+          // Display label for the member row — the panel used to print
+          // the raw user id. Resolve through the shared identity lookup;
+          // it never invents a name from the id, so an id with no
+          // account row keeps label null and the panel falls back to a
+          // shortened id (memberId itself is unchanged for management).
+          const ident = lookupUserIdentity(ctx?.db || null, id);
+          const label = ident?.displayName && ident.displayName !== id ? ident.displayName : null;
+          return { memberId: id, role, label };
+        }),
         memberCount: org.members.size,
         createdAt: org.createdAt,
       });

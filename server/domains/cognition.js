@@ -172,6 +172,7 @@ export default function registerCognitionMacros(_register) {
         traceId: trace.traceId || trace.id || null,
         note: typeof row.note === "string" ? row.note : "",
         answered: (trace && typeof trace === "object" ? trace.answered : null) || null,
+        dtuId: (trace && typeof trace === "object" && typeof trace.dtuId === "string" && trace.dtuId) ? trace.dtuId : null,
         trace,
         createdAt: row.created_at || "",
       });
@@ -414,6 +415,7 @@ export default function registerCognitionMacros(_register) {
         traceId: e.traceId,
         note: e.note,
         answered: e.answered || e.trace?.answered || null,
+        dtuId: e.dtuId || e.trace?.dtuId || null,
         createdAt: e.createdAt,
       }));
       return { ok: true, result: { exports, count: exports.length } };
@@ -510,6 +512,39 @@ export default function registerCognitionMacros(_register) {
       return { ok: true, result: { export: { ...entry, trace: undefined }, exportId: entry.id, answered: entry.answered || null } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
   }, { note: "mark one of the caller's logged questions answered (with the answer they settled on), or clear the mark" });
+
+  // ── linkExportDtu (FIX-cognition-002: the Save-as-DTU link is part of the
+  // log entry, not a toast) ────────────────────────────────────────────────
+  // The question log's SaveAsDtuButton mints a DTU from an entry; until now
+  // nothing recorded WHICH DTU, so the saved indicator vanished on reload
+  // and deleting the entry orphaned the DTU. The link lives on the trace
+  // (trace.dtuId) so it round-trips through the durable trace row exactly
+  // like the answered state. Pass dtuId: "" to clear the link (e.g. after
+  // the DTU itself was removed).
+  register("cognition", "linkExportDtu", (ctx, input = {}) => {
+    try {
+      const params = input || {};
+      const s = getCogState();
+      const list = cogList(s.exports, cogActor(ctx));
+      const entry = list.find((e) => e.id === params.exportId)
+        || readTraceRows(ctx).find((e) => e.id === params.exportId);
+      if (!entry) return { ok: false, error: "export_not_found" };
+      const raw = typeof params.dtuId === "string" ? params.dtuId.trim() : "";
+      if (raw && !/^dtu_[A-Za-z0-9_-]{1,76}$/.test(raw)) {
+        return { ok: false, error: "invalid_dtu_id" };
+      }
+      if (!entry.trace || typeof entry.trace !== "object") entry.trace = { input: {} };
+      entry.trace.dtuId = raw || null;
+      entry.dtuId = raw || null;
+      const idx = list.findIndex((e) => e.id === entry.id);
+      if (idx >= 0) list[idx] = entry; else list.unshift(entry);
+      try { writeTraceRow(ctx, entry); } catch (err) {
+        return { ok: false, error: "trace_not_saved", detail: String(err?.message || err) };
+      }
+      saveCog();
+      return { ok: true, result: { exportId: entry.id, dtuId: entry.dtuId } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  }, { note: "record (or clear) the DTU a question-log entry was saved as, so the link survives reload and delete can offer to remove the DTU too" });
 
   // ── entityStoreSummary (S-COG-3/D3: the store this lens is named for) ──
   register("cognition", "entityStoreSummary", (_ctx, _input = {}) => {

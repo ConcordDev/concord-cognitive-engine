@@ -14,6 +14,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useHUDContext } from '../HUDContextProvider';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface Campaign {
   id: string;
@@ -233,7 +234,7 @@ export function WarPanel() {
               key={c.id}
               data-campaign-id={c.id}
               className="p-2 rounded border bg-zinc-900/40 border-zinc-800 hover:bg-zinc-900 cursor-pointer"
-              onClick={() => fetchOne(c.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+              onClick={() => fetchOne(c.id)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
               <div className="flex items-center justify-between mb-0.5">
                 <span className="font-medium text-zinc-100">{c.attacker_realm_id} → {c.defender_realm_id}</span>
                 <span className={`text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded ${stateChip(c.state)}`}>{c.state}</span>

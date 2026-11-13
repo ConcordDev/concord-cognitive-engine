@@ -67,6 +67,27 @@ export function MySubmissions({ submissions, onWithdraw }: MySubmissionsProps) {
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // FIX-vault-002: the list had no search, filter, or sort — with
+  // more than a handful of submissions there was no way to find one
+  // entry. Client-side controls over the caller's own rows: a text
+  // filter (title / description / kind / status), a status filter,
+  // and a sort (newest / oldest / title).
+  const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [sort, setSort] = useState<'newest' | 'oldest' | 'title'>('newest');
+  const visible = submissions
+    .filter((s) => statusFilter === 'all' || s.status === statusFilter)
+    .filter((s) => {
+      const q = query.trim().toLowerCase();
+      if (!q) return true;
+      return [s.title, s.description || '', s.workKind || '', statusLabel(s.status)]
+        .join(' ').toLowerCase().includes(q);
+    })
+    .sort((a, b) => (sort === 'title'
+      ? a.title.localeCompare(b.title)
+      : sort === 'oldest'
+        ? (a.submittedAt || 0) - (b.submittedAt || 0)
+        : (b.submittedAt || 0) - (a.submittedAt || 0)));
 
   const selected = submissions.find((s) => s.id === selectedId) || null;
   const kept = selected ? vaultSubmissionKeepRecord(selected) : null;
@@ -100,9 +121,47 @@ export function MySubmissions({ submissions, onWithdraw }: MySubmissionsProps) {
       <h2 className={vault.sectionTitle}>Your submissions</h2>
       <p className={cn(vault.caption, 'mt-1')}>Only you can see this list, including any reason a curator gave.</p>
 
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <input
+          type="search"
+          aria-label="Filter your submissions"
+          placeholder="Filter by title, kind, or words…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className={cn(vault.input, 'min-w-[12rem] flex-1')}
+        />
+        <select
+          aria-label="Filter by status"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className={vault.input}
+        >
+          <option value="all">All statuses</option>
+          {Object.entries(STATUS_LABEL).map(([value, label]) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
+        </select>
+        <select
+          aria-label="Sort your submissions"
+          value={sort}
+          onChange={(e) => setSort(e.target.value as typeof sort)}
+          className={vault.input}
+        >
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+          <option value="title">Title A–Z</option>
+        </select>
+        <span className={vault.caption} aria-live="polite">
+          {visible.length} of {submissions.length}
+        </span>
+      </div>
+
       <div className="mt-4 grid gap-6 sm:grid-cols-[minmax(0,18rem)_1fr]">
         <ul className="m-0 list-none space-y-1 p-0" data-testid="vault-my-list">
-          {submissions.map((item) => (
+          {visible.length === 0 && (
+            <li className={cn(vault.caption, 'px-1 py-2')}>No submissions match your filter.</li>
+          )}
+          {visible.map((item) => (
             <li key={item.id}>
               <button
                 type="button"

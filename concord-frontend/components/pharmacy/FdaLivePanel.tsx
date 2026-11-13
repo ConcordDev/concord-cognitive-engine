@@ -136,7 +136,9 @@ export function FdaLivePanel({ className }: { className?: string }) {
       <header className="flex items-center gap-2 px-3 py-2 border-b border-zinc-800/80 bg-zinc-900/40">
         <Pill className="w-4 h-4 text-pink-300" aria-hidden="true" />
         <h3 className="text-sm font-medium text-zinc-100 flex-1">FDA OpenFDA · Live</h3>
-        <span className="text-[10px] text-emerald-400 font-mono">REAL data</span>
+        {error
+          ? <span className="text-[10px] text-rose-400 font-mono">unavailable</span>
+          : <span className="text-[10px] text-emerald-400 font-mono">REAL data</span>}
       </header>
 
       <nav className="flex border-b border-zinc-800/80 text-xs" role="tablist">
@@ -188,7 +190,15 @@ export function FdaLivePanel({ className }: { className?: string }) {
         {error && (
           <div className="px-3 py-3 text-xs text-rose-300/80">
             <AlertTriangle className="inline w-3.5 h-3.5 mr-1" aria-hidden="true" />
-            FDA unreachable ({error})
+            {/* FIX-pharmacy-004: the raw reason token (fetch_failed /
+                openfda_unreachable) used to be the whole message, with
+                no retry and the header still claiming REAL data. */}
+            The FDA service (openFDA) could not be reached — this is a connection problem, not an empty result.
+            <button type="button"
+              onClick={() => { if (tab === 'recalls') void fetchRecalls(); else if (tab === 'labels') void fetchLabels(query); else void fetchAdverse(query); }}
+              className="ml-2 px-2 py-0.5 rounded border border-rose-400/40 text-rose-100">
+              Retry
+            </button>
           </div>
         )}
 

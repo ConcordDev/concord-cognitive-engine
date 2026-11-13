@@ -7,10 +7,11 @@
  * / consulting-dashboard macros.
  */
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Briefcase, Plus, Trash2, Loader2, Pencil, Check, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface TimeEntry { id: string; hours: number; note: string; date: string }
 interface Engagement { id: string; name: string; client: string; rate: number; budgetHours: number; status: string; timeEntries: TimeEntry[]; loggedHours: number; billed: number; utilizationPct: number }
@@ -18,10 +19,23 @@ interface Dash { engagements: number; active: number; loggedHours: number; bille
 
 const EDITABLE_STATUSES = ['active', 'on_hold', 'complete'] as const;
 
-export function EngagementTracker({ onChanged }: { onChanged?: () => void } = {}) {
+export function EngagementTracker({ onChanged, newFocusSignal = 0 }: { onChanged?: () => void; newFocusSignal?: number } = {}) {
+  // FIX-consulting-004: the workspace's floating '+ New' CTA bumps
+  // newFocusSignal; the create form is always rendered, so the visible
+  // response is focus landing in its first field.
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const actedSignalRef = useRef(newFocusSignal);
+  useEffect(() => {
+    if (newFocusSignal > actedSignalRef.current) {
+      actedSignalRef.current = newFocusSignal;
+      nameInputRef.current?.focus();
+    }
+  }, [newFocusSignal]);
   const [active, setActive] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', client: '', rate: '', budgetHours: '' });
+  const [formError, setFormError] = useState('');
   const [timeForm, setTimeForm] = useState({ hours: '', note: '' });
+  const [engQuery, setEngQuery] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ rate: '', budgetHours: '', status: 'active' as string });
 
@@ -43,8 +57,21 @@ export function EngagementTracker({ onChanged }: { onChanged?: () => void } = {}
   const engs = data?.engs || [];
   const dash = data?.dash || null;
 
+  // FIX-consulting-003: rate / budget hours used to be sent as raw
+  // Number(text) — junk became NaN and negatives were clamped to 0 by the
+  // server, both in silence. Refuse at the form, in words.
+  function badAmount(label: string, raw: string): string {
+    if (raw.trim() === '') return '';
+    const v = Number(raw);
+    if (!Number.isFinite(v)) return `${label} must be a number.`;
+    if (v < 0) return `${label} can't be negative.`;
+    return '';
+  }
   async function addEng() {
     if (!form.name.trim()) return;
+    const err = badAmount('Rate', form.rate) || badAmount('Budget hours', form.budgetHours);
+    if (err) { setFormError(err); return; }
+    setFormError('');
     await lensRun('consulting', 'engagement-create', {
       name: form.name.trim(), client: form.client.trim(),
       rate: form.rate ? Number(form.rate) : 0, budgetHours: form.budgetHours ? Number(form.budgetHours) : 0,
@@ -53,9 +80,14 @@ export function EngagementTracker({ onChanged }: { onChanged?: () => void } = {}
     await refetch();
     onChanged?.();
   }
-  async function delEng(id: string) {
-    await lensRun('consulting', 'engagement-delete', { id });
-    if (active === id) setActive(null);
+  async function delEng(e: Engagement) {
+    // FIX-consulting-005: the caller's StickyDeleteConfirm is the
+    // confirmation (its label names the logged-time consequence when the
+    // engagement has hours); the native window.confirm that used to gate
+    // only the hours>0 path is gone — every delete confirms the same way.
+    const hours = (e.timeEntries || []).reduce((n, t) => n + (Number(t.hours) || 0), 0);
+    await lensRun('consulting', 'engagement-delete', { id: e.id, confirmDeleteTime: hours > 0 });
+    if (active === e.id) setActive(null);
     await refetch();
     onChanged?.();
   }
@@ -71,6 +103,9 @@ export function EngagementTracker({ onChanged }: { onChanged?: () => void } = {}
     setEditForm({ rate: String(e.rate), budgetHours: String(e.budgetHours), status: e.status });
   }
   async function saveEdit(id: string) {
+    const err = badAmount('Rate', editForm.rate) || badAmount('Budget hours', editForm.budgetHours);
+    if (err) { setFormError(err); return; }
+    setFormError('');
     await lensRun('consulting', 'engagement-update', {
       id,
       rate: editForm.rate ? Number(editForm.rate) : undefined,
@@ -92,13 +127,18 @@ export function EngagementTracker({ onChanged }: { onChanged?: () => void } = {}
     );
   }
 
+  const eq = engQuery.trim().toLowerCase();
+  const visibleEngs = eq
+    ? engs.filter(e => e.name.toLowerCase().includes(eq) || (e.client || '').toLowerCase().includes(eq) || (e.status || '').toLowerCase().includes(eq))
+    : engs;
+
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
       <div className="flex items-center gap-2 mb-1">
         <Briefcase className="w-4 h-4 text-indigo-400" />
-        <h3 className="text-sm font-bold text-zinc-100">Engagement Tracker</h3>
+        <h2 className="text-sm font-bold text-zinc-100">Engagement Tracker</h2>
       </div>
-      <p className="text-[10px] text-zinc-500 mb-3">
+      <p className="text-[10px] text-zinc-400 mb-3">
         Engagement status, rates, and time logs — for freeform briefs and scope notes,
         open Engagement notes in the records rail.
       </p>
@@ -115,7 +155,7 @@ export function EngagementTracker({ onChanged }: { onChanged?: () => void } = {}
       )}
 
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5 mb-3 flex flex-wrap gap-1.5">
-        <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Engagement"
+        <input ref={nameInputRef} aria-label="New engagement name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Engagement"
           className="flex-1 min-w-[110px] bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
         <input value={form.client} onChange={e => setForm({ ...form, client: e.target.value })} placeholder="client"
           className="w-24 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
@@ -126,10 +166,17 @@ export function EngagementTracker({ onChanged }: { onChanged?: () => void } = {}
         <button onClick={addEng} disabled={!form.name.trim()}
           className="px-2.5 py-1 text-xs rounded bg-indigo-600 hover:bg-indigo-500 text-white font-semibold disabled:opacity-40">Add</button>
       </div>
+      {formError && <p role="alert" className="text-[11px] text-rose-300 mb-2">{formError}</p>}
 
+      {engs.length > 1 && (
+        <input value={engQuery} onChange={e => setEngQuery(e.target.value)} placeholder="Search engagements…"
+          aria-label="Search engagements"
+          className="w-full mb-2 bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200" />
+      )}
       <ul className="space-y-1">
         {engs.length === 0 && <li className="text-xs text-zinc-400 italic py-3 text-center">No engagements yet.</li>}
-        {engs.map(e => (
+        {engs.length > 0 && visibleEngs.length === 0 && <li className="text-xs text-zinc-400 italic py-3 text-center">No engagements match &ldquo;{engQuery.trim()}&rdquo;.</li>}
+        {visibleEngs.map(e => (
           <li key={e.id} className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2">
             <div className="group flex items-center gap-2">
               <button onClick={() => setActive(active === e.id ? null : e.id)} className="text-left min-w-0 flex-1">
@@ -137,7 +184,7 @@ export function EngagementTracker({ onChanged }: { onChanged?: () => void } = {}
                 <p className="text-[10px] text-zinc-400">{e.client} · {e.loggedHours}h logged · ${e.billed.toLocaleString()} billed · {e.utilizationPct}% of budget · {e.status}</p>
               </button>
               <button aria-label={`Edit ${e.name}`} onClick={() => openEdit(e)} className="opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-indigo-300"><Pencil className="w-3 h-3" /></button>
-              <button aria-label="Delete" onClick={() => delEng(e.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+              <StickyDeleteConfirm onConfirm={() => { void delEng(e); }} className="text-rose-400" armAriaLabel={`Delete ${e.name}`} confirmLabel={e.loggedHours > 0 ? `Delete “${e.name}”? Also deletes ${e.loggedHours}h of logged time.` : `Delete “${e.name}”?`} confirmAriaLabel={`Confirm delete ${e.name}`} armLabel={<Trash2 className="w-3 h-3" />} />
             </div>
             {editingId === e.id && (
               <div className="mt-2 pt-2 border-t border-zinc-800 flex flex-wrap items-center gap-1.5">
@@ -149,8 +196,8 @@ export function EngagementTracker({ onChanged }: { onChanged?: () => void } = {}
                   <input value={editForm.budgetHours} onChange={e2 => setEditForm({ ...editForm, budgetHours: e2.target.value })}
                     className="ml-1.5 w-16 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-[11px] text-zinc-200" />
                 </label>
-                <select value={editForm.status} onChange={e2 => setEditForm({ ...editForm, status: e2.target.value })}
-                  className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-[11px] text-zinc-200">
+                <select aria-label="Engagement status" onChange={e2 => setEditForm({ ...editForm, status: e2.target.value })}
+                  className="min-h-11 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-[11px] text-zinc-200">
                   {EDITABLE_STATUSES.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
                 </select>
                 <button onClick={() => saveEdit(e.id)} className="px-2 py-1 text-[11px] rounded bg-indigo-600 hover:bg-indigo-500 text-white font-semibold inline-flex items-center gap-1"><Check className="w-3 h-3" />Save</button>

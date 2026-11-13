@@ -252,15 +252,19 @@ export function IssueInbox() {
         </div>
         <div className="grid grid-cols-2 gap-2">
           <input
+            name="type"
+            aria-label="Error type"
             value={form.type}
             onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
             placeholder="Error type"
-            className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs font-mono"
+            className="min-w-0 w-full px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs font-mono"
           />
           <select
+            name="level"
+            aria-label="Exception level"
             value={form.level}
             onChange={(e) => setForm((f) => ({ ...f, level: e.target.value }))}
-            className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs"
+            className="min-w-0 w-full px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs"
           >
             <option value="error">error</option>
             <option value="fatal">fatal</option>
@@ -269,6 +273,8 @@ export function IssueInbox() {
           </select>
         </div>
         <input
+          name="message"
+          aria-label="Exception message"
           value={form.message}
           onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))}
           placeholder="Exception message"
@@ -276,17 +282,21 @@ export function IssueInbox() {
         />
         <div className="grid grid-cols-2 gap-2">
           <input
+            name="culprit"
+            aria-label="Culprit (file or function)"
             value={form.culprit}
             onChange={(e) => setForm((f) => ({ ...f, culprit: e.target.value }))}
             placeholder="Culprit (file/fn)"
-            className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs font-mono"
+            className="min-w-0 w-full px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs font-mono"
           />
           <input
+            name="release"
+            aria-label="Release"
             value={form.release}
             onChange={(e) => setForm((f) => ({ ...f, release: e.target.value }))}
             placeholder="Release (e.g. v1.2.0)"
             list="debug-release-names"
-            className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs font-mono"
+            className="min-w-0 w-full px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs font-mono"
           />
           <datalist id="debug-release-names">
             {releaseNames.map((v) => (
@@ -295,6 +305,8 @@ export function IssueInbox() {
           </datalist>
         </div>
         <textarea
+          name="stack"
+          aria-label="Stack trace (optional)"
           value={form.stack}
           onChange={(e) => setForm((f) => ({ ...f, stack: e.target.value }))}
           placeholder={'Stack trace (optional) — paste it as copied, e.g.\nTypeError: boom\n    at renderRows (QueryGrid.tsx:42:17)'}
@@ -313,6 +325,11 @@ export function IssueInbox() {
           )}
           Record Exception
         </button>
+        {!form.message.trim() && (
+          <p role="note" className="text-[11px] text-gray-400">
+            An exception message is required to record an exception.
+          </p>
+        )}
       </div>
 
       {/* External ingest (Q1): per-project keys + the Sentry-compatible endpoint */}
@@ -321,6 +338,8 @@ export function IssueInbox() {
       {/* Filters */}
       <div className="flex items-center gap-2">
         <select
+          name="statusFilter"
+          aria-label="Filter by status"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
           className="px-2 py-1 bg-lattice-surface border border-lattice-border rounded text-xs"
@@ -331,6 +350,8 @@ export function IssueInbox() {
           <option value="ignored">Ignored</option>
         </select>
         <input
+          name="query"
+          aria-label="Search issues"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && load()}
@@ -498,6 +519,8 @@ export function IssueInbox() {
             {/* Assignee */}
             <div className="flex items-center gap-2">
               <input
+                name="assignee"
+                aria-label="Assign issue to"
                 defaultValue={selected.assignee || ''}
                 placeholder="Assign to..."
                 onKeyDown={(e) => {

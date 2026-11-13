@@ -809,6 +809,49 @@ export default function registerCreativeActions(registerLensAction) {
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
+  registerLensAction("creative", "callsheet-update-row", (ctx, _a, params = {}) => {
+    const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const sheet = (s.callSheets.get(crAid(ctx)) || []).find((c) => c.id === params.id);
+    if (!sheet) return { ok: false, error: "call sheet not found" };
+    const section = String(params.section);
+    if (!["cast", "crew", "locations", "schedule"].includes(section)) {
+      return { ok: false, error: "section must be cast|crew|locations|schedule" };
+    }
+    const row = (sheet[section] || []).find((r) => r.id === params.rowId);
+    if (!row) return { ok: false, error: "row not found" };
+    if (section === "cast" || section === "crew") {
+      if (params.name != null) {
+        const v = crClean(params.name, 120);
+        if (!v) return { ok: false, error: "name required" };
+        row.name = v;
+      }
+      if (section === "cast" && params.role != null) row.role = crClean(params.role, 120);
+      if (section === "crew" && params.department != null) row.department = crClean(params.department, 120);
+      if (params.callTime != null) row.callTime = crClean(params.callTime, 20);
+    } else if (section === "locations") {
+      if (params.name != null) {
+        const v = crClean(params.name, 160);
+        if (!v) return { ok: false, error: "location name required" };
+        row.name = v;
+      }
+      if (params.address != null) row.address = crClean(params.address, 300);
+    } else {
+      if (params.time != null) row.time = crClean(params.time, 20);
+      if (params.scene != null) {
+        const v = crClean(params.scene, 200);
+        if (!v) return { ok: false, error: "scene required" };
+        row.scene = v;
+      }
+    }
+    // Keep the general call honest, exactly as add-row does.
+    const allCalls = [...sheet.cast, ...sheet.crew]
+      .map((r) => r.callTime).filter((t) => /^\d{1,2}:\d{2}$/.test(t || "")).sort();
+    if (allCalls.length) sheet.generalCall = allCalls[0];
+    sheet.updatedAt = crNow();
+    saveCrState();
+    return { ok: true, result: { sheet } };
+  });
+
   registerLensAction("creative", "callsheet-remove-row", (ctx, _a, params = {}) => {
     const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const sheet = (s.callSheets.get(crAid(ctx)) || []).find((c) => c.id === params.id);
@@ -1132,6 +1175,7 @@ export default function registerCreativeActions(registerLensAction) {
     }
     if (params.date != null && /^\d{4}-\d{2}-\d{2}$/.test(String(params.date))) ev.date = String(params.date);
     if (params.kind != null && CAL_KINDS.includes(String(params.kind))) ev.kind = String(params.kind);
+    if (params.project != null) ev.project = crClean(params.project, 160) || null;
     if (params.notes != null) ev.notes = crClean(params.notes, 600);
     if (params.done != null) ev.done = !!params.done;
     saveCrState();
@@ -1163,7 +1207,9 @@ export default function registerCreativeActions(registerLensAction) {
     const link = {
       id: crId("pln"), token, assetId: asset.id, ownerId: userId,
       label: crClean(params.label, 160) || asset.name,
-      allowComments: params.allowComments !== false,
+      // External comments are opt-in: only an explicit true enables them,
+      // so a link created without the choice stays closed to outside input.
+      allowComments: params.allowComments === true,
       active: true,
       createdAt: crNow(),
     };
@@ -1214,10 +1260,15 @@ export default function registerCreativeActions(registerLensAction) {
 
   registerLensAction("creative", "prooflink-delete", (ctx, _a, params = {}) => {
     const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const arr = s.proofLinks.get(crAid(ctx)) || [];
+    const userId = crAid(ctx);
+    const arr = s.proofLinks.get(userId) || [];
     const i = arr.findIndex((l) => l.id === params.id);
     if (i < 0) return { ok: false, error: "proof link not found" };
-    arr.splice(i, 1);
+    const [removed] = arr.splice(i, 1);
+    // Deleting a link retires its external thread with it — the comments
+    // were collected under that link's token and have no home without it.
+    const ext = s.proofExtComments.get(userId);
+    if (ext) s.proofExtComments.set(userId, ext.filter((c) => c.token !== removed.token));
     saveCrState();
     return { ok: true, result: { deleted: params.id } };
   });
@@ -1225,7 +1276,11 @@ export default function registerCreativeActions(registerLensAction) {
   // Owner-side inbox of external comments captured across all proof links.
   registerLensAction("creative", "prooflink-inbox", (ctx, _a, params = {}) => {
     const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    let comments = (s.proofExtComments.get(crAid(ctx)) || []).slice();
+    const userId = crAid(ctx);
+    // The inbox shows threads of links the owner still holds; a comment
+    // whose link is gone (deleted or never the owner's) is not surfaced.
+    const liveTokens = new Set((s.proofLinks.get(userId) || []).map((l) => l.token));
+    let comments = (s.proofExtComments.get(userId) || []).filter((c) => liveTokens.has(c.token));
     if (params.token) comments = comments.filter((c) => c.token === params.token);
     comments.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     return {

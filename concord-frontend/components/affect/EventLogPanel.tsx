@@ -8,6 +8,7 @@ import { Clock, Filter, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAffectAts } from '@/components/affect/useAffectAts';
 import { EVENT_TYPES, DIMS, eventTypeColor, formatTimeShort } from '@/components/affect/affect-model';
 import { ErrorState } from '@/components/common/EmptyState';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 export function EventLogPanel() {
   const { eventList, isLoading, isError, errorMessage, refetchAll } = useAffectAts();
@@ -68,7 +69,7 @@ export function EventLogPanel() {
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Event Type</label>
                 <select
-                  value={eventFilter}
+ aria-label="Event Type"                  value={eventFilter}
                   onChange={(e) => setEventFilter(e.target.value)}
                   className="input-lattice text-sm"
                 >
@@ -83,7 +84,7 @@ export function EventLogPanel() {
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Dimension</label>
                 <select
-                  value={eventDimFilter}
+ aria-label="Dimension"                  value={eventDimFilter}
                   onChange={(e) => setEventDimFilter(e.target.value)}
                   className="input-lattice text-sm"
                 >
@@ -118,7 +119,7 @@ export function EventLogPanel() {
                       <div key={i} className="lens-card text-sm">
                         <div
                           className="flex items-center gap-3 cursor-pointer"
-                          onClick={() => setExpandedEvent(isExpanded ? null : i)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                          onClick={() => setExpandedEvent(isExpanded ? null : i)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                           <div className="w-1 h-8 rounded-full bg-gray-700 shrink-0 relative">
                             <div
                               className={`absolute inset-0 rounded-full ${

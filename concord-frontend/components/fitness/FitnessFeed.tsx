@@ -51,8 +51,8 @@ function FitnessFeedLive() {
           <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">reddit.com · top {windowKey}</span><RedditCacheLabel cached={Boolean(posts.data?.cached)} stale={Boolean(posts.data?.stale)} />
         </div>
         <div className="flex items-center gap-2">
-          <select value={sub} onChange={(e) => setSub(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">{SUBS.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}</select>
-          <select value={windowKey} onChange={(e) => setWindowKey(e.target.value as typeof WINDOWS[number])} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">{WINDOWS.map((w) => <option key={w} value={w}>{w}</option>)}</select>
+          <select id="fitness-sub" name="sub" value={sub} onChange={(e) => setSub(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">{SUBS.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}</select>
+          <select id="fitness-windowkey" name="windowkey" value={windowKey} onChange={(e) => setWindowKey(e.target.value as typeof WINDOWS[number])} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">{WINDOWS.map((w) => <option key={w} value={w}>{w}</option>)}</select>
           {list.length > 0 && (
             <SaveAsDtuButton compact apiSource="reddit-fitness" apiUrl={`https://www.reddit.com/r/${sub}/top.json?t=${windowKey}`} title={`r/${sub} — top ${windowKey} (${list.length})`} content={list.slice(0, 20).map((p, i) => `${i + 1}. [${p.score}↑ · ${p.num_comments}💬] ${p.title}\n   https://reddit.com${p.permalink}`).join('\n\n')} extraTags={['fitness', 'reddit', sub.toLowerCase(), windowKey]} rawData={{ sub, window: windowKey, posts: list }} />
           )}

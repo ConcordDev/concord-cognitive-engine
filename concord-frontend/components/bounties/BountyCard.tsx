@@ -159,7 +159,7 @@ export function BountyCard({ bounty, currentUserId, onChanged }: Props) {
 
       {expanded && (
         <div className="border-t border-zinc-800 bg-zinc-950/40 p-4 space-y-3">
-          <p className="text-xs text-zinc-300 whitespace-pre-wrap leading-relaxed">{bounty.description}</p>
+          <p className="text-xs text-zinc-300 whitespace-pre-wrap leading-relaxed min-w-0 break-words [overflow-wrap:anywhere]">{bounty.description}</p>
 
           {/* Milestones */}
           {bounty.milestones.length > 0 && (

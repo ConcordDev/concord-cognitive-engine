@@ -6,6 +6,7 @@
  * retirement-monte-carlo macros plus mint/DM/publish/agent.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import {
   DollarSign, PiggyBank, TrendingUp, Calculator, Briefcase,
@@ -214,9 +215,9 @@ export function FinanceActionPanel() {
         'Identify the single highest-leverage move this month. Concrete, with dollar figures. Plain text.',
       ].filter(Boolean).join(' ');
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 4 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Move ready.'); }
-      else err('Agent returned empty.');
+      const reply = readAgentReply(r.data);
+      if (reply.ok) { setAgentReply(reply.text); ok('Move ready.'); }
+      else err(reply.reason);
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }

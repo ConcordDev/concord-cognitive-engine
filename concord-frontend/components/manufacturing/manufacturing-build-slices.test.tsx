@@ -20,7 +20,7 @@ import { OEEDashboard } from './OEEDashboard';
 import { WorkOrderBoard } from './WorkOrderBoard';
 import { QualitySPC } from './QualitySPC';
 import {
-  requestDelete, undoDelete, isDeletePending, resetDeleteSafetyForTests,
+  requestDelete, undoDelete, isDeletePending, resetDeleteSafetyForTests, flushPendingDeletes,
 } from './delete-safety-store';
 
 function ok(result: unknown) {
@@ -136,5 +136,23 @@ describe('delete-safety store — the undo window is literal', () => {
     await vi.advanceTimersByTimeAsync(9000);
     expect(commit).toHaveBeenCalledTimes(1);
     expect(isDeletePending('machine:M2')).toBe(false);
+  });
+
+  it('leaving inside the window commits immediately instead of cancelling (FIX-manufacturing-008)', async () => {
+    vi.useFakeTimers();
+    const commit = vi.fn(async () => {});
+    requestDelete({ key: 'machine:M3', label: 'Press', commit });
+    expect(isDeletePending('machine:M3')).toBe(true);
+    flushPendingDeletes();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(commit).toHaveBeenCalledTimes(1);
+    expect(isDeletePending('machine:M3')).toBe(false);
+    // And an undone delete stays undone even if a flush follows.
+    const commit2 = vi.fn(async () => {});
+    requestDelete({ key: 'machine:M4', label: 'Saw', commit: commit2 });
+    undoDelete('machine:M4');
+    flushPendingDeletes();
+    await vi.advanceTimersByTimeAsync(9000);
+    expect(commit2).not.toHaveBeenCalled();
   });
 });

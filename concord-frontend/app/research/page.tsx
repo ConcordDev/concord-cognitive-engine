@@ -30,6 +30,7 @@ import {
   Zap,
   Globe,
 } from 'lucide-react';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -303,7 +304,7 @@ function JobCard({
         ds.panel,
         'cursor-pointer transition-all',
         isSelected ? 'border-neon-cyan/60 ring-1 ring-neon-cyan/20' : 'hover:border-neon-cyan/30'
-      )} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+      )} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex-1 min-w-0">
           <h3 className="text-sm font-semibold text-white truncate">{job.topic}</h3>

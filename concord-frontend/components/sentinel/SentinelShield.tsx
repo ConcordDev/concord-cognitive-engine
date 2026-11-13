@@ -124,7 +124,7 @@ export function SentinelShield({ onTriageOpened }: { onTriageOpened?: () => void
   const [reportHash, setReportHash] = useState('');
   const [reportVector, setReportVector] = useState('');
   const [reportBusy, setReportBusy] = useState(false);
-  const [reportResult, setReportResult] = useState<{ status?: string; message?: string } | null>(null);
+  const [reportResult, setReportResult] = useState<{ status?: string; message?: string; threatDtu?: { id?: string }; triageCaseId?: string } | null>(null);
 
   // Fortify Suite — full lattice sweep.
   const [sweeping, setSweeping] = useState(false);
@@ -242,15 +242,38 @@ export function SentinelShield({ onTriageOpened }: { onTriageOpened?: () => void
       fileHash: reportHash.trim() || undefined,
       vector: reportVector.trim() || undefined,
     });
-    const result = (r.data?.result ?? r.data) as { status?: string; message?: string } | null;
-    setReportResult(result);
-    setReportBusy(false);
+    const result = (r.data?.result ?? r.data) as { status?: string; message?: string; threatDtu?: { id?: string } } | null;
     if (r.data?.ok) {
       setReportDesc('');
       setReportHash('');
       setReportVector('');
+      // FIX-sentinel-002: a submitted report used to land as a private
+      // lattice entry with no case anywhere — the reporter could not
+      // track it. Open the reporter's own triage case for it and say so;
+      // if that fails, the saved-pending message stands on its own.
+      if (result?.threatDtu?.id) {
+        const t = await lensRun('sentinel', 'triage.open', {
+          threatId: result.threatDtu.id,
+          title: reportDesc.trim().slice(0, 120),
+          severity: reportSeverity,
+          description: reportDesc.trim(),
+          vector: reportVector.trim() || null,
+        });
+        const caseId = (t.data?.result as { case?: { caseId?: string } } | undefined)?.case?.caseId;
+        if (t.data?.ok && caseId) {
+          setReportResult({ ...result, triageCaseId: caseId, message: `${result.message || 'Report saved.'} A triage case was opened for it — track it under the Triage tab.` });
+          onTriageOpened?.();
+        } else {
+          setReportResult(result);
+        }
+      } else {
+        setReportResult(result);
+      }
       await load();
+    } else {
+      setReportResult(result);
     }
+    setReportBusy(false);
   }
 
   async function runSweep() {
@@ -285,14 +308,14 @@ export function SentinelShield({ onTriageOpened }: { onTriageOpened?: () => void
             <button
               disabled={sweeping}
               onClick={runSweep}
-              className="inline-flex items-center gap-1.5 rounded bg-orange-700/60 px-3 py-1.5 text-xs font-medium text-orange-50 hover:bg-orange-700/80 disabled:opacity-40"
+              className="min-h-11 inline-flex items-center gap-1.5 rounded bg-orange-700/60 px-3 py-1.5 text-xs font-medium text-orange-50 hover:bg-orange-700/80 disabled:opacity-40"
             >
               {sweeping ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
               Run full sweep
             </button>
             <button
               onClick={() => setReportOpen((v) => !v)}
-              className="inline-flex items-center gap-1.5 rounded bg-blue-950/40 px-3 py-1.5 text-xs text-blue-300 hover:text-blue-100"
+              className="min-h-11 inline-flex items-center gap-1.5 rounded bg-blue-950/40 px-3 py-1.5 text-xs text-blue-300 hover:text-blue-100"
             >
               <Send className="h-3.5 w-3.5" /> Report a threat
             </button>
@@ -306,59 +329,81 @@ export function SentinelShield({ onTriageOpened }: { onTriageOpened?: () => void
           {reportOpen && (
             <div className="rounded-lg border border-blue-900/40 bg-blue-950/10 p-4">
               <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-blue-200">
-                <Send className="h-4 w-4" /> Report a threat to the collective lattice
+                <Send className="h-4 w-4" /> Report a threat
               </h3>
               <div className="grid gap-2 sm:grid-cols-2">
-                <select
+                <select id="sentinel-sentinelshield-threat-subtype" name="threat-subtype"
                   value={reportSubtype}
                   onChange={(e) => setReportSubtype(e.target.value as typeof REPORT_SUBTYPES[number])}
-                  className="rounded border border-blue-900/40 bg-black/40 px-2 py-1.5 text-xs text-blue-100 focus:border-blue-500 focus:outline-none"
+                  className="min-h-11 rounded border border-blue-900/40 bg-black/40 px-2 py-1.5 text-xs text-blue-100 focus:border-blue-500 focus:outline-none"
                   aria-label="Threat subtype"
                 >
                   {REPORT_SUBTYPES.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
                 <label className="flex items-center gap-2 text-xs text-blue-400">
                   Severity
-                  <input
+                  <input id="sentinel-sentinelshield-severity" name="severity"
                     type="range" min={1} max={10} value={reportSeverity}
                     onChange={(e) => setReportSeverity(Number(e.target.value))}
-                    className="flex-1"
+                    className="min-h-11 flex-1"
                     aria-label="Severity"
                   />
                   <span className="w-4 text-right font-mono text-blue-200">{reportSeverity}</span>
                 </label>
-                <input
+                <input id="sentinel-sentinelshield-attack-vector-e-g-email-attachment" name="attack-vector-e-g-email-attachment"
                   value={reportVector}
                   onChange={(e) => setReportVector(e.target.value)}
                   placeholder="attack vector (e.g. email attachment)"
-                  className="rounded border border-blue-900/40 bg-black/40 px-2 py-1.5 text-xs text-blue-100 focus:border-blue-500 focus:outline-none sm:col-span-2"
+                  className="min-h-11 rounded border border-blue-900/40 bg-black/40 px-2 py-1.5 text-xs text-blue-100 focus:border-blue-500 focus:outline-none sm:col-span-2"
                 />
-                <input
+                <input id="sentinel-sentinelshield-sha-256-hash-optional" name="sha-256-hash-optional"
                   value={reportHash}
                   onChange={(e) => setReportHash(e.target.value)}
                   placeholder="SHA-256 hash (optional)"
-                  className="rounded border border-blue-900/40 bg-black/40 px-2 py-1.5 font-mono text-xs text-blue-100 focus:border-blue-500 focus:outline-none sm:col-span-2"
+                  className="min-h-11 rounded border border-blue-900/40 bg-black/40 px-2 py-1.5 font-mono text-xs text-blue-100 focus:border-blue-500 focus:outline-none sm:col-span-2"
                 />
-                <textarea
+                <textarea id="sentinel-sentinelshield-describe-what-you-observed" name="describe-what-you-observed"
                   value={reportDesc}
                   onChange={(e) => setReportDesc(e.target.value)}
                   placeholder="Describe what you observed…"
-                  className="h-16 w-full rounded border border-blue-900/40 bg-black/40 p-2 text-xs text-blue-100 focus:border-blue-500 focus:outline-none sm:col-span-2"
+                  className="min-h-11 h-16 w-full rounded border border-blue-900/40 bg-black/40 p-2 text-xs text-blue-100 focus:border-blue-500 focus:outline-none sm:col-span-2"
                 />
               </div>
               <button
                 disabled={reportBusy || !reportDesc.trim()}
                 onClick={submitReport}
-                className="mt-2 inline-flex items-center gap-1.5 rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500 disabled:opacity-40"
+                className="min-h-11 mt-2 inline-flex items-center gap-1.5 rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500 disabled:opacity-40"
               >
                 {reportBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
                 Submit report
               </button>
-              {reportResult && (
-                <p className="mt-2 text-[11px] text-blue-400">
-                  {reportResult.status === 'known_threat' ? 'Already known — ' : 'New threat added — '}
-                  {reportResult.message}
+              {!reportDesc.trim() && (
+                <p role="note" className="mt-1 text-[11px] text-blue-300/70">
+                  Describe what you observed to submit the report.
                 </p>
+              )}
+              {reportResult && (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <p className="text-[11px] text-blue-400">{reportResult.message}</p>
+                  {reportResult.triageCaseId && (
+                    <span className="text-[11px] text-blue-200">Triage case {reportResult.triageCaseId}</span>
+                  )}
+                  {reportResult.threatDtu?.id && reportResult.status !== 'known_threat' && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const id = reportResult.threatDtu?.id;
+                        if (!id) return;
+                        await lensRun('shield', 'retract-report', { id });
+                        setReportResult({ status: 'retracted', message: 'Report retracted. The Shield score was not changed.' });
+                        await load();
+                      }}
+                      className="min-h-11 text-[11px] text-blue-200 underline"
+                    >
+                      Retract this report
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           )}
@@ -367,17 +412,17 @@ export function SentinelShield({ onTriageOpened }: { onTriageOpened?: () => void
             <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-blue-200">
               <ScanLine className="h-4 w-4" /> On-demand scan
             </h3>
-            <textarea
+            <textarea id="sentinel-sentinelshield-scan-input" name="scan-input"
               value={scanInput}
               onChange={(e) => setScanInput(e.target.value)}
               placeholder="Paste file content, or a SHA-256 / MD5 hash, to scan…"
-              className="h-20 w-full rounded border border-blue-900/40 bg-black/40 p-2 font-mono text-xs text-blue-100 focus:border-blue-500 focus:outline-none"
+              className="min-h-11 h-20 w-full rounded border border-blue-900/40 bg-black/40 p-2 font-mono text-xs text-blue-100 focus:border-blue-500 focus:outline-none"
               aria-label="Scan input"
             />
             <button
               disabled={scanning || !scanInput.trim()}
               onClick={runScan}
-              className="mt-2 inline-flex items-center gap-1.5 rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500 disabled:opacity-40"
+              className="min-h-11 mt-2 inline-flex items-center gap-1.5 rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500 disabled:opacity-40"
             >
               {scanning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ScanLine className="h-3.5 w-3.5" />}
               Run scan
@@ -415,7 +460,7 @@ export function SentinelShield({ onTriageOpened }: { onTriageOpened?: () => void
                         {t.description && <span className="truncate text-blue-100">{t.description}</span>}
                         <button
                           onClick={() => investigate(t)}
-                          className="ml-auto inline-flex shrink-0 items-center gap-1 rounded bg-blue-950/50 px-2 py-0.5 text-[10px] text-blue-300 hover:bg-blue-900/50"
+                          className="min-h-11 ml-auto inline-flex shrink-0 items-center gap-1 rounded bg-blue-950/50 px-2 py-0.5 text-xs text-blue-300 hover:bg-blue-900/50"
                         >
                           <Stethoscope className="h-3 w-3" />
                           Investigate
@@ -424,7 +469,7 @@ export function SentinelShield({ onTriageOpened }: { onTriageOpened?: () => void
                         <button
                           disabled={busy || isOpen}
                           onClick={() => openTriage(t)}
-                          className={`inline-flex shrink-0 items-center gap-1 rounded px-2 py-0.5 text-[10px] ${
+                          className={`inline-flex min-h-11 shrink-0 items-center gap-1 rounded px-2 py-0.5 text-xs ${
                             isOpen
                               ? 'bg-emerald-900/40 text-emerald-300'
                               : 'bg-blue-700/50 text-blue-100 hover:bg-blue-700/70'
@@ -506,12 +551,12 @@ export function SentinelShield({ onTriageOpened }: { onTriageOpened?: () => void
             </summary>
             <div className="space-y-3 border-t border-blue-900/20 p-3">
               <div className="flex flex-wrap items-center gap-2">
-                <input
+                <input id="sentinel-sentinelshield-threat-family" name="threat-family"
                   list="sentinel-threat-families"
                   value={family}
                   onChange={(e) => setFamily(e.target.value)}
                   placeholder="threat family (e.g. ransomware)"
-                  className="rounded border border-blue-900/40 bg-black/40 px-2 py-1 text-xs text-blue-100 focus:border-blue-500 focus:outline-none"
+                  className="min-h-11 rounded border border-blue-900/40 bg-black/40 px-2 py-1 text-xs text-blue-100 focus:border-blue-500 focus:outline-none"
                   aria-label="Threat family"
                 />
                 <datalist id="sentinel-threat-families">
@@ -520,7 +565,7 @@ export function SentinelShield({ onTriageOpened }: { onTriageOpened?: () => void
                 <button
                   disabled={predicting || !family.trim()}
                   onClick={runProphet}
-                  className="inline-flex items-center gap-1.5 rounded bg-blue-700/50 px-2.5 py-1 text-xs text-blue-100 hover:bg-blue-700/70 disabled:opacity-40"
+                  className="min-h-11 inline-flex items-center gap-1.5 rounded bg-blue-700/50 px-2.5 py-1 text-xs text-blue-100 hover:bg-blue-700/70 disabled:opacity-40"
                 >
                   {predicting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Radar className="h-3.5 w-3.5" />}
                   Run Prophet

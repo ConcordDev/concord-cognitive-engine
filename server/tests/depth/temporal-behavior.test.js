@@ -123,6 +123,22 @@ describe("temporal — multiSeasonality", () => {
     assert.equal(r.result.ok, false);
     assert.ok(r.result.error.includes("at least 12"));
   });
+
+  it("finds a short noisy period-4 and reports a numeric seasonal share", async () => {
+    // n=16, sine period 4 plus noise seed 15. ACF at lag 4 is about 0.33,
+    // under the old 2/sqrt(n)=0.5 band and above the 0.2 floor Decompose uses.
+    const values = [-0.7, 1.662, -0.232, -0.468, 0.688, 0.698, 0.288, -1.444, -0.435, 0.329, 0.354, -0.592, -0.05, 1.026, 0.423, -0.376];
+    const r = await lensRun("temporal", "multiSeasonality", { params: { values } });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.seasonalities.some((s) => s.period === 4), "period 4 is reported");
+    assert.equal(typeof r.result.totalSeasonalShare, "number");
+    assert.ok(r.result.totalSeasonalShare > 0);
+
+    const flat = await lensRun("temporal", "multiSeasonality", { params: { values: Array(16).fill(1) } });
+    assert.equal(flat.ok, true);
+    assert.equal(flat.result.seasonalities.length, 0);
+    assert.equal(flat.result.totalSeasonalShare, 0);
+  });
 });
 
 describe("temporal — holidayForecast", () => {
@@ -236,6 +252,15 @@ describe("temporal — anomalyDetection", () => {
     assert.equal(spike.value, 1000);
     assert.equal(spike.severity, "extreme");
     assert.equal(spike.direction, "above");
+  });
+
+  it("puts a lone 9-sigma spike in the z-score and IQR consensus", async () => {
+    const values = Array(20).fill(0);
+    values[10] = 9;
+    const r = await lensRun("temporal", "anomalyDetection", { params: { values } });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.consensusAnomalies.some((a) => a.index === 10 && a.value === 9));
+    assert.ok(r.result.consensusCount >= 1);
   });
 
   it("rejects series shorter than 5 points", async () => {

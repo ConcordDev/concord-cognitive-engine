@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Heart, Loader2, BedDouble, Bath, Maximize2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import type { Listing } from './ListingsBrowser';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 export function FavouritesPanel({ onSelect }: { onSelect?: (l: Listing) => void }) {
   const [favourites, setFavourites] = useState<Listing[]>([]);
@@ -43,7 +44,7 @@ export function FavouritesPanel({ onSelect }: { onSelect?: (l: Listing) => void 
           <ul className="divide-y divide-white/5">
             {favourites.map(l => (
               <li key={l.id} className="px-3 py-2 hover:bg-white/[0.03] group flex items-center gap-3">
-                <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onSelect?.(l)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onSelect?.(l)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                   <div className="text-base font-mono font-semibold text-white">${l.price.toLocaleString()}</div>
                   <div className="text-xs text-gray-300 truncate">{l.address}</div>
                   <div className="mt-0.5 flex items-center gap-3 text-[11px] text-gray-400">

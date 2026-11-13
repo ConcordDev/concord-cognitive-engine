@@ -31,7 +31,7 @@ export function ExistentialOSHeatmap({ grouped, qualiaState }: {
   }
 
   function intensityText(value: number): string {
-    if (value <= 0) return 'text-zinc-600';
+    if (value <= 0) return 'text-zinc-400';
     if (value < 0.3) return 'text-blue-400';
     if (value < 0.6) return 'text-cyan-400';
     return 'text-cyan-300';

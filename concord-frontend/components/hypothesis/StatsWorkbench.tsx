@@ -147,6 +147,23 @@ function TestBattery() {
   const [chiMode, setChiMode] = useState<'gof' | 'independence'>('gof');
   const [alpha, setAlpha] = useState('0.05');
 
+  // Run Test used to stay enabled with empty samples and alpha = 2
+  // (FIX-hypothesis-003): the tests need real samples and alpha is a
+  // probability, so 0 < alpha < 1. The button now disables on invalid
+  // input and the alpha field carries min/max + aria-invalid.
+  const alphaNum = Number(alpha);
+  const alphaValid = alpha.trim() !== '' && Number.isFinite(alphaNum) && alphaNum > 0 && alphaNum < 1;
+  const inputsValid = (() => {
+    if (kind === 'tTest') {
+      if (parseNums(sampleA).length < 2) return false;
+      return tKind === 'one-sample' || parseNums(sampleB).length >= 2;
+    }
+    if (kind === 'anova') return groups.split('\n').map((l) => parseNums(l)).filter((x) => x.length > 0).length >= 2;
+    if (kind === 'chiSquare') return chiMode === 'gof' ? parseNums(observed).length >= 2 : contTable.split('\n').map((l) => parseNums(l)).filter((r) => r.length > 0).length >= 2;
+    return parseNums(sampleA).length >= 2 && parseNums(sampleB).length >= 2;
+  })();
+  const canRun = alphaValid && inputsValid;
+
   const run = useCallback(async () => {
     setBusy(true);
     setError(null);
@@ -301,16 +318,20 @@ function TestBattery() {
         <label className="space-y-1 text-xs text-zinc-400">
           Significance level α
           <input
+            type="number" min={0.001} max={0.999} step={0.01}
             value={alpha}
             onChange={(e) => setAlpha(e.target.value)}
+            aria-invalid={!alphaValid}
+            aria-describedby="stats-alpha-hint"
             className="w-full rounded-md border border-zinc-800 bg-zinc-900 p-1.5 font-mono text-xs text-zinc-100"
           />
+          {!alphaValid && <span id="stats-alpha-hint" className="text-[10px] text-rose-300">α must be between 0 and 1 (exclusive).</span>}
         </label>
       </div>
 
       <button
         onClick={run}
-        disabled={busy}
+        disabled={busy || !canRun}
         className="flex items-center gap-2 rounded-md bg-indigo-500/90 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
       >
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sigma className="h-4 w-4" />}

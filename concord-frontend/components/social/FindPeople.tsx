@@ -44,10 +44,10 @@ export function FindPeople() {
         placeholder="Name or username"
         className="w-full rounded bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100 outline-none"
       />
-      {status === 'loading' && <p className="mt-2 text-[11px] text-zinc-500">Searching…</p>}
+      {status === 'loading' && <p className="mt-2 text-[11px] text-zinc-400">Searching…</p>}
       {status === 'error' && <p className="mt-2 text-[11px] text-rose-400">People search failed.</p>}
       {query.trim().length >= 2 && status === 'idle' && people.length === 0 && (
-        <p className="mt-2 text-[11px] text-zinc-500">No matching people.</p>
+        <p className="mt-2 text-[11px] text-zinc-400">No matching people.</p>
       )}
       <ul className="mt-2 space-y-1">
         {people.map((person) => {
@@ -60,7 +60,7 @@ export function FindPeople() {
                 className="block rounded px-2 py-1 text-sm text-zinc-200 hover:bg-white/5"
               >
                 {person.displayName || handle}
-                <span className="ml-1 text-zinc-500">@{handle}</span>
+                <span className="ml-1 text-zinc-400">@{handle}</span>
               </Link>
             </li>
           );

@@ -23,6 +23,7 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { cn } from '@/lib/utils';
+import { onRovingTabsKeyDown, rovingTabIndex } from '@/lib/a11y/roving-tabs';
 import { StrategiesDeskPanel } from '@/components/metalearning/StrategiesDeskPanel';
 import { SpacedRepetitionPanel } from '@/components/metalearning/SpacedRepetitionPanel';
 import { LearningPlanPanel } from '@/components/metalearning/LearningPlanPanel';
@@ -108,19 +109,20 @@ export default function MetalearningLensPage() {
           </div>
         </div>
 
-        <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Metalearning views">
-          {TABS.map((v) => {
+        <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto no-scrollbar rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Metalearning views" onKeyDown={onRovingTabsKeyDown}>
+          {TABS.map((v, i) => {
             const Icon = v.icon;
             const on = active === v.id;
             return (
               <button
                 key={v.id}
                 type="button"
+                tabIndex={rovingTabIndex(on, i, true)}
                 onClick={() => goTo(v.id)}
                 aria-current={on ? 'page' : undefined}
                 className={cn(
-                  'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
-                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+                  'inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
+                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-400 hover:text-zinc-200',
                 )}
               >
                 <Icon className="h-3.5 w-3.5" />
@@ -191,7 +193,7 @@ export default function MetalearningLensPage() {
           type="button"
           onClick={() => goTo('spaced')}
           title="Start spaced practice"
-          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+          className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] right-[4.75rem] z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 min-h-[44px] max-w-[calc(100vw-6.5rem)] px-4 py-2.5 sm:px-6 sm:py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 md:bottom-8 lg:right-8"
         >
           <Brain className="h-4 w-4" />
           Start practice

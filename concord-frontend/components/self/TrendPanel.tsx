@@ -9,6 +9,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { useLensStatePersistence } from '@/lib/lens-state-persistence';
 import { ChartKit } from '@/components/viz/ChartKit';
 import { Loader2, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
@@ -50,8 +51,28 @@ interface TrendResult {
 }
 
 export function TrendPanel({ refreshKey }: { refreshKey: number }) {
-  const [metric, setMetric] = useState('steps');
-  const [days, setDays] = useState(30);
+  // FIX-self-005 / FIX-self-015: metric + range are view prefs — the panel
+  // unmounts on every tab switch inside the Self lens, so both persist
+  // through the shared lens UI-state store and are restored on return
+  // instead of resetting to Steps / 30d.
+  const { restore, persist } = useLensStatePersistence('self');
+  const [initialPrefs] = useState(() => restore());
+  const [metric, setMetricState] = useState(() => {
+    const saved = initialPrefs?.trendMetric;
+    return typeof saved === 'string' && METRICS.some((m) => m.key === saved) ? saved : 'steps';
+  });
+  const [days, setDaysState] = useState(() => {
+    const saved = initialPrefs?.trendDays;
+    return typeof saved === 'number' && RANGES.some((r) => r.days === saved) ? saved : 30;
+  });
+  const setMetric = (next: string) => {
+    setMetricState(next);
+    persist({ ...(restore() ?? {}), trendMetric: next });
+  };
+  const setDays = (next: number) => {
+    setDaysState(next);
+    persist({ ...(restore() ?? {}), trendDays: next });
+  };
   const [data, setData] = useState<TrendResult | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -109,7 +130,7 @@ export function TrendPanel({ refreshKey }: { refreshKey: number }) {
             <StatCell label="Max" value={fmt(stats?.max, data.unit)} />
             <StatCell label="Latest" value={fmt(stats?.latest, data.unit)} />
             <div className="rounded-lg border border-rose-900/40 bg-rose-950/10 p-2.5">
-              <div className="text-[10px] uppercase tracking-wider text-rose-700">Trend</div>
+              <div className="text-[10px] uppercase tracking-wider text-rose-400">Trend</div>
               <div className={`mt-0.5 flex items-center gap-1 font-mono text-sm font-semibold ${
                 delta == null ? 'text-rose-400' : good ? 'text-emerald-400' : 'text-amber-400'
               }`}>
@@ -144,7 +165,7 @@ function fmt(v: number | null | undefined, unit: string): string {
 function StatCell({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg border border-rose-900/40 bg-rose-950/10 p-2.5">
-      <div className="text-[10px] uppercase tracking-wider text-rose-700">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-rose-400">{label}</div>
       <div className="mt-0.5 font-mono text-sm font-semibold text-rose-200">{value}</div>
     </div>
   );

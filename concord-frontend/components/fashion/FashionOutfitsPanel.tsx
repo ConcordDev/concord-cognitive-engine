@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Layers, Repeat, Trash2, ChevronRight } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
 
@@ -79,7 +80,7 @@ export function FashionOutfitsPanel({ onChange }: { onChange: () => void }) {
       {showCreate && (
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-2">
           <div className="grid grid-cols-2 gap-2">
-            <input placeholder="Outfit name" value={name} onChange={(e) => setName(e.target.value)}
+            <input placeholder="Outfit name" maxLength={120} value={name} onChange={(e) => setName(e.target.value)}
               className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
             <select value={occasion} onChange={(e) => setOccasion(e.target.value)}
               className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
@@ -128,9 +129,13 @@ export function FashionOutfitsPanel({ onChange }: { onChange: () => void }) {
                   className="ml-2 flex items-center gap-1 px-2 py-1 text-[11px] bg-fuchsia-600 hover:bg-fuchsia-500 text-white rounded-lg">
                   <Repeat className="w-3 h-3" /> Wear
                 </button>
-                <button aria-label="Delete" type="button" onClick={() => del(o.id)} className="ml-1 text-zinc-600 hover:text-rose-400">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                <StickyDeleteConfirm
+                  onConfirm={() => del(o.id)}
+                  armAriaLabel="Delete"
+                  confirmAriaLabel="Confirm delete"
+                  className="ml-1 text-zinc-600 hover:text-rose-400"
+                  armLabel={<Trash2 className="w-3.5 h-3.5" />}
+                />
               </div>
               {open === o.id && (
                 <div className="border-t border-zinc-800 px-3 py-2 bg-zinc-950/50">

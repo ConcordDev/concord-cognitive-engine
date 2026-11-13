@@ -120,6 +120,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
 import LiveFeed from '@/components/lens/LiveFeed';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -1252,6 +1253,16 @@ export function EducationSection() {
       actions={(
         <div className="flex items-center gap-2">
           <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
+          {surface !== 'teaching' && (
+            <button
+              type="button"
+              onClick={() => { setSurface('learning'); setLearnView('player'); }}
+              className={ds.btnPrimary}
+              title="Open the lesson player"
+            >
+              <BookOpen className="w-4 h-4" /> Open a lesson
+            </button>
+          )}
           {surface === 'teaching' && (
             <>
               <DTUExportButton domain="education" data={{}} compact />
@@ -1274,9 +1285,6 @@ export function EducationSection() {
           )}
         </div>
       )}
-      cta={surface === 'teaching'
-        ? { label: 'New record', icon: Plus, onClick: openNewEditor, title: 'Create a new classroom record' }
-        : { label: 'Open a lesson', icon: BookOpen, onClick: () => { setSurface('learning'); setLearnView('player'); }, title: 'Open the lesson player' }}
     >
     <div className="space-y-6 pb-20 lg:pb-6">
       {surface === 'learning' && <KhanCourseraWorkbenchSection view={learnView} onViewChange={setLearnView} />}
@@ -1686,7 +1694,7 @@ export function EducationSection() {
                               onClick={() => markAttendance(s.id, s.title, status)}
                               className={cn(
                                 'p-1.5 rounded transition-colors',
-                                currentStatus === status ? `${ATTENDANCE_COLORS[status]} bg-white/10` : 'text-gray-600 hover:text-gray-400'
+                                currentStatus === status ? `${ATTENDANCE_COLORS[status]} bg-white/10` : 'text-gray-400 hover:text-gray-400'
                               )}
                               title={status}
                             >
@@ -1710,7 +1718,7 @@ export function EducationSection() {
             <p className={cn(ds.textMuted, 'text-center py-12')}>Loading records...</p>
           ) : filtered.length === 0 ? (
             <div className="text-center py-12">
-              <Users className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+              <Users className="w-10 h-10 text-gray-400 mx-auto mb-3" />
               <p className={ds.textMuted}>No students found. Create one to get started.</p>
             </div>
           ) : (
@@ -1720,7 +1728,7 @@ export function EducationSection() {
                 const summary = attendanceSummary[item.id];
                 const attendanceRate = summary ? Math.round(((summary.present + summary.tardy) / summary.total) * 100) : null;
                 return (
-                  <div key={item.id} className={ds.panelHover} onClick={() => setSelectedStudent(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                  <div key={item.id} className={ds.panelHover} onClick={() => setSelectedStudent(item)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                     <div className="flex items-start justify-between mb-2">
                       <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>{item.title}</h3>
                       <span className={ds.badge(STATUS_COLORS[d.status])}>{d.status}</span>
@@ -1776,7 +1784,7 @@ export function EducationSection() {
             <p className={cn(ds.textMuted, 'text-center py-12')}>Loading records...</p>
           ) : filtered.length === 0 ? (
             <div className="text-center py-12">
-              <BookOpen className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+              <BookOpen className="w-10 h-10 text-gray-400 mx-auto mb-3" />
               <p className={ds.textMuted}>No courses found. Create one to get started.</p>
             </div>
           ) : (
@@ -1784,7 +1792,7 @@ export function EducationSection() {
               {filtered.map(item => {
                 const d = item.data as unknown as EducationArtifact;
                 return (
-                  <div key={item.id} className={ds.panelHover} onClick={() => setSelectedCourse(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                  <div key={item.id} className={ds.panelHover} onClick={() => setSelectedCourse(item)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                     <div className="flex items-start justify-between mb-2">
                       <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>{item.title}</h3>
                       <span className={ds.badge(STATUS_COLORS[d.status])}>{d.status}</span>
@@ -1973,7 +1981,7 @@ export function EducationSection() {
             <p className={cn(ds.textMuted, 'text-center py-12')}>Loading records...</p>
           ) : filtered.length === 0 ? (
             <div className="text-center py-12">
-              <ClipboardList className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+              <ClipboardList className="w-10 h-10 text-gray-400 mx-auto mb-3" />
               <p className={ds.textMuted}>No assignments found. Create one to get started.</p>
             </div>
           ) : (
@@ -1981,7 +1989,7 @@ export function EducationSection() {
               {filtered.map(item => {
                 const d = item.data as unknown as EducationArtifact;
                 return (
-                  <div key={item.id} className={ds.panelHover} onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                  <div key={item.id} className={ds.panelHover} onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                     <div className="flex items-start justify-between mb-2">
                       <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>{item.title}</h3>
                       <span className={ds.badge(STATUS_COLORS[d.status])}>{d.status}</span>
@@ -2161,7 +2169,7 @@ export function EducationSection() {
                                       onClick={() => { setEditingCell({ studentId: student.id, assignmentId: assignment.id }); setCellValue(score != null ? String(score) : ''); }}
                                       className={cn(
                                         'w-full py-1 px-2 rounded text-sm transition-colors hover:bg-white/5',
-                                        pct !== null ? GRADE_COLORS[colorKey] : 'text-gray-600'
+                                        pct !== null ? GRADE_COLORS[colorKey] : 'text-gray-400'
                                       )}
                                     >
                                       {score !== null && score !== undefined ? `${score}/${maxScore}` : '--'}
@@ -2184,7 +2192,7 @@ export function EducationSection() {
                 </div>
               ) : (
                 <div className="text-center py-8 bg-lattice-elevated rounded-lg">
-                  <BarChart2 className="w-8 h-8 text-gray-600 mx-auto mb-2" />
+                  <BarChart2 className="w-8 h-8 text-gray-400 mx-auto mb-2" />
                   <p className={ds.textMuted}>Add students and assignments to populate the grade book</p>
                   <p className={cn(ds.textMuted, 'text-xs mt-1')}>Use the buttons above, or add student/assignment records first</p>
                 </div>
@@ -2199,7 +2207,7 @@ export function EducationSection() {
                 <p className={cn(ds.textMuted, 'text-center py-12')}>Loading records...</p>
               ) : filtered.length === 0 ? (
                 <div className="text-center py-12">
-                  <BarChart2 className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+                  <BarChart2 className="w-10 h-10 text-gray-400 mx-auto mb-3" />
                   <p className={ds.textMuted}>No grades found. Create one to get started.</p>
                 </div>
               ) : (
@@ -2208,7 +2216,7 @@ export function EducationSection() {
                     const d = item.data as unknown as EducationArtifact;
                     const gradeKey = d.score != null ? getGradeColorKey(d.score) : '';
                     return (
-                      <div key={item.id} className={ds.panelHover} onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                      <div key={item.id} className={ds.panelHover} onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                         <div className="flex items-start justify-between mb-2">
                           <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>{item.title}</h3>
                           <span className={ds.badge(STATUS_COLORS[d.status])}>{d.status}</span>
@@ -2282,7 +2290,7 @@ export function EducationSection() {
 
               {curriculumWeeks.length === 0 ? (
                 <div className="text-center py-8">
-                  <BookMarked className="w-8 h-8 text-gray-600 mx-auto mb-2" />
+                  <BookMarked className="w-8 h-8 text-gray-400 mx-auto mb-2" />
                   <p className={ds.textMuted}>No curriculum weeks defined yet. Add weeks to plan your curriculum.</p>
                 </div>
               ) : (
@@ -2450,7 +2458,7 @@ export function EducationSection() {
                 <p className={cn(ds.textMuted, 'text-center py-12')}>Loading records...</p>
               ) : filtered.length === 0 ? (
                 <div className="text-center py-12">
-                  <FileText className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+                  <FileText className="w-10 h-10 text-gray-400 mx-auto mb-3" />
                   <p className={ds.textMuted}>No lesson plans found. Create one to get started.</p>
                 </div>
               ) : (
@@ -2458,7 +2466,7 @@ export function EducationSection() {
                   {filtered.map(item => {
                     const d = item.data as unknown as EducationArtifact;
                     return (
-                      <div key={item.id} className={ds.panelHover} onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                      <div key={item.id} className={ds.panelHover} onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                         <div className="flex items-start justify-between mb-2">
                           <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>{item.title}</h3>
                           <span className={ds.badge(STATUS_COLORS[d.status])}>{d.status}</span>
@@ -2502,7 +2510,7 @@ export function EducationSection() {
             <p className={cn(ds.textMuted, 'text-center py-12')}>Loading records...</p>
           ) : filtered.length === 0 ? (
             <div className="text-center py-12">
-              <Award className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+              <Award className="w-10 h-10 text-gray-400 mx-auto mb-3" />
               <p className={ds.textMuted}>No certifications found. Create one to get started.</p>
             </div>
           ) : (
@@ -2512,7 +2520,7 @@ export function EducationSection() {
                 const isExpiring = d.expirationDate && new Date(d.expirationDate) > new Date() &&
                   (new Date(d.expirationDate).getTime() - new Date().getTime()) < 30 * 24 * 60 * 60 * 1000;
                 return (
-                  <div key={item.id} className={cn(ds.panelHover, isExpiring && 'border-amber-400/30')} onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                  <div key={item.id} className={cn(ds.panelHover, isExpiring && 'border-amber-400/30')} onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                     <div className="flex items-start justify-between mb-2">
                       <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>{item.title}</h3>
                       <span className={ds.badge(STATUS_COLORS[d.status])}>{d.status}</span>
@@ -2580,7 +2588,7 @@ export function EducationSection() {
 
           {filtered.length === 0 ? (
             <div className="text-center py-12">
-              <Library className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+              <Library className="w-10 h-10 text-gray-400 mx-auto mb-3" />
               <p className={ds.textMuted}>No resources found. Add textbooks, videos, articles, and more.</p>
             </div>
           ) : (
@@ -2594,7 +2602,7 @@ export function EducationSection() {
                 };
                 const ResIcon = typeIcons[d.resourceType || 'other'] || Library;
                 return (
-                  <div key={item.id} className={ds.panelHover} onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                  <div key={item.id} className={ds.panelHover} onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center gap-2 flex-1 min-w-0">
                         <ResIcon className="w-5 h-5 text-neon-cyan shrink-0" />
@@ -2736,7 +2744,7 @@ export function EducationSection() {
 
           {filtered.length === 0 ? (
             <div className="text-center py-12">
-              <HelpCircle className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+              <HelpCircle className="w-10 h-10 text-gray-400 mx-auto mb-3" />
               <p className={ds.textMuted}>No quizzes found. Create one with multiple choice, true/false, or short answer questions.</p>
             </div>
           ) : (
@@ -2749,7 +2757,7 @@ export function EducationSection() {
                 const tfCount = d.quizQuestions?.filter(q => q.type === 'true_false').length || 0;
                 const saCount = d.quizQuestions?.filter(q => q.type === 'short_answer').length || 0;
                 return (
-                  <div key={item.id} className={ds.panelHover} onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                  <div key={item.id} className={ds.panelHover} onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                     <div className="flex items-start justify-between mb-2">
                       <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>{item.title}</h3>
                       <span className={ds.badge(STATUS_COLORS[d.status])}>{d.status}</span>
@@ -2807,7 +2815,7 @@ export function EducationSection() {
       {/* ============================================================ */}
       {showEditor && (
         <>
-          <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
+          <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace} />
           <div className={ds.modalContainer}>
             <div className={cn(ds.modalPanel, 'max-w-2xl')}>
               <div className="flex items-center justify-between p-4 border-b border-lattice-border">

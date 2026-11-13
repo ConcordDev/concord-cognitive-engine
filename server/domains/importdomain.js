@@ -15,8 +15,13 @@ export default function registerImportActions(registerLensAction) {
    */
   registerLensAction("import", "validateImport", (ctx, artifact, _params) => {
   try {
-    const rows = artifact.data?.rows || [];
-    const schema = artifact.data?.schema || {};
+    const input = _params && typeof _params === "object" ? _params : {};
+    const fromArtifact = Array.isArray(artifact.data?.rows) ? artifact.data.rows : [];
+    const fromInput = Array.isArray(input.rows) ? input.rows : [];
+    const rows = fromArtifact.length ? fromArtifact : fromInput;
+    const artifactSchema = artifact.data?.schema && typeof artifact.data.schema === "object" ? artifact.data.schema : {};
+    const inputSchema = input.schema && typeof input.schema === "object" ? input.schema : {};
+    const schema = Object.keys(artifactSchema).length ? artifactSchema : inputSchema;
 
     if (rows.length === 0) {
       return { ok: true, result: { message: "No rows provided. Supply artifact.data.rows as an array of objects and artifact.data.schema as { fieldName: { type, required? } }.", valid: 0, invalid: 0, errors: [] } };

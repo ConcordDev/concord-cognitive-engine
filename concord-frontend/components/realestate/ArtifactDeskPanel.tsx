@@ -54,6 +54,7 @@ import { lensRun } from '@/lib/api/client';
 import { ErrorState } from '@/components/common/EmptyState';
 import { showToast } from '@/components/common/Toasts';
 import { cn } from '@/lib/utils';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -352,9 +353,15 @@ const seedItems: { title: string; data: RealEstateArtifact }[] = [];
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
+const LISTING_PRICE_MAX = 100_000_000;
+
 const fmt = (v: number) => {
-  if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(2)}M`;
-  if (v >= 1_000) return `$${(v / 1_000).toFixed(0)}K`;
+  if (!Number.isFinite(v)) return '—';
+  const sign = v < 0 ? '-' : '';
+  const abs = Math.abs(v);
+  if (abs >= 1_000_000_000) return `${sign}$${(abs / 1_000_000_000).toFixed(2)}B`;
+  if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(2)}M`;
+  if (abs >= 1_000) return `${sign}$${(abs / 1_000).toFixed(0)}K`;
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
@@ -432,6 +439,7 @@ export function ArtifactDeskPanel() {
   const [formDesc, setFormDesc] = useState('');
   const [formAddress, setFormAddress] = useState('');
   const [formPrice, setFormPrice] = useState('');
+  const [deskError, setDeskError] = useState<string | null>(null);
   const [formAgent, setFormAgent] = useState('');
   const [formClient, setFormClient] = useState('');
   const [formClientPhone, setFormClientPhone] = useState('');
@@ -494,7 +502,7 @@ export function ArtifactDeskPanel() {
   // transactions, rentals, deals, appraisals). Before this wiring the
   // Desk's listing figures derived from the artifact store alone, so
   // a listing standing in Search left every Desk figure at zero.
-  interface ReListingRow { id: string; address: string; city?: string; state?: string; price: number; status?: string }
+  interface ReListingRow { id: string; address: string; title?: string; city?: string; state?: string; price: number; status?: string; beds?: number; baths?: number; sqft?: number; yearBuilt?: number | null; daysOnMarket?: number; description?: string }
   const [reListings, setReListings] = useState<ReListingRow[] | null>(null);
   const loadReListings = useCallback(async () => {
     try {
@@ -509,6 +517,31 @@ export function ArtifactDeskPanel() {
   const reVolume = reListings
     ? reListings.filter((l) => l.status === 'for_sale' || l.status == null).reduce((s, l) => s + (l.price || 0), 0)
     : null;
+
+  // FIX-realestate-002: the Desk Listings tab rendered only this
+  // panel's artifact-store Listing records, so a listing added in
+  // Search > Add listing (the canonical store) never appeared there
+  // even though the dashboard counted it and showed it under Recent
+  // Listings. The tab renders the canonical rows too, honouring the
+  // tab's search text; a canonical row can be removed from the store
+  // here (two-step), and is edited in Search, where it was created.
+  const tabReListings = useMemo(() => {
+    const all = reListings || [];
+    if (!searchQuery) return all;
+    const q = searchQuery.toLowerCase();
+    return all.filter((l) =>
+      (l.address || '').toLowerCase().includes(q) ||
+      (l.title || '').toLowerCase().includes(q) ||
+      (l.city || '').toLowerCase().includes(q));
+  }, [reListings, searchQuery]);
+  const [confirmRemoveReId, setConfirmRemoveReId] = useState('');
+  const removeReListing = useCallback(async (id: string) => {
+    try {
+      const r = await lensRun('realestate', 'listings-delete', { id });
+      if (r.data?.ok) setConfirmRemoveReId('');
+    } catch { /* the row stays; the reload below shows the true state */ }
+    await loadReListings();
+  }, [loadReListings]);
 
   /* ---------- derived ---------- */
 
@@ -774,6 +807,14 @@ export function ArtifactDeskPanel() {
   };
 
   const handleSave = async () => {
+    setDeskError(null);
+    if (formPrice.trim()) {
+      const price = Number(formPrice);
+      if (!Number.isFinite(price) || price < 0 || price > LISTING_PRICE_MAX) {
+        setDeskError('Price has to be a number from 0 to 100,000,000.');
+        return;
+      }
+    }
     const payload = {
       title: formTitle,
       data: {
@@ -831,7 +872,11 @@ export function ArtifactDeskPanel() {
 
   const handleAction = async (action: string, artifactId?: string) => {
     const targetId = artifactId || selectedActionItem || editingItem?.id || filtered[0]?.id;
-    if (!targetId) return;
+    if (!targetId) {
+      setShowActionPanel(true);
+      setActionResult({ message: 'Select a record first. Cap rate and cash flow read that record.' });
+      return;
+    }
 
     // Field-shape bridge: the persisted artifact schema (RealEstateArtifact)
     // predates the capRate/cashFlow/closingTimeline/vacancyReport macros and
@@ -844,8 +889,20 @@ export function ArtifactDeskPanel() {
     const d = targetItem?.data as unknown as RealEstateArtifact | undefined;
     let params: Record<string, unknown> = {};
     if (d && action === 'capRate') {
-      params = { noi: d.noi, purchasePrice: d.purchasePrice ?? d.price };
+      const purchase = d.purchasePrice ?? d.price;
+      if (purchase == null || !Number.isFinite(Number(purchase))) {
+        setShowActionPanel(true);
+        setActionResult({ message: 'This record has no purchase price, so cap rate cannot be computed.' });
+        return;
+      }
+      params = { noi: d.noi, purchasePrice: purchase };
     } else if (d && action === 'cashFlow') {
+      const rent = d.grossRent ?? d.monthlyRent;
+      if (rent == null || !Number.isFinite(Number(rent))) {
+        setShowActionPanel(true);
+        setActionResult({ message: 'This record has no rent, so cash flow cannot be computed.' });
+        return;
+      }
       const loanAmount = (d.purchasePrice ?? d.price ?? 0) - (d.downPayment ?? 0);
       params = {
         monthlyRent: d.grossRent ?? d.monthlyRent,
@@ -1002,7 +1059,7 @@ export function ArtifactDeskPanel() {
           ).length;
           return [
             { label: 'Listings', value: reListings ? reListings.length : '—', icon: Building2 },
-            { label: 'Avg Price', value: reListings ? (reListings.length > 0 ? `$${(Math.round(reListings.reduce((s, l) => s + (l.price || 0), 0) / reListings.length) / 1000).toFixed(0)}K` : '$0K') : '—', icon: DollarSign },
+            { label: 'Avg Price', value: reListings ? (reListings.length > 0 ? fmt(reListings.reduce((s, l) => s + (l.price || 0), 0) / reListings.length) : '$0') : '—', icon: DollarSign },
             { label: 'Pending Offers', value: pending, icon: KeyRound },
             {
               label: 'Active',
@@ -1508,7 +1565,7 @@ export function ArtifactDeskPanel() {
                         setSelectedActionItem(item.id);
                         setActiveTab('Listings');
                         openEditEditor(item);
-                      }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                      }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-white truncate">{item.title}</p>
                         <p className="text-xs text-gray-400 truncate">{d.address}</p>
@@ -1553,7 +1610,7 @@ export function ArtifactDeskPanel() {
                         setSelectedActionItem(item.id);
                         setActiveTab('Transactions');
                         openEditEditor(item);
-                      }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                      }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-white truncate">{item.title}</p>
                         <p className="text-xs text-gray-400">
@@ -1625,13 +1682,15 @@ export function ArtifactDeskPanel() {
 
             {isLoading ? (
               <p className={cn(ds.textMuted, 'text-center py-12')}>Loading...</p>
-            ) : filtered.length === 0 ? (
+            ) : filtered.length === 0 && tabReListings.length === 0 ? (
               <div className="text-center py-12">
                 <Home className="w-10 h-10 text-gray-600 mx-auto mb-3" />
                 <p className={ds.textMuted}>No listings found. Add a property to get started.</p>
               </div>
             ) : (
-              <div className={ds.grid3}>
+              <>
+                {filtered.length > 0 && (
+                  <div className={ds.grid3}>
                 {filtered.map((item, index) => {
                   const d = item.data as unknown as RealEstateArtifact;
                   const color = STATUS_COLORS[d.status] || 'gray-400';
@@ -1726,7 +1785,69 @@ export function ArtifactDeskPanel() {
                     </motion.div>
                   );
                 })}
-              </div>
+                  </div>
+                )}
+                {tabReListings.length > 0 && (
+                  <div className="mt-5">
+                    <h3 className={cn(ds.heading3, 'mb-1')}>From Search</h3>
+                    <p className={cn(ds.textMuted, 'mb-3')}>
+                      Added in Search &gt; Add listing — the same listings store the dashboard counts. Open a listing in Search to edit it; remove it here.
+                    </p>
+                    <div className={ds.grid3}>
+                      {tabReListings.map((l) => {
+                        const color = STATUS_COLORS[l.status || 'for_sale'] || 'gray-400';
+                        return (
+                          <div key={l.id} className={ds.panelHover}>
+                            <div className="flex items-start justify-between mb-2">
+                              <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>{l.title || l.address}</h3>
+                              <span className={ds.badge(color)}>{(l.status || 'for_sale').replace(/_/g, ' ')}</span>
+                            </div>
+                            <p className="text-xs text-gray-400 flex items-center gap-1 mb-1">
+                              <MapPin className="w-3 h-3" /> {l.address}
+                              {[l.city, l.state].filter(Boolean).length > 0 && ` — ${[l.city, l.state].filter(Boolean).join(', ')}`}
+                            </p>
+                            {l.description && (
+                              <p className={cn(ds.textMuted, 'line-clamp-2 mb-3')}>{l.description}</p>
+                            )}
+                            <div className="flex items-center gap-3 text-xs text-gray-400 flex-wrap">
+                              <span className="font-semibold text-white flex items-center gap-1">
+                                <DollarSign className="w-3 h-3" /> {fmt(l.price)}
+                              </span>
+                              {l.beds != null && l.beds > 0 && (
+                                <span className="flex items-center gap-1"><Bed className="w-3 h-3" /> {l.beds} bd</span>
+                              )}
+                              {l.baths != null && l.baths > 0 && (
+                                <span className="flex items-center gap-1"><Bath className="w-3 h-3" /> {l.baths} ba</span>
+                              )}
+                              {l.sqft != null && l.sqft > 0 && (
+                                <span className="flex items-center gap-1"><Ruler className="w-3 h-3" /> {l.sqft.toLocaleString()} sqft</span>
+                              )}
+                              {l.yearBuilt != null && (
+                                <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> Built {l.yearBuilt}</span>
+                              )}
+                              {l.daysOnMarket != null && (
+                                <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {l.daysOnMarket} DOM</span>
+                              )}
+                            </div>
+                            <div className="mt-3 pt-2 border-t border-lattice-border flex items-center justify-between">
+                              <span className="text-xs text-gray-400">From Search</span>
+                              {confirmRemoveReId === l.id ? (
+                                <span className="flex items-center gap-2 text-xs">
+                                  <span className="text-gray-300">Remove this listing?</span>
+                                  <button type="button" onClick={() => void removeReListing(l.id)} className="text-rose-400 hover:text-rose-300 font-semibold">Remove</button>
+                                  <button type="button" onClick={() => setConfirmRemoveReId('')} className="text-gray-400 hover:text-gray-200">Keep</button>
+                                </span>
+                              ) : (
+                                <button type="button" onClick={() => setConfirmRemoveReId(l.id)} className="text-xs text-rose-400 hover:text-rose-300">Remove</button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </section>
@@ -1781,7 +1902,7 @@ export function ArtifactDeskPanel() {
                     <div key={item.id} className={ds.panel}>
                       <div
                         className="flex items-start justify-between cursor-pointer"
-                        onClick={() => setExpandedTxn(isExpanded ? null : item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                        onClick={() => setExpandedTxn(isExpanded ? null : item.id)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <h3 className={cn(ds.heading3, 'text-base truncate')}>{item.title}</h3>
@@ -2232,7 +2353,7 @@ export function ArtifactDeskPanel() {
                     <div
                       key={item.id}
                       className={ds.panelHover}
-                      onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                      onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                       <div className="flex items-start justify-between mb-2">
                         <div>
                           <h3 className={cn(ds.heading3, 'text-base')}>{item.title}</h3>
@@ -2395,7 +2516,7 @@ export function ArtifactDeskPanel() {
                     <div
                       key={item.id}
                       className={ds.panelHover}
-                      onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                      onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                       <div className="flex items-start justify-between mb-2">
                         <div>
                           <h3 className={cn(ds.heading3, 'text-base')}>{item.title}</h3>
@@ -2577,7 +2698,7 @@ export function ArtifactDeskPanel() {
                       key={item.id}
                       data-lens-theme="realestate"
                       className={ds.panelHover}
-                      onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                      onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                       <div className="flex items-start justify-between mb-2">
                         <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>
                           {item.title}
@@ -2663,7 +2784,7 @@ export function ArtifactDeskPanel() {
       {/* ==================== EDITOR MODAL ==================== */}
       {showEditor && (
         <>
-          <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
+          <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace} />
           <div className={ds.modalContainer}>
             <div className={cn(ds.modalPanel, 'max-w-3xl')}>
               <div className="flex items-center justify-between p-4 border-b border-lattice-border">
@@ -3324,10 +3445,11 @@ export function ArtifactDeskPanel() {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
+                  {deskError && <p role="alert" className="text-xs text-rose-300">{deskError}</p>}
                   <button onClick={() => setShowEditor(false)} className={ds.btnSecondary}>
                     Cancel
                   </button>
-                  <button onClick={handleSave} className={ds.btnPrimary}>
+                  <button onClick={handleSave} className={ds.btnPrimary} disabled={formPrice.trim() !== '' && (!Number.isFinite(Number(formPrice)) || Number(formPrice) < 0 || Number(formPrice) > LISTING_PRICE_MAX)}>
                     {editingItem ? 'Update' : 'Create'}
                   </button>
                 </div>

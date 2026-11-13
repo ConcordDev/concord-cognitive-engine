@@ -1,6 +1,9 @@
 /**
- * Scene Studio delete: the list button says "Delete scene", sends the
- * list id, and the scene is gone once sceneList reloads.
+ * Scene Studio delete (FIX-ar-006): the list delete is a sticky two-step
+ * confirm — the first click arms and names the scene and sends NOTHING;
+ * only Confirm sends sceneDelete with the list id, and the scene is gone
+ * once sceneList reloads. (Re-pinned: the previous version of this suite
+ * asserted the one-click instant delete the ticket exists to remove.)
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -48,10 +51,15 @@ describe('SceneStudio delete', () => {
     });
   });
 
-  it('removes the scene after Delete scene reloads the list', async () => {
+  it('arms first (no delete sent), then removes the scene on Confirm', async () => {
     render(<SceneStudio />);
     expect(await screen.findByText('Harbor Walk')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /delete scene/i }));
+    // Armed and naming the scene; nothing has been deleted yet.
+    expect(await screen.findByRole('button', { name: /confirm delete scene harbor walk/i })).toBeTruthy();
+    expect(lensRun.mock.calls.some((c) => c[1] === 'sceneDelete')).toBe(false);
+    expect(screen.getByText('Harbor Walk')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /confirm delete scene harbor walk/i }));
     await waitFor(() => expect(screen.queryByText('Harbor Walk')).toBeNull());
     expect(screen.getByText(/no ar scenes yet/i)).toBeTruthy();
     const del = lensRun.mock.calls.find((c) => c[1] === 'sceneDelete');

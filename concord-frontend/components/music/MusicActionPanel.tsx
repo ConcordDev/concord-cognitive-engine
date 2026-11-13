@@ -6,6 +6,7 @@
  * publish/agent. Tight compact-template variant.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import {
   Music, Activity, Key, ListMusic, Disc3,
@@ -104,6 +105,7 @@ export function MusicActionPanel() {
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
+    if (!trackTitle.trim()) { err('Give the track a title first — blank titles are not auto-filled.'); return; }
     setBusy('mint'); setFeedback(null);
     try {
       const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `Music — ${trackTitle.trim() || 'session'}`, tags: ['music', bpmResult ? `bpm:${bpmResult.bpm}` : '', keyResult?.key ? `key:${keyResult.key}` : ''].filter(Boolean), source: 'music:session:mint', meta: { visibility: 'private', consent: { allowCitations: false }, music: { title: trackTitle, bpm: bpmResult, key: keyResult, chords: chordResult, setlist: setlistResult } } }, 'media', ['private']) });
@@ -125,6 +127,7 @@ export function MusicActionPanel() {
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
+    if (!trackTitle.trim()) { err('Give the track a title first — blank titles are not auto-filled.'); return; }
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
@@ -143,8 +146,8 @@ export function MusicActionPanel() {
     try {
       const task = `Track: "${trackTitle || 'untitled'}". ${bpmResult ? `BPM ${bpmResult.bpm}.` : ''} ${keyResult ? `Key ${keyResult.key} ${keyResult.scale}.` : ''} ${chordResult ? `Chords: ${chordResult.progression?.join(' ')}.` : ''} Suggest 3 production moves (compression / EQ / arrangement) that elevate this track. Plain text.`;
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Production moves ready.'); } else err('Agent returned empty.');
+      const reply = readAgentReply(r.data);
+      if (reply.ok) { setAgentReply(reply.text); ok('Production moves ready.'); } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 
@@ -167,7 +170,7 @@ export function MusicActionPanel() {
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-        <input type="text" value={trackTitle} onChange={(e) => setTrackTitle(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Track title" />
+        <input type="text" value={trackTitle} maxLength={185} onChange={(e) => setTrackTitle(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Track title" />
         <input type="text" value={chordsInput} onChange={(e) => setChordsInput(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Chords (space-separated)" />
         <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
       </div>

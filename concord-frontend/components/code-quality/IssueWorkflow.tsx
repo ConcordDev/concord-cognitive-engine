@@ -21,6 +21,10 @@ export function IssueWorkflow({ refreshKey }: { refreshKey: number }) {
   const [statusFilter, setStatusFilter] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [rule, setRule] = useState('');
+  const [message, setMessage] = useState('');
+  const [severity, setSeverity] = useState('medium');
+  const [creating, setCreating] = useState(false);
 
   const load = useCallback(async () => {
     setBusy(true);
@@ -42,6 +46,30 @@ export function IssueWorkflow({ refreshKey }: { refreshKey: number }) {
   useEffect(() => {
     load();
   }, [load, refreshKey]);
+
+  async function createIssue() {
+    const nextRule = rule.trim();
+    const nextMessage = message.trim();
+    if (!nextRule || !nextMessage) {
+      setError('An issue needs a rule and a message.');
+      return;
+    }
+    setCreating(true);
+    setError(null);
+    const r = await lensRun<{ issue: CQIssue }>('code-quality', 'trackIssue', {
+      rule: nextRule,
+      message: nextMessage,
+      severity,
+    });
+    setCreating(false);
+    if (r.data.ok) {
+      setRule('');
+      setMessage('');
+      load();
+    } else {
+      setError(r.data.error || 'Could not track that issue.');
+    }
+  }
 
   async function update(id: string, patch: Record<string, unknown>) {
     const r = await lensRun<{ issue: CQIssue }>('code-quality', 'updateIssue', {
@@ -77,11 +105,53 @@ export function IssueWorkflow({ refreshKey }: { refreshKey: number }) {
         {error && <span className="text-sm text-red-400">{error}</span>}
       </div>
 
+      <form
+        className="flex flex-wrap items-end gap-2 rounded border border-gray-800 bg-black/20 p-2"
+        onSubmit={(e) => { e.preventDefault(); void createIssue(); }}
+      >
+        <label className="text-xs text-gray-400">
+          Rule
+          <input
+            value={rule}
+            onChange={(e) => setRule(e.target.value)}
+            aria-label="Issue rule"
+            className="mt-1 block w-36 bg-black/40 border border-gray-700 rounded px-2 py-1 text-xs text-gray-100"
+          />
+        </label>
+        <label className="text-xs text-gray-400 flex-1 min-w-[12rem]">
+          Message
+          <input
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            aria-label="Issue message"
+            className="mt-1 block w-full bg-black/40 border border-gray-700 rounded px-2 py-1 text-xs text-gray-100"
+          />
+        </label>
+        <label className="text-xs text-gray-400">
+          Severity
+          <select
+            value={severity}
+            onChange={(e) => setSeverity(e.target.value)}
+            aria-label="Issue severity"
+            className="mt-1 block bg-black/40 border border-gray-700 rounded px-2 py-1 text-xs text-gray-100"
+          >
+            {['critical', 'high', 'medium', 'low', 'info'].map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </label>
+        <button
+          type="submit"
+          disabled={creating}
+          className="px-3 py-1 rounded border border-neon-blue/40 text-neon-blue text-xs disabled:opacity-50"
+        >
+          {creating ? 'Tracking…' : 'Track issue'}
+        </button>
+      </form>
+
       {busy && !issues.length ? (
         <p className="text-sm text-gray-400">Loading issues…</p>
       ) : issues.length === 0 ? (
         <p className="text-sm text-gray-400">
-          No tracked issues. Track findings from the Annotations tab to build a workflow.
+          No tracked issues yet. Track one above, or promote a finding from Annotations.
         </p>
       ) : (
         <div className="space-y-2">

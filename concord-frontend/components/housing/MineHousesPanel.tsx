@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Eye, Users, RefreshCcw, Plus, MapPin, Building2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { RoomEditor } from './RoomEditor';
 import type {
   FurnitureItem, HouseDetail, HouseRow, LandClaim, LoadState, WorldBuilding,
@@ -195,6 +196,39 @@ export function MineHousesPanel({
     } finally { setBusy(null); }
   }, [refreshMine, selectedHouse, loadHouseDetail, onFlash]);
 
+  // Lifecycle exits (FIX-housing-001): rename + release (unclaim).
+  const [renameDraft, setRenameDraft] = useState('');
+  useEffect(() => { setRenameDraft(selectedHouse?.name || ''); }, [selectedHouse?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const renameHouse = useCallback(async (houseId: string) => {
+    if (!renameDraft.trim()) return;
+    setBusy(`rename-${houseId}`);
+    try {
+      const r = await lensRun('housing', 'rename', { houseId, name: renameDraft.trim() });
+      if (r.data?.ok) {
+        onFlash('ok', `Renamed to “${renameDraft.trim()}”.`);
+        refreshMine();
+        loadHouseDetail(houseId);
+      } else {
+        onFlash('err', r.data?.error || 'Rename failed.');
+      }
+    } finally { setBusy(null); }
+  }, [renameDraft, refreshMine, loadHouseDetail, onFlash]);
+
+  const unclaimHouse = useCallback(async (houseId: string, name: string) => {
+    setBusy(`unclaim-${houseId}`);
+    try {
+      const r = await lensRun('housing', 'unclaim', { houseId });
+      if (r.data?.ok) {
+        onFlash('ok', `Released “${name}” — it is no longer your house.`);
+        setSelectedHouse(null);
+        refreshMine();
+      } else {
+        onFlash('err', r.data?.error || 'Release failed.');
+      }
+    } finally { setBusy(null); }
+  }, [refreshMine, onFlash]);
+
   const toggleLiveVisits = useCallback(async (houseId: string, current: number) => {
     setBusy(`live-${houseId}`);
     try {
@@ -386,7 +420,15 @@ export function MineHousesPanel({
                 <input value={claimZ} onChange={(e) => setClaimZ(e.target.value)} placeholder="z" inputMode="numeric" aria-label="Anchor z" className="w-full rounded border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-100" />
                 <input value={claimRadius} onChange={(e) => setClaimRadius(e.target.value)} placeholder="radius m" inputMode="numeric" aria-label="Radius (metres)" className="w-full rounded border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-100" />
                 <button
-                  onClick={() => submitClaim(Number(claimX) || 0, Number(claimZ) || 0)}
+                  onClick={() => {
+                    const x = claimX.trim();
+                    const z = claimZ.trim();
+                    if (x === '' || z === '' || !Number.isFinite(Number(x)) || !Number.isFinite(Number(z))) {
+                      setLandError('Enter the plot x and z before claiming.');
+                      return;
+                    }
+                    void submitClaim(Number(x), Number(z));
+                  }}
                   disabled={claimingLand}
                   className="shrink-0 rounded bg-emerald-500/80 px-2 py-1 text-[11px] font-semibold text-emerald-950 hover:bg-emerald-400 disabled:opacity-50">
                   {claimingLand ? 'claiming…' : 'Claim plot'}
@@ -419,6 +461,22 @@ export function MineHousesPanel({
                 </button>
               </div>
             </header>
+
+            <div className="mb-3 flex flex-wrap items-center gap-2 text-[11px]">
+              <input aria-label={`Name for ${selectedHouse.name}`} value={renameDraft} onChange={e => setRenameDraft(e.target.value)}
+                className="min-h-[40px] flex-1 min-w-[160px] rounded bg-zinc-900 border border-zinc-800 px-2 py-1 text-[12px] text-slate-200" />
+              <button onClick={() => void renameHouse(selectedHouse.id)}
+                disabled={busy === `rename-${selectedHouse.id}` || !renameDraft.trim() || renameDraft.trim() === selectedHouse.name}
+                className="rounded bg-emerald-500/20 px-2.5 py-1 text-emerald-100 disabled:opacity-40">Rename</button>
+              <StickyDeleteConfirm
+                armLabel="Release house"
+                confirmLabel={`Release “${selectedHouse.name}”?`}
+                armAriaLabel={`Release house ${selectedHouse.name}`}
+                confirmAriaLabel={`Confirm release house ${selectedHouse.name}`}
+                onConfirm={() => void unclaimHouse(selectedHouse.id, selectedHouse.name)}
+                disabled={busy === `unclaim-${selectedHouse.id}`}
+              />
+            </div>
 
             <div className="space-y-3">
               {selectedHouse.rooms.map(room => (

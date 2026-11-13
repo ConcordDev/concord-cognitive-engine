@@ -53,6 +53,7 @@ export function SentinelMonitors({ onChanged }: { onChanged?: () => void }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [runStatus, setRunStatus] = useState<string | null>(null);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
 
   const [name, setName] = useState('');
   const [minSeverity, setMinSeverity] = useState<(typeof SEVERITIES)[number]>('medium');
@@ -142,43 +143,48 @@ export function SentinelMonitors({ onChanged }: { onChanged?: () => void }) {
             <Radio className="h-4 w-4" /> New monitor
           </h3>
           <div className="space-y-2">
-            <input
+            <input id="sentinel-sentinelmonitors-monitor-name" name="monitor-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Monitor name…"
-              className="w-full rounded border border-blue-900/40 bg-black/40 px-2 py-1.5 text-xs text-blue-100 focus:border-blue-500 focus:outline-none"
+              className="min-h-11 w-full rounded border border-blue-900/40 bg-black/40 px-2 py-1.5 text-xs text-blue-100 focus:border-blue-500 focus:outline-none"
               aria-label="Monitor name"
             />
             <div className="flex gap-2">
               <label className="flex-1 text-[10px] uppercase tracking-wider text-blue-700">
                 Min severity
-                <select
+                <select id="sentinel-sentinelmonitors-field" name="field"
                   value={minSeverity}
                   onChange={(e) => setMinSeverity(e.target.value as (typeof SEVERITIES)[number])}
-                  className="mt-1 w-full rounded border border-blue-900/40 bg-black/40 px-2 py-1 text-xs capitalize text-blue-100 focus:border-blue-500 focus:outline-none"
+                  className="min-h-11 mt-1 w-full rounded border border-blue-900/40 bg-black/40 px-2 py-1 text-xs capitalize text-blue-100 focus:border-blue-500 focus:outline-none"
                 >
                   {SEVERITIES.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
               </label>
               <label className="flex-1 text-[10px] uppercase tracking-wider text-blue-700">
                 Interval (min)
-                <input
+                <input id="sentinel-sentinelmonitors-field-2" name="field-2"
                   type="number"
                   min={5}
                   max={1440}
                   value={intervalMin}
                   onChange={(e) => setIntervalMin(Number(e.target.value))}
-                  className="mt-1 w-full rounded border border-blue-900/40 bg-black/40 px-2 py-1 text-xs text-blue-100 focus:border-blue-500 focus:outline-none"
+                  className="min-h-11 mt-1 w-full rounded border border-blue-900/40 bg-black/40 px-2 py-1 text-xs text-blue-100 focus:border-blue-500 focus:outline-none"
                 />
               </label>
             </div>
             <button
               disabled={busy || !name.trim()}
               onClick={createMonitor}
-              className="inline-flex w-full items-center justify-center gap-1.5 rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500 disabled:opacity-40"
+              className="min-h-11 inline-flex w-full items-center justify-center gap-1.5 rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500 disabled:opacity-40"
             >
               <Plus className="h-3.5 w-3.5" /> Create monitor
             </button>
+            {!name.trim() && (
+              <p role="note" className="text-[11px] text-blue-300/70">
+                A monitor name is required to create the monitor.
+              </p>
+            )}
           </div>
         </div>
 
@@ -210,26 +216,34 @@ export function SentinelMonitors({ onChanged }: { onChanged?: () => void }) {
                     <button
                       disabled={busy}
                       onClick={() => runMonitor(m)}
-                      className="inline-flex items-center gap-1 rounded bg-blue-700/50 px-1.5 py-0.5 text-blue-100 hover:bg-blue-700/70 disabled:opacity-40"
+                      className="min-h-11 inline-flex items-center gap-1 rounded bg-blue-700/50 px-1.5 py-0.5 text-blue-100 hover:bg-blue-700/70 disabled:opacity-40"
                     >
                       <Play className="h-3 w-3" /> Run
                     </button>
                     <button
                       disabled={busy}
                       onClick={() => toggle(m)}
-                      className="rounded bg-blue-950/40 px-1.5 py-0.5 text-blue-400 hover:text-blue-200 disabled:opacity-40"
+                      className="min-h-11 rounded bg-blue-950/40 px-1.5 py-0.5 text-blue-400 hover:text-blue-200 disabled:opacity-40"
                       aria-label={m.enabled ? 'Disable' : 'Enable'}
                     >
                       <Power className="h-3 w-3" />
                     </button>
-                    <button
-                      disabled={busy}
-                      onClick={() => remove(m)}
-                      className="rounded bg-blue-950/40 px-1.5 py-0.5 text-blue-400 hover:text-rose-400 disabled:opacity-40"
-                      aria-label="Delete monitor"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </button>
+                    {confirmId === m.monitorId ? (
+                      <>
+                        <button type="button" disabled={busy} onClick={() => { setConfirmId(null); void remove(m); }} className="min-h-11 rounded bg-rose-500/20 px-2 text-[11px] text-rose-200">Confirm</button>
+                        <button type="button" onClick={() => setConfirmId(null)} className="min-h-11 rounded px-2 text-[11px] text-blue-300">Cancel</button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => setConfirmId(m.monitorId)}
+                        className="inline-flex min-h-11 min-w-11 items-center justify-center rounded bg-blue-950/40 text-blue-400 hover:text-rose-400 disabled:opacity-40"
+                        aria-label="Delete monitor"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    )}
                   </div>
                 </div>
               </li>
@@ -250,7 +264,7 @@ export function SentinelMonitors({ onChanged }: { onChanged?: () => void }) {
             <button
               disabled={busy}
               onClick={acknowledgeAll}
-              className="ml-auto inline-flex items-center gap-1 rounded bg-blue-700/50 px-2 py-0.5 text-[10px] text-blue-100 hover:bg-blue-700/70 disabled:opacity-40"
+              className="min-h-11 ml-auto inline-flex items-center gap-1 rounded bg-blue-700/50 px-2 py-0.5 text-[10px] text-blue-100 hover:bg-blue-700/70 disabled:opacity-40"
             >
               <Check className="h-3 w-3" /> Ack all
             </button>
@@ -280,7 +294,7 @@ export function SentinelMonitors({ onChanged }: { onChanged?: () => void }) {
                     <button
                       disabled={busy}
                       onClick={() => acknowledge(a.alertId)}
-                      className="ml-auto shrink-0 rounded bg-blue-700/50 px-1.5 py-0.5 text-[9px] text-blue-100 hover:bg-blue-700/70 disabled:opacity-40"
+                      className="min-h-11 ml-auto shrink-0 rounded bg-blue-700/50 px-1.5 py-0.5 text-[9px] text-blue-100 hover:bg-blue-700/70 disabled:opacity-40"
                     >
                       Ack
                     </button>

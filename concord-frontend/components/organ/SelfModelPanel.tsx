@@ -279,12 +279,14 @@ export function SelfModelPanel({ onGridTimelineCommand }: { onGridTimelineComman
           <input
             className="w-full pl-10 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm focus:border-neon-cyan outline-none"
             placeholder="Search organs by id or description..."
+            aria-label="Search organs"
             value={searchFilter}
             onChange={(e) => setSearchFilter(e.target.value)}
           />
         </div>
         <div className="flex gap-2">
           <select
+            aria-label="Sort organs"
             className="px-3 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm text-gray-300"
             value={sortMode}
             onChange={(e) => setSortMode(e.target.value as SortMode)}

@@ -5,6 +5,7 @@
  * Extracted from meditation/page.tsx. Studio tabs stay on the thin shell.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -411,11 +412,11 @@ export function SessionPlayerPanel({ practiceTick = 0, preset = null, onPresetEx
         domain: 'chat_agent', name: 'do',
         input: { task, maxTurns: 3 },
       });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
-      if (reply) {
-        setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2));
+      const reply = readAgentReply(r.data);
+      if (reply.ok) {
+        setAgentReply(reply.text);
         ok('Micro-practice ready.');
-      } else err('Agent returned empty.');
+      } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }

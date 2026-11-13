@@ -14,7 +14,7 @@
  * (performance.memory, navigation timing) — never seeded.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { useDebugProject } from './ProjectContext';
 import { ChartKit } from '@/components/viz';
@@ -22,10 +22,12 @@ import {
   BellRing,
   Gauge,
   Loader2,
+  Pencil,
   Plus,
   RefreshCw,
   Trash2,
 } from 'lucide-react';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface MetricPoint {
   at: string;
@@ -55,6 +57,14 @@ interface AlertRule {
   lastTriggeredAt: string | null;
   lastValue: number | null;
 }
+
+// FIX-debug-005: the alert-rule form's state lives in this component,
+// so every keystroke used to re-render the recharts area chart below —
+// heavy lag under load, with keystrokes visibly landing late or in the
+// wrong field. The chart is memoized and fed stable props, so form
+// typing no longer re-renders it; it redraws only when the series data
+// or the active metric actually changes.
+const MemoChartKit = memo(ChartKit);
 
 type PerfMemory = { usedJSHeapSize?: number };
 
@@ -101,6 +111,26 @@ export function MetricsAndAlerts() {
     severity: 'warning',
   });
   const [testNote, setTestNote] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  // Stable chart props (FIX-debug-005): rebuilt only when the series
+  // or the active metric changes, never on rule-form keystrokes.
+  const chartData = useMemo(
+    () =>
+      points.map((p) => ({
+        t: new Date(p.at).toLocaleTimeString(),
+        value: p.value,
+        max: p.max ?? p.value,
+      })),
+    [points],
+  );
+  const chartSeries = useMemo(
+    () => [
+      { key: 'value', label: activeMetric || 'value', color: '#3b82f6' },
+      { key: 'max', label: 'bucket max', color: '#f59e0b' },
+    ],
+    [activeMetric],
+  );
 
   const loadSeries = useCallback(async (metric: string) => {
     const r = await lensRun('debug', 'metric-series', {
@@ -109,9 +139,15 @@ export function MetricsAndAlerts() {
       buckets: 40,
     });
     if (r.data?.ok && r.data.result) {
-      setMetricNames(r.data.result.metrics || []);
+      const names = r.data.result.metrics || [];
+      setMetricNames(names);
       setPoints(r.data.result.points || []);
       setStats(r.data.result.stats || null);
+      // The server answers an unnamed request with the metric list only,
+      // so a first mount with no active metric would render "No samples
+      // yet" over data that exists. Open on the first metric instead —
+      // refresh re-runs with it named (the Datadog/Grafana shape).
+      if (!metric && names.length > 0) setActiveMetric(names[0]);
     }
   }, [projectId]);
 
@@ -155,9 +191,18 @@ export function MetricsAndAlerts() {
     else refresh();
   }, [activeMetric, refresh, projectId]);
 
+  const resetRuleForm = useCallback(() => {
+    setRuleForm({ name: '', kind: 'metric', metric: '', op: '>', threshold: '', severity: 'warning' });
+    setEditingId(null);
+  }, []);
+
   const createRule = useCallback(async () => {
-    if (!ruleForm.name.trim()) return;
-    if (ruleForm.kind === 'metric' && (!ruleForm.metric.trim() || ruleForm.threshold === '')) return;
+    // The note under the form names the missing field while the form
+    // is incomplete (FIX-debug-003); these guards are the backstop and
+    // answer in words instead of returning silently.
+    if (!ruleForm.name.trim()) { setError('Rule name required'); return; }
+    if (ruleForm.kind === 'metric' && !ruleForm.metric.trim()) { setError('Metric required'); return; }
+    if (ruleForm.kind === 'metric' && ruleForm.threshold === '') { setError('Numeric threshold required'); return; }
     setBusy(true);
     const r = await lensRun('debug', 'alert-create', {
       projectId,
@@ -170,12 +215,57 @@ export function MetricsAndAlerts() {
     });
     setBusy(false);
     if (r.data?.ok) {
-      setRuleForm({ name: '', kind: 'metric', metric: '', op: '>', threshold: '', severity: 'warning' });
+      resetRuleForm();
       loadRules();
     } else {
       setError(r.data?.error || 'Rule create failed');
     }
-  }, [ruleForm, loadRules, projectId]);
+  }, [ruleForm, loadRules, projectId, resetRuleForm]);
+
+  // Edit an existing rule in place (FIX-debug-012): alert-update has
+  // always accepted name / threshold / op / severity — the panel only
+  // ever sent `enabled`. Metric and kind are create-only server-side,
+  // so they render read-only while editing.
+  const startEditRule = useCallback((rule: AlertRule) => {
+    setEditingId(rule.id);
+    setRuleForm({
+      name: rule.name,
+      kind: rule.kind || 'metric',
+      metric: rule.metric || '',
+      op: rule.op || '>',
+      threshold: rule.threshold != null ? String(rule.threshold) : '',
+      severity: rule.severity,
+    });
+  }, []);
+
+  const saveRule = useCallback(async () => {
+    if (!editingId) return;
+    if (!ruleForm.name.trim()) { setError('Rule name required'); return; }
+    if (ruleForm.kind === 'metric' && ruleForm.threshold === '') { setError('Numeric threshold required'); return; }
+    setBusy(true);
+    const r = await lensRun('debug', 'alert-update', {
+      id: editingId,
+      name: ruleForm.name,
+      severity: ruleForm.severity,
+      ...(ruleForm.kind === 'metric'
+        ? { op: ruleForm.op, threshold: Number(ruleForm.threshold) }
+        : {}),
+    });
+    setBusy(false);
+    if (r.data?.ok) {
+      resetRuleForm();
+      loadRules();
+    } else {
+      setError(r.data?.error || 'Rule update failed');
+    }
+  }, [editingId, ruleForm, loadRules, resetRuleForm]);
+
+  const clearSamples = useCallback(async () => {
+    if (!activeMetric) return;
+    const r = await lensRun('debug', 'metric-clear', { projectId, metric: activeMetric });
+    if (r.data?.ok) refresh();
+    else setError(r.data?.error || 'Clear failed');
+  }, [activeMetric, projectId, refresh]);
 
   const testRule = useCallback(async (rule: AlertRule) => {
     setTestNote(null);
@@ -279,20 +369,23 @@ export function MetricsAndAlerts() {
                 ))}
               </div>
             )}
-            <ChartKit
+            <MemoChartKit
               kind="area"
               height={220}
-              data={points.map((p) => ({
-                t: new Date(p.at).toLocaleTimeString(),
-                value: p.value,
-                max: p.max ?? p.value,
-              }))}
+              data={chartData}
               xKey="t"
-              series={[
-                { key: 'value', label: activeMetric || 'value', color: '#3b82f6' },
-                { key: 'max', label: 'bucket max', color: '#f59e0b' },
-              ]}
+              series={chartSeries}
             />
+            <div className="flex justify-end">
+              <StickyDeleteConfirm
+                onConfirm={clearSamples}
+                armLabel={`Clear ${activeMetric} samples`}
+                confirmLabel="Clear samples?"
+                armAriaLabel={`Clear ${activeMetric} samples`}
+                confirmAriaLabel="Confirm clear samples"
+                className="text-[11px] px-2 py-1 rounded border border-red-500/30 text-red-300 hover:bg-red-500/10"
+              />
+            </div>
           </>
         )}
       </div>
@@ -312,16 +405,21 @@ export function MetricsAndAlerts() {
         {/* Create rule */}
         <div className="bg-lattice-deep rounded-lg p-3 border border-lattice-border grid grid-cols-2 md:grid-cols-6 gap-2">
           <input
+            name="ruleName"
+            aria-label="Rule name"
             value={ruleForm.name}
             onChange={(e) => setRuleForm((f) => ({ ...f, name: e.target.value }))}
             placeholder="Rule name"
             className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs md:col-span-2"
           />
           <select
+            name="ruleKind"
+            aria-label="Rule kind"
             value={ruleForm.kind}
             onChange={(e) => setRuleForm((f) => ({ ...f, kind: e.target.value as typeof ruleForm.kind }))}
-            className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs"
-            title="What fires this rule"
+            className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs disabled:opacity-50"
+            title={editingId ? 'Kind is fixed at creation' : 'What fires this rule'}
+            disabled={!!editingId}
           >
             <option value="metric">Metric threshold</option>
             <option value="issue">New issue arrives</option>
@@ -330,11 +428,15 @@ export function MetricsAndAlerts() {
           {ruleForm.kind === 'metric' && (
             <>
               <input
+                name="ruleMetric"
+                aria-label="Metric name"
                 value={ruleForm.metric}
                 onChange={(e) => setRuleForm((f) => ({ ...f, metric: e.target.value }))}
                 placeholder="metric"
                 list="debug-metric-names"
-                className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs font-mono"
+                disabled={!!editingId}
+                title={editingId ? 'Metric is fixed at creation' : undefined}
+                className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs font-mono disabled:opacity-50"
               />
               <datalist id="debug-metric-names">
                 {metricNames.map((m) => (
@@ -342,6 +444,8 @@ export function MetricsAndAlerts() {
                 ))}
               </datalist>
               <select
+                name="ruleOperator"
+                aria-label="Comparison operator"
                 value={ruleForm.op}
                 onChange={(e) => setRuleForm((f) => ({ ...f, op: e.target.value }))}
                 className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs font-mono"
@@ -353,6 +457,8 @@ export function MetricsAndAlerts() {
                 ))}
               </select>
               <input
+                name="ruleThreshold"
+                aria-label="Threshold"
                 value={ruleForm.threshold}
                 onChange={(e) => setRuleForm((f) => ({ ...f, threshold: e.target.value }))}
                 placeholder="threshold"
@@ -362,6 +468,8 @@ export function MetricsAndAlerts() {
             </>
           )}
           <select
+            name="ruleSeverity"
+            aria-label="Rule severity"
             value={ruleForm.severity}
             onChange={(e) => setRuleForm((f) => ({ ...f, severity: e.target.value }))}
             className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs"
@@ -375,12 +483,32 @@ export function MetricsAndAlerts() {
             metric rules notify when the threshold is crossed, not on every breaching sample.
           </p>
           <button
-            onClick={createRule}
+            onClick={editingId ? saveRule : createRule}
             disabled={busy || !ruleForm.name.trim() || (ruleForm.kind === 'metric' && !ruleForm.metric.trim())}
             className="px-3 py-1.5 text-xs rounded bg-neon-purple/15 border border-neon-purple/30 text-neon-purple hover:bg-neon-purple/25 disabled:opacity-50 flex items-center justify-center gap-1 md:col-span-6"
           >
-            <Plus className="w-3 h-3" /> Create Alert Rule
+            <Plus className="w-3 h-3" /> {editingId ? 'Save changes' : 'Create Alert Rule'}
           </button>
+          {editingId && (
+            <button
+              onClick={resetRuleForm}
+              className="px-3 py-1.5 text-xs rounded border border-lattice-border text-gray-300 hover:text-white md:col-span-6"
+            >
+              Cancel edit
+            </button>
+          )}
+          {(() => {
+            const missing: string[] = [];
+            if (!ruleForm.name.trim()) missing.push('a rule name');
+            if (ruleForm.kind === 'metric' && !editingId && !ruleForm.metric.trim()) missing.push('a metric');
+            if (ruleForm.kind === 'metric' && ruleForm.threshold === '') missing.push('a threshold');
+            return missing.length > 0 ? (
+              <p role="note" className="text-[11px] text-gray-400 md:col-span-6">
+                Add {missing.join(', ')} to {editingId ? 'save the rule' : 'create the rule'}.
+                {editingId ? ' Metric and kind are fixed at creation.' : ''}
+              </p>
+            ) : null;
+          })()}
         </div>
         {testNote && <p className="text-xs text-neon-green">{testNote}</p>}
 
@@ -422,6 +550,13 @@ export function MetricsAndAlerts() {
                     {' · '}bell
                   </p>
                 </div>
+                <button
+                  onClick={() => startEditRule(rule)}
+                  className="px-2 py-1 rounded text-[10px] border border-lattice-border text-gray-300 hover:text-white shrink-0 flex items-center gap-1"
+                  title="Edit this rule's name, threshold, operator and severity"
+                >
+                  <Pencil className="w-3 h-3" /> Edit
+                </button>
                 <button
                   onClick={() => testRule(rule)}
                   className="px-2 py-1 rounded text-[10px] border border-lattice-border text-gray-300 hover:text-white shrink-0"

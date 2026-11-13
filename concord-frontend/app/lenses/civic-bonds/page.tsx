@@ -3,6 +3,7 @@
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 /**
  * Civic Bonds lens — the transparency surface for the micro-bond engine.
@@ -32,7 +33,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
  * showing a broken empty picker.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { RefreshCw } from 'lucide-react';
 import { useUIStore } from '@/store/ui';
@@ -132,6 +133,19 @@ export default function CivicBondsLens() {
 
   useEffect(() => { void Promise.resolve().then(fetchSpillover); }, [fetchSpillover]);
 
+  const expandedRef = useRef(expanded);
+  expandedRef.current = expanded;
+
+  const loadLedger = useCallback(async (bondId: string) => {
+    setLedgerLoading((m) => ({ ...m, [bondId]: true }));
+    try {
+      const r = (await lensRun<{ ok: boolean; pledges?: Pledge[]; milestones?: Milestone[] }>('civic_bonds', 'ledger', { bondId })).data.result;
+      if (r?.ok) setLedgers((m) => ({ ...m, [bondId]: { pledges: r.pledges || [], milestones: r.milestones || [] } }));
+    } finally {
+      setLedgerLoading((m) => ({ ...m, [bondId]: false }));
+    }
+  }, []);
+
   const act = useCallback(async (action: string, input: Record<string, unknown>) => {
     setNote(null);
     try {
@@ -147,40 +161,37 @@ export default function CivicBondsLens() {
         (typeof envelope.reason === 'string' && envelope.reason) ||
         null;
       if (!r?.ok) {
-        setNote(`${action}: ${reason || 'failed'}`);
-        addToast({ type: 'error', message: `${action} failed: ${reason || 'unknown error'}` });
+        const explained = reason === 'exceeds_single_entity_cap'
+          ? `${reason}. One pledger cannot cover more than the single-entity cap on this bond.`
+          : reason;
+        setNote(`${action}: ${explained || 'failed'}`);
+        addToast({ type: 'error', message: `${action} failed: ${explained || 'unknown error'}` });
       } else {
         setNote(`${action} ✓`);
         addToast({ type: 'success', message: `${action} succeeded`, duration: 2500 });
+        const bondId = typeof input.bondId === 'string' ? input.bondId : null;
+        if (bondId && (action === 'pledge' || action === 'unpledge')) {
+          if (expandedRef.current[bondId]) await loadLedger(bondId);
+          else setLedgers((m) => { const n = { ...m }; delete n[bondId]; return n; });
+        }
       }
       await refresh();
     } catch {
       setNote(`${action}: error`);
       addToast({ type: 'error', message: `${action} request failed` });
     }
-  }, [refresh, addToast]);
+  }, [refresh, addToast, loadLedger]);
 
   // The public ledger (every pledge + milestone) — lazy-loaded per bond so the
   // list view stays cheap; toggled open with the "Ledger" disclosure below.
   const toggleLedger = useCallback(async (bondId: string) => {
     const willOpen = !expanded[bondId];
     setExpanded((m) => ({ ...m, [bondId]: willOpen }));
-    if (willOpen && !ledgers[bondId]) {
-      setLedgerLoading((m) => ({ ...m, [bondId]: true }));
-      try {
-        const r = (await lensRun<{ ok: boolean; pledges?: Pledge[]; milestones?: Milestone[] }>('civic_bonds', 'ledger', { bondId })).data.result;
-        if (r?.ok) setLedgers((m) => ({ ...m, [bondId]: { pledges: r.pledges || [], milestones: r.milestones || [] } }));
-      } finally {
-        setLedgerLoading((m) => ({ ...m, [bondId]: false }));
-      }
-    }
-  }, [expanded, ledgers]);
+    if (willOpen && !ledgers[bondId]) await loadLedger(bondId);
+  }, [expanded, ledgers, loadLedger]);
 
   const unpledge = useCallback(async (bondId: string) => {
     await act('unpledge', { bondId });
-    // an unpledge changes the pledge ledger too — drop the cached copy so
-    // the next expand re-fetches instead of showing stale escrow rows.
-    setLedgers((m) => { const n = { ...m }; delete n[bondId]; return n; });
   }, [act]);
 
   const createDrive = useCallback(async () => {
@@ -190,19 +201,26 @@ export default function CivicBondsLens() {
       addToast({ type: 'error', message: 'create failed: title required' });
       return;
     }
+    const target = Number(draftTarget);
+    if (!Number.isFinite(target) || target < 1 || Math.trunc(target) < 1) {
+      setNote('create: target must be at least 1');
+      addToast({ type: 'error', message: 'Target amount must be a whole number of at least 1.' });
+      return;
+    }
     setCreating(true);
     try {
-      const envelope = (await lensRun<{ ok: boolean; reason?: string; bondId?: string }>('civic_bonds', 'create', {
+      const envelope = (await lensRun<{ ok: boolean; reason?: string; message?: string; bondId?: string }>('civic_bonds', 'create', {
         worldId,
         title,
         description: draftDescription.trim() || undefined,
-        targetAmount: Math.max(1, Math.trunc(Number(draftTarget) || 0)),
+        targetAmount: Math.trunc(target),
         denomination: 1,
         quorum: 1,
         returnRate: 0,
       })).data;
       const r = envelope.result;
       const reason =
+        (r && typeof r === 'object' && typeof r.message === 'string' && r.message) ||
         (r && typeof r === 'object' && typeof r.reason === 'string' && r.reason) ||
         (typeof envelope.error === 'string' && envelope.error) ||
         null;
@@ -267,6 +285,7 @@ export default function CivicBondsLens() {
                 value={draftTitle}
                 onChange={(e) => setDraftTitle(e.target.value)}
                 placeholder="Community project title"
+                maxLength={500}
                 className="w-full px-2 py-1.5 rounded bg-black/30 border border-white/10 text-sm"
                 aria-label="Bond title"
               />
@@ -418,6 +437,18 @@ export default function CivicBondsLens() {
                     data-testid={`civic-bonds-open-${b.id}`}
                   >Open</button>
                 )}
+                {['proposed', 'voting', 'funding'].includes(b.status) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!window.confirm(`Cancel "${b.title}"? Escrowed pledges are refunded.`)) return;
+                      void act('cancel', { bondId: b.id });
+                    }}
+                    className="px-3 py-1 rounded bg-rose-500/15 text-rose-200 text-sm hover:bg-rose-500/25"
+                    aria-label={`Cancel ${b.title}`}
+                    data-testid={`civic-bonds-cancel-${b.id}`}
+                  >Cancel drive</button>
+                )}
                 <button
                   onClick={() => {
                     if (badAmount(amount, b.denomination)) {
@@ -432,12 +463,15 @@ export default function CivicBondsLens() {
                   aria-label={`Pledge to ${b.title}`}
                 >Pledge</button>
                 {['voting', 'funding'].includes(b.status) && (
-                  <button
-                    onClick={() => void unpledge(b.id)}
+                  <StickyDeleteConfirm
+                    onConfirm={() => void unpledge(b.id)}
+                    armLabel="Unpledge"
+                    confirmLabel={`Refund pledge to "${b.title}"?`}
+                    armAriaLabel={`Refund my pledge to ${b.title}`}
+                    confirmAriaLabel={`Confirm refund of my pledge to ${b.title}`}
+                    cancelAriaLabel="Keep my pledge"
                     className="px-3 py-1 rounded bg-white/5 text-gray-300 text-sm hover:bg-white/10"
-                    aria-label={`Refund my pledge to ${b.title}`}
-                    title="Refund your unfilled escrow while the bond is still open"
-                  >Unpledge</button>
+                  />
                 )}
                 {b.status === 'voting' && (
                   <>

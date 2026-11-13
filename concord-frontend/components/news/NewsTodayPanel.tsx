@@ -77,15 +77,15 @@ export function NewsTodayPanel({ onChange }: { onChange: () => void }) {
 
       {showAdd && (
         <div className="grid grid-cols-2 gap-2 bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
-          <input placeholder="Headline" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
+          <input aria-label="Headline" placeholder="Headline" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
             className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-          <input placeholder="Source" value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })}
+          <input aria-label="Source" placeholder="Source" value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-          <input placeholder="Topic" value={form.topic} onChange={(e) => setForm({ ...form, topic: e.target.value })}
+          <input aria-label="Topic" placeholder="Topic" value={form.topic} onChange={(e) => setForm({ ...form, topic: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-          <input placeholder="Summary" value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })}
+          <input aria-label="Summary" placeholder="Summary" value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })}
             className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-          <input placeholder="URL (optional)" value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })}
+          <input aria-label="URL (optional)" placeholder="URL (optional)" value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })}
             className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <button type="button" onClick={addArticle}
             className="col-span-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-medium rounded-lg px-2 py-1.5">Add to directory</button>

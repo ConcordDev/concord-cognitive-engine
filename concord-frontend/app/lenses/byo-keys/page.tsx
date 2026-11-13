@@ -38,6 +38,7 @@ import { KeyHealthPanel } from '@/components/byo-keys/KeyHealthPanel';
 import { OrgKeysPanel } from '@/components/byo-keys/OrgKeysPanel';
 import { ModelPickerModal } from '@/components/byo-keys/ModelPickerModal';
 import { brainRecordForSlot, slotRouteCopy, type PodBrain } from '@/components/byo-keys/slotRouteCopy';
+import { apiKeyError } from '@/lib/form-guards';
 
 interface OverrideRow {
   slot: string;
@@ -108,6 +109,7 @@ export default function ByoKeysLens() {
   const [editing, setEditing] = useState<string | null>(null); // slot being edited
   const [form, setForm] = useState({ provider: 'anthropic', modelId: '', apiKey: '' });
   const [testResult, setTestResult] = useState<{ slot: string; ok: boolean; error?: string } | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [modelPicker, setModelPicker] = useState<{ slot: string; provider: string; modelId: string | null } | null>(null);
   const [brainMode, setBrainMode] = useState<'private' | 'high_power'>('private');
@@ -157,27 +159,35 @@ export default function ByoKeysLens() {
   };
 
   const cancelEdit = () => {
+    setSaveError(null);
     setEditing(null);
     setForm({ provider: 'anthropic', modelId: '', apiKey: '' });
   };
 
   const save = async (slot: string) => {
-    if (form.provider !== 'concord_default' && form.provider !== 'ollama' && (!form.apiKey || form.apiKey.length < 8)) {
-      useUIStore.getState().addToast({ type: 'warning', message: 'API key must be at least 8 characters. Paste it from your provider\'s dashboard.' });
+    const allowBlank = form.provider === 'concord_default' || form.provider === 'ollama';
+    const keyProblem = apiKeyError(form.apiKey, { allowBlank });
+    if (keyProblem) {
+      // Inline and persistent (FIX-byo-keys-006): a toast alone evaporates
+      // before the user can act on it, and an empty edit-save read as
+      // nothing happening at all.
+      setSaveError(keyProblem);
       return;
     }
+    setSaveError(null);
+    const apiKey = form.apiKey.trim();
     setBusy(true);
     const r = await macro('byo_keys', 'set', {
       slot, provider: form.provider,
       modelId: form.modelId || null,
-      apiKey: form.apiKey || null,
+      apiKey: apiKey || null,
     });
     setBusy(false);
     if (r?.ok) {
       cancelEdit();
       refresh();
     } else {
-      useUIStore.getState().addToast({ type: 'error', message: `Save failed: ${r?.reason || 'unknown'}` });
+      setSaveError(`Save failed: ${String(r?.error || r?.reason || 'unknown').replace(/_/g, ' ')}`);
     }
   };
 
@@ -347,6 +357,7 @@ export default function ByoKeysLens() {
                       <div>
                         <label className="block text-xs text-zinc-400 mb-1">Provider</label>
                         <select
+                          aria-label="Provider"
                           value={form.provider}
                           onChange={e => setForm(f => ({ ...f, provider: e.target.value }))}
                           className="w-full px-3 py-1.5 rounded-md bg-zinc-950 text-zinc-100 text-sm ring-1 ring-zinc-700 focus:ring-teal-400 focus:outline-none"
@@ -365,6 +376,7 @@ export default function ByoKeysLens() {
                             </label>
                             <input
                               type="text"
+                              aria-label="Model ID"
                               value={form.modelId}
                               onChange={e => setForm(f => ({ ...f, modelId: e.target.value }))}
                               placeholder={selectedProvider?.defaultModels[slot] || ''}
@@ -378,6 +390,7 @@ export default function ByoKeysLens() {
                               )}
                             </label>
                             <input
+                              aria-label="API key"
                               type="password"
                               value={form.apiKey}
                               onChange={e => setForm(f => ({ ...f, apiKey: e.target.value }))}
@@ -391,6 +404,9 @@ export default function ByoKeysLens() {
                             </p>
                           </div>
                         </>
+                      )}
+                      {saveError && (
+                        <p role="alert" className="text-xs text-red-400">{saveError}</p>
                       )}
                       <div className="flex gap-2">
                         <button

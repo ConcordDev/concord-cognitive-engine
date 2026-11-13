@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Truck, Plus, X, Loader2, Hash } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 
 interface Pickup { id: string; carrierId: string; carrierName: string; address: string; date: string; timeWindow: string; packageCount: number; status: string; confirmationNumber: string | null }
@@ -38,11 +39,11 @@ export function PickupsPanel() {
     } catch (e) { console.error('[Pickups] schedule', e); }
   }
 
-  async function cancel(id: string) {
+  async function remove(id: string) {
     try {
-      await lensRun({ domain: 'logistics', action: 'pickups-cancel', input: { id } });
+      await lensRun({ domain: 'logistics', action: 'pickups-delete', input: { id } });
       await refresh();
-    } catch (e) { console.error('[Pickups] cancel', e); }
+    } catch (e) { console.error('[Pickups] delete', e); }
   }
 
   return (
@@ -86,8 +87,14 @@ export function PickupsPanel() {
                   </div>
                   <div className="text-[10px] text-gray-400 truncate">{p.address}</div>
                   <div className="text-[10px] text-gray-400">{p.date} · {p.timeWindow} · {p.packageCount} pkg</div>
+                  <input defaultValue={p.confirmationNumber || ''} aria-label="Carrier confirmation" placeholder="Carrier confirmation" onBlur={async (e) => {
+                    const confirmationNumber = e.target.value.trim();
+                    if (confirmationNumber === (p.confirmationNumber || '')) return;
+                    await lensRun({ domain: 'logistics', action: 'pickups-update', input: { id: p.id, confirmationNumber } });
+                    await refresh();
+                  }} className="mt-1 w-full bg-transparent text-[10px] text-gray-300 border-b border-transparent focus:border-cyan-500/40 outline-none" />
                 </div>
-                {p.status === 'scheduled' && <button aria-label="Close" onClick={() => cancel(p.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400 hover:text-rose-300"><X className="w-3 h-3" /></button>}
+                <StickyDeleteConfirm onConfirm={() => remove(p.id)} armLabel={<X className="w-3 h-3" />} armAriaLabel="Delete pickup" confirmLabel="Delete pickup?" className="p-1 text-rose-400 hover:text-rose-300" />
               </li>
             ))}
           </ul>

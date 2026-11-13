@@ -17,6 +17,7 @@ import { LensShell } from '@/components/lens/LensShell';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { CrossWorldFeed } from '@/components/concord-link-frontier/CrossWorldFeed';
 
 interface LinkRow {
@@ -93,6 +94,7 @@ export default function ConcordLinkFrontierPage() {
   const [bearing, setBearing] = useState('');
   const [mark, setMark] = useState('');
   const [busy, setBusy] = useState(false);
+  const [linkQuery, setLinkQuery] = useState('');
 
   const applyBoard = useCallback((rows: LinkRow[], preferId?: string) => {
     setLinks(rows);
@@ -234,6 +236,22 @@ export default function ConcordLinkFrontierPage() {
     }
   }, [applyBoard, busy, links, mark, mode, phase, selectedId]);
 
+  const deleteLink = useCallback(async (id: string) => {
+    if (busy || phase !== 'ready') return;
+    setBusy(true);
+    setActionError('');
+    try {
+      await runLink('link-delete', { id }, 'Could not delete that link.');
+      const rows = await readBoard();
+      applyBoard(rows);
+      setMode('view');
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not delete that link.');
+    } finally {
+      setBusy(false);
+    }
+  }, [applyBoard, busy, phase]);
+
   const openRow = useCallback(async (id: string) => {
     if (busy || phase !== 'ready') return;
     setBusy(true);
@@ -268,6 +286,10 @@ export default function ConcordLinkFrontierPage() {
   );
 
   const selected = links.find((item) => item.id === selectedId) || null;
+  const lq = linkQuery.trim().toLowerCase();
+  const visibleLinks = lq
+    ? links.filter((item) => item.name.toLowerCase().includes(lq) || (item.bearing || '').toLowerCase().includes(lq) || (item.mark || '').toLowerCase().includes(lq))
+    : links;
   const empty = phase === 'ready' && mode === 'view' && links.length === 0;
 
   return (
@@ -301,10 +323,22 @@ export default function ConcordLinkFrontierPage() {
               {selected.mark ? <p data-testid="clf-mark" className="mt-3 text-[15px] text-zinc-300">{selected.mark}</p> : null}
             </div>
           )}
+          {phase === 'ready' && mode === 'view' && links.length > 1 && (
+            <input
+              value={linkQuery}
+              onChange={(event) => setLinkQuery(event.target.value)}
+              placeholder="Search links…"
+              aria-label="Search links"
+              className="mb-3 w-full border-b border-white/15 bg-transparent pb-2 text-[15px] text-zinc-100 outline-none"
+            />
+          )}
+          {phase === 'ready' && mode === 'view' && links.length > 0 && visibleLinks.length === 0 && (
+            <p className="border-t border-white/10 pt-4 text-[15px] text-zinc-400">No links match &ldquo;{linkQuery.trim()}&rdquo;.</p>
+          )}
           {phase === 'ready' && mode === 'view' && links.length > 0 && (
             <ul data-testid="clf-board" className="space-y-2 border-t border-white/10 pt-4">
-              {links.map((item) => (
-                <li key={item.id}>
+              {visibleLinks.map((item) => (
+                <li key={item.id} className="flex items-center gap-3">
                   <button
                     type="button"
                     onClick={() => { void openRow(item.id); }}
@@ -312,6 +346,13 @@ export default function ConcordLinkFrontierPage() {
                   >
                     {item.name}
                   </button>
+                  <StickyDeleteConfirm
+                    onConfirm={() => { void deleteLink(item.id); }}
+                    armLabel="Delete"
+                    confirmLabel={`Delete "${item.name}"?`}
+                    armAriaLabel={`Delete link ${item.name}`}
+                    confirmAriaLabel={`Confirm delete link ${item.name}`}
+                  />
                 </li>
               ))}
             </ul>

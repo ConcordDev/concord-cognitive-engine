@@ -267,6 +267,19 @@ describe("wellness — remaining macros (CRUD round-trips, trends, summaries)", 
     assert.equal(r.result.trend, "rising");
   });
 
+  it("metrics-trend: average includes every same-day sample, chart keeps the last write", async () => {
+    const tc = await depthCtx("wellness-trend-sameday");
+    const today = new Date().toISOString().slice(0, 10);
+    await lensRun("wellness", "metrics-log", { params: { type: "weight_kg", value: 30, date: today } }, tc);
+    await lensRun("wellness", "metrics-log", { params: { type: "weight_kg", value: 7.5, date: today } }, tc);
+    const r = await lensRun("wellness", "metrics-trend", { params: { type: "weight_kg" } }, tc);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.series.length, 1);
+    assert.equal(r.result.series[0].value, 7.5);
+    assert.equal(r.result.latest, 7.5);
+    assert.equal(r.result.average, 18.75);
+  });
+
   it("metrics-trend: rejects an unknown metric type", async () => {
     const r = await lensRun("wellness", "metrics-trend", { params: { type: "vibes" } });
     assert.equal(r.result.ok, false);

@@ -57,4 +57,12 @@ describe("nonprofit.campaign management", () => {
     call("campaign-delete", ctxA, { id: c.id });
     assert.equal(call("campaign-list", ctxA, {}).result.count, 0);
   });
+  it("counts an active pledge as a recurring donor when no campaign gift is marked recurring", () => {
+    const donor = call("donor-create", ctxA, { name: "Ada" }).result.donor;
+    call("pledge-create", ctxA, { donorId: donor.id, amount: 25, frequency: "monthly" });
+    const dash = call("nonprofit-dashboard", ctxA, {});
+    assert.equal(dash.result.recurringDonors, 1);
+    call("pledge-create", ctxA, { donorId: donor.id, amount: 10, frequency: "weekly" });
+    assert.equal(call("nonprofit-dashboard", ctxA, {}).result.recurringDonors, 1);
+  });
 });

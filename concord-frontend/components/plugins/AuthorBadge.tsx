@@ -62,7 +62,7 @@ export function AuthorBadge({ authorId, reputation, trusted, trustDescription }:
       <div className="flex items-start gap-1.5 text-[10px]">
         <Award className={`mt-0.5 h-3 w-3 shrink-0 ${hasActivity ? 'text-amber-300' : 'text-slate-600'}`} aria-hidden="true" />
         <span className="min-w-0">
-          <span className="mr-1 text-slate-500">Reputation:</span>
+          <span className="mr-1 text-slate-400">Reputation:</span>
           {hasActivity ? (
             topBadge ? (
               <span
@@ -90,7 +90,7 @@ export function AuthorBadge({ authorId, reputation, trusted, trustDescription }:
           <ShieldAlert className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
         )}
         <span className="min-w-0">
-          <span className="mr-1 text-slate-500">Package signing:</span>
+          <span className="mr-1 text-slate-400">Package signing:</span>
           <span>{trustDescription}</span>
         </span>
       </div>

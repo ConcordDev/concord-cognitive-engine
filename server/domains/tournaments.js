@@ -27,6 +27,7 @@
 // every macro).
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { acceptTournamentTitle } from "../lib/bounded-text.js";
 export default function registerTournamentsActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ─── in-memory fallback state ──────────────────────────────────────
@@ -503,7 +504,18 @@ export default function registerTournamentsActions(registerLensAction) {
       if (Array.isArray(p.payoutSplit) && p.payoutSplit.some((x) => !isSaneCc(x))) {
         return { ok: false, error: "invalid_payout_split" };
       }
-      const t = emptyTournament(p);
+      // FIX-tournaments-003: maxEntrants was silently clamped into
+      // [2, 128] — a create with 0 quietly became 2. Out-of-range input
+      // is refused with a named error instead; absent still defaults.
+      if (p.maxEntrants != null && p.maxEntrants !== "") {
+        const n = Number(p.maxEntrants);
+        if (!Number.isFinite(n) || Math.floor(n) !== n || n < 2 || n > 128) {
+          return { ok: false, error: "max_entrants_must_be_2_to_128" };
+        }
+      }
+      const title = acceptTournamentTitle(p.title || "Untitled Tournament");
+      if (!title.ok) return title;
+      const t = emptyTournament({ ...p, title: title.title });
       pushLog(t, `Created ${t.format} tournament "${t.title}"`);
       st.put(userId, t);
       saveState();

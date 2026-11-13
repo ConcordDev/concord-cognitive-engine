@@ -41,6 +41,15 @@ export function sendMail(db, input) {
   const toUserId = String(input?.toUserId || "").trim();
   if (!fromUserId || !toUserId) return { ok: false, error: "missing_users" };
   if (fromUserId === toUserId) return { ok: false, error: "cannot_mail_self" };
+  // A typed display name is not a recipient. Mail and any CC gift go only
+  // to a real user id. An unknown id must not create a message for "A Concord member".
+  let recipientRow = null;
+  try {
+    recipientRow = db.prepare(`SELECT id FROM users WHERE id = ?`).get(toUserId);
+  } catch {
+    return { ok: false, error: "recipient_lookup_failed" };
+  }
+  if (!recipientRow?.id) return { ok: false, error: "recipient_unresolved" };
 
   const subject = String(input?.subject || "").slice(0, MAX_SUBJECT_LEN).trim();
   if (!subject) return { ok: false, error: "subject_required" };
@@ -52,6 +61,23 @@ export function sendMail(db, input) {
   const attachmentCc = Math.max(0, Number(input?.attachmentCc) || 0);
   const codCc = Math.max(0, Number(input?.codCc) || 0);
   const worldId = input?.worldId || null;
+
+  // FIX-mail-016: a reply names the mail it answers (parentId). The link
+  // is only honoured when the parent exists and the sender is a party to
+  // it — a forged parent id must not thread a mail under a stranger's
+  // conversation, and a dangling one must not silently unthread.
+  const parentId = String(input?.parentId || "").trim() || null;
+  if (parentId) {
+    let parentRow = null;
+    try {
+      parentRow = db.prepare(`SELECT from_user_id AS fromUser, to_user_id AS toUser FROM player_mail WHERE id = ?`).get(parentId);
+    } catch {
+      return { ok: false, error: "parent_lookup_failed" };
+    }
+    if (!parentRow || (parentRow.fromUser !== fromUserId && parentRow.toUser !== fromUserId)) {
+      return { ok: false, error: "parent_not_found" };
+    }
+  }
 
   // A listed DTU is attached only when this sender still owns it. Anything
   // else is refused before escrow, so the mail row never claims a transfer
@@ -104,10 +130,10 @@ export function sendMail(db, input) {
     db.prepare(`
       INSERT INTO player_mail
         (id, from_user_id, to_user_id, world_id, subject, body,
-         attachment_dtu_ids, attachment_cc, cod_cc, expires_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch() + ? * 86400)
+         attachment_dtu_ids, attachment_cc, cod_cc, expires_at, parent_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch() + ? * 86400, ?)
     `).run(id, fromUserId, toUserId, worldId, subject, body,
-            JSON.stringify(attachmentDtuIds), attachmentCc, codCc, DEFAULT_TTL_DAYS);
+            JSON.stringify(attachmentDtuIds), attachmentCc, codCc, DEFAULT_TTL_DAYS, parentId);
   });
 
   try {
@@ -131,6 +157,7 @@ export function listInbox(db, userId, opts = {}) {
     return db.prepare(`
       SELECT id, from_user_id AS fromUser, to_user_id AS toUser, world_id AS worldId, subject, body,
              status, sent_at AS sentAt, read_at AS readAt, claimed_at AS claimedAt,
+             declined_at AS declinedAt, parent_id AS parentId,
              expires_at AS expiresAt, attachment_dtu_ids, attachment_cc AS attachmentCc,
              cod_cc AS codCc
       FROM player_mail
@@ -149,6 +176,7 @@ export function listSent(db, userId, opts = {}) {
     return db.prepare(`
       SELECT id, from_user_id AS fromUser, to_user_id AS toUser, world_id AS worldId, subject, body,
              status, sent_at AS sentAt, read_at AS readAt, claimed_at AS claimedAt,
+             declined_at AS declinedAt, parent_id AS parentId,
              expires_at AS expiresAt, attachment_dtu_ids, attachment_cc AS attachmentCc,
              cod_cc AS codCc
       FROM player_mail
@@ -166,7 +194,8 @@ export function getMail(db, mailId, userId) {
     const row = db.prepare(`
       SELECT id, from_user_id AS fromUser, to_user_id AS toUser, world_id AS worldId,
              subject, body, status, sent_at AS sentAt, read_at AS readAt,
-             claimed_at AS claimedAt, expires_at AS expiresAt,
+             claimed_at AS claimedAt, declined_at AS declinedAt, parent_id AS parentId,
+             expires_at AS expiresAt,
              attachment_dtu_ids, attachment_cc AS attachmentCc, cod_cc AS codCc
       FROM player_mail WHERE id = ?
     `).get(mailId);
@@ -211,13 +240,18 @@ export function readMail(db, mailId, userId) {
 export function deleteSentMail(db, mailId, userId) {
   if (!db || !mailId || !userId) return { ok: false, error: "missing_inputs" };
   try {
-    const row = db.prepare(`SELECT from_user_id AS fromUser, status, sender_deleted_at AS senderDeletedAt FROM player_mail WHERE id = ?`).get(mailId);
+    const row = db.prepare(`SELECT from_user_id AS fromUser, status, sender_deleted_at AS senderDeletedAt, attachment_cc AS attachmentCc FROM player_mail WHERE id = ?`).get(mailId);
     if (!row) return { ok: false, error: "not_found" };
     if (row.fromUser !== userId) return { ok: false, error: "not_authorized" };
     if (row.status === "claimed") return { ok: false, error: "already_claimed" };
     if (row.senderDeletedAt) return { ok: true, deleted: true, alreadyDeleted: true };
-    db.prepare(`UPDATE player_mail SET sender_deleted_at = unixepoch() WHERE id = ? AND from_user_id = ?`).run(mailId, userId);
-    return { ok: true, deleted: true };
+    const refundCc = row.status !== "claimed" ? Math.max(0, Number(row.attachmentCc) || 0) : 0;
+    const tx = db.transaction(() => {
+      if (refundCc > 0) _walletCredit(db, userId, refundCc, `mail_unclaimed_refund:${mailId}`);
+      db.prepare(`UPDATE player_mail SET attachment_cc = 0, sender_deleted_at = unixepoch() WHERE id = ? AND from_user_id = ?`).run(mailId, userId);
+    });
+    tx();
+    return { ok: true, deleted: true, refundedCc: refundCc };
   } catch (err) {
     return { ok: false, error: err?.message };
   }
@@ -242,6 +276,7 @@ export function claimAttachments(db, mailId, userId) {
   if (mail.toUser !== userId) return { ok: false, error: "not_authorized" };
   if (mail.status === "claimed") return { ok: true, claimed: true, alreadyClaimed: true };
   if (mail.status === "expired") return { ok: false, error: "expired" };
+  if (mail.status === "declined") return { ok: false, error: "declined" };
 
   const fromUserId = mail.fromUser;
   const attachmentCc = Number(mail.attachmentCc) || 0;
@@ -305,6 +340,60 @@ export function claimAttachments(db, mailId, userId) {
       payout: { attachmentCc, codCcPaid: codCc },
       attachments: { dtuIds, transferred, skipped },
     };
+  } catch (err) {
+    return { ok: false, error: err?.message };
+  }
+}
+
+/**
+ * Decline a piece of mail (FIX-mail-014). The recipient's counterpart to
+ * Claim: instead of paying the COD charge and taking the attachments, the
+ * recipient sends the whole thing back. Single transaction, mirroring the
+ * expiry sweep's fund movements:
+ *   - The escrowed attachment CC is credited back to the SENDER
+ *   - DTU escrow stamps are cleared (the DTUs never left the sender)
+ *   - The row is marked 'declined' with declined_at stamped
+ * The recipient is charged nothing — the COD debit exists only in claim.
+ * The attachment fields stay on the row as the record of what was
+ * declined (the same posture as an expired row).
+ *
+ * Idempotent: declining an already-declined mail returns ok with
+ * alreadyDeclined=true and moves nothing a second time.
+ *
+ * @returns {{ ok, declined?, refundedCc?, error? }}
+ */
+export function declineMail(db, mailId, userId) {
+  if (!db || !mailId || !userId) return { ok: false, error: "missing_inputs" };
+  const mail = getMail(db, mailId, userId);
+  if (!mail) return { ok: false, error: "not_found" };
+  if (mail.toUser !== userId) return { ok: false, error: "not_authorized" };
+  if (mail.status === "claimed") return { ok: false, error: "already_claimed" };
+  if (mail.status === "expired") return { ok: false, error: "expired" };
+  if (mail.status === "declined") return { ok: true, declined: true, alreadyDeclined: true };
+
+  const attachmentCc = Number(mail.attachmentCc) || 0;
+  const dtuIds = Array.isArray(mail.attachment_dtu_ids) ? mail.attachment_dtu_ids : [];
+
+  const tx = db.transaction(() => {
+    if (attachmentCc > 0) {
+      _walletCredit(db, mail.fromUser, attachmentCc, `mail_decline_refund:${mailId}`);
+    }
+    for (const dtuId of dtuIds) {
+      try {
+        db.prepare(`UPDATE dtus SET data = json_remove(COALESCE(data,'{}'), '$.mail_escrow') WHERE id = ? AND creator_id = ?`)
+          .run(dtuId, mail.fromUser);
+      } catch { /* best-effort, as in the expiry sweep */ }
+    }
+    db.prepare(`
+      UPDATE player_mail
+      SET status = 'declined', declined_at = unixepoch()
+      WHERE id = ?
+    `).run(mailId);
+  });
+
+  try {
+    tx();
+    return { ok: true, declined: true, refundedCc: attachmentCc };
   } catch (err) {
     return { ok: false, error: err?.message };
   }

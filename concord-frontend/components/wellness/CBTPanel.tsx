@@ -12,7 +12,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Brain, Loader2, Plus, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { Brain, Loader2, Plus, ChevronRight, CheckCircle2, Pencil, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -39,6 +39,8 @@ export function CBTPanel() {
   const [list, setList] = useState<RecordList | null>(null);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ ...EMPTY_FORM });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingAfterWasNull, setEditingAfterWasNull] = useState(false);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -71,13 +73,19 @@ export function CBTPanel() {
       return;
     }
     setBusy(true); setErr(null);
+    // Edit (FIX-wellness-005): the same form updates an existing
+    // record when one was loaded via its Edit button.
     const r = await lensRun({
-      domain: 'wellness', action: 'cbt-record-create',
-      input: { ...form },
+      domain: 'wellness', action: editingId ? 'cbt-record-update' : 'cbt-record-create',
+      input: editingId
+        ? { id: editingId, ...form, intensityAfter: editingAfterWasNull && form.intensityAfter === 0 ? null : form.intensityAfter }
+        : { ...form },
     });
     setBusy(false);
     if (r.data?.ok) {
       setForm({ ...EMPTY_FORM });
+      setEditingId(null);
+      setEditingAfterWasNull(false);
       setOpen(false);
       await loadList();
     } else {
@@ -85,11 +93,30 @@ export function CBTPanel() {
     }
   }
 
+  function startEdit(r: ThoughtRecord) {
+    setEditingId(r.id);
+    setEditingAfterWasNull(r.intensityAfter === null);
+    setForm({
+      fieldKind: r.fieldKind, situation: r.situation, emotion: r.emotion,
+      automaticThought: r.automaticThought, evidenceFor: r.evidenceFor,
+      evidenceAgainst: r.evidenceAgainst, reframe: r.reframe,
+      intensityBefore: r.intensityBefore, intensityAfter: r.intensityAfter ?? 0,
+    });
+    setErr(null);
+    setOpen(true);
+  }
+
+  async function delRecord(r: ThoughtRecord) {
+    if (!confirm(`Delete thought record ${r.number}?`)) return;
+    const res = await lensRun({ domain: 'wellness', action: 'cbt-record-delete', input: { id: r.id } });
+    if (res.data?.ok) await loadList();
+  }
+
   return (
     <div className="rounded-lg border border-indigo-500/20 bg-zinc-950/60 p-3 space-y-3">
       <header className="flex items-center gap-2 border-b border-indigo-500/10 pb-2">
         <Brain className="h-4 w-4 text-indigo-400" />
-        <h3 className="text-sm font-semibold text-white">Guided CBT thought records</h3>
+        <h2 className="text-sm font-semibold text-white">Guided CBT thought records</h2>
         {loading && <Loader2 className="w-3 h-3 animate-spin text-zinc-400" />}
         {list && (
           <span className="ml-auto text-[10px] text-zinc-400">
@@ -182,7 +209,7 @@ export function CBTPanel() {
               {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
               Save record
             </button>
-            <button type="button" onClick={() => { setOpen(false); setErr(null); }}
+            <button type="button" onClick={() => { setOpen(false); setErr(null); setEditingId(null); setEditingAfterWasNull(false); setForm({ ...EMPTY_FORM }); }}
               className="px-3 text-xs text-zinc-400 hover:text-white">Cancel</button>
           </div>
         </div>
@@ -205,6 +232,14 @@ export function CBTPanel() {
               </div>
               <div className="text-[11px] text-zinc-300 mt-1 truncate">{r.situation}</div>
               {r.reframe && <div className="text-[10px] text-emerald-300/80 mt-0.5 truncate">↳ {r.reframe}</div>}
+              <div className="mt-1.5 flex items-center gap-2">
+                <button type="button" aria-label={`Edit thought record ${r.number}`} onClick={() => startEdit(r)} className="inline-flex items-center gap-1 text-[10px] text-zinc-400 hover:text-cyan-300">
+                  <Pencil className="w-3 h-3" /> Edit
+                </button>
+                <button type="button" aria-label={`Delete thought record ${r.number}`} onClick={() => void delRecord(r)} className="inline-flex items-center gap-1 text-[10px] text-zinc-400 hover:text-rose-300">
+                  <Trash2 className="w-3 h-3" /> Delete
+                </button>
+              </div>
             </li>
           ))}
         </ul>

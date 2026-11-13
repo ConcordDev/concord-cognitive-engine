@@ -65,7 +65,7 @@ export function AwarenessPanel() {
                             />
                           </div>
                         ) : null}
-                        <p className="text-[11px] text-gray-500">
+                        <p className="text-[11px] text-gray-400">
                           {resolved > 0
                             ? `${correct} of ${resolved} resolved predictions correct${typeof domain.brierScore === 'number' ? ` · Brier ${domain.brierScore.toFixed(2)}` : ''}`
                             : 'Predictions logged, none resolved yet — resolve some to build this row.'}

@@ -27,6 +27,7 @@ import { nwsHeaders } from "../lib/keyless-atmosphere.js";
 import { triggerCrisis, CRISIS_TYPES } from "../lib/world-crisis.js";
 import { mirrorToGateways } from "../lib/gateway-fanout.js";
 import { lookupUserIdentity } from "../lib/user-identity.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
 
 // Fail-CLOSED numeric guard (parity with server/domains/literary.js):
 // returns the first poisoned key (NaN/Infinity/1e308/negative/over-cap) or
@@ -334,7 +335,106 @@ function readFiledReports(userId, nowSec) {
   } catch { return []; }
 }
 
+function crisisExportRows(ctx) {
+  const db = ctx?.db;
+  const userId = ctx?.actor?.userId || ctx?.userId || null;
+  if (!userId) return [];
+  const S = stores();
+  const rows = [];
+
+  // Crises the caller declared: timeline events carry the server-stamped
+  // authority:"declarer" flag with by === declarer (crisis.js:217-228).
+  const declaredIds = [];
+  for (const [crisisId, events] of S.crisisTimelines.entries()) {
+    if ((events || []).some((ev) => ev.authority === "declarer" && ev.by === userId)) {
+      declaredIds.push(crisisId);
+    }
+  }
+  // Crises the caller staffs (as responder or assigner).
+  const staffedIds = new Set(declaredIds);
+  for (const [crisisId, team] of S.crisisTeams.entries()) {
+    if ((team || []).some((m) => m.responder === userId || m.assignedBy === userId)) {
+      staffedIds.add(crisisId);
+    }
+  }
+
+  // 1) Crises (declared only — the caller's own records).
+  if (db && declaredIds.length) {
+    const marks = declaredIds.map(() => "?").join(",");
+    let crises = [];
+    try {
+      crises = db.prepare(
+        `SELECT id, type, description, origin_world_id, started_at, resolved_at
+           FROM world_crises WHERE id IN (${marks})`
+      ).all(...declaredIds);
+    } catch { crises = []; }
+    for (const c of crises) {
+      rows.push({
+        id: c.id,
+        type: "crisis",
+        title: c.description || c.type || c.id,
+        createdAt: c.started_at || null,
+        updatedAt: c.resolved_at || c.started_at || null,
+        data: {
+          crisisType: c.type || null,
+          worldId: c.origin_world_id || null,
+          resolved: !!c.resolved_at,
+        },
+      });
+    }
+  }
+
+  // 2) Assets — the caller's own resource inventory.
+  const resources = S.crisisResources.get(userId);
+  if (resources) {
+    for (const r of resources.values()) {
+      rows.push({
+        id: r.id,
+        type: "asset",
+        title: r.name || r.id,
+        createdAt: r.createdAt || null,
+        updatedAt: r.updatedAt || r.createdAt || null,
+        data: {
+          category: r.category || null,
+          quantity: r.quantity ?? null,
+          unit: r.unit || null,
+          deployed: r.deployed ?? 0,
+        },
+      });
+    }
+  }
+
+  // 3) Responders — rosters of crises the caller declared or staffs,
+  // projected exactly as crisis.team projects them (display name + isMe).
+  for (const crisisId of staffedIds) {
+    const team = S.crisisTeams.get(crisisId) || [];
+    for (const m of team) {
+      // m.responder is stored as a free-text display string at assign time
+      // (crisis.assign: String(responder).slice(0, 80)) — never a raw user id.
+      // assignedBy IS a raw id, so it goes out only via projectMember's
+      // public label (name + isMe), exactly as crisis.team emits it.
+      const p = projectMember(db, m, userId, crisisId);
+      rows.push({
+        id: m.id,
+        type: "responder",
+        title: m.responder || "Responder",
+        createdAt: m.assignedAt || null,
+        updatedAt: m.assignedAt || null,
+        data: {
+          crisisId,
+          role: m.role || null,
+          assignedByName: p?.assignedByName || null,
+          assignedByIsMe: !!p?.assignedByIsMe,
+        },
+      });
+    }
+  }
+
+  return rows;
+}
+
 export default function registerCrisisMacros(register) {
+  registerLensExportProvider("crisis", crisisExportRows);
   // ---- existing macros (unchanged) ----------------------------------
   register("crisis", "active_for_player", async (ctx, input = {}) => {
     const db = ctx?.db;
@@ -863,10 +963,12 @@ export default function registerCrisisMacros(register) {
     try {
       const userId = ctx?.actor?.userId;
       if (!userId) return { ok: false, error: "no_actor" };
-      const badNum = badNumericField(input, ["quantity"]);
-      if (badNum) return { ok: false, error: "bad_numeric_field", field: badNum };
       const { resourceId, name, category, quantity, unit } = input || {};
       if (!name) return { ok: false, error: "missing_name" };
+      const qty = Number(quantity);
+      if (!Number.isInteger(qty) || qty < 1 || qty > 1_000_000) {
+        return { ok: false, error: "invalid_input", field: "quantity", message: "Quantity must be a whole number from 1 to 1,000,000." };
+      }
       const S = stores();
       let map = S.crisisResources.get(userId);
       if (!map) { map = new Map(); S.crisisResources.set(userId, map); }
@@ -876,9 +978,9 @@ export default function registerCrisisMacros(register) {
         id,
         name: String(name).slice(0, 80),
         category: String(category || "general").slice(0, 40),
-        quantity: Math.max(0, Math.floor(Number(quantity) || 0)),
+        quantity: qty,
         unit: String(unit || "units").slice(0, 20),
-        deployed: Math.min(prior.deployed || 0, Math.max(0, Math.floor(Number(quantity) || 0))),
+        deployed: Math.min(prior.deployed || 0, qty),
         createdAt: prior.createdAt,
         updatedAt: Date.now(),
       };
@@ -930,4 +1032,25 @@ export default function registerCrisisMacros(register) {
       return { ok: false, error: String(err?.message || err) };
     }
   }, { note: "Deploy (or recall) a resource quantity against a crisis." });
+
+  register("crisis", "resource_delete", async (ctx, input = {}) => {
+    try {
+      const userId = ctx?.actor?.userId;
+      if (!userId) return { ok: false, error: "no_actor" };
+      const { resourceId } = input || {};
+      if (!resourceId) return { ok: false, error: "missing_resource_id" };
+      const S = stores();
+      const map = S.crisisResources.get(userId);
+      const resource = map?.get(resourceId);
+      if (!resource) return { ok: false, error: "resource_not_found" };
+      if ((resource.deployed || 0) > 0) {
+        return { ok: false, error: "resource_deployed", message: "Recall the deployed units before deleting this asset." };
+      }
+      map.delete(resourceId);
+      persist();
+      return { ok: true, result: { deleted: resourceId } };
+    } catch (err) {
+      return { ok: false, error: String(err?.message || err) };
+    }
+  }, { note: "Delete a deployable resource from the player's inventory (refused while units are deployed)." });
 }

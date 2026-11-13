@@ -155,28 +155,28 @@ export function StravaPlanPanel() {
       {showForm && (
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-2">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-            <input placeholder="Plan name" value={name} onChange={(e) => setName(e.target.value)}
+            <input id="fitness-plan-name" name="plan-name" aria-label="Plan name" placeholder="Plan name" value={name} onChange={(e) => setName(e.target.value)}
               className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-            <input placeholder="Goal race (optional)" value={goalRace} onChange={(e) => setGoalRace(e.target.value)}
+            <input id="fitness-goal-race-optional" name="goal-race-optional" aria-label="Goal race (optional)" placeholder="Goal race (optional)" value={goalRace} onChange={(e) => setGoalRace(e.target.value)}
               className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-            <input type="date" value={goalDate} onChange={(e) => setGoalDate(e.target.value)}
+            <input id="fitness-goaldate" name="goaldate" type="date" value={goalDate} onChange={(e) => setGoalDate(e.target.value)}
               className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           </div>
           <p className="text-[11px] text-zinc-400 pt-1">Sessions</p>
           {drafts.map((d, i) => (
             <div key={i} className="grid grid-cols-[1fr_1fr_1fr_0.7fr_auto] gap-2 items-center">
-              <input type="date" value={d.date}
+              <input id="fitness-date-9" name="date-9" type="date" value={d.date}
                 onChange={(e) => setDrafts(drafts.map((x, j) => j === i ? { ...x, date: e.target.value } : x))}
                 className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-              <select value={d.type}
+              <select id="fitness-type-4" name="type-4" value={d.type}
                 onChange={(e) => setDrafts(drafts.map((x, j) => j === i ? { ...x, type: e.target.value } : x))}
                 className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
                 {SESSION_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
-              <input placeholder="Title" value={d.title}
+              <input id="fitness-title-3" name="title-3" aria-label="Title" placeholder="Title" value={d.title}
                 onChange={(e) => setDrafts(drafts.map((x, j) => j === i ? { ...x, title: e.target.value } : x))}
                 className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-              <input placeholder="km" inputMode="decimal" value={d.targetDistanceKm}
+              <input id="fitness-km-2" name="km-2" aria-label="km" placeholder="km" inputMode="decimal" value={d.targetDistanceKm}
                 onChange={(e) => setDrafts(drafts.map((x, j) => j === i ? { ...x, targetDistanceKm: e.target.value } : x))}
                 className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
               <button aria-label="Delete" type="button"
@@ -251,7 +251,7 @@ export function StravaPlanPanel() {
                     className={cn('rounded-lg border px-2 py-1.5 text-[11px]', TYPE_TONE[s.type] || TYPE_TONE.easy)}>
                     <div className="flex items-center justify-between">
                       {editingSession === s.id ? (
-                        <input
+                        <input id="fitness-editdate" name="editdate"
                           type="date"
                           autoFocus
                           value={editDate}

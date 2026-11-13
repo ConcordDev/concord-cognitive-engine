@@ -4,6 +4,7 @@ import { useState, useRef, useCallback } from 'react';
 import { Headphones, Send, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { DAWTrack, MasterBus } from '@/lib/daw/types';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface MixerViewProps {
   tracks: DAWTrack[];
@@ -76,7 +77,7 @@ function ChannelStrip({
       className={cn(
         'w-[88px] flex-shrink-0 bg-black/40 rounded-lg border p-2 flex flex-col items-center gap-1 cursor-pointer transition-colors',
         isSelected ? 'border-neon-cyan/40 bg-neon-cyan/5' : 'border-white/10 hover:border-white/20'
-      )} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+      )} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
       {/* Color indicator + name */}
       <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: track.color }} />
       <span className="text-[10px] font-medium truncate w-full text-center">{track.name}</span>
@@ -161,7 +162,7 @@ function ChannelStrip({
               'px-1 py-0.5 rounded text-[8px] truncate cursor-pointer flex items-center gap-0.5 group/fx',
               fx.enabled ? 'bg-neon-purple/20 text-neon-purple' : 'bg-white/5 text-gray-600'
             )}
-            onClick={e => { e.stopPropagation(); onToggleEffect(fx.id); }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            onClick={e => { e.stopPropagation(); onToggleEffect(fx.id); }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <span className="flex-1 truncate">{fx.name}</span>
             <button
               onClick={e => { e.stopPropagation(); onRemoveEffect(fx.id); }}
@@ -248,7 +249,7 @@ export function MixerView({
                 const y = 1 - (e.clientY - rect.top) / rect.height;
                 const db = Math.round((y * 66 - 60) * 10) / 10;
                 onMasterVolumeChange(Math.max(-60, Math.min(6, db)));
-              }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+              }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
               <div
                 className="absolute bottom-0 w-full bg-gradient-to-t from-neon-green to-neon-cyan rounded-full transition-all"
                 style={{ height: `${((masterBus.volume + 60) / 66) * 100}%` }}

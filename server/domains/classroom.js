@@ -10,6 +10,7 @@
 const OL_BASE = "https://openlibrary.org";
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { badNumber, readingOrNull } from "../lib/finite-input.js";
 export default function registerClassroomActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -192,6 +193,15 @@ export default function registerClassroomActions(registerLensAction) {
     }
   }
   function uid(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
+  // A day with no time is the end of that day. A blank due date stays unset.
+  // Anything else is refused instead of stored as a string the board cannot read.
+  function normalizeDue(raw) {
+    if (raw == null || String(raw).trim() === "") return { dueAt: null };
+    const s = String(raw).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return { dueAt: `${s}T23:59` };
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s) && !Number.isNaN(Date.parse(s))) return { dueAt: s };
+    return { error: "Due date needs a day and a time, like 2026-11-10T15:00." };
+  }
   function rid(prefix) { return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`; }
   function pushTo(map, key, item) {
     if (!map.has(key)) map.set(key, []);
@@ -211,8 +221,14 @@ export default function registerClassroomActions(registerLensAction) {
       const userId = uid(ctx);
       const title = String(params.title || "").trim();
       const cohortId = Number(params.cohortId);
-      if (!title) return { ok: false, error: "title required" };
+      if (!title) return { ok: false, error: "title required", message: "Assignment title is required." };
       if (!Number.isFinite(cohortId)) return { ok: false, error: "cohortId required" };
+      const points = params.points === undefined || params.points === null || params.points === ""
+        ? 100
+        : readingOrNull(params.points, { min: 0, max: 1000, fallback: null });
+      if (points === null) return badNumber("points", "must be a number from 0 to 1000");
+      const due = normalizeDue(params.dueAt);
+      if (due.error) return { ok: false, error: "invalid_due", message: due.error };
       const assignment = {
         id: rid("asg"),
         cohortId,
@@ -221,8 +237,8 @@ export default function registerClassroomActions(registerLensAction) {
         attachments: Array.isArray(params.attachments)
           ? params.attachments.slice(0, 20).map((a) => String(a).slice(0, 300))
           : [],
-        dueAt: params.dueAt ? String(params.dueAt) : null,
-        points: Math.max(0, Math.min(1000, Number(params.points) || 100)),
+        dueAt: due.dueAt,
+        points,
         topic: String(params.topic || "").slice(0, 80) || null,
         status: "published",
         createdAt: new Date().toISOString(),
@@ -242,18 +258,20 @@ export default function registerClassroomActions(registerLensAction) {
       if (!state) return { ok: false, error: "STATE unavailable" };
       const userId = uid(ctx);
       let list = state.assignments.get(userId) || [];
+      let other = [];
       if (params.cohortId !== undefined && params.cohortId !== null && params.cohortId !== "") {
         const c = Number(params.cohortId);
-        list = list.filter((a) => a.cohortId === c);
+        other = list.filter((a) => Number(a.cohortId) !== c);
+        list = list.filter((a) => Number(a.cohortId) === c);
       }
       const subs = state.submissions.get(userId) || [];
       const grades = state.grades.get(userId) || [];
-      const enriched = list.map((a) => {
+      const enrich = (rows) => rows.map((a) => {
         const subCount = subs.filter((s) => s.assignmentId === a.id).length;
         const gradedCount = grades.filter((g) => g.assignmentId === a.id).length;
         return { ...a, submissionCount: subCount, gradedCount };
       });
-      return { ok: true, result: { assignments: [...enriched].reverse() } };
+      return { ok: true, result: { assignments: [...enrich(list)].reverse(), other: [...enrich(other)].reverse() } };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
@@ -515,9 +533,11 @@ export default function registerClassroomActions(registerLensAction) {
       if (!state) return { ok: false, error: "STATE unavailable" };
       const userId = uid(ctx);
       let list = state.materials.get(userId) || [];
+      let other = [];
       if (params.cohortId !== undefined && params.cohortId !== null && params.cohortId !== "") {
         const c = Number(params.cohortId);
-        list = list.filter((m) => m.cohortId === c);
+        other = list.filter((m) => Number(m.cohortId) !== c);
+        list = list.filter((m) => Number(m.cohortId) === c);
       }
       // group by topic for a tabbed materials view
       const byTopic = {};
@@ -526,7 +546,7 @@ export default function registerClassroomActions(registerLensAction) {
         if (!byTopic[t]) byTopic[t] = [];
         byTopic[t].push(m);
       }
-      return { ok: true, result: { materials: [...list].reverse(), byTopic } };
+      return { ok: true, result: { materials: [...list].reverse(), other: [...other].reverse(), byTopic } };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
@@ -641,12 +661,14 @@ export default function registerClassroomActions(registerLensAction) {
           points: Math.max(1, Math.min(100, Number(q.points) || 1)),
         });
       }
+      const quizDue = normalizeDue(params.dueAt);
+      if (quizDue.error) return { ok: false, error: "invalid_due", message: quizDue.error };
       const quiz = {
         id: rid("qz"),
         cohortId,
         title,
         description: String(params.description || "").slice(0, 2000),
-        dueAt: params.dueAt ? String(params.dueAt) : null,
+        dueAt: quizDue.dueAt,
         questions,
         totalPoints: questions.reduce((s, q) => s + q.points, 0),
         createdAt: new Date().toISOString(),

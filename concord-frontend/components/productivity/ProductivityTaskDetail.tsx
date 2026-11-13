@@ -319,22 +319,22 @@ export function ProductivityTaskDetail({ taskId, onChange }: { taskId: string; o
               <span className="text-xs text-zinc-400">days</span>
             </>
           )}
-          {savingRecur && <Loader2 className="w-3.5 h-3.5 animate-spin text-zinc-500" />}
+          {savingRecur && <Loader2 className="w-3.5 h-3.5 animate-spin text-zinc-400" />}
         </div>
         {recurKind !== 'none' && task.dueDate && (
-          <p className="text-[11px] text-zinc-500">
+          <p className="text-[11px] text-zinc-400">
             Next occurrence after completion: {mirrorAdvanceDate(task.dueDate, backendRecurValue(recurKind, recurN))}
           </p>
         )}
         {recurKind !== 'none' && !task.dueDate && (
-          <p className="text-[11px] text-zinc-500">Set a due date to see the next occurrence.</p>
+          <p className="text-[11px] text-zinc-400">Set a due date to see the next occurrence.</p>
         )}
       </div>
 
       {/* Assignee */}
       <div className="flex gap-2 items-center">
         <UserPlus className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-        <input placeholder="Assignee — @username or profile name" value={assignee} onChange={(e) => setAssignee(e.target.value)}
+        <input aria-label="Assignee" placeholder="Assignee — @username or profile name" value={assignee} onChange={(e) => setAssignee(e.target.value)}
           className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-100" />
         <button type="button" onClick={assign}
           className="px-3 py-1.5 text-xs font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg">
@@ -370,7 +370,7 @@ export function ProductivityTaskDetail({ taskId, onChange }: { taskId: string; o
           </div>
         ))}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-1.5">
-          <input placeholder="New subtask" value={subForm.content} onChange={(e) => setSubForm({ ...subForm, content: e.target.value })}
+          <input aria-label="New subtask title" placeholder="New subtask" value={subForm.content} onChange={(e) => setSubForm({ ...subForm, content: e.target.value })}
             className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <select value={subForm.priority} onChange={(e) => setSubForm({ ...subForm, priority: e.target.value })}
             aria-label="New subtask priority"
@@ -405,7 +405,7 @@ export function ProductivityTaskDetail({ taskId, onChange }: { taskId: string; o
           </div>
         ))}
         <div className="flex gap-2">
-          <input placeholder="Add a comment" value={commentBody} onChange={(e) => setCommentBody(e.target.value)}
+          <input aria-label="Add a comment" placeholder="Add a comment" value={commentBody} onChange={(e) => setCommentBody(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') void addComment(); }}
             className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-100" />
           <button type="button" onClick={addComment}

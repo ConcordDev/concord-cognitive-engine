@@ -179,7 +179,7 @@ export function LinguisticsActionPanel() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <div className="md:col-span-1 space-y-2">
           <input type="text" value={word} onChange={(e) => { setWord(e.target.value); setDictResult(null); setDatamuseWords([]); setAgentReply(null); setMintedDtuId(null); setPublishedDtuId(null); }} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Word" />
-          <select value={datamuseMode} onChange={(e) => setDatamuseMode(e.target.value as typeof datamuseMode)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white">
+          <select aria-label="Word list mode" value={datamuseMode} onChange={(e) => setDatamuseMode(e.target.value as typeof datamuseMode)} className="min-h-11 w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white">
             <option value="ml">means-like</option>
             <option value="rel_rhy">rhymes</option>
             <option value="rel_syn">synonyms</option>
@@ -262,7 +262,7 @@ export function LinguisticsActionPanel() {
           </div>
         )}
         {frequencyResult && (
-          <p className="text-[10px] text-zinc-500 italic">Content words only — stopwords (the, a, of, and…) are excluded from this list.</p>
+          <p className="text-[10px] text-zinc-400 italic">Content words only — stopwords (the, a, of, and…) are excluded from this list.</p>
         )}
         {frequencyResult && (
           <div className="rounded-md border border-cyan-500/30 bg-cyan-500/5 p-2.5 max-h-72 overflow-y-auto">

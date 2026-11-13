@@ -33,6 +33,7 @@ import { ArtifactRenderer } from '@/components/artifact/ArtifactRenderer';
 import { ArtifactUploader } from '@/components/artifact/ArtifactUploader';
 import { FeedbackWidget } from '@/components/feedback/FeedbackWidget';
 import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -590,12 +591,12 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
     const scaledCost = (d.cost || 0) * scaleFactor;
 
     return (
-      <div className={ds.modalBackdrop} onClick={() => setRecipeScaleId(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+      <div className={ds.modalBackdrop} onClick={() => setRecipeScaleId(null)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
         <div className={ds.modalContainer}>
-          <div className={cn(ds.modalPanel, 'max-w-2xl max-h-[85vh] overflow-y-auto')} onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          <div className={cn(ds.modalPanel, 'max-w-2xl max-h-[85vh] overflow-y-auto')} onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <div className="flex items-center justify-between p-6 border-b border-lattice-border">
               <div>
-                <h2 className={ds.heading2}>Recipe Scaler</h2>
+                <h2 className={cn(ds.heading2, 'text-zinc-100')}>Recipe Scaler</h2>
                 <p className={ds.textMuted}>{item.title}</p>
               </div>
               <button onClick={() => setRecipeScaleId(null)} className={ds.btnGhost} aria-label="Close"><X className="w-5 h-5" /></button>
@@ -706,7 +707,7 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className={cn(ds.heading2, 'flex items-center gap-2')}>
+          <h2 className={cn(ds.heading2, 'flex items-center gap-2 text-zinc-100')}>
             <PieChart className="w-5 h-5 text-neon-cyan" /> Menu Engineering Matrix
           </h2>
           <button onClick={() => setShowMenuMatrix(false)} className={ds.btnGhost}><X className="w-4 h-4" /> Close</button>
@@ -731,7 +732,7 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
                     {quadrants[q].map(({ item, data }) => {
                       const foodCostPct = data.price > 0 ? (data.cost / data.price) * 100 : 0;
                       return (
-                        <div key={item.id} className="flex items-center justify-between p-2 rounded-lg bg-lattice-elevated/50 hover:bg-lattice-elevated cursor-pointer" onClick={() => openEdit(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                        <div key={item.id} className="flex items-center justify-between p-2 rounded-lg bg-lattice-elevated/50 hover:bg-lattice-elevated cursor-pointer" onClick={() => openEdit(item)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                           <div>
                             <p className="text-sm font-medium">{item.title}</p>
                             <p className={cn(ds.textMuted, 'text-xs')}>{data.section || data.category}</p>
@@ -784,7 +785,7 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className={cn(ds.heading2, 'flex items-center gap-2')}>
+          <h2 className={cn(ds.heading2, 'flex items-center gap-2 text-zinc-100')}>
             <Trash2 className="w-5 h-5 text-red-400" /> Waste Log
           </h2>
           <button onClick={() => setShowWasteLog(false)} className={ds.btnGhost}><X className="w-4 h-4" /> Close</button>
@@ -882,7 +883,7 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className={cn(ds.heading2, 'flex items-center gap-2')}>
+          <h2 className={cn(ds.heading2, 'flex items-center gap-2 text-zinc-100')}>
             <ClipboardList className="w-5 h-5 text-cyan-400" /> Inventory Count Sheet
           </h2>
           <div className="flex items-center gap-2">
@@ -952,7 +953,7 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className={cn(ds.heading2, 'flex items-center gap-2')}>
+          <h2 className={cn(ds.heading2, 'flex items-center gap-2 text-zinc-100')}>
             <DollarSign className="w-5 h-5 text-green-400" /> Supplier Price Comparison
           </h2>
           <button onClick={() => setShowSupplierCompare(false)} className={ds.btnGhost}><X className="w-4 h-4" /> Close</button>
@@ -1009,7 +1010,7 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className={cn(ds.heading2, 'flex items-center gap-2')}>
+          <h2 className={cn(ds.heading2, 'flex items-center gap-2 text-zinc-100')}>
             <ClipboardList className="w-5 h-5 text-green-400" /> Prep List
           </h2>
           <div className="flex items-center gap-2">
@@ -1116,7 +1117,7 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className={cn(ds.heading2, 'flex items-center gap-2')}>
+          <h2 className={cn(ds.heading2, 'flex items-center gap-2 text-zinc-100')}>
             <Armchair className="w-5 h-5 text-blue-400" /> Floor Plan & Tables
           </h2>
           <button onClick={() => setShowFloorPlan(false)} className={ds.btnGhost}><X className="w-4 h-4" /> Close</button>
@@ -1260,7 +1261,7 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className={cn(ds.heading2, 'flex items-center gap-2')}>
+          <h2 className={cn(ds.heading2, 'flex items-center gap-2 text-zinc-100')}>
             <CalendarDays className="w-5 h-5 text-purple-400" /> Labor Schedule
           </h2>
           <div className="flex items-center gap-2">
@@ -1393,7 +1394,7 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
     return (
       <div className="space-y-6">
         <div className={ds.sectionHeader}>
-          <h2 className={cn(ds.heading2, 'flex items-center gap-2')}>
+          <h2 className={cn(ds.heading2, 'flex items-center gap-2 text-zinc-100')}>
             <CalendarDays className="w-5 h-5 text-neon-cyan" /> Weekly Meal Plan
           </h2>
           <div className="flex items-center gap-2">
@@ -1427,12 +1428,12 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
                     <div key={`${day}-${mealType}`}
                       className={cn('p-2 rounded-lg border border-lattice-border bg-lattice-surface min-h-[70px]',
                         'hover:border-neon-cyan/30 transition-colors cursor-pointer')}
-                      onClick={() => addMealQuick(day, mealType)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                      onClick={() => addMealQuick(day, mealType)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                       {meals.length > 0 ? meals.map(m => {
                         const md = m.data as unknown as FoodArtifact;
                         return (
                           <div key={m.id} className="group/meal flex items-center gap-1 text-xs p-1.5 rounded bg-neon-cyan/10 text-neon-cyan mb-1"
-                            onClick={e => { e.stopPropagation(); openEdit(m); }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                            onClick={e => { e.stopPropagation(); openEdit(m); }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                             <span className="truncate flex-1">{m.title}</span>
                             {md.calories ? <span className="text-gray-400">{md.calories}cal</span> : null}
                             <button
@@ -1563,7 +1564,7 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
       <div className="space-y-6">
         <div className={ds.sectionHeader}>
           <div>
-            <h2 className={cn(ds.heading2, 'flex items-center gap-2')}>
+            <h2 className={cn(ds.heading2, 'flex items-center gap-2 text-zinc-100')}>
               <ShoppingCart className="w-5 h-5 text-green-400" /> Shopping List
             </h2>
             <p className={ds.textMuted}>{checkedCount}/{totalItems} items checked off</p>
@@ -1661,7 +1662,7 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
 
     return (
       <div className="space-y-6">
-        <h2 className={cn(ds.heading2, 'flex items-center gap-2')}>
+        <h2 className={cn(ds.heading2, 'flex items-center gap-2 text-zinc-100')}>
           <Flame className="w-5 h-5 text-orange-400" /> Nutrition Tracker
         </h2>
 
@@ -1730,7 +1731,7 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
               {recipesWithNutrition.map(recipe => {
                 const d = recipe.data as unknown as FoodArtifact;
                 return (
-                  <div key={recipe.id} className="flex items-center justify-between p-3 rounded-lg bg-lattice-elevated/50 hover:bg-lattice-elevated cursor-pointer" onClick={() => openEdit(recipe)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                  <div key={recipe.id} className="flex items-center justify-between p-3 rounded-lg bg-lattice-elevated/50 hover:bg-lattice-elevated cursor-pointer" onClick={() => openEdit(recipe)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                     <div>
                       <p className="font-medium text-white">{recipe.title}</p>
                       <p className={ds.textMuted}>{d.servings || 1} servings - {d.category}</p>
@@ -1780,7 +1781,7 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
     return (
       <div className="space-y-6">
         <div className={ds.sectionHeader}>
-          <h2 className={cn(ds.heading2, 'flex items-center gap-2')}>
+          <h2 className={cn(ds.heading2, 'flex items-center gap-2 text-zinc-100')}>
             <Package className="w-5 h-5 text-neon-cyan" /> Pantry Inventory
           </h2>
           <button onClick={openCreate} className={ds.btnPrimary}><Plus className="w-4 h-4" /> Add Item</button>
@@ -1790,7 +1791,7 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
         <div className={ds.grid3}>
           <div className={cn(ds.panel, 'border-l-4 border-l-neon-cyan')}>
             <p className={ds.textMuted}>Total Items</p>
-            <p className={ds.heading2}>{pantryItems.length}</p>
+            <p className={cn(ds.heading2, 'text-zinc-100')}>{pantryItems.length}</p>
           </div>
           <div className={cn(ds.panel, 'border-l-4 border-l-yellow-400')}>
             <p className={ds.textMuted}>Expiring Soon</p>
@@ -1847,7 +1848,7 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
                   const d = item.data as unknown as FoodArtifact;
                   const daysLeft = d.expiryDate ? Math.ceil((new Date(d.expiryDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 999;
                   return (
-                    <div key={item.id} className="flex items-center justify-between p-3 rounded-lg bg-lattice-elevated/50 hover:bg-lattice-elevated cursor-pointer" onClick={() => openEdit(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                    <div key={item.id} className="flex items-center justify-between p-3 rounded-lg bg-lattice-elevated/50 hover:bg-lattice-elevated cursor-pointer" onClick={() => openEdit(item)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                       <div className="flex-1">
                         <p className="text-sm font-medium text-white">{item.title}</p>
                         <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
@@ -1940,10 +1941,10 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative flex-1 min-w-[220px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input ref={searchInputRef}
+            <input ref={searchInputRef} aria-label={`Search ${activeTab}`}
               type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder={`Search ${activeTab}...`} className={cn(ds.input, 'pl-10')} />
           </div>
-          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value as Status | 'all')} className={cn(ds.select, 'w-40')}>
+          <select aria-label="Recipe status" value={filterStatus} onChange={e => setFilterStatus(e.target.value as Status | 'all')} className={cn(ds.select, 'w-40')}>
             <option value="all">All statuses</option>
             {Object.entries(STATUS_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
           </select>
@@ -2233,11 +2234,11 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
   const renderEditor = () => {
     if (!editorOpen) return null;
     return (
-      <div className={ds.modalBackdrop} onClick={() => setEditorOpen(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+      <div className={ds.modalBackdrop} onClick={() => setEditorOpen(false)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
         <div className={ds.modalContainer}>
-          <div className={cn(ds.modalPanel, 'max-w-2xl max-h-[85vh] overflow-y-auto')} onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          <div className={cn(ds.modalPanel, 'max-w-2xl max-h-[85vh] overflow-y-auto')} onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <div className="flex items-center justify-between p-6 border-b border-lattice-border">
-              <h2 className={ds.heading2}>{editingItem ? `Edit ${activeArtifactType}` : `New ${activeArtifactType}`}</h2>
+              <h2 className={cn(ds.heading2, 'text-zinc-100')}>{editingItem ? `Edit ${activeArtifactType}` : `New ${activeArtifactType}`}</h2>
               <button onClick={() => setEditorOpen(false)} className={ds.btnGhost} aria-label="Close"><X className="w-5 h-5" /></button>
             </div>
             <div className="p-6 space-y-4">
@@ -2701,7 +2702,7 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
           {items.slice(0, 5).map(item => {
             const d = item.data as unknown as FoodArtifact;
             return (
-              <div key={item.id} className="flex items-center gap-3 p-3 rounded-lg bg-lattice-surface/50 hover:bg-lattice-surface cursor-pointer" onClick={() => openEdit(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+              <div key={item.id} className="flex items-center gap-3 p-3 rounded-lg bg-lattice-surface/50 hover:bg-lattice-surface cursor-pointer" onClick={() => openEdit(item)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">{item.title}</p>
                   <p className={ds.textMuted}>{d.type} {d.category ? `- ${d.category}` : ''}</p>

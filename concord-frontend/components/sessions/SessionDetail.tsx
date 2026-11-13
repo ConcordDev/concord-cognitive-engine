@@ -15,6 +15,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import {
   X, Pencil, MessageSquarePlus, Pause, Play, CheckCircle2, XCircle,
   RefreshCw, ChevronRight,
@@ -213,6 +214,15 @@ export function SessionDetail({
                 >
                   <Pencil className="w-3.5 h-3.5" /> Rename
                 </button>
+                <StickyDeleteConfirm
+                  onConfirm={() => { void mutate('remove', { sessionId }).then((ok) => { if (ok) onClose(); }); }}
+                  armLabel="Delete"
+                  armAriaLabel="Delete session"
+                  confirmAriaLabel="Confirm delete session"
+                  confirmLabel="Delete this session?"
+                  className="inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded border border-rose-500/40 text-rose-300"
+                  disabled={busy}
+                />
                 {active && session.status === 'open' && (
                   <button
                     type="button"

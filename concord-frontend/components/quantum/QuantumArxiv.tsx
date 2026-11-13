@@ -50,7 +50,7 @@ export function QuantumArxiv() {
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-cyan-500/15 pb-3">
         <div className="flex items-center gap-2"><Atom className="h-5 w-5 text-violet-400" /><h2 className="text-sm font-semibold text-white">Real-world quantum research</h2><span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">arxiv · {cat}</span></div>
         <div className="flex items-center gap-2">
-          <select value={cat} onChange={(e) => setCat(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">{CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}</select>
+          <select value={cat} onChange={(e) => setCat(e.target.value)} aria-label="arXiv category" className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">{CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}</select>
           {list.length > 0 && <SaveAsDtuButton compact apiSource="arxiv-quantum" apiUrl={`https://export.arxiv.org/api/query?search_query=cat:${cat}`} title={`arXiv quantum — ${cat} (${list.length})`} content={list.slice(0, 15).map((p, i) => `${i + 1}. ${p.title}\n   ${p.authors.slice(0, 3).join(', ')} · ${p.published.slice(0, 10)}\n   ${p.link}`).join('\n\n')} extraTags={['quantum', 'arxiv', cat]} rawData={{ category: cat, papers: list }} defaultContentClass="knowledge" />}
         </div>
       </header>

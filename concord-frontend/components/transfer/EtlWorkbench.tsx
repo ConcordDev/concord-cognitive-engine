@@ -19,6 +19,7 @@ import {
   Database, Plug, GitBranch, Play, FlaskConical, History, AlertTriangle,
   Plus, Trash2, RefreshCw, ArrowRight, Clock, ShieldCheck, X, Wand2, Download, Globe,
 } from 'lucide-react';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 const DOMAIN = 'transfer';
 
@@ -298,6 +299,7 @@ export function EtlWorkbench() {
           <button onClick={addConnector} disabled={!cName.trim() || (cKind === 'url' && !cUrl.trim()) || busy === 'connector'} className="btn-neon w-full text-xs flex items-center justify-center gap-1.5">
             <Plus className="w-3.5 h-3.5" /> {busy === 'connector' ? 'Probing…' : 'Register connector'}
           </button>
+          {!cName.trim() ? <span role="note" className="text-xs text-gray-400">Connector name is required.</span> : cKind === 'url' && !cUrl.trim() && <span role="note" className="text-xs text-gray-400">Connector URL is required.</span>}
           <div className="space-y-1.5 max-h-56 overflow-y-auto">
             {connectors.length === 0 && <p className="text-center py-3 text-gray-400 text-xs">No connectors yet.</p>}
             {connectors.map((c) => {
@@ -380,6 +382,7 @@ export function EtlWorkbench() {
             <button onClick={addPipeline} disabled={!pName.trim() || !pSource || busy === 'pipeline'} className="btn-neon purple w-full text-xs flex items-center justify-center gap-1.5">
               <Plus className="w-3.5 h-3.5" /> {busy === 'pipeline' ? 'Creating…' : 'Create pipeline'}
             </button>
+            {!pName.trim() ? <span role="note" className="text-xs text-gray-400">Pipeline name is required.</span> : !pSource && <span role="note" className="text-xs text-gray-400">Pick a source connector.</span>}
           </div>
           <div className="space-y-1.5 max-h-56 overflow-y-auto">
             {pipelines.length === 0 && <p className="text-center py-3 text-gray-400 text-xs">No pipelines yet.</p>}
@@ -387,7 +390,7 @@ export function EtlWorkbench() {
               <div
                 key={p.id}
                 className={`lens-card text-xs space-y-1.5 cursor-pointer ${selectedPipeline === p.id ? 'ring-1 ring-neon-purple/60' : ''}`}
-                onClick={() => setSelectedPipeline(p.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                onClick={() => setSelectedPipeline(p.id)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                 <div className="flex items-center justify-between">
                   <span className="font-medium">{p.name}</span>
                   <div className="flex items-center gap-1">

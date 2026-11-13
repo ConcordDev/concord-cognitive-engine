@@ -208,7 +208,7 @@ export default function GlobalLensPage() {
           >
             <stat.icon className={`mb-2 h-5 w-5 ${stat.color}`} />
             <p className="text-2xl font-semibold text-zinc-100">{stat.value}</p>
-            <p className="text-sm text-zinc-500">{stat.label}</p>
+            <p className="text-sm text-zinc-400">{stat.label}</p>
           </motion.div>
         ))}
       </div>
@@ -354,8 +354,8 @@ export default function GlobalLensPage() {
                       </div>
                     </div>
                     <div className="flex gap-2 items-center">
-                      <select
-                        className="bg-lattice-void border border-lattice-border rounded px-2 py-2 text-sm"
+                      <select aria-label={`Sync ${dtu.title || 'DTU'} to another lens`}
+                        className="min-h-11 bg-lattice-void border border-lattice-border rounded px-2 py-2 text-sm"
                         defaultValue=""
                         onChange={(e) => {
                           const lens = e.target.value;

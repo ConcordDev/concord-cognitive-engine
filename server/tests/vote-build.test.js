@@ -28,6 +28,15 @@ test("S1: a zero-ballot poll resolves unresolved with no winner", async () => {
   globalThis._concordSTATE = {};
   const a = makeRegistry();
   const run = (name, ctx, params = {}) => a.get(`vote.${name}`)(ctx, undefined, params);
+  // FIX-vote-003: duplicate options + over-limit description refuse by name.
+  const dup = await run("poll-create", founder, { title: "Dup", method: "plurality", options: ["Yes", "Yes"] });
+  assert.equal(dup.ok, false);
+  assert.match(dup.error, /options must be unique/);
+  const longDesc = await run("poll-create", founder, { title: "Long", method: "plurality", options: ["A", "B"], description: "x".repeat(2001) });
+  assert.equal(longDesc.ok, false);
+  assert.match(longDesc.error, /2,000 characters or fewer/);
+  const atLimit = await run("poll-create", founder, { title: "AtLimit", method: "plurality", options: ["A", "B"], description: "x".repeat(2000) });
+  assert.equal(atLimit.ok, true);
   const poll = (await run("poll-create", founder, { title: "Empty", method: "plurality", options: ["Yes", "No"] })).result.poll;
   await run("poll-close", founder, { pollId: poll.id });
   const res = (await run("poll-results", founder, { pollId: poll.id })).result;

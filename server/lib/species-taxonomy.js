@@ -71,6 +71,14 @@ function inferTopology(speciesId) {
  * The taxonomy record for a species id. Authored first, inferred otherwise.
  * Always returns a complete record (total).
  */
+/** Authored catalog row only. Unknown ids are null, not an inferred mammal. */
+export function authoredTaxonomy(speciesId) {
+  const id = String(speciesId || "").replace(/^creature:/, "");
+  const authored = catalog()[id];
+  if (!authored || !authored.clade || !authored.topology) return null;
+  return { clade: authored.clade, topology: authored.topology, diet: authored.diet || "omnivore" };
+}
+
 export function taxonomyForSpecies(speciesId) {
   const id = String(speciesId || "").replace(/^creature:/, "");
   const authored = catalog()[id];

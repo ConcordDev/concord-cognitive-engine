@@ -27,6 +27,7 @@ export function InspectionChecklists() {
   const [progress, setProgress] = useState<Record<string, Progress>>({});
   const [newTpl, setNewTpl] = useState('rough_in');
   const [jobName, setJobName] = useState('');
+  const [formError, setFormError] = useState<string | null>(null);
 
   const refreshTemplates = useCallback(async () => {
     const r = await lensRun<{ templates: Template[] }>('electrical', 'checklistTemplates', {});
@@ -47,9 +48,17 @@ export function InspectionChecklists() {
 
   const createChecklist = useMutation({
     mutationFn: async () => {
-      const r = await lensRun<Checklist>('electrical', 'checklistCreate', { template: newTpl, jobName: jobName || undefined });
+      const name = jobName.trim();
+      if (!name) { setFormError('Job name is required.'); return; }
+      if (name.length > 120) { setFormError('Job name must be 120 characters or fewer.'); return; }
+      const r = await lensRun<Checklist>('electrical', 'checklistCreate', { template: newTpl, jobName: name });
+      if (!r.data?.ok || !r.data.result) {
+        setFormError(r.data?.message || r.data?.error || 'Could not create that checklist.');
+        return;
+      }
+      setFormError(null);
       await refreshChecklists();
-      if (r.data.result) setActiveId(r.data.result.id);
+      setActiveId(r.data.result.id);
       setJobName('');
     },
   });
@@ -94,12 +103,13 @@ export function InspectionChecklists() {
               {templates.map((t) => <option key={t.key} value={t.key}>{t.label} ({t.itemCount} items)</option>)}
             </select>
           </label>
-          <label className="flex-1 min-w-[160px]"><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Job name (optional)</span>
+          <label className="flex-1 min-w-[160px]"><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Job name</span>
             <input value={jobName} onChange={(e) => setJobName(e.target.value)} placeholder="e.g. 123 Oak St — Rough-In" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white" />
           </label>
           <button type="button" onClick={() => createChecklist.mutate()} disabled={createChecklist.isPending} className="rounded bg-rose-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-400 disabled:opacity-50">
             {createChecklist.isPending ? <Loader2 className="mx-auto h-3.5 w-3.5 animate-spin" /> : 'Create checklist'}
           </button>
+          {formError && <p role="alert" className="w-full text-xs text-rose-300">{formError}</p>}
         </div>
 
         {checklists.length > 0 && (

@@ -53,7 +53,7 @@ export function TournamentListPanel({
               >
                 <div className="flex-1">
                   <div className="flex items-baseline gap-3">
-                    <h3 className="font-semibold text-amber-100">{t.title}</h3>
+                    <h2 className="font-semibold text-amber-100">{t.title}</h2>
                     <span className="text-xs text-slate-400">{t.game}</span>
                   </div>
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-400">

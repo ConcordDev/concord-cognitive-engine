@@ -41,6 +41,7 @@ interface PriceResult {
 export function ListingsPanel() {
   const [list, setList] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'published' | 'draft' | 'archived'>('all');
   const [creating, setCreating] = useState(false);
   const [draft, setDraft] = useState({ title: '', kind: 'digital_download', priceUsd: '', description: '', tags: '', stockQty: '', images: '' });
@@ -56,10 +57,16 @@ export function ListingsPanel() {
 
   async function refresh() {
     setLoading(true);
+    setLoadError(null);
     try {
       const r = await lensRun({ domain: 'marketplace', action: 'listings-list', input: { status: filter } });
       setList((r.data?.result?.listings || []) as Listing[]);
-    } catch (e) { console.error('[Listings] failed', e); }
+    } catch (e) {
+      console.error('[Listings] failed', e);
+      // FIX-marketplace-005: a failed load used to fall through to an
+      // empty table that read as "no listings". Say so, with a retry.
+      setLoadError('Your listings could not be loaded. Check your connection and try again.');
+    }
     finally { setLoading(false); }
   }
 
@@ -162,7 +169,10 @@ export function ListingsPanel() {
 
         {creating && (
           <div className="px-4 py-3 border-b border-white/10 grid grid-cols-12 gap-2">
-            <input value={draft.title} onChange={e => setDraft({ ...draft, title: e.target.value })} placeholder="Title *" className="col-span-6 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+            <div className="col-span-6">
+              <input value={draft.title} maxLength={120} onChange={e => setDraft({ ...draft, title: e.target.value })} placeholder="Title *" aria-label="Listing title" className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+              <p className="mt-0.5 text-right text-[10px] text-gray-500">{draft.title.length} / 120</p>
+            </div>
             <select value={draft.kind} onChange={e => setDraft({ ...draft, kind: e.target.value })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
               {KINDS.map(k => <option key={k} value={k}>{k.replace(/_/g, ' ')}</option>)}
             </select>
@@ -178,6 +188,11 @@ export function ListingsPanel() {
         <div className="max-h-[32rem] overflow-y-auto">
           {loading ? (
             <SkeletonTableRows rows={6} columns={5} />
+          ) : loadError ? (
+            <div role="alert" className="px-3 py-10 text-center text-xs text-rose-300">
+              {loadError}
+              <button onClick={refresh} aria-label="Retry loading listings" className="mx-auto mt-3 block rounded border border-rose-400/40 bg-rose-500/15 px-3 py-1.5 text-[11px] text-rose-100 hover:bg-rose-500/25">Retry</button>
+            </div>
           ) : list.length === 0 ? (
             <div className="px-3 py-10 text-center text-xs text-gray-400"><Tag className="w-6 h-6 mx-auto mb-2 opacity-30" />No listings yet.</div>
           ) : (
@@ -221,7 +236,10 @@ export function ListingsPanel() {
                       <div className="px-4 pb-3 bg-black/30 space-y-2">
                         {editingId === l.id ? (
                           <div className="grid grid-cols-12 gap-2 pt-2">
-                            <input value={editDraft.title} onChange={e => setEditDraft({ ...editDraft, title: e.target.value })} placeholder="Title" className="col-span-6 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                            <div className="col-span-6">
+                              <input value={editDraft.title} maxLength={120} onChange={e => setEditDraft({ ...editDraft, title: e.target.value })} placeholder="Title" aria-label="Listing title" className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                              <p className="mt-0.5 text-right text-[10px] text-gray-500">{editDraft.title.length} / 120</p>
+                            </div>
                             <input type="number" step="0.01" value={editDraft.priceUsd} onChange={e => setEditDraft({ ...editDraft, priceUsd: e.target.value })} placeholder="Price USD" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
                             <input type="number" value={editDraft.stockQty} onChange={e => setEditDraft({ ...editDraft, stockQty: e.target.value })} placeholder="Stock (blank = ∞)" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
                             <input value={editDraft.tags} onChange={e => setEditDraft({ ...editDraft, tags: e.target.value })} placeholder="Tags (comma-separated)" className="col-span-8 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />

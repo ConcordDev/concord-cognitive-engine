@@ -8,6 +8,7 @@ import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { apiHelpers } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import {
   Hammer,
   HardHat,
@@ -59,6 +60,7 @@ import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
 import { showToast } from '@/components/common/Toasts';
 import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -255,6 +257,7 @@ export default function ProjectDeskPanel() {
 
   // ----- Editor form state -----
   const [formName, setFormName] = useState('');
+  const [saveError, setSaveError] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formClient, setFormClient] = useState('');
   const [formAddress, setFormAddress] = useState('');
@@ -398,6 +401,11 @@ export default function ProjectDeskPanel() {
   };
 
   const handleSave = async () => {
+    if (!formName.trim()) {
+      setSaveError('A job needs a name.');
+      return;
+    }
+    setSaveError('');
     const payload = {
       title: formName,
       data: {
@@ -432,7 +440,13 @@ export default function ProjectDeskPanel() {
 
   const handleAction = async (action: string, artifactId?: string) => {
     const targetId = artifactId || editingItem?.id || filtered[0]?.id;
-    if (!targetId) return;
+    if (!targetId) {
+      // FIX-trades-007: the quick actions used to return in silence on an
+      // empty Project Desk. Name the missing precondition in the result
+      // panel instead — the panel renders `message` (below).
+      setActionResult({ message: 'No project yet — add or select a project in the Project Desk first, then run this action on it.' });
+      return;
+    }
     try {
       const result = await runAction.mutateAsync({ id: targetId, action });
       if (result.ok === false) {
@@ -764,7 +778,7 @@ export default function ProjectDeskPanel() {
           {/* Gantt grid */}
           {sortedPhases.length === 0 ? (
             <div className="text-center py-8">
-              <Calendar className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+              <Calendar className="w-10 h-10 text-gray-400 mx-auto mb-3" />
               <p className={ds.textMuted}>No phases added yet. Add phases to see the timeline.</p>
             </div>
           ) : (
@@ -1088,7 +1102,7 @@ export default function ProjectDeskPanel() {
           {/* Change orders list */}
           {changeOrders.length === 0 ? (
             <div className="text-center py-8">
-              <FileCheck className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+              <FileCheck className="w-10 h-10 text-gray-400 mx-auto mb-3" />
               <p className={ds.textMuted}>No change orders. They will appear here when added.</p>
             </div>
           ) : (
@@ -1182,7 +1196,7 @@ export default function ProjectDeskPanel() {
         {/* Time entries table */}
         {timeEntries.length === 0 ? (
           <div className="text-center py-8">
-            <Timer className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+            <Timer className="w-10 h-10 text-gray-400 mx-auto mb-3" />
             <p className={ds.textMuted}>No time entries logged yet.</p>
           </div>
         ) : (
@@ -1259,7 +1273,7 @@ export default function ProjectDeskPanel() {
 
           {!selectedJob ? (
             <div className="text-center py-8">
-              <PieChart className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+              <PieChart className="w-10 h-10 text-gray-400 mx-auto mb-3" />
               <p className={ds.textMuted}>Select a job from the Jobs tab to view Profit & Loss analysis.</p>
             </div>
           ) : (
@@ -1446,7 +1460,7 @@ export default function ProjectDeskPanel() {
           {/* Materials table */}
           {matEntries.length === 0 ? (
             <div className="text-center py-8">
-              <Package className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+              <Package className="w-10 h-10 text-gray-400 mx-auto mb-3" />
               <p className={ds.textMuted}>No materials tracked yet. Add materials to begin tracking.</p>
             </div>
           ) : (
@@ -1578,7 +1592,7 @@ export default function ProjectDeskPanel() {
           {/* Photo entries by phase */}
           {photoEntries.length === 0 ? (
             <div className="text-center py-8">
-              <Camera className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+              <Camera className="w-10 h-10 text-gray-400 mx-auto mb-3" />
               <p className={ds.textMuted}>No photo documentation entries yet. Log entries as you document the project.</p>
             </div>
           ) : (
@@ -1602,7 +1616,7 @@ export default function ProjectDeskPanel() {
                         <div key={entry.id} className="p-3 rounded-lg bg-lattice-elevated/30 hover:bg-lattice-elevated/50 group">
                           {/* Placeholder for actual photo */}
                           <div className="aspect-video rounded-lg bg-lattice-surface border border-lattice-border flex items-center justify-center mb-2">
-                            <Camera className="w-8 h-8 text-gray-600" />
+                            <Camera className="w-8 h-8 text-gray-400" />
                           </div>
                           <div className="flex items-start justify-between">
                             <div>
@@ -1672,7 +1686,7 @@ export default function ProjectDeskPanel() {
         </div>
       ) : filtered.length === 0 ? (
         <div className={cn(ds.panel, 'text-center py-12')}>
-          <Package className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+          <Package className="w-10 h-10 text-gray-400 mx-auto mb-3" />
           <p className={ds.textMuted}>No {activeTab} found. Create one to get started.</p>
         </div>
       ) : (
@@ -1725,9 +1739,9 @@ export default function ProjectDeskPanel() {
                   <button onClick={e => { e.stopPropagation(); openEdit(item); }} className={cn(ds.btnSmall, 'text-gray-400 hover:text-white')}>
                     <Edit2 className="w-3 h-3" /> Edit
                   </button>
-                  <button onClick={e => { e.stopPropagation(); handleDelete(item.id); }} className={cn(ds.btnSmall, 'text-red-400 hover:text-red-300')}>
-                    <Trash2 className="w-3 h-3" /> Delete
-                  </button>
+                  <span onClick={e => e.stopPropagation()}>
+                    <StickyDeleteConfirm onConfirm={() => handleDelete(item.id)} armLabel={<><Trash2 className="w-3 h-3" /> Delete</>} armAriaLabel="Delete job" confirmLabel="Delete this job?" className={cn(ds.btnSmall, 'text-red-400 hover:text-red-300')} />
+                  </span>
                   {activeTab === 'jobs' && (
                     <button onClick={e => { e.stopPropagation(); selectJobForDetail(item); }} className={cn(ds.btnSmall, 'text-neon-cyan hover:text-white ml-auto')}>
                       <Layers className="w-3 h-3" /> Detail
@@ -1754,9 +1768,9 @@ export default function ProjectDeskPanel() {
   const renderEditor = () => {
     if (!editorOpen) return null;
     return (
-      <div className={ds.modalBackdrop} onClick={() => setEditorOpen(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+      <div className={ds.modalBackdrop} onClick={() => setEditorOpen(false)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
         <div className={ds.modalContainer}>
-          <div className={cn(ds.modalPanel, 'max-w-2xl max-h-[85vh] overflow-y-auto')} onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          <div className={cn(ds.modalPanel, 'max-w-2xl max-h-[85vh] overflow-y-auto')} onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <div className="flex items-center justify-between p-6 border-b border-lattice-border">
               <h2 className={ds.heading2}>
                 {editingItem ? `Edit ${activeArtifactType}` : `New ${activeArtifactType}`}
@@ -1768,7 +1782,8 @@ export default function ProjectDeskPanel() {
             <div className="p-6 space-y-4">
               <div>
                 <label className={ds.label}>Name / Title</label>
-                <input value={formName} onChange={e => setFormName(e.target.value)} className={ds.input} placeholder="Job name..." />
+                <input value={formName} onChange={e => { setFormName(e.target.value); setSaveError(''); }} className={ds.input} placeholder="Job name..." />
+                {saveError && <p className="mt-1 text-xs text-rose-300" role="alert">{saveError}</p>}
               </div>
               <div>
                 <label className={ds.label}>Description</label>
@@ -2006,7 +2021,7 @@ export default function ProjectDeskPanel() {
             }).map(item => {
               const d = item.data as unknown as TradesArtifact;
               return (
-                <div key={item.id} className="flex items-center gap-3 p-3 rounded-lg bg-lattice-elevated/30 hover:bg-lattice-elevated/50 cursor-pointer" onClick={() => openEdit(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                <div key={item.id} className="flex items-center gap-3 p-3 rounded-lg bg-lattice-elevated/30 hover:bg-lattice-elevated/50 cursor-pointer" onClick={() => openEdit(item)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                   <MapPin className={cn('w-5 h-5 shrink-0', d.status === 'in_progress' ? 'text-yellow-400' : 'text-purple-400')} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-white truncate">{item.title}</p>
@@ -2051,7 +2066,7 @@ export default function ProjectDeskPanel() {
           {items.slice(0, 5).map(item => {
             const d = item.data as unknown as TradesArtifact;
             return (
-              <div key={item.id} className="flex items-center gap-3 p-3 rounded-lg bg-lattice-surface/50 hover:bg-lattice-surface cursor-pointer" onClick={() => openEdit(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+              <div key={item.id} className="flex items-center gap-3 p-3 rounded-lg bg-lattice-surface/50 hover:bg-lattice-surface cursor-pointer" onClick={() => openEdit(item)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">{item.title}</p>
                   <p className={ds.textMuted}>{d.client || d.type} {d.trade ? `- ${d.trade}` : ''}</p>
@@ -2357,6 +2372,9 @@ export default function ProjectDeskPanel() {
             <button onClick={() => setActionResult(null)} className={ds.btnGhost} aria-label="Close"><X className="w-4 h-4" /></button>
           </div>
           <div className="space-y-3">
+            {typeof actionResult.message === 'string' && (
+              <p className="text-sm text-gray-300">{actionResult.message}</p>
+            )}
             {/* calculateEstimate */}
             {actionResult.grandTotal !== undefined && actionResult.subtotal !== undefined && (
               <div className="space-y-2">

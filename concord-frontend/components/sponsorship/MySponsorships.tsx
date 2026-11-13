@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import type { Tier } from './DiscoverPanel';
 
 export interface Sponsorship {
@@ -16,6 +17,7 @@ export interface Sponsorship {
   startedAt: number;
   nextChargeAt: number;
   totalContributed: number;
+  cancelledAt?: number;
 }
 interface Dispatch { id: string; title: string; body: string; publishedAt: number; }
 
@@ -91,7 +93,7 @@ export function MySponsorships({ refreshKey, onChange }: { refreshKey: number; o
         </div>
       ) : items.length === 0 ? (
         <div className="text-center text-zinc-400 italic py-6 border border-zinc-800 rounded-xl">
-          No active sponsorships. Browse the Discover tab to find a creator.
+          No sponsorships yet. Browse the Discover tab to find a creator. Cancelled ones stay here so their dispatch history remains reachable.
         </div>
       ) : (
         <ul className="space-y-2">
@@ -101,39 +103,52 @@ export function MySponsorships({ refreshKey, onChange }: { refreshKey: number; o
                 <div>
                   <p className="text-zinc-100 font-medium">
                     {sp.creatorName}
-                    <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded ${sp.status === 'active' ? 'bg-emerald-900/60 text-emerald-300' : 'bg-amber-900/60 text-amber-300'}`}>{sp.status}</span>
+                    <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded ${sp.status === 'active' ? 'bg-emerald-900/60 text-emerald-300' : sp.status === 'cancelled' ? 'bg-zinc-800 text-zinc-300' : 'bg-amber-900/60 text-amber-300'}`}>{sp.status}</span>
                   </p>
                   <p className="text-[10px] text-zinc-400 mt-0.5 font-mono">
                     {sp.tierName} · {sp.monthlyCc} CC/mo · every {sp.dispatchFreqHours}h · since {new Date(sp.startedAt * 1000).toLocaleDateString()}
                   </p>
                   <p className="text-[10px] text-zinc-400 font-mono">
-                    pledged {sp.totalContributed} CC · renews {new Date(sp.nextChargeAt * 1000).toLocaleDateString()}
+                    pledged {sp.totalContributed} CC
+                    {sp.status === 'cancelled'
+                      ? ` · cancelled ${sp.cancelledAt ? new Date(sp.cancelledAt * 1000).toLocaleDateString() : ''}`
+                      : ` · renews ${new Date(sp.nextChargeAt * 1000).toLocaleDateString()}`}
                   </p>
                 </div>
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <select
-                  value={sp.tierId}
-                  onChange={(e) => void changeTier(sp, e.target.value)}
-                  className="bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-[11px] text-zinc-100"
-                >
-                  {(tiersByCreator[sp.creatorId] || []).map((t) => (
-                    <option key={t.tierId} value={t.tierId}>{t.name} — {t.monthlyCc} CC</option>
-                  ))}
-                </select>
-                {sp.status === 'active' ? (
+                {sp.status !== 'cancelled' && (
+                  <select
+                    value={sp.tierId}
+                    onChange={(e) => void changeTier(sp, e.target.value)}
+                    aria-label={`Change tier for ${sp.creatorName}`}
+                    className="min-h-11 bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-[11px] text-zinc-100"
+                  >
+                    {(tiersByCreator[sp.creatorId] || []).map((t) => (
+                      <option key={t.tierId} value={t.tierId}>{t.name} — {t.monthlyCc} CC</option>
+                    ))}
+                  </select>
+                )}
+                {sp.status === 'active' && (
                   <button type="button" onClick={() => void act('pause', { sponsorshipId: sp.id }, 'Paused')}
-                    className="text-[11px] text-amber-400 hover:text-amber-300">Pause</button>
-                ) : (
+                    className="min-h-11 text-[11px] text-amber-400 hover:text-amber-300">Pause</button>
+                )}
+                {sp.status === 'paused' && (
                   <button type="button" onClick={() => void act('resume', { sponsorshipId: sp.id }, 'Resumed')}
-                    className="text-[11px] text-emerald-400 hover:text-emerald-300">Resume</button>
+                    className="min-h-11 text-[11px] text-emerald-400 hover:text-emerald-300">Resume</button>
                 )}
                 <button type="button" onClick={() => void loadHistory(sp)}
-                  className="text-[11px] text-cyan-400 hover:text-cyan-300">
+                  className="min-h-11 text-[11px] text-cyan-400 hover:text-cyan-300">
                   {openHistory === sp.id ? 'Hide dispatches' : 'Dispatch history'}
                 </button>
-                <button type="button" onClick={() => void act('cancel', { sponsorshipId: sp.id }, 'Cancelled')}
-                  className="text-[11px] text-rose-400 hover:text-rose-300 ml-auto">Cancel</button>
+                {sp.status !== 'cancelled' && <StickyDeleteConfirm
+                  onConfirm={() => { void act('cancel', { sponsorshipId: sp.id }, 'Cancelled'); }}
+                  armLabel="Cancel"
+                  armAriaLabel={`Cancel sponsorship ${sp.creatorName}`}
+                  confirmAriaLabel={`Confirm cancel sponsorship ${sp.creatorName}`}
+                  confirmLabel="Cancel this sponsorship?"
+                  className="min-h-11 text-[11px] text-rose-400 hover:text-rose-300 ml-auto"
+                />}
               </div>
               {openHistory === sp.id && (
                 <div className="mt-2 border-t border-zinc-800 pt-2 space-y-1.5">

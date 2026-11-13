@@ -120,7 +120,12 @@ export default function IntegrationsLensPage() {
         activeTab={active}
         onTab={(id) => setActive(id as Tab)}
         tabsLabel="Integration views"
-        cta={{ label: 'Add webhook', icon: Plus, onClick: () => { setActive('webhooks'); setShowCreate(true); }, title: 'Create a webhook' }}
+        // FIX-integrations-009: while the create form is open the FAB only
+        // re-opens that same form, and at 390px it floated over the form's
+        // lower area — it now renders only when the form is closed. (The
+        // ticket's clipped "Webh…" tab label rides the shared
+        // NorthStarFrame strip, which now wraps below sm.)
+        cta={showCreate ? undefined : { label: 'Add webhook', icon: Plus, onClick: () => { setActive('webhooks'); setShowCreate(true); }, title: 'Create a webhook' }}
       >
         <div className="space-y-6">
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

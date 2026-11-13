@@ -66,10 +66,11 @@ export function GlobalPanelHost() {
           </div>
           <button
             type="button"
+            data-overlay-close=""
             onClick={() => setActiveId(null)}
             aria-label="Close panel"
             className="text-xs text-zinc-400 hover:text-zinc-200 shrink-0"
-          >✕ Esc</button>
+          >Close</button>
         </header>
         <div className="flex-1 overflow-auto p-3">
           <Suspense fallback={<div className="p-6 text-sm text-zinc-400">Loading {entry.label}…</div>}>

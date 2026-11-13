@@ -3,6 +3,7 @@
 /**
  * LearningPanel — assessKnowledge + skill timeline from real assessments_list.
  */
+import { useState } from 'react';
 import { BookOpen, RefreshCw, Lightbulb, TrendingUp, Target, Sparkles, Brain } from 'lucide-react';
 import { useMetacognitionDesk } from '@/components/metacognition/useMetacognitionDesk';
 import { pct, formatTimestamp } from '@/components/metacognition/metacog-model';
@@ -13,6 +14,8 @@ export function LearningPanel() {
     knowledgeDomains, learningInsights, patterns, runAssessment, latestAssessment,
     isLoading, isError, errorMessage, refetchAll,
   } = useMetacognitionDesk();
+  // Empty Assess used to do nothing at all (FIX-metacognition-002).
+  const [assessHint, setAssessHint] = useState('');
 
   if (isLoading) {
     return (
@@ -36,13 +39,20 @@ export function LearningPanel() {
             </p>
             <div className="flex gap-3">
               <input
+                aria-label="Domain to assess"
                 type="text"
                 placeholder="Domain to assess — e.g. logic, language, math..."
                 className="input-lattice flex-1"
+                onChange={() => setAssessHint('')}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && e.currentTarget.value) {
-                    runAssessment.mutate(e.currentTarget.value);
-                    e.currentTarget.value = '';
+                  if (e.key === 'Enter') {
+                    if (e.currentTarget.value.trim()) {
+                      setAssessHint('');
+                      runAssessment.mutate(e.currentTarget.value);
+                      e.currentTarget.value = '';
+                    } else {
+                      setAssessHint('Enter a domain to assess.');
+                    }
                   }
                 }}
               />
@@ -53,9 +63,12 @@ export function LearningPanel() {
                   const input = document.querySelector<HTMLInputElement>(
                     'input[placeholder*="Domain to assess"]'
                   );
-                  if (input?.value) {
+                  if (input?.value.trim()) {
+                    setAssessHint('');
                     runAssessment.mutate(input.value);
                     input.value = '';
+                  } else {
+                    setAssessHint('Enter a domain to assess.');
                   }
                 }}
                 disabled={runAssessment.isPending}
@@ -65,6 +78,7 @@ export function LearningPanel() {
                 {runAssessment.isPending ? 'Assessing...' : 'Assess'}
               </button>
             </div>
+            {assessHint && <p role="note" className="mt-2 text-xs text-gray-400">{assessHint}</p>}
           </div>
 
           {latestAssessment && (
@@ -219,7 +233,7 @@ export function LearningPanel() {
                           {current != null ? `${pct(current).toFixed(0)}%` : 'no record yet'}
                         </span>
                         {resolved > 0 && (
-                          <span className="text-xs text-gray-500 ml-1">
+                          <span className="text-xs text-gray-400 ml-1">
                             ({correct}/{resolved})
                           </span>
                         )}

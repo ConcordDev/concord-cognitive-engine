@@ -5,6 +5,7 @@ import {
   Map, MapPin, Navigation, ZoomIn, ZoomOut, Layers, Eye, EyeOff,
   ChevronRight, Crosshair, Users,
 } from 'lucide-react';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 const panel = 'bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg';
 
@@ -146,7 +147,7 @@ function Minimap({
   return (
     <div
       className={`${panel} w-[200px] h-[200px] relative overflow-hidden cursor-crosshair`}
-      onClick={handleClick} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+      onClick={handleClick} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
       {/* Buildings as amber dots */}
       {buildings.map((b) => (
         <div
@@ -248,7 +249,7 @@ function DistrictMap({
 
       <div
         className="relative min-w-full min-h-full cursor-crosshair"
-        onClick={handleClick} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        onClick={handleClick} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
         {/* Infrastructure lines */}
         {infraLayers.water && (
           <div className="absolute inset-0 opacity-30">

@@ -225,6 +225,7 @@ const PUBLIC_PREFIXES = [
   '/icons/',
   '/legal/',
   '/dtu/',
+  '/ar/view/',
   '/lens/',
   '/newsletter/',
   '/profile/',

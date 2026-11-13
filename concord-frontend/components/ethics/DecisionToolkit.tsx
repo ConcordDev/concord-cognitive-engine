@@ -176,15 +176,28 @@ const errBox = 'text-xs text-red-400 bg-red-500/10 border border-red-500/30 roun
  * visible affordance.
  */
 function SavedRecordDelete({ label, onDelete }: { label: string; onDelete: () => void }) {
+  const [armed, setArmed] = useState(false);
+  if (armed) {
+    return (
+      <span className="inline-flex shrink-0 items-center gap-1">
+        <button type="button" className={cn(ds.btnGhost, 'min-h-11 text-rose-300')} onClick={() => { setArmed(false); onDelete(); }}>
+          Confirm
+        </button>
+        <button type="button" className={cn(ds.btnGhost, 'min-h-11')} onClick={() => setArmed(false)}>
+          Cancel
+        </button>
+      </span>
+    );
+  }
   return (
     <button
       type="button"
-      onClick={onDelete}
+      onClick={() => setArmed(true)}
       aria-label={label}
       title={label}
       className={cn(
         ds.btnGhost,
-        'shrink-0 opacity-0 transition-opacity',
+        'min-h-11 shrink-0 opacity-0 transition-opacity',
         'group-hover:opacity-100 group-focus-within:opacity-100',
         'focus:opacity-100 focus-visible:opacity-100',
       )}
@@ -238,7 +251,7 @@ function LoadGate({
         <span>Could not load {emptyLabel}: {error}</span>
         <button
           onClick={onRetry}
-          className="flex items-center gap-1 px-2 py-1 rounded border border-red-500/40 text-red-300 hover:bg-red-500/10 whitespace-nowrap"
+          className="inline-flex min-h-11 items-center gap-1 rounded border border-red-500/40 px-3 text-red-300 hover:bg-red-500/10 whitespace-nowrap"
         >
           <RefreshCw className="w-3.5 h-3.5" /> Retry
         </button>
@@ -378,24 +391,28 @@ function MultiFrameworkPanel() {
           {options.map((o, i) => (
             <div key={i} className="grid grid-cols-12 gap-2 items-center">
               <input
+                aria-label={`Option ${i + 1} name`}
                 className={cn(ds.input, 'col-span-3')}
                 placeholder={`Option ${i + 1} name`}
                 value={o.name}
                 onChange={(e) => setOpt(i, 'name', e.target.value)}
               />
               <input
+                aria-label={`Option ${i + 1} description`}
                 className={cn(ds.input, 'col-span-5')}
                 placeholder="Description"
                 value={o.description}
                 onChange={(e) => setOpt(i, 'description', e.target.value)}
               />
               <input
+                aria-label={`Option ${i + 1} benefit score 0-100`}
                 type="number" className={cn(ds.input, 'col-span-2')}
                 placeholder="Benefit 0-100"
                 value={o.benefitScore}
                 onChange={(e) => setOpt(i, 'benefitScore', e.target.value)}
               />
               <input
+                aria-label={`Option ${i + 1} harm score 0-100`}
                 type="number" className={cn(ds.input, 'col-span-2')}
                 placeholder="Harm 0-100"
                 value={o.harmScore}
@@ -404,6 +421,11 @@ function MultiFrameworkPanel() {
             </div>
           ))}
         </div>
+        {options.some((o) => o.name.trim() && (o.benefitScore === '' || o.harmScore === '')) && (
+          <p className="text-[11px] text-zinc-400">
+            Frameworks score from the benefit and harm numbers: give each option both scores (0–100), or describe it with ethical keywords, before analyzing — options without either come back unscored.
+          </p>
+        )}
         <div className="flex items-center gap-2">
           <button
             className={ds.btnSecondary}

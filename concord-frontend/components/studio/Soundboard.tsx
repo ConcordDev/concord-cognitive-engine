@@ -5,6 +5,7 @@ import { Search, Music, Waves, Sliders, Drum, Layers, Sparkles, Grid3X3, List, A
 import { cn } from '@/lib/utils';
 import type { SynthPreset, EffectInstance, DrumPattern } from '@/lib/daw/types';
 import type { DTUEvent } from '@/lib/daw/dtu-hooks';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface SoundboardProps {
   dtuEvents: DTUEvent[];
@@ -261,7 +262,7 @@ export function Soundboard({
                 className="p-2.5 rounded-lg bg-white/5 border border-white/10 hover:border-neon-cyan/20 cursor-pointer group transition-colors"
                 onClick={() => handleLoadItem(item.type, item.data)}
                 draggable
-                onDragStart={() => onDragToTrack(item.type, item.data)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                onDragStart={() => onDragToTrack(item.type, item.data)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                 <div className="flex items-center gap-2 mb-1">
                   {typeIcon(item.type)}
                   <span className="text-[11px] font-medium truncate flex-1">{item.title}</span>

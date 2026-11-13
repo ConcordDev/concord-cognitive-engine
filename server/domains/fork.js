@@ -620,6 +620,21 @@ export default function registerForkActions(registerLensAction) {
     arr.splice(i, 1); saveFork();
     return { ok: true, result: { deleted: params.id } };
   });
+  registerLensAction("fork", "watch-update", (ctx, _a, params = {}) => {
+    const s = getForkState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = fkRepos(s, fkActor(ctx));
+    const repo = arr.find((r) => r.id === params.id);
+    if (!repo) return { ok: false, error: "repo not found" };
+    if (params.reason != null) {
+      if (!["upstream", "fork", "competitor", "reference", "dependency"].includes(params.reason)) {
+        return { ok: false, error: "invalid reason" };
+      }
+      repo.reason = params.reason;
+    }
+    if (params.note != null) repo.note = fkClean(params.note, 300);
+    saveFork();
+    return { ok: true, result: { repo } };
+  });
   registerLensAction("fork", "watch-refresh", async (ctx, _a, params = {}) => {
     const s = getForkState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const repo = fkRepos(s, fkActor(ctx)).find((r) => r.id === params.id);

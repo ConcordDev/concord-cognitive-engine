@@ -37,7 +37,7 @@ import { WalletReceiptMenu } from '@/components/wallet/WalletReceiptMenu';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-interface LineItem { description: string; amount: number }
+interface LineItem { description: string; amount: number | string }
 interface MoneyRequest {
   id: string;
   kind: 'request' | 'invoice';
@@ -221,7 +221,7 @@ function RequestsTab() {
   const [note, setNote] = useState('');
   const [emoji, setEmoji] = useState('');
   const [isInvoice, setIsInvoice] = useState(false);
-  const [lineItems, setLineItems] = useState<LineItem[]>([{ description: '', amount: 0 }]);
+  const [lineItems, setLineItems] = useState<LineItem[]>([{ description: '', amount: '' }]);
   const [me, setMe] = useState<string | null>(null);
 
   useEffect(() => {
@@ -253,11 +253,12 @@ function RequestsTab() {
     setErr('');
     const amt = Number(amount);
     if (!payerId.trim()) { setErr('Enter who should pay'); return; }
-    if (!(amt > 0) && !isInvoice) { setErr('Enter a positive amount'); return; }
-    setBusy(true);
+    if (!(amt > 0) && !isInvoice) { setErr('Amount must be a number greater than 0.'); return; }
     const cleanItems = lineItems
-      .map((li) => ({ description: li.description.trim(), amount: Number(li.amount) || 0 }))
+      .map((li) => ({ description: li.description.trim(), amount: Number(li.amount) }))
       .filter((li) => li.description);
+    if (isInvoice && cleanItems.some((li) => !(li.amount > 0))) { setErr('Each line amount must be a number greater than 0.'); return; }
+    setBusy(true);
     const total = isInvoice && cleanItems.length
       ? cleanItems.reduce((s, li) => s + li.amount, 0)
       : amt;
@@ -272,7 +273,7 @@ function RequestsTab() {
     setBusy(false);
     if (r.data?.ok) {
       setPayerId(''); setAmount(''); setNote(''); setEmoji('');
-      setLineItems([{ description: '', amount: 0 }]);
+      setLineItems([{ description: '', amount: '' }]);
       void refresh();
     } else {
       setErr(r.data?.error || 'Could not create request');
@@ -315,7 +316,7 @@ function RequestsTab() {
               inputMode="decimal"
               placeholder="Amount (CC)"
               value={amount}
-              onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ''))}
+              onChange={(e) => setAmount(e.target.value)}
             />
           )}
         </div>
@@ -340,7 +341,7 @@ function RequestsTab() {
                   value={li.amount || ''}
                   onChange={(e) => {
                     const next = [...lineItems];
-                    next[i] = { ...next[i], amount: Number(e.target.value.replace(/[^\d.]/g, '')) || 0 };
+                    next[i] = { ...next[i], amount: e.target.value };
                     setLineItems(next);
                   }}
                 />
@@ -354,7 +355,7 @@ function RequestsTab() {
               </div>
             ))}
             <button
-              onClick={() => setLineItems([...lineItems, { description: '', amount: 0 }])}
+              onClick={() => setLineItems([...lineItems, { description: '', amount: '' }])}
               className="text-xs text-neon-cyan flex items-center gap-1"
             >
               <Plus className="w-3 h-3" /> Add line item
@@ -501,7 +502,7 @@ function SchedulesTab() {
   const create = useCallback(async () => {
     setErr('');
     if (!recipientId.trim()) { setErr('Enter a recipient'); return; }
-    if (!(Number(amount) > 0)) { setErr('Enter a positive amount'); return; }
+    if (!(Number(amount) > 0)) { setErr('Amount must be a number greater than 0.'); return; }
     setBusy(true);
     const r = await lensRun('wallet', 'scheduleCreate', {
       recipientId: recipientId.trim(),
@@ -543,7 +544,7 @@ function SchedulesTab() {
         <h4 className="text-sm font-semibold text-white">New recurring transfer</h4>
         <div className="grid sm:grid-cols-2 gap-2">
           <input className={inputCls} placeholder="Recipient user ID" value={recipientId} onChange={(e) => setRecipientId(e.target.value)} />
-          <input className={inputCls} inputMode="decimal" placeholder="Amount (CC)" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ''))} />
+          <input className={inputCls} inputMode="decimal" placeholder="Amount (CC)" value={amount} onChange={(e) => setAmount(e.target.value)} />
         </div>
         <div className="grid sm:grid-cols-2 gap-2">
           <select
@@ -663,6 +664,7 @@ function FeedTab() {
     setErr('');
     if (!counterparty.trim()) { setErr('Enter the other person'); return; }
     if (!note.trim()) { setErr('Add a note'); return; }
+    if (amount.trim() && !(Number(amount) > 0)) { setErr('Amount must be a number greater than 0.'); return; }
     setBusy(true);
     const r = await lensRun('wallet', 'feedPost', {
       counterparty: counterparty.trim(),
@@ -695,7 +697,7 @@ function FeedTab() {
         <h4 className="text-sm font-semibold text-white">Share a payment</h4>
         <div className="grid sm:grid-cols-2 gap-2">
           <input className={inputCls} placeholder="Other person user ID" value={counterparty} onChange={(e) => setCounterparty(e.target.value)} />
-          <input className={inputCls} inputMode="decimal" placeholder="Amount (optional)" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ''))} />
+          <input className={inputCls} inputMode="decimal" placeholder="Amount (optional)" value={amount} onChange={(e) => setAmount(e.target.value)} />
         </div>
         <div className="flex gap-2">
           <input className={cn(inputCls, 'flex-1')} placeholder="What was it for?" value={note} onChange={(e) => setNote(e.target.value)} />
@@ -826,7 +828,7 @@ function SplitsTab() {
   const create = useCallback(async () => {
     setErr('');
     const t = Number(total);
-    if (!(t > 0)) { setErr('Enter a positive total'); return; }
+    if (!(t > 0)) { setErr('Total must be a number greater than 0.'); return; }
     const parts = participants.split(',').map((p) => p.trim()).filter(Boolean);
     if (parts.length === 0) { setErr('Add at least one participant'); return; }
     setBusy(true);
@@ -858,7 +860,7 @@ function SplitsTab() {
         <h4 className="text-sm font-semibold text-white">Split a bill</h4>
         <div className="grid sm:grid-cols-2 gap-2">
           <input className={inputCls} placeholder="Title (e.g. Dinner)" value={title} onChange={(e) => setTitle(e.target.value)} />
-          <input className={inputCls} inputMode="decimal" placeholder="Total amount (CC)" value={total} onChange={(e) => setTotal(e.target.value.replace(/[^\d.]/g, ''))} />
+          <input className={inputCls} inputMode="decimal" placeholder="Total amount (CC)" value={total} onChange={(e) => setTotal(e.target.value)} />
         </div>
         <input className={inputCls} placeholder="Participant user IDs, comma-separated" value={participants} onChange={(e) => setParticipants(e.target.value)} />
         <input className={inputCls} placeholder="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
@@ -1084,6 +1086,7 @@ function QrTab() {
 
   const generate = useCallback(async () => {
     setErr('');
+    if (amount.trim() && !(Number(amount) > 0)) { setErr('Amount must be a number greater than 0.'); return; }
     setBusy(true);
     const r = await lensRun<QrResult>('wallet', 'qrGenerate', {
       amount: amount ? Number(amount) : undefined,
@@ -1116,7 +1119,7 @@ function QrTab() {
     <div className="grid md:grid-cols-2 gap-4">
       <div className="rounded-lg border border-lattice-border bg-lattice-deep p-3 space-y-2">
         <h4 className="text-sm font-semibold text-white">Receive — show your QR</h4>
-        <input className={inputCls} inputMode="decimal" placeholder="Request amount (optional)" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ''))} />
+        <input className={inputCls} inputMode="decimal" placeholder="Request amount (optional)" value={amount} onChange={(e) => setAmount(e.target.value)} />
         <input className={inputCls} placeholder="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
         {err && <p className="text-xs text-red-400">{err}</p>}
         <button onClick={generate} disabled={busy} className={btnCls}>

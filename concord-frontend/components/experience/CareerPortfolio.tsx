@@ -296,7 +296,7 @@ export function CareerPortfolio() {
               server's existing published/public visibility rule. */}
           <div className="flex items-center justify-between gap-2 bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2">
             <div className="flex items-center gap-2 text-xs">
-              {isPublished ? <Globe className="w-3.5 h-3.5 text-neon-green" /> : <Lock className="w-3.5 h-3.5 text-gray-500" />}
+              {isPublished ? <Globe className="w-3.5 h-3.5 text-neon-green" /> : <Lock className="w-3.5 h-3.5 text-gray-400" />}
               <span className={isPublished ? 'text-neon-green' : 'text-gray-400'}>
                 {isPublished ? 'Published — visible to peers in the Directory' : 'Private — only you can see this'}
               </span>
@@ -340,7 +340,7 @@ export function CareerPortfolio() {
               </>
             )}
           </div>
-          {data.snapshots.length === 0 && <p className="text-[10px] text-gray-500">Compare needs at least one saved snapshot — save one before making further changes to see a real diff.</p>}
+          {data.snapshots.length === 0 && <p className="text-[10px] text-gray-400">Compare needs at least one saved snapshot — save one before making further changes to see a real diff.</p>}
 
           {result && <ActionResult kind={result.kind} data={result.data} />}
 
@@ -373,7 +373,7 @@ export function CareerPortfolio() {
                       <p className="text-xs text-white">{s.name} <span className="text-[10px] text-gray-400">· {s.category} · {s.level} · {s.yearsExperience}y</span></p>
                       <p className="text-[10px] text-gray-400">{s.evidence.length} evidence link{s.evidence.length === 1 ? '' : 's'} · {endorseCount} endorsement{endorseCount === 1 ? '' : 's'} <span className="text-gray-600">(peer-only — publish above so others can endorse you)</span></p>
                     </div>
-                    <button onClick={() => removeSkill(s.id)} className="text-gray-500 hover:text-red-400 shrink-0" aria-label="remove skill"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => removeSkill(s.id)} className="text-gray-400 hover:text-red-400 shrink-0" aria-label="remove skill"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
                 );
               })}
@@ -401,7 +401,7 @@ export function CareerPortfolio() {
                     <span>{e.role} · {e.company} <span className="text-[10px] text-gray-400">({e.startDate || '?'} – {e.endDate || 'present'})</span></span>
                     <span className="flex items-center gap-2 shrink-0">
                       <button onClick={() => startEditExperience(i)} className="text-gray-400 hover:text-white" aria-label={`edit experience ${e.role}`}>Edit</button>
-                      <button onClick={() => removeExperience(i)} className="text-gray-500 hover:text-red-400" aria-label={`delete experience ${e.role}`}><Trash2 className="w-3.5 h-3.5" /></button>
+                      <button onClick={() => removeExperience(i)} className="text-gray-400 hover:text-red-400" aria-label={`delete experience ${e.role}`}><Trash2 className="w-3.5 h-3.5" /></button>
                     </span>
                   </div>
                 ))}
@@ -427,7 +427,7 @@ export function CareerPortfolio() {
                     <span>{e.degree} {e.field ? `in ${e.field}` : ''} · {e.institution} <span className="text-[10px] text-gray-400">{e.year}</span></span>
                     <span className="flex items-center gap-2 shrink-0">
                       <button onClick={() => startEditEducation(i)} className="text-gray-400 hover:text-white" aria-label={`edit education ${e.institution}`}>Edit</button>
-                      <button onClick={() => removeEducation(i)} className="text-gray-500 hover:text-red-400" aria-label={`delete education ${e.institution}`}><Trash2 className="w-3.5 h-3.5" /></button>
+                      <button onClick={() => removeEducation(i)} className="text-gray-400 hover:text-red-400" aria-label={`delete education ${e.institution}`}><Trash2 className="w-3.5 h-3.5" /></button>
                     </span>
                   </div>
                 ))}
@@ -464,7 +464,7 @@ function PeerDirectory({ items, isLoading, busy, peerStatus, onEndorse }: {
   if (items.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-zinc-700 bg-zinc-900/40 p-6 text-center space-y-1">
-        <Users className="w-6 h-6 mx-auto text-gray-500" />
+        <Users className="w-6 h-6 mx-auto text-gray-400" />
         <p className="text-sm text-white">No published portfolios yet</p>
         <p className="text-xs text-gray-400 max-w-sm mx-auto">When another user publishes their portfolio, it shows up here — real endorsements only happen peer to peer.</p>
       </div>
@@ -485,7 +485,7 @@ function PeerDirectory({ items, isLoading, busy, peerStatus, onEndorse }: {
                 const status = peerStatus[key];
                 return (
                   <div key={s.id} className="flex items-center justify-between gap-2 text-xs">
-                    <span className="text-gray-300">{s.name} <span className="text-[10px] text-gray-500">· {s.category} · {s.level} · {endorseCount} endorsement{endorseCount === 1 ? '' : 's'}</span></span>
+                    <span className="text-gray-300">{s.name} <span className="text-[10px] text-gray-400">· {s.category} · {s.level} · {endorseCount} endorsement{endorseCount === 1 ? '' : 's'}</span></span>
                     <div className="flex items-center gap-1.5 shrink-0">
                       {status === 'ok' && <CheckCircle2 className="w-3.5 h-3.5 text-neon-green" aria-label="endorsed" />}
                       {status === 'error' && <span className="text-[10px] text-red-400">already endorsed</span>}
@@ -500,7 +500,7 @@ function PeerDirectory({ items, isLoading, busy, peerStatus, onEndorse }: {
                   </div>
                 );
               })}
-              {skills.length === 0 && <p className="text-[11px] text-gray-500">No skills listed yet.</p>}
+              {skills.length === 0 && <p className="text-[11px] text-gray-400">No skills listed yet.</p>}
             </div>
           </div>
         );

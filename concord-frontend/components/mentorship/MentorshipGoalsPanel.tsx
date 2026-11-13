@@ -11,6 +11,7 @@ import {
   Loader2, Target, Plus, X, CheckCircle2, ChevronLeft, MessageSquarePlus,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { ChartKit } from '@/components/viz';
 import { cn } from '@/lib/utils';
 import { notifyMentorshipProgramChanged } from '@/lib/mentorship/program-stats';
@@ -62,6 +63,13 @@ export function MentorshipGoalsPanel() {
 
   useEffect(() => { void refresh(); }, [refresh]);
 
+  const dropGoal = async (id: string) => {
+    const r = await lensRun('mentorship', 'goal-delete', { id });
+    if (r.data?.ok === false) { setError(r.data?.message || r.data?.error || 'Could not delete that goal.'); return; }
+    if (selected?.id === id) setSelected(null);
+    await refresh();
+  };
+
   const create = async () => {
     if (!form.title.trim()) { setError('Goal title is required.'); return; }
     setBusy(true);
@@ -110,7 +118,7 @@ export function MentorshipGoalsPanel() {
         {error && <p className="text-xs text-red-400">{error}</p>}
         <div className="panel p-4 space-y-2">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">{selected.title}</h3>
+            <h2 className="text-lg font-semibold">{selected.title}</h2>
             <span className={cn('text-xs px-2 py-0.5 rounded', STATUS_STYLE[selected.status])}>{selected.status}</span>
           </div>
           {selected.detail && <p className="text-sm text-zinc-300">{selected.detail}</p>}
@@ -130,13 +138,13 @@ export function MentorshipGoalsPanel() {
               </button>
             ))}
           </div>
-          <p className="text-[11px] text-zinc-500">Status and progress move together: reaching 100% marks the goal done, and marking it done sets progress to 100%.</p>
+          <p className="text-[11px] text-zinc-400">Status and progress move together: reaching 100% marks the goal done, and marking it done sets progress to 100%.</p>
         </div>
 
         {/* Progress chart from check-ins */}
         {selected.checkIns.length > 0 && (
           <div className="panel p-4">
-            <h4 className="font-semibold text-sm mb-2">Progress trend</h4>
+            <h3 className="font-semibold text-sm mb-2">Progress trend</h3>
             <ChartKit
               kind="area"
               xKey="step"
@@ -148,7 +156,7 @@ export function MentorshipGoalsPanel() {
 
         {/* Check-ins */}
         <div className="panel p-4 space-y-2">
-          <h4 className="font-semibold text-sm flex items-center gap-2"><MessageSquarePlus className="w-4 h-4 text-neon-blue" /> Check-ins</h4>
+          <h3 className="font-semibold text-sm flex items-center gap-2"><MessageSquarePlus className="w-4 h-4 text-neon-blue" /> Check-ins</h3>
           {selected.checkIns.length === 0 ? (
             <p className="text-xs text-zinc-400">No check-ins yet.</p>
           ) : selected.checkIns.slice().reverse().map((c) => (
@@ -178,7 +186,7 @@ export function MentorshipGoalsPanel() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold flex items-center gap-2"><Target className="w-4 h-4 text-neon-green" /> Goal Workspace</h3>
+        <h2 className="font-semibold flex items-center gap-2"><Target className="w-4 h-4 text-neon-green" /> Goal Workspace</h2>
         <button onClick={() => setShowCreate(!showCreate)} className="btn-neon text-sm">
           {showCreate ? <X className="w-4 h-4 inline" /> : <Plus className="w-4 h-4 inline" />} {showCreate ? 'Cancel' : 'New goal'}
         </button>
@@ -220,7 +228,8 @@ export function MentorshipGoalsPanel() {
       ) : (
         <div className="space-y-2">
           {goals.map((g) => (
-            <button key={g.id} onClick={() => { setSelected(g); setCheckInDraft({ note: '', progress: g.progress }); }} className="lens-card text-left w-full hover:border-neon-green transition-colors">
+            <div key={g.id} className="lens-card">
+            <button type="button" onClick={() => { setSelected(g); setCheckInDraft({ note: '', progress: g.progress }); }} className="text-left w-full hover:border-neon-green transition-colors">
               <div className="flex items-center justify-between">
                 <span className="font-medium text-sm flex items-center gap-1.5">
                   {g.status === 'done' && <CheckCircle2 className="w-4 h-4 text-neon-green" />}
@@ -235,6 +244,8 @@ export function MentorshipGoalsPanel() {
                 <span className="text-[10px] font-mono text-zinc-400">{g.progress}%</span>
               </div>
             </button>
+            <StickyDeleteConfirm onConfirm={() => void dropGoal(g.id)} armAriaLabel={`Delete goal ${g.title}`} confirmAriaLabel={`Confirm delete goal ${g.title}`} className="mt-2 text-rose-300" />
+            </div>
           ))}
         </div>
       )}

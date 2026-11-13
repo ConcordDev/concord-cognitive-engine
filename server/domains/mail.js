@@ -18,11 +18,23 @@ import {
   readMail,
   claimAttachments,
   deleteSentMail,
+  declineMail,
 } from "../lib/player-mail.js";
 import { registerLensExportProvider } from "../lib/lens-export.js";
 
 function actorId(ctx, input) {
   return input?.userId || ctx?.actor?.userId || ctx?.actor?.id || null;
+}
+
+// FIX-mail-002: one autosaved compose draft per user, held in lens
+// state (the platform's persisted per-user store). A draft is working
+// state, not a mail record — it never touches the wallet, escrow, or
+// the player_mail table, and saving an empty draft clears it.
+function mailDraftStore() {
+  const S = globalThis._concordSTATE || (globalThis._concordSTATE = {});
+  if (!S.mailLens) S.mailLens = {};
+  if (!(S.mailLens.drafts instanceof Map)) S.mailLens.drafts = new Map();
+  return S.mailLens.drafts;
 }
 
 // Reject a poisoned numeric input (NaN/Infinity/1e308/negative) before any
@@ -72,7 +84,7 @@ export default function registerMailMacros(register) {
     if (!db) return { ok: false, error: "no_db" };
     const userId = actorId(ctx, input);
     if (!userId) return { ok: false, error: "no_user" };
-    const status = ["unread", "read", "claimed", "expired"].includes(input.status)
+    const status = ["unread", "read", "claimed", "expired", "declined"].includes(input.status)
       ? input.status : undefined;
     const limit = Math.min(Math.max(Number(input.limit) || 50, 1), 200);
     return { ok: true, mail: listInbox(db, userId, { status, limit }) };
@@ -161,4 +173,67 @@ export default function registerMailMacros(register) {
     if (!input.id) return { ok: false, error: "missing_id" };
     return deleteSentMail(db, String(input.id), userId);
   }, { note: "remove the caller's own sent copy (recipient's copy untouched)" });
+
+  /**
+   * mail.decline — decline a piece of mail instead of claiming it
+   * (FIX-mail-014). Recipient-only: the escrowed gift CC and the DTU
+   * escrow stamps return to the sender in one transaction and the COD
+   * charge is never collected. Idempotent.
+   * input: { id, userId? }
+   */
+  register("mail", "decline", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, error: "no_db" };
+    const userId = actorId(ctx, input);
+    if (!userId) return { ok: false, error: "no_user" };
+    if (!input.id) return { ok: false, error: "missing_id" };
+    return declineMail(db, String(input.id), userId);
+  }, { note: "decline mail (escrow returns to sender; no COD charged)" });
+
+  /**
+   * mail.draft-get — the caller's autosaved compose draft, if any.
+   * input: { userId? }
+   */
+  register("mail", "draft-get", async (ctx, input = {}) => {
+    const userId = actorId(ctx, input);
+    if (!userId) return { ok: false, error: "no_user" };
+    return { ok: true, draft: mailDraftStore().get(userId) || null };
+  }, { note: "read the caller's autosaved compose draft" });
+
+  /**
+   * mail.draft-save — autosave the compose draft. An all-blank draft
+   * clears the saved one (the post-send state). Lengths are clamped to
+   * the send limits so a restored draft is always sendable as-is.
+   * input: { toUserId?, subject?, body?, attachmentCc?, codCc?, attachmentDtuIds?, attachmentTitles? }
+   */
+  register("mail", "draft-save", async (ctx, input = {}) => {
+    const userId = actorId(ctx, input);
+    if (!userId) return { ok: false, error: "no_user" };
+    const badNum = badNumericField(input, ["attachmentCc", "codCc"]);
+    if (badNum) return { ok: false, error: `invalid_${badNum}` };
+    const draft = {
+      toUserId: String(input.toUserId || "").slice(0, 128),
+      subject: String(input.subject || "").slice(0, 120),
+      body: String(input.body || "").slice(0, 4000),
+      attachmentCc: Math.max(0, Number(input.attachmentCc) || 0),
+      codCc: Math.max(0, Number(input.codCc) || 0),
+      attachmentDtuIds: Array.isArray(input.attachmentDtuIds)
+        ? input.attachmentDtuIds.map((d) => String(d || "")).filter(Boolean).slice(0, 12)
+        : [],
+      attachmentTitles: (input.attachmentTitles && typeof input.attachmentTitles === "object")
+        ? Object.fromEntries(Object.entries(input.attachmentTitles).slice(0, 12).map(([k, v]) => [String(k), String(v).slice(0, 120)]))
+        : {},
+      // FIX-mail-016: a reply draft keeps its thread link, so a restored
+      // reply still threads under the original when it is finally sent.
+      parentId: String(input.parentId || "").slice(0, 128),
+      updatedAt: Date.now(),
+    };
+    const blank = !draft.toUserId && !draft.subject && !draft.body && draft.attachmentDtuIds.length === 0;
+    if (blank) {
+      mailDraftStore().delete(userId);
+      return { ok: true, draft: null };
+    }
+    mailDraftStore().set(userId, draft);
+    return { ok: true, draft };
+  }, { note: "autosave the caller's compose draft (blank clears it)" });
 }

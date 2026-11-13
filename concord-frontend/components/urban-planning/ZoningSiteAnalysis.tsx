@@ -155,6 +155,7 @@ function ZoningAnalysisTool() {
         </Field>
         <Field label="Lot size (sqft)">
           <input inputMode="numeric" value={lotSizeSqFt} onChange={(e) => setLotSizeSqFt(e.target.value)} className={inputCls} />
+          {lotSizeSqFt.trim() !== '' && !(Number(lotSizeSqFt) > 0) && <span role="note" className="col-span-full text-xs text-rose-300">Lot size must be greater than 0.</span>}
         </Field>
       </div>
       {error && <div className={errCls}>{error}</div>}
@@ -213,7 +214,7 @@ function WalkabilityScoreTool() {
       <div className="space-y-2">
         {amenities.map((a, i) => (
           <div key={i} className="grid grid-cols-[1fr_auto_auto] gap-2 items-center">
-            <select value={a.category} onChange={(e) => updateRow(i, { category: e.target.value })} className={inputCls}>
+            <select value={a.category} onChange={(e) => updateRow(i, { category: e.target.value })} aria-label="Amenity category" className={inputCls}>
               {AMENITY_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
             <label className="flex items-center gap-1.5 text-[11px] text-zinc-400">
@@ -383,7 +384,7 @@ function TrafficImpactTool() {
             </div>
           )}
           {result.rateBasis && (
-            <p className="text-[10px] leading-relaxed text-zinc-500">Basis: {result.rateBasis}</p>
+            <p className="text-[10px] leading-relaxed text-zinc-400">Basis: {result.rateBasis}</p>
           )}
           <div className="flex items-center gap-2 text-xs">
             <span className="text-zinc-400">Impact level:</span>
@@ -419,7 +420,7 @@ function ShadowFanDiagram({ samples, maxShadowFt }: { samples: ShadowSample[]; m
   const maxRadius = center - 18;
   return (
     <div className="rounded border border-zinc-800 bg-zinc-900/40 p-2">
-      <div className="mb-1 text-[9px] uppercase tracking-wider text-zinc-500">
+      <div className="mb-1 text-[9px] uppercase tracking-wider text-zinc-400">
         Shadow directions — top-down 2D schematic (not a 3D render, not to scale)
       </div>
       <svg viewBox={`0 0 ${size} ${size}`} className="mx-auto h-36 w-36" role="img"
@@ -487,6 +488,7 @@ function SunStudyTool() {
         </Field>
         <Field label="Lot size (sqft)">
           <input inputMode="numeric" value={lotSizeSqFt} onChange={(e) => setLotSizeSqFt(e.target.value)} className={inputCls} />
+          {lotSizeSqFt.trim() !== '' && !(Number(lotSizeSqFt) > 0) && <span role="note" className="col-span-full text-xs text-rose-300">Lot size must be greater than 0.</span>}
         </Field>
         <Field label="Date (UTC)">
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputCls} />
@@ -547,7 +549,7 @@ function SunStudyTool() {
               </tbody>
             </table>
           </div>
-          <p className="text-[10px] leading-relaxed text-zinc-500">{result.method}</p>
+          <p className="text-[10px] leading-relaxed text-zinc-400">{result.method}</p>
         </div>
       )}
     </div>

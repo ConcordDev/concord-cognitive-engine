@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { ds } from '@/lib/design-system';
 import { lensRun } from '@/lib/api/client';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 /* ── Types ─────────────────────────────────────────────────────── */
 
@@ -436,8 +437,8 @@ export default function WorldTravel({
 
       {/* Selected world overlay */}
       {selectedWorld && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setSelectedWorld(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-          <div onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setSelectedWorld(null)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
+          <div onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             {renderWorldPreview(selectedWorld)}
           </div>
         </div>

@@ -12,6 +12,7 @@ import { lensRun } from '@/lib/api/client';
 import { useMetacognitionDesk } from '@/components/metacognition/useMetacognitionDesk';
 import { formatTimestamp } from '@/components/metacognition/metacog-model';
 import { ErrorState } from '@/components/common/EmptyState';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 export function PredictionsPanel() {
   const {
@@ -82,6 +83,7 @@ export function PredictionsPanel() {
               Make a Prediction
             </h2>
             <input
+              aria-label="Prediction claim"
               type="text"
               value={predictionClaim}
               onChange={(e) => setPredictionClaim(e.target.value)}
@@ -94,6 +96,7 @@ export function PredictionsPanel() {
                   Confidence: {(predictionConfidence * 100).toFixed(0)}%
                 </label>
                 <input
+                  aria-label="Prediction confidence"
                   type="range"
                   min="0.1"
                   max="1"
@@ -106,6 +109,7 @@ export function PredictionsPanel() {
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Domain (optional)</label>
                 <input
+                  aria-label="Prediction domain"
                   type="text"
                   value={predictionDomain}
                   onChange={(e) => setPredictionDomain(e.target.value)}
@@ -262,7 +266,7 @@ export function PredictionsPanel() {
                     <div key={id} className="lens-card">
                       <div
                         className="flex items-center gap-3 cursor-pointer"
-                        onClick={() => { setConfirmDeleteId(null); setExpandedPrediction(expanded ? null : id); }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                        onClick={() => { setConfirmDeleteId(null); setExpandedPrediction(expanded ? null : id); }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                         {isResolved ? (
                           isCorrect ? (
                             <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />
@@ -327,7 +331,7 @@ export function PredictionsPanel() {
                           ) : (
                             <button
                               onClick={() => setConfirmDeleteId(id)}
-                              className="p-1 rounded text-gray-500 hover:text-red-400 transition-colors"
+                              className="p-1 rounded text-gray-400 hover:text-red-400 transition-colors"
                               title="Delete prediction"
                               aria-label={`Delete prediction ${String(p.statement || '')}`}
                             >
@@ -401,7 +405,7 @@ export function PredictionsPanel() {
               <div className="space-y-2">
                 <div className="flex flex-wrap gap-4 text-xs">
                   <span className="text-gray-400">Brier Score: <span className="text-neon-cyan font-bold">{String(actionResult.brierScore)}</span></span>
-                  <span className="text-gray-400">Brier Skill Score: <span className="text-neon-green">{String(actionResult.brierSkillScore)}</span>{typeof actionResult.brierSkillScore === 'number' && actionResult.brierSkillScore < 0 ? <span className="text-gray-500"> (below the base-rate baseline)</span> : null}</span>
+                  <span className="text-gray-400">Brier Skill Score: <span className="text-neon-green">{String(actionResult.brierSkillScore)}</span>{typeof actionResult.brierSkillScore === 'number' && actionResult.brierSkillScore < 0 ? <span className="text-gray-400"> (below the base-rate baseline)</span> : null}</span>
                   <span className="text-gray-400">Log Loss: <span className="text-yellow-400">{String(actionResult.logLoss)}</span></span>
                 </div>
                 {'calibration' in actionResult && actionResult.calibration !== null && typeof actionResult.calibration === 'object' && (() => {
@@ -416,7 +420,7 @@ export function PredictionsPanel() {
                         {!!calObj.quality && (
                           <span className="text-gray-400">
                             Calibration quality: <span className="text-neon-cyan capitalize">{String(calObj.quality)}</span>
-                            <span className="text-gray-500"> (ECE scale: excellent &lt; 0.05 · good &lt; 0.10 · moderate &lt; 0.20 · poor ≥ 0.20 — the whole lens uses this one scale)</span>
+                            <span className="text-gray-400"> (ECE scale: excellent &lt; 0.05 · good &lt; 0.10 · moderate &lt; 0.20 · poor ≥ 0.20 — the whole lens uses this one scale)</span>
                           </span>
                         )}
                       </div>

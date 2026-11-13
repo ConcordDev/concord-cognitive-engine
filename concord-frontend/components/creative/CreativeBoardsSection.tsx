@@ -22,6 +22,8 @@ export function CreativeBoardsSection() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [boardQuery, setBoardQuery] = useState('');
+  const [boardSort, setBoardSort] = useState<'default' | 'title-az' | 'title-za' | 'most-cards'>('default');
   const [title, setTitle] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
@@ -45,6 +47,7 @@ export function CreativeBoardsSection() {
 
   const createBoard = async () => {
     if (!title.trim()) { setError('Board title is required.'); return; }
+    if (title.trim().length > 200) { setError('A board title must be 200 characters or fewer.'); return; }
     const r = await lensRun('creative', 'board-create', { title: title.trim() });
     if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
     setTitle('');
@@ -75,6 +78,15 @@ export function CreativeBoardsSection() {
     notifyCreativeDashboardDirty();
   };
 
+  const bq = boardQuery.trim().toLowerCase();
+  const visibleBoards = (() => {
+    const filtered = bq ? boards.filter((b) => b.title.toLowerCase().includes(bq)) : [...boards];
+    if (boardSort === 'title-az') filtered.sort((a, b) => a.title.localeCompare(b.title));
+    else if (boardSort === 'title-za') filtered.sort((a, b) => b.title.localeCompare(a.title));
+    else if (boardSort === 'most-cards') filtered.sort((a, b) => b.cardCount - a.cardCount);
+    return filtered;
+  })();
+
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 overflow-hidden">
       <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-gradient-to-r from-amber-600/15 to-transparent">
@@ -93,16 +105,16 @@ export function CreativeBoardsSection() {
             <section className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-2">
               <div className="flex items-center gap-2">
                 <input placeholder="New board title" value={title} onChange={(e) => setTitle(e.target.value)}
-                  className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+                  className="min-h-11 flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
                 <button type="button" onClick={createBoard}
-                  className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-amber-600 hover:bg-amber-500 text-white rounded-lg">
+                  className="min-h-11 flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-amber-600 hover:bg-amber-500 text-white rounded-lg">
                   <Plus className="w-3.5 h-3.5" /> Board
                 </button>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {templates.map((t) => (
                   <button key={t.id} type="button" onClick={() => fromTemplate(t.id)} title={t.description}
-                    className="text-[10px] px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg">
+                    className="min-h-11 text-[10px] px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg">
                     + {t.name}
                   </button>
                 ))}
@@ -116,8 +128,27 @@ export function CreativeBoardsSection() {
             ) : boards.length === 0 ? (
               <p className="text-[11px] text-zinc-400 italic py-6 text-center">No boards yet. Create one or start from a template.</p>
             ) : (
+              <>
+              {boards.length > 1 && (
+                <div className="flex flex-wrap items-center gap-2 mb-3">
+                  <input placeholder="Search boards…" value={boardQuery} onChange={(e) => setBoardQuery(e.target.value)}
+                    aria-label="Search boards"
+                    className="min-h-11 flex-1 min-w-[140px] bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+                  <select value={boardSort} onChange={(e) => setBoardSort(e.target.value as typeof boardSort)}
+                    aria-label="Sort boards"
+                    className="min-h-11 bg-zinc-950 border border-zinc-700 rounded-lg px-1.5 py-1.5 text-xs text-zinc-100">
+                    <option value="default">Delivered order</option>
+                    <option value="title-az">Title A–Z</option>
+                    <option value="title-za">Title Z–A</option>
+                    <option value="most-cards">Most cards</option>
+                  </select>
+                </div>
+              )}
+              {visibleBoards.length === 0 ? (
+                <p className="text-[11px] text-zinc-400 italic py-6 text-center">No boards match &ldquo;{boardQuery.trim()}&rdquo;.</p>
+              ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {boards.map((b) => (
+                {visibleBoards.map((b) => (
                   <div key={b.id} className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
                     <button type="button" onClick={() => setOpen(b.id)} className="block w-full text-left">
                       <div className="h-16 rounded-lg bg-gradient-to-br from-amber-900/30 to-zinc-800 mb-2 flex items-center justify-center">
@@ -128,17 +159,17 @@ export function CreativeBoardsSection() {
                     </button>
                     <div className="flex items-center gap-2 mt-1.5">
                       <button type="button" onClick={() => dupBoard(b.id)}
-                        className="flex items-center gap-1 text-[10px] text-zinc-400 hover:text-zinc-300">
+                        className="min-h-11 flex items-center gap-1 text-[10px] text-zinc-400 hover:text-zinc-300">
                         <Copy className="w-3 h-3" /> Duplicate
                       </button>
                       <div className="flex-1" />
                       {confirmDeleteId === b.id ? (
                         <>
-                          <button type="button" onClick={() => delBoard(b.id)} className="text-[10px] font-medium text-rose-400 hover:text-rose-300">Confirm delete</button>
-                          <button type="button" onClick={() => setConfirmDeleteId(null)} className="text-[10px] text-zinc-500 hover:text-zinc-300">Cancel</button>
+                          <button type="button" onClick={() => delBoard(b.id)} className="min-h-11 text-[10px] font-medium text-rose-400 hover:text-rose-300">Confirm delete</button>
+                          <button type="button" onClick={() => setConfirmDeleteId(null)} className="min-h-11 text-[10px] text-zinc-500 hover:text-zinc-300">Cancel</button>
                         </>
                       ) : (
-                        <button aria-label="Delete" type="button" onClick={() => setConfirmDeleteId(b.id)} className="text-zinc-600 hover:text-rose-400">
+                        <button aria-label="Delete" type="button" onClick={() => setConfirmDeleteId(b.id)} className="min-h-11 text-zinc-600 hover:text-rose-400">
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       )}
@@ -146,6 +177,8 @@ export function CreativeBoardsSection() {
                   </div>
                 ))}
               </div>
+              )}
+              </>
             )}
           </div>
         )}

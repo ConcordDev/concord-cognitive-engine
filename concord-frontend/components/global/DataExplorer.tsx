@@ -19,7 +19,9 @@ import {
   Map as MapIcon, LineChart as LineIcon, Columns3, ScatterChart as ScatterIcon,
   Search, Contact, Loader2, AlertTriangle, Bookmark, Trash2, Link2, Play, Copy,
 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { ChartKit } from '@/components/viz';
 import { cn } from '@/lib/utils';
 import { IndicatorPicker } from './IndicatorPicker';
@@ -98,6 +100,7 @@ function fmt(v: number | null | undefined, indicator?: string): string {
 const PALETTE = ['#06b6d4', '#22c55e', '#f59e0b', '#ec4899', '#a855f7', '#ef4444'];
 
 export function DataExplorer() {
+  const queryClient = useQueryClient();
   const [mode, setMode] = useState<Mode>('choropleth');
 
   // --- per-mode inputs ---
@@ -203,19 +206,36 @@ export function DataExplorer() {
     });
     if (r.data.ok && r.data.result) {
       setShareLink(r.data.result.shareLink);
+      // A successful save supersedes an earlier failure's error
+      // (FIX-global-009): the banner outlived the failed Run it belonged
+      // to and sat beside the new share link, claiming the view had
+      // failed while the saved list showed it saved.
+      setError(null);
       void refreshViews();
+      // The page's Saved Views stat card reads its own query; refresh it
+      // too or the count lags the list until a reload (FIX-global-008).
+      void queryClient.invalidateQueries({ queryKey: ['global-saved-views-count'] });
     } else {
       setError(r.data.error || 'Could not save view.');
     }
-  }, [mode, indicator, indicatorX, indicatorY, catalogQuery, country, currentConfig, refreshViews]);
+  }, [mode, indicator, indicatorX, indicatorY, catalogQuery, country, currentConfig, refreshViews, queryClient]);
 
   const deleteView = useCallback(async (id: string) => {
     const r = await lensRun('global', 'deleteView', { id });
-    if (r.data.ok) void refreshViews();
-  }, [refreshViews]);
+    if (r.data.ok) {
+      setError(null);
+      void refreshViews();
+      // Same stat-card refresh as the save path (FIX-global-008): the
+      // card kept showing the deleted view in its count until a reload.
+      void queryClient.invalidateQueries({ queryKey: ['global-saved-views-count'] });
+    }
+  }, [refreshViews, queryClient]);
 
   const applyView = useCallback((v: SavedView) => {
     const c = v.config || {};
+    // Applying a saved view replaces the screen's subject — an earlier
+    // failure's error no longer describes anything visible (FIX-global-009).
+    setError(null);
     setMode(v.mode as Mode);
     if (typeof c.indicator === 'string') setIndicator(c.indicator);
     if (typeof c.indicatorX === 'string') setIndicatorX(c.indicatorX);
@@ -376,14 +396,14 @@ export function DataExplorer() {
           <div className="max-h-64 space-y-1 overflow-y-auto">
             {choropleth.countries.slice(0, 60).map((c, i) => (
               <div key={c.code} className="flex items-center gap-2 rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1 text-[11px]">
-                <span className="w-6 text-right font-mono text-zinc-600">{i + 1}</span>
+                <span className="w-6 text-right font-mono text-zinc-400">{i + 1}</span>
                 <span className="w-12 font-mono text-zinc-400">{c.code}</span>
                 <span className="flex-1 truncate text-zinc-200">{c.name}</span>
                 <div className="h-1.5 w-20 overflow-hidden rounded-full bg-zinc-800">
                   <div className="h-full rounded-full bg-neon-cyan" style={{ width: `${c.intensity * 100}%` }} />
                 </div>
                 <span className="w-20 text-right font-mono text-neon-cyan">{fmt(c.value, choropleth.indicator)}</span>
-                <span className="w-10 text-right font-mono text-zinc-600">{c.year}</span>
+                <span className="w-10 text-right font-mono text-zinc-400">{c.year}</span>
               </div>
             ))}
           </div>
@@ -630,14 +650,7 @@ export function DataExplorer() {
                 <span className="font-mono text-[10px] text-zinc-400">
                   {new Date(v.createdAt).toLocaleDateString()}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => void deleteView(v.id)}
-                  className="text-zinc-600 hover:text-rose-400"
-                  aria-label="Delete view"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                <StickyDeleteConfirm onConfirm={() => { void deleteView(v.id); }} className="text-zinc-400 hover:text-rose-400" armAriaLabel={`Delete view ${v.label}`} confirmLabel={`Delete “${v.label}”?`} confirmAriaLabel={`Confirm delete view ${v.label}`} armLabel={<Trash2 className="h-3.5 w-3.5" />} />
               </div>
             ))}
           </div>

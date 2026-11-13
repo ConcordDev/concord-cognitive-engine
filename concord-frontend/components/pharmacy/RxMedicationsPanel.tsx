@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Pill, Check, X, Clock, Archive, ChevronDown, ChevronRight, Pencil, Search } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
 
@@ -177,7 +178,13 @@ export function RxMedicationsPanel({ onChange }: { onChange: () => void }) {
                     </button>
                   </div>
                 ) : (
-                  <span className={cn('text-[10px] capitalize', d.status === 'taken' ? 'text-emerald-400' : 'text-zinc-400')}>{d.status}</span>
+                  <div className="flex items-center gap-2">
+                    <span className={cn('text-[10px] capitalize', d.status === 'taken' ? 'text-emerald-400' : 'text-zinc-400')}>{d.status}</span>
+                    {d.status === 'taken' && (
+                      <button type="button" onClick={() => { void lensRun('pharmacy', 'dose-undo', { medId: d.medId, scheduledTime: d.time }).then(() => refresh()); }}
+                        className="text-[10px] text-zinc-400 hover:text-white">Undo</button>
+                    )}
+                  </div>
                 )}
               </li>
             ))}
@@ -256,9 +263,13 @@ export function RxMedicationsPanel({ onChange }: { onChange: () => void }) {
                         aria-expanded={isDetailOpen} className="text-zinc-600 hover:text-zinc-300 p-1">
                         {isDetailOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
                       </button>
-                      <button aria-label={`Archive ${m.name}`} type="button" onClick={() => archive(m.id)} className="text-zinc-600 hover:text-zinc-400 p-1">
-                        <Archive className="w-3.5 h-3.5" />
-                      </button>
+                      <StickyDeleteConfirm
+                        onConfirm={() => archive(m.id)}
+                        armLabel={<Archive className="w-3.5 h-3.5" />}
+                        confirmLabel="Archive?"
+                        armAriaLabel={`Archive ${m.name}`}
+                        className="text-zinc-600 hover:text-zinc-400 p-1"
+                      />
                     </div>
                   </div>
 

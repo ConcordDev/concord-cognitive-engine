@@ -188,12 +188,22 @@ describe("sponsorship — change_tier / pause / resume / cancel lifecycle", () =
     assert.equal(b.result.monthlyCommitted, 16);
   });
 
-  it("cancel drops it from list_for_user; pause/resume/change after cancel are rejected", () => {
+  it("cancel keeps the row so dispatch history stays reachable; pause/resume/change after cancel are rejected", () => {
     const s = call("subscribe", ctxA, { creatorId: CREATOR, tierId: `${CREATOR}_bronze` });
     const id = s.result.sponsorship.id;
     assert.equal(call("cancel", ctxA, { sponsorshipId: id }).result.status, "cancelled");
-    assert.equal(call("list_for_user", ctxA, {}).result.count, 0);
+    const list = call("list_for_user", ctxA, {});
+    assert.equal(list.result.count, 1);
+    assert.equal(list.result.sponsorships[0].status, "cancelled");
+    assert.equal(list.result.sponsorships[0].totalContributed, 8);
+    const hist = call("dispatch_history", ctxA, { sponsorshipId: id });
+    assert.equal(hist.ok, true);
+    const b = call("billing", ctxA, {});
+    assert.equal(b.result.cancelledCount, 1);
+    assert.equal(b.result.totalContributed, 8);
+    assert.equal(b.result.pledgedOnSponsorships, 8);
     assert.match(call("pause", ctxA, { sponsorshipId: id }).error, /cannot pause/);
+    assert.match(call("resume", ctxA, { sponsorshipId: id }).error, /not paused/);
     assert.match(call("change_tier", ctxA, { sponsorshipId: id, tierId: `${CREATOR}_gold` }).error, /resubscribe/);
   });
 

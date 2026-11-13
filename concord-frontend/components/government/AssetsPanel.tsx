@@ -66,19 +66,19 @@ export function AssetsPanel() {
         <Wrench className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Infrastructure assets</span>
         <span className="ml-auto text-[10px] text-gray-400">{filtered.length} / {assets.length}</span>
-        <select value={filter} onChange={e => setFilter(e.target.value)} className="text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white">
+        <select aria-label="Filter assets" value={filter} onChange={e => setFilter(e.target.value)} className="text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white">
           <option value="">All kinds</option>
           {KINDS.map(k => <option key={k} value={k}>{k.replace(/_/g, ' ')}</option>)}
         </select>
       </header>
       <div className="p-3 border-b border-white/10 grid grid-cols-6 gap-2">
-        <select value={form.kind} onChange={e => setForm({ ...form, kind: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+        <select aria-label="Asset kind" value={form.kind} onChange={e => setForm({ ...form, kind: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
           {KINDS.map(k => <option key={k} value={k}>{k.replace(/_/g, ' ')}</option>)}
         </select>
-        <input value={form.label} onChange={e => setForm({ ...form, label: e.target.value })} placeholder="Label (SL-001)" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-        <input type="number" step="0.0001" value={form.lat} onChange={e => setForm({ ...form, lat: e.target.value })} placeholder="Lat" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
-        <input type="number" step="0.0001" value={form.lng} onChange={e => setForm({ ...form, lng: e.target.value })} placeholder="Lng" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
-        <select value={form.condition} onChange={e => setForm({ ...form, condition: e.target.value as Asset['condition'] })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+        <input aria-label="Label (SL-001)" value={form.label} onChange={e => setForm({ ...form, label: e.target.value })} placeholder="Label (SL-001)" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <input aria-label="Lat" type="number" step="0.0001" value={form.lat} onChange={e => setForm({ ...form, lat: e.target.value })} placeholder="Lat" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+        <input aria-label="Lng" type="number" step="0.0001" value={form.lng} onChange={e => setForm({ ...form, lng: e.target.value })} placeholder="Lng" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+        <select aria-label="Asset condition" value={form.condition} onChange={e => setForm({ ...form, condition: e.target.value as Asset['condition'] })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
           <option value="good">Good</option><option value="fair">Fair</option><option value="poor">Poor</option><option value="broken">Broken</option>
         </select>
         <button onClick={add} className="col-span-6 px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 inline-flex items-center justify-center gap-1"><Plus className="w-3 h-3" />Add asset</button>

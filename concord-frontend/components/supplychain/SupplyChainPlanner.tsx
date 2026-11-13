@@ -22,6 +22,7 @@ import {
   ClipboardList, DollarSign, Loader2, Plus, Trash2, ArrowRight, Check,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { ChartKit, TimelineView, TreeDiagram, MapView } from '@/components/viz';
 import type { TreeNode, TimelineEvent, MapMarker } from '@/components/viz';
 import { cn } from '@/lib/utils';
@@ -121,7 +122,7 @@ function parseNumberList(text: string): number[] {
 
 /* ─────────────────────────── small atoms ───────────────────────────── */
 
-const INPUT = 'w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white';
+const INPUT = 'min-h-11 w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white';
 const LABEL = 'text-[9px] uppercase tracking-wider text-zinc-400 font-semibold';
 const BTN = 'flex items-center gap-1 rounded px-2.5 py-1 text-[11px] font-semibold transition-colors';
 
@@ -142,10 +143,10 @@ function ExampleBlock({ lines, onLoad }: { lines: string; onLoad: () => void }) 
   return (
     <div className="rounded border border-dashed border-zinc-800 bg-zinc-900/20 px-2 py-1.5">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[9px] uppercase tracking-wider text-zinc-500 font-semibold">Example — not your data</span>
+        <span className="text-[9px] uppercase tracking-wider text-zinc-400 font-semibold">Example — not your data</span>
         <button type="button" onClick={onLoad} className="text-[10px] font-semibold text-teal-300 hover:text-teal-200">Load example</button>
       </div>
-      <pre className="mt-1 whitespace-pre-wrap font-mono text-[10px] text-zinc-500">{lines}</pre>
+      <pre className="mt-1 whitespace-pre-wrap font-mono text-[10px] text-zinc-400">{lines}</pre>
     </div>
   );
 }
@@ -158,6 +159,8 @@ function ShipmentsPanel({ notify }: { notify: (f: Feedback) => void }) {
   const [ref, setRef] = useState(''); const [carrier, setCarrier] = useState('');
   const [origin, setOrigin] = useState(''); const [dest, setDest] = useState('');
   const [eta, setEta] = useState(''); const [value, setValue] = useState('');
+  // FIX-supplychain-007: in-lens search over the held shipments.
+  const [shipQuery, setShipQuery] = useState('');
 
   const load = useCallback(async () => {
     try { setData(await run<ShipmentList>('shipmentList')); }
@@ -217,8 +220,21 @@ function ShipmentsPanel({ notify }: { notify: (f: Feedback) => void }) {
         </div>
       )}
 
+      {(data?.shipments?.length ?? 0) > 1 && (
+        <input
+          type="search" value={shipQuery} onChange={(e) => setShipQuery(e.target.value)}
+          placeholder="Search shipments by reference, carrier, origin, or destination…"
+          aria-label="Search shipments"
+          className="w-full rounded-md border border-zinc-800 bg-zinc-900/40 px-2.5 py-1.5 text-[12px] text-zinc-100 placeholder:text-zinc-400"
+        />
+      )}
+
       <div className="space-y-2">
-        {(data?.shipments || []).map((s) => (
+        {(data?.shipments || []).filter((s) => {
+          const q = shipQuery.trim().toLowerCase();
+          if (!q) return true;
+          return [s.reference, s.carrier, s.origin, s.destination].some((f) => f.toLowerCase().includes(q));
+        }).map((s) => (
           <div key={s.id} className="rounded-md border border-zinc-800 bg-zinc-900/40 p-2.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -231,7 +247,7 @@ function ShipmentsPanel({ notify }: { notify: (f: Feedback) => void }) {
                       : s.health === 'exception' ? 'bg-rose-500/20 text-rose-300'
                         : 'bg-blue-500/20 text-blue-300')}>{s.status.replace(/_/g, ' ')}</span>
               </div>
-              <button onClick={() => del(s.id)} className="text-zinc-600 hover:text-rose-400" aria-label="Delete shipment"><Trash2 className="w-3.5 h-3.5" /></button>
+              <button onClick={() => del(s.id)} className="text-zinc-400 hover:text-rose-400" aria-label="Delete shipment"><Trash2 className="w-3.5 h-3.5" /></button>
             </div>
             <div className="text-[10px] text-zinc-400 mt-0.5">
               {s.origin || '?'} <ArrowRight className="inline w-2.5 h-2.5" /> {s.destination || '?'}
@@ -262,6 +278,9 @@ function ShipmentsPanel({ notify }: { notify: (f: Feedback) => void }) {
           </div>
         ))}
         {data && data.shipments.length === 0 && <p className="text-[11px] text-zinc-400 py-3 text-center">No shipments tracked yet.</p>}
+        {data && data.shipments.length > 0 && shipQuery.trim() !== '' && !data.shipments.some((s) => [s.reference, s.carrier, s.origin, s.destination].some((f) => f.toLowerCase().includes(shipQuery.trim().toLowerCase()))) && (
+          <p className="text-[11px] text-zinc-400 py-3 text-center">No shipments match &ldquo;{shipQuery}&rdquo;.</p>
+        )}
       </div>
     </div>
   );
@@ -320,14 +339,14 @@ function NetworkPanel({ notify }: { notify: (f: Feedback) => void }) {
     <div className="space-y-3">
       <div className="rounded-md border border-zinc-800 bg-zinc-900/30 p-2.5 space-y-2">
         <div>
-          <div className={LABEL}>Nodes — one per line: <span className="text-zinc-600 normal-case">id | label | kind | location | capacity</span></div>
+          <div className={LABEL}>Nodes — one per line: <span className="text-zinc-400 normal-case">id | label | kind | location | capacity</span></div>
           <textarea className={cn(INPUT, 'font-mono')} rows={4} value={nodesText} onChange={(e) => setNodesText(e.target.value)} />
         </div>
         <div>
-          <div className={LABEL}>Edges — one per line: <span className="text-zinc-600 normal-case">fromId &gt; toId | leadTimeDays | volume</span></div>
+          <div className={LABEL}>Edges — one per line: <span className="text-zinc-400 normal-case">fromId &gt; toId | leadTimeDays | volume</span></div>
           <textarea className={cn(INPUT, 'font-mono')} rows={3} value={edgesText} onChange={(e) => setEdgesText(e.target.value)} />
         </div>
-        {loadedSaved && <p className="text-[10px] text-zinc-500">Showing your saved network — edit the lines and Save to replace it.</p>}
+        {loadedSaved && <p className="text-[10px] text-zinc-400">Showing your saved network — edit the lines and Save to replace it.</p>}
         <ExampleBlock
           lines={'s1 | Shenzhen Mill | supplier | Shenzhen | 5000\nw1 | LA DC | warehouse | Los Angeles | 8000\nc1 | West Retail | customer | San Francisco | 0\n\ns1 > w1 | 21 | 4000\nw1 > c1 | 3 | 3500'}
           onLoad={() => {
@@ -377,25 +396,46 @@ function EchelonPanel({ notify }: { notify: (f: Feedback) => void }) {
 
   // line: location | tier | dailyDemand | leadTimeDays | currentStock | demandStdDev
   const optimize = async () => {
-    const echelons = text.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
+    const z = Number(zText);
+    if (!Number.isFinite(z) || z < 0 || z > 5) {
+      notify({ kind: 'err', text: 'Service level Z must be a number from 0 to 5.' });
+      return;
+    }
+    const echelons: Array<Record<string, unknown>> = [];
+    for (const l of text.split('\n').map((line) => line.trim()).filter(Boolean)) {
       const [location, tier, dd, lt, cur, sd] = l.split('|').map((x) => x.trim());
-      return {
-        location, tier, dailyDemand: Number(dd) || 0, leadTimeDays: Number(lt) || 7,
-        currentStock: Number(cur) || 0, demandStdDev: sd ? Number(sd) : undefined,
-      };
-    });
+      const who = location || 'Echelon';
+      const fields: Array<[string, string, number]> = [
+        ['daily demand', dd, 0],
+        ['lead time', lt, 0],
+        ['current stock', cur, 0],
+      ];
+      if (sd) fields.push(['demand std dev', sd, 0]);
+      for (const [label, raw, min] of fields) {
+        const n = Number(raw);
+        if (!raw || !Number.isFinite(n) || n < min) {
+          notify({ kind: 'err', text: `${who} ${label} must be a number of at least ${min}.` });
+          return;
+        }
+      }
+      echelons.push({
+        location, tier, dailyDemand: Number(dd), leadTimeDays: Number(lt),
+        currentStock: Number(cur), demandStdDev: sd ? Number(sd) : undefined,
+      });
+    }
     if (echelons.length === 0) { notify({ kind: 'err', text: 'Add at least one echelon line.' }); return; }
     setBusy(true);
     try {
-      setResult(await run<EchelonResult>('multiEchelonOptimize', { echelons, serviceLevelZ: num(zText, 1.65) }));
-      notify({ kind: 'ok', text: 'Multi-echelon optimization complete.' });
+      const result = await run<EchelonResult & { message?: string }>('multiEchelonOptimize', { echelons, serviceLevelZ: z });
+      if (result?.message && !result.echelons) { notify({ kind: 'err', text: result.message }); setResult(null); }
+      else { setResult(result); notify({ kind: 'ok', text: 'Multi-echelon optimization complete.' }); }
     } catch (e) { notify({ kind: 'err', text: (e as Error).message }); } finally { setBusy(false); }
   };
 
   return (
     <div className="space-y-3">
       <div className="rounded-md border border-zinc-800 bg-zinc-900/30 p-2.5 space-y-2">
-        <div className={LABEL}>Echelons — one per line: <span className="text-zinc-600 normal-case">location | tier | dailyDemand | leadTimeDays | currentStock | demandStdDev</span></div>
+        <div className={LABEL}>Echelons — one per line: <span className="text-zinc-400 normal-case">location | tier | dailyDemand | leadTimeDays | currentStock | demandStdDev</span></div>
         <textarea className={cn(INPUT, 'font-mono')} rows={4} value={text} onChange={(e) => setText(e.target.value)} />
         <ExampleBlock
           lines={'LA DC | regional | 120 | 7 | 900 | 40\nDallas DC | regional | 80 | 5 | 250 | 25\nCentral Hub | central | 220 | 14 | 4000 | 90'}
@@ -465,6 +505,8 @@ function ScenarioPanel({ notify }: { notify: (f: Feedback) => void }) {
   const [demand, setDemand] = useState('100'); const [lead, setLead] = useState('14');
   const [cost, setCost] = useState('10'); const [stock, setStock] = useState('');
   const [altLead, setAltLead] = useState(''); const [altCost, setAltCost] = useState('');
+  // FIX-supplychain-007: in-lens search over the held scenarios.
+  const [scenarioQuery, setScenarioQuery] = useState('');
 
   const load = useCallback(async () => {
     try { const r = await run<{ scenarios: Scenario[] }>('scenarioList'); setScenarios(r?.scenarios || []); }
@@ -495,7 +537,7 @@ function ScenarioPanel({ notify }: { notify: (f: Feedback) => void }) {
       <div className="rounded-md border border-zinc-800 bg-zinc-900/30 p-2.5 grid grid-cols-2 md:grid-cols-4 gap-2">
         <div><div className={LABEL}>Scenario name</div><input className={INPUT} value={name} onChange={(e) => setName(e.target.value)} /></div>
         <div><div className={LABEL}>Disruption</div>
-          <select className={INPUT} value={disruption} onChange={(e) => setDisruption(e.target.value)}>
+          <select aria-label="Disruption type" className={INPUT} value={disruption} onChange={(e) => setDisruption(e.target.value)}>
             {DISRUPTIONS.map((d) => <option key={d} value={d}>{d.replace(/_/g, ' ')}</option>)}
           </select>
         </div>
@@ -510,8 +552,21 @@ function ScenarioPanel({ notify }: { notify: (f: Feedback) => void }) {
         </button>
       </div>
 
+      {scenarios.length > 1 && (
+        <input
+          type="search" value={scenarioQuery} onChange={(e) => setScenarioQuery(e.target.value)}
+          placeholder="Search scenarios by name or disruption…"
+          aria-label="Search scenarios"
+          className="w-full rounded-md border border-zinc-800 bg-zinc-900/40 px-2.5 py-1.5 text-[12px] text-zinc-100 placeholder:text-zinc-400"
+        />
+      )}
+
       <div className="space-y-2">
-        {scenarios.map((s) => (
+        {scenarios.filter((s) => {
+          const q = scenarioQuery.trim().toLowerCase();
+          if (!q) return true;
+          return [s.name, s.disruption.replace(/_/g, ' ')].some((f) => f.toLowerCase().includes(q));
+        }).map((s) => (
           <div key={s.id} className="rounded-md border border-zinc-800 bg-zinc-900/40 p-2.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -521,7 +576,7 @@ function ScenarioPanel({ notify }: { notify: (f: Feedback) => void }) {
                   {s.resilient ? 'resilient' : 'at risk'}
                 </span>
               </div>
-              <button onClick={() => del(s.id)} className="text-zinc-600 hover:text-rose-400" aria-label="Delete scenario"><Trash2 className="w-3.5 h-3.5" /></button>
+              <ScenarioDelete name={s.name} onConfirm={() => del(s.id)} />
             </div>
             <div className="text-[10px] text-emerald-300 mt-0.5">Recommendation: {s.recommendation}</div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-1.5">
@@ -539,6 +594,9 @@ function ScenarioPanel({ notify }: { notify: (f: Feedback) => void }) {
           </div>
         ))}
         {scenarios.length === 0 && <p className="text-[11px] text-zinc-400 py-3 text-center">No scenarios run yet.</p>}
+        {scenarios.length > 0 && scenarioQuery.trim() !== '' && !scenarios.some((s) => [s.name, s.disruption.replace(/_/g, ' ')].some((f) => f.toLowerCase().includes(scenarioQuery.trim().toLowerCase()))) && (
+          <p className="text-[11px] text-zinc-400 py-3 text-center">No scenarios match &ldquo;{scenarioQuery}&rdquo;.</p>
+        )}
       </div>
     </div>
   );
@@ -556,12 +614,23 @@ function ForecastPanel({ notify }: { notify: (f: Feedback) => void }) {
   const forecast = async () => {
     const values = parseNumberList(text);
     if (values.length < 4) { notify({ kind: 'err', text: 'Enter at least 4 demand values.' }); return; }
+    const seasonLength = Number(season);
+    const horizonN = Number(horizon);
+    if (!Number.isFinite(seasonLength) || seasonLength < 2) {
+      notify({ kind: 'err', text: 'Season length must be a number of at least 2.' });
+      return;
+    }
+    if (!Number.isFinite(horizonN) || horizonN < 1) {
+      notify({ kind: 'err', text: 'Horizon must be a number of at least 1.' });
+      return;
+    }
     setBusy(true);
     try {
-      setResult(await run<SeasonalResult>('seasonalForecast', {
-        history: values, seasonLength: num(season, 4), horizon: num(horizon, 4),
-      }));
-      notify({ kind: 'ok', text: 'Holt-Winters forecast computed.' });
+      const result = await run<SeasonalResult & { message?: string }>('seasonalForecast', {
+        history: values, seasonLength, horizon: horizonN,
+      });
+      if (result?.message && !result.forecast) { setResult(null); notify({ kind: 'err', text: result.message }); }
+      else { setResult(result); notify({ kind: 'ok', text: 'Holt-Winters forecast computed.' }); }
     } catch (e) { notify({ kind: 'err', text: (e as Error).message }); } finally { setBusy(false); }
   };
 
@@ -648,19 +717,19 @@ function ExceptionsPanel({ notify }: { notify: (f: Feedback) => void }) {
     <div className="space-y-3">
       <div className="rounded-md border border-zinc-800 bg-zinc-900/30 p-2.5 grid grid-cols-1 md:grid-cols-2 gap-2">
         <div>
-          <div className={LABEL}>Inventory — <span className="text-zinc-600 normal-case">name | currentStock | dailyDemand | leadTimeDays | reorderPoint</span></div>
+          <div className={LABEL}>Inventory — <span className="text-zinc-400 normal-case">name | currentStock | dailyDemand | leadTimeDays | reorderPoint</span></div>
           <textarea className={cn(INPUT, 'font-mono')} rows={3} value={invText} onChange={(e) => setInvText(e.target.value)} />
           <ExampleBlock lines={'Widget A | 0 | 12 | 7 | 90\nWidget B | 40 | 6 | 5'} onLoad={() => setInvText('Widget A | 0 | 12 | 7 | 90\nWidget B | 40 | 6 | 5')} />
         </div>
         <div>
-          <div className={LABEL}>Suppliers — <span className="text-zinc-600 normal-case">name | qualityScore | onTimePercent</span></div>
+          <div className={LABEL}>Suppliers — <span className="text-zinc-400 normal-case">name | qualityScore | onTimePercent</span></div>
           <textarea className={cn(INPUT, 'font-mono')} rows={3} value={supText} onChange={(e) => setSupText(e.target.value)} />
           <ExampleBlock lines={'Acme Corp | 45 | 55\nGlobex | 80 | 92'} onLoad={() => setSupText('Acme Corp | 45 | 55\nGlobex | 80 | 92')} />
         </div>
         <button onClick={() => scan(true)} disabled={busy} className={cn(BTN, 'bg-rose-600 text-white hover:bg-rose-500 md:col-span-2 justify-center')}>
           {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <AlertTriangle className="w-3.5 h-3.5" />} Scan exceptions (incl. live shipments &amp; POs)
         </button>
-        <p className="text-[10px] text-zinc-500 md:col-span-2">Scan results also update the Overview control tower.</p>
+        <p className="text-[10px] text-zinc-400 md:col-span-2">Scan results also update the Overview control tower.</p>
       </div>
 
       {result && (
@@ -669,7 +738,7 @@ function ExceptionsPanel({ notify }: { notify: (f: Feedback) => void }) {
             <Stat label="Critical" value={result.critical} tone="text-rose-300" />
             <Stat label="Warnings" value={result.warning} tone="text-amber-300" />
           </div>
-          {result.ropModel && <p className="text-[10px] text-zinc-500">{result.ropModel}</p>}
+          {result.ropModel && <p className="text-[10px] text-zinc-400">{result.ropModel}</p>}
           <div className="space-y-1.5">
             {result.alerts.map((a) => (
               <div key={a.id} className={cn('rounded-md border px-2.5 py-1.5',
@@ -703,6 +772,8 @@ function WorkOrdersPanel({ notify }: { notify: (f: Feedback) => void }) {
   const [item, setItem] = useState(''); const [supplier, setSupplier] = useState('');
   const [qty, setQty] = useState('1'); const [cost, setCost] = useState('');
   const [lead, setLead] = useState('14'); const [category, setCategory] = useState('');
+  // FIX-supplychain-007: in-lens search over the held purchase orders.
+  const [poQuery, setPoQuery] = useState('');
 
   const load = useCallback(async () => {
     try { setData(await run<WorkOrderList>('workOrderList')); }
@@ -753,8 +824,20 @@ function WorkOrdersPanel({ notify }: { notify: (f: Feedback) => void }) {
             <Stat label="Ordered" value={data.byStage.ordered || 0} />
             <Stat label="Received" value={data.byStage.received || 0} tone="text-emerald-300" />
           </div>
+          {data.workOrders.length > 1 && (
+            <input
+              type="search" value={poQuery} onChange={(e) => setPoQuery(e.target.value)}
+              placeholder="Search purchase orders by number, item, or supplier…"
+              aria-label="Search purchase orders"
+              className="w-full rounded-md border border-zinc-800 bg-zinc-900/40 px-2.5 py-1.5 text-[12px] text-zinc-100 placeholder:text-zinc-400"
+            />
+          )}
           <div className="space-y-2">
-            {data.workOrders.map((wo) => (
+            {data.workOrders.filter((wo) => {
+              const q = poQuery.trim().toLowerCase();
+              if (!q) return true;
+              return [wo.poNumber, wo.item, wo.supplier].some((f) => f.toLowerCase().includes(q));
+            }).map((wo) => (
               <div key={wo.id} className="rounded-md border border-zinc-800 bg-zinc-900/40 p-2.5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -765,14 +848,14 @@ function WorkOrdersPanel({ notify }: { notify: (f: Feedback) => void }) {
                   </div>
                   <div className="flex items-center gap-1.5">
                     <span className="text-[10px] text-emerald-300 font-mono">${wo.totalCost.toLocaleString()}</span>
-                    <button onClick={() => del(wo.id)} className="text-zinc-600 hover:text-rose-400" aria-label="Delete work order"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => del(wo.id)} className="text-zinc-400 hover:text-rose-400" aria-label="Delete work order"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
                 </div>
                 <div className="mt-1.5 flex items-center gap-1">
                   {data.stages.map((st, i) => (
                     <div key={st} className="flex items-center gap-1 flex-1">
                       <div className={cn('flex-1 h-1 rounded-full', i <= data.stages.indexOf(wo.stage) ? 'bg-teal-500' : 'bg-zinc-800')} />
-                      <span className={cn('text-[8px] uppercase whitespace-nowrap', st === wo.stage ? 'text-teal-300 font-semibold' : 'text-zinc-600')}>{st}</span>
+                      <span className={cn('text-[8px] uppercase whitespace-nowrap', st === wo.stage ? 'text-teal-300 font-semibold' : 'text-zinc-400')}>{st}</span>
                     </div>
                   ))}
                 </div>
@@ -784,6 +867,9 @@ function WorkOrdersPanel({ notify }: { notify: (f: Feedback) => void }) {
               </div>
             ))}
             {data.workOrders.length === 0 && <p className="text-[11px] text-zinc-400 py-3 text-center">No work orders yet.</p>}
+            {data.workOrders.length > 0 && poQuery.trim() !== '' && !data.workOrders.some((wo) => [wo.poNumber, wo.item, wo.supplier].some((f) => f.toLowerCase().includes(poQuery.trim().toLowerCase()))) && (
+              <p className="text-[11px] text-zinc-400 py-3 text-center">No purchase orders match &ldquo;{poQuery}&rdquo;.</p>
+            )}
           </div>
         </>
       )}
@@ -802,20 +888,34 @@ function SpendPanel({ notify }: { notify: (f: Feedback) => void }) {
   // No mount auto-run: an untouched editor must not silently produce
   // work-order-only analytics beside its example lines.
   const analyze = useCallback(async () => {
-    const orders = text.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
+    const orders: Array<Record<string, unknown>> = [];
+    for (const l of text.split('\n').map((line) => line.trim()).filter(Boolean)) {
       const [supplier, category, qty, unit] = l.split('|').map((x) => x.trim());
-      return { supplier, category, quantity: Number(qty) || 0, unitCost: Number(unit) || 0 };
-    });
+      const who = supplier || 'Order';
+      const quantity = Number(qty);
+      const unitCost = Number(unit);
+      if (!Number.isFinite(quantity) || quantity < 0) {
+        notify({ kind: 'err', text: `${who} quantity must be a number that is 0 or more.` });
+        return;
+      }
+      if (!Number.isFinite(unitCost) || unitCost < 0) {
+        notify({ kind: 'err', text: `${who} unit cost must be a number that is 0 or more.` });
+        return;
+      }
+      orders.push({ supplier, category, quantity, unitCost });
+    }
     setBusy(true);
     try {
-      setResult(await run<SpendResult>('spendAnalytics', { orders }));
+      const result = await run<SpendResult>('spendAnalytics', { orders });
+      if (result?.message && !(result.bySupplier?.length)) notify({ kind: 'err', text: result.message });
+      setResult(result);
     } catch (e) { notify({ kind: 'err', text: (e as Error).message }); } finally { setBusy(false); }
   }, [text, notify]);
 
   return (
     <div className="space-y-3">
       <div className="rounded-md border border-zinc-800 bg-zinc-900/30 p-2.5 space-y-2">
-        <div className={LABEL}>Orders — one per line: <span className="text-zinc-600 normal-case">supplier | category | quantity | unitCost</span> (work orders are auto-included)</div>
+        <div className={LABEL}>Orders — one per line: <span className="text-zinc-400 normal-case">supplier | category | quantity | unitCost</span> (work orders are auto-included)</div>
         <textarea className={cn(INPUT, 'font-mono')} rows={4} value={text} onChange={(e) => setText(e.target.value)} />
         <ExampleBlock
           lines={'Acme Corp | raw materials | 500 | 4.20\nGlobex | packaging | 1200 | 0.85\nAcme Corp | raw materials | 300 | 4.50'}
@@ -899,7 +999,7 @@ export function SupplyChainPlanner() {
     <div className="rounded-lg border border-teal-500/20 bg-zinc-950/60 p-3 space-y-3">
       <header className="flex items-center gap-2 border-b border-teal-500/10 pb-2">
         <Network className="h-4 w-4 text-teal-400" />
-        <h3 className="text-sm font-semibold text-white">Integrated Planning Workbench</h3>
+        <h2 className="text-sm font-semibold text-white">Integrated Planning Workbench</h2>
         <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">
           SAP-IBP parity
         </span>
@@ -936,5 +1036,21 @@ export function SupplyChainPlanner() {
       {tab === 'workorders' && <WorkOrdersPanel notify={notify} />}
       {tab === 'spend' && <SpendPanel notify={notify} />}
     </div>
+  );
+}
+
+function ScenarioDelete({ name, onConfirm }: { name: string; onConfirm: () => void }) {
+  const [armed, setArmed] = useState(false);
+  return (
+    <StickyDeleteConfirm
+      armed={armed}
+      onArm={() => setArmed(true)}
+      onCancel={() => setArmed(false)}
+      onConfirm={() => { setArmed(false); onConfirm(); }}
+      armLabel={<Trash2 className="w-3.5 h-3.5" />}
+      confirmLabel={`Delete scenario “${name}”?`}
+      armAriaLabel="Delete scenario"
+      className="text-zinc-400 hover:text-rose-400"
+    />
   );
 }

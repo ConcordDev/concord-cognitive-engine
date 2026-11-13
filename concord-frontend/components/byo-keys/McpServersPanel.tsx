@@ -102,7 +102,7 @@ export function McpServersPanel() {
         <button
           type="button"
           onClick={() => refresh()}
-          className="text-zinc-500 hover:text-zinc-300"
+          className="text-zinc-400 hover:text-zinc-300"
           aria-label="Refresh"
           data-testid="mcp-servers-refresh"
         >
@@ -121,6 +121,7 @@ export function McpServersPanel() {
 
       <div className="flex flex-col sm:flex-row gap-2 mb-4">
         <input
+          aria-label="MCP server id"
           value={serverId}
           onChange={(e) => setServerId(e.target.value)}
           placeholder="server id (e.g. github)"
@@ -128,6 +129,7 @@ export function McpServersPanel() {
           data-testid="mcp-server-id-input"
         />
         <input
+          aria-label="MCP server URL"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           placeholder="https://example.com/mcp"
@@ -146,13 +148,13 @@ export function McpServersPanel() {
       </div>
 
       {!loaded && (
-        <div className="flex items-center gap-2 text-xs text-zinc-500">
+        <div className="flex items-center gap-2 text-xs text-zinc-400">
           <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading…
         </div>
       )}
 
       {loaded && servers.length === 0 && (
-        <div className="rounded border border-dashed border-zinc-800 p-3 text-center text-[11px] text-zinc-500" data-testid="mcp-servers-empty">
+        <div className="rounded border border-dashed border-zinc-800 p-3 text-center text-[11px] text-zinc-400" data-testid="mcp-servers-empty">
           No MCP servers connected yet.
         </div>
       )}
@@ -168,13 +170,13 @@ export function McpServersPanel() {
               >
                 <span className="font-mono text-xs text-zinc-100">{s.serverId}</span>
                 <span className="ml-2 rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-zinc-400">{s.kind}</span>
-                <span className="ml-2 text-[10px] text-zinc-500">{s.toolCount} tool{s.toolCount === 1 ? '' : 's'}</span>
+                <span className="ml-2 text-[10px] text-zinc-400">{s.toolCount} tool{s.toolCount === 1 ? '' : 's'}</span>
               </button>
               <button
                 type="button"
                 onClick={() => disconnect(s.serverId)}
                 disabled={busy}
-                className="text-zinc-500 hover:text-red-400 disabled:opacity-50"
+                className="text-zinc-400 hover:text-red-400 disabled:opacity-50"
                 aria-label={`Disconnect ${s.serverId}`}
                 data-testid={`mcp-server-disconnect-${s.serverId}`}
               >

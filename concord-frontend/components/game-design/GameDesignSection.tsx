@@ -53,6 +53,8 @@ const GENRES = ['platformer', 'rpg', 'puzzle', 'strategy', 'simulation', 'advent
 
 export function GameDesignSection() {
   const [games, setGames] = useState<Game[]>([]);
+  const [gameQuery, setGameQuery] = useState('');
+  const [gameSort, setGameSort] = useState<'default' | 'title-az' | 'title-za'>('default');
   const [activeGame, setActiveGame] = useState<string>('');
   // F5 (unconfirmed-destructive): the chip × used to fire game-delete
   // on a single click. The family's two-step applies (cf. Gallery
@@ -143,6 +145,14 @@ export function GameDesignSection() {
     setExportJson((r.data?.result as { json?: string } | null)?.json || null);
   };
 
+  const gq = gameQuery.trim().toLowerCase();
+  const filteredGames = gq
+    ? games.filter((g) => g.title.toLowerCase().includes(gq) || (g.genre || '').toLowerCase().includes(gq))
+    : games;
+  const visibleGames = gameSort === 'default'
+    ? filteredGames
+    : [...filteredGames].sort((a, b) => gameSort === 'title-az' ? a.title.localeCompare(b.title) : b.title.localeCompare(a.title));
+
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 overflow-hidden">
       <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-gradient-to-r from-lime-600/15 to-transparent">
@@ -172,8 +182,24 @@ export function GameDesignSection() {
       ) : (
         <>
           <div className="px-4 py-3 border-b border-zinc-800 space-y-2">
+            {games.length > 1 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <input value={gameQuery} onChange={(e) => setGameQuery(e.target.value)}
+                  placeholder="Search your game projects" aria-label="Search game projects"
+                  className="flex-1 min-w-[160px] bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+                <select value={gameSort} onChange={(e) => setGameSort(e.target.value as typeof gameSort)} aria-label="Sort game projects"
+                  className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-200">
+                  <option value="default">Saved order</option>
+                  <option value="title-az">Title A–Z</option>
+                  <option value="title-za">Title Z–A</option>
+                </select>
+              </div>
+            )}
+            {games.length > 0 && visibleGames.length === 0 && (
+              <p className="text-[11px] text-zinc-400 italic">No game projects match &ldquo;{gameQuery}&rdquo;.</p>
+            )}
             <div className="flex flex-wrap items-center gap-1.5">
-              {games.map((g) => (
+              {visibleGames.map((g) => (
                 <span key={g.id} className={cn('relative flex items-center gap-1.5 text-[11px] pl-2.5 pr-1.5 py-1 rounded-lg',
                   activeGame === g.id ? 'text-white' : 'text-zinc-300')}>
                   {activeGame === g.id ? (

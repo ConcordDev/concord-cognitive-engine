@@ -55,7 +55,7 @@ export function FocusModeBar({
             type="button"
             onClick={() => onChange(m.id)}
             className={
-              'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium border transition-colors ' +
+              'inline-flex min-h-11 items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium border transition-colors ' +
               (active
                 ? 'bg-amber-500 text-amber-50 border-amber-400'
                 : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:border-zinc-700 hover:text-zinc-200')

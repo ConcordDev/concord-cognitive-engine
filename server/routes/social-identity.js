@@ -122,7 +122,8 @@ export default function createSocialIdentityRoutes({ db, requireAuth }) {
     const viewerId = sessionUserId(req);
     const result = getProfile(STATE, req.params.userId, viewerId);
     if (!result?.ok) return sendLayer(res, result);
-    const identity = identityForViewer(STATE, req.params.userId, viewerId, db || STATE.db);
+    const ownerId = result.profile?.userId || req.params.userId;
+    const identity = identityForViewer(STATE, ownerId, viewerId, db || STATE.db);
     result.profile.accent = identity.accent;
     result.profile.profileTrack = identity.profileTrack;
     result.profile.showcase = identity.showcase;

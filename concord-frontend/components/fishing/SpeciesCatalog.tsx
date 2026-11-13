@@ -115,7 +115,7 @@ export function SpeciesCatalog({
                     {a}
                   </span>
                 ))}
-                {(!f.abilities || f.abilities.length === 0) && <span className="text-gray-600">—</span>}
+                {(!f.abilities || f.abilities.length === 0) && <span className="text-gray-400">—</span>}
               </div>
             ),
           } satisfies DataTableColumn<FishSpecies>,
@@ -129,7 +129,7 @@ export function SpeciesCatalog({
             id: 'habitat',
             header: 'Habitat',
             accessor: (f: FishSpecies) => (
-              <span className="text-gray-500 text-[11px]">
+              <span className="text-gray-400 text-[11px]">
                 {[f.biome, f.subBiome].filter(Boolean).join(' / ') || '—'}
               </span>
             ),

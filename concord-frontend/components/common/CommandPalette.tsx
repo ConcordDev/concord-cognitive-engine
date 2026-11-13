@@ -12,6 +12,7 @@
  */
 
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { shouldIgnoreLensHotkey } from '@/lib/a11y/editable-target';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -451,6 +452,8 @@ export function CommandPalette({ isOpen: isOpenProp, onClose }: CommandPalettePr
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        // A search or label field keeps Ctrl/Cmd+K.
+        if (shouldIgnoreLensHotkey(e)) return;
         e.preventDefault();
         setOpen(!isOpen);
       }
@@ -671,6 +674,7 @@ export function CommandPalette({ isOpen: isOpenProp, onClose }: CommandPalettePr
                   aria-controls="command-palette-list"
                   aria-haspopup="listbox"
                 />
+                <button type="button" data-overlay-close="" aria-label="Close" onClick={() => setOpen(false)} className="text-[11px] text-gray-400 hover:text-white">Close</button>
                 <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium text-gray-400 bg-lattice-elevated border border-lattice-border rounded">
                   ESC
                 </kbd>

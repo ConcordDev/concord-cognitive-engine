@@ -157,6 +157,8 @@ export function AnalysisActionsPanel() {
   </div>
   <p className="text-[11px] text-gray-500">{ENGINE_HINT[engine]}</p>
   <textarea
+    name="engineInput"
+    aria-label={`Input for ${ENGINE_LABEL[engine]}`}
     value={input}
     onChange={(e) => setInput(e.target.value)}
     rows={5}

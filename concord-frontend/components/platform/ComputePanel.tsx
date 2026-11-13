@@ -79,10 +79,10 @@ function ComputePanel() {
             </div>
           ) : (
             <div className="relative">
-              <select
+              <select aria-label="Module"
                 value={selectedModule}
                 onChange={(e) => setSelectedModule(e.target.value)}
-                className="w-full appearance-none bg-lattice-deep border border-lattice-border rounded-lg px-4 py-2.5 text-sm text-gray-200 focus:outline-none focus:border-neon-blue/50 pr-10"
+                className="min-h-11 w-full appearance-none bg-lattice-deep border border-lattice-border rounded-lg px-4 py-2.5 text-sm text-gray-200 focus:outline-none focus:border-neon-blue/50 pr-10"
               >
                 <option value="">— Select a module —</option>
                 {modules.map((m) => (
@@ -122,7 +122,7 @@ function ComputePanel() {
             ))}
           </datalist>
           {selectedModule && (modules.find((m) => m.name === selectedModule)?.functions?.length ?? 0) > 0 && (
-            <p className="mt-1.5 text-[11px] text-gray-500">
+            <p className="mt-1.5 text-[11px] text-gray-400">
               {modules.find((m) => m.name === selectedModule)!.functions!.length} functions in this
               module — the field above suggests every one of them.
             </p>

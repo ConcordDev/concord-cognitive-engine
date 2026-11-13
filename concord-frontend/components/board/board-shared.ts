@@ -101,11 +101,67 @@ export const projects: string[] = [];
 /** Empty seed — tasks come from live lens artifacts (no fabricated rows). */
 export const TASKS_FALLBACK: { title: string; data: Record<string, unknown> }[] = [];
 
+/** Title edits must land on the artifact title. A data-only patch is dropped on reload because the list reads `item.title` first. */
+export function taskPatchToLensUpdate(patch: Partial<Task>): { title?: string; data: Record<string, unknown> } {
+  const { id: _id, title, ...rest } = patch as Partial<Task> & { id?: string };
+  const data: Record<string, unknown> = { ...rest };
+  if (typeof title === 'string') data.title = title;
+  return {
+    ...(typeof title === 'string' ? { title } : {}),
+    data,
+  };
+}
+
+export interface LensUpdatePatch { title?: string; data: Record<string, unknown> }
+
+/**
+ * Serializes lens-artifact writes per key (FIX-board-004).
+ *
+ * Task edits fire one update per input event — a progress-slider drag emits
+ * dozens — and the panel fired them concurrently, so an earlier value could
+ * land after the final one and win on the server: slider set to 50, reload
+ * showed 49, the second-to-last tick arriving last. (Every other layer of
+ * the round trip — slider parse, patch mapping, the lens update macro, the
+ * artifact store — passes the number through untouched.) Writes for one
+ * key now run strictly in order; patches queued behind an in-flight write
+ * coalesce (data merged, newest title wins), so the last value issued is
+ * the last value stored. A failed write never jams the queue — callers
+ * stay fire-and-forget, as before. Reference shape: Linear/Asana-style
+ * commit ordering — the final state the user left is the state that sticks.
+ */
+export function createKeyedSerialWriter(
+  write: (key: string, patch: LensUpdatePatch) => Promise<unknown>,
+): (key: string, patch: LensUpdatePatch) => void {
+  const inFlight = new Set<string>();
+  const pending = new Map<string, LensUpdatePatch>();
+  return (key, patch) => {
+    const prev = pending.get(key);
+    pending.set(key, prev
+      ? { title: patch.title !== undefined ? patch.title : prev.title, data: { ...prev.data, ...patch.data } }
+      : { title: patch.title, data: { ...patch.data } });
+    if (inFlight.has(key)) return;
+    inFlight.add(key);
+    void (async () => {
+      try {
+        let next = pending.get(key);
+        while (next) {
+          pending.delete(key);
+          try { await write(key, next); } catch { /* fire-and-forget: never jam the queue */ }
+          next = pending.get(key);
+        }
+      } finally {
+        inFlight.delete(key);
+      }
+    })();
+  };
+}
+
 export function lensItemToTask(item: LensItem<Record<string, unknown>>): Task {
   const d = item.data || {};
+  const editedTitle = typeof d.title === 'string' && d.title.trim() ? d.title : '';
   return {
     id: item.id,
-    title: item.title || (d.title as string) || 'Untitled',
+    title: editedTitle || item.title || 'Untitled',
     description: (d.description as string) || '',
     status: (d.status as ColumnId) || 'backlog',
     priority: (d.priority as Priority) || 'medium',
@@ -125,10 +181,26 @@ export function lensItemToTask(item: LensItem<Record<string, unknown>>): Task {
   };
 }
 
+function parseCalendarDay(dateStr: string): Date {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(dateStr || '');
+  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return new Date(dateStr);
+}
+
+export function formatTaskDate(dateStr: string): string {
+  const d = parseCalendarDay(dateStr);
+  if (Number.isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString();
+}
+
 export function isOverdue(dateStr: string): boolean {
-  return (
-    new Date(dateStr) < new Date() && new Date(dateStr).toDateString() !== new Date().toDateString()
-  );
+  if (!dateStr) return false;
+  const day = parseCalendarDay(dateStr);
+  if (Number.isNaN(day.getTime())) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  day.setHours(0, 0, 0, 0);
+  return day < today;
 }
 
 export function formatDate(dateStr: string): string {

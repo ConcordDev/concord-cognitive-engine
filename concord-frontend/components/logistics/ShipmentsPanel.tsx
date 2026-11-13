@@ -4,13 +4,14 @@ import { useEffect, useState } from 'react';
 import { Package, Plus, Trash2, Loader2, ArrowRight } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 
 const ShipmentsMap = dynamic(() => import('./ShipmentsMap').then(m => m.ShipmentsMap), { ssr: false });
 
 interface Shipment {
   id: string; trackingNumber: string | null; reference?: string; origin: string; destination: string;
-  carrierId: string; mode: string; weightLbs: number; serviceLevel: string;
+  carrierId: string; mode: string; weightLbs: number; serviceLevel: string; poNumber?: string; consignee?: string;
   status: string; estimatedDelivery: string | null; actualDelivery: string | null;
 }
 
@@ -26,11 +27,16 @@ const STATUS_COLOUR: Record<string, string> = {
 
 const STATUSES = ['label_created', 'picked_up', 'in_transit', 'out_for_delivery', 'delivered', 'exception', 'returned'];
 
-export function ShipmentsPanel({ onSelect }: { onSelect?: (s: Shipment) => void }) {
+export function ShipmentsPanel({ onSelect, createSignal }: { onSelect?: (s: Shipment) => void; createSignal?: number }) {
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState({ origin: '', destination: '', mode: 'parcel', weightLbs: '', poNumber: '', consignee: '', trackingNumber: '' });
+  const [editing, setEditing] = useState<string | null>(null);
+  const [edit, setEdit] = useState({ origin: '', destination: '', poNumber: '', consignee: '' });
+  const [form, setForm] = useState({ origin: '', destination: '', mode: 'parcel', weightLbs: '', poNumber: '', consignee: '', trackingNumber: '', estimatedDelivery: '' });
+  // FIX-logistics-008: the page's 'New shipment' CTA bumps this signal —
+  // the form opens instead of the click only switching tabs.
+  useEffect(() => { if (createSignal && createSignal > 0) setCreating(true); }, [createSignal]);
 
   useEffect(() => { refresh(); }, []);
 
@@ -49,9 +55,9 @@ export function ShipmentsPanel({ onSelect }: { onSelect?: (s: Shipment) => void 
     try {
       await lensRun({
         domain: 'logistics', action: 'shipments-create',
-        input: { origin: form.origin, destination: form.destination, mode: form.mode, weightLbs: Number(form.weightLbs) || 0, poNumber: form.poNumber, consignee: form.consignee, trackingNumber: form.trackingNumber },
+        input: { origin: form.origin, destination: form.destination, mode: form.mode, weightLbs: Number(form.weightLbs) || 0, poNumber: form.poNumber, consignee: form.consignee, trackingNumber: form.trackingNumber, estimatedDelivery: form.estimatedDelivery || null },
       });
-      setForm({ origin: '', destination: '', mode: 'parcel', weightLbs: '', poNumber: '', consignee: '', trackingNumber: '' });
+      setForm({ origin: '', destination: '', mode: 'parcel', weightLbs: '', poNumber: '', consignee: '', trackingNumber: '', estimatedDelivery: '' });
       setCreating(false);
       await refresh();
     } catch (e) { console.error('[Shipments] create', e); }
@@ -62,6 +68,13 @@ export function ShipmentsPanel({ onSelect }: { onSelect?: (s: Shipment) => void 
       await lensRun({ domain: 'logistics', action: 'shipments-set-status', input: { id, status } });
       await refresh();
     } catch (e) { console.error('[Shipments] status', e); }
+  }
+
+  async function saveEdit(id: string) {
+    const res = await lensRun({ domain: 'logistics', action: 'shipments-update', input: { id, ...edit } });
+    if (res.data?.ok === false) return;
+    setEditing(null);
+    await refresh();
   }
 
   async function remove(id: string) {
@@ -95,6 +108,7 @@ export function ShipmentsPanel({ onSelect }: { onSelect?: (s: Shipment) => void 
           <input value={form.poNumber} onChange={e => setForm({ ...form, poNumber: e.target.value })} placeholder="PO #" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <input value={form.consignee} onChange={e => setForm({ ...form, consignee: e.target.value })} placeholder="Consignee" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <input value={form.trackingNumber} onChange={e => setForm({ ...form, trackingNumber: e.target.value })} placeholder="Carrier tracking # (optional)" title="Concord does not buy labels; enter the tracking number your carrier issued" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input type="date" aria-label="Estimated delivery date" value={form.estimatedDelivery} onChange={e => setForm({ ...form, estimatedDelivery: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <button onClick={create} className="px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400">Create</button>
         </div>
       )}
@@ -109,12 +123,14 @@ export function ShipmentsPanel({ onSelect }: { onSelect?: (s: Shipment) => void 
             {shipments.map(s => (
               <li key={s.id} className="px-3 py-2 hover:bg-white/[0.03] group cursor-pointer" onClick={() => onSelect?.(s)}>
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs font-mono text-cyan-300" title={s.trackingNumber ? 'Carrier tracking number' : 'Internal reference (no carrier tracking number recorded)'}>{s.trackingNumber || s.reference || 'No tracking #'}</span>
+                  <span className="text-xs font-mono text-cyan-300" title="Use this reference in exceptions and GPS">{s.reference || s.id}</span>
+                  {s.poNumber ? <span className="text-[10px] text-gray-300">PO {s.poNumber}</span> : null}
                   <span className="text-[9px] uppercase text-gray-400">{s.mode}</span>
                   <select value={s.status} onChange={e => { e.stopPropagation(); setStatus(s.id, e.target.value); }} onClick={e => e.stopPropagation()} className={cn('text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded border-0 cursor-pointer', STATUS_COLOUR[s.status])}>
                     {STATUSES.map(st => <option key={st} value={st}>{st.replace(/_/g, ' ')}</option>)}
                   </select>
-                  <button aria-label="Delete" onClick={(e) => { e.stopPropagation(); remove(s.id); }} className="ml-auto opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                  <button type="button" onClick={(e) => { e.stopPropagation(); setEditing(s.id); setEdit({ origin: s.origin, destination: s.destination, poNumber: s.poNumber || '', consignee: s.consignee || '' }); }} className="ml-auto text-[10px] text-gray-400 hover:text-white">Edit</button>
+                  <span onClick={e => e.stopPropagation()}><StickyDeleteConfirm onConfirm={() => remove(s.id)} armLabel={<Trash2 className="w-3 h-3" />} armAriaLabel="Delete shipment" confirmLabel="Delete shipment?" className="p-1 text-gray-400 hover:text-rose-400" /></span>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-gray-200">
                   <span className="truncate flex-1">{s.origin}</span>
@@ -122,6 +138,15 @@ export function ShipmentsPanel({ onSelect }: { onSelect?: (s: Shipment) => void 
                   <span className="truncate flex-1">{s.destination}</span>
                 </div>
                 {s.weightLbs > 0 && <div className="text-[10px] text-gray-400 mt-0.5">{s.weightLbs}lbs · {s.serviceLevel}</div>}
+                {editing === s.id && (
+                  <div className="mt-1 grid grid-cols-2 gap-1" onClick={e => e.stopPropagation()}>
+                    <input value={edit.origin} onChange={e => setEdit({ ...edit, origin: e.target.value })} placeholder="Origin" className="px-2 py-1 text-[11px] bg-lattice-deep border border-lattice-border rounded text-white" />
+                    <input value={edit.destination} onChange={e => setEdit({ ...edit, destination: e.target.value })} placeholder="Destination" className="px-2 py-1 text-[11px] bg-lattice-deep border border-lattice-border rounded text-white" />
+                    <input value={edit.poNumber} onChange={e => setEdit({ ...edit, poNumber: e.target.value })} placeholder="PO number" className="px-2 py-1 text-[11px] bg-lattice-deep border border-lattice-border rounded text-white" />
+                    <input value={edit.consignee} onChange={e => setEdit({ ...edit, consignee: e.target.value })} placeholder="Consignee" className="px-2 py-1 text-[11px] bg-lattice-deep border border-lattice-border rounded text-white" />
+                    <button type="button" onClick={() => saveEdit(s.id)} className="px-2 py-1 text-[11px] rounded bg-cyan-500 text-black font-bold">Save</button>
+                  </div>
+                )}
               </li>
             ))}
           </ul>

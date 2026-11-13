@@ -120,7 +120,7 @@ function PlasmidTab() {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <select value={topology} onChange={(e) => setTopology(e.target.value as 'circular' | 'linear')} className={inp}>
+        <select aria-label="Plasmid topology" value={topology} onChange={(e) => setTopology(e.target.value as 'circular' | 'linear')} className={inp}>
           <option value="circular">Circular</option>
           <option value="linear">Linear</option>
         </select>
@@ -129,7 +129,7 @@ function PlasmidTab() {
         </button>
         <span className="text-[10px] text-gray-400">Auto-annotates ORFs + restriction sites if no features supplied.</span>
       </div>
-      <textarea value={seq} onChange={(e) => setSeq(e.target.value)} rows={4} placeholder="Paste construct DNA (ACGTN)…" className={ta} />
+      <textarea value={seq} onChange={(e) => setSeq(e.target.value)} rows={4} aria-label="Construct DNA sequence" placeholder="Paste construct DNA (ACGTN)…" className={ta} />
       {err && <Err msg={err} />}
       {res && (
         <div className="grid md:grid-cols-2 gap-3">
@@ -140,7 +140,7 @@ function PlasmidTab() {
               <Stat label="GC%" value={`${res.gcPercent}`} />
               <Stat label="Features" value={`${res.featureCount}`} />
             </div>
-            {res.annotationNote && <p className="text-[10px] text-gray-500">{res.annotationNote} Spans below are 1-based.</p>}
+            {res.annotationNote && <p className="text-[10px] text-gray-400">{res.annotationNote} Spans below are 1-based.</p>}
             <div className="border border-white/10 rounded max-h-56 overflow-y-auto">
               <table className="w-full text-[11px]">
                 <thead className="bg-black/40 text-gray-400 uppercase text-[9px] sticky top-0">
@@ -154,7 +154,7 @@ function PlasmidTab() {
                         {f.name}
                       </td>
                       <td className="px-2 py-1 text-gray-400">{f.type}</td>
-                      <td className="px-2 py-1 text-right font-mono text-gray-300">{f.start + 1}–{f.end} <span className="text-gray-500">({f.strand} strand)</span></td>
+                      <td className="px-2 py-1 text-right font-mono text-gray-300">{f.start + 1}–{f.end} <span className="text-gray-400">({f.strand} strand)</span></td>
                     </tr>
                   ))}
                 </tbody>
@@ -253,7 +253,7 @@ function MsaTab() {
       <button type="button" className={btn()} disabled={busy || !raw.trim()} onClick={run}>
         {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <GitMerge className="w-3 h-3" />} Align (center-star progressive)
       </button>
-      <textarea value={raw} onChange={(e) => setRaw(e.target.value)} rows={5}
+      <textarea value={raw} onChange={(e) => setRaw(e.target.value)} rows={5} aria-label="MSA FASTA input"
         placeholder={'>seq1\nATGCATGC\n>seq2\nATGGATGC\n>seq3\nATGCATTC'} className={ta} />
       {err && <Err msg={err} />}
       {res && (
@@ -329,7 +329,7 @@ function CloningTab() {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <select value={method} onChange={(e) => setMethod(e.target.value as typeof method)} className={inp}>
+        <select aria-label="Assembly method" value={method} onChange={(e) => setMethod(e.target.value as typeof method)} className={inp}>
           <option value="gibson">Gibson assembly</option>
           <option value="goldengate">Golden Gate</option>
           <option value="restriction">Restriction ligation</option>
@@ -347,9 +347,9 @@ function CloningTab() {
       <div className="space-y-2">
         {frags.map((f, i) => (
           <div key={i} className="flex gap-2 items-start">
-            <input value={f.name} onChange={(e) => setFrags((p) => p.map((x, j) => j === i ? { ...x, name: e.target.value } : x))}
+            <input aria-label={`Fragment ${i + 1} name`} value={f.name} onChange={(e) => setFrags((p) => p.map((x, j) => j === i ? { ...x, name: e.target.value } : x))}
               className={cn(inp, 'w-32 shrink-0')} placeholder="name" />
-            <textarea value={f.sequence} onChange={(e) => setFrags((p) => p.map((x, j) => j === i ? { ...x, sequence: e.target.value } : x))}
+            <textarea aria-label={`Fragment ${i + 1} DNA`} value={f.sequence} onChange={(e) => setFrags((p) => p.map((x, j) => j === i ? { ...x, sequence: e.target.value } : x))}
               rows={2} className={ta} placeholder="fragment DNA…" />
             {frags.length > 2 && (
               <button aria-label="Delete" type="button" onClick={() => setFrags((p) => p.filter((_, j) => j !== i))}
@@ -421,7 +421,7 @@ function OrfTab() {
       <button type="button" className={btn()} disabled={busy || !seq.trim()} onClick={run}>
         {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Scissors className="w-3 h-3" />} Translate (6 frames)
       </button>
-      <textarea value={seq} onChange={(e) => setSeq(e.target.value)} rows={4} placeholder="Paste DNA/RNA (ACGTUN)…" className={ta} />
+      <textarea value={seq} onChange={(e) => setSeq(e.target.value)} rows={4} aria-label="ORF input sequence" placeholder="Paste DNA/RNA (ACGTUN)…" className={ta} />
       {err && <Err msg={err} />}
       {res && (
         <div className="space-y-2">
@@ -518,11 +518,11 @@ function BlastTab() {
       </button>
       <div>
         <label className="text-[10px] uppercase tracking-wider text-gray-400">Query (≥8 residues)</label>
-        <textarea value={query} onChange={(e) => setQuery(e.target.value)} rows={2} className={cn(ta, 'mt-1')} />
+        <textarea value={query} onChange={(e) => setQuery(e.target.value)} rows={2} aria-label="BLAST query sequence" className={cn(ta, 'mt-1')} />
       </div>
       <div>
         <label className="text-[10px] uppercase tracking-wider text-gray-400">Database FASTA (optional — falls back to your saved sequences)</label>
-        <textarea value={dbRaw} onChange={(e) => setDbRaw(e.target.value)} rows={4}
+        <textarea value={dbRaw} onChange={(e) => setDbRaw(e.target.value)} rows={4} aria-label="BLAST database FASTA"
           placeholder={'>subject1\nATGCGTACGTAGCTAGCTACGATCGTAGCTAG\n>subject2\nGGCCATGCGTACGATCGTAGCTAGCTACGATC'} className={cn(ta, 'mt-1')} />
       </div>
       {err && <Err msg={err} />}
@@ -611,7 +611,7 @@ function CrisprTab() {
           {seqLen === 0 ? 'Guides need a target of at least 30 bp.' : tooShort ? `${seqLen} bp — add ${30 - seqLen} more bp to design guides.` : `${seqLen} bp — ready.`}
         </span>
       </div>
-      <textarea value={seq} onChange={(e) => setSeq(e.target.value)} rows={4} placeholder="Paste target DNA (≥30 bp)…" className={ta} />
+      <textarea value={seq} onChange={(e) => setSeq(e.target.value)} rows={4} aria-label="CRISPR target DNA" placeholder="Paste target DNA (≥30 bp)…" className={ta} />
       {err && <Err msg={err} />}
       {res && (
         <div className="space-y-2">
@@ -621,7 +621,7 @@ function CrisprTab() {
             <Stat label="Target" value={`${res.targetLength} bp`} />
             <Stat label="Guides" value={`${res.guideCount}`} />
           </div>
-          {res.scoring && <p className="text-[10px] text-gray-500">{res.scoring}</p>}
+          {res.scoring && <p className="text-[10px] text-gray-400">{res.scoring}</p>}
           {res.guides.length > 0 && (
             <div className="border border-white/10 rounded overflow-x-auto">
               <table className="w-full text-[11px]">
@@ -757,18 +757,18 @@ function NotebookTab() {
 
       {showForm && (
         <div className="rounded border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-2">
-          <input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })}
+          <input aria-label="Notebook entry title" value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })}
             placeholder="Entry title" maxLength={120} className={cn(inp, 'w-full')} />
-          <textarea value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })}
+          <textarea aria-label="Notebook entry body" value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })}
             rows={4} placeholder="Observations, methods, results…" className={ta} />
           <div className="grid md:grid-cols-2 gap-2">
-            <input value={draft.tags} onChange={(e) => setDraft({ ...draft, tags: e.target.value })}
+            <input aria-label="Notebook entry tags" value={draft.tags} onChange={(e) => setDraft({ ...draft, tags: e.target.value })}
               placeholder="tags (comma-separated)" className={cn(inp, 'w-full')} />
-            <input value={draft.linkedProtocol} onChange={(e) => setDraft({ ...draft, linkedProtocol: e.target.value })}
+            <input aria-label="Linked protocol" value={draft.linkedProtocol} onChange={(e) => setDraft({ ...draft, linkedProtocol: e.target.value })}
               placeholder="linked protocol (optional)" className={cn(inp, 'w-full')} />
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <select value={draft.status} onChange={(e) => setDraft({ ...draft, status: e.target.value as NotebookEntry['status'] })} className={inp}>
+            <select aria-label="Notebook entry status" value={draft.status} onChange={(e) => setDraft({ ...draft, status: e.target.value as NotebookEntry['status'] })} className={inp}>
               <option value="draft">Draft</option>
               <option value="in_progress">In progress</option>
               <option value="complete">Complete</option>

@@ -7,6 +7,7 @@ import { apiHelpers } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { Plus, X, Send, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { shouldIgnoreLensHotkey } from '@/lib/a11y/editable-target';
 
 interface QuickCaptureProps {
   domain: string;
@@ -33,6 +34,8 @@ function QuickCapture({ domain }: QuickCaptureProps) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
+        // A field keeps Ctrl/Cmd+N while the user is typing (FIX-commonsense-004).
+        if (shouldIgnoreLensHotkey(e)) return;
         e.preventDefault();
         setIsOpen((prev) => !prev);
       }
@@ -117,6 +120,8 @@ function QuickCapture({ domain }: QuickCaptureProps) {
                   Quick Capture &mdash; {domain}
                 </span>
                 <button
+                  type="button"
+                  data-overlay-close=""
                   onClick={() => setIsOpen(false)}
                   className="p-1 rounded hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
                   aria-label="Close capture"
@@ -130,6 +135,10 @@ function QuickCapture({ domain }: QuickCaptureProps) {
                 <input
                   type="text"
                   placeholder="Title (optional)"
+                  // FIX-wallet-008: cap the title at the platform's title
+                  // limit (INPUT_LIMITS.title = 200) — it accepted 600
+                  // chars that the record layer then had to swallow.
+                  maxLength={200}
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   className="w-full bg-lattice-surface border border-lattice-border rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-neon-cyan"
@@ -165,6 +174,7 @@ function QuickCapture({ domain }: QuickCaptureProps) {
                     )}
                     Capture
                   </button>
+                  {!content.trim() && <span role="note" className="text-xs text-gray-400 self-center">Write something to capture.</span>}
                 </div>
               </div>
             </motion.div>

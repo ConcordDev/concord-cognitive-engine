@@ -6,7 +6,7 @@
  * typed by the user.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { Plus, Loader2 } from 'lucide-react';
 
@@ -28,6 +28,18 @@ export function LogMetricForm({ onLogged }: { onLogged: () => void }) {
   const [value, setValue] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [recent, setRecent] = useState<Array<{ id: string; metric: string; value: number }>>([]);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
+
+  const loadRecent = async () => {
+    const r = await lensRun('self', 'readings', { limit: 8 });
+    const rows = (r.data?.result?.readings || []) as Array<{ id: string; metric: string; value: number }>;
+    setRecent(rows);
+  };
+
+  useEffect(() => { void loadRecent(); }, []);
 
   const unit = METRIC_OPTIONS.find((m) => m.key === metric)?.unit ?? '';
 
@@ -38,7 +50,7 @@ export function LogMetricForm({ onLogged }: { onLogged: () => void }) {
     setBusy(true);
     try {
       const r = await lensRun('self', 'logMetric', { metric, value: num });
-      if (r.data?.ok) { setValue(''); onLogged(); }
+      if (r.data?.ok) { setValue(''); onLogged(); await loadRecent(); }
       else setErr(r.data?.error ?? 'Failed to log');
     } catch { setErr('Network error'); }
     finally { setBusy(false); }
@@ -46,18 +58,23 @@ export function LogMetricForm({ onLogged }: { onLogged: () => void }) {
 
   return (
     <div className="rounded-lg border border-rose-900/40 bg-rose-950/10 p-3">
-      <div className="mb-2 text-[11px] uppercase tracking-wider text-rose-700">Log a reading</div>
+      <div className="mb-2 text-[11px] uppercase tracking-wider text-rose-400">Log a reading</div>
       <div className="flex flex-wrap items-center gap-2">
-        <select
+        <label className="text-[11px] text-rose-200">
+          Metric
+          <select
           value={metric}
           onChange={(e) => setMetric(e.target.value)}
-          className="rounded border border-rose-900/40 bg-black px-2 py-1.5 text-sm text-rose-100 focus:outline-none focus:ring-2 focus:ring-rose-400"
+          className="mt-1 block rounded border border-rose-900/40 bg-black px-2 py-1.5 text-sm text-rose-100 focus:outline-none focus:ring-2 focus:ring-rose-400"
           aria-label="Metric"
         >
           {METRIC_OPTIONS.map((m) => (
             <option key={m.key} value={m.key}>{m.label}</option>
           ))}
         </select>
+        </label>
+        <label className="text-[11px] text-rose-200">
+          Value
         <input
           type="number"
           inputMode="decimal"
@@ -65,9 +82,10 @@ export function LogMetricForm({ onLogged }: { onLogged: () => void }) {
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') void submit(); }}
           placeholder={`value (${unit})`}
-          className="w-32 rounded border border-rose-900/40 bg-black px-2 py-1.5 text-sm text-rose-100 placeholder:text-rose-800 focus:outline-none focus:ring-2 focus:ring-rose-400"
+          className="w-32 rounded border border-rose-900/40 bg-black px-2 py-1.5 text-sm text-rose-100 placeholder:text-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-400"
           aria-label="Value"
         />
+        </label>
         <button
           onClick={() => void submit()}
           disabled={busy}
@@ -78,6 +96,36 @@ export function LogMetricForm({ onLogged }: { onLogged: () => void }) {
         </button>
       </div>
       {err && <p className="mt-2 text-xs text-red-400">{err}</p>}
+      {recent.length > 0 && (
+        <ul className="mt-3 space-y-1">
+          {recent.map((row) => (
+            <li key={row.id} className="flex items-center justify-between gap-2 text-xs text-rose-200">
+              {editId === row.id ? (
+                <input value={editValue} onChange={(e) => setEditValue(e.target.value)} aria-label={`Edit ${row.metric}`} className="w-24 rounded border border-rose-900/40 bg-black px-1 py-0.5 text-rose-100" onBlur={async () => {
+                  const n = Number(editValue);
+                  const d = await lensRun('self', 'reading-update', { id: row.id, value: n });
+                  if (d.data?.ok) { setEditId(null); await loadRecent(); onLogged(); }
+                  else setErr(d.data?.message || d.data?.error || 'Could not update the reading');
+                }} />
+              ) : (
+                <button type="button" onClick={() => { setEditId(row.id); setEditValue(String(row.value)); }} className="text-left">{row.metric} · {row.value}</button>
+              )}
+              <button
+                type="button"
+                onClick={async () => {
+                  if (confirmId !== row.id) { setConfirmId(row.id); return; }
+                  const d = await lensRun('self', 'reading-delete', { id: row.id });
+                  if (d.data?.ok) { setConfirmId(null); await loadRecent(); onLogged(); }
+                  else setErr(d.data?.error || 'Could not delete the reading');
+                }}
+                className="text-rose-400 hover:text-rose-200"
+              >
+                {confirmId === row.id ? 'Confirm delete' : 'Delete'}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

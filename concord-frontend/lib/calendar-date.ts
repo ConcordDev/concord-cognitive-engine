@@ -112,6 +112,43 @@ export function formatDateKey(dateKey: string, opts?: { year?: boolean }): strin
   }).format(utcNoon);
 }
 
+/**
+ * A calendar day written as YYYY-MM-DD, or that day stored as UTC midnight.
+ * A real instant (any other time) is not a calendar key.
+ */
+export function calendarKeyOf(raw: unknown): string {
+  if (typeof raw !== 'string') return '';
+  const value = raw.trim();
+  if (DATE_KEY.test(value)) return value;
+  const midnight = /^(\d{4}-\d{2}-\d{2})T00:00:00(?:\.000)?Z$/.exec(value);
+  return midnight ? midnight[1] : '';
+}
+
+/** "Nov 9, 2026" for a calendar-day key. Does not shift the day in a local zone. */
+export function formatCalendarDate(raw: unknown, opts?: { year?: boolean }): string {
+  const key = calendarKeyOf(raw);
+  const match = key ? DATE_KEY.exec(key) : null;
+  if (!match) return '';
+  const utcNoon = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 12));
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'UTC',
+    month: 'short',
+    day: 'numeric',
+    year: opts?.year === false ? undefined : 'numeric',
+  }).format(utcNoon);
+}
+
+/** Whole calendar days from today's local day until `raw`. Null when `raw` is not a day key. */
+export function daysUntilCalendarDate(raw: unknown, now: Date = new Date()): number | null {
+  const key = calendarKeyOf(raw);
+  if (!key) return null;
+  const today = calendarDateKey(now);
+  const start = Date.parse(`${today}T00:00:00Z`);
+  const end = Date.parse(`${key}T00:00:00Z`);
+  if (Number.isNaN(start) || Number.isNaN(end)) return null;
+  return Math.round((end - start) / 86400000);
+}
+
 // ── Wall time in a zone ⇄ instant (S1: one true time) ─────────────────
 // An event is authored as wall-clock time in its own IANA zone and stored
 // as a true UTC instant. These helpers convert between the two without

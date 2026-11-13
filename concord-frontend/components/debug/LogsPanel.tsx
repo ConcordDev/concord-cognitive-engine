@@ -70,6 +70,8 @@ export function LogsPanel() {
     </h2>
     <div className="flex items-center gap-2">
       <select
+        name="logFilter"
+        aria-label="Filter logs by level"
         value={logFilter}
         onChange={(e) => setLogFilter(e.target.value as LogLevel)}
         className="px-2 py-1 bg-lattice-surface border border-lattice-border rounded text-xs"
@@ -86,6 +88,8 @@ export function LogsPanel() {
     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
     <input
       className="w-full pl-10 pr-8 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm focus:border-neon-cyan outline-none"
+      name="logSearch"
+      aria-label="Filter logs"
       placeholder="Filter logs..."
       value={logSearch}
       onChange={(e) => setLogSearch(e.target.value)}

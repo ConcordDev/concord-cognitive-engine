@@ -7,15 +7,45 @@ import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { MailKeepMenu } from './MailKeepMenu';
 import { mailRecordSentence } from './mailKeep';
-import { claimResultText, deleteResultText, mailPartyLabel, playerMail } from './playerMail';
-import { STATUS_FILTERS, type MailRow, type StatusFilter } from './types';
+import { claimResultText, declineResultText, deleteResultText, mailPartyLabel, playerMail } from './playerMail';
+import { STATUS_FILTERS, type ComposeSeed, type MailRow, type StatusFilter } from './types';
+
+// FIX-mail-016: order a folder's rows as threads — a reply renders
+// directly under the mail it answers (oldest reply first), however new
+// the reply itself is. A reply whose parent is not in this list (it
+// lives in the other folder, or a filter hid it) stands as its own root.
+function threadOrdered(rows: MailRow[]): { mail: MailRow; depth: number }[] {
+  const byId = new Map(rows.map((m) => [m.id, m]));
+  const children = new Map<string, MailRow[]>();
+  const roots: MailRow[] = [];
+  for (const m of rows) {
+    if (m.parentId && m.parentId !== m.id && byId.has(m.parentId)) {
+      const sibs = children.get(m.parentId) || [];
+      sibs.push(m);
+      children.set(m.parentId, sibs);
+    } else {
+      roots.push(m);
+    }
+  }
+  for (const sibs of children.values()) sibs.sort((a, b) => a.sentAt - b.sentAt);
+  const out: { mail: MailRow; depth: number }[] = [];
+  const seen = new Set<string>();
+  const walk = (m: MailRow, depth: number) => {
+    if (seen.has(m.id)) return;
+    seen.add(m.id);
+    out.push({ mail: m, depth });
+    for (const c of children.get(m.id) || []) walk(c, depth + 1);
+  };
+  for (const r of roots) walk(r, 0);
+  return out;
+}
 
 export function MailFolderPanel({
   folder,
   onCompose,
 }: {
   folder: 'inbox' | 'sent';
-  onCompose: () => void;
+  onCompose: (seed?: ComposeSeed) => void;
 }) {
   const [inbox, setInbox] = useState<MailRow[]>([]);
   const [sent, setSent] = useState<MailRow[]>([]);
@@ -26,8 +56,9 @@ export function MailFolderPanel({
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [query, setQuery] = useState('');
   const [flash, setFlash] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null);
-  const [claimNote, setClaimNote] = useState<string | null>(null);
+  const [claimNote, setClaimNote] = useState<{ mailId: string; msg: string } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [declineArmId, setDeclineArmId] = useState<string | null>(null);
   const [openNote, setOpenNote] = useState<string | null>(null);
 
   const showFlash = useCallback((kind: 'ok' | 'err', msg: string) => {
@@ -107,9 +138,26 @@ export function MailFolderPanel({
     try {
       const j = await playerMail('claim', { id: mailId });
       const note = claimResultText(j);
-      setClaimNote(note.msg);
+      setClaimNote({ mailId, msg: note.msg });
       showFlash(note.kind, note.msg);
       if (j.ok) refresh();
+    } finally { setBusy(null); }
+  }, [refresh, showFlash]);
+
+  // FIX-mail-014: Decline is the recipient's other answer to a COD /
+  // attachment mail — the escrowed gift and DTUs return to the sender and
+  // no COD is charged. Two-step, like the remove-from-Sent confirm.
+  const handleDecline = useCallback(async (mailId: string) => {
+    setBusy(`decline-${mailId}`);
+    try {
+      const j = await playerMail('decline', { id: mailId });
+      const note = declineResultText(j);
+      setClaimNote({ mailId, msg: note.msg });
+      showFlash(note.kind, note.msg);
+      if (j.ok) {
+        setDeclineArmId(null);
+        refresh();
+      }
     } finally { setBusy(null); }
   }, [refresh, showFlash]);
 
@@ -132,6 +180,72 @@ export function MailFolderPanel({
       );
     });
   }, [folderRows, folder, statusFilter, query]);
+
+  // FIX-mail-019: the detail pane must never show a mail the visible list no
+  // longer contains — a filter or folder change that excludes the open mail
+  // closes it instead of leaving a stale detail on screen.
+  useEffect(() => {
+    if (selected && !rows.some((r) => r.id === selected.id)) setSelected(null);
+  }, [rows, selected]);
+
+  // FIX-mail-016: the list renders in thread order; the detail pane's
+  // thread block assembles over BOTH folders (the panel always loads
+  // inbox + sent), so a reply I sent still shows under the original I
+  // received, and vice versa.
+  const threadedRows = useMemo(() => threadOrdered(rows), [rows]);
+  const allRows = useMemo(() => {
+    const map = new Map<string, MailRow>();
+    for (const m of [...inbox, ...sent]) if (!map.has(m.id)) map.set(m.id, m);
+    return [...map.values()];
+  }, [inbox, sent]);
+  const threadParent = useMemo(
+    () => (selected?.parentId ? allRows.find((m) => m.id === selected.parentId) || null : null),
+    [allRows, selected],
+  );
+  const threadReplies = useMemo(() => {
+    if (!selected) return [] as MailRow[];
+    const kids = new Map<string, MailRow[]>();
+    for (const m of allRows) {
+      if (!m.parentId) continue;
+      const a = kids.get(m.parentId) || [];
+      a.push(m);
+      kids.set(m.parentId, a);
+    }
+    const out: MailRow[] = [];
+    const seen = new Set<string>([selected.id]);
+    const walk = (id: string) => {
+      for (const c of (kids.get(id) || []).slice().sort((a, b) => a.sentAt - b.sentAt)) {
+        if (seen.has(c.id)) continue;
+        seen.add(c.id);
+        out.push(c);
+        walk(c.id);
+      }
+    };
+    walk(selected.id);
+    return out;
+  }, [allRows, selected]);
+
+  const replySeed = useCallback((m: MailRow): ComposeSeed => {
+    const toUserId = folder === 'inbox' ? m.fromUser : m.toUser;
+    const otherLabel = folder === 'inbox'
+      ? mailPartyLabel(m.fromName, m.fromHandle)
+      : mailPartyLabel(m.toName, m.toHandle);
+    const quoted = (m.body || '').split('\n').map((l) => `> ${l}`).join('\n');
+    return {
+      ...(toUserId ? { toUserId } : {}),
+      subject: /^re:/i.test(m.subject) ? m.subject : `Re: ${m.subject}`,
+      body: `\n\n— On ${new Date(m.sentAt * 1000).toLocaleString()}, ${otherLabel} wrote:\n${quoted}`,
+      parentId: m.id,
+    };
+  }, [folder]);
+
+  const forwardSeed = useCallback((m: MailRow): ComposeSeed => {
+    const quoted = (m.body || '').split('\n').map((l) => `> ${l}`).join('\n');
+    return {
+      subject: /^fwd:/i.test(m.subject) ? m.subject : `Fwd: ${m.subject}`,
+      body: `\n\n— Forwarded mail from ${mailPartyLabel(m.fromName, m.fromHandle)}, ${new Date(m.sentAt * 1000).toLocaleString()}:\n${quoted}`,
+    };
+  }, []);
 
   return (
     <section className="mx-auto grid max-w-screen-2xl gap-3 px-3 py-4 sm:grid-cols-[1fr_2fr] sm:px-6 sm:py-5">
@@ -218,7 +332,7 @@ export function MailFolderPanel({
         )}
         {!loading && !loadError && rows.length > 0 && (
           <ul className="space-y-0.5">
-            {rows.map((m) => {
+            {threadedRows.map(({ mail: m, depth }) => {
               const otherLabel = folder === 'inbox'
                 ? mailPartyLabel(m.fromName, m.fromHandle)
                 : mailPartyLabel(m.toName, m.toHandle);
@@ -229,6 +343,7 @@ export function MailFolderPanel({
                 <li key={m.id}>
                   <button
                     onClick={() => { setConfirmDelete(false); setOpenNote(null); setSelected(m); }}
+                    style={depth > 0 ? { marginLeft: depth * 14 } : undefined}
                     aria-current={isSelected ? 'true' : undefined}
                     className={cn(
                       'w-full rounded-md border-l-2 px-2.5 py-1.5 text-left transition-colors',
@@ -251,6 +366,7 @@ export function MailFolderPanel({
                       </span>
                     </div>
                     <div className={cn('mt-0.5 truncate text-[12px]', isUnread ? 'font-semibold text-white' : 'text-gray-300')}>
+                      {depth > 0 && <span className="mr-1 text-gray-500" title="Reply in a thread">↳</span>}
                       {m.subject}
                     </div>
                     <div className="mt-0.5 truncate text-[10px] text-emerald-200/90">{mailRecordSentence(m, folder)}</div>
@@ -312,6 +428,51 @@ export function MailFolderPanel({
             {openNote && <p className="mt-1 text-[11px] text-amber-200" role="status">{openNote}</p>}
             <p className="mt-2 whitespace-pre-wrap text-[12px] leading-relaxed text-gray-200">{selected.body}</p>
             <MailKeepMenu key={selected.id} mail={selected} />
+            {(threadParent || threadReplies.length > 0) && (
+              <div className="mt-3 rounded-md border border-lattice-border bg-lattice-void/50 p-2.5 text-[11px]">
+                <h3 className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-gray-500">Thread</h3>
+                {threadParent && (
+                  <p className="text-gray-300">
+                    In reply to{' '}
+                    <button type="button" onClick={() => setSelected(threadParent)} className="text-neon-blue underline decoration-dotted hover:text-white">
+                      {threadParent.subject}
+                    </button>
+                  </p>
+                )}
+                {threadReplies.length > 0 && (
+                  <ul className="mt-1 space-y-1">
+                    {threadReplies.map((r) => (
+                      <li key={r.id}>
+                        <button type="button" onClick={() => setSelected(r)} className="text-left text-gray-300 hover:text-white">
+                          <span className="mr-1 text-gray-500">↳</span>{r.subject}
+                          <span className="ml-2 text-[10px] text-gray-500">
+                            {mailPartyLabel(r.fromName, r.fromHandle)} · {new Date(r.sentAt * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+            <div className="mt-3 flex gap-2">
+              {(folder === 'inbox' ? selected.fromUser : selected.toUser) && (
+                <button
+                  type="button"
+                  onClick={() => onCompose(replySeed(selected))}
+                  className={cn('inline-flex items-center gap-1 rounded-md border border-lattice-border px-2.5 py-1 text-[11px] text-gray-200 transition-colors hover:border-neon-blue/50 hover:text-white', ds.focusRing)}
+                >
+                  Reply
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => onCompose(forwardSeed(selected))}
+                className={cn('inline-flex items-center gap-1 rounded-md border border-lattice-border px-2.5 py-1 text-[11px] text-gray-200 transition-colors hover:border-neon-blue/50 hover:text-white', ds.focusRing)}
+              >
+                Forward
+              </button>
+            </div>
             {folder === 'sent' && (
               <div className="mt-3">
                 {!confirmDelete ? (
@@ -324,7 +485,11 @@ export function MailFolderPanel({
                   </button>
                 ) : (
                   <div className="flex flex-wrap items-center gap-2 text-[11px]">
-                    <span className="text-gray-300">Remove this copy from your Sent list? The recipient keeps theirs.</span>
+                    <span className="text-gray-300">
+                      {selected.attachmentCc > 0 && selected.status !== 'claimed'
+                        ? `Remove this from Sent and return the unclaimed ${selected.attachmentCc} CC gift to you? The recipient keeps the message.`
+                        : 'Remove this copy from your Sent list? The recipient keeps theirs.'}
+                    </span>
                     <button
                       type="button"
                       onClick={() => void handleDeleteSent(selected.id)}
@@ -363,7 +528,7 @@ export function MailFolderPanel({
                 {selected.codCc > 0 && (
                   <p className="text-red-300">COD due on claim: <span className="tabular-nums">{selected.codCc}</span> CC</p>
                 )}
-                {folder === 'inbox' && selected.status !== 'claimed' && selected.status !== 'expired' && (
+                {folder === 'inbox' && selected.status !== 'claimed' && selected.status !== 'expired' && selected.status !== 'declined' && (
                   <button
                     onClick={() => handleClaim(selected.id)}
                     disabled={busy === `claim-${selected.id}`}
@@ -372,13 +537,46 @@ export function MailFolderPanel({
                     Claim {selected.codCc > 0 ? `(pay ${selected.codCc} CC)` : ''}
                   </button>
                 )}
-                {claimNote && <p className="mt-2 text-[11px] text-gray-200" role="status">{claimNote}</p>}
+                {folder === 'inbox' && (selected.status === 'unread' || selected.status === 'read') && (
+                  declineArmId === selected.id ? (
+                    <span className="ml-2 inline-flex items-center gap-2">
+                      <span className="text-gray-300">Decline this mail? The gift CC and DTUs go back to the sender and you pay nothing.</span>
+                      <button
+                        onClick={() => handleDecline(selected.id)}
+                        disabled={busy === `decline-${selected.id}`}
+                        className="px-1 text-[11px] font-medium text-rose-300 hover:text-rose-200"
+                      >
+                        Decline and return
+                      </button>
+                      <button
+                        onClick={() => setDeclineArmId(null)}
+                        className="px-1 text-[11px] text-gray-300 hover:text-white"
+                      >
+                        Keep
+                      </button>
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => setDeclineArmId(selected.id)}
+                      aria-label={`Decline mail ${selected.subject}`}
+                      className="ml-2 mt-2 px-3 py-1 text-[11px] text-gray-300 underline decoration-dotted hover:text-white"
+                    >
+                      Decline
+                    </button>
+                  )
+                )}
+                {claimNote && claimNote.mailId === selected.id && <p className="mt-2 text-[11px] text-gray-200" role="status">{claimNote.msg}</p>}
                 {selected.status === 'claimed' && (
                   <p className="mt-1 text-[10px] italic text-gray-400">
                     Claimed <span className="tabular-nums">{selected.claimedAt ? new Date(selected.claimedAt * 1000).toLocaleString() : ''}</span>
                   </p>
                 )}
                 {selected.status === 'expired' && <p className="mt-1 text-[10px] italic text-red-400">Expired — attachments returned to sender.</p>}
+                {selected.status === 'declined' && (
+                  <p className="mt-1 text-[10px] italic text-gray-400">
+                    Declined{selected.declinedAt ? <> <span className="tabular-nums">{new Date(selected.declinedAt * 1000).toLocaleString()}</span></> : ''} — attachments returned to the sender; nothing was charged.
+                  </p>
+                )}
               </div>
             )}
           </div>

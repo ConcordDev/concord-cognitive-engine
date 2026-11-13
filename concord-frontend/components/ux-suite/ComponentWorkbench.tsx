@@ -492,7 +492,7 @@ export function ComponentWorkbench() {
                         {propDefaults[p.key] !== propValues[p.key] ? (
                           <p className="mt-1 text-[9px] text-zinc-400">catalog default: {fmtVal(propDefaults[p.key])}</p>
                         ) : (
-                          <p className="mt-1 text-[9px] text-zinc-500">catalog default</p>
+                          <p className="mt-1 text-[9px] text-zinc-400">catalog default</p>
                         )}
                       </div>
                     ))}

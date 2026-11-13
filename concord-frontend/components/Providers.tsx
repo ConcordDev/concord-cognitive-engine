@@ -101,10 +101,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
         // Do NOT add duplicate toasts via QueryCache.onError — that causes an error storm on page load.
         mutationCache: new MutationCache({
           onError: (error) => {
-            // Only toast for mutations (user-initiated actions), not queries (background fetches)
+            const name = error instanceof Error ? error.name : '';
+            const message = error instanceof Error ? error.message : '';
+            if (name === 'AbortError' || name === 'CanceledError' || /aborted/i.test(message)) return;
             useUIStore.getState().addToast({
               type: 'error',
-              message: `Operation failed: ${error.message}`,
+              message: `Operation failed: ${message || 'Please try again.'}`,
             });
           },
         }),

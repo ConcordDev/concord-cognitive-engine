@@ -143,6 +143,9 @@ export function LearningPaths() {
           >
             Create path
           </button>
+          {(!title.trim() || picked.length === 0) && (
+            <p className="text-xs text-gray-400">A path needs a title and at least one course. Selecting a course does not create it until both are set.</p>
+          )}
         </div>
       )}
 
@@ -187,7 +190,7 @@ export function LearningPaths() {
                     <div className="shrink-0">
                       {step.courseComplete ? <CheckCircle className="w-4 h-4 text-neon-green" />
                         : step.unlocked ? <Unlock className="w-4 h-4 text-neon-cyan" />
-                        : <Lock className="w-4 h-4 text-gray-600" />}
+                        : <Lock className="w-4 h-4 text-gray-400" />}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-xs font-bold text-white truncate">

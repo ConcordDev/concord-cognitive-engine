@@ -1,5 +1,23 @@
 'use client';
 
+// FIX-platform-003: the empirical tools answer failures as machine tokens
+// ('expr_required', 'fromUnits_and_toUnits_required' — server/emergent
+// empirical handlers). The panel rendered the token verbatim. Translate
+// the vocabulary the handlers actually return; anything else the server
+// sends is already a sentence (the math handler passes its message
+// through) and passes unchanged.
+const EMPIRICAL_ERROR_WORDS: Record<string, string> = {
+  expr_required: 'Enter an expression first.',
+  fromUnits_and_toUnits_required: 'Choose both a from-unit and a to-unit first.',
+  candidate_required: 'Enter a candidate first.',
+  text_required: 'Enter text to scan first.',
+};
+function empiricalErrorWords(raw: string | null | undefined): string {
+  if (!raw) return 'That failed — try again.';
+  return EMPIRICAL_ERROR_WORDS[raw] || raw;
+}
+
+
 import React, { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -97,7 +115,7 @@ function EmpiricalGatesPanel() {
             ) : (
               <div className="flex items-center gap-2">
                 <XCircle className="w-4 h-4 text-neon-orange" />
-                <span className="text-sm text-neon-orange">{mathMutation.data.data.error}</span>
+                <span className="text-sm text-neon-orange">{empiricalErrorWords(mathMutation.data.data.error)}</span>
               </div>
             )}
           </div>
@@ -172,7 +190,7 @@ function EmpiricalGatesPanel() {
             ) : (
               <div className="flex items-center gap-2">
                 <XCircle className="w-4 h-4 text-neon-orange" />
-                <span className="text-sm text-neon-orange">{convertMutation.data.data.error}</span>
+                <span className="text-sm text-neon-orange">{empiricalErrorWords(convertMutation.data.data.error)}</span>
               </div>
             )}
           </div>

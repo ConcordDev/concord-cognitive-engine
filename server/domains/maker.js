@@ -59,6 +59,16 @@ export default function registerMakerMacros(register) {
     const name = clampStr(input.name, 120).trim();
     if (!name) return { ok: false, reason: "no_name" };
     const spec = clampStr(input.spec, 4000).trim();
+    // Duplicate names refused by name (FIX-maker-001): the bench hinted
+    // "already on the bench" but the create still went through, so one
+    // name could head two different makes. One name, one make — the
+    // same standard proposePair enforces in resonance.
+    try {
+      const dup = db.prepare(`SELECT id FROM maker_pieces WHERE user_id = ? AND LOWER(name) = LOWER(?) LIMIT 1`).get(userId, name);
+      if (dup) return { ok: false, reason: "duplicate_name", error: "A make with this name is already on the bench." };
+    } catch (e) {
+      return { ok: false, reason: e?.message || "create_failed" };
+    }
     const id = makeId();
     const ts = nowIso();
     try {
@@ -109,6 +119,10 @@ export default function registerMakerMacros(register) {
     try {
       const existing = db.prepare(`SELECT * FROM maker_pieces WHERE id = ? AND user_id = ?`).get(id, userId);
       if (!existing) return { ok: false, reason: "not_found" };
+      if (hasName) {
+        const dup = db.prepare(`SELECT id FROM maker_pieces WHERE user_id = ? AND LOWER(name) = LOWER(?) AND id != ? LIMIT 1`).get(userId, name, id);
+        if (dup) return { ok: false, reason: "duplicate_name", error: "A make with this name is already on the bench." };
+      }
       const nextName = hasName ? name : existing.name;
       const nextSpec = hasSpec ? spec : existing.spec;
       const ts = nowIso();

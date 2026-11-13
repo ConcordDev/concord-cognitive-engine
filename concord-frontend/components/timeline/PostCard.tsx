@@ -17,6 +17,7 @@ import { ReportDialog } from './ReportDialog';
 import { cn } from '@/lib/utils';
 import { lensRun } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import type { FeedPost, Privacy, ReactionKind, ReplyGate } from './types';
 import { timeAgo, exactTime } from './timeFormat';
 import { CommentThread } from './CommentThread';
@@ -140,7 +141,7 @@ export function PostCard({ post, viewerId }: { post: FeedPost; viewerId: string 
   const isOwner = post.authorId === viewerId;
 
   return (
-    <article className="bg-[#242526] rounded-lg">
+    <article className="bg-[#242526] rounded-lg min-w-0 overflow-hidden">
       {/* Header */}
       <div className="p-4 pb-2 flex items-start justify-between">
         <div className="flex gap-3">
@@ -183,14 +184,15 @@ export function PostCard({ post, viewerId }: { post: FeedPost; viewerId: string 
             >
               <Pencil className="w-4 h-4" />
             </button>
-            <button
-              onClick={() => deleteMutation.mutate()}
+            <StickyDeleteConfirm
+              onConfirm={() => deleteMutation.mutate()}
               disabled={deleteMutation.isPending}
               className="p-2 rounded-full hover:bg-[#3a3b3c] text-gray-400 hover:text-red-400"
-              aria-label="Delete post"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+              armLabel={<Trash2 className="w-4 h-4" />}
+              armAriaLabel="Delete post"
+              confirmLabel="Delete this post?"
+              confirmAriaLabel="Confirm delete post"
+            />
           </div>
         )}
         {/* S-TL-9: safety verbs on someone else's post (F12) */}
@@ -300,7 +302,7 @@ export function PostCard({ post, viewerId }: { post: FeedPost; viewerId: string 
         </div>
       ) : post.content ? (
         <div className="px-4 py-2">
-          <p className="text-white text-sm whitespace-pre-wrap">{post.content}</p>
+          <p className="text-white text-sm whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{post.content}</p>
         </div>
       ) : null}
 
@@ -314,7 +316,7 @@ export function PostCard({ post, viewerId }: { post: FeedPost; viewerId: string 
                 Replaced {new Date(v.editedAt).toLocaleString()} · audience: {v.privacy}
                 {v.media?.length ? ` · ${v.media.length} media` : ''}
               </p>
-              <p className="text-sm text-gray-400 whitespace-pre-wrap">{v.content || '(no text)'}</p>
+              <p className="text-sm text-gray-400 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{v.content || '(no text)'}</p>
             </div>
           ))}
         </div>

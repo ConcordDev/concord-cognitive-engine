@@ -167,6 +167,20 @@ describe("productivity natural-language quick add", () => {
     assert.equal(p.content, "submit report");
   });
 
+  it("FIX-productivity-007: an impossible ISO date is flagged, never stored", () => {
+    const r = call("task-parse", ctxA, { text: "file taxes 2026-99-99" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.parsed.dueDate, null);
+    assert.equal(r.result.parsed.invalidDate, "2026-99-99");
+    assert.equal(r.result.parsed.content, "file taxes");
+    const added = call("task-quick-add", ctxA, { text: "file taxes 2026-99-99" });
+    assert.equal(added.ok, false);
+    assert.match(added.error, /not a real calendar date/);
+    const good = call("task-parse", ctxA, { text: "file taxes 2027-04-15" });
+    assert.equal(good.result.parsed.dueDate, "2027-04-15");
+    assert.equal(good.result.parsed.invalidDate, null);
+  });
+
   it("task-parse rejects empty text", () => {
     assert.equal(call("task-parse", ctxA, { text: "  " }).ok, false);
   });
@@ -346,5 +360,24 @@ describe("productivity subtask hierarchy parity", () => {
     assert.equal(up.result.subtask.priority, 1);
     assert.equal(up.result.subtask.dueDate, dayOffset(2));
     assert.equal(up.result.subtask.done, true);
+  });
+});
+
+describe("productivity reminders — FIX-productivity-001 investigation pin", () => {
+  it("a reminder survives the platform snapshot round-trip (serialize -> hydrate)", async () => {
+    const { serializeLensState, hydrateLensState } = await import("../lib/lens-state-persistence.js");
+    const task = call("task-add", ctxA, { content: "Task with reminder" });
+    assert.equal(task.ok, true);
+    const rem = call("reminder-add", ctxA, {
+      taskId: task.result.task.id, kind: "time", remindAt: "2026-11-09T09:00", note: "n",
+    });
+    assert.equal(rem.ok, true);
+    assert.equal(call("reminder-list", ctxA, {}).result.count, 1);
+    const snap = JSON.parse(JSON.stringify(serializeLensState(globalThis._concordSTATE)));
+    globalThis._concordSTATE = { dtus: new Map() };
+    hydrateLensState(globalThis._concordSTATE, snap);
+    const after = call("reminder-list", ctxA, {});
+    assert.equal(after.result.count, 1);
+    assert.equal(after.result.reminders[0].id, rem.result.reminder.id);
   });
 });

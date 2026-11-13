@@ -17,6 +17,7 @@
  *                          given the progression on these lifts"
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useEffect, useState } from 'react';
 import {
   Dumbbell, TrendingUp, Heart, Sparkles, Send, Globe, Wand2, Save,
@@ -27,6 +28,7 @@ import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 import { useLensStatePersistence } from '@/lib/lens-state-persistence';
+import { UserPicker } from '@/components/social/UserPicker';
 
 interface LiftEntry {
   name: string;
@@ -88,11 +90,15 @@ export function WorkoutFinishPanel() {
   const [restingHr, setRestingHr] = useState(str(savedForm.restingHr, ''));
   const [age, setAge] = useState(str(savedForm.age, '30'));
   const [partnerId, setPartnerId] = useState(str(savedForm.partnerId, ''));
+  // FIX-fitness-017: the partner was a raw user id typed from memory.
+  // It is now picked from user search; the label persists alongside
+  // the id so the restored draft still says who the partner is.
+  const [partnerLabel, setPartnerLabel] = useState(str(savedForm.partnerLabel, ''));
   const [isPr, setIsPr] = useState(savedForm.isPr === true);
 
   useEffect(() => {
-    persist({ title, lifts, avgHr, restingHr, age, partnerId, isPr });
-  }, [title, lifts, avgHr, restingHr, age, partnerId, isPr, persist]);
+    persist({ title, lifts, avgHr, restingHr, age, partnerId, partnerLabel, isPr });
+  }, [title, lifts, avgHr, restingHr, age, partnerId, partnerLabel, isPr, persist]);
 
   const [busy, setBusy] = useState<ActionId | null>(null);
   const [feedback, setFeedback] = useState<Feedback>(null);
@@ -228,16 +234,16 @@ export function WorkoutFinishPanel() {
         }, 'knowledge', ['private']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.result;
-      const id = dtu?.id ?? dtu?.dtuId;
-      if (id) { setMintedDtuId(id); ok(`Workout DTU minted — ${id}`); }
-      else err('No DTU id returned.');
+      const id = dtu?.id ?? dtu?.dtuId ?? r.data?.result?.id;
+      if (r.data?.ok && id) { setMintedDtuId(id); ok(`Workout DTU minted — ${id}`); }
+      else err(r.data?.message || r.data?.error || 'No DTU id returned.');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
 
   async function actDm() {
     if (!ready) { err('Add at least one logged lift.'); return; }
-    if (!partnerId.trim()) { err('Enter a training-partner user id.'); return; }
+    if (!partnerId.trim()) { err('Pick a training partner from the search results — a name, not a user id.'); return; }
     setBusy('dm'); setFeedback(null);
     const liftLines = lifts.filter(l => l.name.trim()).map(l => {
       const top = l.sets.reduce((max, s) => s.weight > (max?.weight ?? 0) ? s : max, l.sets[0]);
@@ -253,7 +259,7 @@ export function WorkoutFinishPanel() {
     ].filter(Boolean).join('\n');
     try {
       const r = await api.post('/api/social/dm', { toUserId: partnerId.trim(), content: body });
-      if (r.data?.ok !== false) { ok(`Sent to ${partnerId.trim()}.`); setPartnerId(''); }
+      if (r.data?.ok !== false) { ok(`Sent to ${partnerLabel || partnerId.trim()}.`); setPartnerId(''); setPartnerLabel(''); }
       else err(r.data?.error ?? 'send failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -282,8 +288,8 @@ export function WorkoutFinishPanel() {
         }, 'knowledge', ['private', 'public_view', 'social_post']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.result;
-      const id = dtu?.id ?? dtu?.dtuId;
-      if (!id) { err('No DTU id returned.'); return; }
+      const id = dtu?.id ?? dtu?.dtuId ?? r.data?.result?.id;
+      if (!r.data?.ok || !id) { err(r.data?.message || r.data?.error || 'No DTU id returned.'); return; }
       const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
       if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`PR published — ${id}`); }
       else err(pub.data?.error ?? 'publish flag failed');
@@ -311,11 +317,11 @@ export function WorkoutFinishPanel() {
         domain: 'chat_agent', name: 'do',
         input: { task, maxTurns: 4 },
       });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
-      if (reply) {
-        setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2));
+      const reply = readAgentReply(r.data);
+      if (reply.ok) {
+        setAgentReply(reply.text);
         ok('Next workout drafted.');
-      } else err('Agent returned empty.');
+      } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -341,10 +347,15 @@ export function WorkoutFinishPanel() {
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-        <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="md:col-span-2 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white focus:outline-none focus:ring-2 focus:ring-orange-400/40" placeholder="Workout title (Push Day, Legs A, …)" />
-        <input type="text" value={partnerId} onChange={(e) => setPartnerId(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white focus:outline-none focus:ring-2 focus:ring-pink-400/40" placeholder="Training-partner user id" />
+        <input id="fitness-workout-title-push-day-legs-a" name="workout-title-push-day-legs-a" aria-label="Workout title (Push Day, Legs A, …)" type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="md:col-span-2 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white focus:outline-none focus:ring-2 focus:ring-orange-400/40" placeholder="Workout title (Push Day, Legs A, …)" />
+        <UserPicker
+          value={partnerId ? { userId: partnerId, username: partnerLabel || partnerId, displayName: partnerLabel || undefined } : null}
+          onPick={(u) => { setPartnerId(u?.userId || ''); setPartnerLabel(u ? (u.displayName || u.username) : ''); }}
+          placeholder="Training partner — search by name"
+          ariaLabel="Training partner"
+        />
         <label className="flex items-center gap-2 px-3 py-1.5 rounded border border-zinc-800 bg-zinc-900 text-[12px] text-zinc-300 cursor-pointer hover:bg-zinc-800">
-          <input type="checkbox" checked={isPr} onChange={(e) => setIsPr(e.target.checked)} className="rounded" />
+          <input id="fitness-field-24" name="field-24" type="checkbox" checked={isPr} onChange={(e) => setIsPr(e.target.checked)} className="rounded" />
           🏆 PR session
         </label>
       </div>
@@ -353,7 +364,7 @@ export function WorkoutFinishPanel() {
         {lifts.map((lift, li) => (
           <div key={li} className="rounded-md border border-zinc-800 bg-zinc-900/40 p-2 space-y-1.5">
             <div className="flex items-center gap-2">
-              <input type="text" value={lift.name} onChange={(e) => updateLiftName(li, e.target.value)} className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-[12px] text-white font-semibold focus:outline-none focus:ring-2 focus:ring-orange-400/40" placeholder="Lift name (Squat, Bench, …)" />
+              <input id="fitness-lift-name-squat-bench" name="lift-name-squat-bench" aria-label="Lift name (Squat, Bench, …)" type="text" value={lift.name} onChange={(e) => updateLiftName(li, e.target.value)} className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-[12px] text-white font-semibold focus:outline-none focus:ring-2 focus:ring-orange-400/40" placeholder="Lift name (Squat, Bench, …)" />
               <button type="button" onClick={() => addSet(li)} className="inline-flex items-center gap-1 px-2 py-1 rounded bg-orange-500/15 text-orange-300 text-[10px] hover:bg-orange-500/25"><Plus className="w-3 h-3" /> set</button>
               <button type="button" onClick={() => removeLift(li)} className="p-1 rounded hover:bg-zinc-800 text-zinc-400" aria-label="Remove lift"><X className="w-3 h-3" /></button>
             </div>
@@ -366,9 +377,9 @@ export function WorkoutFinishPanel() {
               {lift.sets.map((s, si) => (
                 <>
                   <span key={`n-${si}`} className="text-[11px] text-zinc-400 font-mono px-1">{si + 1}</span>
-                  <input key={`w-${si}`} type="number" value={s.weight || ''} onChange={(e) => updateSet(li, si, 'weight', parseFloat(e.target.value) || 0)} className="bg-zinc-950 border border-zinc-800 rounded px-2 py-0.5 text-[11px] text-white font-mono focus:outline-none focus:ring-1 focus:ring-orange-400/40" />
-                  <input key={`r-${si}`} type="number" value={s.reps || ''} onChange={(e) => updateSet(li, si, 'reps', parseInt(e.target.value, 10) || 0)} className="bg-zinc-950 border border-zinc-800 rounded px-2 py-0.5 text-[11px] text-white font-mono focus:outline-none focus:ring-1 focus:ring-orange-400/40" />
-                  <input key={`i-${si}`} type="number" value={s.rir ?? ''} onChange={(e) => updateSet(li, si, 'rir', parseInt(e.target.value, 10) || 0)} className="bg-zinc-950 border border-zinc-800 rounded px-2 py-0.5 text-[11px] text-white font-mono focus:outline-none focus:ring-1 focus:ring-orange-400/40" placeholder="2" />
+                  <input id="fitness-field-25" name="field-25" key={`w-${si}`} type="number" value={s.weight || ''} onChange={(e) => updateSet(li, si, 'weight', parseFloat(e.target.value) || 0)} className="bg-zinc-950 border border-zinc-800 rounded px-2 py-0.5 text-[11px] text-white font-mono focus:outline-none focus:ring-1 focus:ring-orange-400/40" />
+                  <input id="fitness-field-26" name="field-26" key={`r-${si}`} type="number" value={s.reps || ''} onChange={(e) => updateSet(li, si, 'reps', parseInt(e.target.value, 10) || 0)} className="bg-zinc-950 border border-zinc-800 rounded px-2 py-0.5 text-[11px] text-white font-mono focus:outline-none focus:ring-1 focus:ring-orange-400/40" />
+                  <input id="fitness-2" name="2" aria-label="2" key={`i-${si}`} type="number" value={s.rir ?? ''} onChange={(e) => updateSet(li, si, 'rir', parseInt(e.target.value, 10) || 0)} className="bg-zinc-950 border border-zinc-800 rounded px-2 py-0.5 text-[11px] text-white font-mono focus:outline-none focus:ring-1 focus:ring-orange-400/40" placeholder="2" />
                   <button key={`d-${si}`} type="button" onClick={() => removeSet(li, si)} className="p-0.5 rounded hover:bg-zinc-800 text-zinc-600" aria-label="Remove set"><X className="w-3 h-3" /></button>
                 </>
               ))}
@@ -383,15 +394,15 @@ export function WorkoutFinishPanel() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         <div>
           <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Age (HR zones)</label>
-          <input type="text" value={age} onChange={(e) => setAge(e.target.value.replace(/\D/g, ''))} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono focus:outline-none focus:ring-2 focus:ring-red-400/40" />
+          <input id="fitness-age-2" name="age-2" type="text" value={age} onChange={(e) => setAge(e.target.value.replace(/\D/g, ''))} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono focus:outline-none focus:ring-2 focus:ring-red-400/40" />
         </div>
         <div>
           <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Resting HR (zones)</label>
-          <input type="text" value={restingHr} onChange={(e) => setRestingHr(e.target.value.replace(/\D/g, ''))} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono focus:outline-none focus:ring-2 focus:ring-red-400/40" placeholder="60" />
+          <input id="fitness-60" name="60" aria-label="60" type="text" value={restingHr} onChange={(e) => setRestingHr(e.target.value.replace(/\D/g, ''))} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono focus:outline-none focus:ring-2 focus:ring-red-400/40" placeholder="60" />
         </div>
         <div>
           <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Avg HR (this workout)</label>
-          <input type="text" value={avgHr} onChange={(e) => setAvgHr(e.target.value.replace(/\D/g, ''))} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono focus:outline-none focus:ring-2 focus:ring-red-400/40" placeholder="130" />
+          <input id="fitness-130" name="130" aria-label="130" type="text" value={avgHr} onChange={(e) => setAvgHr(e.target.value.replace(/\D/g, ''))} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono focus:outline-none focus:ring-2 focus:ring-red-400/40" placeholder="130" />
         </div>
       </div>
 

@@ -43,6 +43,14 @@ describe("srs.rename via deck options", () => {
     assert.equal(call("deck-options-update", ctxA, { deckId: d.id, options: { newPerDay: 7 } }).ok, true);
     assert.equal(call("deck-list", ctxA, {}).result.decks[0].name, "Keep Me");
   });
+  it("rejects a learning step that is not a number of minutes and keeps the old steps", () => {
+    const d = call("deck-create", ctxA, { name: "Steps" }).result.deck;
+    const bad = call("deck-options-update", ctxA, { deckId: d.id, options: { learningSteps: ["abc"] } });
+    assert.equal(bad.ok, false);
+    assert.match(bad.error, /abc/);
+    const got = call("deck-options-get", ctxA, { deckId: d.id });
+    assert.deepEqual(got.result.options.learningSteps, [1, 10]);
+  });
 });
 
 describe("srs.delete re-parents subdecks", () => {

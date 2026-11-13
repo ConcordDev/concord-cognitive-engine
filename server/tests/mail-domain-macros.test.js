@@ -53,8 +53,10 @@ describe("mail.* domain macros (real migrated DB)", () => {
 
   it("registers the full mail macro surface", () => {
     // "delete" joins the surface with the mail full build (S4): the
-    // sender-side removal of their own sent copy.
-    assert.deepEqual(reg.names.sort(), ["claim", "delete", "get", "list", "read", "send", "sent"]);
+    // sender-side removal of their own sent copy. "draft-get"/"draft-save"
+    // join with FIX-mail-002 (compose draft autosave). "decline" joins
+    // with FIX-mail-014 (the recipient's return-to-sender answer to COD).
+    assert.deepEqual(reg.names.sort(), ["claim", "decline", "delete", "draft-get", "draft-save", "get", "list", "read", "send", "sent"]);
   });
 
   it("send → list → claim full envelope upholds the contract invariants", async () => {
@@ -105,5 +107,24 @@ describe("mail.* domain macros (real migrated DB)", () => {
     assert.equal((await reg.run("read", u2, { id: send.id })).ok, true);
     assert.equal((await reg.run("get", u2, { id: send.id })).mail.status, "read");
     assert.equal((await reg.run("read", u2, { id: send.id })).ok, true); // idempotent
+  });
+
+  it("FIX-mail-002: compose draft autosaves per user, restores, and clears when blank", async () => {
+    if (globalThis._concordSTATE?.mailLens) delete globalThis._concordSTATE.mailLens;
+    assert.equal((await reg.run("draft-get", u1, {})).draft, null);
+    const save = await reg.run("draft-save", u1, {
+      toUserId: "u2", subject: "Draft subj", body: "half-written",
+      attachmentCc: 5, codCc: 0, attachmentDtuIds: ["dtu_x"], attachmentTitles: { dtu_x: "Thing" },
+    });
+    assert.equal(save.ok, true);
+    const got = await reg.run("draft-get", u1, {});
+    assert.equal(got.draft.subject, "Draft subj");
+    assert.equal(got.draft.body, "half-written");
+    assert.deepEqual(got.draft.attachmentDtuIds, ["dtu_x"]);
+    assert.equal((await reg.run("draft-get", u2, {})).draft, null); // per-user
+    const cleared = await reg.run("draft-save", u1, { toUserId: "", subject: "", body: "" });
+    assert.equal(cleared.draft, null);
+    assert.equal((await reg.run("draft-get", u1, {})).draft, null);
+    assert.equal((await reg.run("draft-save", u1, { attachmentCc: -1 })).ok, false); // poisoned number refused
   });
 });

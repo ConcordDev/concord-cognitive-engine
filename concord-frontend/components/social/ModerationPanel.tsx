@@ -98,7 +98,7 @@ export function ModerationPanel({ className }: { className?: string }) {
             <VolumeX className="w-3.5 h-3.5" /> Muted ({muted.length})
           </header>
           {muted.length === 0 ? (
-            <p className="text-xs text-zinc-500 italic py-2">You haven’t muted anyone.</p>
+            <p className="text-xs text-zinc-400 italic py-2">You haven’t muted anyone.</p>
           ) : (
             <ul className="space-y-1.5">
               {muted.map((userId) => (
@@ -124,7 +124,7 @@ export function ModerationPanel({ className }: { className?: string }) {
             <Ban className="w-3.5 h-3.5" /> Blocked ({blocked.length})
           </header>
           {blocked.length === 0 ? (
-            <p className="text-xs text-zinc-500 italic py-2">You haven’t blocked anyone.</p>
+            <p className="text-xs text-zinc-400 italic py-2">You haven’t blocked anyone.</p>
           ) : (
             <ul className="space-y-1.5">
               {blocked.map((userId) => (
@@ -151,7 +151,7 @@ export function ModerationPanel({ className }: { className?: string }) {
           <Flag className="w-3.5 h-3.5" /> Reports you’ve filed ({reports.length})
         </header>
         {reports.length === 0 ? (
-          <p className="text-xs text-zinc-500 italic py-2">You haven’t reported anything.</p>
+          <p className="text-xs text-zinc-400 italic py-2">You haven’t reported anything.</p>
         ) : (
           <ul className="space-y-1.5">
             {reports.map((r) => (
@@ -159,8 +159,8 @@ export function ModerationPanel({ className }: { className?: string }) {
                 <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase text-zinc-400">{r.targetKind}</span>
                 <span className="font-mono text-zinc-300">{r.targetId.slice(0, 16)}</span>
                 <span className="capitalize text-rose-300">{r.reason}</span>
-                <span className="ml-auto text-[10px] text-zinc-500">{r.status}</span>
-                <span className="text-[10px] text-zinc-500">
+                <span className="ml-auto text-[10px] text-zinc-400">{r.status}</span>
+                <span className="text-[10px] text-zinc-400">
                   {new Date(r.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                 </span>
               </li>

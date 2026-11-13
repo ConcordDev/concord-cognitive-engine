@@ -8,7 +8,8 @@
  */
 
 import { motion } from 'framer-motion';
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { lensRun } from '@/lib/api/client';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -61,6 +62,7 @@ import {
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { cn } from '@/lib/utils';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -645,6 +647,21 @@ export function CaseOpsPanel({
       seed: seedData[currentType] || [],
     });
 
+  const [deskPermits, setDeskPermits] = useState<Array<{ status: string }>>([]);
+  const [serviceRequests, setServiceRequests] = useState<Array<{ status: string }>>([]);
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.all([
+      lensRun({ domain: 'government', action: 'permits-list', input: {} }),
+      lensRun({ domain: 'government', action: 'service-requests-list', input: {} }),
+    ]).then(([permits, requests]) => {
+      if (cancelled) return;
+      setDeskPermits((permits.data?.result?.permits || []) as Array<{ status: string }>);
+      setServiceRequests((requests.data?.result?.requests || []) as Array<{ status: string }>);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
   const permitData = useLensData<ArtifactData>('government', 'Permit', {
     seed: seedData.Permit,
     noSeed: currentType === 'Permit' ? false : true,
@@ -826,7 +843,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Applicant</label>
                 <input
-                  className={ds.input}
+ aria-label="Applicant"                  className={ds.input}
                   value={(f.applicant as string) || ''}
                   onChange={(e) => set('applicant', e.target.value)}
                 />
@@ -834,7 +851,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Permit Type</label>
                 <select
-                  className={ds.select}
+ aria-label="Permit Type"                  className={ds.select}
                   value={(f.type as string) || ''}
                   onChange={(e) => set('type', e.target.value)}
                 >
@@ -851,7 +868,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Property Address</label>
                 <input
-                  className={ds.input}
+ aria-label="Property Address"                  className={ds.input}
                   value={(f.address as string) || ''}
                   onChange={(e) => set('address', e.target.value)}
                 />
@@ -859,7 +876,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Property Owner</label>
                 <input
-                  className={ds.input}
+ aria-label="Property Owner"                  className={ds.input}
                   value={(f.propertyOwner as string) || ''}
                   onChange={(e) => set('propertyOwner', e.target.value)}
                 />
@@ -868,7 +885,7 @@ export function CaseOpsPanel({
             <div>
               <label className={ds.label}>Description</label>
               <textarea
-                className={ds.textarea}
+ aria-label="Description"                className={ds.textarea}
                 rows={3}
                 value={(f.description as string) || ''}
                 onChange={(e) => set('description', e.target.value)}
@@ -878,7 +895,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Fee ($)</label>
                 <input
-                  type="number"
+ aria-label="Fee ($)"                  type="number"
                   className={ds.input}
                   value={(f.fee as number) || ''}
                   onChange={(e) => set('fee', parseFloat(e.target.value) || 0)}
@@ -887,7 +904,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Submitted Date</label>
                 <input
-                  type="date"
+ aria-label="Submitted Date"                  type="date"
                   className={ds.input}
                   value={(f.submittedDate as string) || ''}
                   onChange={(e) => set('submittedDate', e.target.value)}
@@ -896,7 +913,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Parcel Number</label>
                 <input
-                  className={ds.input}
+ aria-label="Parcel Number"                  className={ds.input}
                   value={(f.parcelNumber as string) || ''}
                   onChange={(e) => set('parcelNumber', e.target.value)}
                   placeholder="APN-xxxx-xxxx"
@@ -907,7 +924,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Assigned Inspector</label>
                 <input
-                  className={ds.input}
+ aria-label="Assigned Inspector"                  className={ds.input}
                   value={(f.inspector as string) || ''}
                   onChange={(e) => set('inspector', e.target.value)}
                 />
@@ -915,7 +932,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Est. Processing Days</label>
                 <input
-                  type="number"
+ aria-label="Est. Processing Days"                  type="number"
                   className={ds.input}
                   value={(f.estimatedDays as number) || ''}
                   onChange={(e) => set('estimatedDays', parseInt(e.target.value) || 0)}
@@ -926,7 +943,7 @@ export function CaseOpsPanel({
             <div>
               <label className={ds.label}>Review Notes</label>
               <textarea
-                className={ds.textarea}
+ aria-label="Review Notes"                className={ds.textarea}
                 rows={2}
                 value={(f.reviewNotes as string) || ''}
                 onChange={(e) => set('reviewNotes', e.target.value)}
@@ -941,7 +958,7 @@ export function CaseOpsPanel({
             <div>
               <label className={ds.label}>Project Name</label>
               <input
-                className={ds.input}
+ aria-label="Project Name"                className={ds.input}
                 value={(f.name as string) || ''}
                 onChange={(e) => set('name', e.target.value)}
               />
@@ -950,7 +967,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Department</label>
                 <input
-                  className={ds.input}
+ aria-label="Department"                  className={ds.input}
                   value={(f.department as string) || ''}
                   onChange={(e) => set('department', e.target.value)}
                 />
@@ -958,7 +975,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Contractor</label>
                 <input
-                  className={ds.input}
+ aria-label="Contractor"                  className={ds.input}
                   value={(f.contractor as string) || ''}
                   onChange={(e) => set('contractor', e.target.value)}
                 />
@@ -967,7 +984,7 @@ export function CaseOpsPanel({
             <div>
               <label className={ds.label}>Location</label>
               <input
-                className={ds.input}
+ aria-label="Location"                className={ds.input}
                 value={(f.location as string) || ''}
                 onChange={(e) => set('location', e.target.value)}
               />
@@ -976,7 +993,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Start Date</label>
                 <input
-                  type="date"
+ aria-label="Start Date"                  type="date"
                   className={ds.input}
                   value={(f.startDate as string) || ''}
                   onChange={(e) => set('startDate', e.target.value)}
@@ -985,7 +1002,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>End Date</label>
                 <input
-                  type="date"
+ aria-label="End Date"                  type="date"
                   className={ds.input}
                   value={(f.endDate as string) || ''}
                   onChange={(e) => set('endDate', e.target.value)}
@@ -996,7 +1013,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Budget ($)</label>
                 <input
-                  type="number"
+ aria-label="Budget ($)"                  type="number"
                   className={ds.input}
                   value={(f.budget as number) || ''}
                   onChange={(e) => set('budget', parseFloat(e.target.value) || 0)}
@@ -1005,7 +1022,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Spent ($)</label>
                 <input
-                  type="number"
+ aria-label="Spent ($)"                  type="number"
                   className={ds.input}
                   value={(f.spent as number) || ''}
                   onChange={(e) => set('spent', parseFloat(e.target.value) || 0)}
@@ -1014,7 +1031,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Progress %</label>
                 <input
-                  type="number"
+ aria-label="Progress %"                  type="number"
                   min={0}
                   max={100}
                   className={ds.input}
@@ -1026,7 +1043,7 @@ export function CaseOpsPanel({
             <div>
               <label className={ds.label}>Milestones (comma-separated)</label>
               <textarea
-                className={ds.textarea}
+ aria-label="Milestones (comma-separated)"                className={ds.textarea}
                 rows={2}
                 value={((f.milestones as string[]) || []).join(', ')}
                 onChange={(e) =>
@@ -1043,7 +1060,7 @@ export function CaseOpsPanel({
             <div>
               <label className={ds.label}>Citizen Impact Assessment</label>
               <textarea
-                className={ds.textarea}
+ aria-label="Citizen Impact Assessment"                className={ds.textarea}
                 rows={2}
                 value={(f.citizenImpact as string) || ''}
                 onChange={(e) => set('citizenImpact', e.target.value)}
@@ -1052,7 +1069,7 @@ export function CaseOpsPanel({
             <div>
               <label className={ds.label}>Road Closures</label>
               <textarea
-                className={ds.textarea}
+ aria-label="Road Closures"                className={ds.textarea}
                 rows={2}
                 value={(f.roadClosures as string) || ''}
                 onChange={(e) => set('roadClosures', e.target.value)}
@@ -1061,7 +1078,7 @@ export function CaseOpsPanel({
             <div>
               <label className={ds.label}>Contact Phone</label>
               <input
-                className={ds.input}
+ aria-label="Contact Phone"                className={ds.input}
                 value={(f.contactPhone as string) || ''}
                 onChange={(e) => set('contactPhone', e.target.value)}
               />
@@ -1076,7 +1093,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Property Address</label>
                 <input
-                  className={ds.input}
+ aria-label="Property Address"                  className={ds.input}
                   value={(f.address as string) || ''}
                   onChange={(e) => set('address', e.target.value)}
                 />
@@ -1084,7 +1101,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Violation Type</label>
                 <select
-                  className={ds.select}
+ aria-label="Violation Type"                  className={ds.select}
                   value={(f.violationType as string) || ''}
                   onChange={(e) => set('violationType', e.target.value)}
                 >
@@ -1101,7 +1118,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Code Section</label>
                 <input
-                  className={ds.input}
+ aria-label="Code Section"                  className={ds.input}
                   value={(f.code as string) || ''}
                   onChange={(e) => set('code', e.target.value)}
                   placeholder="MC-xxxx-x.xx"
@@ -1110,7 +1127,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Severity</label>
                 <select
-                  className={ds.select}
+ aria-label="Severity"                  className={ds.select}
                   value={(f.severity as string) || 'minor'}
                   onChange={(e) => set('severity', e.target.value)}
                 >
@@ -1122,7 +1139,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Fine Amount ($)</label>
                 <input
-                  type="number"
+ aria-label="Fine Amount ($)"                  type="number"
                   className={ds.input}
                   value={(f.fineAmount as number) || ''}
                   onChange={(e) => set('fineAmount', parseFloat(e.target.value) || 0)}
@@ -1132,7 +1149,7 @@ export function CaseOpsPanel({
             <div>
               <label className={ds.label}>Description</label>
               <textarea
-                className={ds.textarea}
+ aria-label="Description"                className={ds.textarea}
                 rows={3}
                 value={(f.description as string) || ''}
                 onChange={(e) => set('description', e.target.value)}
@@ -1142,7 +1159,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Owner Name</label>
                 <input
-                  className={ds.input}
+ aria-label="Owner Name"                  className={ds.input}
                   value={(f.ownerName as string) || ''}
                   onChange={(e) => set('ownerName', e.target.value)}
                 />
@@ -1150,7 +1167,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Owner Contact</label>
                 <input
-                  className={ds.input}
+ aria-label="Owner Contact"                  className={ds.input}
                   value={(f.ownerContact as string) || ''}
                   onChange={(e) => set('ownerContact', e.target.value)}
                 />
@@ -1160,7 +1177,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Inspector</label>
                 <input
-                  className={ds.input}
+ aria-label="Inspector"                  className={ds.input}
                   value={(f.inspector as string) || ''}
                   onChange={(e) => set('inspector', e.target.value)}
                 />
@@ -1168,7 +1185,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Observed Date</label>
                 <input
-                  type="date"
+ aria-label="Observed Date"                  type="date"
                   className={ds.input}
                   value={(f.observedDate as string) || ''}
                   onChange={(e) => set('observedDate', e.target.value)}
@@ -1177,7 +1194,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Compliance Deadline</label>
                 <input
-                  type="date"
+ aria-label="Compliance Deadline"                  type="date"
                   className={ds.input}
                   value={(f.complianceDeadline as string) || ''}
                   onChange={(e) => set('complianceDeadline', e.target.value)}
@@ -1188,7 +1205,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Hearing Date</label>
                 <input
-                  type="date"
+ aria-label="Hearing Date"                  type="date"
                   className={ds.input}
                   value={(f.hearingDate as string) || ''}
                   onChange={(e) => set('hearingDate', e.target.value)}
@@ -1197,7 +1214,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Photo Count</label>
                 <input
-                  type="number"
+ aria-label="Photo Count"                  type="number"
                   className={ds.input}
                   value={(f.photos as number) || ''}
                   onChange={(e) => set('photos', parseInt(e.target.value) || 0)}
@@ -1207,7 +1224,7 @@ export function CaseOpsPanel({
             <div>
               <label className={ds.label}>Escalation History</label>
               <textarea
-                className={ds.textarea}
+ aria-label="Escalation History"                className={ds.textarea}
                 rows={2}
                 value={(f.escalationHistory as string) || ''}
                 onChange={(e) => set('escalationHistory', e.target.value)}
@@ -1222,7 +1239,7 @@ export function CaseOpsPanel({
             <div>
               <label className={ds.label}>Plan Name</label>
               <input
-                className={ds.input}
+ aria-label="Plan Name"                className={ds.input}
                 value={(f.name as string) || ''}
                 onChange={(e) => set('name', e.target.value)}
               />
@@ -1231,7 +1248,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Hazard Type</label>
                 <select
-                  className={ds.select}
+ aria-label="Hazard Type"                  className={ds.select}
                   value={(f.type as string) || ''}
                   onChange={(e) => set('type', e.target.value)}
                 >
@@ -1246,7 +1263,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Zone</label>
                 <input
-                  className={ds.input}
+ aria-label="Zone"                  className={ds.input}
                   value={(f.zone as string) || ''}
                   onChange={(e) => set('zone', e.target.value)}
                 />
@@ -1254,7 +1271,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Activation Level</label>
                 <select
-                  className={ds.select}
+ aria-label="Activation Level"                  className={ds.select}
                   value={(f.activationLevel as string) || 'Level 1'}
                   onChange={(e) => set('activationLevel', e.target.value)}
                 >
@@ -1268,7 +1285,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Coordinator</label>
                 <input
-                  className={ds.input}
+ aria-label="Coordinator"                  className={ds.input}
                   value={(f.coordinator as string) || ''}
                   onChange={(e) => set('coordinator', e.target.value)}
                 />
@@ -1276,7 +1293,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Personnel Count</label>
                 <input
-                  type="number"
+ aria-label="Personnel Count"                  type="number"
                   className={ds.input}
                   value={(f.personnelCount as number) || ''}
                   onChange={(e) => set('personnelCount', parseInt(e.target.value) || 0)}
@@ -1286,7 +1303,7 @@ export function CaseOpsPanel({
             <div>
               <label className={ds.label}>Resources (comma-separated)</label>
               <textarea
-                className={ds.textarea}
+ aria-label="Resources (comma-separated)"                className={ds.textarea}
                 rows={2}
                 value={((f.resources as string[]) || []).join(', ')}
                 onChange={(e) =>
@@ -1303,7 +1320,7 @@ export function CaseOpsPanel({
             <div>
               <label className={ds.label}>Equipment List</label>
               <textarea
-                className={ds.textarea}
+ aria-label="Equipment List"                className={ds.textarea}
                 rows={2}
                 value={(f.equipmentList as string) || ''}
                 onChange={(e) => set('equipmentList', e.target.value)}
@@ -1312,7 +1329,7 @@ export function CaseOpsPanel({
             <div>
               <label className={ds.label}>Supplies Inventory</label>
               <textarea
-                className={ds.textarea}
+ aria-label="Supplies Inventory"                className={ds.textarea}
                 rows={2}
                 value={(f.suppliesInventory as string) || ''}
                 onChange={(e) => set('suppliesInventory', e.target.value)}
@@ -1321,7 +1338,7 @@ export function CaseOpsPanel({
             <div>
               <label className={ds.label}>Mutual Aid Partners</label>
               <input
-                className={ds.input}
+ aria-label="Mutual Aid Partners"                className={ds.input}
                 value={(f.mutualAidPartners as string) || ''}
                 onChange={(e) => set('mutualAidPartners', e.target.value)}
               />
@@ -1330,7 +1347,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Next Exercise Date</label>
                 <input
-                  type="date"
+ aria-label="Next Exercise Date"                  type="date"
                   className={ds.input}
                   value={(f.exerciseDate as string) || ''}
                   onChange={(e) => set('exerciseDate', e.target.value)}
@@ -1339,7 +1356,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Last Review Date</label>
                 <input
-                  type="date"
+ aria-label="Last Review Date"                  type="date"
                   className={ds.input}
                   value={(f.lastReviewDate as string) || ''}
                   onChange={(e) => set('lastReviewDate', e.target.value)}
@@ -1349,7 +1366,7 @@ export function CaseOpsPanel({
             <div>
               <label className={ds.label}>Evacuation Routes</label>
               <textarea
-                className={ds.textarea}
+ aria-label="Evacuation Routes"                className={ds.textarea}
                 rows={2}
                 value={(f.evacuationRoutes as string) || ''}
                 onChange={(e) => set('evacuationRoutes', e.target.value)}
@@ -1358,7 +1375,7 @@ export function CaseOpsPanel({
             <div>
               <label className={ds.label}>Shelter Locations</label>
               <textarea
-                className={ds.textarea}
+ aria-label="Shelter Locations"                className={ds.textarea}
                 rows={2}
                 value={(f.shelterLocations as string) || ''}
                 onChange={(e) => set('shelterLocations', e.target.value)}
@@ -1374,7 +1391,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Record Type</label>
                 <select
-                  className={ds.select}
+ aria-label="Record Type"                  className={ds.select}
                   value={(f.type as string) || ''}
                   onChange={(e) => set('type', e.target.value)}
                 >
@@ -1389,7 +1406,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Classification</label>
                 <select
-                  className={ds.select}
+ aria-label="Classification"                  className={ds.select}
                   value={(f.classification as string) || 'public'}
                   onChange={(e) => set('classification', e.target.value)}
                 >
@@ -1405,7 +1422,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Department</label>
                 <input
-                  className={ds.input}
+ aria-label="Department"                  className={ds.input}
                   value={(f.department as string) || ''}
                   onChange={(e) => set('department', e.target.value)}
                 />
@@ -1413,7 +1430,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Filed Date</label>
                 <input
-                  type="date"
+ aria-label="Filed Date"                  type="date"
                   className={ds.input}
                   value={(f.filedDate as string) || ''}
                   onChange={(e) => set('filedDate', e.target.value)}
@@ -1423,7 +1440,7 @@ export function CaseOpsPanel({
             <div>
               <label className={ds.label}>Description</label>
               <textarea
-                className={ds.textarea}
+ aria-label="Description"                className={ds.textarea}
                 rows={3}
                 value={(f.description as string) || ''}
                 onChange={(e) => set('description', e.target.value)}
@@ -1433,7 +1450,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Retention (years)</label>
                 <input
-                  type="number"
+ aria-label="Retention (years)"                  type="number"
                   className={ds.input}
                   value={(f.retentionYears as number) || ''}
                   onChange={(e) => set('retentionYears', parseInt(e.target.value) || 0)}
@@ -1442,7 +1459,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Page Count</label>
                 <input
-                  type="number"
+ aria-label="Page Count"                  type="number"
                   className={ds.input}
                   value={(f.pageCount as number) || ''}
                   onChange={(e) => set('pageCount', parseInt(e.target.value) || 0)}
@@ -1451,7 +1468,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Disposition Date</label>
                 <input
-                  type="date"
+ aria-label="Disposition Date"                  type="date"
                   className={ds.input}
                   value={(f.dispositionDate as string) || ''}
                   onChange={(e) => set('dispositionDate', e.target.value)}
@@ -1464,7 +1481,7 @@ export function CaseOpsPanel({
                 <div>
                   <label className={ds.label}>Request Type</label>
                   <select
-                    className={ds.select}
+ aria-label="Request Type"                    className={ds.select}
                     value={(f.requestType as string) || ''}
                     onChange={(e) => set('requestType', e.target.value)}
                   >
@@ -1479,7 +1496,7 @@ export function CaseOpsPanel({
                 <div>
                   <label className={ds.label}>Requestor</label>
                   <input
-                    className={ds.input}
+ aria-label="Requestor"                    className={ds.input}
                     value={(f.requestor as string) || ''}
                     onChange={(e) => set('requestor', e.target.value)}
                   />
@@ -1489,7 +1506,7 @@ export function CaseOpsPanel({
                 <div>
                   <label className={ds.label}>Request Date</label>
                   <input
-                    type="date"
+ aria-label="Request Date"                    type="date"
                     className={ds.input}
                     value={(f.requestDate as string) || ''}
                     onChange={(e) => set('requestDate', e.target.value)}
@@ -1498,7 +1515,7 @@ export function CaseOpsPanel({
                 <div>
                   <label className={ds.label}>Response Deadline</label>
                   <input
-                    type="date"
+ aria-label="Response Deadline"                    type="date"
                     className={ds.input}
                     value={(f.responseDeadline as string) || ''}
                     onChange={(e) => set('responseDeadline', e.target.value)}
@@ -1521,7 +1538,7 @@ export function CaseOpsPanel({
                 <div className="mt-2">
                   <label className={ds.label}>Redaction Notes</label>
                   <textarea
-                    className={ds.textarea}
+ aria-label="Redaction Notes"                    className={ds.textarea}
                     rows={2}
                     value={(f.redactionNotes as string) || ''}
                     onChange={(e) => set('redactionNotes', e.target.value)}
@@ -1539,7 +1556,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Case Number</label>
                 <input
-                  className={ds.input}
+ aria-label="Case Number"                  className={ds.input}
                   value={(f.caseNumber as string) || ''}
                   onChange={(e) => set('caseNumber', e.target.value)}
                   placeholder="MC-YYYY-NNNNN"
@@ -1548,7 +1565,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Case Type</label>
                 <select
-                  className={ds.select}
+ aria-label="Case Type"                  className={ds.select}
                   value={(f.type as string) || ''}
                   onChange={(e) => set('type', e.target.value)}
                 >
@@ -1565,7 +1582,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Plaintiff</label>
                 <input
-                  className={ds.input}
+ aria-label="Plaintiff"                  className={ds.input}
                   value={(f.plaintiff as string) || ''}
                   onChange={(e) => set('plaintiff', e.target.value)}
                 />
@@ -1573,7 +1590,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Defendant</label>
                 <input
-                  className={ds.input}
+ aria-label="Defendant"                  className={ds.input}
                   value={(f.defendant as string) || ''}
                   onChange={(e) => set('defendant', e.target.value)}
                 />
@@ -1583,7 +1600,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Assigned Judge</label>
                 <input
-                  className={ds.input}
+ aria-label="Assigned Judge"                  className={ds.input}
                   value={(f.judge as string) || ''}
                   onChange={(e) => set('judge', e.target.value)}
                 />
@@ -1591,7 +1608,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Courtroom</label>
                 <input
-                  className={ds.input}
+ aria-label="Courtroom"                  className={ds.input}
                   value={(f.courtroom as string) || ''}
                   onChange={(e) => set('courtroom', e.target.value)}
                 />
@@ -1599,7 +1616,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Attorney</label>
                 <input
-                  className={ds.input}
+ aria-label="Attorney"                  className={ds.input}
                   value={(f.attorney as string) || ''}
                   onChange={(e) => set('attorney', e.target.value)}
                 />
@@ -1609,7 +1626,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Filing Date</label>
                 <input
-                  type="date"
+ aria-label="Filing Date"                  type="date"
                   className={ds.input}
                   value={(f.filingDate as string) || ''}
                   onChange={(e) => set('filingDate', e.target.value)}
@@ -1618,7 +1635,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Court Date</label>
                 <input
-                  type="date"
+ aria-label="Court Date"                  type="date"
                   className={ds.input}
                   value={(f.courtDate as string) || ''}
                   onChange={(e) => set('courtDate', e.target.value)}
@@ -1627,7 +1644,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Next Hearing</label>
                 <input
-                  type="date"
+ aria-label="Next Hearing"                  type="date"
                   className={ds.input}
                   value={(f.nextHearingDate as string) || ''}
                   onChange={(e) => set('nextHearingDate', e.target.value)}
@@ -1637,7 +1654,7 @@ export function CaseOpsPanel({
             <div>
               <label className={ds.label}>Disposition</label>
               <input
-                className={ds.input}
+ aria-label="Disposition"                className={ds.input}
                 value={(f.disposition as string) || ''}
                 onChange={(e) => set('disposition', e.target.value)}
                 placeholder="e.g., Guilty, Not Guilty, Dismissed..."
@@ -1647,7 +1664,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Fine Amount ($)</label>
                 <input
-                  type="number"
+ aria-label="Fine Amount ($)"                  type="number"
                   className={ds.input}
                   value={(f.fineAmount as number) || ''}
                   onChange={(e) => set('fineAmount', parseFloat(e.target.value) || 0)}
@@ -1656,7 +1673,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Fees Collected ($)</label>
                 <input
-                  type="number"
+ aria-label="Fees Collected ($)"                  type="number"
                   className={ds.input}
                   value={(f.feesCollected as number) || ''}
                   onChange={(e) => set('feesCollected', parseFloat(e.target.value) || 0)}
@@ -1665,7 +1682,7 @@ export function CaseOpsPanel({
               <div>
                 <label className={ds.label}>Fees Owed ($)</label>
                 <input
-                  type="number"
+ aria-label="Fees Owed ($)"                  type="number"
                   className={ds.input}
                   value={(f.feesOwed as number) || ''}
                   onChange={(e) => set('feesOwed', parseFloat(e.target.value) || 0)}
@@ -1675,7 +1692,7 @@ export function CaseOpsPanel({
             <div>
               <label className={ds.label}>Continuance Count</label>
               <input
-                type="number"
+ aria-label="Continuance Count"                type="number"
                 className={ds.input}
                 value={(f.continuanceCount as number) || 0}
                 onChange={(e) => set('continuanceCount', parseInt(e.target.value) || 0)}
@@ -2565,7 +2582,7 @@ export function CaseOpsPanel({
         onClick={() => {
           setDetailId(item.id);
           setView('detail');
-        }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
         <div className={ds.sectionHeader}>
           <h3 className={cn(ds.heading3, 'text-base truncate mr-2')}>{item.title}</h3>
           {renderStatusBadge(item.meta.status)}
@@ -2793,9 +2810,12 @@ export function CaseOpsPanel({
     const allRecords = recordData.items;
     const allCourt = courtData.items;
 
-    const openPermits = allPermits.filter((i) =>
+    const caseOpenPermits = allPermits.filter((i) =>
       ['draft', 'proposed', 'public-comment'].includes(i.meta.status)
     ).length;
+    const deskOpenPermits = deskPermits.filter((p) => p.status === 'applied' || p.status === 'under_review' || p.status === 'approved').length;
+    const openPermits = deskPermits.length > 0 ? deskOpenPermits : caseOpenPermits;
+    const permitTotal = deskPermits.length > 0 ? deskPermits.length : allPermits.length;
     const activeViolations = allViolations.filter(
       (i) => !['enacted', 'repealed', 'archived'].includes(i.meta.status)
     ).length;
@@ -2816,14 +2836,20 @@ export function CaseOpsPanel({
     const pendingRecordRequests = allRecords.filter((i) =>
       ['draft', 'proposed', 'public-comment'].includes(i.meta.status)
     ).length;
-    const emergencyReadiness =
-      allEmergency.length > 0
-        ? Math.round(
-            (allEmergency.filter((i) => ['draft', 'archived'].includes(i.meta.status)).length /
-              allEmergency.length) *
-              100
-          )
-        : 100;
+    const openServiceRequests = serviceRequests.filter((r) =>
+      ['submitted', 'assigned', 'in_progress', 'needs_more_info'].includes(r.status)
+    ).length;
+    const pendingShown = serviceRequests.length > 0 ? openServiceRequests : pendingRecordRequests;
+    const pendingCaption = serviceRequests.length > 0
+      ? `${serviceRequests.length} service requests`
+      : `${allRecords.length} total records`;
+    const emergencyReadiness = allEmergency.length > 0
+      ? Math.round(
+          (allEmergency.filter((i) => ['draft', 'archived'].includes(i.meta.status)).length /
+            allEmergency.length) *
+            100
+        )
+      : null;
     const upcomingHearings = allCourt.filter((i) => {
       const d = i.data as unknown as Record<string, unknown>;
       const courtDate = d.courtDate as string;
@@ -2860,7 +2886,7 @@ export function CaseOpsPanel({
               <span className={ds.textMuted}>Open Permits</span>
             </div>
             <p className={ds.heading1}>{openPermits}</p>
-            <p className={cn(ds.textMuted, 'text-xs mt-1')}>{allPermits.length} total permits</p>
+            <p className={cn(ds.textMuted, 'text-xs mt-1')}>{permitTotal} total permits</p>
           </div>
           <div className={cn(ds.panel, 'border-red-400/30')}>
             <div className="flex items-center gap-2 mb-2">
@@ -2888,8 +2914,8 @@ export function CaseOpsPanel({
               <Archive className="w-5 h-5 text-neon-cyan" />
               <span className={ds.textMuted}>Pending Requests</span>
             </div>
-            <p className={ds.heading1}>{pendingRecordRequests}</p>
-            <p className={cn(ds.textMuted, 'text-xs mt-1')}>{allRecords.length} total records</p>
+            <p className={ds.heading1}>{pendingShown}</p>
+            <p className={cn(ds.textMuted, 'text-xs mt-1')}>{pendingCaption}</p>
           </div>
         </div>
 
@@ -2901,22 +2927,24 @@ export function CaseOpsPanel({
               <span className={ds.textMuted}>Emergency Readiness</span>
             </div>
             <div className="flex items-center gap-3">
-              <p className={ds.heading1}>{emergencyReadiness}%</p>
+              <p className={ds.heading1}>{emergencyReadiness == null ? '—' : `${emergencyReadiness}%`}</p>
               <div
                 className={cn(
                   'px-2 py-1 rounded text-xs font-medium',
-                  emergencyReadiness >= 80
+                  emergencyReadiness == null
+                    ? 'bg-zinc-500/20 text-zinc-300'
+                    : emergencyReadiness >= 80
                     ? 'bg-green-400/20 text-green-400'
                     : emergencyReadiness >= 50
                       ? 'bg-yellow-400/20 text-yellow-400'
                       : 'bg-red-400/20 text-red-400'
                 )}
               >
-                {emergencyReadiness >= 80 ? 'READY' : emergencyReadiness >= 50 ? 'PARTIAL' : 'LOW'}
+                {emergencyReadiness == null ? 'NO PLANS' : emergencyReadiness >= 80 ? 'READY' : emergencyReadiness >= 50 ? 'PARTIAL' : 'LOW'}
               </div>
             </div>
             <p className={cn(ds.textMuted, 'text-xs mt-1')}>
-              {allEmergency.length} plans maintained
+              {allEmergency.length === 0 ? 'No plans on file' : `${allEmergency.length} plans maintained`}
             </p>
           </div>
           <div className={ds.panel}>
@@ -3250,7 +3278,7 @@ export function CaseOpsPanel({
           <div className="flex items-center gap-3 flex-wrap">
             <div className="relative flex-1 min-w-[200px] max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
+              <input aria-label="Search ${mode.toLowerCase()}..."
                 ref={searchInputRef}
                 className={cn(ds.input, 'pl-10')}
                 placeholder={`Search ${mode.toLowerCase()}...`}
@@ -3260,7 +3288,7 @@ export function CaseOpsPanel({
             </div>
             <div className="flex items-center gap-1">
               <Filter className="w-4 h-4 text-gray-400" />
-              <select
+              <select aria-label="Filter by status"
                 className={cn(ds.select, 'w-auto')}
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
@@ -3273,9 +3301,6 @@ export function CaseOpsPanel({
                 ))}
               </select>
             </div>
-            <button className={ds.btnPrimary} onClick={openNew}>
-              <Plus className="w-4 h-4" /> New {currentType}
-            </button>
             <span className={cn(ds.textMuted, 'text-xs')}>
               {filtered.length} of {items.length} items
             </span>
@@ -3372,9 +3397,9 @@ export function CaseOpsPanel({
 
       {/* Editor modal */}
       {showEditor && (
-        <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <div className={ds.modalContainer}>
-            <div className={cn(ds.modalPanel, 'max-w-2xl')} onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            <div className={cn(ds.modalPanel, 'max-w-2xl')} onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
               <div className="p-6 border-b border-lattice-border">
                 <div className={ds.sectionHeader}>
                   <h2 className={ds.heading2}>
@@ -3390,7 +3415,7 @@ export function CaseOpsPanel({
                   <div>
                     <label className={ds.label}>Title</label>
                     <input
-                      className={ds.input}
+ aria-label="Title"                      className={ds.input}
                       value={formTitle}
                       onChange={(e) => setFormTitle(e.target.value)}
                       placeholder="Artifact title..."
@@ -3399,7 +3424,7 @@ export function CaseOpsPanel({
                   <div>
                     <label className={ds.label}>Status</label>
                     <select
-                      className={ds.select}
+ aria-label="Status"                      className={ds.select}
                       value={formStatus}
                       onChange={(e) => setFormStatus(e.target.value)}
                     >

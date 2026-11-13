@@ -62,6 +62,7 @@ export function HabitHub({ onXpChange }: { onXpChange?: (xp: number) => void }) 
 
   // Tasks
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [confirmDeleteTaskId, setConfirmDeleteTaskId] = useState<string | null>(null);
   const [newTask, setNewTask] = useState({ kind: 'daily' as Task['kind'], title: '', notes: '', difficulty: 'easy' as Task['difficulty'] });
 
   // Streaks
@@ -193,11 +194,18 @@ export function HabitHub({ onXpChange }: { onXpChange?: (xp: number) => void }) 
     if (tab === 'streaks') await loadStreaks();
   });
 
-  const deleteTask = (id: string) => run(`del-task-${id}`, async () => {
-    const r = await lensRun('game', 'taskDelete', { id });
-    if (!r.data.ok) { setErr(r.data.error); return; }
-    await loadTasks();
-  });
+  // Two-step delete (FIX-game-008): the first click arms the confirm on
+  // that row only; the second click actually deletes. Deleting a daily
+  // used to fire on a single trash-icon click with no way back.
+  const deleteTask = (id: string) => {
+    if (confirmDeleteTaskId !== id) { setConfirmDeleteTaskId(id); return; }
+    setConfirmDeleteTaskId(null);
+    void run(`del-task-${id}`, async () => {
+      const r = await lensRun('game', 'taskDelete', { id });
+      if (!r.data.ok) { setErr(r.data.error); return; }
+      await loadTasks();
+    });
+  };
 
   const createParty = () => run('create-party', async () => {
     if (!newParty.name.trim()) { setErr('Party name is required'); return; }
@@ -433,9 +441,15 @@ export function HabitHub({ onXpChange }: { onXpChange?: (xp: number) => void }) 
                           {t.difficulty} · +{DIFFICULTY_XP[t.difficulty]} XP · streak {t.streak} · done {t.completions}×
                         </p>
                       </div>
-                      <button onClick={() => deleteTask(t.id)} disabled={busy === `del-task-${t.id}`} className="text-gray-600 hover:text-red-400 shrink-0" aria-label="Delete task">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      {confirmDeleteTaskId === t.id ? (
+                        <button onClick={() => deleteTask(t.id)} disabled={busy === `del-task-${t.id}`} className="text-[11px] font-medium text-red-300 hover:text-red-200 shrink-0" aria-label="Confirm delete task">
+                          Confirm delete
+                        </button>
+                      ) : (
+                        <button onClick={() => deleteTask(t.id)} disabled={busy === `del-task-${t.id}`} className="text-gray-600 hover:text-red-400 shrink-0" aria-label="Delete task">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                     <div className="flex gap-1.5 mt-2">
                       <button

@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { lensRun } from '@/lib/api/client';
-import { Bot, Plus, Trash2, RefreshCw, Power, Activity, AlertCircle, Loader2 } from 'lucide-react';
+import { Bot, Plus, Trash2, RefreshCw, Power, Activity, AlertCircle, Loader2, Pencil } from 'lucide-react';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 export interface RobotRow {
   id: string;
@@ -40,6 +42,8 @@ export function FleetManager({ onSelect, selectedId, onFleetChange }: { onSelect
   const [type, setType] = useState('arm');
   const [capWh, setCapWh] = useState('50');
   const [drawW, setDrawW] = useState('35');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [edit, setEdit] = useState({ name: '', type: 'arm', capWh: '', drawW: '' });
 
   const [loadFailed, setLoadFailed] = useState(false);
 
@@ -97,6 +101,21 @@ export function FleetManager({ onSelect, selectedId, onFleetChange }: { onSelect
     setBusy(robotId); setErr(null);
     const r = await lensRun('robotics', 'fleetUpdate', { robotId, status });
     if (r.data?.ok) { await load(); onFleetChange?.(); }
+    else setErr(r.data?.error || 'Update failed');
+    setBusy(null);
+  };
+
+  const saveRobot = async (robotId: string) => {
+    if (!edit.name.trim()) { setErr('Robot name required'); return; }
+    setBusy(robotId); setErr(null);
+    const r = await lensRun('robotics', 'fleetUpdate', {
+      robotId,
+      name: edit.name.trim(),
+      type: edit.type,
+      batteryCapacityWh: Number(edit.capWh),
+      powerDrawW: Number(edit.drawW),
+    });
+    if (r.data?.ok) { setEditingId(null); await load(); onFleetChange?.(); }
     else setErr(r.data?.error || 'Update failed');
     setBusy(null);
   };
@@ -182,8 +201,9 @@ export function FleetManager({ onSelect, selectedId, onFleetChange }: { onSelect
         <div className="space-y-2">
           {robots.map(robot => (
             <div key={robot.id}
-              className={`panel p-3 flex items-center justify-between cursor-pointer transition-colors ${selectedId === robot.id ? 'ring-1 ring-neon-cyan/50 bg-neon-cyan/5' : 'hover:bg-white/5'}`}
-              onClick={() => onSelect?.(robot)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+              className={`panel p-3 cursor-pointer transition-colors ${selectedId === robot.id ? 'ring-1 ring-neon-cyan/50 bg-neon-cyan/5' : 'hover:bg-white/5'}`}>
+            <div className="flex items-center justify-between"
+              onClick={() => onSelect?.(robot)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
               <div className="flex items-center gap-3">
                 <Bot className="w-5 h-5 text-neon-cyan shrink-0" />
                 <div>
@@ -199,17 +219,48 @@ export function FleetManager({ onSelect, selectedId, onFleetChange }: { onSelect
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2" onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+              <div className="flex items-center gap-2" onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
+                <button type="button" aria-label={`Edit ${robot.name}`}
+                  onClick={() => {
+                    setEditingId(robot.id);
+                    setEdit({
+                      name: robot.name,
+                      type: robot.type,
+                      capWh: String(robot.batteryCapacityWh ?? ''),
+                      drawW: String(robot.powerDrawW ?? ''),
+                    });
+                  }}
+                  className="p-1 rounded hover:bg-white/10 text-gray-400">
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
                 <select value={robot.status} onChange={e => updateStatus(robot.id, e.target.value)}
                   disabled={busy === robot.id}
                   className="bg-black/30 border border-white/10 rounded px-2 py-1 text-[11px]">
                   {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
-                <button onClick={() => remove(robot.id)} disabled={busy === robot.id}
-                  className="text-gray-400 hover:text-red-400" aria-label="Remove robot">
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                <StickyDeleteConfirm onConfirm={() => remove(robot.id)} disabled={busy === robot.id} armAriaLabel="Remove robot" confirmAriaLabel={`Confirm remove ${robot.name}`} className="text-gray-400 hover:text-red-400" armLabel={<Trash2 className="w-4 h-4" />} />
               </div>
+            </div>
+            {editingId === robot.id && (
+              <div className="mt-2 grid grid-cols-2 gap-2" onClick={e => e.stopPropagation()}>
+                <input aria-label="Robot name" value={edit.name} onChange={e => setEdit({ ...edit, name: e.target.value })}
+                  className="bg-black/30 border border-white/10 rounded px-2 py-1 text-xs" />
+                <select aria-label="Robot type" value={edit.type} onChange={e => setEdit({ ...edit, type: e.target.value })}
+                  className="bg-black/30 border border-white/10 rounded px-2 py-1 text-xs">
+                  {TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+                <input aria-label="Battery capacity Wh" value={edit.capWh} onChange={e => setEdit({ ...edit, capWh: e.target.value })}
+                  placeholder="Capacity Wh" className="bg-black/30 border border-white/10 rounded px-2 py-1 text-xs" />
+                <input aria-label="Power draw W" value={edit.drawW} onChange={e => setEdit({ ...edit, drawW: e.target.value })}
+                  placeholder="Draw W" className="bg-black/30 border border-white/10 rounded px-2 py-1 text-xs" />
+                <div className="flex gap-1 col-span-2">
+                  <button type="button" onClick={() => void saveRobot(robot.id)} disabled={busy === robot.id}
+                    className="px-2 py-1 text-xs rounded bg-neon-cyan/20 text-neon-cyan">Save</button>
+                  <button type="button" onClick={() => setEditingId(null)}
+                    className="px-2 py-1 text-xs rounded bg-white/10 text-gray-300">Cancel</button>
+                </div>
+              </div>
+            )}
             </div>
           ))}
         </div>

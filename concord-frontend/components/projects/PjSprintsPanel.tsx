@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
 import { Plus, Repeat, CheckCircle2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { SkeletonTableRows, ErrorState } from '@/components/ui';
 
 interface Sprint {
@@ -77,6 +78,13 @@ export function PjSprintsPanel({ projectId, onChange }: { projectId: string; onC
     });
     if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
     setForm({ name: '', ...defaultRange() });
+    setError(null);
+    await refresh();
+  };
+
+  const removeSprint = async (id: string) => {
+    const r = await lensRun('projects', 'sprint-delete', { id });
+    if (r.data?.ok === false) { setError(r.data?.message || r.data?.error || 'Could not delete that sprint.'); return; }
     setError(null);
     await refresh();
   };
@@ -179,6 +187,7 @@ export function PjSprintsPanel({ projectId, onChange }: { projectId: string; onC
                   <span className="text-[10px] text-gray-400 ml-2 tabular-nums">{sp.startDate} → {sp.endDate}</span>
                 </button>
                 <span className="text-[11px] text-gray-400 tabular-nums">{sp.donePoints}/{sp.totalPoints} pts</span>
+                <StickyDeleteConfirm onConfirm={() => void removeSprint(sp.id)} armAriaLabel={`Delete sprint ${sp.name}`} confirmAriaLabel={`Confirm delete sprint ${sp.name}`} className="text-rose-300" />
                 {sp.status === 'active' ? (
                   <button type="button" onClick={() => complete(sp.id)}
                     className="flex items-center gap-1 text-[10px] px-2 py-0.5 bg-lattice-elevated hover:bg-lattice-border text-gray-200 rounded">

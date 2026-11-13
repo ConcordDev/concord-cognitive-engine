@@ -9,6 +9,7 @@ import { listCodeReferences, listCodeReferenceCategories, PLUMBING_CODE_DISCLAIM
 
 import { needNums, optNum, notComputed } from "../lib/lens-inputs.js";
 import { assertPayable } from "../lib/money-guards.js";
+import { badNumber, readingOrNull } from "../lib/finite-input.js";
 
 export default function registerPlumbingActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -277,6 +278,17 @@ export default function registerPlumbingActions(registerLensAction) {
       return { ok: true, result: { clients: enriched, count: enriched.length } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
+  registerLensAction("plumbing", "clientDelete", (ctx, _artifact, params = {}) => {
+    try {
+      const g = guard(); if (g.error) return g.error;
+      const clients = list(g.s.clients, actor(ctx));
+      const id = clean(params.clientId || params.id, 64);
+      const idx = clients.findIndex((c) => c.id === id);
+      if (idx < 0) return { ok: false, error: "client_not_found" };
+      clients.splice(idx, 1); savePlumb();
+      return { ok: true, result: { deleted: id } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
 
   // ── Job scheduling + dispatch board ──────────────────────────────
   registerLensAction("plumbing", "dispatchAssign", (ctx, _artifact, params = {}) => {
@@ -295,7 +307,10 @@ export default function registerPlumbingActions(registerLensAction) {
       const address = clean(params.address, 200) || (ref.client ? (ref.client.address || "") : "");
       const date = clean(params.date, 16) || new Date().toISOString().slice(0, 10);
       const startHour = Math.min(23, Math.max(0, num(params.startHour) || 8));
-      const durationHours = Math.min(12, Math.max(0.5, num(params.durationHours) || 2));
+      const durationHours = params.durationHours === undefined || params.durationHours === null || params.durationHours === ""
+        ? 2
+        : readingOrNull(params.durationHours, { min: 0.5, max: 12, fallback: null });
+      if (durationHours === null) return badNumber("durationHours", "must be a number from 0.5 to 12");
       const assignment = {
         id: pid("disp"), jobTitle, jobId: clean(params.jobId, 64) || null,
         client: clientName, clientId: ref.clientId, address,
@@ -306,6 +321,17 @@ export default function registerPlumbingActions(registerLensAction) {
       };
       dispatch.push(assignment); savePlumb();
       return { ok: true, result: { assignment } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+  registerLensAction("plumbing", "dispatchDelete", (ctx, _artifact, params = {}) => {
+    try {
+      const g = guard(); if (g.error) return g.error;
+      const dispatch = list(g.s.dispatch, actor(ctx));
+      const id = clean(params.assignmentId || params.id, 64);
+      const idx = dispatch.findIndex((d) => d.id === id);
+      if (idx < 0) return { ok: false, error: "assignment_not_found" };
+      dispatch.splice(idx, 1); savePlumb();
+      return { ok: true, result: { deleted: id } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
   registerLensAction("plumbing", "dispatchBoard", (ctx, _artifact, params = {}) => {
@@ -360,7 +386,11 @@ export default function registerPlumbingActions(registerLensAction) {
       }
       if (params.date !== undefined) a.date = clean(params.date, 16);
       if (params.startHour !== undefined) a.startHour = Math.min(23, Math.max(0, num(params.startHour)));
-      if (params.durationHours !== undefined) a.durationHours = Math.min(12, Math.max(0.5, num(params.durationHours)));
+      if (params.durationHours !== undefined && params.durationHours !== null && params.durationHours !== "") {
+        const durationHours = readingOrNull(params.durationHours, { min: 0.5, max: 12, fallback: null });
+        if (durationHours === null) return badNumber("durationHours", "must be a number from 0.5 to 12");
+        a.durationHours = durationHours;
+      }
       if (params.status && ["scheduled", "en_route", "on_site", "completed", "cancelled"].includes(params.status)) a.status = params.status;
       if (params.priority && ["low", "normal", "high", "emergency"].includes(params.priority)) a.priority = params.priority;
       a.updatedAt = new Date().toISOString();
@@ -376,7 +406,10 @@ export default function registerPlumbingActions(registerLensAction) {
       const book = list(g.s.priceBook, actor(ctx));
       const name = clean(params.name, 120);
       if (!name) return { ok: false, error: "name_required" };
-      const cost = Math.max(0, num(params.cost));
+      if (params.cost !== undefined && params.cost !== "" && (!(Number(params.cost) >= 0) || Number(params.cost) > 1_000_000)) {
+        return { ok: false, error: "invalid_input", field: "cost", message: "Cost must be a number from 0 to 1,000,000." };
+      }
+      const cost = num(params.cost);
       const markupPct = Math.max(0, Math.min(500, num(params.markupPct) || 0));
       const price = Math.round(cost * (1 + markupPct / 100) * 100) / 100;
       const item = {
@@ -421,7 +454,12 @@ export default function registerPlumbingActions(registerLensAction) {
       const item = book.find(i => i.id === params.itemId);
       if (!item) return { ok: false, error: "item_not_found" };
       if (params.name !== undefined) item.name = clean(params.name, 120);
-      if (params.cost !== undefined) item.cost = Math.max(0, num(params.cost));
+      if (params.cost !== undefined) {
+        if (params.cost !== "" && (!(Number(params.cost) >= 0) || Number(params.cost) > 1_000_000)) {
+          return { ok: false, error: "invalid_input", field: "cost", message: "Cost must be a number from 0 to 1,000,000." };
+        }
+        item.cost = num(params.cost);
+      }
       if (params.markupPct !== undefined) item.markupPct = Math.max(0, Math.min(500, num(params.markupPct)));
       if (params.unit !== undefined) item.unit = clean(params.unit, 24);
       item.price = Math.round(item.cost * (1 + item.markupPct / 100) * 100) / 100;
@@ -465,6 +503,7 @@ export default function registerPlumbingActions(registerLensAction) {
       const ref = resolveClientRef(g, userId, params);
       if (ref.error) return { ok: false, error: ref.error };
       const clientName = ref.client ? ref.client.name : clean(params.client, 80);
+      if (!clientName) return { ok: false, error: "client required" };
       const invoice = {
         id: pid("inv"),
         number: clean(params.number, 32) || `INV-${String(seq).padStart(4, "0")}`,
@@ -496,6 +535,17 @@ export default function registerPlumbingActions(registerLensAction) {
           collected: Math.round(collected * 100) / 100,
         },
       };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+  registerLensAction("plumbing", "invoiceDelete", (ctx, _artifact, params = {}) => {
+    try {
+      const g = guard(); if (g.error) return g.error;
+      const invoices = list(g.s.invoices, actor(ctx));
+      const id = clean(params.invoiceId || params.id, 64);
+      const idx = invoices.findIndex((i) => i.id === id);
+      if (idx < 0) return { ok: false, error: "invoice_not_found" };
+      invoices.splice(idx, 1); savePlumb();
+      return { ok: true, result: { deleted: id } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
   registerLensAction("plumbing", "invoiceRecordPayment", (ctx, _artifact, params = {}) => {
@@ -619,6 +669,17 @@ export default function registerPlumbingActions(registerLensAction) {
       };
       plans.push(plan); savePlumb();
       return { ok: true, result: { plan } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+  registerLensAction("plumbing", "planDelete", (ctx, _artifact, params = {}) => {
+    try {
+      const g = guard(); if (g.error) return g.error;
+      const plans = list(g.s.plans, actor(ctx));
+      const id = clean(params.planId || params.id, 64);
+      const idx = plans.findIndex((p) => p.id === id);
+      if (idx < 0) return { ok: false, error: "plan_not_found" };
+      plans.splice(idx, 1); savePlumb();
+      return { ok: true, result: { deleted: id } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
   registerLensAction("plumbing", "planList", (ctx) => {
@@ -884,6 +945,17 @@ export default function registerPlumbingActions(registerLensAction) {
       };
       inspections.push(insp); savePlumb();
       return { ok: true, result: { inspection: deriveInspectionJobFields(insp, dispatchById) } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+  registerLensAction("plumbing", "inspectionDelete", (ctx, _artifact, params = {}) => {
+    try {
+      const g = guard(); if (g.error) return g.error;
+      const inspections = list(g.s.inspections, actor(ctx));
+      const id = clean(params.inspectionId || params.id, 64);
+      const idx = inspections.findIndex((i) => i.id === id);
+      if (idx < 0) return { ok: false, error: "inspection_not_found" };
+      inspections.splice(idx, 1); savePlumb();
+      return { ok: true, result: { deleted: id } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
   registerLensAction("plumbing", "inspectionList", (ctx, _artifact, params = {}) => {

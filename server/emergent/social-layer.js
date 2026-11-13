@@ -6,7 +6,7 @@
  */
 
 import { lookupUserIdentity } from "../lib/user-identity.js";
-import { ensureSocialHydrated, scheduleSocialFlush } from "../lib/social-persist.js";
+import { ensureSocialHydrated, loadPersistedProfile, scheduleSocialFlush } from "../lib/social-persist.js";
 import { assertSocialRate, duplicatePost, linkHeavyNewAccount } from "../lib/social-safety.js";
 
 
@@ -227,10 +227,27 @@ export function profileForViewer(profile, viewerId = null) {
   return view;
 }
 
+function profileByHandle(social, userId) {
+  const key = String(userId || "");
+  const direct = social.profiles.get(key);
+  if (direct) return direct;
+  const needle = key.trim().toLowerCase();
+  if (needle.length < 2) return null;
+  for (const profile of social.profiles.values()) {
+    const handle = String(profile.username || profile.displayName || "").toLowerCase();
+    if (handle && handle === needle) return profile;
+  }
+  return null;
+}
+
 export function getProfile(STATE, userId, viewerId = null) {
   const social = getSocialState(STATE);
-  const profile = social.profiles.get(userId);
-  if (!profile) return { ok: false, error: "Profile not found" };
+  let profile = profileByHandle(social, userId);
+  if (!profile) {
+    try { profile = loadPersistedProfile(STATE, userId); } catch { profile = null; }
+  }
+  if (!profile) return { ok: false, status: 404, error: "Profile not found" };
+  userId = profile.userId || userId;
 
   // Recompute stats
   profile.stats.followerCount = (social.followers.get(userId) || new Set()).size;
@@ -318,7 +335,21 @@ export function followUser(STATE, followerId, followedId) {
   social.follows.get(followerId).add(followedId);
   social.followers.get(followedId).add(followerId);
 
-  if (!alreadyFollowing) social.metrics.totalFollows++;
+  if (!alreadyFollowing) {
+    social.metrics.totalFollows++;
+    // FIX-social-015: a new follow notifies the followed user. Every
+    // sibling action already did (like, comment, mention, share, pack
+    // join); follow was the silent one, so "followed you" never
+    // appeared in anyone's notifications. The content is the verb
+    // phrase the notification UI renders after the actor's name.
+    // A repeat follow (alreadyFollowing) notifies nothing.
+    createNotification(STATE, {
+      userId: followedId,
+      type: "follow",
+      fromUserId: followerId,
+      content: "started following you",
+    });
+  }
 
   // Invalidate feed cache for follower
   social.feedCache.delete(followerId);
@@ -1355,6 +1386,7 @@ function dmDenied(error = "not found") {
 export function sendMessage(STATE, { fromUserId, toUserId, content, mediaUrl }) {
   const social = getSocialState(STATE);
   if (!fromUserId || !toUserId) return { ok: false, error: "fromUserId and toUserId required" };
+  if (fromUserId === toUserId) return { ok: false, error: "cannot message yourself", message: "A message to yourself is not delivered. Pick someone else." };
   if (!content && !mediaUrl) return { ok: false, error: "content or mediaUrl required" };
   if (isBlocked(STATE, fromUserId, toUserId)) return blockedResult();
   const dmLimit = assertSocialRate(social.profiles.get(fromUserId), fromUserId, "dm");
@@ -1547,7 +1579,15 @@ export function markAllNotificationsRead(STATE, userId) {
 
 export function getUnreadCount(STATE, userId) {
   const social = getSocialState(STATE);
-  const notifs = social.notifications.get(userId) || [];
+  let notifs = social.notifications.get(userId) || [];
+  // FIX-social-003: the count must measure the same set the list
+  // shows. getNotifications hides notification types the user muted
+  // (notificationTypes); the count skipped that filter, so the badge
+  // and the panel could disagree by exactly the muted unread.
+  const typePrefs = social.profiles.get(userId)?.notificationTypes;
+  if (typePrefs && typeof typePrefs === "object") {
+    notifs = notifs.filter((n) => typePrefs[n.type] !== false);
+  }
   const count = notifs.filter(n => !n.read).length;
   return { ok: true, userId, unreadCount: count };
 }

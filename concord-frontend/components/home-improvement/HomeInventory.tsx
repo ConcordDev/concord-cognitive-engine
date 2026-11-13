@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import {
   Boxes, Plus, Trash2, Loader2, ShieldCheck, ShieldAlert,
   ShieldX, FileText, Package,
@@ -140,7 +141,8 @@ export function HomeInventory() {
             <label className="text-xs text-gray-400">Purchase date
               <input value={form.purchaseDate} onChange={(e) => setForm((f) => ({ ...f, purchaseDate: e.target.value }))} type="date" className="input-lattice w-full" />
             </label>
-            <input value={form.purchasePrice} onChange={(e) => setForm((f) => ({ ...f, purchasePrice: e.target.value }))} type="number" placeholder="Purchase price $" className="input-lattice" />
+            <input value={form.purchasePrice} onChange={(e) => setForm((f) => ({ ...f, purchasePrice: e.target.value }))} type="number" min={0} placeholder="Purchase price $" className="input-lattice" />
+            {Number(form.purchasePrice) < 0 && <span role="note" className="col-span-full text-xs text-rose-300">Price can&apos;t be negative.</span>}
             <label className="text-xs text-gray-400">Warranty expires
               <input value={form.warrantyExpires} onChange={(e) => setForm((f) => ({ ...f, warrantyExpires: e.target.value }))} type="date" className="input-lattice w-full" />
             </label>
@@ -169,7 +171,7 @@ export function HomeInventory() {
                     <p className="text-sm font-medium text-white truncate">{a.name}</p>
                     <p className="text-xs text-gray-400">{a.category} · {a.room.replace(/_/g, ' ')}{a.brand ? ` · ${a.brand}` : ''}{a.model ? ` ${a.model}` : ''}</p>
                   </div>
-                  <button aria-label="Delete" onClick={() => remove(a.id)} disabled={busy} className="text-gray-400 hover:text-red-400 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
+                  <StickyDeleteConfirm onConfirm={() => remove(a.id)} armAriaLabel="Delete" confirmAriaLabel="Confirm delete" className="text-gray-400 hover:text-red-400 p-1" armLabel={<Trash2 className="w-3.5 h-3.5" />} disabled={busy} />
                 </div>
                 <div className="flex items-center gap-3 text-xs">
                   <span className={`flex items-center gap-1 ${w.cls}`}><WIcon className="w-3.5 h-3.5" />{w.label}</span>

@@ -62,6 +62,13 @@ function bootstrapAlliance(role = "member") {
 }
 
 describe("alliance analytics macros (existing)", () => {
+  it("FIX-alliance-006: compatibilityScore refuses a blank partner name", () => {
+    const r = call("compatibilityScore", ctxOwner, {
+      data: { partnerA: { name: "", capabilities: [], values: [], resources: [], strengths: [] }, partnerB: { name: "Beta", capabilities: [], values: [], resources: [], strengths: [] } },
+    }, {});
+    assert.equal(r.ok, false);
+    assert.match(r.error, /both partner names are required/);
+  });
   it("compatibilityScore returns a composite + level", () => {
     const r = call("compatibilityScore", ctxOwner, {
       data: {

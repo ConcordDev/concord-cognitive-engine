@@ -151,7 +151,7 @@ describe('cognition card', () => {
     const view = render(<CognitionLens />);
     fireEvent.click(await view.findByRole('button', { name: 'Log a question' }));
     fireEvent.change(view.getByTestId('cg-title'), { target: { value: 'Lost trace' } });
-    fireEvent.change(view.getByTestId('cg-question-input'), { target: { value: 'Gone?' } });
+    fireEvent.change(view.getByTestId('cg-question-input'), { target: { value: 'Gone — where did it go?' } });
     fireEvent.click(view.getByRole('button', { name: 'Log a question' }));
     expect(await view.findByRole('alert')).toHaveTextContent(/did not read it back/);
     expect(view.queryByRole('heading', { name: 'Lost trace' })).toBeNull();
@@ -195,7 +195,7 @@ describe('cognition card', () => {
       throw new Error(action);
     });
     fireEvent.change(view.getByTestId('cg-title'), { target: { value: 'Bad trace' } });
-    fireEvent.change(view.getByTestId('cg-question-input'), { target: { value: 'No?' } });
+    fireEvent.change(view.getByTestId('cg-question-input'), { target: { value: 'No — why not, exactly?' } });
     fireEvent.click(view.getByRole('button', { name: 'Log a question' }));
     expect(await view.findByRole('alert')).toHaveTextContent(/trace_not_saved/);
     expect(view.queryByRole('heading', { name: 'Bad trace' })).toBeNull();

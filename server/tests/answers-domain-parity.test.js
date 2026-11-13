@@ -32,12 +32,17 @@ function ask(ctx = ctxA, over = {}) {
 }
 
 describe("answers.question-ask", () => {
-  it("creates a question with parsed tags, scoped per user", () => {
+  it("creates a question with parsed tags, community-visible, personally scoped", () => {
     const q = ask();
     assert.equal(q.tags.length, 2);
     assert.ok(q.tags.includes("css"));
     assert.equal(call("question-list", ctxA, {}).result.count, 1);
-    assert.equal(call("question-list", ctxB, {}).result.count, 0);
+    // FIX-answers-001 re-pin: the question LIST is a community surface — other
+    // users see the question (that is how it can ever be answered). Storage
+    // stays per-author and the personal dashboard stays scoped to the author.
+    assert.equal(call("question-list", ctxB, {}).result.count, 1);
+    assert.equal(call("dashboard", ctxA, {}).result.questions, 1);
+    assert.equal(call("dashboard", ctxB, {}).result.questions, 0);
   });
   it("rejects a too-short title or body", () => {
     assert.equal(call("question-ask", ctxA, { title: "short", body: "also short" }).ok, false);

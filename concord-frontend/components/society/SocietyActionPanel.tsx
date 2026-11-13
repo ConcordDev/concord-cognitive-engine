@@ -6,13 +6,15 @@
  * mint/DM/publish/agent.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import { Globe2, BarChart3, GitCompareArrows, BookOpen, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, councilRejectSentence } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
+import { UserPicker, type PickedUser } from '@/components/social/UserPicker';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -25,7 +27,13 @@ async function callMacro<T>(action: string, input: Record<string, unknown>): Pro
 
 type Feedback = { kind: 'ok' | 'err'; text: string } | null;
 type ActionId = 'indicator' | 'country' | 'compare' | 'catalog' | 'mint' | 'dm' | 'publish' | 'agent';
-function pickMessage(e: unknown): string { const ax = e as { response?: { data?: { error?: string } }; message?: string }; return ax?.response?.data?.error ?? ax?.message ?? 'request failed'; }
+function pickMessage(e: unknown): string {
+  const ax = e as { response?: { data?: { error?: string; reason?: string; score?: number; minScore?: number } }; message?: string };
+  const data = ax?.response?.data;
+  const why = councilRejectSentence(data?.reason, data?.score, data?.minScore);
+  if (data?.error && why) return `${data.error}. ${why}`;
+  return data?.error ?? ax?.message ?? 'request failed';
+}
 
 interface IndicatorPoint { year: number; value: number; countryName?: string }
 interface IndicatorResult { country: string; indicator: string; alias?: string | null; countryName?: string; series: IndicatorPoint[]; latest: IndicatorPoint | null; count: number }
@@ -38,7 +46,13 @@ export function SocietyActionPanel() {
   const [country, setCountry] = useState('');
   const [indicator, setIndicator] = useState('');
   const [compareCountries, setCompareCountries] = useState('');
-  const [recipient, setRecipient] = useState('');
+  // FIX-society-011: the DM recipient was a free-text box expecting a
+  // raw user id nobody knows, and the message body was whatever the
+  // last query produced with no way to add a word of your own. The
+  // recipient is now picked from user search (id resolved by the
+  // picker) and an optional note rides on top of the data brief.
+  const [recipientUser, setRecipientUser] = useState<PickedUser | null>(null);
+  const [dmNote, setDmNote] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
   const [feedback, setFeedback] = useState<Feedback>(null);
@@ -101,16 +115,17 @@ export function SocietyActionPanel() {
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
-    if (!recipient.trim()) { err('Recipient required.'); return; }
+    if (!recipientUser) { err('Pick a recipient from the search results — a name, not a user id.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`🌎 World Bank data`, '', indicatorResult ? `${indicatorResult.countryName} · ${indicatorResult.indicator}: ${indicatorResult.latest?.value.toLocaleString()} (${indicatorResult.latest?.year})` : '', countryResult ? `${countryResult.name} (${countryResult.iso3}) · ${countryResult.region} · ${countryResult.incomeLevel}` : '', compareResult ? `Compare ${indicator}: ${compareResult.points.slice(0, 5).map(p => `${p.country} ${p.value.toLocaleString()}`).join(' · ')}` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
+    const brief = [`🌎 World Bank data`, '', indicatorResult ? `${indicatorResult.countryName} · ${indicatorResult.indicator}: ${indicatorResult.latest?.value.toLocaleString()} (${indicatorResult.latest?.year})` : '', countryResult ? `${countryResult.name} (${countryResult.iso3}) · ${countryResult.region} · ${countryResult.incomeLevel}` : '', compareResult ? `Compare ${indicator}: ${compareResult.points.slice(0, 5).map(p => `${p.country} ${p.value.toLocaleString()}`).join(' · ')}` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
+    const body = dmNote.trim() ? `${dmNote.trim()}\n\n${brief}` : brief;
     try {
       const messageId = await dmRecall.run(async () => {
-        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        const r = await api.post('/api/social/dm', { toUserId: recipientUser.userId, content: body });
         if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
         return r.data?.message?.id as string;
       });
-      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+      if (messageId) { ok(`Sent to ${recipientUser.displayName || recipientUser.username}. 60s to recall.`); setRecipientUser(null); setDmNote(''); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
@@ -133,8 +148,8 @@ export function SocietyActionPanel() {
     try {
       const task = `World-Bank data analyst. ${indicatorResult ? `${indicatorResult.countryName} ${indicatorResult.indicator}: latest ${indicatorResult.latest?.value.toLocaleString()} (${indicatorResult.latest?.year}), ${indicatorResult.count} years of data.` : ''} ${countryResult ? `Region: ${countryResult.region}, income: ${countryResult.incomeLevel}.` : ''} ${compareResult ? `Comparison points: ${compareResult.points.slice(0, 5).map(p => `${p.country}=${p.value.toLocaleString()}`).join(', ')}.` : ''} Identify the single most notable trend or comparison + one policy implication. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Insight ready.'); } else err('Agent returned empty.');
+      const reply = readAgentReply(r.data);
+      if (reply.ok) { setAgentReply(reply.text); ok('Insight ready.'); } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 
@@ -161,7 +176,10 @@ export function SocietyActionPanel() {
         <input type="text" value={country} onChange={(e) => setCountry(e.target.value.toUpperCase().slice(0, 3))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="ISO-3 (USA)" />
         <input type="text" value={indicator} onChange={(e) => setIndicator(e.target.value)} className="md:col-span-2 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="indicator (population / SP.POP.TOTL)" />
         <input type="text" value={compareCountries} onChange={(e) => setCompareCountries(e.target.value.toUpperCase())} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Compare csv" />
-        <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
+        <UserPicker value={recipientUser} onPick={setRecipientUser} placeholder="DM recipient — search by name" ariaLabel="DM recipient" />
+      </div>
+      <div>
+        <input type="text" value={dmNote} onChange={(e) => setDmNote(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Add a note to the DM (optional) — it rides above the data brief" aria-label="Note to include with the DM" />
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">

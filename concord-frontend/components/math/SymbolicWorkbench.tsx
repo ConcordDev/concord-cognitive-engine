@@ -150,6 +150,7 @@ function NaturalQueryPanel() {
       </p>
       <div className="flex gap-2">
         <input
+          aria-label="Ask in plain English"
           className={inputCls}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -225,21 +226,21 @@ function SymbolicPanel() {
           </button>
         ))}
       </div>
-      <input className={inputCls} value={expr} onChange={(e) => setExpr(e.target.value)} placeholder="expression, e.g. exp(x)*cos(x)" />
+      <input aria-label="Expression" className={inputCls} value={expr} onChange={(e) => setExpr(e.target.value)} placeholder="expression, e.g. exp(x)*cos(x)" />
       <div className="flex gap-2">
         <div className="w-24">
           <label className="text-[10px] uppercase tracking-wider text-zinc-400">Variable</label>
-          <input className={inputCls} value={variable} onChange={(e) => setVariable(e.target.value)} />
+          <input aria-label="Variable" className={inputCls} value={variable} onChange={(e) => setVariable(e.target.value)} />
         </div>
         {op === 'integral' && (
           <>
             <div className="w-24">
               <label className="text-[10px] uppercase tracking-wider text-zinc-400">Lower</label>
-              <input className={inputCls} value={lower} onChange={(e) => setLower(e.target.value)} placeholder="opt." />
+              <input aria-label="Lower bound" className={inputCls} value={lower} onChange={(e) => setLower(e.target.value)} placeholder="opt." />
             </div>
             <div className="w-24">
               <label className="text-[10px] uppercase tracking-wider text-zinc-400">Upper</label>
-              <input className={inputCls} value={upper} onChange={(e) => setUpper(e.target.value)} placeholder="opt." />
+              <input aria-label="Upper bound" className={inputCls} value={upper} onChange={(e) => setUpper(e.target.value)} placeholder="opt." />
             </div>
           </>
         )}
@@ -309,14 +310,14 @@ function SolvePanel() {
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <input className={inputCls} value={left} onChange={(e) => setLeft(e.target.value)} placeholder="left side" />
+        <input aria-label="Equation left side" className={inputCls} value={left} onChange={(e) => setLeft(e.target.value)} placeholder="left side" />
         <span className="text-zinc-400 font-mono">=</span>
-        <input className={`${inputCls} w-32`} value={right} onChange={(e) => setRight(e.target.value)} placeholder="right" />
+        <input aria-label="Equation right side" className={`${inputCls} w-32`} value={right} onChange={(e) => setRight(e.target.value)} placeholder="right" />
       </div>
       <div className="flex items-center gap-2">
         <div className="w-24">
           <label className="text-[10px] uppercase tracking-wider text-zinc-400">Variable</label>
-          <input className={inputCls} value={variable} onChange={(e) => setVariable(e.target.value)} />
+          <input aria-label="Variable" className={inputCls} value={variable} onChange={(e) => setVariable(e.target.value)} />
         </div>
         <RunBtn busy={busy} onClick={run} label="Solve" />
       </div>
@@ -386,6 +387,7 @@ function PlotPanel() {
     <div className="space-y-3">
       <p className="text-[11px] text-zinc-400">One function per line — overlay multiple curves.</p>
       <textarea
+        aria-label="Functions to plot, one per line"
         className={`${inputCls} resize-none`}
         rows={3}
         value={exprText}
@@ -395,11 +397,11 @@ function PlotPanel() {
       <div className="flex items-end gap-2">
         <div className="w-28">
           <label className="text-[10px] uppercase tracking-wider text-zinc-400">x min</label>
-          <input className={inputCls} value={xMin} onChange={(e) => setXMin(e.target.value)} />
+          <input aria-label="x min" className={inputCls} value={xMin} onChange={(e) => setXMin(e.target.value)} />
         </div>
         <div className="w-28">
           <label className="text-[10px] uppercase tracking-wider text-zinc-400">x max</label>
-          <input className={inputCls} value={xMax} onChange={(e) => setXMax(e.target.value)} />
+          <input aria-label="x max" className={inputCls} value={xMax} onChange={(e) => setXMax(e.target.value)} />
         </div>
         <RunBtn busy={busy} onClick={run} label="Plot" />
       </div>
@@ -465,16 +467,16 @@ function UnitsPanel() {
       <div className="flex items-end gap-2 flex-wrap">
         <div className="w-28">
           <label className="text-[10px] uppercase tracking-wider text-zinc-400">Value</label>
-          <input className={inputCls} value={value} onChange={(e) => setValue(e.target.value)} />
+          <input aria-label="Value" className={inputCls} value={value} onChange={(e) => setValue(e.target.value)} />
         </div>
         <div className="w-28">
           <label className="text-[10px] uppercase tracking-wider text-zinc-400">From</label>
-          <input className={inputCls} value={from} onChange={(e) => setFrom(e.target.value)} />
+          <input aria-label="From" className={inputCls} value={from} onChange={(e) => setFrom(e.target.value)} />
         </div>
         <span className="pb-2 text-zinc-400">→</span>
         <div className="w-28">
           <label className="text-[10px] uppercase tracking-wider text-zinc-400">To</label>
-          <input className={inputCls} value={to} onChange={(e) => setTo(e.target.value)} />
+          <input aria-label="To" className={inputCls} value={to} onChange={(e) => setTo(e.target.value)} />
         </div>
         <RunBtn busy={busy} onClick={run} label="Convert" />
       </div>
@@ -572,6 +574,7 @@ function NumberTheoryPanel() {
   return (
     <div className="space-y-3">
       <select
+        aria-label="Math tool"
         value={tool}
         onChange={(e) => { setTool(e.target.value); setRes(null); }}
         className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-2 text-[12px] text-white"
@@ -582,31 +585,31 @@ function NumberTheoryPanel() {
         {needsN && (
           <div className="w-28">
             <label className="text-[10px] uppercase tracking-wider text-zinc-400">n</label>
-            <input className={inputCls} value={n} onChange={(e) => setN(e.target.value)} />
+            <input aria-label="n" className={inputCls} value={n} onChange={(e) => setN(e.target.value)} />
           </div>
         )}
         {needsM && (
           <div className="w-28">
             <label className="text-[10px] uppercase tracking-wider text-zinc-400">m</label>
-            <input className={inputCls} value={m} onChange={(e) => setM(e.target.value)} />
+            <input aria-label="m" className={inputCls} value={m} onChange={(e) => setM(e.target.value)} />
           </div>
         )}
         {needsK && (
           <div className="w-28">
             <label className="text-[10px] uppercase tracking-wider text-zinc-400">k</label>
-            <input className={inputCls} value={k} onChange={(e) => setK(e.target.value)} />
+            <input aria-label="k" className={inputCls} value={k} onChange={(e) => setK(e.target.value)} />
           </div>
         )}
         {isFib && (
           <div className="w-28">
             <label className="text-[10px] uppercase tracking-wider text-zinc-400">n · term F(n)</label>
-            <input className={inputCls} value={fibN} onChange={(e) => setFibN(e.target.value)} />
+            <input aria-label="Fibonacci index n" className={inputCls} value={fibN} onChange={(e) => setFibN(e.target.value)} />
           </div>
         )}
         {needsCount && (
           <div className="w-28">
             <label className="text-[10px] uppercase tracking-wider text-zinc-400">{isFib ? 'count · first N terms' : 'count'}</label>
-            <input className={inputCls} value={count} onChange={(e) => setCount(e.target.value)} />
+            <input aria-label="Count" className={inputCls} value={count} onChange={(e) => setCount(e.target.value)} />
           </div>
         )}
         <RunBtn busy={busy} onClick={run} label="Run" />

@@ -33,6 +33,10 @@ export interface FactionEconomy {
   treasury?: number | null;
   fundedBy?: string[];
   liensAgainst?: { creditor_id: string; amount?: number; collateral_id?: string | null }[];
+  /** FIX-ledger-001: the entity's funder side — factions it funds. */
+  funds?: string[];
+  /** FIX-ledger-001: liens the entity holds as creditor. */
+  liensHeld?: { debtor_id: string; amount?: number; collateral_id?: string | null }[];
 }
 
 export interface FlowSummaryRow { type: string; n: number; total: number }

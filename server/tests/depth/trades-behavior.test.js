@@ -226,6 +226,37 @@ describe("trades — CRUD round-trips + validation (shared ctx)", () => {
     assert.match(bad.result.error, /cannot send quote/);
   });
 
+  it("quotes-update: a draft edits in place with create's math; a sent quote refuses (FIX-trades-004)", async () => {
+    const cust = await lensRun("trades", "customer-upsert", { params: { name: "Draft Co" } }, ctx);
+    const q = await lensRun("trades", "quotes-create", {
+      params: { customerId: cust.result.customer.id, title: "Draft v1", taxRate: 10, lineItems: [{ qty: 1, unitPrice: 100 }] },
+    }, ctx);
+    const qid = q.result.quote.id;
+
+    const upd = await lensRun("trades", "quotes-update", {
+      params: { id: qid, customerId: cust.result.customer.id, title: "Draft v2", taxRate: 20, lineItems: [{ qty: 3, unitPrice: 100 }] },
+    }, ctx);
+    assert.equal(upd.result.quote.id, qid);
+    assert.equal(upd.result.quote.title, "Draft v2");
+    assert.equal(upd.result.quote.subtotal, 300);
+    assert.equal(upd.result.quote.tax, 60);
+    assert.equal(upd.result.quote.total, 360);
+    assert.equal(upd.result.quote.status, "draft");
+    assert.ok(upd.result.quote.updatedAt);
+
+    const bad = await lensRun("trades", "quotes-update", {
+      params: { id: qid, customerId: cust.result.customer.id, title: "", lineItems: [{ qty: 1, unitPrice: 1 }] },
+    }, ctx);
+    assert.equal(bad.result.ok, false);
+
+    await lensRun("trades", "quotes-send", { params: { id: qid } }, ctx);
+    const locked = await lensRun("trades", "quotes-update", {
+      params: { id: qid, customerId: cust.result.customer.id, title: "Rewrite history", lineItems: [{ qty: 1, unitPrice: 1 }] },
+    }, ctx);
+    assert.equal(locked.result.ok, false);
+    assert.match(locked.result.error, /cannot edit quote in status 'sent'/);
+  });
+
   it("timesheets clock-in → clock-out: duration computed, double clock-in rejected", async () => {
     const tech = await lensRun("trades", "technicians-add", { params: { name: "Sam" } }, ctx);
     const techId = tech.result.technician.id;

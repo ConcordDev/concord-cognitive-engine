@@ -9,6 +9,7 @@
  * window on DM + publish, USDA result rows promote to ingredient grams.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useEffect, useState } from 'react';
 import { ChefHat, Apple, Calculator, Shuffle, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -266,13 +267,13 @@ export function CookingActionPanel() {
     try {
       const task = `Home cook advisor. ${scaleResult ? `Making ${scaleResult.recipe}, ${scaleResult.targetServings ?? '—'} servings.` : ''} ${nutrResult && nutrResult.perServing != null ? `Per serving: ${nutrResult.perServing} cal${nutrResult.macros ? `, ${nutrResult.macros.protein} protein` : ''}.` : ''} ${subResult?.substitutions[0] ? `Substituting ${subResult.ingredient} with ${subResult.substitutions[0].sub}.` : ''} Suggest one technique tip + one flavor enhancement. Plain text, 3 sentences max.`;
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
-      if (reply) {
-        const text = typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2);
+      const reply = readAgentReply(r.data);
+      if (reply.ok) {
+        const text = reply.text;
         setAgentReply(text);
         pipe.publish('cooking.agentReply', text, { label: 'Chef tips' });
         ok('Tips ready.');
-      } else err('Agent returned empty.');
+      } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 

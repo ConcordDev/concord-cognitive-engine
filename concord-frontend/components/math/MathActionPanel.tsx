@@ -6,6 +6,7 @@
  * regressionFit + mint/DM/publish/agent.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import {
   Sigma, Calculator, Grid3x3, FunctionSquare, TrendingUp,
@@ -228,8 +229,8 @@ export function MathActionPanel() {
       const task = `Math problem: "${problem}". ${statsResult ? `Stats: mean ${statsResult.mean}, σ (population) ${statsResult.stdDev}.` : ''} ${regressResult ? `Regression: ${regressResult.equation} R²=${regressResult.rSquared}.` : ''} Provide a step-by-step solution path. Plain text, numbered steps.`;
       const timeout = new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('steps-agent-timeout')), 30_000); });
       const r = await Promise.race([api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 4 } }), timeout]);
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Steps ready (agent).'); } else err('Agent returned empty.');
+      const reply = readAgentReply(r.data);
+      if (reply.ok) { setAgentReply(reply.text); ok('Steps ready (agent).'); } else err(reply.reason);
     } catch (e) {
       if (e instanceof Error && e.message === 'steps-agent-timeout') {
         err('The Steps Agent did not return within 30s, so the request was stopped instead of leaving the bench locked. Equations and expressions are answered directly by the Step Solver.');
@@ -256,29 +257,29 @@ export function MathActionPanel() {
         <h3 className="text-sm font-semibold text-white">Math workbench</h3>
       </header>
 
-      <input type="text" value={problem} onChange={(e) => setProblem(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Problem statement (for mint / agent)" />
+      <input type="text" aria-label="Problem statement" value={problem} onChange={(e) => setProblem(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Problem statement (for mint / agent)" />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-        <div><label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Dataset (comma/space-separated)</label><textarea value={dataset} onChange={(e) => setDataset(e.target.value)} rows={3} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-indigo-200 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-400/40 resize-none" /></div>
-        <div><label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Polynomial coef (high→low)</label><textarea value={polyCoef} onChange={(e) => setPolyCoef(e.target.value)} rows={3} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-indigo-200 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-400/40 resize-none" /></div>
-        <div><label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Matrix A (rows / lines)</label><textarea value={matrixA} onChange={(e) => setMatrixA(e.target.value)} rows={3} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-indigo-200 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-400/40 resize-none" /></div>
+        <div><label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Dataset (comma/space-separated)</label><textarea aria-label="Dataset (comma or space separated)" value={dataset} onChange={(e) => setDataset(e.target.value)} rows={3} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-indigo-200 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-400/40 resize-none" /></div>
+        <div><label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Polynomial coef (high→low)</label><textarea aria-label="Polynomial coefficients, high to low" value={polyCoef} onChange={(e) => setPolyCoef(e.target.value)} rows={3} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-indigo-200 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-400/40 resize-none" /></div>
+        <div><label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Matrix A (rows / lines)</label><textarea aria-label="Matrix A rows" value={matrixA} onChange={(e) => setMatrixA(e.target.value)} rows={3} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-indigo-200 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-400/40 resize-none" /></div>
         <div>
           <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Matrix op</label>
-          <select value={matrixOp} onChange={(e) => setMatrixOp(e.target.value as typeof matrixOp)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white">
+          <select aria-label="Matrix operation" value={matrixOp} onChange={(e) => setMatrixOp(e.target.value as typeof matrixOp)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white">
             {(['determinant', 'transpose', 'inverse', 'rank', 'eigenvalues', 'multiply'] as const).map(o => <option key={o} value={o}>{o}</option>)}
           </select>
           {matrixOp === 'multiply' && (
             <div className="mt-2">
               <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Matrix B (rows / lines)</label>
-              <textarea value={matrixB} onChange={(e) => setMatrixB(e.target.value)} rows={3} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-indigo-200 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-400/40 resize-none" />
+              <textarea aria-label="Matrix B rows" value={matrixB} onChange={(e) => setMatrixB(e.target.value)} rows={3} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-indigo-200 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-400/40 resize-none" />
             </div>
           )}
         </div>
-        <div><label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Regression X</label><textarea value={regressX} onChange={(e) => setRegressX(e.target.value)} rows={2} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-indigo-200 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-400/40 resize-none" /></div>
-        <div><label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Regression Y</label><textarea value={regressY} onChange={(e) => setRegressY(e.target.value)} rows={2} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-indigo-200 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-400/40 resize-none" /></div>
+        <div><label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Regression X</label><textarea aria-label="Regression X values" value={regressX} onChange={(e) => setRegressX(e.target.value)} rows={2} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-indigo-200 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-400/40 resize-none" /></div>
+        <div><label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Regression Y</label><textarea aria-label="Regression Y values" value={regressY} onChange={(e) => setRegressY(e.target.value)} rows={2} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-indigo-200 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-400/40 resize-none" /></div>
       </div>
 
-      <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
+      <input type="text" aria-label="DM recipient" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
 
       <div className="flex items-center gap-2 flex-wrap">
         <RecallSlot ctl={dmRecall} />
@@ -359,7 +360,7 @@ export function MathActionPanel() {
                 {polyGeneralResult.roots.map((root, i) => (
                   <li key={i} className={cn('flex items-center gap-1.5', root.converged === false && 'text-amber-300')}>
                     <span>{formatComplexRoot(root)}</span>
-                    <span className="text-zinc-500">{root.isReal ? '(real)' : '(complex)'}</span>
+                    <span className="text-zinc-400">{root.isReal ? '(real)' : '(complex)'}</span>
                     {root.converged === false && <span title="This root did not converge below tolerance — treat as approximate.">⚠</span>}
                   </li>
                 ))}

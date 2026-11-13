@@ -4,9 +4,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { MapPin, Plus, Trash2, Loader2, Heart, BedDouble, Bath, Maximize2, SlidersHorizontal } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 export interface Listing {
   id: string;
+  title?: string;
   address: string;
   city: string;
   state: string;
@@ -49,7 +52,8 @@ export function ListingsBrowser({
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<Filters>({});
   const [sortBy, setSortBy] = useState<'newest' | 'price_asc' | 'price_desc' | 'beds' | 'sqft'>('newest');
-  const [form, setForm] = useState({ address: '', city: '', state: '', zip: '', price: '', beds: '', baths: '', sqft: '', kind: 'single_family' });
+  const [form, setForm] = useState({ title: '', address: '', city: '', state: '', zip: '', price: '', beds: '', baths: '', sqft: '', kind: 'single_family' });
+  const [formError, setFormError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -74,20 +78,36 @@ export function ListingsBrowser({
   }, [listings, onListingsChange]);
 
   async function add() {
-    if (!form.address.trim() || !form.price) return;
+    // Validate in the open: a failed add keeps the form open, keeps the
+    // entered values, and names the field at fault — never a silent close.
+    if (!form.title.trim()) { setFormError('Title is required — give the listing a name.'); return; }
+    if (form.title.trim().length > 200) { setFormError('Title is over the 200-character limit.'); return; }
+    if (!form.address.trim()) { setFormError('Address is required.'); return; }
+    const price = Number(form.price);
+    if (!form.price || !Number.isFinite(price)) { setFormError('Price is required.'); return; }
+    if (price <= 0) { setFormError('Price must be more than $0.'); return; }
+    setFormError(null);
     try {
-      await lensRun({
+      const res = await lensRun({
         domain: 'realestate', action: 'listings-add',
         input: {
+          title: form.title.trim(),
           address: form.address.trim(), city: form.city, state: form.state, zip: form.zip,
-          price: Number(form.price), beds: Number(form.beds) || 0, baths: Number(form.baths) || 0,
+          price, beds: Number(form.beds) || 0, baths: Number(form.baths) || 0,
           sqft: Number(form.sqft) || 0, kind: form.kind,
         },
       });
-      setForm({ address: '', city: '', state: '', zip: '', price: '', beds: '', baths: '', sqft: '', kind: 'single_family' });
+      if (res.data && res.data.ok === false) {
+        setFormError(res.data.error || 'The listing could not be added. Check the fields and try again.');
+        return;
+      }
+      setForm({ title: '', address: '', city: '', state: '', zip: '', price: '', beds: '', baths: '', sqft: '', kind: 'single_family' });
       setCreating(false);
       await refresh();
-    } catch (e) { console.error('[Listings] add failed', e); }
+    } catch (e) {
+      console.error('[Listings] add failed', e);
+      setFormError('The listing could not be added. Check the fields and try again.');
+    }
   }
 
   async function toggleFav(id: string) {
@@ -140,18 +160,23 @@ export function ListingsBrowser({
 
       {creating && (
         <div className="p-3 border-b border-white/10 grid grid-cols-6 gap-2">
-          <input value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} placeholder="Address" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <div className="col-span-3">
+            <input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Title" maxLength={200} aria-label="Listing title" className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+            <div className={cn('text-right text-[10px] mt-0.5', form.title.length > 200 ? 'text-rose-400' : 'text-gray-400')}>{form.title.length}/200</div>
+          </div>
+          <input value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} placeholder="Address" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <input value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} placeholder="City" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <input value={form.state} onChange={e => setForm({ ...form, state: e.target.value })} placeholder="ST" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <input value={form.zip} onChange={e => setForm({ ...form, zip: e.target.value })} placeholder="Zip" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <input type="number" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} placeholder="Price" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <input type="number" value={form.beds} onChange={e => setForm({ ...form, beds: e.target.value })} placeholder="Beds" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <input type="number" value={form.baths} onChange={e => setForm({ ...form, baths: e.target.value })} placeholder="Baths" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <input type="number" value={form.sqft} onChange={e => setForm({ ...form, sqft: e.target.value })} placeholder="Sqft" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input type="number" min="0" value={form.price} onFocus={e => e.target.select()} onChange={e => setForm({ ...form, price: e.target.value })} placeholder="Price" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input type="number" min="0" value={form.beds} onFocus={e => e.target.select()} onChange={e => setForm({ ...form, beds: e.target.value })} placeholder="Beds" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input type="number" min="0" value={form.baths} onFocus={e => e.target.select()} onChange={e => setForm({ ...form, baths: e.target.value })} placeholder="Baths" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input type="number" min="0" value={form.sqft} onFocus={e => e.target.select()} onChange={e => setForm({ ...form, sqft: e.target.value })} placeholder="Sqft" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <select value={form.kind} onChange={e => setForm({ ...form, kind: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
             <option value="single_family">SFH</option><option value="condo">Condo</option><option value="townhouse">TH</option><option value="multi_family">Multi</option><option value="land">Land</option>
           </select>
           <button onClick={add} className="col-span-1 px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400">Add</button>
+          {formError && <p role="alert" className="col-span-6 text-[11px] text-rose-300">{formError}</p>}
         </div>
       )}
 
@@ -170,12 +195,13 @@ export function ListingsBrowser({
                   <div className="w-20 h-16 bg-gradient-to-br from-emerald-900/30 to-cyan-900/20 rounded flex items-center justify-center flex-shrink-0">
                     <MapPin className="w-6 h-6 text-cyan-500/40" />
                   </div>
-                  <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onSelect?.(l)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                  <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onSelect?.(l)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                     <div className="flex items-baseline gap-2">
                       <span className="text-base font-mono font-semibold text-white">${l.price.toLocaleString()}</span>
                       <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/5 text-gray-400">{l.status.replace('_', ' ')}</span>
                       {l.daysOnMarket < 7 && <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300">{l.daysOnMarket}d on mkt</span>}
                     </div>
+                    {l.title && <div className="text-xs font-medium text-gray-200 truncate">{l.title}</div>}
                     <div className="text-xs text-gray-300 truncate">{l.address}</div>
                     <div className="text-[10px] text-gray-400 truncate">{l.city}{l.state ? `, ${l.state}` : ''} {l.zip}</div>
                     <div className="mt-1 flex items-center gap-3 text-[11px] text-gray-400">
@@ -192,7 +218,14 @@ export function ListingsBrowser({
                       {picked ? '✓' : 'Compare'}
                     </button>
                   )}
-                  <button aria-label="Delete" onClick={() => remove(l.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                  <StickyDeleteConfirm
+                    onConfirm={() => void remove(l.id)}
+                    className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"
+                    armLabel={<Trash2 className="w-3.5 h-3.5" />}
+                    armAriaLabel="Delete"
+                    confirmLabel={`Delete "${l.address}"?`}
+                    confirmAriaLabel="Confirm delete"
+                  />
                 </li>
               );
             })}

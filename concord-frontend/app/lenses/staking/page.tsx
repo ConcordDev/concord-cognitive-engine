@@ -9,8 +9,9 @@
 // Error handling: LensErrorBoundary (auto-mounted by LensShell) catches render/effect errors.
 // Empty state: handled inline per panel.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { useLensStatePersistence } from '@/lib/lens-state-persistence';
 import { lensRun } from '@/lib/api/client';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
@@ -35,7 +36,19 @@ const VIEWS: { id: StakeView; label: string; keys: string; icon: typeof Coins }[
 ];
 
 export default function StakingPage() {
-  const [view, setView] = useState<StakeView>('stake');
+  // FIX-staking-014: the stake form restores through the shared lens
+  // UI-state store — it used to reset to the Core (Medium) pool and
+  // blank defaults on every reload, losing the pool/amount/lock the
+  // user had set up.
+  const { restore, persist } = useLensStatePersistence('staking');
+  const [initialUi] = useState(() => restore() ?? {});
+  const [view, setViewState] = useState<StakeView>(
+    (['stake', 'positions', 'earnings', 'markets'] as const).includes(initialUi.view as StakeView) ? (initialUi.view as StakeView) : 'stake',
+  );
+  const setView = (v: StakeView) => {
+    setViewState(v);
+    persist({ ...(restore() ?? {}), view: v });
+  };
   useLensCommand(
     [
       {
@@ -51,17 +64,47 @@ export default function StakingPage() {
     { lensId: 'staking' },
   );
 
-  const [poolId, setPoolId] = useState('core');
-  const [principalCc, setPrincipalCc] = useState(100);
-  const [months, setMonths] = useState(6);
-  const [autoCompound, setAutoCompound] = useState(false);
-  const [liquidReceipt, setLiquidReceipt] = useState(false);
+  const [poolId, setPoolIdState] = useState(typeof initialUi.poolId === 'string' ? initialUi.poolId : 'core');
+  const [principalText, setPrincipalTextState] = useState(typeof initialUi.principalText === 'string' ? initialUi.principalText : '');
+  const [monthsText, setMonthsTextState] = useState(typeof initialUi.monthsText === 'string' ? initialUi.monthsText : '6');
+  const principalCc = Number(principalText);
+  const months = Number(monthsText);
+  const [autoCompound, setAutoCompoundState] = useState(initialUi.autoCompound === true);
+  const [liquidReceipt, setLiquidReceiptState] = useState(initialUi.liquidReceipt === true);
+  const persistForm = (patch: Record<string, unknown>) => persist({ ...(restore() ?? {}), ...patch });
+  const setPoolId = (v: string) => { setPoolIdState(v); persistForm({ poolId: v }); };
+  const setPrincipalText = (v: string) => { setPrincipalTextState(v); persistForm({ principalText: v }); };
+  const setMonthsText = (v: string) => { setMonthsTextState(v); persistForm({ monthsText: v }); };
+  const setAutoCompound = (v: boolean) => { setAutoCompoundState(v); persistForm({ autoCompound: v }); };
+  const setLiquidReceipt = (v: boolean) => { setLiquidReceiptState(v); persistForm({ liquidReceipt: v }); };
   const [status, setStatus] = useState<string | null>(null);
+  const [ccBalance, setCcBalance] = useState<number | null>(null);
+  const [ccBalanceNote, setCcBalanceNote] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    fetch('/api/economy/balance', { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('unavailable'))))
+      .then((data: { balance?: number; concordCoins?: number }) => {
+        if (!alive) return;
+        const n = data.balance ?? data.concordCoins;
+        if (typeof n === 'number' && Number.isFinite(n)) setCcBalance(n);
+        else setCcBalanceNote('CC balance is unavailable.');
+      })
+      .catch(() => { if (alive) setCcBalanceNote('CC balance is unavailable.'); });
+    return () => { alive = false; };
+  }, []);
   const [refreshKey, setRefreshKey] = useState(0);
 
   const bumpRefresh = () => setRefreshKey((k) => k + 1);
 
+  const stakeProblem = () => {
+    if (!Number.isFinite(principalCc) || principalCc < 10 || principalCc > 1e9) return 'Principal must be a number from 10 to 1,000,000,000 CC.';
+    if (!Number.isInteger(months) || months < 1 || months > 60) return 'Lock must be a whole number of months from 1 to 60.';
+    return null;
+  };
+
   const openStake = async () => {
+    if (stakeProblem()) return;
     setStatus('Locking…');
     const r = await lensRun('staking', 'open_stake', {
       poolId,
@@ -79,8 +122,7 @@ export default function StakingPage() {
       );
       bumpRefresh();
     } else {
-      const code = String(r.data?.error || 'unknown').replace(/_/g, ' ');
-      setStatus(`Failed: ${code}`);
+      setStatus(r.data?.message || 'That stake was not opened.');
     }
     window.setTimeout(() => setStatus(null), 5000);
   };
@@ -91,7 +133,7 @@ export default function StakingPage() {
       <DepthBadge lensId="staking" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="staking"
-        crumb="Finance"
+        crumb="Staking"
         subtitle="Lock Concord Coin and earn yield from the treasury share of marketplace fees. APR is honestly variable, based on real marketplace activity. Currency: CC."
         tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys }))}
         activeTab={view}
@@ -109,7 +151,12 @@ export default function StakingPage() {
           {view === 'stake' && (
             <div className="grid gap-5 xl:grid-cols-2">
               <section className="space-y-3 rounded-2xl border border-white/10 bg-[#111] p-4">
-                <h2 className="text-sm font-bold text-amber-300">New stake</h2>
+                <div className="flex items-baseline justify-between gap-2">
+                  <h2 className="text-sm font-bold text-amber-300">New stake</h2>
+                  <p className="text-sm font-medium text-amber-100" aria-live="polite">
+                    {ccBalanceNote ?? (ccBalance == null ? 'Reading CC balance…' : `${ccBalance} CC available`)}
+                  </p>
+                </div>
                 <StakingPools
                   selectedPoolId={poolId}
                   months={months}
@@ -122,8 +169,9 @@ export default function StakingPage() {
                       id="stk-principal"
                       type="number"
                       min={10}
-                      value={principalCc}
-                      onChange={(e) => setPrincipalCc(Math.max(10, Number(e.target.value) || 10))}
+                      value={principalText}
+                      placeholder="10"
+                      onChange={(e) => setPrincipalText(e.target.value)}
                       className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100"
                     />
                   </div>
@@ -134,8 +182,8 @@ export default function StakingPage() {
                       type="number"
                       min={1}
                       max={60}
-                      value={months}
-                      onChange={(e) => setMonths(Math.max(1, Math.min(60, Number(e.target.value) || 1)))}
+                      value={monthsText}
+                      onChange={(e) => setMonthsText(e.target.value)}
                       className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100"
                     />
                   </div>
@@ -155,14 +203,17 @@ export default function StakingPage() {
                   onClick={openStake}
                   className="w-full rounded-lg bg-amber-700 py-2 text-sm text-white hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-500"
                 >
-                  Lock {principalCc} CC
+                  Lock {principalText || '…'} CC
                 </button>
+                {stakeProblem() && <p role="alert" className="text-xs text-amber-200">{stakeProblem()}</p>}
               </section>
 
               <div className="space-y-5">
                 <section className="space-y-2 rounded-2xl border border-white/10 bg-[#111] p-4">
                   <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-300">Estimated rewards</h2>
-                  <RewardsEstimator poolId={poolId} principalCc={principalCc} months={months} />
+                  {stakeProblem() == null
+                    ? <RewardsEstimator poolId={poolId} principalCc={principalCc} months={months} />
+                    : <p className="text-xs text-zinc-400">Enter a principal of at least 10 CC and a lock of 1 to 60 months to estimate rewards.</p>}
                 </section>
                 <section className="space-y-2 rounded-2xl border border-white/10 bg-[#111] p-4">
                   <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-300">APR history — {poolId} pool</h2>

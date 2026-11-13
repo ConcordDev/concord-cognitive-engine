@@ -45,7 +45,7 @@ export function ResonanceArxiv() {
             </div>
           </a>
         ))}
-        {list.length === 0 && !papers.isPending && !papers.isError && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No papers.</div>}
+        {list.length === 0 && !papers.isPending && !papers.isError && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No papers on arXiv match “{QUERIES.find((qq) => qq.id === q)?.label || q}” — every word of the filter must match, so a narrower filter can honestly come back empty.</div>}
       </div>
       {papers.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Pulling…</div>}
     </div>

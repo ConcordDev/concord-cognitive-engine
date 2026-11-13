@@ -55,7 +55,7 @@ export function BrowserPanel({ project, onAddInstrument, onPlaceItem, onImportFi
   const tabs: Array<[Tab, string, typeof Piano]> = [['instruments', 'Instruments', Piano], ['sounds', 'Sounds', Music2], ['files', 'Import', FolderOpen]];
 
   return (
-    <div className="flex h-full w-56 flex-shrink-0 flex-col border-r border-white/5 bg-[#111117]" data-testid="studio-browser">
+    <div className="flex h-52 w-full flex-shrink-0 flex-col border-b border-white/5 bg-[#111117] sm:h-full sm:w-56 sm:border-b-0 sm:border-r" data-testid="studio-browser">
       <div className="flex border-b border-white/5">
         {tabs.map(([t, label, Icon]) => (
           <button key={t} onClick={() => setTab(t)} className={cn('flex flex-1 items-center justify-center gap-1 py-2 text-[11px]', tab === t ? 'border-b-2 border-violet-400 text-white' : 'text-zinc-500 hover:text-zinc-300')}>

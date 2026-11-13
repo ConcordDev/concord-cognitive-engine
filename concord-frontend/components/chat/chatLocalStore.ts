@@ -9,6 +9,24 @@ export interface ChatConversation {
   lastMessage: string;
   updatedAt: string;
   messageCount: number;
+  /** Lens the Ask shortcut opened this thread for. Unset on older threads. */
+  lensContext?: string;
+}
+
+/**
+ * Ask about a lens must not append to whatever thread is already open.
+ * Reuse a thread already filed under that lens, otherwise start a new one.
+ */
+export function resolveAskThread<T extends { id: string; lensContext?: string }>(
+  conversations: T[],
+  currentId: string | null,
+  context: string | null,
+): string | null {
+  const lens = (context || '').trim();
+  if (!lens) return currentId;
+  const match = conversations.find((c) => c.lensContext === lens);
+  if (match) return match.id;
+  return null;
 }
 
 export type ChatMessageLike = {

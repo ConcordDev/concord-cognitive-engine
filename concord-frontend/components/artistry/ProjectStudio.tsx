@@ -10,6 +10,7 @@ import {
   Pencil, PenTool,
 } from 'lucide-react';
 import { StudyCanvas } from './StudyCanvas';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface ProjImage { url: string; caption: string; order: number }
 interface ProcStep { title: string; detail: string }
@@ -31,7 +32,7 @@ interface Comment { id: string; userId: string; displayName?: string; isMine?: b
 const RESOLVED_IMG_CACHE = new Map<string, string>();
 const IMG_REF_PREFIX = 'artistry-img:';
 
-function ResolvedImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
+export function ResolvedImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
   const isRef = src.startsWith(IMG_REF_PREFIX);
   const [resolved, setResolved] = useState<string | null>(isRef ? RESOLVED_IMG_CACHE.get(src) || null : src);
   const [failed, setFailed] = useState(false);
@@ -61,11 +62,17 @@ function ResolvedImage({ src, alt, className }: { src: string; alt: string; clas
 
   if (failed) return <ImageIcon className="w-8 h-8 text-gray-600" data-testid="artistry-img-failed" />;
   if (!resolved) return <Loader2 className="w-5 h-5 animate-spin text-gray-500" data-testid="artistry-img-loading" />;
-  return <img src={resolved} alt={alt} className={className} />;
+  // FIX-artistry-005: the failure state above only covered the
+  // reference-resolution path. A plain external cover URL that fails
+  // to load (dead host, 404) rendered the browser's broken-image
+  // glyph — route it to the same fallback.
+  return <img src={resolved} alt={alt} className={className} onError={() => setFailed(true)} />;
 }
 
 export function ProjectStudio() {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [projectQuery, setProjectQuery] = useState('');
+  const [disciplineFilter, setDisciplineFilter] = useState('all');
   // F6 (unconfirmed-destructive): the study card's Delete used to fire
   // projectDelete on a single click. The family's two-step applies
   // (cf. Gallery F6 / game-design F5 / animation F5): the first click
@@ -78,6 +85,7 @@ export function ProjectStudio() {
   const [commentBody, setCommentBody] = useState('');
 
   // Form state
+  const [fPublished, setFPublished] = useState(true);
   const [fTitle, setFTitle] = useState('');
   const [fDesc, setFDesc] = useState('');
   const [fDiscipline, setFDiscipline] = useState('illustration');
@@ -126,6 +134,11 @@ export function ProjectStudio() {
       tools: fTools.split(',').map((t) => t.trim()).filter(Boolean),
       tags: fTags.split(',').map((t) => t.trim()).filter(Boolean),
       coverUrl: fCover, images, processSteps,
+      // The draft/private choice (FIX-artistry-002). The server has
+      // always honoured it — create defaults published, update flips
+      // it, list/view/feed enforce it for non-owners — the form just
+      // never sent it, so every project published on submit.
+      published: fPublished,
     };
     const r = editingId
       ? await lensRun('artistry', 'projectUpdate', { projectId: editingId, ...fields })
@@ -133,28 +146,36 @@ export function ProjectStudio() {
     setSaving(false);
     if (r.data?.ok) {
       const updatedId = editingId;
+      useUIStore.getState().addToast({
+        type: 'success',
+        message: updatedId
+          ? (fPublished ? 'Project saved — published, everyone can see it.' : 'Project saved — draft, only you can see it.')
+          : (fPublished ? 'Project published — everyone can see it.' : 'Draft saved — only you can see it.'),
+      });
       setShowForm(false);
       setEditingId(null);
       setSaveError(null);
+      setFPublished(true);
       setFTitle(''); setFDesc(''); setFTools(''); setFTags(''); setFCover(''); setFImages(''); setFSteps('');
       load();
       if (updatedId && openId === updatedId) void openProject(updatedId);
     } else {
       setSaveError(String(r.data?.error || 'Could not save the project.').replace(/_/g, ' '));
     }
-  }, [fTitle, fDesc, fDiscipline, fTools, fTags, fCover, fImages, fSteps, load, editingId, openId, openProject]);
+  }, [fTitle, fDesc, fDiscipline, fTools, fTags, fCover, fImages, fSteps, fPublished, load, editingId, openId, openProject]);
 
   const openEdit = useCallback((p: Project) => {
     setEditingId(p.id);
     setConfirmDeleteId(null);
     setSaveError(null);
+    setFPublished(p.published !== false);
     setFTitle(p.title); setFDesc(p.description || ''); setFDiscipline(p.discipline);
     setFTools((p.tools || []).join(', ')); setFTags((p.tags || []).join(', ')); setFCover(p.coverUrl || '');
     setFImages([...(p.images || [])].sort((a, b) => a.order - b.order).map((im) => (im.caption ? `${im.url}|${im.caption}` : im.url)).join('\n'));
     setFSteps((p.processSteps || []).map((st) => (st.detail ? `${st.title}|${st.detail}` : st.title)).join('\n'));
     setShowForm(true);
   }, []);
-  const closeForm = useCallback(() => { setShowForm(false); setEditingId(null); setSaveError(null); }, []);
+  const closeForm = useCallback(() => { setShowForm(false); setEditingId(null); setSaveError(null); setFPublished(true); }, []);
 
   // Reads the selected file as a base64 data: URL (same FileReader.readAsDataURL
   // idiom used by PatientChartPanel.tsx's onPhotoFileSelected / TravelDocsPanel.tsx's
@@ -240,6 +261,15 @@ export function ProjectStudio() {
     }
   }, [openId, detail]);
 
+  const visibleProjects = projects.filter((p) => {
+    if (disciplineFilter !== 'all' && p.discipline !== disciplineFilter) return false;
+    const q = projectQuery.trim().toLowerCase();
+    if (!q) return true;
+    const hay = [p.title, p.description, p.discipline, ...(p.tools ?? []), ...(p.tags ?? [])]
+      .join(' ').toLowerCase();
+    return hay.includes(q);
+  });
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -251,13 +281,39 @@ export function ProjectStudio() {
         </button>
       </div>
 
+      {!loading && projects.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            type="text"
+            value={projectQuery}
+            onChange={(e) => setProjectQuery(e.target.value)}
+            placeholder="Search title, tool, or tag…"
+            aria-label="Search projects"
+            className="min-h-[40px] flex-1 min-w-[200px] bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm"
+          />
+          <select
+            value={disciplineFilter}
+            onChange={(e) => setDisciplineFilter(e.target.value)}
+            aria-label="Filter projects by discipline"
+            className="min-h-[40px] bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-sm"
+          >
+            <option value="all">All disciplines</option>
+            {[...new Set(projects.map((p) => p.discipline).filter(Boolean))].sort().map((d) => (
+              <option key={d} value={d}>{d}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-neon-pink" /></div>
       ) : projects.length === 0 ? (
         <div className="text-center py-12 text-gray-400 text-sm">No projects yet. Create a multi-image case study.</div>
+      ) : visibleProjects.length === 0 ? (
+        <div className="text-center py-12 text-gray-400 text-sm">No projects match your search.</div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {projects.map((p) => (
+          {visibleProjects.map((p) => (
             <div key={p.id} className="bg-white/5 border border-white/10 rounded-lg overflow-hidden hover:border-neon-pink/30 transition-colors group">
               <button onClick={() => openProject(p.id)} className="block w-full text-left">
                 <div className="aspect-video bg-white/5 flex items-center justify-center overflow-hidden">
@@ -272,7 +328,9 @@ export function ProjectStudio() {
                     <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{p.views}</span>
                     <span className="flex items-center gap-1"><Heart className="w-3 h-3" />{p.appreciations ?? 0}</span>
                     <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3" />{p.commentCount ?? 0}</span>
-                    {!p.published && <span className="text-yellow-500">Draft</span>}
+                    {p.published
+                      ? <span className="text-emerald-500">Published</span>
+                      : <span className="text-yellow-500">Draft — only you</span>}
                   </div>
                 </div>
               </button>
@@ -306,7 +364,7 @@ export function ProjectStudio() {
               <button onClick={closeForm} aria-label="Close"><X className="w-4 h-4" /></button>
             </div>
             <div className="space-y-3">
-              <input value={fTitle} onChange={(e) => setFTitle(e.target.value)} placeholder="Project title" className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm" />
+              <input value={fTitle} onChange={(e) => setFTitle(e.target.value)} placeholder="Project title" maxLength={160} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm" />
               <textarea value={fDesc} onChange={(e) => setFDesc(e.target.value)} placeholder="Description" rows={3} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm" />
               <select value={fDiscipline} onChange={(e) => setFDiscipline(e.target.value)} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm">
                 {['illustration', 'painting', 'photography', '3d', 'animation', 'graphic-design', 'concept-art', 'typography'].map((d) => <option key={d} value={d}>{d}</option>)}
@@ -329,8 +387,15 @@ export function ProjectStudio() {
                 {uploadError && <p className="text-[11px] text-red-400">{uploadError}</p>}
               </div>
               <textarea value={fSteps} onChange={(e) => setFSteps(e.target.value)} placeholder="Process steps — one per line: title|detail" rows={3} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm" />
+              <label className="flex items-center gap-2 text-sm text-gray-300">
+                Visibility
+                <select aria-label="Project visibility" value={fPublished ? 'published' : 'draft'} onChange={(e) => setFPublished(e.target.value === 'published')} className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm">
+                  <option value="published">Published — everyone can see it</option>
+                  <option value="draft">Draft — only you</option>
+                </select>
+              </label>
               <button onClick={submit} disabled={saving || !fTitle.trim()} className="w-full py-2 bg-neon-pink/20 rounded-lg text-sm hover:bg-neon-pink/30 disabled:opacity-50">
-                {saving ? 'Saving...' : editingId ? 'Save changes' : 'Publish Project'}
+                {saving ? 'Saving...' : editingId ? 'Save changes' : fPublished ? 'Publish Project' : 'Save as Draft'}
               </button>
               {saveError && <p role="alert" className="text-xs text-rose-400">{saveError}</p>}
             </div>
@@ -340,8 +405,8 @@ export function ProjectStudio() {
 
       {/* Detail modal */}
       {openId && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => { setOpenId(null); setDetail(null); }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-          <div className="bg-gray-900 border border-white/10 rounded-lg w-full max-w-2xl max-h-[88vh] overflow-y-auto" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => { setOpenId(null); setDetail(null); }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
+          <div className="bg-gray-900 border border-white/10 rounded-lg w-full max-w-2xl max-h-[88vh] overflow-y-auto" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             {!detail ? (
               <div className="flex justify-center py-16"><Loader2 className="w-5 h-5 animate-spin text-neon-pink" /></div>
             ) : (

@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { lensRun } from '@/lib/api/client';
 import { Layers, Loader2, ExternalLink, Star, GitBranch } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { useLensStatePersistence } from '@/lib/lens-state-persistence';
 
 interface Repo { id: number; full_name: string; html_url: string; description?: string; stargazers_count: number; forks_count: number; language?: string; license?: { spdx_id?: string }; }
 
@@ -17,7 +18,19 @@ const TOPICS = [
 ];
 
 export function PlatformRepos() {
-  const [topic, setTopic] = useState(TOPICS[0].id);
+  // FIX-platform-005: the selected topic is restored on reload instead of
+  // resetting to platform-engineering — the shared lens UI-state store.
+  // Merged writes keep the page's activeTab key (same lens entry) intact.
+  const { restore, persist } = useLensStatePersistence('platform');
+  const [initialState] = useState(() => restore());
+  const [topic, setTopicState] = useState(() => {
+    const saved = initialState?.reposTopic;
+    return typeof saved === 'string' && TOPICS.some((t) => t.id === saved) ? saved : TOPICS[0].id;
+  });
+  const setTopic = (next: string) => {
+    setTopicState(next);
+    persist({ ...(restore() ?? {}), reposTopic: next });
+  };
 
   const repos = useQuery({
     queryKey: ['gh-platform', topic],
@@ -38,7 +51,7 @@ export function PlatformRepos() {
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-cyan-500/15 pb-3">
         <div className="flex items-center gap-2"><Layers className="h-5 w-5 text-cyan-400" /><h2 className="text-sm font-semibold text-white">Real-world platform tooling</h2><span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">github · topic:{topic}</span></div>
         <div className="flex items-center gap-2">
-          <select value={topic} onChange={(e) => setTopic(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">{TOPICS.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}</select>
+          <select aria-label="Topic" value={topic} onChange={(e) => setTopic(e.target.value)} className="min-h-11 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">{TOPICS.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}</select>
           {list.length > 0 && <SaveAsDtuButton compact apiSource="github-platform" apiUrl={`https://github.com/topics/${topic}`} title={`GitHub platform — topic:${topic} (${list.length})`} content={list.slice(0, 20).map((r, i) => `${i + 1}. ★${(r.stargazers_count ?? 0).toLocaleString()} · ${r.full_name}\n   ${r.description || ''}\n   ${r.html_url}`).join('\n\n')} extraTags={['platform', 'github', topic]} rawData={{ topic, repos: list }} />}
         </div>
       </header>

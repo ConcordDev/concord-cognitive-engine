@@ -161,7 +161,9 @@ describe('courtship lens — UX states', () => {
 
     // marriage row renders real data — separate "Marriages" tab.
     await act(async () => { fireEvent.click(view!.getByText('Marriages')); });
-    await waitFor(() => expect(view!.getByText(/npc:npc_bob_0002/)).toBeInTheDocument());
+    // FIX-courtship-003: partners render by name — an NPC's id is its
+    // world name, shown without the raw "kind:id" form.
+    await waitFor(() => expect(view!.getByText('npc_bob_0002')).toBeInTheDocument());
     // child row renders real data — separate "Family" tab.
     await act(async () => { fireEvent.click(view!.getByText('Family')); });
     await waitFor(() => expect(view!.getByText('Iris')).toBeInTheDocument());

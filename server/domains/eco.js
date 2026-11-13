@@ -414,8 +414,12 @@ export default function registerEcoActions(registerLensAction) {
 
       for (const [key, def] of Object.entries(pillar.indicators)) {
         const value = def.value;
-        if (value != null && !isNaN(value)) {
-          const clamped = Math.max(0, Math.min(100, Number(value)));
+        if (value != null && value !== "" && !isNaN(Number(value))) {
+          const n = Number(value);
+          if (!Number.isFinite(n) || n < 0 || n > 100) {
+            return { ok: false, error: "invalid_input", field: key, message: `${def.label} must be a number from 0 to 100.` };
+          }
+          const clamped = n;
           pillarWeightedSum += clamped * def.weight;
           pillarWeightTotal += def.weight;
           subScores.push({
@@ -971,6 +975,31 @@ If unsure, fall back to coarser ranks. Always include at least one suggestion ev
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
+  registerLensAction("eco", "footprint-update", (ctx, _artifact, params = {}) => {
+    const state = getEcoState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const list = state.footprintLog.get(ecoUserId(ctx)) || [];
+    const entry = list.find((e) => e.id === params.id);
+    if (!entry) return { ok: false, error: "snapshot not found" };
+    if (params.label != null) {
+      const label = String(params.label).trim();
+      if (label.length > 120) return { ok: false, error: "invalid_input", message: "Label must be at most 120 characters." };
+      entry.label = label;
+    }
+    if (params.totalKgCO2e != null && params.totalKgCO2e !== "") {
+      const total = Number(params.totalKgCO2e);
+      if (!isFinite(total) || total < 0) return { ok: false, error: "invalid_input", message: "Total must be a number that is 0 or greater." };
+      entry.totalKgCO2e = Math.round(total * 100) / 100;
+    }
+    if (params.netKgCO2e != null && params.netKgCO2e !== "") {
+      const net = Number(params.netKgCO2e);
+      if (!isFinite(net)) return { ok: false, error: "invalid_input", message: "Net must be a number." };
+      entry.netKgCO2e = Math.round(net * 100) / 100;
+    }
+    persistEco();
+    return { ok: true, result: { entry } };
+  });
+
   /**
    * footprint-history — chronological footprint snapshots + trend analysis.
    * params: { sinceDays? }
@@ -1239,15 +1268,19 @@ If unsure, fall back to coarser ranks. Always include at least one suggestion ev
     const lat = Number(params.lat);
     const lng = Number(params.lng);
     if (!isFinite(lat) || !isFinite(lng)) return { ok: false, error: "lat, lng required" };
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      return { ok: false, error: "invalid_input", message: "Latitude must be from -90 to 90 and longitude from -180 to 180." };
+    }
     const label = String(params.label || "").trim();
     if (!label) return { ok: false, error: "label required" };
+    if (label.length > 80) return { ok: false, error: "invalid_input", message: "Label must be at most 80 characters." };
     const userId = ecoUserId(ctx);
     if (!state.savedLocations.has(userId)) state.savedLocations.set(userId, []);
     const list = state.savedLocations.get(userId);
     if (list.length >= 25) return { ok: false, error: "saved-location limit reached (25)" };
     const entry = {
       id: `loc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      label: label.slice(0, 80),
+      label,
       lat, lng,
       savedAt: new Date().toISOString(),
     };

@@ -15,7 +15,7 @@ import { getShedLagMs } from "../lib/request-admission.js";
 import { noteAdmittingTransition } from "../lib/request-admission.js";
 import { getHostIdentity } from "../lib/host-profile.js";
 import { getMemorySnapshot } from "../lib/heap-limit.js";
-import { dtuMatchesQuery, shapePaginatedBody, dtuListedOwner } from "../lib/dtu-list-source.js";
+import { dtuMatchesQuery, shapePaginatedBody, dtuListedOwner, tagFilterTerms, dtuMatchesTagFilter } from "../lib/dtu-list-source.js";
 import { viewerIdFromCtx } from "../lib/dtu-read-access.js";
 import { filterVisibleSearchHits, searchCandidateLimit } from "../lib/dtu-search-hits.js";
 
@@ -753,7 +753,9 @@ export default function registerSystemRoutes(app, {
     }
 
     if (tier) dtus = dtus.filter(d => d.tier === tier);
-    if (tag) dtus = dtus.filter(d => (d.tags || []).includes(tag));
+    // The explorer sends `tags` (comma-separated). `tag` is the older name.
+    const tagTerms = tagFilterTerms(req.query.tags || tag);
+    if (tagTerms.length) dtus = dtus.filter(d => dtuMatchesTagFilter(d, tagTerms));
     if (query) dtus = dtus.filter(d => dtuMatchesQuery(d, query));
     // Newest first so a DTU created seconds ago is on page 1 of My vault
     // (the DTUs lens asks for offset 0 / limit 20). The visibility cache

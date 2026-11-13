@@ -157,8 +157,14 @@ export function KialoArgumentMap() {
 
   /* ── debate CRUD ──────────────────────────────────────────────── */
 
+  const [createHint, setCreateHint] = useState<string | null>(null);
+
   async function createDebate() {
-    if (newThesis.trim().length < 8) return;
+    if (newThesis.trim().length < 8) {
+      setCreateHint('A thesis needs at least 8 characters.');
+      return;
+    }
+    setCreateHint(null);
     setBusy(true);
     const r = await lensRun('debate', 'debate-create', { thesis: newThesis.trim() });
     setNewThesis('');
@@ -343,12 +349,13 @@ export function KialoArgumentMap() {
         />
         <button
           onClick={createDebate}
-          disabled={newThesis.trim().length < 8 || busy}
+          disabled={busy}
           className="px-3 py-1.5 text-xs rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold disabled:opacity-40"
         >
           New debate
         </button>
       </div>
+      {createHint && <p role="status" className="mb-3 text-xs text-amber-200">{createHint}</p>}
 
       <div className="grid lg:grid-cols-[230px_1fr] gap-3">
         {/* ── debate list ─────────────────────────────────────────── */}

@@ -73,11 +73,10 @@ describe("bounties — create contracts (validation + exact rollups)", () => {
     assert.ok(bad.result.error.includes("description must be at least 12 characters"));
   });
 
-  it("create: a zero/negative rewardCc with no milestones is floored to 1 (not rejected)", async () => {
+  it("create: a zero rewardCc with no milestones is refused", async () => {
     const r = await lensRun("bounties", "create", { params: { title: "Valid title here", description: "Valid description here", rewardCc: 0 } }, ctx);
-    assert.notEqual(r.result.ok, false);
-    assert.equal(r.result.bounty.rewardCc, 1); // Math.max(1, floor(0))
-    assert.equal(r.result.bounty.poolCc, 1);
+    assert.equal(r.result.ok, false);
+    assert.match(`${r.result.field || ""} ${r.result.error || ""}`, /rewardCc/);
   });
 });
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
-import { Stethoscope, AlertTriangle, Activity, FlaskConical, Syringe, ClipboardList, Loader2, Plus, Search, Pencil, X, Check, Camera, Trash2, AlertCircle } from 'lucide-react';
+import { Stethoscope, AlertTriangle, Activity, FlaskConical, Syringe, ClipboardList, Loader2, Plus, Search, Pencil, X, Check, Camera, Trash2, AlertCircle, Download } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui';
@@ -87,16 +87,25 @@ function trendArrow(current: number | null, previous: number | null | undefined)
   return current > previous ? '↑' : '↓';
 }
 
+// FIX-healthcare-008: per-patient export. The lens export menu only
+// offers the lens-wide bundle, so a single patient's record could not
+// be exported without bulk data. The chart panel already holds exactly
+// one patient's complete detail (patients-detail), so the export is
+// that loaded chart — it cannot contain another patient's data.
+export function patientChartExport(data: ChartDetail): { filename: string; json: string } {
+  const mrn = (data.patient.mrn || data.patient.id || 'patient').replace(/[^A-Za-z0-9_-]+/g, '-');
+  return {
+    filename: `patient-chart-${mrn}.json`,
+    json: JSON.stringify({ exportedAt: new Date().toISOString(), ...data }, null, 2),
+  };
+}
+
 export function PatientChartPanel({ patientId }: { patientId: string }) {
   const [data, setData] = useState<ChartDetail | null>(null);
   const [tab, setTab] = useState<'problems' | 'allergies' | 'meds' | 'vitals' | 'labs' | 'immunizations' | 'encounters' | 'photos'>('problems');
   const [loading, setLoading] = useState(true);
   // Forms
   const [showProblemForm, setShowProblemForm] = useState(false);
-  const [problemDraft, setProblemDraft] = useState({ name: '', icd10: '', notes: '' });
-  const [icdQuery, setIcdQuery] = useState('');
-  const [icdMatches, setIcdMatches] = useState<ICDMatch[]>([]);
-  const [allergyDraft, setAllergyDraft] = useState({ allergen: '', kind: 'drug', severity: 'moderate' as Allergy['severity'], reaction: '' });
   const [showAllergyForm, setShowAllergyForm] = useState(false);
   const [vitalsDraft, setVitalsDraft] = useState({ systolic: '', diastolic: '', heartRate: '', tempF: '', spo2: '', weightLb: '', heightIn: '', painScore: '' });
   const [showVitalsForm, setShowVitalsForm] = useState(false);
@@ -124,8 +133,11 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh is a stable closure; only patientId should retrigger
   useEffect(() => { refresh(); }, [patientId]);
 
-  async function refresh() {
-    setLoading(true);
+  // FIX-healthcare-014: post-mutation refreshes pass silent=true — the
+  // loading gate below unmounts the whole chart, so a save used to blank
+  // the page to a spinner and lose the scroll position on remount.
+  async function refresh(silent = false) {
+    if (!silent) setLoading(true);
     try {
       const [r, kt] = await Promise.all([
         lensRun({ domain: 'healthcare', action: 'patients-detail', input: { id: patientId } }),
@@ -134,7 +146,18 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
       setData((r.data?.result as ChartDetail) || null);
       if (kt.data?.ok && kt.data.result?.tests?.length) setKnownTests(kt.data.result.tests);
     } catch (e) { console.error('[Chart] failed', e); }
-    finally { setLoading(false); }
+    finally { if (!silent) setLoading(false); }
+  }
+
+  function exportPatient() {
+    if (!data) return;
+    const { filename, json } = patientChartExport(data);
+    const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   function startEditPatient() {
@@ -149,52 +172,26 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
       const r = await lensRun({ domain: 'healthcare', action: 'patients-update', input: { id: data.patient.id, ...patientDraft } });
       if (r.data?.ok === false) { alert(r.data?.error); return; }
       setEditingPatient(false);
-      await refresh();
+      await refresh(true);
     } catch (e) { console.error('[Chart] patients-update', e); }
     finally { setSavingPatient(false); }
   }
 
-  async function lookupICD(q: string) {
-    setIcdQuery(q);
-    if (q.length < 2) { setIcdMatches([]); return; }
-    try {
-      const r = await lensRun({ domain: 'healthcare', action: 'icd10-search', input: { q } });
-      setIcdMatches((r.data?.result?.matches || []) as ICDMatch[]);
-    } catch {}
-  }
 
-  async function addProblem() {
-    if (!problemDraft.name.trim()) return;
-    try {
-      await lensRun({ domain: 'healthcare', action: 'problems-add', input: { ...problemDraft, patientId } });
-      setProblemDraft({ name: '', icd10: '', notes: '' });
-      setIcdQuery(''); setIcdMatches([]); setShowProblemForm(false);
-      await refresh();
-    } catch (e) { console.error('[Chart] addProblem', e); }
-  }
 
   async function resolveProblem(id: string) {
     try {
       await lensRun({ domain: 'healthcare', action: 'problems-update', input: { id, status: 'resolved' } });
-      await refresh();
+      await refresh(true);
     } catch (e) { console.error('[Chart] resolve', e); }
   }
 
-  async function addAllergy() {
-    if (!allergyDraft.allergen.trim()) return;
-    try {
-      await lensRun({ domain: 'healthcare', action: 'allergies-add', input: { ...allergyDraft, patientId } });
-      setAllergyDraft({ allergen: '', kind: 'drug', severity: 'moderate', reaction: '' });
-      setShowAllergyForm(false);
-      await refresh();
-    } catch (e) { console.error('[Chart] addAllergy', e); }
-  }
 
   async function deleteAllergy(id: string) {
     if (!confirm('Remove this allergy?')) return;
     try {
       await lensRun({ domain: 'healthcare', action: 'allergies-delete', input: { id } });
-      await refresh();
+      await refresh(true);
     } catch (e) { console.error('[Chart] deleteAllergy', e); }
   }
 
@@ -227,7 +224,7 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
       if (r.data?.ok) {
         setPhotoBodyRegion('');
         setPhotoNoteText('');
-        await refresh();
+        await refresh(true);
       } else {
         setPhotoError(r.data?.error || 'Vision analysis failed — photo was not saved.');
       }
@@ -242,7 +239,7 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
     if (!confirm('Remove this photo note?')) return;
     try {
       await lensRun({ domain: 'healthcare', action: 'photo-notes-delete', input: { id } });
-      await refresh();
+      await refresh(true);
     } catch (e) { console.error('[Chart] deletePhotoNote', e); }
   }
 
@@ -256,7 +253,7 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
       await lensRun({ domain: 'healthcare', action: 'vitals-record', input });
       setVitalsDraft({ systolic: '', diastolic: '', heartRate: '', tempF: '', spo2: '', weightLb: '', heightIn: '', painScore: '' });
       setShowVitalsForm(false);
-      await refresh();
+      await refresh(true);
     } catch (e) { console.error('[Chart] vitals', e); }
   }
 
@@ -266,7 +263,7 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
       await lensRun({ domain: 'healthcare', action: 'labs-record', input: { patientId, test: labDraft.test, value: Number(labDraft.value) } });
       setLabDraft({ test: 'glucose', value: '' });
       setShowLabForm(false);
-      await refresh();
+      await refresh(true);
     } catch (e) { console.error('[Chart] lab', e); }
   }
 
@@ -325,6 +322,9 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
           <div className="col-span-2"><div className="text-[10px] text-gray-400">Phone / Email</div><div className="text-xs text-white truncate">{p.phone || '—'} {p.email && `· ${p.email}`}</div></div>
           <div className="col-span-3"><div className="text-[10px] text-gray-400">Insurance</div><div className="text-xs text-white truncate">{p.insurancePlan || '—'}</div></div>
           <div className="col-span-1 flex justify-end">
+            <button onClick={exportPatient} aria-label="Export patient chart" title="Export this patient's chart (JSON)" className="p-1.5 rounded text-gray-400 hover:text-cyan-300 hover:bg-white/5">
+              <Download className="w-3.5 h-3.5" />
+            </button>
             <button onClick={startEditPatient} aria-label="Edit patient" className="p-1.5 rounded text-gray-400 hover:text-cyan-300 hover:bg-white/5">
               <Pencil className="w-3.5 h-3.5" />
             </button>
@@ -333,13 +333,13 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
 
         {editingPatient && (
           <div className="mt-2 border border-white/10 rounded p-3 grid grid-cols-4 gap-2 bg-black/30">
-            <input value={patientDraft.phone || ''} onChange={e => setPatientDraft({ ...patientDraft, phone: e.target.value })} placeholder="Phone" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-            <input value={patientDraft.email || ''} onChange={e => setPatientDraft({ ...patientDraft, email: e.target.value })} placeholder="Email" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-            <input value={patientDraft.address || ''} onChange={e => setPatientDraft({ ...patientDraft, address: e.target.value })} placeholder="Address" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-            <input value={patientDraft.insurancePlan || ''} onChange={e => setPatientDraft({ ...patientDraft, insurancePlan: e.target.value })} placeholder="Insurance plan" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-            <input value={patientDraft.insuranceMemberId || ''} onChange={e => setPatientDraft({ ...patientDraft, insuranceMemberId: e.target.value })} placeholder="Member ID" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-            <input value={patientDraft.emergencyContact || ''} onChange={e => setPatientDraft({ ...patientDraft, emergencyContact: e.target.value })} placeholder="Emergency contact" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-            <input value={patientDraft.preferredPharmacy || ''} onChange={e => setPatientDraft({ ...patientDraft, preferredPharmacy: e.target.value })} placeholder="Preferred pharmacy" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+            <input value={patientDraft.phone || ''} onChange={e => setPatientDraft({ ...patientDraft, phone: e.target.value })} placeholder="Phone" aria-label="Phone" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+            <input value={patientDraft.email || ''} onChange={e => setPatientDraft({ ...patientDraft, email: e.target.value })} placeholder="Email" aria-label="Email" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+            <input value={patientDraft.address || ''} onChange={e => setPatientDraft({ ...patientDraft, address: e.target.value })} placeholder="Address" aria-label="Address" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+            <input value={patientDraft.insurancePlan || ''} onChange={e => setPatientDraft({ ...patientDraft, insurancePlan: e.target.value })} placeholder="Insurance plan" aria-label="Insurance plan" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+            <input value={patientDraft.insuranceMemberId || ''} onChange={e => setPatientDraft({ ...patientDraft, insuranceMemberId: e.target.value })} placeholder="Member ID" aria-label="Member ID" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+            <input value={patientDraft.emergencyContact || ''} onChange={e => setPatientDraft({ ...patientDraft, emergencyContact: e.target.value })} placeholder="Emergency contact" aria-label="Emergency contact" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+            <input value={patientDraft.preferredPharmacy || ''} onChange={e => setPatientDraft({ ...patientDraft, preferredPharmacy: e.target.value })} placeholder="Preferred pharmacy" aria-label="Preferred pharmacy" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
             <div className="col-span-4 flex items-center gap-2 justify-end">
               <button onClick={() => setEditingPatient(false)} className="px-2.5 py-1 text-xs rounded text-gray-400 hover:text-white inline-flex items-center gap-1"><X className="w-3 h-3" />Cancel</button>
               <button onClick={savePatient} disabled={savingPatient} className="px-2.5 py-1 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 disabled:opacity-40 inline-flex items-center gap-1"><Check className="w-3 h-3" />{savingPatient ? 'Saving…' : 'Save'}</button>
@@ -404,26 +404,7 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
                 </button>
               </div>
               {showProblemForm && (
-                <div className="border border-white/10 rounded p-3 space-y-2 bg-black/30">
-                  <input value={problemDraft.name} onChange={e => setProblemDraft({ ...problemDraft, name: e.target.value })} placeholder="Problem (e.g. Hypertension) *" className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-                  <div className="flex items-center gap-2">
-                    <Search className="w-3.5 h-3.5 text-gray-400" />
-                    <input value={icdQuery} onChange={e => lookupICD(e.target.value)} placeholder="Search ICD-10 (live NLM lookup)" className="flex-1 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-                    {problemDraft.icd10 && <span className="text-[10px] font-mono text-emerald-300">{problemDraft.icd10}</span>}
-                  </div>
-                  {icdMatches.length > 0 && (
-                    <ul className="max-h-32 overflow-y-auto border border-white/10 rounded bg-black/40">
-                      {icdMatches.map(m => (
-                        <li key={m.code} onClick={() => { setProblemDraft({ ...problemDraft, icd10: m.code, name: problemDraft.name || m.description }); setIcdMatches([]); setIcdQuery(m.code); }} className="px-2 py-1 text-[11px] hover:bg-cyan-500/10 cursor-pointer flex gap-2">
-                          <span className="font-mono text-cyan-300 w-16">{m.code}</span>
-                          <span className="text-white truncate">{m.description}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  <input value={problemDraft.notes} onChange={e => setProblemDraft({ ...problemDraft, notes: e.target.value })} placeholder="Notes" className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-                  <button onClick={addProblem} className="w-full px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400">Save problem</button>
-                </div>
+                <ProblemDraftForm patientId={patientId} onSaved={() => void refresh(true)} onClose={() => setShowProblemForm(false)} />
               )}
               {data.problems.length === 0 ? (
                 <div className="py-6 text-center text-xs text-gray-400">No problems documented.</div>
@@ -453,17 +434,7 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
                 </button>
               </div>
               {showAllergyForm && (
-                <div className="border border-white/10 rounded p-3 grid grid-cols-12 gap-2 bg-black/30">
-                  <input value={allergyDraft.allergen} onChange={e => setAllergyDraft({ ...allergyDraft, allergen: e.target.value })} placeholder="Allergen *" className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-                  <select value={allergyDraft.kind} onChange={e => setAllergyDraft({ ...allergyDraft, kind: e.target.value })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
-                    <option value="drug">Drug</option><option value="food">Food</option><option value="environmental">Environmental</option><option value="other">Other</option>
-                  </select>
-                  <select value={allergyDraft.severity} onChange={e => setAllergyDraft({ ...allergyDraft, severity: e.target.value as Allergy['severity'] })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
-                    <option value="mild">Mild</option><option value="moderate">Moderate</option><option value="severe">Severe</option><option value="life_threatening">Life-threatening</option>
-                  </select>
-                  <button onClick={addAllergy} className="col-span-2 px-2 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400">Save</button>
-                  <input value={allergyDraft.reaction} onChange={e => setAllergyDraft({ ...allergyDraft, reaction: e.target.value })} placeholder="Reaction (e.g. hives, anaphylaxis)" className="col-span-12 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-                </div>
+                <AllergyDraftForm patientId={patientId} onSaved={() => void refresh(true)} onClose={() => setShowAllergyForm(false)} />
               )}
               {data.allergies.length === 0 ? (
                 <div className="py-6 text-center text-xs text-emerald-300/70">No known allergies (NKDA)</div>
@@ -700,3 +671,81 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
 }
 
 export default PatientChartPanel;
+
+// FIX-healthcare-014: the problem/allergy draft forms own their field
+// state locally. Both drafts used to live in the chart component, so every
+// keystroke re-rendered the whole chart (problems, meds, allergies,
+// vitals, timeline) and typing lagged seconds behind.
+function ProblemDraftForm({ patientId, onSaved, onClose }: { patientId: string; onSaved: () => void; onClose: () => void }) {
+  const [problemDraft, setProblemDraft] = useState({ name: '', icd10: '', notes: '' });
+  const [icdQuery, setIcdQuery] = useState('');
+  const [icdMatches, setIcdMatches] = useState<ICDMatch[]>([]);
+
+  async function lookupICD(q: string) {
+    setIcdQuery(q);
+    if (q.length < 2) { setIcdMatches([]); return; }
+    try {
+      const r = await lensRun({ domain: 'healthcare', action: 'icd10-search', input: { q } });
+      setIcdMatches((r.data?.result?.matches || []) as ICDMatch[]);
+    } catch {}
+  }
+
+  async function addProblem() {
+    if (!problemDraft.name.trim()) return;
+    try {
+      await lensRun({ domain: 'healthcare', action: 'problems-add', input: { ...problemDraft, patientId } });
+      onSaved();
+      onClose();
+    } catch (e) { console.error('[Chart] addProblem', e); }
+  }
+
+  return (
+    <div className="border border-white/10 rounded p-3 space-y-2 bg-black/30">
+      <input value={problemDraft.name} onChange={e => setProblemDraft({ ...problemDraft, name: e.target.value })} placeholder="Problem (e.g. Hypertension) *" className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+      <div className="flex items-center gap-2">
+        <Search className="w-3.5 h-3.5 text-gray-400" />
+        <input value={icdQuery} onChange={e => lookupICD(e.target.value)} placeholder="Search ICD-10 (live NLM lookup)" className="flex-1 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        {problemDraft.icd10 && <span className="text-[10px] font-mono text-emerald-300">{problemDraft.icd10}</span>}
+      </div>
+      {icdMatches.length > 0 && (
+        <ul className="max-h-32 overflow-y-auto border border-white/10 rounded bg-black/40">
+          {icdMatches.map(m => (
+            <li key={m.code} onClick={() => { setProblemDraft({ ...problemDraft, icd10: m.code, name: problemDraft.name || m.description }); setIcdMatches([]); setIcdQuery(m.code); }} className="px-2 py-1 text-[11px] hover:bg-cyan-500/10 cursor-pointer flex gap-2">
+              <span className="font-mono text-cyan-300 w-16">{m.code}</span>
+              <span className="text-white truncate">{m.description}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <input value={problemDraft.notes} onChange={e => setProblemDraft({ ...problemDraft, notes: e.target.value })} placeholder="Notes" className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+      <button onClick={addProblem} className="w-full px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400">Save problem</button>
+    </div>
+  );
+}
+
+function AllergyDraftForm({ patientId, onSaved, onClose }: { patientId: string; onSaved: () => void; onClose: () => void }) {
+  const [allergyDraft, setAllergyDraft] = useState({ allergen: '', kind: 'drug', severity: 'moderate' as Allergy['severity'], reaction: '' });
+
+  async function addAllergy() {
+    if (!allergyDraft.allergen.trim()) return;
+    try {
+      await lensRun({ domain: 'healthcare', action: 'allergies-add', input: { ...allergyDraft, patientId } });
+      onSaved();
+      onClose();
+    } catch (e) { console.error('[Chart] addAllergy', e); }
+  }
+
+  return (
+    <div className="border border-white/10 rounded p-3 grid grid-cols-12 gap-2 bg-black/30">
+      <input value={allergyDraft.allergen} onChange={e => setAllergyDraft({ ...allergyDraft, allergen: e.target.value })} placeholder="Allergen *" className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+      <select value={allergyDraft.kind} onChange={e => setAllergyDraft({ ...allergyDraft, kind: e.target.value })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+        <option value="drug">Drug</option><option value="food">Food</option><option value="environmental">Environmental</option><option value="other">Other</option>
+      </select>
+      <select value={allergyDraft.severity} onChange={e => setAllergyDraft({ ...allergyDraft, severity: e.target.value as Allergy['severity'] })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+        <option value="mild">Mild</option><option value="moderate">Moderate</option><option value="severe">Severe</option><option value="life_threatening">Life-threatening</option>
+      </select>
+      <button onClick={addAllergy} className="col-span-2 px-2 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400">Save</button>
+      <input value={allergyDraft.reaction} onChange={e => setAllergyDraft({ ...allergyDraft, reaction: e.target.value })} placeholder="Reaction (e.g. hives, anaphylaxis)" className="col-span-12 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+    </div>
+  );
+}

@@ -5,11 +5,17 @@
  *
  * Displays: content, tier badge, provenance badge, simplified lineage tree,
  * creator profile link, and a "Fork to my universe" CTA.
- * No authentication required.
+ * No authentication required. When the signed-in viewer OWNS the DTU
+ * (FIX-cognition-010), the page says so instead of dressing the owner
+ * in signed-out chrome: signed-in header, a Private badge on non-public
+ * DTUs, and owner actions (delete) — the server still enforces access
+ * and delete ownership; this is presentation catching up to it.
  */
 
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
 import {
   Zap,
@@ -24,6 +30,8 @@ import {
   ChevronRight,
   Shield,
   Sparkles,
+  Lock,
+  Trash2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -43,6 +51,9 @@ interface DTU {
   updatedAt?: string;
   creator?: string;
   creatorId?: string;
+  ownerId?: string;
+  visibility?: string;
+  meta?: { scope?: string };
   provenance?: {
     source?: string;
     verified?: boolean;
@@ -128,6 +139,15 @@ export function PublicDTUView({ dtu: seeded, dtuId }: PublicDTUViewProps) {
   });
   const dtu = seeded || ownerRead.data || null;
 
+  // Who is looking (FIX-cognition-010). The page used to render the
+  // same signed-out chrome for everyone — including the DTU's owner,
+  // who had just been let through the server's owner gate.
+  const { user } = useAuth();
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleted, setDeleted] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
   // Fetch lineage client-side (optional enhancement)
   const {
     data: lineageData,
@@ -199,6 +219,43 @@ export function PublicDTUView({ dtu: seeded, dtuId }: PublicDTUViewProps) {
     [];
 
   const provenanceVerified = dtu.provenance?.verified || dtu.integrity?.status === 'verified';
+  const isOwner = Boolean(user) && [dtu.creatorId, dtu.creator, dtu.ownerId]
+    .some((v) => typeof v === 'string' && v !== '' && (v === user?.id || v === user?.username));
+  const isPrivate = dtu.visibility === 'private' || dtu.meta?.scope === 'local' || dtu.meta?.scope === 'private';
+
+  const deleteDtu = async () => {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      const res = await api.delete(`/api/dtus/${encodeURIComponent(id)}`);
+      const body = res.data as { ok?: boolean; error?: string };
+      if (body?.ok === false) throw new Error(body.error || 'delete failed');
+      setDeleted(true);
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : 'Could not delete this DTU.');
+      setDeleting(false);
+      setConfirmingDelete(false);
+    }
+  };
+
+  if (deleted) {
+    return (
+      <div className="min-h-screen bg-lattice-void flex items-center justify-center">
+        <div className="text-center space-y-4 max-w-md px-6">
+          <Trash2 className="w-16 h-16 text-gray-600 mx-auto" />
+          <h1 className="text-2xl font-bold text-white">DTU deleted</h1>
+          <p className="text-gray-400">This thought unit has been deleted from your account.</p>
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-neon-cyan/20 text-neon-cyan rounded-lg hover:bg-neon-cyan/30 transition-colors"
+          >
+            Go to Concord OS
+            <ExternalLink className="w-4 h-4" />
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-lattice-void">
@@ -213,18 +270,32 @@ export function PublicDTUView({ dtu: seeded, dtuId }: PublicDTUViewProps) {
             <span className="font-semibold text-sm">Concord OS</span>
           </Link>
           <div className="flex items-center gap-3">
-            <Link
-              href={`/login?from=/dtu/${id}`}
-              className="text-sm text-gray-400 hover:text-white transition-colors"
-            >
-              Sign in
-            </Link>
-            <Link
-              href="/register"
-              className="text-sm px-3 py-1.5 bg-neon-cyan/20 text-neon-cyan rounded-lg hover:bg-neon-cyan/30 transition-colors"
-            >
-              Join Concord
-            </Link>
+            {user ? (
+              <>
+                <span className="text-sm text-gray-400">Signed in as {user.username}</span>
+                <Link
+                  href="/lenses"
+                  className="text-sm px-3 py-1.5 bg-neon-cyan/20 text-neon-cyan rounded-lg hover:bg-neon-cyan/30 transition-colors"
+                >
+                  Open Concord
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link
+                  href={`/login?from=/dtu/${id}`}
+                  className="text-sm text-gray-400 hover:text-white transition-colors"
+                >
+                  Sign in
+                </Link>
+                <Link
+                  href="/register"
+                  className="text-sm px-3 py-1.5 bg-neon-cyan/20 text-neon-cyan rounded-lg hover:bg-neon-cyan/30 transition-colors"
+                >
+                  Join Concord
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -244,6 +315,12 @@ export function PublicDTUView({ dtu: seeded, dtuId }: PublicDTUViewProps) {
               <TierIcon className="w-3.5 h-3.5" />
               {tierCfg.label}
             </span>
+            {isPrivate && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-500/10 text-gray-300">
+                <Lock className="w-3.5 h-3.5" />
+                Private
+              </span>
+            )}
             {provenanceVerified && (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-neon-green/10 text-neon-green">
                 <Shield className="w-3.5 h-3.5" />
@@ -315,6 +392,45 @@ export function PublicDTUView({ dtu: seeded, dtuId }: PublicDTUViewProps) {
           </div>
         )}
 
+        {/* Owner strip (FIX-cognition-010) */}
+        {isOwner && (
+          <div className="bg-lattice-surface border border-lattice-border rounded-xl p-5 space-y-3">
+            <p className="text-sm text-gray-300">
+              This is your DTU{isPrivate ? ' — it is private: only you can open this page' : ''}.
+            </p>
+            {deleteError && <p className="text-xs text-rose-400">{deleteError}</p>}
+            {confirmingDelete ? (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm text-gray-300">Delete this DTU permanently?</span>
+                <button
+                  type="button"
+                  onClick={deleteDtu}
+                  disabled={deleting}
+                  className="text-xs px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg disabled:opacity-50"
+                >
+                  {deleting ? 'Deleting…' : 'Delete it'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmingDelete(false)}
+                  disabled={deleting}
+                  className="text-xs px-3 py-1.5 bg-lattice-elevated text-gray-300 rounded-lg hover:text-white"
+                >
+                  Keep it
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmingDelete(true)}
+                className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 border border-rose-900/60 text-rose-300 rounded-lg hover:bg-rose-950/40"
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Delete this DTU
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Fork CTA */}
         <div className="bg-gradient-to-r from-neon-cyan/5 to-neon-purple/5 border border-lattice-border rounded-xl p-6 text-center space-y-3">
           <Copy className="w-8 h-8 text-neon-cyan mx-auto" />
@@ -323,7 +439,7 @@ export function PublicDTUView({ dtu: seeded, dtuId }: PublicDTUViewProps) {
             Create your own branch of this thought unit. Evolve it, extend it, make it yours.
           </p>
           <Link
-            href={`/login?from=/lenses/chat?fork=${id}`}
+            href={user ? `/lenses/chat?fork=${id}` : `/login?from=/lenses/chat?fork=${id}`}
             className="inline-flex items-center gap-2 px-5 py-2.5 bg-neon-cyan text-black font-medium rounded-lg hover:bg-neon-cyan/90 transition-colors"
           >
             Fork this DTU

@@ -30,7 +30,7 @@ export function RestoreDtuExport() {
   const [content, setContent] = useState('');
   const [overwrite, setOverwrite] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<{ imported: number; skipped: number; total: number } | null>(null);
+  const [result, setResult] = useState<{ imported: number; skipped: number; total: number; note?: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -47,8 +47,20 @@ export function RestoreDtuExport() {
     setBusy(true); setError(null); setResult(null);
     try {
       if (format === 'json') {
-        let parsed: { dtus?: unknown[] };
+        let parsed: { dtus?: unknown[]; definition?: { spec?: string; canvas?: { name?: string } } };
         try { parsed = JSON.parse(content); } catch { throw new Error('Not valid JSON — expected the payload from Export → JSON.'); }
+        // FIX-import-009: a custom-lens export (concord-custom-lens/v1) is a
+        // lens definition, not a DTU batch — route it to the custom domain's
+        // own restore instead of rejecting it for lacking dtus.
+        const definition = parsed.definition && parsed.definition.spec === 'concord-custom-lens/v1'
+          ? parsed.definition
+          : (parsed as { spec?: string }).spec === 'concord-custom-lens/v1' ? parsed : null;
+        if (definition) {
+          const r = await lensRun('custom', 'importCanvas', { definition });
+          if (!r.data.ok) throw new Error(r.data.error || 'Lens restore failed.');
+          setResult({ imported: 1, skipped: 0, total: 1, note: `Lens "${definition.canvas?.name || 'Untitled'}" restored into your canvases.` });
+          return;
+        }
         if (!Array.isArray(parsed.dtus)) throw new Error('Expected a { dtus: [...] } export payload.');
         const r = await lensRun<JsonImportResult>('import', 'json', { dtus: parsed.dtus, overwrite });
         if (!r.data.ok || !r.data.result) throw new Error(r.data.error || 'Import failed.');
@@ -70,7 +82,7 @@ export function RestoreDtuExport() {
       <header className="flex items-center gap-2">
         <RotateCcw className="w-4 h-4 text-neon-purple" />
         <h2 className="font-semibold text-white">Restore from export</h2>
-        <span className="text-[10px] uppercase tracking-wider text-gray-500 font-mono">import.json · import.markdown</span>
+        <span className="text-[10px] uppercase tracking-wider text-gray-400 font-mono">import.json · import.markdown</span>
       </header>
       <p className="text-xs text-gray-400">
         Paste or upload a file produced by the Export lens (JSON or Markdown
@@ -94,7 +106,7 @@ export function RestoreDtuExport() {
             <FileText className="w-3.5 h-3.5" /> Markdown
           </button>
         </div>
-        <input ref={fileRef} type="file" accept=".json,.md,.markdown,.txt" onChange={onFile} className="hidden" />
+        <input ref={fileRef} type="file" aria-label="Choose a DTU export file to restore" accept=".json,.md,.markdown,.txt" onChange={onFile} className="hidden" />
         <button onClick={pickFile} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-lattice-border text-xs text-gray-300 hover:border-neon-cyan/40">
           <Upload className="w-3.5 h-3.5" /> Upload file
         </button>
@@ -133,7 +145,8 @@ export function RestoreDtuExport() {
           <CheckCircle2 className="w-3.5 h-3.5 text-neon-green shrink-0" />
           <span><span className="text-neon-green font-semibold">{result.imported}</span> imported</span>
           {result.skipped > 0 && <span><span className="text-yellow-400 font-semibold">{result.skipped}</span> skipped (already present)</span>}
-          <span className="text-gray-500">of {result.total} total</span>
+          <span className="text-gray-400">of {result.total} total</span>
+          {result.note && <span className="text-gray-300">{result.note}</span>}
         </div>
       )}
     </div>

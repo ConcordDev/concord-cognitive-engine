@@ -71,7 +71,7 @@ export function BudgetVisualizer() {
               scope === s ? 'bg-cyan-500/20 text-cyan-300' : 'text-gray-400 hover:text-white'
             )}>{s}</button>
           ))}
-          <select value={year} onChange={e => setYear(Number(e.target.value))} className="px-2 py-0.5 text-[10px] bg-lattice-deep border border-lattice-border rounded text-white">
+          <select aria-label="Budget year" value={year} onChange={e => setYear(Number(e.target.value))} className="px-2 py-0.5 text-[10px] bg-lattice-deep border border-lattice-border rounded text-white">
             {[2026, 2025, 2024, 2023].map(y => <option key={y} value={y}>{y}</option>)}
           </select>
         </div>

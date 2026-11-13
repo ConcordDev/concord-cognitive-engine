@@ -372,7 +372,7 @@ export default function registerFoodActions(registerLensAction) {
   try {
     const wasteLog = artifact.data.wasteLog || [];
     if (wasteLog.length === 0) {
-      return { ok: true, result: { totalEntries: 0, totalWasteCost: 0, message: "No waste data recorded." } };
+      return { ok: true, result: { totalEntries: 0, totalWasteCost: 0, totalWasteQuantity: 0, weeklyWasteKg: 0, message: "No waste data recorded." } };
     }
 
     let totalCost = 0;
@@ -422,11 +422,16 @@ export default function registerFoodActions(registerLensAction) {
     if (reasons.find(r => r.reason === "trim")) suggestions.push("Evaluate trim utilization — stocks, purees, or staff meals");
     if (categories.length > 0) suggestions.push(`Focus on ${categories[0].category} — highest waste cost category`);
 
+    const kgEntries = wasteLog.filter((entry) => String(entry.unit || "kg").toLowerCase() === "kg");
+    const weeklyWasteKg = kgEntries.length === wasteLog.length
+      ? Math.round(totalQuantity * 100) / 100
+      : null;
     const result = {
       generatedAt: new Date().toISOString(),
       totalEntries: wasteLog.length,
       totalWasteCost: totalCost,
       totalWasteQuantity: Math.round(totalQuantity * 100) / 100,
+      weeklyWasteKg,
       byCategory: categories,
       byReason: reasons,
       reductionSuggestions: suggestions,
@@ -990,12 +995,14 @@ export default function registerFoodActions(registerLensAction) {
           for (let s = 0; s < Math.min(slots.length, apiSlots.length); s++) {
             const meal = dayData.meals?.[s];
             if (!meal) continue;
+            const own = meal.nutrition || {};
+            const num = (v) => (Number.isFinite(Number(v)) ? Math.round(Number(v)) : null);
             meals.push({
               date, slot: apiSlots[s], title: meal.title, servings: meal.servings || 1,
-              calories: dayData.nutrients?.calories / apiSlots.length,
-              protein: dayData.nutrients?.protein / apiSlots.length,
-              carbs: dayData.nutrients?.carbohydrates / apiSlots.length,
-              fat: dayData.nutrients?.fat / apiSlots.length,
+              calories: num(own.calories ?? meal.calories),
+              protein: num(own.protein ?? meal.protein),
+              carbs: num(own.carbs ?? own.carbohydrates ?? meal.carbs),
+              fat: num(own.fat ?? meal.fat),
               recipeId: meal.id,
               source: "spoonacular",
             });
@@ -1699,6 +1706,35 @@ export default function registerFoodActions(registerLensAction) {
         photoCount: (s.recipePhotos.get(userId) || []).filter((x) => x.recipeId === r.id).length,
       };
     });
+    // FIX-005: recipes minted from the workbench are private DTUs in the
+    // corpus (source "food:recipe:mint"), not lens-state recipes, so this
+    // list never showed them and a minted recipe "vanished" on reload.
+    // Merge the caller's own minted DTUs in, flagged, so Recipes is one
+    // library for everything the user saved as a recipe.
+    try {
+      const dtus = globalThis._concordSTATE?.dtus;
+      if (dtus && typeof dtus.values === "function") {
+        const seen = new Set(recipes.map((r) => r.id));
+        for (const d of dtus.values()) {
+          if (!d || typeof d.id !== "string" || seen.has(d.id)) continue;
+          if (d.source !== "food:recipe:mint" || d.ownerId !== userId) continue;
+          const rec = d.meta?.recipe || {};
+          recipes.push({
+            id: d.id,
+            dtuId: d.id,
+            minted: true,
+            title: String(rec.name || d.title || "Recipe").replace(/^Recipe — /, ""),
+            slot: "Dinner",
+            servings: Math.max(1, Number(rec.servings) || 1),
+            calories: 0, protein: 0, carbs: 0, fat: 0,
+            tags: ["minted"],
+            ingredients: Array.isArray(rec.ingredients) ? rec.ingredients : [],
+            avgRating: 0, ratingCount: 0, cookCount: 0, lastCookedAt: null, photoCount: 0,
+            createdAt: d.createdAt || null,
+          });
+        }
+      }
+    } catch { /* corpus unavailable — the lens-state library still answers */ }
     return { ok: true, result: { recipes, count: recipes.length } };
   });
 

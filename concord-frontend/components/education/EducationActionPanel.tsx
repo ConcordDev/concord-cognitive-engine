@@ -6,6 +6,7 @@
  * quiz-from-text (LLM) + mint/DM/publish/agent.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useEffect, useRef, useState } from 'react';
 import { GraduationCap, TrendingUp, BookOpen, ListChecks, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -196,8 +197,8 @@ export function EducationActionPanel() {
     try {
       const task = `Teacher feedback brief. ${gradeResult ? `Class of ${gradeResult.studentsGraded}: average ${gradeResult.classStats?.average}%, range ${gradeResult.classStats?.low}%–${gradeResult.classStats?.high}%.` : ''} ${progResult ? `Program progress: ${progResult.overallCompletionPct}% complete (${progResult.completedRequirements}/${progResult.totalRequirements} requirements).` : ''} ${lessonResult ? `Current lesson: ${lessonResult.plan.title ?? lessonTopic}.` : ''} Give one concrete strength to praise + one specific area for next-week focus. Plain text, 3 sentences max.`;
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Feedback ready.'); } else err('Agent returned empty.');
+      const reply = readAgentReply(r.data);
+      if (reply.ok) { setAgentReply(reply.text); ok('Feedback ready.'); } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 
@@ -226,11 +227,11 @@ export function EducationActionPanel() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <div>
           <label className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold">Grades JSON</label>
-          <textarea value={gradesText} onChange={(e) => setGradesText(e.target.value)} rows={6} placeholder={'{"students":[{"studentId":"s1","name":"Alice","grades":[{"category":"hw","score":90,"maxScore":100}]}],"weightScheme":[{"category":"hw","weight":100}]}'} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1 placeholder:text-zinc-600" />
+          <textarea value={gradesText} onChange={(e) => setGradesText(e.target.value)} rows={6} placeholder={'{"students":[{"studentId":"s1","name":"Alice","grades":[{"category":"hw","score":90,"maxScore":100}]}],"weightScheme":[{"category":"hw","weight":100}]}'} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1 placeholder:text-zinc-400" />
         </div>
         <div>
           <label className="text-[10px] uppercase tracking-wider text-green-400 font-semibold">Progress JSON</label>
-          <textarea value={progText} onChange={(e) => setProgText(e.target.value)} rows={6} placeholder={'{"requirements":[{"requirementId":"r1","name":"Core","requiredUnits":10}],"completions":[{"requirementId":"r1","completedUnits":4}]}'} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1 placeholder:text-zinc-600" />
+          <textarea value={progText} onChange={(e) => setProgText(e.target.value)} rows={6} placeholder={'{"requirements":[{"requirementId":"r1","name":"Core","requiredUnits":10}],"completions":[{"requirementId":"r1","completedUnits":4}]}'} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1 placeholder:text-zinc-400" />
         </div>
         <div className="space-y-1.5">
           <div className="text-[10px] uppercase tracking-wider text-purple-400 font-semibold">Lesson + quiz</div>

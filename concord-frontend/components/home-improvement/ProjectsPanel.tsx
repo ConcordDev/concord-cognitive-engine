@@ -10,6 +10,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import {
   Hammer, Plus, Search, Trash2, DollarSign,
   CheckCircle2, Wrench, ChevronDown,
@@ -201,12 +202,14 @@ export function ProjectsPanel() {
               <select value={newProject.room} onChange={e => setNewProject(p => ({ ...p, room: e.target.value }))} className="input-lattice">
                 {ROOM_OPTIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
               </select>
-              <input type="number" value={newProject.budget || ''} onChange={e => setNewProject(p => ({ ...p, budget: Number(e.target.value) }))} placeholder="Budget..." className="input-lattice" />
+              <input type="number" min={0} value={newProject.budget || ''} onChange={e => setNewProject(p => ({ ...p, budget: Number(e.target.value) }))} placeholder="Budget..." className="input-lattice" />
+              {Number(newProject.budget) < 0 && <span role="note" className="col-span-full text-xs text-rose-300">Budget can&apos;t be negative.</span>}
               <input value={newProject.notes} onChange={e => setNewProject(p => ({ ...p, notes: e.target.value }))} placeholder="Notes (optional)..." className="input-lattice" />
             </div>
             <button onClick={createProject} disabled={busy || !newProject.name.trim()} className="btn-neon green w-full focus:outline-none focus:ring-2 focus:ring-amber-500">
               {busy ? 'Creating...' : 'Create Project'}
             </button>
+            {!newProject.name.trim() && <span role="note" className="text-xs text-gray-400">Project name is required.</span>}
           </motion.div>
         )}
       </AnimatePresence>
@@ -274,8 +277,8 @@ export function ProjectsPanel() {
                       )}
                     </button>
                     <div className="flex items-center gap-1 ml-3">
-                      <ChevronDown className={cn('w-4 h-4 text-gray-500 transition-transform', expanded && 'rotate-180')} onClick={() => setExpandedId(expanded ? null : p.id)} />
-                      <button onClick={() => deleteProject(p.id)} disabled={busy} className="text-gray-400 hover:text-red-400 p-1">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}</button>
+                      <ChevronDown className={cn('w-4 h-4 text-gray-400 transition-transform', expanded && 'rotate-180')} onClick={() => setExpandedId(expanded ? null : p.id)} />
+                      <StickyDeleteConfirm onConfirm={() => deleteProject(p.id)} armAriaLabel={`Delete ${p.name}`} confirmAriaLabel={`Confirm delete ${p.name}`} className="text-gray-400 hover:text-red-400 p-1" armLabel={busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />} disabled={busy} />
                     </div>
                   </div>
 
@@ -298,7 +301,7 @@ export function ProjectsPanel() {
                                 'text-xs px-2 py-1 rounded border transition-colors',
                                 p.status === o.value
                                   ? cn(STATUS_COLORS[o.value], 'border-current')
-                                  : 'text-gray-500 border-lattice-border hover:text-white'
+                                  : 'text-gray-400 border-lattice-border hover:text-white'
                               )}
                             >{o.label}</button>
                           ))}
@@ -306,11 +309,11 @@ export function ProjectsPanel() {
 
                         <div className="space-y-1.5">
                           <p className="text-xs font-semibold text-gray-300 flex items-center gap-1.5"><ListChecks className="w-3.5 h-3.5" />Tasks</p>
-                          {p.tasks.length === 0 && <p className="text-xs text-gray-500">No tasks yet.</p>}
+                          {p.tasks.length === 0 && <p className="text-xs text-gray-400">No tasks yet.</p>}
                           {p.tasks.map(t => (
                             <label key={t.id} className="flex items-center gap-2 text-sm cursor-pointer">
                               <input type="checkbox" checked={t.done} onChange={() => toggleTask(p.id, t.id)} disabled={busy} className="accent-neon-green" />
-                              <span className={cn(t.done ? 'text-gray-500 line-through' : 'text-gray-200')}>{t.label}</span>
+                              <span className={cn(t.done ? 'text-gray-400 line-through' : 'text-gray-200')}>{t.label}</span>
                             </label>
                           ))}
                           <div className="flex gap-2 pt-1">
@@ -320,15 +323,16 @@ export function ProjectsPanel() {
                               placeholder="Add a task..." className="input-lattice text-xs flex-1"
                             />
                             <button onClick={() => addTask(p.id)} disabled={busy || !taskDraft.trim()} className="btn-neon text-xs px-3 disabled:opacity-50">Add</button>
+                            {!taskDraft.trim() && <span role="note" className="text-xs text-gray-400 self-center">Describe the task to add it.</span>}
                           </div>
                         </div>
 
                         <div className="space-y-1.5">
                           <p className="text-xs font-semibold text-gray-300 flex items-center gap-1.5"><Receipt className="w-3.5 h-3.5" />Expenses</p>
-                          {p.expenses.length === 0 && <p className="text-xs text-gray-500">No expenses logged yet.</p>}
+                          {p.expenses.length === 0 && <p className="text-xs text-gray-400">No expenses logged yet.</p>}
                           {p.expenses.map(ex => (
                             <div key={ex.id} className="flex items-center justify-between text-xs text-gray-300">
-                              <span>{ex.label} <span className="text-gray-500">({ex.kind})</span></span>
+                              <span>{ex.label} <span className="text-gray-400">({ex.kind})</span></span>
                               <span className="text-neon-green">${ex.amount.toLocaleString()}</span>
                             </div>
                           ))}
@@ -339,13 +343,15 @@ export function ProjectsPanel() {
                             />
                             <input
                               value={expenseDraft.amount} onChange={e => setExpenseDraft(d => ({ ...d, amount: e.target.value }))}
-                              type="number" placeholder="$" className="input-lattice text-xs"
+                              type="number" min={0} placeholder="$" className="input-lattice text-xs"
                             />
+                            {Number(expenseDraft.amount) < 0 && <span role="note" className="col-span-full text-xs text-rose-300">Amount can&apos;t be negative.</span>}
                             <select value={expenseDraft.kind} onChange={e => setExpenseDraft(d => ({ ...d, kind: e.target.value as HiExpense['kind'] }))} className="input-lattice text-xs">
                               {EXPENSE_KINDS.map(k => <option key={k} value={k}>{k}</option>)}
                             </select>
                           </div>
                           <button onClick={() => logExpense(p.id)} disabled={busy || !expenseDraft.label.trim() || !expenseDraft.amount} className="btn-neon green text-xs w-full disabled:opacity-50">Log expense</button>
+                          {!expenseDraft.label.trim() ? <span role="note" className="text-xs text-gray-400">Expense label is required.</span> : !expenseDraft.amount && <span role="note" className="text-xs text-gray-400">Expense amount is required.</span>}
                         </div>
                       </motion.div>
                     )}

@@ -741,8 +741,12 @@ export default function registerArActions(registerLensAction) {
     try {
       const scenes = sceneStore(ctx);
       const input = (params && params.scene) || {};
-      if (!input.name || typeof input.name !== "string") {
-        return { ok: false, error: "scene.name is required" };
+      const sceneName = typeof input.name === "string" ? input.name.trim() : "";
+      if (!sceneName) {
+        return { ok: false, error: "scene name required", message: "Scene name is required." };
+      }
+      if (sceneName.length > 200) {
+        return { ok: false, error: "invalid_input", field: "name", message: "Scene name must be 200 characters or fewer." };
       }
       const now = new Date().toISOString();
       const existing = input.id ? scenes.get(input.id) : null;
@@ -801,7 +805,7 @@ export default function registerArActions(registerLensAction) {
 
       const scene = {
         id,
-        name: input.name,
+        name: sceneName,
         anchor: VALID_ANCHORS.includes(input.anchor) ? input.anchor : "plane",
         objects: normObjects,
         behaviors: normBehaviors,
@@ -1098,6 +1102,20 @@ export default function registerArActions(registerLensAction) {
     }
   });
 
+  /** imageTargetDelete — remove an image target the caller owns. Honest not-found rejection. */
+  registerLensAction("ar", "imageTargetDelete", (ctx, artifact, params) => {
+    try {
+      const targets = targetStore(ctx);
+      const id = params && (params.targetId || params.id);
+      if (!id) return { ok: false, error: "targetId is required" };
+      if (!targets.get(id)) return { ok: false, error: "image target not found" };
+      targets.delete(id);
+      return { ok: true, result: { deleted: true, targetId: id } };
+    } catch (e) {
+      return { ok: false, error: String(e && e.message || e) };
+    }
+  });
+
   /**
    * publishScene
    * Generate a shareable publish record for an AR scene — a short link,
@@ -1134,6 +1152,47 @@ export default function registerArActions(registerLensAction) {
       };
       publishStore(ctx).set(record.id, record);
       return { ok: true, result: { publish: record } };
+    } catch (e) {
+      return { ok: false, error: String(e && e.message || e) };
+    }
+  });
+
+  /**
+   * publishBySlug
+   * Public read of a published scene. The share URL is /ar/view/<slug>.
+   * Scans every owner's publish bucket; the caller does not have to be the author.
+   */
+  registerLensAction("ar", "publishBySlug", (_ctx, _artifact, params) => {
+    try {
+      const slug = String((params && params.slug) || "").trim();
+      if (!slug) return { ok: false, error: "slug is required" };
+      const state = arState();
+      let record = null;
+      for (const bucket of state.publishes.values()) {
+        for (const item of bucket.values()) {
+          if (item && item.slug === slug) { record = item; break; }
+        }
+        if (record) break;
+      }
+      if (!record) return { ok: false, error: "publish not found" };
+      if (record.expiresAt && Date.parse(record.expiresAt) < Date.now()) {
+        return { ok: false, error: "this link has expired" };
+      }
+      let scene = null;
+      for (const bucket of state.scenes.values()) {
+        const found = bucket.get(record.sceneId);
+        if (found) { scene = found; break; }
+      }
+      const objects = Array.isArray(scene?.objects) ? scene.objects.map((obj) => ({
+        id: obj.id, name: obj.name || "Object", kind: obj.kind || "model",
+      })) : [];
+      return {
+        ok: true,
+        result: {
+          publish: record,
+          scene: scene ? { id: scene.id, name: scene.name, anchor: scene.anchor, objects } : null,
+        },
+      };
     } catch (e) {
       return { ok: false, error: String(e && e.message || e) };
     }

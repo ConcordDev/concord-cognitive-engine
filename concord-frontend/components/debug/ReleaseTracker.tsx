@@ -115,12 +115,16 @@ export function ReleaseTracker() {
         <p className="text-[10px] text-gray-400 uppercase tracking-wider">Register Deploy</p>
         <div className="grid grid-cols-2 gap-2">
           <input
+            name="version"
+            aria-label="Release version"
             value={form.version}
             onChange={(e) => setForm((f) => ({ ...f, version: e.target.value }))}
             placeholder="Version (e.g. v1.4.0)"
             className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs font-mono"
           />
           <select
+            name="environment"
+            aria-label="Deploy environment"
             value={form.environment}
             onChange={(e) => setForm((f) => ({ ...f, environment: e.target.value }))}
             className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs"
@@ -132,6 +136,8 @@ export function ReleaseTracker() {
           </select>
         </div>
         <input
+          name="notes"
+          aria-label="Release notes"
           value={form.notes}
           onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
           placeholder="Release notes (optional)"
@@ -145,6 +151,11 @@ export function ReleaseTracker() {
           {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
           Track Release
         </button>
+        {!form.version.trim() && (
+          <p role="note" className="text-[11px] text-gray-400">
+            A version is required to track a release (e.g. v1.4.0).
+          </p>
+        )}
       </div>
 
       {error && <p className="text-xs text-red-400">{error}</p>}

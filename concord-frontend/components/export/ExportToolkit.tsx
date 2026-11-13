@@ -15,6 +15,8 @@ import {
   Unlock, Upload,
 } from 'lucide-react';
 import { lensRun, api } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
+import { decryptEncEnvelope, packEncEnvelope, readEncEnvelope } from '@/lib/export/xor-fnv-archive';
 import { loadExportDtus } from '@/lib/dtu/list-pages';
 import { useSmartPolling } from '@/hooks/useSmartPolling';
 
@@ -68,6 +70,7 @@ export function ExportToolkit() {
       <PdfExport dtus={dtus} />
       <EncryptedArchive dtus={dtus} />
       <DecryptedArchive />
+      <ImportDtuPanel />
       <CloudDestinations />
       <ExportHistory />
     </div>
@@ -96,6 +99,7 @@ function ScheduledExports({ dtus }: { dtus: Dtu[] }) {
   const [format, setFormat] = useState('json');
   const [busy, setBusy] = useState(false);
   const [lastRun, setLastRun] = useState<string | null>(null);
+  const [nameError, setNameError] = useState(false);
 
   const refresh = useCallback(async () => {
     const r = await lensRun('export', 'schedule-list', {});
@@ -126,9 +130,13 @@ function ScheduledExports({ dtus }: { dtus: Dtu[] }) {
   useSmartPolling(runDue, 60_000, { immediate: false });
 
   const create = async () => {
+    // FIX-export-005: a blank name used to be silently auto-named
+    // ("daily export"); a schedule you can't tell apart in the list is a
+    // naming failure, so require the name instead.
+    if (!name.trim()) { setNameError(true); return; }
     setBusy(true);
     try {
-      const r = await lensRun('export', 'schedule-create', { name: name || `${frequency} export`, frequency, format, dataSources: ['dtus'] });
+      const r = await lensRun('export', 'schedule-create', { name: name.trim(), frequency, format, dataSources: ['dtus'] });
       if (r.data?.ok) { setName(''); await refresh(); }
     } finally { setBusy(false); }
   };
@@ -140,8 +148,9 @@ function ScheduledExports({ dtus }: { dtus: Dtu[] }) {
       <div className="mb-3 flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-0.5 text-[10px] text-zinc-400">
           Name
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Weekly backup"
+          <input value={name} onChange={(e) => { setName(e.target.value); setNameError(false); }} placeholder="Weekly backup" aria-invalid={nameError || undefined}
             className="w-44 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-white" />
+          {nameError && <span role="alert" className="text-[10px] text-rose-300">Give the schedule a name first — blank names are not auto-filled.</span>}
         </label>
         <label className="flex flex-col gap-0.5 text-[10px] text-zinc-400">
           Frequency
@@ -180,9 +189,7 @@ function ScheduledExports({ dtus }: { dtus: Dtu[] }) {
                 className={`rounded p-1 ${s.enabled ? 'text-teal-400' : 'text-zinc-600'} hover:bg-zinc-800`}>
                 <Power className="h-3.5 w-3.5" />
               </button>
-              <button onClick={() => remove(s.id)} title="Delete" className="rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-red-400">
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
+              <StickyDeleteConfirm onConfirm={() => remove(s.id)} armAriaLabel={`Delete schedule ${s.name}`} confirmAriaLabel={`Confirm delete schedule ${s.name}`} className="rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-red-400" armLabel={<Trash2 className="h-3.5 w-3.5" />} />
             </li>
           ))}
         </ul>
@@ -192,7 +199,7 @@ function ScheduledExports({ dtus }: { dtus: Dtu[] }) {
 }
 
 // ── [M] incremental / delta export ──────────────────────────────────
-function IncrementalExport({ dtus }: { dtus: Dtu[] }) {
+export function IncrementalExport({ dtus }: { dtus: Dtu[] }) {
   const [cursors, setCursors] = useState<Cursor[]>([]);
   const [result, setResult] = useState<{ changedRecords: number; unchangedRecords: number; isFirstRun: boolean; newCursor: string | null } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -211,8 +218,13 @@ function IncrementalExport({ dtus }: { dtus: Dtu[] }) {
         const res = r.data.result as { changedRecords: number; unchangedRecords: number; isFirstRun: boolean; newCursor: string | null; records: Dtu[] };
         setResult(res);
         if (commit && res.records.length > 0) {
-          dl(`concord-delta-${Date.now()}.json`, JSON.stringify(res.records, null, 2), 'application/json');
-          await lensRun('export', 'record-run', { format: 'json', itemCount: res.records.length, byteLength: JSON.stringify(res.records).length, dataSources: ['dtus'], trigger: 'incremental', filename: `concord-delta-${Date.now()}.json` });
+          // FIX-export-008: retain the exact downloaded payload in the
+          // history record so the run can be re-downloaded, like the
+          // desk panel's text formats already could.
+          const payload = JSON.stringify(res.records, null, 2);
+          const filename = `concord-delta-${Date.now()}.json`;
+          dl(filename, payload, 'application/json');
+          await lensRun('export', 'record-run', { format: 'json', itemCount: res.records.length, byteLength: JSON.stringify(res.records).length, dataSources: ['dtus'], trigger: 'incremental', filename, payload });
         }
         await refresh();
       }
@@ -318,7 +330,7 @@ function SelectiveFields({ dtus }: { dtus: Dtu[] }) {
 }
 
 // ── [S] PDF export ──────────────────────────────────────────────────
-function PdfExport({ dtus }: { dtus: Dtu[] }) {
+export function PdfExport({ dtus }: { dtus: Dtu[] }) {
   const [title, setTitle] = useState('Concord Export');
   const [busy, setBusy] = useState(false);
   const [info, setInfo] = useState<string | null>(null);
@@ -331,7 +343,10 @@ function PdfExport({ dtus }: { dtus: Dtu[] }) {
         const res = r.data.result as { base64: string; byteLength: number; recordCount: number };
         dl(`${title.replace(/[^a-z0-9]+/gi, '_')}.pdf`, b64ToArrayBuffer(res.base64), 'application/pdf');
         setInfo(`Generated ${fmtBytes(res.byteLength)} PDF with ${res.recordCount} record(s)`);
-        await lensRun('export', 'record-run', { format: 'pdf', itemCount: res.recordCount, byteLength: res.byteLength, dataSources: ['dtus'], trigger: 'manual', filename: `${title}.pdf` });
+        // FIX-export-008: retain the PDF (base64, as generated) so the
+        // history entry can be re-downloaded; history-download returns
+        // the encoding and ExportHistory decodes it back to bytes.
+        await lensRun('export', 'record-run', { format: 'pdf', itemCount: res.recordCount, byteLength: res.byteLength, dataSources: ['dtus'], trigger: 'manual', filename: `${title}.pdf`, payload: res.base64, payloadEncoding: 'base64' });
       } else {
         setInfo(r.data?.error || 'PDF generation failed');
       }
@@ -356,7 +371,7 @@ function PdfExport({ dtus }: { dtus: Dtu[] }) {
 }
 
 // ── [S] encrypted / password-protected archive ──────────────────────
-function EncryptedArchive({ dtus }: { dtus: Dtu[] }) {
+export function EncryptedArchive({ dtus }: { dtus: Dtu[] }) {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [info, setInfo] = useState<string | null>(null);
@@ -370,10 +385,13 @@ function EncryptedArchive({ dtus }: { dtus: Dtu[] }) {
       if (r.data?.ok && r.data.result) {
         const res = r.data.result as { algorithm: string; salt: string; plainChecksum: string; ciphertextBase64: string; byteLength: number };
         // Pack salt + checksum + ciphertext into a self-describing envelope so it round-trips.
-        const envelope = JSON.stringify({ algorithm: res.algorithm, salt: res.salt, plainChecksum: res.plainChecksum, ciphertextBase64: res.ciphertextBase64 });
-        dl(`concord-export-${Date.now()}.enc`, envelope, 'application/octet-stream');
+        const envelope = packEncEnvelope({ algorithm: res.algorithm, salt: res.salt, plainChecksum: res.plainChecksum, ciphertextBase64: res.ciphertextBase64 });
+        const encFilename = `concord-export-${Date.now()}.enc`;
+        dl(encFilename, envelope, 'application/octet-stream');
         setInfo(`Encrypted ${fmtBytes(res.byteLength)} archive (${res.algorithm}). Keep the password — it is required to decrypt.`);
-        await lensRun('export', 'record-run', { format: 'enc', itemCount: dtus.length, byteLength: res.byteLength, dataSources: ['dtus'], trigger: 'manual', filename: 'concord-export.enc' });
+        // FIX-export-008: retain the exact envelope downloaded above
+        // so this run can be re-downloaded from history.
+        await lensRun('export', 'record-run', { format: 'enc', itemCount: dtus.length, byteLength: res.byteLength, dataSources: ['dtus'], trigger: 'manual', filename: encFilename, payload: envelope });
       } else {
         setInfo(r.data?.error || 'Encryption failed');
       }
@@ -414,12 +432,13 @@ export function DecryptedArchive() {
     setInfo(null);
     try {
       const text = await file.text();
-      const parsed = JSON.parse(text) as { salt?: string; plainChecksum?: string; ciphertextBase64?: string };
-      if (!parsed.salt || !parsed.ciphertextBase64) { setInfo('Not a recognized .enc envelope (missing salt/ciphertext).'); return; }
+      const parsed = readEncEnvelope(text);
+      if (!parsed) { setEnvelope(null); setFileName(null); setInfo('Not a recognized .enc envelope (missing salt/ciphertext) — nothing is loaded now.'); return; }
       setEnvelope({ salt: parsed.salt, plainChecksum: parsed.plainChecksum || '', ciphertextBase64: parsed.ciphertextBase64 });
       setFileName(file.name);
     } catch {
-      setInfo('Could not parse this file as a Concord .enc envelope.');
+      setEnvelope(null); setFileName(null);
+      setInfo('Could not parse this file as a Concord .enc envelope — nothing is loaded now.');
     }
   };
 
@@ -428,18 +447,17 @@ export function DecryptedArchive() {
     if (!password) { setInfo('Password required.'); return; }
     setBusy(true); setInfo(null);
     try {
-      const r = await lensRun('export', 'decrypt-archive', {
-        password, salt: envelope.salt, ciphertextBase64: envelope.ciphertextBase64,
-        expectedChecksum: envelope.plainChecksum || undefined,
+      // Decrypt the file bytes in the browser. The envelope the user
+      // downloaded is what gets checked, not a second copy posted back.
+      const res = decryptEncEnvelope(password, {
+        algorithm: 'concord-xor-fnv/v1',
+        salt: envelope.salt,
+        plainChecksum: envelope.plainChecksum,
+        ciphertextBase64: envelope.ciphertextBase64,
       });
-      if (r.data?.ok && r.data.result) {
-        const res = r.data.result as { verified: boolean | null; checksum: string; byteLength: number; plaintext: string };
-        if (res.verified === false) { setInfo('Wrong password — checksum did not match.'); return; }
-        dl(`${(fileName || 'archive').replace(/\.enc$/, '')}.decrypted.json`, res.plaintext, 'application/json');
-        setInfo(`Decrypted ${fmtBytes(res.byteLength)}${res.verified ? ' — checksum verified' : ''}.`);
-      } else {
-        setInfo(r.data?.error || 'Decryption failed');
-      }
+      if (!res.verified) { setInfo('Wrong password — checksum did not match.'); return; }
+      dl(`${(fileName || 'archive').replace(/\.enc$/, '')}.decrypted.json`, res.plaintext, 'application/json');
+      setInfo(`Decrypted ${fmtBytes(new TextEncoder().encode(res.plaintext).length)} — checksum verified.`);
     } finally { setBusy(false); }
   };
 
@@ -458,6 +476,83 @@ export function DecryptedArchive() {
         </label>
         <button onClick={decrypt} disabled={busy || !envelope} className="flex items-center gap-1 rounded bg-teal-600 px-2.5 py-1.5 text-xs text-white hover:bg-teal-500 disabled:opacity-40">
           {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />} Decrypt + download
+        </button>
+      </div>
+      {fileName && <p className="mt-1 text-[10px] text-zinc-500">Loaded: {fileName}</p>}
+      {info && <p className="mt-2 text-[10px] text-zinc-400">{info}</p>}
+    </Panel>
+  );
+}
+
+
+// ── [S] import a .dtu export (FIX-export-002) ──────────────────────────
+// The .dtu round trip existed only halfway: every lens's ↓.dtu button
+// downloads a real binary DTU (POST /api/lens/:domain/export-dtu) and
+// the server validates + imports that exact format at
+// POST /api/lens/:domain/import-dtu (inspectDTU), but no surface called
+// it — the toolkit's only file-in panel was Decrypt. This panel closes
+// the trip: pick a .dtu file, name the lens it belongs to (the file's
+// own recorded domain is preserved on the created DTU), and the server
+// validates the file before anything is created. A too-small file is
+// refused here, before any request, on the server's own size floor.
+export function ImportDtuPanel() {
+  const [bytes, setBytes] = useState<ArrayBuffer | null>(null);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [domain, setDomain] = useState('export');
+  const [busy, setBusy] = useState(false);
+  const [info, setInfo] = useState<string | null>(null);
+
+  const onFile = async (file: File) => {
+    setInfo(null);
+    try {
+      const buf = await file.arrayBuffer();
+      if (buf.byteLength < 48) {
+        setBytes(null); setFileName(null);
+        setInfo('That file is too small to be a Concord .dtu export — nothing is loaded now.');
+        return;
+      }
+      setBytes(buf);
+      setFileName(file.name);
+    } catch {
+      setBytes(null); setFileName(null);
+      setInfo('Could not read this file — nothing is loaded now.');
+    }
+  };
+
+  const importFile = async () => {
+    if (!bytes) { setInfo('Choose a .dtu export file first.'); return; }
+    const target = domain.trim().toLowerCase();
+    if (!target) { setInfo('Name the lens this export belongs to.'); return; }
+    setBusy(true); setInfo(null);
+    try {
+      const res = await api.post(`/api/lens/${target}/import-dtu`, bytes, {
+        headers: { 'Content-Type': 'application/octet-stream' },
+      });
+      const data = res.data as { imported?: boolean; dtuId?: string; metadata?: { title?: string; domain?: string } };
+      if (!data?.imported) { setInfo('The server did not confirm the import — nothing was created.'); return; }
+      const title = data.metadata?.title ? ` "${data.metadata.title}"` : '';
+      setInfo(`Imported${title} as DTU ${data.dtuId || ''} — validated and added to your corpus.`);
+    } catch (e) {
+      const err = e as { response?: { data?: { error?: string } } };
+      setInfo(err.response?.data?.error ? `Import refused: ${err.response.data.error}` : 'Import failed — could not reach the server. Nothing was created.');
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <Panel icon={FileDown} title="Import a .dtu export" tag="round trip">
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="flex flex-col gap-0.5 text-[10px] text-zinc-400">
+          .dtu file
+          <input type="file" accept=".dtu,application/octet-stream" onChange={(e) => { const f = e.target.files?.[0]; if (f) void onFile(f); }}
+            className="w-56 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-white file:mr-2 file:rounded file:border-0 file:bg-zinc-800 file:px-2 file:py-0.5 file:text-zinc-300" />
+        </label>
+        <label className="flex flex-col gap-0.5 text-[10px] text-zinc-400">
+          Lens
+          <input type="text" value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="export"
+            className="w-36 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-white" />
+        </label>
+        <button onClick={importFile} disabled={busy || !bytes} className="flex items-center gap-1 rounded bg-teal-600 px-2.5 py-1.5 text-xs text-white hover:bg-teal-500 disabled:opacity-40">
+          {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />} Import + validate
         </button>
       </div>
       {fileName && <p className="mt-1 text-[10px] text-zinc-500">Loaded: {fileName}</p>}
@@ -544,9 +639,7 @@ function CloudDestinations() {
               <button onClick={() => push(c.id)} className="rounded border border-zinc-700 px-2 py-1 text-[10px] text-zinc-300 hover:border-teal-500">
                 Record delivery
               </button>
-              <button onClick={() => disconnect(c.id)} title="Disconnect" className="rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-red-400">
-                <X className="h-3.5 w-3.5" />
-              </button>
+              <StickyDeleteConfirm onConfirm={() => disconnect(c.id)} armLabel="Disconnect" confirmLabel="Confirm disconnect?" armAriaLabel={`Disconnect ${c.accountLabel}`} confirmAriaLabel={`Confirm disconnect ${c.accountLabel}`} className="rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-red-400" />
             </li>
           ))}
         </ul>
@@ -556,7 +649,7 @@ function CloudDestinations() {
 }
 
 // ── [S] export history log + re-download ────────────────────────────
-function ExportHistory() {
+export function ExportHistory() {
   const [runs, setRuns] = useState<RunRecord[]>([]);
   const [totalBytes, setTotalBytes] = useState(0);
 
@@ -576,8 +669,11 @@ function ExportHistory() {
   const redownload = async (run: RunRecord) => {
     const r = await lensRun('export', 'history-download', { id: run.id });
     if (r.data?.ok && r.data.result) {
-      const res = r.data.result as { filename: string; payload: string };
-      dl(res.filename, res.payload, 'application/octet-stream');
+      const res = r.data.result as { filename: string; payload: string; encoding?: string };
+      // FIX-export-008: payloads retained as base64 (PDF) decode back
+      // to bytes; utf8 payloads (JSON, envelopes) download as-is.
+      if (res.encoding === 'base64') dl(res.filename, b64ToArrayBuffer(res.payload), 'application/octet-stream');
+      else dl(res.filename, res.payload, 'application/octet-stream');
     }
   };
   const clear = async () => { await lensRun('export', 'history-clear', {}); await refresh(); };
@@ -607,7 +703,7 @@ function ExportHistory() {
                     <Download className="h-3 w-3" /> Re-download
                   </button>
                 ) : (
-                  <span className="text-[10px] text-zinc-400">no payload retained</span>
+                  <span className="text-[10px] text-zinc-400">No file retained for this run — re-run the export to download it again.</span>
                 )}
               </li>
             ))}

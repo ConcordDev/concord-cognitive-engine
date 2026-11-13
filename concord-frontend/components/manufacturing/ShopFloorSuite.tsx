@@ -48,7 +48,7 @@ function Field({ name, value, onChange, type = 'text', placeholder }: {
   return (
     <div>
       <label className={label}>{name}</label>
-      <input
+      <input id="manufacturing-value-2" name="value-2"
         className={input}
         type={type}
         value={value}
@@ -142,7 +142,7 @@ function WorkInstructionsTab() {
           <div className="mt-3">
             <label className={label}>Add step</label>
             <div className="flex gap-2">
-              <input
+              <input id="manufacturing-torque-bolts-to-40-nm" name="torque-bolts-to-40-nm" aria-label="Torque bolts to 40 Nm"
                 className={input}
                 value={stepText}
                 placeholder="Torque bolts to 40 Nm"
@@ -280,7 +280,7 @@ function IoTTab() {
         <div className="grid gap-3 sm:grid-cols-3">
           <div>
             <label className={label}>Machine state</label>
-            <select className={input} value={ingest.machineState} onChange={(e) => setIngest({ ...ingest, machineState: e.target.value })}>
+            <select id="manufacturing-machinestate" name="machinestate" className={input} value={ingest.machineState} onChange={(e) => setIngest({ ...ingest, machineState: e.target.value })}>
               <option value="running">running</option>
               <option value="idle">idle</option>
               <option value="down">down</option>
@@ -347,11 +347,17 @@ function SchedulingTab() {
   const [gantt, setGantt] = useState<any>(null);
   const [err, setErr] = useState('');
   const [form, setForm] = useState({ name: '', resource: 'Line A', durationHours: '', priority: '3', dueDate: '' });
+  // FIX-manufacturing-011: schedule-gantt anchors unpinned jobs at the
+  // horizon start, which defaults to the wall clock — so every reload
+  // re-placed the same jobs at a new start time and the Gantt drifted.
+  // The horizon is pinned once for this tab's lifetime and sent with
+  // every load, so a job keeps the start time it was first shown with.
+  const [horizonStart] = useState(() => new Date().toISOString());
 
   const load = useCallback(async () => {
-    const d = await run('schedule-gantt');
+    const d = await run('schedule-gantt', { horizonStart });
     if (d.ok) setGantt(d.result);
-  }, []);
+  }, [horizonStart]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, []);
 
@@ -399,14 +405,14 @@ function SchedulingTab() {
           <Field name="Job / product" value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="WO-0301 Pump body" />
           <div>
             <label className={label}>Resource</label>
-            <select className={input} value={form.resource} onChange={(e) => setForm({ ...form, resource: e.target.value })}>
+            <select id="manufacturing-resource" name="resource" className={input} value={form.resource} onChange={(e) => setForm({ ...form, resource: e.target.value })}>
               {['Line A', 'Line B', 'Line C', 'CNC Cell', 'Weld Bay'].map((r) => <option key={r}>{r}</option>)}
             </select>
           </div>
           <Field name="Duration (hours)" type="number" value={form.durationHours} onChange={(v) => setForm({ ...form, durationHours: v })} />
           <div>
             <label className={label}>Priority (1=high)</label>
-            <select className={input} value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })}>
+            <select id="manufacturing-priority" name="priority" className={input} value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })}>
               {[1, 2, 3, 4, 5].map((p) => <option key={p}>{p}</option>)}
             </select>
           </div>
@@ -476,7 +482,7 @@ function SchedulingTab() {
                         : <span className="text-emerald-400">on time</span>}
                     </td>
                     <td className="py-1.5">
-                      <select
+                      <select id="manufacturing-resource-2" name="resource-2"
                         className="rounded border border-zinc-700 bg-zinc-900 px-1.5 py-0.5 text-xs text-zinc-200"
                         value={j.resource}
                         onChange={(e) => reschedule(j.id, e.target.value)}
@@ -578,7 +584,7 @@ function TraceabilityTab() {
           <Field name="Material" value={form.material} onChange={(v) => setForm({ ...form, material: v })} placeholder="6061-T6 Aluminium" />
           <div>
             <label className={label}>Kind</label>
-            <select className={input} value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })}>
+            <select id="manufacturing-kind" name="kind" className={input} value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })}>
               <option value="raw_material">raw_material</option>
               <option value="wip">wip</option>
               <option value="finished_good">finished_good</option>
@@ -709,13 +715,13 @@ function AndonTab() {
           <Field name="Reason" value={form.reason} onChange={(v) => setForm({ ...form, reason: v })} placeholder="Coolant low" />
           <div>
             <label className={label}>Category</label>
-            <select className={input} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
+            <select id="manufacturing-category" name="category" className={input} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
               {['downtime', 'quality', 'material', 'safety'].map((c) => <option key={c}>{c}</option>)}
             </select>
           </div>
           <div>
             <label className={label}>Severity</label>
-            <select className={input} value={form.severity} onChange={(e) => setForm({ ...form, severity: e.target.value })}>
+            <select id="manufacturing-severity" name="severity" className={input} value={form.severity} onChange={(e) => setForm({ ...form, severity: e.target.value })}>
               {['low', 'medium', 'high', 'critical'].map((c) => <option key={c}>{c}</option>)}
             </select>
           </div>
@@ -824,7 +830,7 @@ function NCRTab() {
           <Field name="Defect type" value={form.defectType} onChange={(v) => setForm({ ...form, defectType: v })} placeholder="cosmetic" />
           <div>
             <label className={label}>Severity</label>
-            <select className={input} value={form.severity} onChange={(e) => setForm({ ...form, severity: e.target.value })}>
+            <select id="manufacturing-severity-2" name="severity-2" className={input} value={form.severity} onChange={(e) => setForm({ ...form, severity: e.target.value })}>
               {['minor', 'major', 'critical'].map((c) => <option key={c}>{c}</option>)}
             </select>
           </div>
@@ -866,11 +872,11 @@ function NCRTab() {
               </div>
               {n.stage !== 'closed' && (
                 <div className="mt-2 space-y-2">
-                  <textarea className={input} rows={2} placeholder="Root cause"
+                  <textarea id="manufacturing-root-cause" name="root-cause" aria-label="Root cause" className={input} rows={2} placeholder="Root cause"
                     value={c.rootCause} onChange={(e) => setCapa({ ...capa, [n.id]: { ...c, rootCause: e.target.value } })} />
-                  <textarea className={input} rows={2} placeholder="Corrective action"
+                  <textarea id="manufacturing-corrective-action" name="corrective-action" aria-label="Corrective action" className={input} rows={2} placeholder="Corrective action"
                     value={c.correctiveAction} onChange={(e) => setCapa({ ...capa, [n.id]: { ...c, correctiveAction: e.target.value } })} />
-                  <textarea className={input} rows={2} placeholder="Preventive action"
+                  <textarea id="manufacturing-preventive-action" name="preventive-action" aria-label="Preventive action" className={input} rows={2} placeholder="Preventive action"
                     value={c.preventiveAction} onChange={(e) => setCapa({ ...capa, [n.id]: { ...c, preventiveAction: e.target.value } })} />
                   <button className={btnPrimary} onClick={() => advance(n.id, c)}>
                     <ChevronRight className="h-4 w-4" /> Save &amp; advance to next stage
@@ -889,6 +895,7 @@ function NCRTab() {
 function MaintenanceTab() {
   const [sched, setSched] = useState<any>(null);
   const [err, setErr] = useState('');
+  const [doneNote, setDoneNote] = useState('');
   const [form, setForm] = useState({ machineId: '', task: '', intervalDays: '', assignedTo: '' });
 
   const load = useCallback(async () => {
@@ -912,10 +919,15 @@ function MaintenanceTab() {
   const complete = async (planId: string) => {
     // S5: this leg used to swallow every failure — no error, no reload —
     // so any refusal read as a dead button. Surface it like create does.
+    // FIX-manufacturing-011: success was silent too — the only sign was
+    // the row's dates quietly changing on reload. Name it.
     setErr('');
+    setDoneNote('');
     try {
       const d = await run('maintenance-complete', { planId });
       if (!d.ok) { setErr(d.error || 'Could not mark done.'); return; }
+      const plan = (sched?.plans || []).find((p: any) => p.id === planId);
+      setDoneNote(`Marked “${plan?.task || 'maintenance plan'}” done — its next due date has been rescheduled below.`);
       load();
     } catch (e) {
       setErr(String((e as Error)?.message || e));
@@ -963,6 +975,8 @@ function MaintenanceTab() {
           <div className={card}><p className="text-xs text-zinc-400">Due soon</p><p className={`text-lg font-bold ${sched.dueSoonCount > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>{sched.dueSoonCount}</p></div>
         </div>
       )}
+
+      {doneNote && <p role="status" className="rounded border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">{doneNote}</p>}
 
       {plans.length === 0 ? (
         <p className="text-sm text-zinc-400">No maintenance plans.</p>
@@ -1067,7 +1081,7 @@ function InventoryTab() {
           <Field name="Name" value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
           <div>
             <label className={label}>Kind</label>
-            <select className={input} value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })}>
+            <select id="manufacturing-kind-2" name="kind-2" className={input} value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })}>
               <option value="raw_material">raw_material</option>
               <option value="wip">wip</option>
               <option value="finished_good">finished_good</option>

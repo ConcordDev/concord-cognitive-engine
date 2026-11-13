@@ -9,9 +9,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import {
   Beaker, Plus, Loader2, Trash2, Square, Activity, CheckCircle, XCircle, X, LineChart,
 } from 'lucide-react';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface MetricPoint {
   epoch: number; trainLoss: number; valLoss: number; accuracy: number; learningRate: number;
@@ -178,10 +180,17 @@ export function ExperimentTracker() {
                       </button>
                     </>
                   )}
-                  <button aria-label="Delete" className="btn-neon small pink" disabled={busy === selected.id}
-                    onClick={() => remove(selected.id)}>
-                    {confirmRemoveId === selected.id ? 'Confirm?' : <Trash2 className="w-3 h-3" />}
-                  </button>
+                  <StickyDeleteConfirm
+                    armed={confirmRemoveId === selected.id}
+                    onArm={() => setConfirmRemoveId(selected.id)}
+                    onConfirm={() => { void remove(selected.id); }}
+                    onCancel={() => setConfirmRemoveId(null)}
+                    disabled={busy === selected.id}
+                    armLabel={<Trash2 className="w-3 h-3" />}
+                    armAriaLabel="Delete"
+                    confirmLabel={`Delete "${selected.name}"?`}
+                    className="btn-neon small pink"
+                  />
                 </div>
               </div>
               {manualOpen && selected.status === 'running' && (
@@ -275,6 +284,9 @@ function NewExperimentModal({ onClose, onCreated }: { onClose: () => void; onCre
 
   const create = async () => {
     if (!cfg.name.trim()) { setError('Name required'); return; }
+    if (cfg.name.trim().length > 200) { setError('Name must be 200 characters or fewer.'); return; }
+    if (!Number.isInteger(cfg.epochs) || cfg.epochs < 1) { setError('Epochs must be a whole number that is 1 or greater.'); return; }
+    if (!Number.isInteger(cfg.batchSize) || cfg.batchSize < 1) { setError('Batch size must be a whole number that is 1 or greater.'); return; }
     setBusy(true); setError(null);
     const r = await lensRun('ml', 'experiment-start', cfg);
     if (r.data?.ok) onCreated();
@@ -282,9 +294,9 @@ function NewExperimentModal({ onClose, onCreated }: { onClose: () => void; onCre
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={onClose} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
       <div className="bg-lattice-bg border border-lattice-border rounded-xl w-full max-w-lg p-6 space-y-4"
-        onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold">New Experiment</h2>
           <button onClick={onClose} className="p-1 hover:bg-white/10 rounded" aria-label="Close"><X className="w-5 h-5" /></button>

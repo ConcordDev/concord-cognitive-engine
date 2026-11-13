@@ -26,6 +26,8 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
+import { useLensStatePersistence } from '@/lib/lens-state-persistence';
 
 type Tab = 'overview' | 'console' | 'pipeline' | 'nerve' | 'empirical' | 'scope' | 'events' | 'analysis';
 
@@ -66,10 +68,10 @@ function EventStreamPanel({ events = [], connected }: { events?: Array<{ type: s
         </h2>
         <div className="flex items-center gap-3">
           {eventTypes.length > 0 && (
-            <select
+            <select aria-label="Filter by event type"
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
-              className="input-lattice text-xs py-1"
+              className="min-h-11 input-lattice text-xs py-1"
             >
               <option value="">All types ({safeEvents.length})</option>
               {eventTypes.map(t => (
@@ -110,7 +112,7 @@ function EventStreamPanel({ events = [], connected }: { events?: Array<{ type: s
               <div key={`${event.timestamp}-${i}`}>
                 <div
                   className="flex items-center gap-3 px-4 py-2 bg-lattice-elevated rounded-lg border border-lattice-border cursor-pointer hover:border-lattice-border/80 transition-colors"
-                  onClick={() => setShowRaw(isExpanded ? null : i)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                  onClick={() => setShowRaw(isExpanded ? null : i)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                   <Zap className={`w-3 h-3 ${colors[event.type] || 'text-gray-400'} shrink-0`} />
                   <span className={`text-xs font-mono ${colors[event.type] || 'text-gray-400'}`}>
                     {event.type}
@@ -284,7 +286,20 @@ function OverviewDashboard() {
 export default function PlatformPage() {
   useLensNav('platform');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('platform');
-  const [activeTab, setActiveTab] = useState<Tab>('overview');
+  // FIX-platform-005: the selected view is restored on reload instead of
+  // resetting to Overview — the shared lens UI-state store, following the
+  // ConsultingWorkspace restore idiom. Merged writes keep PlatformRepos'
+  // topic key (same lens entry) intact.
+  const { restore, persist } = useLensStatePersistence('platform');
+  const [initialState] = useState(() => restore());
+  const [activeTab, setActiveTabState] = useState<Tab>(() => {
+    const saved = initialState?.activeTab;
+    return typeof saved === 'string' && TABS.some((t) => t.id === saved) ? (saved as Tab) : 'overview';
+  });
+  const setActiveTab = (next: Tab) => {
+    setActiveTabState(next);
+    persist({ ...(restore() ?? {}), activeTab: next });
+  };
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
   useLensCommand(
@@ -325,7 +340,7 @@ export default function PlatformPage() {
             <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs ${connected ? 'bg-emerald-500/10 text-emerald-300' : 'bg-white/5 text-zinc-400'}`}>
               <span className={`h-2 w-2 rounded-full ${connected ? 'animate-pulse bg-emerald-400' : 'bg-zinc-500'}`} />
               {connected ? 'Live' : 'Polling'}
-              {events.length > 0 && <span className="text-[10px] text-zinc-500">({events.length} events)</span>}
+              {events.length > 0 && <span className="text-[10px] text-zinc-400">({events.length} events)</span>}
             </span>
           </>
         }

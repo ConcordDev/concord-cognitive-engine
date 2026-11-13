@@ -28,6 +28,36 @@ import {
   measureReactionMs,
 } from "../lib/fishing.js";
 import { actorId as authzActorId, isAdmin } from "../lib/lens-authz.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
+
+function fishingExportRows(ctx) {
+  const db = ctx?.db;
+  const userId = actorId(ctx);
+  if (!db || !userId) return [];
+  try {
+    const catches = db.prepare(`
+      SELECT id, world_id, item_id, item_name, quantity, acquired_at
+      FROM player_inventory
+      WHERE user_id = ? AND item_type = 'raw_fish'
+      ORDER BY acquired_at DESC LIMIT 200
+    `).all(userId);
+    return catches.map((row) => ({
+      id: String(row.id || row.item_id),
+      type: "catch",
+      title: row.item_name || "Catch",
+      createdAt: row.acquired_at || null,
+      updatedAt: row.acquired_at || null,
+      data: {
+        name: row.item_name || null,
+        quantity: row.quantity,
+        itemId: row.item_id,
+        worldId: row.world_id,
+      },
+    }));
+  } catch {
+    return [];
+  }
+}
 
 function actorId(ctx) {
   return authzActorId(ctx);
@@ -39,6 +69,7 @@ function clampStr(v, n, fallback) {
 }
 
 export default function registerFishingMacros(register) {
+  registerLensExportProvider("fishing", fishingExportRows);
   // ── reads (headless-safe) ──────────────────────────────────────────────
 
   /**
@@ -110,6 +141,62 @@ export default function registerFishingMacros(register) {
       return { ok: true, catches: [], reason: e?.message };
     }
   }, { note: "recent raw_fish catches for the user" });
+
+  /**
+   * fishing.catch-delete — remove one of the caller's own catches from
+   * the log (a player_inventory raw_fish row). Owner-scoped in the
+   * WHERE clause: another angler's catch id simply matches nothing.
+   * input: { catchId }
+   */
+  register("fishing", "catch-delete", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const actor = actorId(ctx);
+    if (!actor) return { ok: false, reason: "no_user" };
+    if (!input.catchId) return { ok: false, reason: "missing_catch_id" };
+    try {
+      const r = db.prepare(`
+        DELETE FROM player_inventory
+        WHERE id = ? AND user_id = ? AND item_type = 'raw_fish'
+      `).run(input.catchId, actor);
+      if (!r.changes) return { ok: false, reason: "catch_not_found" };
+      return { ok: true, deleted: input.catchId };
+    } catch (e) {
+      return { ok: false, reason: e?.message || "db_error" };
+    }
+  }, { note: "delete one of your own catches" });
+
+  /**
+   * fishing.catch-annotate — set a note / label on one of the caller's
+   * own catches (merged into the row's metadata JSON; a blank note
+   * clears it). Owner-scoped like catch-delete.
+   * input: { catchId, note }
+   */
+  register("fishing", "catch-annotate", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const actor = actorId(ctx);
+    if (!actor) return { ok: false, reason: "no_user" };
+    if (!input.catchId) return { ok: false, reason: "missing_catch_id" };
+    const note = String(input.note || "").trim().slice(0, 300);
+    try {
+      const row = db.prepare(`
+        SELECT metadata FROM player_inventory
+        WHERE id = ? AND user_id = ? AND item_type = 'raw_fish'
+      `).get(input.catchId, actor);
+      if (!row) return { ok: false, reason: "catch_not_found" };
+      let meta = {};
+      try { meta = JSON.parse(row.metadata || "{}") || {}; } catch { meta = {}; }
+      if (note) meta.note = note; else delete meta.note;
+      db.prepare(`
+        UPDATE player_inventory SET metadata = ?
+        WHERE id = ? AND user_id = ? AND item_type = 'raw_fish'
+      `).run(JSON.stringify(meta), input.catchId, actor);
+      return { ok: true, catchId: input.catchId, note: note || null };
+    } catch (e) {
+      return { ok: false, reason: e?.message || "db_error" };
+    }
+  }, { note: "annotate one of your own catches" });
 
   /**
    * fishing.session — inspect an open cast session (bite timing). Read-only.

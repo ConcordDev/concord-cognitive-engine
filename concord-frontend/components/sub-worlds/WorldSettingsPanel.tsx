@@ -5,6 +5,7 @@
 import { useState } from 'react';
 import { X, Trash2, Archive, UserPlus, Pause, Play } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import type { SubWorld } from './WorldCard';
 
 const KINDS = ['physics_simulator', 'research_zone', 'concord_substrate'];
@@ -36,6 +37,11 @@ export function WorldSettingsPanel({
   };
 
   const saveSettings = async () => {
+    const cap = Number(capacity);
+    if (!Number.isInteger(cap) || cap < 1 || cap > 200) {
+      flash('Capacity must be a whole number from 1 to 200.');
+      return;
+    }
     setBusy(true);
     const r = await lensRun('sub_worlds', 'update_settings', {
       worldId: world.world_id,
@@ -51,7 +57,7 @@ export function WorldSettingsPanel({
       flash('Settings saved.');
       onChanged();
     } else {
-      flash(`Failed: ${r.data?.error || 'unknown'}`);
+      flash(`Failed: ${r.data?.message || r.data?.error || 'unknown'}`);
     }
   };
 
@@ -250,13 +256,14 @@ export function WorldSettingsPanel({
           >
             <Archive className="h-3.5 w-3.5" /> Archive
           </button>
-          <button
-            type="button"
-            onClick={() => archive(true)}
+          <StickyDeleteConfirm
+            onConfirm={() => { void archive(true); }}
+            armLabel={<><Trash2 className="h-3.5 w-3.5" /> Delete</>}
+            armAriaLabel={`Delete ${world.name}`}
+            confirmAriaLabel={`Confirm delete ${world.name}`}
+            confirmLabel="Delete this world?"
             className="flex items-center gap-1 rounded-lg border border-rose-800/60 bg-rose-950/40 px-3 py-1.5 text-xs text-rose-300 hover:bg-rose-900/40 focus:outline-none focus:ring-2 focus:ring-amber-500"
-          >
-            <Trash2 className="h-3.5 w-3.5" /> Delete
-          </button>
+          />
         </div>
       </div>
     </div>

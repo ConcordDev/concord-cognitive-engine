@@ -566,6 +566,12 @@ export default function registerResearchActions(registerLensAction) {
     if (!s.dailyByDate.has(userId)) s.dailyByDate.set(userId, new Map());
     const dailyMap = s.dailyByDate.get(userId);
     let noteId = dailyMap.get(date);
+    if (!noteId && params.create === false) {
+      // FIX-research-003: opening the Daily tab used to mint a note the
+      // user never asked for. A create:false read reports the day as
+      // unstarted; the tab's explicit Start button creates it.
+      return { ok: true, result: { note: null, created: false } };
+    }
     if (!noteId) {
       // Create new daily note
       if (!s.notes.has(userId)) s.notes.set(userId, new Map());
@@ -1767,7 +1773,21 @@ export default function registerResearchActions(registerLensAction) {
     try {
       if (provider === "arxiv") {
         const url = `http://export.arxiv.org/api/query?search_query=${arxivTextSearchQuery(query)}&start=0&max_results=${limit}&sortBy=relevance`;
-        const xml = await (await fetch(url, { signal: AbortSignal.timeout(9000) })).text();
+        // FIX-research-006: one retry on a transient failure, then a
+        // provider-named unreachable error — the panel's only options
+        // used to be results or a bare "arXiv unreachable" with no
+        // status and no way forward.
+        let xml = null;
+        let lastErr = null;
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            xml = await (await fetch(url, { signal: AbortSignal.timeout(9000) })).text();
+            break;
+          } catch (e) { lastErr = e; if (attempt === 0) await new Promise((r) => setTimeout(r, 600)); }
+        }
+        if (xml === null) {
+          return { ok: false, reason: "arxiv_unreachable", error: `arXiv is unreachable right now (${String(lastErr?.message || lastErr)}) — it may be a brief outage; try again in a moment.` };
+        }
         const results = mapArxivWork(xml);
         return { ok: true, result: { provider, query, count: results.length, results } };
       }

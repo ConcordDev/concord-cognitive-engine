@@ -7,6 +7,15 @@ import type { TimelineEvent } from '@/components/viz';
 
 export const DOMAIN = 'inheritance';
 
+/** A typed heir-slot price. 0 is a real price. Blank or junk is not. */
+export function heirSlotPriceCc(raw: string): number | null {
+  const text = raw.trim();
+  if (!text) return null;
+  const n = Number(text);
+  if (!Number.isFinite(n) || n < 0 || n > 1_000_000) return null;
+  return n;
+}
+
 export interface Listing {
   id: number;
   dying_npc_id: string;

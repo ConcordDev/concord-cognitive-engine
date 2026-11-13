@@ -441,13 +441,30 @@ export default function registerDisputesActions(registerLensAction) {
       const stats = {
         total: all.length,
         open: all.filter((c) => c.status === "open").length,
-        active: all.filter((c) => !["resolved", "dismissed"].includes(c.status)).length,
+        active: all.filter((c) => !["resolved", "dismissed", "withdrawn"].includes(c.status)).length,
         escalated: all.filter((c) => c.status === "escalated").length,
         resolved: all.filter((c) => c.status === "resolved").length,
         slaBreached: all.filter((c) => c.slaDeadline && new Date(c.slaDeadline).getTime() < Date.now() && !["resolved", "dismissed"].includes(c.status)).length,
         escrowHeld: all.filter((c) => c.escrowFrozen).reduce((sum, c) => sum + c.escrowAmount, 0),
       };
       return { ok: true, result: { cases: list.map((c) => publicCase(s, ctx, c, userId)), stats } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  registerLensAction("disputes", "case-withdraw", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getDisputesState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = actId(ctx);
+      const c = s.casesById.get(String(params.id || params.caseId || ""));
+      if (!c) return { ok: false, error: "case not found" };
+      if (c.claimantId !== userId) return { ok: false, error: "only the filer can withdraw" };
+      if (["resolved", "dismissed", "withdrawn"].includes(c.status)) return { ok: false, error: "case already closed" };
+      c.status = "withdrawn";
+      c.updatedAt = nowIso();
+      c.history.push({ at: nowIso(), event: "withdrawn", actor: userId });
+      saveState();
+      return { ok: true, result: { case: publicCase(s, ctx, c, userId) } };
     } catch (e) { return { ok: false, error: e.message }; }
   });
 

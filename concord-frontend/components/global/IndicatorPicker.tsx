@@ -62,10 +62,10 @@ export function IndicatorPicker({
     <div className="space-y-1">
       <span className="text-[10px] uppercase tracking-wider text-zinc-400">{label}</span>
       <div className="flex gap-2">
-        <select
+        <select aria-label={label}
           value={known ? value : '__custom__'}
           onChange={(e) => { if (e.target.value !== '__custom__') onChange(e.target.value); }}
-          className="min-w-0 flex-1 rounded border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100"
+          className="min-h-11 min-w-0 flex-1 rounded border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100"
         >
           {POPULAR_INDICATORS.map((p) => (
             <option key={p.code} value={p.code}>{p.label}</option>

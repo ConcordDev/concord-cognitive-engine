@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DeprecatedLensNotice } from '@/components/lens/DeprecatedLensNotice';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { SufferingRef } from '@/components/suffering/SufferingRef';
@@ -109,6 +110,7 @@ export default function SufferingLensPage() {
     <LensShell lensId="suffering" asMain={false}>
 
       <DepthBadge lensId="suffering" size="sm" className="ml-2" />
+      <DeprecatedLensNotice lensId="suffering" />
       <NorthStarFrame
         lensId="suffering"
         crumb="Suffering"

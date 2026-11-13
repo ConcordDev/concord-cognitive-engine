@@ -337,6 +337,17 @@ export default function registerConstructionActions(registerLensAction) {
       if (!state.dailyLogs.has(userId)) state.dailyLogs.set(userId, []);
       const rows = state.dailyLogs.get(userId);
       const manpower = Array.isArray(params.manpower) ? params.manpower : [];
+      for (const m of manpower) {
+        if (m?.workers != null && m.workers !== "" && !(Number(m.workers) >= 0)) {
+          return { ok: false, error: "invalid_input", message: "Workers must be a number that is 0 or greater." };
+        }
+        if (m?.hours != null && m.hours !== "" && !(Number(m.hours) >= 0)) {
+          return { ok: false, error: "invalid_input", message: "Hours must be a number that is 0 or greater." };
+        }
+      }
+      if (params.tempHigh != null && params.tempHigh !== "" && params.tempLow != null && params.tempLow !== "" && Number(params.tempHigh) < Number(params.tempLow)) {
+        return { ok: false, error: "invalid_input", message: "The high temperature has to be at least the low." };
+      }
       const totalManHours = manpower.reduce((s, m) => s + (parseFloat(m.workers) || 0) * (parseFloat(m.hours) || 0), 0);
       const log = {
         id: uid("dlog"), jobId: params.jobId || null, date,
@@ -461,7 +472,7 @@ export default function registerConstructionActions(registerLensAction) {
       const title = String(params.title || "").trim();
       if (!title) return { ok: false, error: "title required" };
       const amount = parseFloat(params.amount);
-      if (!Number.isFinite(amount)) return { ok: false, error: "amount must be a number" };
+      if (!Number.isFinite(amount) || amount < 0) return { ok: false, error: "invalid_input", message: "Amount must be a number that is 0 or greater." };
       if (!state.changeOrders.has(userId)) state.changeOrders.set(userId, []);
       const rows = state.changeOrders.get(userId);
       const co = {
@@ -624,15 +635,19 @@ export default function registerConstructionActions(registerLensAction) {
       const description = String(params.description || "").trim();
       if (!costCode || !description) return { ok: false, error: "costCode and description required" };
       const budgetAmount = parseFloat(params.budgetAmount);
-      if (!Number.isFinite(budgetAmount)) return { ok: false, error: "budgetAmount must be a number" };
+      const committed = params.committed == null || params.committed === "" ? 0 : parseFloat(params.committed);
+      const actual = params.actual == null || params.actual === "" ? 0 : parseFloat(params.actual);
+      if (![budgetAmount, committed, actual].every((n) => Number.isFinite(n) && n >= 0)) {
+        return { ok: false, error: "invalid_input", message: "Budget, committed, and actual must be numbers that are 0 or greater." };
+      }
       if (!state.budgets.has(userId)) state.budgets.set(userId, []);
       const rows = state.budgets.get(userId);
       const line = {
         id: uid("bl"), jobId: params.jobId || null, costCode, description,
         category: params.category || "General",
         budgetAmount: Math.round(budgetAmount * 100) / 100,
-        committed: Math.round((parseFloat(params.committed) || 0) * 100) / 100,
-        actual: Math.round((parseFloat(params.actual) || 0) * 100) / 100,
+        committed: Math.round(committed * 100) / 100,
+        actual: Math.round(actual * 100) / 100,
         createdAt: new Date().toISOString(),
       };
       rows.push(line);

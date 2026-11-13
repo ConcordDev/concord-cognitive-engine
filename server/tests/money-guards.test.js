@@ -125,6 +125,7 @@ describe("overpay rows and INC money/state holes", () => {
 
   it("plumbing invoiceRecordPayment refuses an overpay (INC-114)", () => {
     const inv = call("plumbing", "invoiceFromQuote", {
+      client: "Acme",
       lines: [{ name: "Pipe", quantity: 1, unitPrice: 100 }],
     }).result.invoice;
     assert.equal(call("plumbing", "invoiceRecordPayment", { invoiceId: inv.id, amount: 1e9 }).error, "amount_exceeds_balance");

@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, DollarSign, TrendingDown, Ticket } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
 
@@ -141,9 +142,14 @@ export function RxPricePanel() {
                   <li key={q.id} className={cn('flex items-center justify-between text-xs px-2 py-1.5 rounded-lg',
                     q.isBest ? 'bg-emerald-950/40 text-emerald-200' : 'text-zinc-300')}>
                     <span>{q.rank}. {q.pharmacyName}</span>
-                    <span className="font-mono">
+                    <span className="flex items-center gap-2 font-mono">
                       ${q.effectivePrice}
                       {q.couponPrice != null && <span className="text-zinc-400 ml-1 line-through">${q.cashPrice}</span>}
+                      <StickyDeleteConfirm
+                        onConfirm={async () => { await lensRun('pharmacy', 'price-delete', { id: q.id }); setComparison(null); await refresh(); }}
+                        armLabel="Remove"
+                        className="text-[10px] text-rose-300"
+                      />
                     </span>
                   </li>
                 ))}

@@ -132,6 +132,36 @@ export function MaterialsDegradationPanel({ engine }: { engine: FrontierEngineDe
   }, [selectedConstants, mechanism]);
 
   async function runCheck() {
+    // FIX-frontier-002: cleared or out-of-range fields used to sail
+    // straight to the server and come back as a 'lens_failed' refusal
+    // (a cleared number input reads as 0 through Number('')). The
+    // fields' own declared ranges (the NumberField min/max props) are
+    // checked here, before the request, and named in the panel's
+    // refusal line.
+    const checks: Array<[string, number, number, number]> = [
+      ['Span (m)', spanM, 0.1, 5],
+      ['Section width (mm)', widthMm, 5, 500],
+      ['Section height (mm)', heightMm, 2, 200],
+      ['Tip load (N)', tipLoadN, 1, 100000],
+      ...(mechanism === 'fatigue'
+        ? ([
+            ['Stress range ΔΣ (MPa)', deltaSigmaMpa, 1, 1000],
+            ['Geometry factor Y', crackY, 0.5, 3],
+            ['Initial crack a0 (mm)', a0Mm, 0, heightMm],
+            ['Cycles / year', cyclesPerYear, 1, 100000],
+          ] as Array<[string, number, number, number]>)
+        : ([['Service temperature (K)', temperatureK, 250, 400]] as Array<[string, number, number, number]>)),
+    ];
+    const bad = checks.filter(([, v, min, max]) => !Number.isFinite(v) || v < min || v > max);
+    if (bad.length > 0) {
+      setResult(null);
+      setReason(bad.map(([label, , min, max]) => `${label} must be between ${min} and ${max}.`).join(' '));
+      setStatus('refused');
+      // The Verify cell keys its display on runCount — a refused
+      // attempt is a run, or the reason would never render.
+      setRunCount((n) => n + 1);
+      return;
+    }
     setStatus('loading');
     setReason(null);
     setResult(null);

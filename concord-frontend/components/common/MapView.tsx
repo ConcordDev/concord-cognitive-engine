@@ -79,6 +79,10 @@ export default function MapView({
             }</div>`,
           );
         const marker = new maplibregl.Marker().setLngLat(toLngLat([m.lat, m.lng])).setPopup(popup).addTo(map);
+        // MapLibre names every marker element "Map marker" by default;
+        // give it the marker's own label so assistive tech can tell
+        // places apart (FIX-atlas-007).
+        marker.getElement().setAttribute('aria-label', m.label);
         if (onMarkerClickRef.current) {
           marker.getElement().style.cursor = 'pointer';
           // The listener lives on the marker's own DOM element; mk.remove()

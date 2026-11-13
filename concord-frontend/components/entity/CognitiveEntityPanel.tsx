@@ -126,7 +126,7 @@ export function CognitiveEntityPanel({ entityId, entityName, onClose }: { entity
                   <div key={a.id || i} className="flex items-center gap-2 text-[11px] text-gray-400">
                     <span className="text-amber-400">avoids:</span>
                     <span className="truncate flex-1">{a.source}</span>
-                    <span className="text-gray-600 tabular-nums">{Math.round(a.strength * 100)}%</span>
+                    <span className="text-gray-400 tabular-nums">{Math.round(a.strength * 100)}%</span>
                   </div>
                 ))}
               </div>

@@ -10,6 +10,7 @@ import { Loader2, Plus, Star, Sparkles, ChevronLeft, Trash2, Check } from 'lucid
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { AstronomyKeepMenu } from './AstronomyKeepMenu';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import type { AstroObservation } from './astronomyReport';
 
 interface Target {
@@ -33,6 +34,7 @@ export function AstroTargetsPanel({ onChange }: { onChange: () => void }) {
   const [observations, setObservations] = useState<Observation[]>([]);
   const [obsForm, setObsForm] = useState({ conditions: '', notes: '', rating: 4 });
   const [lastObs, setLastObs] = useState<AstroObservation | null>(null);
+  const [edit, setEdit] = useState<{ name: string; constellation: string; magnitude: string } | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -81,6 +83,28 @@ export function AstroTargetsPanel({ onChange }: { onChange: () => void }) {
     await refresh(); onChange();
   };
   const del = async (id: string) => { await lensRun('astronomy', 'target-delete', { id }); await refresh(); onChange(); };
+  const saveTarget = async () => {
+    if (!selected || !edit) return;
+    if (!edit.name.trim()) { setError('Target name is required.'); return; }
+    const r = await lensRun('astronomy', 'target-update', {
+      id: selected.id,
+      name: edit.name.trim(),
+      constellation: edit.constellation.trim(),
+      magnitude: edit.magnitude.trim() === '' ? null : Number(edit.magnitude),
+    });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Could not save that target.'); return; }
+    const next = {
+      ...selected,
+      name: edit.name.trim(),
+      constellation: edit.constellation.trim() || null,
+      magnitude: edit.magnitude.trim() === '' ? null : Number(edit.magnitude),
+    };
+    setSelected(next);
+    setEdit(null);
+    setError(null);
+    await refresh();
+    onChange();
+  };
   const logObs = async () => {
     if (!selected) return;
     const r = await lensRun('astronomy', 'observation-log', {
@@ -107,12 +131,35 @@ export function AstroTargetsPanel({ onChange }: { onChange: () => void }) {
           <ChevronLeft className="w-3.5 h-3.5" /> All targets
         </button>
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-4">
-          <h3 className="text-base font-bold text-zinc-100">{selected.name}</h3>
-          <p className="text-xs text-zinc-400 capitalize">
-            {selected.type.replace(/_/g, ' ')}
-            {selected.constellation ? ` · ${selected.constellation}` : ''}
-            {selected.magnitude != null ? ` · mag ${selected.magnitude}` : ''}
-          </p>
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <h3 className="text-base font-bold text-zinc-100">{selected.name}</h3>
+              <p className="text-xs text-zinc-400 capitalize">
+                {selected.type.replace(/_/g, ' ')}
+                {selected.constellation ? ` · ${selected.constellation}` : ''}
+                {selected.magnitude != null ? ` · mag ${selected.magnitude}` : ''}
+              </p>
+            </div>
+            <button type="button" onClick={() => setEdit({
+              name: selected.name,
+              constellation: selected.constellation || '',
+              magnitude: selected.magnitude == null ? '' : String(selected.magnitude),
+            })} className="text-[11px] text-indigo-300 hover:text-indigo-200">Edit</button>
+          </div>
+          {edit && (
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <input aria-label="Target name" value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })}
+                className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+              <input aria-label="Constellation" value={edit.constellation} onChange={(e) => setEdit({ ...edit, constellation: e.target.value })}
+                placeholder="Constellation" className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+              <input aria-label="Magnitude" value={edit.magnitude} onChange={(e) => setEdit({ ...edit, magnitude: e.target.value })}
+                placeholder="Magnitude" className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+              <div className="flex gap-1">
+                <button type="button" onClick={() => void saveTarget()} className="px-2 py-1 text-xs rounded-lg bg-indigo-600 text-white">Save</button>
+                <button type="button" onClick={() => setEdit(null)} className="px-2 py-1 text-xs rounded-lg bg-zinc-800 text-zinc-300">Cancel</button>
+              </div>
+            </div>
+          )}
         </div>
 
         {error && <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
@@ -237,9 +284,7 @@ export function AstroTargetsPanel({ onChange }: { onChange: () => void }) {
                   </p>
                 </div>
               </button>
-              <button aria-label="Delete" type="button" onClick={() => del(t.id)} className="text-zinc-600 hover:text-rose-400">
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              <StickyDeleteConfirm onConfirm={() => { void del(t.id); }} armLabel={<Trash2 className="w-3.5 h-3.5" />} armAriaLabel={`Delete ${t.name}`} confirmAriaLabel={`Confirm delete ${t.name}`} className="text-zinc-600 hover:text-rose-400" />
             </li>
           ))}
         </ul>

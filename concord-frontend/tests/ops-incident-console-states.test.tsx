@@ -32,6 +32,21 @@ vi.mock('@/components/viz', () => ({
   TreeDiagram: () => null,
 }));
 
+// Presentational only: the console's toast renders inside AnimatePresence,
+// whose entering children never mount under jsdom — the assertions below
+// read text content, not animation, so motion is a passthrough here.
+vi.mock('framer-motion', async () => {
+  const React = await import('react');
+  const passthrough = (tag: string) =>
+    React.forwardRef(({ children, ...props }: Record<string, unknown>, ref: unknown) =>
+      React.createElement(tag, { ...props, ref }, children as React.ReactNode));
+  return {
+    motion: new Proxy({}, { get: (_t, prop: string) => passthrough(prop) }),
+    AnimatePresence: ({ children }: { children?: React.ReactNode }) =>
+      React.createElement(React.Fragment, null, children),
+  };
+});
+
 import { IncidentConsole } from '@/components/ops/IncidentConsole';
 
 const INCIDENT = {
@@ -116,5 +131,61 @@ describe('ops IncidentConsole — four UX states (primary incident list)', () =>
     // empty/error/loading are mutually exclusive with populated.
     expect(view!.queryByTestId('ops-incidents-empty')).toBeNull();
     expect(view!.queryByTestId('ops-incidents-error')).toBeNull();
+  });
+});
+
+describe('ops IncidentConsole — service register error states the real reason', () => {
+  it('a permission denial on serviceCreate reads "Insufficient permissions", not a generic failure', async () => {
+    lensRunMock.mockImplementation((_d: string, action: string) => {
+      if (action === 'serviceCreate') {
+        // The dispatch gate answers HTTP 403 { error: "Insufficient
+        // permissions" }; the client rejects with that message.
+        return Promise.reject(new Error('Insufficient permissions'));
+      }
+      if (action === 'incidentList') {
+        return Promise.resolve({ data: { ok: true, result: { incidents: [], total: 0, open: 0 }, error: null } });
+      }
+      return Promise.resolve({ data: { ok: true, result: {}, error: null } });
+    });
+    let view: ReturnType<typeof render>;
+    await act(async () => { view = render(<IncidentConsole />); });
+
+    fireEvent.click(view!.getByRole('button', { name: /^Services$/ }));
+    fireEvent.change(view!.getByPlaceholderText('Service name'), { target: { value: 'checkout-api' } });
+    fireEvent.click(view!.getByRole('button', { name: /Register service/ }));
+
+    await waitFor(() =>
+      expect(view!.getByText(/Failed to register service: Insufficient permissions/)).toBeInTheDocument(),
+    );
+    expect(view!.queryByText(/session expired/i)).toBeNull();
+  });
+
+  it('a successful register still confirms and does not show the error shape', async () => {
+    lensRunMock.mockImplementation((_d: string, action: string) => {
+      if (action === 'serviceCreate') {
+        return Promise.resolve({
+          data: {
+            ok: true,
+            result: { service: { id: 'svc_1', number: 1, name: 'checkout-api', dependsOn: [], alertKeys: [], tier: 'standard', createdAt: '2026-06-27T00:00:00.000Z' } },
+            error: null,
+          },
+        });
+      }
+      if (action === 'incidentList') {
+        return Promise.resolve({ data: { ok: true, result: { incidents: [], total: 0, open: 0 }, error: null } });
+      }
+      return Promise.resolve({ data: { ok: true, result: {}, error: null } });
+    });
+    let view: ReturnType<typeof render>;
+    await act(async () => { view = render(<IncidentConsole />); });
+
+    fireEvent.click(view!.getByRole('button', { name: /^Services$/ }));
+    fireEvent.change(view!.getByPlaceholderText('Service name'), { target: { value: 'checkout-api' } });
+    fireEvent.click(view!.getByRole('button', { name: /Register service/ }));
+
+    await waitFor(() =>
+      expect(view!.getByText(/Service "checkout-api" registered/)).toBeInTheDocument(),
+    );
+    expect(view!.queryByText(/Failed to register service/)).toBeNull();
   });
 });

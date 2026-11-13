@@ -31,6 +31,11 @@ export function EnergyDevicesPanel({
   const [form, setForm] = useState({ name: '', category: 'appliance', wattage: '' });
   const [readingFor, setReadingFor] = useState<string | null>(null);
   const [readingKwh, setReadingKwh] = useState('');
+  const [deviceQuery, setDeviceQuery] = useState('');
+  const devQ = deviceQuery.trim().toLowerCase();
+  const visibleDevices = devQ
+    ? devices.filter((d) => d.name.toLowerCase().includes(devQ) || d.category.toLowerCase().includes(devQ))
+    : devices;
 
   const refreshConsumers = useCallback(async () => {
     try {
@@ -48,10 +53,15 @@ export function EnergyDevicesPanel({
 
   const add = async () => {
     if (!form.name.trim()) { setError('Device name is required.'); return; }
+    const watts = form.wattage.trim() === '' ? 0 : Number(form.wattage);
+    if (!Number.isFinite(watts) || watts < 0 || watts > 1_000_000) {
+      setError('Wattage must be a number from 0 to 1000000.');
+      return;
+    }
     const r = await lensRun('energy', 'device-add', {
-      name: form.name.trim(), category: form.category, wattage: Number(form.wattage) || 0,
+      name: form.name.trim(), category: form.category, wattage: watts,
     });
-    if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
+    if (r.data?.ok === false) { setError(r.data?.message || r.data?.error || 'Failed'); return; }
     setForm({ name: '', category: 'appliance', wattage: '' });
     setShowAdd(false); setError(null);
     await Promise.all([refresh(), refreshConsumers()]);
@@ -136,13 +146,23 @@ export function EnergyDevicesPanel({
           </div>
         )}
 
+        {devices.length > 1 && (
+          <input value={deviceQuery} onChange={(e) => setDeviceQuery(e.target.value)}
+            placeholder="Search devices by name or category" aria-label="Search devices"
+            className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-2 text-xs text-zinc-100 mb-2" />
+        )}
+
         {devices.length === 0 ? (
           <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
             No devices. Add appliances to track their consumption.
           </div>
+        ) : visibleDevices.length === 0 ? (
+          <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
+            No devices match &ldquo;{deviceQuery}&rdquo;.
+          </div>
         ) : (
           <ul className="space-y-2">
-            {devices.map((d) => (
+            {visibleDevices.map((d) => (
               <li key={d.id} className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
                 <div className="flex items-start justify-between">
                   <div>

@@ -94,6 +94,7 @@ export function PubChemPanel({ className }: PubChemPanelProps) {
         <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" aria-hidden="true" />
         <input
           type="search"
+          aria-label="Compound name search"
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
           placeholder="Compound name (e.g. caffeine, aspirin)…"

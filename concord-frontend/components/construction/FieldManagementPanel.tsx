@@ -11,7 +11,7 @@
  * Every value rendered comes from a real macro round-trip — no mock data.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { cloneElement, isValidElement, useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { calendarDateKey } from '@/lib/calendar-date';
 import { ChartKit } from '@/components/viz';
@@ -22,6 +22,8 @@ import {
   Layers, Wallet, GanttChartSquare, Plus, X, Trash2, RefreshCw,
   AlertCircle, CheckCircle2, Clock,
 } from 'lucide-react';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 type FieldTab =
   | 'rfi' | 'submittals' | 'dailylog' | 'punch'
@@ -49,10 +51,26 @@ const fmtMoney = (n: number) =>
 
 // ── shared field primitives ──────────────────────────────────────────────
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  // FIX-construction-008: the caption was a bare <label> with no
+  // association, so every Field-wrapped control read as unlabelled to
+  // assistive tech (the audit's "select elements do not have
+  // associated label elements"). The label now points at the control:
+  // the child is cloned with a generated id (and a name, which the
+  // DevTools id/name check also wants) unless it already carries one.
+  const autoId = useId();
+  const child = isValidElement(children)
+    ? cloneElement(children as React.ReactElement<{ id?: string; name?: string }>, {
+        id: (children as React.ReactElement<{ id?: string }>).props.id ?? autoId,
+        name: (children as React.ReactElement<{ name?: string }>).props.name ?? autoId,
+      })
+    : children;
+  const controlId = isValidElement(children)
+    ? ((children as React.ReactElement<{ id?: string }>).props.id ?? autoId)
+    : autoId;
   return (
     <div>
-      <label className={ds.label}>{label}</label>
-      {children}
+      <label className={ds.label} htmlFor={controlId}>{label}</label>
+      {child}
     </div>
   );
 }
@@ -70,10 +88,10 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-      onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+      onClick={onClose} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
       <div
         className={cn(ds.panel, 'w-full max-w-lg max-h-[85vh] overflow-y-auto')}
-        onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
         <div className="flex items-center justify-between mb-4">
           <h3 className={ds.heading3}>{title}</h3>
           <button onClick={onClose} className={ds.btnGhost} aria-label="Close">
@@ -179,9 +197,7 @@ function RfiTab() {
               {r.status === 'answered' && (
                 <button onClick={() => closeRfi(r.id)} className={ds.btnSecondary}>Close</button>
               )}
-              <button onClick={() => delRfi(r.id)} className={ds.btnGhost} aria-label="Delete">
-                <Trash2 className="w-4 h-4 text-red-400" />
-              </button>
+              <StickyDeleteConfirm onConfirm={() => delRfi(r.id)} armLabel={<Trash2 className="w-4 h-4 text-red-400" />} className={ds.btnGhost} />
             </div>
           </div>
         </div>
@@ -323,9 +339,7 @@ function SubmittalsTab() {
               {s.status !== 'closed' && (
                 <button onClick={() => setReviewId(s.id)} className={ds.btnSecondary}>Review</button>
               )}
-              <button onClick={() => del(s.id)} className={ds.btnGhost} aria-label="Delete">
-                <Trash2 className="w-4 h-4 text-red-400" />
-              </button>
+              <StickyDeleteConfirm onConfirm={() => del(s.id)} armLabel={<Trash2 className="w-4 h-4 text-red-400" />} className={ds.btnGhost} />
             </div>
           </div>
         </div>
@@ -414,18 +428,33 @@ function DailyLogTab() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, []);
 
+  const [formError, setFormError] = useState('');
+  const resetLog = () => {
+    setF({ date: calendarDateKey(), weather: 'Clear', tempHigh: '', tempLow: '', conditions: '', workCompleted: '', delays: '', author: 'Superintendent' });
+    setManpower([{ trade: 'General', workers: '', hours: '8' }]);
+    setEquipment('');
+    setFormError('');
+  };
   const create = async () => {
-    if (!f.date) return;
-    await lensRun('construction', 'dailylog-create', {
+    if (!f.date) { setFormError('A date is required.'); return; }
+    if (f.tempHigh && f.tempLow && Number(f.tempHigh) < Number(f.tempLow)) {
+      setFormError('The high temperature has to be at least the low.');
+      return;
+    }
+    if (manpower.some((m) => (m.workers && !(Number(m.workers) >= 0)) || (m.hours && !(Number(m.hours) >= 0)))) {
+      setFormError('Workers and hours must be numbers that are 0 or greater.');
+      return;
+    }
+    setFormError('');
+    const r = await lensRun('construction', 'dailylog-create', {
       ...f,
       tempHigh: f.tempHigh ? Number(f.tempHigh) : null,
       tempLow: f.tempLow ? Number(f.tempLow) : null,
       manpower: manpower.filter((m) => m.workers).map((m) => ({ trade: m.trade, workers: Number(m.workers), hours: Number(m.hours) })),
       equipment: equipment.split(',').map((e) => e.trim()).filter(Boolean),
     });
-    setF({ date: calendarDateKey(), weather: 'Clear', tempHigh: '', tempLow: '', conditions: '', workCompleted: '', delays: '', author: 'Superintendent' });
-    setManpower([{ trade: 'General', workers: '', hours: '8' }]);
-    setEquipment('');
+    if (!r.data?.ok) { setFormError(r.data?.message || r.data?.error || 'That log was not saved.'); return; }
+    resetLog();
     setCreateOpen(false);
     load();
   };
@@ -471,16 +500,15 @@ function DailyLogTab() {
               {l.workCompleted && <p className="text-xs text-gray-400 mt-1">{l.workCompleted}</p>}
               {l.delays && <p className="text-xs text-red-400 mt-1">Delays: {l.delays}</p>}
             </div>
-            <button onClick={() => del(l.id)} className={ds.btnGhost} aria-label="Delete">
-              <Trash2 className="w-4 h-4 text-red-400" />
-            </button>
+            <StickyDeleteConfirm onConfirm={() => del(l.id)} armLabel={<Trash2 className="w-4 h-4 text-red-400" />} className={ds.btnGhost} />
           </div>
         </div>
       ))}
 
       {createOpen && (
-        <Modal title="New Daily Log" onClose={() => setCreateOpen(false)}>
+        <Modal title="New Daily Log" onClose={() => { setCreateOpen(false); resetLog(); }}>
           <div className="space-y-3">
+            {formError && <p className="text-[12px] text-rose-300" role="alert">{formError}</p>}
             <div className="grid grid-cols-2 gap-3">
               <Field label="Date">
                 <input type="date" className={ds.input} value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} />
@@ -501,11 +529,11 @@ function DailyLogTab() {
               <label className={ds.label}>Manpower</label>
               {manpower.map((m, i) => (
                 <div key={i} className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
-                  <input className={ds.input} placeholder="Trade" value={m.trade}
+                  <input aria-label="Manpower trade" className={ds.input} placeholder="Trade" value={m.trade}
                     onChange={(e) => setManpower(manpower.map((x, j) => j === i ? { ...x, trade: e.target.value } : x))} />
-                  <input type="number" className={ds.input} placeholder="Workers" value={m.workers}
+                  <input aria-label="Manpower workers" type="number" className={ds.input} placeholder="Workers" value={m.workers}
                     onChange={(e) => setManpower(manpower.map((x, j) => j === i ? { ...x, workers: e.target.value } : x))} />
-                  <input type="number" className={ds.input} placeholder="Hours" value={m.hours}
+                  <input aria-label="Manpower hours" type="number" className={ds.input} placeholder="Hours" value={m.hours}
                     onChange={(e) => setManpower(manpower.map((x, j) => j === i ? { ...x, hours: e.target.value } : x))} />
                 </div>
               ))}
@@ -556,8 +584,10 @@ function PunchTab() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, []);
 
+  const [formError, setFormError] = useState('');
   const add = async () => {
-    if (!f.description.trim()) return;
+    if (!f.description.trim()) { setFormError('A description is required.'); return; }
+    setFormError('');
     await lensRun('construction', 'punch-add', { ...f });
     setF({ description: '', location: '', trade: 'General', assignee: '', priority: 'normal', dueDate: '', markup: '' });
     setCreateOpen(false);
@@ -600,6 +630,7 @@ function PunchTab() {
             </div>
             <div className="flex flex-col gap-1 shrink-0">
               <select
+                aria-label="Punch item status"
                 className={cn(ds.select, 'text-xs py-1')}
                 value={p.status}
                 onChange={(e) => setStatus(p.id, e.target.value)}
@@ -608,17 +639,16 @@ function PunchTab() {
                   <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
                 ))}
               </select>
-              <button onClick={() => del(p.id)} className={ds.btnGhost} aria-label="Delete">
-                <Trash2 className="w-4 h-4 text-red-400" />
-              </button>
+              <StickyDeleteConfirm onConfirm={() => del(p.id)} armLabel={<Trash2 className="w-4 h-4 text-red-400" />} className={ds.btnGhost} />
             </div>
           </div>
         </div>
       ))}
 
       {createOpen && (
-        <Modal title="Add Punch Item" onClose={() => setCreateOpen(false)}>
+        <Modal title="Add Punch Item" onClose={() => { setCreateOpen(false); setFormError(''); }}>
           <div className="space-y-3">
+            {formError && <p className="text-[12px] text-rose-300" role="alert">{formError}</p>}
             <Field label="Description">
               <textarea className={ds.textarea} rows={2} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} />
             </Field>
@@ -663,6 +693,7 @@ function ChangeOrdersTab() {
   const [summary, setSummary] = useState({ approvedValue: 0, pendingValue: 0, approvedCount: 0, pendingCount: 0 });
   const [createOpen, setCreateOpen] = useState(false);
   const [f, setF] = useState({ jobId: '', title: '', reason: '', description: '', amount: '', scheduleImpactDays: '' });
+  const [formError, setFormError] = useState('');
 
   const load = useCallback(async () => {
     const r = await lensRun('construction', 'changeorder-list', {});
@@ -678,10 +709,13 @@ function ChangeOrdersTab() {
   useEffect(() => { load(); }, []);
 
   const create = async () => {
-    if (!f.title.trim() || !f.amount) return;
-    await lensRun('construction', 'changeorder-create', {
+    if (!f.title.trim()) { setFormError('A title is required.'); return; }
+    if (!(Number(f.amount) >= 0)) { setFormError('Amount must be a number that is 0 or greater.'); return; }
+    setFormError('');
+    const r = await lensRun('construction', 'changeorder-create', {
       ...f, amount: Number(f.amount), scheduleImpactDays: f.scheduleImpactDays ? Number(f.scheduleImpactDays) : 0,
     });
+    if (!r.data?.ok) { setFormError(r.data?.message || r.data?.error || 'That change order was not saved.'); return; }
     setF({ jobId: '', title: '', reason: '', description: '', amount: '', scheduleImpactDays: '' });
     setCreateOpen(false);
     load();
@@ -738,17 +772,16 @@ function ChangeOrdersTab() {
                   </button>
                 </div>
               )}
-              <button onClick={() => del(c.id)} className={ds.btnGhost} aria-label="Delete">
-                <Trash2 className="w-4 h-4 text-red-400" />
-              </button>
+              <StickyDeleteConfirm onConfirm={() => del(c.id)} armLabel={<Trash2 className="w-4 h-4 text-red-400" />} className={ds.btnGhost} />
             </div>
           </div>
         </div>
       ))}
 
       {createOpen && (
-        <Modal title="New Change Order" onClose={() => setCreateOpen(false)}>
+        <Modal title="New Change Order" onClose={() => { setCreateOpen(false); setFormError(''); }}>
           <div className="space-y-3">
+            {formError && <p className="text-[12px] text-rose-300" role="alert">{formError}</p>}
             <Field label="Title">
               <input className={ds.input} value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} />
             </Field>
@@ -772,7 +805,7 @@ function ChangeOrdersTab() {
           </div>
           <div className="flex justify-end gap-2 mt-4">
             <button onClick={() => setCreateOpen(false)} className={ds.btnSecondary}>Cancel</button>
-            <button onClick={create} className={ds.btnPrimary} disabled={!f.title.trim() || !f.amount}>Create</button>
+            <button onClick={create} className={ds.btnPrimary}>Create</button>
           </div>
         </Modal>
       )}
@@ -871,12 +904,12 @@ function DrawingsTab() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className={ds.panel}>
             <p className="text-sm font-semibold text-white mb-2">Issue Revision</p>
-            <textarea className={ds.textarea} rows={2} placeholder="Revision notes" value={reviseNote} onChange={(e) => setReviseNote(e.target.value)} />
+            <textarea aria-label="Revision notes" className={ds.textarea} rows={2} placeholder="Revision notes" value={reviseNote} onChange={(e) => setReviseNote(e.target.value)} />
             <button onClick={revise} className={cn(ds.btnPrimary, 'mt-2')}>Issue Revision</button>
           </div>
           <div className={ds.panel}>
             <p className="text-sm font-semibold text-white mb-2">Add Markup</p>
-            <input className={ds.input} placeholder="Markup note" value={markupNote} onChange={(e) => setMarkupNote(e.target.value)} />
+            <input aria-label="Markup note" className={ds.input} placeholder="Markup note" value={markupNote} onChange={(e) => setMarkupNote(e.target.value)} />
             <button onClick={markup} className={cn(ds.btnPrimary, 'mt-2')} disabled={!markupNote.trim()}>Add Markup</button>
           </div>
         </div>
@@ -950,7 +983,7 @@ function DrawingsTab() {
           <p className={ds.textMuted}>No drawing sheets yet</p>
         </div>
       ) : rows.map((d) => (
-        <div key={d.id} className={ds.panelHover} onClick={() => setSelected(d)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div key={d.id} className={ds.panelHover} onClick={() => setSelected(d)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
               <p className="text-white font-medium">
@@ -960,9 +993,7 @@ function DrawingsTab() {
                 {d.discipline} · rev {d.currentRevision} · {d.markups?.length || 0} markups
               </p>
             </div>
-            <button onClick={(e) => { e.stopPropagation(); del(d.id); }} className={ds.btnGhost} aria-label="Delete">
-              <Trash2 className="w-4 h-4 text-red-400" />
-            </button>
+            <span onClick={(e) => e.stopPropagation()}><StickyDeleteConfirm onConfirm={() => del(d.id)} armLabel={<Trash2 className="w-4 h-4 text-red-400" />} className={ds.btnGhost} /></span>
           </div>
         </div>
       ))}
@@ -1007,6 +1038,7 @@ function BudgetTab() {
   const [totals, setTotals] = useState({ totalBudget: 0, totalCommitted: 0, totalActual: 0, forecastAtCompletion: 0, variance: 0, status: '' });
   const [createOpen, setCreateOpen] = useState(false);
   const [f, setF] = useState({ costCode: '', description: '', category: 'General', budgetAmount: '', committed: '', actual: '' });
+  const [formError, setFormError] = useState('');
 
   const load = useCallback(async () => {
     const r = await lensRun('construction', 'budget-list', {});
@@ -1023,11 +1055,18 @@ function BudgetTab() {
   useEffect(() => { load(); }, []);
 
   const add = async () => {
-    if (!f.costCode.trim() || !f.description.trim() || !f.budgetAmount) return;
-    await lensRun('construction', 'budget-add', {
+    if (!f.costCode.trim() || !f.description.trim()) { setFormError('A cost code and a description are required.'); return; }
+    const money = [f.budgetAmount, f.committed, f.actual].filter((v) => v.trim());
+    if (!f.budgetAmount.trim() || money.some((v) => !(Number(v) >= 0))) {
+      setFormError('Budget, committed, and actual must be numbers that are 0 or greater.');
+      return;
+    }
+    setFormError('');
+    const r = await lensRun('construction', 'budget-add', {
       ...f, budgetAmount: Number(f.budgetAmount),
       committed: f.committed ? Number(f.committed) : 0, actual: f.actual ? Number(f.actual) : 0,
     });
+    if (!r.data?.ok) { setFormError(r.data?.message || r.data?.error || 'That cost line was not saved.'); return; }
     setF({ costCode: '', description: '', category: 'General', budgetAmount: '', committed: '', actual: '' });
     setCreateOpen(false);
     load();
@@ -1109,17 +1148,16 @@ function BudgetTab() {
                   </Field>
                 </div>
               </div>
-              <button onClick={() => del(l.id)} className={ds.btnGhost} aria-label="Delete">
-                <Trash2 className="w-4 h-4 text-red-400" />
-              </button>
+              <StickyDeleteConfirm onConfirm={() => del(l.id)} armLabel={<Trash2 className="w-4 h-4 text-red-400" />} className={ds.btnGhost} />
             </div>
           </div>
         );
       })}
 
       {createOpen && (
-        <Modal title="Add Cost Line" onClose={() => setCreateOpen(false)}>
+        <Modal title="Add Cost Line" onClose={() => { setCreateOpen(false); setFormError(''); }}>
           <div className="space-y-3">
+            {formError && <p className="text-[12px] text-rose-300" role="alert">{formError}</p>}
             <div className="grid grid-cols-2 gap-3">
               <Field label="Cost Code">
                 <input className={ds.input} placeholder="03-300" value={f.costCode} onChange={(e) => setF({ ...f, costCode: e.target.value })} />
@@ -1145,7 +1183,7 @@ function BudgetTab() {
           </div>
           <div className="flex justify-end gap-2 mt-4">
             <button onClick={() => setCreateOpen(false)} className={ds.btnSecondary}>Cancel</button>
-            <button onClick={add} className={ds.btnPrimary} disabled={!f.costCode.trim() || !f.description.trim() || !f.budgetAmount}>Add</button>
+            <button onClick={add} className={ds.btnPrimary}>Add</button>
           </div>
         </Modal>
       )}
@@ -1190,11 +1228,11 @@ function GanttTab() {
         <p className="text-sm font-semibold text-white mb-2">Schedule Tasks</p>
         {taskRows.map((t, i) => (
           <div key={i} className="grid grid-cols-12 gap-2 mb-2 items-center">
-            <input className={cn(ds.input, 'col-span-4')} placeholder="Task name" value={t.name}
+            <input aria-label="Task name" className={cn(ds.input, 'col-span-4')} placeholder="Task name" value={t.name}
               onChange={(e) => setTaskRows(taskRows.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} />
-            <input type="number" className={cn(ds.input, 'col-span-2')} placeholder="Days" value={t.duration}
+            <input aria-label="Task duration in days" type="number" className={cn(ds.input, 'col-span-2')} placeholder="Days" value={t.duration}
               onChange={(e) => setTaskRows(taskRows.map((x, j) => j === i ? { ...x, duration: e.target.value } : x))} />
-            <input className={cn(ds.input, 'col-span-5')} placeholder="Depends on (comma)" value={t.dependencies}
+            <input aria-label="Task dependencies" className={cn(ds.input, 'col-span-5')} placeholder="Depends on (comma)" value={t.dependencies}
               onChange={(e) => setTaskRows(taskRows.map((x, j) => j === i ? { ...x, dependencies: e.target.value } : x))} />
             <button
               onClick={() => setTaskRows(taskRows.filter((_, j) => j !== i))}

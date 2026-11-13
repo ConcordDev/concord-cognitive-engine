@@ -16,8 +16,11 @@ export default function registerMetalearningActions(registerLensAction) {
    */
   registerLensAction("metalearning", "strategySelection", (ctx, artifact, params) => {
   try {
-    const taskFeatures = artifact.data?.taskFeatures || {};
-    const landmarks = artifact.data?.landmarkTasks || [];
+    // FIX-metalearning-001: the analysis panel sends its inputs as action
+    // params; reading only artifact.data starved every analysis action.
+    // Params are the fallback; an attached artifact wins.
+    const taskFeatures = artifact?.data?.taskFeatures || params.taskFeatures || {};
+    const landmarks = artifact?.data?.landmarkTasks || params.landmarkTasks || [];
     const k = Math.min(params.k || 5, landmarks.length);
 
     if (landmarks.length === 0) {
@@ -163,8 +166,8 @@ export default function registerMetalearningActions(registerLensAction) {
    */
   registerLensAction("metalearning", "transferAnalysis", (ctx, artifact, params) => {
   try {
-    const source = artifact.data?.sourceDomain || {};
-    const target = artifact.data?.targetDomain || {};
+    const source = artifact?.data?.sourceDomain || params.sourceDomain || {};
+    const target = artifact?.data?.targetDomain || params.targetDomain || {};
 
     if (!source.name || !target.name) {
       return { ok: true, result: { message: "Both sourceDomain and targetDomain must have a name." } };
@@ -280,7 +283,7 @@ export default function registerMetalearningActions(registerLensAction) {
    */
   registerLensAction("metalearning", "performanceProfile", (ctx, artifact, params) => {
   try {
-    const assessments = artifact.data?.assessments || [];
+    const assessments = artifact?.data?.assessments || params.assessments || [];
     if (assessments.length === 0) {
       return { ok: true, result: { message: "No assessment data to profile." } };
     }

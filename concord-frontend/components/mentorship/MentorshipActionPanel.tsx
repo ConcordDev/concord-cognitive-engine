@@ -159,7 +159,7 @@ export function MentorshipActionPanel() {
     <div className="rounded-lg border border-violet-500/20 bg-zinc-950/60 p-3 space-y-3">
       <header className="flex items-center gap-2 border-b border-violet-500/10 pb-2">
         <Users className="h-4 w-4 text-violet-400" />
-        <h3 className="text-sm font-semibold text-white">Mentor bench</h3>
+        <h2 className="text-sm font-semibold text-white">Mentor bench</h2>
         <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">match · progress · feedback · plan</span>
       </header>
 

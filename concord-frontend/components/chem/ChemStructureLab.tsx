@@ -156,7 +156,7 @@ function StructureEditorTab() {
         Type a SMILES string — the backend lays out skeletal 2D coordinates and derives the formula. Try <code className="text-violet-300">CCO</code>, <code className="text-violet-300">c1ccccc1</code>, <code className="text-violet-300">CC(=O)O</code>.
       </p>
       <div className="flex gap-2">
-        <input value={smiles} onChange={(e) => setSmiles(e.target.value)}
+        <input aria-label="SMILES" value={smiles} onChange={(e) => setSmiles(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') render(smiles); }}
           placeholder="SMILES" className={inputCls} />
         <button type="button" onClick={() => render(smiles)} disabled={busy} className={btnCls}>
@@ -328,7 +328,7 @@ function Viewer3DTab() {
       <div className="flex gap-2">
         <input value={query} onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') load(query); }}
-          placeholder="compound name (caffeine, aspirin, glucose…)" className={inputCls} />
+          aria-label="Compound name" placeholder="compound name (caffeine, aspirin, glucose…)" className={inputCls} />
         <button type="button" onClick={() => load(query)} disabled={busy} className={btnCls}>
           {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Boxes className="w-3 h-3" />} Load 3D
         </button>
@@ -399,7 +399,7 @@ function ResolveTab() {
       <div className="flex gap-2 items-center">
         <input value={query} onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') resolve(query, bySmiles); }}
-          placeholder={bySmiles ? 'SMILES e.g. CCO' : 'compound name'} className={inputCls} />
+          aria-label={bySmiles ? 'SMILES' : 'Compound name'} placeholder={bySmiles ? 'SMILES e.g. CCO' : 'compound name'} className={inputCls} />
         <label className="flex items-center gap-1 text-[11px] text-gray-400 whitespace-nowrap">
           <input type="checkbox" checked={bySmiles} onChange={(e) => setBySmiles(e.target.checked)} />
           by SMILES
@@ -561,7 +561,7 @@ function SpectroTab() {
     <div className="space-y-3">
       <p className="text-[11px] text-gray-400">Characteristic peak reference tables for IR, ¹H/¹³C NMR and MS.</p>
       <div className="flex gap-2">
-        <select value={technique}
+        <select aria-label="Spectroscopy technique" value={technique}
           onChange={(e) => { setTechnique(e.target.value); load(e.target.value, filter); }}
           className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100">
           <option value="ir">Infrared (IR)</option>
@@ -569,7 +569,7 @@ function SpectroTab() {
           <option value="nmr-13c">¹³C NMR</option>
           <option value="ms">Mass Spectrometry</option>
         </select>
-        <input value={filter} onChange={(e) => setFilter(e.target.value)}
+        <input aria-label="Filter by functional group" value={filter} onChange={(e) => setFilter(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') load(technique, filter); }}
           placeholder="filter group (e.g. carbonyl)" className={inputCls} />
         <button type="button" onClick={() => load(technique, filter)} className={btnCls}>
@@ -767,16 +767,16 @@ function NotebookTab() {
     <div className="space-y-3">
       <p className="text-[11px] text-gray-400">Log reactions: equation, procedure, observations, yield and tags.</p>
       <div className="rounded border border-white/10 bg-black/30 p-3 space-y-2">
-        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Reaction title *" className={inputCls} />
-        <input value={equation} onChange={(e) => setEquation(e.target.value)} placeholder="Equation (optional)" className={inputCls} />
-        <textarea value={procedure} onChange={(e) => setProcedure(e.target.value)} placeholder="Procedure" rows={2}
+        <input aria-label="Reaction title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Reaction title *" className={inputCls} />
+        <input aria-label="Reaction equation" value={equation} onChange={(e) => setEquation(e.target.value)} placeholder="Equation (optional)" className={inputCls} />
+        <textarea aria-label="Reaction procedure" value={procedure} onChange={(e) => setProcedure(e.target.value)} placeholder="Procedure" rows={2}
           className={inputCls + ' resize-y'} />
-        <textarea value={observations} onChange={(e) => setObservations(e.target.value)} placeholder="Observations" rows={2}
+        <textarea aria-label="Reaction observations" value={observations} onChange={(e) => setObservations(e.target.value)} placeholder="Observations" rows={2}
           className={inputCls + ' resize-y'} />
         <div className="grid grid-cols-2 gap-2">
-          <input type="number" value={yieldPercent} onChange={(e) => setYieldPercent(e.target.value)}
+          <input type="number" aria-label="Yield percent" value={yieldPercent}onChange={(e) => setYieldPercent(e.target.value)}
             placeholder="Yield %" className={inputCls} />
-          <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="tags, comma-sep" className={inputCls} />
+          <input aria-label="Reaction tags" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="tags, comma-sep" className={inputCls} />
         </div>
         <button type="button" onClick={add} className={btnCls}>
           <NotebookPen className="w-3 h-3" /> Add entry
@@ -788,7 +788,7 @@ function NotebookTab() {
       <div className="flex gap-2">
         <input value={query} onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') load(query); }}
-          placeholder="search entries" className={inputCls} />
+          aria-label="Search entries" placeholder="search entries" className={inputCls} />
         <button type="button" onClick={() => load(query)} className={btnCls}>
           <Search className="w-3 h-3" /> Search
         </button>
@@ -835,13 +835,13 @@ function NotebookTab() {
             )}
             {editing?.id === e.id && (
               <div className="mt-2 space-y-2 border-t border-white/10 pt-2">
-                <input value={editTitle} onChange={(ev) => setEditTitle(ev.target.value)} placeholder="Reaction title *" className={inputCls} />
-                <input value={editEquation} onChange={(ev) => setEditEquation(ev.target.value)} placeholder="Equation (optional)" className={inputCls} />
-                <textarea value={editProcedure} onChange={(ev) => setEditProcedure(ev.target.value)} placeholder="Procedure" rows={2} className={inputCls + ' resize-y'} />
-                <textarea value={editObservations} onChange={(ev) => setEditObservations(ev.target.value)} placeholder="Observations" rows={2} className={inputCls + ' resize-y'} />
+                <input aria-label="Edit reaction title" value={editTitle} onChange={(ev) => setEditTitle(ev.target.value)} placeholder="Reaction title *" className={inputCls} />
+                <input aria-label="Edit reaction equation" value={editEquation} onChange={(ev) => setEditEquation(ev.target.value)} placeholder="Equation (optional)" className={inputCls} />
+                <textarea aria-label="Edit reaction procedure" value={editProcedure} onChange={(ev) => setEditProcedure(ev.target.value)} placeholder="Procedure" rows={2} className={inputCls + ' resize-y'} />
+                <textarea aria-label="Edit reaction observations" value={editObservations} onChange={(ev) => setEditObservations(ev.target.value)} placeholder="Observations" rows={2} className={inputCls + ' resize-y'} />
                 <div className="grid grid-cols-2 gap-2">
-                  <input type="number" value={editYield} onChange={(ev) => setEditYield(ev.target.value)} placeholder="Yield %" className={inputCls} />
-                  <input value={editTags} onChange={(ev) => setEditTags(ev.target.value)} placeholder="tags, comma-sep" className={inputCls} />
+                  <input type="number" aria-label="Edit yield percent" value={editYield}onChange={(ev) => setEditYield(ev.target.value)} placeholder="Yield %" className={inputCls} />
+                  <input aria-label="Edit reaction tags" value={editTags} onChange={(ev) => setEditTags(ev.target.value)} placeholder="tags, comma-sep" className={inputCls} />
                 </div>
                 <div className="flex gap-2">
                   <button type="button" onClick={saveEdit} className={btnCls}>Save changes</button>

@@ -357,6 +357,17 @@ describe("INC-64 nonprofit mail and recorded payments", () => {
   const ctxB = { actor: { userId: "user_b" }, userId: "user_b" };
   beforeEach(() => { withState(); _setNonprofitMailerForTest(null); });
 
+  it("FIX-nonprofit-013: a blank custom message is refused by name; templated kinds still send", async () => {
+    const d = call("donor-create", ctxA, { name: "Ada Lovelace", email: "ada@x.org" }).result.donor;
+    const blank = await call("comm-send", ctxA, { donorId: d.id, kind: "custom", subject: "", body: "" });
+    assert.equal(blank.ok, false);
+    assert.match(blank.error, /Subject and body are required/);
+    const noBody = await call("comm-send", ctxA, { donorId: d.id, kind: "custom", subject: "Hello", body: "  " });
+    assert.equal(noBody.ok, false);
+    const filled = await call("comm-send", ctxA, { donorId: d.id, kind: "custom", subject: "Hello", body: "A real note." });
+    assert.equal(filled.ok, true);
+    assert.equal(filled.result.comm.subject, "Hello");
+  });
   it("comm-send with no Gmail linked is not_sent, and another account cannot use the donor", async () => {
     const d = call("donor-create", ctxA, { name: "Ada Lovelace", email: "ada@x.org" }).result.donor;
     const r = await call("comm-send", ctxA, { donorId: d.id, kind: "thank_you" });

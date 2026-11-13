@@ -84,6 +84,7 @@ export function AcademicSearchPanel() {
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
           <input
             type="text"
+            aria-label="Academic search query"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
@@ -94,6 +95,7 @@ export function AcademicSearchPanel() {
           />
         </div>
         <select
+          aria-label="Search provider"
           value={provider}
           onChange={(e) => setProvider(e.target.value as Provider)}
           className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-200"
@@ -112,9 +114,13 @@ export function AcademicSearchPanel() {
       </div>
 
       {error && (
-        <p className="text-xs text-rose-300 bg-rose-500/10 border border-rose-500/20 rounded p-2">
-          {error}
-        </p>
+        <div className="flex items-center gap-2 text-xs text-rose-300 bg-rose-500/10 border border-rose-500/20 rounded p-2">
+          <p className="flex-1">{error}</p>
+          <button type="button" onClick={() => void search()} disabled={loading}
+            className="shrink-0 px-2 py-1 rounded border border-rose-400/40 text-rose-100 disabled:opacity-40">
+            Retry
+          </button>
+        </div>
       )}
 
       {!loading && searched && results.length === 0 && !error && (

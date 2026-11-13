@@ -62,23 +62,23 @@ export function SleepRecovery() {
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
         <label>
           <span className="block text-[10px] uppercase text-gray-400 mb-0.5">Date</span>
-          <input type="date" value={logDate} onChange={e => setLogDate(e.target.value)} className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input id="fitness-logdate-2" name="logdate-2" type="date" value={logDate} onChange={e => setLogDate(e.target.value)} className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
         </label>
         <label>
           <span className="block text-[10px] uppercase text-gray-400 mb-0.5">Sleep (hours) *</span>
-          <input type="number" step="0.1" min="0" value={logSleep} onChange={e => setLogSleep(e.target.value)} placeholder="7.5" className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input id="fitness-75" name="75" aria-label="7.5" type="number" step="0.1" min="0" value={logSleep} onChange={e => setLogSleep(e.target.value)} placeholder="7.5" className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
         </label>
         <label>
           <span className="block text-[10px] uppercase text-gray-400 mb-0.5">Resting HR</span>
-          <input type="number" min="0" value={logRestingHr} onChange={e => setLogRestingHr(e.target.value)} placeholder="58" className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input id="fitness-58" name="58" aria-label="58" type="number" min="0" value={logRestingHr} onChange={e => setLogRestingHr(e.target.value)} placeholder="58" className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
         </label>
         <label>
           <span className="block text-[10px] uppercase text-gray-400 mb-0.5">HRV (ms)</span>
-          <input type="number" min="0" value={logHrv} onChange={e => setLogHrv(e.target.value)} placeholder="62" className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input id="fitness-62" name="62" aria-label="62" type="number" min="0" value={logHrv} onChange={e => setLogHrv(e.target.value)} placeholder="62" className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
         </label>
         <label>
           <span className="block text-[10px] uppercase text-gray-400 mb-0.5">Recovery %</span>
-          <input type="number" min="0" max="100" value={logScore} onChange={e => setLogScore(e.target.value)} placeholder="—" className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input id="fitness-field-21" name="field-21" aria-label="—" type="number" min="0" max="100" value={logScore} onChange={e => setLogScore(e.target.value)} placeholder="—" className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
         </label>
       </div>
       <div className="flex items-center gap-2 mt-2">

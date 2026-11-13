@@ -27,7 +27,7 @@ const TABS: { id: Tab; label: string }[] = [
 ];
 
 const toast = (type: 'success' | 'error', message: string) => useUIStore.getState().addToast({ type, message });
-const fieldCls = 'rounded-lg border border-white/10 bg-transparent px-3 py-2 text-[13px] text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-teal-400/60';
+const fieldCls = 'rounded-lg border border-white/10 bg-transparent px-3 py-2 text-[13px] text-zinc-100 outline-none placeholder:text-zinc-400 focus:border-teal-400/60';
 const primaryBtn = 'rounded-full bg-teal-400 px-4 py-1.5 text-[13px] font-medium text-black transition-colors hover:bg-teal-300 disabled:opacity-40';
 const ghostBtn = 'inline-flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5 text-[12px] text-zinc-300 transition-colors hover:border-white/25 hover:text-zinc-50 disabled:opacity-40';
 
@@ -37,7 +37,7 @@ function Slider({ label, value, onChange }: { label: string; value: number; onCh
       <span className="flex items-center justify-between text-[12px] text-zinc-400">
         {label}<span className="tabular-nums text-zinc-200">{pct(value)}%</span>
       </span>
-      <input
+      <input id="entity-entityinspector-field" name="field"
         type="range" min={0} max={100} value={pct(value)}
         onChange={(e) => onChange(Number(e.target.value) / 100)}
         className="mt-1 w-full accent-teal-400"
@@ -56,7 +56,7 @@ function coerce(raw: string): unknown {
 }
 
 function Insights({ items }: { items: SimInsight[] }) {
-  if (!items.length) return <p className="text-[12px] text-zinc-500">The run finished with no change large enough to report.</p>;
+  if (!items.length) return <p className="text-[12px] text-zinc-400">The run finished with no change large enough to report.</p>;
   return (
     <ul className="space-y-1.5">
       {items.map((i, k) => (
@@ -117,8 +117,8 @@ function OverviewTab({ entity, onFork, forking, onDeleted }: { entity: WorldEnti
 
   return (
     <div className="space-y-4">
-      <input value={name} onChange={(e) => setName(e.target.value)} aria-label="Entity name" className={cn(fieldCls, 'w-full text-[15px] font-medium')} />
-      <textarea
+      <input id="entity-entityinspector-entity-name" name="entity-name" value={name} onChange={(e) => setName(e.target.value)} aria-label="Entity name" className={cn(fieldCls, 'w-full text-[15px] font-medium')} />
+      <textarea id="entity-entityinspector-description" name="description"
         value={description} onChange={(e) => setDescription(e.target.value)} rows={3}
         placeholder="What is this entity?" aria-label="Description" className={cn(fieldCls, 'w-full resize-y')}
       />
@@ -130,21 +130,21 @@ function OverviewTab({ entity, onFork, forking, onDeleted }: { entity: WorldEnti
 
       <div>
         <div className="mb-1.5 flex items-center justify-between">
-          <span className="text-[12px] uppercase tracking-wide text-zinc-500">Properties</span>
+          <span className="text-[12px] uppercase tracking-wide text-zinc-400">Properties</span>
           <button type="button" onClick={() => setProps((p) => [...p, ['', '']])} className="inline-flex items-center gap-1 text-[12px] text-teal-300 hover:text-teal-200">
             <Plus className="h-3 w-3" /> Add
           </button>
         </div>
-        {props.length === 0 && <p className="text-[12px] text-zinc-600">No custom properties. Simulations can read any numeric property you add.</p>}
+        {props.length === 0 && <p className="text-[12px] text-zinc-400">No custom properties. Simulations can read any numeric property you add.</p>}
         <div className="space-y-1.5">
           {props.map(([k, v], i) => (
             <div key={i} className="flex gap-1.5">
-              <input value={k} onChange={(e) => setProps((p) => p.map((r, j) => (j === i ? [e.target.value, r[1]] : r)))} placeholder="key" aria-label="Property key" className={cn(fieldCls, 'w-2/5')} />
-              <input value={v} onChange={(e) => setProps((p) => p.map((r, j) => (j === i ? [r[0], e.target.value] : r)))} placeholder="value" aria-label="Property value" className={cn(fieldCls, 'min-w-0 flex-1')} />
+              <input name="property-key" value={k} onChange={(e) => setProps((p) => p.map((r, j) => (j === i ? [e.target.value, r[1]] : r)))} placeholder="key" aria-label="Property key" className={cn(fieldCls, 'w-2/5')} />
+              <input name="property-value" value={v} onChange={(e) => setProps((p) => p.map((r, j) => (j === i ? [r[0], e.target.value] : r)))} placeholder="value" aria-label="Property value" className={cn(fieldCls, 'min-w-0 flex-1')} />
             </div>
           ))}
         </div>
-        {props.length > 0 && <p className="mt-1 text-[11px] text-zinc-600">Properties merge on save; the backend can add or change a key but not remove one.</p>}
+        {props.length > 0 && <p className="mt-1 text-[11px] text-zinc-400">Properties merge on save; the backend can add or change a key but not remove one.</p>}
       </div>
 
       <div className="flex flex-wrap items-center gap-2 pt-1">
@@ -156,7 +156,7 @@ function OverviewTab({ entity, onFork, forking, onDeleted }: { entity: WorldEnti
           <Copy className="h-3.5 w-3.5" />Copy id
         </button>
         {confirmDelete ? (
-          <span className="ml-auto inline-flex items-center gap-2 text-[12px]">
+          <span className="flex w-full flex-wrap items-center gap-2 text-[12px]">
             <span className="text-rose-300">Delete and drop its relations?</span>
             <button type="button" onClick={() => del.mutate()} disabled={del.isPending} className="text-rose-300 hover:text-rose-200">{del.isPending ? 'Deleting…' : 'Yes'}</button>
             <button type="button" onClick={() => setConfirmDelete(false)} className="text-zinc-400 hover:text-zinc-200">No</button>
@@ -166,7 +166,7 @@ function OverviewTab({ entity, onFork, forking, onDeleted }: { entity: WorldEnti
         )}
       </div>
 
-      <p className="border-t border-white/10 pt-3 text-[11px] leading-relaxed text-zinc-600">
+      <p className="border-t border-white/10 pt-3 text-[11px] leading-relaxed text-zinc-400">
         <span className="font-mono">{entity.id}</span><br />
         Created {new Date(entity.createdAt).toLocaleString()} · updated {new Date(entity.updatedAt).toLocaleString()}
         {entity.source?.createdBy && <> · by {entity.source.createdBy}</>}
@@ -202,7 +202,7 @@ function RelationsTab({ entity, relations, others, onSelect }: { entity: WorldEn
   return (
     <div className="space-y-4">
       {relations.length === 0 ? (
-        <p className="text-[13px] text-zinc-500">No relations yet. Connect this entity below and it will show up in the Graph view and in simulations.</p>
+        <p className="text-[13px] text-zinc-400">No relations yet. Connect this entity below and it will show up in the Graph view and in simulations.</p>
       ) : (
         <ul className="space-y-1.5">
           {relations.map((r) => {
@@ -211,13 +211,13 @@ function RelationsTab({ entity, relations, others, onSelect }: { entity: WorldEn
             return (
               <li key={r.id} className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">
                 <div className="flex items-center gap-2 text-[13px]">
-                  <span className="text-zinc-500">{r.direction === 'incoming' ? '←' : '→'}</span>
+                  <span className="text-zinc-400">{r.direction === 'incoming' ? '←' : '→'}</span>
                   <span className="rounded-full bg-teal-400/10 px-2 py-0.5 text-[11px] text-teal-300">{r.type.replace('_', ' ')}</span>
                   <button type="button" onClick={() => onSelect(otherId)} className="min-w-0 truncate text-zinc-100 hover:text-teal-200" title="Open this entity">
                     {other?.name || otherId}
                   </button>
                 </div>
-                <div className="mt-1.5 flex gap-4 text-[11px] text-zinc-500">
+                <div className="mt-1.5 flex gap-4 text-[11px] text-zinc-400">
                   <span>strength {pct(r.strength)}%</span><span>confidence {pct(r.confidence)}%</span>
                 </div>
               </li>
@@ -227,7 +227,7 @@ function RelationsTab({ entity, relations, others, onSelect }: { entity: WorldEn
       )}
 
       <form onSubmit={(e) => { e.preventDefault(); if (target) add.mutate(); }} className="space-y-2.5 rounded-xl border border-white/10 p-3">
-        <p className="text-[12px] uppercase tracking-wide text-zinc-500">Connect</p>
+        <p className="text-[12px] uppercase tracking-wide text-zinc-400">Connect</p>
         <div className="flex gap-1.5">
           {(['out', 'in'] as const).map((d) => (
             <button key={d} type="button" onClick={() => setDir(d)} className={cn('flex-1 rounded-lg border px-2 py-1.5 text-[12px] transition-colors', dir === d ? 'border-teal-400/60 text-teal-200' : 'border-white/10 text-zinc-400 hover:text-zinc-200')}>
@@ -235,16 +235,16 @@ function RelationsTab({ entity, relations, others, onSelect }: { entity: WorldEn
             </button>
           ))}
         </div>
-        <select value={type} onChange={(e) => setType(e.target.value)} aria-label="Relation type" className={cn(fieldCls, 'w-full bg-[#111]')}>
+        <select id="entity-entityinspector-relation-type" name="relation-type" value={type} onChange={(e) => setType(e.target.value)} aria-label="Relation type" className={cn(fieldCls, 'w-full bg-[#111]')}>
           {RELATION_TYPES.map((t) => <option key={t} value={t}>{t.replace('_', ' ')}</option>)}
         </select>
-        <select value={target} onChange={(e) => setTarget(e.target.value)} aria-label="Other entity" className={cn(fieldCls, 'w-full bg-[#111]')}>
+        <select id="entity-entityinspector-other-entity" name="other-entity" value={target} onChange={(e) => setTarget(e.target.value)} aria-label="Other entity" className={cn(fieldCls, 'w-full bg-[#111]')}>
           <option value="">Pick an entity…</option>
           {candidates.map((o) => <option key={o.id} value={o.id}>{o.name} · {o.type}</option>)}
         </select>
         <Slider label="Strength" value={strength} onChange={setStrength} />
         <button type="submit" disabled={!target || add.isPending} className={primaryBtn}>{add.isPending ? 'Connecting…' : 'Create relation'}</button>
-        {candidates.length === 0 && <p className="text-[11px] text-zinc-600">Spawn a second entity first.</p>}
+        {candidates.length === 0 && <p className="text-[11px] text-zinc-400">Spawn a second entity first.</p>}
       </form>
     </div>
   );
@@ -297,27 +297,27 @@ function SimulateTab({ entity, relations }: { entity: WorldEntity; relations: Wo
           <button key={id} type="button" onClick={() => setMode(id)} className={cn('flex-1 rounded-lg border px-2 py-1.5 text-[12px] transition-colors', mode === id ? 'border-teal-400/60 text-teal-200' : 'border-white/10 text-zinc-400 hover:text-zinc-200')}>{l}</button>
         ))}
       </div>
-      <p className="text-[12px] leading-relaxed text-zinc-500">
+      <p className="text-[12px] leading-relaxed text-zinc-400">
         {mode === 'whatif'
           ? 'Change one property and see how it ripples through connected entities. Results are hypothetical and never written back.'
           : `Step the model forward over this entity and its ${relations.length} neighbour${relations.length !== 1 ? 's' : ''}.`}
       </p>
       {mode === 'whatif' && (
         <div className="flex gap-1.5">
-          <select value={property} onChange={(e) => setProperty(e.target.value)} aria-label="Property to change" className={cn(fieldCls, 'min-w-0 flex-1 bg-[#111]')}>
+          <select id="entity-entityinspector-property-to-change" name="property-to-change" value={property} onChange={(e) => setProperty(e.target.value)} aria-label="Property to change" className={cn(fieldCls, 'min-w-0 flex-1 bg-[#111]')}>
             <option value="salience">salience</option>
             <option value="confidence">confidence</option>
             {propKeys.map((k) => <option key={k} value={k}>{k}</option>)}
           </select>
-          <input value={altValue} onChange={(e) => setAltValue(e.target.value)} aria-label="Alternative value" className={cn(fieldCls, 'w-24')} />
+          <input id="entity-entityinspector-alternative-value" name="alternative-value" value={altValue} onChange={(e) => setAltValue(e.target.value)} aria-label="Alternative value" className={cn(fieldCls, 'w-24')} />
         </div>
       )}
       {mode === 'evolve' && (
         <label className="block text-[12px] text-zinc-400">Steps · {steps}
-          <input type="range" min={5} max={50} value={steps} onChange={(e) => setSteps(Number(e.target.value))} className="mt-1 w-full accent-teal-400" aria-label="Simulation steps" />
+          <input id="entity-entityinspector-simulation-steps" name="simulation-steps" type="range" min={5} max={50} value={steps} onChange={(e) => setSteps(Number(e.target.value))} className="mt-1 w-full accent-teal-400" aria-label="Simulation steps" />
         </label>
       )}
-      <input value={hypothesis} onChange={(e) => setHypothesis(e.target.value)} placeholder="Hypothesis (optional)" aria-label="Hypothesis" className={cn(fieldCls, 'w-full')} />
+      <input id="entity-entityinspector-hypothesis" name="hypothesis" value={hypothesis} onChange={(e) => setHypothesis(e.target.value)} placeholder="Hypothesis (optional)" aria-label="Hypothesis" className={cn(fieldCls, 'w-full')} />
       <button type="button" onClick={() => run.mutate()} disabled={run.isPending} className={cn(primaryBtn, 'inline-flex items-center gap-1.5')}>
         {run.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
         {run.isPending ? 'Running…' : mode === 'whatif' ? 'Run what-if' : 'Run simulation'}
@@ -327,7 +327,7 @@ function SimulateTab({ entity, relations }: { entity: WorldEntity; relations: Wo
           <p className="text-[12px] text-zinc-400">{label}</p>
           <Insights items={insights} />
           {summary && (
-            <p className="border-t border-white/10 pt-2 text-[11px] text-zinc-500">
+            <p className="border-t border-white/10 pt-2 text-[11px] text-zinc-400">
               {summary.totalEvents} causal event{summary.totalEvents !== 1 ? 's' : ''} · {summary.causalPathCount} path{summary.causalPathCount !== 1 ? 's' : ''}
             </p>
           )}
@@ -375,12 +375,12 @@ function TerminalTab() {
   return (
     <div className="space-y-2">
       <div className="h-56 overflow-y-auto whitespace-pre-wrap rounded-lg bg-black p-3 font-mono text-[12px] text-teal-300">
-        {output.length === 0 ? <p className="text-zinc-500">Ready. Risky commands are held for a council vote before they run.</p>
+        {output.length === 0 ? <p className="text-zinc-400">Ready. Risky commands are held for a council vote before they run.</p>
           : output.map((l, i) => <div key={i} className={l.startsWith('$') ? 'text-zinc-100' : ''}>{l}</div>)}
         <div ref={endRef} />
       </div>
       <div className="flex gap-2">
-        <input value={command} onChange={(e) => setCommand(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} placeholder="Enter a command" aria-label="Terminal command" className={cn(fieldCls, 'flex-1 font-mono')} />
+        <input id="entity-entityinspector-terminal-command" name="terminal-command" value={command} onChange={(e) => setCommand(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} placeholder="Enter a command" aria-label="Terminal command" className={cn(fieldCls, 'flex-1 font-mono')} />
         <button type="button" onClick={submit} disabled={!command.trim() || exec.isPending} aria-label="Run command" className={cn(ghostBtn, 'px-3')}><Play className="h-3.5 w-3.5" /></button>
       </div>
     </div>
@@ -403,7 +403,7 @@ export function EntityInspector({
     queryFn: () => wm<{ entity: WorldEntity; relations: WorldRelation[] }>('get_entity', { entityId }),
   });
 
-  if (isLoading) return <div className="flex items-center gap-2 p-4 text-[13px] text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>;
+  if (isLoading) return <div className="flex items-center gap-2 p-4 text-[13px] text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>;
   if (error || !data) return <p className="p-4 text-[13px] text-rose-300">{(error as Error)?.message || 'Could not load this entity.'}</p>;
 
   const { entity, relations } = data;
@@ -411,14 +411,14 @@ export function EntityInspector({
     <div>
       <div className="flex items-center gap-2 px-4 pt-4">
         <span className={cn('h-2.5 w-2.5 rounded-full', TYPE_DOT[entity.type] || 'bg-zinc-500')} />
-        <span className="text-[12px] uppercase tracking-wide text-zinc-500">{entity.type}</span>
-        <span className="ml-auto inline-flex items-center gap-1 text-[12px] text-zinc-500">{relations.length} <ArrowRight className="h-3 w-3" /> relations</span>
+        <span className="text-[12px] uppercase tracking-wide text-zinc-400">{entity.type}</span>
+        <span className="ml-auto inline-flex items-center gap-1 text-[12px] text-zinc-400">{relations.length} <ArrowRight className="h-3 w-3" /> relations</span>
       </div>
       <div className="mt-3 flex gap-1 border-b border-white/10 px-3">
         {TABS.map((t) => (
           <button key={t.id} type="button" onClick={() => setTab(t.id)} aria-current={tab === t.id ? 'page' : undefined}
-            className={cn('-mb-px border-b-2 px-2.5 py-2 text-[13px] transition-colors', tab === t.id ? 'border-teal-400 text-zinc-50' : 'border-transparent text-zinc-500 hover:text-zinc-200')}>
-            {t.label}{t.id === 'relations' && relations.length > 0 && <span className="ml-1 text-[11px] text-zinc-500">{relations.length}</span>}
+            className={cn('-mb-px border-b-2 px-2.5 py-2 text-[13px] transition-colors', tab === t.id ? 'border-teal-400 text-zinc-50' : 'border-transparent text-zinc-400 hover:text-zinc-200')}>
+            {t.label}{t.id === 'relations' && relations.length > 0 && <span className="ml-1 text-[11px] text-zinc-400">{relations.length}</span>}
           </button>
         ))}
       </div>

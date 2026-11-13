@@ -9,6 +9,7 @@ import { Loader2, Plus, Trash2, Cog, Pencil, Check, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface Mechanic { id: string; name: string; category: string; description: string | null }
 
@@ -147,9 +148,7 @@ export function GdMechanicsPanel({ gameId, onChange }: { gameId: string; onChang
                       <button aria-label="Edit" type="button" onClick={() => startEdit(m)} className="text-zinc-600 hover:text-lime-400 shrink-0">
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
-                      <button aria-label="Delete" type="button" onClick={() => delMechanic(m.id)} className="text-zinc-600 hover:text-rose-400 shrink-0">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      <StickyDeleteConfirm onConfirm={() => delMechanic(m.id)} armAriaLabel={`Delete ${m.name}`} confirmAriaLabel={`Confirm delete ${m.name}`} className="text-zinc-600 hover:text-rose-400 shrink-0" armLabel={<Trash2 className="w-3.5 h-3.5" />} />
                     </div>
                   )}
                 </li>

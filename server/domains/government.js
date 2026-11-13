@@ -153,7 +153,7 @@ export default function registerGovernmentActions(registerLensAction) {
   // behavior tests, are unaffected) plus a single-zone fallback for
   // resourceStaging (the editor has no multi-zone entry UI — an explicit
   // `zones` array, e.g. from an API/MCP caller, still works as before).
-  registerLensAction("government", "permitTimeline", (ctx, artifact, _params) => {
+  registerLensAction("government", "permitTimeline", (ctx, artifact, params = {}) => {
     const applicationDate = (artifact.data?.applicationDate || artifact.data?.submittedDate)
       ? new Date(artifact.data.applicationDate || artifact.data.submittedDate) : null;
     const approvalDate = artifact.data?.approvalDate ? new Date(artifact.data.approvalDate) : null;
@@ -161,16 +161,19 @@ export default function registerGovernmentActions(registerLensAction) {
     if (applicationDate && approvalDate) {
       processingDays = Math.ceil((approvalDate - applicationDate) / (1000 * 60 * 60 * 24));
     }
-    const permitType = String(artifact.data?.type || 'general').toLowerCase();
+    const permitType = String(params.permitType || artifact.data?.type || "general").toLowerCase();
     const benchmarks = { building: 30, electrical: 14, plumbing: 14, grading: 21, business: 10, general: 21 };
     const benchmark = benchmarks[permitType] || 21;
-    return { ok: true, result: { permitId: artifact.id, permitType, processingDays, benchmark, onTime: processingDays !== null ? processingDays <= benchmark : null } };
+    const estimatedWeeks = Math.max(1, Math.ceil(benchmark / 7));
+    return { ok: true, result: { permitId: artifact.id, permitType, processingDays, benchmark, estimatedWeeks, onTime: processingDays !== null ? processingDays <= benchmark : null } };
   });
 
-  registerLensAction("government", "violationEscalation", (ctx, artifact, _params) => {
+  registerLensAction("government", "violationEscalation", (ctx, artifact, params = {}) => {
+    const severity = String(params.severity || artifact.data?.severity || "").toLowerCase();
+    const tierFromSeverity = { critical: "critical", high: "high", medium: "standard", low: "low" }[severity] || "standard";
     const deadline = artifact.data?.complianceDeadline ? new Date(artifact.data.complianceDeadline) : null;
     const now = new Date();
-    if (!deadline) return { ok: true, result: { escalated: false, message: "No compliance deadline set" } };
+    if (!deadline) return { ok: true, result: { escalated: false, tier: tierFromSeverity, nextStep: "Set a compliance deadline on the violation to see whether it is past due.", message: "No compliance deadline set" } };
     const pastDeadline = now > deadline;
     const daysPast = pastDeadline ? Math.ceil((now - deadline) / (1000 * 60 * 60 * 24)) : 0;
     if (pastDeadline && artifact.meta?.status !== 'escalated') {
@@ -178,7 +181,9 @@ export default function registerGovernmentActions(registerLensAction) {
       artifact.data = { ...artifact.data, escalatedAt: now.toISOString(), daysPastDeadline: daysPast };
       artifact.updatedAt = now.toISOString();
     }
-    return { ok: true, result: { violationId: artifact.id, escalated: pastDeadline, daysPast, currentStatus: artifact.meta?.status } };
+    const tier = pastDeadline ? (daysPast > 30 || severity === "critical" ? "critical" : "high") : tierFromSeverity;
+    const nextStep = pastDeadline ? "The compliance deadline has passed." : "Within the compliance deadline.";
+    return { ok: true, result: { violationId: artifact.id, escalated: pastDeadline, daysPast, currentStatus: artifact.meta?.status, tier, nextStep } };
   });
 
   registerLensAction("government", "resourceStaging", (ctx, artifact, params) => {
@@ -528,6 +533,32 @@ export default function registerGovernmentActions(registerLensAction) {
           const j = await r.json();
           if (typeof j?.detail === "string") detail = j.detail;
         } catch (_e) { /* body unreadable — the status alone is reported */ }
+        if (/submission period/i.test(detail)) {
+          const prev = period > 1 ? { fy: year, period: period - 1 } : { fy: Number(year) - 1, period: 12 };
+          const again = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ type: "budget_function", filters: { fy: String(prev.fy), period: String(prev.period) } }),
+            signal: ctrl.signal,
+          });
+          if (again.ok) {
+            const data = await again.json();
+            const results = data?.results || [];
+            const totalDollars = results.reduce((s, c) => s + (Number(c.amount) || 0), 0);
+            const categories = results.map((c) => ({
+              name: c.name,
+              amountBillions: (Number(c.amount) || 0) / 1e9,
+              pctOfTotal: totalDollars > 0 ? (Number(c.amount) / totalDollars) * 100 : 0,
+            })).sort((a, b) => b.amountBillions - a.amountBillions);
+            const result = {
+              scope: "federal", year: prev.fy, period: prev.period, totalBillions: totalDollars / 1e9, categories,
+              source: "usaspending.gov",
+              note: `Fiscal year ${year} period ${period} is not published yet. Showing fiscal year ${prev.fy} period ${prev.period}.`,
+            };
+            SPENDING_CACHE.set(`federal:${prev.fy}:${prev.period}`, result);
+            return { ok: true, result };
+          }
+        }
         return {
           ok: false,
           error: detail
@@ -882,11 +913,13 @@ export default function registerGovernmentActions(registerLensAction) {
     const userId = govActor(ctx);
     const id = String(params.id || "");
     const reason = String(params.reason || "").trim();
+    if (!reason) return { ok: false, error: "A denial reason is required." };
+    if (reason.length > 500) return { ok: false, error: "Denial reason must be at most 500 characters." };
     const permit = ensureGovBucket(s, "permits", userId).find(p => p.id === id);
     if (!permit) return { ok: false, error: "permit not found" };
     permit.status = "denied";
     permit.deniedAt = new Date().toISOString();
-    permit.denialReason = reason || "no reason provided";
+    permit.denialReason = reason;
     queueGovNotification(s, userId, {
       kind: "status_update", subjectKind: "permit", subjectId: permit.id,
       message: `Permit ${permit.recordNumber} was denied: ${permit.denialReason}`,
@@ -963,6 +996,53 @@ export default function registerGovernmentActions(registerLensAction) {
     insp.completedAt = new Date().toISOString();
     saveGovState();
     return { ok: true, result: { inspection: insp } };
+  });
+
+  function dropGovRow(bucket, ctx, id) {
+    const s = ensureGovState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = ensureGovBucket(s, bucket, govActor(ctx));
+    const i = arr.findIndex((row) => row.id === String(id || ""));
+    if (i < 0) return { ok: false, error: "not found" };
+    const [removed] = arr.splice(i, 1);
+    saveGovState();
+    return { ok: true, result: { deleted: removed.id } };
+  }
+
+  registerLensAction("government", "inspections-delete", (ctx, _a, params = {}) => dropGovRow("inspections", ctx, params.id));
+  registerLensAction("government", "fines-delete", (ctx, _a, params = {}) => dropGovRow("fines", ctx, params.id));
+  registerLensAction("government", "service-requests-delete", (ctx, _a, params = {}) => dropGovRow("serviceRequests", ctx, params.id));
+
+  registerLensAction("government", "foia-delete", (ctx, _a, params = {}) => {
+    const state = getGovState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const arr = state.foiaRequests.get(userId) || [];
+    const i = arr.findIndex((row) => row.id === String(params.id || ""));
+    if (i < 0) return { ok: false, error: "not found" };
+    const [removed] = arr.splice(i, 1);
+    saveGovState();
+    return { ok: true, result: { deleted: removed.id } };
+  });
+
+  registerLensAction("government", "permits-cancel", (ctx, _a, params = {}) => {
+    const s = ensureGovState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = ensureGovBucket(s, "permits", govActor(ctx));
+    const permit = arr.find((p) => p.id === String(params.id || ""));
+    if (!permit) return { ok: false, error: "permit not found" };
+    if (permit.status === "issued") return { ok: false, error: "an issued permit cannot be cancelled here" };
+    permit.status = "cancelled";
+    permit.cancelledAt = new Date().toISOString();
+    saveGovState();
+    return { ok: true, result: { permit } };
+  });
+
+  registerLensAction("government", "voter-registration-withdraw", (ctx, _a, _params = {}) => {
+    const s = ensureGovState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.voterRegistrations instanceof Map)) return { ok: false, error: "not found" };
+    const userId = govActor(ctx);
+    if (!s.voterRegistrations.has(userId)) return { ok: false, error: "not found" };
+    s.voterRegistrations.delete(userId);
+    saveGovState();
+    return { ok: true, result: { withdrawn: true } };
   });
 
   // ── Assets (streetlights, hydrants, signs, road segments) ────
@@ -1695,7 +1775,9 @@ export default function registerGovernmentActions(registerLensAction) {
     let notifications = ensureGovBucket(s, "notifications", userId).slice().reverse();
     if (unreadOnly) notifications = notifications.filter(n => !n.read);
     const unreadCount = ensureGovBucket(s, "notifications", userId).filter(n => !n.read).length;
-    return { ok: true, result: { notifications, unreadCount } };
+    if (!(s.notificationSubs instanceof Map)) s.notificationSubs = new Map();
+    const subscriptions = (s.notificationSubs.get(userId) || []).slice();
+    return { ok: true, result: { notifications, unreadCount, subscriptions } };
   });
 
   registerLensAction("government", "notifications-subscribe", (ctx, _a, params = {}) => {

@@ -23,6 +23,7 @@ function finiteNum(v, fallback = 0, min, max) {
 }
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { badNumber, readingOrNull } from "../lib/finite-input.js";
 import { eiaRetailPrice } from "../lib/sourced-inputs.js";
 import { notComputed } from "../lib/lens-inputs.js";
 export default function registerEnergyActions(registerLensAction) {
@@ -374,12 +375,16 @@ export default function registerEnergyActions(registerLensAction) {
   registerLensAction("energy", "device-add", (ctx, _a, params = {}) => {
     const s = getEnergyState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const name = enClean(params.name, 80);
-    if (!name) return { ok: false, error: "device name required" };
+    if (!name) return { ok: false, error: "device name required", message: "Device name is required." };
+    const wattage = params.wattage === undefined || params.wattage === null || params.wattage === ""
+      ? 0
+      : readingOrNull(params.wattage, { min: 0, max: 1_000_000, fallback: null });
+    if (wattage === null) return badNumber("wattage", "must be a number from 0 to 1000000");
     const device = {
       id: enId("dev"), name,
       category: DEVICE_CATEGORIES.includes(String(params.category).toLowerCase())
         ? String(params.category).toLowerCase() : "appliance",
-      wattage: Math.max(0, Math.round(enNum(params.wattage))),
+      wattage: Math.round(wattage),
       alwaysOn: params.alwaysOn === true,
       createdAt: enNow(),
     };
@@ -408,7 +413,11 @@ export default function registerEnergyActions(registerLensAction) {
     const device = findDevice(s, enAid(ctx), params.id);
     if (!device) return { ok: false, error: "device not found" };
     if (params.name != null) { const n = enClean(params.name, 80); if (n) device.name = n; }
-    if (params.wattage != null) device.wattage = Math.max(0, Math.round(enNum(params.wattage)));
+    if (params.wattage != null && params.wattage !== "") {
+      const wattage = readingOrNull(params.wattage, { min: 0, max: 1_000_000, fallback: null });
+      if (wattage === null) return badNumber("wattage", "must be a number from 0 to 1000000");
+      device.wattage = Math.round(wattage);
+    }
     if (params.alwaysOn != null) device.alwaysOn = params.alwaysOn === true;
     if (params.category != null && DEVICE_CATEGORIES.includes(String(params.category).toLowerCase())) {
       device.category = String(params.category).toLowerCase();

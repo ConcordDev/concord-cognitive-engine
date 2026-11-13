@@ -32,6 +32,8 @@ import {
   setVisibility,
   setAllowLiveVisits,
   setLockTier,
+  renameHouse,
+  unclaimHouse,
 } from "../lib/player-housing.js";
 import { requestVisit } from "../lib/house-visit.js";
 
@@ -146,6 +148,32 @@ export default function registerHousingMacros(register) {
    * housing.set_visibility — set house visibility (private|friends|public).
    * input: { houseId, visibility }
    */
+  /**
+   * housing.rename — rename one of your houses.
+   * input: { houseId, name }
+   */
+  register("housing", "rename", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const userId = input.userId || ctx?.actor?.userId;
+    if (!userId) return { ok: false, reason: "no_user" };
+    if (!input.houseId) return { ok: false, reason: "missing_house_id" };
+    return renameHouse(db, userId, input.houseId, input.name);
+  }, { note: "rename one of your houses" });
+
+  /**
+   * housing.unclaim — release one of your houses (claim's inverse).
+   * input: { houseId }
+   */
+  register("housing", "unclaim", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const userId = input.userId || ctx?.actor?.userId;
+    if (!userId) return { ok: false, reason: "no_user" };
+    if (!input.houseId) return { ok: false, reason: "missing_house_id" };
+    return unclaimHouse(db, userId, input.houseId);
+  }, { note: "release one of your houses" });
+
   register("housing", "set_visibility", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };

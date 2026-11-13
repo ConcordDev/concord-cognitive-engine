@@ -29,13 +29,25 @@ export default function SocialProfilePage() {
   // exact scroll position).
   const { openPostId, openPost, closePost } = useOpenPostInPlace();
 
+  // FIX-social-014: the ['auth-me'] key is shared with the shell
+  // (Topbar / RailAccount cache the full { ok, user } envelope under
+  // it). This page used to cache only res.data.user under the same
+  // key, so whichever shape landed first won: with the shell's
+  // envelope in the cache, me.data?.id read undefined, the page
+  // passed currentUserId=undefined to UserProfile, and the profile's
+  // whole Follow/Message row vanished — only 'Copy ID' left in the
+  // menu. Cache the envelope like every other consumer of the key,
+  // and resolve the viewer tolerantly so an entry written in either
+  // shape still yields the signed-in user.
   const me = useQuery({
     queryKey: ['auth-me'],
     queryFn: async () => {
       const res = await api.get<MeResponse>('/api/auth/me');
-      return res.data?.user || null;
+      return res.data || null;
     },
   });
+  const meData = me.data as (MeResponse & { id?: string; username?: string; displayName?: string }) | null | undefined;
+  const viewer = meData?.user || (meData?.id ? meData : null);
 
   const person = useQuery({
     queryKey: ['social-by-username', username],
@@ -62,8 +74,8 @@ export default function SocialProfilePage() {
         {openPostId ? (
           <PostDetailInPlace
             postId={openPostId}
-            username={me.data?.username || me.data?.displayName || me.data?.id || 'current-user'}
-            currentUserId={me.data?.id || undefined}
+            username={viewer?.username || viewer?.displayName || viewer?.id || 'current-user'}
+            currentUserId={viewer?.id || undefined}
             onClose={closePost}
             onOpenPost={openPost}
             onOpenHashtag={(tag) => router.push(`/lenses/social?tag=${encodeURIComponent(tag)}`)}
@@ -75,7 +87,7 @@ export default function SocialProfilePage() {
         <div hidden={openPostId ? true : undefined}>
           <UserProfile
             userId={person.data.id}
-            currentUserId={me.data?.id || undefined}
+            currentUserId={viewer?.id || undefined}
             onOpenPost={openPost}
           />
         </div>

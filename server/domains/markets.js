@@ -573,7 +573,13 @@ export default function registerMarketsActions(registerLensAction) {
       // Seed liquidity so the first bet has a meaningful price. The creator
       // funds a tiny symmetric seed split YES/NO; this is real (creator-owned)
       // liquidity, not fabricated volume.
-      const seed = Math.min(Math.max(Number(params.seedSparks) || 10, 2), 200);
+      let seed = 10;
+      if (params.seedSparks != null && params.seedSparks !== "") {
+        seed = Number(params.seedSparks);
+        if (!Number.isFinite(seed) || seed < 2 || seed > 200) {
+          return { ok: false, error: "invalid_input", message: "Stake must be a number from 2 to 200." };
+        }
+      }
       const id = pmId(s, "mkt");
       const m = {
         id,
@@ -613,7 +619,10 @@ export default function registerMarketsActions(registerLensAction) {
       const sort = String(params.sort || "newest"); // newest | volume | closing | trending
       const limit = Math.min(Math.max(Number(params.limit) || 50, 1), 200);
       let rows = [...s.markets.values()];
-      if (category) rows = rows.filter((m) => m.category === category);
+      if (category) {
+        const wanted = category.toLowerCase();
+        rows = rows.filter((m) => String(m.category || "").toLowerCase() === wanted);
+      }
       if (statusFilter) rows = rows.filter((m) => m.status === statusFilter);
       if (search) {
         rows = rows.filter((m) =>
@@ -623,9 +632,15 @@ export default function registerMarketsActions(registerLensAction) {
       }
       const now = pmNow();
       if (sort === "volume") {
-        rows.sort((a, b) => (b.poolYes + b.poolNo) - (a.poolYes + a.poolNo));
+        const volume = (m) => (m.priceHistory?.length || 0) * 1_000_000 + (m.poolYes + m.poolNo);
+        rows.sort((a, b) => volume(b) - volume(a));
       } else if (sort === "closing") {
-        rows.sort((a, b) => (a.closesAt || Infinity) - (b.closesAt || Infinity));
+        const rank = (m) => {
+          const closes = m.closesAt || Infinity;
+          const closed = m.status === "resolved" || m.status === "closed" || (Number.isFinite(closes) && closes < now);
+          return closed ? closes + 1e15 : closes;
+        };
+        rows.sort((a, b) => rank(a) - rank(b));
       } else if (sort === "trending") {
         // recent trade count weighted by total pool
         const score = (m) => {
@@ -860,6 +875,39 @@ export default function registerMarketsActions(registerLensAction) {
           realizedPnl: pos.realizedPnl,
         },
       };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ── Edit an open market. Question text stays put once a position exists. ──
+  registerLensAction("markets", "market-update", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getPredictionState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = pmActor(ctx);
+      const m = s.markets.get(String(params.marketId || ""));
+      if (!m) return { ok: false, error: "market not found" };
+      if (m.creatorId !== userId) return { ok: false, error: "only the market creator can edit" };
+      if (m.status !== "open") return { ok: false, error: `market is ${m.status}` };
+      const hasPosition = [...s.positions.values()].some((p) => p.marketId === m.id && p.status !== "cancelled");
+      if (params.question != null) {
+        if (hasPosition) return { ok: false, error: "cannot change the question after a position exists" };
+        const question = String(params.question || "").trim();
+        if (question.length < 8) return { ok: false, error: "question must be at least 8 characters" };
+        if (question.length > 240) return { ok: false, error: "question too long (240 max)" };
+        m.question = question;
+      }
+      if (params.description != null) {
+        m.description = String(params.description).trim().slice(0, 1000);
+      }
+      if (params.resolutionCriteria != null) {
+        const criteria = String(params.resolutionCriteria).trim();
+        if (criteria.length < 8) return { ok: false, error: "resolutionCriteria must be at least 8 characters" };
+        m.resolutionCriteria = criteria.slice(0, 2000);
+      }
+      saveMarketsState();
+      return { ok: true, result: { market: summariseMarket(m) } };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }

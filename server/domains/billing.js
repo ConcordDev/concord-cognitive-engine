@@ -38,6 +38,12 @@ export default function registerBillingActions(registerLensAction) {
     if (!Array.isArray(pricingTiers)) return pricingTiers;
     const discountRules = requireList(artifact.data.discountRules, "discountRules");
     if (!Array.isArray(discountRules)) return discountRules;
+    if (params.taxRate !== undefined && params.taxRate !== null && params.taxRate !== "") {
+      const tr = Number(params.taxRate);
+      if (!Number.isFinite(tr) || tr < 0 || tr > 1) {
+        return { ok: false, error: "taxRate must be a decimal from 0 to 1" };
+      }
+    }
     const taxRate = finNum(params.taxRate);
     const currency = params.currency || "USD";
     const exchangeRates = params.exchangeRates || {};
@@ -543,6 +549,17 @@ export default function registerBillingActions(registerLensAction) {
   const billAid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
   const billId = (prefix) => `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const billNum = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
+  const MONEY_MAX = 1e9;
+  // Omitted amount stays 0. A present value that is not a finite number
+  // from 0 through one billion is refused, so 1e20 cannot become MRR.
+  function billMoney(v) {
+    if (v === undefined || v === null || v === "") return { ok: true, value: 0 };
+    const n = Number(v);
+    if (!Number.isFinite(n) || n < 0 || n > MONEY_MAX) {
+      return { ok: false, error: "amount must be a number from 0 to 1,000,000,000" };
+    }
+    return { ok: true, value: round2(n) };
+  }
   const round2 = (v) => Math.round(v * 100) / 100;
   const CYCLE_DAYS = { monthly: 30, quarterly: 91, annual: 365, weekly: 7 };
   function cycleDays(interval) { return CYCLE_DAYS[interval] || 30; }
@@ -563,13 +580,21 @@ export default function registerBillingActions(registerLensAction) {
       const name = String(params.name || "").trim();
       if (!name) return { ok: false, error: "name required" };
       const interval = ["monthly", "quarterly", "annual", "weekly"].includes(params.interval) ? params.interval : "monthly";
+      const priced = billMoney(params.amount);
+      if (!priced.ok) return priced;
+      // FIX-billing-006: refuse an out-of-range trial in words instead of
+      // silently clamping a negative trial to 0.
+      const trialRaw = params.trialDays == null ? 0 : billNum(params.trialDays, NaN);
+      if (!Number.isFinite(trialRaw) || trialRaw < 0) {
+        return { ok: false, error: "trialDays must be a number of days, 0 or more" };
+      }
       const plan = {
         id: billId("plan"),
         name,
         interval,
-        amount: Math.max(0, round2(billNum(params.amount))),
+        amount: priced.value,
         currency: String(params.currency || "USD").toUpperCase(),
-        trialDays: Math.max(0, Math.round(billNum(params.trialDays))),
+        trialDays: Math.round(trialRaw),
         meteredComponent: params.meteredComponent ? String(params.meteredComponent) : null,
         active: true,
         createdAt: new Date().toISOString(),
@@ -617,6 +642,12 @@ export default function registerBillingActions(registerLensAction) {
       const plan = listFor(s.plans, userId).find((p) => p.id === params.planId);
       if (!plan) return { ok: false, error: "plan not found" };
       const customerName = String(params.customerName || "Customer").trim();
+      // FIX-billing-006: refuse seats < 1 in words instead of silently
+      // clamping the subscription to 1 seat.
+      const qtyRaw = params.quantity == null ? 1 : billNum(params.quantity, NaN);
+      if (!Number.isFinite(qtyRaw) || Math.round(qtyRaw) < 1) {
+        return { ok: false, error: "quantity (seats) must be at least 1" };
+      }
       const now = new Date();
       const trialing = plan.trialDays > 0;
       const periodStart = now;
@@ -625,7 +656,7 @@ export default function registerBillingActions(registerLensAction) {
         id: billId("sub"),
         planId: plan.id,
         customerName,
-        quantity: Math.max(1, Math.round(billNum(params.quantity, 1))),
+        quantity: Math.round(qtyRaw),
         status: trialing ? "trialing" : "active",
         currentPeriodStart: periodStart.toISOString(),
         currentPeriodEnd: periodEnd.toISOString(),
@@ -696,6 +727,129 @@ export default function registerBillingActions(registerLensAction) {
     } catch (e) { return { ok: false, error: e.message }; }
   });
 
+  // ─── FIX-billing-008: edit / delete for the lens's own records ─────
+  // Plans, coupons, subscriptions and dunning cases could be created
+  // and listed but never edited or removed, so a typo'd plan or a QA
+  // fixture lived forever. These verbs are owner-scoped like every
+  // other billing write; plan-delete refuses while subscriptions
+  // still reference the plan (cancel or delete them first, in words).
+
+  registerLensAction("billing", "plan-update", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getBillState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = billAid(ctx);
+      const plan = listFor(s.plans, userId).find((p) => p.id === params.planId);
+      if (!plan) return { ok: false, error: "plan not found" };
+      if (params.name != null) {
+        const name = String(params.name).trim();
+        if (!name) return { ok: false, error: "name required" };
+        plan.name = name;
+      }
+      if (params.interval != null) {
+        if (!["monthly", "quarterly", "annual", "weekly"].includes(params.interval)) {
+          return { ok: false, error: "interval must be weekly, monthly, quarterly or annual" };
+        }
+        plan.interval = params.interval;
+      }
+      if (params.amount != null) {
+        const priced = billMoney(params.amount);
+        if (!priced.ok) return priced;
+        plan.amount = priced.value;
+      }
+      if (params.trialDays != null) {
+        const t = billNum(params.trialDays, NaN);
+        if (!Number.isFinite(t) || t < 0) return { ok: false, error: "trialDays must be a number of days, 0 or more" };
+        plan.trialDays = Math.round(t);
+      }
+      if (params.active != null) plan.active = params.active === true;
+      plan.updatedAt = new Date().toISOString();
+      saveBillState();
+      return { ok: true, result: { plan } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  registerLensAction("billing", "plan-delete", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getBillState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = billAid(ctx);
+      const list = ensureList(s.plans, userId);
+      const idx = list.findIndex((p) => p.id === params.planId);
+      if (idx < 0) return { ok: false, error: "plan not found" };
+      const refs = listFor(s.subscriptions, userId).filter((x) => x.planId === params.planId).length;
+      if (refs > 0) return { ok: false, error: `plan has ${refs} subscription(s) — cancel or delete them before deleting the plan` };
+      const [removed] = list.splice(idx, 1);
+      saveBillState();
+      return { ok: true, result: { deleted: true, planId: removed.id } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  registerLensAction("billing", "subscription-delete", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getBillState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = billAid(ctx);
+      const list = ensureList(s.subscriptions, userId);
+      const idx = list.findIndex((x) => x.id === params.subscriptionId);
+      if (idx < 0) return { ok: false, error: "subscription not found" };
+      const [removed] = list.splice(idx, 1);
+      saveBillState();
+      return { ok: true, result: { deleted: true, subscriptionId: removed.id } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  registerLensAction("billing", "coupon-update", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getBillState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = billAid(ctx);
+      const coupon = listFor(s.coupons, userId).find((c) => c.id === params.couponId);
+      if (!coupon) return { ok: false, error: "coupon not found" };
+      if (params.active != null) coupon.active = params.active === true;
+      if (params.duration != null) {
+        if (!["once", "forever", "repeating"].includes(params.duration)) {
+          return { ok: false, error: "duration must be once, forever or repeating" };
+        }
+        coupon.duration = params.duration;
+      }
+      if (params.maxRedemptions !== undefined) {
+        if (params.maxRedemptions === null || params.maxRedemptions === "") {
+          coupon.maxRedemptions = null;
+        } else {
+          const mr = billNum(params.maxRedemptions, NaN);
+          if (!Number.isFinite(mr) || Math.round(mr) < 1) return { ok: false, error: "maxRedemptions must be at least 1" };
+          coupon.maxRedemptions = Math.round(mr);
+        }
+      }
+      coupon.updatedAt = new Date().toISOString();
+      saveBillState();
+      return { ok: true, result: { coupon } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  registerLensAction("billing", "coupon-delete", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getBillState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = billAid(ctx);
+      const list = ensureList(s.coupons, userId);
+      const idx = list.findIndex((c) => c.id === params.couponId);
+      if (idx < 0) return { ok: false, error: "coupon not found" };
+      const [removed] = list.splice(idx, 1);
+      saveBillState();
+      return { ok: true, result: { deleted: true, couponId: removed.id } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  registerLensAction("billing", "dunning-delete", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getBillState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = billAid(ctx);
+      const list = ensureList(s.dunning, userId);
+      const idx = list.findIndex((d) => d.id === params.dunningId);
+      if (idx < 0) return { ok: false, error: "dunning case not found" };
+      const [removed] = list.splice(idx, 1);
+      saveBillState();
+      return { ok: true, result: { deleted: true, dunningId: removed.id } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
   // ─── Feature: Usage-based / metered billing with rate tiers ───
 
   registerLensAction("billing", "usage-record", (ctx, _artifact, params = {}) => {
@@ -706,8 +860,14 @@ export default function registerBillingActions(registerLensAction) {
       if (!subId) return { ok: false, error: "subscriptionId required" };
       const qty = billNum(params.quantity);
       if (qty <= 0) return { ok: false, error: "quantity must be positive" };
-      if (!listFor(s.subscriptions, userId).some((x) => x.id === subId)) {
+      const sub = listFor(s.subscriptions, userId).find((x) => x.id === subId);
+      if (!sub) {
         return { ok: false, error: "subscription not found" };
+      }
+      // FIX-billing-009: a canceled subscription takes no new metered
+      // usage — refuse in words instead of recording against a dead sub.
+      if (sub.status === "canceled") {
+        return { ok: false, error: "subscription is canceled — metered usage cannot be recorded against it" };
       }
       const rec = {
         id: billId("use"),
@@ -791,15 +951,25 @@ export default function registerBillingActions(registerLensAction) {
       const existing = listFor(s.coupons, userId);
       if (existing.some((c) => c.code === code)) return { ok: false, error: "coupon code already exists" };
       const kind = params.kind === "fixed" ? "fixed" : "percent";
-      const value = Math.max(0, billNum(params.value));
-      if (value <= 0) return { ok: false, error: "value must be positive" };
+      // FIX-billing-006: refuse out-of-range values in words instead of
+      // silently clamping a 150% coupon to 100% (or a max-redemptions
+      // of 0 up to 1).
+      const value = billNum(params.value, NaN);
+      if (!Number.isFinite(value) || value <= 0) return { ok: false, error: "value must be positive" };
+      if (kind === "percent" && value > 100) return { ok: false, error: "percent coupon value cannot exceed 100" };
+      let maxRedemptions = null;
+      if (params.maxRedemptions != null && params.maxRedemptions !== "") {
+        const mr = billNum(params.maxRedemptions, NaN);
+        if (!Number.isFinite(mr) || Math.round(mr) < 1) return { ok: false, error: "maxRedemptions must be at least 1" };
+        maxRedemptions = Math.round(mr);
+      }
       const coupon = {
         id: billId("cpn"),
         code,
         kind,
-        value: kind === "percent" ? Math.min(100, value) : round2(value),
+        value: kind === "percent" ? value : round2(value),
         duration: ["once", "forever", "repeating"].includes(params.duration) ? params.duration : "once",
-        maxRedemptions: params.maxRedemptions ? Math.max(1, Math.round(billNum(params.maxRedemptions))) : null,
+        maxRedemptions,
         redemptions: 0,
         active: true,
         createdAt: new Date().toISOString(),
@@ -827,8 +997,30 @@ export default function registerBillingActions(registerLensAction) {
         ? round2(amount * (coupon.value / 100))
         : Math.min(amount, coupon.value);
       const finalAmount = round2(amount - discount);
+      // FIX-billing-010: a redemption can be attributed to the
+      // subscription/customer it was redeemed for, and is logged on the
+      // coupon — a bare code+amount redemption is no longer the only
+      // shape, so redeemed value is never unattributed when the caller
+      // knows whose it is.
+      let redeemedFor = null;
       if (params.redeem === true) {
+        if (params.subscriptionId) {
+          const sub = listFor(s.subscriptions, userId).find((x) => x.id === String(params.subscriptionId));
+          if (!sub) return { ok: false, error: "subscription not found" };
+          redeemedFor = { subscriptionId: sub.id, customerName: sub.customerName };
+        } else if (params.customerName) {
+          redeemedFor = { subscriptionId: null, customerName: String(params.customerName).slice(0, 120) };
+        }
         coupon.redemptions += 1;
+        if (!Array.isArray(coupon.redemptionLog)) coupon.redemptionLog = [];
+        coupon.redemptionLog.push({
+          at: new Date().toISOString(),
+          subscriptionId: redeemedFor?.subscriptionId ?? null,
+          customerName: redeemedFor?.customerName ?? null,
+          amount: round2(amount),
+          discount,
+        });
+        if (coupon.redemptionLog.length > 100) coupon.redemptionLog = coupon.redemptionLog.slice(-100);
         if (coupon.maxRedemptions != null && coupon.redemptions >= coupon.maxRedemptions) coupon.active = false;
         saveBillState();
       }
@@ -841,6 +1033,7 @@ export default function registerBillingActions(registerLensAction) {
           originalAmount: round2(amount),
           finalAmount,
           redeemed: params.redeem === true,
+          redeemedFor,
         },
       };
     } catch (e) { return { ok: false, error: e.message }; }
@@ -937,7 +1130,9 @@ export default function registerBillingActions(registerLensAction) {
       const jurisdiction = String(params.jurisdiction || "").trim().toUpperCase();
       const entry = TAX_RATES[jurisdiction];
       if (!entry) return { ok: false, error: `unknown jurisdiction: ${jurisdiction || "(none)"}` };
-      const amount = Math.max(0, billNum(params.amount));
+      const priced = billMoney(params.amount);
+      if (!priced.ok) return priced;
+      const amount = priced.value;
       // EU/GB VAT reverse charge for B2B with a valid VAT id.
       const reverseCharge = entry.kind === "vat" && params.b2b === true && !!String(params.taxId || "").trim();
       const effectiveRate = reverseCharge ? 0 : entry.rate;
@@ -1050,7 +1245,11 @@ export default function registerBillingActions(registerLensAction) {
     try {
       const s = getBillState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const userId = billAid(ctx);
-      const amount = Math.max(0, billNum(params.amount));
+      // FIX-billing-006: refuse a non-positive amount in words instead
+      // of silently zeroing it into a 0.00 invoice.
+      const amountRaw = billNum(params.amount, NaN);
+      if (!Number.isFinite(amountRaw) || amountRaw <= 0) return { ok: false, error: "amount must be positive" };
+      const amount = amountRaw;
       const subscriptionId = params.subscriptionId ? String(params.subscriptionId) : null;
       if (subscriptionId && !listFor(s.subscriptions, userId).some((x) => x.id === subscriptionId)) {
         return { ok: false, error: "subscription not found" };

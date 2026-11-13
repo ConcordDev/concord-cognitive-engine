@@ -150,7 +150,7 @@ export function ConflictMergePanel({
                 <div className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-indigo-300">
                   <Server className="h-3 w-3" /> Server · {c.serverRev}
                 </div>
-                <div className="mb-1 font-mono text-[9px] text-zinc-500">
+                <div className="mb-1 font-mono text-[9px] text-zinc-400">
                   written by {deviceLabel(c.serverDeviceId)}
                 </div>
                 <pre className="max-h-40 overflow-auto font-mono text-[10px] text-zinc-300">
@@ -161,7 +161,7 @@ export function ConflictMergePanel({
                 <div className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
                   <Smartphone className="h-3 w-3" /> Client · {c.clientRev ?? 'new'}
                 </div>
-                <div className="mb-1 font-mono text-[9px] text-zinc-500">
+                <div className="mb-1 font-mono text-[9px] text-zinc-400">
                   written by {deviceLabel(c.clientDeviceId)}
                 </div>
                 <pre className="max-h-40 overflow-auto font-mono text-[10px] text-zinc-300">

@@ -125,14 +125,17 @@ export default function registerMarketingActions(registerLensAction) {
     const s = getMktState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const name = mkClean(params.name, 120);
     if (!name) return { ok: false, error: "campaign name required" };
+    const budget = Number(params.budget);
+    if (params.budget != null && params.budget !== "" && !Number.isFinite(budget)) return { ok: false, error: "budget must be a number" };
+    if (Number.isFinite(budget) && (budget < 0 || budget > 1_000_000_000)) return { ok: false, error: "budget must be between 0 and 1000000000" };
     const campaign = {
       id: mkId("cmp"), name,
       channel: CHANNELS.includes(String(params.channel).toLowerCase()) ? String(params.channel).toLowerCase() : "search",
-      budget: Math.max(0, mkNum(params.budget)),
+      budget: Number.isFinite(budget) ? budget : 0,
       goal: mkClean(params.goal, 80).toLowerCase() || "conversions",
       startDate: mkDay(params.startDate) || mkDay(mkNow()),
       endDate: mkDay(params.endDate) || null,
-      status: "active",
+      status: ["draft", "active", "paused"].includes(params.status) ? params.status : "draft",
       createdAt: mkNow(),
     };
     mkListB(s.campaigns, mkAid(ctx)).push(campaign);
@@ -426,13 +429,20 @@ export default function registerMarketingActions(registerLensAction) {
     const clicks = mkNum(params.linkClicks);
     const pageViews = mkNum(params.pageViews);
     const formSubmits = mkNum(params.formSubmits);
-    const raw = opens * 2 + clicks * 6 + pageViews * 3 + formSubmits * 20;
+    const weights = { emailOpens: 2, linkClicks: 6, pageViews: 3, formSubmits: 20 };
+    const points = {
+      emailOpens: opens * weights.emailOpens,
+      linkClicks: clicks * weights.linkClicks,
+      pageViews: pageViews * weights.pageViews,
+      formSubmits: formSubmits * weights.formSubmits,
+    };
+    const raw = points.emailOpens + points.linkClicks + points.pageViews + points.formSubmits;
     const score = Math.max(0, Math.min(100, Math.round(raw)));
     lead.score = score;
     lead.scoreSignals = { opens, clicks, pageViews, formSubmits };
     const grade = score >= 75 ? "A" : score >= 50 ? "B" : score >= 25 ? "C" : "D";
     saveMktState();
-    return { ok: true, result: { leadId: lead.id, score, grade } };
+    return { ok: true, result: { leadId: lead.id, score, grade, weights, points } };
   });
 
   registerLensAction("marketing", "lead-delete", (ctx, _a, params = {}) => {
@@ -1259,6 +1269,14 @@ export default function registerMarketingActions(registerLensAction) {
     const headings = Math.max(0, Math.round(mkNum(params.headingCount)));
     const images = Math.max(0, Math.round(mkNum(params.imageCount)));
     const imagesWithAlt = Math.min(images, Math.max(0, Math.round(mkNum(params.imagesWithAlt))));
+    // FIX-marketing-012: this audit scores pasted page content — it does
+    // not fetch the URL. A URL-only run used to score the empty form
+    // (14/100, 1/7 checks, 0 words) and SAVE it as an audit of the page.
+    // With no content at all there is nothing to audit: refuse in words
+    // and save nothing.
+    if (!title && !metaDescription && !bodyText && headings === 0 && images === 0) {
+      return { ok: false, error: "No page content to audit — this audit scores pasted content and does not fetch the URL. Paste the page's title, meta description, and body text (headings and image counts help too), then run the audit again." };
+    }
     const words = bodyText ? bodyText.split(/\s+/).filter(Boolean) : [];
     const wordCount = words.length;
     let keywordCount = 0;

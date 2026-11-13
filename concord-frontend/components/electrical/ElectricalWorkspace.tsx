@@ -120,7 +120,7 @@ export function ElectricalWorkspace() {
                   aria-current={active ? 'page' : undefined}
                   className={cn(
                     'flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors',
-                    active ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-200',
+                    active ? 'bg-white/10 text-zinc-50' : 'text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-200',
                   )}
                 >
                   <Icon className="h-4 w-4" />
@@ -153,7 +153,7 @@ function EmptyJob({ onCreate, onCalculators }: { onCreate: () => void; onCalcula
   return (
     <div className="relative mt-8 min-h-[62vh] overflow-hidden rounded-2xl border border-white/10 bg-[#101014] p-8">
       <p className="text-sm text-zinc-400">No job open.</p>
-      <p className="mt-2 max-w-md text-sm text-zinc-500">
+      <p className="mt-2 max-w-md text-sm text-zinc-400">
         Size a feeder, conduit, or box from the code tables without opening a job.
       </p>
       <button

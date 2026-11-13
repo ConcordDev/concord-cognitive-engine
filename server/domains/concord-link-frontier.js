@@ -1,3 +1,4 @@
+import { registerLensExportProvider } from "../lib/lens-export.js";
 // The frontier card opens a link, then a bearing, then a mark.
 // The cross-world feed and the royalty window stay off this domain.
 // List returns id and name. The bearing and the mark come back
@@ -60,6 +61,14 @@ function linkFromRow(row) {
     createdAt: row.created_at || row.createdAt || "",
     updatedAt: row.updated_at || row.updatedAt || "",
   };
+}
+
+function deleteLinkRow(ctx, userId, id) {
+  const db = linkDb(ctx);
+  if (!linksReady(db)) return;
+  db.prepare(
+    "DELETE FROM concord_link_frontier_links WHERE id = ? AND user_id = ?",
+  ).run(id, userId);
 }
 
 function readLinkRows(ctx, userId) {
@@ -127,7 +136,28 @@ function linkFace(link) {
   return { id: link.id, name: link.name };
 }
 
+
+// ── lens export provider (FIX-concord-link-frontier-004) ──────────────
+// Link records live in this domain's own stores (the in-memory bucket,
+// backed by the concord_link_frontier_links table) — neither is a store
+// the shared export's legs read, so the export called a lens full of the
+// user's links empty. orderedLinks is the domain's own merged read
+// (bucket + table, caller-scoped); the provider reuses it as-is.
+function clfExportRows(ctx) {
+  const userId = linkActor(ctx);
+  if (!userId) return [];
+  return orderedLinks(ctx, userId).map((link) => ({
+    id: link.id,
+    type: "link",
+    title: link.name,
+    createdAt: link.createdAt || null,
+    updatedAt: link.updatedAt || link.createdAt || null,
+    data: { bearing: link.bearing || "", mark: link.mark ?? null },
+  }));
+}
+
 export default function registerConcordLinkFrontierActions(registerLensAction) {
+  registerLensExportProvider("concord-link-frontier", clfExportRows);
   registerLensAction("concord-link-frontier", "link-open", (ctx, _artifact, params = {}) => {
     try {
       const userId = linkActor(ctx);
@@ -242,6 +272,29 @@ export default function registerConcordLinkFrontierActions(registerLensAction) {
         return { ok: false, error: "link_not_saved", detail: String(err?.message || err) };
       }
       return { ok: true, result: { linkId: link.id, link: linkFace(link) } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  registerLensAction("concord-link-frontier", "link-delete", (ctx, _artifact, params = {}) => {
+    try {
+      const userId = linkActor(ctx);
+      if (!userId) return { ok: false, error: "no_actor" };
+      const id = linkClean(params.id || params.linkId, 80);
+      if (!id) return { ok: false, error: "missing_link_id" };
+      const link = findLink(ctx, userId, id);
+      if (!link) return { ok: false, error: "link_not_found" };
+      const bucket = linkBucket(userId);
+      const idx = bucket.findIndex((item) => item.id === id);
+      if (idx >= 0) bucket.splice(idx, 1);
+      try {
+        deleteLinkRow(ctx, userId, id);
+      } catch (err) {
+        if (idx >= 0) bucket.splice(idx, 0, link);
+        return { ok: false, error: "link_not_saved", detail: String(err?.message || err) };
+      }
+      return { ok: true, result: { deleted: id, linkId: id } };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }

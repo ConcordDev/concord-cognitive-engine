@@ -41,6 +41,7 @@ import {
 } from './workspace-types';
 import { KeepRecordActions } from '@/components/lens/KeepRecordActions';
 import { boardCardKeepRecord } from '@/components/lens/recordKeep';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 function fmt(at: string): string {
   const d = new Date(at);
@@ -311,10 +312,10 @@ export function CardDetailModal({
   return (
     <div
       className="fixed inset-0 z-[100] flex items-start justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto"
-      onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+      onClick={onClose} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
       <div
         className="w-full max-w-2xl rounded-xl border border-white/10 bg-gray-950 shadow-2xl my-8"
-        onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
         {/* Cover */}
         {card?.cover &&
           (card.cover.type === 'color' ? (

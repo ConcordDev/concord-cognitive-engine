@@ -31,6 +31,7 @@ import {
   Check,
   X,
 } from 'lucide-react';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -350,7 +351,7 @@ function DecisionDetail({ decision, onBack }: { decision: CouncilDecision; onBac
                 'cursor-pointer transition-colors',
                 `hover:border-${config.color}-500/40`
               )}
-              onClick={() => setExpandedVoice(isExpanded ? null : v.voice)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+              onClick={() => setExpandedVoice(isExpanded ? null : v.voice)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
               <div className="flex items-center gap-3">
                 <div
                   className={cn(
@@ -462,7 +463,7 @@ function DecisionsTab() {
           <div
             key={decision.id}
             className={cn(ds.panelHover)}
-            onClick={() => setSelectedDecision(decision)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            onClick={() => setSelectedDecision(decision)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-lg bg-lattice-elevated flex items-center justify-center flex-shrink-0">
                 <Scale className="w-5 h-5 text-neon-cyan" />
@@ -566,7 +567,7 @@ function VoicesTab() {
                 'transition-colors cursor-pointer',
                 `hover:border-${config.color}-500/40`
               )}
-              onClick={() => setExpandedVoice(isExpanded ? null : profile.name)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+              onClick={() => setExpandedVoice(isExpanded ? null : profile.name)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
               <div className="flex items-start gap-4">
                 <div
                   className={cn(

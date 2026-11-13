@@ -14,6 +14,7 @@ import { BillingWorkbench, type BillingView } from '@/components/billing/Billing
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
+import { useLensStatePersistence } from '@/lib/lens-state-persistence';
 
 const TABS: { id: BillingView; label: string; icon: typeof BarChart3; keys: string }[] = [
   { id: 'overview', label: 'Overview', icon: BarChart3, keys: 'g o' },
@@ -26,7 +27,19 @@ const TABS: { id: BillingView; label: string; icon: typeof BarChart3; keys: stri
 export default function BillingPage() {
   useLensNav('billing');
   useLensIdentity('billing');
-  const [view, setView] = useState<BillingView>('overview');
+  // FIX-billing-014: the active tab persists through the shared lens
+  // UI-state store — the view used to live in a bare useState, so any
+  // remount dropped the user back to Overview mid-work.
+  const { restore, persist } = useLensStatePersistence('billing');
+  const [initialView] = useState<BillingView>(() => {
+    const saved = restore()?.view;
+    return TABS.some((t) => t.id === saved) ? (saved as BillingView) : 'overview';
+  });
+  const [view, setViewState] = useState<BillingView>(initialView);
+  const setView = (v: BillingView) => {
+    setViewState(v);
+    persist({ ...(restore() ?? {}), view: v });
+  };
 
   useLensCommand(
     [

@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Trash2, AlertTriangle, Pencil, Check, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
-import { ErrorState } from '@/components/ui';
+import { ErrorState, EmptyState } from '@/components/ui';
 
 interface Item {
   id: string; name: string; type: string; sku: string | null;
@@ -84,10 +84,10 @@ export function AcInventoryPanel() {
       </div>
 
       <section className="bg-black/30 border border-white/10 rounded-lg p-3">
-        <h3 className="text-xs font-semibold text-gray-300 mb-2">New item</h3>
+        <h2 className="text-xs font-semibold text-gray-300 mb-2">New item</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <input placeholder="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={inp} />
-          <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className={inp}>
+          <select aria-label="Item type" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className={inp}>
             <option value="inventory">Inventory</option><option value="service">Service</option>
           </select>
           <input placeholder="SKU" value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} className={inp} />
@@ -150,7 +150,9 @@ export function AcInventoryPanel() {
 const inp = 'bg-black/40 border border-white/10 rounded px-2 py-1.5 text-xs text-gray-100';
 const btn = 'flex items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded';
 function Spin() { return <div className="flex items-center justify-center py-10 text-gray-400"><Loader2 className="w-5 h-5 animate-spin" /></div>; }
-function Empty({ text }: { text: string }) { return <p className="text-[11px] text-gray-400 italic">{text}</p>; }
+function Empty({ text }: { text: string }) {
+  return <EmptyState compact title={text} description="This book has no saved rows yet. Add one above and it will show up here." />;
+}
 function Stat({ label, value, alert }: { label: string; value: string | number; alert?: boolean }) {
   return (
     <div className="bg-black/30 border border-white/10 rounded-lg p-3 text-center">

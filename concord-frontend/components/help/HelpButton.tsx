@@ -13,7 +13,7 @@
  * exactly like FeedbackWidget — no new backend needed.
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { HelpCircle, X, Send, BookOpen, Bug, Mail } from "lucide-react";
@@ -43,6 +43,8 @@ export function HelpButton() {
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const restoreFocusRef = useRef<HTMLElement | null>(null);
 
   // Esc closes the panel.
   useEffect(() => {
@@ -51,6 +53,53 @@ export function HelpButton() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
+
+  // Dialog focus contract (FIX-export-012): when the popover opens, focus
+  // moves inside it; Tab cycles within it instead of escaping to the page
+  // behind; closing returns focus to whatever had it (the launcher or the
+  // sidebar rail's help icon). Switching menu ↔ report re-homes focus to
+  // the new view's first control.
+  useEffect(() => {
+    if (!open) return;
+    if (!restoreFocusRef.current) {
+      restoreFocusRef.current = (document.activeElement as HTMLElement) || null;
+    }
+    const dialog = dialogRef.current;
+    if (dialog && !dialog.contains(document.activeElement)) {
+      const first = dialog.querySelector<HTMLElement>(
+        'a[href], button:not([disabled]), select, textarea, input, [tabindex]:not([tabindex="-1"])'
+      );
+      (first || dialog).focus();
+    }
+  }, [open, mode]);
+
+  useEffect(() => {
+    if (open) return;
+    const target = restoreFocusRef.current;
+    restoreFocusRef.current = null;
+    if (target && document.contains(target)) target.focus();
+  }, [open]);
+
+  const onDialogKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key !== "Tab") return;
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const focusables = Array.from(
+      dialog.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), select, textarea, input, [tabindex]:not([tabindex="-1"])'
+      )
+    );
+    if (focusables.length === 0) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }, []);
 
   // Let any surface open the help panel: window.dispatchEvent(new Event('concord:open-help'))
   useEffect(() => {
@@ -113,14 +162,21 @@ export function HelpButton() {
 
       {open && (
         <div
+          ref={dialogRef}
           role="dialog"
+          aria-modal="true"
           aria-label="Help and feedback"
+          tabIndex={-1}
+          onKeyDown={onDialogKeyDown}
           style={{ zIndex: Z_INDEX.HELP, ...(aboveBanner ? { bottom: `${installBannerFootprint + 64}px` } : {}) }}
           className="fixed right-4 md:right-5 md:bottom-20 w-[320px] max-w-[calc(100vw-2rem)] rounded-xl bg-lattice-surface border border-lattice-border shadow-2xl p-4 text-sm bottom-[calc(7rem+env(safe-area-inset-bottom,0px))]"
         >
           {mode === "menu" && (
             <div className="space-y-2">
-              <h2 className="text-white font-semibold mb-1">Need a hand?</h2>
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-white font-semibold mb-1">Need a hand?</h2>
+                <button type="button" data-overlay-close="" aria-label="Close" onClick={() => setOpen(false)} className="text-xs text-gray-400 hover:text-white">Close</button>
+              </div>
               <Link href="/onboarding" onClick={() => setOpen(false)} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-lattice-deep text-gray-300 hover:text-white transition-colors">
                 <BookOpen className="w-4 h-4 text-neon-blue shrink-0" />
                 <span>Getting started — replay the intro</span>

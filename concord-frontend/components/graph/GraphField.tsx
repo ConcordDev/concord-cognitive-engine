@@ -21,7 +21,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Search, X } from 'lucide-react';
+import { Plus, Search, X, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 import { DTUDetailView } from '@/components/dtu/DTUDetailView';
@@ -141,6 +141,31 @@ export function GraphField() {
   const [debouncedQ, setDebouncedQ] = useState('');
   const boxRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 1000, h: 560 });
+  // FIX-graph-004: the field had no pan/zoom — drag did nothing, the
+  // wheel scrolled the page, and dense fields overlapped at 390px.
+  // A view transform (scale + translate) now wraps the SVG field:
+  // drag the background to pan, wheel to zoom at the pointer, plus
+  // explicit zoom buttons.
+  const [view, setView] = useState({ k: 1, x: 0, y: 0 });
+  const dragRef = useRef<{ sx: number; sy: number; vx: number; vy: number; moved: boolean } | null>(null);
+  const justDraggedRef = useRef(false);
+
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const rect = el.getBoundingClientRect();
+      const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+      setView((v) => {
+        const k2 = Math.min(3, Math.max(0.4, v.k * (e.deltaY < 0 ? 1.12 : 1 / 1.12)));
+        const f = k2 / v.k;
+        return { k: k2, x: mx - (mx - v.x) * f, y: my - (my - v.y) * f };
+      });
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, []);
 
   useEffect(() => {
     const el = boxRef.current;
@@ -243,7 +268,32 @@ export function GraphField() {
       </div>
       {err && <p className="mt-2 text-[13px] text-rose-300" role="alert">{err}</p>}
 
-      <div ref={boxRef} className="relative mt-2 min-h-0 flex-1" onClick={() => setSelectedId(null)} onKeyDown={(e) => { if (e.key === 'Escape') setSelectedId(null); }}>
+      <div
+        ref={boxRef}
+        className="relative mt-2 min-h-0 flex-1 cursor-grab touch-none active:cursor-grabbing"
+        onClick={() => { if (justDraggedRef.current) { justDraggedRef.current = false; return; } setSelectedId(null); }}
+        onPointerDown={(e) => {
+          if ((e.target as Element).closest('g[role="button"]')) return;
+          dragRef.current = { sx: e.clientX, sy: e.clientY, vx: view.x, vy: view.y, moved: false };
+        }}
+        onPointerMove={(e) => {
+          const d = dragRef.current;
+          if (!d) return;
+          const dx = e.clientX - d.sx, dy = e.clientY - d.sy;
+          if (Math.abs(dx) + Math.abs(dy) > 3) d.moved = true;
+          if (d.moved) setView((v) => ({ ...v, x: d.vx + dx, y: d.vy + dy }));
+        }}
+        onPointerUp={() => { if (dragRef.current?.moved) justDraggedRef.current = true; dragRef.current = null; }}
+        onKeyDown={(e) => { if (e.key === 'Escape') setSelectedId(null); }}
+      >
+        {placed.length > 0 && (
+          <div className="absolute bottom-2 left-2 z-10 flex items-center gap-1.5">
+            <button type="button" aria-label="Zoom in" onClick={(e) => { e.stopPropagation(); setView((v) => ({ ...v, k: Math.min(3, v.k * 1.25) })); }} className="flex h-10 w-10 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-900/90 text-zinc-200 hover:border-zinc-500"><ZoomIn className="h-4 w-4" /></button>
+            <button type="button" aria-label="Zoom out" onClick={(e) => { e.stopPropagation(); setView((v) => ({ ...v, k: Math.max(0.4, v.k / 1.25) })); }} className="flex h-10 w-10 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-900/90 text-zinc-200 hover:border-zinc-500"><ZoomOut className="h-4 w-4" /></button>
+            <button type="button" aria-label="Reset view" onClick={(e) => { e.stopPropagation(); setView({ k: 1, x: 0, y: 0 }); }} className="flex h-10 w-10 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-900/90 text-zinc-200 hover:border-zinc-500"><RotateCcw className="h-4 w-4" /></button>
+            <span className="pl-1 text-[11px] text-zinc-400">Drag to pan · scroll to zoom</span>
+          </div>
+        )}
         {graphQ.isLoading ? (
           <p className="absolute inset-0 flex items-center justify-center text-[14px] text-zinc-600">Reading the lattice…</p>
         ) : graphQ.isError ? (
@@ -259,6 +309,7 @@ export function GraphField() {
           </div>
         ) : (
           <svg width={size.w} height={size.h} className="absolute inset-0 select-none" role="img" aria-label={`Graph of ${placed.length} nodes`}>
+            <g transform={`translate(${view.x},${view.y}) scale(${view.k})`}>
             {links.map((l, i) => {
               const a = byId.get(l.source)!, b = byId.get(l.target)!;
               const lit = focus && (l.source === focus || l.target === focus);
@@ -304,6 +355,7 @@ export function GraphField() {
                 </g>
               );
             })}
+            </g>
           </svg>
         )}
 

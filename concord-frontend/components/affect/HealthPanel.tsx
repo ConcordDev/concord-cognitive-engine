@@ -89,7 +89,7 @@ export function HealthPanel() {
                           ? `Some dimensions need watching — ${warnings.map((w) => w.message).join('; ')}.`
                           : 'Emotional state is in a healthy range. All dimensions are operating within normal parameters.'}
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-400">
                       Score = mean of the seven dimensions, with Fatigue counted inverted (1 −
                       fatigue). The verdict follows the warning state below, not the average alone.
                     </p>

@@ -257,6 +257,19 @@ describe("byo_keys — key health", () => {
     assert.equal(row.provider, "anthropic");
   });
 
+  it("test on a slot with no key fails with the reason in words (FIX-byo-keys-007)", async () => {
+    const r = await call("test", ctxA, { slot: "repair" });
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "That brain slot has no key saved yet.");
+  });
+
+  it("health_list never surfaces health for a slot with no key (FIX-byo-keys-008)", async () => {
+    await call("record_health", ctxA, { slot: "repair", ok: false, error: "stale failure" });
+    const r = await call("health_list", ctxA);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.rows.find((x) => x.slot === "repair"), undefined);
+  });
+
   it("health_list reports untested for an override with no health record", async () => {
     addOverride("user_a", "vision", "google", "gemini-pro-vision");
     const r = await call("health_list", ctxA);
@@ -280,6 +293,36 @@ describe("byo_keys — org-shared keys", () => {
     assert.equal((await call("org_key_create", ctxA, { label: "X", provider: "bogus" })).ok, false);
   });
 
+  it("org_key_create bounds the label (FIX-byo-keys-011)", async () => {
+    const blank = await call("org_key_create", ctxA, { label: "   ", provider: "anthropic" });
+    assert.equal(blank.ok, false);
+    assert.equal(blank.reason, "label_required");
+    const long = await call("org_key_create", ctxA, { label: "x".repeat(81), provider: "anthropic" });
+    assert.equal(long.ok, false);
+    assert.equal(long.reason, "label_too_long");
+  });
+
+  it("org_key_delete is owner-only and org_key_leave lets a member exit (FIX-byo-keys-004)", async () => {
+    const org = (await call("org_key_create", ctxA, { label: "Exit Test", provider: "openai" })).result;
+    await call("org_key_add_member", ctxA, { orgId: org.orgId, memberId: "user_b", role: "user" });
+
+    const ownerLeave = await call("org_key_leave", ctxA, { orgId: org.orgId });
+    assert.equal(ownerLeave.ok, false);
+    assert.equal(ownerLeave.reason, "owner_must_delete");
+
+    const memberLeave = await call("org_key_leave", ctxB, { orgId: org.orgId });
+    assert.equal(memberLeave.result.left, true);
+
+    const denied = await call("org_key_delete", ctxB, { orgId: org.orgId });
+    assert.equal(denied.ok, false);
+    assert.equal(denied.reason, "not_authorized");
+
+    const del = await call("org_key_delete", ctxA, { orgId: org.orgId });
+    assert.equal(del.result.deleted, true);
+    const list = await call("org_keys_list", ctxA);
+    assert.equal(list.result.orgs.find((o) => o.orgId === org.orgId), undefined);
+  });
+
   it("org_key_add_member is owner/admin gated", async () => {
     const org = (await call("org_key_create", ctxA, { label: "Team", provider: "openai" })).result;
     // user_b (not a member) cannot add members.
@@ -298,6 +341,26 @@ describe("byo_keys — org-shared keys", () => {
     const r = await call("org_key_remove_member", ctxA, { orgId: org.orgId, memberId: "user_a" });
     assert.equal(r.ok, false);
     assert.equal(r.reason, "cannot_remove_owner");
+  });
+
+  it("org_keys_list labels members with their display name, never inventing one", async () => {
+    db.prepare(`CREATE TABLE users (id TEXT PRIMARY KEY, username TEXT)`).run();
+    db.prepare(`INSERT INTO users (id, username) VALUES (?, ?)`).run("user_a", "alice");
+    db.prepare(`INSERT INTO users (id, username) VALUES (?, ?)`).run("user_b", "bob");
+    const org = (await call("org_key_create", ctxA, { label: "Named team", provider: "openai" })).result;
+    await call("org_key_add_member", ctxA, { orgId: org.orgId, memberId: "user_b", role: "user" });
+    await call("org_key_add_member", ctxA, { orgId: org.orgId, memberId: "no-such-account-id", role: "viewer" });
+    const list = await call("org_keys_list", ctxA);
+    const members = list.result.orgs[0].members;
+    const byId = new Map(members.map((m) => [m.memberId, m]));
+    // Known accounts resolve to their display name (the card used to
+    // print the raw user id for every member, owner included).
+    assert.equal(byId.get("user_a").label, "alice");
+    assert.equal(byId.get("user_b").label, "bob");
+    // An id with no account row keeps label null — the lookup never
+    // fabricates a name — and memberId itself is untouched.
+    assert.equal(byId.get("no-such-account-id").label, null);
+    assert.equal(byId.get("no-such-account-id").memberId, "no-such-account-id");
   });
 
   it("org_keys_list only returns groups the caller belongs to", async () => {

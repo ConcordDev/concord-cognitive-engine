@@ -8,6 +8,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface LiveModel {
   id: string;
@@ -67,10 +68,10 @@ export function ModelPickerModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-      onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+      onClick={onClose} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
       <div
         className="w-full max-w-lg rounded-xl bg-zinc-900 ring-1 ring-zinc-700 p-5 max-h-[80vh] flex flex-col"
-        onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
         <div className="flex items-center justify-between gap-3 mb-3">
           <div>
             <h3 className="text-sm font-semibold text-zinc-100">
@@ -87,6 +88,7 @@ export function ModelPickerModal({
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          aria-label="Filter models"
           placeholder="Filter models…"
           className="w-full px-3 py-1.5 mb-3 rounded-md bg-zinc-950 text-zinc-100 text-sm ring-1 ring-zinc-700 focus:ring-amber-500 focus:outline-none"
         />

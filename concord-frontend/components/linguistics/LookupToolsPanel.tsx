@@ -17,7 +17,7 @@ export function LookupToolsPanel() {
         <DictionaryPanel domain="linguistics" />
       </div>
       <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <h3 className="text-sm font-semibold text-white mb-3">Word lookup</h3>
+        <h2 className="text-sm font-semibold text-white mb-3">Word lookup</h2>
         <WordLookup />
       </div>
     </div>

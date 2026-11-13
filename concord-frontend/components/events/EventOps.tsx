@@ -621,7 +621,7 @@ export function EventOps() {
       {creating && (
         <div className={cn(ds.panel, 'space-y-2')}>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <input className={ds.input} placeholder="Event name" value={newEvtName}
+            <input className={ds.input} placeholder="Event name" value={newEvtName} maxLength={200}
               onChange={(e) => setNewEvtName(e.target.value)} />
             <select className={ds.select} value={newEvtType} onChange={(e) => setNewEvtType(e.target.value)}>
               {['conference', 'wedding', 'concert', 'festival', 'corporate', 'social'].map((t) => (

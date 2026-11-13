@@ -169,7 +169,7 @@ export function DevelopmentIndex() {
       )}
 
       {!ran && !loading && (
-        <div className="rounded border border-zinc-800 bg-zinc-950/30 px-3 py-6 text-center text-xs text-zinc-500">
+        <div className="rounded border border-zinc-800 bg-zinc-950/30 px-3 py-6 text-center text-xs text-zinc-400">
           Run the index to rank countries from live World Bank data.
         </div>
       )}
@@ -206,8 +206,8 @@ export function DevelopmentIndex() {
                     onClick={() => setExpanded(isOpen ? null : r.domain)}
                     className="flex w-full items-center gap-3 px-3 py-2 text-left"
                   >
-                    {isOpen ? <ChevronDown className="h-3.5 w-3.5 text-zinc-500" /> : <ChevronRight className="h-3.5 w-3.5 text-zinc-500" />}
-                    <span className="w-7 shrink-0 text-right font-mono text-xs text-zinc-500">#{r.rank}</span>
+                    {isOpen ? <ChevronDown className="h-3.5 w-3.5 text-zinc-400" /> : <ChevronRight className="h-3.5 w-3.5 text-zinc-400" />}
+                    <span className="w-7 shrink-0 text-right font-mono text-xs text-zinc-400">#{r.rank}</span>
                     <span className="w-12 shrink-0 font-mono text-[10px] text-zinc-400">{r.domain}</span>
                     <span className="flex-1 truncate text-sm text-zinc-100">{countryNames[r.domain] || r.domain}</span>
                     <div className="h-1.5 w-24 overflow-hidden rounded-full bg-zinc-800">

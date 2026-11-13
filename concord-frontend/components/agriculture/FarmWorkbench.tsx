@@ -8,6 +8,8 @@ import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { AgricultureKeepMenu } from './AgricultureKeepMenu';
 import type { AgField } from './agricultureReport';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 export interface Field {
   id: string;
@@ -133,6 +135,13 @@ export function FarmWorkbench({ open, onClose }: Props) {
 
 // ── Fields tab ─────────────────────────────────────────────────────
 
+/** Other panels on the page (e.g. the FieldView NDVI view) hold their own
+ *  field list; tell them whenever this workbench changes the farm's fields
+ *  so their dropdowns don't wait for a reload (FIX-agriculture-014). */
+export function notifyAgricultureFieldsChanged() {
+  try { window.dispatchEvent(new CustomEvent('agriculture:fields-changed')); } catch { /* non-browser */ }
+}
+
 function FieldsTab({
   fields, loading, onChange, activeField, onSelect,
 }: {
@@ -150,15 +159,21 @@ function FieldsTab({
   const [editDraft, setEditDraft] = useState({ name: '', acreage: 0, soilType: '', currentCrop: '' });
   const [lastField, setLastField] = useState<AgField | null>(null);
 
+  const [formError, setFormError] = useState<string | null>(null);
   const save = async () => {
+    if (!draft.name.trim()) { setFormError('Field name is required.'); return; }
+    if (!(Number(draft.acreage) > 0)) { setFormError('Acreage must be a number greater than 0.'); return; }
+    setFormError(null);
     try {
       const res = await lensRun({
         domain: 'agriculture', action: 'field-create', input: draft,
       });
+      if (res.data?.ok === false) { setFormError(res.data?.message || res.data?.error || 'Could not save that field.'); return; }
       const field = (res.data as { result?: { field?: AgField } })?.result?.field;
       if (field) setLastField(field);
       setCreating(false);
       setDraft({ name: '', acreage: 40, lat: 40.0, lng: -100.0, soilType: 'loam', currentCrop: 'corn' });
+      notifyAgricultureFieldsChanged();
       await onChange();
     } catch (e) { console.error(e); }
   };
@@ -169,6 +184,7 @@ function FieldsTab({
       await lensRun({
         domain: 'agriculture', action: 'field-delete', input: { id },
       });
+      notifyAgricultureFieldsChanged();
       await onChange();
     } catch (e) { console.error(e); }
   };
@@ -186,6 +202,7 @@ function FieldsTab({
         domain: 'agriculture', action: 'field-update', input: { id: editingId, ...editDraft },
       });
       setEditingId(null);
+      notifyAgricultureFieldsChanged();
       await onChange();
     } catch (e) { console.error(e); }
   };
@@ -241,9 +258,9 @@ function FieldsTab({
               placeholder="Current crop" maxLength={40}
               className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100" />
           </div>
+          {formError && <p role="alert" className="text-xs text-rose-300">{formError}</p>}
           <button type="button" onClick={save}
-            disabled={!draft.name.trim() || draft.acreage <= 0}
-            className="inline-flex items-center gap-1 px-3 py-1 rounded-md border border-emerald-500/40 bg-emerald-500/15 text-xs text-emerald-100 hover:brightness-110 disabled:opacity-40">
+            className="inline-flex items-center gap-1 px-3 py-1 rounded-md border border-emerald-500/40 bg-emerald-500/15 text-xs text-emerald-100 hover:brightness-110">
             <Save className="w-3 h-3" /> Save field
           </button>
         </div>
@@ -316,7 +333,7 @@ function FieldsTab({
                 ? 'border-emerald-500/50 bg-emerald-500/10'
                 : 'border-white/10 bg-black/20 hover:bg-white/5',
             )}
-            onClick={() => onSelect(f)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            onClick={() => onSelect(f)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-100">{f.name}</p>
@@ -589,10 +606,14 @@ function ScoutTab({ field, fields, onSelect }: { field: Field | null; fields: Fi
                 </div>
                 <p className="text-xs text-gray-200">{p.note}</p>
               </div>
-              <button aria-label="Delete" type="button" onClick={() => remove(p.id)}
-                className="p-1 text-gray-600 hover:text-rose-300 opacity-0 group-hover:opacity-100">
-                <Trash2 className="w-3 h-3" />
-              </button>
+              <StickyDeleteConfirm
+                onConfirm={() => { void remove(p.id); }}
+                armLabel={<Trash2 className="w-3 h-3" />}
+                armAriaLabel={`Delete observation ${p.note.slice(0, 40)}`}
+                confirmLabel="Delete this observation?"
+                confirmAriaLabel="Confirm delete observation"
+                className="p-1 text-gray-600 hover:text-rose-300"
+              />
             </div>
           </div>
         ))

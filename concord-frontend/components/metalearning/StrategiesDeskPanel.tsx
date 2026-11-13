@@ -374,10 +374,10 @@ export function StrategiesDeskPanel() {
                     </p>
                   </div>
                 ) : (
-                  <p className="text-xs text-gray-500 mt-2">No outcomes yet — record a success or failure and this card will show its success rate.</p>
+                  <p className="text-xs text-gray-400 mt-2">No outcomes yet — record a success or failure and this card will show its success rate.</p>
                 )}
                 {s.parameters && (
-                  <p className="text-[11px] text-gray-500 mt-1">
+                  <p className="text-[11px] text-gray-400 mt-1">
                     Learning rate {s.parameters.learningRate.toFixed(2)} · Exploration {s.parameters.explorationRate.toFixed(2)} · Batch {s.parameters.batchSize}
                   </p>
                 )}
@@ -418,7 +418,7 @@ export function StrategiesDeskPanel() {
                   ) : (
                     <button
                       onClick={() => setConfirmDeleteId(s.id)}
-                      className="p-1 rounded text-gray-500 hover:text-red-400 transition-colors"
+                      className="p-1 rounded text-gray-400 hover:text-red-400 transition-colors"
                       title="Delete strategy"
                       aria-label={`Delete strategy ${s.name}`}
                     >
@@ -461,13 +461,13 @@ export function StrategiesDeskPanel() {
                         <li key={step.order} className="text-xs text-gray-300">
                           <span className="text-neon-cyan font-mono mr-1.5">{step.order}.</span>
                           <span className="text-gray-100">{step.title}</span>
-                          <span className="text-gray-500"> — {step.rationale}</span>
+                          <span className="text-gray-400"> — {step.rationale}</span>
                         </li>
                       ))}
                     </ol>
                   )}
                   {typeof c.estimatedEffort === 'number' && c.steps.length > 0 && (
-                    <p className="text-[11px] text-gray-500">Estimated effort: {c.estimatedEffort.toFixed(1)}h across {c.steps.length} steps</p>
+                    <p className="text-[11px] text-gray-400">Estimated effort: {c.estimatedEffort.toFixed(1)}h across {c.steps.length} steps</p>
                   )}
                 </div>
               );
@@ -497,7 +497,7 @@ export function StrategiesDeskPanel() {
           })()}
           {savedCurricula.length > 0 && (
             <div className="mt-4 border-t border-white/5 pt-3">
-              <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Saved curricula</p>
+              <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Saved curricula</p>
               <div className="space-y-1">
                 {savedCurricula.map((c) => (
                   <button
@@ -505,7 +505,7 @@ export function StrategiesDeskPanel() {
                     onClick={() => setResults(c)}
                     className="w-full text-left text-xs text-gray-300 hover:text-white px-2 py-1 rounded hover:bg-white/5 transition-colors"
                   >
-                    {c.topic} <span className="text-gray-500">· {c.steps.length} steps{c.createdAt ? ` · ${new Date(c.createdAt).toLocaleDateString()}` : ''}</span>
+                    {c.topic} <span className="text-gray-400">· {c.steps.length} steps{c.createdAt ? ` · ${new Date(c.createdAt).toLocaleDateString()}` : ''}</span>
                   </button>
                 ))}
               </div>

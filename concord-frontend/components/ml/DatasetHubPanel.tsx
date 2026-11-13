@@ -8,9 +8,11 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import {
   Database, Search, Download, Heart, Loader2, RefreshCw, Plus, ExternalLink, X, Layers,
 } from 'lucide-react';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface HubDataset {
   id: string; name: string; author: string; downloads: number; likes: number;
@@ -57,9 +59,11 @@ export function DatasetHubPanel() {
     setLoading(false);
   }, []);
 
-  // S-ML-4 (F7/F8): datasets can be deleted — with a confirmation, in
-  // the panel's own two-step form (no native dialogs). First click
-  // arms, second deletes; deleting also settles the list in place.
+  // S-ML-4 (F7/F8): datasets can be deleted — with a confirmation, via
+  // the shared StickyDeleteConfirm (no native dialogs, no timer, and no
+  // same-button label swap: the arm and confirm controls are separate,
+  // stable buttons). First click arms, Confirm deletes; deleting also
+  // settles the list in place.
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const deleteDataset = async (ds: MyDataset) => {
     if (confirmDeleteId !== ds.id) { setConfirmDeleteId(ds.id); return; }
@@ -178,12 +182,15 @@ export function DatasetHubPanel() {
                     <span>Test {Math.round(ds.splits.test * 100)}%</span>
                   </div>
                   <div className="mt-3 flex justify-end">
-                    <button
-                      onClick={() => deleteDataset(ds)}
-                      className={`text-xs px-2 py-1 rounded ${confirmDeleteId === ds.id ? 'bg-red-500/20 text-red-300' : 'text-gray-400 hover:text-red-300'}`}
-                    >
-                      {confirmDeleteId === ds.id ? `Delete “${ds.name}”? Click again to confirm` : 'Delete'}
-                    </button>
+                    <StickyDeleteConfirm
+                      armed={confirmDeleteId === ds.id}
+                      onArm={() => setConfirmDeleteId(ds.id)}
+                      onConfirm={() => { void deleteDataset(ds); }}
+                      onCancel={() => setConfirmDeleteId(null)}
+                      armLabel="Delete"
+                      confirmLabel={`Delete "${ds.name}"?`}
+                      className="text-xs px-2 py-1 rounded text-gray-400 hover:text-red-300"
+                    />
                   </div>
                 </div>
               );
@@ -216,9 +223,9 @@ function RegisterDatasetModal({ onClose, onDone }: { onClose: () => void; onDone
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={onClose} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
       <div className="bg-lattice-bg border border-lattice-border rounded-xl w-full max-w-lg p-6 space-y-4"
-        onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold">Register Dataset Version</h2>
           <button onClick={onClose} className="p-1 hover:bg-white/10 rounded" aria-label="Close"><X className="w-5 h-5" /></button>

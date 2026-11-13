@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Sun, ListTodo, Repeat, Timer, Loader2, Wand2, Bell, Filter, CalendarDays, Users, Flame } from 'lucide-react';
+import { Sun, ListTodo, Repeat, Timer, Loader2, Wand2, Bell, Filter, CalendarDays, Users, Flame, Inbox } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ProductivityTodayPanel } from './ProductivityTodayPanel';
@@ -18,6 +18,7 @@ import { ProductivityRemindersPanel } from './ProductivityRemindersPanel';
 import { ProductivityFiltersPanel } from './ProductivityFiltersPanel';
 import { ProductivityCalendarPanel } from './ProductivityCalendarPanel';
 import { ProductivityCollabPanel } from './ProductivityCollabPanel';
+import { ProductivityCapturesPanel } from './ProductivityCapturesPanel';
 
 interface Dash {
   activeTasks: number; dueToday: number; projects: number; habits: number;
@@ -30,7 +31,7 @@ interface ProdStats {
 
 export type ProductivityTabId =
   | 'today' | 'quickadd' | 'tasks' | 'filters' | 'calendar'
-  | 'reminders' | 'collab' | 'habits' | 'focus';
+  | 'reminders' | 'collab' | 'habits' | 'focus' | 'captures';
 
 /**
  * Tab metadata is exported so the lens page can register the same
@@ -49,6 +50,7 @@ export const PRODUCTIVITY_TABS: {
   { id: 'collab', label: 'Collaborate', icon: Users, chord: 'g b', hint: 'b' },
   { id: 'habits', label: 'Habits', icon: Repeat, chord: 'g h', hint: 'h' },
   { id: 'focus', label: 'Focus', icon: Timer, chord: 'g o', hint: 'o' },
+  { id: 'captures', label: 'Captures', icon: Inbox, chord: 'g i', hint: 'i' },
 ];
 
 interface ProductivityTaskSectionProps {
@@ -108,7 +110,7 @@ export function ProductivityTaskSection({ activeTab, onTabChange }: Productivity
                 aria-pressed={active}
                 title={`${t.label} — press ${t.chord}`}
                 className={cn('inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
-                  active ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200')}>
+                  active ? 'bg-white/10 text-zinc-50' : 'text-zinc-400 hover:text-zinc-200')}>
                 <Icon className="h-3.5 w-3.5" /> {t.label}
                 <kbd aria-hidden="true" className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 md:inline-block">{t.hint}</kbd>
               </button>
@@ -135,6 +137,7 @@ export function ProductivityTaskSection({ activeTab, onTabChange }: Productivity
         {tab === 'collab' && <ProductivityCollabPanel onChange={refreshDash} />}
         {tab === 'habits' && <ProductivityHabitsPanel onChange={refreshDash} />}
         {tab === 'focus' && <ProductivityFocusPanel onChange={refreshDash} />}
+        {tab === 'captures' && <ProductivityCapturesPanel />}
       </div>
     </div>
   );
@@ -144,7 +147,7 @@ function Stat({ label, value, alert }: { label: string; value: number; alert?: b
   return (
     <div className="bg-[#111] px-2 py-3 text-center">
       <p className={cn('text-xl font-semibold', alert ? 'text-amber-400' : 'text-zinc-100')}>{value}</p>
-      <p className="text-[10px] uppercase tracking-wide text-zinc-500">{label}</p>
+      <p className="text-[10px] uppercase tracking-wide text-zinc-400">{label}</p>
     </div>
   );
 }

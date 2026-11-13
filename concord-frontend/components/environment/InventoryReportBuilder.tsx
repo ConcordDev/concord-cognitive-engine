@@ -146,10 +146,10 @@ export function InventoryReportBuilder() {
       </header>
 
       <div className="p-3 border-b border-white/10 grid grid-cols-2 md:grid-cols-4 gap-2">
-        <select
+        <select aria-label="Framework"
           value={framework}
           onChange={(e) => setFramework(e.target.value as Framework)}
-          className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white"
+          className="min-h-11 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white"
         >
           {FRAMEWORKS.map((f) => (
             <option key={f} value={f}>
@@ -291,7 +291,7 @@ export function InventoryReportBuilder() {
                               <td className="px-2 py-1 text-gray-300">
                                 {li.factorKey.replace(/_/g, ' ')}
                                 {li.facility ? (
-                                  <span className="text-gray-600">
+                                  <span className="text-gray-400">
                                     {' '}
                                     · {li.facility}
                                   </span>

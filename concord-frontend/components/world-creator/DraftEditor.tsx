@@ -12,6 +12,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
+import { dtuRecordId, dtuReadBackCall, dtuReadBackMatches } from '@/components/wallet/walletReceipt';
 import { SceneCanvas, type SceneTool } from './SceneCanvas';
 import { BiomePreview } from './BiomePreview';
 
@@ -56,15 +58,27 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
   const [err, setErr] = useState<string | null>(null);
   const [tab, setTab] = useState<'scene' | 'biome' | 'rules' | 'publish'>('scene');
   const [checkResult, setCheckResult] = useState<{ ready: boolean; issues: string[]; warnings: string[] } | null>(null);
+  const [saveNote, setSaveNote] = useState<string | null>(null);
   // Pending NPC placement: a click with the NPC tool active opens an inline
   // form (name/backstory/level) instead of committing immediately — mirrors
   // the FactionPanel's inline-form pattern rather than a browser prompt().
   const [pendingNpc, setPendingNpc] = useState<{ x: number; z: number } | null>(null);
+  const nameDirty = useRef(false);
+  const descDirty = useRef(false);
 
   const refresh = useCallback(async () => {
     const r = await lensRun<{ draft: Draft }>('world-creator', 'draft-get', { id: draftId });
-    if (r.data?.ok && r.data.result?.draft) setDraft(r.data.result.draft);
-    else setErr(r.data?.error || 'draft not found');
+    if (r.data?.ok && r.data.result?.draft) {
+      const next = r.data.result.draft;
+      setDraft((prev) => {
+        if (!prev) return next;
+        return {
+          ...next,
+          name: nameDirty.current ? prev.name : next.name,
+          description: descDirty.current ? prev.description : next.description,
+        };
+      });
+    } else setErr(r.data?.error || 'draft not found');
   }, [draftId]);
 
   useEffect(() => { refresh(); }, [refresh]);
@@ -202,7 +216,16 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
       const data = await res.json();
       const worldId = data?.world?.id;
       if (worldId) {
-        await lensRun('world-creator', 'draft-publish', { id: draftId, visibility: draft?.visibility || 'private', publishedWorldId: worldId });
+        // FIX-world-creator-013: the link back to this draft is what
+        // keeps the playtest copy accounted for — never swallow its
+        // failure. The copy itself stays private either way, and
+        // deleting this draft discards it.
+        const pub = await lensRun('world-creator', 'draft-publish', { id: draftId, visibility: draft?.visibility || 'private', publishedWorldId: worldId });
+        if (!pub.data?.ok) {
+          setBusy(false);
+          setErr(`Playtest world ${worldId} was created but could not be linked to this draft (${pub.data?.error || 'unknown error'}). It stays private — deleting this draft will discard it.`);
+          return;
+        }
         router.push(`/lenses/world?worldId=${encodeURIComponent(worldId)}`);
       } else router.push('/lenses/world');
     } catch (e) {
@@ -210,6 +233,41 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
       setErr(e instanceof Error ? e.message : 'failed to mint world');
     }
   }, [draftId, draft, router]);
+
+  // FIX-world-creator-015: the lens had no Save-as-DTU for the world
+  // being authored (the only SaveAsDtuButton in the lens saves Reddit
+  // inspiration posts). Save the draft itself as a private DTU through
+  // the standing dtu.create path — the author's own work, so no
+  // public-data provenance — with the full draft in the machine
+  // payload, and verify by read-back before claiming the save.
+  const saveAsDtu = async () => {
+    if (!draft) return;
+    setBusy(true); setErr(null); setSaveNote(null);
+    const summary = `${draft.name} — a World Creator draft (${draft.universeType}, ${draft.biome} biome): ${draft.props.length} props, ${draft.npcs.length} NPCs, ${draft.zones.length} zones, ${draft.spawnPoints.length} spawn points, ${draft.factions.length} factions.${draft.description ? ` ${draft.description}` : ''}`;
+    const created = await lensRun('dtu', 'create', {
+      title: draft.name,
+      content: summary,
+      tags: ['world-creator', 'world-draft'],
+      source: 'world-creator:draft',
+      human: { summary },
+      machine: { kind: 'world_creator_draft', version: 1, draft },
+      meta: { visibility: 'private', createdFrom: 'world-creator', worldCreator: { draftId: draft.id } },
+    });
+    const id = dtuRecordId(created.data || {});
+    if (!created.data?.ok || !id) {
+      setBusy(false);
+      setErr(created.data?.error || 'Save as DTU failed — the record store refused it.');
+      return;
+    }
+    const rb = dtuReadBackCall(id);
+    const back = await lensRun(rb.domain, rb.action, rb.input);
+    setBusy(false);
+    if (!dtuReadBackMatches(id, back.data || {})) {
+      setErr(`Saved as DTU ${id} but the read-back did not return it — check your DTU library before relying on it.`);
+      return;
+    }
+    setSaveNote(`Saved as DTU ${id} — a private snapshot of this draft in your DTU library. The draft itself is unchanged; saving again makes a new snapshot.`);
+  };
 
   if (!draft) {
     return (
@@ -231,13 +289,17 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 className="text-xl font-semibold text-stone-100">{draft.name}</h2>
-          <p className="text-xs text-stone-500">
+          <p className="text-xs text-stone-400">
             {draft.props.length} props · {draft.npcs.length} NPCs · {draft.zones.length} zones ·
             {' '}{draft.spawnPoints.length} spawns · {draft.factions.length} factions ·
             {' '}<span className="uppercase">{draft.visibility}</span>
           </p>
         </div>
         <div className="flex gap-2">
+          <button onClick={() => void saveAsDtu()} disabled={busy}
+            className="rounded border border-amber-700/60 px-3 py-1.5 text-sm text-amber-300 hover:bg-amber-500/10 disabled:opacity-50">
+            Save as DTU
+          </button>
           <button onClick={playtest} disabled={busy}
             className="rounded bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50">
             ▶ Playtest
@@ -249,6 +311,7 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
       </div>
 
       {err && <div role="alert" className="rounded border border-red-800 bg-red-950/40 px-3 py-2 text-sm text-red-200">{err}</div>}
+      {saveNote && <div className="rounded border border-emerald-800 bg-emerald-950/40 px-3 py-2 text-sm text-emerald-200">{saveNote}</div>}
 
       <div className="flex gap-1 border-b border-stone-800">
         {(['scene', 'biome', 'rules', 'publish'] as const).map(t => (
@@ -280,7 +343,7 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
               <div className="flex flex-wrap items-center gap-1.5">
                 <input value={zoneName} onChange={e => setZoneName(e.target.value)}
                   placeholder="Zone name (optional)" aria-label="Zone name"
-                  className="w-40 rounded border border-stone-700 bg-stone-900 px-2 py-1 text-xs text-stone-100 placeholder:text-stone-600" />
+                  className="w-40 rounded border border-stone-700 bg-stone-900 px-2 py-1 text-xs text-stone-100 placeholder:text-stone-400" />
                 <select value={zoneKind} onChange={e => setZoneKind(e.target.value)}
                   className="rounded border border-stone-700 bg-stone-900 px-2 py-1 text-xs text-stone-200">
                   {ZONE_KINDS.map(k => <option key={k} value={k}>{k}</option>)}
@@ -292,13 +355,14 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
                     onChange={e => setZoneRadius(clampNum(Number(e.target.value), 5, 250))}
                     className="w-16 rounded border border-stone-700 bg-stone-900 px-1.5 py-1 text-stone-100" />
                   m
+                  <span className="text-[10px] text-stone-400">5–250 m</span>
                 </label>
               </div>
             )}
             {tool === 'spawn' && (
               <input value={spawnName} onChange={e => setSpawnName(e.target.value)}
                 placeholder="Spawn name (optional)" aria-label="Spawn point name"
-                className="w-40 rounded border border-stone-700 bg-stone-900 px-2 py-1 text-xs text-stone-100 placeholder:text-stone-600" />
+                className="w-40 rounded border border-stone-700 bg-stone-900 px-2 py-1 text-xs text-stone-100 placeholder:text-stone-400" />
             )}
             {tool === 'npc' && (
               <select value={npcArch} onChange={e => setNpcArch(e.target.value)}
@@ -314,7 +378,7 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
               onSelect={(kind, id) => setSelected({ kind, id })}
               onMove={onMove}
             />
-            <p className="text-[11px] text-stone-500">
+            <p className="text-[11px] text-stone-400">
               {tool === 'select' ? 'Click an entity to select; drag a prop, zone, spawn point, or NPC to move it.' : `Click the canvas to place a ${tool}.`}
             </p>
             {pendingNpc && (
@@ -330,15 +394,17 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
               <div className="rounded-lg border border-amber-800/40 bg-amber-950/10 p-3">
                 <div className="mb-2 flex items-center justify-between">
                   <span className="text-xs font-semibold uppercase tracking-wider text-amber-300">{selected.kind} selected</span>
-                  <button onClick={removeSelected} disabled={busy}
-                    className="rounded bg-red-700 px-2 py-0.5 text-[11px] text-white hover:bg-red-600 disabled:opacity-50">
-                    Delete
-                  </button>
+                  <StickyDeleteConfirm onConfirm={removeSelected} disabled={busy}
+                    className="rounded bg-red-700 px-2 py-0.5 text-[11px] text-white hover:bg-red-600 disabled:opacity-50"
+                    armLabel="Delete"
+                    armAriaLabel={`Delete selected ${selected.kind}`}
+                    confirmLabel={`Delete this ${selected.kind}?`}
+                    confirmAriaLabel={`Confirm delete selected ${selected.kind}`} />
                 </div>
                 <InspectorBody draft={draft} selected={selected} onUpdateProp={updateProp} />
               </div>
             ) : (
-              <div className="rounded-lg border border-stone-800 bg-stone-950 p-3 text-xs text-stone-500">
+              <div className="rounded-lg border border-stone-800 bg-stone-950 p-3 text-xs text-stone-400">
                 Nothing selected. Pick a tool to place entities, or use Select to inspect.
               </div>
             )}
@@ -372,17 +438,37 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
       {tab === 'rules' && (
         <div className="max-w-xl space-y-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-stone-300">World name</label>
-            <input value={draft.name}
-              onChange={e => setDraft({ ...draft, name: e.target.value })}
-              onBlur={e => run('draft-update', { id: draftId, name: e.target.value })}
+            <label className="text-sm font-medium text-stone-300" htmlFor="world-draft-name">World name</label>
+            <input id="world-draft-name" name="name" value={draft.name} maxLength={64}
+              onFocus={() => { nameDirty.current = true; }}
+              onChange={e => {
+                nameDirty.current = true;
+                const v = e.target.value;
+                setDraft(d => d ? { ...d, name: v } : d);
+              }}
+              onBlur={e => {
+                nameDirty.current = false;
+                const v = e.target.value;
+                if (v.trim().length > 64) { setErr('A world name is 64 characters or fewer.'); return; }
+                if (v.trim().length < 3) { setErr('A world name needs at least 3 characters.'); return; }
+                void run('draft-update', { id: draftId, name: v });
+              }}
               className="w-full rounded border border-stone-700 bg-stone-900 px-3 py-2 text-sm text-stone-100" />
+            <p className="text-[11px] text-stone-400">{draft.name.length}/64</p>
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium text-stone-300">Description</label>
-            <textarea value={draft.description} rows={2}
-              onChange={e => setDraft({ ...draft, description: e.target.value })}
-              onBlur={e => run('draft-update', { id: draftId, description: e.target.value })}
+            <label className="text-sm font-medium text-stone-300" htmlFor="world-draft-description">Description</label>
+            <textarea id="world-draft-description" name="description" value={draft.description} rows={2}
+              onFocus={() => { descDirty.current = true; }}
+              onChange={e => {
+                descDirty.current = true;
+                const v = e.target.value;
+                setDraft(d => d ? { ...d, description: v } : d);
+              }}
+              onBlur={e => {
+                descDirty.current = false;
+                void run('draft-update', { id: draftId, description: e.target.value });
+              }}
               className="w-full rounded border border-stone-700 bg-stone-900 px-3 py-2 text-sm text-stone-100" />
           </div>
           <fieldset className="space-y-3">
@@ -431,7 +517,7 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
                 </button>
               ))}
             </div>
-            <p className="text-[11px] text-stone-500">
+            <p className="text-[11px] text-stone-400">
               Public worlds appear in the discovery listing. Publishing needs at least one spawn point.
             </p>
           </div>
@@ -451,19 +537,19 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
                 {checkResult.issues.map((i, idx) => <div key={idx} className="text-red-300">• {i}</div>)}
                 {checkResult.warnings.map((w, idx) => <div key={idx} className="text-amber-300">⚠ {w}</div>)}
               </div>
-            ) : <p className="text-xs text-stone-500">Run a check to see issues before publishing.</p>}
+            ) : <p className="text-xs text-stone-400">Run a check to see issues before publishing.</p>}
           </div>
 
-          <button
-            onClick={async () => {
-              if (!window.confirm('Delete this draft? This cannot be undone.')) return;
+          <StickyDeleteConfirm
+            armLabel="Delete draft"
+            confirmLabel="Delete this draft?"
+            className="rounded border border-red-800 bg-red-950/30 px-3 py-2 text-sm text-red-300 hover:bg-red-950/60"
+            onConfirm={async () => {
               const r = await lensRun('world-creator', 'draft-delete', { id: draftId });
               if (r.data?.ok) onClose();
-              else setErr(r.data?.error || 'delete failed');
+              else setErr(r.data?.message || r.data?.error || 'delete failed');
             }}
-            className="rounded border border-red-800 bg-red-950/30 px-3 py-2 text-sm text-red-300 hover:bg-red-950/60">
-            Delete draft
-          </button>
+          />
         </div>
       )}
     </div>
@@ -480,23 +566,24 @@ function InspectorBody({ draft, selected, onUpdateProp }: {
     return <dl className="space-y-1.5 text-xs text-stone-300">
       <Row k="Kind" v={p.kind} /><Row k="Position" v={`(${p.x}, ${p.z})`} />
       <div className="flex items-center justify-between gap-2">
-        <dt className="text-stone-500">Rotation</dt>
+        <dt className="text-stone-400">Rotation</dt>
         <dd className="flex items-center gap-1">
           <input type="number" min={0} max={360} step={5} value={p.rotation}
             aria-label="Prop rotation in degrees"
             onChange={e => onUpdateProp(p.id, { rotation: Math.min(360, Math.max(0, Number(e.target.value) || 0)) })}
             className="w-14 rounded border border-stone-700 bg-stone-900 px-1.5 py-0.5 text-right text-stone-100" />
-          <span className="text-stone-500">°</span>
+          <span className="text-stone-400">°</span>
         </dd>
       </div>
       <div className="flex items-center justify-between gap-2">
-        <dt className="text-stone-500">Scale</dt>
+        <dt className="text-stone-400">Scale</dt>
         <dd className="flex items-center gap-1">
           <input type="number" min={0.25} max={4} step={0.25} value={p.scale}
             aria-label="Prop scale multiplier"
             onChange={e => onUpdateProp(p.id, { scale: Math.min(4, Math.max(0.25, Number(e.target.value) || 1)) })}
             className="w-14 rounded border border-stone-700 bg-stone-900 px-1.5 py-0.5 text-right text-stone-100" />
-          <span className="text-stone-500">×</span>
+          <span className="text-stone-400">×</span>
+          <span className="text-[10px] text-stone-400">0.25–4×</span>
         </dd>
       </div>
     </dl>;
@@ -527,7 +614,7 @@ function InspectorBody({ draft, selected, onUpdateProp }: {
       <Row k="Faction" v={f?.name || 'none'} />
       {n.backstory ? (
         <div className="pt-1">
-          <dt className="text-stone-500">Backstory</dt>
+          <dt className="text-stone-400">Backstory</dt>
           <dd className="mt-0.5 text-stone-300">{n.backstory}</dd>
         </div>
       ) : null}
@@ -545,7 +632,7 @@ function InspectorBody({ draft, selected, onUpdateProp }: {
 }
 
 function Row({ k, v }: { k: string; v: string }) {
-  return <div className="flex justify-between gap-2"><dt className="text-stone-500">{k}</dt><dd className="text-right text-stone-200">{v}</dd></div>;
+  return <div className="flex justify-between gap-2"><dt className="text-stone-400">{k}</dt><dd className="text-right text-stone-200">{v}</dd></div>;
 }
 
 // NpcPlacementForm — inline form shown after a canvas click with the NPC
@@ -582,7 +669,7 @@ function NpcPlacementForm({
         <span className="text-xs font-semibold uppercase tracking-wider text-amber-300">
           New {archetype} NPC
         </span>
-        <button onClick={onCancel} className="text-[11px] text-stone-400 hover:text-stone-200">✕ cancel</button>
+        <button type="button" data-overlay-close="" onClick={onCancel} aria-label="Close" className="text-[11px] text-stone-400 hover:text-stone-200">✕ cancel</button>
       </div>
       <div className="space-y-1">
         <label className="text-[11px] text-stone-400">Name</label>
@@ -603,6 +690,7 @@ function NpcPlacementForm({
           onChange={e => setLevel(clampNum(Number(e.target.value), 1, 100) || 1)}
           aria-label="NPC level"
           className="w-16 rounded border border-stone-700 bg-stone-900 px-1.5 py-1 text-xs text-stone-100" />
+        <span className="text-[10px] text-stone-400">1–100</span>
       </div>
       <button onClick={submit} disabled={busy || submitting || !name.trim()}
         className="w-full rounded bg-amber-600 px-2 py-1 text-xs font-medium text-stone-900 hover:bg-amber-500 disabled:opacity-50">
@@ -633,13 +721,17 @@ function FactionPanel({
           <div key={f.id} className="flex items-center justify-between gap-2 rounded border border-stone-800 bg-stone-900 px-2 py-1">
             <button onClick={() => onSelectFaction(f.id)} className="flex items-center gap-1.5 text-left text-xs text-stone-200">
               <span className="h-3 w-3 rounded-full" style={{ background: f.color }} />
-              {f.name} <span className="text-stone-500">· {f.stance}</span>
+              {f.name} <span className="text-stone-400">· {f.stance}</span>
             </button>
-            <button onClick={() => run('faction-remove', { draftId, factionId: f.id })} disabled={busy}
-              className="text-[11px] text-red-400 hover:text-red-300">✕</button>
+            <StickyDeleteConfirm onConfirm={() => run('faction-remove', { draftId, factionId: f.id })} disabled={busy}
+              className="text-[11px] text-red-400 hover:text-red-300"
+              armLabel="✕"
+              armAriaLabel={`Remove faction ${f.name}`}
+              confirmLabel={`Remove "${f.name}"?`}
+              confirmAriaLabel={`Confirm remove faction ${f.name}`} />
           </div>
         ))}
-        {draft.factions.length === 0 && <p className="text-[11px] text-stone-600">No factions yet.</p>}
+        {draft.factions.length === 0 && <p className="text-[11px] text-stone-400">No factions yet.</p>}
       </div>
       {selectedFaction && (
         <p className="mt-1.5 text-[11px] text-amber-300/80">Selected: {selectedFaction.name} — {selectedFaction.ethos || 'no ethos set'}</p>

@@ -32,7 +32,17 @@ interface GenomeSummary {
   totalMastered?: number;
   gapCount?: number;
   strongestDomain?: string;
-  velocity?: number;
+  velocity?: number | { perMinute?: number; windowMinutes?: number; interactions?: number };
+}
+
+// The server's calculateVelocity returns an object — mastery gain per
+// minute over the last hour — not a weekly number. Render its real shape
+// (FIX-009: the card printed '[object Object]/wk').
+function velocityLabel(v: GenomeSummary['velocity']): string {
+  if (v == null) return '—';
+  if (typeof v === 'number') return `${v}/min`;
+  if ((v.interactions ?? 0) === 0 || (v.perMinute ?? 0) === 0) return '—';
+  return `${(v.perMinute ?? 0).toFixed(2)}/min`;
 }
 
 interface GenomeApiResponse {
@@ -114,7 +124,7 @@ export function GenomePanel() {
         <StatCard label="Mastered" value={summary.totalMastered ?? 0} />
         <StatCard label="Gaps" value={summary.gapCount ?? nodes.filter(n => n.gap).length} />
         <StatCard label="Strongest" value={summary.strongestDomain ?? '—'} />
-        <StatCard label="Velocity" value={summary.velocity != null ? `${summary.velocity}/wk` : '—'} />
+        <StatCard label="Velocity" value={velocityLabel(summary.velocity)} />
       </div>
 
       {isLoading && <p className="text-sm text-gray-400">Loading genome…</p>}
@@ -206,8 +216,10 @@ export function LearningPathPanel() {
 
   const pathMutation = useMutation<PathApiResponse, Error, string>({
     mutationFn: async (targetGoal: string) => {
-      const r = await api.post('/api/learning/path', { goal: targetGoal });
-      return r.data as PathApiResponse;
+      const r = await api.post('/api/learning/path', { goal: targetGoal, targetDomain: targetGoal });
+      const data = r.data as PathApiResponse & { error?: string; plan?: { path?: PathApiResponse['path'] } };
+      if (data?.ok === false) throw new Error(data.error || 'The path request failed.');
+      return { ...data, path: data.path ?? data.plan?.path ?? [] };
     },
   });
 
@@ -280,6 +292,13 @@ export function LearningPathPanel() {
           {pathMutation.isPending ? 'Computing…' : 'Plan Path'}
         </button>
       </div>
+
+      {pathMutation.isError && (
+        <p className="mb-3 text-sm text-red-300" role="alert">{pathMutation.error.message || 'The path request failed.'}</p>
+      )}
+      {pathMutation.isSuccess && pathSteps.length === 0 && (
+        <p className="mb-3 text-sm text-gray-300" role="status">No steps came back for that goal.</p>
+      )}
 
       {pathSteps.length > 0 && (
         <div className="mb-6">
@@ -917,7 +936,9 @@ export function AssessmentPanel() {
         assessmentId: gen.data?.assessmentId,
         responses: Object.entries(responses).map(([questionId, answer]) => ({ questionId, answer })),
       });
-      return r.data as AssessmentGradeResponse;
+      const body = r.data as AssessmentGradeResponse & { ok?: boolean; result?: AssessmentGradeResponse; error?: string };
+      if (body?.ok === false) throw new Error(body.error || 'The assessment was not graded.');
+      return (body.result ?? body) as AssessmentGradeResponse;
     },
   });
 
@@ -983,6 +1004,7 @@ export function AssessmentPanel() {
             </button>
           )}
 
+          {grade.error && <p className="text-xs text-red-400">{grade.error.message}</p>}
           {grade.data?.overall != null && (
             <div className="p-3 bg-neon-pink/10 border border-neon-pink/30 rounded-lg text-center">
               <p className="text-xs text-gray-400 uppercase">Overall</p>

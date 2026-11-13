@@ -744,20 +744,34 @@ export default function registerLandscapingActions(registerLensAction) {
       ``,
       `_This proposal is valid for 30 days from the date above._`,
     ].join("\n");
-    return {
-      ok: true,
-      result: {
-        client, project, lineItems,
-        subtotal: Math.round(subtotal * 100) / 100,
-        overhead, margin, tax, total,
-        overheadPct, marginPct, taxPct,
-        clientId: resolvedClientId,
-        proposalMarkdown: md,
-        generatedAt: new Date().toISOString(),
-      },
+    const proposal = {
+      id: lsId("prop"),
+      client, project, lineItems,
+      subtotal: Math.round(subtotal * 100) / 100,
+      overhead, margin, tax, total,
+      overheadPct, marginPct, taxPct,
+      clientId: resolvedClientId,
+      proposalMarkdown: md,
+      generatedAt: new Date().toISOString(),
     };
+    const s = getLandState();
+    if (s) {
+      if (!(s.proposals instanceof Map)) s.proposals = new Map();
+      const userId = lsActor(ctx);
+      if (!s.proposals.has(userId)) s.proposals.set(userId, []);
+      s.proposals.get(userId).unshift(proposal);
+      saveLand();
+    }
+    return { ok: true, result: proposal };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+
+  registerLensAction("landscaping", "proposal-list", (ctx, _a, _params = {}) => {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = lsActor(ctx);
+    const proposals = (s.proposals instanceof Map && s.proposals.get(userId)) || [];
+    return { ok: true, result: { proposals, count: proposals.length } };
+  });
 
   // ─── Feature 7 — Maintenance calendar (per-bed seasonal tasks) ──────
   // Generates a 12-month task schedule for a bed, biased by sun
@@ -973,6 +987,41 @@ export default function registerLandscapingActions(registerLensAction) {
     job.completionNotes = lsClean(params.notes, 1000) || "";
     saveLand();
     return { ok: true, result: { job } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("landscaping", "job-update", (ctx, _a, params = {}) => {
+    try {
+      const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const job = lsJobs(s, lsActor(ctx)).find((j) => j.id === params.id);
+      if (!job) return { ok: false, error: "job not found" };
+      if (job.status === "completed") return { ok: false, error: "a completed job cannot be edited" };
+      if (params.title != null) {
+        const title = lsClean(params.title, 120);
+        if (!title) return { ok: false, error: "job title required" };
+        job.title = title;
+      }
+      if (params.client != null) job.client = lsClean(params.client, 120) || "";
+      if (params.address != null) job.address = lsClean(params.address, 200) || "";
+      if (params.crew != null) job.crew = lsClean(params.crew, 120) || "";
+      if (params.date != null) job.date = lsClean(params.date, 16) || job.date;
+      if (params.notes != null) job.notes = lsClean(params.notes, 1000) || "";
+      if (params.startHour != null) job.startHour = Math.min(23, Math.max(0, Math.round(lsNum(params.startHour))));
+      if (params.durationHours != null) job.durationHours = Math.min(24, Math.max(0.5, lsNum(params.durationHours) || job.durationHours));
+      saveLand();
+      return { ok: true, result: { job } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  registerLensAction("landscaping", "job-delete", (ctx, _a, params = {}) => {
+  try {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const jobs = lsJobs(s, lsActor(ctx));
+    const idx = jobs.findIndex((j) => j.id === params.id);
+    if (idx < 0) return { ok: false, error: "job not found" };
+    const removed = jobs.splice(idx, 1)[0];
+    saveLand();
+    return { ok: true, result: { deleted: removed.id, title: removed.title } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
@@ -1211,6 +1260,36 @@ export default function registerLandscapingActions(registerLensAction) {
     return { ok: true, result: { clients: enriched, count: enriched.length } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+
+  registerLensAction("landscaping", "client-update", (ctx, _a, params = {}) => {
+    try {
+      const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const client = lsClients(s, lsActor(ctx)).find((c) => c.id === params.id);
+      if (!client) return { ok: false, error: "client not found" };
+      if (params.name != null) {
+        const name = lsClean(params.name, 80);
+        if (!name) return { ok: false, error: "name required" };
+        client.name = name;
+      }
+      if (params.phone != null) client.phone = lsClean(params.phone, 40);
+      if (params.email != null) client.email = lsClean(params.email, 120);
+      if (params.address != null) client.address = lsClean(params.address, 200);
+      saveLand();
+      return { ok: true, result: { client } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  registerLensAction("landscaping", "client-delete", (ctx, _a, params = {}) => {
+    try {
+      const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const arr = lsClients(s, lsActor(ctx));
+      const i = arr.findIndex((c) => c.id === params.id);
+      if (i < 0) return { ok: false, error: "client not found" };
+      arr.splice(i, 1);
+      saveLand();
+      return { ok: true, result: { deleted: params.id } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
 
   // ─── Feature 12 — Job inspections ────────────────────────────────────
   // Closes the "Inspections" gap (docs/lens-specs/landscaping-capability-

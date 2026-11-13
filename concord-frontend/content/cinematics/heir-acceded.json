@@ -1,6 +1,7 @@
 {
   "id": "heir_acceded",
   "name": "Heir Accedes",
+  "summary": "The old head's time ends, and the heir takes the seat. The renown of the one who came before fades to a gentler glow as a new generation begins its own story.",
   "trigger": "dynasty:heir_acceded",
   "comment": "Concordia Phase 15 — bespoke cinematic for player heir takeover (Phase 12). New head accedes; previous head's renown attrites to 0.7×; generation counter advances.",
   "shots": [

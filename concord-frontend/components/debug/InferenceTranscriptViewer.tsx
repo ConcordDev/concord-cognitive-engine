@@ -68,7 +68,7 @@ function SpanRow({ span }: { span: Span }) {
     <div className={`border rounded p-2 text-xs ${typeStyle}`}>
       <div
         className="flex items-center gap-2 cursor-pointer select-none"
-        onClick={() => hasDetails && setExpanded((e) => !e)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        onClick={() => hasDetails && setExpanded((e) => !e)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
         {hasDetails ? (
           expanded ? (
             <ChevronDown className="w-3 h-3" />
@@ -117,7 +117,7 @@ function TraceCard({ trace }: { trace: InferenceTrace }) {
     <div className="border border-white/10 rounded-lg overflow-hidden">
       <div
         className={`flex items-center gap-3 p-3 cursor-pointer hover:bg-white/5 transition-colors ${failed ? 'border-b border-red-500/20' : ''}`}
-        onClick={() => setExpanded((e) => !e)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        onClick={() => setExpanded((e) => !e)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
         {expanded ? (
           <ChevronDown className="w-4 h-4 text-white/40" />
         ) : (
@@ -178,6 +178,8 @@ function InferenceTranscriptViewer() {
       <div className="flex gap-2">
         <input
           type="text"
+          name="filterInferenceId"
+          aria-label="Filter by inference ID"
           value={filterInferenceId}
           onChange={(e) => setFilterInferenceId(e.target.value)}
           placeholder="Filter by inference ID"
@@ -185,6 +187,8 @@ function InferenceTranscriptViewer() {
         />
         <input
           type="number"
+          name="minLatency"
+          aria-label="Minimum latency in milliseconds"
           value={minLatency}
           onChange={(e) => setMinLatency(e.target.value)}
           placeholder="Min latency (ms)"
@@ -223,5 +227,6 @@ function InferenceTranscriptViewer() {
 }
 
 import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 const _WrappedInferenceTranscriptViewer = withErrorBoundary(InferenceTranscriptViewer);
 export { _WrappedInferenceTranscriptViewer as InferenceTranscriptViewer };

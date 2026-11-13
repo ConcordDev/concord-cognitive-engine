@@ -73,7 +73,8 @@ export const LawContracts = forwardRef<LawContractsHandle, { onContractsChange?:
   const [library, setLibrary] = useState<Record<string, LibraryClause[]>>({});
   const [loading, setLoading] = useState(true);
   const [showNew, setShowNew] = useState(false);
-  const [nt, setNt] = useState({ title: '', type: 'services', counterparty: '' });
+  const [nt, setNt] = useState({ title: '', type: 'services', counterparty: '', value: '', effectiveDate: '', expiryDate: '' });
+  const [createError, setCreateError] = useState<string | null>(null);
   const [tab, setTab] = useState<DetailTab>('clauses');
 
   const refresh = useCallback(async () => {
@@ -108,12 +109,31 @@ export const LawContracts = forwardRef<LawContractsHandle, { onContractsChange?:
   }
 
   async function create() {
-    if (!nt.title.trim()) return;
-    const r = await lensRun('law', 'contract-create', nt);
+    if (!nt.title.trim()) {
+      setCreateError('A contract needs a title.');
+      return;
+    }
+    const value = nt.value.trim() === '' ? 0 : Number(nt.value);
+    if (!Number.isFinite(value) || value < 0) {
+      setCreateError('Value has to be a number, zero or more.');
+      return;
+    }
+    setCreateError(null);
+    const r = await lensRun('law', 'contract-create', {
+      title: nt.title,
+      type: nt.type,
+      counterparty: nt.counterparty,
+      value,
+      effectiveDate: nt.effectiveDate || undefined,
+      expiryDate: nt.expiryDate || undefined,
+    });
     if (r.data?.ok) {
-      setShowNew(false); setNt({ title: '', type: 'services', counterparty: '' });
+      setShowNew(false);
+      setNt({ title: '', type: 'services', counterparty: '', value: '', effectiveDate: '', expiryDate: '' });
       await refresh();
       await openContract(r.data.result?.contract.id);
+    } else {
+      setCreateError(r.data?.error || 'Could not create the contract.');
     }
   }
   async function remove(id: string) {
@@ -249,8 +269,17 @@ export const LawContracts = forwardRef<LawContractsHandle, { onContractsChange?:
             </select>
             <input value={nt.counterparty} onChange={e => setNt({ ...nt, counterparty: e.target.value })} placeholder="Counterparty"
               className="flex-1 bg-black/50 border border-white/15 rounded px-2 py-1.5 text-xs text-white" />
+          </div>
+          <div className="flex gap-2">
+            <input value={nt.value} onChange={e => setNt({ ...nt, value: e.target.value })} placeholder="Value" inputMode="decimal" aria-label="Contract value"
+              className="w-28 bg-black/50 border border-white/15 rounded px-2 py-1.5 text-xs text-white" />
+            <input type="date" value={nt.effectiveDate} onChange={e => setNt({ ...nt, effectiveDate: e.target.value })} aria-label="Effective date"
+              className="bg-black/50 border border-white/15 rounded px-2 py-1.5 text-xs text-white" />
+            <input type="date" value={nt.expiryDate} onChange={e => setNt({ ...nt, expiryDate: e.target.value })} aria-label="Expiry date"
+              className="bg-black/50 border border-white/15 rounded px-2 py-1.5 text-xs text-white" />
             <button onClick={create} className="px-3 py-1.5 text-xs rounded bg-neon-cyan text-black font-bold">Create</button>
           </div>
+          {createError && <p role="alert" className="text-xs text-rose-300">{createError}</p>}
         </div>
       )}
 

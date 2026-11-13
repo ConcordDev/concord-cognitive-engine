@@ -92,7 +92,7 @@ export function TechniqueLibraryPanel() {
                   </ol>
                 </div>
                 <p className="text-gray-400 italic">{t.evidence}</p>
-                <p className="text-[10px] text-gray-500">
+                <p className="text-[10px] text-gray-400">
                   The strength figure above is an editorial rating, not a measured effect size; the evidence line is the library's summary of the research consensus.
                 </p>
               </div>

@@ -11,7 +11,7 @@
  * Participants are not rendered. The hub is a different surface.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -49,6 +49,28 @@ function isWarming(message: string): boolean {
   return /service_overloaded|event_loop_lag|status code 503/i.test(message);
 }
 
+/** Room titles cap at 200 — the same limit the input validator and
+ *  the room store enforce, so a title the form accepts always reads
+ *  back exactly as typed. */
+const TITLE_MAX = 200;
+
+/** Server wording never reaches the user raw: map the known cases to
+ *  a plain sentence (the audit found the validator's raw "Input too
+ *  long: input.title: 301 chars (max 200)" rendered as the error). */
+function friendlyRoomError(message: string, fallback: string): string {
+  if (/input too long/i.test(message)) {
+    return `That title is too long — keep it to ${TITLE_MAX} characters or fewer.`;
+  }
+  if (/room title required/i.test(message)) return 'A title is required.';
+  if (/room note required/i.test(message)) return 'A note is required.';
+  if (/service_overloaded|event_loop_lag|status code 503/i.test(message)) {
+    return 'Concord is warming up — give it a moment and try again.';
+  }
+  // Anything else the server said passes through — the floor build's
+  // states pin that surfacing; only the audited raw wordings are mapped.
+  return message || fallback;
+}
+
 async function runCollab<T>(name: string, input: Record<string, unknown>, fallback: string): Promise<T> {
   let last = fallback;
   for (let attempt = 0; attempt < 8; attempt++) {
@@ -72,6 +94,102 @@ async function readRooms(): Promise<RoomRow[]> {
   return out;
 }
 
+interface RoomComposerProps {
+  busy: boolean;
+  submitRef: React.MutableRefObject<(() => void) | null>;
+  onCreate: (title: string, note: string) => Promise<void>;
+}
+
+/**
+ * The create form owns its field state. Typing must never ride the
+ * page's render cycle — the page re-renders on room loads, receipts
+ * and shell state, and a form whose fields live at page root can lose
+ * the caret mid-word when the surrounding tree churns (the audit's
+ * focus-jump finding). Field errors sit under their field, tied by
+ * aria-describedby, and the title carries the same 200-character cap
+ * the validator and the room store enforce.
+ */
+const RoomComposer = memo(function RoomComposer({ busy, submitRef, onCreate }: RoomComposerProps) {
+  const [title, setTitle] = useState('');
+  const [note, setNote] = useState('');
+  const [titleError, setTitleError] = useState('');
+  const [noteError, setNoteError] = useState('');
+  const [formError, setFormError] = useState('');
+
+  const submit = useCallback(async () => {
+    const trimmed = title.trim();
+    const nextNote = note.trim();
+    setTitleError(trimmed ? '' : 'A title is required.');
+    setNoteError(nextNote ? '' : 'A note is required.');
+    if (!trimmed || !nextNote) return;
+    setFormError('');
+    try {
+      await onCreate(trimmed, nextNote);
+    } catch (err) {
+      setFormError(friendlyRoomError(err instanceof Error ? err.message : '', 'Could not open that room.'));
+    }
+  }, [note, onCreate, title]);
+
+  useEffect(() => {
+    submitRef.current = () => { void submit(); };
+    return () => { submitRef.current = null; };
+  }, [submit, submitRef]);
+
+  return (
+    <form
+      data-testid="cb-composer"
+      className="col-span-full space-y-4 px-6 py-5"
+      onSubmit={(event) => { event.preventDefault(); void submit(); }}
+    >
+      <div>
+        <label className="block text-[14px] text-zinc-400" htmlFor="cb-title-input">
+          Title
+          <input
+            id="cb-title-input"
+            data-testid="cb-title"
+            value={title}
+            maxLength={TITLE_MAX}
+            aria-invalid={titleError ? true : undefined}
+            aria-describedby={titleError ? 'cb-title-error cb-title-count' : 'cb-title-count'}
+            onChange={(event) => { setTitle(event.target.value); if (titleError) setTitleError(''); }}
+            className="mt-1 w-full border-b border-white/15 bg-transparent pb-2 font-vault text-[1.25rem] text-zinc-100 outline-none"
+            autoFocus
+          />
+        </label>
+        <div className="mt-1 flex items-baseline justify-between gap-4">
+          {titleError ? (
+            <p id="cb-title-error" role="alert" className="text-[13px] text-red-300">{titleError}</p>
+          ) : (
+            <span />
+          )}
+          <p id="cb-title-count" className="text-[12px] text-zinc-500">{title.length}/{TITLE_MAX}</p>
+        </div>
+      </div>
+      <div>
+        <label className="block text-[14px] text-zinc-400" htmlFor="cb-note-field">
+          Note
+          <input
+            id="cb-note-field"
+            data-testid="cb-note-input"
+            value={note}
+            aria-invalid={noteError ? true : undefined}
+            aria-describedby={noteError ? 'cb-note-error' : undefined}
+            onChange={(event) => { setNote(event.target.value); if (noteError) setNoteError(''); }}
+            className="mt-1 w-full border-b border-white/15 bg-transparent pb-2 text-[15px] text-zinc-100 outline-none"
+          />
+        </label>
+        {noteError && (
+          <p id="cb-note-error" role="alert" className="mt-1 text-[13px] text-red-300">{noteError}</p>
+        )}
+      </div>
+      {formError && (
+        <p role="alert" className="text-[14px] text-zinc-300">{formError}</p>
+      )}
+      <button type="submit" disabled={busy} className="sr-only">Open room</button>
+    </form>
+  );
+});
+
 export default function CollabLensPage() {
   useLensNav('collab');
   const [phase, setPhase] = useState<Phase>('loading');
@@ -79,12 +197,12 @@ export default function CollabLensPage() {
   const [loadError, setLoadError] = useState('');
   const [actionError, setActionError] = useState('');
   const [composing, setComposing] = useState(false);
-  const [title, setTitle] = useState('');
-  const [note, setNote] = useState('');
+  const composerSubmitRef = useRef<(() => void) | null>(null);
   const [busy, setBusy] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState('');
+  const [editTitleError, setEditTitleError] = useState('');
   const [editNote, setEditNote] = useState('');
   const [confirmClose, setConfirmClose] = useState(false);
   const [receipt, setReceipt] = useState('');
@@ -118,23 +236,7 @@ export default function CollabLensPage() {
     });
   }, [pull]);
 
-  const openRoom = useCallback(async () => {
-    if (busy || phase !== 'ready') return;
-    if (!composing) {
-      setComposing(true);
-      setActionError('');
-      return;
-    }
-    const trimmed = title.trim();
-    const selected = note.trim();
-    if (!trimmed) {
-      setActionError('A title is required.');
-      return;
-    }
-    if (!selected) {
-      setActionError('A note is required.');
-      return;
-    }
+  const createRoom = useCallback(async (trimmed: string, selected: string) => {
     setBusy(true);
     setActionError('');
     try {
@@ -151,15 +253,26 @@ export default function CollabLensPage() {
         throw new Error('Opened, but the room did not read it back.');
       }
       setRooms(rows);
-      setTitle('');
-      setNote('');
+      setSelectedId(id);
+      // The status line names the room just saved — a create used to
+      // leave whatever an earlier edit/close had printed standing.
+      setReceipt(`Saved “${trimmed}”.`);
       setComposing(false);
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Could not open that room.');
     } finally {
       setBusy(false);
     }
-  }, [busy, composing, note, phase, title]);
+  }, []);
+
+  const openRoom = useCallback(async () => {
+    if (busy || phase !== 'ready') return;
+    if (!composing) {
+      setComposing(true);
+      setActionError('');
+      setReceipt('');
+      return;
+    }
+    composerSubmitRef.current?.();
+  }, [busy, composing, phase]);
 
   useLensCommand(
     [{ id: 'collab-open', keys: 'n', description: 'Open a room', category: 'actions', action: () => { void openRoom(); } }],
@@ -184,7 +297,8 @@ export default function CollabLensPage() {
     if (!selected || busy) return;
     const trimmed = editTitle.trim();
     const nextNote = editNote.trim();
-    if (!trimmed) { setActionError('A title is required.'); return; }
+    setEditTitleError(trimmed ? '' : 'A title is required.');
+    if (!trimmed) { return; }
     if (!nextNote) { setActionError('A note is required.'); return; }
     setBusy(true);
     setActionError('');
@@ -205,7 +319,7 @@ export default function CollabLensPage() {
       setEditing(false);
       setReceipt(`Saved “${trimmed}”.`);
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Could not save that room.');
+      setActionError(friendlyRoomError(err instanceof Error ? err.message : '', 'Could not save that room.'));
     } finally {
       setBusy(false);
     }
@@ -228,7 +342,7 @@ export default function CollabLensPage() {
       setConfirmClose(false);
       setReceipt(`Closed “${selected.title}”.`);
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Could not close that room.');
+      setActionError(friendlyRoomError(err instanceof Error ? err.message : '', 'Could not close that room.'));
     } finally {
       setBusy(false);
     }
@@ -314,16 +428,25 @@ export default function CollabLensPage() {
           )}
           {phase === 'ready' && editing && selected && (
             <div className="col-span-full space-y-4 px-6 py-5">
-              <label className="block text-[14px] text-zinc-400">
-                Title
-                <input
-                  data-testid="cb-edit-title"
-                  value={editTitle}
-                  onChange={(event) => setEditTitle(event.target.value)}
-                  className="mt-1 w-full border-b border-white/15 bg-transparent pb-2 font-vault text-[1.25rem] text-zinc-100 outline-none"
-                  autoFocus
-                />
-              </label>
+              <div>
+                <label className="block text-[14px] text-zinc-400" htmlFor="cb-edit-title-field">
+                  Title
+                  <input
+                    id="cb-edit-title-field"
+                    data-testid="cb-edit-title"
+                    value={editTitle}
+                    maxLength={TITLE_MAX}
+                    aria-invalid={editTitleError ? true : undefined}
+                    aria-describedby={editTitleError ? 'cb-edit-title-error' : undefined}
+                    onChange={(event) => { setEditTitle(event.target.value); if (editTitleError) setEditTitleError(''); }}
+                    className="mt-1 w-full border-b border-white/15 bg-transparent pb-2 font-vault text-[1.25rem] text-zinc-100 outline-none"
+                    autoFocus
+                  />
+                </label>
+                {editTitleError && (
+                  <p id="cb-edit-title-error" role="alert" className="mt-1 text-[13px] text-red-300">{editTitleError}</p>
+                )}
+              </div>
               <label className="block text-[14px] text-zinc-400">
                 Note
                 <input
@@ -347,30 +470,7 @@ export default function CollabLensPage() {
             </div>
           )}
           {phase === 'ready' && composing && (
-            <div className="col-span-full space-y-4 px-6 py-5">
-              <label className="block text-[14px] text-zinc-400">
-                Title
-                <input
-                  data-testid="cb-title"
-                  value={title}
-                  onChange={(event) => setTitle(event.target.value)}
-                  className="mt-1 w-full border-b border-white/15 bg-transparent pb-2 font-vault text-[1.25rem] text-zinc-100 outline-none"
-                  autoFocus
-                />
-              </label>
-              <label className="block text-[14px] text-zinc-400">
-                Note
-                <input
-                  data-testid="cb-note-input"
-                  value={note}
-                  onChange={(event) => setNote(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') { event.preventDefault(); void openRoom(); }
-                  }}
-                  className="mt-1 w-full border-b border-white/15 bg-transparent pb-2 text-[15px] text-zinc-100 outline-none"
-                />
-              </label>
-            </div>
+            <RoomComposer busy={busy} submitRef={composerSubmitRef} onCreate={createRoom} />
           )}
         </section>
 

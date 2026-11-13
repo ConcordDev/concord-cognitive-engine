@@ -156,10 +156,10 @@ export function PaymentsPanel() {
           </LocalRecordNotice>
         </div>
         <div className="grid grid-cols-6 gap-2">
-          <input value={fineForm.payerName} onChange={e => setFineForm({ ...fineForm, payerName: e.target.value })} placeholder="Payer name" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <input value={fineForm.reason} onChange={e => setFineForm({ ...fineForm, reason: e.target.value })} placeholder="Reason" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <input value={fineForm.caseNumber} onChange={e => setFineForm({ ...fineForm, caseNumber: e.target.value })} placeholder="Case #" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
-          <input value={fineForm.amountUsd} onChange={e => setFineForm({ ...fineForm, amountUsd: e.target.value })} placeholder="$ Amount" type="number" min="0" step="0.01" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input aria-label="Payer name" value={fineForm.payerName} onChange={e => setFineForm({ ...fineForm, payerName: e.target.value })} placeholder="Payer name" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input aria-label="Reason" value={fineForm.reason} onChange={e => setFineForm({ ...fineForm, reason: e.target.value })} placeholder="Reason" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input aria-label="Case #" value={fineForm.caseNumber} onChange={e => setFineForm({ ...fineForm, caseNumber: e.target.value })} placeholder="Case #" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+          <input aria-label="$ Amount" value={fineForm.amountUsd} onChange={e => setFineForm({ ...fineForm, amountUsd: e.target.value })} placeholder="$ Amount" type="number" min="0" step="0.01" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         </div>
         <button onClick={createFine} className="mt-2 px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 inline-flex items-center gap-1"><Plus className="w-3 h-3" />Issue fine</button>
       </div>
@@ -187,7 +187,7 @@ export function PaymentsPanel() {
                     <span className="text-xs text-white flex-1 truncate">{p.recordNumber} — {p.kind}</span>
                     <span className="text-xs text-amber-300 font-mono">{money(p.feeUsd)}</span>
                     {stripeConfigured && (
-                      <button onClick={() => startCheckout('permit', p.id)} disabled={busy} className="px-2 py-1 text-[10px] rounded bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 disabled:opacity-40">Pay</button>
+                      <button onClick={() => startCheckout('permit', p.id)} disabled={busy || !stripeConfigured} title={stripeConfigured ? undefined : 'Online payment is not configured'} className="px-2 py-1 text-[10px] rounded bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 disabled:opacity-40">Pay</button>
                     )}
                   </li>
                 ))}
@@ -196,8 +196,9 @@ export function PaymentsPanel() {
                     <Gavel className="w-3.5 h-3.5 text-rose-400 shrink-0" />
                     <span className="text-xs text-white flex-1 truncate">{f.reason} — {f.payerName}</span>
                     <span className="text-xs text-amber-300 font-mono">{money(f.amountUsd)}</span>
+                    <button type="button" className="text-[10px] text-rose-300" onClick={async () => { await lensRun({ domain: 'government', action: 'fines-delete', input: { id: f.id } }); await refresh(); }}>Remove</button>
                     {stripeConfigured && (
-                      <button onClick={() => startCheckout('fine', f.id)} disabled={busy} className="px-2 py-1 text-[10px] rounded bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 disabled:opacity-40">Pay</button>
+                      <button onClick={() => startCheckout('fine', f.id)} disabled={busy || !stripeConfigured} title={stripeConfigured ? undefined : 'Online payment is not configured'} className="px-2 py-1 text-[10px] rounded bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 disabled:opacity-40">Pay</button>
                     )}
                   </li>
                 ))}

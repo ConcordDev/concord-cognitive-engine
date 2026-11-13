@@ -128,6 +128,18 @@ describe('HvacDeskPanel', () => {
     expect(remove).toHaveBeenCalledWith('art_1');
   });
 
+  it('the confirm stays up past 4s so it can be clicked (FIX-hvac-013)', () => {
+    vi.useFakeTimers();
+    lensDataState.items = [JOB];
+    render(<HvacDeskPanel mode="jobs" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    vi.advanceTimersByTime(5000);
+    expect(screen.getByRole('button', { name: 'Confirm delete' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm delete' }));
+    expect(remove).toHaveBeenCalledWith('art_1');
+    vi.useRealTimers();
+  });
+
   it('S1: typing spaces inside the editor never closes it or loses the draft', () => {
     // The filed defect: the editor's backdrop/panel carried keydown-to-click
     // activation, so a Space typed in any field bubbled up, synthetically

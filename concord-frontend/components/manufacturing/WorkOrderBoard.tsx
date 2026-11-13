@@ -68,6 +68,9 @@ export function WorkOrderBoard() {
 
   async function createOrder(ev: FormEvent) {
     ev.preventDefault();
+    if (!product.trim()) { setError('Product is required.'); return; }
+    const qty = Number(quantity);
+    if (!Number.isFinite(qty) || qty <= 0) { setError('Quantity must be a number greater than 0.'); return; }
     setSaving(true);
     setError(null);
     try {
@@ -173,22 +176,22 @@ export function WorkOrderBoard() {
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Work orders</span>
         <span className="ml-auto text-[10px] text-gray-400">{activeCount} active</span>
       </header>
-      <form onSubmit={createOrder} className="px-3 py-2 border-b border-white/5 flex flex-wrap items-end gap-2">
+      <form noValidate onSubmit={createOrder} className="px-3 py-2 border-b border-white/5 flex flex-wrap items-end gap-2">
         <label className="text-[10px] uppercase tracking-wider text-gray-500">
           Product
-          <input value={product} onChange={(e) => setProduct(e.target.value)} required className={fieldCls} />
+          <input id="manufacturing-product-2" name="product-2" value={product} onChange={(e) => setProduct(e.target.value)} className={fieldCls} />
         </label>
         <label className="text-[10px] uppercase tracking-wider text-gray-500">
           Quantity
-          <input value={quantity} onChange={(e) => setQuantity(e.target.value)} inputMode="decimal" required className={fieldCls} />
+          <input id="manufacturing-quantity-2" name="quantity-2" value={quantity} onChange={(e) => setQuantity(e.target.value)} inputMode="decimal" className={fieldCls} />
         </label>
         <label className="text-[10px] uppercase tracking-wider text-gray-500">
           Due date
-          <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={fieldCls} />
+          <input id="manufacturing-duedate" name="duedate" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={fieldCls} />
         </label>
         <label className="text-[10px] uppercase tracking-wider text-gray-500">
           Priority
-          <select value={priority} onChange={(e) => setPriority(e.target.value as WorkOrder['priority'])} className={fieldCls}>
+          <select id="manufacturing-priority-2" name="priority-2" value={priority} onChange={(e) => setPriority(e.target.value as WorkOrder['priority'])} className={fieldCls}>
             {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
           </select>
         </label>
@@ -217,7 +220,7 @@ export function WorkOrderBoard() {
                   <div key={o.id} className="p-2 bg-white/[0.02] border border-white/10 rounded text-xs">
                     <div className="flex items-center gap-1.5">
                       <span className="font-mono text-cyan-300">{o.number}</span>
-                      <span className={cn('text-[8px] uppercase px-1 py-0.5 rounded font-bold',
+                      <span className={cn('text-xs uppercase px-1 py-0.5 rounded font-bold',
                         o.priority === 'urgent' ? 'bg-red-500/30 text-red-200' :
                         o.priority === 'high' ? 'bg-orange-500/30 text-orange-200' :
                         o.priority === 'medium' ? 'bg-yellow-500/30 text-yellow-200' :

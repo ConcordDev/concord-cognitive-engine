@@ -81,6 +81,18 @@ describe("robotics — fleet management", () => {
     assert.equal(list.result.online, 1);
   });
 
+  it("fleetUpdate renames a robot and stores capacity and draw", () => {
+    const reg = call("fleetRegister", ctxA, { name: "Arm-9", type: "arm", batteryCapacityWh: 50, powerDrawW: 35 });
+    const id = reg.result.robot.id;
+    const upd = call("fleetUpdate", ctxA, { robotId: id, name: "Arm-9b", type: "drone", batteryCapacityWh: 120, powerDrawW: 80 });
+    assert.equal(upd.ok, true);
+    assert.equal(upd.result.robot.name, "Arm-9b");
+    assert.equal(upd.result.robot.type, "drone");
+    assert.equal(upd.result.robot.batteryCapacityWh, 120);
+    assert.equal(upd.result.robot.powerDrawW, 80);
+    assert.equal(call("fleetUpdate", ctxA, { robotId: id, name: "  " }).ok, false);
+  });
+
   it("fleetUpdate changes status and bumps errorCount on error", () => {
     const reg = call("fleetRegister", ctxA, { name: "Arm-2", type: "arm" });
     const id = reg.result.robot.id;

@@ -11,6 +11,7 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { writeGmailMessage } from "../lib/connector-client.js";
+import { badNumber, readingOrNull } from "../lib/finite-input.js";
 
 const PROPUBLICA_BASE = "https://projects.propublica.org/nonprofits/api/v2";
 
@@ -239,8 +240,8 @@ export default function registerNonprofitActions(registerLensAction) {
     const s = getNonprofitState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const c = npCampaigns(s, npActor(ctx)).find((x) => x.id === params.campaignId);
     if (!c) return { ok: false, error: "campaign not found" };
-    const amount = npNum(params.amount);
-    if (amount <= 0) return { ok: false, error: "donation amount must be positive" };
+    const amount = readingOrNull(params.amount, { min: 0.01, max: 1_000_000_000, fallback: null });
+    if (amount === null) return badNumber("amount", "must be a number greater than 0");
     const donation = { id: npId("don"), amount, donor: npClean(params.donor, 120) || "Anonymous",
       recurring: params.recurring === true, at: new Date().toISOString() };
     c.donations.push(donation); saveNonprofit();
@@ -248,11 +249,19 @@ export default function registerNonprofitActions(registerLensAction) {
   });
   registerLensAction("nonprofit", "nonprofit-dashboard", (ctx, _a, _p = {}) => {
     const s = getNonprofitState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const campaigns = npCampaigns(s, npActor(ctx));
+    const actor = npActor(ctx);
+    const campaigns = npCampaigns(s, actor);
     const allDonations = campaigns.flatMap((c) => c.donations);
+    const recurringKeys = new Set();
+    for (const gift of allDonations) {
+      if (gift.recurring) recurringKeys.add(`gift:${String(gift.donor || "anonymous").trim().toLowerCase()}`);
+    }
+    for (const donor of npList(npMap(s, "donors"), actor)) {
+      if ((donor.pledges || []).some((p) => p.status === "active")) recurringKeys.add(`donor:${donor.id}`);
+    }
     return { ok: true, result: { campaigns: campaigns.length, active: campaigns.filter((c) => c.status === "active").length,
       totalRaised: allDonations.reduce((n, d) => n + d.amount, 0), donations: allDonations.length,
-      recurringDonors: allDonations.filter((d) => d.recurring).length } };
+      recurringDonors: recurringKeys.size } };
   });
 
   // ─── Extended STATE accessors (donor CRM, recurring, comms, vols, events) ──
@@ -271,8 +280,10 @@ export default function registerNonprofitActions(registerLensAction) {
   registerLensAction("nonprofit", "donor-create", (ctx, _a, params = {}) => {
     try {
       const s = getNonprofitState(); if (!s) return { ok: false, error: "STATE unavailable" };
-      const name = npClean(params.name, 160);
-      if (!name) return { ok: false, error: "donor name required" };
+      const rawName = String(params.name || "").trim();
+      if (!rawName) return { ok: false, error: "donor name required" };
+      if (rawName.length > 160) return badNumber("name", "must be at most 160 characters");
+      const name = rawName;
       const donor = {
         id: npId("dnr"), name,
         email: npClean(params.email, 160), phone: npClean(params.phone, 40),
@@ -348,6 +359,14 @@ export default function registerNonprofitActions(registerLensAction) {
         receiptIssued: false, ackSent: false,
       };
       d.gifts.push(gift);
+      if (gift.campaign) {
+        const campaign = npCampaigns(s, npActor(ctx)).find((c) => c.id === gift.campaign || c.name === gift.campaign);
+        if (campaign) {
+          campaign.donations = campaign.donations || [];
+          campaign.donations.push({ id: gift.id, amount, at: gift.at, donorId: d.id });
+          campaign.raised = (Number(campaign.raised) || 0) + amount;
+        }
+      }
       saveNonprofit();
       return { ok: true, result: { gift, donor: { ...d, ...donorStats(d) } } };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
@@ -436,6 +455,13 @@ export default function registerNonprofitActions(registerLensAction) {
       const d = donors.find((x) => x.id === params.donorId);
       if (!d) return { ok: false, error: "donor not found" };
       const kind = ["thank_you", "appeal", "receipt", "custom"].includes(params.kind) ? params.kind : "custom";
+      // FIX-nonprofit-013: a custom message IS its subject and body —
+      // composeMessage silently substituted defaults for blanks, so an
+      // empty custom send went out with fabricated content. The
+      // templated kinds generate their own text and are unaffected.
+      if (kind === "custom" && (!npClean(params.subject, 160) || !npClean(params.body, 4000))) {
+        return { ok: false, error: "Subject and body are required for a custom message" };
+      }
       const msg = composeMessage(kind, d, params);
       const delivered = await deliverDonorMail(ctx, d, msg);
       const comm = {
@@ -468,6 +494,9 @@ export default function registerNonprofitActions(registerLensAction) {
       const d = npList(npMap(s, "donors"), npActor(ctx)).find((x) => x.id === params.donorId)
         || { name: npClean(params.donorName, 160) || "Friend" };
       const kind = ["thank_you", "appeal", "receipt", "custom"].includes(params.kind) ? params.kind : "thank_you";
+      if (kind === "custom" && (!npClean(params.subject, 160) || !npClean(params.body, 4000))) {
+        return { ok: false, error: "Subject and body are required for a custom message" };
+      }
       const msg = composeMessage(kind, d, params);
       return { ok: true, result: { kind, ...msg, donor: d.name } };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }

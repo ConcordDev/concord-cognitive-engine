@@ -109,7 +109,7 @@ export function MyReaderDesk() {
   return (
     <ArticleDetailProvider>
       <div className="space-y-4">
-        <div className="flex items-start gap-2 text-xs text-zinc-500">
+        <div className="flex items-start gap-2 text-xs text-zinc-400">
           <Newspaper className="mt-0.5 h-4 w-4 shrink-0 text-rose-400" />
           <p>
             Your personal article directory — populated by what you pull from the live feed on the

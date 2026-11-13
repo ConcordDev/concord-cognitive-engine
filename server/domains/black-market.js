@@ -1,6 +1,9 @@
 // server/domains/black-market.js
-// Black-market lens — Sael's stall. Surfaces intercepted Concord Link
-// messages flagged for the underground bazaar. Sparks currency only;
+// Black-market lens — Sael's stall. Surfaces FICTIONAL NPC intercepts —
+// invented messages from generated characters, labelled as fiction on
+// the surface (founder ruling, FIX-black-market-010). A real user's
+// Concord Link message is never surfaced or sold here; the surfacing
+// gate lives in server/lib/black-market.js. Sparks currency only;
 // there is no real-money codepath.
 //
 // The base `listings` / `tiers` macros read the live `creative_artifacts`
@@ -182,8 +185,10 @@ export default function registerBlackMarketActions(registerLensAction) {
     if (!TIER_ORDER.includes(encryptionLevel)) {
       return { ok: false, error: "encryptionLevel invalid" };
     }
-    const minBid = Math.max(1, Math.round(num(params.minBid, 1)));
-    const durationMin = Math.min(1440, Math.max(1, Math.round(num(params.durationMin, 60))));
+    const minBid = Math.round(num(params.minBid, 1));
+    const durationMin = Math.round(num(params.durationMin, 60));
+    if (!Number.isFinite(minBid) || minBid < 1 || minBid > 1_000_000) return { ok: false, error: "minBid must be between 1 and 1000000" };
+    if (!Number.isFinite(durationMin) || durationMin < 1 || durationMin > 10080) return { ok: false, error: "durationMin must be between 1 and 10080" };
     const seq = ensureSeq(s, uid);
     const list = ensureList(s.auctions, uid);
     const now = Date.now();
@@ -581,9 +586,14 @@ export default function registerBlackMarketActions(registerLensAction) {
     const keyword = str(params.keyword).toLowerCase();
     if (!keyword) return { ok: false, error: "keyword required" };
     if (keyword.length > 60) return { ok: false, error: "keyword too long (max 60)" };
-    const maxPrice = params.maxPrice != null
-      ? Math.max(1, Math.round(num(params.maxPrice, 0)))
-      : null;
+    let maxPrice = null;
+    if (params.maxPrice != null && params.maxPrice !== "") {
+      const priced = Number(params.maxPrice);
+      if (!Number.isFinite(priced) || priced < 1) {
+        return { ok: false, error: "invalid_input", message: "Max price must be a number that is 1 or greater." };
+      }
+      maxPrice = Math.round(priced);
+    }
     const tier = params.tier != null ? str(params.tier) : null;
     if (tier && !TIER_ORDER.includes(tier)) {
       return { ok: false, error: "tier invalid" };
@@ -634,6 +644,48 @@ export default function registerBlackMarketActions(registerLensAction) {
     save();
     return { ok: true, result: { removed: watchId } };
   });
+
+  /**
+   * watch-update — edit one of the caller's saved searches
+   * (FIX-black-market-012: saved searches could only be removed,
+   * never edited). Same validation as watch-add; only the caller's
+   * own watch can change, and the duplicate guard excludes itself.
+   */
+  registerLensAction("black-market", "watch-update", (ctx, _artifact, params = {}) => {
+  try {
+    const s = getState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const uid = actId(ctx);
+    const watchId = str(params.watchId);
+    if (!watchId) return { ok: false, error: "watchId required" };
+    const keyword = str(params.keyword).toLowerCase();
+    if (!keyword) return { ok: false, error: "keyword required" };
+    if (keyword.length > 60) return { ok: false, error: "keyword too long (max 60)" };
+    let maxPrice = null;
+    if (params.maxPrice != null && params.maxPrice !== "") {
+      const priced = Number(params.maxPrice);
+      if (!Number.isFinite(priced) || priced < 1) {
+        return { ok: false, error: "invalid_input", message: "Max price must be a number that is 1 or greater." };
+      }
+      maxPrice = Math.round(priced);
+    }
+    const tier = params.tier != null ? str(params.tier) : null;
+    if (tier && !TIER_ORDER.includes(tier)) {
+      return { ok: false, error: "tier invalid" };
+    }
+    const list = ensureList(s.watchlist, uid);
+    const watch = list.find((w) => w.id === watchId);
+    if (!watch) return { ok: false, error: "watch not found" };
+    if (list.some((w) => w.id !== watchId && w.keyword === keyword && w.maxPrice === maxPrice && w.tier === tier)) {
+      return { ok: false, error: "duplicate watch" };
+    }
+    watch.keyword = keyword;
+    watch.maxPrice = maxPrice;
+    watch.tier = tier;
+    save();
+    return { ok: true, result: { watch } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * watch-check — evaluate every saved search against the live market

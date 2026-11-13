@@ -6,17 +6,23 @@ import { WarCampaignSession } from '@/components/kingdoms/WarCampaignSession';
 import type { Decree, DecreeKindMeta, Kingdom, Resident } from './types';
 
 export function KingdomDetailPanel({ kingdomId }: { kingdomId: string }) {
-  const [detail, setDetail] = useState<{ kingdom: Kingdom; decrees: Decree[]; residents: Resident[] } | null>(null);
+  const [detail, setDetail] = useState<{ kingdom: Kingdom; decrees: Decree[]; residents: Resident[]; viewer?: { resident: boolean; role: string | null } } | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [decreeKinds, setDecreeKinds] = useState<Record<string, DecreeKindMeta>>({});
   const [decreeKind, setDecreeKind] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [contestKind, setContestKind] = useState<'siege' | 'subversion' | 'annexation'>('siege');
+  // Lifecycle controls (FIX-kingdoms-001): rename / leave / abdicate / dissolve.
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState('');
+  const [confirmAction, setConfirmAction] = useState<'leave' | 'abdicate' | 'dissolve' | null>(null);
+  const [gone, setGone] = useState(false);
 
   const fetchDetail = useCallback(async (id: string) => {
     try {
       const r = await fetch(`/api/kingdoms/${id}`, { credentials: 'same-origin' });
       const j = await r.json();
-      if (j?.ok) setDetail({ kingdom: j.kingdom, decrees: j.decrees, residents: j.residents });
+      if (j?.ok) setDetail({ kingdom: j.kingdom, decrees: j.decrees, residents: j.residents, viewer: j.viewer });
     } catch { /* ok */ }
   }, []);
 
@@ -32,11 +38,15 @@ export function KingdomDetailPanel({ kingdomId }: { kingdomId: string }) {
 
   useEffect(() => { if (kingdomId) fetchDetail(kingdomId); }, [kingdomId, fetchDetail]);
 
+  if (gone) {
+    return <div className="rounded-lg border border-slate-800 bg-slate-900 p-8 text-center text-slate-400">This kingdom has been dissolved.</div>;
+  }
+
   if (!detail) {
     return <div className="rounded-lg border border-slate-800 bg-slate-900 p-8 text-center text-slate-400">Loading kingdom…</div>;
   }
 
-  const { kingdom, decrees, residents } = detail;
+  const { kingdom, decrees, residents, viewer } = detail;
   const onRefresh = () => fetchDetail(kingdomId);
 
   const enact = async () => {
@@ -55,19 +65,60 @@ export function KingdomDetailPanel({ kingdomId }: { kingdomId: string }) {
 
   const contest = async () => {
     setSubmitting(true);
+    setNotice(null);
     try {
-      await fetch(`/api/kingdoms/${kingdom.id}/contest`, {
+      const r = await fetch(`/api/kingdoms/${kingdom.id}/contest`, {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contestKind }),
       });
+      const j = await r.json().catch(() => null);
+      if (!r.ok || j?.ok === false) setNotice(j?.error || j?.reason || 'Contest was not started.');
+      else setNotice(`Contest started (${contestKind}).`);
       onRefresh();
     } finally { setSubmitting(false); }
   };
 
+  const rename = async () => {
+    if (!nameDraft.trim()) { setNotice('Name cannot be empty.'); return; }
+    const r = await fetch(`/api/kingdoms/${kingdom.id}`, {
+      method: 'PATCH',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: nameDraft.trim() }),
+    });
+    const j = await r.json().catch(() => null);
+    if (!r.ok || j?.ok === false) { setNotice(j?.error || 'Rename failed.'); return; }
+    setEditingName(false);
+    setNotice('Kingdom renamed.');
+    onRefresh();
+  };
+
+  const lifecycle = async (action: 'leave' | 'abdicate' | 'dissolve') => {
+    const url = action === 'dissolve'
+      ? `/api/kingdoms/${kingdom.id}`
+      : `/api/kingdoms/${kingdom.id}/${action}`;
+    const r = await fetch(url, {
+      method: action === 'dissolve' ? 'DELETE' : 'POST',
+      credentials: 'same-origin',
+    });
+    const j = await r.json().catch(() => null);
+    setConfirmAction(null);
+    if (!r.ok || j?.ok === false) { setNotice(j?.error || 'That did not work.'); return; }
+    if (action === 'leave') { setNotice('You have left this kingdom.'); onRefresh(); return; }
+    if (action === 'dissolve' || j?.outcome === 'dissolved') { setGone(true); return; }
+    setNotice('You abdicated — the crown has passed to your heir.');
+    onRefresh();
+  };
+
   const join = async () => {
-    await fetch(`/api/kingdoms/${kingdom.id}/join`, { method: 'POST', credentials: 'same-origin' });
+    setNotice(null);
+    const r = await fetch(`/api/kingdoms/${kingdom.id}/join`, { method: 'POST', credentials: 'same-origin' });
+    const j = await r.json().catch(() => null);
+    if (!r.ok || j?.ok === false) setNotice(j?.error || j?.reason || 'Could not join.');
+    else if (j?.alreadyResident) setNotice(j.role === 'ruler' ? 'You already rule this kingdom.' : 'You already live here.');
+    else setNotice('Joined as a citizen.');
     onRefresh();
   };
 
@@ -88,11 +139,73 @@ export function KingdomDetailPanel({ kingdomId }: { kingdomId: string }) {
             </p>
           </div>
           <div className="flex gap-2">
-            <button onClick={join} className="flex items-center gap-1 rounded bg-emerald-700 px-3 py-1.5 text-sm hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-amber-500">
-              <Users className="h-3.5 w-3.5" /> Join
-            </button>
+            {viewer?.resident ? (
+              <span className="rounded bg-slate-800 px-3 py-1.5 text-sm capitalize text-slate-300">You are {viewer.role || 'a resident'}</span>
+            ) : (
+              <button onClick={join} className="flex items-center gap-1 rounded bg-emerald-700 px-3 py-1.5 text-sm hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                <Users className="h-3.5 w-3.5" /> Join
+              </button>
+            )}
           </div>
         </div>
+        {notice && <p className="mt-3 text-sm text-amber-200" role="status">{notice}</p>}
+
+        {(viewer?.role === 'ruler' || (viewer?.resident && viewer?.role !== 'ruler')) && (
+          <div className="mt-4 border-t border-slate-800 pt-3">
+            <p className="mb-2 text-[10px] uppercase tracking-wider text-slate-400">
+              {viewer?.role === 'ruler' ? 'Your rule' : 'Your residency'}
+            </p>
+            {viewer?.role === 'ruler' && (
+              editingName ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    aria-label="Kingdom name"
+                    value={nameDraft}
+                    onChange={(e) => setNameDraft(e.target.value)}
+                    className="rounded bg-slate-800 px-2 py-1.5 text-sm text-slate-100"
+                  />
+                  <button onClick={() => void rename()} className="rounded bg-amber-700 px-3 py-1.5 text-sm hover:bg-amber-600">Save name</button>
+                  <button onClick={() => setEditingName(false)} className="rounded bg-slate-800 px-3 py-1.5 text-sm text-slate-300">Cancel</button>
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => { setNameDraft(kingdom.name); setEditingName(true); }}
+                    className="rounded bg-slate-800 px-3 py-1.5 text-sm text-slate-200 hover:bg-slate-700"
+                  >
+                    Rename kingdom
+                  </button>
+                  {confirmAction === 'abdicate' ? (
+                    <>
+                      <button onClick={() => void lifecycle('abdicate')} className="rounded bg-amber-800 px-3 py-1.5 text-sm text-amber-100">Confirm abdication</button>
+                      <button onClick={() => setConfirmAction(null)} className="rounded bg-slate-800 px-3 py-1.5 text-sm text-slate-300">Cancel</button>
+                    </>
+                  ) : confirmAction === 'dissolve' ? (
+                    <>
+                      <button onClick={() => void lifecycle('dissolve')} className="rounded bg-rose-800 px-3 py-1.5 text-sm text-rose-100">Confirm dissolve</button>
+                      <button onClick={() => setConfirmAction(null)} className="rounded bg-slate-800 px-3 py-1.5 text-sm text-slate-300">Cancel</button>
+                    </>
+                  ) : (
+                    <>
+                      <button onClick={() => setConfirmAction('abdicate')} className="rounded bg-slate-800 px-3 py-1.5 text-sm text-amber-200 hover:bg-slate-700">Abdicate</button>
+                      <button onClick={() => setConfirmAction('dissolve')} className="rounded bg-slate-800 px-3 py-1.5 text-sm text-rose-300 hover:bg-slate-700">Dissolve kingdom</button>
+                    </>
+                  )}
+                </div>
+              )
+            )}
+            {viewer?.resident && viewer?.role !== 'ruler' && (
+              confirmAction === 'leave' ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <button onClick={() => void lifecycle('leave')} className="rounded bg-rose-800 px-3 py-1.5 text-sm text-rose-100">Confirm leave</button>
+                  <button onClick={() => setConfirmAction(null)} className="rounded bg-slate-800 px-3 py-1.5 text-sm text-slate-300">Cancel</button>
+                </div>
+              ) : (
+                <button onClick={() => setConfirmAction('leave')} className="rounded bg-slate-800 px-3 py-1.5 text-sm text-rose-300 hover:bg-slate-700">Leave kingdom</button>
+              )
+            )}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -166,10 +279,11 @@ export function KingdomDetailPanel({ kingdomId }: { kingdomId: string }) {
             </div>
             <button
               onClick={contest}
-              disabled={submitting}
+              disabled={submitting || viewer?.role === 'ruler'}
+              title={viewer?.role === 'ruler' ? 'You already rule this kingdom' : 'Start a contest'}
               className="mt-2 w-full rounded bg-rose-700 px-3 py-1.5 text-sm font-medium hover:bg-rose-600 disabled:opacity-50"
             >
-              Begin contest
+              {viewer?.role === 'ruler' ? 'You rule this kingdom' : 'Begin contest'}
             </button>
           </div>
 

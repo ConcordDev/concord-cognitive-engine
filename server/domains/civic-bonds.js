@@ -6,14 +6,15 @@
 //
 //   read:  civic_bonds.list / get / spillover / scopes / ledger
 //   write: create / open / vote / pledge / unpledge / fund / complete_milestone
-//          / complete / fail   (require ctx.actor.userId)
+//          / complete / fail / cancel   (require ctx.actor.userId)
 
 import {
   civicBondsEnabled, createBond, getBond, listBonds, openBondForVoting, voteBond,
   checkQuorum, pledgeToBond, unpledge, fundBond, completeMilestone, completeBond,
-  failBond, getSpillover, raidBondEscrow,
+  failBond, cancelBond, getSpillover, raidBondEscrow,
 } from "../lib/civic-bonds.js";
 import { isAdmin, requireActor } from "../lib/lens-authz.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
 // GOVERNANCE_SCOPES is the canonical town->city->county->state->national->
 // international hierarchy (the same single conceptual source the migration
 // 305 `civic_bonds.scope` column comment points at: "-- GOVERNANCE_SCOPES").
@@ -79,7 +80,43 @@ function requireBondManager(ctx, bondId) {
   return { ok: false, reason: "forbidden" };
 }
 
+export function civicBondExportRows(ctx) {
+  const db = ctx?.db;
+  const userId = ctx?.actor?.userId || ctx?.actor?.id || ctx?.userId || null;
+  if (!db || !userId) return [];
+  try {
+    const bonds = db.prepare(`
+      SELECT DISTINCT b.* FROM civic_bonds b
+      LEFT JOIN civic_bond_pledges p ON p.bond_id = b.id AND p.entity_id = ?
+      WHERE b.proposer_id = ? OR p.id IS NOT NULL
+      LIMIT 200
+    `).all(userId, userId);
+    const pledges = db.prepare(`SELECT * FROM civic_bond_pledges WHERE entity_id = ? LIMIT 200`).all(userId);
+    return [
+      ...bonds.map((b) => ({
+        id: b.id,
+        type: "civic-bond",
+        title: b.title || b.id,
+        createdAt: b.created_at || null,
+        updatedAt: b.completed_at || b.funded_at || b.created_at || null,
+        data: b,
+      })),
+      ...pledges.map((p) => ({
+        id: p.id,
+        type: "civic-pledge",
+        title: `Pledge ${p.amount}`,
+        createdAt: p.pledged_at || null,
+        updatedAt: p.pledged_at || null,
+        data: p,
+      })),
+    ];
+  } catch {
+    return [];
+  }
+}
+
 export default function registerCivicBondsMacros(register) {
+  registerLensExportProvider("civic-bonds", civicBondExportRows);
   // ── reads ──────────────────────────────────────────────────────────────
   register("civic_bonds", "list", async (ctx, input = {}) => {
     const g = gate(ctx); if (g) return g;
@@ -179,6 +216,13 @@ export default function registerCivicBondsMacros(register) {
     const mgr = requireBondManager(ctx, input.bondId); if (!mgr.ok) return mgr;
     return failBond(ctx.db, input.bondId, input.reason);
   }, { note: "fail the bond: refund unspent escrow" });
+
+  register("civic_bonds", "cancel", async (ctx, input = {}) => {
+    const g = gate(ctx); if (g) return g;
+    const auth = requireActor(ctx); if (!auth.ok) return auth;
+    const mgr = requireBondManager(ctx, input.bondId); if (!mgr.ok) return mgr;
+    return cancelBond(ctx.db, input.bondId);
+  }, { note: "creator cancels a drive before it is funded; escrow is refunded" });
 
   // The corrupt option — raid the restricted escrow into the treasury. Lawful
   // rulers never call this; doing so collapses legitimacy + raises refusal_debt.

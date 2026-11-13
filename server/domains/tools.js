@@ -217,6 +217,11 @@ export default function registerToolsActions(register) {
 
   const TARGETS = ["esnext", "es2022", "es2020", "es2017", "es2015"];
   const LOADERS = ["ts", "tsx", "js", "jsx"];
+  // A history entry restores the editor, so it keeps the source it was
+  // compiled from. The cap keeps 50 kept entries from bloating the state
+  // snapshot; an entry whose source was cut says so (sourceTruncated)
+  // instead of restoring a partial program as if it were the whole one.
+  const HISTORY_SOURCE_CAP = 32_768;
 
   registerLensAction("tools", "compile", async (ctx, _artifact, params = {}) => {
     const source = String(params.source || "");
@@ -258,12 +263,27 @@ export default function registerToolsActions(register) {
     }
 
     if (!result) {
-      // Fallback: naive strip-types.
+      // Fallback: naive strip-types. Parse the result and refuse it when it
+      // is not JavaScript — a syntax error must not look like a successful compile.
       const stripped = source
         .replace(/:\s*[A-Za-z_<>[\]|&,?.\s]+(?=[=,)\]\s])/g, "")
         .replace(/<[A-Z][^>]*>/g, "")
         .replace(/\binterface\s+\w+\s*\{[^}]*\}/g, "")
         .replace(/\btype\s+\w+\s*=\s*[^;\n]+;?/g, "");
+      let syntaxError = null;
+      try {
+        const acorn = await import("acorn");
+        acorn.parse(stripped, { ecmaVersion: "latest", sourceType: "module" });
+      } catch (e) {
+        syntaxError = String(e?.message || e).slice(0, 400);
+      }
+      if (syntaxError) {
+        return {
+          ok: false,
+          error: `compile error: ${syntaxError}`,
+          engine: "strip-types-fallback",
+        };
+      }
       result = {
         code: stripped,
         map: null,
@@ -286,12 +306,16 @@ export default function registerToolsActions(register) {
       const hist = bucket(s.compileHistory, userId);
       hist.push({
         id: uid("compile"),
-        target, loader, format, minify,
+        target, loader, format, minify, sourcemap,
         engine: result.engine,
         inputBytes: result.inputBytes,
         outputBytes: result.outputBytes,
         warningCount: result.warnings.length,
         durationMs,
+        // The source rides the entry so selecting it in the history
+        // restores the editor exactly as it was for this compile.
+        source: source.length > HISTORY_SOURCE_CAP ? source.slice(0, HISTORY_SOURCE_CAP) : source,
+        sourceTruncated: source.length > HISTORY_SOURCE_CAP,
         at: isoNow(),
       });
       clip(hist, 50);
@@ -446,6 +470,10 @@ export default function registerToolsActions(register) {
     const links = issueSigningLinks("tools", userId, env.id, targets);
     const delivery = await deliverSigningLinks(ctx?.db, userId, links, { title: env.title, senderName: ctx?.actor?.displayName || ctx?.actor?.username || "A Concord user" });
     const at = isoNow();
+    // FIX-tools-007: the audit trail jumped from 'created' to per-recipient
+    // delivery entries with no routing event. The send IS the routing:
+    // record it once, before the per-recipient outcomes.
+    env.audit.push({ event: "routed", actor: userId, at, detail: `Envelope routed to ${targets.length} recipient${targets.length === 1 ? "" : "s"} for signature` });
     for (const d of delivery) {
       const p = env.parties.find((x) => x.id === d.recipientId);
       if (p) p.delivery = { method: d.delivered, reason: d.reason || null, at };
@@ -511,11 +539,17 @@ export default function registerToolsActions(register) {
     });
     const signedParties = checks.filter((c) => c.status === "signed");
     const allValid = documentIntact && signedParties.length > 0 && signedParties.every((c) => c.verified);
+    // FIX-tools-007: an envelope nobody has signed yet is PENDING, not a
+    // verification failure — the panel painted it with the same red
+    // "Verification failed" banner as a tampered document. The state is
+    // named here so the UI can be neutral about it.
+    const state = allValid ? "verified" : (documentIntact && signedParties.length === 0) ? "pending" : "failed";
     return {
       ok: true,
       result: {
         envelopeId: env.id,
         envelopeNumber: env.number,
+        state,
         documentIntact,
         currentHash,
         expectedHash: env.documentHash,
@@ -589,5 +623,18 @@ export default function registerToolsActions(register) {
     env.audit.push({ event: "voided", actor: userId, at: isoNow(), detail: String(params.reason || "Voided by sender") });
     saveToolsState();
     return { ok: true, result: { envelope: env } };
+  });
+
+  registerLensAction("tools", "esign-delete", (ctx, _artifact, params = {}) => {
+    const s = getToolsState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aid(ctx);
+    const list = bucket(s.envelopes, userId);
+    const idx = list.findIndex((e) => e.id === String(params.envelopeId || ""));
+    if (idx < 0) return { ok: false, error: "envelope not found" };
+    const [removed] = list.splice(idx, 1);
+    revokeSigningLinks("tools", userId, removed.id);
+    saveToolsState();
+    return { ok: true, result: { id: removed.id, deleted: true } };
   });
 }

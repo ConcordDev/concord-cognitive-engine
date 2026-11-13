@@ -47,6 +47,7 @@ export interface CQFunctionInfo {
 export interface CQFileReport {
   file: string;
   language: string;
+  source?: string;
   findings: CQFinding[];
   metrics: CQMetrics;
   functions: CQFunctionInfo[];

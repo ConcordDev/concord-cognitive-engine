@@ -264,6 +264,12 @@ export default function registerSocialActions(registerLensAction) {
     const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actor(ctx);
     const body = clip(params.body, 2000);
+    // FIX-social-006 — honor the composer's audience choice. The read
+    // side (canViewPost) already enforces this exact vocabulary:
+    // private = author only, followers = followers, else public.
+    // Anything unrecognized falls back to public, never to a wider
+    // audience than the author picked.
+    const privacy = ["public", "followers", "private"].includes(params.privacy) ? params.privacy : "public";
     // #3 — screen the post at the publish boundary (sync local checks for the
     // public tier). Blocks policy-violating content; allows the rest.
     if (body) {
@@ -319,7 +325,7 @@ export default function registerSocialActions(registerLensAction) {
       shares: [],
       bookmarks: new Set(),
       reactions: new Map(),
-      privacy: "public",
+      privacy,
       sensitive: params.sensitive === true,
       lensReplies: [],
       lensReactions: new Map(),
@@ -437,6 +443,32 @@ export default function registerSocialActions(registerLensAction) {
       }
     }
     return { ok: true, result: { tree: roots, total: flat.length } };
+  });
+
+  registerLensAction("social", "deleteReply", (ctx, _a, params = {}) => {
+    const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const postId = String(params.postId || "");
+    const replyId = String(params.replyId || "");
+    const userId = actor(ctx);
+    const list = s.replies.get(postId) || [];
+    const target = list.find((r) => r.id === replyId);
+    if (!target) return { ok: false, error: "reply not found" };
+    if (target.userId !== userId) return { ok: false, error: "only the author can delete this reply" };
+    // Children keep their place in the thread: they re-attach to the
+    // deleted reply's parent rather than being deleted with it or
+    // orphaned out of the tree. Mutate in place: getSocialState aliases
+    // s.replies[postId] onto the post's own lensReplies array, so a
+    // replaced array would be overwritten back on the next read.
+    for (const r of list) if (r.parentId === replyId) r.parentId = target.parentId;
+    list.splice(list.findIndex((r) => r.id === replyId), 1);
+    const host = s.posts.get(postId);
+    if (host && Array.isArray(host.comments)) {
+      for (const c of host.comments) if (c.parentCommentId === replyId) c.parentCommentId = target.parentId;
+      const ci = host.comments.findIndex((c) => c.id === replyId);
+      if (ci >= 0) host.comments.splice(ci, 1);
+    }
+    save();
+    return { ok: true, result: { id: replyId, deleted: true } };
   });
 
   // ── 2. Likes / reactions / repost actions ───────────────────────────

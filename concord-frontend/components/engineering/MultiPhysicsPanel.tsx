@@ -87,7 +87,7 @@ function Card({ icon, title, hint, children }: { icon: ReactNode; title: string;
   return (
     <section className="rounded-2xl border border-white/10 bg-[#111] p-4 transition-colors hover:border-white/20">
       <h3 className="flex items-center gap-2 text-sm font-semibold text-zinc-100">{icon}{title}</h3>
-      <p className="mb-3 mt-1 text-xs text-zinc-500">{hint}</p>
+      <p className="mb-3 mt-1 text-xs text-zinc-400">{hint}</p>
       {children}
     </section>
   );
@@ -171,7 +171,7 @@ const PHYSICS_DEFAULTS = {
 
 function Stamp({ s, testId }: { s: { at: string; model?: string } | null; testId: string }) {
   if (!s) return null;
-  return <p data-testid={testId} className="mt-2 text-[10px] text-zinc-500">Computed {computedAt(s.at)}{s.model ? ` on your model (${s.model})` : ''} · saved</p>;
+  return <p data-testid={testId} className="mt-2 text-[10px] text-zinc-400">Computed {computedAt(s.at)}{s.model ? ` on your model (${s.model})` : ''} · saved</p>;
 }
 
 export function MultiPhysicsPanel() {
@@ -246,7 +246,7 @@ export function MultiPhysicsPanel() {
           <span className="font-mono text-teal-200">{model.members.length}</span> members, <span className="font-mono text-teal-200">{model.loads.length}</span> loads,{' '}
           <span className="font-mono text-teal-200">{model.supports.length}</span> supports.
           <span className="mt-1 block"><WsBadge state={wsSave} testId="physics-save" /></span>
-          <span className="mt-1 block text-[11px] text-zinc-500">Wind, flow and ΔT fields start with example values — replace them with yours.</span>
+          <span className="mt-1 block text-[11px] text-zinc-400">Wind, flow and ΔT fields start with example values — replace them with yours.</span>
         </p>
         <RunButton onClick={() => void exportScene()} loading={exporting} disabled={!hasModel}>
           <Download className="h-3.5 w-3.5" /> Export 3D scene
@@ -322,7 +322,7 @@ export function MultiPhysicsPanel() {
               const r = bundle.result!.legs[leg];
               return (
                 <div key={leg} className="rounded-xl border border-white/10 bg-black/20 p-3">
-                  <p className="mb-2 text-[11px] uppercase tracking-wider text-zinc-500">{leg === 'aero' ? 'Wind leg' : 'Thermal leg'}</p>
+                  <p className="mb-2 text-[11px] uppercase tracking-wider text-zinc-400">{leg === 'aero' ? 'Wind leg' : 'Thermal leg'}</p>
                   {r?.reason ? <p className="text-xs text-rose-300">{r.reason.replace(/_/g, ' ')}</p> : <UtilBar label="Combined" value={r?.combinedUtilization} />}
                 </div>
               );
@@ -341,7 +341,7 @@ export function MultiPhysicsPanel() {
       <div className="grid gap-4 xl:grid-cols-2">
         <Card icon={<CircuitBoard className="h-4 w-4 text-yellow-300" />} title="DC circuit" hint="Nodal analysis (KCL) over resistors and sources. Voltage sources must touch the ground node.">
           <div className="space-y-2" data-testid="circuit-elements">
-            {els.length === 0 && <p className="text-xs text-zinc-500">No elements yet. Add a source and resistors with the buttons below, then solve.</p>}
+            {els.length === 0 && <p className="text-xs text-zinc-400">No elements yet. Add a source and resistors with the buttons below, then solve.</p>}
             {els.map((el, i) => (
               <div key={i} className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] items-center gap-2 sm:grid-cols-[4rem_1fr_1fr_1fr_1fr_auto]">
                 <input aria-label="Element id" value={el.id} onChange={(e) => updEl(i, { id: e.target.value })} className="hidden rounded-lg border border-white/10 bg-black/30 px-2 py-1 font-mono text-xs sm:block" />
@@ -353,7 +353,7 @@ export function MultiPhysicsPanel() {
                 <input aria-label="Node A" value={el.nodeA} onChange={(e) => updEl(i, { nodeA: e.target.value })} className="rounded-lg border border-white/10 bg-black/30 px-2 py-1 font-mono text-xs" />
                 <input aria-label="Node B" value={el.nodeB} onChange={(e) => updEl(i, { nodeB: e.target.value })} className="rounded-lg border border-white/10 bg-black/30 px-2 py-1 font-mono text-xs" />
                 <input aria-label="Value" type="number" value={el.value} onChange={(e) => updEl(i, { value: parseFloat(e.target.value) })} className="rounded-lg border border-white/10 bg-black/30 px-2 py-1 font-mono text-xs" />
-                <button type="button" aria-label={`Remove ${el.id}`} onClick={() => setEls((xs) => xs.filter((_, j) => j !== i))} className="rounded p-1 text-zinc-500 transition-colors hover:text-rose-300"><Trash2 className="h-3.5 w-3.5" /></button>
+                <button type="button" aria-label={`Remove ${el.id}`} onClick={() => setEls((xs) => xs.filter((_, j) => j !== i))} className="rounded p-1 text-zinc-400 transition-colors hover:text-rose-300"><Trash2 className="h-3.5 w-3.5" /></button>
               </div>
             ))}
           </div>
@@ -378,11 +378,11 @@ export function MultiPhysicsPanel() {
           {circuit.result && (
             <div className={`mt-3 grid gap-3 sm:grid-cols-2 ${circuitStale ? 'opacity-50' : ''}`}>
               <div>
-                <p className="mb-1 text-[11px] uppercase tracking-wider text-zinc-500">Node voltages</p>
+                <p className="mb-1 text-[11px] uppercase tracking-wider text-zinc-400">Node voltages</p>
                 {Object.entries(circuit.result.nodeVoltages).map(([k, v]) => <p key={k} className="font-mono text-xs text-zinc-200">{k}: {fmt(v)} V</p>)}
               </div>
               <div>
-                <p className="mb-1 text-[11px] uppercase tracking-wider text-zinc-500">Current / power</p>
+                <p className="mb-1 text-[11px] uppercase tracking-wider text-zinc-400">Current / power</p>
                 {Object.entries(circuit.result.branchCurrents).map(([k, v]) => (
                   <p key={k} className="font-mono text-xs text-zinc-200">{k}: {fmt(v * 1000, 2)} mA · {fmt(circuit.result!.powerByElement[k], 3)} W</p>
                 ))}
@@ -395,7 +395,7 @@ export function MultiPhysicsPanel() {
         <Card icon={<Droplets className="h-4 w-4 text-cyan-300" />} title="Non-Newtonian pipe flow" hint="Laminar flow of a shear-thinning fluid: power-law closed form or Carreau numeric, with generalized Reynolds number.">
           <div className="mb-3 inline-flex rounded-full border border-white/10 p-0.5">
             {(['powerLaw', 'carreau'] as const).map((m) => (
-              <button key={m} type="button" aria-pressed={fluidModel === m} onClick={() => setFluidModel(m)} className={`rounded-full px-3 py-1 text-xs transition-colors ${fluidModel === m ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200'}`}>
+              <button key={m} type="button" aria-pressed={fluidModel === m} onClick={() => setFluidModel(m)} className={`rounded-full px-3 py-1 text-xs transition-colors ${fluidModel === m ? 'bg-white/10 text-zinc-50' : 'text-zinc-400 hover:text-zinc-200'}`}>
                 {m === 'powerLaw' ? 'Power law' : 'Carreau'}
               </button>
             ))}
@@ -420,9 +420,9 @@ export function MultiPhysicsPanel() {
           <Err msg={flow.error} />
           {flow.result && (
             <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2 text-center">
-              <div className="rounded-lg bg-black/20 p-2"><p className="font-mono text-sm text-cyan-200">{fmt(flow.result.flowRate * 1000, 3)}</p><p className="text-[10px] text-zinc-500">L/s</p></div>
-              <div className="rounded-lg bg-black/20 p-2"><p className="font-mono text-sm text-cyan-200">{fmt(flow.result.meanVelocity, 3)}</p><p className="text-[10px] text-zinc-500">m/s mean</p></div>
-              <div className="rounded-lg bg-black/20 p-2"><p className="font-mono text-sm text-cyan-200">{flow.result.reynolds ? fmt(flow.result.reynolds.value, 1) : '—'}</p><p className="text-[10px] text-zinc-500">{flow.result.reynolds?.regime ?? 'Re'}</p></div>
+              <div className="rounded-lg bg-black/20 p-2"><p className="font-mono text-sm text-cyan-200">{fmt(flow.result.flowRate * 1000, 3)}</p><p className="text-[10px] text-zinc-400">L/s</p></div>
+              <div className="rounded-lg bg-black/20 p-2"><p className="font-mono text-sm text-cyan-200">{fmt(flow.result.meanVelocity, 3)}</p><p className="text-[10px] text-zinc-400">m/s mean</p></div>
+              <div className="rounded-lg bg-black/20 p-2"><p className="font-mono text-sm text-cyan-200">{flow.result.reynolds ? fmt(flow.result.reynolds.value, 1) : '—'}</p><p className="text-[10px] text-zinc-400">{flow.result.reynolds?.regime ?? 'Re'}</p></div>
             </div>
           )}
           <Stamp s={ws.flow} testId="physics-flow-at" />

@@ -18,6 +18,7 @@
  *                          and surface the key turns" — renders inline
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import {
   Pin, GitBranch, Send, Globe, Wand2,
@@ -203,11 +204,11 @@ export function ThreadNodeActions({ node, threadName, threadId, threadFullConten
         domain: 'chat_agent', name: 'do',
         input: { task, maxTurns: 4 },
       });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
-      if (reply) {
-        setSynthReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2));
+      const reply = readAgentReply(r.data);
+      if (reply.ok) {
+        setSynthReply(reply.text);
         ok('Synthesis ready.');
-      } else err('Agent returned empty.');
+      } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -264,6 +265,7 @@ export function ThreadNodeActions({ node, threadName, threadId, threadFullConten
             onChange={(e) => setDmRecipient(e.target.value)}
             className="w-full bg-lattice-elevated border border-pink-400/30 rounded px-2 py-1 text-[11px] text-white focus:outline-none focus:ring-2 focus:ring-pink-400/40"
             placeholder="recipient user id"
+            aria-label="Recipient user id"
             autoFocus
           />
           <div className="flex items-center gap-1.5">

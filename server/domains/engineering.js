@@ -1919,8 +1919,56 @@ export default function registerEngineeringActions(registerLensAction) {
   // ─── bom (existing — kept) ───────────────────────────────────────────────
   registerLensAction('engineering', 'bom', (ctx, artifact, params) => {
     try {
-      const items = artifact?.data?.bomItems || artifact?.data?.items || params?.items || [];
-      if (items.length === 0) {
+      let items = artifact?.data?.bomItems || artifact?.data?.items || params?.items || [];
+      let derivedFrom = null;
+      // FIX-engineering-009: with no explicit items the BOM read as
+      // empty even after the user had built a model and saved parts —
+      // the two stores this lens already keeps. Derive the lines from
+      // them: model members grouped by section (material + area +
+      // moment of inertia), quantity = member count, total modelled
+      // length in the description; saved parts one line each. Costs
+      // stay 0/TBD — pricing is the BOM editor's job; this makes the
+      // rollup list what the user actually built.
+      if (!Array.isArray(items) || items.length === 0) {
+        const s = engState();
+        if (s) {
+          const userId = egActor(ctx);
+          const derived = [];
+          const savedModel = s.models instanceof Map ? s.models.get(userId)?.model : null;
+          if (savedModel && Array.isArray(savedModel.members) && savedModel.members.length > 0) {
+            const nodesById = new Map((savedModel.nodes || []).map((n) => [n.id, n]));
+            const groups = new Map();
+            for (const mb of savedModel.members) {
+              const key = `${mb.material || ''}|${mb.area || 0}|${mb.momentI || 0}`;
+              if (!groups.has(key)) groups.set(key, { material: mb.material || '', area: mb.area || 0, momentI: mb.momentI || 0, count: 0, length: 0 });
+              const g = groups.get(key);
+              g.count += 1;
+              const a = nodesById.get(mb.nodeI); const b = nodesById.get(mb.nodeJ);
+              if (a && b) g.length += Math.hypot((b.x || 0) - (a.x || 0), (b.y || 0) - (a.y || 0), (b.z || 0) - (a.z || 0));
+            }
+            for (const g of groups.values()) {
+              derived.push({
+                partNumber: `Member · ${g.material || 'unspecified material'} · A=${g.area} · I=${g.momentI}`,
+                description: `${g.count} model member${g.count === 1 ? '' : 's'}, total length ${Math.round(g.length * 1000) / 1000}`,
+                quantity: g.count, unitCost: 0, supplier: 'TBD',
+              });
+            }
+          }
+          const parts = egList(s.parts, userId);
+          for (const p of parts) {
+            derived.push({
+              partNumber: p.name,
+              description: `${p.designType || p.kind || 'part'}${p.material ? ` · ${p.material}` : ''}`,
+              quantity: 1, unitCost: 0, supplier: 'TBD',
+            });
+          }
+          if (derived.length > 0) {
+            items = derived;
+            derivedFrom = { modelMemberGroups: derived.length - parts.length, savedParts: parts.length };
+          }
+        }
+      }
+      if (!Array.isArray(items) || items.length === 0) {
         return { ok: true, result: { message: 'Add BOM items with part number, quantity, and cost.' } };
       }
       const bom = items.map((i) => {
@@ -1947,6 +1995,7 @@ export default function registerEngineeringActions(registerLensAction) {
           totalCost: Math.round(totalCost * 100) / 100,
           criticalPath: longestLead?.partNumber || 'All in stock',
           uniqueSuppliers: [...new Set(bom.map((b) => b.supplier))].length,
+          ...(derivedFrom ? { derivedFrom } : {}),
         },
       };
     } catch (e) {

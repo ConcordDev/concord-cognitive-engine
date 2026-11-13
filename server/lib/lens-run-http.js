@@ -14,7 +14,13 @@
  * and the panels render `{ ok:false, reason:'missing_api_key', envVar, signupUrl }`
  * as the honest "needs a key" state. HTTP 422 makes the browser log
  * "Failed to load resource" for that answer. Other `missing_*` reasons stay
- * 422. `unknown_macro` and the brain catch-all stay on their existing
+ * 422. The connector not-linked family (`no_token`, `connector_not_configured`,
+ * `gmail_disabled`, `no_user` — lib/connector-client.js / connector-tokens.js)
+ * gets the same HTTP 200 treatment for the same reason: "this account is not
+ * connected" is a state the client renders as its connect wall, not a bad
+ * request — answering it 400 made every page load with an unconnected
+ * Gmail/Slack log a storm of console resource errors (FIX-mail-003).
+ * `unknown_macro` and the brain catch-all stay on their existing
  * explicit HTTP 200 path in server.js — those are non-retryable "not a macro"
  * answers, not a handler refusing the action. 502/503/504 are the axios retry
  * set; nothing this module returns is in that set, with ONE opt-in exception:
@@ -66,6 +72,23 @@ export function httpStatusForLensFailure(error, raw = {}) {
   // Exact match only. `missing_inputs` / `missing_world_id` and the rest of
   // the missing_* validation family stay 422 below.
   if (e === "missing_api_key") return 200;
+
+  // Connector not-linked family (FIX-mail-003): the connector layer's
+  // "no grant stored / connector not configured" answers, plus the gmail
+  // domain's own disabled / signed-out guards. A state, not a client
+  // fault — HTTP 200 with the { ok:false, reason } body, exactly like
+  // missing_api_key above, so an unconnected account costs zero console
+  // resource errors. Read on the reason channel too: connector handlers
+  // put the stable token there (gmail's fail() mirrors it into both).
+  {
+    const r0 = String(raw?.reason || "").trim().toLowerCase();
+    if (
+      e === "no_token" || e === "connector_not_configured" || e === "gmail_disabled" || e === "no_user" ||
+      r0 === "no_token" || r0 === "connector_not_configured" || r0 === "gmail_disabled" || r0 === "no_user"
+    ) {
+      return 200;
+    }
+  }
 
   // The ONE opt-in 503: atlas (and automotive's shop locator) mark a real
   // Nominatim outage with code / error "geocoder_unavailable". The body

@@ -18,10 +18,12 @@ import {
 } from 'lucide-react';
 import { Icon as SvgIcon } from '@/components/icons/Icon';
 import { ErrorState } from '@/components/common/EmptyState';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import {
   type ArtifactType, type Status, type TradeArtifact,
   STATUS_CONFIG, ELECTRICAL_CERTS, ARTIFACT_TABS,
 } from '@/components/electrical/electrical-shared';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 const MODE_TABS = ARTIFACT_TABS.map((t) => ({
   ...t,
@@ -61,6 +63,7 @@ export function ElectricalDeskPanel({
   const [formCodeReference, setFormCodeReference] = useState('');
   const [formCodeSection, setFormCodeSection] = useState('');
   const [formJurisdiction, setFormJurisdiction] = useState('');
+  const [formError, setFormError] = useState('');
 
   const activeArtifactType = MODE_TABS.find((t) => t.id === (mode === 'dashboard' ? 'jobs' : mode))?.artifactType || 'Job';
   const { items, isLoading, isError, error, refetch, create, update, remove } =
@@ -116,6 +119,7 @@ export function ElectricalDeskPanel({
     setFormCodeReference('');
     setFormCodeSection('');
     setFormJurisdiction('');
+    setFormError('');
     setEditorOpen(true);
   };
   useEffect(() => {
@@ -146,6 +150,7 @@ export function ElectricalDeskPanel({
     setFormCodeReference(d.codeReference || '');
     setFormCodeSection(d.codeSection || '');
     setFormJurisdiction(d.jurisdiction || '');
+    setFormError('');
     setEditorOpen(true);
   };
 
@@ -153,6 +158,21 @@ export function ElectricalDeskPanel({
     const laborH = formLaborHours ? parseFloat(formLaborHours) : undefined;
     const laborR = formLaborRate ? parseFloat(formLaborRate) : undefined;
     const matC = formMaterialCost ? parseFloat(formMaterialCost) : undefined;
+    // Negative or non-numeric amounts are refused in the open — the form
+    // stays open with what was typed instead of saving an impossible job.
+    const badField =
+      laborH !== undefined && (!Number.isFinite(laborH) || laborH < 0)
+        ? 'Labor hours'
+        : laborR !== undefined && (!Number.isFinite(laborR) || laborR < 0)
+          ? 'Labor rate'
+          : matC !== undefined && (!Number.isFinite(matC) || matC < 0)
+            ? 'Material cost'
+            : null;
+    if (badField) {
+      setFormError(`${badField} can't be negative — enter 0 or more.`);
+      return;
+    }
+    setFormError('');
     const data: Record<string, unknown> = {
       name: formName,
       type: activeArtifactType,
@@ -231,10 +251,10 @@ export function ElectricalDeskPanel({
     return (
       <div
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-        onClick={() => setEditorOpen(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        onClick={() => setEditorOpen(false)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
         <div
           className={cn(ds.panel, 'w-full max-w-lg max-h-[85vh] overflow-y-auto')}
-          onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <div className="flex items-center justify-between mb-4">
             <h3 className={ds.heading3}>
               {editingItem ? 'Edit' : 'New'} {activeArtifactType}
@@ -330,6 +350,7 @@ export function ElectricalDeskPanel({
                     <label className={ds.label}>Labor Hours</label>
                     <input
                       type="number"
+                      min={0}
                       className={ds.input}
                       value={formLaborHours}
                       onChange={(e) => setFormLaborHours(e.target.value)}
@@ -339,6 +360,7 @@ export function ElectricalDeskPanel({
                     <label className={ds.label}>Labor Rate</label>
                     <input
                       type="number"
+                      min={0}
                       className={ds.input}
                       value={formLaborRate}
                       onChange={(e) => setFormLaborRate(e.target.value)}
@@ -348,6 +370,7 @@ export function ElectricalDeskPanel({
                     <label className={ds.label}>Material Cost</label>
                     <input
                       type="number"
+                      min={0}
                       className={ds.input}
                       value={formMaterialCost}
                       onChange={(e) => setFormMaterialCost(e.target.value)}
@@ -447,6 +470,11 @@ export function ElectricalDeskPanel({
               />
             </div>
           </div>
+          {formError && (
+            <p role="alert" className="text-sm text-red-400 mt-3">
+              {formError}
+            </p>
+          )}
           <div className="flex justify-end gap-2 mt-4">
             <button onClick={() => setEditorOpen(false)} className={ds.btnSecondary}>
               Cancel
@@ -496,7 +524,7 @@ export function ElectricalDeskPanel({
         </div>
       ) : filtered.length === 0 ? (
         <div className={cn(ds.panel, 'text-center py-12')}>
-          <SvgIcon name="circuit-panel" size={48} className="text-gray-600 mx-auto mb-3" />
+          <SvgIcon name="circuit-panel" size={48} className="text-gray-400 mx-auto mb-3" />
           <p className={ds.textMuted}>No {activeArtifactType} items yet</p>
           <button onClick={openCreate} className={cn(ds.btnPrimary, 'mt-3')}>
             <Plus className="w-4 h-4" /> Create First
@@ -514,6 +542,18 @@ export function ElectricalDeskPanel({
               transition={{ delay: index * 0.05 }}
               className={ds.panelHover}
               onClick={() => openEdit(item)}
+              // FIX-electrical-008: the row opens the job on click, so it
+              // must be keyboard-openable too — focusable, named, and
+              // Enter/Space activates it (the shared editable-target
+              // activator keeps keys typed in nested fields typing).
+              role="button"
+              tabIndex={0}
+              aria-label={`Open ${d.name || item.title}`}
+              onKeyDown={(e) => {
+                // Only the row's own keystrokes: the nested Activate /
+                // Delete buttons keep their Enter/Space for themselves.
+                if (e.target === e.currentTarget) activateOnEnterOrSpace(e);
+              }}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -545,15 +585,13 @@ export function ElectricalDeskPanel({
                   aria-label="Activate">
                     <Zap className="w-4 h-4 text-neon-cyan" />
                   </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      remove(item.id);
-                    }}
+                  <StickyDeleteConfirm
+                    onConfirm={() => remove(item.id)}
+                    armLabel={<Trash2 className="w-4 h-4 text-red-400" />}
+                    armAriaLabel={`Delete ${d.name || item.title}`}
+                    confirmAriaLabel={`Confirm delete ${d.name || item.title}`}
                     className={ds.btnGhost}
-                  aria-label="Delete">
-                    <Trash2 className="w-4 h-4 text-red-400" />
-                  </button>
+                  />
                 </div>
               </div>
             </motion.div>

@@ -277,6 +277,14 @@ describe("careers domain macros", () => {
     assert.equal(row.status, "countered");
     assert.equal(row.base_wage_sparks, 60);
 
+    const negative = await macros.get("counter")(ctxFor(db, "emp"), { contractId, terms: { baseWage: -5 } });
+    assert.equal(negative.ok, false);
+    assert.equal(negative.reason, "invalid_baseWage");
+    assert.match(negative.message, /0 to 1,000,000/);
+    const huge = await macros.get("counter")(ctxFor(db, "emp"), { contractId, terms: { baseWage: 1e20 } });
+    assert.equal(huge.ok, false);
+    assert.equal(huge.reason, "invalid_baseWage");
+
     // employer rejects the counter
     const rejected = await macros.get("reject")(ctxFor(db, "emp"), { contractId });
     assert.equal(rejected.ok, true);

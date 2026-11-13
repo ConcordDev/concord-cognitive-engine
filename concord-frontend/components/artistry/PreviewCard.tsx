@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ArtistryPost, AudioPreview, ImagePreview, VideoPreview, TextPreview, CodePreview } from '@/lib/artistry/types';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 const CONTENT_TYPE_ICONS: Record<string, typeof Music> = {
   audio: Music,
@@ -225,7 +226,7 @@ function ImagePreviewRender({ preview }: { preview: ImagePreview }) {
   return (
     <div
       className={cn('relative overflow-hidden cursor-pointer', zoomed ? 'max-h-[600px]' : 'aspect-square')}
-      onClick={() => setZoomed(!zoomed)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+      onClick={() => setZoomed(!zoomed)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
       <NextImage
         src={preview.imageUrl}
         alt="Image preview"

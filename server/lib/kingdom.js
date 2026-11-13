@@ -317,6 +317,89 @@ export function listResidents(db, kingdomId) {
   } catch { return []; }
 }
 
+/* ── Lifecycle: edit / leave / abdicate / dissolve (FIX-kingdoms-001) ──
+   The detail surface offered a ruler and residents no way to rename,
+   leave, hand over, or dissolve their own kingdom. All four actions
+   are scoped to the caller's own relationship to the kingdom. */
+
+/** Rename your own kingdom. Ruler only. */
+export function updateKingdom(db, kingdomId, userId, { name } = {}) {
+  try {
+    const k = getKingdom(db, kingdomId);
+    if (!k) return { ok: false, error: "kingdom_not_found" };
+    if (k.ruler_user_id !== userId) return { ok: false, error: "not_ruler" };
+    const trimmed = String(name ?? "").trim();
+    if (!trimmed) return { ok: false, error: "name_required" };
+    db.prepare(`UPDATE kingdoms SET name = ? WHERE id = ?`).run(trimmed.slice(0, 80), kingdomId);
+    return { ok: true, kingdom: getKingdom(db, kingdomId) };
+  } catch (e) { return { ok: false, error: e.message }; }
+}
+
+/** A resident leaves. The ruler cannot leave — abdicate or dissolve. */
+export function leaveKingdom(db, kingdomId, userId) {
+  try {
+    const k = getKingdom(db, kingdomId);
+    if (!k) return { ok: false, error: "kingdom_not_found" };
+    const me = db.prepare(
+      `SELECT role FROM kingdom_residents WHERE kingdom_id = ? AND user_id = ?`,
+    ).get(kingdomId, userId);
+    if (!me) return { ok: false, error: "not_resident" };
+    if (me.role === "ruler" || k.ruler_user_id === userId) {
+      return { ok: false, error: "ruler_must_abdicate" };
+    }
+    db.prepare(`DELETE FROM kingdom_residents WHERE kingdom_id = ? AND user_id = ?`).run(kingdomId, userId);
+    return { ok: true, left: true };
+  } catch (e) { return { ok: false, error: e.message }; }
+}
+
+function _dissolveKingdom(db, kingdomId) {
+  db.prepare(`DELETE FROM kingdom_residents WHERE kingdom_id = ?`).run(kingdomId);
+  try { db.prepare(`DELETE FROM kingdom_decrees WHERE kingdom_id = ?`).run(kingdomId); } catch { /* table optional in older schemas */ }
+  try { db.prepare(`DELETE FROM kingdom_claims WHERE kingdom_id = ?`).run(kingdomId); } catch { /* table optional in older schemas */ }
+  db.prepare(`DELETE FROM kingdoms WHERE id = ?`).run(kingdomId);
+}
+
+/**
+ * The ruler steps down. The crown passes to the longest-serving noble,
+ * else the longest-serving resident; the ex-ruler stays on as a
+ * citizen. With no other residents, the kingdom is dissolved.
+ */
+export function abdicateKingdom(db, kingdomId, userId) {
+  try {
+    const k = getKingdom(db, kingdomId);
+    if (!k) return { ok: false, error: "kingdom_not_found" };
+    if (k.ruler_user_id !== userId) return { ok: false, error: "not_ruler" };
+    const heir = db.prepare(`
+      SELECT user_id, role FROM kingdom_residents
+      WHERE kingdom_id = ? AND user_id != ?
+      ORDER BY CASE role WHEN 'noble' THEN 0 WHEN 'guard' THEN 1 ELSE 2 END, joined_at ASC
+      LIMIT 1
+    `).get(kingdomId, userId);
+    if (!heir) {
+      _dissolveKingdom(db, kingdomId);
+      return { ok: true, outcome: "dissolved" };
+    }
+    db.prepare(`UPDATE kingdoms SET ruler_user_id = ?, ruler_faction_id = NULL WHERE id = ?`)
+      .run(heir.user_id, kingdomId);
+    db.prepare(`UPDATE kingdom_residents SET role = 'ruler' WHERE kingdom_id = ? AND user_id = ?`)
+      .run(kingdomId, heir.user_id);
+    db.prepare(`UPDATE kingdom_residents SET role = 'citizen' WHERE kingdom_id = ? AND user_id = ?`)
+      .run(kingdomId, userId);
+    return { ok: true, outcome: "succeeded", newRulerId: heir.user_id };
+  } catch (e) { return { ok: false, error: e.message }; }
+}
+
+/** The ruler dissolves the kingdom entirely: residents, decrees, claims, row. */
+export function deleteKingdom(db, kingdomId, userId) {
+  try {
+    const k = getKingdom(db, kingdomId);
+    if (!k) return { ok: false, error: "kingdom_not_found" };
+    if (k.ruler_user_id !== userId) return { ok: false, error: "not_ruler" };
+    _dissolveKingdom(db, kingdomId);
+    return { ok: true, deleted: true };
+  } catch (e) { return { ok: false, error: e.message }; }
+}
+
 /* ── Wire presentation (no raw user ids) ──────────────────────────── */
 
 /**

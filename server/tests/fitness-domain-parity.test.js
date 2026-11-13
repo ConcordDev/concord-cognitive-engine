@@ -404,6 +404,21 @@ describe("fitness.club-* + challenge-*", () => {
     assert.equal(c.myProgress.value, 55);
   });
 
+  it("a stranger listing challenges does not receive other people's activity totals", () => {
+    const ch = call("challenge-create", ctxA, {
+      name: "Private miles", metric: "distance", target: 100,
+      startDate: daysAgoISO(5), endDate: daysAgoISO(-25),
+    }).result.challenge;
+    call("activity-create", ctxA, { type: "run", distanceKm: 30, durationSec: 9000, date: daysAgoISO(1) });
+    const list = call("challenge-list", ctxB, {});
+    const row = list.result.challenges.find((c) => c.id === ch.id);
+    assert.ok(row);
+    assert.equal(row.joined, false);
+    assert.equal(row.leaderboard.length, 0);
+    assert.equal(row.myProgress.value, 0);
+    assert.equal(JSON.stringify(row).includes("30"), false);
+  });
+
   it("challenge rejects bad metric", () => {
     assert.equal(call("challenge-create", ctxA, { name: "X", metric: "kudos", target: 5 }).ok, false);
   });

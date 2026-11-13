@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   calendarDateKey,
   coerceDateKey,
+  calendarKeyOf,
+  daysUntilCalendarDate,
+  formatCalendarDate,
   formatDateKey,
   fromZonedInputValue,
   nextHourSlotInZone,
@@ -28,6 +31,18 @@ describe('calendarDateKey', () => {
     expect(formatDateKey('2026-10-10', { year: true })).toBe('Saturday, October 10, 2026');
     expect(coerceDateKey('2026-10-11')).toBe('2026-10-11');
     expect(coerceDateKey('2026-10-11T01:58:00.000Z', 'America/New_York')).toBe('2026-10-10');
+  });
+
+  it('formats a date-only key as that calendar day, not the previous local day', () => {
+    expect(calendarKeyOf('2026-11-09')).toBe('2026-11-09');
+    expect(calendarKeyOf('2020-01-15T00:00:00.000Z')).toBe('2020-01-15');
+    expect(calendarKeyOf('2026-10-11T01:58:00.000Z')).toBe('');
+    expect(formatCalendarDate('2026-11-09')).toBe('Nov 9, 2026');
+    expect(formatCalendarDate('2042-03-01')).toBe('Mar 1, 2042');
+    expect(formatCalendarDate('2026-11-10', { year: false })).toBe('Nov 10');
+    expect(formatCalendarDate('')).toBe('');
+    expect(formatCalendarDate('not-a-date')).toBe('');
+    expect(daysUntilCalendarDate('2026-11-10', new Date('2026-11-09T12:00:00.000Z'))).toBe(1);
   });
 
   it('prefers a valid profile timezone over the browser zone', () => {

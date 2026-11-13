@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { api, apiHelpers } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { VoiceRecorder } from '@/components/voice/VoiceRecorder';
@@ -15,7 +16,6 @@ import {
   SkipBack,
   SkipForward,
   Star,
-  Trash2,
   Edit3,
   Check,
   X,
@@ -30,6 +30,7 @@ import {
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 type RecordingStatus = 'ready' | 'recording' | 'processing';
 type ExportFormat = 'wav' | 'mp3' | 'flac';
@@ -216,11 +217,13 @@ export function VoiceBoothPanel() {
   const [recordingTime, setRecordingTime] = useState(0);
   const [sessionTime, setSessionTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [playhead, setPlayhead] = useState(0);
+  const [playDur, setPlayDur] = useState(0);
   const [playbackSrc, setPlaybackSrc] = useState<string | null>(null);
   const wantPlayRef = useRef(false);
 
   // Takes — persisted artifacts plus this-session overlays (no sync-effect).
-  const { isLoading, isError: isError, error: error, refetch: refetch, items: takeItems, create: createTake } = useLensData<Take>('voice', 'take', {
+  const { isLoading, isError: isError, error: error, refetch: refetch, items: takeItems, create: createTake, remove: removeTake } = useLensData<Take>('voice', 'take', {
     seed: [],
   });
   const persistedTakes = takeItems.map((i) => ({ ...(i.data as unknown as Take), id: i.id }));
@@ -233,6 +236,7 @@ export function VoiceBoothPanel() {
     });
   };
   const [activeTakeId, setActiveTakeId] = useState<string | null>(null);
+  const [armedTakeId, setArmedTakeId] = useState<string | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
 
@@ -340,7 +344,7 @@ export function VoiceBoothPanel() {
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
+    const s = Math.floor(seconds % 60);
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
@@ -543,6 +547,8 @@ export function VoiceBoothPanel() {
   const deleteTake = (id: string) => {
     setTakes((prev) => prev.filter((t) => t.id !== id));
     if (resolvedActiveId === id) setActiveTakeId(null);
+    setArmedTakeId(null);
+    void removeTake(id).catch(() => { void refetch(); });
   };
 
   const startRename = (take: Take) => {
@@ -561,7 +567,7 @@ export function VoiceBoothPanel() {
 
   const markBest = (id: string) =>
     setTakes((prev) =>
-      prev.map((t) => ({ ...t, isBest: t.id === id }))
+      prev.map((t) => ({ ...t, isBest: t.id === id ? !t.isBest : false }))
     );
 
   // Effects
@@ -679,7 +685,7 @@ export function VoiceBoothPanel() {
                   resolvedActiveId === take.id
                     ? 'bg-neon-cyan/5 border-l-2 border-l-neon-cyan'
                     : 'hover:bg-white/[0.03] border-l-2 border-l-transparent'
-                )} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                )} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                 <div className="flex items-center justify-between mb-1.5">
                   {renamingId === take.id ? (
                     <div className="flex items-center gap-1 flex-1 mr-2">
@@ -727,12 +733,17 @@ export function VoiceBoothPanel() {
                     aria-label="Award">
                       <Award className="w-3 h-3" />
                     </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); deleteTake(take.id); }}
-                      className="p-1 rounded text-gray-600 hover:text-red-400"
-                    aria-label="Delete">
-                      <Trash2 className="w-3 h-3" />
-                    </button>
+                    <span onClick={(e) => e.stopPropagation()}>
+                    <StickyDeleteConfirm
+                      armed={armedTakeId === take.id}
+                      onArm={() => setArmedTakeId(take.id)}
+                      onCancel={() => setArmedTakeId(null)}
+                      onConfirm={() => deleteTake(take.id)}
+                      armLabel="Delete"
+                      confirmLabel="Delete this take?"
+                      className="p-1 text-gray-600 hover:text-red-400"
+                    />
+                    </span>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 text-[11px] text-gray-400 mb-2">
@@ -875,8 +886,16 @@ export function VoiceBoothPanel() {
               src={playbackSrc ?? undefined}
               preload="none"
               className="sr-only"
-              onEnded={() => setIsPlaying(false)}
+              onTimeUpdate={(e) => setPlayhead(e.currentTarget.currentTime)}
+              onLoadedMetadata={(e) => setPlayDur(Number.isFinite(e.currentTarget.duration) ? e.currentTarget.duration : 0)}
+              onEnded={() => { setIsPlaying(false); setPlayhead(0); }}
             />
+            <div className="flex items-center gap-2 min-w-[10rem]" aria-label="Playback progress">
+              <div className="h-1 flex-1 rounded-full bg-white/10" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={playDur > 0 ? Math.round((playhead / playDur) * 100) : 0}>
+                <div className="h-full rounded-full bg-neon-cyan" style={{ width: `${playDur > 0 ? Math.min(100, (playhead / playDur) * 100) : 0}%` }} />
+              </div>
+              <span className="text-[10px] font-mono text-gray-400">{formatTime(playhead)} / {formatTime(playDur)}</span>
+            </div>
             <button
               type="button"
               onClick={() => {

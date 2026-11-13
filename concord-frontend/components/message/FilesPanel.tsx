@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Upload, Trash2, FileText, Image as ImageIcon, Film, Music, File as FileIcon, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface FileEntry {
   id: string;
@@ -99,6 +100,7 @@ export function FilesPanel({ channelId, channelName }: { channelId: string; chan
         <span className="text-[10px] text-gray-400">{files.length} files · {fmtBytes(totalBytes)}</span>
         <div className="ml-auto flex items-center gap-2">
           <select
+            aria-label="Filter by file type"
             value={kindFilter}
             onChange={(e) => setKindFilter(e.target.value)}
             className="px-2 py-1 text-[11px] bg-black/40 border border-white/10 rounded text-gray-300"
@@ -160,8 +162,8 @@ export function FilesPanel({ channelId, channelName }: { channelId: string; chan
       )}
 
       {preview && (
-        <div className="fixed inset-0 z-40 bg-black/70 flex items-center justify-center p-6" onClick={() => setPreview(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-          <div className="bg-[#0d1117] border border-white/10 rounded-lg p-4 max-w-2xl w-full" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className="fixed inset-0 z-40 bg-black/70 flex items-center justify-center p-6" onClick={() => setPreview(null)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
+          <div className="bg-[#0d1117] border border-white/10 rounded-lg p-4 max-w-2xl w-full" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <div className="flex items-center gap-2 mb-2">
               <span className="text-sm font-semibold text-gray-200 truncate">{preview.name}</span>
               <button onClick={() => setPreview(null)} className="ml-auto text-gray-400 text-lg">×</button>

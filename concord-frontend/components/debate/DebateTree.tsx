@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Scale, Plus, Trash2, ThumbsUp, ThumbsDown, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 
 interface Claim { id: string; parentId: string | null; stance: string; text: string; weight: number; voteCount: number }
@@ -22,6 +23,7 @@ export function DebateTree() {
   const [score, setScore] = useState<Score | null>(null);
   const [loading, setLoading] = useState(true);
   const [newThesis, setNewThesis] = useState('');
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const r = await lensRun('debate', 'debate-list', {});
@@ -37,7 +39,8 @@ export function DebateTree() {
   async function reload() { if (active) await open(active.id); }
 
   async function create() {
-    if (newThesis.trim().length < 8) return;
+    if (newThesis.trim().length < 8) { setCreateError('A thesis needs at least 8 characters.'); return; }
+    setCreateError(null);
     const r = await lensRun('debate', 'debate-create', { thesis: newThesis.trim() });
     setNewThesis('');
     await refresh();
@@ -78,9 +81,10 @@ export function DebateTree() {
         <input value={newThesis} onChange={e => setNewThesis(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void create(); }}
           placeholder="State a thesis to debate…"
           className="flex-1 bg-black/40 border border-white/15 rounded px-2 py-1.5 text-sm text-white" />
-        <button onClick={create} disabled={newThesis.trim().length < 8}
-          className="px-3 py-1.5 text-xs rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold disabled:opacity-40">New debate</button>
+        <button onClick={create}
+          className="px-3 py-1.5 text-xs rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold">New debate</button>
       </div>
+      {createError && <p role="alert" className="mb-3 text-xs text-rose-300">{createError}</p>}
 
       <div className="grid sm:grid-cols-[220px_1fr] gap-3">
         <ul className="space-y-1">
@@ -92,7 +96,7 @@ export function DebateTree() {
                 <p className="text-xs font-semibold text-white line-clamp-2">{d.thesis}</p>
                 <p className="text-[10px] text-gray-400">{d.claimCount} claims · {d.score.supportPct}% for</p>
               </button>
-              <button aria-label="Delete" onClick={() => del(d.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+              <StickyDeleteConfirm onConfirm={() => del(d.id)} armAriaLabel="Delete debate" confirmAriaLabel="Confirm delete debate" className="p-1 text-rose-400" armLabel={<Trash2 className="w-3 h-3" />} />
             </li>
           ))}
         </ul>

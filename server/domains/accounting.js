@@ -8,6 +8,7 @@ import { assertPayable } from "../lib/money-guards.js";
 import { bindWave1 } from "../lib/lens-input-schemas-wave1.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
 import { requireList } from "../lib/lens-inputs.js";
+import { calendarDateOrNull } from "../lib/finite-input.js";
 
 export default function registerAccountingActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -763,6 +764,7 @@ export default function registerAccountingActions(registerLensAction) {
     if (!s.bankTxns) s.bankTxns = new Map();
     if (!s.catRules) s.catRules = new Map();
     if (!s.expenses) s.expenses = new Map();
+    if (!s.creditNotes) s.creditNotes = new Map();
     if (!s.employees) s.employees = new Map();
     if (!s.payRuns) s.payRuns = new Map();
     if (!s.budgets) s.budgets = new Map();
@@ -984,7 +986,8 @@ export default function registerAccountingActions(registerLensAction) {
     seedDefaultCoA(userId, s);
     const lines = Array.isArray(params.lines) ? params.lines : [];
     if (lines.length < 2) return { ok: false, error: "journal entry needs at least 2 lines" };
-    const date = String(params.date || nowIso().slice(0, 10));
+    const date = params.date ? calendarDateOrNull(params.date) : nowIso().slice(0, 10);
+    if (!date) return { ok: false, error: "date must be a real date as YYYY-MM-DD" };
     const memo = String(params.memo || "").slice(0, 200);
     // Provenance. A journal entry posted from a lens (Finance posts its
     // ingested ledger rows here) carries the DTU it was built from so the
@@ -1157,9 +1160,9 @@ export default function registerAccountingActions(registerLensAction) {
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
     const customerName = String(params.customerName || "").trim();
-    if (!customerName) return { ok: false, error: "customerName required" };
+    if (!customerName) return { ok: false, error: "customerName required", message: "Customer name is required." };
     const total = Number(params.total);
-    if (!Number.isFinite(total) || total <= 0) return { ok: false, error: "total must be > 0" };
+    if (!Number.isFinite(total) || total <= 0) return { ok: false, error: "total must be > 0", message: "Total must be a number greater than 0." };
     const issuedAt = String(params.issuedAt || nowIso().slice(0, 10));
     const dueAt = String(params.dueAt || issuedAt);
     if (!s.invoices.has(userId)) s.invoices.set(userId, []);
@@ -1191,22 +1194,70 @@ export default function registerAccountingActions(registerLensAction) {
     const list = s.invoices.get(userId) || [];
     const inv = list.find((i) => i.id === id);
     if (!inv) return { ok: false, error: "not found" };
+    if (inv.status === "void" || inv.status === "credited") {
+      return { ok: false, error: `invoice is ${inv.status}` };
+    }
     inv.status = "paid";
     inv.paidAt = String(params.paidAt || nowIso().slice(0, 10));
     saveAccountingState();
     return { ok: true, result: { invoice: inv } };
   });
 
+  registerLensAction("accounting", "invoice-void", (ctx, _artifact, params = {}) => {
+    const s = getAccountingState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    const inv = (s.invoices.get(userId) || []).find((i) => i.id === String(params.id || ""));
+    if (!inv) return { ok: false, error: "not found" };
+    if (inv.status === "paid" || inv.status === "credited") {
+      return { ok: false, error: "paid invoice needs a credit note" };
+    }
+    if (inv.status === "void") return { ok: false, error: "invoice is void" };
+    inv.status = "void";
+    inv.voidedAt = nowIso();
+    inv.voidReason = String(params.reason || "").slice(0, 200);
+    saveAccountingState();
+    return { ok: true, result: { invoice: inv } };
+  });
+
+  registerLensAction("accounting", "invoice-credit-note", (ctx, _artifact, params = {}) => {
+    const s = getAccountingState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    if (!s.creditNotes) s.creditNotes = new Map();
+    const inv = (s.invoices.get(userId) || []).find((i) => i.id === String(params.id || ""));
+    if (!inv) return { ok: false, error: "not found" };
+    if (inv.status !== "paid") return { ok: false, error: "credit note is for a paid invoice" };
+    const amount = params.amount != null ? Number(params.amount) : inv.total;
+    if (!Number.isFinite(amount) || amount <= 0 || amount > inv.total) {
+      return { ok: false, error: "amount must be between 0 and the invoice total" };
+    }
+    const note = {
+      id: nextId("cn"),
+      invoiceId: inv.id,
+      number: `CN-${inv.number}`,
+      amount,
+      reason: String(params.reason || "").slice(0, 200),
+      issuedAt: nowIso().slice(0, 10),
+    };
+    ensureList(s.creditNotes, userId).push(note);
+    inv.status = "credited";
+    inv.creditNoteId = note.id;
+    inv.creditedAt = note.issuedAt;
+    saveAccountingState();
+    return { ok: true, result: { invoice: inv, creditNote: note } };
+  });
+
   /**
-   * invoice-list — lists open + paid invoices for the caller, sorted by
-   * issuedAt desc. Supports optional status filter (open|paid|all).
+   * invoice-list — lists the caller's invoices, sorted by issuedAt desc.
+   * Status filter: open | paid | void | credited | all.
    */
   registerLensAction("accounting", "invoice-list", (ctx, _artifact, params = {}) => {
   try {
     const s = getAccountingState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
-    const status = ["open", "paid", "all"].includes(params.status) ? params.status : "all";
+    const status = ["open", "paid", "void", "credited", "all"].includes(params.status) ? params.status : "all";
     const list = s.invoices.get(userId) || [];
     const filtered = status === "all" ? list : list.filter((i) => i.status === status);
     return {
@@ -1536,7 +1587,7 @@ export default function registerAccountingActions(registerLensAction) {
     const vendor = vendors.find(v => v.id === vendorId);
     if (!vendor) return { ok: false, error: "vendor not found" };
     const total = Number(params.total);
-    if (!Number.isFinite(total) || total <= 0) return { ok: false, error: "total must be > 0" };
+    if (!Number.isFinite(total) || total <= 0) return { ok: false, error: "total must be > 0", message: "Total must be a number greater than 0." };
     const expenseAccountId = String(params.expenseAccountId || vendor.defaultExpenseAccountId || "");
     const coa = s.coa.get(userId);
     if (!coa.has(expenseAccountId)) return { ok: false, error: "expenseAccountId invalid" };
@@ -1857,7 +1908,8 @@ export default function registerAccountingActions(registerLensAction) {
     const customerName = String(params.customerName || "").trim();
     const total = Number(params.total);
     const cadence = ["weekly", "monthly", "quarterly", "annually"].includes(params.cadence) ? params.cadence : "monthly";
-    if (!customerName || !Number.isFinite(total) || total <= 0) return { ok: false, error: "customerName and positive total required" };
+    if (!customerName) return { ok: false, error: "customerName and positive total required", message: "Customer name is required." };
+    if (!Number.isFinite(total) || total <= 0) return { ok: false, error: "customerName and positive total required", message: "Total must be a number greater than 0." };
     const seq = ensureSeq(s, userId);
     const startAt = String(params.startAt || nowIso().slice(0, 10));
     const r = {
@@ -1939,7 +1991,8 @@ export default function registerAccountingActions(registerLensAction) {
     const userId = actId(ctx);
     const customerName = String(params.customerName || "").trim();
     const total = Number(params.total);
-    if (!customerName || !Number.isFinite(total) || total <= 0) return { ok: false, error: "customerName and positive total required" };
+    if (!customerName) return { ok: false, error: "customerName and positive total required", message: "Customer name is required." };
+    if (!Number.isFinite(total) || total <= 0) return { ok: false, error: "customerName and positive total required", message: "Total must be a number greater than 0." };
     const seq = ensureSeq(s, userId);
     const e = {
       id: nextId("est"),
@@ -2484,12 +2537,13 @@ Output the single best account code:`;
     const accountId = String(params.accountId || "");
     const amount = Number(params.amount);
     if (!Number.isFinite(amount) || amount <= 0) return { ok: false, error: "amount must be > 0" };
+    const date = params.date ? calendarDateOrNull(params.date) : nowIso().slice(0, 10);
+    if (!date) return { ok: false, error: "date must be a real date as YYYY-MM-DD" };
     const coa = s.coa.get(userId);
     if (!coa.has(accountId)) return { ok: false, error: "accountId invalid" };
     const cashAcct = Array.from(coa.values()).find(a => a.code === "1000" && a.category === "asset");
     if (!cashAcct) return { ok: false, error: "cash account 1000 not found" };
     const seq = ensureSeq(s, userId);
-    const date = String(params.date || nowIso().slice(0, 10));
     const vendor = String(params.vendor || "").trim();
     const memo = String(params.memo || "").slice(0, 200);
     const exp = {
@@ -2522,10 +2576,116 @@ Output the single best account code:`;
     seq.je++;
     ensureList(s.journal, userId).push(entry);
     exp.jeEntryId = entry.id;
+    exp.status = "posted";
     saveAccountingState();
     return { ok: true, result: { expense: exp, entry } };
     } catch (e) { return handlerFailure(e); }
 });
+
+  function cashAccountId(s, userId) {
+    seedDefaultCoA(userId, s);
+    const coa = s.coa.get(userId);
+    const cashAcct = Array.from(coa.values()).find((a) => a.code === "1000" && a.category === "asset");
+    return cashAcct ? cashAcct.id : null;
+  }
+
+  function pushReversal(s, userId, exp, cashId) {
+    const seq = ensureSeq(s, userId);
+    const amount = Number(exp.amount);
+    const memo = `Void ${exp.number}`;
+    const date = nowIso().slice(0, 10);
+    const entry = {
+      id: nextId("je"),
+      number: `JE-${String(seq.je).padStart(5, "0")}`,
+      date,
+      memo,
+      lines: [
+        { accountId: cashId, debit: amount, credit: 0, memo },
+        { accountId: exp.accountId, debit: 0, credit: amount, memo },
+      ],
+      totalDebit: amount, totalCredit: amount,
+      postedAt: nowIso(),
+      autoFrom: exp.id,
+      reverses: exp.jeEntryId || null,
+    };
+    seq.je++;
+    ensureList(s.journal, userId).push(entry);
+    return entry;
+  }
+
+  registerLensAction("accounting", "expenses-update", (ctx, _a, params = {}) => {
+  try {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    const list = ensureList(s.expenses, userId);
+    const exp = list.find((e) => e.id === String(params.id || ""));
+    if (!exp) return { ok: false, error: "not found" };
+    if (exp.status === "void") return { ok: false, error: "expense is void" };
+    const nextVendor = params.vendor != null ? String(params.vendor).trim().slice(0, 120) : exp.vendor;
+    const nextMemo = params.memo != null ? String(params.memo).slice(0, 200) : exp.memo;
+    const nextReceipt = params.receiptUrl != null ? String(params.receiptUrl).slice(0, 500) : exp.receiptUrl;
+    const nextDate = params.date != null ? calendarDateOrNull(params.date) : exp.date;
+    if (params.date != null && !nextDate) return { ok: false, error: "date must be a real date as YYYY-MM-DD" };
+    const nextAmount = params.amount != null ? Number(params.amount) : exp.amount;
+    if (!Number.isFinite(nextAmount) || nextAmount <= 0) return { ok: false, error: "amount must be > 0" };
+    const nextAccount = params.accountId != null ? String(params.accountId) : exp.accountId;
+    seedDefaultCoA(userId, s);
+    if (!s.coa.get(userId).has(nextAccount)) return { ok: false, error: "accountId invalid" };
+    const moneyChanged = nextAmount !== exp.amount || nextAccount !== exp.accountId;
+    let reversal = null;
+    let entry = null;
+    if (moneyChanged) {
+      const cashId = cashAccountId(s, userId);
+      if (!cashId) return { ok: false, error: "cash account 1000 not found" };
+      reversal = pushReversal(s, userId, exp, cashId);
+      const seq = ensureSeq(s, userId);
+      entry = {
+        id: nextId("je"),
+        number: `JE-${String(seq.je).padStart(5, "0")}`,
+        date: nextDate,
+        memo: nextVendor ? `${nextVendor} · ${nextMemo}` : nextMemo,
+        lines: [
+          { accountId: nextAccount, debit: nextAmount, credit: 0, memo: nextMemo },
+          { accountId: cashId, debit: 0, credit: nextAmount, memo: nextVendor || nextMemo },
+        ],
+        totalDebit: nextAmount, totalCredit: nextAmount,
+        postedAt: nowIso(),
+        autoFrom: exp.id,
+        replaces: exp.jeEntryId || null,
+      };
+      seq.je++;
+      ensureList(s.journal, userId).push(entry);
+      exp.jeEntryId = entry.id;
+      exp.amount = nextAmount;
+      exp.accountId = nextAccount;
+    }
+    exp.vendor = nextVendor;
+    exp.memo = nextMemo;
+    exp.receiptUrl = nextReceipt;
+    exp.date = nextDate;
+    exp.updatedAt = nowIso();
+    saveAccountingState();
+    return { ok: true, result: { expense: exp, entry, reversal } };
+    } catch (e) { return handlerFailure(e); }
+  });
+
+  registerLensAction("accounting", "expenses-void", (ctx, _a, params = {}) => {
+  try {
+    const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = actId(ctx);
+    const exp = ensureList(s.expenses, userId).find((e) => e.id === String(params.id || ""));
+    if (!exp) return { ok: false, error: "not found" };
+    if (exp.status === "void") return { ok: false, error: "expense is void" };
+    const cashId = cashAccountId(s, userId);
+    if (!cashId) return { ok: false, error: "cash account 1000 not found" };
+    const reversal = pushReversal(s, userId, exp, cashId);
+    exp.status = "void";
+    exp.voidedAt = nowIso();
+    exp.reversalJeId = reversal.id;
+    saveAccountingState();
+    return { ok: true, result: { expense: exp, reversal } };
+    } catch (e) { return handlerFailure(e); }
+  });
 
   // 1099-NEC reporting floor. Payments through 2025: $600. Payments in 2026: $2,000
   // (IRS, 26 USC 6041 as amended by P.L. 119-21 §70433). Later years follow
@@ -3140,8 +3300,11 @@ Output the single best account code:`;
     const userId = actId(ctx);
     const coa = s.coa.get(userId) || new Map();
     const journal = s.journal.get(userId) || [];
+    const today = nowIso().slice(0, 10);
+    const start = today.slice(0, 4) + "-01-01";
     const netByAccount = {};
     for (const e of journal) {
+      if (e.date < start || e.date > today) continue;
       for (const l of e.lines) {
         netByAccount[l.accountId] = (netByAccount[l.accountId] || 0) + (l.debit - l.credit);
       }
@@ -3187,7 +3350,8 @@ Output the single best account code:`;
           currentLiabilities: acN(currentLiab), totalLiabilities: acN(totalLiab),
           revenue: acN(revenue), netIncome: acN(netIncome),
         },
-        note: "Current vs. long-term split approximated by account code (<1500 assets, <2500 liabilities).",
+        period: { start, end: today },
+        note: "Revenue and expense use the same year-to-date window as the P&L. Current vs. long-term split approximated by account code (<1500 assets, <2500 liabilities).",
       },
     };
     } catch (e) { return handlerFailure(e); }
@@ -3688,7 +3852,7 @@ Output the single best account code:`;
     const vendor = ensureList(s.vendors, userId).find(v => v.id === vendorId);
     if (!vendor) return { ok: false, error: "vendor not found" };
     const total = Number(params.total);
-    if (!Number.isFinite(total) || total <= 0) return { ok: false, error: "total must be > 0" };
+    if (!Number.isFinite(total) || total <= 0) return { ok: false, error: "total must be > 0", message: "Total must be a number greater than 0." };
     const expenseAccountId = String(params.expenseAccountId || vendor.defaultExpenseAccountId || "");
     if (!s.coa.get(userId).has(expenseAccountId)) return { ok: false, error: "expenseAccountId invalid" };
     const cadence = ["weekly", "monthly", "quarterly", "annually"].includes(params.cadence) ? params.cadence : "monthly";

@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Bug, Loader2, Plus, CheckCircle2, CalendarClock } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface Treatment {
   id: string;
@@ -75,6 +76,12 @@ export function PestPanel() {
     else setErr(r.data?.error || 'Report failed.');
     setBusy(false);
   }, [agent, kind, severity, affectedAcres, standId, load]);
+
+  const drop = useCallback(async (id: string) => {
+    const r = await lensRun('forestry', 'pest-delete', { id });
+    if (r.data?.ok) await load();
+    else setErr(r.data?.message || r.data?.error || 'Could not delete that report.');
+  }, [load]);
 
   const schedule = useCallback(async (pestId: string) => {
     const method = (trtMethod[pestId] || '').trim();
@@ -158,6 +165,7 @@ export function PestPanel() {
                 <span className={`ml-auto text-[10px] font-semibold ${rp.status === 'open' ? 'text-orange-400' : 'text-emerald-400'}`}>
                   {rp.status}
                 </span>
+                <StickyDeleteConfirm onConfirm={() => void drop(rp.id)} armAriaLabel={`Delete ${rp.agent}`} confirmAriaLabel={`Confirm delete ${rp.agent}`} className="text-rose-400" />
               </div>
               {rp.treatments.map((t) => (
                 <div key={t.id} className="flex items-center gap-2 mt-1 pl-2 border-l border-zinc-800">

@@ -6,6 +6,7 @@
  * mint/DM/publish/agent.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import {
   Home, ShoppingCart, ListChecks, Wrench, Calendar,
@@ -172,8 +173,8 @@ export function HouseholdActionPanel() {
     try {
       const task = `Household state: ${members.split('\n').filter(Boolean).length} members, ${chores.split('\n').filter(Boolean).length} chores. ${maintResult ? `${maintResult.overdueCount} overdue maintenance.` : ''} ${summaryResult ? `${summaryResult.choresCompleted}/${summaryResult.totalChores} chores done this week.` : ''} Suggest the single weekly meeting agenda item that would most reduce household friction. Plain text.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Meeting topic ready.'); } else err('Agent returned empty.');
+      const reply = readAgentReply(r.data);
+      if (reply.ok) { setAgentReply(reply.text); ok('Meeting topic ready.'); } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 

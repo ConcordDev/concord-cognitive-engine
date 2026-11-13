@@ -6,9 +6,11 @@
  * Pages own their state, data and commands; this only lays out the chrome.
  */
 
+import { useEffect, useRef, useState } from 'react';
 import type { ComponentType, ReactNode } from 'react';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { cn } from '@/lib/utils';
+import { onRovingTabsKeyDown, rovingTabIndex } from '@/lib/a11y/roving-tabs';
 
 export interface NorthStarTab {
   id: string;
@@ -45,22 +47,58 @@ export function NorthStarFrame({
   lensId, theme, crumb, subtitle, actions, tabs, activeTab, onTab, tabsLabel, cta, children,
 }: NorthStarFrameProps) {
   const CtaIcon = cta?.icon;
+  const navRef = useRef<HTMLElement | null>(null);
+  const [fadeRight, setFadeRight] = useState(false);
+
+  // Mobile tab-strip genus (FIX-courtship-004 · FIX-fork-008 · FIX-deities-007):
+  // the pill strip scrolls sideways on a phone, but the native scrollbar drew
+  // a stray bar under it and the end tabs read as clipped with no cue that
+  // more tabs exist. Keep the active pill in view, hide the native bar, and
+  // fade the right edge while tabs sit off-screen to the right.
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+    const active = nav.querySelector<HTMLElement>('[aria-current="page"]');
+    if (active && typeof active.scrollIntoView === 'function') {
+      active.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }
+  }, [activeTab, tabs]);
+
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+    const update = () => setFadeRight(nav.scrollWidth - nav.clientWidth - nav.scrollLeft > 4);
+    update();
+    nav.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    return () => {
+      nav.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+    };
+  }, [tabs]);
   return (
-    <div data-lens-theme={theme ?? lensId} className="relative min-h-full px-4 pb-28 pt-6 sm:px-6 lg:px-8">
+    <div data-lens-theme={theme ?? lensId} className="relative min-h-full overflow-x-clip px-4 pb-36 pt-6 sm:px-6 lg:px-8">
       <div className="flex flex-col items-start gap-3 sm:flex-row sm:justify-between sm:gap-4">
         <div className="min-w-0">
           <h1 className={cn('font-vault mt-1 text-[1.75rem] leading-tight text-zinc-100 sm:text-5xl', subtitle ? 'mb-1' : 'mb-5')}>
             {crumb}
           </h1>
-          {subtitle && <p className="mb-5 max-w-2xl text-[14px] text-zinc-500">{subtitle}</p>}
+          {subtitle && <p className="mb-5 max-w-2xl text-[14px] text-zinc-400">{subtitle}</p>}
         </div>
         {actions && <div className="flex flex-wrap items-center justify-start gap-3 pt-0 sm:shrink-0 sm:justify-end sm:pt-2">{actions}</div>}
       </div>
 
       {tabs && tabs.length > 0 && (
         <nav
-          className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1"
+          ref={navRef}
+          className="no-scrollbar mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1"
           aria-label={tabsLabel ?? `${crumb} views`}
+          onKeyDown={onRovingTabsKeyDown}
+          data-fade-right={fadeRight ? 'true' : undefined}
+          style={fadeRight ? {
+            maskImage: 'linear-gradient(to right, black calc(100% - 28px), transparent)',
+            WebkitMaskImage: 'linear-gradient(to right, black calc(100% - 28px), transparent)',
+          } : undefined}
         >
           {tabs.map((t) => {
             const Icon = t.icon;
@@ -71,10 +109,11 @@ export function NorthStarFrame({
                 type="button"
                 onClick={() => onTab?.(t.id)}
                 aria-current={on ? 'page' : undefined}
+                tabIndex={rovingTabIndex(on, tabs.indexOf(t), tabs.some((x) => x.id === activeTab))}
                 title={t.hint ? `${t.hint}${t.keys ? ` (${t.keys})` : ''}` : undefined}
                 className={cn(
-                  'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
-                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+                  'inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors focus-visible:ring-inset focus-visible:ring-offset-0',
+                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-400 hover:text-zinc-200',
                 )}
               >
                 {Icon && <Icon className="h-3.5 w-3.5" />}
@@ -100,6 +139,7 @@ export function NorthStarFrame({
           onClick={cta.onClick}
           disabled={cta.disabled}
           title={cta.title}
+          aria-label={cta.label}
           data-testid="north-star-cta"
           /* MobileNav is fixed bottom-0 z-50 h-14 + safe-area. Sit on the same
              line as HelpButton (bottom-[4rem+safe], right-4, 44px wide, shown
@@ -108,8 +148,13 @@ export function NorthStarFrame({
              tab bar is hidden, so drop to bottom-8 (HelpButton sits at bottom-5). */
           className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] right-[4.75rem] z-30 inline-flex min-h-[44px] max-w-[calc(100vw-6.5rem)] items-center gap-2 rounded-full bg-teal-400 px-4 py-2.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-60 sm:px-6 sm:py-3.5 md:bottom-8 lg:right-8"
         >
-          {CtaIcon && <CtaIcon className="h-4 w-4" />}
-          {cta.label}
+          {CtaIcon && <CtaIcon className="h-4 w-4 shrink-0" />}
+          {/* Phone width (FIX-achievements-004 · FIX-deities-007): the wide
+              labelled pill plus the Help launcher formed a ~210px obstruction
+              band over card content. Below sm the CTA collapses to its icon;
+              the label stays as the accessible name (aria-label above) and
+              the title tooltip. */}
+          <span className={CtaIcon ? 'hidden sm:inline' : undefined}>{cta.label}</span>
         </button>
       )}
     </div>

@@ -69,10 +69,10 @@ export function ChannelExtrasBar({ channelId, pinNonce }: { channelId: string; p
       ))}
       {adding ? (
         <span className="inline-flex items-center gap-1">
-          <input autoFocus value={draftTitle} onChange={e => setDraftTitle(e.target.value)}
+          <input aria-label="Bookmark title" autoFocus value={draftTitle} onChange={e => setDraftTitle(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') void addBookmark(); if (e.key === 'Escape') setAdding(false); }}
             placeholder="Title" className="w-24 px-1.5 py-0.5 text-[11px] bg-black/40 border border-white/15 rounded text-white" />
-          <input value={draftUrl} onChange={e => setDraftUrl(e.target.value)}
+          <input aria-label="Bookmark URL" value={draftUrl} onChange={e => setDraftUrl(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') void addBookmark(); if (e.key === 'Escape') setAdding(false); }}
             placeholder="URL (optional)" className="w-32 px-1.5 py-0.5 text-[11px] bg-black/40 border border-white/15 rounded text-white" />
           <button onClick={addBookmark} disabled={!draftTitle.trim()} className="px-1.5 py-0.5 text-[10px] rounded bg-violet-500 text-white font-bold disabled:opacity-40">add</button>

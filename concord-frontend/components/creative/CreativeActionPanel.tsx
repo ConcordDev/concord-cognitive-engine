@@ -6,6 +6,7 @@
  * mint/DM/publish/agent.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import { Film, FolderOpen, DollarSign, ListChecks, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -307,16 +308,16 @@ export function CreativeActionPanel() {
     try {
       const task = `Production status review. ${shotsResult ? `Shot list: ${shotsResult.totalShots} shots / ~${shotsResult.estimatedRuntime}min.` : ''} ${budgetResult ? `Budget: $${budgetResult.totalActual.toLocaleString()} of $${budgetResult.totalBudgeted.toLocaleString()}${budgetResult.overBudget ? ' (over)' : ''}.` : ''} ${distResult ? `${distResult.platform} delivery: ${distResult.percent}% ready by ${distResult.deliveryDate}.` : ''} Identify the single biggest schedule or budget risk + one mitigation. Plain text, 3 sentences max.`;
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Review ready.'); } else err('Agent returned empty.');
+      const reply = readAgentReply(r.data);
+      if (reply.ok) { setAgentReply(reply.text); ok('Review ready.'); } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 
   const actions = [
-    { id: 'shots' as ActionId, label: 'Shots', desc: 'shotListGenerate', icon: Film, accent: '#8b5cf6', handler: actShots },
-    { id: 'assets' as ActionId, label: 'Assets', desc: 'assetOrganize', icon: FolderOpen, accent: '#f59e0b', handler: actAssets },
-    { id: 'budget' as ActionId, label: 'Budget', desc: 'budgetTrack', icon: DollarSign, accent: '#22c55e', handler: actBudget },
-    { id: 'dist' as ActionId, label: 'Delivery', desc: 'distributionChecklist', icon: ListChecks, accent: '#3b82f6', handler: actDist },
+    { id: 'shots' as ActionId, label: 'Shots', desc: 'Generate the shot list', icon: Film, accent: '#8b5cf6', handler: actShots },
+    { id: 'assets' as ActionId, label: 'Assets', desc: 'Organize the assets', icon: FolderOpen, accent: '#f59e0b', handler: actAssets },
+    { id: 'budget' as ActionId, label: 'Budget', desc: 'Track the budget', icon: DollarSign, accent: '#22c55e', handler: actBudget },
+    { id: 'dist' as ActionId, label: 'Delivery', desc: 'Distribution checklist', icon: ListChecks, accent: '#3b82f6', handler: actDist },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? mintedDtuId : 'Private pkg DTU', icon: Sparkles, accent: '#06b6d4', handler: actMint },
     { id: 'dm' as ActionId, label: 'DM', desc: 'Send status', icon: Send, accent: '#ec4899', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? publishedDtuId : 'Public handoff', icon: Globe, accent: '#15803d', handler: actPublish },
@@ -349,7 +350,7 @@ export function CreativeActionPanel() {
           <textarea placeholder='[{ "name": "Entry", "channel": "…" }]' value={distText} onChange={(e) => setDistText(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
         </div>
         <div className="md:col-span-2 flex items-center gap-2 flex-wrap">
-          <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
+          <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="min-h-11 flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
           <RecallSlot ctl={dmRecall} />
           <RecallSlot ctl={publishRecall} />
         </div>

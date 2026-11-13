@@ -14,8 +14,8 @@ import { EVENT_STATUS_WORDS, statusFromEngine, statusToEngine } from './event-st
 
 interface Task { id: string; title: string; dueDate: string | null; done: boolean }
 interface Vendor { id: string; name: string; role: string; cost: number; booked: boolean }
-interface EventMeta { id: string; name: string; type: string; date: string | null; venue: string | null; budget: number; status: string; taskCount: number; doneTaskCount: number; vendorCost: number }
-interface EventFull { id: string; name: string; type: string; date: string | null; venue: string | null; budget: number; guestCount: number; status: string; tasks: Task[]; vendors: Vendor[] }
+interface EventMeta { id: string; name: string; type: string; date: string | null; venue: string | null; budget: number; status: string; taskCount: number; doneTaskCount: number; vendorCost: number; visibility?: string; published?: boolean }
+interface EventFull { id: string; name: string; type: string; date: string | null; venue: string | null; budget: number; guestCount: number; status: string; tasks: Task[]; vendors: Vendor[]; visibility?: string }
 interface Dash { totalEvents: number; upcoming: number; totalBudget: number; openTasks: number }
 
 const TYPES = ['conference', 'wedding', 'concert', 'festival', 'corporate', 'social'];
@@ -26,7 +26,7 @@ export function EventPlanner() {
   const [active, setActive] = useState<EventFull | null>(null);
   const [budgetRemaining, setBudgetRemaining] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ name: '', type: 'social', date: '', budget: '' });
+  const [form, setForm] = useState({ name: '', type: 'social', date: '', budget: '', visibility: 'private' });
   const [taskTitle, setTaskTitle] = useState('');
   const [vendor, setVendor] = useState({ name: '', role: '', cost: '' });
 
@@ -50,9 +50,9 @@ export function EventPlanner() {
   async function create() {
     if (!form.name.trim()) return;
     const r = await lensRun('events', 'event-create', {
-      name: form.name.trim(), type: form.type, date: form.date, budget: form.budget ? Number(form.budget) : 0,
+      name: form.name.trim(), type: form.type, date: form.date, budget: form.budget ? Number(form.budget) : 0, visibility: form.visibility,
     });
-    setForm({ name: '', type: 'social', date: '', budget: '' });
+    setForm({ name: '', type: 'social', date: '', budget: '', visibility: 'private' });
     await refresh();
     if (r.data?.ok) await open(r.data.result?.event.id);
   }
@@ -61,6 +61,11 @@ export function EventPlanner() {
     await lensRun('events', 'event-delete', { id });
     if (active?.id === id) setActive(null);
     await refresh();
+  }
+  async function setVisibility(visibility: string) {
+    if (!active) return;
+    await lensRun('events', 'event-update', { id: active.id, visibility });
+    await reload(); await refresh();
   }
   async function setStatus(status: string) {
     if (!active) return;
@@ -122,12 +127,25 @@ export function EventPlanner() {
           className="bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1 text-xs text-zinc-200 capitalize">
           {TYPES.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
-        <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })}
+        <select aria-label="Event visibility" value={form.visibility} onChange={e => setForm({ ...form, visibility: e.target.value })}
+          className="bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1 text-xs text-zinc-200">
+          <option value="private">Private</option>
+          <option value="public">Public</option>
+        </select>
+        <input type="date" aria-label="Event date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })}
           className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
         <input value={form.budget} onChange={e => setForm({ ...form, budget: e.target.value })} placeholder="budget"
           className="w-20 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
         <button onClick={create} disabled={!form.name.trim()}
           className="px-2.5 py-1 text-xs rounded bg-pink-600 hover:bg-pink-500 text-white font-semibold disabled:opacity-40">Add event</button>
+        {/* FIX-events-009: a past date was accepted with no word; past
+            events are a modelled state here, so the form warns instead
+            of refusing. */}
+        {form.date && form.date < new Date().toISOString().slice(0, 10) && (
+          <p role="note" className="w-full text-[11px] text-amber-300/90">
+            That date is in the past — this event will be created already past. (Past events stay creatable so a finished event can still be logged.)
+          </p>
+        )}
       </div>
 
       <div className="grid sm:grid-cols-[200px_1fr] gap-3">
@@ -137,7 +155,7 @@ export function EventPlanner() {
               <button onClick={() => open(e.id)}
                 className={cn('flex-1 text-left rounded-lg px-2.5 py-2 border', active?.id === e.id ? 'bg-pink-600/15 border-pink-700/50' : 'bg-zinc-900/60 border-zinc-800 hover:border-zinc-700')}>
                 <p className="text-xs font-semibold text-zinc-100 truncate">{e.name}</p>
-                <p className="text-[10px] text-zinc-400 capitalize">{e.type}{e.date ? ` · ${e.date}` : ''} · {e.doneTaskCount}/{e.taskCount} tasks</p>
+                <p className="text-[10px] text-zinc-400 capitalize">{e.type}{e.date ? ` · ${e.date}` : ''} · {e.doneTaskCount}/{e.taskCount} tasks · {e.visibility === 'public' ? 'Public' : 'Private'}{e.published ? ' · Page live' : ''}</p>
               </button>
               <button aria-label="Delete" onClick={() => del(e.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
             </li>
@@ -153,6 +171,11 @@ export function EventPlanner() {
                   {active.venue || 'No venue'} · ${active.budget.toLocaleString()} budget · ${budgetRemaining.toLocaleString()} left
                 </p>
               </div>
+              <select aria-label="Visibility" value={active.visibility === 'public' ? 'public' : 'private'} onChange={e => setVisibility(e.target.value)}
+                className="bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1 text-[11px] text-zinc-200">
+                <option value="private">Private</option>
+                <option value="public">Public</option>
+              </select>
               <select value={statusFromEngine(active.status, active.date, new Date().toISOString().slice(0, 10))} onChange={e => setStatus(e.target.value)}
                 className="bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1 text-[11px] text-zinc-200">
                 {EVENT_STATUS_WORDS.map(st => <option key={st} value={st}>{st}</option>)}

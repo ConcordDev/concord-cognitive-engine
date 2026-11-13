@@ -21,6 +21,7 @@ import { eventIdFromResult, eventNotSavedSentence, eventOnCalendarSentence, even
 import { browserTimeZone, calendarDateKey, COMMON_TIME_ZONES, fromZonedInputValue, nextHourSlotInZone, profileTimeZone, resolveCalendarTimeZone, shiftDateKey, toZonedInputValue, zoneAbbrev, zoneCityLabel } from '@/lib/calendar-date';
 import { RecurrenceEditor, RecurrenceScopeDialog, describeRecurrence, type RecurrenceScope, type UiRecurrence } from '@/components/calendar/RecurrenceEditor';
 import Link from 'next/link';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -372,8 +373,20 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
   const accountTz = resolveCalendarTimeZone(profileTimeZone(user));
 
   // State
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [currentDate, setCurrentDate] = useState(() => {
+    try {
+      const raw = sessionStorage.getItem('concord:calendar:visible');
+      if (raw) { const d = new Date(raw); if (!Number.isNaN(d.getTime())) return d; }
+    } catch { /* storage unavailable */ }
+    return new Date();
+  });
+  const [selectedDate, setSelectedDate] = useState<Date>(() => {
+    try {
+      const raw = sessionStorage.getItem('concord:calendar:visible');
+      if (raw) { const d = new Date(raw); if (!Number.isNaN(d.getTime())) return d; }
+    } catch { /* storage unavailable */ }
+    return new Date();
+  });
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [calendars, setCalendars] = useState<BackendCalendar[]>([]);
@@ -500,6 +513,8 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
   const [nearestSlot, setNearestSlot] = useState<{ start: string; end: string } | null>(null);
   const [checkingConflicts, setCheckingConflicts] = useState(false);
   const [activityNote, setActivityNote] = useState<string | null>(null);
+  const [startDraft, setStartDraft] = useState<string | null>(null);
+  const [endDraft, setEndDraft] = useState<string | null>(null);
 
   // Fetch real calendars + events from the STATE-backed engine (calendars-list /
   // events-list — server/domains/calendar.js). Range spans 2 months back
@@ -535,6 +550,9 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
   }, [monthKey]);
 
   useEffect(() => { void Promise.resolve().then(fetchData); }, [fetchData]);
+  useEffect(() => {
+    try { sessionStorage.setItem('concord:calendar:visible', currentDate.toISOString()); } catch { /* storage unavailable */ }
+  }, [currentDate]);
 
   // RSVP state for the open event's invites (F6: shown on the detail,
   // not only in the Sync & share tab).
@@ -671,9 +689,10 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
   };
 
   const navigateWeek = (direction: number) => {
-    const newDate = new Date(currentDate);
-    newDate.setDate(currentDate.getDate() + direction * 7);
+    const newDate = new Date(selectedDate);
+    newDate.setDate(selectedDate.getDate() + direction * 7);
     setCurrentDate(newDate);
+    setSelectedDate(newDate);
   };
 
   const navigateDay = (direction: number) => {
@@ -909,7 +928,19 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
 
   const handleCreateEvent = async (scope?: RecurrenceScope) => {
     setActivityNote(null);
-    if (!newEvent.title) return;
+    const title = String(newEvent.title || '').trim();
+    if (!title) {
+      setActivityNote('A title is required. The event was not saved.');
+      return;
+    }
+    if (!newEvent.startDate) {
+      setActivityNote('Set a start time before saving.');
+      return;
+    }
+    if (newEvent.endDate && newEvent.endDate.getTime() < newEvent.startDate.getTime()) {
+      setActivityNote('The end has to be after the start. The event was not saved.');
+      return;
+    }
     const original = editingEventId ? editingOriginal : null;
     const recurringEdit = !!(original?.recurrence && original.occurrenceKey);
     if (recurringEdit && !scope) {
@@ -920,9 +951,9 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
 
     const event: CalendarEvent = {
       id: editingEventId || `pending_${Date.now()}`,
-      title: newEvent.title,
+      title,
       description: newEvent.description,
-      startDate: newEvent.startDate || new Date(),
+      startDate: newEvent.startDate,
       endDate: newEvent.endDate || new Date(),
       allDay: newEvent.allDay || false,
       color: newEvent.color || COLORS[0].value,
@@ -984,7 +1015,10 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
         if (!id) throw new Error('The server returned no event id');
         flashNote(eventSavedSentence(id) + (calendarDateKey(event.startDate).endsWith('-02-29') ? ' A day that only sometimes exists.' : ''));
       }
-      await fetchData();
+      setCurrentDate(event.startDate);
+      setSelectedDate(event.startDate);
+      const sameMonth = event.startDate.getFullYear() === currentDate.getFullYear() && event.startDate.getMonth() === currentDate.getMonth();
+      if (sameMonth) await fetchData();
     } catch (e) {
       setEvents(previousEvents);
       const message = e instanceof Error ? e.message : 'Failed to save event';
@@ -1193,7 +1227,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
             return (
               <div
                 key={index}
-                onClick={() => setSelectedDate(date)}
+                onClick={() => { setSelectedDate(date); setCurrentDate(date); }}
                 onDoubleClick={() => openCreateFor(date)}
                 title="Double-click to add an event"
                 className={cn(
@@ -1203,7 +1237,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                 role="button"
                 tabIndex={0}
                 aria-label={date.toDateString()}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedDate(date); } }}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedDate(date); setCurrentDate(date); } }}
               >
                 <span
                   className={cn(
@@ -1255,7 +1289,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                   {dayEvents.length > 2 && (
                     <button
                       type="button"
-                      onClick={(e) => { e.stopPropagation(); setSelectedDate(date); setViewMode('day'); }}
+                      onClick={(e) => { e.stopPropagation(); setSelectedDate(date); setCurrentDate(date); setViewMode('day'); }}
                       className="block w-full text-center text-[11px] tabular-nums text-zinc-500 transition-colors hover:text-zinc-100"
                     >
                       +{dayEvents.length - 2} more
@@ -1271,7 +1305,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
   };
 
   const renderWeekView = () => {
-    const weekDates = getWeekDates(currentDate);
+    const weekDates = getWeekDates(selectedDate);
     const hours = getHoursArray();
 
     return (
@@ -1348,7 +1382,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                         setNewEvent({ ...defaultNewEventForm(), startDate: newStart, endDate: newEnd });
                         setEditingEventId(null);
                         setShowCreateModal(true);
-                      }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                      }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                       {hourEvents.map((event) => {
                         const start = new Date(event.startDate);
                         const end = new Date(event.endDate);
@@ -1465,7 +1499,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                     setNewEvent({ ...defaultNewEventForm(), startDate: newStart, endDate: newEnd });
                     setEditingEventId(null);
                     setShowCreateModal(true);
-                  }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                  }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                   {hourEvents.map((event) => {
                     const start = new Date(event.startDate);
                     const end = new Date(event.endDate);
@@ -1560,7 +1594,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                       onClick={() => {
                         setSelectedEvent(event);
                         setShowEventModal(true);
-                      }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                      }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                       {/* Artwork gradient */}
                       <div
                         className="w-full h-20 rounded-md mb-2 flex items-center justify-center"
@@ -1658,7 +1692,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                       style={{ borderLeft: `4px solid ${event.color}` }}
                     >
                       <div className="flex items-center justify-between">
-                        <h4 className="font-medium flex items-center gap-2">
+                        <h4 className="font-semibold text-sm flex items-center gap-2">
                           <CategoryIcon type={event.eventType} className="w-4 h-4" />
                           {event.title}
                         </h4>
@@ -1715,10 +1749,10 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
     <AnimatePresence>
       {showSidebar && (
         <motion.aside
-          initial={{ width: 0 }}
-          animate={{ width: 280 }}
-          exit={{ width: 0 }}
-          className="border-r border-lattice-border bg-lattice-surface/30 overflow-hidden flex-shrink-0"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="max-h-64 w-full shrink-0 overflow-y-auto border-b border-lattice-border bg-lattice-surface/30 md:max-h-none md:w-[280px] md:border-b-0 md:border-r"
         >
           <div className="w-70 p-4 space-y-6">
             {/* Mini calendar */}
@@ -1758,7 +1792,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                     days.push(
                       <button
                         key={i}
-                        onClick={() => setSelectedDate(date)}
+                        onClick={() => { setSelectedDate(date); setCurrentDate(date); }}
                         className={cn(
                           'w-7 h-7 rounded-full text-xs tabular-nums transition-colors relative',
                           isToday(date) && 'bg-neon-blue text-white',
@@ -2000,7 +2034,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
   return (
     <div data-lens-theme="calendar" className="flex h-[calc(100vh-7rem)] min-h-[640px] flex-col">
       {/* Header — name heading, period label, quiet view switch */}
-      <header className="flex items-end justify-between gap-4 px-8 pt-4 pb-5">
+      <header className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3 px-4 pt-4 pb-5 sm:px-8">
         <div className="min-w-0">
           <h1 className="font-vault text-[2.75rem] leading-tight text-zinc-100">Calendar</h1>
           <div className="mt-1 flex items-center gap-1 text-[15px] text-zinc-400">
@@ -2061,7 +2095,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
           )}
         </div>
 
-        <div className="flex items-center gap-5 pb-1">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 pb-1">
           {headerExtra}
           <button
             type="button"
@@ -2071,7 +2105,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
           >
             Calendars
           </button>
-          <nav className="flex items-center gap-5" aria-label="Calendar range">
+          <nav className="flex flex-wrap items-center gap-x-4 gap-y-1 sm:gap-x-5" aria-label="Calendar range">
             {(['day', 'week', 'month', 'agenda'] as ViewMode[]).map((mode) => (
               <button
                 key={mode}
@@ -2090,7 +2124,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
         </div>
       </header>
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex flex-1 flex-col overflow-hidden md:flex-row">
         {renderSidebar()}
 
         <main className="relative flex flex-1 flex-col overflow-hidden px-8">
@@ -2332,6 +2366,9 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                 </button>
               </div>
 
+              {activityNote && (
+                <p className="mb-4 text-[13px] text-rose-300" role="alert">{activityNote}</p>
+              )}
               <div className="space-y-4">
                 {/* Event type selector */}
                 <div>
@@ -2389,8 +2426,16 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                     <label className="text-xs text-gray-400 mb-1 block">Start</label>
                     <input
                       type="datetime-local"
-                      value={newEvent.startDate ? toZonedInputValue(newEvent.startDate, formTz) : ''}
-                      onChange={(e) => { const d = fromZonedInputValue(e.target.value, formTz); if (d) setNewEvent({ ...newEvent, startDate: d }); }}
+                      value={startDraft !== null ? startDraft : (newEvent.startDate ? toZonedInputValue(newEvent.startDate, formTz) : '')}
+                      onFocus={() => setStartDraft(newEvent.startDate ? toZonedInputValue(newEvent.startDate, formTz) : '')}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        setStartDraft(raw);
+                        if (!raw) { setNewEvent({ ...newEvent, startDate: undefined }); return; }
+                        const d = fromZonedInputValue(raw, formTz);
+                        if (d) setNewEvent({ ...newEvent, startDate: d });
+                      }}
+                      onBlur={() => setStartDraft(null)}
                       className="w-full bg-lattice-deep rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-neon-cyan"
                     />
                   </div>
@@ -2398,8 +2443,16 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                     <label className="text-xs text-gray-400 mb-1 block">End</label>
                     <input
                       type="datetime-local"
-                      value={newEvent.endDate ? toZonedInputValue(newEvent.endDate, formTz) : ''}
-                      onChange={(e) => { const d = fromZonedInputValue(e.target.value, formTz); if (d) setNewEvent({ ...newEvent, endDate: d }); }}
+                      value={endDraft !== null ? endDraft : (newEvent.endDate ? toZonedInputValue(newEvent.endDate, formTz) : '')}
+                      onFocus={() => setEndDraft(newEvent.endDate ? toZonedInputValue(newEvent.endDate, formTz) : '')}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        setEndDraft(raw);
+                        if (!raw) return;
+                        const d = fromZonedInputValue(raw, formTz);
+                        if (d) setNewEvent({ ...newEvent, endDate: d });
+                      }}
+                      onBlur={() => setEndDraft(null)}
                       className="w-full bg-lattice-deep rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-neon-cyan"
                     />
                   </div>

@@ -92,13 +92,13 @@ function ensureDevice(userId, deviceId, label) {
     devs.set(deviceId, {
       id: deviceId,
       label: label || `Device ${deviceId}`,
-      autoSync: true,
+      autoSync: false,
       online: false,
       lastSeenAt: null,
       lastSyncAt: null,
       lastSyncStatus: "never",
       // selective sync — collections this device pulls
-      scopes: ["personal", "public", "artifacts"],
+      scopes: ["public", "artifacts"],
       // quota (bytes) — soft, advisory; usage updated on each sync
       quotaBytes: 50 * 1024 * 1024 * 1024, // 50 GB
       usedBytes: 0,
@@ -124,9 +124,13 @@ export default function registerSyncActions(registerLensAction) {
       const p = { ...(artifact?.data || {}), ...(params || {}) };
       const label = String(p.deviceLabel || p.label || "").trim();
       if (!label) return { ok: false, error: "missing_label" };
+      // FIX-sync-003: a device label is a name — it carries the
+      // platform's name limit (INPUT_LIMITS.name = 200, server.js).
+      // A 600-character label stored silently before this.
+      if (label.length > 200) return { ok: false, error: "Device label must be 200 characters or fewer" };
       const id = nextId(userId, "dev");
       const dev = ensureDevice(userId, id, label);
-      dev.autoSync = p.autoSync !== false;
+      dev.autoSync = p.autoSync === true;
       dev.online = true;
       dev.lastSeenAt = Date.now();
       pushLog(userId, {
@@ -493,6 +497,18 @@ export default function registerSyncActions(registerLensAction) {
    * same DTU. The caller supplies the dtuId and the two candidate
    * versions; the conflict is queued for resolution.
    */
+  registerLensAction("sync", "clear_history", (ctx, _artifact, _params) => {
+    try {
+      const userId = actId(ctx);
+      const logs = userLogs(userId);
+      const cleared = logs.length;
+      logs.length = 0;
+      return { ok: true, result: { cleared, total: 0 } };
+    } catch (err) {
+      return { ok: false, error: String(err?.message || err) };
+    }
+  });
+
   registerLensAction("sync", "report_conflict", (ctx, artifact, params) => {
     try {
       const userId = actId(ctx);
@@ -642,7 +658,13 @@ export default function registerSyncActions(registerLensAction) {
       const dev = userDevices(userId).get(deviceId);
       if (!dev || dev.revoked) return { ok: false, error: "device_not_found" };
       const gb = Number(p.quotaGb);
-      if (!Number.isFinite(gb) || gb <= 0) return { ok: false, error: "invalid_quota" };
+      // FIX-sync-003: the quota had no ceiling — a huge value stored
+      // (past ~8.4M GB the byte count leaves the safe-integer range
+      // entirely). The ceiling is the platform's standard numeric cap
+      // (1e6, the badNumericField shape), and both refusals now read
+      // as sentences instead of the raw invalid_quota token.
+      if (!Number.isFinite(gb) || gb <= 0) return { ok: false, error: "Quota must be greater than 0 GB" };
+      if (gb > 1000000) return { ok: false, error: "Quota must be no more than 1,000,000 GB" };
       dev.quotaBytes = Math.round(gb * 1024 * 1024 * 1024);
       pushLog(userId, {
         kind: "quota_changed",

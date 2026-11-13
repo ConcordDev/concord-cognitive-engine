@@ -8,6 +8,7 @@
 
 import React, { useCallback, useState } from 'react';
 import { ds } from '@/lib/design-system';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface Props {
   kingdomId: string;
@@ -59,9 +60,9 @@ export default function DecreeComposer({ kingdomId, open, onClose }: Props) {
   if (!open) return null;
 
   return (
-    <div className={`${ds.modalBackdrop} z-[70]`} onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+    <div className={`${ds.modalBackdrop} z-[70]`} onClick={onClose} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
       <div className={ds.modalContainer}>
-        <div onClick={(e) => e.stopPropagation()} className={`${ds.modalPanel} max-w-md p-6`} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div onClick={(e) => e.stopPropagation()} className={`${ds.modalPanel} max-w-md p-6`} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <h3 className={`${ds.heading3} mb-3`}>Issue decree</h3>
 
           <select

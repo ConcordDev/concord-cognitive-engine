@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Download, FileJson, FileSpreadsheet, ChevronDown, X } from 'lucide-react';
 import { apiHelpers, lensRun } from '@/lib/api/client';
 import { motion, AnimatePresence } from 'framer-motion';
+import { shouldIgnoreLensHotkey } from '@/lib/a11y/editable-target';
 import { downloadFile, downloadFromUrl } from '@/lib/utils';
 import { buildConkayExport, conkayExportCsv, getConkayCurrentModel, type ConkayExportModel } from '@/lib/conkay/model-export';
 
@@ -103,7 +104,9 @@ export function ExportMenu({ domain }: ExportMenuProps) {
   // Keyboard shortcut: Cmd/Ctrl + E
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'e') {
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'e' || e.key === 'E')) {
+        // Same rule as lens hotkeys: Ctrl+E belongs to the field while typing.
+        if (shouldIgnoreLensHotkey(e)) return;
         e.preventDefault();
         setIsOpen(prev => !prev);
       }
@@ -198,7 +201,7 @@ export function ExportMenu({ domain }: ExportMenuProps) {
     <div className="relative" ref={menuRef}>
       <button
         onClick={() => { setIsOpen(!isOpen); }}
-        className="flex min-h-[40px] items-center gap-1.5 px-2.5 py-1.5 md:min-h-0 rounded-lg text-gray-400 hover:text-white hover:bg-lattice-surface transition-colors text-sm"
+        className="flex min-h-11 items-center gap-1.5 px-2.5 py-1.5 md:min-h-0 rounded-lg text-gray-400 hover:text-white hover:bg-lattice-surface transition-colors text-sm"
         title="Export (Ctrl+E)"
       >
         <Download className="w-4 h-4" />
@@ -212,9 +215,13 @@ export function ExportMenu({ domain }: ExportMenuProps) {
             initial={{ opacity: 0, y: -4, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -4, scale: 0.95 }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Export"
             className="absolute right-0 top-full mt-1 w-56 bg-lattice-bg border border-lattice-border rounded-xl shadow-2xl overflow-hidden z-50"
           >
             <div className="p-1">
+              <button type="button" className="sr-only" aria-label="Close" onClick={() => setIsOpen(false)}>Close</button>
               {options.map(opt => (
                 <button
                   key={opt.id}

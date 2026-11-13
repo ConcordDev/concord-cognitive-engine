@@ -20,6 +20,7 @@ export function ComposePanel({ onMinted }: { onMinted?: () => void }) {
   const [composed, setComposed] = useState<Composed | null>(null);
   const [minting, setMinting] = useState(false);
   const [mintMsg, setMintMsg] = useState<string | null>(null);
+  const [composeBlock, setComposeBlock] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -43,7 +44,15 @@ export function ComposePanel({ onMinted }: { onMinted?: () => void }) {
     let cancelled = false;
     (async () => {
       const res = await lensRun('move-builder', 'compose', { skillKind, element, allocation: alloc, skillLevel });
-      if (!cancelled) setComposed((res.data?.result as Composed) ?? null);
+      if (cancelled) return;
+      const failed = res.data?.ok === false || !res.data?.result;
+      if (failed) {
+        const why = res.data?.message || res.data?.error || 'This allocation is over the modifier budget, so it cannot be minted.';
+        setComposeBlock(why);
+        return;
+      }
+      setComposeBlock(null);
+      setComposed(res.data?.result as Composed);
     })();
     return () => { cancelled = true; };
   }, [skillKind, element, alloc, skillLevel]);
@@ -54,16 +63,22 @@ export function ComposePanel({ onMinted }: { onMinted?: () => void }) {
   const balanced = composed?.budget?.balanced ?? true;
 
   function setAspect(a: Aspect, v: number) {
-    setAlloc((prev) => ({ ...prev, [a]: Math.max(0, Math.min(7, v)) }));
+    setAlloc((prev) => {
+      const next = { ...prev, [a]: Math.max(0, v) };
+      const sum = Object.values(next).reduce((s, n) => s + n, 0);
+      if (sum > (composed?.budget?.budget ?? 6)) return prev;
+      return next;
+    });
   }
 
   const canMint = useMemo(
-    () => !!name.trim() && !overspent && !minting,
-    [name, overspent, minting],
+    () => !!name.trim() && !overspent && !composeBlock && !minting,
+    [name, overspent, composeBlock, minting],
   );
 
   async function mint() {
     if (!canMint) return;
+    if (name.trim().length > 120) { setMintMsg('Name must be at most 120 characters.'); return; }
     setMinting(true);
     setMintMsg(null);
     try {
@@ -144,14 +159,19 @@ export function ComposePanel({ onMinted }: { onMinted?: () => void }) {
               <span style={{ width: 90, textTransform: 'capitalize' }}>{a}</span>
               <button type="button" onClick={() => setAspect(a, alloc[a] - 1)} aria-label={`Decrease ${a}`} className="transition-colors hover:brightness-125" style={stepBtn}>−</button>
               <span style={{ width: 24, textAlign: 'center' }} aria-label={`${a} points`}>{alloc[a]}</span>
-              <button type="button" onClick={() => setAspect(a, alloc[a] + 1)} aria-label={`Increase ${a}`} className="transition-colors hover:brightness-125" style={stepBtn}>+</button>
-              <span style={{ opacity: 0.5, fontSize: 12 }}>eff {composed?.budget?.effective?.[a] ?? 0}</span>
+              <button type="button" onClick={() => setAspect(a, alloc[a] + 1)} disabled={spent >= budget} aria-label={`Increase ${a}`} className="transition-colors hover:brightness-125 disabled:opacity-40" style={stepBtn}>+</button>
+              <span className="text-xs text-zinc-200">eff {composed?.budget?.effective?.[a] ?? 0}</span>
             </div>
           ))}
           {!balanced && (
             <div style={{ color: '#e0a030', fontSize: 13, marginTop: 4 }}>
               Over-invested in {composed?.budget?.dominantAspect} — diminishing returns (spread for a stronger move).
             </div>
+          )}
+          {(overspent || composeBlock) && (
+            <p role="status" style={{ color: '#e05050', fontSize: 13, marginTop: 6 }}>
+              {composeBlock || 'This move is over the modifier budget, so it cannot be minted.'}
+            </p>
           )}
         </div>
       </section>
@@ -173,6 +193,7 @@ export function ComposePanel({ onMinted }: { onMinted?: () => void }) {
           {minting ? 'Minting…' : 'Mint move'}
         </button>
         {mintMsg && <span role="status" aria-live="polite" style={{ opacity: 0.85, fontSize: 13 }}>{mintMsg}</span>}
+        {!name.trim() && !minting && <span role="note" style={{ opacity: 0.7, fontSize: 13 }}>Name the move to mint it.</span>}
       </div>
     </>
   );

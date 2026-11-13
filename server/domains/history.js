@@ -33,17 +33,17 @@ const monthYear = new RegExp(`\\b${MONTH}\\s+(\\d{3,4})\\s?(BCE?|BC)?\\b`, "i");
 const bceYear = /\b(\d{1,4})\s?(BCE|BC)\b/;
 const UNIT_AFTER = /^\s?(million|billion|thousand|km|kilomet|miles|mi\b|%|percent|people|men|women|children|soldiers|officers|defectors|prisoners|deaths|casualties|dollars|euros|tonnes|tons|kg|hours|minutes|seconds)\b/i;
 const CURRENT_YEAR = new Date().getFullYear();
-export function extractHistoryYear(sent) {
+export function classifyHistoryYear(sent) {
   for (const re of [fullDateA, fullDateB, monthYear]) {
     const m = sent.match(re);
     if (m) {
       let y = parseInt(m[1], 10);
       if (m[2]) y = -Math.abs(y);
-      if (y !== 0 && y <= CURRENT_YEAR + 1) return y;
+      if (y !== 0 && y <= CURRENT_YEAR + 1) return { year: y, calendar: true };
     }
   }
   const bce = sent.match(bceYear);
-  if (bce) return -Math.abs(parseInt(bce[1], 10));
+  if (bce) return { year: -Math.abs(parseInt(bce[1], 10)), calendar: true };
   for (const m of sent.matchAll(/(?<![\d,])(\d{3,4})(?![\d,])/g)) {
     const y = parseInt(m[1], 10);
     if (y < 1000 || y > CURRENT_YEAR + 1) continue;
@@ -52,9 +52,27 @@ export function extractHistoryYear(sent) {
     if (/\d:\s?$/.test(before) || after.startsWith(":")) continue; // clock fragment
     if (/\.$/.test(before) || after.startsWith(".")) continue; // decimal fragment
     if (UNIT_AFTER.test(after)) continue; // a quantity, not a year
-    return y;
+    const near = sent.slice(Math.max(0, m.index - 40), m.index + m[1].length + 40);
+    if (/\b(alarm|alarms|error code|program alarm)\b/i.test(near)) continue;
+    return { year: y, calendar: false };
   }
   return null;
+}
+
+export function extractHistoryYear(sent) {
+  const hit = classifyHistoryYear(sent);
+  return hit ? hit.year : null;
+}
+
+/** Keep calendar dates when the cap is tight, then the latest bare years. */
+export function pickHistoryEvents(extracted, maxEvents) {
+  const max = Math.max(1, Math.min(120, Number(maxEvents) || 60));
+  const dated = extracted.filter((e) => e.calendar);
+  const bare = extracted.filter((e) => !e.calendar);
+  const datedKept = dated.length > max ? dated.slice(dated.length - max) : dated;
+  const room = max - datedKept.length;
+  const bareKept = room > 0 ? bare.slice(Math.max(0, bare.length - room)) : [];
+  return [...datedKept, ...bareKept].sort((a, b) => a.year - b.year);
 }
 
 export default function registerHistoryActions(registerLensAction) {
@@ -274,6 +292,23 @@ export default function registerHistoryActions(registerLensAction) {
       createdAt: hsNow(),
     };
     hsList(s, hsActor(ctx)).push(timeline);
+    saveHistory();
+    return { ok: true, result: { timeline } };
+  });
+
+  registerLensAction("history", "timeline-update", (ctx, _a, params = {}) => {
+    const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = hsList(s, hsActor(ctx));
+    const timeline = list.find((x) => x.id === params.id);
+    if (!timeline) return { ok: false, error: "timeline not found" };
+    if (params.title != null) {
+      const title = hsClean(params.title, 200);
+      if (!title) return { ok: false, error: "timeline title required" };
+      const dup = list.find((x) => x.id !== timeline.id && x.title.trim().toLowerCase() === title.trim().toLowerCase());
+      if (dup) return { ok: false, error: "duplicate_title", message: `A timeline titled "${dup.title}" already exists.`, duplicateOf: dup.id };
+      timeline.title = title;
+    }
+    if (params.description != null) timeline.description = hsClean(params.description, 1000);
     saveHistory();
     return { ok: true, result: { timeline } };
   });
@@ -826,7 +861,7 @@ export default function registerHistoryActions(registerLensAction) {
     if (!title) return { ok: false, error: "wikipedia article title required" };
     let data;
     try {
-      const url = `${WIKI_API}?action=query&format=json&prop=extracts&explaintext=1&redirects=1&titles=${encodeURIComponent(title)}`;
+      const url = `${WIKI_API}?action=query&format=json&prop=extracts%7Ccoordinates&explaintext=1&redirects=1&titles=${encodeURIComponent(title)}`;
       data = await wikiFetch(url);
     } catch (e) {
       return { ok: false, error: `wikipedia unreachable: ${e instanceof Error ? e.message : String(e)}` };
@@ -850,28 +885,43 @@ export default function registerHistoryActions(registerLensAction) {
       .replace(/\n+/g, " ")
       .split(/(?<=[.!?])\s+/)
       .map((x) => x.trim())
-      .filter((x) => x.length >= 12 && x.length <= 400);
+      .filter((x) => x.length >= 12 && x.length <= 1200);
     const seenYears = new Set();
     const extracted = [];
     for (const sent of sentences) {
-      const year = extractHistoryYear(sent);
-      if (year == null) continue;
+      const hit = classifyHistoryYear(sent);
+      if (!hit) continue;
+      const year = hit.year;
       const key = `${year}|${sent.slice(0, 40)}`;
       if (seenYears.has(key)) continue;
       seenYears.add(key);
       extracted.push({
         year,
+        calendar: hit.calendar,
         dateLabel: year < 0 ? `${Math.abs(year)} BCE` : String(year),
         title: sent.length > 120 ? `${sent.slice(0, 117)}…` : sent,
         description: sent,
       });
     }
     extracted.sort((a, b) => a.year - b.year);
-    const maxEvents = Math.max(1, Math.min(120, Number(params.maxEvents) || 60));
-    const picked = extracted.slice(0, maxEvents);
+    const picked = pickHistoryEvents(extracted, params.maxEvents);
     if (picked.length === 0) {
       return { ok: false, error: `No dated events could be extracted from "${page.title}".` };
     }
+    // FIX-history-004: an imported timeline never had map points — the
+    // query asked only for the extract and every event was stamped
+    // lat/lng null, so the Map view was empty for every import. When
+    // the article itself is geotagged (Wikipedia's coordinates prop),
+    // its events belong to that place: stamp the article's coordinates
+    // on them, named by the article title. Articles without
+    // coordinates keep nulls — no location is ever invented, and any
+    // event can be moved or cleared in the Map view as before.
+    const pageCoords = Array.isArray(page.coordinates)
+      ? page.coordinates.find((c) => c && c.primary) || page.coordinates[0]
+      : null;
+    const aLat = pageCoords ? hsLat(pageCoords.lat) : null;
+    const aLng = pageCoords ? hsLng(pageCoords.lon) : null;
+    const located = aLat != null && aLng != null;
     const timeline = {
       id: hsId("tl"),
       title: hsClean(params.timelineTitle, 200) || `${page.title} — Timeline`,
@@ -879,7 +929,10 @@ export default function registerHistoryActions(registerLensAction) {
       events: picked.map((e) => ({
         id: hsId("ev"), title: e.title, year: e.year, dateLabel: e.dateLabel,
         category: "wikipedia", description: e.description,
-        track: "main", lat: null, lng: null, place: "", media: [],
+        track: "main",
+        lat: located ? aLat : null, lng: located ? aLng : null,
+        place: located ? hsClean(page.title, 200) : "",
+        media: [],
         createdAt: hsNow(),
       })),
       eras: [],
@@ -897,6 +950,7 @@ export default function registerHistoryActions(registerLensAction) {
         timeline: {
           id: timeline.id, title: timeline.title, description: timeline.description,
           eventCount: timeline.events.length, sourceArticle: page.title,
+          location: located ? { lat: aLat, lng: aLng, place: hsClean(page.title, 200) } : null,
         },
         extractedCount: extracted.length,
         usedCount: picked.length,

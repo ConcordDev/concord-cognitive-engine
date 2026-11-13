@@ -1,5 +1,7 @@
+import { randomBytes } from "node:crypto";
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { presentOwnedId, publicActor } from "../lib/public-actor.js";
+import { badNumber, readingOrNull } from "../lib/finite-input.js";
 
 export default function registerFitnessActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -708,8 +710,12 @@ Generate the plan.`;
   // ─── Strava + Garmin Connect 2026 parity ────────────────────────────
   // Activities, segments, routes, training-load (CTL/ATL/TSB),
   // Garmin physiology (readiness/body-battery/HRV/VO2max/race-predictor),
-  // goals, PRs, gear, clubs, challenges. All STATE-backed, per-user
-  // scoped, real sports-science math. No fabricated data.
+  // goals, PRs, gear, clubs, challenges. All STATE-backed, real
+  // sports-science math. No fabricated data. Scoping is split, and
+  // the split is the design (Strava parity, FIX-fitness-003):
+  // activities, goals, PRs and gear are per-user; segments, clubs
+  // and challenges are SHARED platform-wide — created by a member,
+  // visible to every member. The create flows say so in the UI.
 
   const fid = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   const fnow = () => new Date().toISOString();
@@ -830,9 +836,11 @@ Generate the plan.`;
     const userId = faid(ctx);
     const type = String(params.type || "").toLowerCase();
     if (!ACTIVITY_TYPES.includes(type)) return { ok: false, error: `type required (${ACTIVITY_TYPES.join("/")})` };
-    const durationSec = fnum(params.durationSec);
-    if (durationSec <= 0) return { ok: false, error: "durationSec must be > 0" };
-    const distanceKm = Math.max(0, fnum(params.distanceKm));
+    const durationSec = readingOrNull(params.durationSec, { min: 1, max: 86400, fallback: null });
+    if (durationSec === null) return badNumber("durationSec", "must be a number of seconds from 1 to 86400");
+    const distanceGiven = params.distanceKm !== undefined && params.distanceKm !== null && params.distanceKm !== "";
+    const distanceKm = distanceGiven ? readingOrNull(params.distanceKm, { min: 0, max: 1000, fallback: null }) : 0;
+    if (distanceKm === null) return badNumber("distanceKm", "must be a number of kilometres from 0 to 1000");
     const act = {
       id: fid("act"),
       type,
@@ -975,6 +983,7 @@ Generate the plan.`;
       const best = efforts.length ? Math.min(...efforts.map((e) => e.timeSeconds)) : null;
       return presentOwnedId(ctx, faid(ctx), {
         ...seg,
+        isOwner: seg.ownerUserId === faid(ctx),
         effortCount: efforts.length,
         myBestSeconds: mine.length ? Math.min(...mine.map((e) => e.timeSeconds)) : null,
         courseRecordSeconds: best,
@@ -1122,7 +1131,9 @@ Generate the plan.`;
       // fall back to the best recent run in the athlete's log
       const runs = (s.activities.get(faid(ctx)) || [])
         .filter((a) => a.type === "run" && a.distanceKm >= 1.5 && a.durationSec > 0);
-      if (!runs.length) return { ok: false, error: "supply distanceKm + durationSec, or log a run ≥1.5km" };
+      if (!runs.length) {
+        return { ok: true, result: { empty: true, vo2max: null, reason: "Log a run of at least 1.5 km to estimate VO2max." } };
+      }
       const best = runs.reduce((m, a) => (vdotFromEffort(a.distanceKm * 1000, a.durationSec / 60)
         > vdotFromEffort(m.distanceKm * 1000, m.durationSec / 60) ? a : m));
       distanceMeters = best.distanceKm * 1000;
@@ -1158,7 +1169,9 @@ Generate the plan.`;
     if (vdot <= 0) {
       const runs = (s.activities.get(faid(ctx)) || [])
         .filter((a) => a.type === "run" && a.distanceKm >= 1.5 && a.durationSec > 0);
-      if (!runs.length) return { ok: false, error: "supply vo2max, or log a run ≥1.5km" };
+      if (!runs.length) {
+        return { ok: true, result: { empty: true, predictions: [], reason: "Log a run of at least 1.5 km for finish-time predictions." } };
+      }
       vdot = Math.max(...runs.map((a) => vdotFromEffort(a.distanceKm * 1000, a.durationSec / 60)));
       source = "best logged run";
     }
@@ -1201,8 +1214,9 @@ Generate the plan.`;
   try {
     const s = getFitState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const samples = [...(s.hrvSamples.get(faid(ctx)) || [])].sort((a, b) => a.date.localeCompare(b.date));
+    const recentRows = samples.slice(-8).map((x) => ({ id: x.id, date: x.date, rmssd: x.rmssd }));
     if (samples.length < 3) {
-      return { ok: true, result: { status: "insufficient_data", samples: samples.length, notes: "Log at least 3 nightly HRV readings for a status." } };
+      return { ok: true, result: { status: "insufficient_data", samples: samples.length, recent: recentRows, notes: "Log at least 3 nightly HRV readings for a status." } };
     }
     const recent = samples.slice(-7);
     const recentAvg = recent.reduce((a, x) => a + x.rmssd, 0) / recent.length;
@@ -1222,10 +1236,21 @@ Generate the plan.`;
         deviationPct: Math.round((ratio - 1) * 1000) / 10,
         samples: samples.length,
         latest: samples[samples.length - 1],
+        recent: recentRows,
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+
+  registerLensAction("fitness", "hrv-delete", (ctx, _a, params = {}) => {
+    const s = getFitState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = s.hrvSamples.get(faid(ctx)) || [];
+    const idx = list.findIndex((x) => x.id === String(params.id || ""));
+    if (idx < 0) return { ok: false, error: "HRV sample not found" };
+    const [removed] = list.splice(idx, 1);
+    saveStateIfAvailable();
+    return { ok: true, result: { deleted: removed.id } };
+  });
 
   registerLensAction("fitness", "training-readiness", (ctx, _a, params = {}) => {
   try {
@@ -1481,6 +1506,7 @@ Generate the plan.`;
         ...rest,
         memberCount: members.length,
         joined: members.includes(userId),
+        isOwner: c.ownerUserId === userId,
       }, "ownerUserId", { label: "Athlete", nameKey: "ownerDisplayName" });
     });
     return { ok: true, result: { clubs, count: clubs.length } };
@@ -1492,10 +1518,59 @@ Generate the plan.`;
     if (!club) return { ok: false, error: "club not found" };
     const userId = faid(ctx);
     const leaving = params.leave === true;
-    if (leaving) club.members = club.members.filter((m) => m !== userId);
+    if (leaving) {
+      club.members = club.members.filter((m) => m !== userId);
+      if (club.members.length === 0) {
+        s.clubs.delete(club.id);
+        saveStateIfAvailable();
+        return { ok: true, result: { joined: false, memberCount: 0, deleted: true } };
+      }
+    }
     else if (!club.members.includes(userId)) club.members.push(userId);
     saveStateIfAvailable();
     return { ok: true, result: { joined: !leaving, memberCount: club.members.length } };
+  });
+
+  registerLensAction("fitness", "club-delete", (ctx, _a, params = {}) => {
+    const s = getFitState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const club = s.clubs.get(String(params.id || ""));
+    if (!club) return { ok: false, error: "club not found" };
+    if (club.ownerUserId !== faid(ctx)) return { ok: false, error: "only the owner can delete this club" };
+    s.clubs.delete(club.id);
+    saveStateIfAvailable();
+    return { ok: true, result: { deleted: club.id } };
+  });
+
+  registerLensAction("fitness", "segment-delete", (ctx, _a, params = {}) => {
+    const s = getFitState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const seg = s.segments.get(String(params.id || ""));
+    if (!seg) return { ok: false, error: "segment not found" };
+    if (seg.ownerUserId !== faid(ctx)) return { ok: false, error: "only the owner can delete this segment" };
+    s.segments.delete(seg.id);
+    s.segmentEfforts.delete(seg.id);
+    saveStateIfAvailable();
+    return { ok: true, result: { deleted: seg.id } };
+  });
+
+  registerLensAction("fitness", "challenge-delete", (ctx, _a, params = {}) => {
+    const s = getFitState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const ch = s.challenges.get(String(params.id || ""));
+    if (!ch) return { ok: false, error: "challenge not found" };
+    if (ch.ownerUserId !== faid(ctx)) return { ok: false, error: "only the owner can delete this challenge" };
+    s.challenges.delete(ch.id);
+    saveStateIfAvailable();
+    return { ok: true, result: { deleted: ch.id } };
+  });
+
+  registerLensAction("fitness", "workout-delete", (ctx, _a, params = {}) => {
+    const s = getFitState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = faid(ctx);
+    const list = s.workouts.get(userId) || [];
+    const idx = list.findIndex((w) => w.id === String(params.id || ""));
+    if (idx < 0) return { ok: false, error: "workout not found" };
+    const [removed] = list.splice(idx, 1);
+    saveStateIfAvailable();
+    return { ok: true, result: { deleted: removed.id } };
   });
 
   // ── Challenges ──────────────────────────────────────────────────────
@@ -1546,27 +1621,33 @@ Generate the plan.`;
     if (params.mine) challenges = challenges.filter((c) => c.participants.includes(userId));
     const today = fday(fnow());
     challenges = challenges.map((ch) => {
+      const joined = ch.participants.includes(userId);
       const myActs = s.activities.get(userId) || [];
-      const myValue = challengeProgress(ch, myActs);
-      // leaderboard across all participants
-      const board = ch.participants.map((p) => ({
-        userId: p,
-        value: challengeProgress(ch, s.activities.get(p) || []),
-      })).sort((a, b) => b.value - a.value)
-        .map((x, i) => {
-          const card = publicActor(ctx, userId, x.userId, "Athlete");
-          return {
-            rank: i + 1,
-            value: x.value,
-            isMe: card.isMine,
-            displayName: card.displayName,
-            ...(card.isMine ? { userId: x.userId } : {}),
-          };
-        });
+      const myValue = joined ? challengeProgress(ch, myActs) : 0;
+      // Other people's private activity totals are visible only to someone
+      // who joined this challenge. A listing by a stranger used to read
+      // every participant's activity Map.
+      const board = joined
+        ? ch.participants.map((p) => ({
+          userId: p,
+          value: challengeProgress(ch, s.activities.get(p) || []),
+        })).sort((a, b) => b.value - a.value)
+          .map((x, i) => {
+            const card = publicActor(ctx, userId, x.userId, "Athlete");
+            return {
+              rank: i + 1,
+              value: x.value,
+              isMe: card.isMine,
+              displayName: card.displayName,
+              ...(card.isMine ? { userId: x.userId } : {}),
+            };
+          })
+        : [];
       const { participants, ...rest } = ch;
       return {
         ...presentOwnedId(ctx, userId, rest, "ownerUserId", { label: "Athlete", nameKey: "ownerDisplayName" }),
-        joined: participants.includes(userId),
+        isOwner: ch.ownerUserId === userId,
+        joined,
         active: today >= ch.startDate && today <= ch.endDate,
         participantCount: participants.length,
         myProgress: { value: myValue, pct: Math.round(fclamp(myValue / ch.target, 0, 1) * 100), complete: myValue >= ch.target },
@@ -1626,7 +1707,9 @@ Generate the plan.`;
   // Parity backlog — Strava / Garmin 2026 feature gap closure.
   // GPS recording + GPX import, wearable sync, map heatmap, photos +
   // comments, live Beacon, training-plan calendar, fitness-freshness.
-  // All STATE-backed, per-user scoped, real user input only.
+  // All STATE-backed, real user input only. Scoping follows the
+  // parity split above: personal training data is per-user;
+  // segments, clubs and challenges are shared platform-wide.
   // ════════════════════════════════════════════════════════════════════
 
   function getFitState2() {
@@ -2087,7 +2170,7 @@ Generate the plan.`;
       ? String(params.type).toLowerCase() : "run";
     const beacon = {
       id: fid("beacon"),
-      shareToken: `bcn_${Math.random().toString(36).slice(2, 12)}`,
+      shareToken: `bcn_${randomBytes(24).toString("base64url")}`,
       userId, type,
       status: "live",
       startedAt: fnow(),
@@ -2140,9 +2223,11 @@ Generate the plan.`;
     if (!beacon) return { ok: false, error: "beacon not found" };
     const isOwner = beacon.userId === userId;
     const isFollower = beacon.followers.includes(userId);
-    if (!isOwner && !isFollower && !params.shareToken) {
+    const holdsToken = params.shareToken && beacon.shareToken === String(params.shareToken);
+    if (!isOwner && !isFollower && !holdsToken) {
       return { ok: false, error: "not authorised to view this beacon" };
     }
+    const revealGps = isOwner || isFollower;
     return {
       ok: true,
       result: {
@@ -2153,11 +2238,11 @@ Generate the plan.`;
           startedAt: beacon.startedAt,
           endedAt: beacon.endedAt,
           lastUpdate: beacon.lastUpdate,
-          position: beacon.position,
-          distanceKm: beacon.distanceKm,
-          durationSec: beacon.durationSec,
+          position: revealGps ? beacon.position : null,
+          distanceKm: revealGps ? beacon.distanceKm : null,
+          durationSec: revealGps ? beacon.durationSec : null,
           followerCount: beacon.followers.length,
-          track: beacon.pings.map((p) => ({ lat: p.lat, lon: p.lon })),
+          track: revealGps ? beacon.pings.map((p) => ({ lat: p.lat, lon: p.lon })) : [],
         },
         isOwner,
       },

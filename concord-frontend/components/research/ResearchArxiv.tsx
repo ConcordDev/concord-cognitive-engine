@@ -28,13 +28,13 @@ export function ResearchArxiv() {
       <form onSubmit={(e) => { e.preventDefault(); setQ(draft.trim()); }} className="flex items-center gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
-          <input type="text" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Search arXiv" className="w-full rounded border border-zinc-800 bg-zinc-950 pl-7 pr-2 py-1.5 text-xs text-white focus:border-emerald-500/40 focus:outline-none" />
+          <input type="text" aria-label="Search arXiv" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Search arXiv" className="w-full rounded border border-zinc-800 bg-zinc-950 pl-7 pr-2 py-1.5 text-xs text-white focus:border-emerald-500/40 focus:outline-none" />
         </div>
         <button type="submit" className="rounded border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-xs font-mono text-emerald-200 hover:bg-emerald-500/20">search</button>
       </form>
       {papers.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">arXiv unreachable.</div>}
       {!papers.isError && !papers.isPending && list.length > 0 && q.length >= 2 && (
-        <p className="text-[11px] text-zinc-500">{list.length} {list.length === 1 ? 'result' : 'results'} for &ldquo;{q}&rdquo; — every term must match, ranked by relevance</p>
+        <p className="text-[11px] text-zinc-400">{list.length} {list.length === 1 ? 'result' : 'results'} for &ldquo;{q}&rdquo; — every term must match, ranked by relevance</p>
       )}
       <div className="space-y-1.5 max-h-[500px] overflow-y-auto">
         {list.map((p) => (

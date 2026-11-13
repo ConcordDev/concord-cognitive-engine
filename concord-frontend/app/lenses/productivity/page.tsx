@@ -117,7 +117,7 @@ export default function ProductivityLensPage() {
           >
             <Github className="h-4 w-4 text-emerald-400" aria-hidden />
             Discover open-source productivity tooling
-            <span className="ml-auto text-xs font-normal text-zinc-500">{showTooling ? 'Hide' : 'Show'}</span>
+            <span className="ml-auto text-xs font-normal text-zinc-400">{showTooling ? 'Hide' : 'Show'}</span>
           </button>
           {showTooling && (
             <div className="border-t border-white/10 p-4">

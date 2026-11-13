@@ -240,8 +240,11 @@ export function HypothesisLab() {
               onChange={(e) => setNewStatement(e.target.value)}
               placeholder="A falsifiable claim, e.g. &quot;Users who complete onboarding day-1 retain 2x longer&quot;  (n focuses)"
               rows={2}
+              maxLength={280}
+              aria-describedby="hyp-statement-count"
               className="input-lattice w-full text-xs resize-none"
             />
+            <p id="hyp-statement-count" className="text-right font-mono text-[10px] text-zinc-500">{newStatement.length} / 280</p>
             <div className="flex gap-2">
               <input value={newDomain} onChange={(e) => setNewDomain(e.target.value)} placeholder="Domain (optional)" className="input-lattice flex-1 text-xs" />
               <select value={newPriority} onChange={(e) => setNewPriority(e.target.value)} className="input-lattice text-xs">

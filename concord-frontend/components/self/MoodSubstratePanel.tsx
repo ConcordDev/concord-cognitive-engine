@@ -51,7 +51,7 @@ export function MoodSubstratePanel() {
             icon={TrendingUp}
           />
         </div>
-        <p className="text-[11px] text-rose-800">Last 30 days · from your affect check-ins.</p>
+        <p className="text-[11px] text-rose-400">Last 30 days · from your affect check-ins.</p>
       </div>
     );
   }

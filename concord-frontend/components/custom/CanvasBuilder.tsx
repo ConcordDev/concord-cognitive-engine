@@ -19,6 +19,7 @@ import {
   Plus, Trash2, Save, Eye, Upload, Download, Rocket, Link2, Zap,
   Loader2, RefreshCw, X, CheckCircle2, AlertTriangle, MousePointer2,
 } from 'lucide-react';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 const DOMAIN = 'custom';
 
@@ -98,9 +99,22 @@ export function CanvasBuilder({ onStatsChange }: { onStatsChange?: (s: CanvasBui
   }, []);
 
   // ── loaders ───────────────────────────────────────────────────────────────
+  // FIX-custom-001: a failed canvasList load used to read as an empty
+  // account — the builder showed "No canvases yet" after a tab switch
+  // remounted it into a transient /api/lens/run failure, while the canvases
+  // were never lost. The list now has an honest loading / error state: the
+  // empty message renders only after a load actually succeeded.
+  const [listState, setListState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const loadedOnceRef = useRef(false);
   const loadCanvases = useCallback(async () => {
     const d = await call<{ canvases: Canvas[] }>('canvasList');
-    if (d.ok && d.result) setCanvases(d.result.canvases);
+    if (d.ok && d.result) {
+      loadedOnceRef.current = true;
+      setCanvases(d.result.canvases);
+      setListState('ready');
+    } else if (!loadedOnceRef.current) {
+      setListState('error');
+    }
   }, []);
   const loadBindings = useCallback(async () => {
     const d = await call<{ bindings: Binding[] }>('bindingList');
@@ -115,15 +129,16 @@ export function CanvasBuilder({ onStatsChange }: { onStatsChange?: (s: CanvasBui
     if (d.ok && d.result) setPublished(d.result.published);
   }, []);
 
-  useEffect(() => {
-    (async () => {
-      const p = await call<{ components: PaletteComp[] }>('palette');
-      if (p.ok && p.result) setPalette(p.result.components);
-      await loadCanvases();
-      await loadBindings();
-      await loadPublished();
-    })();
+  const loadAll = useCallback(async () => {
+    setListState((s) => (loadedOnceRef.current ? s : 'loading'));
+    const p = await call<{ components: PaletteComp[] }>('palette');
+    if (p.ok && p.result) setPalette(p.result.components);
+    await loadCanvases();
+    await loadBindings();
+    await loadPublished();
   }, [loadCanvases, loadBindings, loadPublished]);
+
+  useEffect(() => { void loadAll(); }, [loadAll]);
 
   // Report real, live counts up to the page for its header stat tiles —
   // avoids a second disconnected fetch of the same lists.
@@ -405,10 +420,12 @@ export function CanvasBuilder({ onStatsChange }: { onStatsChange?: (s: CanvasBui
         <div className="panel p-3 flex flex-wrap items-center gap-2">
           <label className="text-xs text-gray-400" htmlFor="custom-new-canvas-name">New lens name</label>
           <input id="custom-new-canvas-name" autoFocus value={newName}
+            maxLength={80}
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); createCanvas(); } }}
             placeholder="e.g. Shift board"
             className="input-lattice text-sm flex-1 min-w-[200px]" />
+          {newName.length > 60 && <span className="text-[10px] text-zinc-500">{newName.length}/80</span>}
           <button onClick={createCanvas} disabled={busy || !newName.trim()}
             className="btn-neon purple text-sm disabled:opacity-40">Create lens</button>
           <button onClick={() => { setShowCreate(false); setNewName(''); }}
@@ -420,13 +437,20 @@ export function CanvasBuilder({ onStatsChange }: { onStatsChange?: (s: CanvasBui
         {/* ── Canvas list ──────────────────────────────────────────────────── */}
         <div className="col-span-12 lg:col-span-2 panel p-3 space-y-2">
           <p className="text-xs uppercase tracking-wider text-gray-400">Canvases</p>
-          {canvases.length === 0 && <p className="text-xs text-gray-400">No canvases yet.</p>}
+          {listState === 'loading' && <p className="text-xs text-gray-400">Loading canvases…</p>}
+          {listState === 'error' && (
+            <div className="space-y-1.5">
+              <p className="text-xs text-red-300">Couldn’t load your canvases — they are saved, the list just failed to arrive.</p>
+              <button onClick={() => void loadAll()} className="btn-neon text-xs">Retry</button>
+            </div>
+          )}
+          {listState === 'ready' && canvases.length === 0 && <p className="text-xs text-gray-400">No canvases yet.</p>}
           {canvases.map((c) => (
             <div key={c.id}
               className={`group rounded px-2 py-1.5 text-sm ${
                 activeId === c.id ? 'bg-neon-purple/20 border border-neon-purple/40' : 'hover:bg-white/5'}`}>
               <div className="flex items-center justify-between cursor-pointer"
-                onClick={() => openCanvas(c.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                onClick={() => openCanvas(c.id)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                 <span className="truncate flex items-center gap-1">
                   {isPublished(c.id) && <Rocket className="w-3 h-3 text-emerald-400 shrink-0" />}
                   {c.name}
@@ -473,7 +497,7 @@ export function CanvasBuilder({ onStatsChange }: { onStatsChange?: (s: CanvasBui
               </p>
               {active && (
                 <div className="flex items-center gap-1.5">
-                  <button onClick={saveCanvas} disabled={busy || !dirty}
+                  <button onClick={saveCanvas} disabled={busy || !dirty} aria-label="Save canvas" title="Save canvas"
                     className="btn-neon text-xs flex items-center gap-1 disabled:opacity-40">
                     {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
                     {dirty ? 'Save*' : 'Saved'}
@@ -501,7 +525,7 @@ export function CanvasBuilder({ onStatsChange }: { onStatsChange?: (s: CanvasBui
                   onChange={(e) => setPublishLabel(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); publishCanvas(); } }}
                   className="input-lattice text-xs flex-1 min-w-[160px]" />
-                <span className="text-[10px] text-gray-500">Recorded under Published lenses here — not added to the main sidebar.</span>
+                <span className="text-[10px] text-zinc-200">Recorded under Published lenses here — not added to the main sidebar.</span>
                 <button onClick={publishCanvas} className="btn-neon purple text-xs">Publish</button>
                 <button onClick={() => setPublishLabel(null)} className="btn-neon text-xs">Cancel</button>
               </div>
@@ -527,7 +551,7 @@ export function CanvasBuilder({ onStatsChange }: { onStatsChange?: (s: CanvasBui
                       className={`relative rounded-lg border p-2 cursor-pointer overflow-hidden ${
                         selectedWidget === w.id
                           ? 'border-neon-cyan ring-1 ring-neon-cyan bg-neon-cyan/5'
-                          : 'border-lattice-edge bg-lattice-deep hover:border-neon-purple/40'}`} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                          : 'border-lattice-edge bg-lattice-deep hover:border-neon-purple/40'}`} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                       <div className="flex items-center justify-between text-xs">
                         <span className="flex items-center gap-1 truncate">
                           {def?.icon} {String(w.props.title || w.props.label || def?.label || w.type)}

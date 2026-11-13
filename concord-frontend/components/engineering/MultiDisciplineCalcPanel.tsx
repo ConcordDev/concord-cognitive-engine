@@ -72,7 +72,7 @@ function humanizeKey(k: string): string {
 function ResultCard({ title, result }: { title: string; result: CalcResult | null | undefined }) {
   if (!result) {
     return (
-      <div className="rounded-lg border border-white/10 bg-black/20 p-3 text-xs text-gray-500">
+      <div className="rounded-lg border border-white/10 bg-black/20 p-3 text-xs text-gray-400">
         <p className="font-semibold text-gray-400 mb-1">{title}</p>
         Run the calculation to see results.
       </div>
@@ -95,7 +95,7 @@ function ResultCard({ title, result }: { title: string; result: CalcResult | nul
       <p className="text-xl font-mono font-bold text-neon-cyan">
         {fmt(result.value)} <span className="text-xs text-gray-400">{result.unit}</span>
       </p>
-      {result.formula && <p className="text-[10px] text-gray-500 font-mono">{result.formula}</p>}
+      {result.formula && <p className="text-[10px] text-gray-400 font-mono">{result.formula}</p>}
       {extras.length > 0 && (
         <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 pt-1 border-t border-white/5">
           {extras.map(([k, v]) => (
@@ -132,6 +132,7 @@ function NumField({
       <label className="text-[10px] text-gray-400 block mb-0.5">{label}</label>
       <input
         type="number"
+        aria-label={label}
         step={step}
         value={value}
         onChange={(e) => onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}
@@ -147,6 +148,7 @@ function SelectField({
     <div>
       <label className="text-[10px] text-gray-400 block mb-0.5">{label}</label>
       <select
+        aria-label={label}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="w-full bg-black/30 border border-white/10 rounded px-2 py-1 text-xs"
@@ -169,7 +171,7 @@ function binder<S extends { inp: Rec }>(set: Dispatch<SetStateAction<S>>, sub: '
 
 function Computed({ at, testId }: { at: string | null | undefined; testId: string }) {
   if (!at) return null;
-  return <p data-testid={testId} className="text-[10px] text-zinc-500">Computed {computedAt(at)} · saved with your inputs</p>;
+  return <p data-testid={testId} className="text-[10px] text-zinc-400">Computed {computedAt(at)} · saved with your inputs</p>;
 }
 
 function SectionHead({ icon, title, save, testId }: { icon: ReactNode; title: string; save: WsSaveState; testId: string }) {

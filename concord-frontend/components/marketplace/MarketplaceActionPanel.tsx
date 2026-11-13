@@ -6,6 +6,7 @@
  * mint/DM/publish/agent.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import {
   ShoppingBag, TrendingUp, Tag, BarChart3,
@@ -78,8 +79,15 @@ export function MarketplaceActionPanel() {
     },
   });
 
+  function priceProblem(): string | null {
+    const n = Number(listingPrice);
+    if (!listingPrice.trim() || !Number.isFinite(n) || n <= 0 || n > 1e12) return 'Price must be a number greater than 0 and at most 1,000,000,000,000.';
+    return null;
+  }
   async function actScore() {
     if (!ready) { err('Listing title required.'); return; }
+    const priceMsg = priceProblem();
+    if (priceMsg) { err(priceMsg); return; }
     setBusy('score'); setFeedback(null);
     try {
       const r = await callMacro<ScoreResult>('listingScore', { title: listingTitle.trim(), description: listingDesc, price: parseFloat(listingPrice), tags: listingTags.split(',').map(t => t.trim()).filter(Boolean), category });
@@ -90,6 +98,8 @@ export function MarketplaceActionPanel() {
   }
   async function actPrice() {
     if (!ready) { err('Listing title required.'); return; }
+    const priceMsg = priceProblem();
+    if (priceMsg) { err(priceMsg); return; }
     setBusy('price'); setFeedback(null);
     try {
       const r = await callMacro<PriceResult>('priceOptimize', { title: listingTitle.trim(), category, currentPrice: parseFloat(listingPrice) });
@@ -110,6 +120,8 @@ export function MarketplaceActionPanel() {
 
   async function actMint() {
     if (!ready) { err('Listing title required.'); return; }
+    const priceMsg = priceProblem();
+    if (priceMsg) { err(priceMsg); return; }
     setBusy('mint'); setFeedback(null);
     try {
       const r = await lensRun({
@@ -150,6 +162,8 @@ export function MarketplaceActionPanel() {
   }
   async function actPublish() {
     if (!ready) { err('Listing title required.'); return; }
+    const priceMsg = priceProblem();
+    if (priceMsg) { err(priceMsg); return; }
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
@@ -187,9 +201,9 @@ export function MarketplaceActionPanel() {
         'Return: new title, new opening sentence, why it converts better. Plain text.',
       ].filter(Boolean).join(' ');
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 4 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Copy ready.'); }
-      else err('Agent returned empty.');
+      const reply = readAgentReply(r.data);
+      if (reply.ok) { setAgentReply(reply.text); ok('Copy ready.'); }
+      else err(reply.reason);
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -213,7 +227,7 @@ export function MarketplaceActionPanel() {
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
         <input type="text" value={listingTitle} onChange={(e) => setListingTitle(e.target.value)} className="md:col-span-2 bg-lattice-surface border border-lattice-border rounded px-3 py-1.5 text-[12px] text-white" placeholder="Listing title" />
-        <input type="text" value={listingPrice} onChange={(e) => setListingPrice(e.target.value.replace(/[^\d.]/g, ''))} className="bg-lattice-surface border border-lattice-border rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Price $" />
+        <input type="text" value={listingPrice} onChange={(e) => setListingPrice(e.target.value)} className="bg-lattice-surface border border-lattice-border rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Price $" />
         <select value={category} onChange={(e) => setCategory(e.target.value)} className="bg-lattice-surface border border-lattice-border rounded px-3 py-1.5 text-[11px] text-white">
           {['digital-art', 'music', 'ebook', 'course', 'software', 'template', 'preset', 'physical'].map(c => <option key={c} value={c}>{c}</option>)}
         </select>

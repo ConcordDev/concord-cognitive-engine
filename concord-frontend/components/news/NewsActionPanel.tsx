@@ -6,6 +6,7 @@
  * daily-briefing + mint/DM/publish/agent.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import {
   Newspaper, Compass, Calendar, TrendingUp, RadioTower,
@@ -191,8 +192,8 @@ export function NewsActionPanel() {
     try {
       const task = `News topic: "${topic || headline || 'general'}". ${biasResult?.biasLevel ? `Bias level: ${biasResult.biasLevel}.` : ''} ${narrativeResult?.stabilityLevel ? `Narrative: ${narrativeResult.stabilityLevel}.` : ''} Suggest 3 cross-spectrum sources I should read this week to get balanced coverage. Plain text, one per line, with why each adds a different angle.`;
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Source list ready.'); } else err('Agent returned empty.');
+      const reply = readAgentReply(r.data);
+      if (reply.ok) { setAgentReply(reply.text); ok('Source list ready.'); } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 
@@ -216,16 +217,16 @@ export function NewsActionPanel() {
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-        <input type="text" value={headline} onChange={(e) => setHeadline(e.target.value)} className="md:col-span-2 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Headline" />
-        <input type="text" value={topic} onChange={(e) => setTopic(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Topic (for narrative tracking)" />
+        <input type="text" aria-label="Headline" value={headline} onChange={(e) => setHeadline(e.target.value)} className="md:col-span-2 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Headline" />
+        <input type="text" aria-label="Topic" value={topic} onChange={(e) => setTopic(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Topic (for narrative tracking)" />
       </div>
 
       <div>
         <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Article text</label>
-        <textarea value={articleText} onChange={(e) => setArticleText(e.target.value)} rows={6} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-2 text-[12px] text-yellow-100 focus:outline-none focus:ring-2 focus:ring-yellow-400/40 resize-y" placeholder="Paste article text to analyze bias + events…" />
+        <textarea aria-label="Article text" value={articleText} onChange={(e) => setArticleText(e.target.value)} rows={6} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-2 text-[12px] text-yellow-100 focus:outline-none focus:ring-2 focus:ring-yellow-400/40 resize-y" placeholder="Paste article text to analyze bias + events…" />
       </div>
 
-      <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
+      <input type="text" aria-label="DM recipient" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
 
       <div className="flex items-center gap-2 flex-wrap">
         <RecallSlot ctl={dmRecall} />

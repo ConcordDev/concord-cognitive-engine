@@ -190,13 +190,13 @@ export function AuditTrailPanel() {
                       >
                         {(a.verificationStatus || 'unverified').replace(/_/g, ' ')}
                       </span>
-                      <select
+                      <select aria-label="Verification status"
                         value={a.verificationStatus || 'unverified'}
                         disabled={busyId === a.id}
                         onChange={(e) =>
                           setStatus(a.id, e.target.value as VerStatus)
                         }
-                        className="text-[10px] px-1 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white disabled:opacity-40"
+                        className="min-h-11 text-[10px] px-1 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white disabled:opacity-40"
                       >
                         {STATUSES.map((st) => (
                           <option key={st} value={st}>

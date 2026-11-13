@@ -9,6 +9,7 @@
  * publish/import for cross-panel hand-off, recall-window on DM + publish.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import { Users, Trophy, Vote, Scale, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -230,13 +231,13 @@ export function CollabActionPanel() {
     try {
       const task = `Team facilitator brief. ${sessionResult ? `Session balance: ${sessionResult.balanceRating} (Gini ${sessionResult.participationBalance}, ${sessionResult.totalMessages} msgs across ${sessionResult.totalParticipants} ppl).` : ''} ${contribResult ? `Top contributor: ${contribResult.topContributor}.` : ''} ${consResult ? `${consResult.status}.` : ''} ${loadResult ? `${loadResult.overloadedMembers} overloaded teammates.` : ''} Identify single most important facilitation move + one structural change. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
-      if (reply) {
-        const text = typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2);
+      const reply = readAgentReply(r.data);
+      if (reply.ok) {
+        const text = reply.text;
         setAgentReply(text);
         pipe.publish('collab.agentReply', text, { label: 'Facilitator brief' });
         ok('Brief ready.');
-      } else err('Agent returned empty.');
+      } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 

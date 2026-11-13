@@ -56,6 +56,8 @@ function NumberField({
             id={id}
             ref={inputRef}
             aria-label={`${label} ${title}`}
+            aria-invalid={rejected ? true : undefined}
+            aria-describedby={rejected ? `${id}-error` : undefined}
             inputMode="decimal"
             value={text}
             onChange={(e) => { setText(e.target.value); if (rejected) setRejected(''); }}
@@ -66,7 +68,7 @@ function NumberField({
           <span className="w-6 text-[10px] text-slate-400">{unit}</span>
         </span>
       </label>
-      {rejected && <p role="alert" className="mt-0.5 text-right text-[10px] text-amber-300">{rejected}</p>}
+      {rejected && <p id={`${id}-error`} role="alert" className="mt-0.5 text-right text-[10px] text-amber-300">{rejected}</p>}
     </div>
   );
 }
@@ -131,6 +133,8 @@ export const ParameterPanel = forwardRef<ParameterPanelHandle, Props>(function P
             <input
               id="conkay-required-sf"
               aria-label="Required safety factor"
+              aria-invalid={sfRejected ? true : undefined}
+              aria-describedby={sfRejected ? 'conkay-required-sf-error' : undefined}
               inputMode="decimal"
               placeholder="—"
               value={sfText}
@@ -145,7 +149,7 @@ export const ParameterPanel = forwardRef<ParameterPanelHandle, Props>(function P
             {inputs.requiredSafetyFactor == null && <span className="w-6" aria-hidden />}
           </span>
         </div>
-        {sfRejected && <p role="alert" className="text-right text-[10px] text-amber-300">{sfRejected}</p>}
+        {sfRejected && <p id="conkay-required-sf-error" role="alert" className="text-right text-[10px] text-amber-300">{sfRejected}</p>}
       </div>
       <label className="block">
         <span className="sr-only">Support</span>

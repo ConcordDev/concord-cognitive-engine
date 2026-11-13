@@ -77,6 +77,25 @@ describe('PlumbCalc', () => {
 });
 
 describe('FieldServiceConsole', () => {
+  it('adds a client from the clients card', async () => {
+    lensRunMock.mockImplementation(async (...a: unknown[]) => {
+      const action = actionOf(a);
+      if (action === 'clientAdd') {
+        return { data: { ok: true, result: { client: { id: 'cl2', name: 'Bea', phone: '', email: '', address: '' } }, error: null } };
+      }
+      return { data: { ok: true, result: RES[action] ?? { ok: true }, error: null } };
+    });
+    const view = render(<FieldServiceConsole />);
+    await settle();
+    fireEvent.click(screen.getByRole('button', { name: /quote/i }));
+    await settle();
+    fireEvent.change(screen.getByLabelText('New client name'), { target: { value: 'Bea' } });
+    fireEvent.click(screen.getByRole('button', { name: /^add client$/i }));
+    await settle();
+    expect(lensRunMock.mock.calls.some((c) => actionOf(c) === 'clientAdd')).toBe(true);
+    expect(view.container.textContent).toContain('Bea');
+  });
+
   it.each(['Dispatch', 'Price Book', 'Quote → Invoice', 'Tech Workflow', 'Service Plans', 'Notifications', 'Parts Inventory', 'Inspections'])('walks the %s section', async (label) => {
     const view = render(<FieldServiceConsole />);
     await settle();

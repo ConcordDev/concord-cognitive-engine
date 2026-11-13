@@ -110,6 +110,7 @@ export default function CommandCenterPage() {
   const [line, setLine] = useState('');
   const [editLine, setEditLine] = useState('');
   const [ackNote, setAckNote] = useState('');
+  const [alertQuery, setAlertQuery] = useState('');
   const [busy, setBusy] = useState(false);
 
   const applyDesk = useCallback((desk: { alerts: AlertRow[]; frontId: string | null }, preferId?: string) => {
@@ -300,6 +301,10 @@ export default function CommandCenterPage() {
   const selected = alerts.find((item) => item.id === selectedId) || null;
   const showing = selected && front && selected.id === front.id ? selected : null;
   const other = selected && (!front || selected.id !== front.id) ? selected : null;
+  const aq = alertQuery.trim().toLowerCase();
+  const visibleAlerts = aq
+    ? alerts.filter((item) => item.title.toLowerCase().includes(aq) || (item.line || '').toLowerCase().includes(aq))
+    : alerts;
   const emptyFront = phase === 'ready' && mode === 'view' && !front;
 
   return (
@@ -340,9 +345,21 @@ export default function CommandCenterPage() {
               {other.ackNote ? <p data-testid="cc-ack-note" className="mt-3 text-[15px] text-zinc-300">{other.ackNote}</p> : null}
             </div>
           )}
+          {phase === 'ready' && mode === 'view' && alerts.length > 1 && (
+            <input
+              value={alertQuery}
+              onChange={(event) => setAlertQuery(event.target.value)}
+              placeholder="Search alerts…"
+              aria-label="Search alerts"
+              className="mb-3 w-full border-b border-white/15 bg-transparent pb-2 text-[15px] text-zinc-100 outline-none"
+            />
+          )}
+          {phase === 'ready' && mode === 'view' && alerts.length > 0 && visibleAlerts.length === 0 && (
+            <p className="border-t border-white/10 pt-4 text-[15px] text-zinc-400">No alerts match &ldquo;{alertQuery.trim()}&rdquo;.</p>
+          )}
           {phase === 'ready' && mode === 'view' && alerts.length > 0 && (
             <ul data-testid="cc-alerts" className="space-y-2 border-t border-white/10 pt-4">
-              {alerts.map((item) => (
+              {visibleAlerts.map((item) => (
                 <li key={item.id}>
                   <button
                     type="button"
@@ -443,7 +460,7 @@ export default function CommandCenterPage() {
           type="button"
           onClick={refresh}
           disabled={phase === 'loading' || busy}
-          className="fixed bottom-8 right-8 z-30 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-60"
+          className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] right-4 z-30 min-h-11 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-60 md:bottom-8 md:right-8"
         >
           Refresh
         </button>

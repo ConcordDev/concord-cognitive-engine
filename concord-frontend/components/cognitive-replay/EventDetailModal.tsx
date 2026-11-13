@@ -9,6 +9,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Loader2, X, ArrowRightCircle } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface EventDetail {
   eventId: string;
@@ -51,10 +52,10 @@ export function EventDetailModal({ eventId, onClose }: { eventId: string; onClos
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
       role="dialog"
       aria-modal="true"
-      onClick={onClose} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+      onClick={onClose} tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
       <div
         className="w-full max-w-md rounded-2xl border border-zinc-700 bg-zinc-950 p-5"
-        onClick={(e) => e.stopPropagation()} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        onClick={(e) => e.stopPropagation()} tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-zinc-100">Event detail</h3>
           <button onClick={onClose} aria-label="Close" className="text-zinc-400 hover:text-zinc-200">

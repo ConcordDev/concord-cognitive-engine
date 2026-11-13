@@ -407,7 +407,7 @@ export function EegWorkbench() {
       {/* recording selector */}
       <div className="flex items-center gap-2 flex-wrap">
         <span className={labelCls + ' !mb-0'}>Recording</span>
-        <select value={activeId} onChange={(e) => setActiveId(e.target.value)} className={cn(inputCls, 'w-auto min-w-[220px]')}>
+        <select value={activeId} onChange={(e) => setActiveId(e.target.value)} aria-label="Recording" className={cn(inputCls, 'w-auto min-w-[220px]')}>
           <option value="">— none imported —</option>
           {recordings.map((r) => (
             <option key={r.id} value={r.id}>{r.name} ({r.channelCount}ch · {r.durationSec}s)</option>
@@ -440,7 +440,7 @@ export function EegWorkbench() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
             <div>
               <label className={labelCls}>Format</label>
-              <select value={importFormat} onChange={(e) => setImportFormat(e.target.value as typeof importFormat)} className={inputCls}>
+              <select value={importFormat} onChange={(e) => setImportFormat(e.target.value as typeof importFormat)} aria-label="Import format" className={inputCls}>
                 <option value="csv">CSV (channels × samples)</option>
                 <option value="edf-json">EDF (JSON export)</option>
                 <option value="fif-json">FIF (JSON export)</option>
@@ -448,17 +448,17 @@ export function EegWorkbench() {
             </div>
             <div>
               <label className={labelCls}>Recording name</label>
-              <input value={importName} onChange={(e) => setImportName(e.target.value)} className={inputCls} placeholder="subject-01 rest" />
+              <input value={importName} onChange={(e) => setImportName(e.target.value)} className={inputCls} placeholder="subject-01 rest" aria-label="Recording name" />
             </div>
             <div>
               <label className={labelCls}>Sample rate (Hz)</label>
-              <input value={importSampleRate} onChange={(e) => setImportSampleRate(e.target.value)} className={inputCls} type="number" />
+              <input value={importSampleRate} onChange={(e) => setImportSampleRate(e.target.value)} className={inputCls} type="number" aria-label="Sample rate (Hz)" />
             </div>
             <div className="flex items-end">
               <button type="button" onClick={() => fileRef.current?.click()} className="flex items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-[12px] text-zinc-200 hover:bg-zinc-800 w-full justify-center">
                 <FileUp className="h-3.5 w-3.5" /> Upload file
               </button>
-              <input ref={fileRef} type="file" accept=".csv,.txt,.json,.tsv" className="hidden" onChange={onFile} />
+              <input ref={fileRef} type="file" accept=".csv,.txt,.json,.tsv" className="hidden" onChange={onFile} aria-label="Upload recording file" />
             </div>
           </div>
           <div>
@@ -467,13 +467,13 @@ export function EegWorkbench() {
                 ? 'CSV data — header row of channel names (Fz, Cz, Pz…), each row a sample'
                 : 'JSON payload — { channels: [{ name, samples }], sampleRate }'}
             </label>
-            <textarea value={importText} onChange={(e) => setImportText(e.target.value)} rows={6}
+            <textarea value={importText} onChange={(e) => setImportText(e.target.value)} rows={6} aria-label="Import data"
               className={cn(inputCls, 'font-mono text-[11px] resize-y')}
               placeholder={importFormat === 'csv' ? 'Fz,Cz,Pz\n0.12,-0.04,0.31\n0.18,-0.02,0.27' : '{"channels":[{"name":"Fz","samples":[0.1,0.2]}],"sampleRate":256}'} />
           </div>
           <div>
             <label className={labelCls}>Event markers (optional) — one per line: label,sampleIndex,condition</label>
-            <textarea value={importEvents} onChange={(e) => setImportEvents(e.target.value)} rows={2}
+            <textarea value={importEvents} onChange={(e) => setImportEvents(e.target.value)} rows={2} aria-label="Event markers"
               className={cn(inputCls, 'font-mono text-[11px] resize-y')} placeholder={'target,512,oddball\nstandard,768,standard'} />
           </div>
           <button type="button" onClick={doImport} disabled={busy === 'import'} className={btnCls}>
@@ -504,8 +504,8 @@ export function EegWorkbench() {
       {tab === 'waveform' && (
         <div className="space-y-3">
           <div className="flex items-end gap-2 flex-wrap">
-            <div><label className={labelCls}>Start (s)</label><input value={wfStart} onChange={(e) => setWfStart(e.target.value)} type="number" className={cn(inputCls, 'w-24')} /></div>
-            <div><label className={labelCls}>Window (s)</label><input value={wfWindow} onChange={(e) => setWfWindow(e.target.value)} type="number" className={cn(inputCls, 'w-24')} /></div>
+            <div><label className={labelCls}>Start (s)</label><input value={wfStart} onChange={(e) => setWfStart(e.target.value)} type="number" className={cn(inputCls, 'w-24')} aria-label="Waveform start (s)" /></div>
+            <div><label className={labelCls}>Window (s)</label><input value={wfWindow} onChange={(e) => setWfWindow(e.target.value)} type="number" className={cn(inputCls, 'w-24')} aria-label="Waveform window (s)" /></div>
             <button type="button" onClick={doWaveform} disabled={busy === 'waveform' || !activeId} className={btnCls}>
               {busy === 'waveform' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Waves className="h-3.5 w-3.5" />}
               Load window
@@ -537,7 +537,7 @@ export function EegWorkbench() {
           <div className="flex items-end gap-2 flex-wrap">
             <div>
               <label className={labelCls}>Metric</label>
-              <select value={topoBand} onChange={(e) => setTopoBand(e.target.value)} className={cn(inputCls, 'w-44')}>
+              <select value={topoBand} onChange={(e) => setTopoBand(e.target.value)} aria-label="Topography metric" className={cn(inputCls, 'w-44')}>
                 <option value="">RMS amplitude</option>
                 <option value="delta">Delta band power</option>
                 <option value="theta">Theta band power</option>
@@ -594,10 +594,10 @@ export function EegWorkbench() {
       {tab === 'preprocess' && (
         <div className="space-y-3">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            <div><label className={labelCls}>Bandpass low (Hz)</label><input value={ppBandLow} onChange={(e) => setPpBandLow(e.target.value)} type="number" className={inputCls} /></div>
-            <div><label className={labelCls}>Bandpass high (Hz)</label><input value={ppBandHigh} onChange={(e) => setPpBandHigh(e.target.value)} type="number" className={inputCls} /></div>
-            <div><label className={labelCls}>Notch (Hz)</label><input value={ppNotch} onChange={(e) => setPpNotch(e.target.value)} type="number" className={inputCls} /></div>
-            <div><label className={labelCls}>Artifact reject ±</label><input value={ppArtifact} onChange={(e) => setPpArtifact(e.target.value)} type="number" className={inputCls} /></div>
+            <div><label className={labelCls}>Bandpass low (Hz)</label><input value={ppBandLow} onChange={(e) => setPpBandLow(e.target.value)} type="number" className={inputCls} aria-label="Bandpass low (Hz)" /></div>
+            <div><label className={labelCls}>Bandpass high (Hz)</label><input value={ppBandHigh} onChange={(e) => setPpBandHigh(e.target.value)} type="number" className={inputCls} aria-label="Bandpass high (Hz)" /></div>
+            <div><label className={labelCls}>Notch (Hz)</label><input value={ppNotch} onChange={(e) => setPpNotch(e.target.value)} type="number" className={inputCls} aria-label="Notch (Hz)" /></div>
+            <div><label className={labelCls}>Artifact reject ±</label><input value={ppArtifact} onChange={(e) => setPpArtifact(e.target.value)} type="number" className={inputCls} aria-label="Artifact reject amplitude" /></div>
           </div>
           <label className="flex items-center gap-2 text-[12px] text-zinc-300">
             <input type="checkbox" checked={ppReref} onChange={(e) => setPpReref(e.target.checked)} />
@@ -637,9 +637,9 @@ export function EegWorkbench() {
       {tab === 'epoch' && (
         <div className="space-y-3">
           <div className="flex items-end gap-2 flex-wrap">
-            <div><label className={labelCls}>Pre-stim (ms)</label><input value={epPre} onChange={(e) => setEpPre(e.target.value)} type="number" className={cn(inputCls, 'w-28')} /></div>
-            <div><label className={labelCls}>Post-stim (ms)</label><input value={epPost} onChange={(e) => setEpPost(e.target.value)} type="number" className={cn(inputCls, 'w-28')} /></div>
-            <div><label className={labelCls}>Condition (optional)</label><input value={epCondition} onChange={(e) => setEpCondition(e.target.value)} className={cn(inputCls, 'w-36')} placeholder="oddball" /></div>
+            <div><label className={labelCls}>Pre-stim (ms)</label><input value={epPre} onChange={(e) => setEpPre(e.target.value)} type="number" className={cn(inputCls, 'w-28')} aria-label="Pre-stim (ms)" /></div>
+            <div><label className={labelCls}>Post-stim (ms)</label><input value={epPost} onChange={(e) => setEpPost(e.target.value)} type="number" className={cn(inputCls, 'w-28')} aria-label="Post-stim (ms)" /></div>
+            <div><label className={labelCls}>Condition (optional)</label><input value={epCondition} onChange={(e) => setEpCondition(e.target.value)} className={cn(inputCls, 'w-36')} placeholder="oddball" aria-label="Condition (optional)" /></div>
             <button type="button" onClick={doEpoch} disabled={busy === 'epoch' || !activeId} className={btnCls}>
               {busy === 'epoch' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Scissors className="h-3.5 w-3.5" />}
               Epoch
@@ -673,9 +673,9 @@ export function EegWorkbench() {
           <div className="flex items-end gap-2 flex-wrap">
             <div>
               <label className={labelCls}>Channel</label>
-              <input value={tfChannel} onChange={(e) => setTfChannel(e.target.value)} className={cn(inputCls, 'w-32')} placeholder="(first)" />
+              <input value={tfChannel} onChange={(e) => setTfChannel(e.target.value)} className={cn(inputCls, 'w-32')} placeholder="(first)" aria-label="Spectrogram channel" />
             </div>
-            <div><label className={labelCls}>Max freq (Hz)</label><input value={tfMaxFreq} onChange={(e) => setTfMaxFreq(e.target.value)} type="number" className={cn(inputCls, 'w-28')} /></div>
+            <div><label className={labelCls}>Max freq (Hz)</label><input value={tfMaxFreq} onChange={(e) => setTfMaxFreq(e.target.value)} type="number" className={cn(inputCls, 'w-28')} aria-label="Max frequency (Hz)" /></div>
             <button type="button" onClick={doTf} disabled={busy === 'tf' || !activeId} className={btnCls}>
               {busy === 'tf' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Grid3x3 className="h-3.5 w-3.5" />}
               Compute spectrogram
@@ -761,11 +761,11 @@ export function EegWorkbench() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             <div>
               <label className={labelCls}>Group A — numeric values</label>
-              <textarea value={statA} onChange={(e) => setStatA(e.target.value)} rows={3} className={cn(inputCls, 'font-mono text-[11px] resize-y')} placeholder="1.2, 0.9, 1.5, 1.1" />
+              <textarea value={statA} onChange={(e) => setStatA(e.target.value)} rows={3} aria-label="Group A values" className={cn(inputCls, 'font-mono text-[11px] resize-y')} placeholder="1.2, 0.9, 1.5, 1.1" />
             </div>
             <div>
               <label className={labelCls}>Group B — numeric values</label>
-              <textarea value={statB} onChange={(e) => setStatB(e.target.value)} rows={3} className={cn(inputCls, 'font-mono text-[11px] resize-y')} placeholder="0.4, 0.6, 0.3, 0.5" />
+              <textarea value={statB} onChange={(e) => setStatB(e.target.value)} rows={3} aria-label="Group B values" className={cn(inputCls, 'font-mono text-[11px] resize-y')} placeholder="0.4, 0.6, 0.3, 0.5" />
             </div>
           </div>
           <div className="flex items-center gap-2">

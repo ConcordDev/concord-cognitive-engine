@@ -134,6 +134,13 @@ export default function registerMiningActions(registerLensAction) {
     const s = getMiningState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const site = mnSites(s, mnActor(ctx)).find((x) => x.id === params.id);
     if (!site) return { ok: false, error: "site not found" };
+    if (params.name != null) {
+      const nm = mnClean(params.name, 160);
+      if (!nm) return { ok: false, error: "site name required" };
+      site.name = nm;
+    }
+    if (params.kind && MINE_KINDS.includes(params.kind)) site.kind = params.kind;
+    if (params.commodity != null) site.commodity = mnClean(params.commodity, 80) || "ore";
     if (params.status && ["active", "suspended", "closed", "reclamation"].includes(params.status)) site.status = params.status;
     if (params.productionTonnes != null) site.productionTonnes = Math.max(0, mnNum(params.productionTonnes));
     saveMining();
@@ -389,6 +396,62 @@ export default function registerMiningActions(registerLensAction) {
       hole.intervals.sort((a, b) => a.from - b.from);
       saveMining();
       return { ok: true, result: { interval: iv, holeId: hole.id } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+  registerLensAction("mining", "drillhole-update", (ctx, _a, params = {}) => {
+    try {
+      const s = getMiningState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const hole = mnHoles(s, mnActor(ctx)).find((h) => h.id === params.id);
+      if (!hole) return { ok: false, error: "drill-hole not found" };
+      if (params.name != null) {
+        const nm = mnClean(params.name, 80);
+        if (!nm) return { ok: false, error: "drill-hole name required" };
+        hole.name = nm;
+      }
+      if (params.siteId !== undefined) {
+        const sid = mnClean(params.siteId, 60) || null;
+        if (sid && !mnSites(s, mnActor(ctx)).some((x) => x.id === sid)) return { ok: false, error: "site not found" };
+        hole.siteId = sid;
+      }
+      if (params.collarX != null) hole.collarX = mnNum(params.collarX);
+      if (params.collarY != null) hole.collarY = mnNum(params.collarY);
+      if (params.collarZ != null) hole.collarZ = mnNum(params.collarZ);
+      if (params.azimuth != null) hole.azimuth = Math.max(0, Math.min(360, mnNum(params.azimuth)));
+      if (params.dip != null) hole.dip = Math.max(-90, Math.min(90, mnNum(params.dip)));
+      if (params.totalDepth != null) hole.totalDepth = Math.max(0, mnNum(params.totalDepth));
+      saveMining();
+      return { ok: true, result: { hole } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+  registerLensAction("mining", "drillhole-update-interval", (ctx, _a, params = {}) => {
+    try {
+      const s = getMiningState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const hole = mnHoles(s, mnActor(ctx)).find((h) => h.id === params.holeId);
+      if (!hole) return { ok: false, error: "drill-hole not found" };
+      const iv = hole.intervals.find((x) => x.id === params.intervalId);
+      if (!iv) return { ok: false, error: "interval not found" };
+      const from = params.from != null ? Math.max(0, mnNum(params.from)) : iv.from;
+      const to = params.to != null ? Math.max(0, mnNum(params.to)) : iv.to;
+      if (to <= from) return { ok: false, error: "interval 'to' must exceed 'from'" };
+      iv.from = from; iv.to = to;
+      if (params.lithology != null && LITHOLOGIES.includes(params.lithology)) iv.lithology = params.lithology;
+      if (params.assayGrade != null) iv.assayGrade = Math.max(0, mnNum(params.assayGrade));
+      if (params.recovery != null) iv.recovery = Math.max(0, Math.min(100, mnNum(params.recovery)));
+      hole.intervals.sort((a, b) => a.from - b.from);
+      saveMining();
+      return { ok: true, result: { interval: iv, holeId: hole.id } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+  registerLensAction("mining", "drillhole-delete-interval", (ctx, _a, params = {}) => {
+    try {
+      const s = getMiningState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const hole = mnHoles(s, mnActor(ctx)).find((h) => h.id === params.holeId);
+      if (!hole) return { ok: false, error: "drill-hole not found" };
+      const i = hole.intervals.findIndex((x) => x.id === params.intervalId);
+      if (i < 0) return { ok: false, error: "interval not found" };
+      hole.intervals.splice(i, 1);
+      saveMining();
+      return { ok: true, result: { deleted: params.intervalId, holeId: hole.id } };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
   registerLensAction("mining", "drillhole-delete", (ctx, _a, params = {}) => {
@@ -733,11 +796,24 @@ export default function registerMiningActions(registerLensAction) {
   registerLensAction("mining", "pit-design", (ctx, _a, params = {}) => {
     try {
       const surfaceRL = mnNum(params.surfaceRL) || 100; // surface reduced level (m)
-      const pitDepth = Math.max(5, mnNum(params.pitDepth) || 120);
+      const pitDepth = params.pitDepth == null || params.pitDepth === "" ? 120 : Number(params.pitDepth);
+      if (!Number.isFinite(pitDepth) || pitDepth <= 0 || pitDepth > 5000) {
+        return { ok: false, error: "invalid_input", message: "Pit depth must be a number of metres greater than 0." };
+      }
       const benchHeight = Math.max(2, mnNum(params.benchHeight) || 15);
       const slopeAngle = Math.max(20, Math.min(75, mnNum(params.slopeAngle) || 45));
       const oreBottomWidth = Math.max(10, mnNum(params.bottomWidth) || 40);
       const density = mnNum(params.densityTonM3) || 2.7;
+      // FIX-mining-007: targetStripRatio had no range check at all —
+      // 1e12 was accepted and ore tonnage divided down to a silent 0.
+      // A provided ratio must be > 0 and within the platform's standing
+      // numeric ceiling (1e6); absent still defaults to 3.
+      if (params.targetStripRatio != null && params.targetStripRatio !== "") {
+        const sr = Number(params.targetStripRatio);
+        if (!Number.isFinite(sr) || sr <= 0 || sr > 1e6) {
+          return { ok: false, error: "invalid_input", message: "Target strip ratio must be greater than 0 and at most 1,000,000." };
+        }
+      }
       const stripRatio = mnNum(params.targetStripRatio) || 3;
       const benchCount = Math.ceil(pitDepth / benchHeight);
       const slopeRun = benchHeight / Math.tan(slopeAngle * Math.PI / 180);
@@ -878,8 +954,15 @@ export default function registerMiningActions(registerLensAction) {
       const s = getMiningState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const unit = mnFleet(s, mnActor(ctx)).find((u) => u.id === params.id);
       if (!unit) return { ok: false, error: "equipment not found" };
+      if (params.name != null) {
+        const nm = mnClean(params.name, 80);
+        if (!nm) return { ok: false, error: "equipment name required" };
+        unit.name = nm;
+      }
+      if (params.kind && EQUIP_KINDS.includes(params.kind)) unit.kind = params.kind;
       if (params.status && EQUIP_STATUS.includes(params.status)) unit.status = params.status;
       if (params.engineHours != null) unit.engineHours = Math.max(0, mnNum(params.engineHours));
+      if (params.scheduledHours != null) unit.scheduledHours = Math.max(0, mnNum(params.scheduledHours));
       if (params.fuelLitres != null) unit.fuelLitres = Math.max(0, mnNum(params.fuelLitres));
       if (params.nextServiceHours != null) unit.nextServiceHours = Math.max(0, mnNum(params.nextServiceHours));
       saveMining();
@@ -907,6 +990,7 @@ export default function registerMiningActions(registerLensAction) {
         return {
           id: u.id, name: u.name, kind: u.kind, status: u.status,
           engineHours: u.engineHours, utilization,
+          scheduledHours: u.scheduledHours, nextServiceHours: u.nextServiceHours,
           fuelLitres: u.fuelLitres, hoursToService,
           serviceDue: hoursToService <= 0,
         };
@@ -1037,7 +1121,15 @@ export default function registerMiningActions(registerLensAction) {
       const s = getMiningState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const site = mnSites(s, mnActor(ctx)).find((x) => x.id === params.id);
       if (!site) return { ok: false, error: "site not found" };
-      const lat = mnNum(params.lat), lng = mnNum(params.lng);
+      // FIX-mining-008: mnNum converts blank/missing to 0, so an empty
+      // form silently placed the site at 0,0. Coordinates must be
+      // present and finite (an explicit numeric 0 is a real
+      // coordinate and still accepted).
+      if (params.lat == null || params.lat === "" || params.lng == null || params.lng === "") {
+        return { ok: false, error: "lat and lng are required" };
+      }
+      const lat = Number(params.lat), lng = Number(params.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return { ok: false, error: "lat and lng must be numbers" };
       if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return { ok: false, error: "invalid lat/lng" };
       site.lat = lat; site.lng = lng; saveMining();
       return { ok: true, result: { site } };

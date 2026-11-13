@@ -118,7 +118,7 @@ export function PluginGalleryList() {
     <div>
       <form onSubmit={handleSearchSubmit} className="mb-3 flex items-center gap-2">
         <div className="flex flex-1 items-center gap-2 rounded-md border border-zinc-800 bg-zinc-900/60 px-2.5 py-1.5">
-          <Search className="h-3.5 w-3.5 text-slate-500" aria-hidden="true" />
+          <Search className="h-3.5 w-3.5 text-slate-400" aria-hidden="true" />
           <input
             type="search"
             value={query}
@@ -157,13 +157,13 @@ export function PluginGalleryList() {
       )}
 
       {!hasLoadedOnce && loading && (
-        <p role="status" aria-busy="true" className="text-[11px] text-slate-500">
+        <p role="status" aria-busy="true" className="text-[11px] text-slate-400">
           Loading plugin gallery…
         </p>
       )}
 
       {hasLoadedOnce && !error && plugins.length === 0 && (
-        <p className="text-[11px] text-slate-500">
+        <p className="text-[11px] text-slate-400">
           {query.trim() ? `No plugins match "${query.trim()}".` : 'No plugins have been published to the gallery yet.'}
         </p>
       )}
@@ -176,7 +176,7 @@ export function PluginGalleryList() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <Package className="h-4 w-4 text-cyan-400" aria-hidden="true" />
-                    <h3 className="truncate text-[13px] font-semibold text-slate-100">{plugin.name}</h3>
+                    <h2 className="truncate text-[13px] font-semibold text-slate-100">{plugin.name}</h2>
                     <span className="shrink-0 rounded-full border border-zinc-700 px-1.5 py-0.5 text-[9px] font-mono text-slate-400">
                       v{plugin.version}
                     </span>
@@ -211,7 +211,7 @@ export function PluginGalleryList() {
                     </div>
                   )}
 
-                  <div className="mt-2 flex items-center gap-3 text-[10px] text-slate-500">
+                  <div className="mt-2 flex items-center gap-3 text-[10px] text-slate-400">
                     <span className="flex items-center gap-1">
                       <Download className="h-3 w-3" aria-hidden="true" /> {plugin.installs} install{plugin.installs === 1 ? '' : 's'}
                     </span>
@@ -222,7 +222,7 @@ export function PluginGalleryList() {
                 <div className="flex shrink-0 flex-col items-end gap-2">
                   <button
                     onClick={() => setInstallTarget(plugin)}
-                    className="rounded-md bg-cyan-600 px-3 py-1.5 text-[11px] font-medium text-white hover:bg-cyan-500"
+                    className="inline-flex min-h-11 items-center rounded-md bg-cyan-600 px-3 py-1.5 text-[11px] font-medium text-white hover:bg-cyan-500"
                   >
                     Install
                   </button>
@@ -230,14 +230,14 @@ export function PluginGalleryList() {
                     <button
                       onClick={() => handleRate(plugin, 'up')}
                       aria-label={`Rate ${plugin.name} up`}
-                      className="flex items-center gap-0.5 rounded px-1 py-0.5 hover:bg-zinc-900"
+                      className="flex min-h-11 items-center gap-0.5 rounded px-2 py-0.5 hover:bg-zinc-900"
                     >
                       <ThumbsUp className="h-3 w-3" aria-hidden="true" /> {plugin.rating.up}
                     </button>
                     <button
                       onClick={() => handleRate(plugin, 'down')}
                       aria-label={`Rate ${plugin.name} down`}
-                      className="flex items-center gap-0.5 rounded px-1 py-0.5 hover:bg-zinc-900"
+                      className="flex min-h-11 items-center gap-0.5 rounded px-2 py-0.5 hover:bg-zinc-900"
                     >
                       <ThumbsDown className="h-3 w-3" aria-hidden="true" /> {plugin.rating.down}
                     </button>

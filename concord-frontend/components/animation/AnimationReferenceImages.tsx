@@ -149,7 +149,7 @@ export function AnimationReferenceImages() {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-zinc-100">Reference images</h3>
+          <h2 className="text-sm font-semibold text-zinc-100">Reference images</h2>
           <p className="text-[11px] text-zinc-400">Upload photos or sketches, then import one onto the frame open in Studio as a tracing underlay — you still draw the real artwork by hand on top of it.</p>
         </div>
         <input ref={fileRef} type="file" accept="image/*" className="hidden"
@@ -171,7 +171,7 @@ export function AnimationReferenceImages() {
           <span className="text-cyan-400/70">· frame {target.frameIndex + 1}/{target.frameCount}</span>
         </p>
       ) : (
-        <p className="flex items-center gap-1.5 text-[11px] text-zinc-500 bg-zinc-900/40 border border-zinc-800 rounded-lg px-2.5 py-1.5">
+        <p className="flex items-center gap-1.5 text-[11px] text-zinc-400 bg-zinc-900/40 border border-zinc-800 rounded-lg px-2.5 py-1.5">
           <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
           Open a frame in the Studio tab first — import needs a real target frame.
         </p>

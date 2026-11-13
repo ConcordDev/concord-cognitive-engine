@@ -1416,6 +1416,32 @@ Rules:
     }
     return null;
   }
+  // The word under a cursor. Monaco sends position and no symbol; when the
+  // TypeScript service is off or throws, the lexical fallback needs this
+  // word. A position with no identifier is "nothing under the cursor", not
+  // a 422 — that 422 was showing up in the Network tab during Save.
+  function identifierAt(content, offset) {
+    const text = String(content || "");
+    if (!text) return "";
+    let i = Math.max(0, Math.min(Math.round(offset) || 0, text.length));
+    const isId = (ch) => /[A-Za-z0-9_$]/.test(ch || "");
+    if (!isId(text[i]) && i > 0 && isId(text[i - 1])) i -= 1;
+    if (!isId(text[i])) return "";
+    let start = i;
+    while (start > 0 && isId(text[start - 1])) start -= 1;
+    let end = i + 1;
+    while (end < text.length && isId(text[end])) end += 1;
+    const word = text.slice(start, end);
+    return /^[A-Za-z_$]/.test(word) ? word : "";
+  }
+  function symbolAtRequest(files, path, params, explicit) {
+    const named = String(explicit || "").trim();
+    const offset = positionToOffset(files, path, params);
+    if (named) return { symbol: named, offset, hadPosition: offset != null || !!(params && (params.position || Number.isFinite(params.offset))) };
+    const hadPosition = offset != null || !!(params && params.position && Number.isFinite(params.position.line) && Number.isFinite(params.position.column));
+    if (offset == null || !files.has(path)) return { symbol: "", offset, hadPosition };
+    return { symbol: identifierAt(files.get(path).content, offset), offset, hadPosition };
+  }
 
   // ── Projects (virtual workspaces) ──────────────────────────────
 
@@ -2244,17 +2270,21 @@ Rules:
     const userId = aidC(ctx);
     const projectId = String(params.projectId || "");
     const path = String(params.path || "");
-    const symbol = String(params.symbol || "").trim();
     if (!projectId) return { ok: false, error: "projectId required" };
     const files = ensureFiles(s, userId, projectId);
     // Scope-correct references (distinguishes shadowed/same-named bindings) when a
     // cursor position is given. Lexical word-boundary grep is the fallback.
-    const offset = positionToOffset(files, path, params);
+    const resolved = symbolAtRequest(files, path, params, params.symbol);
+    const symbol = resolved.symbol;
+    const offset = resolved.offset;
     if (offset != null && tsLang.tsAvailable(path)) {
       const r = tsLang.references(files, path, offset);
       if (r) return { ok: true, result: { symbol: symbol || null, references: r.references, count: r.count, source: "typescript" } };
     }
-    if (!symbol) return { ok: false, error: "symbol or position required" };
+    if (!symbol) {
+      if (resolved.hadPosition) return { ok: true, result: { symbol: null, references: [], count: 0, source: "none" } };
+      return { ok: false, error: "symbol or position required" };
+    }
     const refs = [];
     const re = new RegExp(`\\b${symbol.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g');
     for (const [path, blob] of files) {
@@ -2447,19 +2477,23 @@ Rules:
     const userId = aidC(ctx);
     const projectId = String(params.projectId || "");
     const path = String(params.path || "");
-    const symbol = String(params.symbol || "").trim();
     if (!projectId || !path) return { ok: false, error: "projectId + path required" };
     const files = ensureFiles(s, userId, projectId);
     if (!files.has(path)) return { ok: false, error: "file not found" };
     const lang = langFromPath(path);
     // Real type-aware hover (inferred types) when a cursor position is given.
-    const offset = positionToOffset(files, path, params);
+    const resolved = symbolAtRequest(files, path, params, params.symbol);
+    const symbol = resolved.symbol;
+    const offset = resolved.offset;
     if (offset != null && tsLang.tsAvailable(path)) {
       const r = tsLang.hover(files, path, offset);
       if (r && r.found) return { ok: true, result: { symbol: symbol || null, found: true, kind: r.kind, type: r.type, hover: r.hover, doc: r.doc, language: lang, source: "typescript" } };
       if (r && !r.found) return { ok: true, result: { symbol: symbol || null, found: false, hover: "No symbol under the cursor." } };
     }
-    if (!symbol) return { ok: false, error: "symbol or position required" };
+    if (!symbol) {
+      if (resolved.hadPosition) return { ok: true, result: { symbol: null, found: false, hover: "No symbol under the cursor.", language: lang, source: "none" } };
+      return { ok: false, error: "symbol or position required" };
+    }
     // Scan every project file for a declaration of the symbol.
     let decl = null;
     for (const [p, blob] of files) {
@@ -2491,16 +2525,20 @@ Rules:
     const userId = aidC(ctx);
     const projectId = String(params.projectId || "");
     const path = String(params.path || "");
-    const fnName = String(params.symbol || "").trim();
     if (!projectId) return { ok: false, error: "projectId required" };
     const files = ensureFiles(s, userId, projectId);
     // Real signature help (resolved overload + param types) at a call site.
-    const offset = positionToOffset(files, path, params);
+    const resolved = symbolAtRequest(files, path, params, params.symbol);
+    const fnName = resolved.symbol;
+    const offset = resolved.offset;
     if (offset != null && tsLang.tsAvailable(path)) {
       const r = tsLang.signature(files, path, offset);
       if (r && r.found) return { ok: true, result: { symbol: fnName || null, found: true, label: r.label, parameters: r.parameters, activeParameter: r.activeParameter, source: "typescript" } };
     }
-    if (!fnName) return { ok: false, error: "symbol or position required" };
+    if (!fnName) {
+      if (resolved.hadPosition) return { ok: true, result: { symbol: null, found: false, parameters: [], source: "none" } };
+      return { ok: false, error: "symbol or position required" };
+    }
     let sig = null;
     for (const [p, blob] of files) {
       const d = findDeclaration(blob.content, fnName, langFromPath(p));

@@ -39,7 +39,7 @@ export function LatticeRepos() {
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-cyan-500/15 pb-3">
         <div className="flex items-center gap-2"><Grid3x3 className="h-5 w-5 text-violet-400" /><h2 className="text-sm font-semibold text-white">Real-world lattice & semantic tooling</h2><span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">github · topic:{topic}</span></div>
         <div className="flex items-center gap-2">
-          <select value={topic} onChange={(e) => setTopic(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">{TOPICS.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}</select>
+          <select aria-label="Filter by topic" value={topic} onChange={(e) => setTopic(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">{TOPICS.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}</select>
           {list.length > 0 && <SaveAsDtuButton compact apiSource="github-lattice" apiUrl={`https://github.com/topics/${topic}`} title={`GitHub lattice — topic:${topic} (${list.length})`} content={list.slice(0, 20).map((r, i) => `${i + 1}. ★${(r.stargazers_count ?? 0).toLocaleString()} · ${r.full_name}\n   ${r.description || ''}\n   ${r.html_url}`).join('\n\n')} extraTags={['lattice', 'github', topic]} rawData={{ topic, repos: list }} />}
         </div>
       </header>

@@ -6,7 +6,7 @@
  * status and revoke. All actions hit real `insurance` macros.
  */
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { RefreshCw, Wallet, Users, Ban, Repeat } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import type { Pact } from './types';
@@ -29,10 +29,13 @@ function fmtDate(unixSec: number): string {
 
 export function PactCard({ pact, onChanged }: PactCardProps) {
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
   const [renewDays, setRenewDays] = useState(pact.durationDays);
   const [note, setNote] = useState<string | null>(null);
 
   const run = async (action: string, params: Record<string, unknown>, ok: string) => {
+    if (busyRef.current) return;
+    busyRef.current = true;
     setBusy(true);
     const r = await lensRun('insurance', action, params);
     if (r.data?.ok) {
@@ -41,6 +44,7 @@ export function PactCard({ pact, onChanged }: PactCardProps) {
     } else {
       setNote(r.data?.error || 'action failed');
     }
+    busyRef.current = false;
     setBusy(false);
     window.setTimeout(() => setNote(null), 5000);
   };

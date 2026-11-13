@@ -44,7 +44,7 @@ export function CompoundsPanel({ onGotoReactions }: { onGotoReactions?: () => vo
             </div>
             <p className="font-mono text-sm text-gray-400">{compound.formula}</p>
             {compound.molecularWeight != null && (
-              <p className="text-xs text-gray-500 mt-1">MW: <span className="text-gray-300 font-mono">{compound.molecularWeight} g/mol</span></p>
+              <p className="text-xs text-gray-400 mt-1">MW:<span className="text-gray-300 font-mono">{compound.molecularWeight} g/mol</span></p>
             )}
           </motion.button>
         ))}

@@ -106,6 +106,7 @@ export function ModelPanel() {
                   <td className="py-1 px-2">
                     <input
                       className="w-16 bg-black/30 border border-white/10 rounded px-1 font-mono"
+                      aria-label="Node id"
                       value={n.id}
                       onChange={(e) => updateNode(i, 'id', e.target.value)}
                     />
@@ -166,6 +167,7 @@ export function ModelPanel() {
                   <td className="py-1 px-2">
                     <select
                       className="bg-black/30 border border-white/10 rounded px-1"
+                      aria-label="Member start node"
                       value={m.nodeI}
                       onChange={(e) => updateMember(i, 'nodeI', e.target.value)}
                     >
@@ -177,6 +179,7 @@ export function ModelPanel() {
                   <td className="py-1 px-2">
                     <select
                       className="bg-black/30 border border-white/10 rounded px-1"
+                      aria-label="Member end node"
                       value={m.nodeJ}
                       onChange={(e) => updateMember(i, 'nodeJ', e.target.value)}
                     >
@@ -204,6 +207,7 @@ export function ModelPanel() {
                   <td className="py-1 px-2">
                     <select
                       className="bg-black/30 border border-white/10 rounded px-1 text-xs"
+                      aria-label="Member material"
                       value={m.material || 'A36 Steel'}
                       onChange={(e) => updateMember(i, 'material', e.target.value)}
                     >
@@ -224,7 +228,7 @@ export function ModelPanel() {
 
       <div className="panel p-4 space-y-2">
         <h3 className="font-semibold text-sm">Supports</h3>
-        <p className="text-[11px] text-gray-500">
+        <p className="text-[11px] text-gray-400">
           Select a node to cycle its support: Free → Fixed → Pinned → Roller. Pinned restrains translation
           (x/y/z); a roller restrains the vertical (y) only — a simply supported beam is a pinned node plus a
           roller node.

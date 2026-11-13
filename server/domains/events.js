@@ -108,6 +108,11 @@ export default function registerEventsActions(registerLensAction) {
       budget: Math.max(0, evNum(params.budget)),
       guestCount: Math.max(0, Math.round(evNum(params.guestCount))),
       status: "planning",
+      // FIX-events-003 — an event records its intended visibility from
+      // creation. Events are the owner's planning workspace, so the
+      // default is private; publishing a public page requires the
+      // event to be public first (see publish-page).
+      visibility: ["public", "private"].includes(params.visibility) ? params.visibility : "private",
       tasks: [],
       vendors: [],
       tiers: [],
@@ -134,6 +139,8 @@ export default function registerEventsActions(registerLensAction) {
     const out = events.map((e) => ({
       id: e.id, name: e.name, type: e.type, date: e.date, venue: e.venue,
       budget: e.budget, guestCount: e.guestCount, status: e.status,
+      visibility: e.visibility || "private",
+      published: !!(e.publicPage && e.publicPage.published),
       taskCount: e.tasks.length, doneTaskCount: e.tasks.filter((t) => t.done).length,
       vendorCost: e.vendors.reduce((n, v) => n + v.cost, 0),
     }));
@@ -161,6 +168,7 @@ export default function registerEventsActions(registerLensAction) {
     if (params.budget != null) event.budget = Math.max(0, evNum(params.budget));
     if (params.guestCount != null) event.guestCount = Math.max(0, Math.round(evNum(params.guestCount)));
     if (params.status != null && ["planning", "confirmed", "complete", "cancelled"].includes(params.status)) event.status = params.status;
+    if (params.visibility != null && ["public", "private"].includes(params.visibility)) event.visibility = params.visibility;
     saveEvents();
     return { ok: true, result: { event } };
   });
@@ -465,6 +473,11 @@ export default function registerEventsActions(registerLensAction) {
     const s = getEventsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const event = findEvent(s, ctx, params.eventId);
     if (!event) return { ok: false, error: "event not found" };
+    // FIX-events-003 — a private event's page cannot be published.
+    // Unpublishing is always allowed.
+    if (params.published !== false && (event.visibility || "private") === "private") {
+      return { ok: false, error: "This event is private — set its visibility to Public before publishing its page." };
+    }
     ensureEventCollections(event);
     if (!event.publicPage) {
       event.publicPage = { slug: null, published: false, headline: "", blurb: "", views: 0 };

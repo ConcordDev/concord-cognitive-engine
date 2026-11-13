@@ -39,14 +39,12 @@ interface LeadResult { ordersAnalyzed: number; avgLeadTimeDays: number; minDays:
 interface InvItem { item: string; currentStock: number; reorderPoint: number; safetyStock: number; eoq: number; daysOfStock: number; needsReorder: boolean }
 interface InvResult { items: InvItem[]; needsReorder: number; totalItems: number }
 interface ScoredSup { supplier: string; quality: number | null; delivery: number | null; price: number | null; responsiveness: number | null; totalScore: number | null; tier: string | null; scoredOn?: string[]; missingInputs?: string[] }
-interface SupResult { suppliers: ScoredSup[]; topSupplier: string | null; atRisk: number; method?: string }
+interface SupResult { suppliers: ScoredSup[]; topSupplier: string | null; atRisk: number; method?: string; message?: string }
 interface ForecastPt { period: string; predicted: number; confidence: string }
 interface ForecastResult { historicalPeriods: number; avgDemand: number; trend: string; forecast: ForecastPt[]; method?: string; alpha?: number; mapePct?: number; accuracy?: string }
 
-const AREA = 'w-full bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1.5 text-[11px] text-white font-mono placeholder:text-zinc-600';
+const AREA = 'w-full bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1.5 text-[11px] text-white font-mono placeholder:text-zinc-400';
 const FIELD_LABEL = 'text-[10px] uppercase tracking-wider font-semibold';
-
-function num(v: string, d = 0): number { const n = Number(v); return Number.isFinite(n) ? n : d; }
 
 /* Example lines for a bulk editor, shown OUTSIDE the input so example
    content can never be mistaken for the user's own data. Loading one is a
@@ -55,10 +53,10 @@ function ExampleBlock({ lines, onLoad }: { lines: string; onLoad: () => void }) 
   return (
     <div className="rounded border border-dashed border-zinc-800 bg-zinc-900/20 px-2 py-1.5">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[9px] uppercase tracking-wider text-zinc-500 font-semibold">Example — not your data</span>
+        <span className="text-[9px] uppercase tracking-wider text-zinc-400 font-semibold">Example — not your data</span>
         <button type="button" onClick={onLoad} className="text-[10px] font-semibold text-teal-300 hover:text-teal-200">Load example</button>
       </div>
-      <pre className="mt-1 whitespace-pre-wrap font-mono text-[10px] text-zinc-500">{lines}</pre>
+      <pre className="mt-1 whitespace-pre-wrap font-mono text-[10px] text-zinc-400">{lines}</pre>
     </div>
   );
 }
@@ -71,18 +69,65 @@ function parseOrders(text: string) {
   });
 }
 // item line: name | dailyDemand | leadTimeDays | currentStock | orderCost | holdingCost
-function parseInvItems(text: string) {
-  return text.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
+function scoreField(raw: string | undefined, label: string): { value?: number; error?: string } {
+  if (!raw) return {};
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0 || n > 100) return { error: `${label} must be a number from 0 to 100.` };
+  return { value: n };
+}
+function countField(raw: string | undefined, label: string, min: number): { value?: number; error?: string } {
+  if (!raw) return { error: `${label} is required.` };
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < min) return { error: `${label} must be a number of at least ${min}.` };
+  return { value: n };
+}
+function parseInvItems(text: string): { items: Array<Record<string, unknown>>; error?: string } {
+  const items: Array<Record<string, unknown>> = [];
+  for (const l of text.split('\n').map((line) => line.trim()).filter(Boolean)) {
     const [name, dd, lt, cur, oc, hc] = l.split('|').map((x) => x.trim());
-    return { name, dailyDemand: num(dd, 1), leadTimeDays: num(lt, 7), currentStock: num(cur), orderCost: oc ? num(oc) : undefined, holdingCost: hc ? num(hc) : undefined };
-  });
+    const who = name || 'Item';
+    const fields = [
+      countField(dd, `${who} daily demand`, 0),
+      countField(lt, `${who} lead time`, 0),
+      countField(cur, `${who} current stock`, 0),
+      countField(oc, `${who} order cost`, 0),
+      countField(hc, `${who} holding cost`, 0),
+    ];
+    const bad = fields.find((f) => f.error);
+    if (bad?.error) return { items: [], error: bad.error };
+    items.push({
+      name,
+      dailyDemand: fields[0].value,
+      leadTimeDays: fields[1].value,
+      currentStock: fields[2].value,
+      orderCost: fields[3].value,
+      holdingCost: fields[4].value,
+    });
+  }
+  return { items };
 }
 // supplier line: name | qualityScore | onTimePercent | priceCompetitiveness | responsiveness
-function parseSuppliers(text: string) {
-  return text.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
+function parseSuppliers(text: string): { suppliers: Array<Record<string, unknown>>; error?: string } {
+  const suppliers: Array<Record<string, unknown>> = [];
+  for (const l of text.split('\n').map((line) => line.trim()).filter(Boolean)) {
     const [name, q, ot, price, resp] = l.split('|').map((x) => x.trim());
-    return { name, qualityScore: num(q, 70), onTimePercent: num(ot, 80), priceCompetitiveness: price ? num(price) : undefined, responsiveness: resp ? num(resp) : undefined };
-  });
+    const who = name || 'Supplier';
+    const fields = [
+      scoreField(q, `${who} quality`),
+      scoreField(ot, `${who} on-time`),
+      scoreField(price, `${who} price`),
+      scoreField(resp, `${who} responsiveness`),
+    ];
+    const bad = fields.find((f) => f.error);
+    if (bad?.error) return { suppliers: [], error: bad.error };
+    const row: Record<string, unknown> = { name };
+    if (fields[0].value !== undefined) row.qualityScore = fields[0].value;
+    if (fields[1].value !== undefined) row.onTimePercent = fields[1].value;
+    if (fields[2].value !== undefined) row.priceCompetitiveness = fields[2].value;
+    if (fields[3].value !== undefined) row.responsiveness = fields[3].value;
+    suppliers.push(row);
+  }
+  return { suppliers };
 }
 // demand history: space/comma separated values, oldest first
 function parseHistory(text: string) {
@@ -125,7 +170,9 @@ export function SupplyChainActionPanel() {
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actInv() {
-    const items = parseInvItems(invText);
+    const parsed = parseInvItems(invText);
+    if (parsed.error) { err(parsed.error); return; }
+    const items = parsed.items;
     if (items.length === 0) { err('Add at least one inventory item line.'); return; }
     setBusy('inv'); setFeedback(null);
     try {
@@ -134,21 +181,28 @@ export function SupplyChainActionPanel() {
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actSup() {
-    const suppliers = parseSuppliers(supText);
+    const parsed = parseSuppliers(supText);
+    if (parsed.error) { err(parsed.error); return; }
+    const suppliers = parsed.suppliers;
     if (suppliers.length === 0) { err('Add at least one supplier line.'); return; }
     setBusy('sup'); setFeedback(null);
     try {
       const r = await callMacro<SupResult>('supplierScore', { artifact: { data: { suppliers } } });
-      if (r.ok && r.result) { setSupResult(r.result); pipe.publish('supplychain.sup', r.result, { label: `Top: ${r.result.topSupplier ?? 'none scored'}` }); ok(`Top: ${r.result.topSupplier ?? 'none scored'} · at-risk ${r.result.atRisk}.`); } else err(r.error ?? 'sup failed');
+      if (r.ok && r.result?.message && !r.result.suppliers) { setSupResult(null); err(r.result.message); }
+      else if (r.ok && r.result && r.result.topSupplier == null && (r.result.suppliers || []).every((s) => s.totalScore == null)) { setSupResult(r.result); err('No supplier could be scored. Add a quality or on-time number from 0 to 100.'); }
+      else if (r.ok && r.result) { setSupResult(r.result); pipe.publish('supplychain.sup', r.result, { label: `Top: ${r.result.topSupplier ?? 'none scored'}` }); ok(`Top: ${r.result.topSupplier ?? 'none scored'} · at-risk ${r.result.atRisk}.`); } else err(r.error ?? 'sup failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actFore() {
     const history = parseHistory(histText);
     if (history.length < 3) { err('Enter at least 3 demand values.'); return; }
+    const alpha = Number(alphaText);
+    if (!Number.isFinite(alpha) || alpha < 0.05 || alpha > 0.95) { err('Alpha must be a number from 0.05 to 0.95.'); return; }
     setBusy('fore'); setFeedback(null);
     try {
-      const r = await callMacro<ForecastResult>('demandForecast', { artifact: { data: { history, alpha: num(alphaText, 0.3) } } });
-      if (r.ok && r.result) { setForeResult(r.result); pipe.publish('supplychain.fore', r.result, { label: `Forecast ${r.result.trend}` }); ok(`${r.result.trend} · avg ${r.result.avgDemand}.`); } else err(r.error ?? 'forecast failed');
+      const r = await callMacro<ForecastResult & { message?: string }>('demandForecast', { artifact: { data: { history, alpha } } });
+      if (r.ok && r.result?.message && !r.result.forecast) { setForeResult(null); err(r.result.message); }
+      else if (r.ok && r.result) { setForeResult(r.result); pipe.publish('supplychain.fore', r.result, { label: `Forecast ${r.result.trend}` }); ok(`${r.result.trend} · avg ${r.result.avgDemand}.`); } else err(r.error ?? 'forecast failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
@@ -217,13 +271,13 @@ export function SupplyChainActionPanel() {
     <div className="space-y-4">
       <header className="flex items-center gap-2">
         <Truck className="h-4 w-4 text-blue-400" />
-        <h3 className="text-sm font-semibold text-white">Scorecards &amp; quick analysis</h3>
+        <h2 className="text-sm font-semibold text-white">Scorecards &amp; quick analysis</h2>
         <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">lead time · EOQ · supplier scorecard · forecast</span>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="rounded-md border border-zinc-800 bg-zinc-900/30 p-2.5 space-y-1.5">
-          <label className={cn(FIELD_LABEL, 'text-blue-400')}>Orders — <span className="normal-case text-zinc-500">reference | supplier | orderDate | receivedDate</span></label>
+          <label className={cn(FIELD_LABEL, 'text-blue-400')}>Orders — <span className="normal-case text-zinc-400">reference | supplier | orderDate | receivedDate</span></label>
           <textarea value={ordersText} onChange={(e) => setOrdersText(e.target.value)} rows={4} className={AREA} />
           <ExampleBlock lines={'PO-101 | Acme Corp | 2026-05-01 | 2026-05-09\nPO-102 | Globex | 2026-06-02 | '} onLoad={() => setOrdersText('PO-101 | Acme Corp | 2026-05-01 | 2026-05-09\nPO-102 | Globex | 2026-06-02 | ')} />
           <button onClick={actLead} disabled={busy !== null} className="flex items-center gap-1.5 rounded bg-blue-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-blue-500 disabled:opacity-50">
@@ -231,7 +285,7 @@ export function SupplyChainActionPanel() {
           </button>
         </div>
         <div className="rounded-md border border-zinc-800 bg-zinc-900/30 p-2.5 space-y-1.5">
-          <label className={cn(FIELD_LABEL, 'text-green-400')}>Inventory — <span className="normal-case text-zinc-500">name | dailyDemand | leadTimeDays | currentStock | orderCost | holdingCost</span></label>
+          <label className={cn(FIELD_LABEL, 'text-green-400')}>Inventory — <span className="normal-case text-zinc-400">name | dailyDemand | leadTimeDays | currentStock | orderCost | holdingCost</span></label>
           <textarea value={invText} onChange={(e) => setInvText(e.target.value)} rows={4} className={AREA} />
           <ExampleBlock lines={'Widget A | 12 | 7 | 40 | 50 | 5\nWidget B | 6 | 5 | 90 | 60 | 4'} onLoad={() => setInvText('Widget A | 12 | 7 | 40 | 50 | 5\nWidget B | 6 | 5 | 90 | 60 | 4')} />
           <button onClick={actInv} disabled={busy !== null} className="flex items-center gap-1.5 rounded bg-green-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-green-500 disabled:opacity-50">
@@ -239,7 +293,7 @@ export function SupplyChainActionPanel() {
           </button>
         </div>
         <div className="rounded-md border border-zinc-800 bg-zinc-900/30 p-2.5 space-y-1.5">
-          <label className={cn(FIELD_LABEL, 'text-amber-400')}>Suppliers — <span className="normal-case text-zinc-500">name | qualityScore | onTimePercent | priceCompetitiveness | responsiveness</span></label>
+          <label className={cn(FIELD_LABEL, 'text-amber-400')}>Suppliers — <span className="normal-case text-zinc-400">name | qualityScore | onTimePercent | priceCompetitiveness | responsiveness</span></label>
           <textarea value={supText} onChange={(e) => setSupText(e.target.value)} rows={4} className={AREA} />
           <ExampleBlock lines={'Acme Corp | 45 | 55\nGlobex | 80 | 92 | 70 | 85'} onLoad={() => setSupText('Acme Corp | 45 | 55\nGlobex | 80 | 92 | 70 | 85')} />
           <button onClick={actSup} disabled={busy !== null} className="flex items-center gap-1.5 rounded bg-amber-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-amber-500 disabled:opacity-50">
@@ -247,14 +301,14 @@ export function SupplyChainActionPanel() {
           </button>
         </div>
         <div className="rounded-md border border-zinc-800 bg-zinc-900/30 p-2.5 space-y-1.5">
-          <label className={cn(FIELD_LABEL, 'text-cyan-400')}>Demand history — <span className="normal-case text-zinc-500">space/comma-separated, oldest first</span></label>
+          <label className={cn(FIELD_LABEL, 'text-cyan-400')}>Demand history — <span className="normal-case text-zinc-400">space/comma-separated, oldest first</span></label>
           <textarea value={histText} onChange={(e) => setHistText(e.target.value)} rows={4} className={AREA} />
           <ExampleBlock lines="120 95 140 180 130 100 155 200" onLoad={() => setHistText('120 95 140 180 130 100 155 200')} />
           <div className="flex items-center gap-2">
-            <label className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold" htmlFor="sc-alpha">Smoothing α</label>
+            <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold" htmlFor="sc-alpha">Smoothing α</label>
             <input id="sc-alpha" type="number" min="0.05" max="0.95" step="0.05" value={alphaText} onChange={(e) => setAlphaText(e.target.value)}
               className="w-20 bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white" />
-            <span className="text-[10px] text-zinc-500">higher α follows recent demand faster</span>
+            <span className="text-[10px] text-zinc-400">higher α follows recent demand faster</span>
           </div>
           <button onClick={actFore} disabled={busy !== null} className="flex items-center gap-1.5 rounded bg-cyan-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-cyan-500 disabled:opacity-50">
             {busy === 'fore' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <TrendingUp className="w-3.5 h-3.5" />} Forecast demand
@@ -281,9 +335,9 @@ export function SupplyChainActionPanel() {
           <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5 max-h-44 overflow-y-auto">
             <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">Scorecard · top: {supResult.topSupplier ?? 'none scored'}</div>
             {supResult.suppliers.slice(0, 5).map((s, i) => s.totalScore === null
-              ? <div key={i} className="text-[10px] text-zinc-500 mt-0.5"><span className="font-mono">{s.supplier}</span> · not scored — no metrics supplied</div>
-              : <div key={i} className="text-[10px] text-zinc-300 mt-0.5 flex items-center gap-2"><span className={cn('font-mono w-16 truncate', s.tier ? TIER_COLOR[s.tier] : '')}>{s.supplier}</span><div className="flex-1 h-1 bg-zinc-800 rounded-full overflow-hidden"><div className="h-full bg-amber-400" style={{ width: `${s.totalScore}%` }} /></div><span className="font-mono text-amber-200">{s.totalScore}</span>{(s.missingInputs?.length ?? 0) > 0 && <span className="text-zinc-500">on {s.scoredOn?.length ?? 0}/4 metrics</span>}</div>)}
-            {supResult.method && <div className="text-[9px] text-zinc-500 mt-1.5">{supResult.method}</div>}
+              ? <div key={i} className="text-[10px] text-zinc-400 mt-0.5"><span className="font-mono">{s.supplier}</span> · not scored — no metrics supplied</div>
+              : <div key={i} className="text-[10px] text-zinc-300 mt-0.5 flex items-center gap-2"><span className={cn('font-mono w-16 truncate', s.tier ? TIER_COLOR[s.tier] : '')}>{s.supplier}</span><div className="flex-1 h-1 bg-zinc-800 rounded-full overflow-hidden"><div className="h-full bg-amber-400" style={{ width: `${s.totalScore}%` }} /></div><span className="font-mono text-amber-200">{s.totalScore}</span>{(s.missingInputs?.length ?? 0) > 0 && <span className="text-zinc-400">on {s.scoredOn?.length ?? 0}/4 metrics</span>}</div>)}
+            {supResult.method && <div className="text-[9px] text-zinc-400 mt-1.5">{supResult.method}</div>}
           </div>
         )}
         {foreResult && (
@@ -291,7 +345,7 @@ export function SupplyChainActionPanel() {
             <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold">Forecast · {foreResult.trend}</div>
             <div className="text-2xl font-bold text-cyan-300">{foreResult.avgDemand}<span className="text-xs text-zinc-400"> avg</span></div>
             {foreResult.forecast.map((f, i) => <div key={i} className="text-[11px] text-zinc-300">{f.period}: <span className="text-cyan-200 font-mono">{f.predicted}</span> <span className="text-zinc-400">({f.confidence})</span></div>)}
-            {foreResult.method && <div className="text-[9px] text-zinc-500 mt-1.5">Exponential smoothing (α {foreResult.alpha}){foreResult.mapePct !== undefined ? ` · in-sample MAPE ${foreResult.mapePct}% (${foreResult.accuracy})` : ''} — the forecast holds the smoothed level, it does not extrapolate a trend.</div>}
+            {foreResult.method && <div className="text-[9px] text-zinc-400 mt-1.5">Exponential smoothing (α {foreResult.alpha}){foreResult.mapePct !== undefined ? ` · in-sample MAPE ${foreResult.mapePct}% (${foreResult.accuracy})` : ''} — the forecast holds the smoothed level, it does not extrapolate a trend.</div>}
           </div>
         )}
       </div>

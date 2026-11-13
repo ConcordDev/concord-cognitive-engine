@@ -96,7 +96,7 @@ export default function LegalLensPage() {
   return (
     <LensShell lensId="legal" asMain={false} disableAgentFab={true}>
 
-      <div data-lens-theme="legal" className="relative min-h-full space-y-5 px-8 pb-28 pt-6">
+      <div data-lens-theme="legal" className="relative min-h-full space-y-5 overflow-x-clip px-4 pb-28 pt-6 sm:px-8">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Legal</h1>
@@ -124,8 +124,11 @@ export default function LegalLensPage() {
 
         <ShellPreview lensId="legal" defaultOpen={false} />
 
+        {/* FIX-legal-010: below sm the workbench strip wraps so Q&A and
+            Case Law are visible instead of off the scroll edge; sm+ keeps
+            the single-row scrollable pill strip. */}
         <nav
-          className="inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1"
+          className="flex max-w-full flex-wrap items-center gap-1 rounded-3xl border border-white/10 bg-white/[0.03] p-1 sm:inline-flex sm:flex-nowrap sm:overflow-x-auto sm:rounded-full"
           aria-label="Legal workbench"
         >
           {WORKBENCH_TABS.map((tab) => {
@@ -192,7 +195,7 @@ export default function LegalLensPage() {
             type="button"
             onClick={() => setWorkbench('qa')}
             title="Ask a legal research question (Q)"
-            className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+            className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] right-4 z-30 inline-flex max-w-[calc(100vw-2rem)] items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 sm:right-8 lg:bottom-8"
           >
             <MessageSquare className="h-4 w-4" />
             Ask a question

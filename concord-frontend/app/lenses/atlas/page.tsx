@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -158,6 +158,10 @@ function SignalTomography({ tab, setTab }: { tab: TomoTab; setTab: (t: TomoTab) 
 
   // Build map markers from live tomography nodes — real (currently empty
   // in this deployment; see the disclosure banner above the map).
+  useEffect(() => {
+    document.getElementById('atlas-tab-panel')?.scrollIntoView({ block: 'nearest' });
+  }, [tab]);
+
   const markers: MapMarker[] = [];
   if (liveData?.nodes) {
     (liveData.nodes as Array<{ lat: number; lng: number; id?: string; status?: string }>).forEach(
@@ -290,7 +294,7 @@ function SignalTomography({ tab, setTab }: { tab: TomoTab; setTab: (t: TomoTab) 
       </div>
 
       {/* Tab Content */}
-      <div className="space-y-4">
+      <div id="atlas-tab-panel" className="space-y-4">
         {tab === 'terrain' && (
           <>
             <AtlasPublicView

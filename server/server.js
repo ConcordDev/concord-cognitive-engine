@@ -18,6 +18,8 @@ import { persistToolCall as _persistToolCall } from "./lib/chat/tool-call-normal
 installSlowSyncIoOnce();
 import expressRateLimit from "express-rate-limit";
 import { findActiveUserRowByEmail, emailsMatchIgnoreCase } from "./lib/user-email-lookup.js";
+import { whiteboardRoomAllowed } from "./lib/whiteboard-room.js";
+import { lensExhaustEmitTarget } from "./lib/lens-dtu-emit.js";
 import { podPick as _podPick } from "./lib/pod-profile.js";
 import { createDtuQualityService as _createDtuQualityService, dtuQualityMode as _dtuQualityMode } from "./lib/dtu-quality/service.js";
 import { router as p2pSignallingRouter } from "./lib/p2p-dtu-signalling.js";
@@ -138,9 +140,10 @@ import { dtuMatchesDomain, dtuKind } from "./lib/art-dtu-filter.js";
 import { MACRO_INPUT_HINTS } from "./lib/macro-input-hints.js";
 import { deriveConkayVerdictEmit as _deriveConkayVerdictEmit } from "./lib/conkay-verdict-bridge.js";
 import { resolvePiperVoice } from "./lib/voice-piper-voice.js";
-import { peelRedundantArtifactWrapper as _peelRedundantArtifactWrapper } from "./lib/lens-input-normalize.js";
+import { lensRunParams as _lensRunParams, peelRedundantArtifactWrapper as _peelRedundantArtifactWrapper } from "./lib/lens-input-normalize.js";
 import { httpErrorFromLensAction as _httpErrorFromLensAction } from "./lib/lens-action-http.js";
 import { shapeLensRunHttp as _shapeLensRunHttp, respondMacroResult as _respondMacroResult } from "./lib/lens-run-http.js";
+import { isUserNotification as _isUserNotification } from "./lib/notification-queue.js";
 import { createLensRunLogger as _createLensRunLogger } from "./lib/lens-run-log.js";
 import { resolveDualRegistry as _resolveDualRegistry } from "./lib/dual-registry-resolve.js";
 import {
@@ -2019,7 +2022,7 @@ import { shouldPauseHeavyBackground, shouldRunConsolidation, shouldPauseBackgrou
 import * as goSidecar from "./lib/sidecars/go-sidecar-client.js"; // Concurrency Refactor Phase 1 — Whisper/Piper/sandbox off the event loop
 import * as dtuSidecar from "./lib/sidecars/dtu-sidecar-client.js"; // Concurrency Refactor Phase 3 — DTU get/list off the event loop (CONCORD_DTU_SIDECAR=1)
 import { detectContentInjection } from "./lib/dtu-content-injection.js";
-import { noteDtuWrite, shouldFallbackFromSidecarList, sidecarListTotal, sidecarCandidatePageIsComplete, resolveListLimit, dtuListedOwner, tagFilterTerms, dtuMatchesTagFilter } from "./lib/dtu-list-source.js";
+import { noteDtuWrite, shouldFallbackFromSidecarList, sidecarListTotal, sidecarCandidatePageIsComplete, resolveListLimit, dtuListedOwner, tagFilterTerms, dtuMatchesTagFilter, dtuExcludedFromUserList } from "./lib/dtu-list-source.js";
 // Concurrency Refactor (2026-09-08, session 2 finding): the sidecar's UDS
 // double-hop is a WIN under normal load but a LOSS under loop starvation — a
 // starved loop can't schedule the `await fetch(sidecar)` continuation promptly,
@@ -2263,13 +2266,14 @@ import {
   rememberCompletedChatTurn,
 } from "./lib/chat/turn-pipeline.js";
 import { initializeManifests, getManifestStats, registerUserLens, registerEmergentLens } from "./lib/lens-manifest.js";
-import { DOMAIN_RULES, validateArtifact, computeFields, getValidTransitions, scoreArtifact, getDomainSchema } from "./lib/domain-logic.js";
+import { DOMAIN_RULES, validateArtifact, artifactDataWithTitle, computeFields, getValidTransitions, scoreArtifact, getDomainSchema } from "./lib/domain-logic.js";
+import { resolveMeshSendDtu } from "./lib/mesh-send-dtu.js";
 import { EXTENDED_DOMAIN_RULES } from "./lib/domain-logic-extended.js";
 import { reconcileArtifactTypes } from "./lib/lens-artifact-types.js";
 import { pickLegacyShadow } from "./lib/whiteboard-board-artifacts.js";
 import { accumulate as accumulateSessionContext, getContextSnapshot, getAccumulatorMetrics, cleanupExpiredSessions as cleanupAccumulatorSessions } from "./lib/session-context-accumulator.js";
 import { detectForge, runForgePipeline, saveForgedDTU, deleteForgedDTU, saveAndList, iterateForge, recordForgeMetric, getForgeMetrics, recordEmergentContribution } from "./lib/inline-dtu-forge.js";
-import { initializeShield, scanContent as shieldScanContent, scanHashAgainstLattice, runAnalysisPipeline as shieldAnalyze, classifyWithYARA, runProphet as shieldProphet, runSurgeon as shieldSurgeon, runGuardian as shieldGuardian, propagateThreatToLattice, shieldHeartbeatTick, computeSecurityScore, detectShieldIntent, performSweep, processUserReport, getThreatFeed, getFirewallRules, getPredictions, getShieldMetrics, queueScan as shieldQueueScan, createThreatDTU, THREAT_SUBTYPES, SCAN_MODES } from "./lib/concord-shield.js";
+import { initializeShield, scanContent as shieldScanContent, scanHashAgainstLattice, runAnalysisPipeline as shieldAnalyze, classifyWithYARA, runProphet as shieldProphet, runSurgeon as shieldSurgeon, runGuardian as shieldGuardian, propagateThreatToLattice, shieldHeartbeatTick, computeSecurityScore, detectShieldIntent, performSweep, processUserReport, retractUserReport, getThreatFeed, getFirewallRules, getPredictions, getShieldMetrics, queueScan as shieldQueueScan, createThreatDTU, THREAT_SUBTYPES, SCAN_MODES } from "./lib/concord-shield.js";
 import registerShieldRoutes from "./routes/shield.js";
 import { initializeMesh, detectChannels as meshDetectChannels, getChannelStatus as meshGetChannelStatus, getNodeId as meshGetNodeId, sendDTU as meshSendDTU, receiveDTU as meshReceiveDTU, initiateTransfer as meshInitiateTransfer, getTransferStatus as meshGetTransferStatus, registerPeer as meshRegisterPeer, getPeers as meshGetPeers, getTopology as meshGetTopology, getMeshMetrics, getTransmissionStats as meshGetTransmissionStats, getPendingQueue as meshGetPendingQueue, configureRelay as meshConfigureRelay, detectMeshIntent, meshHeartbeatTick, planOfflineSync as meshPlanOfflineSync, TRANSPORT_LAYERS, TRANSPORT_LIST, RELAY_PRIORITIES } from "./lib/concord-mesh.js";
 import registerMeshRoutes from "./routes/mesh.js";
@@ -11498,6 +11502,13 @@ async function tryInitWebSockets(server) {
         }
       }
 
+      const whiteboardMatch = room.match(/^whiteboard:(.+)$/);
+      if (whiteboardMatch && !whiteboardRoomAllowed(STATE, socket.data.userId, whiteboardMatch[1])) {
+        console.warn('[ws] Non-member whiteboard room join blocked:', { userId: socket.data.userId, room });
+        socket.emit('error', { code: 'UNAUTHORIZED', message: 'Join this board before listening' });
+        return;
+      }
+
       socket.join(room); try { _socketRoomBridge?.writeBehindJoin(room, socket.id); } catch (_e) { /* fail-soft */ }
       // DET-C batch 8 (dead-event-listener sweep, re-confirmed 2026-07-23):
       // this still flags as `dead_socket_emit` because the detector's
@@ -13641,6 +13652,7 @@ function saveStateSync() {
     }
   }
 }
+globalThis._concordSaveStateSync = saveStateSync;
 
 /**
  * Critical state save — for operations that must not sit in the coalescing
@@ -14662,7 +14674,7 @@ function _recordLensActivity(domain, action, ctx, input, result) {
     if (!userId || userId === "anon" || userId === "system") return;
     if (ctx?.internal === true || ctx?.actor?.internal === true) return;
     if (typeof domain !== "string" || !domain || typeof action !== "string" || !action) return;
-    if (isQuietLensAction(domain, action)) return;
+    if (isQuietLensAction(domain, action, input)) return;
     const verb = lensActivityLabel(domain, action);
     const label = lensActivityObject(domain, action, input, result);
     log(domain, label ? `${verb}: ${label}` : verb, { domain, action }, userId);
@@ -17379,6 +17391,39 @@ register("worldmodel", "list_snapshots", (ctx, _input = {}) => {
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
+register("worldmodel", "delete_snapshot", (ctx, input = {}) => {
+  try {
+  enforceEthosInvariant("worldmodel_delete_snapshot");
+  ensureWorldModel();
+
+  const snapId = String(input.snapshotId || input.id || "");
+  if (!snapId) return { ok: false, error: "snapshotId required" };
+
+  const idx = ctx.state.worldModel.snapshots.findIndex(s => s.id === snapId);
+  if (idx < 0) return { ok: false, error: "Snapshot not found" };
+
+  ctx.state.worldModel.snapshots.splice(idx, 1);
+  saveStateDebounced();
+  return { ok: true, id: snapId, deleted: true };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+}, { public: false });
+
+register("worldmodel", "delete_simulation", (ctx, input = {}) => {
+  try {
+  enforceEthosInvariant("worldmodel_delete_simulation");
+  ensureWorldModel();
+
+  const simId = String(input.simId || input.id || "");
+  if (!simId) return { ok: false, error: "simId required" };
+
+  if (!ctx.state.worldModel.simulations.has(simId)) return { ok: false, error: "Simulation not found" };
+
+  ctx.state.worldModel.simulations.delete(simId);
+  saveStateDebounced();
+  return { ok: true, id: simId, deleted: true };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+}, { public: false });
+
 register("worldmodel", "extract_from_dtu", (ctx, input = {}) => {
   try {
   enforceEthosInvariant("worldmodel_extract");
@@ -17603,11 +17648,22 @@ register("transfer", "classify_domain", (ctx, input = {}) => {
   try {
   enforceEthosInvariant("transfer_classify");
   const dtuId = String(input.dtuId || "");
-  if (!dtuId) return { ok: false, error: "dtuId required" };
-  const dtu = ctx.state.dtus?.get(dtuId);
-  if (!dtu) return { ok: false, error: "DTU not found" };
-  const domain = classifyDomain(dtu);
-  return { ok: true, dtuId, domain };
+  if (dtuId) {
+    const dtu = ctx.state.dtus?.get(dtuId);
+    if (!dtu) return { ok: false, error: "DTU not found" };
+    const domain = classifyDomain(dtu);
+    return { ok: true, dtuId, domain };
+  }
+  // FIX-transfer-009: the Transfer UI classifies free text — it sends
+  // { content } and has no DTU to point at, so every classification
+  // from the UI died on "dtuId required". Classify the text through
+  // the platform's own pseudo-DTU shape (the multi-lens convergence
+  // pattern) instead of demanding a stored record.
+  const content = String(input.content || "").trim();
+  if (!content) return { ok: false, error: "dtuId or content required — pass a DTU id, or the text to classify" };
+  const pseudoDtu = { title: content.slice(0, 200), human: { summary: content.slice(0, 2000) }, tags: [] };
+  const domain = classifyDomain(pseudoDtu);
+  return { ok: true, domain, classifiedFrom: "content" };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
@@ -19783,6 +19839,8 @@ function upsertDTU(dtu, { broadcast = true, federate = false } = {}) {
         title: dtu.title,
         tier: dtu.tier,
         tags: dtu.tags,
+        userId: dtu.ownerUserId || dtu.ownerId || dtu.createdBy || dtu.author || null,
+        creatorId: dtu.ownerUserId || dtu.ownerId || dtu.createdBy || dtu.author || null,
       };
       if (isNew) {
         realtimeEmit("dtu:created", dtuBroadcastPayload);
@@ -20877,8 +20935,36 @@ function addToSRS(dtuId) {
   const dtu = STATE.dtus.get(dtuId);
   if (!dtu) return { ok: false, error: "DTU not found" };
 
+  if (SRS.cards.has(dtuId)) {
+    const card = SRS.cards.get(dtuId);
+    return {
+      ok: true,
+      already: true,
+      dtuId,
+      nextReview: card.nextReview,
+      message: "Already scheduled",
+    };
+  }
   getSRSCard(dtuId); // Initialize if not exists
-  return { ok: true, dtuId, message: "Added to SRS" };
+  const created = SRS.cards.get(dtuId);
+  return { ok: true, dtuId, nextReview: created?.nextReview, message: "Added to SRS" };
+}
+
+function listScheduledSRS() {
+  const now = new Date().toISOString();
+  const items = [];
+  for (const [dtuId, card] of SRS.cards) {
+    const dtu = STATE.dtus.get(dtuId);
+    if (!dtu) continue;
+    items.push({
+      dtuId,
+      title: dtu.title || dtu.human?.title || dtuId,
+      nextReview: card.nextReview,
+      due: String(card.nextReview || "") <= now,
+    });
+  }
+  items.sort((a, b) => String(a.nextReview).localeCompare(String(b.nextReview)));
+  return { ok: true, items, total: items.length };
 }
 
 function removeFromSRS(dtuId) {
@@ -26740,6 +26826,8 @@ async function pipelineCommitDTU(ctx, dtu, opts={}) {
     // Broadcast DTU birth so LiveDTUFeed, ActivityFeed, and lens views see pipeline-committed DTUs
     realtimeEmit("dtu:created", {
       dtuId: dtu.id, title: dtu.title, tier: dtu.tier, tags: dtu.tags,
+      userId: dtu.ownerUserId || dtu.ownerId || dtu.createdBy || dtu.author || null,
+      creatorId: dtu.ownerUserId || dtu.ownerId || dtu.createdBy || dtu.author || null,
     });
     // v2.0 Workstream 6c: realtime fast-path for public timeline posts so
     // they appear instantly in other players' feeds (and so the
@@ -27661,6 +27749,28 @@ register("dtu", "delete", async (ctx, input) => {
   try { noteDtuWrite(); } catch { /* clock */ }
   SEARCH_INDEX.dirty = true;
   EMBEDDINGS.store.delete(id); // Remove from embedding index
+
+  // FIX-world-observatory-009: deleting a lens artifact's CREATE exhaust
+  // DTU (the vault record a Quick Capture makes) removes the artifact it
+  // points at — the capture is one record in two stores, and deleting
+  // the record the user can see must not leave the lens copy behind to
+  // keep exporting with no delete path. Narrow by construction: only
+  // the create-action exhaust cascades (update/run/export exhausts are
+  // lifecycle bookkeeping — the artifact lives on), only while the
+  // artifact is still the same owner's unpublished record (a published
+  // artifact has a life beyond this pointer and keeps it), and a
+  // missing artifact is a no-op (deleted lens-side first).
+  if (dtu.machine?.kind === "lens_exhaust" && dtu.machine?.action === "create" && typeof dtu.machine?.artifactId === "string") {
+    try {
+      const artifact = STATE.lensArtifacts.get(dtu.machine.artifactId);
+      const vis = artifact?.meta?.visibility;
+      if (artifact && artifact.ownerId === dtu.ownerId && vis !== "published" && vis !== "public") {
+        STATE.lensArtifacts.delete(artifact.id);
+        _lensDomainIndexRemove(artifact.domain, artifact.id);
+        _lensEmitDTU(ctx, artifact.domain, "delete", artifact.type, artifact);
+      }
+    } catch (e) { log("dtu.warn", `lens artifact cascade (${id}): ${e?.message}`); }
+  }
   saveStateDebounced();
 
   // Storage audit fix (2026-07-27): clean up the per-DTU legacy artifact
@@ -27822,15 +27932,22 @@ register("dtu", "list", async (ctx, input) => {
           // quarantine:* rows are never listed to anyone but their owner
           // (lib/dtu-read-access.js); the sidecar filter predates that rule.
           const narrowed = narrowListedDtus(r.dtus.filter((d) => !(isQuarantined(d) && privateDtuHiddenFrom(d, userId))));
-          const items = narrowed.slice(0, limit);
+          const visible = narrowed.filter((d) => !dtuExcludedFromUserList(d));
+          // A partial sidecar page that still holds automatic chat rows
+          // cannot be recounted here. Fall through to the in-process list.
+          if (visible.length !== narrowed.length && !pageComplete) {
+            /* fall through */
+          } else {
+          const items = visible.slice(0, limit);
           if (typeof calculateFreshness === "function") {
             for (const d of items) {
               d._freshness = calculateFreshness(d);
               d._freshnessLabel = freshnessLabel(d._freshness);
             }
           }
-          const total = postFilter ? narrowed.length : sidecarListTotal(r);
+          const total = (postFilter || visible.length !== narrowed.length) ? visible.length : sidecarListTotal(r);
           return { ok: true, dtus: items, limit, offset, total, _source: "dtu-sidecar" };
+          }
         }
       }
     } catch (_e) { logger.debug("server", "dtu-sidecar list unavailable — inline fallback", { error: _e?.message }); }
@@ -27838,8 +27955,7 @@ register("dtu", "list", async (ctx, input) => {
 
   // Filter out shadow/repair/system DTUs - internal, not real user content.
   // Pass viewer ID so private/user-scoped uploads by other users are hidden.
-  const INTERNAL_KINDS = new Set(["shadow", "pattern_shadow", "repair_record", "royalty_record", "session_context", "linguistic_map", "audit_trail", "system_metric", "repair_dtu", "client_error"]);
-  let items = userVisibleDTUs(userId).filter(d => !isShadowDTU(d) && !INTERNAL_KINDS.has(d.machine?.kind) && d.tier !== "shadow");
+    let items = userVisibleDTUs(userId).filter(d => !dtuExcludedFromUserList(d));
 
   // ── Scope Hierarchy Enforcement ──────────────────────────────────
   // Scopes: local → regional → national → global (strict containment)
@@ -27949,8 +28065,7 @@ register("dtu", "recent", (ctx, input = {}) => {
   try {
     const limit = clamp(Number(input.limit || 20), 1, 200);
     const userId = ctx?.actor?.id || ctx?.actor?.userId || ctx?.actor?.odId || null;
-    const INTERNAL_KINDS = new Set(["shadow", "pattern_shadow", "repair_record", "royalty_record", "session_context", "linguistic_map", "audit_trail", "system_metric", "repair_dtu", "client_error"]);
-    let items = userVisibleDTUs(userId).filter(d => !isShadowDTU(d) && !INTERNAL_KINDS.has(d.machine?.kind) && d.tier !== "shadow");
+        let items = userVisibleDTUs(userId).filter(d => !dtuExcludedFromUserList(d));
     items = items.sort((a,b)=> (b.createdAt||"").localeCompare(a.createdAt||"")).slice(0, limit);
     return { ok: true, dtus: items, limit, total: items.length };
   } catch (e) {
@@ -27961,8 +28076,7 @@ register("dtu", "recent", (ctx, input = {}) => {
 register("dtu", "count", (ctx, input = {}) => {
   try {
     const userId = ctx?.actor?.id || ctx?.actor?.userId || ctx?.actor?.odId || null;
-    const INTERNAL_KINDS = new Set(["shadow", "pattern_shadow", "repair_record", "royalty_record", "session_context", "linguistic_map", "audit_trail", "system_metric", "repair_dtu", "client_error"]);
-    const items = userVisibleDTUs(userId).filter(d => !isShadowDTU(d) && !INTERNAL_KINDS.has(d.machine?.kind) && d.tier !== "shadow");
+        const items = userVisibleDTUs(userId).filter(d => !dtuExcludedFromUserList(d));
     return { ok: true, count: items.length };
   } catch (e) {
     return { ok: false, error: "handler_error", message: String(e?.message || e) };
@@ -27999,8 +28113,7 @@ register("dtu", "paginated", (ctx, input = {}) => {
     // list is already registered above; but MACROS may not be populated until after all registers.
     // Safer: compute via direct filter like list.
     const userId = ctx?.actor?.id || ctx?.actor?.userId || ctx?.actor?.odId || null;
-    const INTERNAL_KINDS = new Set(["shadow", "pattern_shadow", "repair_record", "royalty_record", "session_context", "linguistic_map", "audit_trail", "system_metric", "repair_dtu", "client_error"]);
-    let items = userVisibleDTUs(userId).filter(d => !isShadowDTU(d) && !INTERNAL_KINDS.has(d.machine?.kind) && d.tier !== "shadow");
+        let items = userVisibleDTUs(userId).filter(d => !dtuExcludedFromUserList(d));
     items = items.sort((a,b)=> (b.createdAt||"").localeCompare(a.createdAt||""));
     const total = items.length;
     items = items.slice(offset, offset + pageSize);
@@ -29136,7 +29249,27 @@ if (_isTimeQuery(prompt)) {
 // is never a weather question — let the compute router take it.
 if (_isWeatherQuery(prompt) && !_routeComputeQuestion(prompt)) {
   const tz = String(localSettings?.timezone || "America/New_York");
-  const loc = _extractLocation(prompt) || String(localSettings?.defaultLocation || "Poughkeepsie, NY");
+  let loc = _extractLocation(prompt) || String(localSettings?.defaultLocation || "Poughkeepsie, NY");
+  // GB-1500 CKPT-18 (FIX-forecast-001): a "place" that is really the whole sentence is re-read with one constrained call.
+  const _wxExtracted = _extractLocation(prompt);
+  if (_wxExtracted && (_wxExtracted.length > 40 || _wxExtracted.split(/\s+/).length > 4)) {
+    try {
+      const { cockpitFlag: _ckFlag } = await import("./lib/cockpit/flags.js");
+      if (_ckFlag("ASK_CONTEXT")) {
+        const { extractSlots: _extractSlots } = await import("./lib/cockpit/slot-extract.js");
+        const { defaultProfile: _ckProfile } = await import("./lib/cockpit/model-caps.js");
+        const sl = await _extractSlots({ text: prompt, slots: [{ name: "place", description: "city or region the person wants weather for", required: true }], profile: _ckProfile(), db, userId: ctx?.actor?.userId });
+        if (sl.ok) loc = sl.values.place;
+        else {
+          const reply = "Which place do you want the forecast for?";
+          sess.messages.push({ role:"assistant", content: reply, ts: nowISO(), meta: { llmUsed:false, source:"weather" } });
+          _persistDeterministicTurn(reply, { llmUsed: false, source: "weather" });
+          saveStateDebounced();
+          return { ok:true, reply, sessionId, mode, llmUsed:false, meta:{ panel:"chat", sessionId, mode, llmUsed:false, source:"weather" } };
+        }
+      }
+    } catch { /* fall through to the extracted place */ }
+  }
   try {
     const wx = await getWeather(loc, { timeZone: tz });
     if (!wx.ok) {
@@ -29185,6 +29318,35 @@ if (_isWeatherQuery(prompt) && !_routeComputeQuestion(prompt)) {
       for (let _i = sess.messages.length - 1; _i >= 0; _i--) {
         const _m = sess.messages[_i];
         if (_m?.role === "assistant") { _prevAgentRoute = _m.meta?.agentRoute || null; _prevReply = String(_m.content || ""); break; }
+      }
+      // GB-1500 CKPT-16: with CONCORD_COCKPIT_ROUTE on, the cockpit decides whether this turn is an
+      // answer, one call, a run, or the reply to a waiting run. null means "not ours": the old route runs.
+      let _cockpitTurn = null;
+      try {
+        const { cockpitFlag: _cockpitFlag } = await import("./lib/cockpit/flags.js");
+        if (_cockpitFlag("ROUTE") && ctx?.actor?.userId) {
+          const { handleChatTurn: _handleCockpitTurn } = await import("./lib/cockpit/chat-entry.js");
+          _cockpitTurn = await _handleCockpitTurn({
+            db: ctx?.db || globalThis._concordSTATE?.db || null, userId: ctx.actor.userId,
+            chatSessionId: sessionId || null, message: prompt, lensContext: currentLens || null,
+            surface: "chat", prevRoute: _prevAgentRoute, prevReply: _prevReply,
+            runMacro, lensActions: LENS_ACTIONS,
+            chatProgress: (e) => { try { _chatProgress(ctx, e); } catch { /* progress never blocks */ } },
+            deadlineMs: Date.now() + 25000,
+          });
+        }
+      } catch (_ckErr) { console.warn("[cockpit] chat entry failed, using the old route:", _ckErr?.message || _ckErr); }
+      if (_cockpitTurn?.handled) {
+        const _ckReply = _cockpitTurn.reply;
+        const _ckMeta = { llmUsed: true, mode, source: "chat_agent", agentRoute: "cockpit", cockpit: _cockpitTurn.meta.cockpit, toolCallCount: 0, tools: [] };
+        sess.messages.push({ role: "assistant", content: _ckReply, ts: nowISO(), meta: _ckMeta });
+        _persistDeterministicTurn(_ckReply, _ckMeta);
+        saveStateDebounced();
+        return {
+          ok: true, reply: _ckReply, content: _ckReply, sessionId, mode, llmUsed: true,
+          route: "chat_agent", agentRoute: "cockpit", toolCalls: [], artifacts: [], sources: [],
+          meta: { panel: "chat", sessionId, ..._ckMeta },
+        };
       }
       const _agentRouteKind = _ar.chatAgentRoute(prompt, { prevRoute: _prevAgentRoute, prevReply: _prevReply });
       const _agentCtx = { ...ctx, db: ctx?.db || globalThis._concordSTATE?.db || null };
@@ -30589,6 +30751,7 @@ ${_operatorV6Block}` : "";
   // before it happens on a CSL rejection, and gives a single point to attach
   // cslRouted/proofArtifact onto every result (Task 6) without editing any
   // individual case.
+  const _cockpitRetryOn = (await import("./lib/cockpit/flags.js")).cockpitFlag("RETRY");
   const _executeToolCalls = async (calls) => {
     const results = [];
     for (const call of calls.slice(0, 5)) { // cap at 5 tool calls per turn
@@ -30599,7 +30762,12 @@ ${_operatorV6Block}` : "";
         result = { tool: call.tool, ok: false, error: _gate.reason || "csl_rejected" };
       } else {
         // running/done reach a streaming client as the call really starts and ends
-        result = await _chatWithToolProgress(ctx, call, () => _executeToolCall(call));
+        result = await _chatWithToolProgress(ctx, call, async () => {
+          if (!_cockpitRetryOn) return _executeToolCall(call);
+          const { runWithRetry } = await import("./lib/cockpit/retry-policy.js");
+          const { getToolSpec } = await import("./lib/cockpit/tool-spec.js");
+          return (await runWithRetry(_executeToolCall, call, { getSpec: (id) => getToolSpec(id, { lensActions: LENS_ACTIONS }) })).result;
+        });
       }
       if (_gate) {
         result.cslRouted = !!_gate.cslRouted;
@@ -30608,6 +30776,10 @@ ${_operatorV6Block}` : "";
       }
       results.push(result);
       ctx.log("chat_tools", "Tool executed", { tool: call.tool, ok: result.ok, error: result.error || null });
+      try {
+        const { recordToolOutcomeEvent } = await import("./lib/cockpit/telemetry.js");
+        recordToolOutcomeEvent(ctx?.db, { userId: ctx?.actor?.userId, sessionId: ctx?.reqMeta?.sessionId || null, surface: "chat", call, result });
+      } catch { /* telemetry never blocks a turn */ }
     }
     return results;
   };
@@ -31046,6 +31218,19 @@ ${_operatorV6Block}` : "";
             _toolResults[_i] = await _executeToolCall(_next);
           }
           _toolCallsExecuted = _toolResults;
+        }
+        // GB-1500 CKPT-05: plain chat has one tool round; when every call failed
+        // for a recoverable reason, run one bounded recovery pass before giving up.
+        if (_cockpitRetryOn && _toolResults.length && _toolResults.every((r) => !r.ok)) {
+          const { classifyFailure } = await import("./lib/cockpit/failure-taxonomy.js");
+          const _recoverable = _toolResults.every((r) => classifyFailure(r).retryable);
+          if (_recoverable) {
+            const { chatAgentRecoveryTurn } = await import("./lib/cockpit/retry-policy.js");
+            const _rec = await chatAgentRecoveryTurn({ runMacro, ctx, prompt, failed: _toolResults, lensActions: LENS_ACTIONS });
+            if (_rec?.ok && Array.isArray(_rec.toolCalls) && _rec.toolCalls.some((t) => t.ok)) {
+              _toolResults.length = 0; _toolResults.push(..._rec.toolCalls); _toolCallsExecuted = _toolResults;
+            }
+          }
         }
         const _arithOnly = _toolResults.length > 0 && _toolResults.every((r) => r.ok && r.key === "symbolic.evaluate" && r.expression);
 
@@ -31984,7 +32169,13 @@ register("shield", "report", (ctx, input) => {
     description: input.description,
   }, userId, STATE);
   return result;
-}, { description: "Report a suspected threat to the collective lattice." });
+}, { description: "Save a private, unverified threat report. It does not enter the lattice or the score until reviewed." });
+
+register("shield", "retract-report", (ctx, input) => {
+  const userId = ctx?.actor?.userId || input.userId || "";
+  const id = input.id || input.threatId || input.reportId;
+  return retractUserReport(id, userId, STATE);
+}, { description: "Retract the caller's own unverified threat report." });
 
 register("shield", "firewall", (ctx, input) => {
   const limit = Number(input.limit) || 50;
@@ -32058,20 +32249,20 @@ register("mesh", "send", async (ctx, input) => {
   // — the caller already has whatever content they put in it — so only the
   // id-resolved path is gated. Mirrors the dtu.create lineage-consent check
   // above: owner, system/founder-authored, or public/global-scope all pass.
-  let dtu = input.dtu || null;
-  if (!dtu && input.dtuId) {
-    const stored = STATE.dtus?.get(input.dtuId);
-    if (stored) {
-      const _meshUserId = ctx?.actor?.userId || ctx?.actor?.id || "anon";
-      const isOwner = !stored.ownerId || stored.ownerId === _meshUserId ||
-        stored.ownerId === "system" || stored.ownerId === "founder";
-      const vis = stored.meta?.visibility || stored.visibility;
-      const isPublic = vis === "published" || vis === "public" || stored.scope === "global";
-      if (!isOwner && !isPublic) return { ok: false, error: "not_your_dtu" };
-      dtu = stored;
-    }
+  const _meshUserId = ctx?.actor?.userId || ctx?.actor?.id || "anon";
+  let _meshLocal = null;
+  if (_meshUserId && _meshUserId !== "anon") {
+    try { _meshLocal = getUserUniverse(_meshUserId)?.localDTUs || null; } catch { _meshLocal = null; }
   }
-  if (!dtu) return { ok: false, error: "No DTU specified. Provide dtu or dtuId." };
+  const _meshResolved = resolveMeshSendDtu({
+    stateDtus: STATE.dtus,
+    localDtus: _meshLocal,
+    dtuId: input?.dtuId,
+    inlineDtu: input?.dtu || null,
+    userId: _meshUserId,
+  });
+  if (!_meshResolved.ok) return _meshResolved;
+  const dtu = _meshResolved.dtu;
   const result = meshSendDTU(dtu, input.destination || input.destinationNodeId || "broadcast", {
     proximity: input.proximity,
     priorityClass: input.priorityClass,
@@ -49931,19 +50122,23 @@ function _lensEmitDTU(ctx, domain, action, artifactType, artifact, extra={}) {
       updateCrossDomainContext(extra.sessionId, domain, action, dtuId, artifact.title);
     }
 
-    // MEGA SPEC: Emit new WebSocket events for artifact lifecycle
-    realtimeEmit("artifact:rendered", {
-      dtuId, domain, action, fileType: artifact.type || artifactType,
-    });
-    // Broadcast DTU birth so LiveDTUFeed and ActivityFeed see lens-generated DTUs
-    realtimeEmit("dtu:created", {
-      dtuId, title: dtu.title, tier: dtu.tier, tags: dtu.tags,
-    });
-    // Separate event so ActivityFeed can distinguish lens-generated DTUs from user-created ones
-    realtimeEmit("lens:dtu_generated", {
-      dtuId, domain, action, artifactType, artifactId: artifact.id,
-      title: dtu.title, timestamp: nowISO(),
-    });
+    // The owner's own feed still hears the birth. Title and tags stay in
+    // that user's room — a global emit handed every signed-in socket the
+    // artifact title (FIX-xl-ws-001). No owner, no emit.
+    const exhaustRoom = lensExhaustEmitTarget(ownerId);
+    if (exhaustRoom) {
+      realtimeEmit("artifact:rendered", {
+        dtuId, domain, action, fileType: artifact.type || artifactType,
+      }, exhaustRoom);
+      realtimeEmit("dtu:created", {
+        dtuId, title: dtu.title, tier: dtu.tier, tags: dtu.tags,
+        userId: ownerId || null, creatorId: ownerId || null,
+      }, exhaustRoom);
+      realtimeEmit("lens:dtu_generated", {
+        dtuId, domain, action, artifactType, artifactId: artifact.id,
+        title: dtu.title, timestamp: nowISO(),
+      }, exhaustRoom);
+    }
 
     saveStateDebounced();
 
@@ -49976,12 +50171,24 @@ register("lens", "list", (ctx, input={}) => {
   const SOCIAL_DOMAINS = new Set(["forum", "feed", "marketplace", "collab", "thread", "vote", "alliance", "global", "news", "questmarket"]);
   if (!SOCIAL_DOMAINS.has(domain)) {
     const currentUserId = ctx.actor?.userId || "anon";
+    const isActivityMint = (a) => {
+      const from = a?.meta?.createdFrom;
+      if (from === "dtu-auto-sync" || from === "integrity-repair") return true;
+      if (typeof a?.id === "string" && a.id.startsWith("dtu_lens_")) return true;
+      if (typeof a?.title === "string" && a.title.startsWith("Lens:")) return true;
+      return false;
+    };
     artifacts = artifacts.filter(a => {
-      // System/anonymous artifacts are always visible (backward compat)
+      // Hotfix 2026-11-09: activity-minted mirrors (private exhaust copied
+      // public as system) are owner-only. System-owned activity mints stay hidden.
+      if (isActivityMint(a)) {
+        return !!(a.ownerId && a.ownerId !== "system" && a.ownerId !== "anon" && a.ownerId === currentUserId);
+      }
+      // Ownerless / anonymous scaffolding stays visible (backward compat)
       if (!a.ownerId || a.ownerId === "anon") return true;
       // User's own artifacts are always visible
       if (a.ownerId === currentUserId) return true;
-      // Published or public artifacts are visible to everyone
+      // Genuinely public/published catalog (feeds, shared work) stays visible
       const vis = a.meta?.visibility;
       if (vis === "published" || vis === "public") return true;
       return false;
@@ -50054,7 +50261,7 @@ register("lens", "create", async (ctx, input={}) => {
   }
 
   // Domain-specific validation
-  const validation = validateArtifact(domain, type, data, meta);
+  const validation = validateArtifact(domain, type, artifactDataWithTitle(data, trimmedTitle), meta);
   if (!validation.ok) {
     // Education's dialog used to toast the bare token. The rule error
     // already names the field (type or status). Other domains keep the token.
@@ -51358,6 +51565,28 @@ try {
   structuredLog("warn", "chat_agent_stream_mount_failed", { error: String(streamErr?.message || streamErr) });
 }
 
+// GB-1500 cockpit routes (failure counts now; run routes in later tickets).
+try {
+  const { mountCockpitRoutes } = await import("./routes/cockpit.js");
+  const { makeExec: _cockpitMakeExec } = await import("./lib/cockpit/executor.js");
+  const { verifyStep: _cockpitVerify } = await import("./lib/cockpit/verifier.js");
+  const { publishRun: _cockpitPublish } = await import("./lib/cockpit/events.js");
+  // One factory for the routes and the pump, so a run behaves the same however it is driven.
+  globalThis.__cockpitMakeDeps = (run) => ({
+    exec: _cockpitMakeExec({ db, userId: run.userId, sessionId: run.chatSessionId, runMacro, lensActions: LENS_ACTIONS, surface: run.surface, runId: run.id }),
+    lensActions: LENS_ACTIONS,
+    verify: _cockpitVerify,
+    emit: (e) => _cockpitPublish(e.runId, e),
+  });
+  mountCockpitRoutes({ app, db, makeDeps: globalThis.__cockpitMakeDeps, lensActions: LENS_ACTIONS });
+} catch (e) { console.warn("[cockpit] routes not mounted:", e?.message || e); }
+
+// GB-1500 cockpit pump: resumes due runs. Does nothing unless CONCORD_COCKPIT_RUNS is on.
+try {
+  const { startCockpitPump } = await import("./lib/cockpit/pump.js");
+  globalThis.__cockpitPump = startCockpitPump({ db, makeDeps: globalThis.__cockpitMakeDeps });
+} catch (e) { console.warn("[cockpit] pump not started:", e?.message || e); }
+
 // MCP tools address (domain, macro) pairs that may live in EITHER registry:
 // most exposed tools are canonical macros (MACROS, reachable by runMacro), but
 // some — e.g. the math CAS (`math.symbolicCompute`) — are registerLensAction
@@ -51576,18 +51805,10 @@ app.post("/api/lens/run", async (req, res) => {
   };
   try {
     const body = req.body || {};
-    const { domain } = body;
     // Accept both macro-style {domain, name, input} and legacy lens-action
-    // {domain, action, ...rest}. `name` and `action` are aliases.
-    const action = body.action || body.name;
-    const rest = _peelRedundantArtifactWrapper(
-      body.input && typeof body.input === "object"
-        ? body.input
-        : (() => {
-            const { domain: _d, action: _a, name: _n, input: _i, ...r } = body;
-            return r;
-          })()
-    );
+    // {domain, action, ...rest}. `name` is the action only when `action`
+    // is absent, so a payload field named name is not discarded.
+    const { domain, action, rest } = _lensRunParams(body);
     if (!domain || !action) { _lrNote("pre_dispatch", false, "domain_action_required"); return res.status(400).json({ ok: false, error: "domain and action required" }); }
     if (enforcePlatformInternalLensRole(req, res, domain, requireRole)) { _lrNote("pre_dispatch", false, "platform_internal_role"); return; }
     // Non-finite guard for BOTH the lens-action and macro paths (1e999 → Infinity).
@@ -51863,12 +52084,18 @@ app.post("/api/lens/:domain/:id/publish", async (req, res) => {
       return res.status(403).json({ ok: false, error: "not your artifact" });
     }
     artifact.meta = artifact.meta || {};
-    artifact.meta.visibility = "published";
-    artifact.meta.publishedAt = new Date().toISOString();
+    const unpublish = req.body?.unpublish === true;
+    if (unpublish) {
+      artifact.meta.visibility = "private";
+      delete artifact.meta.publishedAt;
+    } else {
+      artifact.meta.visibility = "published";
+      artifact.meta.publishedAt = new Date().toISOString();
+    }
     artifact.updatedAt = new Date().toISOString();
     saveStateDebounced();
     // Close-out A1: the publish mutation records like any other write.
-    _recordLensActivity(req.params.domain, "publish", ctx, { title: artifact.title || "" }, { artifact });
+    _recordLensActivity(req.params.domain, unpublish ? "unpublish" : "publish", ctx, { title: artifact.title || "" }, { artifact });
     res.json({ ok: true, artifact: _presentLensArtifact(artifact, ctx) });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
@@ -59652,7 +59879,7 @@ register("whiteboard", "update", (ctx, input) => {
   try { _wbSyncShadows(dtu, wb.title); }
   catch (e) { structuredLog("error", "whiteboard_artifact_sync_failed", { id: whiteboardId, error: String(e?.message || e) }); }
   saveStateDebounced();
-  realtimeEmit("whiteboard:updated", { whiteboardId, elementCount: wb.elements.length }, {});
+  realtimeEmit("whiteboard:updated", { whiteboardId, elementCount: wb.elements.length }, { userId: dtu.ownerId || ctx?.actor?.userId || "" });
   return { ok: true, whiteboard: wb };
 });
 
@@ -60549,8 +60776,15 @@ register("integration", "list", (_ctx, _input) => {
   return { ok: true, integrations };
 });
 
-app.post("/api/webhooks", asyncHandler(async (req, res) => res.json(await runMacro("webhook", "register", req.body, makeCtx(req)))));
-app.get("/api/webhooks", asyncHandler(async (req, res) => res.json(await runMacro("webhook", "list", {}, makeCtx(req)))));
+app.post("/api/webhooks", asyncHandler(async (req, res) => {
+  const ctx = makeCtx(req);
+  const result = registerWh(STATE, { ...(req.body || {}), ownerId: ctx?.actor?.userId || req.user?.id || null });
+  res.status(result.ok ? 200 : 422).json(result);
+}));
+app.get("/api/webhooks", asyncHandler(async (req, res) => {
+  const ctx = makeCtx(req);
+  res.json(listWebhooks(STATE, ctx?.actor?.userId || req.user?.id || null));
+}));
 app.delete("/api/webhooks/:id", asyncHandler(async (req, res) => res.json(await runMacro("webhook", "delete", { webhookId: req.params.id }, makeCtx(req)))));
 app.post("/api/webhooks/:id/toggle", asyncHandler(async (req, res) => res.json(await runMacro("webhook", "toggle", { webhookId: req.params.id, ...req.body }, makeCtx(req)))));
 // Webhook auth — per-domain HMAC secret management
@@ -61890,6 +62124,10 @@ app.post("/api/ai/chat", asyncHandler(async (req, res) => {
 app.get("/api/srs/due", (req, res) => {
   const result = getDueCards(Number(req.query.limit || 20));
   res.json(result);
+});
+
+app.get("/api/srs/scheduled", (_req, res) => {
+  res.json(listScheduledSRS());
 });
 
 app.post("/api/srs/:dtuId/add", (req, res) => {
@@ -68316,13 +68554,12 @@ app.get("/api/game/leaderboard", (req, res) => {
   const knownUsers = new Set(Array.from(STATE.gameProfiles.keys()));
   dtusArray().forEach(d => { if (d.authorId) knownUsers.add(d.authorId); if (d.source) knownUsers.add(d.source); });
   for (const uid of knownUsers) {
-    if (!STATE.gameProfiles.has(uid)) getGameProfile(uid);
-    const p = STATE.gameProfiles.get(uid);
-    const userDtus = dtusArray().filter(d => d.authorId === uid || d.source === uid);
-    const questXp = sumCompletedQuestXp(uid).xp;
-    p.xp = (userDtus.length * 10) + (userDtus.filter(d => d.tier === "mega").length * 50) + (userDtus.filter(d => d.tier === "hyper").length * 100) + questXp;
-    p.level = Math.floor(Math.sqrt(p.xp / 100)) + 1;
-    p.badges = computeAchievements(uid).filter(a => a.earned).map(a => a.id);
+    // One XP computation: the leaderboard reads the same refreshed
+    // profile /api/game/profile serves. Its own copy of the formula
+    // had drifted — it omitted the votes x5 term refreshGameProfile
+    // counts — so the leaderboard's row for the signed-in user
+    // disagreed with their header/dashboard XP (FIX-game-001).
+    refreshGameProfile(uid);
   }
   const entries = Array.from(STATE.gameProfiles.values())
     .map(p => ({ userId: p.userId, xp: p.xp || 0, level: p.level || 1, badges: (p.badges || []).length, badgeList: p.badges || [] }))
@@ -68362,7 +68599,10 @@ app.get("/api/notifications/count", (req, res) => {
   ensureQueues();
   const userId = req.user?.id;
   const all = STATE.queues?.notifications || [];
-  const userNotifs = userId ? all.filter(n => !n.targetUserId || n.targetUserId === userId) : all;
+  // FIX-social-020: the queue also holds the autogen pipeline's operator
+  // proposals (dtu_proposal) — never a user's notifications, in the count
+  // or the list. isUserNotification is the one discriminator (lib).
+  const userNotifs = all.filter(n => _isUserNotification(n) && (!userId || !n.targetUserId || n.targetUserId === userId));
   const unread = userNotifs.filter(n => !n.readAt);
   res.json({ ok: true, count: userNotifs.length, unread: unread.length });
 });
@@ -68378,7 +68618,7 @@ app.get("/api/notifications", (req, res) => {
   const userId = req.user?.id;
   const limit = Math.min(Number(req.query.limit) || 50, 200);
   const all = STATE.queues?.notifications || [];
-  const mine = userId ? all.filter(n => !n.targetUserId || n.targetUserId === userId) : all;
+  const mine = all.filter(n => _isUserNotification(n) && (!userId || !n.targetUserId || n.targetUserId === userId));
   const notifications = [...mine]
     .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")))
     .slice(0, limit);
@@ -68391,7 +68631,7 @@ app.post("/api/notifications/read-all", (req, res) => {
   const all = STATE.queues?.notifications || [];
   let marked = 0;
   for (const n of all) {
-    if ((!userId || !n.targetUserId || n.targetUserId === userId) && !n.readAt) {
+    if (_isUserNotification(n) && (!userId || !n.targetUserId || n.targetUserId === userId) && !n.readAt) {
       n.readAt = new Date().toISOString();
       marked++;
     }
@@ -68404,7 +68644,7 @@ app.post("/api/notifications/:id/read", (req, res) => {
   ensureQueues();
   const userId = req.user?.id;
   const item = (STATE.queues?.notifications || []).find(n => n.id === req.params.id);
-  if (!item) return res.status(404).json({ ok: false, error: "Notification not found" });
+  if (!item || !_isUserNotification(item)) return res.status(404).json({ ok: false, error: "Notification not found" });
   if (userId && item.targetUserId && item.targetUserId !== userId) {
     return res.status(404).json({ ok: false, error: "Notification not found" });
   }
@@ -68416,7 +68656,7 @@ app.delete("/api/notifications/:id", (req, res) => {
   ensureQueues();
   const userId = req.user?.id;
   const all = STATE.queues?.notifications || [];
-  const idx = all.findIndex(n => n.id === req.params.id && (!userId || !n.targetUserId || n.targetUserId === userId));
+  const idx = all.findIndex(n => n.id === req.params.id && _isUserNotification(n) && (!userId || !n.targetUserId || n.targetUserId === userId));
   if (idx < 0) return res.status(404).json({ ok: false, error: "Notification not found" });
   all.splice(idx, 1);
   saveStateDebounced();
@@ -84120,28 +84360,52 @@ function syllogisticReason(input = {}, userId = "anon") {
   }
 
   if (minorUniversal) {
-    // Canonical Barbara: All Z are X + All X are Y ⊢ All Z are Y.
+    // Canonical Barbara, in either slot order — the two universal premises
+    // chain through their shared middle term whichever field each was
+    // typed into:
+    //   subclass order: All X are Y + All Z are X ⊢ All Z are Y
+    //     (the minor names a subclass of the major's subject);
+    //   chain order:    All X are Y + All Y are Z ⊢ All X are Z
+    //     (the minor's subject is the major's object).
+    // Only the subclass order was tried before, so the audit's chain-order
+    // entry ('All A are B' / 'All B are C') was refused with
+    // 'Category mismatch: "c" does not match "a"' — it compared the minor's
+    // object against the major's subject and never tried the chain
+    // (FIX-inference-002).
     const minorCategoryTyped = minorUniversal[1];
     const minorObject = minorUniversal[2].toLowerCase();
-    if (stem(minorObject) !== stem(category)) {
+    const minorCategory = _singularizeCategory(minorCategoryTyped.toLowerCase());
+    let conclusionSubject, conclusionSubjectTyped, conclusionObject, minorFactObject, ruleConsequent;
+    if (stem(minorObject) === stem(category)) {
+      conclusionSubject = minorCategory;
+      conclusionSubjectTyped = minorCategoryTyped;
+      conclusionObject = property;
+      minorFactObject = category;
+      ruleConsequent = property;
+    } else if (stem(minorCategory) === stem(property)) {
+      conclusionSubject = category;
+      conclusionSubjectTyped = majorMatch[1];
+      conclusionObject = minorObject;
+      minorFactObject = minorObject;
+      ruleConsequent = minorObject;
+    } else {
       return {
         ok: false,
         step: "category",
         error: `Category mismatch: "${minorObject}" does not match "${category}"`
       };
     }
-    const minorCategory = _singularizeCategory(minorCategoryTyped.toLowerCase());
     addInferenceFact({
       subject: category, predicate: "is", object: property, universal: true, source: "major_premise"
     }, userId);
     addInferenceFact({
-      subject: minorCategory, predicate: "is", object: category, universal: true, source: "minor_premise"
+      subject: minorCategory, predicate: "is", object: minorFactObject, universal: true, source: "minor_premise"
     }, userId);
     addInferenceRule({
-      name: `All ${category} are ${property}`,
+      name: `All ${category} are ${ruleConsequent}`,
       type: "implication",
       antecedent: { predicate: "is", object: category },
-      consequent: { predicate: "is", object: property },
+      consequent: { predicate: "is", object: ruleConsequent },
       confidence: 1.0
     });
     _inferenceNoteDeskOperation(userId, "inference");
@@ -84151,14 +84415,14 @@ function syllogisticReason(input = {}, userId = "anon") {
     // path (S-INF-1).
     const kbU = STATE.reasoning.knowledgeBase;
     const standingU = [...kbU.facts.values(), ...kbU.derived.values()].find(d =>
-      d.subject === minorCategory && d.predicate === "is" && d.object === property && d.universal
+      d.subject === conclusionSubject && d.predicate === "is" && d.object === conclusionObject && d.universal
     );
     if (!standingU) {
       const derivedFact = {
         id: uid("derived"),
-        subject: minorCategory,
+        subject: conclusionSubject,
         predicate: "is",
-        object: property,
+        object: conclusionObject,
         universal: true,
         negated: false,
         confidence: 1.0,
@@ -84172,19 +84436,19 @@ function syllogisticReason(input = {}, userId = "anon") {
     }
     return {
       ok: true,
-      conclusion: `All ${minorCategoryTyped.toLowerCase()} are ${property}`,
+      conclusion: `All ${conclusionSubjectTyped.toLowerCase()} are ${conclusionObject}`,
       derivation: {
         majorPremise,
         minorPremise,
-        conclusion: `all ${minorCategory} are ${property}`,
+        conclusion: `all ${conclusionSubject} are ${conclusionObject}`,
         rule: "Syllogistic reasoning (Barbara): transitivity of universal premises",
         confidence: 1.0,
         derivedThisRun: !standingU,
         alreadyDerived: Boolean(standingU)
       },
       kbWrites: {
-        premisesStored: [`all ${category} are ${property}`, `all ${minorCategory} are ${category}`],
-        ruleAdded: `All ${category} are ${property}`,
+        premisesStored: [`all ${category} are ${property}`, `all ${minorCategory} are ${minorFactObject}`],
+        ruleAdded: `All ${category} are ${ruleConsequent}`,
         conclusionStored: true
       }
     };
@@ -90790,7 +91054,23 @@ function applyAutoTagging(dtu) {
  */
 function syncDTUToLensArtifacts(dtu) {
   try {
+    // Hotfix 2026-11-09 export-leak: never mirror private / lens_exhaust
+    // activity into public system lens artifacts. Inherit real owner + visibility.
     if (!dtu || !dtu.id) return 0;
+    if (dtu.machine?.kind === "lens_exhaust") return 0;
+    const vis = String(dtu.meta?.visibility || dtu.visibility || "private");
+    if (
+      vis === "private" ||
+      vis === "internal" ||
+      dtu.privacy === "private" ||
+      dtu.privacy === "followers-only" ||
+      dtu.scope === "user"
+    ) {
+      return 0;
+    }
+    if (vis !== "public" && vis !== "published" && vis !== "marketplace") return 0;
+    const ownerId = dtu.ownerId || dtu.createdBy || dtu.entityId || null;
+    if (!ownerId) return 0;
     const domains = (dtu.tags || []).filter(t => LENS_DOMAIN_KEYWORDS[t]);
     let synced = 0;
     for (const domain of domains) {
@@ -90800,7 +91080,7 @@ function syncDTUToLensArtifacts(dtu) {
           id: key,
           domain,
           type: dtu.tier || "regular",
-          ownerId: dtu.createdBy || dtu.entityId || "system",
+          ownerId,
           title: dtu.title || "Untitled DTU",
           data: {
             dtuId: dtu.id,
@@ -90811,8 +91091,8 @@ function syncDTUToLensArtifacts(dtu) {
           },
           meta: {
             tags: dtu.tags || [],
-            status: "published",
-            visibility: "public",
+            status: vis === "published" ? "published" : "draft",
+            visibility: vis === "marketplace" ? "public" : vis,
             scope: dtu.scope || "local",
             createdFrom: "dtu-auto-sync",
           },
@@ -93601,17 +93881,46 @@ register("inheritance", "open_listing", (ctx, input = {}) => {
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
 }, { note: "Mentor opens an heir-slot listing for a dying NPC. Currency: CC." });
 
+register("inheritance", "close_listing", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const listingId = input?.listingId ?? input?.id;
+  if (!listingId) return { ok: false, reason: "missing_listing" };
+  try {
+    const listing = db.prepare(`SELECT * FROM inheritance_market_listings WHERE id = ?`).get(listingId);
+    if (!listing) return { ok: false, reason: "listing_not_found" };
+    if (listing.mentor_user_id !== userId) return { ok: false, reason: "not_your_listing" };
+    if (listing.status !== "open") return { ok: false, reason: "not_open" };
+    db.prepare(`UPDATE inheritance_market_listings SET status = 'withdrawn' WHERE id = ?`).run(listingId);
+    return { ok: true, listingId, status: "withdrawn" };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Mentor withdraws their own open heir-slot listing." });
+
 register("inheritance", "claim_slot", (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
   const userId = ctx?.actor?.userId;
   if (!userId) return { ok: false, reason: "no_actor" };
-  const { listingId } = input || {};
-  if (!listingId) return { ok: false, reason: "missing_listingId" };
+  const listingId = input?.listingId ?? input?.id ?? input?.params?.listingId;
+  if (!listingId) return { ok: false, error: "missing_listingId", reason: "missing_listingId" };
+  try {
+    db.exec(`CREATE TABLE IF NOT EXISTS inheritance_market_listings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      dying_npc_id TEXT NOT NULL,
+      mentor_user_id TEXT NOT NULL,
+      heir_slot_price_cc INTEGER NOT NULL,
+      buyer_user_id TEXT,
+      status TEXT NOT NULL DEFAULT 'open',
+      listed_at INTEGER NOT NULL DEFAULT (unixepoch()),
+      claimed_at INTEGER,
+      resolved_at INTEGER
+    )`);
+  } catch { /* table already present */ }
   try {
     const listing = db.prepare(`SELECT * FROM inheritance_market_listings WHERE id = ?`).get(listingId);
-    if (!listing) return { ok: false, reason: "listing_not_found" };
-    if (listing.status !== "open") return { ok: false, reason: "already_claimed" };
-    if (listing.mentor_user_id === userId) return { ok: false, reason: "cannot_claim_own" };
+    if (!listing) return { ok: false, error: "listing_not_found", reason: "listing_not_found" };
+    if (listing.status !== "open") return { ok: false, error: "already_claimed", reason: "already_claimed" };
+    if (listing.mentor_user_id === userId) return { ok: false, error: "cannot_claim_own", reason: "cannot_claim_own" };
     db.prepare(`
       UPDATE inheritance_market_listings
       SET buyer_user_id = ?, status = 'locked', claimed_at = unixepoch()

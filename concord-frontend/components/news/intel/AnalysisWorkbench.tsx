@@ -110,7 +110,7 @@ export function AnalysisWorkbench({ selected }: { selected: Headline[] }) {
         })}
       </div>
 
-      <p className="text-[11px] text-zinc-500">
+      <p className="text-[11px] text-zinc-400">
         {count === 0
           ? 'Select headlines from the feed (＋) to build an analysis set.'
           : `Analyzing ${count} selected headline${count !== 1 ? 's' : ''} · deterministic engine`}
@@ -187,19 +187,19 @@ export function BiasView({ r }: { r: BiasResult | null }) {
       <div className="flex items-center gap-2">
         <span className="text-xs text-zinc-400">Overall bias</span>
         {overall == null ? (
-          <span className="text-[11px] text-zinc-500">{biasUnavailableText(r.overallBiasReason)}</span>
+          <span className="text-[11px] text-zinc-400">{biasUnavailableText(r.overallBiasReason)}</span>
         ) : (
           <>
             <span className="font-mono text-cyan-300">{overall.toFixed(3)}</span>
             {r.biasLevel && <LevelPill level={r.biasLevel} />}
           </>
         )}
-        <span className="ml-auto text-[11px] text-zinc-500">{r.articlesAnalyzed} analyzed</span>
+        <span className="ml-auto text-[11px] text-zinc-400">{r.articlesAnalyzed} analyzed</span>
       </div>
       <Bar value={r.sourceDiversity.normalizedDiversity} label={`Source diversity — ${r.sourceDiversity.assessment}`} tone="emerald" />
       {r.sourceBiasProfiles.length > 0 && (
         <div className="space-y-1">
-          <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">Per-source bias</p>
+          <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-400">Per-source bias</p>
           {r.sourceBiasProfiles.slice(0, 6).map((s) => {
             const avg = finiteOrNull(s.avgBiasScore);
             return (
@@ -207,7 +207,7 @@ export function BiasView({ r }: { r: BiasResult | null }) {
                 <span className="truncate text-zinc-300">{s.source || 'unknown'}</span>
                 <span className="ml-2 shrink-0">
                   {avg == null ? (
-                    <span className="text-[11px] text-zinc-500">{biasUnavailableText(s.biasReason ?? 'no_bias_terms')}</span>
+                    <span className="text-[11px] text-zinc-400">{biasUnavailableText(s.biasReason ?? 'no_bias_terms')}</span>
                   ) : (
                     <span className="font-mono text-amber-300">{avg.toFixed(2)}</span>
                   )}
@@ -229,7 +229,7 @@ function EventsView({ r }: { r: EventResult | null }) {
       <div className="flex items-center gap-2 text-xs">
         <span className="text-zinc-400">Events</span>
         <span className="font-mono text-cyan-300">{r.eventsExtracted}</span>
-        <span className="ml-auto text-[11px] text-zinc-500">{r.articlesProcessed} processed</span>
+        <span className="ml-auto text-[11px] text-zinc-400">{r.articlesProcessed} processed</span>
       </div>
       {r.topEntities.length > 0 && (
         <div className="flex flex-wrap gap-1">
@@ -242,7 +242,7 @@ function EventsView({ r }: { r: EventResult | null }) {
       )}
       {r.timeline.length > 0 && (
         <div className="space-y-1">
-          <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">Timeline</p>
+          <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-400">Timeline</p>
           {r.timeline.slice(0, 6).map((t, i) => (
             <div key={i} className="rounded bg-zinc-900/60 px-2 py-1 text-[11px] text-zinc-300">
               <span className="line-clamp-1">{t.sentence || t.action || '—'}</span>
@@ -251,7 +251,7 @@ function EventsView({ r }: { r: EventResult | null }) {
         </div>
       )}
       {r.eventsExtracted === 0 && (
-        <p className="text-[11px] text-zinc-500">
+        <p className="text-[11px] text-zinc-400">
           No structured events found — headline text is short. Pull articles to DTUs (with full summaries)
           for richer extraction.
         </p>
@@ -269,11 +269,11 @@ function NarrativeView({ r }: { r: NarrativeResult | null }) {
         <span className="text-zinc-400">Stability</span>
         <span className="font-mono text-cyan-300">{r.narrativeStability.toFixed(3)}</span>
         <LevelPill level={r.stabilityLevel} />
-        <span className="ml-auto text-[11px] text-zinc-500">{r.shiftCount} shift{r.shiftCount !== 1 ? 's' : ''}</span>
+        <span className="ml-auto text-[11px] text-zinc-400">{r.shiftCount} shift{r.shiftCount !== 1 ? 's' : ''}</span>
       </div>
       <Bar value={r.narrativeStability} label="Framing consistency" tone="cyan" />
       {r.windows.length < 2 && (
-        <p className="text-[11px] text-zinc-500">
+        <p className="text-[11px] text-zinc-400">
           Narrative tracking compares framing across time windows — add more headlines spanning a wider
           time range for a meaningful signal.
         </p>
@@ -283,7 +283,7 @@ function NarrativeView({ r }: { r: NarrativeResult | null }) {
 }
 
 function RunHint() {
-  return <p className="py-4 text-center text-xs text-zinc-500">Select an engine to run it on the analysis set.</p>;
+  return <p className="py-4 text-center text-xs text-zinc-400">Select an engine to run it on the analysis set.</p>;
 }
 function MessageNote({ text }: { text: string }) {
   return <p className="rounded-md border border-zinc-800 bg-zinc-900/50 px-2.5 py-2 text-xs text-zinc-400">{text}</p>;

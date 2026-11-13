@@ -59,6 +59,7 @@ export function BillingCalculator() {
   const [taxRate, setTaxRate] = useState('0');
   const [discountPercent, setDiscountPercent] = useState('0');
   const { status, error, result, dispatch } = useMacroDispatchFeedback<BillingResult>();
+  const [formError, setFormError] = useState<string | null>(null);
   const busy = status === 'dispatched' || status === 'running';
 
   function updateRow(key: string, patch: Partial<TimeEntry>) {
@@ -73,25 +74,29 @@ export function BillingCalculator() {
 
   async function calculate() {
     const timeEntries = rows
-      .filter((r) => r.attorney.trim() && Number(r.hours) > 0)
+      .filter((r) => r.attorney.trim() || r.hours.trim() || r.rate.trim())
       .map((r) => ({
-        attorney: r.attorney.trim(), hours: Number(r.hours) || 0, rate: Number(r.rate) || 0,
+        attorney: r.attorney.trim(), hours: Number(r.hours), rate: Number(r.rate),
         date: r.date, description: r.description.trim(), category: r.category.trim() || 'general', billable: r.billable,
       }));
-    if (timeEntries.length === 0) return;
+    if (timeEntries.length === 0) { setFormError('Add an attorney and hours.'); return; }
+    if (timeEntries.some((e) => !e.attorney)) { setFormError('Each entry needs an attorney.'); return; }
+    if (timeEntries.some((e) => !(e.hours > 0))) { setFormError('Hours must be a number greater than 0.'); return; }
+    if (timeEntries.some((e) => !Number.isFinite(e.rate) || e.rate < 0)) { setFormError('Rate must be a number that is 0 or greater.'); return; }
+    setFormError(null);
     await dispatch('law', 'billingCalculator', { timeEntries, taxRate: Number(taxRate) || 0, discountPercent: Number(discountPercent) || 0 });
   }
 
   const attorneyColumns: DataTableColumn<AttorneyRow>[] = [
     { id: 'attorney', header: 'Attorney', accessor: (r) => r.attorney, sortable: true, sortValue: (r) => r.attorney },
-    { id: 'hours', header: 'Billable hrs', accessor: (r) => r.billableHours.toFixed(1), align: 'right', monospace: true, sortable: true, sortValue: (r) => r.billableHours },
+    { id: 'hours', header: 'Billable hrs', accessor: (r) => r.billableHours.toFixed(2), align: 'right', monospace: true, sortable: true, sortValue: (r) => r.billableHours },
     { id: 'utilization', header: 'Utilization', accessor: (r) => `${r.utilizationRate}%`, align: 'right', monospace: true },
     { id: 'rate', header: 'Eff. rate', accessor: (r) => fmtUsd(r.effectiveRate), align: 'right', monospace: true },
     { id: 'amount', header: 'Amount', accessor: (r) => fmtUsd(r.billableAmount), align: 'right', monospace: true, sortable: true, sortValue: (r) => r.billableAmount },
   ];
   const categoryColumns: DataTableColumn<CategoryRow>[] = [
     { id: 'category', header: 'Category', accessor: (r) => r.category },
-    { id: 'hours', header: 'Hours', accessor: (r) => r.hours.toFixed(1), align: 'right', monospace: true },
+    { id: 'hours', header: 'Hours', accessor: (r) => r.hours.toFixed(2), align: 'right', monospace: true },
     { id: 'amount', header: 'Amount', accessor: (r) => fmtUsd(r.amount), align: 'right', monospace: true, sortable: true, sortValue: (r) => r.amount },
   ];
 
@@ -144,6 +149,7 @@ export function BillingCalculator() {
         </button>
       </div>
 
+      {formError && <p className="text-xs text-rose-400" role="alert">{formError}</p>}
       {status === 'error' && <p className="text-xs text-rose-400" role="alert">{error}</p>}
 
       {status === 'done' && result && (

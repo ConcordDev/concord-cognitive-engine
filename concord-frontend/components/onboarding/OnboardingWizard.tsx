@@ -173,6 +173,7 @@ export function OnboardingWizard({ isOpen, onClose, onComplete, onAction }: Onbo
             {/* Close button */}
             <button
               onClick={onClose}
+              data-overlay-close=""
               className="absolute top-4 right-4 p-2 text-gray-400 hover:text-white transition-colors z-10"
               aria-label="Skip onboarding"
             >

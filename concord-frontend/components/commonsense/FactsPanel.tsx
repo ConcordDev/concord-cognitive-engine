@@ -357,7 +357,7 @@ export function FactsPanel() {
             <h2 className="font-semibold flex items-center gap-2">
               <Search className="w-4 h-4 text-neon-cyan" /> Ask the Built-in Commonsense Base
             </h2>
-            <p className="text-[11px] text-gray-500 -mt-1">
+            <p className="text-[11px] text-gray-400 -mt-1">
               Free-text search over general physical / temporal / social / causal axioms —
               a separate reference base from the fact triples you catalog below.
             </p>

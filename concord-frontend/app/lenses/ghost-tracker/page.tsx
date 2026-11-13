@@ -339,7 +339,7 @@ export default function GhostTrackerPage() {
                               {d.outcome === 'win' ? 'extinguished' : 'resisted'}
                             </span>
                           )}
-                          <span className="ml-auto text-[10px] text-gray-500">
+                          <span className="ml-auto text-[10px] text-gray-400">
                             {new Date(d.createdAt.includes('T') ? d.createdAt : `${d.createdAt.replace(' ', 'T')}Z`).toLocaleDateString()}
                           </span>
                         </Item>

@@ -334,6 +334,7 @@ function ConnectorsTab({
                 </label>
                 {f.type === 'select' ? (
                   <select
+                    aria-label={f.label}
                     value={config[f.key] ?? ''}
                     onChange={(e) => setConfig((c) => ({ ...c, [f.key]: e.target.value }))}
                     className="w-full px-3 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs text-white focus:outline-none focus:border-neon-cyan"
@@ -345,6 +346,7 @@ function ConnectorsTab({
                   </select>
                 ) : (
                   <input
+                    aria-label={f.label}
                     type={f.type === 'password' ? 'password' : f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : 'text'}
                     value={config[f.key] ?? ''}
                     onChange={(e) => setConfig((c) => ({ ...c, [f.key]: e.target.value }))}
@@ -491,6 +493,7 @@ function SchedulesTab({
         <h3 className="text-sm font-semibold text-white">New Sync Schedule</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <select
+            aria-label="Schedule connection"
             value={connId}
             onChange={(e) => setConnId(e.target.value)}
             className="px-3 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs text-white"
@@ -501,6 +504,7 @@ function SchedulesTab({
             ))}
           </select>
           <select
+            aria-label="Schedule cadence"
             value={cadence}
             onChange={(e) => setCadence(e.target.value)}
             className="px-3 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs text-white"
@@ -508,6 +512,7 @@ function SchedulesTab({
             {CADENCES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
           <select
+            aria-label="Schedule mode"
             value={mode}
             onChange={(e) => setMode(e.target.value as 'incremental' | 'full')}
             className="px-3 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs text-white"
@@ -556,7 +561,7 @@ function SchedulesTab({
                     s.lastDrainStatus === 'drained' ? 'text-neon-green'
                       : s.lastDrainStatus === 'push_reviewed' ? 'text-neon-cyan'
                         : s.lastDrainStatus === 'error' ? 'text-red-400'
-                          : 'text-gray-500'
+                          : 'text-gray-400'
                   }>
                     {s.lastDrainStatus === 'drained'
                       ? `drained ${s.lastDrainRecordCount ?? 0} record${(s.lastDrainRecordCount ?? 0) === 1 ? '' : 's'}`
@@ -700,6 +705,7 @@ function TransformsTab({
     <div className="space-y-4">
       <div className="flex items-center gap-3 flex-wrap">
         <select
+          aria-label="Save connection"
           value={connId}
           onChange={(e) => onSelectConnection(e.target.value)}
           className="px-3 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs text-white"
@@ -739,6 +745,7 @@ function TransformsTab({
         {rules.map((rule, i) => (
           <div key={i} className="flex items-center gap-2 p-2 rounded bg-black/30 border border-white/5">
             <select
+              aria-label={`Rule ${i + 1} action`}
               value={rule.action}
               onChange={(e) => updateRule(i, { action: e.target.value as MappingRule['action'] })}
               className="px-2 py-1 bg-lattice-surface border border-lattice-border rounded text-[11px] text-white"
@@ -751,6 +758,7 @@ function TransformsTab({
             </select>
             {rule.action !== 'derive' && (
               <input
+                aria-label={`Rule ${i + 1} from field`}
                 placeholder="from field"
                 value={rule.from ?? ''}
                 onChange={(e) => updateRule(i, { from: e.target.value })}
@@ -759,6 +767,7 @@ function TransformsTab({
             )}
             {(rule.action === 'rename' || rule.action === 'derive') && (
               <input
+                aria-label={`Rule ${i + 1} to field`}
                 placeholder="to field"
                 value={rule.to ?? ''}
                 onChange={(e) => updateRule(i, { to: e.target.value })}
@@ -767,6 +776,7 @@ function TransformsTab({
             )}
             {rule.action === 'cast' && (
               <select
+                aria-label={`Rule ${i + 1} cast type`}
                 value={rule.castTo ?? 'string'}
                 onChange={(e) => updateRule(i, { castTo: e.target.value })}
                 className="px-2 py-1 bg-lattice-surface border border-lattice-border rounded text-[11px] text-white"
@@ -778,6 +788,7 @@ function TransformsTab({
             )}
             {rule.action === 'derive' && (
               <input
+                aria-label={`Rule ${i + 1} constant value`}
                 placeholder="constant value"
                 value={rule.value ?? ''}
                 onChange={(e) => updateRule(i, { value: e.target.value })}
@@ -804,6 +815,7 @@ function TransformsTab({
       <div>
         <label className="text-xs text-gray-400 block mb-1">Sample records (JSON array)</label>
         <textarea
+          aria-label="Sample records (JSON array)"
           value={sampleJson}
           onChange={(e) => setSampleJson(e.target.value)}
           rows={5}
@@ -945,6 +957,7 @@ function RunsTab({
       <div className="p-4 rounded-lg bg-black/40 border border-white/10 space-y-3">
         <h3 className="text-sm font-semibold text-white">Run a Sync</h3>
         <select
+          aria-label="Run sync connection"
           value={connId}
           onChange={(e) => setConnId(e.target.value)}
           className="px-3 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs text-white"
@@ -976,6 +989,7 @@ function RunsTab({
               Payload run — this syncs the records below, <span className="text-gray-200">not</span> the connection&rsquo;s endpoint, and the run log labels it that way.
             </p>
             <textarea
+              aria-label="Run sync records (JSON array)"
               value={recordsJson}
               onChange={(e) => setRecordsJson(e.target.value)}
               rows={5}
@@ -1135,6 +1149,7 @@ function DedupTab({
       <div>
         <label className="text-xs text-gray-400 block mb-1">Strategy</label>
         <select
+          aria-label="Dedup strategy"
           value={cfg.strategy}
           onChange={(e) => setCfg({ ...cfg, strategy: e.target.value })}
           className="w-full px-3 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs text-white"
@@ -1148,6 +1163,7 @@ function DedupTab({
         <div>
           <label className="text-xs text-gray-400 block mb-1">Key field</label>
           <input
+            aria-label="Dedup key field"
             value={cfg.keyField ?? ''}
             onChange={(e) => setCfg({ ...cfg, keyField: e.target.value })}
             className="w-full px-3 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs text-white"
@@ -1159,6 +1175,7 @@ function DedupTab({
           Similarity threshold: {cfg.threshold.toFixed(2)}
         </label>
         <input
+          aria-label="Similarity threshold"
           type="range"
           min={0.5}
           max={1}
@@ -1240,6 +1257,7 @@ function OcrTab({
         </label>
       </div>
       <textarea
+        aria-label="Paste extracted document text"
         value={text}
         onChange={(e) => setText(e.target.value)}
         rows={6}
@@ -1415,6 +1433,7 @@ function WebhookTab({
       <div className="p-4 rounded-lg bg-black/40 border border-white/10 space-y-2">
         <h3 className="text-sm font-semibold text-white">Test Push</h3>
         <textarea
+          aria-label="Test push JSON payload"
           value={pushJson}
           onChange={(e) => setPushJson(e.target.value)}
           rows={4}

@@ -37,6 +37,7 @@ interface GroupSession {
   id: string;
   hostId: string;
   hostName: string;
+  hostSample?: boolean;
   title: string;
   topic: string;
   description: string;
@@ -177,12 +178,12 @@ export function GroupSessionsPanel() {
         {error && <p className="text-xs text-red-400">{error}</p>}
         <div className="panel p-4 space-y-2">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">{selected.title}</h3>
+            <h2 className="text-lg font-semibold">{selected.title}</h2>
             <span className={cn('text-xs px-2 py-0.5 rounded', STATUS_STYLE[selected.status])}>{selected.status}</span>
           </div>
           <div className="grid grid-cols-2 gap-2 text-xs text-zinc-400">
             <span className="flex items-center gap-1">
-              {isHost(selected) && <Crown className="w-3 h-3 text-amber-400" />} Host: <b className="text-white">{selected.hostName}</b>
+              {isHost(selected) && <Crown className="w-3 h-3 text-amber-400" />} Host: <b className="text-white">{selected.hostName}</b>{selected.hostSample && <span className="text-zinc-400">(sample)</span>}
             </span>
             <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {new Date(selected.startAt).toLocaleString()}</span>
             <span>Duration: <b className="text-white">{selected.durationMin} min</b></span>
@@ -232,7 +233,7 @@ export function GroupSessionsPanel() {
           )}
 
           <div className="pt-1">
-            <p className="text-[10px] text-zinc-500 uppercase tracking-wide mb-1">Attendees ({selected.attendees.length})</p>
+            <p className="text-[10px] text-zinc-400 uppercase tracking-wide mb-1">Attendees ({selected.attendees.length})</p>
             {selected.attendees.length === 0 ? (
               <p className="text-xs text-zinc-400">No one has joined yet.</p>
             ) : (
@@ -251,7 +252,7 @@ export function GroupSessionsPanel() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold flex items-center gap-2"><Users className="w-4 h-4 text-neon-blue" /> Group Sessions</h3>
+        <h2 className="font-semibold flex items-center gap-2"><Users className="w-4 h-4 text-neon-blue" /> Group Sessions</h2>
         <button onClick={() => setShowCreate(!showCreate)} className="btn-neon text-sm">
           {showCreate ? <X className="w-4 h-4 inline" /> : <UserPlus className="w-4 h-4 inline" />} {showCreate ? 'Cancel' : 'Host a group session'}
         </button>
@@ -272,7 +273,7 @@ export function GroupSessionsPanel() {
 
       {showCreate && (
         <div className="panel p-4 space-y-2">
-          <h4 className="font-semibold text-sm">Host a group session</h4>
+          <h3 className="font-semibold text-sm">Host a group session</h3>
           <input value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} placeholder="Session title *" className="input-lattice w-full" />
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <input type="datetime-local" value={form.startAt} onChange={(e) => setForm((p) => ({ ...p, startAt: e.target.value }))} className="input-lattice col-span-2" />
@@ -292,8 +293,8 @@ export function GroupSessionsPanel() {
       )}
 
       <div className="panel p-3 space-y-2">
-        <h4 className="font-semibold text-xs text-zinc-300">Join a session</h4>
-        <p className="text-[10px] text-zinc-500">Have a Session ID from a mentor? Paste it here to join.</p>
+        <h3 className="font-semibold text-xs text-zinc-300">Join a session</h3>
+        <p className="text-[10px] text-zinc-400">Have a Session ID from a mentor? Paste it here to join.</p>
         <div className="flex gap-2">
           <input value={joinId} onChange={(e) => setJoinId(e.target.value)} placeholder="Session ID" className="input-lattice flex-1" />
           <button onClick={() => join(joinId)} disabled={busy || !joinId.trim()} className="btn-secondary text-xs">Join</button>
@@ -326,7 +327,7 @@ export function GroupSessionsPanel() {
                 </span>
                 <span className={cn('text-[10px] px-2 py-0.5 rounded', STATUS_STYLE[s.status])}>{s.status}</span>
               </div>
-              <p className="text-xs text-zinc-400">{isHost(s) ? 'You are hosting' : `Hosted by ${s.hostName}`} · {s.attendees.length}/{s.capacity} joined</p>
+              <p className="text-xs text-zinc-400">{isHost(s) ? 'You are hosting' : `Hosted by ${s.hostName}${s.hostSample ? ' (sample)' : ''}`} · {s.attendees.length}/{s.capacity} joined</p>
               <p className="text-[10px] text-zinc-400 flex items-center gap-1">
                 <Clock className="w-3 h-3" /> {new Date(s.startAt).toLocaleString()}
               </p>

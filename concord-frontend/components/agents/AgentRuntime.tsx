@@ -13,7 +13,9 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { lensRun } from '@/lib/api/client';
+import { lensRun, api } from '@/lib/api/client';
+import { RunCard } from '@/components/cockpit/RunCard';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { TreeDiagram, TreeNode, TimelineView, TimelineEvent, ChartKit } from '@/components/viz';
 import {
   Play, Loader2, ListTree, GitBranch, CalendarClock, MessageSquare, Wallet,
@@ -39,6 +41,7 @@ interface AgentRun {
   stoppedReason: string | null; steps: RunStep[]; stepCount: number;
   totalLatencyMs: number; totalTokens: number; startedAt: string; finishedAt: string;
   trigger?: string;
+  cockpitRunId?: string;
 }
 interface GraphNode { id: string; agentId: string | null; label: string; role: string }
 interface GraphEdge { from: string; to: string; label: string }
@@ -295,6 +298,9 @@ function RunsPanel({ agents, onChange }: { agents: AgentLite[]; onChange: () => 
             )}
             {runTree && <TreeDiagram root={runTree} />}
             {/* per-step input/output detail */}
+            {selectedRun.cockpitRunId ? (
+              <RunCard runId={selectedRun.cockpitRunId} />
+            ) : (
             <div className="max-h-56 space-y-1.5 overflow-y-auto">
               {selectedRun.steps.map((st) => (
                 <div key={st.index} className="rounded border border-zinc-800 bg-zinc-900 p-2">
@@ -316,6 +322,7 @@ function RunsPanel({ agents, onChange }: { agents: AgentLite[]; onChange: () => 
                 </div>
               ))}
             </div>
+            )}
           </>
         )}
       </div>
@@ -434,9 +441,13 @@ function OrchestrationPanel({ agents, onChange }: { agents: AgentLite[]; onChang
                 <button onClick={() => run(g)} className="inline-flex items-center gap-1 rounded border border-cyan-500/30 bg-cyan-500/10 px-1.5 py-0.5 text-[10px] text-cyan-200 hover:bg-cyan-500/20">
                   <Play className="h-3 w-3" /> run
                 </button>
-                <button onClick={() => remove(g.id)} className="inline-flex items-center gap-1 rounded border border-rose-500/30 bg-rose-500/10 px-1.5 py-0.5 text-[10px] text-rose-300 hover:bg-rose-500/20">
-                  <Trash2 className="h-3 w-3" /> delete
-                </button>
+                <StickyDeleteConfirm
+                  onConfirm={() => { void remove(g.id); }}
+                  armLabel={<><Trash2 className="h-3 w-3" /> delete</>}
+                  armAriaLabel={`Delete graph ${g.name}`}
+                  confirmAriaLabel={`Confirm delete graph ${g.name}`}
+                  className="inline-flex items-center gap-1 rounded border border-rose-500/30 bg-rose-500/10 px-1.5 py-0.5 text-[10px] text-rose-300 hover:bg-rose-500/20"
+                />
               </div>
             </div>
           ))}
@@ -591,9 +602,13 @@ function SchedulesPanel({ agents, onChange }: { agents: AgentLite[]; onChange: (
                 <button onClick={() => toggle(sc.id)} className="inline-flex items-center gap-1 rounded border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-400 hover:text-white">
                   <Power className="h-3 w-3" /> {sc.enabled ? 'pause' : 'enable'}
                 </button>
-                <button onClick={() => remove(sc.id)} className="inline-flex items-center gap-1 rounded border border-rose-500/30 bg-rose-500/10 px-1.5 py-0.5 text-[10px] text-rose-300 hover:bg-rose-500/20">
-                  <Trash2 className="h-3 w-3" /> delete
-                </button>
+                <StickyDeleteConfirm
+                  onConfirm={() => { void remove(sc.id); }}
+                  armLabel={<><Trash2 className="h-3 w-3" /> delete</>}
+                  armAriaLabel={`Delete trigger ${sc.agentName}`}
+                  confirmAriaLabel={`Confirm delete trigger ${sc.agentName}`}
+                  className="inline-flex items-center gap-1 rounded border border-rose-500/30 bg-rose-500/10 px-1.5 py-0.5 text-[10px] text-rose-300 hover:bg-rose-500/20"
+                />
               </div>
             </div>
           ))}
@@ -711,16 +726,25 @@ function BudgetsPanel({ agents, onChange }: { agents: AgentLite[]; onChange: () 
   const save = async () => {
     setErr(null);
     if (!agentId) { setErr('Select an agent'); return; }
+    if (!(Number(tokenLimit) > 0)) { setErr('Token limit must be a number greater than 0.'); return; }
+    if (!(Number(costPer1k) >= 0)) { setErr('Cost per 1k tokens must be a number that is 0 or greater.'); return; }
     setBusy(true);
     const r = await lensRun(DOMAIN, 'setBudget', { agentId, tokenLimit, costPer1k, enforce });
     setBusy(false);
     if (r.data?.ok) { await load(agentId); onChange(); }
-    else setErr(r.data?.error || 'Save failed');
+    else setErr(r.data?.message || r.data?.error || 'Save failed');
   };
 
   const reset = async () => {
     if (!agentId) return;
     await lensRun(DOMAIN, 'resetBudget', { agentId });
+    await load(agentId); onChange();
+  };
+
+  const clearBudget = async () => {
+    if (!agentId) return;
+    const r = await lensRun(DOMAIN, 'clearBudget', { agentId });
+    if (!r.data?.ok) setErr(r.data?.message || r.data?.error || 'That budget was not removed.');
     await load(agentId); onChange();
   };
 
@@ -768,7 +792,10 @@ function BudgetsPanel({ agents, onChange }: { agents: AgentLite[]; onChange: () 
             {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wallet className="h-3.5 w-3.5" />} Save budget
           </button>
           <button onClick={reset} className="inline-flex items-center gap-1 rounded border border-zinc-700 px-2 py-2 text-xs text-zinc-400 hover:text-white">
-            <RefreshCw className="h-3.5 w-3.5" /> reset
+            <RefreshCw className="h-3.5 w-3.5" /> Reset usage
+          </button>
+          <button onClick={clearBudget} className="inline-flex items-center gap-1 rounded border border-zinc-700 px-2 py-2 text-xs text-zinc-400 hover:text-white">
+            Remove budget
           </button>
         </div>
         {err && <p className="text-[11px] text-rose-400">{err}</p>}
@@ -814,7 +841,9 @@ function BudgetsPanel({ agents, onChange }: { agents: AgentLite[]; onChange: () 
 function TemplatesPanel() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [importing, setImporting] = useState<string | null>(null);
-  const [imported, setImported] = useState<{ name: string; type: string } | null>(null);
+  const [imported, setImported] = useState<{ id: string | null; name: string; type: string; templateId: string } | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [names, setNames] = useState<Record<string, string>>({});
   const [events, setEvents] = useState<TimelineEvent[]>([]);
 
   useEffect(() => {
@@ -826,20 +855,61 @@ function TemplatesPanel() {
     return () => { cancelled = true; };
   }, []);
 
+  // FIX-agents-013: importing a template used to record the install and
+  // throw the returned agent definition away — no agent was ever created,
+  // and the success note pointed at a roster step that does not exist.
+  // The import now persists the definition through the same artifact
+  // store the Fleet view creates agents in (POST /api/lens/agents with
+  // type 'agent'), under the name typed on the card, and the banner's
+  // Undo removes the created agent and reverses the install count.
   const importTpl = async (tpl: Template) => {
     setImporting(tpl.id);
-    const r = await lensRun<{ agentDefinition: any; template: Template }>(DOMAIN, 'importTemplate', { templateId: tpl.id });
-    setImporting(null);
-    if (r.data?.ok && r.data.result) {
-      const def = r.data.result.agentDefinition;
-      setImported({ name: def.name, type: def.type });
+    setImportError(null);
+    const chosenName = (names[tpl.id] || '').trim();
+    const r = await lensRun<{ agentDefinition: any; template: Template }>(DOMAIN, 'importTemplate', {
+      templateId: tpl.id,
+      ...(chosenName ? { name: chosenName } : {}),
+    });
+    if (!r.data?.ok || !r.data.result) {
+      setImporting(null);
+      setImportError(`"${tpl.name}" could not be imported. Nothing was recorded.`);
+      return;
+    }
+    const def = r.data.result.agentDefinition;
+    const installs = r.data.result.template.installs;
+    try {
+      const created = await api.post('/api/lens/agents', { type: 'agent', title: def.name, data: def });
+      const artifactId = (created.data as { artifact?: { id?: string } } | undefined)?.artifact?.id ?? null;
+      setImported({ id: artifactId, name: def.name, type: def.type, templateId: tpl.id });
       setEvents((e) => [
         { id: `${tpl.id}-${Date.now()}`, label: `Imported ${def.name}`, detail: `${def.type} agent · ${def.tools.length} tools`, time: new Date().toISOString(), tone: 'good' },
         ...e,
       ]);
-      // reflect bumped install count
-      setTemplates((ts) => ts.map((t) => (t.id === tpl.id ? { ...t, installs: r.data.result!.template.installs } : t)));
+      setTemplates((ts) => ts.map((t) => (t.id === tpl.id ? { ...t, installs } : t)));
+    } catch {
+      setImportError(`"${tpl.name}" was recorded as installed, but the agent itself could not be saved. Undo the import from this panel or try again.`);
+      setImported({ id: null, name: def.name, type: def.type, templateId: tpl.id });
+      setTemplates((ts) => ts.map((t) => (t.id === tpl.id ? { ...t, installs } : t)));
     }
+    setImporting(null);
+  };
+
+  const undoImport = async () => {
+    if (!imported) return;
+    const target = imported;
+    if (target.id) {
+      try { await api.delete(`/api/lens/agents/${target.id}`); } catch { /* count reversal below still applies */ }
+    }
+    const r = await lensRun<{ template: Template }>(DOMAIN, 'uninstallTemplate', { templateId: target.templateId });
+    if (r.data?.ok && r.data.result) {
+      setTemplates((ts) => ts.map((t) => (t.id === target.templateId ? { ...t, installs: r.data.result!.template.installs } : t)));
+    }
+    setEvents((e) => [
+      { id: `${target.templateId}-undo-${Date.now()}`, label: `Undid import of ${target.name}`, detail: 'Agent removed and install count reversed', time: new Date().toISOString(), tone: 'warn' },
+      ...e,
+    ]);
+    setImported(null);
+    setImportError(null);
   };
 
   return (
@@ -861,6 +931,15 @@ function TemplatesPanel() {
               <span>by {t.author} · {t.installs} installs</span>
               <span className="font-mono">{t.model.split('-').slice(0, 2).join('-')}</span>
             </div>
+            <input
+              type="text"
+              value={names[t.id] || ''}
+              onChange={(e) => setNames((n) => ({ ...n, [t.id]: e.target.value }))}
+              placeholder={t.name}
+              maxLength={120}
+              aria-label={`Name for the imported ${t.name} agent`}
+              className="mt-2 w-full rounded-md border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-200 placeholder:text-zinc-500"
+            />
             <button
               onClick={() => importTpl(t)} disabled={importing === t.id}
               className="mt-2 inline-flex items-center justify-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-40"
@@ -871,10 +950,23 @@ function TemplatesPanel() {
         ))}
         {templates.length === 0 && <p className="text-[11px] text-zinc-400">Loading templates…</p>}
       </div>
-      {imported && (
-        <p className="rounded border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-[11px] text-emerald-300">
-          Imported &quot;{imported.name}&quot; ({imported.type}). The agent definition is ready — create it from the roster above.
+      {importError && (
+        <p role="alert" className="rounded border border-rose-500/30 bg-rose-500/5 px-3 py-2 text-[11px] text-rose-300">
+          {importError}
         </p>
+      )}
+      {imported && (
+        <div className="flex items-center justify-between gap-2 rounded border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-[11px] text-emerald-300">
+          <p>
+            Imported &quot;{imported.name}&quot; ({imported.type}) — the agent is now in your Fleet roster, where it can be edited and run.
+          </p>
+          <button
+            onClick={undoImport}
+            className="shrink-0 rounded border border-emerald-500/40 px-2 py-1 text-[11px] font-medium text-emerald-200 hover:bg-emerald-500/10"
+          >
+            Undo import
+          </button>
+        </div>
       )}
       {events.length > 0 && (
         <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3">
@@ -1013,9 +1105,13 @@ function TaskDefinitionsPanel({ onChange }: { onChange: () => void }) {
                 ))}
               </div>
               <div className="mt-1.5 flex gap-1">
-                <button onClick={() => remove(td.id)} className="inline-flex items-center gap-1 rounded border border-rose-500/30 bg-rose-500/10 px-1.5 py-0.5 text-[10px] text-rose-300 hover:bg-rose-500/20">
-                  <Trash2 className="h-3 w-3" /> delete
-                </button>
+                <StickyDeleteConfirm
+                  onConfirm={() => { void remove(td.id); }}
+                  armLabel={<><Trash2 className="h-3 w-3" /> delete</>}
+                  armAriaLabel={`Delete task ${td.name}`}
+                  confirmAriaLabel={`Confirm delete task ${td.name}`}
+                  className="inline-flex items-center gap-1 rounded border border-rose-500/30 bg-rose-500/10 px-1.5 py-0.5 text-[10px] text-rose-300 hover:bg-rose-500/20"
+                />
               </div>
             </div>
           ))}

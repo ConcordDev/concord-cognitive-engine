@@ -34,8 +34,8 @@ export function QueueAnalyticsPanel({
   const [sub, setSub] = useState<SubTab>('theory');
   const [serverCount, setServerCount] = useState(Math.max(1, servers));
   const [algorithm, setAlgorithm] = useState<'weighted_fair' | 'deadline_monotonic' | 'priority_preemptive'>('weighted_fair');
-  const [maxCapacity, setMaxCapacity] = useState(200);
-  const [targetFillRatio, setTargetFillRatio] = useState(0.7);
+  const [maxCapacity, setMaxCapacity] = useState('200');
+  const [targetFillRatio, setTargetFillRatio] = useState('0.7');
   const [busy, setBusy] = useState(false);
   const [theoryResult, setTheoryResult] = useState<Record<string, unknown> | null>(null);
   const [scheduleResult, setScheduleResult] = useState<Record<string, unknown> | null>(null);
@@ -95,6 +95,10 @@ export function QueueAnalyticsPanel({
   };
 
   const runBackpressure = async () => {
+    const cap = Number(maxCapacity);
+    const fill = Number(targetFillRatio);
+    if (!Number.isFinite(cap) || cap < 1) { setError('Target capacity must be a number of at least 1.'); return; }
+    if (!Number.isFinite(fill) || fill < 0.1 || fill > 1) { setError('Target fill ratio must be a number from 0.1 to 1.'); return; }
     setBusy(true);
     setError(null);
     try {
@@ -108,8 +112,8 @@ export function QueueAnalyticsPanel({
       const egressRate = Math.round((recentCompletions / 5) * 100) / 100;
       const depth = pendingJobs.length + allJobs.filter((j) => j.status === 'failed').length;
       const res = await lensRun('queue', 'backpressure', {
-        metrics: { queueDepth: depth, maxCapacity, ingressRate, egressRate },
-        targetFillRatio,
+        metrics: { queueDepth: depth, maxCapacity: cap, ingressRate, egressRate },
+        targetFillRatio: fill,
       });
       if (res.data.ok === false) setError(res.data.error || 'Computation failed');
       else setBpResult(res.data.result as Record<string, unknown>);
@@ -168,11 +172,16 @@ export function QueueAnalyticsPanel({
             <button
               onClick={runTheory}
               disabled={busy || (arrivals.length < 2 && completions.length < 2)}
-              className="flex items-center gap-1.5 rounded-lg bg-neon-purple/20 px-3 py-1.5 text-xs text-neon-purple hover:bg-neon-purple/30 disabled:opacity-40"
+              className="flex min-h-11 items-center gap-1.5 rounded-lg bg-neon-purple/20 px-3 py-1.5 text-xs text-neon-purple hover:bg-neon-purple/30 disabled:opacity-40"
             >
               {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />} Analyze
             </button>
           </div>
+          {arrivals.length < 2 && completions.length < 2 && (
+            <p className="text-[11px] text-amber-200/90">
+              Analyze needs at least 2 arrivals or 2 completions. A single scheduled job is not enough; enqueue or finish another job, then run it again.
+            </p>
+          )}
           {theoryResult && (
             <div className="grid grid-cols-1 gap-3 rounded-lg border border-white/10 bg-black/30 p-3 sm:grid-cols-2">
               <div className="space-y-1.5">
@@ -293,7 +302,7 @@ export function QueueAnalyticsPanel({
                 type="number"
                 min={1}
                 value={maxCapacity}
-                onChange={(e) => setMaxCapacity(Math.max(1, Number(e.target.value) || 1))}
+                onChange={(e) => setMaxCapacity(e.target.value)}
                 className="w-20 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-sm text-white"
               />
             </label>
@@ -305,7 +314,7 @@ export function QueueAnalyticsPanel({
                 max={1}
                 step={0.05}
                 value={targetFillRatio}
-                onChange={(e) => setTargetFillRatio(Math.min(1, Math.max(0.1, Number(e.target.value) || 0.7)))}
+                onChange={(e) => setTargetFillRatio(e.target.value)}
                 className="w-16 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-sm text-white"
               />
             </label>

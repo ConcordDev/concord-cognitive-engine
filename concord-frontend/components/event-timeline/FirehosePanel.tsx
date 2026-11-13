@@ -112,6 +112,11 @@ export function FirehosePanel() {
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const [rows, setRows] = useState<TimelineRow[]>([]);
+  // False until the first feed fetch settles — before that, the count
+  // header and the empty-state copy must not render: rows starts empty,
+  // so they would flash a definitive '0 events' / 'No events yet' that
+  // the arriving data then contradicts (FIX-event-timeline-005).
+  const [loaded, setLoaded] = useState(false);
   const [statsByChannel, setStatsByChannel] = useState<ChannelStat[]>([]);
   const [knownChannels, setKnownChannels] = useState<ChannelInfo[]>([]);
   const [activeCategories, setActiveCategories] = useState<Set<string>>(
@@ -133,6 +138,7 @@ export function FirehosePanel() {
   const [toTs, setToTs] = useState(toLocalDatetime(nowSec));
 
   const fetchLive = useCallback(async () => {
+    try {
     const [r1, r2, r3] = await Promise.all([
       lensRun<{ ok: boolean; rows?: TimelineRow[] }>('event_timeline', 'recent', {
         limit: 200,
@@ -150,6 +156,9 @@ export function FirehosePanel() {
     }
     if (r3.data?.result?.ok && Array.isArray(r3.data.result.channels)) {
       setKnownChannels(r3.data.result.channels);
+    }
+    } finally {
+      setLoaded(true);
     }
   }, [worldFilter, channelFilter]);
 
@@ -181,6 +190,7 @@ export function FirehosePanel() {
       },
     );
     setSearchBusy(false);
+    setLoaded(true);
     if (r.data?.result?.ok && Array.isArray(r.data.result.rows)) {
       setRows(r.data.result.rows);
     } else {
@@ -204,6 +214,7 @@ export function FirehosePanel() {
         channels: channelFilter.length ? channelFilter : null,
       },
     );
+    setLoaded(true);
     if (r.data?.result?.ok && Array.isArray(r.data.result.rows)) {
       setRows(r.data.result.rows);
     } else {
@@ -272,10 +283,10 @@ export function FirehosePanel() {
 
   const toggleCategory = (cat: string) => {
     setActiveCategories((prev) => {
-      const next = new Set(prev);
-      if (next.has(cat)) next.delete(cat);
-      else next.add(cat);
-      return next;
+      const all = new Set([...Object.keys(CHANNEL_CATEGORIES), 'Other']);
+      const onlyThis = prev.size === 1 && prev.has(cat);
+      if (onlyThis) return all;
+      return new Set([cat]);
     });
   };
 
@@ -466,10 +477,12 @@ export function FirehosePanel() {
               {mode === 'range' && 'Date-range results'}
             </span>
             <span>
-              {filteredRows.length} event{filteredRows.length === 1 ? '' : 's'}
+              {loaded ? <>{filteredRows.length} event{filteredRows.length === 1 ? '' : 's'}</> : 'Loading…'}
             </span>
           </div>
-          {filteredRows.length === 0 ? (
+          {!loaded ? (
+            <div className="p-8 text-center text-sm text-zinc-400 animate-pulse">Loading events…</div>
+          ) : filteredRows.length === 0 ? (
             <div className="p-8 text-center text-sm text-zinc-400">
               {mode === 'live'
                 ? 'No events yet. The substrate fires events continuously — check back in a few seconds.'

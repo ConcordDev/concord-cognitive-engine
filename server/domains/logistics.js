@@ -780,6 +780,13 @@ export default function registerLogisticsActions(registerLensAction) {
     if (!state[key].has(userId)) state[key].set(userId, []);
     return state[key].get(userId);
   }
+  function findOwnedShipment(s, userId, key) {
+    const k = String(key || "").trim();
+    if (!k) return null;
+    return ensureLogBucket(s, "shipments", userId).find((x) =>
+      x.id === k || x.reference === k || (x.trackingNumber && x.trackingNumber === k) || (x.poNumber && x.poNumber === k)
+    ) || null;
+  }
   // ── Shipments CRUD ────────────────────────────────────────────
 
   registerLensAction("logistics", "shipments-create", (ctx, _a, params = {}) => {
@@ -830,6 +837,56 @@ export default function registerLogisticsActions(registerLensAction) {
     const idx = list.findIndex(x => x.id === id);
     if (idx < 0) return { ok: false, error: "shipment not found" };
     list.splice(idx, 1);
+    for (const bucket of ["pods", "dockAppointments", "shipmentEvents", "exceptions"]) {
+      const related = ensureLogBucket(s, bucket, userId);
+      for (let i = related.length - 1; i >= 0; i--) {
+        if (related[i].shipmentId === id) related.splice(i, 1);
+      }
+    }
+    saveLogState();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  registerLensAction("logistics", "shipments-update", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const shp = ensureLogBucket(s, "shipments", userId).find(x => x.id === String(params.id || ""));
+    if (!shp) return { ok: false, error: "shipment not found" };
+    if (params.origin != null) shp.origin = String(params.origin).trim().slice(0, 160);
+    if (params.destination != null) shp.destination = String(params.destination).trim().slice(0, 160);
+    if (params.poNumber != null) shp.poNumber = String(params.poNumber).trim().slice(0, 40);
+    if (params.consignee != null) shp.consignee = String(params.consignee).trim().slice(0, 120);
+    if (params.trackingNumber != null) shp.trackingNumber = String(params.trackingNumber).trim().slice(0, 40) || null;
+    saveLogState();
+    return { ok: true, result: { shipment: shp } };
+  });
+
+  function deleteLogRow(ctx, bucket, id) {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const list = ensureLogBucket(s, bucket, userId);
+    const idx = list.findIndex(x => x.id === String(id || ""));
+    if (idx < 0) return { ok: false, error: "not found" };
+    list.splice(idx, 1);
+    saveLogState();
+    return { ok: true, result: { id: String(id), deleted: true } };
+  }
+
+  registerLensAction("logistics", "pickups-delete", (ctx, _a, params = {}) => deleteLogRow(ctx, "pickups", params.id));
+  registerLensAction("logistics", "pods-delete", (ctx, _a, params = {}) => deleteLogRow(ctx, "pods", params.id));
+  registerLensAction("logistics", "loads-delete", (ctx, _a, params = {}) => deleteLogRow(ctx, "loads", params.id));
+  registerLensAction("logistics", "freight-invoices-delete", (ctx, _a, params = {}) => deleteLogRow(ctx, "freightInvoices", params.id));
+  registerLensAction("logistics", "dock-appointments-delete", (ctx, _a, params = {}) => deleteLogRow(ctx, "dockAppointments", params.id));
+  registerLensAction("logistics", "docks-delete", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const id = String(params.id || "");
+    const list = ensureLogBucket(s, "docks", userId);
+    const idx = list.findIndex(x => x.id === id);
+    if (idx < 0) return { ok: false, error: "not found" };
+    list.splice(idx, 1);
+    const appts = ensureLogBucket(s, "dockAppointments", userId);
+    for (let i = appts.length - 1; i >= 0; i--) if (appts[i].dockId === id) appts.splice(i, 1);
     saveLogState();
     return { ok: true, result: { id, deleted: true } };
   });
@@ -894,6 +951,53 @@ export default function registerLogisticsActions(registerLensAction) {
     list.splice(idx, 1);
     saveLogState();
     return { ok: true, result: { id, deleted: true } };
+  });
+
+  registerLensAction("logistics", "carriers-update", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const row = ensureLogBucket(s, "carriers", userId).find(c => c.id === String(params.id || ""));
+    if (!row) return { ok: false, error: "carrier not found" };
+    const name = params.name != null ? String(params.name).trim() : row.name;
+    if (!name || name.length > 80) return { ok: false, error: "invalid_input", message: "Carrier name must be 1 to 80 characters." };
+    row.name = name;
+    saveLogState();
+    return { ok: true, result: { carrier: row } };
+  });
+
+  registerLensAction("logistics", "pickups-update", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const row = ensureLogBucket(s, "pickups", userId).find(p => p.id === String(params.id || ""));
+    if (!row) return { ok: false, error: "pickup not found" };
+    if (params.address != null) row.address = String(params.address).trim().slice(0, 160);
+    if (params.confirmationNumber != null) row.confirmationNumber = String(params.confirmationNumber).trim().slice(0, 40) || null;
+    saveLogState();
+    return { ok: true, result: { pickup: row } };
+  });
+
+  registerLensAction("logistics", "docks-update", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const row = ensureLogBucket(s, "docks", userId).find(d => d.id === String(params.id || ""));
+    if (!row) return { ok: false, error: "not found" };
+    const name = params.name != null ? String(params.name).trim() : row.name;
+    if (!name) return { ok: false, error: "invalid_input", message: "A dock needs a name." };
+    row.name = name.slice(0, 80);
+    if (params.facility != null) row.facility = String(params.facility).trim().slice(0, 80);
+    saveLogState();
+    return { ok: true, result: { dock: row } };
+  });
+
+  registerLensAction("logistics", "loads-update", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const row = ensureLogBucket(s, "loads", userId).find(l => l.id === String(params.id || ""));
+    if (!row) return { ok: false, error: "not found" };
+    if (params.origin != null) row.origin = String(params.origin).trim().slice(0, 160);
+    if (params.destination != null) row.destination = String(params.destination).trim().slice(0, 160);
+    saveLogState();
+    return { ok: true, result: { load: row } };
   });
 
   // ── Rate quoting ──────────────────────────────────────────────
@@ -1099,7 +1203,13 @@ export default function registerLogisticsActions(registerLensAction) {
       const userId = logActor(ctx);
       const origin = String(params.origin || "").trim();
       const destination = String(params.destination || "").trim();
-      const weightLbs = Math.max(0.1, Number(params.weightLbs) || 1);
+      let weightLbs = 1;
+      if (params.weightLbs != null && params.weightLbs !== "") {
+        weightLbs = Number(params.weightLbs);
+        if (!Number.isFinite(weightLbs) || weightLbs <= 0 || weightLbs > 200_000) {
+          return { ok: false, error: "invalid_input", message: "Weight must be a number greater than 0." };
+        }
+      }
       const mode = ["parcel", "ltl", "ftl"].includes(params.mode) ? params.mode : "parcel";
       if (!origin || !destination) return { ok: false, error: "origin and destination required" };
       // This user's carriers only. Another account's rows are a different bucket.
@@ -1196,7 +1306,7 @@ export default function registerLogisticsActions(registerLensAction) {
     const userId = logActor(ctx);
     const shipmentId = String(params.shipmentId || "");
     if (!shipmentId) return { ok: false, error: "shipmentId required" };
-    const shp = ensureLogBucket(s, "shipments", userId).find(x => x.id === shipmentId);
+    const shp = findOwnedShipment(s, userId, shipmentId);
     if (!shp) return { ok: false, error: "shipment not found" };
     const pod = {
       id: uidLog("pod"), shipmentId,
@@ -1323,17 +1433,33 @@ export default function registerLogisticsActions(registerLensAction) {
     const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = logActor(ctx);
     const number = String(params.number || "").trim();
-    if (!number) return { ok: false, error: "number (truck/unit number) required" };
+    if (!number) return { ok: false, error: "number (truck/unit number) required", message: "Truck number is required." };
+    if (number.length > 40) return { ok: false, error: "invalid_input", message: "Truck number must be 40 characters or fewer." };
+    let year = null;
+    if (params.year != null && params.year !== "") {
+      year = Number(params.year);
+      const maxYear = new Date().getFullYear() + 1;
+      if (!Number.isInteger(year) || year < 1900 || year > maxYear) {
+        return { ok: false, error: "invalid_input", message: `Year must be a whole year from 1900 to ${maxYear}.` };
+      }
+    }
+    let capacityLbs = 0;
+    if (params.capacityLbs != null && params.capacityLbs !== "") {
+      capacityLbs = Number(params.capacityLbs);
+      if (!Number.isFinite(capacityLbs) || capacityLbs < 0 || capacityLbs > 200000) {
+        return { ok: false, error: "invalid_input", message: "Capacity must be a number from 0 to 200,000 pounds." };
+      }
+    }
     const vehicle = {
       id: uidLog("veh"), number,
       kind: ["box_truck", "tractor", "trailer", "van", "pickup"].includes(params.kind) ? params.kind : "box_truck",
       make: String(params.make || ""),
       model: String(params.model || ""),
-      year: Number(params.year) || null,
+      year,
       vin: String(params.vin || ""),
       mileage: Math.max(0, Number(params.mileage) || 0),
       fuelType: String(params.fuelType || "diesel"),
-      capacityLbs: Math.max(0, Number(params.capacityLbs) || 0),
+      capacityLbs,
       status: "available",
       assignedDriverId: null,
       lat: params.lat != null ? Number(params.lat) : null,
@@ -1391,9 +1517,10 @@ export default function registerLogisticsActions(registerLensAction) {
     const origin = String(params.origin || "").trim();
     const destination = String(params.destination || "").trim();
     const ratePerMile = Number(params.ratePerMile);
-    const weightLbs = Math.max(0, Number(params.weightLbs) || 0);
-    if (!origin || !destination) return { ok: false, error: "origin and destination required" };
-    if (!Number.isFinite(ratePerMile) || ratePerMile <= 0) return { ok: false, error: "ratePerMile must be > 0" };
+    const weightLbs = Number(params.weightLbs);
+    if (!origin || !destination) return { ok: false, error: "origin and destination required", message: "Origin and destination are required." };
+    if (!Number.isFinite(ratePerMile) || ratePerMile <= 0) return { ok: false, error: "ratePerMile must be > 0", message: "Rate per mile must be a number greater than 0." };
+    if (!Number.isFinite(weightLbs) || weightLbs <= 0) return { ok: false, error: "invalid_input", message: "Weight must be a number greater than 0." };
     const load = {
       id: uidLog("load"), origin, destination, ratePerMile, weightLbs,
       equipment: String(params.equipment || "dry_van"),
@@ -1519,8 +1646,10 @@ export default function registerLogisticsActions(registerLensAction) {
   try {
     const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = logActor(ctx);
-    const shipmentId = String(params.shipmentId || "").trim();
-    if (!shipmentId) return { ok: false, error: "shipmentId required" };
+    const typedId = String(params.shipmentId || "").trim();
+    if (!typedId) return { ok: false, error: "shipmentId required" };
+    const known = findOwnedShipment(s, userId, typedId);
+    const shipmentId = known ? known.id : typedId;
     const oLat = Number(params.originLat), oLng = Number(params.originLng);
     const dLat = Number(params.destLat), dLng = Number(params.destLng);
     if (![oLat, oLng, dLat, dLng].every(Number.isFinite)) {
@@ -1550,10 +1679,12 @@ export default function registerLogisticsActions(registerLensAction) {
   try {
     const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = logActor(ctx);
-    const shipmentId = String(params.shipmentId || "").trim();
+    const typedId = String(params.shipmentId || "").trim();
     const lat = Number(params.lat), lng = Number(params.lng);
-    if (!shipmentId) return { ok: false, error: "shipmentId required" };
+    if (!typedId) return { ok: false, error: "shipmentId required" };
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) return { ok: false, error: "lat and lng required (numeric)" };
+    const known = findOwnedShipment(s, userId, typedId);
+    const shipmentId = known ? known.id : typedId;
     const track = ensureLogBucket(s, "gpsTracks", userId).find(t => t.shipmentId === shipmentId);
     if (!track) return { ok: false, error: "track not found (call gps-track-init first)" };
     const at = params.at ? new Date(params.at).toISOString() : new Date().toISOString();
@@ -1608,9 +1739,11 @@ export default function registerLogisticsActions(registerLensAction) {
   registerLensAction("logistics", "gps-track-get", (ctx, _a, params = {}) => {
     const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = logActor(ctx);
-    const shipmentId = String(params.shipmentId || "").trim();
+    const typedId = String(params.shipmentId || "").trim();
     const list = ensureLogBucket(s, "gpsTracks", userId);
-    if (shipmentId) {
+    if (typedId) {
+      const known = findOwnedShipment(s, userId, typedId);
+      const shipmentId = known ? known.id : typedId;
       const track = list.find(t => t.shipmentId === shipmentId);
       if (!track) return { ok: false, error: "track not found" };
       return { ok: true, result: { track } };
@@ -1628,9 +1761,9 @@ export default function registerLogisticsActions(registerLensAction) {
     const userId = logActor(ctx);
     const shipmentId = String(params.shipmentId || "").trim();
     if (!shipmentId) return { ok: false, error: "shipmentId required" };
-    const shp = ensureLogBucket(s, "shipments", userId).find(x => x.id === shipmentId);
+    const shp = findOwnedShipment(s, userId, shipmentId);
     if (!shp) return { ok: false, error: "shipment not found" };
-    const track = ensureLogBucket(s, "gpsTracks", userId).find(t => t.shipmentId === shipmentId);
+    const track = ensureLogBucket(s, "gpsTracks", userId).find(t => t.shipmentId === shp.id);
 
     const factors = [];
     let risk = 0;
@@ -1818,10 +1951,10 @@ export default function registerLogisticsActions(registerLensAction) {
     const userId = logActor(ctx);
     const shipmentId = String(params.shipmentId || "").trim();
     if (!shipmentId) return { ok: false, error: "shipmentId required" };
-    const shp = ensureLogBucket(s, "shipments", userId).find(x => x.id === shipmentId);
+    const shp = findOwnedShipment(s, userId, shipmentId);
     if (!shp) return { ok: false, error: "shipment not found" };
     const report = {
-      id: uidLog("dmg"), shipmentId, carrierId: shp.carrierId || "",
+      id: uidLog("dmg"), shipmentId: shp.id, carrierId: shp.carrierId || "",
       severity: ["minor", "moderate", "severe", "total_loss"].includes(params.severity) ? params.severity : "minor",
       description: String(params.description || ""),
       claimAmountUsd: Math.max(0, Number(params.claimAmountUsd) || 0),
@@ -2082,13 +2215,13 @@ export default function registerLogisticsActions(registerLensAction) {
     const userId = logActor(ctx);
     const shipmentId = String(params.shipmentId || "").trim();
     if (!shipmentId) return { ok: false, error: "shipmentId required" };
-    const shp = ensureLogBucket(s, "shipments", userId).find(x => x.id === shipmentId);
+    const shp = findOwnedShipment(s, userId, shipmentId);
     if (!shp) return { ok: false, error: "shipment not found" };
     const kind = ["delay", "damage", "lost", "weather", "customs_hold", "documentation", "carrier_issue", "other"]
       .includes(params.kind) ? params.kind : "other";
     const severity = ["low", "medium", "high", "critical"].includes(params.severity) ? params.severity : "medium";
     const exception = {
-      id: uidLog("exc"), shipmentId, kind, severity,
+      id: uidLog("exc"), shipmentId: shp.id, kind, severity,
       description: String(params.description || ""),
       status: "open",
       assignee: String(params.assignee || ""),

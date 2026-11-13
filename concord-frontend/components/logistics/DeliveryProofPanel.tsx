@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { CheckCircle, Plus, Loader2, MapPin, FileSignature, Camera } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface POD { id: string; shipmentId: string; signatureName: string; signatureUrl: string | null; photoUrl: string | null; gpsLat: number | null; gpsLng: number | null; deliveredAt: string; receivedBy: string }
 interface Shipment { id: string; trackingNumber: string | null; reference?: string; origin: string; destination: string; status: string }
@@ -27,6 +28,11 @@ export function DeliveryProofPanel() {
       setShipments(items.filter(x => x.status !== 'delivered'));
     } catch (e) { console.error('[POD] failed', e); }
     finally { setLoading(false); }
+  }
+
+  async function remove(id: string) {
+    await lensRun({ domain: 'logistics', action: 'pods-delete', input: { id } });
+    await refresh();
   }
 
   async function confirm() {
@@ -82,6 +88,7 @@ export function DeliveryProofPanel() {
                   </div>
                   {p.gpsLat != null && <div className="text-[10px] text-gray-400 font-mono">{p.gpsLat.toFixed(4)},{p.gpsLng?.toFixed(4)}</div>}
                 </div>
+                <StickyDeleteConfirm onConfirm={() => remove(p.id)} armLabel="Delete" armAriaLabel="Delete proof of delivery" confirmLabel="Delete proof?" className="text-[10px] text-rose-300" />
               </li>
             ))}
           </ul>

@@ -66,10 +66,10 @@ export function InventoryTransfers() {
 
       <div className="p-3 border-b border-white/10 space-y-2">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-          <input value={form.fromLocation} onChange={e => setForm({ ...form, fromLocation: e.target.value })} placeholder="From (Warehouse A)" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <input value={form.toLocation} onChange={e => setForm({ ...form, toLocation: e.target.value })} placeholder="To (Store 1)" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <input value={form.sku} onChange={e => setForm({ ...form, sku: e.target.value.toUpperCase() })} placeholder="SKU" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
-          <input type="number" value={form.qty} onChange={e => setForm({ ...form, qty: e.target.value })} placeholder="Qty" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input id="retail-from-warehouse-a" name="from-warehouse-a" aria-label="From (Warehouse A)" value={form.fromLocation} onChange={e => setForm({ ...form, fromLocation: e.target.value })} placeholder="From (Warehouse A)" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input id="retail-to-store-1" name="to-store-1" aria-label="To (Store 1)" value={form.toLocation} onChange={e => setForm({ ...form, toLocation: e.target.value })} placeholder="To (Store 1)" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input id="retail-sku-2" name="sku-2" aria-label="SKU" value={form.sku} onChange={e => setForm({ ...form, sku: e.target.value.toUpperCase() })} placeholder="SKU" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+          <input id="retail-qty" name="qty" aria-label="Qty" type="number" value={form.qty} onChange={e => setForm({ ...form, qty: e.target.value })} placeholder="Qty" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <button onClick={addLine} className="px-3 py-1.5 text-xs rounded bg-cyan-500/30 text-cyan-300 hover:bg-cyan-500/50">+ Line</button>
         </div>
         {pendingLines.length > 0 && (

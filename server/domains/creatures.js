@@ -11,7 +11,7 @@
 // taxonomy   — the taxonomy record for one species id.
 // Public-read (world-visible).
 
-import { taxonomyForSpecies, isAquaticSpecies, topologyForSpecies, speciesCatalog } from "../lib/species-taxonomy.js";
+import { taxonomyForSpecies, authoredTaxonomy, isAquaticSpecies, topologyForSpecies, speciesCatalog } from "../lib/species-taxonomy.js";
 import { generateCreature } from "../lib/procedural-creature.js";
 import {
   recordEncounter,
@@ -22,6 +22,18 @@ import {
 import { buildCreaturePortraitSvg, summarizePartCounts } from "../lib/creature-portrait.js";
 import { registerCitation } from "../economy/royalty-cascade.js";
 import { announceCreatureBorn } from "../lib/concordia-creatures.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
+
+export function creaturesCodexExportRows() {
+  return speciesCatalog().map((s) => ({
+    id: s.species_id,
+    type: "species",
+    title: s.species_id,
+    createdAt: null,
+    updatedAt: null,
+    data: s,
+  }));
+}
 
 // Deterministic coat colour from species id + dominant affinity, so a steam
 // variant reads cool-grey, a magma variant red, etc. — no per-species art asset.
@@ -174,6 +186,7 @@ function csResolveOwnedCreatureParent(db, parentInput) {
 }
 
 export default function registerCreatureMacros(register) {
+  registerLensExportProvider("creatures", () => creaturesCodexExportRows());
   register("creatures", "for_world", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
@@ -229,7 +242,9 @@ export default function registerCreatureMacros(register) {
     // camelCase speciesId (playtest finding #6 — intra-domain consistency).
     const speciesId = input.species_id || input.speciesId;
     if (!speciesId) return { ok: false, reason: "missing_species_id" };
-    return { ok: true, taxonomy: taxonomyForSpecies(speciesId) };
+    const taxonomy = authoredTaxonomy(speciesId);
+    if (!taxonomy) return { ok: false, reason: "unknown_species" };
+    return { ok: true, taxonomy };
   }, { note: "taxonomy record (clade/topology/diet) for a species id" });
 
   /**

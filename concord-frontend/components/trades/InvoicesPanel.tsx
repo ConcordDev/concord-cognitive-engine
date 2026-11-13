@@ -115,7 +115,7 @@ export function InvoicesPanel() {
                 <input value={l.description} onChange={e => updLine(i, { description: e.target.value })} placeholder="Line description" className="col-span-6 px-2 py-1 text-xs bg-black/40 border border-white/10 rounded text-gray-100" />
                 <input type="number" value={l.qty} onChange={e => updLine(i, { qty: Number(e.target.value) })} placeholder="Qty" className="col-span-2 px-2 py-1 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono" />
                 <input type="number" value={l.unitPrice} onChange={e => updLine(i, { unitPrice: Number(e.target.value) })} placeholder="Unit $" step="0.01" className="col-span-3 px-2 py-1 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono" />
-                <button onClick={() => setLines(ls => ls.filter((_, idx) => idx !== i))} disabled={lines.length === 1} className="col-span-1 p-1 text-gray-600 hover:text-rose-300 disabled:opacity-30" aria-label="Remove line"><Trash2 className="w-3 h-3 mx-auto" /></button>
+                <button onClick={() => setLines(ls => ls.filter((_, idx) => idx !== i))} disabled={lines.length === 1} className="col-span-1 p-1 text-gray-400 hover:text-rose-300 disabled:opacity-30" aria-label="Remove line"><Trash2 className="w-3 h-3 mx-auto" /></button>
               </div>
             ))}
             <div className="flex items-center justify-between">

@@ -288,10 +288,10 @@ export function FormulaNotebookPanel() {
 
         {showAddFormula && (
           <div className="space-y-2 mb-4 p-3 rounded-lg bg-lattice-deep border border-lattice-border">
-            <input type="text" value={newFormulaName} onChange={(e) => setNewFormulaName(e.target.value)} placeholder="Name (e.g. Pythagorean Theorem)" className={ds.input} />
-            <input type="text" value={newFormulaLatex} onChange={(e) => setNewFormulaLatex(e.target.value)} placeholder="LaTeX (e.g. a^2 + b^2 = c^2)" className={cn(ds.input, 'font-mono')} />
-            <input type="text" value={newFormulaDesc} onChange={(e) => setNewFormulaDesc(e.target.value)} placeholder="Description" className={ds.input} />
-            <select value={newFormulaCat} onChange={(e) => setNewFormulaCat(e.target.value)} className={ds.select}>
+            <input type="text" aria-label="Formula name" value={newFormulaName} onChange={(e) => setNewFormulaName(e.target.value)} placeholder="Name (e.g. Pythagorean Theorem)" className={ds.input} />
+            <input type="text" aria-label="Formula LaTeX" value={newFormulaLatex} onChange={(e) => setNewFormulaLatex(e.target.value)} placeholder="LaTeX (e.g. a^2 + b^2 = c^2)" className={cn(ds.input, 'font-mono')} />
+            <input type="text" aria-label="Formula description" value={newFormulaDesc} onChange={(e) => setNewFormulaDesc(e.target.value)} placeholder="Description" className={ds.input} />
+            <select aria-label="Formula category" value={newFormulaCat} onChange={(e) => setNewFormulaCat(e.target.value)} className={ds.select}>
               <option value="general">General</option>
               <option value="algebra">Algebra</option>
               <option value="calculus">Calculus</option>
@@ -307,6 +307,7 @@ export function FormulaNotebookPanel() {
             )}
             <div className="flex gap-2">
               <button type="button" onClick={handleSaveFormula} disabled={!newFormulaName.trim() || !newFormulaLatex.trim()} className={ds.btnPrimary}>Save</button>
+              {!newFormulaName.trim() ? <span role="note" className="text-xs text-gray-400 self-center">Formula name is required.</span> : !newFormulaLatex.trim() && <span role="note" className="text-xs text-gray-400 self-center">Formula LaTeX is required.</span>}
               <button type="button" onClick={() => setShowAddFormula(false)} className={ds.btnGhost}>Cancel</button>
             </div>
             {formulaSaveError && (

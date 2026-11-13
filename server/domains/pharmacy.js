@@ -329,6 +329,14 @@ export default function registerPharmacyActions(registerLensAction) {
     const wantArchived = params.unarchive !== true;
     if (med.archived === wantArchived) return { ok: true, unchanged: true, result: { medication: med } };
     med.archived = wantArchived;
+    if (wantArchived) {
+      for (const rf of (s.refills.get(raid(ctx)) || [])) {
+        if (rf.medId === med.id && ["requested", "processing", "ready"].includes(rf.status)) {
+          rf.status = "cancelled";
+          rf.cancelledBecause = "medication_archived";
+        }
+      }
+    }
     saveRxState();
     return { ok: true, result: { medication: med } };
   });
@@ -494,6 +502,25 @@ export default function registerPharmacyActions(registerLensAction) {
     return { ok: true, result: { dose: entry, quantityRemaining: med.quantity } };
   });
 
+  registerLensAction("pharmacy", "dose-undo", (ctx, _a, params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const med = findMed(s, raid(ctx), params.medId);
+    if (!med) return { ok: false, error: "medication not found" };
+    const list = s.doses.get(med.id) || [];
+    let i = params.id ? list.findIndex((d) => d.id === params.id) : -1;
+    if (i < 0 && params.scheduledTime) {
+      for (let n = list.length - 1; n >= 0; n -= 1) {
+        if (list[n].scheduledTime === params.scheduledTime) { i = n; break; }
+      }
+    }
+    if (i < 0) i = list.length - 1;
+    if (i < 0) return { ok: false, error: "dose not found" };
+    const [dose] = list.splice(i, 1);
+    if (dose.status === "taken") med.quantity += 1;
+    saveRxState();
+    return { ok: true, result: { dose, quantityRemaining: med.quantity } };
+  });
+
   registerLensAction("pharmacy", "dose-history", (ctx, _a, params = {}) => {
   try {
     const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -639,6 +666,21 @@ export default function registerPharmacyActions(registerLensAction) {
   const APPT_STATUSES = ["scheduled", "completed", "cancelled", "missed"];
   const APPT_TERMINAL = ["completed", "cancelled", "missed"];
 
+  // A datetime-local edit can concatenate the year (2026 → 52026). Reject
+  // that instead of storing it. A real ISO instant with a 4-digit year in
+  // range is kept as the caller sent it.
+  function appointmentInstant(raw) {
+    const v = String(raw || "").trim();
+    if (!v) return null;
+    const year = /^(\d+)/.exec(v);
+    if (!year || year[1].length !== 4) return null;
+    const t = Date.parse(v);
+    if (!Number.isFinite(t)) return null;
+    const y = new Date(t).getUTCFullYear();
+    if (y < 1900 || y > 2100) return null;
+    return v.slice(0, 40);
+  }
+
   registerLensAction("pharmacy", "appointment-add", (ctx, _a, params = {}) => {
   try {
     const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -646,7 +688,7 @@ export default function registerPharmacyActions(registerLensAction) {
     const userId = raid(ctx);
     const providerName = rclean(params.providerName, 120);
     if (!providerName) return { ok: false, error: "providerName required" };
-    const dateTime = rclean(params.dateTime, 40);
+    const dateTime = appointmentInstant(params.dateTime);
     if (!dateTime) return { ok: false, error: "dateTime required" };
     let relatedMedId = null, relatedMedName = null;
     if (params.relatedMedId != null && params.relatedMedId !== "") {
@@ -748,7 +790,7 @@ export default function registerPharmacyActions(registerLensAction) {
       if (APPT_TERMINAL.includes(appt.status)) {
         return { ok: false, error: `cannot reschedule an appointment that is already ${appt.status}` };
       }
-      const dt = rclean(params.dateTime, 40);
+      const dt = appointmentInstant(params.dateTime);
       if (!dt) return { ok: false, error: "dateTime cannot be blank" };
       appt.dateTime = dt;
     }
@@ -911,6 +953,16 @@ export default function registerPharmacyActions(registerLensAction) {
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
+  registerLensAction("pharmacy", "price-delete", (ctx, _a, params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = s.prices.get(raid(ctx)) || [];
+    const i = list.findIndex((p) => p.id === params.id);
+    if (i < 0) return { ok: false, error: "price not found" };
+    list.splice(i, 1);
+    saveRxState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
   registerLensAction("pharmacy", "price-list", (ctx, _a, _params = {}) => {
     const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const prices = [...(s.prices.get(raid(ctx)) || [])].sort((a, b) => b.recordedAt.localeCompare(a.recordedAt));
@@ -1028,6 +1080,16 @@ export default function registerPharmacyActions(registerLensAction) {
     return { ok: true, result: { entry } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+
+  registerLensAction("pharmacy", "journal-delete", (ctx, _a, params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = s.journal.get(raid(ctx)) || [];
+    const i = list.findIndex((e) => e.id === params.id);
+    if (i < 0) return { ok: false, error: "journal entry not found" };
+    list.splice(i, 1);
+    saveRxState();
+    return { ok: true, result: { deleted: params.id } };
+  });
 
   registerLensAction("pharmacy", "journal-list", (ctx, _a, _params = {}) => {
     const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };

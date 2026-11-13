@@ -100,7 +100,7 @@ export function CountyDataPanel() {
       </p>
 
       <div className="flex flex-wrap items-center gap-2">
-        <select value={`${preset.stateFips}-${preset.countyFips}`} onChange={(e) => { const p = PRESETS.find((x) => `${x.stateFips}-${x.countyFips}` === e.target.value); if (p) setPreset(p); }} className="flex-1 min-w-[200px] rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white">
+        <select aria-label="County preset" value={`${preset.stateFips}-${preset.countyFips}`} onChange={(e) => { const p = PRESETS.find((x) => `${x.stateFips}-${x.countyFips}` === e.target.value); if (p) setPreset(p); }} className="flex-1 min-w-[200px] rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white">
           {PRESETS.map((p) => <option key={`${p.stateFips}-${p.countyFips}`} value={`${p.stateFips}-${p.countyFips}`}>{p.label}</option>)}
         </select>
         <button onClick={() => load.mutate()} disabled={load.isPending} className="inline-flex items-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-50">

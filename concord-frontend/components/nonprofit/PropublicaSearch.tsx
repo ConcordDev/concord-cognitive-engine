@@ -25,6 +25,8 @@ export function PropublicaSearch() {
   const [query, setQuery] = useState('');
   const [state, setState] = useState('');
   const [orgs, setOrgs] = useState<Org[]>([]);
+  const [searched, setSearched] = useState(false);
+  const [searchError, setSearchError] = useState('');
   const search = useMutation({
     mutationFn: async () => callMacro<{ orgs: Org[] }>('search-orgs', state ? { query: query.trim(), state } : { query: query.trim() }),
     // F1: ProPublica returns each org's EIN as an INTEGER (its string form
@@ -34,9 +36,11 @@ export function PropublicaSearch() {
     // surface to the error page (deterministically, twice in the walk).
     // Normalize the org at the boundary: EIN is a string here, always.
     onSuccess: (env) => {
-      if (env.ok && env.result) setOrgs(env.result.orgs.map((o) => ({ ...o, ein: String(o.ein ?? '') })));
-      else setOrgs([]);
+      setSearched(true);
+      if (env.ok && env.result) { setOrgs(env.result.orgs.map((o) => ({ ...o, ein: String(o.ein ?? '') }))); setSearchError(''); }
+      else { setOrgs([]); setSearchError(env.error || 'The 990 search failed — try again.'); }
     },
+    onError: () => { setSearched(true); setOrgs([]); setSearchError('The 990 search failed — try again.'); },
   });
 
   return (
@@ -57,6 +61,13 @@ export function PropublicaSearch() {
         </button>
       </form>
       <div className="space-y-1.5">
+        {search.isPending && <p className="text-xs text-zinc-400">Searching ProPublica…</p>}
+        {!search.isPending && searchError && <p role="alert" className="text-xs text-rose-300">{searchError}</p>}
+        {!search.isPending && !searchError && searched && orgs.length === 0 && (
+          <p className="rounded border border-dashed border-zinc-800 px-3 py-6 text-center text-xs text-zinc-400">
+            No nonprofits match “{query.trim()}”{state ? ` in ${state}` : ''}. Try a broader name or check the spelling.
+          </p>
+        )}
         {orgs.map((o) => (
           <motion.div key={o.ein} layout initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3 rounded border border-zinc-800 bg-zinc-950 p-3">
             <div className="min-w-0 flex-1">

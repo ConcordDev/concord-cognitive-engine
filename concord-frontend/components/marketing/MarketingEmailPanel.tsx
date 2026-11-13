@@ -10,6 +10,7 @@ import { Loader2, Plus, Mail, Trash2, Send, ChevronDown, ChevronUp, X } from 'lu
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 type BlockType = 'heading' | 'text' | 'image' | 'button' | 'divider' | 'spacer';
 const BLOCK_TYPES: BlockType[] = ['heading', 'text', 'image', 'button', 'divider', 'spacer'];
@@ -185,9 +186,8 @@ export function MarketingEmailPanel() {
 
       {/* Builder modal */}
       {creating && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setCreating(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-          <div className="w-full max-w-lg max-h-[85vh] overflow-y-auto bg-zinc-950 border border-zinc-800 rounded-xl p-4 space-y-3"
-            onClick={(ev) => ev.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onMouseDown={(ev) => { if (ev.target === ev.currentTarget) setCreating(false); }}>
+          <div className="w-full max-w-lg max-h-[85vh] overflow-y-auto bg-zinc-950 border border-zinc-800 rounded-xl p-4 space-y-3" role="dialog" aria-modal="true" aria-label={editing ? 'Edit email' : 'New email'}>
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-semibold text-white">{editing ? 'Edit' : 'New'} email</h4>
               <button type="button" onClick={() => setCreating(false)} aria-label="Close"><X className="w-4 h-4 text-zinc-400" /></button>
@@ -253,9 +253,9 @@ export function MarketingEmailPanel() {
 
       {/* Send modal */}
       {sendTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setSendTarget(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setSendTarget(null)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <div className="w-full max-w-sm bg-zinc-950 border border-zinc-800 rounded-xl p-4 space-y-3"
-            onClick={(ev) => ev.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            onClick={(ev) => ev.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <h4 className="text-sm font-semibold text-white">Send email</h4>
             <p className="text-[11px] text-zinc-400">One recipient per line (or comma-separated). Delivery runs through the configured email provider — if none is configured, the email is recorded as queued and nothing is sent. The outcome is shown in this panel after sending.</p>
             <textarea value={recipients} onChange={(e) => setRecipients(e.target.value)} rows={5}

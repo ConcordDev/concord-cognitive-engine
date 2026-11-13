@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Layers, Plus, Loader2, ArrowRight, Gavel } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 
 interface Load { id: string; origin: string; destination: string; ratePerMile: number; weightLbs: number; equipment: string; pickupDate: string | null; commodity: string; status: 'available' | 'booked'; bids: Array<{ carrierId: string; amount: number; bidAt: string }>; bookedAmount?: number }
@@ -11,6 +12,7 @@ export function LoadBoardPanel() {
   const [loads, setLoads] = useState<Load[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ origin: '', destination: '', ratePerMile: '', weightLbs: '', equipment: 'dry_van', pickupDate: '' });
+  const [formError, setFormError] = useState<string | null>(null);
   const [bidFor, setBidFor] = useState<string | null>(null);
   const [bidAmt, setBidAmt] = useState('');
   const [bidCarrier, setBidCarrier] = useState('');
@@ -26,16 +28,26 @@ export function LoadBoardPanel() {
     finally { setLoading(false); }
   }
 
+  async function remove(id: string) {
+    const res = await lensRun({ domain: 'logistics', action: 'loads-delete', input: { id } });
+    if (res.data?.ok === false) { setFormError(res.data?.message || res.data?.error || 'Could not delete that load.'); return; }
+    await refresh();
+  }
+
   async function post() {
-    if (!form.origin.trim() || !form.destination.trim() || !form.ratePerMile) return;
+    if (!form.origin.trim() || !form.destination.trim()) { setFormError('Origin and destination are required.'); return; }
+    if (!(Number(form.ratePerMile) > 0)) { setFormError('Rate per mile must be a number greater than 0.'); return; }
+    if (!(Number(form.weightLbs) > 0)) { setFormError('Weight must be a number greater than 0.'); return; }
+    setFormError(null);
     try {
-      await lensRun({
+      const res = await lensRun({
         domain: 'logistics', action: 'loads-post',
-        input: { ...form, ratePerMile: Number(form.ratePerMile), weightLbs: Number(form.weightLbs) || 0 },
+        input: { ...form, ratePerMile: Number(form.ratePerMile), weightLbs: Number(form.weightLbs) },
       });
+      if (res.data?.ok === false) { setFormError(res.data?.message || res.data?.error || 'Could not post that load.'); return; }
       setForm({ origin: '', destination: '', ratePerMile: '', weightLbs: '', equipment: 'dry_van', pickupDate: '' });
       await refresh();
-    } catch (e) { console.error('[Loads] post', e); }
+    } catch (e) { setFormError(e instanceof Error ? e.message : 'Could not post that load.'); }
   }
 
   async function bid(loadId: string) {
@@ -71,6 +83,7 @@ export function LoadBoardPanel() {
           <option value="dry_van">Dry van</option><option value="reefer">Reefer</option><option value="flatbed">Flatbed</option><option value="step_deck">Step deck</option><option value="tanker">Tanker</option>
         </select>
         <input type="date" value={form.pickupDate} onChange={e => setForm({ ...form, pickupDate: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        {formError && <p role="alert" className="col-span-2 lg:col-span-4 text-xs text-rose-300">{formError}</p>}
         <button onClick={post} className="col-span-2 lg:col-span-4 px-3 py-1.5 text-xs rounded bg-violet-500 text-white font-bold hover:bg-violet-400 inline-flex items-center justify-center gap-1"><Plus className="w-3 h-3" />Post load</button>
       </div>
 
@@ -89,6 +102,7 @@ export function LoadBoardPanel() {
                   <span className="text-xs text-white truncate flex-1">{l.destination}</span>
                   <span className="font-mono text-sm tabular-nums text-violet-300">${Number(l.ratePerMile ?? 0).toFixed(2)}/mi</span>
                   <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded', l.status === 'available' ? 'bg-amber-500/15 text-amber-300' : 'bg-emerald-500/15 text-emerald-300')}>{l.status}</span>
+                  <StickyDeleteConfirm onConfirm={() => remove(l.id)} armLabel="Delete" armAriaLabel="Delete load" confirmLabel="Delete load?" className="text-[10px] text-rose-300" />
                 </div>
                 <div className="text-[10px] text-gray-400 mt-0.5">{String(l.equipment || '').replace('_', ' ')} · {l.weightLbs || 0}lbs {l.pickupDate ? `· pickup ${l.pickupDate}` : ''}</div>
                 {l.status === 'available' && (

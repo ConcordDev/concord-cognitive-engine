@@ -40,7 +40,12 @@ export default function registerHomeImprovementActions(registerLensAction) {
     const style = (data.style || "modern").toLowerCase();
     const palettes = { modern: { primary: "#FFFFFF", accent: "#2C2C2C", warm: "#E8D4B8", pop: "#4A90D9" }, farmhouse: { primary: "#F5F0EB", accent: "#8B7355", warm: "#D4A574", pop: "#6B8E5A" }, coastal: { primary: "#FFFFFF", accent: "#5B8FA8", warm: "#E8D6C4", pop: "#2F6682" }, traditional: { primary: "#F0EDE8", accent: "#5C3D2E", warm: "#C4956A", pop: "#8B4513" }, minimalist: { primary: "#FAFAFA", accent: "#333333", warm: "#E0DCD8", pop: "#B0B0B0" } };
     const palette = palettes[style] || palettes.modern;
-    return { ok: true, result: { room, style, palette, wallColor: palette.primary, trim: "#FFFFFF", accent: palette.accent, furniture: palette.warm, decor: palette.pop, coverage: data.squareFootage ? `${Math.ceil(parseFloat(data.squareFootage) / 350)} gallons of paint needed` : "Measure walls to estimate paint" } };
+    // `palette` is the summary STRING the lens renders (the FE contract
+    // declares palette: string) — returning the raw object here crashed
+    // the lens render 2/2 ("Objects are not valid as a React child",
+    // FIX-home-improvement-001). The hex set rides as paletteHexes; the
+    // named swatch fields below already carry each hex individually.
+    return { ok: true, result: { room, style, palette: `Primary ${palette.primary} · Accent ${palette.accent} · Warm ${palette.warm} · Pop ${palette.pop}`, paletteHexes: palette, wallColor: palette.primary, trim: "#FFFFFF", accent: palette.accent, furniture: palette.warm, decor: palette.pop, coverage: data.squareFootage ? `${Math.ceil(parseFloat(data.squareFootage) / 350)} gallons of paint needed` : "Measure walls to estimate paint" } };
   });
 
   // ─── Renovation-project substrate (per-user, STATE-backed) ──────────

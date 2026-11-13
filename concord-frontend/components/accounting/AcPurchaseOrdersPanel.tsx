@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Trash2, PackageCheck } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
-import { ErrorState } from '@/components/ui';
+import { ErrorState, EmptyState } from '@/components/ui';
 
 interface Vendor { id: string; name: string }
 interface POLine { description: string; qty: number; unitCost: number }
@@ -61,8 +61,8 @@ export function AcPurchaseOrdersPanel() {
   return (
     <div className="space-y-4 p-1">
       <section className="bg-black/30 border border-white/10 rounded-lg p-3 space-y-2">
-        <h3 className="text-xs font-semibold text-gray-300">New purchase order</h3>
-        <select value={vendorId} onChange={(e) => setVendorId(e.target.value)} className={inp}>
+        <h2 className="text-xs font-semibold text-gray-300">New purchase order</h2>
+        <select aria-label="Vendor" value={vendorId} onChange={(e) => setVendorId(e.target.value)} className={inp}>
           <option value="">Select vendor…</option>
           {vendors.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
         </select>
@@ -118,4 +118,6 @@ export function AcPurchaseOrdersPanel() {
 const inp = 'flex-1 bg-black/40 border border-white/10 rounded px-2 py-1.5 text-xs text-gray-100';
 const btn = 'flex items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded px-3 py-1.5';
 function Spin() { return <div className="flex items-center justify-center py-10 text-gray-400"><Loader2 className="w-5 h-5 animate-spin" /></div>; }
-function Empty({ text }: { text: string }) { return <p className="text-[11px] text-gray-400 italic">{text}</p>; }
+function Empty({ text }: { text: string }) {
+  return <EmptyState compact title={text} description="This book has no saved rows yet. Add one above and it will show up here." />;
+}

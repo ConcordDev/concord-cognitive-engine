@@ -67,13 +67,13 @@ export function ProgressDashboard({ refreshKey = 0 }: { refreshKey?: number }) {
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
       <div className="flex items-center gap-2 mb-3">
         <Star className="w-4 h-4 text-amber-400" />
-        <h3 className="text-sm font-bold text-zinc-100">Progress</h3>
+        <h2 className="text-sm font-bold text-zinc-100">Progress</h2>
       </div>
 
       {/* Headline stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
         <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-2 py-2 text-center">
-          <Flame className={cn('w-4 h-4 mx-auto mb-0.5', stats.streak > 0 ? 'text-orange-400' : 'text-zinc-600')} />
+          <Flame className={cn('w-4 h-4 mx-auto mb-0.5', stats.streak > 0 ? 'text-orange-400' : 'text-zinc-400')} />
           <p className="text-sm font-bold text-zinc-100">{stats.streak}</p>
           <p className="text-[9px] text-zinc-400 uppercase tracking-wide">Day streak</p>
         </div>
@@ -144,7 +144,7 @@ export function ProgressDashboard({ refreshKey = 0 }: { refreshKey?: number }) {
                 'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] border',
                 b.earned
                   ? 'border-amber-600/50 bg-amber-900/30 text-amber-300'
-                  : 'border-zinc-800 bg-zinc-900/40 text-zinc-600',
+                  : 'border-zinc-800 bg-zinc-900/40 text-zinc-400',
               )}
             >
               <Award className="w-2.5 h-2.5" />

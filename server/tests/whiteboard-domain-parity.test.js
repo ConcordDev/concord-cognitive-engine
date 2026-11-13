@@ -143,12 +143,14 @@ describe("whiteboard — shared boards (real-time multiplayer)", () => {
     assert.equal(r.result.board.elementCount, 2);
   });
 
-  it("join-shared adds participant + returns scene; leave-shared removes them", () => {
-    const created = call("share-board", ctxA, { title: "Collab", scene: { elements: [] } });
+  it("join-shared refuses a stranger and admits only an invited member", () => {
+    const created = call("share-board", ctxA, { title: "Collab", scene: { elements: [] }, userIds: ["v"] });
     const sid = created.result.board.id;
+    const stranger = call("join-shared", { actor: { userId: "stranger" }, userId: "stranger" }, { id: sid });
+    assert.equal(stranger.ok, false);
+    assert.equal(stranger.error, "not_a_member");
     const join = call("join-shared", ctxB, { id: sid });
     assert.equal(join.ok, true);
-    assert.equal(join.result.board.participantCount, 2);
     assert.ok(join.result.board.scene);
     const leave = call("leave-shared", ctxB, { id: sid });
     assert.equal(leave.ok, true);
@@ -165,7 +167,7 @@ describe("whiteboard — shared boards (real-time multiplayer)", () => {
 
   it("broadcast-scene persists scene + fans out to socket.io room", () => {
     const events = captureRealtimeEmits();
-    const sid = call("share-board", ctxA, { title: "X" }).result.board.id;
+    const sid = call("share-board", ctxA, { title: "X", userIds: ["v"] }).result.board.id;
     call("join-shared", ctxB, { id: sid });
     const r = call("broadcast-scene", ctxA, { id: sid, scene: { elements: [{ id: "e1" }, { id: "e2" }] } });
     assert.equal(r.ok, true);
@@ -190,7 +192,7 @@ describe("whiteboard — shared boards (real-time multiplayer)", () => {
 
   it("broadcast-cursor emits ephemeral cursor event (no scene persist)", () => {
     const events = captureRealtimeEmits();
-    const sid = call("share-board", ctxA, { title: "X" }).result.board.id;
+    const sid = call("share-board", ctxA, { title: "X", userIds: ["v"] }).result.board.id;
     call("join-shared", ctxB, { id: sid });
     const r = call("broadcast-cursor", ctxB, { id: sid, x: 120, y: 240 });
     assert.equal(r.ok, true);
@@ -208,7 +210,7 @@ describe("whiteboard — shared boards (real-time multiplayer)", () => {
 
   it("shared-vote-cast aggregates across participants (not per-user)", () => {
     const events = captureRealtimeEmits();
-    const sid = call("share-board", ctxA, { title: "X" }).result.board.id;
+    const sid = call("share-board", ctxA, { title: "X", userIds: ["v"] }).result.board.id;
     call("join-shared", ctxB, { id: sid });
     call("shared-vote-cast", ctxA, { id: sid, elementId: "e1" });
     call("shared-vote-cast", ctxB, { id: sid, elementId: "e1" });

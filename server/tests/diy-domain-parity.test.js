@@ -58,6 +58,13 @@ describe("diy pure-compute AI macros", () => {
     assert.ok(["moderate", "high"].includes(r.result.riskLevel));
   });
 
+  it("FIX-diy-004: a ~1-minute build carries its minutes in the payload (the display reads them, not 0h)", () => {
+    const r = call("buildTimeEstimate", ctxA, { data: { difficulty: "intermediate", steps: [{ name: "Glue", estimatedMinutes: 1 }] } }, {});
+    assert.equal(r.ok, true);
+    assert.equal(r.result.grandTotalMinutes, 1);
+    assert.equal(r.result.grandTotalHours, 0);
+  });
+
   it("buildTimeEstimate applies experience multiplier per step", () => {
     const r = call("buildTimeEstimate", ctxA, { data: { difficulty: "beginner", steps: [{ name: "Cut", estimatedMinutes: 60 }] } }, {});
     assert.ok(r.result.grandTotalMinutes > 60);
@@ -205,5 +212,29 @@ describe("diy project forking / remix", () => {
 
   it("rejects forking an unpublished project", () => {
     assert.equal(call("project-fork", ctxB, { projectId: "ghost" }).ok, false);
+  });
+});
+
+describe("diy cut list persistence (FIX-diy-003)", () => {
+  it("cutlist-save stores the working cut list on the project and project-get returns it", () => {
+    const created = call("project-create", ctxA, { name: "Bookshelf" });
+    assert.equal(created.ok, true);
+    const pid = created.result.project.id;
+    const saved = call("cutlist-save", ctxA, {
+      projectId: pid,
+      stockLength: 96,
+      cuts: [
+        { label: "Side", length: 72, quantity: 2 },
+        { label: "Shelf", length: 30.5, quantity: 4 },
+        { label: "Bad", length: 0, quantity: 1 },
+      ],
+    });
+    assert.equal(saved.ok, true);
+    assert.equal(saved.result.cutList.cuts.length, 2); // zero-length cut dropped
+    const got = call("project-get", ctxA, { projectId: pid });
+    assert.equal(got.result.project.cutList.stockLength, 96);
+    assert.equal(got.result.project.cutList.cuts[1].length, 30.5);
+    // Another user cannot save onto or read the project.
+    assert.equal(call("cutlist-save", ctxB, { projectId: pid, stockLength: 48, cuts: [] }).ok, false);
   });
 });

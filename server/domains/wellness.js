@@ -100,6 +100,10 @@ export default function registerWellnessMacros(_register) {
       const inBed = parseFloat(input.minutesInBed) || asleep;
       const disturb = parseInt(input.disturbances, 10) || 0;
       if (asleep <= 0) return { ok: false, error: "minutesAsleep required" };
+      if (asleep > 24 * 60) return { ok: false, error: "invalid_input", message: "Minutes asleep cannot exceed 24 hours." };
+      if (Number.isFinite(Number(input.minutesInBed)) && asleep > inBed) {
+        return { ok: false, error: "invalid_input", message: "Minutes asleep cannot exceed minutes in bed." };
+      }
       const efficiency = inBed > 0 ? asleep / inBed : 1;
       const hoursAsleep = asleep / 60;
       // Reference: 7.5h baseline at 95% efficiency, 0 disturbances = 95
@@ -167,6 +171,7 @@ export default function registerWellnessMacros(_register) {
       const baseHrv = parseFloat(input.baselineHrvMs) || hrv;
       const baseRhr = parseFloat(input.baselineRhrBpm) || rhr;
       const sleep = parseFloat(input.sleepScore) || 70;
+      if (hrv < 0) return { ok: false, error: "invalid_input", message: "HRV is in milliseconds and cannot be negative." };
       if (hrv <= 0 || rhr <= 0) return { ok: false, error: "hrvMs and rhrBpm required" };
       const hrvFactor = Math.min(1.2, hrv / Math.max(1, baseHrv));
       const rhrFactor = Math.min(1.2, baseRhr / Math.max(1, rhr));
@@ -194,7 +199,10 @@ export default function registerWellnessMacros(_register) {
       const readings = Array.isArray(input.readings) ? input.readings : [];
       if (readings.length < 2) return { ok: true, result: { message: "Need at least 2 readings.", count: readings.length } };
       const sorted = [...readings].sort((a, b) => String(a.date).localeCompare(String(b.date)));
-      const values = sorted.map((r) => parseFloat(r.hrvMs) || 0);
+      const values = sorted.map((r) => parseFloat(r.hrvMs));
+      if (values.some((v) => !Number.isFinite(v) || v < 0 || v > 300)) {
+        return { ok: false, error: "invalid_input", message: "Each HRV reading must be from 0 to 300 ms." };
+      }
       const avg = values.reduce((s, v) => s + v, 0) / values.length;
       const recent7 = values.slice(-7);
       const recentAvg = recent7.reduce((s, v) => s + v, 0) / recent7.length;
@@ -250,6 +258,11 @@ export default function registerWellnessMacros(_register) {
   }
 
   const METRIC_TYPES = ['steps', 'weight_kg', 'sleep_hours', 'water_ml', 'resting_hr', 'calories', 'hrv_ms', 'body_fat_pct', 'systolic', 'diastolic'];
+  const METRIC_BOUNDS = {
+    steps: [0, 200000], weight_kg: [0.5, 500], sleep_hours: [0, 24], water_ml: [0, 20000],
+    resting_hr: [20, 250], calories: [0, 20000], hrv_ms: [0, 300], body_fat_pct: [0, 100],
+    systolic: [40, 300], diastolic: [20, 200],
+  };
 
   // ── Metric logging (Apple Health-style) ──────────────────────
 
@@ -265,6 +278,10 @@ export default function registerWellnessMacros(_register) {
       if (badVal) return { ok: false, error: "invalid_value" };
       const value = Number(input.value);
       if (!Number.isFinite(value)) return { ok: false, error: "numeric value required" };
+      const bounds = METRIC_BOUNDS[type];
+      if (value < bounds[0] || value > bounds[1]) {
+        return { ok: false, error: "invalid_input", message: `${type} must be from ${bounds[0]} to ${bounds[1]}.` };
+      }
       const entry = {
         id: uidWl('m'),
         type,
@@ -294,6 +311,44 @@ export default function registerWellnessMacros(_register) {
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
   }, { note: "list the caller's metric entries (optionally by type, within N days)" });
 
+  // Edit / delete a logged metric entry (FIX-wellness-005). Value
+  // edits re-validate against the entry's own type bounds.
+  register("wellness", "metrics-update", (ctx, input = {}) => {
+    try {
+      const s = getWellState();
+      const list = listWl(s.metrics, aidWl(ctx));
+      const entry = list.find(m => m.id === String(input.id || ""));
+      if (!entry) return { ok: false, error: "metric entry not found" };
+      if (input.value !== undefined) {
+        const badVal = badRangedField(input, "value", { min: -1e4, max: 1e7 });
+        if (badVal) return { ok: false, error: "invalid_value" };
+        const value = Number(input.value);
+        if (!Number.isFinite(value)) return { ok: false, error: "numeric value required" };
+        const bounds = METRIC_BOUNDS[entry.type];
+        if (bounds && (value < bounds[0] || value > bounds[1])) {
+          return { ok: false, error: "invalid_input", message: `${entry.type} must be from ${bounds[0]} to ${bounds[1]}.` };
+        }
+        entry.value = value;
+      }
+      if (input.note !== undefined) entry.note = String(input.note || '');
+      if (input.date !== undefined) entry.date = String(input.date || entry.date);
+      saveWell();
+      return { ok: true, result: { entry } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  }, { note: "edit one of the caller's metric entries (value/note/date)" });
+
+  register("wellness", "metrics-delete", (ctx, input = {}) => {
+    try {
+      const s = getWellState();
+      const list = listWl(s.metrics, aidWl(ctx));
+      const i = list.findIndex(m => m.id === String(input.id || ""));
+      if (i < 0) return { ok: false, error: "metric entry not found" };
+      list.splice(i, 1);
+      saveWell();
+      return { ok: true, result: { deleted: true } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  }, { note: "delete one of the caller's metric entries by id" });
+
   // Trend: latest value per day for one metric type, ready for charts.
   register("wellness", "metrics-trend", (ctx, input = {}) => {
     try {
@@ -305,14 +360,16 @@ export default function registerWellnessMacros(_register) {
       const days = Math.max(1, Math.min(365, Number(input.days) || 30));
       const cutoff = new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
       const byDay = new Map();
+      const samples = [];
       for (const m of listWl(s.metrics, aidWl(ctx))) {
         if (m.type !== type || m.date < cutoff) continue;
-        // last write per day wins
+        samples.push(m.value);
+        // last write per day wins on the chart; the average uses every log
         byDay.set(m.date, m.value);
       }
       const series = Array.from(byDay.entries()).map(([date, value]) => ({ date, value })).sort((a, b) => a.date.localeCompare(b.date));
       const vals = series.map(p => p.value);
-      const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+      const avg = samples.length ? samples.reduce((a, b) => a + b, 0) / samples.length : 0;
       // simple trend: compare last-third avg to first-third avg
       let trend = 'flat';
       if (vals.length >= 3) {
@@ -481,6 +538,40 @@ export default function registerWellnessMacros(_register) {
       return { ok: true, result: { moods: list.slice().sort((a, b) => b.at.localeCompare(a.at)) } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
   }, { note: "list the caller's recent mood entries" });
+
+  // Edit / delete a mood entry (FIX-wellness-005). Changing the mood
+  // recomputes moodScore from the scale, like mood-log does.
+  register("wellness", "mood-update", (ctx, input = {}) => {
+    try {
+      const s = getWellState();
+      const list = listWl(s.moods, aidWl(ctx));
+      const entry = list.find(m => m.id === String(input.id || ""));
+      if (!entry) return { ok: false, error: "mood entry not found" };
+      if (input.mood !== undefined) {
+        const mood = String(input.mood || "");
+        if (!MOOD_SCALE.includes(mood)) return { ok: false, error: `mood must be one of: ${MOOD_SCALE.join(', ')}` };
+        entry.mood = mood;
+        entry.moodScore = MOOD_SCALE.indexOf(mood);
+      }
+      if (input.note !== undefined) entry.note = String(input.note || '');
+      if (Array.isArray(input.activities)) entry.activities = input.activities.map(String);
+      if (input.date !== undefined) entry.date = String(input.date || entry.date);
+      saveWell();
+      return { ok: true, result: { entry } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  }, { note: "edit one of the caller's mood entries" });
+
+  register("wellness", "mood-delete", (ctx, input = {}) => {
+    try {
+      const s = getWellState();
+      const list = listWl(s.moods, aidWl(ctx));
+      const i = list.findIndex(m => m.id === String(input.id || ""));
+      if (i < 0) return { ok: false, error: "mood entry not found" };
+      list.splice(i, 1);
+      saveWell();
+      return { ok: true, result: { deleted: true } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  }, { note: "delete one of the caller's mood entries by id" });
 
   // Correlate activities with mood — which activities co-occur with good days.
   register("wellness", "mood-correlate", (ctx, input = {}) => {
@@ -994,6 +1085,61 @@ export default function registerWellnessMacros(_register) {
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
   }, { note: "list the caller's thought records with completion + avg relief" });
 
+  // Edit / delete a CBT thought record (FIX-wellness-005). Relief is
+  // recomputed whenever an intensity changes, like create does.
+  register("wellness", "cbt-record-update", (ctx, input = {}) => {
+    try {
+      const s = getTherapyState();
+      const list = listWl(s.thoughtRecords, aidWl(ctx));
+      const record = list.find(r => r.id === String(input.id || ""));
+      if (!record) return { ok: false, error: "thought record not found" };
+      if (input.situation !== undefined) {
+        const v = String(input.situation || "").trim();
+        if (!v) return { ok: false, error: "situation cannot be empty" };
+        record.situation = v;
+      }
+      if (input.automaticThought !== undefined) {
+        const v = String(input.automaticThought || "").trim();
+        if (!v) return { ok: false, error: "automaticThought cannot be empty" };
+        record.automaticThought = v;
+      }
+      if (input.emotion !== undefined) record.emotion = String(input.emotion || '').slice(0, 80);
+      if (input.evidenceFor !== undefined) record.evidenceFor = String(input.evidenceFor || '').slice(0, 600);
+      if (input.evidenceAgainst !== undefined) record.evidenceAgainst = String(input.evidenceAgainst || '').slice(0, 600);
+      if (input.reframe !== undefined) record.reframe = String(input.reframe || '').slice(0, 600);
+      if (input.intensityBefore !== undefined) {
+        const bad = badRangedField(input, "intensityBefore", { min: 0, max: 100 });
+        if (bad) return { ok: false, error: "invalid_intensityBefore" };
+        record.intensityBefore = Math.max(0, Math.min(100, Number(input.intensityBefore)));
+      }
+      if (input.intensityAfter !== undefined) {
+        if (input.intensityAfter === null) record.intensityAfter = null;
+        else {
+          const bad = badRangedField(input, "intensityAfter", { min: 0, max: 100 });
+          if (bad) return { ok: false, error: "invalid_intensityAfter" };
+          record.intensityAfter = Math.max(0, Math.min(100, Number(input.intensityAfter)));
+        }
+      }
+      record.relief = record.intensityAfter !== null && Number.isFinite(record.intensityBefore)
+        ? Math.round(record.intensityBefore - record.intensityAfter)
+        : null;
+      saveWell();
+      return { ok: true, result: { record } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  }, { note: "edit one of the caller's CBT thought records" });
+
+  register("wellness", "cbt-record-delete", (ctx, input = {}) => {
+    try {
+      const s = getTherapyState();
+      const list = listWl(s.thoughtRecords, aidWl(ctx));
+      const i = list.findIndex(r => r.id === String(input.id || ""));
+      if (i < 0) return { ok: false, error: "thought record not found" };
+      list.splice(i, 1);
+      saveWell();
+      return { ok: true, result: { deleted: true } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  }, { note: "delete one of the caller's CBT thought records by id" });
+
   // ── Wearable import (Apple Health / Whoop export parity) ─────
   // Accepts a batch of readings from a wearable export and folds them
   // into the metric store. type-mapped, deduped per (type,date).
@@ -1016,7 +1162,7 @@ export default function registerWellnessMacros(_register) {
       const readings = Array.isArray(input.readings) ? input.readings : [];
       if (readings.length === 0) return { ok: false, error: "readings[] required" };
       const metrics = listWl(s.metrics, userId);
-      let imported = 0, skipped = 0;
+      let imported = 0, skipped = 0, invalidDates = 0, futureDates = 0;
       const byType = {};
       for (const raw of readings) {
         if (!raw || typeof raw !== 'object') { skipped++; continue; }
@@ -1024,6 +1170,12 @@ export default function registerWellnessMacros(_register) {
         const value = Number(raw.value);
         if (!mapped || !Number.isFinite(value) || value < -1e4 || value > 1e7) { skipped++; continue; }
         const date = String(raw.date || dayWl()).slice(0, 10);
+        // FIX-wellness-006: a reading's date was taken as-is, so a
+        // future-dated (or impossible) date imported silently. Such
+        // readings are skipped and counted by reason on the summary.
+        const parsedDate = /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(`${date}T00:00:00Z`) : null;
+        if (!parsedDate || Number.isNaN(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== date) { invalidDates++; skipped++; continue; }
+        if (date > dayWl()) { futureDates++; skipped++; continue; }
         // dedupe: skip if an entry from this exact source/type/date exists
         const dup = metrics.some(m => m.type === mapped && m.date === date && m.source === source);
         if (dup) { skipped++; continue; }
@@ -1044,6 +1196,8 @@ export default function registerWellnessMacros(_register) {
         source,
         imported,
         skipped,
+        invalidDates,
+        futureDates,
         byType,
         at: isoWl(),
       };

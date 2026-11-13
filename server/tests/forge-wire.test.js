@@ -46,6 +46,18 @@ test("validateForgeConfig returns ok shape on minimal valid config", () => {
   const r = validateForgeConfig({ templateId: "blank", appName: "test_app" });
   assert.ok(r && typeof r === "object", "validate must return an object");
   assert.ok("ok" in r || "errors" in r || "valid" in r, "expected ok|valid|errors field");
+  assert.ok(!r.errors.some((e) => /port|64 characters/.test(e)));
+});
+
+test("validateForgeConfig rejects a port outside 1-65535 and a 250-character name", () => {
+  for (const port of [0, -1, 99999]) {
+    const r = validateForgeConfig({ appName: "test_app", port, database: { path: "./data/app.db" } });
+    assert.equal(r.valid, false, `port ${port} must be invalid`);
+    assert.ok(r.errors.some((e) => /port/.test(e)), r.errors.join("; "));
+  }
+  const longName = validateForgeConfig({ appName: "n".repeat(250), database: { path: "./data/app.db" } });
+  assert.equal(longName.valid, false);
+  assert.ok(longName.errors.some((e) => /appName/.test(e)));
 });
 
 test("generateForgeApp returns generated code on minimal spec", () => {

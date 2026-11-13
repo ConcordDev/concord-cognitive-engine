@@ -70,6 +70,12 @@ export function FollowButton({ targetUserId, currentUserId, compact = false, cla
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['social-following', currentUserId] });
       queryClient.invalidateQueries({ queryKey: ['social-followers', targetUserId] });
+      // Suggestion and discovery surfaces render follower counts from
+      // their own caches; without these they kept the pre-follow number
+      // until a reload (FIX-social-021). PeopleToFollow's own mutation
+      // already invalidates the same keys.
+      queryClient.invalidateQueries({ queryKey: ['discover-users'] });
+      queryClient.invalidateQueries({ queryKey: ['suggested-follows'] });
     },
     onSettled: () => { setTimeout(() => setOptimistic(null), 600); },
   });

@@ -199,6 +199,59 @@ export async function attemptTokenRefresh(): Promise<unknown> {
 // ---- Retry with exponential backoff for transient server errors ----
 const MAX_RETRIES = 3;
 const RETRY_STATUS_CODES = new Set([502, 503, 504]);
+
+/** A failed request with no response. On a hosted origin this is not a local API. */
+export function unreachableApiMessage(hostname?: string): string {
+  const host = hostname ?? (typeof window !== 'undefined' ? window.location.hostname : '');
+  const local = host === 'localhost' || host === '127.0.0.1' || host === '[::1]' || host === '';
+  return local
+    ? 'Unable to reach the local Concord API. If you are on this machine, the backend may be down — this is not your internet.'
+    : 'Concord did not respond. This is not a local API. Check your connection and try again.';
+}
+
+const COUNCIL_REJECT_REASON: Record<string, string> = {
+  knowledge_insufficient_structure: 'This public note needs more structure, such as a claim or a definition, before it can be shared.',
+  media_missing_asset_or_title: 'This public media item needs a title or the file it points at.',
+  formula_missing_composition: 'This public formula needs its composition before it can be shared.',
+  dataset_insufficient_structure: 'This public dataset needs more structure before it can be shared.',
+  software_insufficient_structure: 'This public software note needs more structure before it can be shared.',
+  world_asset_missing_identity: 'This public world asset needs a name or an id before it can be shared.',
+  low_value: 'This public save does not have enough content to share yet.',
+};
+
+/** Plain words for a council refusal. The score line is included only when the server sent both numbers. */
+export function councilRejectSentence(
+  reason: string | undefined,
+  score?: number,
+  minScore?: number,
+): string | null {
+  if (!reason) return null;
+  const known = COUNCIL_REJECT_REASON[reason];
+  const bar = typeof score === 'number' && typeof minScore === 'number'
+    ? ` It scored ${score} and this save needs ${minScore}.`
+    : '';
+  if (known) return known + bar;
+  if (reason === 'Council rejected DTU') return null;
+  return reason.replace(/_/g, ' ') + bar;
+}
+
+/** Message for a rejected write. GETs stay quiet so a background poll does not toast. */
+export function rejectedWriteMessage(
+  status: number | undefined,
+  data: { error?: string; message?: string; reason?: string; score?: number; minScore?: number } | undefined,
+  method: string | undefined,
+): string | null {
+  if ((method || 'GET').toUpperCase() === 'GET') return null;
+  if (status !== 400) return null;
+  const msg = data?.message || data?.error;
+  if (!msg) return 'That request was rejected.';
+  const base = String(msg).replace(/_/g, ' ');
+  if (base === 'Council rejected DTU') {
+    const why = councilRejectSentence(data?.reason, data?.score, data?.minScore);
+    if (why) return `${base}. ${why}`;
+  }
+  return base;
+}
 const RETRY_BASE_DELAY_MS = 1000;
 
 // Lens-run refusals that are read-path noise, not a user action that just
@@ -712,8 +765,11 @@ api.interceptors.response.use(
           store.addToast({ type: 'warning', message: 'Too many requests. Please wait a moment.' });
         } else if (toastStatus && toastStatus >= 500 && !isBackgroundFetch && !isGeocoderUnavailableResponse(error)) {
           store.addToast({ type: 'error', message: 'Something went wrong on our end. Please try again.' });
+        } else if (toastStatus === 400 && !isBackgroundFetch) {
+          const rejected = rejectedWriteMessage(toastStatus, data, error.config?.method);
+          if (rejected) store.addToast({ type: 'error', message: rejected });
         } else if (!error.response && !isBackgroundFetch) {
-          store.addToast({ type: 'error', message: 'Unable to reach the local Concord API. If you are on this machine, the backend may be down — this is not your internet.' });
+          store.addToast({ type: 'error', message: unreachableApiMessage() });
         } else if (data?.ok === false && data?.error && !isBackgroundFetch) {
           store.addToast({ type: 'error', message: data.error.replace(/_/g, ' ') });
         }
@@ -1712,6 +1768,7 @@ export const apiHelpers = {
   // Spaced repetition (SRS)
   srs: {
     due: () => api.get('/api/srs/due'),
+    scheduled: () => api.get('/api/srs/scheduled'),
     add: (dtuId: string) => api.post(`/api/srs/${dtuId}/add`, {}),
     review: (dtuId: string, data: { quality: number }) =>
       api.post(`/api/srs/${dtuId}/review`, data),

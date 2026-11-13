@@ -130,3 +130,55 @@ describe('FoundryWorldsPanel — UX states', () => {
     expect(createCall?.[2]).toEqual({ name: 'Fresh World' });
   });
 });
+
+describe('FoundryWorldsPanel — publish lifecycle (FIX-foundry-007, ruling A)', () => {
+  it('a published world offers Unpublish, refuses Delete; after unpublishing, Delete completes', async () => {
+    let beta = { id: 'fw_2', name: 'Beta World', description: '', status: 'published', publishedWorldId: 'world-xyz', updatedAt: 1 };
+    lensRun.mockImplementation((_domain: string, name: string, input?: Record<string, unknown>) => {
+      if (name === 'list') return Promise.resolve(env({ ok: true, worlds: [beta] }));
+      if (name === 'unpublish') {
+        beta = { ...beta, status: 'draft', publishedWorldId: null };
+        return Promise.resolve(env({ ok: true, disposition: 'deleted', world: beta }));
+      }
+      if (name === 'delete') return Promise.resolve(env({ ok: true, deleted: input?.id }));
+      return Promise.resolve(env({}));
+    });
+    render(<FoundryWorldsPanel />);
+    await screen.findByText('Beta World');
+
+    // published: Unpublish is offered, Delete is disabled, and the row says why
+    expect(screen.getByRole('button', { name: /unpublish beta world/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /delete beta world/i })).toBeDisabled();
+    expect(screen.getByText(/unpublish to delete/i)).toBeInTheDocument();
+
+    // unpublish → the macro is called with the world id, the row returns to draft
+    fireEvent.click(screen.getByRole('button', { name: /unpublish beta world/i }));
+    await waitFor(() => expect(screen.getByRole('button', { name: /delete beta world/i })).not.toBeDisabled());
+    const unpubCall = lensRun.mock.calls.find((c) => c[1] === 'unpublish');
+    expect(unpubCall?.[2]).toEqual({ id: 'fw_2' });
+    expect(screen.queryByRole('button', { name: /unpublish beta world/i })).not.toBeInTheDocument();
+
+    // delete now completes behind the two-step confirm
+    fireEvent.click(screen.getByRole('button', { name: /delete beta world/i }));
+    const confirmBtn = screen.queryByRole('button', { name: /confirm delete beta world/i });
+    if (confirmBtn) fireEvent.click(confirmBtn);
+    await waitFor(() => expect(screen.queryByText('Beta World')).not.toBeInTheDocument());
+    const delCall = lensRun.mock.calls.find((c) => c[1] === 'delete');
+    expect(delCall?.[2]).toEqual({ id: 'fw_2' });
+  });
+
+  it('an unpublish failure surfaces as an alert and the world stays published', async () => {
+    const beta = { id: 'fw_2', name: 'Beta World', description: '', status: 'published', publishedWorldId: 'world-xyz', updatedAt: 1 };
+    lensRun.mockImplementation((_domain: string, name: string) => {
+      if (name === 'list') return Promise.resolve(env({ ok: true, worlds: [beta] }));
+      if (name === 'unpublish') return Promise.resolve(env(null, false, 'not_owner'));
+      return Promise.resolve(env({}));
+    });
+    render(<FoundryWorldsPanel />);
+    await screen.findByText('Beta World');
+    fireEvent.click(screen.getByRole('button', { name: /unpublish beta world/i }));
+    await screen.findByRole('alert');
+    expect(screen.getByText(/not_owner/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /delete beta world/i })).toBeDisabled();
+  });
+});

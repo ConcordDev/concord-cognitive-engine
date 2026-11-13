@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSoundscape } from '@/components/world-lens/SoundscapeEngine';
 import { useCancelableCompletion } from '@/hooks/useCancelableCompletion';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface GatheringMinigameProps {
   toolTier: number;       // 0-4 — determines zone width
@@ -110,7 +111,7 @@ export function GatheringMinigame({ toolTier, resourceName, onComplete, onCancel
           className="relative h-10 bg-white/5 rounded-xl overflow-hidden cursor-pointer select-none"
           style={{ width: BAR_WIDTH }}
           data-testid="gathering-rhythm-bar"
-          onClick={handleClick} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          onClick={handleClick} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           {/* Green zone */}
           <div
             className="absolute top-0 h-full rounded bg-green-500/30 border border-green-500/60 transition-all duration-150"

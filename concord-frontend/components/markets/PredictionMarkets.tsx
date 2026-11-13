@@ -189,6 +189,13 @@ export default function PredictionMarkets() {
   // initial load
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { void loadMarkets(); void loadPositions(); void loadLeaderboard(); }, []);
+  useEffect(() => {
+    const handle = window.setTimeout(() => { void loadMarkets(); }, 250);
+    return () => window.clearTimeout(handle);
+  }, [loadMarkets]);
+  useEffect(() => {
+    if (selected) document.getElementById('market-detail')?.scrollIntoView({ block: 'start' });
+  }, [selected]);
 
   useEffect(() => {
     if (tab === 'positions') void loadPositions();
@@ -275,12 +282,14 @@ export default function PredictionMarkets() {
       {tab === 'leaderboard' && <LeaderboardTab rows={leaderboard} />}
 
       {selected && (
+        <div id="market-detail">
         <MarketDetail
           marketId={selected}
           onClose={() => setSelected(null)}
           onChanged={refreshAll}
           flash={flash}
         />
+        </div>
       )}
     </section>
   );
@@ -428,7 +437,7 @@ function BrowseTab({
       <div className="mb-3 flex flex-wrap gap-1">
         <button
           type="button" onClick={() => { setCategory(''); onApply(); }}
-          className={`rounded-full px-2 py-0.5 text-[10px] ${
+          className={`min-h-11 rounded-full px-3 text-[10px] ${
             category === '' ? 'bg-indigo-500/25 text-indigo-100' : 'bg-lattice-elevated/60 text-gray-400'
           }`}
         >
@@ -437,7 +446,7 @@ function BrowseTab({
         {categories.map((c) => (
           <button
             key={c} type="button" onClick={() => { setCategory(c); onApply(); }}
-            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] ${
+            className={`inline-flex min-h-11 items-center gap-1 rounded-full px-3 text-[10px] ${
               category === c ? 'bg-indigo-500/25 text-indigo-100' : 'bg-lattice-elevated/60 text-gray-400'
             }`}
           >
@@ -536,9 +545,11 @@ function MarketDetail({
   const [side, setSide] = useState<'yes' | 'no'>('yes');
   const [limitPrice, setLimitPrice] = useState('0.50');
   const [busy, setBusy] = useState(false);
+  const [confirmTrade, setConfirmTrade] = useState<null | 'bet' | 'order'>(null);
   const { user, isLoading: authLoading } = useAuth();
   const me = user?.id ?? null;
   const isCreator = !!market && !!me && market.creatorId === me;
+  const [editDescription, setEditDescription] = useState('');
   const [resolveOutcome, setResolveOutcome] = useState<'yes' | 'no'>('yes');
   const [evidence, setEvidence] = useState('');
   const [evidenceUrl, setEvidenceUrl] = useState('');
@@ -558,6 +569,7 @@ function MarketDetail({
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { void refresh(); }, [marketId]);
+  useEffect(() => { setEditDescription(market?.description || ''); }, [market?.id]);
 
   // live odds preview reacts to stake changes
   useEffect(() => {
@@ -570,6 +582,8 @@ function MarketDetail({
   }, [marketId, stake, market]);
 
   const placeBet = async () => {
+    if (confirmTrade !== 'bet') { setConfirmTrade('bet'); return; }
+    setConfirmTrade(null);
     setBusy(true);
     const d = await run('position-open', { marketId, side, stakeSparks: stake });
     setBusy(false);
@@ -578,6 +592,8 @@ function MarketDetail({
   };
 
   const placeOrder = async () => {
+    if (confirmTrade !== 'order') { setConfirmTrade('order'); return; }
+    setConfirmTrade(null);
     setBusy(true);
     const d = await run('order-place', { marketId, side, limitPrice: Number(limitPrice), stakeSparks: stake });
     setBusy(false);
@@ -605,6 +621,14 @@ function MarketDetail({
       flash(`✓ Resolved ${resolveOutcome.toUpperCase()} · ${s.winners} winners paid ${s.totalPaidSparks} ⚡`);
       await refresh(); await onChanged();
     } else flash(`Failed: ${d.error}`);
+  };
+
+  const saveDescription = async () => {
+    setBusy(true);
+    const d = await run('market-update', { marketId, description: editDescription });
+    setBusy(false);
+    if (d.ok) { flash('Description saved'); await refresh(); await onChanged(); }
+    else flash(`Failed: ${d.error}`);
   };
 
   const cancelMarket = async () => {
@@ -670,7 +694,7 @@ function MarketDetail({
                   <div className="mb-2 flex items-center gap-2">
                     <button
                       type="button" onClick={() => setSide('yes')}
-                      className={`flex-1 rounded py-1.5 text-xs font-medium ${
+                      className={`flex-1 min-h-11 rounded py-1.5 text-xs font-medium ${
                         side === 'yes' ? 'bg-emerald-700 text-white' : 'bg-lattice-elevated text-gray-400'
                       }`}
                     >
@@ -678,7 +702,7 @@ function MarketDetail({
                     </button>
                     <button
                       type="button" onClick={() => setSide('no')}
-                      className={`flex-1 rounded py-1.5 text-xs font-medium ${
+                      className={`flex-1 min-h-11 rounded py-1.5 text-xs font-medium ${
                         side === 'no' ? 'bg-rose-700 text-white' : 'bg-lattice-elevated text-gray-400'
                       }`}
                     >
@@ -706,7 +730,7 @@ function MarketDetail({
                       type="button" onClick={placeBet} disabled={busy}
                       className="rounded bg-indigo-600 py-1.5 text-xs font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
                     >
-                      Place pooled bet
+                      {confirmTrade === 'bet' ? `Confirm ${stake} ⚡ ${side.toUpperCase()}` : 'Place pooled bet'}
                     </button>
                     <div className="flex items-center gap-1">
                       <input
@@ -719,7 +743,7 @@ function MarketDetail({
                         type="button" onClick={placeOrder} disabled={busy}
                         className="flex-1 rounded border border-cyan-500/40 bg-cyan-500/15 py-1.5 text-xs text-cyan-100 disabled:opacity-50"
                       >
-                        Limit order
+                        {confirmTrade === 'order' ? 'Confirm limit' : 'Limit order'}
                       </button>
                     </div>
                   </div>
@@ -756,14 +780,31 @@ function MarketDetail({
                 {authLoading ? null : isCreator ? (
                   <div className="rounded-lg border border-lattice-border bg-lattice-void/40 p-3">
                     <p className="text-[11px] text-gray-300">
-                      A neutral resolver settles this market. You can cancel it while nobody holds a position.
+                      A neutral resolver settles this market. You can edit the description while it is open. Cancel stays available until someone holds a position.
                     </p>
-                    <button
-                      type="button" onClick={cancelMarket} disabled={busy}
-                      className="mt-2 rounded-md border border-rose-500/40 bg-rose-500/15 px-3 py-1.5 text-xs text-rose-100 disabled:opacity-50"
-                    >
-                      Cancel market
-                    </button>
+                    <label className="mt-2 block text-[10px] uppercase text-gray-400">
+                      Description
+                      <textarea
+                        value={editDescription}
+                        onChange={(e) => setEditDescription(e.target.value)}
+                        rows={2}
+                        className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1 text-xs normal-case text-gray-200"
+                      />
+                    </label>
+                    <div className="mt-2 flex gap-2">
+                      <button
+                        type="button" onClick={saveDescription} disabled={busy}
+                        className="rounded-md border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-gray-100 disabled:opacity-50"
+                      >
+                        Save description
+                      </button>
+                      <button
+                        type="button" onClick={cancelMarket} disabled={busy}
+                        className="rounded-md border border-rose-500/40 bg-rose-500/15 px-3 py-1.5 text-xs text-rose-100 disabled:opacity-50"
+                      >
+                        Cancel market
+                      </button>
+                    </div>
                   </div>
                 ) : me ? (
                 <details className="rounded-lg border border-lattice-border bg-lattice-void/40 p-3">
@@ -774,13 +815,13 @@ function MarketDetail({
                     <div className="flex gap-2">
                       <button
                         type="button" onClick={() => setResolveOutcome('yes')}
-                        className={`flex-1 rounded py-1 text-xs ${resolveOutcome === 'yes' ? 'bg-emerald-700 text-white' : 'bg-lattice-elevated text-gray-400'}`}
+                        className={`min-h-11 flex-1 rounded py-1 text-xs ${resolveOutcome === 'yes' ? 'bg-emerald-700 text-white' : 'bg-lattice-elevated text-gray-400'}`}
                       >
                         YES
                       </button>
                       <button
                         type="button" onClick={() => setResolveOutcome('no')}
-                        className={`flex-1 rounded py-1 text-xs ${resolveOutcome === 'no' ? 'bg-rose-700 text-white' : 'bg-lattice-elevated text-gray-400'}`}
+                        className={`min-h-11 flex-1 rounded py-1 text-xs ${resolveOutcome === 'no' ? 'bg-rose-700 text-white' : 'bg-lattice-elevated text-gray-400'}`}
                       >
                         NO
                       </button>

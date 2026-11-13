@@ -26,7 +26,23 @@
 //   - The result reports its provenance (sources + stateBacked) so the
 //     UI can be honest about what an export does and does not include.
 
+import { dtuMatchesDomain } from "./art-dtu-filter.js";
+
 const SCAFFOLDING_TYPES = new Set(["domain_action"]);
+
+/** A DTU may ride in this lens's export only when it is this domain, or untagged and not another lens's exhaust. */
+export function dtuBelongsInLensExport(dtu, domain, callerId) {
+  if (!dtu || typeof dtu !== "object") return false;
+  const owner = dtu.ownerId || dtu.userId || dtu.meta?.ownerId || null;
+  if (owner && callerId && String(owner) !== String(callerId)) return false;
+  if (owner === "system") return false;
+  const tagged = String(dtu.domain || dtu.meta?.lens || dtu.machine?.kind || dtu.kind || "").trim();
+  if (tagged) return dtuMatchesDomain(dtu, domain);
+  const title = String(dtu.title || "");
+  if (title.startsWith("Lens:")) return false;
+  if (/chat context/i.test(title) && String(domain) !== "chat") return false;
+  return true;
+}
 
 const providers = new Map(); // domain -> (ctx) => rows[] | Promise<rows[]>
 
@@ -42,6 +58,155 @@ export function hasLensExportProvider(domain) {
 
 export function _clearLensExportProvidersForTests() {
   providers.clear();
+}
+
+/** Keys that are indexes, caches, or shared rooms — never a user's records. */
+const STRUCTURAL_STATE_KEYS = new Set([
+  "seq", "seqs", "cache", "sharecache", "timers", "votes", "sharedvotes",
+  "sharedboards", "voicerooms", "voicepeers", "overlayprefs", "participants",
+]);
+
+function exportActorId(ctx) {
+  const id = ctx?.actor?.userId || ctx?.actor?.id || ctx?.userId || null;
+  return id ? String(id) : null;
+}
+
+/**
+ * Short bags whose key is not `<domain>Lens`. The records inside are still
+ * caller-scoped by exportCallerLensState.
+ */
+const LENS_BAG_ALIASES = {
+  creativewriting: "writingLens",
+  construction: "conLens",
+  insurance: "insLens",
+  telecommunications: "telecom",
+};
+
+/**
+ * Find `STATE.<domain>Lens` for "film-studios" / "filmStudiosLens" alike.
+ * When that bag is absent, use a known alias (writingLens, conLens) or the
+ * root maps named `<domain><CamelRest>` (sentinelCases). Returns null when
+ * this domain keeps no such store.
+ */
+export function lensStateBag(state, domain) {
+  if (!state || typeof state !== "object" || !domain) return null;
+  const want = String(domain).toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (!want) return null;
+  if (state instanceof Map) return null;
+  for (const key of Object.keys(state)) {
+    if (!/lens$/i.test(key)) continue;
+    const stem = key.slice(0, -4).toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (stem === want) return state[key];
+  }
+  const alias = LENS_BAG_ALIASES[want];
+  if (alias && state[alias] && typeof state[alias] === "object") return state[alias];
+  const prefixed = {};
+  for (const key of Object.keys(state)) {
+    if (typeof state[key] === "function") continue;
+    const flat = key.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (flat === want) {
+      const value = state[key];
+      // A namesake object (cognitiveReplay) is the bag. A namesake Map
+      // stays in the prefixed set so only the caller's bucket is read.
+      if (value && typeof value === "object" && !(value instanceof Map) && !Array.isArray(value)) {
+        return value;
+      }
+      prefixed[key] = value;
+      continue;
+    }
+    if (key.length > want.length && key.toLowerCase().startsWith(want)) {
+      const boundary = key[want.length];
+      if (boundary === boundary.toUpperCase() && boundary !== boundary.toLowerCase()) {
+        prefixed[key] = state[key];
+      }
+    }
+  }
+  return Object.keys(prefixed).length ? prefixed : null;
+}
+
+function isExportRecord(value) {
+  if (!value || typeof value !== "object") return false;
+  if (Array.isArray(value) || value instanceof Map || value instanceof Set) return false;
+  return typeof value.id === "string" || typeof value.id === "number"
+    || typeof value.title === "string" || typeof value.name === "string";
+}
+
+function plainRecord(rec) {
+  const data = {};
+  for (const [key, value] of Object.entries(rec)) {
+    if (typeof value === "function") continue;
+    if (value instanceof Map || value instanceof Set) continue;
+    data[key] = value;
+  }
+  return data;
+}
+
+function rowFromRecord(rec, type) {
+  const data = plainRecord(rec);
+  return {
+    id: rec.id ?? null,
+    type: typeof type === "string" && type ? type : "record",
+    title: (typeof rec.title === "string" && rec.title)
+      || (typeof rec.name === "string" && rec.name)
+      || (typeof rec.label === "string" && rec.label)
+      || (rec.id != null ? String(rec.id) : type),
+    createdAt: rec.createdAt ?? rec.created_at ?? null,
+    updatedAt: rec.updatedAt ?? rec.updated_at ?? rec.createdAt ?? rec.created_at ?? null,
+    data,
+  };
+}
+
+function recordsInBucket(bucket) {
+  if (Array.isArray(bucket)) return bucket.filter(isExportRecord);
+  if (bucket instanceof Map) return [...bucket.values()].filter(isExportRecord);
+  if (isExportRecord(bucket)) return [bucket];
+  return [];
+}
+
+/**
+ * Panel records stored on `STATE.<domain>Lens` (per-user Map or owned
+ * array). Only the caller's bucket is read. A map that is NOT keyed by
+ * the caller — shared boards, rooms, other people's rows — contributes
+ * nothing.
+ */
+export function exportCallerLensState(state, domain, ctx, limit = 1000) {
+  const userId = exportActorId(ctx);
+  if (!userId) return [];
+  const bag = lensStateBag(state, domain);
+  if (!bag || typeof bag !== "object") return [];
+  const cap = Number.isFinite(limit) && limit > 0 ? limit : 1000;
+  const rows = [];
+
+  const take = (type, bucket) => {
+    for (const rec of recordsInBucket(bucket)) {
+      if (rows.length >= cap) return;
+      rows.push(rowFromRecord(rec, type));
+    }
+  };
+
+  if (bag instanceof Map) {
+    take("record", bag.get(userId));
+    return rows;
+  }
+
+  for (const [key, value] of Object.entries(bag)) {
+    if (rows.length >= cap) break;
+    if (STRUCTURAL_STATE_KEYS.has(String(key).toLowerCase())) continue;
+    if (value instanceof Map) {
+      take(key, value.get(userId));
+      continue;
+    }
+    if (Array.isArray(value)) {
+      for (const rec of value) {
+        if (rows.length >= cap) break;
+        if (!isExportRecord(rec)) continue;
+        const owner = rec.ownerId || rec.userId || rec.user_id || null;
+        if (owner == null || String(owner) !== userId) continue;
+        rows.push(rowFromRecord(rec, key));
+      }
+    }
+  }
+  return rows;
 }
 
 function normalizeRow(row, domain) {
@@ -72,8 +237,38 @@ export async function collectLensExport({ runMacro, domain, ctx, limit = 1000 })
   if (!listed || listed.ok === false) {
     return { ok: false, error: listed?.error || "lens_list_failed" };
   }
+  const callerId = ctx?.actor?.userId || ctx?.actor?.id || null;
+  const isActivityMint = (a) => {
+    const from = a?.meta?.createdFrom;
+    if (from === "dtu-auto-sync" || from === "integrity-repair") return true;
+    if (typeof a?.id === "string" && a.id.startsWith("dtu_lens_")) return true;
+    if (typeof a?.title === "string" && a.title.startsWith("Lens:")) return true;
+    return false;
+  };
+  // Hotfix 2026-11-09: export is caller-scoped. Drop activity-minted
+  // mirrors (even if lens.list still returned a stale public copy) unless
+  // the caller owns them. Keep genuine non-activity public catalog rows.
+  // Export scope: lens.list treats social-domain artifacts as an open
+  // square (right for rendering a feed) and applies no ownership filter
+  // there, so this leg applies the takeout rule itself: an artifact
+  // owned by another user rides the export only when it is public or
+  // published. The caller's own records ride at any visibility, and
+  // ownerless rows (the public catalog) keep riding, per the hotfix
+  // note below.
+  const exportScoped = (a) => {
+    const owner = a?.ownerId || a?.meta?.ownerId || null;
+    if (!owner) return true;
+    if (callerId && String(owner) === String(callerId)) return true;
+    const vis = a?.meta?.visibility ?? a?.visibility;
+    return vis === "public" || vis === "published";
+  };
   const artifacts = (Array.isArray(listed.artifacts) ? listed.artifacts : [])
-    .filter((a) => a && !SCAFFOLDING_TYPES.has(a.type));
+    .filter((a) => a && !SCAFFOLDING_TYPES.has(a.type))
+    .filter(exportScoped)
+    .filter((a) => {
+      if (!isActivityMint(a)) return true;
+      return !!(callerId && a.ownerId && a.ownerId === callerId && a.ownerId !== "system" && a.ownerId !== "anon");
+    });
 
   let providerRows = [];
   let providerError = null;
@@ -108,7 +303,7 @@ export async function collectLensExport({ runMacro, domain, ctx, limit = 1000 })
     const list = Array.isArray(mine?.dtus) ? mine.dtus : (Array.isArray(mine?.items) ? mine.items : []);
     const seen = new Set([...artifacts, ...providerRows].map((r) => r?.id).filter(Boolean));
     dtuRows = list
-      .filter((d) => d && d.id && !seen.has(d.id))
+      .filter((d) => d && d.id && !seen.has(d.id) && dtuBelongsInLensExport(d, domain, callerId))
       .map((d) => normalizeRow({
         id: d.id,
         type: "dtu",
@@ -127,14 +322,28 @@ export async function collectLensExport({ runMacro, domain, ctx, limit = 1000 })
     dtuError = err?.message || "dtu_list_failed";
   }
 
-  const rows = [...artifacts, ...providerRows, ...dtuRows];
+  // Panel records that live in STATE.<domain>Lens rather than the
+  // artifact store. Caller-scoped. Deduped against provider rows so a
+  // domain that already registers a provider is not exported twice.
+  const seen = new Set(
+    [...artifacts, ...providerRows, ...dtuRows].map((r) => r?.id).filter((id) => id != null),
+  );
+  const stateRows = exportCallerLensState(globalThis._concordSTATE, domain, ctx, limit)
+    .map((r) => normalizeRow(r, domain))
+    .filter((r) => r && (r.id == null || !seen.has(r.id)));
+
+  const rows = [...artifacts, ...providerRows, ...stateRows, ...dtuRows];
   return {
     ok: true,
     domain,
     artifacts: rows,
     total: rows.length,
-    sources: { artifacts: artifacts.length, stateRecords: providerRows.length, ownDtus: dtuRows.length },
-    stateBacked: Boolean(provider),
+    sources: {
+      artifacts: artifacts.length,
+      stateRecords: providerRows.length + stateRows.length,
+      ownDtus: dtuRows.length,
+    },
+    stateBacked: Boolean(provider) || lensStateBag(globalThis._concordSTATE, domain) != null,
     ...(providerError ? { providerError } : {}),
     ...(dtuError ? { dtuError } : {}),
   };

@@ -14,6 +14,7 @@
  */
 
 import logger from "../logger.js";
+import { advertisedCockpitMcpTools } from "./cockpit/mcp-tools.js";
 
 // ── MCP Protocol Constants ──────────────────────────────────────────────────
 
@@ -189,6 +190,11 @@ export function createMCPServer({
       };
     });
 
+    if (offset === 0) {
+      // Advertised only while CONCORD_COCKPIT_LONG_TASK is on.
+      for (const t of advertisedCockpitMcpTools()) tools.push({ name: t.name, description: t.description, inputSchema: t.inputSchema });
+    }
+
     const nextOffset = offset + PAGE_SIZE;
     const nextCursor = nextOffset < total ? String(nextOffset) : undefined;
 
@@ -208,6 +214,17 @@ export function createMCPServer({
 
     if (!name) {
       throw makeRPCError(INVALID_PARAMS, "Missing required parameter: name");
+    }
+
+    // GB-1500 CKPT-20: run tools (start_run / get_run / cancel_run), only while CONCORD_COCKPIT_LONG_TASK is on.
+    if (!lensActions.get(name)) {
+      const { isCockpitMcpTool, callCockpitMcpTool } = await import("./cockpit/mcp-tools.js");
+      if (isCockpitMcpTool(name)) {
+        const out = await callCockpitMcpTool(name, args, {
+          db: globalThis.__concordDB || makeCtx(req || null)?.db || null, actor: req?.user || null, lensActions,
+        });
+        return { content: [{ type: "text", text: JSON.stringify(out, null, 2) }], isError: out.ok === false };
+      }
     }
 
     const handler = lensActions.get(name);

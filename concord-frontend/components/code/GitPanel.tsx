@@ -5,6 +5,7 @@ import { GitBranch, Loader2, GitCommit, GitMerge, Check, Plus, Archive, Undo2, F
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { QuietSuccessEdge, ShipItLine, isShipItCommit, DELIGHT_CSS } from './delight';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface GitStatus { branch: string; branches: string[]; modified: string[]; staged: string[]; head: string | null; clean: boolean }
 interface GitCommitRow { id: string; number: string; message: string; branch: string; committedAt: string; paths: string[] }
@@ -238,9 +239,9 @@ export function GitPanel({ projectId, onChanged, onDiscarded }: {
 
       {diff && (
         <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-6"
-          onClick={() => setDiff(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          onClick={() => setDiff(null)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <div className="bg-[#0d1117] border border-white/15 rounded-lg w-full max-w-2xl max-h-[80%] flex flex-col overflow-hidden"
-            onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <div className="px-3 py-2 border-b border-white/10 flex items-center gap-2">
               <FileDiff className="w-3.5 h-3.5 text-blue-400" />
               <span className="text-xs font-mono text-white flex-1 truncate">{diff.path}</span>
@@ -281,12 +282,8 @@ function FileRow({
   onPrimary: () => void; primaryLabel: string; primaryTitle: string; onDiscard?: () => void;
 }) {
   // In-UI arm/confirm (S10): first click arms, second click discards.
+  // The arm stays until Discard or Keep — a 4s timeout raced the click.
   const [armed, setArmed] = useState(false);
-  useEffect(() => {
-    if (!armed) return;
-    const t = setTimeout(() => setArmed(false), 4000);
-    return () => clearTimeout(t);
-  }, [armed]);
   return (
     <div className="px-3 py-1 flex items-center gap-2 text-xs hover:bg-white/[0.03] group">
       <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', accent === 'emerald' ? 'bg-emerald-400' : 'bg-amber-400')} />
@@ -295,9 +292,14 @@ function FileRow({
       </button>
       {onDiscard && (
         armed ? (
-          <button onClick={() => { setArmed(false); onDiscard(); }} title="Confirm discard" className="px-1 text-[11px] font-semibold text-rose-300 hover:text-rose-200">
-            Discard?
-          </button>
+          <>
+            <button onClick={() => { setArmed(false); onDiscard(); }} title="Confirm discard" className="px-1 text-[11px] font-semibold text-rose-300 hover:text-rose-200">
+              Discard?
+            </button>
+            <button type="button" onClick={() => setArmed(false)} className="px-1 text-[11px] text-gray-300 hover:text-white">
+              Keep
+            </button>
+          </>
         ) : (
           <button onClick={() => setArmed(true)} title="Discard changes" className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-rose-300">
             <Undo2 className="w-3 h-3" />

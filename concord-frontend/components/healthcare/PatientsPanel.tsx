@@ -14,10 +14,12 @@ interface Patient {
 
 export function PatientsPanel({ onSelect }: { onSelect: (patientId: string) => void }) {
   const [list, setList] = useState<Patient[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [q, setQ] = useState('');
   const [draft, setDraft] = useState({ firstName: '', lastName: '', dob: '', sex: 'U' as 'M' | 'F' | 'X' | 'U', phone: '', email: '', insurancePlan: '', insuranceMemberId: '', address: '' });
+  const [confirmId, setConfirmId] = useState<string | null>(null);
 
   useEffect(() => { refresh(); }, []);
 
@@ -25,7 +27,9 @@ export function PatientsPanel({ onSelect }: { onSelect: (patientId: string) => v
     setLoading(true);
     try {
       const r = await lensRun({ domain: 'healthcare', action: 'patients-list', input: query ? { q: query } : {} });
-      setList((r.data?.result?.patients || []) as Patient[]);
+      const patients = (r.data?.result?.patients || []) as Patient[];
+      setList(patients);
+      if (!query) setTotal(patients.length);
     } catch (e) { console.error('[Patients] list failed', e); }
     finally { setLoading(false); }
   }
@@ -40,6 +44,15 @@ export function PatientsPanel({ onSelect }: { onSelect: (patientId: string) => v
       await refresh();
       if (r.data?.result?.patient) onSelect(r.data.result.patient.id);
     } catch (e) { console.error('[Patients] create failed', e); }
+  }
+
+  async function removePatient(id: string) {
+    try {
+      const r = await lensRun({ domain: 'healthcare', action: 'patients-delete', input: { id } });
+      if (r.data?.ok === false) { alert(r.data?.error || 'Could not remove the patient'); return; }
+      setConfirmId(null);
+      await refresh(q);
+    } catch (e) { console.error('[Patients] delete failed', e); }
   }
 
   function age(dob: string): string {
@@ -57,7 +70,7 @@ export function PatientsPanel({ onSelect }: { onSelect: (patientId: string) => v
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <Users className="w-4 h-4 text-cyan-400" />
         <span className="text-sm font-semibold text-gray-200">Patients</span>
-        <span className="text-[10px] text-gray-400">{list.length}</span>
+        <span className="text-[10px] text-gray-400">{q ? `${list.length} of ${total}` : list.length}</span>
         <div className="ml-2 flex items-center gap-1 flex-1 max-w-[300px]">
           <Search className="w-3.5 h-3.5 text-gray-400" />
           <input
@@ -74,20 +87,20 @@ export function PatientsPanel({ onSelect }: { onSelect: (patientId: string) => v
 
       {creating && (
         <div className="px-4 py-3 border-b border-white/10 grid grid-cols-12 gap-2">
-          <input value={draft.firstName} onChange={e => setDraft({ ...draft, firstName: e.target.value })} placeholder="First name *" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <input value={draft.lastName} onChange={e => setDraft({ ...draft, lastName: e.target.value })} placeholder="Last name *" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <input type="date" value={draft.dob} onChange={e => setDraft({ ...draft, dob: e.target.value })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
-          <select value={draft.sex} onChange={e => setDraft({ ...draft, sex: e.target.value as typeof draft.sex })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+          <input value={draft.firstName} onChange={e => setDraft({ ...draft, firstName: e.target.value })} aria-label="First name" placeholder="First name *" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input value={draft.lastName} onChange={e => setDraft({ ...draft, lastName: e.target.value })} aria-label="Last name" placeholder="Last name *" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input type="date" aria-label="Date of birth" value={draft.dob} onChange={e => setDraft({ ...draft, dob: e.target.value })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+          <select aria-label="Sex" value={draft.sex} onChange={e => setDraft({ ...draft, sex: e.target.value as typeof draft.sex })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
             <option value="U">Unknown</option>
             <option value="F">Female</option>
             <option value="M">Male</option>
             <option value="X">Non-binary</option>
           </select>
-          <input value={draft.phone} onChange={e => setDraft({ ...draft, phone: e.target.value })} placeholder="Phone" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <input value={draft.email} onChange={e => setDraft({ ...draft, email: e.target.value })} placeholder="Email" className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <input value={draft.insurancePlan} onChange={e => setDraft({ ...draft, insurancePlan: e.target.value })} placeholder="Insurance plan" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <input value={draft.insuranceMemberId} onChange={e => setDraft({ ...draft, insuranceMemberId: e.target.value })} placeholder="Member ID" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
-          <input value={draft.address} onChange={e => setDraft({ ...draft, address: e.target.value })} placeholder="Address" className="col-span-12 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input value={draft.phone} onChange={e => setDraft({ ...draft, phone: e.target.value })} aria-label="Phone" placeholder="Phone" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input value={draft.email} onChange={e => setDraft({ ...draft, email: e.target.value })} aria-label="Email" placeholder="Email" className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input value={draft.insurancePlan} onChange={e => setDraft({ ...draft, insurancePlan: e.target.value })} aria-label="Insurance plan" placeholder="Insurance plan" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input value={draft.insuranceMemberId} onChange={e => setDraft({ ...draft, insuranceMemberId: e.target.value })} aria-label="Member ID" placeholder="Member ID" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+          <input value={draft.address} onChange={e => setDraft({ ...draft, address: e.target.value })} aria-label="Address" placeholder="Address" className="col-span-12 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <button onClick={create} className="col-span-12 px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400">Register patient</button>
         </div>
       )}
@@ -96,7 +109,7 @@ export function PatientsPanel({ onSelect }: { onSelect: (patientId: string) => v
         {loading ? (
           <SkeletonTableRows rows={5} columns={3} />
         ) : list.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-400"><Users className="w-6 h-6 mx-auto mb-2 opacity-30" />No patients yet.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Users className="w-6 h-6 mx-auto mb-2 opacity-30" />{q ? `No patients match “${q}”.` : 'No patients yet.'}</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {list.map(p => (
@@ -114,6 +127,17 @@ export function PatientsPanel({ onSelect }: { onSelect: (patientId: string) => v
                     {p.insurancePlan && <span> · {p.insurancePlan}</span>}
                   </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (confirmId === p.id) void removePatient(p.id);
+                    else setConfirmId(p.id);
+                  }}
+                  className="text-[10px] text-rose-300 hover:text-rose-200"
+                >
+                  {confirmId === p.id ? 'Confirm remove' : 'Remove'}
+                </button>
                 <span className="text-[10px] text-cyan-300">Open chart →</span>
               </li>
             ))}

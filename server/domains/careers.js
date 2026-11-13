@@ -278,7 +278,18 @@ export default function registerCareerMacros(register) {
   register("careers", "counter", async (ctx, input = {}) => {
     const g = gate(ctx); if (g) return g;
     const uid = authed(ctx); if (!uid) return { ok: false, reason: "auth_required" };
-    return counterContract(ctx.db, input.contractId, "player", uid, input.terms || {});
+    const terms = input.terms && typeof input.terms === "object" ? input.terms : {};
+    const bad = badNumericField(terms, ["baseWage", "signingBonus", "durationDays"]);
+    if (bad) {
+      return {
+        ok: false,
+        reason: `invalid_${bad}`,
+        message: bad === "baseWage"
+          ? "Wage has to be a number from 0 to 1,000,000."
+          : "That number has to be from 0 to 1,000,000.",
+      };
+    }
+    return counterContract(ctx.db, input.contractId, "player", uid, terms);
   }, { note: "careers: counter a contract" });
 
   register("careers", "reject", async (ctx, input = {}) => {

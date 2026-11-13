@@ -57,6 +57,8 @@ import {
   Minus,
   Map,
 } from 'lucide-react';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: false });
 
@@ -800,8 +802,8 @@ export function FieldOpsPanel({
             <div className={ds.grid2}>
               <div>
                 <label className={ds.label}>Site Type</label>
-                <select
-                  className={ds.select}
+                <select aria-label="Site Type"
+                  className={cn(ds.select, 'min-h-11')}
                   value={(formData.siteType as string) || ''}
                   onChange={(e) => setFormData({ ...formData, siteType: e.target.value })}
                 >
@@ -877,8 +879,8 @@ export function FieldOpsPanel({
             <div className={ds.grid2}>
               <div>
                 <label className={ds.label}>Land Use</label>
-                <select
-                  className={ds.select}
+                <select aria-label="Land Use"
+                  className={cn(ds.select, 'min-h-11')}
                   value={(formData.landUse as string) || ''}
                   onChange={(e) => setFormData({ ...formData, landUse: e.target.value })}
                 >
@@ -893,8 +895,8 @@ export function FieldOpsPanel({
               </div>
               <div>
                 <label className={ds.label}>Regulatory Status</label>
-                <select
-                  className={ds.select}
+                <select aria-label="Regulatory Status"
+                  className={cn(ds.select, 'min-h-11')}
                   value={(formData.regulatoryStatus as string) || ''}
                   onChange={(e) => setFormData({ ...formData, regulatoryStatus: e.target.value })}
                 >
@@ -911,8 +913,8 @@ export function FieldOpsPanel({
             <div className={ds.grid2}>
               <div>
                 <label className={ds.label}>Sampling Schedule</label>
-                <select
-                  className={ds.select}
+                <select aria-label="Sampling Schedule"
+                  className={cn(ds.select, 'min-h-11')}
                   value={(formData.samplingSchedule as string) || ''}
                   onChange={(e) => setFormData({ ...formData, samplingSchedule: e.target.value })}
                 >
@@ -994,8 +996,8 @@ export function FieldOpsPanel({
             <div className={ds.grid2}>
               <div>
                 <label className={ds.label}>Category</label>
-                <select
-                  className={ds.select}
+                <select aria-label="Category"
+                  className={cn(ds.select, 'min-h-11')}
                   value={(formData.category as string) || ''}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                 >
@@ -1018,8 +1020,8 @@ export function FieldOpsPanel({
               </div>
               <div>
                 <label className={ds.label}>Conservation Status (IUCN)</label>
-                <select
-                  className={ds.select}
+                <select aria-label="Conservation Status (IUCN)"
+                  className={cn(ds.select, 'min-h-11')}
                   value={(formData.conservationStatus as string) || ''}
                   onChange={(e) => setFormData({ ...formData, conservationStatus: e.target.value })}
                 >
@@ -1035,8 +1037,8 @@ export function FieldOpsPanel({
             <div className={ds.grid2}>
               <div>
                 <label className={ds.label}>Population Trend</label>
-                <select
-                  className={ds.select}
+                <select aria-label="Population Trend"
+                  className={cn(ds.select, 'min-h-11')}
                   value={(formData.populationTrend as string) || ''}
                   onChange={(e) => setFormData({ ...formData, populationTrend: e.target.value })}
                 >
@@ -1195,8 +1197,8 @@ export function FieldOpsPanel({
               </div>
               <div>
                 <label className={ds.label}>Medium</label>
-                <select
-                  className={ds.select}
+                <select aria-label="Medium"
+                  className={cn(ds.select, 'min-h-11')}
                   value={(formData.medium as string) || ''}
                   onChange={(e) => setFormData({ ...formData, medium: e.target.value })}
                 >
@@ -1214,8 +1216,8 @@ export function FieldOpsPanel({
             <div className={ds.grid2}>
               <div>
                 <label className={ds.label}>Parameter</label>
-                <select
-                  className={ds.select}
+                <select aria-label="Parameter"
+                  className={cn(ds.select, 'min-h-11')}
                   value={(formData.parameter as string) || ''}
                   onChange={(e) => setFormData({ ...formData, parameter: e.target.value })}
                 >
@@ -1253,8 +1255,8 @@ export function FieldOpsPanel({
               </div>
               <div>
                 <label className={ds.label}>Unit</label>
-                <select
-                  className={ds.select}
+                <select aria-label="Unit"
+                  className={cn(ds.select, 'min-h-11')}
                   value={(formData.unit as string) || ''}
                   onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
                 >
@@ -1273,8 +1275,8 @@ export function FieldOpsPanel({
               </div>
               <div>
                 <label className={ds.label}>Quality Flag</label>
-                <select
-                  className={ds.select}
+                <select aria-label="Quality Flag"
+                  className={cn(ds.select, 'min-h-11')}
                   value={(formData.qualityFlag as string) || ''}
                   onChange={(e) => setFormData({ ...formData, qualityFlag: e.target.value })}
                 >
@@ -1434,8 +1436,8 @@ export function FieldOpsPanel({
             <div className={ds.grid2}>
               <div>
                 <label className={ds.label}>Asset Category</label>
-                <select
-                  className={ds.select}
+                <select aria-label="Asset Category"
+                  className={cn(ds.select, 'min-h-11')}
                   value={(formData.assetCategory as string) || ''}
                   onChange={(e) => setFormData({ ...formData, assetCategory: e.target.value })}
                 >
@@ -1448,8 +1450,8 @@ export function FieldOpsPanel({
               </div>
               <div>
                 <label className={ds.label}>Asset Type</label>
-                <select
-                  className={ds.select}
+                <select aria-label="Asset Type"
+                  className={cn(ds.select, 'min-h-11')}
                   value={(formData.assetType as string) || ''}
                   onChange={(e) => setFormData({ ...formData, assetType: e.target.value })}
                 >
@@ -1479,8 +1481,8 @@ export function FieldOpsPanel({
               </div>
               <div>
                 <label className={ds.label}>Condition</label>
-                <select
-                  className={ds.select}
+                <select aria-label="Condition"
+                  className={cn(ds.select, 'min-h-11')}
                   value={(formData.condition as string) || ''}
                   onChange={(e) => setFormData({ ...formData, condition: e.target.value })}
                 >
@@ -1493,8 +1495,8 @@ export function FieldOpsPanel({
               </div>
               <div>
                 <label className={ds.label}>Difficulty</label>
-                <select
-                  className={ds.select}
+                <select aria-label="Difficulty"
+                  className={cn(ds.select, 'min-h-11')}
                   value={(formData.difficulty as string) || ''}
                   onChange={(e) => setFormData({ ...formData, difficulty: e.target.value })}
                 >
@@ -1509,8 +1511,8 @@ export function FieldOpsPanel({
             <div className={ds.grid2}>
               <div>
                 <label className={ds.label}>Surface</label>
-                <select
-                  className={ds.select}
+                <select aria-label="Surface"
+                  className={cn(ds.select, 'min-h-11')}
                   value={(formData.surface as string) || ''}
                   onChange={(e) => setFormData({ ...formData, surface: e.target.value })}
                 >
@@ -1570,8 +1572,8 @@ export function FieldOpsPanel({
               </div>
               <div>
                 <label className={ds.label}>Work Order Status</label>
-                <select
-                  className={ds.select}
+                <select aria-label="Work Order Status"
+                  className={cn(ds.select, 'min-h-11')}
                   value={(formData.workOrderStatus as string) || ''}
                   onChange={(e) => setFormData({ ...formData, workOrderStatus: e.target.value })}
                 >
@@ -1654,8 +1656,8 @@ export function FieldOpsPanel({
             <div className={ds.grid2}>
               <div>
                 <label className={ds.label}>Waste Type</label>
-                <select
-                  className={ds.select}
+                <select aria-label="Waste Type"
+                  className={cn(ds.select, 'min-h-11')}
                   value={(formData.wasteType as string) || ''}
                   onChange={(e) => setFormData({ ...formData, wasteType: e.target.value })}
                 >
@@ -1740,8 +1742,8 @@ export function FieldOpsPanel({
             <div className={ds.grid2}>
               <div>
                 <label className={ds.label}>Disposal Method</label>
-                <select
-                  className={ds.select}
+                <select aria-label="Disposal Method"
+                  className={cn(ds.select, 'min-h-11')}
                   value={(formData.disposalMethod as string) || ''}
                   onChange={(e) => setFormData({ ...formData, disposalMethod: e.target.value })}
                 >
@@ -1819,8 +1821,8 @@ export function FieldOpsPanel({
               </div>
               <div>
                 <label className={ds.label}>Permit Type</label>
-                <select
-                  className={ds.select}
+                <select aria-label="Permit Type"
+                  className={cn(ds.select, 'min-h-11')}
                   value={(formData.permitType as string) || ''}
                   onChange={(e) => setFormData({ ...formData, permitType: e.target.value })}
                 >
@@ -1890,8 +1892,8 @@ export function FieldOpsPanel({
             <div className={ds.grid3}>
               <div>
                 <label className={ds.label}>Inspection Schedule</label>
-                <select
-                  className={ds.select}
+                <select aria-label="Inspection Schedule"
+                  className={cn(ds.select, 'min-h-11')}
                   value={(formData.inspectionSchedule as string) || ''}
                   onChange={(e) => setFormData({ ...formData, inspectionSchedule: e.target.value })}
                 >
@@ -1983,8 +1985,8 @@ export function FieldOpsPanel({
             <div className={ds.grid2}>
               <div>
                 <label className={ds.label}>Category</label>
-                <select
-                  className={ds.select}
+                <select aria-label="Category"
+                  className={cn(ds.select, 'min-h-11')}
                   value={(formData.category as string) || ''}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                 >
@@ -1998,8 +2000,8 @@ export function FieldOpsPanel({
               </div>
               <div>
                 <label className={ds.label}>Scope</label>
-                <select
-                  className={ds.select}
+                <select aria-label="Scope"
+                  className={cn(ds.select, 'min-h-11')}
                   value={(formData.scope as string) || ''}
                   onChange={(e) => setFormData({ ...formData, scope: e.target.value })}
                 >
@@ -2071,8 +2073,8 @@ export function FieldOpsPanel({
             </div>
             <div>
               <label className={ds.label}>Verification Status</label>
-              <select
-                className={ds.select}
+              <select aria-label="Verification Status"
+                className={cn(ds.select, 'min-h-11')}
                 value={(formData.verificationStatus as string) || ''}
                 onChange={(e) => setFormData({ ...formData, verificationStatus: e.target.value })}
               >
@@ -2101,8 +2103,8 @@ export function FieldOpsPanel({
             <div className={ds.grid2}>
               <div>
                 <label className={ds.label}>Resource Type</label>
-                <select
-                  className={ds.select}
+                <select aria-label="Resource Type"
+                  className={cn(ds.select, 'min-h-11')}
                   value={(formData.resourceType as string) || ''}
                   onChange={(e) => setFormData({ ...formData, resourceType: e.target.value })}
                 >
@@ -2139,8 +2141,8 @@ export function FieldOpsPanel({
               </div>
               <div>
                 <label className={ds.label}>Unit</label>
-                <select
-                  className={ds.select}
+                <select aria-label="Unit"
+                  className={cn(ds.select, 'min-h-11')}
                   value={(formData.unit as string) || ''}
                   onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
                 >
@@ -2202,8 +2204,8 @@ export function FieldOpsPanel({
               </div>
               <div>
                 <label className={ds.label}>Trend</label>
-                <select
-                  className={ds.select}
+                <select aria-label="Trend"
+                  className={cn(ds.select, 'min-h-11')}
                   value={(formData.trend as string) || ''}
                   onChange={(e) => setFormData({ ...formData, trend: e.target.value })}
                 >
@@ -2241,8 +2243,8 @@ export function FieldOpsPanel({
             <div className={ds.grid2}>
               <div>
                 <label className={ds.label}>Category</label>
-                <select
-                  className={ds.select}
+                <select aria-label="Category"
+                  className={cn(ds.select, 'min-h-11')}
                   value={(formData.category as string) || ''}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                 >
@@ -2366,9 +2368,9 @@ export function FieldOpsPanel({
       <div
         key={item.id}
         className={cn(ds.panelHover, 'group relative')}
-        onClick={() => setDetailItem(detailItem === item.id ? null : item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        onClick={() => setDetailItem(detailItem === item.id ? null : item.id)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
         <div className={ds.sectionHeader}>
-          <h3 className={cn(ds.heading3, 'truncate pr-2')}>{item.title}</h3>
+          <h2 className={cn(ds.heading3, 'truncate pr-2')}>{item.title}</h2>
           <div className="flex items-center gap-2 shrink-0">
             {renderStatusBadge(item.meta.status as string)}
           </div>
@@ -2819,7 +2821,7 @@ export function FieldOpsPanel({
         {detailItem === item.id && (
           <div
             className="mt-3 pt-3 border-t border-lattice-border space-y-2"
-            onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             {Boolean(d.notes) && (
               <div>
                 <p className={cn(ds.label, 'mb-0.5')}>Notes</p>
@@ -2838,13 +2840,17 @@ export function FieldOpsPanel({
           </div>
         )}
 
-        <div className="mt-3 flex items-center gap-2" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className="mt-3 flex items-center gap-2" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <button className={cn(ds.btnGhost, ds.btnSmall)} onClick={() => openEdit(item)}>
             <Edit3 className="w-3.5 h-3.5" /> Edit
           </button>
-          <button className={cn(ds.btnDanger, ds.btnSmall)} onClick={() => handleDelete(item.id)}>
-            <Trash2 className="w-3.5 h-3.5" /> Delete
-          </button>
+          <StickyDeleteConfirm
+            onConfirm={() => handleDelete(item.id)}
+            armLabel={<><Trash2 className="w-3.5 h-3.5" /> Delete</>}
+            armAriaLabel={`Delete ${item.title || 'record'}`}
+            confirmAriaLabel={`Confirm delete ${item.title || 'record'}`}
+            className={cn(ds.btnDanger, ds.btnSmall)}
+          />
           <button
             className={cn(ds.btnGhost, ds.btnSmall)}
             onClick={() => setDetailItem(detailItem === item.id ? null : item.id)}
@@ -2982,7 +2988,7 @@ export function FieldOpsPanel({
       {/* Status Breakdown for Current Mode */}
       <div className={ds.grid2}>
         <div className={ds.panel}>
-          <h3 className={cn(ds.heading3, 'mb-4')}>Status Breakdown - {mode}</h3>
+          <h2 className={cn(ds.heading3, 'mb-4')}>Status Breakdown - {mode}</h2>
           <div className="space-y-2">
             {ALL_STATUSES.map((s) => {
               const count = statusCounts[s] || 0;
@@ -3013,7 +3019,7 @@ export function FieldOpsPanel({
         </div>
 
         <div className={ds.panel}>
-          <h3 className={cn(ds.heading3, 'mb-4')}>Environmental Summary</h3>
+          <h2 className={cn(ds.heading3, 'mb-4')}>Environmental Summary</h2>
           <div className="space-y-3">
             <div className="flex items-center justify-between p-3 rounded-lg bg-lattice-elevated/30">
               <div className="flex items-center gap-2">
@@ -3064,7 +3070,7 @@ export function FieldOpsPanel({
       {/* Critical Alerts */}
       <div className={ds.panel}>
         <div className={ds.sectionHeader}>
-          <h3 className={ds.heading3}>Critical Alerts & Exceedances</h3>
+          <h2 className={ds.heading3}>Critical Alerts & Exceedances</h2>
           <AlertTriangle className="w-5 h-5 text-red-400" />
         </div>
         <div className="mt-4 space-y-2">
@@ -3145,7 +3151,7 @@ export function FieldOpsPanel({
       {complianceItems.length > 0 ? (
         <div className={ds.panel}>
           <div className={ds.sectionHeader}>
-            <h3 className={ds.heading3}>Upcoming Inspections</h3>
+            <h2 className={ds.heading3}>Upcoming Inspections</h2>
             <Calendar className="w-5 h-5 text-gray-400" />
           </div>
           <div className="mt-4 space-y-2">
@@ -3285,9 +3291,9 @@ export function FieldOpsPanel({
           animate={{ opacity: 1, y: 0 }}
           className="panel p-4 space-y-3"
         >
-          <h3 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
+          <h2 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
             <Leaf className="w-4 h-4 text-green-400" /> Carbon Footprint Progress
-          </h3>
+          </h2>
           <div className="flex items-center gap-4">
             <div className="relative w-20 h-20">
               <svg className="w-20 h-20 -rotate-90" viewBox="0 0 36 36">
@@ -3384,8 +3390,8 @@ export function FieldOpsPanel({
             </div>
             <div className="flex items-center gap-1">
               <Filter className="w-4 h-4 text-gray-400" />
-              <select
-                className={cn(ds.select, 'w-auto')}
+              <select aria-label="Filter by status"
+                className={cn(ds.select, 'w-auto min-h-11')}
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
               >
@@ -3437,9 +3443,9 @@ export function FieldOpsPanel({
 
       {/* ---- Editor Modal ---- */}
       {showEditor && (
-        <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <div className={ds.modalContainer}>
-            <div className={cn(ds.modalPanel, 'max-w-2xl')} onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            <div className={cn(ds.modalPanel, 'max-w-2xl')} onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
               <div className="p-6 border-b border-lattice-border">
                 <div className={ds.sectionHeader}>
                   <h2 className={ds.heading2}>
@@ -3462,8 +3468,8 @@ export function FieldOpsPanel({
                 </div>
                 <div>
                   <label className={ds.label}>Status</label>
-                  <select
-                    className={ds.select}
+                  <select aria-label="Status"
+                    className={cn(ds.select, 'min-h-11')}
                     value={formStatus}
                     onChange={(e) => setFormStatus(e.target.value as Status)}
                   >
@@ -3516,9 +3522,9 @@ export function FieldOpsPanel({
       {/* ==================== MAP TAB ==================== */}
       {mode === 'Map' && (
         <div className={cn(ds.panel, 'p-4')}>
-          <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+          <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
             <Map className="w-4 h-4 text-green-400" /> Monitoring Site Locations
-          </h3>
+          </h2>
           <MapView
             markers={siteItems
               .filter((i) => {

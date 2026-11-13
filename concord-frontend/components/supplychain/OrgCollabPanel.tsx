@@ -65,7 +65,7 @@ async function run<T>(action: string, input: Record<string, unknown> = {}): Prom
   return r.data.result;
 }
 
-const INPUT = 'w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white';
+const INPUT = 'min-h-11 w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white';
 const LABEL = 'text-[9px] uppercase tracking-wider text-zinc-400 font-semibold';
 const BTN = 'flex items-center gap-1 rounded px-2.5 py-1 text-[11px] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
 
@@ -164,7 +164,7 @@ function CreateOrJoin({ notify, onDone }: { notify: (f: Feedback) => void; onDon
             <input className={INPUT} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Meridian Logistics" />
           </div>
           <div><div className={LABEL}>Type</div>
-            <select className={INPUT} value={type} onChange={(e) => setType(e.target.value as 'firm' | 'department')}>
+            <select aria-label="Organization type" className={INPUT} value={type} onChange={(e) => setType(e.target.value as 'firm' | 'department')}>
               <option value="firm">Firm</option>
               <option value="department">Department</option>
             </select>
@@ -186,15 +186,15 @@ function CreateOrJoin({ notify, onDone }: { notify: (f: Feedback) => void; onDon
 
       {mode === 'browse' && (
         <div className="space-y-1.5">
-          {busy && browse === null && <p className="text-[11px] text-zinc-500 flex items-center gap-1.5"><Loader2 className="w-3 h-3 animate-spin" /> Loading…</p>}
+          {busy && browse === null && <p className="text-[11px] text-zinc-400 flex items-center gap-1.5"><Loader2 className="w-3 h-3 animate-spin" /> Loading…</p>}
           {browse !== null && browse.length === 0 && (
-            <p className="text-[11px] text-zinc-500 py-2 text-center">No open firms or departments exist yet. Create the first one.</p>
+            <p className="text-[11px] text-zinc-400 py-2 text-center">No open firms or departments exist yet. Create the first one.</p>
           )}
           {(browse || []).map((o) => (
             <div key={o.id} className="flex items-center justify-between rounded border border-zinc-800 bg-zinc-900/40 px-2.5 py-1.5">
               <div>
                 <div className="text-[11px] font-semibold text-white">{o.name}</div>
-                <div className="text-[9px] text-zinc-500">{o.type} · {o.memberCount} member{o.memberCount === 1 ? '' : 's'} · <span className="font-mono">{o.id}</span></div>
+                <div className="text-[9px] text-zinc-400">{o.type} · {o.memberCount} member{o.memberCount === 1 ? '' : 's'} · <span className="font-mono">{o.id}</span></div>
               </div>
               <button onClick={() => { setJoinId(o.id); setMode('join'); }} className="text-[10px] text-teal-300 hover:text-teal-200 font-semibold">Join →</button>
             </div>
@@ -322,7 +322,7 @@ function OrgWorkspace({
   };
 
   if (!detail) {
-    return <p className="text-[11px] text-zinc-500 flex items-center gap-1.5 py-4"><Loader2 className="w-3 h-3 animate-spin" /> Loading {org.name}…</p>;
+    return <p className="text-[11px] text-zinc-400 flex items-center gap-1.5 py-4"><Loader2 className="w-3 h-3 animate-spin" /> Loading {org.name}…</p>;
   }
 
   return (
@@ -331,18 +331,18 @@ function OrgWorkspace({
         <div className="flex items-center gap-2">
           <Building2 className="w-4 h-4 text-teal-400" />
           <span className="text-[13px] font-semibold text-white">{detail.organization.name}</span>
-          <span className="text-[9px] text-zinc-500 uppercase">{detail.organization.type}</span>
+          <span className="text-[9px] text-zinc-400 uppercase">{detail.organization.type}</span>
           {myScRole && <RoleBadge role={myScRole} />}
         </div>
         {detail.myOrgRole !== 'leader' && (
-          <button onClick={leave} disabled={busy} className={cn(BTN, 'text-zinc-500 hover:text-rose-400')}>
+          <button onClick={leave} disabled={busy} className={cn(BTN, 'text-zinc-400 hover:text-rose-400')}>
             <LogOut className="w-3.5 h-3.5" /> Leave
           </button>
         )}
       </div>
 
       {myScRole && (
-        <p className="text-[10px] text-zinc-500 flex items-center gap-1.5">
+        <p className="text-[10px] text-zinc-400 flex items-center gap-1.5">
           <Search className="w-3 h-3" /> Viewing as <strong className={SC_ROLE_META[myScRole].tone.split(' ')[0]}>{SC_ROLE_META[myScRole].label}</strong> — {SC_ROLE_META[myScRole].desc}.
         </p>
       )}
@@ -362,8 +362,8 @@ function OrgWorkspace({
                 </div>
                 {canWritePlanner && !isLeader && !isMe && (
                   <div className="flex items-center gap-1 shrink-0">
-                    <select
-                      className="bg-zinc-900 border border-zinc-800 rounded px-1 py-0.5 text-[9px] text-white"
+                    <select aria-label="Member role"
+                      className="min-h-11 bg-zinc-900 border border-zinc-800 rounded px-1 py-0.5 text-[9px] text-white"
                       value={roleEdits[m.userId] ?? m.scRole}
                       onChange={(e) => setRoleEdits((cur) => ({ ...cur, [m.userId]: e.target.value as ScRole }))}
                     >
@@ -409,7 +409,7 @@ function OrgWorkspace({
         <Stat label="Open PO value" value={workOrders ? `$${Math.round(workOrders.openValue).toLocaleString()}` : '$0'} />
         <Stat label="Overdue POs" value={workOrders?.overdueCount ?? 0} tone={(workOrders?.overdueCount ?? 0) > 0 ? 'text-rose-300' : undefined} />
       </div>
-      <p className="text-[10px] text-zinc-500">
+      <p className="text-[10px] text-zinc-400">
         Shared with every member of {org.name}. Shipments and POs raised here live in the firm&apos;s workspace —
         your personal control-tower items stay in your own workspace, and personal items don&apos;t appear here.
       </p>
@@ -431,14 +431,14 @@ function OrgWorkspace({
               </div>
             </div>
           )}
-          {!canWriteBuyer && <p className="text-[9px] text-zinc-600 mb-1.5">Analyst view — read-only.</p>}
+          {!canWriteBuyer && <p className="text-[9px] text-zinc-400 mb-1.5">Analyst view — read-only.</p>}
           {(shipments?.shipments.length ?? 0) === 0
-            ? <p className="text-[10px] text-zinc-500 py-2 text-center">No shared shipments yet.</p>
+            ? <p className="text-[10px] text-zinc-400 py-2 text-center">No shared shipments yet.</p>
             : <ul className="space-y-1">{shipments!.shipments.slice(0, 8).map((s) => (
               <li key={s.id} className="flex items-center justify-between gap-2 rounded bg-zinc-900/50 px-2 py-1">
                 <div className="min-w-0">
                   <div className="text-[10px] text-zinc-200 font-mono truncate">{s.reference}</div>
-                  <div className="text-[9px] text-zinc-500">{s.origin || '?'} → {s.destination || '?'} · {(s.status ?? 'booked').replace(/_/g, ' ')}</div>
+                  <div className="text-[9px] text-zinc-400">{s.origin || '?'} → {s.destination || '?'} · {(s.status ?? 'booked').replace(/_/g, ' ')}</div>
                 </div>
                 {canWriteBuyer && (
                   <div className="flex items-center gap-1 shrink-0">
@@ -447,7 +447,7 @@ function OrgWorkspace({
                         <ArrowRight className="w-3.5 h-3.5" />
                       </button>
                     )}
-                    <button onClick={() => deleteShipment(s.id)} disabled={busy} className="text-zinc-600 hover:text-rose-400 disabled:text-zinc-800" aria-label={`Delete ${s.reference}`}>
+                    <button onClick={() => deleteShipment(s.id)} disabled={busy} className="text-zinc-400 hover:text-rose-400 disabled:text-zinc-800" aria-label={`Delete ${s.reference}`}>
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -471,14 +471,14 @@ function OrgWorkspace({
               </div>
             </div>
           )}
-          {!canWritePlanner && <p className="text-[9px] text-zinc-600 mb-1.5">{myScRole === 'buyer' ? 'Buyer view — work orders are planner-only.' : 'Analyst view — read-only.'}</p>}
+          {!canWritePlanner && <p className="text-[9px] text-zinc-400 mb-1.5">{myScRole === 'buyer' ? 'Buyer view — work orders are planner-only.' : 'Analyst view — read-only.'}</p>}
           {(workOrders?.workOrders.length ?? 0) === 0
-            ? <p className="text-[10px] text-zinc-500 py-2 text-center">No shared work orders yet.</p>
+            ? <p className="text-[10px] text-zinc-400 py-2 text-center">No shared work orders yet.</p>
             : <ul className="space-y-1">{workOrders!.workOrders.slice(0, 8).map((w) => (
               <li key={w.id} className="flex items-center justify-between gap-2 rounded bg-zinc-900/50 px-2 py-1">
                 <div className="min-w-0">
                   <div className="text-[10px] text-zinc-200 font-mono truncate">{w.poNumber} · {w.item} ×{w.quantity ?? 1}</div>
-                  <div className="text-[9px] text-zinc-500">{w.stage} · ${Math.round(w.totalCost ?? 0).toLocaleString()}</div>
+                  <div className="text-[9px] text-zinc-400">{w.stage} · ${Math.round(w.totalCost ?? 0).toLocaleString()}</div>
                 </div>
                 {canWritePlanner && (
                   <div className="flex items-center gap-1 shrink-0">
@@ -487,7 +487,7 @@ function OrgWorkspace({
                         <ArrowRight className="w-3.5 h-3.5" />
                       </button>
                     )}
-                    <button onClick={() => deleteWorkOrder(w.id)} disabled={busy} className="text-zinc-600 hover:text-rose-400 disabled:text-zinc-800" aria-label={`Delete ${w.poNumber}`}>
+                    <button onClick={() => deleteWorkOrder(w.id)} disabled={busy} className="text-zinc-400 hover:text-rose-400 disabled:text-zinc-800" aria-label={`Delete ${w.poNumber}`}>
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -530,7 +530,7 @@ export function OrgCollabPanel() {
     <div className="rounded-lg border border-teal-500/20 bg-zinc-950/60 p-3 space-y-3">
       <header className="flex items-center gap-2 border-b border-teal-500/10 pb-2">
         <Users className="h-4 w-4 text-teal-400" />
-        <h3 className="text-sm font-semibold text-white">Team Collaboration</h3>
+        <h2 className="text-sm font-semibold text-white">Team Collaboration</h2>
         <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">
           Planner · Buyer · Analyst
         </span>
@@ -545,17 +545,17 @@ export function OrgCollabPanel() {
         </div>
       )}
 
-      {orgs === null && <p className="text-[11px] text-zinc-500 flex items-center gap-1.5 py-4"><Loader2 className="w-3 h-3 animate-spin" /> Loading your teams…</p>}
+      {orgs === null && <p className="text-[11px] text-zinc-400 flex items-center gap-1.5 py-4"><Loader2 className="w-3 h-3 animate-spin" /> Loading your teams…</p>}
 
       {orgs !== null && orgs.length === 0 && <CreateOrJoin notify={notify} onDone={loadOrgs} />}
 
       {orgs !== null && orgs.length > 0 && (
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
-            <select className={cn(INPUT, 'max-w-xs')} value={selectedId ?? ''} onChange={(e) => setSelectedId(e.target.value)}>
+            <select aria-label="Organization" className={cn(INPUT, 'max-w-xs')} value={selectedId ?? ''} onChange={(e) => setSelectedId(e.target.value)}>
               {orgs.map((o) => <option key={o.id} value={o.id}>{o.name} ({o.myScRole ? SC_ROLE_META[o.myScRole].label : o.myRole})</option>)}
             </select>
-            <button onClick={() => setSelectedId(null)} className="text-[10px] text-zinc-500 hover:text-zinc-300 underline">
+            <button onClick={() => setSelectedId(null)} className="text-[10px] text-zinc-400 hover:text-zinc-300 underline">
               + Create or join another
             </button>
           </div>

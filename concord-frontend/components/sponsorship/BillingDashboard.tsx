@@ -11,6 +11,8 @@ interface Billing {
   totalContributed: number;
   activeCount: number;
   pausedCount: number;
+  cancelledCount?: number;
+  pledgedOnSponsorships?: number;
   upcomingCharges: UpcomingCharge[];
   paymentHistory: PaymentRow[];
   trend: Array<{ monthsAgo: number; totalCc: number }>;
@@ -67,6 +69,13 @@ export function BillingDashboard({ refreshKey }: { refreshKey: number }) {
         <Stat label="Active" value={String(b.activeCount)} />
         <Stat label="Paused" value={String(b.pausedCount)} />
       </div>
+      <p className="text-[11px] text-zinc-400">
+        Total pledged is the sum of recorded pledge charges
+        {typeof b.pledgedOnSponsorships === 'number' ? ` (${b.pledgedOnSponsorships} CC across your sponsorships` : ''}
+        {typeof b.cancelledCount === 'number' && b.cancelledCount > 0 ? `, including ${b.cancelledCount} cancelled` : ''}
+        {typeof b.pledgedOnSponsorships === 'number' ? ')' : ''}.
+        The monthly figure is only what active tiers would pledge next, so a Bronze 5 CC tier can sit beside a larger total from an earlier pledge.
+      </p>
 
       <section>
         <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-wider mb-1.5">Pledge trend (6 months)</h3>

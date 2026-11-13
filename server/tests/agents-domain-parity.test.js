@@ -31,6 +31,21 @@ beforeEach(() => {
   llmCalls.length = 0;
 });
 
+describe("agents — task definitions", () => {
+  it("FIX-agents-005: a junk priority is refused by name; the vocabulary and the default store", async () => {
+    const bad = await call("createTaskDefinition", ctxA, { name: "Junk prio", priority: "not-a-number" });
+    assert.equal(bad.ok, false);
+    assert.match(bad.error, /priority must be one of/);
+    const good = await call("createTaskDefinition", ctxA, { name: "Real prio", priority: "high" });
+    assert.equal(good.ok, true);
+    assert.equal(good.result.taskDefinition.priority, "high");
+    const dflt = await call("createTaskDefinition", ctxA, { name: "Default prio" });
+    assert.equal(dflt.result.taskDefinition.priority, "normal");
+    const list = await call("listTaskDefinitions", ctxA, {});
+    assert.equal(list.result.total, 2);
+  });
+});
+
 describe("agents — pure-compute macros", () => {
   it("evaluateCapability scores an agent from task history", async () => {
     const r = await call("evaluateCapability", ctxA, {}, {

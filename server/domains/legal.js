@@ -12,7 +12,7 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { getProcedureForState, listProcedureStates, listProcedureStateSummaries } from "../lib/court-procedure-reference.js";
 import { createHash } from "node:crypto";
-import { moneyOrNull, badNumber } from "../lib/finite-input.js";
+import { moneyOrNull, badNumber, boundedNum } from "../lib/finite-input.js";
 import { measuredPercent } from "../lib/measured-rate.js";
 import { registerEsignProvider, issueSigningLinks, deliverSigningLinks, revokeSigningLinks } from "../lib/esign-links.js";
 
@@ -361,6 +361,18 @@ Reading perspective: ${perspective}. Decision-support, NOT legal advice.`;
     return { ok: true, result: { cases } };
   });
 
+  registerLensAction("legal", "case-delete", (ctx, _artifact, params = {}) => {
+    const state = getLegalState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const cases = state.cases.get(userId) || [];
+    const id = String(params.id || "");
+    const next = cases.filter((c) => c.id !== id);
+    if (next.length === cases.length) return { ok: false, error: "case not found" };
+    state.cases.set(userId, next);
+    saveLegalState();
+    return { ok: true, result: { deleted: id } };
+  });
+
   registerLensAction("legal", "case-add", (ctx, _artifact, params = {}) => {
   try {
     const state = getLegalState(); if (!state) return { ok: false, error: "STATE unavailable" };
@@ -467,8 +479,10 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
     const userId = aid(ctx);
     const name = String(params.name || "").trim();
     if (!name) return { ok: false, error: "name required" };
-    if (moneyOrNull(params.hourlyRate, 0) === null) return badNumber("hourlyRate", "must be a finite amount >= 0");
-    if (moneyOrNull(params.flatFee, 0) === null) return badNumber("flatFee", "must be a finite amount >= 0");
+    const hourlyRate = boundedNum(params.hourlyRate, { min: 0, max: 10_000 }, 0);
+    if (hourlyRate === null) return badNumber("hourlyRate", "must be from 0 to 10000");
+    const flatFee = boundedNum(params.flatFee, { min: 0, max: 1_000_000 }, 0);
+    if (flatFee === null) return badNumber("flatFee", "must be from 0 to 1000000");
     const seq = ensureSeqLegal(s, userId);
     const matter = {
       id: uid("matter"),
@@ -481,8 +495,8 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
       jurisdiction: String(params.jurisdiction || ""),
       court: String(params.court || ""),
       caseNumber: String(params.caseNumber || ""),
-      hourlyRate: Number(params.hourlyRate) || 0,
-      flatFee: Number(params.flatFee) || 0,
+      hourlyRate,
+      flatFee,
       billingType: ['hourly','flat','contingency','pro_bono'].includes(params.billingType) ? params.billingType : 'hourly',
       openedAt: isoDay(),
       closedAt: null,
@@ -524,6 +538,17 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
     m.closedAt = isoDay();
     saveLegalState();
     return { ok: true, result: { matter: m } };
+  });
+
+  registerLensAction("legal", "matters-delete", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = ensureBucket(s.matters, aid(ctx));
+    const id = String(params.id || "");
+    const idx = list.findIndex((x) => x.id === id);
+    if (idx < 0) return { ok: false, error: "matter not found" };
+    list.splice(idx, 1);
+    saveLegalState();
+    return { ok: true, result: { deleted: id } };
   });
 
   registerLensAction("legal", "matters-detail", (ctx, _a, params = {}) => {
@@ -671,6 +696,7 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
     if (!matter) return { ok: false, error: "matter not found" };
     const hours = Number(params.hours);
     if (!Number.isFinite(hours) || hours <= 0) return { ok: false, error: "hours must be > 0" };
+    if (hours > 336) return { ok: false, error: "hours must be at most 336" };
     const seq = ensureSeqLegal(s, userId);
     const billable = params.billable !== false;
     const rate = Number.isFinite(Number(params.rate)) && Number(params.rate) > 0 ? Number(params.rate) : (matter.hourlyRate || 0);
@@ -1000,7 +1026,9 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
     const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aid(ctx);
     const list = ensureBucket(s.templates, userId);
-    if (list.length === 0) {
+    // Seed once. A later empty list means the owner deleted the last template.
+    if (!s.templatesTouched) s.templatesTouched = {};
+    if (list.length === 0 && !s.templatesTouched[userId]) {
       // seed a few canonical templates so users see something on first run.
       const seed = [
         { name: "Engagement Letter", body: "Dear {{client_name}},\n\nThis letter confirms our agreement to represent you in {{matter_name}}. Our hourly rate is {{hourly_rate}}.\n\nSincerely,\n{{attorney_name}}", kind: 'letter' },
@@ -1010,6 +1038,7 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
       for (const tpl of seed) {
         list.push({ id: uid("tpl"), createdAt: isoNow(), ...tpl });
       }
+      s.templatesTouched[userId] = true;
       saveLegalState();
     }
     return { ok: true, result: { templates: list } };
@@ -1030,6 +1059,19 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
     ensureBucket(s.templates, aid(ctx)).push(tpl);
     saveLegalState();
     return { ok: true, result: { template: tpl } };
+  });
+
+  registerLensAction("legal", "doc-templates-delete", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = ensureBucket(s.templates, aid(ctx));
+    const id = String(params.id || "");
+    const idx = list.findIndex((t) => t.id === id);
+    if (idx < 0) return { ok: false, error: "template not found" };
+    list.splice(idx, 1);
+    if (!s.templatesTouched) s.templatesTouched = {};
+    s.templatesTouched[aid(ctx)] = true;
+    saveLegalState();
+    return { ok: true, result: { deleted: id } };
   });
 
   registerLensAction("legal", "doc-generate", (ctx, _a, params = {}) => {
@@ -1267,6 +1309,17 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
     ensureBucket(s.calendar, userId).push(event);
     saveLegalState();
     return { ok: true, result: { event } };
+  });
+
+  registerLensAction("legal", "calendar-delete", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = ensureBucket(s.calendar, aid(ctx));
+    const id = String(params.id || "");
+    const idx = list.findIndex((e) => e.id === id);
+    if (idx < 0) return { ok: false, error: "event not found" };
+    list.splice(idx, 1);
+    saveLegalState();
+    return { ok: true, result: { deleted: id } };
   });
 
   // Court rules deadline calculator. Supports federal civil + a few state rules.

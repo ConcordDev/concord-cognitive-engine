@@ -26,6 +26,8 @@
 //   save_scenario         — scenario library: save a named scenario
 //   list_scenarios        — scenario library listing
 //   delete_scenario       — remove a saved scenario
+//   delete_snapshot       — remove a captured snapshot
+//   delete_sim            — remove a stored simulation run
 //   ingest                — live data ingestion to update entity state
 //   ingest_log            — recent ingestion events
 //
@@ -847,6 +849,34 @@ export default function registerWorldmodelActions(registerLensAction) {
       const id = str(params.id);
       if (!scenarios.has(id)) return { ok: false, error: "scenario not found" };
       scenarios.delete(id);
+      return { ok: true, result: { deleted: id } };
+    } catch (err) {
+      return { ok: false, error: String(err && err.message || err) };
+    }
+  });
+
+  registerLensAction("worldmodel", "delete_snapshot", (ctx, _artifact, params = {}) => {
+    try {
+      const S = wmState();
+      const uid = userIdOf(ctx);
+      const snaps = bucket(S.snapshots, uid);
+      const id = str(params.id);
+      if (!snaps.has(id)) return { ok: false, error: "snapshot not found" };
+      snaps.delete(id);
+      return { ok: true, result: { deleted: id } };
+    } catch (err) {
+      return { ok: false, error: String(err && err.message || err) };
+    }
+  });
+
+  registerLensAction("worldmodel", "delete_sim", (ctx, _artifact, params = {}) => {
+    try {
+      const S = wmState();
+      const uid = userIdOf(ctx);
+      const sims = bucket(S.sims, uid);
+      const id = str(params.id);
+      if (!sims.has(id)) return { ok: false, error: "simulation not found" };
+      sims.delete(id);
       return { ok: true, result: { deleted: id } };
     } catch (err) {
       return { ok: false, error: String(err && err.message || err) };

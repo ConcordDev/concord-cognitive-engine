@@ -130,6 +130,7 @@ export function DTUExportButton({
         disabled={exporting}
         className={`text-xs px-2 py-1 rounded bg-zinc-700 hover:bg-zinc-600 transition-colors disabled:opacity-50 ${className}`}
         title="Export as .dtu"
+        aria-label={`Export ${domain} data as .dtu`}
       >
         {exported ? '✓' : exporting ? '...' : '↓ .dtu'}
       </button>

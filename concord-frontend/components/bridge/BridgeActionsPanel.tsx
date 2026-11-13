@@ -182,7 +182,7 @@ export function BridgeActionsPanel() {
                 <div key={i} className="flex items-center gap-2 text-xs p-2 bg-zinc-900 rounded">
                   <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${m.valid ? 'bg-green-400' : 'bg-red-400'}`} />
                   <span className="text-zinc-300 font-mono">{m.sourceField}</span>
-                  <ArrowLeftRight className="w-3 h-3 text-zinc-600 flex-shrink-0" />
+                  <ArrowLeftRight className="w-3 h-3 text-zinc-400 flex-shrink-0" />
                   <span className="text-zinc-300 font-mono">{m.targetField}</span>
                   <span className="ml-auto text-zinc-400">{m.transform}</span>
                 </div>

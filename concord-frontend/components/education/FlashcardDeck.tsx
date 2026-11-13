@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Sparkles, Plus, Loader2, RotateCcw, BarChart3, ChevronLeft, ChevronRight } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 
 export interface Flashcard {
@@ -38,6 +39,7 @@ export function FlashcardDeck({ initialDeckId }: FlashcardDeckProps) {
   const [showAnswer, setShowAnswer] = useState(false);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [armedId, setArmedId] = useState<string | null>(null);
   const [newDeckTitle, setNewDeckTitle] = useState('');
   const [newFront, setNewFront] = useState('');
   const [newBack, setNewBack] = useState('');
@@ -66,6 +68,12 @@ export function FlashcardDeck({ initialDeckId }: FlashcardDeckProps) {
     finally { setLoading(false); }
   }
 
+  async function deleteDeck(deckId: string) {
+    await lensRun({ domain: 'education', action: 'flashcards-deck-delete', input: { deckId } });
+    setArmedId(null);
+    if (activeDeck === deckId) setActiveDeck(null);
+    await refreshDecks();
+  }
   async function createDeck() {
     if (!newDeckTitle.trim()) return;
     try {
@@ -153,10 +161,10 @@ export function FlashcardDeck({ initialDeckId }: FlashcardDeckProps) {
         ) : (
           <ul className="divide-y divide-white/5">
             {decks.map(d => (
-              <li key={d.id}>
+              <li key={d.id} className="flex items-center">
                 <button
                   onClick={() => setActiveDeck(d.id)}
-                  className="w-full text-left px-4 py-2.5 hover:bg-white/[0.04] flex items-center gap-3"
+                  className="flex-1 text-left px-4 py-2.5 hover:bg-white/[0.04] flex items-center gap-3"
                 >
                   <div className="flex-1">
                     <div className="text-sm text-white">{d.title}</div>
@@ -169,6 +177,15 @@ export function FlashcardDeck({ initialDeckId }: FlashcardDeckProps) {
                   )}
                   <ChevronRight className="w-4 h-4 text-gray-400" />
                 </button>
+                <StickyDeleteConfirm
+                  armed={armedId === d.id}
+                  onArm={() => setArmedId(d.id)}
+                  onCancel={() => setArmedId(null)}
+                  onConfirm={() => void deleteDeck(d.id)}
+                  armLabel="Delete"
+                  confirmLabel={`Delete “${d.title}”?`}
+                  className="mr-3 text-[11px] text-rose-300 underline"
+                />
               </li>
             ))}
           </ul>

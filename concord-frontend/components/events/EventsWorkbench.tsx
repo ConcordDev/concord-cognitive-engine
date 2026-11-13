@@ -53,6 +53,7 @@ import {
 } from 'lucide-react';
 import { Icon as SvgIcon } from '@/components/icons/Icon';
 import { OperationsBudgetPanel } from './OperationsBudgetPanel';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 /** Adapts the bespoke SvgIcon (name-prop API) to the lucide-icon-component
  *  shape (`className`-prop, no `name`) this file's tab/type tables expect. */
@@ -437,6 +438,7 @@ export function EventsWorkbench({
   const [formTitle, setFormTitle] = useState('');
   const [formStatus, setFormStatus] = useState('planning');
   const [formFields, setFormFields] = useState<Record<string, string>>({});
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Determine current artifact type
   const typeMap: Record<ModeTab, ArtifactType> = {
@@ -586,7 +588,7 @@ export function EventsWorkbench({
     create: createTicket,
     update: updateTicket,
     remove: removeTicket,
-  } = useLensData('events', 'TicketTier', { seed: EMPTY_DATA.TicketTier, enabled: mode === 'tickets' });
+  } = useLensData('events', 'TicketTier', { seed: EMPTY_DATA.TicketTier, enabled: mode === 'tickets' || mode === 'events' });
 
   // RSVP / Ticket purchase state
   const [rsvpLoading, setRsvpLoading] = useState<string | null>(null);
@@ -766,6 +768,15 @@ export function EventsWorkbench({
   };
 
   const handleSave = async () => {
+    setSaveError(null);
+    if (mode === 'tickets') {
+      const saleStart = String(formFields.saleStart || '').trim();
+      const saleEnd = String(formFields.saleEnd || '').trim();
+      if (saleStart && saleEnd && saleEnd < saleStart) {
+        setSaveError('Sale end has to be on or after the sale start.');
+        return;
+      }
+    }
     const { create, update } = getCrud();
     const data: Record<string, unknown> = {};
     Object.entries(formFields).forEach(([k, v]) => {
@@ -795,8 +806,24 @@ export function EventsWorkbench({
           ? num
           : v;
     });
+    if (mode === 'tickets' && data.eventName && !data.eventId) {
+      const named = events.find((e) => e.title === String(data.eventName));
+      if (named) data.eventId = named.id;
+    }
     if (editing) {
+      const previous = mode === 'events' ? events.find((e) => e.id === editing) : null;
       await update(editing, { title: formTitle, data, meta: { status: formStatus } });
+      if (previous && previous.title !== formTitle) {
+        const related = tickets.filter((t) => {
+          const td = t.data as Record<string, unknown>;
+          return td.eventId === editing || td.eventName === previous.title;
+        });
+        for (const tier of related) {
+          await updateTicket(tier.id, {
+            data: { ...(tier.data as Record<string, unknown>), eventId: editing, eventName: formTitle },
+          });
+        }
+      }
     } else {
       await create({ title: formTitle, data, meta: { status: formStatus } });
       // Announce new event via social post
@@ -1179,7 +1206,7 @@ export function EventsWorkbench({
                   onClick={() => {
                     onSelectMode('events');
                     setDetailId(evt.id);
-                  }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                  }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                   <EvtIcon className="w-5 h-5 text-neon-pink shrink-0" />
                   <span className={cn(ds.textMono, 'w-24 text-neon-cyan shrink-0')}>
                     {String(d.date || '').slice(5)}
@@ -1379,9 +1406,10 @@ export function EventsWorkbench({
     const relatedVendors = vendors.filter(
       (v) => (v.data as Record<string, unknown>).assignedEvent === item.title
     );
-    const relatedTickets = tickets.filter(
-      (t) => (t.data as Record<string, unknown>).eventName === item.title
-    );
+    const relatedTickets = tickets.filter((t) => {
+      const td = t.data as Record<string, unknown>;
+      return td.eventId === item.id || td.eventName === item.title;
+    });
     const relatedROS = runofshows.filter(
       (r) => (r.data as Record<string, unknown>).eventName === item.title
     );
@@ -1785,7 +1813,7 @@ export function EventsWorkbench({
               .split(',')
               .filter(Boolean);
             return (
-              <div key={item.id} className={ds.panelHover} onClick={() => openEdit(item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+              <div key={item.id} className={ds.panelHover} onClick={() => openEdit(item.id)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <Building2 className="w-5 h-5 text-neon-cyan" />
@@ -1960,7 +1988,7 @@ export function EventsWorkbench({
               const payColor = STATUS_COLORS[String(d.paymentStatus)] || 'gray-400';
               const paidPct = pct(Number(d.paidAmount || 0), Number(d.contractCost || 1));
               return (
-                <div key={item.id} className={ds.panelHover} onClick={() => openEdit(item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                <div key={item.id} className={ds.panelHover} onClick={() => openEdit(item.id)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2 min-w-0">
                       <CatIcon className="w-5 h-5 text-neon-cyan shrink-0" />
@@ -2246,7 +2274,11 @@ export function EventsWorkbench({
                   </div>
                   <div className="p-2 bg-lattice-elevated rounded-lg text-center">
                     <p className="text-xs text-gray-400">Remaining</p>
-                    <p className="text-sm font-bold">{(totalAvail - totalSold).toLocaleString()}</p>
+                    {/* FIX-events-008: comps are seats given away — they
+                        consume capacity. Remaining used to subtract only
+                        paid sales, so 50 available with 3 comps still
+                        read Remaining 50 instead of 47. */}
+                    <p className="text-sm font-bold">{Math.max(0, totalAvail - totalSold - totalComp).toLocaleString()}</p>
                   </div>
                   <div className="p-2 bg-lattice-elevated rounded-lg text-center">
                     <p className="text-xs text-gray-400">Checked In</p>
@@ -2273,15 +2305,21 @@ export function EventsWorkbench({
                     const td = t.data as Record<string, unknown>;
                     const sold = Number(td.sold || 0);
                     const avail = Number(td.totalAvailable || 0);
+                    const comps = Number(td.compTickets || 0);
                     const price = Number(td.price || 0);
                     const tierRev = sold * price;
                     const st = t.meta?.status as string;
-                    const soldOut = sold >= avail;
+                    // FIX-events-006: a blank Total Available (0) means
+                    // NO CAP — the server tier model treats quantity 0
+                    // as unlimited — not a tier that is instantly sold
+                    // out (0 >= 0). Comps consume seats (events-008),
+                    // so they count toward filling a capped tier.
+                    const soldOut = avail > 0 && sold + comps >= avail;
                     return (
                       <div
                         key={t.id}
                         className={cn(ds.panelHover, 'relative')}
-                        onClick={() => openEdit(t.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                        onClick={() => openEdit(t.id)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                         {soldOut && (
                           <div className="absolute top-2 right-2">
                             <span className={ds.badge('red-400')}>SOLD OUT</span>
@@ -2291,11 +2329,17 @@ export function EventsWorkbench({
                         <p className="text-xl font-bold text-neon-cyan mb-2">
                           {fmtCurrency(price)}
                         </p>
-                        <ProgressBar
-                          value={sold}
-                          max={avail}
-                          color={soldOut ? 'red-400' : 'neon-cyan'}
-                        />
+                        {avail > 0 ? (
+                          <ProgressBar
+                            value={sold + comps}
+                            max={avail}
+                            color={soldOut ? 'red-400' : 'neon-cyan'}
+                          />
+                        ) : (
+                          <p className="text-xs text-gray-400">
+                            No cap set · {sold.toLocaleString()} sold{comps > 0 ? ` · ${comps.toLocaleString()} comps` : ''}
+                          </p>
+                        )}
                         <div className="grid grid-cols-2 gap-2 mt-2 text-xs">
                           <div>
                             <span className="text-gray-400">Revenue:</span>{' '}
@@ -2374,7 +2418,7 @@ export function EventsWorkbench({
             const d = item.data as Record<string, unknown>;
             const st = item.meta?.status as string;
             return (
-              <div key={item.id} className={ds.panelHover} onClick={() => openEdit(item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+              <div key={item.id} className={ds.panelHover} onClick={() => openEdit(item.id)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center gap-2 min-w-0">
                     <Users className="w-5 h-5 text-neon-cyan shrink-0" />
@@ -2566,7 +2610,7 @@ export function EventsWorkbench({
       {/* Editor modal */}
       {showEditor && (
         <>
-          <div className={ds.modalBackdrop} onClick={resetForm} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
+          <div className={ds.modalBackdrop} onClick={resetForm} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace} />
           <div className={ds.modalContainer}>
             <div className={cn(ds.modalPanel, 'max-w-2xl max-h-[90vh] flex flex-col')}>
               <div className="flex items-center justify-between p-4 border-b border-lattice-border shrink-0">
@@ -2698,6 +2742,9 @@ export function EventsWorkbench({
                   </div>
                 ))}
               </div>
+              {saveError && (
+                <p role="alert" className="px-4 pt-3 text-xs text-rose-300">{saveError}</p>
+              )}
               <div className="flex items-center justify-between gap-2 p-4 border-t border-lattice-border shrink-0">
                 <div>
                   {editing && (
@@ -2722,7 +2769,7 @@ export function EventsWorkbench({
                   <button
                     onClick={handleSave}
                     className={ds.btnPrimary}
-                    disabled={!formTitle.trim()}
+                    disabled={!formTitle.trim() || (mode === 'tickets' && !!formFields.saleStart && !!formFields.saleEnd && formFields.saleEnd < formFields.saleStart)}
                   >
                     {editing ? 'Update' : 'Create'}
                   </button>

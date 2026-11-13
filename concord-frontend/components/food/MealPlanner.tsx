@@ -28,6 +28,7 @@ export function MealPlanner() {
   const [generating, setGenerating] = useState(false);
   const [exportingList, setExportingList] = useState(false);
   const [groceryList, setGroceryList] = useState<Array<{ aisle: string; items: Array<{ name: string; qty: number; unit: string }> }>>([]);
+  const [planNote, setPlanNote] = useState<string | null>(null);
 
   useEffect(() => { refresh(); }, []);
 
@@ -35,8 +36,14 @@ export function MealPlanner() {
     setLoading(true);
     try {
       const res = await lensRun({ domain: 'food', action: 'meal-plan-list', input: { startDate: weekStart() } });
-      setPlan((res.data?.result?.meals || []) as PlannedMeal[]);
-    } catch (e) { console.error('[Plan] list failed', e); }
+      if (res.data?.ok === false) {
+        setPlanNote(res.data?.error || 'The saved meal plan could not be loaded.');
+        return;
+      }
+      const meals = (res.data?.result?.meals || []) as PlannedMeal[];
+      setPlan(meals);
+      setPlanNote(meals.length > 0 ? 'Saved for this week.' : null);
+    } catch (e) { setPlanNote(e instanceof Error ? e.message : 'The saved meal plan could not be loaded.'); }
     finally { setLoading(false); }
   }
 
@@ -47,8 +54,14 @@ export function MealPlanner() {
         domain: 'food', action: 'meal-plan-generate',
         input: { startDate: weekStart(), days: 7, mealsPerDay: 3, maxTimeMin: 30 },
       });
-      setPlan((res.data?.result?.meals || []) as PlannedMeal[]);
-    } catch (e) { console.error('[Plan] gen failed', e); }
+      if (res.data?.ok === false) {
+        setPlanNote(res.data?.error || 'The meal plan was not saved.');
+        return;
+      }
+      const meals = (res.data?.result?.meals || []) as PlannedMeal[];
+      setPlan(meals);
+      setPlanNote(meals.length > 0 ? 'Saved for this week. It stays after a reload.' : 'Nothing was generated.');
+    } catch (e) { setPlanNote(e instanceof Error ? e.message : 'The meal plan was not saved.'); }
     finally { setGenerating(false); }
   }
 
@@ -84,6 +97,7 @@ export function MealPlanner() {
           Build list
         </button>
       </header>
+      {planNote && <p role="status" className="px-4 py-2 text-[12px] text-zinc-200">{planNote}</p>}
 
       {loading ? (
         <SkeletonTableRows rows={4} columns={8} />
@@ -105,8 +119,8 @@ export function MealPlanner() {
               {MEAL_SLOTS.map(slot => (
                 <tr key={slot} className="border-b border-white/5">
                   <td className="px-3 py-2 text-gray-300 font-medium">{slot}</td>
-                  {days.map(d => {
-                    const meal = plan.find(m => m.date === d.toISOString().slice(0, 10) && m.slot === slot);
+                  {days.map((d, i) => {
+                    const meal = plan.find(m => m.date === planDate(i) && m.slot === slot);
                     return (
                       <td key={d.toISOString()} className="px-2 py-2 align-top">
                         {meal ? (
@@ -160,10 +174,24 @@ export function MealPlanner() {
   );
 }
 
+function planDate(offset: number): string {
+  const start = new Date(`${weekStart()}T00:00:00`);
+  start.setDate(start.getDate() + offset);
+  return localDateKey(start);
+}
+
+function localDateKey(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 function weekStart(): string {
   const d = new Date();
-  d.setDate(d.getDate() - d.getDay() + 1); // Monday
-  return d.toISOString().slice(0, 10);
+  const mondayOffset = (d.getDay() + 6) % 7;
+  d.setDate(d.getDate() - mondayOffset);
+  return localDateKey(d);
 }
 
 export default MealPlanner;

@@ -83,12 +83,13 @@ export function ChannelList({
       {creating && (
         <div className="p-2 border-b border-white/10 space-y-1.5 bg-black/30">
           <input
+            aria-label="Channel name"
             value={draft.name}
             onChange={e => setDraft({ ...draft, name: e.target.value })}
             placeholder="channel-name"
             className="w-full px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono"
           />
-          <select value={draft.kind} onChange={e => setDraft({ ...draft, kind: e.target.value as typeof draft.kind })} className="w-full px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+          <select aria-label="Channel type" value={draft.kind} onChange={e => setDraft({ ...draft, kind: e.target.value as typeof draft.kind })} className="w-full px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
             <option value="channel">Channel</option>
             <option value="dm">Direct message</option>
             <option value="group_dm">Group DM</option>
@@ -124,7 +125,7 @@ export function ChannelList({
                 {showArchived && (
                   <ul>
                     {archivedChannels.map(c => (
-                      <li key={c.id} className="flex items-center gap-1.5 px-3 py-1 text-xs text-gray-500">
+                      <li key={c.id} className="flex items-center gap-1.5 px-3 py-1 text-xs text-gray-400">
                         <Archive className="w-3 h-3 flex-shrink-0" />
                         <span className="truncate flex-1 line-through">{c.name}</span>
                       </li>
@@ -174,7 +175,7 @@ function Section({
                   disabled={archivingId === c.id}
                   aria-label={`Archive #${c.name}`}
                   title="Archive channel"
-                  className="opacity-0 group-hover:opacity-100 p-1 mr-1 text-gray-500 hover:text-amber-300 disabled:opacity-40 flex-shrink-0"
+                  className="opacity-0 group-hover:opacity-100 p-1 mr-1 text-gray-400 hover:text-amber-300 disabled:opacity-40 flex-shrink-0"
                 >
                   {archivingId === c.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Archive className="w-3 h-3" />}
                 </button>

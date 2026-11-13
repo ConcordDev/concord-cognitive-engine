@@ -108,7 +108,7 @@ export function NewsFollowingPanel({ onChange }: { onChange: () => void }) {
                   <div className="flex items-center justify-between px-3 py-2">
                     <button type="button" onClick={() => void toggleChannelDrill(c.source)}
                       className="flex items-center gap-1 text-xs text-zinc-200 hover:text-white min-w-0">
-                      {open ? <ChevronDown className="w-3 h-3 shrink-0 text-zinc-500" /> : <ChevronRight className="w-3 h-3 shrink-0 text-zinc-500" />}
+                      {open ? <ChevronDown className="w-3 h-3 shrink-0 text-zinc-400" /> : <ChevronRight className="w-3 h-3 shrink-0 text-zinc-400" />}
                       <span className="truncate">{c.source}</span>
                       <span className="text-zinc-600 shrink-0">· {c.articleCount} stories</span>
                     </button>
@@ -124,7 +124,7 @@ export function NewsFollowingPanel({ onChange }: { onChange: () => void }) {
                       {drillLoading ? (
                         <div className="flex items-center justify-center py-4 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
                       ) : channelArticles.length === 0 ? (
-                        <p className="text-[11px] text-zinc-500 italic py-2">No articles from this source yet.</p>
+                        <p className="text-[11px] text-zinc-400 italic py-2">No articles from this source yet.</p>
                       ) : (
                         <ul className="space-y-2">
                           {channelArticles.map((a) => <NewsArticleCard key={a.id} article={a} onChange={() => void loadChannelArticles(c.source)} />)}
@@ -156,7 +156,7 @@ export function NewsFollowingPanel({ onChange }: { onChange: () => void }) {
                   {t.topic} ({t.articleCount})
                 </button>
                 <button type="button" onClick={() => followTopic(t.topic)} aria-label={t.followed ? `Unfollow ${t.topic}` : `Follow ${t.topic}`}
-                  className={cn('rounded-full p-0.5', t.followed ? 'text-rose-300 hover:text-rose-100' : 'text-zinc-500 hover:text-zinc-200')}>
+                  className={cn('rounded-full p-0.5', t.followed ? 'text-rose-300 hover:text-rose-100' : 'text-zinc-400 hover:text-zinc-200')}>
                   {t.followed ? <Check className="w-3 h-3" /> : <span className="block h-3 w-3 text-center leading-3">+</span>}
                 </button>
               </span>
@@ -165,11 +165,11 @@ export function NewsFollowingPanel({ onChange }: { onChange: () => void }) {
         )}
         {openTopic && (
           <div className="mt-2 rounded-lg border border-zinc-800 bg-zinc-900/70 px-3 py-2">
-            <p className="mb-1.5 text-[10px] uppercase tracking-wide text-zinc-500 capitalize">{openTopic} — articles</p>
+            <p className="mb-1.5 text-[10px] uppercase tracking-wide text-zinc-400 capitalize">{openTopic} — articles</p>
             {drillLoading ? (
               <div className="flex items-center justify-center py-4 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
             ) : topicArticles.length === 0 ? (
-              <p className="text-[11px] text-zinc-500 italic py-2">No articles tagged with this topic yet.</p>
+              <p className="text-[11px] text-zinc-400 italic py-2">No articles tagged with this topic yet.</p>
             ) : (
               <ul className="space-y-2">
                 {topicArticles.map((a) => <NewsArticleCard key={a.id} article={a} onChange={() => void loadTopicArticles(openTopic)} />)}

@@ -63,10 +63,14 @@ function makesFrom(rows: unknown): Make[] {
   return out;
 }
 
-function errorFrom(res: { data?: { error?: unknown; reason?: unknown } } | null, fallback: string): string {
+function errorFrom(res: { data?: { error?: unknown; reason?: unknown; result?: { error?: unknown } } } | null, fallback: string): string {
   const data = res?.data;
   if (data && typeof data.error === 'string' && data.error) return data.error;
   if (data && typeof data.reason === 'string' && data.reason) return data.reason;
+  // Macro refusals carry their words on the result (e.g. maker.create's
+  // duplicate_name) — surface them instead of the generic fallback.
+  const resultError = data?.result?.error;
+  if (typeof resultError === 'string' && resultError) return resultError;
   return fallback;
 }
 
@@ -191,6 +195,12 @@ export default function MakerPage() {
       setActionError('A name is required.');
       return;
     }
+    if (isDuplicateName(trimmed, makes)) {
+      // The hint becomes the refusal (FIX-maker-001): Enter used to
+      // create the duplicate anyway, with whatever spec was typed.
+      setActionError('A make with this name is already on the bench.');
+      return;
+    }
     setBusy(true);
     setActionError('');
     try {
@@ -214,7 +224,7 @@ export default function MakerPage() {
     } finally {
       setBusy(false);
     }
-  }, [busy, phase, open, start, draft, clearDraft]);
+  }, [busy, phase, open, start, draft, clearDraft, makes]);
 
   const startEdit = useCallback((item: Make) => {
     setEditingId(item.id);
@@ -232,6 +242,10 @@ export default function MakerPage() {
       setActionError('A make needs a name.');
       return;
     }
+    if (isDuplicateName(title, makes, editingId)) {
+      setActionError('A make with this name is already on the bench.');
+      return;
+    }
     setBusy(true);
     setActionError('');
     try {
@@ -247,7 +261,7 @@ export default function MakerPage() {
     } finally {
       setBusy(false);
     }
-  }, [editingId, editName, editSpec, busy]);
+  }, [editingId, editName, editSpec, busy, makes]);
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
 

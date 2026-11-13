@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Trophy, Mountain, ChevronRight, Map as MapIcon } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { MapView, type MapMarker } from '@/components/viz/MapView';
 import { cn } from '@/lib/utils';
 
@@ -18,6 +19,7 @@ interface Segment {
   distanceKm: number;
   elevationGainM: number;
   location: string | null;
+  isOwner?: boolean;
   effortCount: number;
   myBestSeconds: number | null;
   courseRecordSeconds: number | null;
@@ -176,26 +178,27 @@ export function StravaSegmentsPanel() {
 
       {showForm && (
         <div className="grid grid-cols-2 gap-2 bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
-          <input placeholder="Segment name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+          <input id="fitness-segment-name" name="segment-name" aria-label="Segment name" placeholder="Segment name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
             className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-          <select value={form.activityType} onChange={(e) => setForm({ ...form, activityType: e.target.value })}
+          <select id="fitness-activitytype-2" name="activitytype-2" value={form.activityType} onChange={(e) => setForm({ ...form, activityType: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
             {['run', 'ride', 'hike', 'walk'].map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
-          <input placeholder="Distance (km)" inputMode="decimal" value={form.distanceKm} onChange={(e) => setForm({ ...form, distanceKm: e.target.value })}
+          <input id="fitness-distance-km-2" name="distance-km-2" aria-label="Distance (km)" placeholder="Distance (km)" inputMode="decimal" value={form.distanceKm} onChange={(e) => setForm({ ...form, distanceKm: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-          <input placeholder="Elevation (m)" inputMode="numeric" value={form.elevationGainM} onChange={(e) => setForm({ ...form, elevationGainM: e.target.value })}
+          <input id="fitness-elevation-m-2" name="elevation-m-2" aria-label="Elevation (m)" placeholder="Elevation (m)" inputMode="numeric" value={form.elevationGainM} onChange={(e) => setForm({ ...form, elevationGainM: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-          <input placeholder="Location name" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })}
+          <input id="fitness-location-name" name="location-name" aria-label="Location name" placeholder="Location name" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })}
             className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-          <input placeholder="Latitude (for map)" inputMode="decimal" value={form.lat} onChange={(e) => setForm({ ...form, lat: e.target.value })}
+          <input id="fitness-latitude-for-map" name="latitude-for-map" aria-label="Latitude (for map)" placeholder="Latitude (for map)" inputMode="decimal" value={form.lat} onChange={(e) => setForm({ ...form, lat: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-          <input placeholder="Longitude (for map)" inputMode="decimal" value={form.lon} onChange={(e) => setForm({ ...form, lon: e.target.value })}
+          <input id="fitness-longitude-for-map" name="longitude-for-map" aria-label="Longitude (for map)" placeholder="Longitude (for map)" inputMode="decimal" value={form.lon} onChange={(e) => setForm({ ...form, lon: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <button type="button" onClick={useMyLocation}
             className="col-span-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium rounded-lg px-2 py-1.5">
             Use my current location
           </button>
+          <p className="col-span-2 text-[11px] text-zinc-400">Shared with everyone on Concord — segments are public leaderboards, like Strava.</p>
           <button type="button" onClick={create}
             className="col-span-2 bg-orange-600 hover:bg-orange-500 text-white text-xs font-medium rounded-lg px-2 py-1.5">
             Create segment
@@ -211,6 +214,16 @@ export function StravaSegmentsPanel() {
         <ul className="space-y-2">
           {segments.map((seg) => (
             <li key={seg.id} className="bg-zinc-900/70 border border-zinc-800 rounded-xl overflow-hidden">
+              {seg.isOwner && (
+                <div className="flex justify-end px-3 pt-2">
+                  <StickyDeleteConfirm
+                    armLabel="Delete segment"
+                    confirmLabel="Delete this segment?"
+                    className="text-[11px] text-rose-300"
+                    onConfirm={async () => { await lensRun('fitness', 'segment-delete', { id: seg.id }); await refresh(); }}
+                  />
+                </div>
+              )}
               <button type="button" onClick={() => openLeaderboard(seg.id)}
                 className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-zinc-900">
                 <div>
@@ -250,7 +263,7 @@ export function StravaSegmentsPanel() {
                     </ol>
                   )}
                   <div className="flex gap-1">
-                    <input placeholder="Your time (seconds)" inputMode="numeric" value={effortTime}
+                    <input id="fitness-your-time-seconds" name="your-time-seconds" aria-label="Your time (seconds)" placeholder="Your time (seconds)" inputMode="numeric" value={effortTime}
                       onChange={(e) => setEffortTime(e.target.value)}
                       className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-100" />
                     <button type="button" onClick={() => recordEffort(seg.id)}

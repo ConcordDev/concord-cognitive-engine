@@ -16,6 +16,7 @@
 // Handlers never throw — they return { ok, result?, error? }.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { badNumber, readingOrNull } from "../lib/finite-input.js";
 import { seedSubWorldStarterContent } from "../lib/sub-world-starter-content.js";
 
 export default function registerSubWorldsActions(registerLensActionRaw) {
@@ -204,7 +205,7 @@ export default function registerSubWorldsActions(registerLensActionRaw) {
     if (!db) return [];
     try {
       return db.prepare(
-        `SELECT id, name, universe_type, description, created_by, created_at
+        `SELECT id, name, universe_type, description, created_by, created_at, rule_modulators
            FROM worlds WHERE status = 'active'`
       ).all();
     } catch (_e) { return []; }
@@ -214,10 +215,20 @@ export default function registerSubWorldsActions(registerLensActionRaw) {
     if (!db || !id) return null;
     try {
       return db.prepare(
-        `SELECT id, name, universe_type, description, created_by, created_at
+        `SELECT id, name, universe_type, description, created_by, created_at, rule_modulators
            FROM worlds WHERE id = ? AND status = 'active'`
       ).get(id) || null;
     } catch (_e) { return null; }
+  }
+  // FIX-world-creator-013 (founder ruling A, 2026-11-13): a playtest
+  // mint carries rule_modulators.playtest — a private, owner-only
+  // copy of a world-creator draft, never a public world.
+  function isPlaytestRow(row) {
+    if (!row?.rule_modulators) return false;
+    try {
+      const mods = typeof row.rule_modulators === "string" ? JSON.parse(row.rule_modulators) : row.rule_modulators;
+      return !!mods?.playtest?.draftId;
+    } catch (_e) { return false; }
   }
   function creatorDrafts() {
     const wc = globalThis._concordSTATE?.worldCreatorLens;
@@ -239,6 +250,27 @@ export default function registerSubWorldsActions(registerLensActionRaw) {
     let n = 0;
     if (s.favorites instanceof Map) for (const set of s.favorites.values()) if (set.has(id)) n += 1;
     return n;
+  }
+  // created_at arrives as unix seconds, unix ms, or an ISO string.
+  // Number("2026-11-01") is NaN, which used to stamp every table row at 0
+  // and make "recent" a no-op.
+  function epochMs(v) {
+    if (v == null || v === "") return 0;
+    if (typeof v === "number" && Number.isFinite(v)) {
+      if (v <= 0) return 0;
+      return v < 1e12 ? Math.round(v * 1000) : Math.round(v);
+    }
+    const text = String(v).trim();
+    if (/^\d+(\.\d+)?$/.test(text)) {
+      const n = Number(text);
+      if (!Number.isFinite(n) || n <= 0) return 0;
+      return n < 1e12 ? Math.round(n * 1000) : Math.round(n);
+    }
+    const parsed = Date.parse(text);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  function byName(a, b) {
+    return String(a.name || "").localeCompare(String(b.name || ""));
   }
   function draftView(s, creatorId, d, viewerId) {
     const enterId = d.publishedWorldId || null;
@@ -278,17 +310,20 @@ export default function registerSubWorldsActions(registerLensActionRaw) {
       description: row.description || "",
       thumbnail: "",
       kind: row.universe_type || "concordia-hub",
-      privacy: "public",
+      // FIX-world-creator-013: a playtest copy reads private in its
+      // owner's own lists too — the hardcoded "public" was the lie
+      // that made a private copy look published.
+      privacy: isPlaytestRow(row) ? "private" : "public",
       status: "active",
       capacity: 16,
       spawned_by_user_id: row.created_by || "",
-      spawned_at: (Number(row.created_at) || 0) * 1000,
-      updated_at: (Number(row.created_at) || 0) * 1000,
+      spawned_at: epochMs(row.created_at),
+      updated_at: epochMs(row.created_at),
       visits: counts.visits,
       unique_visitors: counts.unique_visitors,
       favorites: favCount(s, row.id),
       editors: [],
-      popularity: Math.round(10 * Math.max(0, 30 - (now() / 1000 - (Number(row.created_at) || now() / 1000)) / 86400) / 30),
+      popularity: Math.round(10 * Math.max(0, 30 - (epochMs(row.created_at) ? (now() - epochMs(row.created_at)) / 86_400_000 : 0)) / 30),
       is_owner: false,
       can_edit: false,
       source: "worlds_table",
@@ -319,6 +354,10 @@ export default function registerSubWorldsActions(registerLensActionRaw) {
     if (name.length < 3) return { ok: false, error: "name must be at least 3 characters" };
     const kind = KINDS.has(params.kind) ? params.kind : "physics_simulator";
     const privacy = PRIVACY.has(params.privacy) ? params.privacy : "public";
+    const capacity = params.capacity === undefined || params.capacity === null || params.capacity === ""
+      ? 16
+      : readingOrNull(params.capacity, { min: 1, max: 200, fallback: null });
+    if (capacity === null || capacity !== Math.trunc(capacity)) return badNumber("capacity", "must be a whole number from 1 to 200");
     const w = {
       world_id: newId("subw"),
       forge_app_dtu_id: clean(params.forgeAppDtuId, 80) || null,
@@ -328,7 +367,7 @@ export default function registerSubWorldsActions(registerLensActionRaw) {
       kind,
       privacy,
       status: "active",
-      capacity: Math.max(1, Math.min(200, num(params.capacity, 16))),
+      capacity,
       spawned_by_user_id: actor(ctx),
       spawned_at: now(),
       updated_at: now(),
@@ -398,14 +437,21 @@ export default function registerSubWorldsActions(registerLensActionRaw) {
     const me = actor(ctx);
     const query = clean(params.query, 120).toLowerCase();
     const kindFilter = KINDS.has(params.kind) ? params.kind : null;
-    const sort = ["popular", "recent", "favorites"].includes(params.sort) ? params.sort : "popular";
+    const sortKey = String(params.sort || "popular").toLowerCase().replace(/[\s-]+/g, "_");
+    const sort = sortKey === "recent" || sortKey === "newest" ? "recent"
+      : (sortKey === "favorites" || sortKey === "most_favorited") ? "favorites"
+      : "popular";
     let all = [];
     for (const list of s.worlds.values()) {
       for (const w of list) {
         if (w.status === "archived") continue;
         // Discovery surfaces public always, unlisted/private only to owner/editors.
         if (w.privacy !== "public" && !canEdit(w, me)) continue;
-        all.push({ ...publicView(w, me), source: "sub_worlds", enterId: w.world_id, enterable: true, enterNote: null });
+        const view = { ...publicView(w, me), source: "sub_worlds", enterId: w.world_id, enterable: true, enterNote: null };
+        // The per-user sets are the count "most favorited" sorts. favoriteCount
+        // can drift from that set, so the card shows the larger honest count.
+        view.favorites = Math.max(favCount(s, w.world_id), Number(w.favoriteCount) || 0);
+        all.push(view);
       }
     }
     // B15 union — the other two populations, visibility at the read:
@@ -424,14 +470,22 @@ export default function registerSubWorldsActions(registerLensActionRaw) {
     }
     for (const row of tableWorldRows(ctx)) {
       if (storeIds.has(row.id) || claimedMints.has(row.id)) continue;
+      // FIX-world-creator-013: playtest copies are private — they
+      // never surface in the public gallery, claimed or not (a public
+      // draft's copy surfaces as the draft view above; sharing is
+      // what publishing is for).
+      if (isPlaytestRow(row)) continue;
       all.push(tableView(s, row, me));
     }
     if (query) {all = all.filter((w) =>
       w.name.toLowerCase().includes(query) || (w.description || "").toLowerCase().includes(query));}
     if (kindFilter) all = all.filter((w) => w.kind === kindFilter);
-    if (sort === "recent") all.sort((a, b) => (b.spawned_at || 0) - (a.spawned_at || 0));
-    else if (sort === "favorites") all.sort((a, b) => (b.favorites || 0) - (a.favorites || 0));
-    else all.sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
+    const favN = (w) => Number(w.favorites) || 0;
+    const when = (w) => Number(w.spawned_at) || Number(w.updated_at) || 0;
+    const popN = (w) => Number(w.popularity) || 0;
+    if (sort === "recent") all.sort((a, b) => when(b) - when(a) || popN(b) - popN(a) || byName(a, b));
+    else if (sort === "favorites") all.sort((a, b) => favN(b) - favN(a) || popN(b) - popN(a) || byName(a, b));
+    else all.sort((a, b) => popN(b) - popN(a) || favN(b) - favN(a) || byName(a, b));
     return {
       ok: true,
       result: {
@@ -463,7 +517,11 @@ export default function registerSubWorldsActions(registerLensActionRaw) {
       if (!PRIVACY.has(params.privacy)) return { ok: false, error: "invalid privacy" };
       w.privacy = params.privacy;
     }
-    if (params.capacity != null) w.capacity = Math.max(1, Math.min(200, num(params.capacity, w.capacity)));
+    if (params.capacity != null && params.capacity !== "") {
+      const capacity = readingOrNull(params.capacity, { min: 1, max: 200, fallback: null });
+      if (capacity === null || capacity !== Math.trunc(capacity)) return badNumber("capacity", "must be a whole number from 1 to 200");
+      w.capacity = capacity;
+    }
     if (params.kind != null) {
       if (!KINDS.has(params.kind)) return { ok: false, error: "invalid kind" };
       w.kind = params.kind;
@@ -494,7 +552,23 @@ export default function registerSubWorldsActions(registerLensActionRaw) {
     const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const me = actor(ctx);
     const hit = findWorld(s, clean(params.worldId, 80));
-    if (!hit) return { ok: false, error: "world not found" };
+    if (!hit) {
+      // FIX-world-creator-013: a playtest copy lives only in the
+      // worlds table — the owner's Settings/Delete verb reaches it
+      // here, so a playtest copy is disposable by its owner even
+      // while its draft lives. Owner-only, like the store path.
+      const row = tableWorldRow(ctx, clean(params.worldId, 80));
+      if (row && isPlaytestRow(row)) {
+        if (row.created_by !== me) return { ok: false, error: "only the owner can archive" };
+        if (params.hardDelete === true) {
+          deleteWorldRow(ctx, row.id);
+          return { ok: true, result: { deleted: true, world_id: row.id } };
+        }
+        setWorldRowStatus(ctx, row.id, "archived");
+        return { ok: true, result: { archived: true, world_id: row.id } };
+      }
+      return { ok: false, error: "world not found" };
+    }
     // Only the owner may archive/delete; editors cannot.
     if (hit.world.spawned_by_user_id !== me) return { ok: false, error: "only the owner can archive" };
     if (params.hardDelete === true) {
@@ -534,6 +608,12 @@ export default function registerSubWorldsActions(registerLensActionRaw) {
       if (row) {
         const minted = creatorDrafts().find(({ draft }) => draft.publishedWorldId === row.id);
         if (minted && minted.draft.visibility === "private" && minted.creatorId !== me) {
+          return { ok: false, error: "world is private" };
+        }
+        // FIX-world-creator-013: a playtest copy is owner-only —
+        // nobody else enters it, claimed or not, unless its draft
+        // has been published public (sharing is publishing's job).
+        if (isPlaytestRow(row) && row.created_by !== me && !(minted && minted.draft.visibility === "public")) {
           return { ok: false, error: "world is private" };
         }
         const e = bridgeRecordVisit(s, `world:${row.id}`, me);

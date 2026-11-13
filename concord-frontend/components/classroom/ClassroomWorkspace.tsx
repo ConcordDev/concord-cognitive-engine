@@ -22,6 +22,7 @@ import {
   ListChecks, FileQuestion, Plus, Trash2, Check, Loader2, AlertTriangle,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { quizAttemptFromSubmit } from '@/components/classroom/quiz-attempt';
 import { ChartKit, TimelineView } from '@/components/viz';
 
@@ -218,6 +219,8 @@ function StreamTab({ cohortId, flash }: TabProps) {
 /* ── Assignments (create + list + submit + grade) ───────────────────── */
 function AssignmentsTab({ cohortId, flash }: TabProps) {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [other, setOther] = useState<Assignment[]>([]);
+  const [armedId, setArmedId] = useState<string | null>(null);
   const [form, setForm] = useState({ title: '', instructions: '', dueAt: '', points: '100', topic: '' });
   const [busy, setBusy] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -226,19 +229,35 @@ function AssignmentsTab({ cohortId, flash }: TabProps) {
   const [gradeForm, setGradeForm] = useState<{ subId: string; score: string; feedback: string } | null>(null);
 
   const refresh = useCallback(async () => {
-    const r = await run<{ assignments: Assignment[] }>('assignment-list',
+    const r = await run<{ assignments: Assignment[]; other?: Assignment[] }>('assignment-list',
       cohortId != null ? { cohortId } : {});
     setAssignments(r?.assignments ?? []);
+    setOther(r?.other ?? []);
   }, [cohortId]);
 
   useEffect(() => { void refresh(); }, [refresh]);
 
   const create = async () => {
-    if (!form.title.trim() || cohortId == null) { flash('err', 'Title + cohort required'); return; }
+    if (!form.title.trim() || cohortId == null) { flash('err', 'Assignment title is required.'); return; }
+    const points = form.points.trim() === '' ? undefined : Number(form.points);
+    if (points !== undefined && (!Number.isFinite(points) || points < 0 || points > 1000)) {
+      flash('err', 'Points must be a number from 0 to 1000.');
+      return;
+    }
+    const dueRaw = form.dueAt.trim();
+    let dueAt: string | undefined;
+    if (dueRaw) {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dueRaw)) dueAt = `${dueRaw}T23:59`;
+      else if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(dueRaw) && !Number.isNaN(Date.parse(dueRaw))) dueAt = dueRaw;
+      else {
+        flash('err', 'Due date needs a day and a time, like 2026-11-10T15:00.');
+        return;
+      }
+    }
     setBusy(true);
     const r = await run('assignment-create', {
       cohortId, title: form.title.trim(), instructions: form.instructions,
-      dueAt: form.dueAt || undefined, points: Number(form.points) || 100,
+      dueAt, points,
       topic: form.topic || undefined,
     });
     setBusy(false);
@@ -301,8 +320,12 @@ function AssignmentsTab({ cohortId, flash }: TabProps) {
             onChange={(e) => setForm({ ...form, title: e.target.value })} />
           <input className={inputCls} placeholder="Topic (optional)" value={form.topic}
             onChange={(e) => setForm({ ...form, topic: e.target.value })} />
-          <input className={inputCls} type="datetime-local" value={form.dueAt}
-            onChange={(e) => setForm({ ...form, dueAt: e.target.value })} />
+          <label className="block text-[10px] text-zinc-400">
+            Due
+            <input className={inputCls} type="datetime-local" value={form.dueAt}
+              onChange={(e) => setForm({ ...form, dueAt: e.target.value })} />
+            <span className="mt-0.5 block">Leave blank for no due date. A day with no time is due at 11:59pm.</span>
+          </label>
           <input className={inputCls} type="number" min={0} max={1000} placeholder="Points" value={form.points}
             onChange={(e) => setForm({ ...form, points: e.target.value })} />
           <textarea className={`${inputCls} sm:col-span-2`} rows={2} placeholder="Instructions"
@@ -317,7 +340,7 @@ function AssignmentsTab({ cohortId, flash }: TabProps) {
       </div>
 
       {assignments.length === 0 ? (
-        <p className="text-zinc-400 italic text-xs">No assignments yet.</p>
+        <p className="text-zinc-400 italic text-xs">No assignments in this cohort.</p>
       ) : assignments.map((a) => (
         <div key={a.id} className={cardCls}>
           <div className="flex justify-between gap-2 items-start">
@@ -336,10 +359,16 @@ function AssignmentsTab({ cohortId, flash }: TabProps) {
                 className="text-[10px] px-2 py-1 rounded bg-zinc-800 text-zinc-300 hover:bg-zinc-700">
                 {openId === a.id ? 'Hide' : 'Open'}
               </button>
-              <button aria-label="Delete" onClick={() => remove(a.id)}
-                className="text-[10px] px-1.5 py-1 rounded bg-rose-900/40 text-rose-300 hover:bg-rose-900/60">
-                <Trash2 className="w-3 h-3" />
-              </button>
+              <StickyDeleteConfirm
+                armed={armedId === a.id}
+                onArm={() => setArmedId(a.id)}
+                onCancel={() => setArmedId(null)}
+                onConfirm={() => void remove(a.id)}
+                armLabel={<Trash2 className="w-3 h-3" />}
+                confirmLabel={`Delete “${a.title}”?`}
+                armAriaLabel="Delete"
+                className="text-[10px] px-1.5 py-1 rounded bg-rose-900/40 text-rose-300 hover:bg-rose-900/60"
+              />
             </div>
           </div>
 
@@ -398,6 +427,30 @@ function AssignmentsTab({ cohortId, flash }: TabProps) {
           )}
         </div>
       ))}
+      {other.length > 0 && (
+        <div className="mt-3">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-1.5">From other or archived cohorts</h4>
+          {other.map((a) => (
+            <div key={a.id} className={cardCls}>
+              <div className="flex justify-between gap-2 items-start">
+                <div>
+                  <div className="text-sm font-semibold text-zinc-100">{a.title}</div>
+                  <div className="text-[10px] text-zinc-400">cohort #{a.cohortId}</div>
+                </div>
+                <StickyDeleteConfirm
+                  armed={armedId === a.id}
+                  onArm={() => setArmedId(a.id)}
+                  onCancel={() => setArmedId(null)}
+                  onConfirm={() => void remove(a.id)}
+                  armLabel="Delete"
+                  confirmLabel={`Delete “${a.title}”?`}
+                  className="text-[11px] text-rose-300 underline"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -481,13 +534,15 @@ function GradebookTab({ cohortId, flash }: TabProps) {
 /* ── Materials ──────────────────────────────────────────────────────── */
 function MaterialsTab({ cohortId, flash }: TabProps) {
   const [byTopic, setByTopic] = useState<Record<string, Material[]>>({});
+  const [other, setOther] = useState<Material[]>([]);
   const [form, setForm] = useState({ title: '', kind: 'link', url: '', topic: '', notes: '' });
   const [busy, setBusy] = useState(false);
 
   const refresh = useCallback(async () => {
-    const r = await run<{ byTopic: Record<string, Material[]> }>('material-list',
+    const r = await run<{ byTopic: Record<string, Material[]>; other?: Material[] }>('material-list',
       cohortId != null ? { cohortId } : {});
     setByTopic(r?.byTopic ?? {});
+    setOther(r?.other ?? []);
   }, [cohortId]);
 
   useEffect(() => { void refresh(); }, [refresh]);
@@ -559,15 +614,25 @@ function MaterialsTab({ cohortId, flash }: TabProps) {
                   ) : <span className="text-zinc-200">{m.title}</span>}
                   {m.notes && <div className="text-[10px] text-zinc-400 mt-0.5">{m.notes}</div>}
                 </div>
-                <button aria-label="Delete" onClick={() => remove(m.id)}
-                  className="text-[10px] px-1.5 py-0.5 rounded bg-rose-900/40 text-rose-300 hover:bg-rose-900/60">
-                  <Trash2 className="w-3 h-3" />
-                </button>
+                <StickyDeleteConfirm onConfirm={() => void remove(m.id)} armAriaLabel={`Delete ${m.title}`} confirmAriaLabel={`Confirm delete ${m.title}`} className="text-[10px] px-1.5 py-0.5 rounded bg-rose-900/40 text-rose-300 hover:bg-rose-900/60" armLabel={<Trash2 className="w-3 h-3" />} />
               </li>
             ))}
           </ul>
         </div>
       ))}
+      {other.length > 0 && (
+        <div className={cardCls}>
+          <h4 className="text-xs font-bold text-zinc-300 uppercase tracking-wider mb-1.5">From other or archived cohorts</h4>
+          <ul className="space-y-1">
+            {other.map((m) => (
+              <li key={m.id} className="flex justify-between items-start gap-2 text-xs">
+                <span className="text-zinc-200">{m.title} <span className="text-zinc-500">cohort #{m.cohortId}</span></span>
+                <StickyDeleteConfirm onConfirm={() => void remove(m.id)} armLabel="Delete" confirmLabel={`Delete “${m.title}”?`} armAriaLabel={`Delete ${m.title}`} confirmAriaLabel={`Confirm delete ${m.title}`} className="text-[10px] text-rose-300" />
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
@@ -579,6 +644,7 @@ function TodoTab({ cohortId }: { cohortId: number | null }) {
     counts: { upcoming: number; missing: number; done: number };
   } | null>(null);
   const [studentId, setStudentId] = useState('');
+  const [armedId, setArmedId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const r = await run<{
@@ -602,9 +668,24 @@ function TodoTab({ cohortId }: { cohortId: number | null }) {
           {items.map((i) => (
             <li key={i.assignmentId} className="bg-zinc-950/60 rounded p-2 text-xs flex justify-between gap-2">
               <span className="text-zinc-200">{i.title}</span>
-              <span className="text-[10px] text-zinc-400 whitespace-nowrap">
-                {i.score != null ? `${i.score} pts`
-                  : i.dueAt ? `due ${new Date(i.dueAt).toLocaleDateString()}` : `${i.points} pts`}
+              <span className="flex items-center gap-2">
+                <span className="text-[10px] text-zinc-400 whitespace-nowrap">
+                  {i.score != null ? `${i.score} pts`
+                    : i.dueAt ? `due ${new Date(i.dueAt).toLocaleDateString()}` : `${i.points} pts`}
+                </span>
+                <StickyDeleteConfirm
+                  armed={armedId === i.assignmentId}
+                  onArm={() => setArmedId(i.assignmentId)}
+                  onCancel={() => setArmedId(null)}
+                  onConfirm={async () => {
+                    await run('assignment-delete', { assignmentId: i.assignmentId });
+                    setArmedId(null);
+                    void refresh();
+                  }}
+                  armLabel="Delete"
+                  confirmLabel={`Delete “${i.title}”?`}
+                  className="text-[11px] text-rose-300 underline"
+                />
               </span>
             </li>
           ))}

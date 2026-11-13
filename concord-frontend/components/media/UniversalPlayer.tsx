@@ -31,6 +31,7 @@ import {
   WifiOff,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -228,7 +229,7 @@ function AudioPlayer({
       <div
         ref={progressRef}
         onClick={handleSeek}
-        className="px-4 py-3 cursor-pointer" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        className="px-4 py-3 cursor-pointer" role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
         <div className="flex items-end gap-[2px] h-12">
           {waveform.map((h, i) => {
             const filled = (i / waveform.length) * 100 < progress;
@@ -404,7 +405,7 @@ function VideoPlayer({
       {/* Video area */}
       <div
         className="relative aspect-video bg-black flex items-center justify-center cursor-pointer"
-        onClick={togglePlay} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        onClick={togglePlay} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
         <video
           ref={videoRef}
           src={videoSrc}
@@ -483,7 +484,7 @@ function VideoPlayer({
             {/* Progress bar */}
             <div
               className="h-1 bg-gray-600 rounded-full mb-3 cursor-pointer group/progress"
-              onClick={handleSeek} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+              onClick={handleSeek} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
               <div
                 className="h-full bg-neon-cyan rounded-full relative group-hover/progress:h-1.5 transition-all"
                 style={{ width: `${progress}%` }}

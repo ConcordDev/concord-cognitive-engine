@@ -176,6 +176,15 @@ export default function BountiesPage() {
     return { openPool, paidOut };
   }, [bounties]);
 
+  // The board list is server-filtered (and capped at 100), so the stat
+  // cards sum the loaded set — label their scope instead of presenting
+  // them as board-wide totals (FIX-bounties-006).
+  const statsScope = (filters.query || filters.category || filters.difficulty || filters.status || filters.tag)
+    ? 'current filter'
+    : total > bounties.length
+      ? `first ${bounties.length} of ${total}`
+      : 'all bounties';
+
 
   return (
     <LensShell lensId="bounties" asMain={false}>
@@ -209,12 +218,14 @@ export default function BountiesPage() {
                   <div className="text-lg font-bold text-amber-300 flex items-center gap-1">
                     <Coins className="w-4 h-4" /> {boardStats.openPool} CC
                   </div>
+                  <div className="text-[10px] text-zinc-500">{statsScope}</div>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-[#111] px-4 py-3">
                   <div className="text-[10px] text-zinc-400 uppercase tracking-wide">Paid out</div>
                   <div className="text-lg font-bold text-emerald-300 flex items-center gap-1">
                     <Coins className="w-4 h-4" /> {boardStats.paidOut} CC
                   </div>
+                  <div className="text-[10px] text-zinc-500">{statsScope}</div>
                 </div>
               </div>
 

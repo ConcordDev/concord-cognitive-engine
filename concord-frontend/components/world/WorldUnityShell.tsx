@@ -293,10 +293,12 @@ export default function WorldUnityShell() {
                 <h2 className="text-sm font-semibold text-white">World</h2>
                 <button
                   type="button"
+                  data-overlay-close=""
+                  aria-label="Close"
                   onClick={() => setPanel(null)}
                   className="text-[10px] uppercase tracking-wide text-zinc-400 hover:text-white"
                 >
-                  Close Esc
+                  Close
                 </button>
               </div>
               <ul className="flex flex-col gap-1.5">

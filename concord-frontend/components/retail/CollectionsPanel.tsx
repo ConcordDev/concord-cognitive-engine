@@ -59,8 +59,8 @@ export function CollectionsPanel() {
       </header>
 
       <div className="p-3 border-b border-white/10 grid grid-cols-4 gap-2">
-        <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Collection name" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-        <input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Description" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <input id="retail-collection-name" name="collection-name" aria-label="Collection name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Collection name" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <input id="retail-description" name="description" aria-label="Description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Description" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <button onClick={create} className="px-3 py-1.5 text-xs rounded bg-emerald-500 text-black font-bold hover:bg-emerald-400 inline-flex items-center justify-center gap-1"><Plus className="w-3 h-3" />Create</button>
       </div>
 
@@ -83,7 +83,7 @@ export function CollectionsPanel() {
                   {c.productSkus.map(sku => (
                     <span key={sku} className="px-1.5 py-0.5 text-[10px] font-mono rounded bg-cyan-500/15 text-cyan-300">{sku}</span>
                   ))}
-                  <input
+                  <input id="retail-sku" name="sku" aria-label="+ SKU"
                     value={skuInput[c.id] || ''}
                     onChange={e => setSkuInput({ ...skuInput, [c.id]: e.target.value })}
                     onKeyDown={e => { if (e.key === 'Enter') addSku(c.id); }}

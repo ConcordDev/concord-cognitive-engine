@@ -84,11 +84,22 @@ export function MarketingLeadsPanel({ onChange }: { onChange: () => void }) {
     // F5): lead-score RETURNS { score, grade } and this path used to ignore
     // the return, so scoring on empty signals was a silent no-op — a 0 with
     // no basis looked exactly like nothing happening.
-    const res = (r.data?.result || null) as { score?: number; grade?: string } | null;
+    const res = (r.data?.result || null) as {
+      score?: number; grade?: string;
+      weights?: { emailOpens?: number; linkClicks?: number; pageViews?: number; formSubmits?: number };
+      points?: { emailOpens?: number; linkClicks?: number; pageViews?: number; formSubmits?: number };
+    } | null;
     if (r.data?.ok !== false && res && typeof res.score === 'number') {
+      const w = res.weights || { emailOpens: 2, linkClicks: 6, pageViews: 3, formSubmits: 20 };
+      const p = res.points || {
+        emailOpens: signals.emailOpens * (w.emailOpens || 0),
+        linkClicks: signals.linkClicks * (w.linkClicks || 0),
+        pageViews: signals.pageViews * (w.pageViews || 0),
+        formSubmits: signals.formSubmits * (w.formSubmits || 0),
+      };
       setScoreOut({
         id, score: res.score, grade: res.grade || '',
-        basis: `opens ${signals.emailOpens} · clicks ${signals.linkClicks} · views ${signals.pageViews} · submits ${signals.formSubmits}`,
+        basis: `opens ${signals.emailOpens} × ${w.emailOpens} = ${p.emailOpens} · clicks ${signals.linkClicks} × ${w.linkClicks} = ${p.linkClicks} · views ${signals.pageViews} × ${w.pageViews} = ${p.pageViews} · submits ${signals.formSubmits} × ${w.formSubmits} = ${p.formSubmits}. Grade A is 75+, B is 50+, C is 25+, else D.`,
       });
     }
     setScoreFor(null);

@@ -14,6 +14,7 @@ export function useTournamentDesk() {
   const [detail, setDetail] = useState<Tournament | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchList = useCallback(async () => {
@@ -76,16 +77,19 @@ export function useTournamentDesk() {
   const run = useCallback(
     async (action: string, input: Record<string, unknown>): Promise<Tournament | null> => {
       setBusy(true);
-      setError(null);
+      setActionError(null);
       try {
         const r = await lensRun<{ tournament: Tournament }>('tournaments', action, input);
         if (!r.data.ok) {
-          setError(r.data.error || `${action}_failed`);
+          setActionError(r.data.error || `${action} failed`);
           return null;
         }
         const t = r.data.result?.tournament || null;
         if (t) setDetail(t);
         return t;
+      } catch (err) {
+        setActionError(err instanceof Error ? err.message : `${action} failed`);
+        return null;
       } finally {
         setBusy(false);
       }
@@ -100,7 +104,7 @@ export function useTournamentDesk() {
   return {
     active, setActive, goList,
     tournaments, counts, statusFilter, setStatusFilter,
-    activeId, detail, busy, error, setError, loading, retry, run,
+    activeId, detail, busy, error, actionError, setError, loading, retry, run,
     pick, onCreated,
     onRefreshDetail: () => activeId && fetchDetail(activeId),
   };

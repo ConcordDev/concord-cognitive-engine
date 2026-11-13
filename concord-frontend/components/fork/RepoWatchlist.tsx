@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { GitFork, Trash2, Loader2, RefreshCw, Rss } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface Repo { id: string; fullName: string; note: string; reason: string; lastStars: number | null; lastPushedAt: string | null; openIssues?: number | null; forks?: number | null }
 interface Dash { repos: number; totalStars: number; refreshed: number; byReason: Record<string, number> }
@@ -22,6 +23,8 @@ export function RepoWatchlist() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [form, setForm] = useState({ fullName: '', reason: 'reference' });
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ reason: 'reference', note: '' });
   const [feedRepo, setFeedRepo] = useState('');
   const [feedMsg, setFeedMsg] = useState<string | null>(null);
 
@@ -40,6 +43,10 @@ export function RepoWatchlist() {
     if (!form.fullName.trim()) return;
     const r = await lensRun('fork', 'watch-add', { fullName: form.fullName.trim(), reason: form.reason });
     if (r.data?.ok) { setForm({ fullName: '', reason: 'reference' }); await refresh(); }
+  }
+  async function saveEdit(id: string) {
+    const r = await lensRun('fork', 'watch-update', { id, reason: editForm.reason, note: editForm.note });
+    if (r.data?.ok) { setEditId(null); await refresh(); }
   }
   async function delRepo(id: string) {
     await lensRun('fork', 'watch-delete', { id });
@@ -114,11 +121,27 @@ export function RepoWatchlist() {
                 {r.forks != null ? ` · ${r.forks} forks` : ''}
                 {r.lastPushedAt ? ` · pushed ${r.lastPushedAt.slice(0, 10)}` : ' · not yet refreshed'}
               </p>
+              {r.note && <p className="text-[10px] text-zinc-500 italic truncate">{r.note}</p>}
+              {editId === r.id && (
+                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                  <select aria-label={`Category for ${r.fullName}`} value={editForm.reason} onChange={e => setEditForm({ ...editForm, reason: e.target.value })}
+                    className="bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1 text-xs text-zinc-200">
+                    {REASONS.map(x => <option key={x} value={x}>{x}</option>)}
+                  </select>
+                  <input aria-label={`Note for ${r.fullName}`} value={editForm.note} onChange={e => setEditForm({ ...editForm, note: e.target.value })} placeholder="Note (e.g. QA fixture name)"
+                    className="flex-1 min-w-[120px] bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
+                  <button onClick={() => void saveEdit(r.id)} className="px-2 py-1 text-xs rounded bg-violet-600 hover:bg-violet-500 text-white font-semibold">Save</button>
+                  <button onClick={() => setEditId(null)} className="px-2 py-1 text-xs rounded bg-zinc-800 text-zinc-300">Cancel</button>
+                </div>
+              )}
             </div>
+            <button onClick={() => { setEditId(editId === r.id ? null : r.id); setEditForm({ reason: r.reason, note: r.note || '' }); }} aria-label={`Edit ${r.fullName}`} className="text-zinc-400 hover:text-violet-300 text-[10px] font-semibold">
+              Edit
+            </button>
             <button onClick={() => refreshRepo(r.id)} disabled={busy === r.id} className="text-zinc-400 hover:text-violet-300">
               {busy === r.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
             </button>
-            <button aria-label="Delete" onClick={() => delRepo(r.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+            <StickyDeleteConfirm onConfirm={() => { void delRepo(r.id); }} className="opacity-0 group-hover:opacity-100 text-rose-400" armAriaLabel={`Delete ${r.fullName}`} confirmLabel={`Stop watching ${r.fullName}?`} confirmAriaLabel={`Confirm delete ${r.fullName}`} armLabel={<Trash2 className="w-3 h-3" />} />
           </li>
         ))}
       </ul>

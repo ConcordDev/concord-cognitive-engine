@@ -151,18 +151,24 @@ export function MonitorsPanel() {
       {/* Register monitor */}
       <div className="bg-lattice-deep rounded-lg p-3 border border-lattice-border grid grid-cols-2 md:grid-cols-4 gap-2">
         <input
+          name="monitorName"
+          aria-label="Monitor name"
           value={form.name}
           onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
           placeholder="Name (optional)"
           className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs"
         />
         <input
+          name="monitorUrl"
+          aria-label="Monitor URL"
           value={form.url}
           onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
           placeholder="https://example.com/health"
           className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs font-mono md:col-span-2"
         />
         <input
+          name="intervalMinutes"
+          aria-label="Check interval in minutes"
           value={form.intervalMinutes}
           onChange={(e) => setForm((f) => ({ ...f, intervalMinutes: e.target.value }))}
           placeholder="minutes"

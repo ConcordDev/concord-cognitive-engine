@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import {
   CalendarClock, Plus, Trash2, Loader2, CheckCircle2,
   AlertTriangle, Snowflake, Sun, Leaf, Flower2,
@@ -142,14 +143,26 @@ export function MaintenanceReminders() {
             </div>
           </div>
           <div className="space-y-1">
-            {seasonal.suggestedTasks.map((t) => (
-              <div key={t} className="flex items-center justify-between text-xs bg-lattice-deep rounded px-2 py-1.5">
-                <span className="text-gray-200">{t}</span>
-                <button onClick={() => add(t, seasonal.season)} disabled={busy} className="text-amber-400 hover:text-amber-300 flex items-center gap-0.5">
-                  <Plus className="w-3 h-3" /> track
-                </button>
-              </div>
-            ))}
+            {seasonal.suggestedTasks.map((t) => {
+              // FIX-home-improvement-012: the suggestions are a static list —
+              // tracking one never changed the row, so the button looked
+              // dead and re-clicking stacked duplicates. A suggestion that
+              // is already tracked says so (untrack = delete the reminder
+              // in the list below, which clears this state).
+              const tracked = reminders.some((r) => r.task === t);
+              return (
+                <div key={t} className="flex items-center justify-between text-xs bg-lattice-deep rounded px-2 py-1.5">
+                  <span className="text-gray-200">{t}</span>
+                  {tracked ? (
+                    <span className="text-neon-green flex items-center gap-0.5" role="status"><CheckCircle2 className="w-3 h-3" /> tracked</span>
+                  ) : (
+                    <button onClick={() => add(t, seasonal.season)} disabled={busy} className="text-amber-400 hover:text-amber-300 flex items-center gap-0.5">
+                      <Plus className="w-3 h-3" /> track
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -199,9 +212,7 @@ export function MaintenanceReminders() {
                 <button onClick={() => complete(r.id)} disabled={busy} className="text-neon-green hover:text-green-300 p-1" title="Mark done & reschedule">
                   <CheckCircle2 className="w-4 h-4" />
                 </button>
-                <button aria-label="Delete" onClick={() => remove(r.id)} disabled={busy} className="text-gray-400 hover:text-red-400 p-1">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                <StickyDeleteConfirm onConfirm={() => remove(r.id)} armAriaLabel="Delete" confirmAriaLabel="Confirm delete" className="text-gray-400 hover:text-red-400 p-1" armLabel={<Trash2 className="w-3.5 h-3.5" />} disabled={busy} />
               </div>
             );
           })}
