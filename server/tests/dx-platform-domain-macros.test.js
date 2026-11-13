@@ -148,6 +148,17 @@ describe("dx-platform — diff review trips real detectors", () => {
   it("rejects an empty diff", () => {
     assert.equal(call("reviewDiff", ctxA, { diff: "   " }).error, "no_diff");
   });
+
+  it("FIX-dx-platform-017: non-diff text is refused as not_a_diff, never a clean 0-file review", () => {
+    const r = call("reviewDiff", ctxA, { diff: "hello" });
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "not_a_diff");
+    // a deletion-only diff still carries a file header and reviews clean
+    const del = ["--- a/src/ok.js", "+++ b/src/ok.js", "@@ -1,2 +1 @@", "-const gone = 1;", " const kept = 2;"].join("\n");
+    const rd = call("reviewDiff", ctxA, { diff: del });
+    assert.equal(rd.ok, true);
+    assert.equal(rd.result.filesChanged, 1);
+  });
 });
 
 describe("dx-platform — detector config gates the review", () => {

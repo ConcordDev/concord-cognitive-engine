@@ -435,13 +435,23 @@ function ReviewTab({ codebases }: { codebases: CodebaseRow[] }) {
   const [gateLoading, setGateLoading] = useState(false);
   const [sarifLoading, setSarifLoading] = useState(false);
   const [sarifError, setSarifError] = useState<string | null>(null);
+  const [reviewError, setReviewError] = useState<string | null>(null);
   const [sarifExported, setSarifExported] = useState(false);
   const [trend, setTrend] = useState<TrendResult | null>(null);
   const [trendLoading, setTrendLoading] = useState(false);
 
+  const NOT_A_DIFF_MSG = "Not a unified diff — no file headers (+++ b/…) found. Paste a diff from git diff or a pull request.";
   const run = async () => {
     if (!diff.trim()) return;
-    setLoading(true); setResult(null); setDecisions({}); setGate(null); setTrend(null);
+    // FIX-dx-platform-017: non-diff text used to come back as a 'clean'
+    // 0-file review. The parser's own test — a '+++ ' file header —
+    // runs before the call, and a server refusal now surfaces instead
+    // of leaving the previous (or no) result unexplained.
+    if (!diff.split('\n').some((l) => l.startsWith('+++ '))) {
+      setReviewError(NOT_A_DIFF_MSG);
+      return;
+    }
+    setLoading(true); setResult(null); setDecisions({}); setGate(null); setTrend(null); setReviewError(null);
     try {
       const sha = commitSha.trim();
       const r = await lensRun('dx-platform', 'reviewDiff', {
@@ -450,6 +460,7 @@ function ReviewTab({ codebases }: { codebases: CodebaseRow[] }) {
       if (r.data?.ok && r.data.result) {
         const rr = r.data.result as ReviewResult;
         setResult(rr);
+        setReviewError(null);
         // Best-effort telemetry: log one detector-fire count per detector
         // that produced findings here, so the Analytics tab (which reads
         // dx-platform.usageAnalytics) reflects real review activity instead
@@ -475,6 +486,9 @@ function ReviewTab({ codebases }: { codebases: CodebaseRow[] }) {
             setTrendLoading(false);
           }
         }
+      } else {
+        const err = (r.data as { error?: string } | undefined)?.error;
+        setReviewError(err === 'not_a_diff' ? NOT_A_DIFF_MSG : err === 'no_diff' ? 'Paste a diff to review.' : `Review failed: ${err || 'unknown error'}`);
       }
     } finally {
       setLoading(false);
@@ -545,7 +559,15 @@ function ReviewTab({ codebases }: { codebases: CodebaseRow[] }) {
       />
       <textarea
         value={diff}
-        onChange={(e) => setDiff(e.target.value)}
+        onChange={(e) => {
+          setDiff(e.target.value);
+          // FIX-dx-platform-017: emptying the input clears the previous
+          // review — stale findings no longer outlive the diff they
+          // were computed from.
+          if (!e.target.value.trim()) {
+            setResult(null); setDecisions({}); setGate(null); setTrend(null); setReviewError(null);
+          }
+        }}
         placeholder="--- a/file.js&#10;+++ b/file.js&#10;@@ -1 +1,2 @@&#10;+new line"
         rows={8}
         className="w-full rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 font-mono text-xs text-white"
@@ -558,6 +580,9 @@ function ReviewTab({ codebases }: { codebases: CodebaseRow[] }) {
       >
         {loading ? 'Reviewing…' : 'Review diff'}
       </button>
+      {reviewError && (
+        <p role="alert" className="rounded border border-red-500/30 bg-red-500/10 px-2 py-1.5 text-xs text-red-300">{reviewError}</p>
+      )}
       {result && (
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-3 text-xs">

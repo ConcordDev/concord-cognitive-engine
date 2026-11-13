@@ -482,6 +482,12 @@ export default function registerDxPlatformActions(register) {
       if (cb && Array.isArray(cb.detectorConfig)) enabledSet = new Set(cb.detectorConfig);
     }
     const { findings, bySeverity, addedTotal, removedTotal, fileCount } = parseAndScanDiff(diff, enabledSet);
+    // FIX-dx-platform-017: text with no file headers is not a unified
+    // diff this parser can read — it used to sail through as a 'clean'
+    // 0-file review. A distinct token (the domain's error style) lets
+    // the surface show the 'Not a unified diff' warning; a real diff
+    // always carries at least one '+++ ' header, deletions included.
+    if (fileCount === 0) return { ok: false, error: "not_a_diff" };
     const blocking = findings.filter((f) => f.severity >= 4).length;
     // Optional commit-scoped provenance write — see the finding-history block
     // above. Only fires when the caller supplies commitSha; omitting it keeps
