@@ -251,15 +251,18 @@ export function NeuroActionPanel() {
           <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">ERP · {erpResult.epochCount} epoch{erpResult.epochCount === 1 ? '' : 's'}</div>
             <div className="text-2xl font-bold text-amber-300">{erpResult.peakAmplitude} μV</div>
-            <div className="text-[10px] text-zinc-400">SNR {erpResult.snr} ({erpResult.snrQuality}) · baseline RMS {erpResult.baselineRms}</div>
+            <div className="text-[10px] text-zinc-400">SNR {erpResult.snr} ({erpResult.snrQuality}) · baseline RMS {erpResult.baselineRms} μV</div>
             {erpResult.identifiedComponents.length > 0 ? (
               <div className="text-[10px] text-amber-200 mt-1">
-                {erpResult.identifiedComponents.map((c, i) => (
+                {erpResult.identifiedComponents.filter((c, i, arr) => arr.findIndex((x) => x.component === c.component) === i).map((c, i) => (
                   <span key={i} className="mr-2">{c.component}@{c.latencyMs}ms ({c.amplitude}μV)</span>
                 ))}
               </div>
             ) : (
               <div className="text-[10px] text-zinc-400 mt-1">{erpResult.peaks.length} peak{erpResult.peaks.length === 1 ? '' : 's'}, none matched a known component</div>
+            )}
+            {erpResult.epochCount === 1 && erpResult.identifiedComponents.length > 0 && (
+              <div className="text-[10px] text-zinc-400 mt-1">Named from a single epoch — treat these component labels as tentative; one noisy epoch cannot reliably identify components.</div>
             )}
           </div>
         )}
