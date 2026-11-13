@@ -9,10 +9,12 @@
  * delete loop to the front door).
  *
  * Every read/write goes through the REAL foundry.* macros via lensRun:
- *   foundry.list   → the caller's worlds
- *   foundry.create → a new draft
- *   foundry.get    → open one (validates ownership server-side)
- *   foundry.delete → remove a draft
+ *   foundry.list      → the caller's worlds
+ *   foundry.create    → a new draft
+ *   foundry.get       → open one (validates ownership server-side)
+ *   foundry.unpublish → take a published world back to draft
+ *   foundry.delete    → remove a draft (the server refuses published
+ *                       worlds; Delete here is disabled until unpublish)
  *
  * Honest by construction: there is NO setInterval / fake progress / mock
  * data. The four UX states (loading / error / empty / populated) are each
@@ -89,6 +91,27 @@ export function FoundryWorldsPanel() {
       setCreating(false);
     }
   }, [newName, load]);
+
+  // FIX-foundry-007 (founder ruling A): the missing half of the publish
+  // lifecycle at this surface. The server macro already exists and is
+  // creator-scoped; the panel simply never offered it, so a published
+  // world was stuck — Delete disabled, no way back to draft.
+  const unpublish = useCallback(async (id: string) => {
+    setBusyId(id);
+    setError(null);
+    try {
+      const r = await foundry<{ ok: boolean; world: FoundryWorldRow }>('unpublish', { id });
+      if (r.world) {
+        setWorlds((prev) => prev.map((w) => (w.id === id ? r.world : w)));
+      } else {
+        await load();
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Unpublish failed.');
+    } finally {
+      setBusyId(null);
+    }
+  }, [load]);
 
   const remove = useCallback(async (id: string) => {
     setBusyId(id);
@@ -221,6 +244,22 @@ export function FoundryWorldsPanel() {
               >
                 Open <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
               </a>
+            )}
+            {w.status === 'published' && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => unpublish(w.id)}
+                  disabled={busyId === w.id}
+                  aria-label={`Unpublish ${w.name}`}
+                  className="rounded px-2 py-1 text-xs text-amber-300 hover:bg-amber-600/20 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-40"
+                >
+                  {busyId === w.id
+                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                    : 'Unpublish'}
+                </button>
+                <span className="text-[10px] text-slate-500">Unpublish to delete</span>
+              </>
             )}
             <StickyDeleteConfirm
               onConfirm={() => remove(w.id)}
