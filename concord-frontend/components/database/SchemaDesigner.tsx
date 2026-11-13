@@ -70,8 +70,16 @@ export function SchemaDesigner() {
     await refresh();
   }
   async function addTable() {
-    if (!active || !newTable.trim()) return;
-    await lensRun('database', 'table-add', { schemaId: active.id, name: newTable.trim() });
+    // FIX-database-003: an empty Add returned in silence, and the
+    // result was never checked — a refused create (e.g. a name past
+    // the platform's 200-char input cap) still cleared the input and
+    // announced 'Table added' beside the refusal, creating nothing.
+    // Mirrors createSchema's FIX-schema-003 shape: speak on blank,
+    // speak the refusal, announce success only on ok.
+    if (!active) return;
+    if (!newTable.trim()) { say('Name the table first — Add needs a name to create it.'); return; }
+    const r = await lensRun('database', 'table-add', { schemaId: active.id, name: newTable.trim() });
+    if (!r.data?.ok) { say(r.data?.error ? `Table not added: ${r.data.error}` : 'Table not added — the server refused it.'); return; }
     setNewTable('');
     say('Table added');
     await reload(); await refresh();
@@ -85,9 +93,13 @@ export function SchemaDesigner() {
     await reload(); await refresh();
   }
   async function addColumn(tableId: string) {
+    // FIX-database-003 (sibling): the identical silent-blank /
+    // unchecked-result shape as addTable, one button away.
     const f = colForm[tableId];
-    if (!active || !f?.name?.trim()) return;
-    await lensRun('database', 'column-add', { schemaId: active.id, tableId, name: f.name.trim(), type: f.type || 'text' });
+    if (!active) return;
+    if (!f?.name?.trim()) { say('Name the column first — Add needs a name to create it.'); return; }
+    const r = await lensRun('database', 'column-add', { schemaId: active.id, tableId, name: f.name.trim(), type: f.type || 'text' });
+    if (!r.data?.ok) { say(r.data?.error ? `Column not added: ${r.data.error}` : 'Column not added — the server refused it.'); return; }
     setColForm({ ...colForm, [tableId]: { name: '', type: 'text' } });
     say('Column added');
     await reload();
