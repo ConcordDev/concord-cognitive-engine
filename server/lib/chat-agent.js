@@ -896,6 +896,19 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
   // JSON-string arguments, tool "lens.action") onto the schema first.
   call = normalizeToolCall(call, AGENT_TOOL_NAMES) || call;
   if (!call.params || typeof call.params !== "object") call = { ...call, params: {} };
+  // GB-1500 CKPT-03: typed validate + repair (alias, fuzzy name, key/type fixes,
+  // prior-value defaults). Off by default; tools without a spec fall through.
+  if (cockpitFlag("REPAIR")) {
+    const { validateAndRepair } = await import("./cockpit/validate-repair.js");
+    const { getToolSpec, cockpitAgentToolIds } = await import("./cockpit/tool-spec.js");
+    if (getToolSpec(call.tool)) {
+      const vr = validateAndRepair({ tool: call.tool, args: call.params }, {
+        menuIds: cockpitAgentToolIds(), getSpec: (id) => getToolSpec(id, { lensActions }),
+      });
+      if (vr.ok) call = { ...call, tool: vr.call.tool, params: vr.call.args, repairs: vr.repairs };
+      else return { tool: call.tool, ok: false, error: "missing required param(s) or invalid input", errors: vr.errors, retryHint: vr.reask, repairs: vr.repairs };
+    }
+  }
   // Param-validator gate (R-concay-tools-3): catch empty `{}` blocks the
   // model emits before they reach the macro router. The brain sees the
   // surgical error on the next turn and self-corrects — no LLM guesswork
