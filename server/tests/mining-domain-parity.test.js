@@ -97,6 +97,16 @@ describe("mining.grade-tonnage-curve", () => {
 describe("mining.pit-design", () => {
   it("designs an open-pit shell with benches and strip ratio", () => {
     const r = call("pit-design", ctxA, { surfaceRL: 100, pitDepth: 120, benchHeight: 15, slopeAngle: 45, targetStripRatio: 3 });
+    // FIX-mining-007: an absurd strip ratio is refused by name instead
+    // of dividing ore tonnage down to a silent 0.
+    const huge = call("pit-design", ctxA, { surfaceRL: 100, pitDepth: 120, targetStripRatio: 1e12 });
+    assert.equal(huge.ok, false);
+    assert.match(huge.message, /strip ratio/i);
+    const zero = call("pit-design", ctxA, { surfaceRL: 100, pitDepth: 120, targetStripRatio: 0 });
+    assert.equal(zero.ok, false);
+    const sane = call("pit-design", ctxA, { surfaceRL: 100, pitDepth: 120, targetStripRatio: 8 });
+    assert.equal(sane.ok, true);
+    assert.ok(sane.result.oreTonnage > 0);
     assert.equal(r.ok, true);
     assert.equal(r.result.benchCount, r.result.benches.length);
     assert.equal(r.result.pitBottomRL, -20);
@@ -172,5 +182,13 @@ describe("mining.gis-layer", () => {
   it("site-set-location rejects invalid coordinates", () => {
     const site = call("site-add", ctxA, { name: "S" }).result.site;
     assert.equal(call("site-set-location", ctxA, { id: site.id, lat: 999, lng: 0 }).ok, false);
+    // FIX-mining-008: blank/missing coordinates are refused, not
+    // converted to 0,0; an explicit 0,0 is a real coordinate.
+    const blank = call("site-set-location", ctxA, { id: site.id, lat: "", lng: "" });
+    assert.equal(blank.ok, false);
+    assert.match(blank.error, /required/);
+    assert.equal(call("site-set-location", ctxA, { id: site.id }).ok, false);
+    const explicitZero = call("site-set-location", ctxA, { id: site.id, lat: 0, lng: 0 });
+    assert.equal(explicitZero.ok, true);
   });
 });

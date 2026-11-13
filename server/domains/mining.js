@@ -804,6 +804,16 @@ export default function registerMiningActions(registerLensAction) {
       const slopeAngle = Math.max(20, Math.min(75, mnNum(params.slopeAngle) || 45));
       const oreBottomWidth = Math.max(10, mnNum(params.bottomWidth) || 40);
       const density = mnNum(params.densityTonM3) || 2.7;
+      // FIX-mining-007: targetStripRatio had no range check at all —
+      // 1e12 was accepted and ore tonnage divided down to a silent 0.
+      // A provided ratio must be > 0 and within the platform's standing
+      // numeric ceiling (1e6); absent still defaults to 3.
+      if (params.targetStripRatio != null && params.targetStripRatio !== "") {
+        const sr = Number(params.targetStripRatio);
+        if (!Number.isFinite(sr) || sr <= 0 || sr > 1e6) {
+          return { ok: false, error: "invalid_input", message: "Target strip ratio must be greater than 0 and at most 1,000,000." };
+        }
+      }
       const stripRatio = mnNum(params.targetStripRatio) || 3;
       const benchCount = Math.ceil(pitDepth / benchHeight);
       const slopeRun = benchHeight / Math.tan(slopeAngle * Math.PI / 180);
@@ -1111,7 +1121,15 @@ export default function registerMiningActions(registerLensAction) {
       const s = getMiningState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const site = mnSites(s, mnActor(ctx)).find((x) => x.id === params.id);
       if (!site) return { ok: false, error: "site not found" };
-      const lat = mnNum(params.lat), lng = mnNum(params.lng);
+      // FIX-mining-008: mnNum converts blank/missing to 0, so an empty
+      // form silently placed the site at 0,0. Coordinates must be
+      // present and finite (an explicit numeric 0 is a real
+      // coordinate and still accepted).
+      if (params.lat == null || params.lat === "" || params.lng == null || params.lng === "") {
+        return { ok: false, error: "lat and lng are required" };
+      }
+      const lat = Number(params.lat), lng = Number(params.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return { ok: false, error: "lat and lng must be numbers" };
       if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return { ok: false, error: "invalid lat/lng" };
       site.lat = lat; site.lng = lng; saveMining();
       return { ok: true, result: { site } };
