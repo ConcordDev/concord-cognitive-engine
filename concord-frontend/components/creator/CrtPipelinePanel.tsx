@@ -5,7 +5,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, ChevronRight, Trash2 } from 'lucide-react';
+import { Loader2, Plus, ChevronRight, Trash2, Lock } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
@@ -132,6 +132,10 @@ export function CrtPipelinePanel({ onChange }: { onChange: () => void }) {
                   <li key={c.id} className="bg-zinc-900 border border-zinc-800 rounded-lg p-2">
                     <p className="text-xs text-zinc-100">{c.title}</p>
                     <p className="text-[10px] text-zinc-400 capitalize">{c.format}{c.platform && ` · ${c.platform}`}{c.scheduledDate ? ` · ${c.scheduledDate.slice(0, 10)}` : ''}</p>
+                    {/* FIX-creator-003: pipeline items are owner-scoped server
+                        state — no other account can read them — but nothing
+                        said so. Label the actual visibility on every card. */}
+                    <p className="mt-1 inline-flex items-center gap-1 text-[9px] uppercase tracking-wide text-zinc-400"><Lock className="w-2.5 h-2.5" /> Private — only you</p>
                     {editingId === c.id ? (
                       <div className="mt-1.5 space-y-1">
                         <input aria-label={`Title for ${c.title}`} value={edit.title} onChange={(e) => setEdit({ ...edit, title: e.target.value })}
