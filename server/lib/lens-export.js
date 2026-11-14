@@ -31,6 +31,22 @@ import { dtuListedOwner } from "./dtu-list-source.js";
 
 const SCAFFOLDING_TYPES = new Set(["domain_action"]);
 
+/**
+ * Lenses verified to keep NO caller store anywhere (GB-1538 premise,
+ * 2026-11-14): lattice presents brain/corpus data and has no domain
+ * store or panel bag; narrative-walk's beats are an authored catalog;
+ * frontier is an engine shell whose engines live in other domains.
+ * For these lenses an empty export means the caller has nothing here —
+ * the export must not claim panel records were excluded (the menu's
+ * state-backed notice is the honest one). The set is named and closed:
+ * a domain joins it only on a verified no-store premise.
+ */
+const NO_STORE_DOMAINS = new Set(["lattice", "narrative-walk", "frontier"]);
+
+export function isNoStoreDomain(domain) {
+  return NO_STORE_DOMAINS.has(domain);
+}
+
 /** A DTU may ride in this lens's export only when it is this domain, or untagged and not another lens's exhaust. */
 export function dtuBelongsInLensExport(dtu, domain, callerId) {
   if (!dtu || typeof dtu !== "object") return false;
@@ -159,6 +175,8 @@ function rowFromRecord(rec, type) {
     title: (typeof rec.title === "string" && rec.title)
       || (typeof rec.name === "string" && rec.name)
       || (typeof rec.label === "string" && rec.label)
+      || (typeof rec.latex === "string" && rec.latex)
+      || (typeof rec.expression === "string" && rec.expression)
       || (rec.id != null ? String(rec.id) : type),
     createdAt: rec.createdAt ?? rec.created_at ?? null,
     updatedAt: rec.updatedAt ?? rec.updated_at ?? rec.createdAt ?? rec.created_at ?? null,
@@ -194,8 +212,37 @@ export function exportCallerLensState(state, domain, ctx, limit = 1000) {
     }
   };
 
+  // GB-1538 / FIX-math-007: some stores key a per-user bucket OBJECT
+  // whose fields are the record lists (mathCAS: userId -> { history:
+  // [entries] }) — one level deeper than a bucket of records. Descend
+  // exactly one level: array and Map fields become record lists under
+  // their field name. A bucket that IS a record keeps the single-record
+  // path above (recordsInBucket), and a bucket whose fields hold no
+  // record lists (workspace panel state, policy maps) yields nothing.
+  const takeBucket = (type, bucket) => {
+    if (!bucket || typeof bucket !== "object" || bucket instanceof Map || Array.isArray(bucket) || isExportRecord(bucket)) {
+      take(type, bucket);
+      return;
+    }
+    for (const [subKey, subVal] of Object.entries(bucket)) {
+      if (rows.length >= cap) return;
+      if (!Array.isArray(subVal) && !(subVal instanceof Map)) continue;
+      // The descended lists hold the store's own entry shape — math
+      // history entries carry no id/title/name, so the record test in
+      // recordsInBucket would refuse the very rows this descent exists
+      // to reach. Any plain object in a descended list is a row; its
+      // fields ride in data, and rowFromRecord shapes the envelope.
+      const items = subVal instanceof Map ? [...subVal.values()] : subVal;
+      for (const item of items) {
+        if (rows.length >= cap) return;
+        if (!item || typeof item !== "object" || Array.isArray(item) || item instanceof Map || item instanceof Set) continue;
+        rows.push(rowFromRecord(item, subKey));
+      }
+    }
+  };
+
   if (bag instanceof Map) {
-    take("record", bag.get(userId));
+    takeBucket("record", bag.get(userId));
     return rows;
   }
 
@@ -203,7 +250,7 @@ export function exportCallerLensState(state, domain, ctx, limit = 1000) {
     if (rows.length >= cap) break;
     if (STRUCTURAL_STATE_KEYS.has(String(key).toLowerCase())) continue;
     if (value instanceof Map) {
-      take(key, value.get(userId));
+      takeBucket(key, value.get(userId));
       continue;
     }
     if (Array.isArray(value)) {
@@ -363,7 +410,7 @@ export async function collectLensExport({ runMacro, domain, ctx, limit = 1000 })
       stateRecords: providerRows.length + stateRows.length,
       ownDtus: dtuRows.length,
     },
-    stateBacked: Boolean(provider) || lensStateBag(globalThis._concordSTATE, domain) != null,
+    stateBacked: Boolean(provider) || lensStateBag(globalThis._concordSTATE, domain) != null || NO_STORE_DOMAINS.has(domain),
     ...(providerError ? { providerError } : {}),
     ...(dtuError ? { dtuError } : {}),
   };

@@ -90,7 +90,8 @@ export default function TransferLensPage() {
         actions={(
           <>
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-            <DTUExportButton domain="transfer" data={realtimeData || {}} compact />
+            {/* FIX-transfer-002: the .dtu export carries the caller’s own lens records — with an empty payload the button loads them itself. The realtime feed is not the user’s data. */}
+            <DTUExportButton domain="transfer" data={{}} compact />
             {realtimeAlerts.length > 0 && (
               <span className="rounded-full bg-yellow-500/10 px-2.5 py-1 text-xs text-yellow-400">
                 {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
