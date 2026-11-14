@@ -2302,3 +2302,19 @@ Stayed OPEN: FIX-auction-007 · FIX-questmarket-007 (delete-confirm present at b
 - FIX-forum-005 — the forum page's hand-rolled FAB kept the frame CTA's pre-fix wide-pill shape; it now collapses to icon-only below sm with the label as its accessible name (frame-parity). `1bfac6d82`; pin tests/forum-mobile-fab.test.tsx.
 
 Stayed OPEN, all traced to the SHARED frame/shell shapes at branch state (the founder-ruled NorthStarFrame (c) tab shape — scrolling strip, shrink-0 whitespace-nowrap buttons, fade cue — and the achievements-004/deities-007 CTA shape — icon collapse below sm, pb-36 root reserve; shared evidence pinned in tests/north-star-frame-mobile-shape.test.tsx `58658a7c3` + tests/north-star-frame-cta.test.tsx 2/2; the 2026-11-09/10 walk predates both landings): FIX-bio-009 · FIX-chem-009 · FIX-diy-008 · FIX-emergency-services-012 (shell chrome leg) · FIX-engineering-007 · FIX-experience-007 · FIX-fashion-013 · FIX-federation-007 · FIX-grounding-002 · FIX-home-improvement-016 · FIX-law-enforcement-005 · FIX-math-005 · FIX-neuro-004 · FIX-news-005 · FIX-organ-006. Per-lens premise detail in the bridge SECTION DONE post; no per-lens fork made, per the founder's mobile ruling.
+
+## Slice-tail — B3 (CB-0557 split / CB-0558 claim) — muse-b3 — 2026-11-14
+21 ids from Slice B5's tail: 11 FIXED_PENDING_VERIFY, 10 stayed OPEN with named verdicts (bridge SECTION DONE post). Rows in audit/fix-list/records/b3.jsonl (70 → 81); fixed_commit cites each fix's landed commit on PR #2356.
+
+- FIX-bio-004 `af64fb9f7` — protein MW from residue masses + water (777.0 Da for MAIVMGR), not length × 110.
+- FIX-chem-006 `19e514416` — element lookup renders uses/history once (summary line removed, facts kept in the header).
+- FIX-defense-010 `33a8bf84f` — threat-name field carries the server's 100-char cap + counter.
+- FIX-anon-004 `c6dd0d813` (+ pin correction `115d7850b`) — Tor flag distribution reads the details document's real flags; the summary payload's f field is the fingerprint.
+- FIX-accounting-012 `9eeac9b20` — dashboard money KPIs cents-accurate, never compacted.
+- FIX-affect-004 `6c74df7d0` — VAD lexicon gains the grounded/settled register.
+- FIX-emergency-services-009 `7338444ef` — dispatched units can go out_of_service (flow + FE mirror + unassign).
+- FIX-calendar-003 `20f906631` — week header + all-day rows share the timed grid's scroll box (sticky wrapper).
+- FIX-astronomy-007 `b80945be7` — labelled loading skeletons for the News/Launches/NASA Live panels.
+- FIX-schema-005 + FIX-temporal-003 `0dfc0d52d` — GitHub-pull error banners gain a Retry control wired to refetch.
+
+Stayed OPEN (named in the bridge post): FIX-bio-006 + FIX-art-009 (cured / not reproducing at head) · FIX-aviation-011 + FIX-accounting-009 + FIX-cri-013 (platform load-error family, priced with the desk's /api/lens/run item) · FIX-agents-016 (lens-local legs not reproducing) · FIX-settings-005 (real 2FA enrolment = desk platform build) · FIX-strategic-adds-002 + FIX-ux-suite-002 (feature builds; deliberate honest states stand) · FIX-cognitive-replay-008 (needs live repro). Nothing marked VERIFIED; Money OFF untouched; #2356 stays draft.
