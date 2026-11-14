@@ -12,6 +12,7 @@ import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, apiHelpers } from '@/lib/api/client';
+import { rawArtUploadQuery, describeArtUploadError } from '@/lib/art/upload';
 import { ArtGenerateFromText } from '@/components/art/ArtGenerateFromText';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUIStore } from '@/store/ui';
@@ -482,23 +483,31 @@ export function ArtMarketDesk({ mode }: { mode: 'gallery' | 'canvas' | 'marketpl
   const handleCanvasSave = useCallback(async () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    // Upload as media with actual image data
+    // FIX-art-003: the canvas PNG used to ride the JSON /api/media/upload
+    // route as a base64 `data` field, but the global sanitizer cuts every
+    // JSON string at 10,000 chars (~7,500 bytes) — so any real drawing
+    // arrived truncated and the endpoint refused it 413 upload_truncated,
+    // while the artist only saw a generic failure toast. The platform's
+    // raw transport (the music/photography pattern) takes the file as the
+    // request body with metadata on the query string: no base64, no cap.
+    let blob: Blob | null = null;
     try {
-      const dataUrl = canvas.toDataURL('image/png');
-      const base64Data = dataUrl.split(',')[1];
-      await api.post('/api/media/upload', {
-        title: canvasTitle || 'Untitled',
-        mediaType: 'image',
-        mimeType: 'image/png',
-        fileSize: Math.ceil(base64Data.length * 0.75),
-        originalFilename: `${canvasTitle.replace(/\s+/g, '-').toLowerCase()}.png`,
-        tags: ['art', 'canvas'],
-        data: base64Data,
-      });
+      blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+      if (!blob) throw new Error('Canvas produced no image data.');
+      const title = canvasTitle || 'Untitled';
+      await api.post(
+        `/api/media/upload-raw?${rawArtUploadQuery({
+          title,
+          filename: `${(canvasTitle || 'untitled').replace(/\s+/g, '-').toLowerCase()}.png`,
+          tags: ['art', 'canvas'],
+        })}`,
+        blob,
+        { headers: { 'Content-Type': 'image/png' }, timeout: 0, maxBodyLength: Infinity },
+      );
       useUIStore.getState().addToast({ type: 'success', message: 'Artwork saved!' });
     } catch (err) {
       console.error('Save failed:', err);
-      useUIStore.getState().addToast({ type: 'error', message: 'Failed to save artwork' });
+      useUIStore.getState().addToast({ type: 'error', message: describeArtUploadError(err, blob ?? undefined) });
     }
   }, [canvasTitle]);
 
