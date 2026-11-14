@@ -7,7 +7,7 @@
 // realm_health     — the ruler's derived labor-symptom surface.
 // my_saga / compose_saga — mint a kind='chronicle' saga DTU from the beats.
 
-import { listEntries, realmHealth, mintSaga } from "../lib/chronicle/chronicle.js";
+import { listEntries, realmHealth, mintSaga, listSagas } from "../lib/chronicle/chronicle.js";
 
 export default function registerChronicleMacros(register) {
   const list = async (ctx, input = {}) => {
@@ -38,9 +38,12 @@ export default function registerChronicleMacros(register) {
     if (!db) return { ok: false, reason: "no_db" };
     const userId = ctx?.actor?.userId;
     if (!userId) return { ok: false, reason: "no_actor" };
+    // GB-1538 genus piece 6: listSagas resolves the kind column the dtus
+    // shape carries (type, or content_type on the runtime shape). The old
+    // fixed `type = 'chronicle'` select threw on runtime-shaped tables
+    // and the catch swallowed it into a permanently empty list.
     try {
-      const sagas = db.prepare(`SELECT id, title, created_at FROM dtus WHERE creator_id = ? AND type = 'chronicle' ORDER BY created_at DESC LIMIT 20`).all(userId);
-      return { ok: true, sagas };
+      return { ok: true, sagas: listSagas(db, userId, 20) };
     } catch { return { ok: true, sagas: [] }; }
   }, { note: "list the player's minted sagas" });
 }

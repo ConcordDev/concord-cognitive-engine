@@ -13,6 +13,45 @@
 import crypto from "node:crypto";
 import { composeEntry } from "./compose.js";
 
+/**
+ * GB-1538 genus piece 6 — the dtus table exists in two shapes (the
+ * migration lineage: type/data/visibility + INTEGER created_at; the
+ * dtu-store runtime shape: content/content_type + TEXT created_at, no
+ * type column at all). The saga mint and list below resolve the columns
+ * the table actually carries instead of assuming one shape — the same
+ * schema-adaptive pattern as the recent-mine factory. Returns a Map of
+ * column name -> declared type.
+ */
+function dtusColumns(db) {
+  const cols = new Map();
+  try {
+    for (const r of db.prepare(`PRAGMA table_info(dtus)`).all()) cols.set(r.name, String(r.type || ""));
+  } catch { /* no dtus table — callers degrade to their empty shape */ }
+  return cols;
+}
+
+/** The column that carries a DTU's kind on this shape, or null. */
+function sagaKindColumn(cols) {
+  if (cols.has("type")) return "type";
+  if (cols.has("content_type")) return "content_type";
+  return null;
+}
+
+/**
+ * List a user's minted saga DTUs on whichever dtus shape the db carries.
+ * With no kind column there is no honest way to identify sagas, so the
+ * list is empty rather than an unfiltered dump of the user's DTUs.
+ */
+export function listSagas(db, userId, limit = 20) {
+  if (!db || !userId) return [];
+  const cols = dtusColumns(db);
+  const kind = sagaKindColumn(cols);
+  if (!kind || !cols.has("creator_id")) return [];
+  return db.prepare(
+    `SELECT id, title, created_at FROM dtus WHERE creator_id = ? AND ${kind} = 'chronicle' ORDER BY created_at DESC LIMIT ?`,
+  ).all(userId, limit);
+}
+
 /** Write a composed entry. Idempotent on (world_id, dedupe_key). */
 export function recordEntry(db, worldId, kind, payload = {}) {
   if (!db || !worldId) return { ok: false, reason: "missing_inputs" };
@@ -126,15 +165,28 @@ export function mintSaga(db, { worldId, userId, title = null, entryLimit = 20 } 
   const sagaTitle = title || `The Chronicle of ${worldId}`;
   const body = entries.map((e) => `• ${e.title}: ${e.body}`).join("\n");
   const dtuId = `chronicle_${crypto.randomUUID()}`;
+  // Schema-adaptive insert (genus piece 6): the old fixed column list
+  // named type/data/visibility, so on the runtime dtus shape both the
+  // full and the fallback insert threw and every mint failed. Build the
+  // row from the columns the table carries: kind marker in type or
+  // content_type, body JSON in data or content, created_at in the
+  // shape's own convention (INTEGER -> unixepoch, otherwise ISO text).
+  const cols = dtusColumns(db);
+  const kind = sagaKindColumn(cols);
+  const values = { id: dtuId, title: sagaTitle, creator_id: userId };
+  if (kind) values[kind] = "chronicle";
+  if (cols.has("data")) values.data = JSON.stringify({ human_summary: body.slice(0, 4000), scope: "personal" });
+  else if (cols.has("content")) values.content = JSON.stringify({ human_summary: body.slice(0, 4000), scope: "personal" });
+  if (cols.has("visibility")) values.visibility = "private";
+  if (cols.has("created_at")) {
+    values.created_at = /INT/i.test(cols.get("created_at")) ? Math.floor(Date.now() / 1000) : new Date().toISOString();
+  }
+  const names = Object.keys(values).filter((k) => cols.has(k));
   try {
-    db.prepare(`
-      INSERT INTO dtus (id, type, title, creator_id, data, visibility, created_at)
-      VALUES (?, 'chronicle', ?, ?, ?, 'private', unixepoch())
-    `).run(dtuId, sagaTitle, userId, JSON.stringify({ human_summary: body.slice(0, 4000), scope: "personal" }));
+    db.prepare(`INSERT INTO dtus (${names.join(", ")}) VALUES (${names.map(() => "?").join(", ")})`)
+      .run(...names.map((k) => values[k]));
   } catch (e) {
-    // dtus column shape varies — best-effort minimal insert.
-    try { db.prepare(`INSERT INTO dtus (id, type, title, creator_id) VALUES (?, 'chronicle', ?, ?)`).run(dtuId, sagaTitle, userId); }
-    catch { return { ok: false, reason: "mint_failed", error: e?.message }; }
+    return { ok: false, reason: "mint_failed", error: e?.message };
   }
   return { ok: true, dtuId, title: sagaTitle, citedEntries: entries.length };
 }
