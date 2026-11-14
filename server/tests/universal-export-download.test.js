@@ -7,8 +7,12 @@ import express from "express";
 import createUniversalExportRouter from "../routes/universal-export.js";
 
 const ROWS = [
-  { id: "a1", type: "craft", title: "Iron sword", createdAt: "t1", updatedAt: "u1", data: {} },
-  { id: "a2", type: "craft", title: 'Oak "bow"', createdAt: "t2", updatedAt: "u2", data: {} },
+  // Owner-stamped with the harness caller (u1): under the owner-scoped
+  // export contract (CB-0588/CB-0594) ownerless rows fall, so unstamped
+  // fixtures would 404 nothing_to_export before the download mechanics
+  // these tests pin are ever reached.
+  { id: "a1", type: "craft", title: "Iron sword", ownerId: "u1", createdAt: "t1", updatedAt: "u1", data: {} },
+  { id: "a2", type: "craft", title: 'Oak "bow"', ownerId: "u1", createdAt: "t2", updatedAt: "u2", data: {} },
 ];
 
 describe("GET /api/lens/:domain/export/download", () => {
@@ -51,8 +55,8 @@ describe("GET /api/lens/:domain/export/download", () => {
 
   it("csv: row data rides as extra columns (the record itself is exported)", async () => {
     rows = [
-      { id: "p1", type: "poem", title: "Ode", createdAt: "t1", updatedAt: "u1", data: { body: "line one\nline two", lines: 2 } },
-      { id: "p2", type: "poem", title: "Haiku", createdAt: "t2", updatedAt: "u2", data: { body: "short", meta: { form: "haiku" } } },
+      { id: "p1", type: "poem", title: "Ode", ownerId: "u1", createdAt: "t1", updatedAt: "u1", data: { body: "line one\nline two", lines: 2 } },
+      { id: "p2", type: "poem", title: "Haiku", ownerId: "u1", createdAt: "t2", updatedAt: "u2", data: { body: "short", meta: { form: "haiku" } } },
     ];
     const res = await fetch(`${base}/api/lens/poetry/export/download?format=csv`);
     assert.equal(res.status, 200);
