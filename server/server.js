@@ -81637,6 +81637,7 @@ function createWorldEntity(input = {}) {
     source: {
       dtuIds: Array.isArray(input.dtuIds) ? input.dtuIds.slice(0, 50) : [],
       extractedFrom: input.extractedFrom || null,
+      extractedBy: input.extractedBy || null,
       createdBy: input.createdBy || "system"
     },
 
@@ -82280,7 +82281,13 @@ function extractEntitiesFromDtu(dtu) {
         salience: 0.3,
         dtuIds: [dtuId],
         extractedFrom: dtuId,
-        createdBy: "auto_extract"
+        // FIX-entity-009: the entity belongs to the DTU's owner —
+        // stamping the literal "auto_extract" made the creating user
+        // a stranger to their own entity (the update/delete ownership
+        // gate refused them). The extractor keeps the provenance in
+        // extractedBy; ownership follows the DTU.
+        extractedBy: "auto_extract",
+        createdBy: dtu.creatorId || dtu.creator_id || dtu.ownerId || dtu.createdBy || "auto_extract"
       });
 
       if (result.ok) extracted.push(result.entity);
