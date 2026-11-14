@@ -100,10 +100,10 @@ describe("bio.sequence-analyze — GC% / Tm / ORFs / protein composition", () =>
     assert.deepEqual(r.result.orfs[0], { frame: 1, start: 0, end: 96, length: 96 });
   });
 
-  it("protein: composition map + average MW (110 Da/aa), no GC/Tm/ORFs", () => {
+  it("protein: composition map + residue-mass MW, no GC/Tm/ORFs", () => {
     const r = call("sequence-analyze", ctxA, { sequence: "MKVL", kind: "protein" });
     assert.equal(r.ok, true);
-    assert.equal(r.result.molecularWeight, 440);  // 4 aa * 110
+    assert.equal(r.result.molecularWeight, 489.7);  // residue masses + water (FIX-bio-004)
     assert.deepEqual(r.result.composition, { M: 1, K: 1, V: 1, L: 1 });
     assert.equal(r.result.gcPercent, undefined);
     assert.equal(r.result.orfs, undefined);

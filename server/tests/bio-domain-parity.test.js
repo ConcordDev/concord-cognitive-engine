@@ -42,7 +42,9 @@ describe("bio — sequence analysis", () => {
     const r = call("sequence-analyze", ctxA, { sequence: "ACDEFGHIKLMNPQRSTVWY", kind: "protein" });
     assert.equal(r.ok, true);
     assert.equal(r.result.length, 20);
-    assert.equal(r.result.molecularWeight, 2200);
+    assert.equal(r.result.molecularWeight, 2395.7); // residue-mass sum + water (FIX-bio-004)
+    const maivmgr = call("sequence-analyze", ctxA, { sequence: "MAIVMGR", kind: "protein" });
+    assert.equal(maivmgr.result.molecularWeight, 777); // the ticket's case: 777.0 Da, not 770
     assert.equal(Object.keys(r.result.composition).length, 20);
   });
 

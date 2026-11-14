@@ -875,7 +875,11 @@ export default function registerBioActions(registerLensAction) {
       const composition = {};
       for (const c of seq) composition[c] = (composition[c] || 0) + 1;
       result.composition = composition;
-      result.molecularWeight = Math.round(seq.length * 110); // average aa MW
+      // Protein MW from average residue masses + one water (FIX-bio-004):
+      // the flat 110 Da/residue estimate read 770 Da for MAIVMGR, whose
+      // residue-sum MW is 777.0 Da.
+      const AA_MASS = { A: 71.08, R: 156.19, N: 114.10, D: 115.09, C: 103.14, E: 129.11, Q: 128.13, G: 57.05, H: 137.14, I: 113.16, L: 113.16, K: 128.17, M: 131.19, F: 147.18, P: 97.12, S: 87.08, T: 101.11, W: 186.21, Y: 163.18, V: 99.13 };
+      result.molecularWeight = Math.round(([...seq].reduce((sum, c) => sum + (AA_MASS[c] || 0), 0) + 18.02) * 10) / 10;
     }
     return { ok: true, result };
     } catch (e) { return handlerFailure(e); }
