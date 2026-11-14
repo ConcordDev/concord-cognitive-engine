@@ -530,7 +530,7 @@ export default function createWorldsRouter({ requireAuth, db, emitToWorld }) {
       if (!dtuId || priceCC == null) return res.status(400).json({ error: "dtuId and priceCC required" });
 
       const { listSkillForSale } = await import("../lib/skill-marketplace.js");
-      const listing = listSkillForSale(req.user.id, dtuId, Number(priceCC), description, db);
+      const listing = listSkillForSale(req.user.id, dtuId, Number(priceCC), description, db, req.body.licenseMode);
       res.status(201).json({ listing });
     } catch (e) {
       res.status(e.status || 500).json({ error: e.message });
@@ -552,6 +552,7 @@ export default function createWorldsRouter({ requireAuth, db, emitToWorld }) {
         req.user.id, listingId,
         { worldId, worldName: world?.name },
         db, selectBrain,
+        { idempotencyKey: req.body.idempotencyKey },
       );
       res.json(result);
     } catch (e) {
