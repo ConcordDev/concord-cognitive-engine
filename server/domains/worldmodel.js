@@ -615,6 +615,16 @@ export default function registerWorldmodelActions(registerLensAction) {
       });
 
       const totalSwing = Number((cf.total - base.total).toFixed(4));
+      // FIX-worldmodel-006: when the two sides are configured the same
+      // (the walker's case: growth 0 on both), the trajectories are
+      // identical and "no net difference" reads as a broken compare.
+      // Say WHY there is no difference and what to change — a real
+      // tie between differently-configured scenarios gets no hint.
+      const baseGrowth = clamp(baseCfg.growth, -0.5, 0.5, 0.05);
+      const cfGrowth = clamp(cfCfg.growth, -0.5, 0.5, 0.05);
+      const sameConfig = baseGrowth === cfGrowth
+        && JSON.stringify(baseCfg.shocks || []) === JSON.stringify(cfCfg.shocks || []);
+      const identical = delta.every((row) => Object.entries(row).every(([k, v]) => k === "step" || v === 0));
       return {
         ok: true,
         result: {
@@ -629,6 +639,9 @@ export default function registerWorldmodelActions(registerLensAction) {
             : totalSwing < 0
               ? "counterfactual underperforms baseline"
               : "no net difference",
+          hint: sameConfig && identical
+            ? `Both scenarios are configured the same (growth ${baseGrowth} on both sides, no differing shocks), so there is nothing to compare yet — set a different growth rate on one side to see a difference.`
+            : null,
         },
       };
     } catch (err) {
