@@ -544,7 +544,16 @@ export default function registerLogisticsActions(registerLensAction) {
   registerLensAction("logistics", "shipments-list", (ctx, _artifact, _params = {}) => {
     const state = getLogState(); if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
-    return { ok: true, result: { shipments: state.shipments.get(userId) || [] } };
+    return {
+      ok: true,
+      result: {
+        shipments: state.shipments.get(userId) || [],
+        // Whether live tracking can run at all on this server, so the
+        // tracker panel can say so up front instead of swallowing the
+        // shipment-track refusal after submit (FIX-logistics-012).
+        trackingConfigured: Boolean(process.env.SHIPENGINE_API_KEY || process.env.EASYPOST_API_KEY),
+      },
+    };
   });
 
   /**
@@ -552,9 +561,8 @@ export default function registerLogisticsActions(registerLensAction) {
    * be real" directive: queries the carrier's tracking API directly
    * via the unified ShipEngine / EasyPost broker, no synthesized
    * status grid. Requires SHIPENGINE_API_KEY or EASYPOST_API_KEY for
-   * multi-carrier coverage (UPS/FedEx/USPS/DHL). Free per-carrier
-   * fallback for USPS Tracking Web Tools (USPS_TRACKING_USERID) is
-   * also supported.
+   * multi-carrier coverage (UPS/FedEx/USPS/DHL); without one the
+   * action refuses honestly and the panel says so up front.
    */
   registerLensAction("logistics", "shipment-track", async (ctx, _artifact, params = {}) => {
     const state = getLogState(); if (!state) return { ok: false, error: "STATE unavailable" };
@@ -567,7 +575,10 @@ export default function registerLogisticsActions(registerLensAction) {
     if (!apiKey) {
       return {
         ok: false,
-        error: "Live shipment tracking requires SHIPENGINE_API_KEY or EASYPOST_API_KEY. Concord does not synthesize tracking status. (Free per-carrier fallback: USPS_TRACKING_USERID for USPS-only.)",
+        // The old text advertised a USPS_TRACKING_USERID fallback that
+        // no code path implements — the refusal fired even with it set.
+        // The copy now states only what is true (FIX-logistics-012).
+        error: "Live shipment tracking is not configured on this server — it requires SHIPENGINE_API_KEY or EASYPOST_API_KEY, and Concord does not synthesize tracking status.",
         meta: { trackingNumber, carrier },
       };
     }
