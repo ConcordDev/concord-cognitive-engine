@@ -18889,6 +18889,19 @@ register("metalearning", "list_curricula", (ctx, _input = {}) => {
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
+register("metalearning", "delete_curriculum", (ctx, input = {}) => {
+  try {
+  enforceEthosInvariant("metalearning_curriculum_delete");
+  ensureMetaLearningSystem();
+  const curriculumId = String(input.curriculumId || "");
+  const idx = ctx.state.metaLearning.curriculum.findIndex(c => c.id === curriculumId);
+  if (idx === -1) return { ok: false, error: "Curriculum not found" };
+  const [removed] = ctx.state.metaLearning.curriculum.splice(idx, 1);
+  saveStateDebounced();
+  return { ok: true, deleted: curriculumId, topic: removed.topic };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+}, { public: false });
+
 register("metalearning", "adaptations", (ctx, _input = {}) => {
   try {
   enforceEthosInvariant("metalearning_adaptations");
