@@ -517,12 +517,14 @@ export async function runConstantTimeDetector({ root, opts = {} } = {}) {
     const files = await walk(scanDir, EXTS);
     const findings = [];
     let scanned = 0;
+    let skipped = 0;
+    let unreadable = 0;
 
     for (const f of files) {
       const rel = relPath(root, f);
-      if (SKIP_FILES.some((re) => re.test(rel))) continue;
+      if (SKIP_FILES.some((re) => re.test(rel))) { skipped++; continue; }
       const content = await readSafe(f);
-      if (!content) continue;
+      if (!content) { unreadable++; continue; }
       scanned++;
       const ext = EXTS.find((e) => f.endsWith(e)) || ".js";
       let fileFindings;
@@ -538,13 +540,26 @@ export async function runConstantTimeDetector({ root, opts = {} } = {}) {
       if (findings.length >= MAX_FINDINGS) break;
     }
 
+    // FIX-frontier-007: account for EVERY candidate file in the
+    // summary. The old "Scanned X of Y" lumped three different things
+    // into the gap — files excluded by design (test/spec, fixtures,
+    // this suite's own sources), files that could not be read, and
+    // files never reached because the findings cap stopped the scan —
+    // so a complete run at ~51% "coverage" and a genuinely partial
+    // run read identically, and "flagged 0" looked like a clean bill.
+    const accounted = scanned + skipped + unreadable;
+    const capped = findings.length >= MAX_FINDINGS && accounted < files.length;
+    const coverageNotes = [];
+    if (skipped > 0) coverageNotes.push(`${skipped} candidate(s) excluded by design (test/spec files, test fixtures, the detector suite's own sources)`);
+    if (unreadable > 0) coverageNotes.push(`${unreadable} candidate(s) unreadable or empty`);
+    if (capped) coverageNotes.push(`PARTIAL COVERAGE: the scan stopped at the ${MAX_FINDINGS}-finding cap with ${files.length - accounted} candidate file(s) never scanned — a low count here is incomplete, not clean`);
     findings.unshift({
       id: "constant_time_summary",
       severity: "info",
       kind: "static",
       category: "timing-side-channel",
-      message: `Scanned ${scanned} of ${files.length} candidate file(s) under ${SCAN_ROOT}/; flagged ${findings.length} secret-dependent-flow pattern(s). See this detector's module header for the honest scope boundary — a clean file means "no pattern matched by these rules," not "constant-time."`,
-      evidence: { scanned, totalFiles: files.length },
+      message: `Scanned ${scanned} of ${files.length} candidate file(s) under ${SCAN_ROOT}/; flagged ${findings.length} secret-dependent-flow pattern(s).${coverageNotes.length ? ` Coverage: ${coverageNotes.join("; ")}.` : ""} See this detector's module header for the honest scope boundary — a clean file means "no pattern matched by these rules," not "constant-time."`,
+      evidence: { scanned, totalFiles: files.length, skipped, unreadable, capped },
     });
 
     return makeReport("constant-time", findings, t0);
