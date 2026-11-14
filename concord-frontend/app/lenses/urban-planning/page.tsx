@@ -185,7 +185,8 @@ export default function UrbanPlanningLensPage() {
         actions={(
           <>
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-            <DTUExportButton domain="urban-planning" data={counts ?? {}} compact />
+            {/* FIX-urban-planning-005: the .dtu export carries the caller's own lens records — with an empty payload the button loads them itself. The dashboard counts are not the user's data. */}
+            <DTUExportButton domain="urban-planning" data={{}} compact />
           </>
         )}
         tabs={MODE_TABS.map((t) => ({ id: t.key, label: t.label, icon: t.icon, keys: t.keys, hint: t.hint }))}
