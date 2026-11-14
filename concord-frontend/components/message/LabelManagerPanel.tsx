@@ -131,6 +131,9 @@ export function LabelManagerPanel({ className }: { className?: string }) {
           {creating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />} Add
         </button>
       </form>
+      {!name.trim() && !creating && (
+        <p className="mt-2 text-[11px] text-zinc-400">Type a label name to add it.</p>
+      )}
     </div>
   );
 }

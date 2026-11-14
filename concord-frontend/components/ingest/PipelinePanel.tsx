@@ -451,6 +451,15 @@ function SchedulesTab({
   const [cadence, setCadence] = useState('daily');
   const [mode, setMode] = useState<'incremental' | 'full'>('incremental');
 
+  // FIX-ingest-004: the inline New Sync Schedule form had no way to
+  // dismiss it — no Cancel, and Escape did nothing. Cancel (and Escape
+  // while the form has focus) now reset it to its defaults.
+  const resetScheduleForm = () => {
+    setConnId('');
+    setCadence('daily');
+    setMode('incremental');
+  };
+
   const create = async () => {
     if (!connId) return flash('err', 'Pick a connection first');
     setBusy(true);
@@ -489,7 +498,10 @@ function SchedulesTab({
 
   return (
     <div className="space-y-4">
-      <div className="p-4 rounded-lg bg-black/40 border border-white/10 space-y-3">
+      <div
+        className="p-4 rounded-lg bg-black/40 border border-white/10 space-y-3"
+        onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); resetScheduleForm(); } }}
+      >
         <h3 className="text-sm font-semibold text-white">New Sync Schedule</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <select
@@ -521,14 +533,24 @@ function SchedulesTab({
             <option value="full">full refresh</option>
           </select>
         </div>
-        <button
-          onClick={create}
-          disabled={busy}
-          className="px-4 py-2 bg-neon-cyan/20 border border-neon-cyan/40 rounded-lg text-xs font-medium text-neon-cyan hover:bg-neon-cyan/30 disabled:opacity-40 flex items-center gap-1.5"
-        >
-          {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-          Create Schedule
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={create}
+            disabled={busy}
+            className="px-4 py-2 bg-neon-cyan/20 border border-neon-cyan/40 rounded-lg text-xs font-medium text-neon-cyan hover:bg-neon-cyan/30 disabled:opacity-40 flex items-center gap-1.5"
+          >
+            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+            Create Schedule
+          </button>
+          <button
+            type="button"
+            onClick={resetScheduleForm}
+            disabled={busy}
+            className="px-3 py-2 rounded-lg border border-white/10 text-xs text-gray-300 hover:bg-white/5 disabled:opacity-40"
+          >
+            Cancel
+          </button>
+        </div>
       </div>
 
       <div className="space-y-2">

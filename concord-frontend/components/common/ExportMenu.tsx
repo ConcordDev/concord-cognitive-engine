@@ -187,6 +187,21 @@ export function ExportMenu({ domain }: ExportMenuProps) {
     }
   };
 
+  // FIX-engineering-015 (menu leg): ArrowDown / ArrowUp move between the
+  // menu's options — the menu opened with no keyboard travel at all.
+  const onMenuKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    const items = [...e.currentTarget.querySelectorAll<HTMLButtonElement>('button:not([disabled])')]
+      .filter((b) => !b.classList.contains('sr-only'));
+    if (!items.length) return;
+    e.preventDefault();
+    const idx = items.indexOf(document.activeElement as HTMLButtonElement);
+    const next = e.key === 'ArrowDown'
+      ? items[(idx + 1) % items.length]
+      : items[(idx - 1 + items.length) % items.length];
+    next?.focus();
+  };
+
   const options = domain === 'conkay'
     ? [
         { id: 'json', label: 'Export as JSON', icon: FileJson, desc: 'Saved models and the current study' },
@@ -218,6 +233,7 @@ export function ExportMenu({ domain }: ExportMenuProps) {
             role="dialog"
             aria-modal="true"
             aria-label="Export"
+            onKeyDown={onMenuKeyDown}
             className="absolute right-0 top-full mt-1 w-56 bg-lattice-bg border border-lattice-border rounded-xl shadow-2xl overflow-hidden z-50"
           >
             <div className="p-1">

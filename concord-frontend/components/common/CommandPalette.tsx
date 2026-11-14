@@ -465,6 +465,24 @@ export function CommandPalette({ isOpen: isOpenProp, onClose }: CommandPalettePr
 
   // ── Focus input when opened, reset state ────────────────────
 
+  // FIX-engineering-015 / FIX-ingest-005 (shared palette leg): closing
+  // the palette used to drop focus to the page root — the input unmounts
+  // and nothing hands focus back to the control the user was on. Capture
+  // the focused element as the palette opens and restore it on close.
+  const prevFocusRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (isOpen) {
+      const a = document.activeElement;
+      if (a instanceof HTMLElement && a !== document.body && !inputRef.current?.contains(a)) {
+        prevFocusRef.current = a;
+      }
+    } else if (prevFocusRef.current) {
+      const target = prevFocusRef.current;
+      prevFocusRef.current = null;
+      requestAnimationFrame(() => { if (target.isConnected) target.focus(); });
+    }
+  }, [isOpen]);
+
   useEffect(() => {
     if (isOpen) {
       setQuery('');
