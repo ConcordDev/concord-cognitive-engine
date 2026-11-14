@@ -100,6 +100,7 @@ export default function GhostTrackerPage() {
   const [driftTypes, setDriftTypes] = useState<string[]>([]);
   const [severities, setSeverities] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [residuesError, setResiduesError] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [severityFilter, setSeverityFilter] = useState<string>('');
   const [typeFilter, setTypeFilter] = useState<string>('');
@@ -149,11 +150,21 @@ export default function GhostTrackerPage() {
     })
       .then((r) => {
         if (cancelled) return;
-        setResidues(r.data.result?.residues ?? []);
-        setDriftTypes(r.data.result?.driftTypes ?? []);
-        setSeverities(r.data.result?.severities ?? []);
+        // FIX-ghost-tracker-001: a failed read (ok:false — e.g. the residue
+        // substrate unavailable on the serving backend) is an ERROR state,
+        // not an empty world. The empty state below is reserved for a read
+        // that succeeded and found nothing.
+        if (r.data.result?.ok) {
+          setResidues(r.data.result.residues ?? []);
+          setDriftTypes(r.data.result.driftTypes ?? []);
+          setSeverities(r.data.result.severities ?? []);
+          setResiduesError(false);
+        } else {
+          setResidues([]);
+          setResiduesError(true);
+        }
       })
-      .catch(() => { if (!cancelled) setResidues([]); })
+      .catch(() => { if (!cancelled) { setResidues([]); setResiduesError(true); } })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [severityFilter, typeFilter, sort, refreshKey]);
@@ -233,7 +244,12 @@ export default function GhostTrackerPage() {
           {/* residue list */}
             <div className="lg:col-span-2">
               {loading && <p className="text-gray-400">Loading residues…</p>}
-              {!loading && residues.length === 0 && (
+              {!loading && residuesError && (
+                <div className="rounded border border-rose-400/30 bg-rose-950/30 p-6 text-center text-rose-200">
+                  Residues could not be read just now — the world state is unavailable on the server. Scan again in a moment.
+                </div>
+              )}
+              {!loading && !residuesError && residues.length === 0 && (
                 <div className="rounded border border-white/10 bg-white/5 p-6 text-center text-gray-400">
                   No spectral residues match. The world reads true.
                 </div>

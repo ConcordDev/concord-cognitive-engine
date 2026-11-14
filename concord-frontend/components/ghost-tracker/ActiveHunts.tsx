@@ -41,17 +41,29 @@ export function ActiveHunts({
   const [stages, setStages] = useState<string[]>(['track', 'investigate', 'confront', 'extinguished']);
   const [loading, setLoading] = useState(true);
 
+  const [loadError, setLoadError] = useState(false);
+
   const load = useCallback(async () => {
     setLoading(true);
-    const r = await lensRun<ProgressResult>('ghost-hunt', 'progress', {});
-    setHunts(r.data.result?.hunts ?? []);
-    if (r.data.result?.stages) setStages(r.data.result.stages);
-    setLoading(false);
+    // FIX-ghost-tracker-001: a rejected call used to strand "Loading hunts…"
+    // forever — the await threw before setLoading(false) could run.
+    try {
+      const r = await lensRun<ProgressResult>('ghost-hunt', 'progress', {});
+      setHunts(r.data.result?.hunts ?? []);
+      if (r.data.result?.stages) setStages(r.data.result.stages);
+      setLoadError(false);
+    } catch {
+      setHunts([]);
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { load(); }, [load, refreshKey]);
 
   if (loading) return <p className="text-xs text-gray-400">Loading hunts…</p>;
+  if (loadError) return <p className="text-xs text-rose-300">Active hunts could not be loaded just now.</p>;
   if (hunts.length === 0) {
     return <p className="text-xs text-gray-400">No hunts in progress. Investigate a residue to begin one.</p>;
   }

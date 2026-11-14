@@ -43,12 +43,24 @@ export function ConfrontHistory({ refreshKey }: { refreshKey: number }) {
   const [summary, setSummary] = useState<HistorySummary | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const [loadError, setLoadError] = useState(false);
+
   const load = useCallback(async () => {
     setLoading(true);
-    const r = await lensRun<HistoryResult>('ghost-hunt', 'history', { limit: 50 });
-    setHistory(r.data.result?.history ?? []);
-    setSummary(r.data.result?.summary ?? null);
-    setLoading(false);
+    // FIX-ghost-tracker-001: same stranded-spinner shape as ActiveHunts —
+    // a rejected call never reached setLoading(false).
+    try {
+      const r = await lensRun<HistoryResult>('ghost-hunt', 'history', { limit: 50 });
+      setHistory(r.data.result?.history ?? []);
+      setSummary(r.data.result?.summary ?? null);
+      setLoadError(false);
+    } catch {
+      setHistory([]);
+      setSummary(null);
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { load(); }, [load, refreshKey]);
@@ -57,6 +69,7 @@ export function ConfrontHistory({ refreshKey }: { refreshKey: number }) {
     <div>
       <h3 className="mb-2 text-xs uppercase tracking-wide text-violet-400">Confront history</h3>
       {loading && <p className="text-xs text-gray-400">Loading history…</p>}
+      {!loading && loadError && <p className="text-xs text-rose-300">Confront history could not be loaded just now.</p>}
       {!loading && summary && (
         <div className="mb-3 grid grid-cols-4 gap-2">
           <Stat label="Wins" value={summary.wins} tone="text-emerald-300" />

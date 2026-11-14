@@ -129,12 +129,22 @@ function parseContext(row) {
 }
 
 function loadResidueRow(db, residueId) {
-  try {
-    return db.prepare(`
-      SELECT id, drift_type, severity, signature, context_json, detected_at
-        FROM drift_alerts WHERE id = ?
-    `).get(residueId) || null;
-  } catch { return null; }
+  // FIX-ghost-tracker-001: a query error must NOT read as "no such residue".
+  // This used to swallow every error into null, so an unreadable substrate
+  // (e.g. the drift_alerts table absent on the serving DB) made detail /
+  // confront / create report residue_not_found for residues never looked
+  // up. Errors now propagate to the callers' catches, which name them.
+  return db.prepare(`
+    SELECT id, drift_type, severity, signature, context_json, detected_at
+      FROM drift_alerts WHERE id = ?
+  `).get(residueId) || null;
+}
+
+// FIX-ghost-tracker-001: a missing substrate table is a serving-state fact
+// with its own name, so the lens can say the world state could not be read
+// instead of presenting an empty world or a false not-found.
+function substrateReason(err, fallback) {
+  return /no such table/i.test(String(err?.message || err)) ? "substrate_unavailable" : fallback;
 }
 
 export default function registerGhostHuntMacros(register) {
@@ -193,7 +203,7 @@ export default function registerGhostHuntMacros(register) {
         severities: Object.keys(SEVERITY_WEIGHT),
       };
     } catch (err) {
-      return { ok: false, reason: "query_failed", err: String(err?.message || err) };
+      return { ok: false, reason: substrateReason(err, "query_failed"), err: String(err?.message || err) };
     }
   }, { note: "List + filter + sort spectral drift residues for the ghost-tracker lens." });
 
@@ -232,7 +242,7 @@ export default function registerGhostHuntMacros(register) {
         stages: HUNT_STAGES,
       };
     } catch (err) {
-      return { ok: false, reason: "detail_failed", err: String(err?.message || err) };
+      return { ok: false, reason: substrateReason(err, "detail_failed"), err: String(err?.message || err) };
     }
   }, { note: "Full residue detail — context, investigation hints, map placement." });
 
@@ -400,7 +410,7 @@ export default function registerGhostHuntMacros(register) {
         rank: { wins: rank.wins, losses: rank.losses, xp: rank.xp, essence: rank.essence },
       };
     } catch (err) {
-      return { ok: false, reason: "confront_failed", err: String(err?.message || err) };
+      return { ok: false, reason: substrateReason(err, "confront_failed"), err: String(err?.message || err) };
     }
   }, { note: "Confront a residue — resolves win/loss, awards rewards, records outcome." });
 
@@ -542,7 +552,7 @@ export default function registerGhostHuntMacros(register) {
         dossier: body,
       };
     } catch (err) {
-      return { ok: false, reason: "create_failed", err: String(err?.message || err) };
+      return { ok: false, reason: substrateReason(err, "create_failed"), err: String(err?.message || err) };
     }
   }, { note: "Mint a Spectral Dossier DTU from a confronted residue — the lens's persistent artifact." });
 

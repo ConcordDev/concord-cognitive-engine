@@ -35,16 +35,24 @@ export function FmCommunitiesPanel({
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const r = await lensRun('forum', 'subforum-list', {});
-    if (r.data?.ok === false) {
-      setLoadError(r.data?.error || 'Could not load communities.');
+    // FIX-forum-003: a REJECTED first call (a non-2xx from lens/run throws
+    // in the api client) used to strand the spinner forever — the awaits
+    // below never ran. The list now always resolves: data, an error in
+    // words, or the empty state.
+    try {
+      const r = await lensRun('forum', 'subforum-list', {});
+      if (r.data?.ok === false) {
+        setLoadError(r.data?.error || 'Could not load communities.');
+        return;
+      }
+      setLoadError(null);
+      setSubforums(r.data?.result?.subforums || []);
+      onChange();
+    } catch {
+      setLoadError('Could not load communities.');
+    } finally {
       setLoading(false);
-      return;
     }
-    setLoadError(null);
-    setSubforums(r.data?.result?.subforums || []);
-    setLoading(false);
-    onChange();
   }, [onChange]);
 
   useEffect(() => { void refresh(); }, [refresh]);
