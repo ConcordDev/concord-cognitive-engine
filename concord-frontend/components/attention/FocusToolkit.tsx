@@ -15,6 +15,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { BOUNDS } from '@/lib/bounds';
 import { calendarDateKey } from '@/lib/calendar-date';
 import { ChartKit } from '@/components/viz';
 import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
@@ -96,6 +97,7 @@ export function FocusToolkit() {
   const [taskName, setTaskName] = useState('');
   const [taskStart, setTaskStart] = useState('540');
   const [taskDuration, setTaskDuration] = useState('60');
+  const [planError, setPlanError] = useState('');
   // ── distractions ──
   const [distractions, setDistractions] = useState<DistractionSummary | null>(null);
   const [dxSource, setDxSource] = useState('');
@@ -210,10 +212,20 @@ export function FocusToolkit() {
   // ── planner actions ──
   const addPlannerTask = async () => {
     if (!taskName.trim()) return;
+    // GB-1539 (FIX-attention-002 / FIX-strategic-adds-008): the typed
+    // duration is validated against the policy before submit — the
+    // input's min/max attributes alone let -1 and 999999 through to a
+    // silent server clamp. The refusal message shows inline instead.
+    const dur = Number(taskDuration);
+    if (!Number.isFinite(dur) || dur < 1 || dur > 720) {
+      setPlanError('Duration must be between 1 and 720 minutes.');
+      return;
+    }
+    setPlanError('');
     setBusy('plan-add');
     await run('plannerAddTask', {
       date: planDate, name: taskName.trim(),
-      startMinute: Number(taskStart), durationMinutes: Number(taskDuration),
+      startMinute: Number(taskStart), durationMinutes: dur,
     });
     setTaskName('');
     await refreshPlanner();
@@ -449,7 +461,7 @@ export function FocusToolkit() {
           )}
         </div>
         <div className="mb-3 flex flex-wrap items-end gap-2">
-          <input value={taskName} onChange={(e) => setTaskName(e.target.value)} placeholder="Task name" className="input-lattice flex-1" style={{ minWidth: 140 }} />
+          <input value={taskName} onChange={(e) => setTaskName(e.target.value)} placeholder="Task name" maxLength={BOUNDS.TITLE} className="input-lattice flex-1" style={{ minWidth: 140 }} />
           <label className="flex flex-col gap-1 text-[10px] text-gray-400">
             Start
             <input type="time" value={minToHHMM(Number(taskStart))} onChange={(e) => { const [h, m] = e.target.value.split(':'); setTaskStart(String(Number(h) * 60 + Number(m))); }} className="input-lattice" />
@@ -462,6 +474,8 @@ export function FocusToolkit() {
             <Plus className="h-3.5 w-3.5" /> Add
           </button>
         </div>
+        {!taskName.trim() && <p className="mb-2 text-xs text-gray-500">Name the task to add it.</p>}
+        {planError && <p role="alert" className="mb-2 text-xs text-red-400">{planError}</p>}
         <div className="space-y-1.5">
           {(day?.tasks ?? []).map((t) => (
             <div key={t.id} className={`flex items-center gap-2 rounded-lg border px-3 py-2 ${t.done ? 'border-zinc-800 bg-zinc-900/40 opacity-60' : 'border-zinc-800 bg-zinc-950'}`}>

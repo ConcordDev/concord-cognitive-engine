@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { Truck, Radio, Activity, ListChecks, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
+import { BOUNDS, numberInBounds } from '@/lib/bounds';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
@@ -85,6 +86,17 @@ export function EmergencyServicesActionPanel() {
     const distanceKm = parseFloat(dispatchDistance);
     if (!dispatchIncident.trim() || !dispatchUnit.trim() || !Number.isFinite(priority) || !Number.isFinite(distanceKm)) {
       err('Incident, priority, unit, and distance are required.');
+      return;
+    }
+    // GB-1539 (FIX-emergency-services-003): typed values past the
+    // inputs' min/max attributes submit anyway — the policy guard
+    // refuses them here with the limit named, mirroring the server.
+    if (priority < 1 || priority > 5) {
+      err('Priority must be between 1 and 5.');
+      return;
+    }
+    if (!numberInBounds(distanceKm, BOUNDS.QUANTITY_MAX)) {
+      err(`Distance must be between 0 and ${BOUNDS.QUANTITY_MAX} km.`);
       return;
     }
     try {

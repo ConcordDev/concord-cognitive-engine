@@ -19,6 +19,7 @@ import {
   Loader2, Check, Crosshair, Plus, RefreshCw, Activity, ArrowRight,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { BOUNDS } from '@/lib/bounds';
 import { LimitationNotice } from '@/components/lens/LimitationNotice';
 import { MapView, TimelineView } from '@/components/viz';
 import type { MapMarker, TimelineEvent } from '@/components/viz';
@@ -519,7 +520,7 @@ export function CADConsole() {
           </p>
           <input
             value={iSummary} onChange={(e) => setISummary(e.target.value)}
-            placeholder="Incident summary"
+            placeholder="Incident summary" maxLength={BOUNDS.TITLE}
             className="w-full rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white"
           />
           <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">

@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useLensTool } from '@/lib/lens-dock';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
+import { BOUNDS } from '@/lib/bounds';
 import { useUIStore } from '@/store/ui';
 import { Plus, X, Send, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -171,6 +172,11 @@ function QuickCapture({ domain }: QuickCaptureProps) {
                 <textarea
                   ref={inputRef}
                   placeholder="Capture your thought..."
+                  // GB-1539 (FIX-ux-suite-008): a capture is NOTE class
+                  // (5,000) — the field now bounds at the policy limit
+                  // with a live counter instead of saving 5,001 chars
+                  // silently into a server refusal.
+                  maxLength={BOUNDS.NOTE}
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   onKeyDown={(e) => {
@@ -186,6 +192,7 @@ function QuickCapture({ domain }: QuickCaptureProps) {
                 {/* Footer */}
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-gray-400">Ctrl+Enter to save</span>
+                  <span className="text-xs text-gray-500">{content.length} / {BOUNDS.NOTE}</span>
                   <button
                     onClick={handleSubmit}
                     disabled={!content.trim() || createMutation.isPending}

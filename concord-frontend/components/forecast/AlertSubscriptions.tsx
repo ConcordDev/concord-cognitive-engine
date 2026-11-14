@@ -22,6 +22,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Radio, BellRing } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { BOUNDS } from '@/lib/bounds';
 import { useSocket } from '@/hooks/useSocket';
 import { useUIStore } from '@/store/ui';
 
@@ -204,6 +205,7 @@ export function AlertSubscriptions({ worldId }: { worldId: string }) {
               <input
                 type="text"
                 value={weatherKinds}
+                maxLength={BOUNDS.TITLE}
                 onChange={(e) => setWeatherKinds(e.target.value)}
                 placeholder="storm, snow, fog"
                 className="mt-1 w-full rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-100"

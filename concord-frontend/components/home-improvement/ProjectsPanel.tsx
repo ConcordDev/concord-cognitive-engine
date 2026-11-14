@@ -10,6 +10,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { lensRun } from '@/lib/api/client';
+import { BOUNDS } from '@/lib/bounds';
 import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import {
   Hammer, Plus, Search, Trash2, DollarSign,
@@ -198,13 +199,13 @@ export function ProjectsPanel() {
           >
             <h3 className="font-semibold">New Home Project</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input value={newProject.name} onChange={e => setNewProject(p => ({ ...p, name: e.target.value }))} placeholder="Project name..." className="input-lattice" />
+              <input value={newProject.name} maxLength={BOUNDS.TITLE} onChange={e => setNewProject(p => ({ ...p, name: e.target.value }))} placeholder="Project name..." className="input-lattice" />
               <select value={newProject.room} onChange={e => setNewProject(p => ({ ...p, room: e.target.value }))} className="input-lattice">
                 {ROOM_OPTIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
               </select>
-              <input type="number" min={0} value={newProject.budget || ''} onChange={e => setNewProject(p => ({ ...p, budget: Number(e.target.value) }))} placeholder="Budget..." className="input-lattice" />
+              <input type="number" min={0} max={BOUNDS.MONEY_MAX} value={newProject.budget || ''} onChange={e => setNewProject(p => ({ ...p, budget: Number(e.target.value) }))} placeholder="Budget..." className="input-lattice" />
               {Number(newProject.budget) < 0 ? <span role="note" className="col-span-full text-xs text-rose-300">Budget can&apos;t be negative.</span> : Number(newProject.budget) > MAX_MONEY && <span role="note" className="col-span-full text-xs text-rose-300">Budget must be ${MAX_MONEY.toLocaleString()} or less.</span>}
-              <input value={newProject.notes} onChange={e => setNewProject(p => ({ ...p, notes: e.target.value }))} placeholder="Notes (optional)..." className="input-lattice" />
+              <input value={newProject.notes} maxLength={BOUNDS.NOTE} onChange={e => setNewProject(p => ({ ...p, notes: e.target.value }))} placeholder="Notes (optional)..." className="input-lattice" />
             </div>
             <button onClick={createProject} disabled={busy || !newProject.name.trim() || moneyOutOfRange(newProject.budget)} className="btn-neon green w-full focus:outline-none focus:ring-2 focus:ring-amber-500">
               {busy ? 'Creating...' : 'Create Project'}

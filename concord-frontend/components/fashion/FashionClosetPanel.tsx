@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Trash2, Repeat, Scissors, Eye, Shirt, Pencil } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { BOUNDS } from '@/lib/bounds';
 import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
@@ -187,7 +188,7 @@ export function FashionClosetPanel({ onChange }: { onChange: () => void }) {
 
       {showAdd && (
         <div className="grid grid-cols-3 gap-2 bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
-          <input placeholder="Item name" maxLength={120} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+          <input placeholder="Item name" maxLength={BOUNDS.TITLE} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
             className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
@@ -262,7 +263,7 @@ export function FashionClosetPanel({ onChange }: { onChange: () => void }) {
               </div>
               {editingId === i.id && (
                 <div className="mt-2 grid grid-cols-2 gap-1.5">
-                  <input aria-label={`Name for ${i.name}`} value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  <input aria-label={`Name for ${i.name}`} maxLength={BOUNDS.TITLE} value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                     className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-xs text-zinc-100" />
                   <select aria-label={`Category for ${i.name}`} value={editForm.category} onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
                     className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-xs text-zinc-100">

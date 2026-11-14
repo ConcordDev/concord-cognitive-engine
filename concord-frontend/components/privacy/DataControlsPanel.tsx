@@ -16,6 +16,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, lensRun } from '@/lib/api/client';
+import { BOUNDS } from '@/lib/bounds';
 import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { TimelineView, TreeDiagram } from '@/components/viz';
 import type { TimelineEvent, TreeNode } from '@/components/viz';
@@ -263,7 +264,7 @@ function DsarSection() {
           value={note}
           onChange={(e) => setNote(e.target.value)}
           placeholder="Describe the request…"
-          maxLength={1000}
+          maxLength={BOUNDS.NOTE}
           className="flex-1 min-w-[180px] bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white placeholder:text-gray-400"
         />
         <button

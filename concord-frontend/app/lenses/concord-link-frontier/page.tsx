@@ -17,6 +17,7 @@ import { LensShell } from '@/components/lens/LensShell';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
 import { lensRun } from '@/lib/api/client';
+import { BOUNDS } from '@/lib/bounds';
 import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { CrossWorldFeed } from '@/components/concord-link-frontier/CrossWorldFeed';
 
@@ -398,6 +399,7 @@ export default function ConcordLinkFrontierPage() {
               <input
                 data-testid="clf-name"
                 value={name}
+                maxLength={BOUNDS.TITLE}
                 onChange={(event) => setName(event.target.value)}
                 className="mt-1 w-full border-b border-white/15 bg-transparent pb-2 font-vault text-[1.25rem] text-zinc-100 outline-none"
                 autoFocus
@@ -410,6 +412,7 @@ export default function ConcordLinkFrontierPage() {
               <input
                 data-testid="clf-rename-input"
                 value={rename}
+                maxLength={BOUNDS.TITLE}
                 onChange={(event) => setRename(event.target.value)}
                 className="mt-1 w-full border-b border-white/15 bg-transparent pb-2 text-[15px] text-zinc-100 outline-none"
                 autoFocus

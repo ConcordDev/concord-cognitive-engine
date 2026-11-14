@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
+import { BOUNDS } from '@/lib/bounds';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
@@ -225,7 +226,7 @@ export function CrisisActionPanel() {
         <RecallSlot ctl={publishRecall} />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-        <input type="text" value={crisisName} onChange={(e) => setCrisisName(e.target.value)} className="md:col-span-2 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white focus:outline-none focus:ring-2 focus:ring-rose-400/40" placeholder="Crisis name (e.g. east-region power outage)" />
+        <input type="text" value={crisisName} onChange={(e) => setCrisisName(e.target.value)} className="md:col-span-2 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white focus:outline-none focus:ring-2 focus:ring-rose-400/40" placeholder="Crisis name (e.g. east-region power outage)" maxLength={BOUNDS.TITLE} />
         <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="IC user id (for DM)" />
         {/* FIX-cri-003: the select is controlled with state '' — without a
             placeholder option the browser displayed the first option
@@ -240,11 +241,11 @@ export function CrisisActionPanel() {
         </select>
         <label className="block">
           <span className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Affected count</span>
-          <input type="text" value={affectedCount} onChange={(e) => setAffectedCount(e.target.value.replace(/\D/g, ''))} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono" placeholder="affected count" />
+          <input type="text" value={affectedCount} maxLength={5} onChange={(e) => setAffectedCount(e.target.value.replace(/\D/g, ''))} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono" placeholder="affected count" />
         </label>
         <label className="block">
           <span className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Duration hours</span>
-          <input type="text" value={duration} onChange={(e) => setDuration(e.target.value.replace(/[^\d.]/g, ''))} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono" placeholder="duration hours" />
+          <input type="text" value={duration} maxLength={6} onChange={(e) => setDuration(e.target.value.replace(/[^\d.]/g, ''))} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono" placeholder="duration hours" />
         </label>
       </div>
 

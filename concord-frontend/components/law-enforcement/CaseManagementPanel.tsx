@@ -29,6 +29,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { BOUNDS } from '@/lib/bounds';
 import {
   Folder, FolderOpen, FolderCheck, FolderClock, Plus, Loader2, Check,
   AlertTriangle, ArrowRight, FileText, Boxes, Fingerprint, Scale,
@@ -254,7 +255,7 @@ export function CaseManagementPanel() {
       <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3 space-y-2">
         <h4 className="text-xs font-semibold text-white flex items-center gap-1.5"><Plus className="w-3.5 h-3.5 text-blue-400" /> Open Case</h4>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          <Field label="Title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Oak St burglary series" className="md:col-span-2" />
+          <Field label="Title" value={title} maxLength={BOUNDS.TITLE} onChange={(e) => setTitle(e.target.value)} placeholder="Oak St burglary series" className="md:col-span-2" />
           <Field label="Case number (optional)" value={caseNumber} onChange={(e) => setCaseNumber(e.target.value)} placeholder="auto-generated if blank" />
           <Field label="Assigned detective" value={assignedDetective} onChange={(e) => setAssignedDetective(e.target.value)} placeholder="Det. Ramos" />
         </div>
@@ -328,7 +329,7 @@ export function CaseManagementPanel() {
                   </>
                 ) : (
                   <div className="space-y-2 mt-1">
-                    <Field label="Title" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Case title" />
+                    <Field label="Title" value={editTitle} maxLength={BOUNDS.TITLE} onChange={(e) => setEditTitle(e.target.value)} placeholder="Case title" />
                     <Field label="Synopsis" value={editSynopsis} onChange={(e) => setEditSynopsis(e.target.value)} placeholder="What this case is about" />
                     <div className="flex items-center gap-1.5">
                       <Btn busy={busy === 'edit'} onClick={() => saveEdit(selected.id)}><Check className="w-3.5 h-3.5" /> Save</Btn>

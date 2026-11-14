@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
+import { BOUNDS } from '@/lib/bounds';
 import { ChartKit, TimelineView, TreeDiagram } from '@/components/viz';
 import type { TimelineEvent, TreeNode } from '@/components/viz';
 
@@ -439,6 +440,7 @@ export function LockProfiler() {
         <div className="grid grid-cols-2 md:grid-cols-6 gap-2 text-xs">
           <input
             value={form.thread}
+            maxLength={BOUNDS.TITLE}
             onChange={(e) => setForm({ ...form, thread: e.target.value })}
             placeholder="thread"
             className="bg-lattice-deep border border-white/10 rounded px-2 py-1"
@@ -446,6 +448,7 @@ export function LockProfiler() {
           />
           <input
             value={form.lock}
+            maxLength={BOUNDS.TITLE}
             onChange={(e) => setForm({ ...form, lock: e.target.value })}
             placeholder="lock"
             className="bg-lattice-deep border border-white/10 rounded px-2 py-1"
@@ -468,6 +471,7 @@ export function LockProfiler() {
             onChange={(e) => setForm({ ...form, waitMs: e.target.value })}
             placeholder="waitMs"
             type="number"
+            min={0}
             className="bg-lattice-deep border border-white/10 rounded px-2 py-1"
             aria-label="wait milliseconds"
           />
@@ -476,6 +480,7 @@ export function LockProfiler() {
             onChange={(e) => setForm({ ...form, holdMs: e.target.value })}
             placeholder="holdMs"
             type="number"
+            min={0}
             className="bg-lattice-deep border border-white/10 rounded px-2 py-1"
             aria-label="hold milliseconds"
           />

@@ -22,6 +22,7 @@ import {
   Landmark, LineChart as LineChartIcon, Plus, RefreshCw, Loader2, X,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { BOUNDS } from '@/lib/bounds';
 import { ChartKit } from '@/components/viz';
 
 type MacroJSON = Record<string, any>;
@@ -342,8 +343,8 @@ function PlansPanel({ onError }: { onError: (e: string) => void }) {
               <option value="annual">annual</option>
             </select>
           </Field>
-          <Field label="Amount"><input className={inputCls} type="number" value={pAmount} onChange={(e) => setPAmount(e.target.value)} /></Field>
-          <Field label="Trial days"><input className={inputCls} type="number" value={pTrial} onChange={(e) => setPTrial(e.target.value)} /></Field>
+          <Field label="Amount"><input className={inputCls} type="number" min={0} max={BOUNDS.MONEY_MAX} value={pAmount} onChange={(e) => setPAmount(e.target.value)} /></Field>
+          <Field label="Trial days"><input className={inputCls} type="number" min={0} max={3650} value={pTrial} onChange={(e) => setPTrial(e.target.value)} /></Field>
           <div className="flex items-end"><Btn onClick={createPlan} busy={busy}><Plus className="h-3.5 w-3.5" />Create plan</Btn></div>
         </div>
       </Card>
@@ -381,8 +382,8 @@ function PlansPanel({ onError }: { onError: (e: string) => void }) {
                 <option value="annual">annual</option>
               </select>
             </Field>
-            <Field label="Amount"><input className={inputCls} type="number" value={String(editPlan.amount ?? '')} onChange={(e) => setEditPlan({ ...editPlan, amount: e.target.value })} /></Field>
-            <Field label="Trial days"><input className={inputCls} type="number" value={String(editPlan.trialDays ?? 0)} onChange={(e) => setEditPlan({ ...editPlan, trialDays: e.target.value })} /></Field>
+            <Field label="Amount"><input className={inputCls} type="number" min={0} max={BOUNDS.MONEY_MAX} value={String(editPlan.amount ?? '')} onChange={(e) => setEditPlan({ ...editPlan, amount: e.target.value })} /></Field>
+            <Field label="Trial days"><input className={inputCls} type="number" min={0} max={3650} value={String(editPlan.trialDays ?? 0)} onChange={(e) => setEditPlan({ ...editPlan, trialDays: e.target.value })} /></Field>
             <div className="flex items-end gap-2">
               <Btn onClick={saveEditPlan} busy={busy}>Save</Btn>
               <Btn onClick={() => setEditPlan(null)} kind="ghost">Cancel</Btn>
@@ -401,7 +402,7 @@ function PlansPanel({ onError }: { onError: (e: string) => void }) {
             </select>
           </Field>
           <Field label="Customer"><input className={inputCls} value={subCustomer} onChange={(e) => setSubCustomer(e.target.value)} placeholder="Acme Inc" /></Field>
-          <Field label="Seats"><input className={inputCls} type="number" value={subQty} onChange={(e) => setSubQty(e.target.value)} /></Field>
+          <Field label="Seats"><input className={inputCls} type="number" min={1} max={BOUNDS.QUANTITY_MAX} value={subQty} onChange={(e) => setSubQty(e.target.value)} /></Field>
           <div className="flex items-end"><Btn onClick={createSub} busy={busy}><Plus className="h-3.5 w-3.5" />Subscribe</Btn></div>
         </div>
       </Card>
@@ -528,7 +529,7 @@ function UsagePanel({ onError }: { onError: (e: string) => void }) {
             </select>
           </Field>
           <Field label="Metric"><input className={inputCls} value={metric} onChange={(e) => setMetric(e.target.value)} /></Field>
-          <Field label="Quantity"><input className={inputCls} type="number" value={qty} onChange={(e) => setQty(e.target.value)} /></Field>
+          <Field label="Quantity"><input className={inputCls} type="number" min={0} max={BOUNDS.QUANTITY_MAX} value={qty} onChange={(e) => setQty(e.target.value)} /></Field>
           <div className="flex items-end gap-2">
             <Btn onClick={record} busy={busy}><Plus className="h-3.5 w-3.5" />Record</Btn>
             <Btn onClick={refreshSummary} busy={busy} kind="ghost">Summary</Btn>
@@ -655,7 +656,7 @@ function CouponsPanel({ onError }: { onError: (e: string) => void }) {
               <option value="fixed">fixed</option>
             </select>
           </Field>
-          <Field label="Value"><input className={inputCls} type="number" value={value} onChange={(e) => setValue(e.target.value)} /></Field>
+          <Field label="Value"><input className={inputCls} type="number" min={0} max={BOUNDS.MONEY_MAX} value={value} onChange={(e) => setValue(e.target.value)} /></Field>
           <Field label="Duration">
             <select className={inputCls} value={duration} onChange={(e) => setDuration(e.target.value)}>
               <option value="once">once</option>
@@ -663,7 +664,7 @@ function CouponsPanel({ onError }: { onError: (e: string) => void }) {
               <option value="forever">forever</option>
             </select>
           </Field>
-          <Field label="Max redemptions"><input className={inputCls} type="number" value={maxRedemptions} onChange={(e) => setMaxRedemptions(e.target.value)} placeholder="∞" /></Field>
+          <Field label="Max redemptions"><input className={inputCls} type="number" min={1} max={BOUNDS.QUANTITY_MAX} value={maxRedemptions} onChange={(e) => setMaxRedemptions(e.target.value)} placeholder="∞" /></Field>
           <div className="flex items-end"><Btn onClick={create} busy={busy}><Plus className="h-3.5 w-3.5" />Create</Btn></div>
         </div>
       </Card>

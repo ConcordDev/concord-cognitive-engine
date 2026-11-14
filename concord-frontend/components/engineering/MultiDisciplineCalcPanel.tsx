@@ -125,8 +125,8 @@ function ResultCard({ title, result }: { title: string; result: CalcResult | nul
 
 // ── Small field primitives ──────────────────────────────────────────────────
 function NumField({
-  label, value, onChange, step = 'any',
-}: { label: string; value: number | ''; onChange: (v: number | '') => void; step?: string }) {
+  label, value, onChange, step = 'any', min,
+}: { label: string; value: number | ''; onChange: (v: number | '') => void; step?: string; min?: number }) {
   return (
     <div>
       <label className="text-[10px] text-gray-400 block mb-0.5">{label}</label>
@@ -134,6 +134,7 @@ function NumField({
         type="number"
         aria-label={label}
         step={step}
+        min={min}
         value={value}
         onChange={(e) => onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}
         className="w-full bg-black/30 border border-white/10 rounded px-2 py-1 text-xs font-mono"
@@ -254,7 +255,7 @@ function StructuralSection() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div className="space-y-1.5">
           <p className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold">Column (Euler buckling)</p>
-          <NumField label="Axial load (kips)" value={i.loadKips} onChange={b('loadKips')} />
+          <NumField label="Axial load (kips)" value={i.loadKips} onChange={b('loadKips')} min={0} />
           <NumField label="Unbraced length (ft)" value={i.lengthFt} onChange={b('lengthFt')} />
           <NumField label="Modulus E (psi)" value={i.modulusE} onChange={b('modulusE')} />
           <NumField label="Moment of inertia I (in⁴)" value={i.momentI} onChange={b('momentI')} />
