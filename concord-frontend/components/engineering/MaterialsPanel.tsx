@@ -1,6 +1,7 @@
 'use client';
 
-import { FlaskConical, Loader2, XCircle } from 'lucide-react';
+import { useState } from 'react';
+import { FlaskConical, Loader2, Search, XCircle } from 'lucide-react';
 import { formatModulus } from '@/lib/material-format';
 import { useEngineeringFea } from './EngineeringFeaProvider';
 
@@ -15,9 +16,29 @@ export function MaterialsPanel() {
     matError,
     loadMaterials,
   } = useEngineeringFea();
+  // FIX-engineering-006: the lens had no in-lens search at all — the
+  // only search was the global lens-name palette. The materials
+  // library is this lens's named catalog; search it by name here,
+  // composing with the category filter.
+  const [query, setQuery] = useState('');
+  const q = query.trim().toLowerCase();
+  const visible = libMaterials.filter(
+    (m) => (matFilter === 'all' || m.category === matFilter) && (!q || m.label.toLowerCase().includes(q)),
+  );
 
   return (
     <div className="space-y-3">
+      <label className="flex items-center gap-2 rounded-lg border border-white/10 bg-black/30 px-3 py-2">
+        <Search className="h-4 w-4 shrink-0 text-gray-400" />
+        <input
+          data-testid="engineering-material-search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search materials by name…"
+          aria-label="Search materials by name"
+          className="w-full bg-transparent text-sm text-zinc-100 placeholder:text-gray-500 focus:outline-none"
+        />
+      </label>
       <div className="flex flex-wrap gap-1">
         {['all', ...matCategories].map((c) => (
           <button
@@ -61,9 +82,13 @@ export function MaterialsPanel() {
           </button>
         </div>
       ) : (
+        visible.length === 0 ? (
+          <div className="panel p-8 text-center">
+            <p className="text-gray-400 text-sm">No materials match &lsquo;{query.trim()}&rsquo;{matFilter !== 'all' ? ` in ${matFilter}` : ''}.</p>
+          </div>
+        ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {libMaterials
-            .filter((m) => matFilter === 'all' || m.category === matFilter)
+          {visible
             .map((mat) => (
               <div key={mat.id} className="panel p-4 space-y-2">
                 <div className="flex items-center gap-2">
@@ -108,6 +133,7 @@ export function MaterialsPanel() {
               </div>
             ))}
         </div>
+        )
       )}
     </div>
   );
