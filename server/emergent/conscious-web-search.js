@@ -20,6 +20,7 @@
  */
 
 import { checkRobotsTxt, WEB_POLICY } from "./entity-web-exploration.js";
+import { fetchPublicUrl } from "../lib/public-fetch.js";
 import { TASK_PROMPTS } from "../lib/prompt-registry.js";
 import logger from '../logger.js';
 
@@ -1212,7 +1213,11 @@ export async function fetchPublicPage(url) {
   if (!allowed) return null;
 
   try {
-    const res = await fetch(url, {
+    // SB-07: the page fetch goes through the SB-01 SSRF guard
+    // (fetchPublicUrl), not the raw fetch — the string-pattern check
+    // above is content policy and cannot see a DNS answer. A guard
+    // refusal throws SSRF_BLOCKED into the catch below → null.
+    const res = await fetchPublicUrl(url, {
       headers: { "User-Agent": CHAT_USER_AGENT },
       signal: AbortSignal.timeout(10000),
     });
