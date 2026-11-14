@@ -9,7 +9,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Calculator, Play, CheckCircle, XCircle, Sigma, Plus, Trash2,
-  History, TrendingUp, Loader2,
+  History, TrendingUp, Loader2, Pencil,
 } from 'lucide-react';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { lensRun } from '@/lib/api/client';
@@ -72,8 +72,32 @@ export function FormulaNotebookPanel() {
     error: formulaErr,
     refetch: refetchFormula,
     create: createFormula,
+    update: updateFormula,
     remove: removeFormula,
   } = useLensData<FormulaRecord>('math', 'formula', { seed: [] });
+
+  // FIX-math-002: saved formulas gain an edit — the card form below writes
+  // through the same lens update path create/delete already use.
+  const [editingFormulaId, setEditingFormulaId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editLatex, setEditLatex] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+  const [editCat, setEditCat] = useState('general');
+  const beginEditFormula = (item: { id: string; data: FormulaRecord }) => {
+    setEditingFormulaId(item.id);
+    setEditName(item.data.name || '');
+    setEditLatex(item.data.latex || '');
+    setEditDesc(item.data.description || '');
+    setEditCat(item.data.category || 'general');
+  };
+  const saveEditFormula = async () => {
+    if (!editingFormulaId || !editName.trim() || !editLatex.trim()) return;
+    await updateFormula(editingFormulaId, {
+      title: editName,
+      data: { name: editName, latex: editLatex, description: editDesc, category: editCat } as Partial<FormulaRecord>,
+    });
+    setEditingFormulaId(null);
+  };
 
   const [expression, setExpression] = useState('');
   const [result, setResult] = useState<{ value: string; verified: boolean } | null>(null);
@@ -348,15 +372,44 @@ export function FormulaNotebookPanel() {
                         </span>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => removeFormula(item.id)}
-                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/20 rounded"
-                      aria-label="Delete formula"
-                    >
-                      <Trash2 className="h-3 w-3 text-red-400" />
-                    </button>
+                    <span className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => beginEditFormula(item)}
+                        className="opacity-0 group-hover:opacity-100 p-1 hover:bg-zinc-500/20 rounded"
+                        aria-label="Edit formula"
+                      >
+                        <Pencil className="h-3 w-3 text-zinc-300" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeFormula(item.id)}
+                        className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/20 rounded"
+                        aria-label="Delete formula"
+                      >
+                        <Trash2 className="h-3 w-3 text-red-400" />
+                      </button>
+                    </span>
                   </div>
+                  {editingFormulaId === item.id && (
+                    <div className="space-y-2 mb-2 p-3 rounded-lg bg-lattice-deep border border-lattice-border">
+                      <input type="text" aria-label="Edit formula name" value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Name" className={ds.input} />
+                      <input type="text" aria-label="Edit formula LaTeX" value={editLatex} onChange={(e) => setEditLatex(e.target.value)} placeholder="LaTeX" className={cn(ds.input, 'font-mono')} />
+                      <input type="text" aria-label="Edit formula description" value={editDesc} onChange={(e) => setEditDesc(e.target.value)} placeholder="Description" className={ds.input} />
+                      <select aria-label="Edit formula category" value={editCat} onChange={(e) => setEditCat(e.target.value)} className={ds.select}>
+                        <option value="general">General</option>
+                        <option value="algebra">Algebra</option>
+                        <option value="calculus">Calculus</option>
+                        <option value="geometry">Geometry</option>
+                        <option value="statistics">Statistics</option>
+                        <option value="physics">Physics</option>
+                      </select>
+                      <div className="flex gap-2">
+                        <button type="button" onClick={saveEditFormula} disabled={!editName.trim() || !editLatex.trim()} className={ds.btnPrimary}>Save changes</button>
+                        <button type="button" onClick={() => setEditingFormulaId(null)} className={ds.btnGhost}>Cancel</button>
+                      </div>
+                    </div>
+                  )}
                   <div className="p-3 bg-lattice-deep rounded-lg mb-2 border border-white/5 text-center overflow-x-auto">
                     <MathFormula latex={item.data.latex} displayMode className="text-lg" />
                   </div>

@@ -154,6 +154,9 @@ export function OEEDashboard() {
         <button type="submit" disabled={saving} className="px-2 py-1 text-[10px] uppercase tracking-wider font-semibold rounded bg-cyan-500/20 text-cyan-200 hover:bg-cyan-500/30 disabled:opacity-50">
           {saving ? 'Registering…' : 'Register machine'}
         </button>
+        {machineId.trim() && machines.some((m) => m.id === machineId.trim()) && (
+          <span className="self-center text-[10px] text-cyan-300">Saving updates machine {machineId.trim()} (blank ideal cycle keeps the current value).</span>
+        )}
       </form>
       {error && <p role="alert" className="px-3 py-1.5 text-[11px] text-red-300">{error}</p>}
       {loading ? (
@@ -206,13 +209,20 @@ export function OEEDashboard() {
                       m.oee == null ? 'text-gray-500' : m.oee >= 85 ? 'text-green-300' : m.oee >= 65 ? 'text-cyan-300' : m.oee >= 50 ? 'text-yellow-300' : 'text-red-300'
                     )}>{pct(m.oee)}</td>
                     <td className="px-3 py-1.5 text-right">
-                      <ConfirmDeleteButton
-                        itemLabel={m.name}
-                        deleteTitle={`Delete machine ${m.name}`}
-                        consequence="Its logged readings go with it."
-                        onConfirm={() => deleteMachine(m)}
-                        className="text-gray-500 hover:text-rose-300"
-                      />
+                      <span className="inline-flex items-center gap-2">
+                        <button type="button" aria-label={`Edit machine ${m.name}`}
+                          onClick={() => { setMachineId(m.id); setName(m.name); setLine(m.line || ''); setIdealCycleTime(''); }}
+                          className="text-gray-400 underline hover:text-cyan-200">
+                          Edit
+                        </button>
+                        <ConfirmDeleteButton
+                          itemLabel={m.name}
+                          deleteTitle={`Delete machine ${m.name}`}
+                          consequence="Its logged readings go with it."
+                          onConfirm={() => deleteMachine(m)}
+                          className="text-gray-500 hover:text-rose-300"
+                        />
+                      </span>
                     </td>
                   </tr>
                 ))}

@@ -133,7 +133,10 @@ export function divide(a, b) {
   const { glyph: aG, decimal: aD } = normalize(a);
   const { glyph: bG, decimal: bD } = normalize(b);
   if (bD === 0) {
-    return { numerical: "∞", decimal: Infinity, semantic: generateSemantic("divide", aG, bG, Infinity) };
+    // FIX-root-001: the numerical must agree with the semantic (and with
+    // Compute): division by Refusal is undefined — not "∞" beside a
+    // caption saying undefined.
+    return { numerical: "undefined", decimal: null, semantic: generateSemantic("divide", aG, bG, Infinity) };
   }
   const quotient = aD / bD;
   return { numerical: decimalToRefusalGlyphs(quotient), decimal: quotient, semantic: generateSemantic("divide", aG, bG, quotient) };

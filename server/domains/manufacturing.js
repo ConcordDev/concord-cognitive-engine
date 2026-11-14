@@ -156,7 +156,10 @@ export default function registerManufacturingActions(registerLensAction) {
     const specSample = samples.find((s) => s.upperSpec != null && s.lowerSpec != null);
     const upperSpec = specSample?.upperSpec ?? mean + 3 * std;
     const lowerSpec = specSample?.lowerSpec ?? mean - 3 * std;
-    const cpk = std > 0 ? Math.min((upperSpec - mean) / (3 * std), (mean - lowerSpec) / (3 * std)) : 0;
+    // FIX-manufacturing-009: with zero spread (a single sample, or all
+    // samples identical) Cpk is not measurable — report null, never 0.00
+    // beside a note claiming it reads 1.00 by construction.
+    const cpk = std > 0 ? Math.min((upperSpec - mean) / (3 * std), (mean - lowerSpec) / (3 * std)) : null;
     const outOfSpec = samples.filter((s) => s.value > upperSpec || s.value < lowerSpec).length;
     const ppm = (outOfSpec / samples.length) * 1_000_000;
     const inControl = !samples.some((s) => Math.abs(s.value - mean) > 3 * std);
@@ -169,7 +172,7 @@ export default function registerManufacturingActions(registerLensAction) {
         lowerControl: mean - 3 * std,
         centerLine: mean,
         samples,
-        cpk: Math.round(cpk * 100) / 100,
+        cpk: cpk == null ? null : Math.round(cpk * 100) / 100,
         ppm: Math.round(ppm),
         inControl,
         specSource: specSample ? "samples" : "derived",
@@ -418,6 +421,22 @@ export default function registerManufacturingActions(registerLensAction) {
     } catch (e) { return { ok: false, error: String(e.message || e) }; }
   });
 
+  // FIX-manufacturing-009: SPC samples gain a delete (by index into the
+  // caller's own list for the product, as rendered by spc-chart).
+  registerLensAction("manufacturing", "spc-sample-delete", (ctx, _a, params = {}) => {
+    try {
+      const s = getMfgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const product = String(params.product ?? "").trim();
+      if (!product) return { ok: false, error: "product required" };
+      const idx = Number(params.index);
+      const list = getList(s.spcSamples, `${uid(ctx)}::${product}`);
+      if (!Number.isInteger(idx) || idx < 0 || idx >= list.length) return { ok: false, error: "sample index out of range" };
+      const [removed] = list.splice(idx, 1);
+      saveMfg();
+      return { ok: true, result: { product, removed, count: list.length } };
+    } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  });
+
   // ─── Feature 1: Digital work instructions ──────────────────────────────
   registerLensAction("manufacturing", "work-instruction-create", (ctx, _a, params = {}) => {
     try {
@@ -498,6 +517,23 @@ export default function registerManufacturingActions(registerLensAction) {
         saveMfg();
       }
       return { ok: true, result: { machineId, reading, totalReadings: list.length } };
+    } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  });
+
+  // FIX-manufacturing-009: IoT readings gain a delete. The index addresses
+  // the same window iot-machine-state renders (the last 60 readings).
+  registerLensAction("manufacturing", "iot-reading-delete", (ctx, _a, params = {}) => {
+    try {
+      const s = getExtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const machineId = String(params.machineId || "").trim();
+      if (!machineId) return { ok: false, error: "machineId required" };
+      const idx = Number(params.index);
+      const list = getList(s.iotReadings, `${uid(ctx)}::${machineId}`);
+      const offset = Math.max(0, list.length - 60);
+      if (!Number.isInteger(idx) || idx < 0 || offset + idx >= list.length) return { ok: false, error: "reading index out of range" };
+      const [removed] = list.splice(offset + idx, 1);
+      saveMfg();
+      return { ok: true, result: { machineId, removed, totalReadings: list.length } };
     } catch (e) { return { ok: false, error: String(e.message || e) }; }
   });
 
@@ -648,6 +684,38 @@ export default function registerManufacturingActions(registerLensAction) {
         createdAt: new Date().toISOString(),
       };
       lots.push(lot);
+      return { ok: true, result: { lot } };
+    } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  });
+
+  // FIX-manufacturing-006: lots gain an update verb (register rejects
+  // duplicate lot numbers, so edits had no path at all).
+  registerLensAction("manufacturing", "lot-update", (ctx, _a, params = {}) => {
+    try {
+      const s = getExtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const lots = getList(s.lots, uid(ctx));
+      const lot = lots.find((l) => l.id === params.id);
+      if (!lot) return { ok: false, error: "lot not found" };
+      if (params.material != null) {
+        const material = String(params.material).trim();
+        if (!material) return { ok: false, error: "material required" };
+        lot.material = material;
+      }
+      if (params.kind != null) lot.kind = String(params.kind);
+      if (params.quantity != null) {
+        const qty = Number(params.quantity);
+        if (!Number.isFinite(qty) || qty < 0) return { ok: false, error: "quantity must be a finite number >= 0" };
+        lot.quantity = qty;
+      }
+      if (params.supplier !== undefined) lot.supplier = params.supplier ? String(params.supplier) : null;
+      if (params.workOrderId !== undefined) lot.workOrderId = params.workOrderId ? String(params.workOrderId) : null;
+      if (params.parentLots != null) {
+        const parentLots = Array.isArray(params.parentLots) ? params.parentLots.map(String) : [];
+        if (parentLots.includes(lot.lotNumber)) return { ok: false, error: "a lot cannot be its own parent" };
+        lot.parentLots = parentLots;
+      }
+      lot.updatedAt = new Date().toISOString();
+      saveMfg();
       return { ok: true, result: { lot } };
     } catch (e) { return { ok: false, error: String(e.message || e) }; }
   });

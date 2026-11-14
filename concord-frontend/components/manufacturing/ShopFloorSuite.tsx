@@ -17,7 +17,7 @@ import { requestDelete } from './delete-safety-store';
 import { notifyManufacturingMutated } from './mfg-events';
 import {
   ClipboardCheck, Cpu, CalendarRange, GitBranch, Siren, AlertOctagon,
-  Wrench, Boxes, Plus, RefreshCw, CheckCircle2, X, ChevronRight,
+  Wrench, Boxes, Plus, RefreshCw, CheckCircle2, X, ChevronRight, Pencil,
 } from 'lucide-react';
 
 type SuiteTab =
@@ -235,6 +235,7 @@ function IoTTab() {
   const [machineId, setMachineId] = useState('CNC-01');
   const [state, setState] = useState<any>(null);
   const [err, setErr] = useState('');
+  const [confirmDelReading, setConfirmDelReading] = useState<number | null>(null);
   const [ingest, setIngest] = useState({ machineState: 'running', cycleCount: '', spindleLoad: '', temperature: '', downtimeReason: '' });
 
   const fetchState = useCallback(async (id: string) => {
@@ -334,6 +335,27 @@ function IoTTab() {
                 data={state.downtimeReasons.map((d: any) => ({ reason: d.reason, count: d.count }))}
                 xKey="reason" series={[{ key: 'count', label: 'Occurrences' }]} height={180}
               />
+            </div>
+          )}
+          {/* FIX-manufacturing-009: readings gain a list with a delete. */}
+          {(state.readings || []).length > 0 && (
+            <div className={card}>
+              <p className="mb-2 text-xs font-medium text-zinc-400">Readings (latest last)</p>
+              <ul className="space-y-1">
+                {(state.readings as any[]).map((r, i) => (
+                  <li key={`${r.at}-${i}`} className="flex items-center justify-between gap-2 text-xs text-zinc-300">
+                    <span className="font-mono">#{i + 1} · {r.machineState} · {r.cycleCount} cycles · {new Date(r.at).toLocaleString()}</span>
+                    {confirmDelReading === i ? (
+                      <span className="flex items-center gap-1.5">
+                        <button className="rounded bg-rose-600 px-2 py-0.5 font-semibold text-white" onClick={async () => { setConfirmDelReading(null); const d = await run('iot-reading-delete', { machineId, index: i }); if (!d.ok) { setErr(d.error || 'failed'); return; } fetchState(machineId); }}>Delete reading?</button>
+                        <button className="text-zinc-400 underline" onClick={() => setConfirmDelReading(null)}>Keep</button>
+                      </span>
+                    ) : (
+                      <button className="text-zinc-500 underline hover:text-rose-300" aria-label={`Delete reading ${i + 1}`} onClick={() => setConfirmDelReading(i)}>Delete</button>
+                    )}
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
         </>
@@ -543,17 +565,32 @@ function TraceabilityTab() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, []);
 
+  // FIX-manufacturing-006: lots gain an edit — the form doubles as the
+  // editor (lot number is the identity and stays fixed while editing).
+  const [editingLot, setEditingLot] = useState<any>(null);
   const register = async () => {
     setErr('');
-    const d = await run('lot-register', {
-      lotNumber: form.lotNumber, material: form.material, kind: form.kind,
+    const payload = {
+      material: form.material, kind: form.kind,
       quantity: form.quantity ? Number(form.quantity) : 0,
       supplier: form.supplier || null,
       parentLots: form.parentLots ? form.parentLots.split(',').map((x) => x.trim()).filter(Boolean) : [],
-    });
+    };
+    const d = editingLot
+      ? await run('lot-update', { id: editingLot.id, ...payload })
+      : await run('lot-register', { lotNumber: form.lotNumber, ...payload });
     if (!d.ok) { setErr(d.error || 'failed'); return; }
+    setEditingLot(null);
     setForm({ lotNumber: '', material: '', kind: 'raw_material', quantity: '', supplier: '', parentLots: '' });
     load();
+  };
+  const beginEditLot = (l: any) => {
+    setEditingLot(l);
+    setForm({
+      lotNumber: l.lotNumber, material: l.material || '', kind: l.kind || 'raw_material',
+      quantity: String(l.quantity ?? ''), supplier: l.supplier || '',
+      parentLots: (l.parentLots || []).join(', '),
+    });
   };
 
   const trace = async (lotNumber: string) => {
@@ -578,7 +615,7 @@ function TraceabilityTab() {
   return (
     <div className="space-y-4">
       <div className={card}>
-        <p className="mb-2 text-xs font-medium text-zinc-400">Register lot (raw material → WIP → finished good)</p>
+        <p className="mb-2 text-xs font-medium text-zinc-400">{editingLot ? `Editing lot ${editingLot.lotNumber} (number is fixed)` : 'Register lot (raw material → WIP → finished good)'}</p>
         <div className="grid gap-3 sm:grid-cols-3">
           <Field name="Lot number" value={form.lotNumber} onChange={(v) => setForm({ ...form, lotNumber: v })} placeholder="LOT-A1024" />
           <Field name="Material" value={form.material} onChange={(v) => setForm({ ...form, material: v })} placeholder="6061-T6 Aluminium" />
@@ -595,9 +632,16 @@ function TraceabilityTab() {
           <Field name="Parent lots (comma-sep)" value={form.parentLots} onChange={(v) => setForm({ ...form, parentLots: v })} placeholder="LOT-R001, LOT-R002" />
         </div>
         {err && <p className="mt-2 text-xs text-rose-400">{err}</p>}
-        <button className={`${btnPrimary} mt-3`} disabled={!form.lotNumber.trim() || !form.material.trim()} onClick={register}>
-          <Plus className="h-4 w-4" /> Register lot
-        </button>
+        <span className="mt-3 flex items-center gap-2">
+          <button className={btnPrimary} disabled={!form.lotNumber.trim() || !form.material.trim()} onClick={register}>
+            <Plus className="h-4 w-4" /> {editingLot ? 'Save lot changes' : 'Register lot'}
+          </button>
+          {editingLot && (
+            <button className={btnGhost} onClick={() => { setEditingLot(null); setForm({ lotNumber: '', material: '', kind: 'raw_material', quantity: '', supplier: '', parentLots: '' }); }}>
+              Cancel edit
+            </button>
+          )}
+        </span>
       </div>
 
       <div className={card}>
@@ -609,7 +653,7 @@ function TraceabilityTab() {
             <thead>
               <tr className="border-b border-zinc-800 text-left text-xs text-zinc-400">
                 <th className="pb-2">Lot</th><th className="pb-2">Material</th><th className="pb-2">Kind</th>
-                <th className="pb-2">Qty</th><th className="pb-2">Trace</th><th className="pb-2">Delete</th>
+                <th className="pb-2">Qty</th><th className="pb-2">Trace</th><th className="pb-2">Edit</th><th className="pb-2">Delete</th>
               </tr>
             </thead>
             <tbody>
@@ -622,6 +666,11 @@ function TraceabilityTab() {
                   <td className="py-1.5">
                     <button className={btnGhost} onClick={() => trace(l.lotNumber)}>
                       <GitBranch className="h-3.5 w-3.5" /> Genealogy
+                    </button>
+                  </td>
+                  <td className="py-1.5">
+                    <button className={btnGhost} onClick={() => beginEditLot(l)} aria-label={`Edit lot ${l.lotNumber}`}>
+                      <Pencil className="h-3.5 w-3.5" /> Edit
                     </button>
                   </td>
                   <td className="py-1.5">

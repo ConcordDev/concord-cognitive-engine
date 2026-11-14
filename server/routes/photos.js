@@ -76,7 +76,7 @@ export function createPhotosRouter({ db, requireAuth, STATE }) {
 
   router.post("/:photoId/update", auth, (req, res) => {
     const b = req.body || {};
-    send(res, updatePhoto(db, userIdOf(req), req.params.photoId, { caption: b.caption, favorite: b.favorite }));
+    send(res, updatePhoto(db, userIdOf(req), req.params.photoId, { caption: b.caption, favorite: b.favorite, altText: b.altText, tags: b.tags }));
   });
 
   router.get("/albums", auth, (req, res) => {

@@ -170,13 +170,18 @@ function ChartTab({ roster, onChange }: { roster: RosterResult | null; onChange:
   const [reassigning, setReassigning] = useState<Employee | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  // FIX-organ-003: removing a person is two-step — the first click arms a
+  // named confirm, the second removes.
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
 
   const employees = roster?.employees || [];
   const tree = roster?.tree || [];
 
-  const remove = async (id: string) => {
+  const remove = async (emp: Employee) => {
+    if (confirmRemoveId !== emp.id) { setConfirmRemoveId(emp.id); return; }
+    setConfirmRemoveId(null);
     setBusy(true);
-    const res = await run('employee-remove', { id });
+    const res = await run('employee-remove', { id: emp.id });
     setMsg(res.ok ? `Removed (${(res.result as any)?.reassigned || 0} reports reassigned)` : res.error);
     setBusy(false);
     if (res.ok) onChange();
@@ -256,8 +261,10 @@ function ChartTab({ roster, onChange }: { roster: RosterResult | null; onChange:
                       <button onClick={() => setEditing(e)} className="p-1 text-gray-400 hover:text-white" aria-label="Edit">
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
-                      <button onClick={() => remove(e.id)} disabled={busy} className="p-1 text-gray-400 hover:text-red-400" aria-label="Remove">
-                        <Trash2 className="w-3.5 h-3.5" />
+                      <button onClick={() => remove(e)} disabled={busy}
+                        className={confirmRemoveId === e.id ? 'rounded bg-rose-600 px-2 py-1 text-[10px] font-semibold text-white' : 'p-1 text-gray-400 hover:text-red-400'}
+                        aria-label={confirmRemoveId === e.id ? `Confirm remove ${e.name}` : 'Remove'}>
+                        {confirmRemoveId === e.id ? `Remove ${e.name}? Click again` : <Trash2 className="w-3.5 h-3.5" />}
                       </button>
                     </div>
                   </td>

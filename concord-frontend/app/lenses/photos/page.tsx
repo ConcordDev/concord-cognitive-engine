@@ -27,6 +27,8 @@ import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 interface Frame {
   id: string;
   caption: string | null;
+  alt_text?: string | null;
+  tags?: string[];
   dtu_id: string | null;
   taken_at: number | null;
   favorite: boolean;
@@ -302,15 +304,15 @@ export default function PhotosLensPage() {
     }
   }, [post, fail]);
 
-  const saveCaption = useCallback(async (id: string, captionText: string) => {
+  const saveCaption = useCallback(async (id: string, details: { caption: string; altText: string; tags: string }) => {
     setActionError('');
     try {
-      const body = await post(`/api/photos/${id}/update`, { caption: captionText });
-      const caption = (body as { photo?: { caption?: string | null } }).photo?.caption ?? null;
-      setFrames((rows) => rows.map((r) => (r.id === id ? { ...r, caption } : r)));
+      const body = await post(`/api/photos/${id}/update`, { caption: details.caption, altText: details.altText, tags: details.tags });
+      const photo = (body as { photo?: { caption?: string | null; alt_text?: string | null; tags?: string[] } }).photo;
+      setFrames((rows) => rows.map((r) => (r.id === id ? { ...r, caption: photo?.caption ?? null, alt_text: photo?.alt_text ?? null, tags: photo?.tags ?? [] } : r)));
       setEditId(null);
     } catch (e) {
-      fail(e, 'Could not save caption');
+      fail(e, 'Could not save photo details');
     }
   }, [post, fail]);
 
@@ -548,7 +550,7 @@ export default function PhotosLensPage() {
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
                                 src={`/api/photos/${frame.id}/image`}
-                                alt={frame.caption || 'Untitled photo'}
+                                alt={frame.alt_text || frame.caption || 'Untitled photo'}
                                 className="mb-2 aspect-square w-full rounded-lg object-cover"
                               />
                             </button>
@@ -564,12 +566,21 @@ export default function PhotosLensPage() {
                             {editId === frame.id ? (
                               <CaptionEditForm
                                 initial={frame.caption || ''}
+                                initialAlt={frame.alt_text || ''}
+                                initialTags={(frame.tags || []).join(', ')}
                                 label={name}
-                                onSave={(text) => void saveCaption(frame.id, text)}
+                                onSave={(details) => void saveCaption(frame.id, details)}
                                 onCancel={() => setEditId(null)}
                               />
                             ) : (
-                              <span className="block truncate text-[14px] text-zinc-100">{name}</span>
+                              <>
+                                <span className="block truncate text-[14px] text-zinc-100">{name}</span>
+                                {(frame.tags || []).length > 0 && (
+                                  <span className="mt-0.5 flex flex-wrap gap-1">
+                                    {frame.tags!.map((t) => <span key={t} className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-zinc-400">#{t}</span>)}
+                                  </span>
+                                )}
+                              </>
                             )}
                             {frame.dtu_id ? (
                               <p className="mt-1 truncate text-[11px] text-zinc-500">
@@ -582,7 +593,7 @@ export default function PhotosLensPage() {
                                 <button
                                   type="button"
                                   onClick={() => setEditId(frame.id)}
-                                  aria-label={`Edit caption ${name}`}
+                                  aria-label={`Edit details for ${name}`}
                                   className="text-zinc-400 underline"
                                 >
                                   Edit
@@ -739,23 +750,49 @@ function CreateAlbumForm({ onCreate }: { onCreate: (name: string) => Promise<boo
   );
 }
 
-function CaptionEditForm({ initial, label, onSave, onCancel }: { initial: string; label: string; onSave: (text: string) => void; onCancel: () => void }) {
+function CaptionEditForm({ initial, initialAlt, initialTags, label, onSave, onCancel }: {
+  initial: string; initialAlt: string; initialTags: string; label: string;
+  onSave: (details: { caption: string; altText: string; tags: string }) => void; onCancel: () => void;
+}) {
+  // FIX-photos-006: the editor gains alt text + tags beside the caption.
   const [text, setText] = useState(initial);
+  const [altText, setAltText] = useState(initialAlt);
+  const [tags, setTags] = useState(initialTags);
+  const inputCls = "w-full rounded border border-white/10 bg-black/60 px-2 py-0.5 text-[13px] text-zinc-100";
   return (
     <form
-      className="flex gap-1"
-      onSubmit={(e) => { e.preventDefault(); onSave(text); }}
+      className="space-y-1.5"
+      onSubmit={(e) => { e.preventDefault(); onSave({ caption: text, altText, tags }); }}
+      onKeyDown={(e) => { if (e.key === 'Escape') onCancel(); }}
     >
       <input
         autoFocus
         value={text}
         onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => { if (e.key === 'Escape') onCancel(); }}
         aria-label={`Caption for ${label}`}
+        placeholder="Caption"
         maxLength={280}
-        className="min-w-0 flex-1 rounded border border-white/10 bg-black/60 px-2 py-0.5 text-[13px] text-zinc-100"
+        className={inputCls}
       />
-      <button type="submit" className="text-[12px] text-teal-300">Save</button>
+      <input
+        value={altText}
+        onChange={(e) => setAltText(e.target.value)}
+        aria-label={`Alt text for ${label}`}
+        placeholder="Alt text (for screen readers)"
+        maxLength={300}
+        className={inputCls}
+      />
+      <input
+        value={tags}
+        onChange={(e) => setTags(e.target.value)}
+        aria-label={`Tags for ${label}`}
+        placeholder="Tags, comma separated"
+        className={inputCls}
+      />
+      <span className="flex gap-2">
+        <button type="submit" className="text-[12px] text-teal-300">Save</button>
+        <button type="button" onClick={onCancel} className="text-[12px] text-zinc-400">Cancel</button>
+      </span>
     </form>
   );
 }

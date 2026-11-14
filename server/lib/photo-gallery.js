@@ -211,14 +211,20 @@ export async function sharePhoto(db, photoId, opts = {}) {
   }
 }
 
+function parseTags(raw) {
+  if (!raw) return [];
+  try { const v = JSON.parse(raw); return Array.isArray(v) ? v.filter((t) => typeof t === "string") : []; }
+  catch { return []; }
+}
+
 export function listMyPhotos(db, userId, limit = 50) {
   if (!db || !userId) return [];
   try {
     return db.prepare(`
-      SELECT id, world_id, caption, taken_at, dtu_id, visibility, favorite
+      SELECT id, world_id, caption, alt_text, tags, taken_at, dtu_id, visibility, favorite
       FROM user_photos WHERE user_id = ?
       ORDER BY taken_at DESC LIMIT ?
-    `).all(userId, Math.max(1, Math.min(500, limit)));
+    `).all(userId, Math.max(1, Math.min(500, limit))).map((r) => ({ ...r, tags: parseTags(r.tags) }));
   } catch {
     // favorite column absent (pre-468 DB) — fall back to the base shape.
     try {
@@ -273,7 +279,8 @@ function _ownedAlbum(db, userId, albumId) {
   return { ok: true, album: a };
 }
 
-/** Edit an owned photo's caption and/or favorite flag. */
+/** Edit an owned photo's caption, alt text, tags and/or favorite flag.
+ *  FIX-photos-006: alt text + tags join the single caption field. */
 export function updatePhoto(db, userId, photoId, patch = {}) {
   if (!db || !userId || !photoId) return { ok: false, error: "missing_inputs" };
   try {
@@ -283,10 +290,25 @@ export function updatePhoto(db, userId, photoId, patch = {}) {
       const caption = String(patch.caption ?? "").trim().slice(0, 280);
       db.prepare(`UPDATE user_photos SET caption = ? WHERE id = ?`).run(caption || null, photoId);
     }
+    if (patch.altText !== undefined) {
+      const alt = String(patch.altText ?? "").trim().slice(0, 300);
+      try { db.prepare(`UPDATE user_photos SET alt_text = ? WHERE id = ?`).run(alt || null, photoId); } catch { /* pre-504 DB */ }
+    }
+    if (patch.tags !== undefined) {
+      const raw = Array.isArray(patch.tags) ? patch.tags : String(patch.tags || "").split(",");
+      const tags = [...new Set(raw.map((t) => String(t).trim().toLowerCase()).filter(Boolean).map((t) => t.slice(0, 40)))].slice(0, 12);
+      try { db.prepare(`UPDATE user_photos SET tags = ? WHERE id = ?`).run(tags.length ? JSON.stringify(tags) : null, photoId); } catch { /* pre-504 DB */ }
+    }
     if (patch.favorite !== undefined) {
       db.prepare(`UPDATE user_photos SET favorite = ? WHERE id = ?`).run(patch.favorite ? 1 : 0, photoId);
     }
-    const photo = db.prepare(`SELECT id, world_id, caption, taken_at, dtu_id, visibility, favorite FROM user_photos WHERE id = ?`).get(photoId);
+    let photo;
+    try {
+      photo = db.prepare(`SELECT id, world_id, caption, alt_text, tags, taken_at, dtu_id, visibility, favorite FROM user_photos WHERE id = ?`).get(photoId);
+      if (photo) photo = { ...photo, tags: parseTags(photo.tags) };
+    } catch {
+      photo = db.prepare(`SELECT id, world_id, caption, taken_at, dtu_id, visibility, favorite FROM user_photos WHERE id = ?`).get(photoId);
+    }
     return { ok: true, photo };
   } catch (err) {
     return { ok: false, error: err?.message };

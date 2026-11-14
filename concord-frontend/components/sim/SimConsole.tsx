@@ -2054,21 +2054,29 @@ function ResultsTab({
   fallbackResults: SimResults;
   onExport: () => void;
 }) {
-  // Use run.results if available, otherwise show empty fallback
   const results = run?.results || fallbackResults;
 
-  return (
-    <div className="space-y-4">
-      {!run && (
+  // FIX-sim-009: with no run selected the tab used to render fabricated
+  // "sample" statistics, charts and a CSV export that read exactly like
+  // real results. Show an honest empty state instead — no numbers at all
+  // until a real run exists.
+  if (!run) {
+    return (
+      <div className="space-y-4">
         <div className={cn(ds.panel, 'border-yellow-500/20 bg-yellow-500/5')}>
           <div className="flex items-center gap-2">
             <Info className="w-4 h-4 text-yellow-400" />
             <span className="text-sm text-yellow-400">
-              Showing sample results. Select a completed run to view actual data.
+              No run selected — there are no results to show yet. Run a simulation or select a completed run to see its actual data.
             </span>
           </div>
         </div>
-      )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
 
       {/* Summary Statistics */}
       <div className={ds.panel}>

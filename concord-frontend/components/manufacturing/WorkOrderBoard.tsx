@@ -144,7 +144,13 @@ export function WorkOrderBoard() {
   }
 
   const { pendingKeys } = useDeleteSafety();
-  const visibleOrders = orders.filter((o) => !pendingKeys.includes(`work-order:${o.id}`));
+  // FIX-manufacturing-006: the board gains a text search and a per-order
+  // detail expansion (it had neither — only the status columns).
+  const [query, setQuery] = useState('');
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const q = query.trim().toLowerCase();
+  const visibleOrders = orders.filter((o) => !pendingKeys.includes(`work-order:${o.id}`))
+    .filter((o) => !q || [o.number, o.product, o.machine || '', o.assignedTo || '', o.status, o.priority].some((f) => f.toLowerCase().includes(q)));
 
   function deleteOrder(o: WorkOrder) {
     requestDelete({
@@ -174,7 +180,14 @@ export function WorkOrderBoard() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <ClipboardList className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Work orders</span>
-        <span className="ml-auto text-[10px] text-gray-400">{activeCount} active</span>
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search number, product, machine, assignee…"
+          aria-label="Search work orders"
+          className="ml-2 min-w-0 flex-1 px-2 py-1 text-[11px] bg-[#0a0e17] border border-white/10 rounded text-white placeholder:text-gray-600"
+        />
+        <span className="ml-auto text-[10px] text-gray-400">{activeCount} active{q && ` · ${visibleOrders.length} match${visibleOrders.length === 1 ? '' : 'es'}`}</span>
       </header>
       <form noValidate onSubmit={createOrder} className="px-3 py-2 border-b border-white/5 flex flex-wrap items-end gap-2">
         <label className="text-[10px] uppercase tracking-wider text-gray-500">
@@ -208,6 +221,10 @@ export function WorkOrderBoard() {
           {notes && <span className="block mt-1 text-[10px] text-gray-500">{notes}</span>}
         </p>
       ) : (
+        <>
+        {q && visibleOrders.length === 0 && (
+          <p className="px-4 py-3 text-xs text-gray-400">No work orders match “{query.trim()}”.</p>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-2 p-3">
           {STATUSES.map(s => (
             <div key={s} className="space-y-1.5">
@@ -227,7 +244,20 @@ export function WorkOrderBoard() {
                         'bg-gray-500/30 text-gray-200'
                       )}>{o.priority}</span>
                     </div>
-                    <div className="text-white mt-0.5 truncate">{o.product}</div>
+                    <button type="button" onClick={() => setDetailId(detailId === o.id ? null : o.id)} aria-expanded={detailId === o.id}
+                      className="text-white mt-0.5 block max-w-full truncate text-left underline decoration-dotted decoration-gray-600 underline-offset-2" title="Order details">
+                      {o.product}
+                    </button>
+                    {detailId === o.id && (
+                      <dl className="mt-1 space-y-0.5 rounded bg-black/30 p-1.5 text-[10px] text-gray-300">
+                        <div className="flex justify-between gap-2"><dt className="text-gray-500">Order</dt><dd className="font-mono">{o.number} · {o.id}</dd></div>
+                        <div className="flex justify-between gap-2"><dt className="text-gray-500">Quantity</dt><dd>{o.quantityProduced} of {o.quantity} produced ({o.quantity > 0 ? Math.round((o.quantityProduced / o.quantity) * 100) : 0}%)</dd></div>
+                        <div className="flex justify-between gap-2"><dt className="text-gray-500">Priority</dt><dd>{o.priority}</dd></div>
+                        <div className="flex justify-between gap-2"><dt className="text-gray-500">Due</dt><dd>{o.dueDate || 'no due date'}</dd></div>
+                        <div className="flex justify-between gap-2"><dt className="text-gray-500">Machine</dt><dd>{o.machine || 'unassigned'}</dd></div>
+                        <div className="flex justify-between gap-2"><dt className="text-gray-500">Assigned to</dt><dd>{o.assignedTo || 'unassigned'}</dd></div>
+                      </dl>
+                    )}
                     <div className="text-[10px] text-gray-400 mt-1">
                       {o.quantityProduced}/{o.quantity} {o.machine ? `· ${o.machine}` : ''}
                     </div>
@@ -282,6 +312,7 @@ export function WorkOrderBoard() {
             </div>
           ))}
         </div>
+        </>
       )}
     </div>
   );

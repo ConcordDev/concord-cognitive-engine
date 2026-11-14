@@ -93,15 +93,23 @@ function premiseExtractCore(text) {
   text = text || "";
   if (!text) return { message: "Provide argument text to extract premises." };
   const sentences = text.split(/[.!?]+/).map(s => s.trim()).filter(s => s.length > 5);
+  // FIX-reasoning-004: indicator matching is word-boundary (the old
+  // substring test matched "as"/"for" inside unrelated words), and the
+  // classification is structural: in a text that HAS a conclusion, the
+  // non-conclusion sentences are its premises — the old rule required a
+  // connective word per premise, so a plain syllogism ("All mammals are
+  // warm-blooded. Whales are mammals. Therefore…") extracted 0 premises.
+  const hasWord = (s, words) => words.some((w) => new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).test(s));
+  const hasConclusion = sentences.some((s) => hasWord(s.toLowerCase(), CONCLUSION_INDICATORS));
   const classified = sentences.map(s => {
     const lower = s.toLowerCase();
-    const isPremise = PREMISE_INDICATORS.some(p => lower.includes(p));
-    const isConclusion = CONCLUSION_INDICATORS.some(p => lower.includes(p));
-    const isNormative = NORMATIVE_INDICATORS.some(p => lower.includes(p));
-    const isFactual = FACTUAL_INDICATORS.some(p => lower.includes(p));
+    const isPremise = hasWord(lower, PREMISE_INDICATORS);
+    const isConclusion = hasWord(lower, CONCLUSION_INDICATORS);
+    const isNormative = hasWord(lower, NORMATIVE_INDICATORS);
+    const isFactual = hasWord(lower, FACTUAL_INDICATORS);
     return {
       text: s,
-      role: isConclusion ? "conclusion" : isPremise ? "premise" : "statement",
+      role: isConclusion ? "conclusion" : isPremise || hasConclusion ? "premise" : "statement",
       type: isNormative ? "normative" : isFactual ? "factual" : "definitional",
     };
   });

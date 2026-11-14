@@ -17,7 +17,8 @@ export interface SPCResult {
   lowerControl?: number;
   centerLine?: number;
   samples: Array<{ at: string; value: number; subgroup?: string | null; outOfSpec?: boolean; outOfControl?: boolean; upperSpec?: number; lowerSpec?: number }>;
-  cpk?: number;
+  /** null when Cpk is not measurable (zero spread across samples). */
+  cpk?: number | null;
   ppm?: number;
   inControl?: boolean;
   /** 'samples' when the samples carry a real spec; 'derived' when the
@@ -110,6 +111,22 @@ export function QualitySPC() {
     }
   }
 
+  // FIX-manufacturing-009: two-step sample delete.
+  const [confirmDelIdx, setConfirmDelIdx] = useState<number | null>(null);
+  const deleteSample = async (index: number) => {
+    setConfirmDelIdx(null);
+    try {
+      const res = await api.post('/api/lens/run', { domain: 'manufacturing', action: 'spc-sample-delete', input: { product: product.trim(), index } });
+      if (res.data?.ok === false) { setError(res.data.error || 'Could not delete the sample.'); return; }
+      notifyManufacturingMutated();
+      const gen = ++requestGen.current;
+      const chart = await load(product);
+      if (gen === requestGen.current) setData(chart);
+    } catch (e) {
+      setError(lensError(e, 'Could not delete the sample.'));
+    }
+  };
+
   return (
     <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg overflow-hidden">
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
@@ -156,7 +173,7 @@ export function QualitySPC() {
         <p className="px-4 py-6 text-center text-xs text-gray-400">Enter a product, then log gauge readings. The chart uses those samples.</p>
       ) : loading || (data != null && data.product !== product.trim()) ? (
         <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
-      ) : !data || data.source !== 'wired-feed' || data.cpk == null || data.samples.length === 0 ? (
+      ) : !data || data.source !== 'wired-feed' || data.samples.length === 0 ? (
         <div className="px-4 py-6 text-center text-xs text-gray-400">
           <p>No SPC samples for <span className="text-cyan-300 font-mono">{data?.product || product.trim()}</span> yet.</p>
           {data?.notes && <p className="mt-1 text-[10px] text-gray-500">{data.notes}</p>}
@@ -165,8 +182,17 @@ export function QualitySPC() {
         <>
           <div className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
             <div className="p-2 bg-white/[0.02] rounded">
-              <div className={`text-xl font-bold tabular-nums ${data.cpk >= 1.33 ? 'text-green-300' : data.cpk >= 1.0 ? 'text-cyan-300' : data.cpk >= 0.67 ? 'text-yellow-300' : 'text-red-300'}`}>{data.cpk.toFixed(2)}</div>
-              <div className="text-[9px] uppercase text-gray-400">Cpk (≥1.33 capable)</div>
+              {data.cpk == null ? (
+                <>
+                  <div className="text-xl font-bold tabular-nums text-gray-400">—</div>
+                  <div className="text-[9px] uppercase text-gray-400">Cpk — needs spread across samples</div>
+                </>
+              ) : (
+                <>
+                  <div className={`text-xl font-bold tabular-nums ${data.cpk >= 1.33 ? 'text-green-300' : data.cpk >= 1.0 ? 'text-cyan-300' : data.cpk >= 0.67 ? 'text-yellow-300' : 'text-red-300'}`}>{data.cpk.toFixed(2)}</div>
+                  <div className="text-[9px] uppercase text-gray-400">Cpk (≥1.33 capable)</div>
+                </>
+              )}
             </div>
             <div className="p-2 bg-white/[0.02] rounded">
               <div className="text-xl font-bold tabular-nums text-white">{(data.ppm ?? 0).toFixed(0)}</div>
@@ -224,6 +250,22 @@ export function QualitySPC() {
               <span><span className="inline-block w-3 h-0.5 align-middle bg-yellow-400" /> control limits (3σ)</span>
               <span><span className="inline-block w-3 h-0.5 align-middle bg-cyan-400" /> centerline / data</span>
             </div>
+            {/* FIX-manufacturing-009: samples gain a list with a delete. */}
+            <ul className="mt-3 space-y-1">
+              {data.samples.map((s, i) => (
+                <li key={`${s.at}-${i}`} className="flex items-center justify-between gap-2 rounded bg-white/[0.02] px-2 py-1 text-[11px] text-gray-300">
+                  <span className="font-mono">#{i + 1} · {s.value} · {new Date(s.at).toLocaleString()}{s.subgroup ? ` · ${s.subgroup}` : ''}</span>
+                  {confirmDelIdx === i ? (
+                    <span className="flex items-center gap-1.5">
+                      <button type="button" onClick={() => void deleteSample(i)} className="rounded bg-rose-600 px-2 py-0.5 font-semibold text-white">Delete sample?</button>
+                      <button type="button" onClick={() => setConfirmDelIdx(null)} className="text-gray-400 underline">Keep</button>
+                    </span>
+                  ) : (
+                    <button type="button" onClick={() => setConfirmDelIdx(i)} className="text-gray-500 underline hover:text-rose-300" aria-label={`Delete sample ${i + 1}`}>Delete</button>
+                  )}
+                </li>
+              ))}
+            </ul>
           </div>
         </>
       )}

@@ -8,7 +8,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Atom, Zap, Play, Loader2, Layers, X, StepForward,
-  StepBack, Save, FolderOpen, Trash2, Download, Upload, Sparkles, Copy, Check,
+  StepBack, Save, FolderOpen, Trash2, Download, Upload, Sparkles, Copy, Check, Pencil,
 } from 'lucide-react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensState } from '@/hooks/useLensState';
@@ -169,6 +169,15 @@ export function ComposerPanel() {
     const res = await run('deleteCircuit', { id });
     if (res) await refreshSaved();
   }, [run, refreshSaved]);
+
+  // FIX-quantum-004: saved circuits gain an inline rename.
+  const [renaming, setRenaming] = useState<SavedCircuitMeta | null>(null);
+  const [renameText, setRenameText] = useState('');
+  const handleRename = useCallback(async () => {
+    if (!renaming || !renameText.trim()) return;
+    const res = await run('renameCircuit', { id: renaming.id, name: renameText.trim() });
+    if (res) { setRenaming(null); await refreshSaved(); }
+  }, [run, refreshSaved, renaming, renameText]);
 
   const handleExportQASM = useCallback(async () => {
     const res = await run('exportQASM', { circuit });
@@ -607,7 +616,20 @@ export function ComposerPanel() {
                     {new Date(sc.updatedAt).toLocaleString()}
                   </p>
                 </div>
-                {confirmDelete?.id === sc.id ? (
+                {renaming?.id === sc.id ? (
+                  <span className="flex items-center gap-1.5 text-xs">
+                    <input value={renameText} onChange={(e) => setRenameText(e.target.value)} maxLength={120}
+                      className="w-36 rounded border border-zinc-600 bg-zinc-900 px-2 py-1 text-xs text-zinc-100" aria-label="New circuit name" autoFocus />
+                    <button onClick={handleRename} disabled={!renameText.trim()}
+                      className="px-2 py-1 rounded bg-emerald-600 text-white font-semibold hover:bg-emerald-500 disabled:opacity-40">
+                      Save
+                    </button>
+                    <button onClick={() => setRenaming(null)}
+                      className="px-2 py-1 rounded border border-zinc-600 text-zinc-200 hover:text-white">
+                      Cancel
+                    </button>
+                  </span>
+                ) : confirmDelete?.id === sc.id ? (
                   <span className="flex items-center gap-1.5 text-xs text-red-300">
                     Delete &ldquo;{sc.name}&rdquo;?
                     <button
@@ -629,6 +651,11 @@ export function ComposerPanel() {
                       className="p-1.5 rounded bg-neon-cyan/10 border border-neon-cyan/30 text-neon-cyan hover:bg-neon-cyan/20"
                       title="Load">
                       <FolderOpen className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={() => { setRenaming(sc); setRenameText(sc.name); }}
+                      className="p-1.5 rounded bg-zinc-500/10 border border-zinc-500/30 text-zinc-300 hover:bg-zinc-500/20"
+                      title="Rename">
+                      <Pencil className="w-3.5 h-3.5" />
                     </button>
                     <button onClick={() => setConfirmDelete(sc)}
                       className="p-1.5 rounded bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20"

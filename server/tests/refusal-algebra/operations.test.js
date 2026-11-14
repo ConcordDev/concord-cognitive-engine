@@ -50,9 +50,10 @@ describe("Refusal Algebra — Operations", () => {
     assert.equal(r.decimal, 4);
   });
 
-  it("divide by 0 returns ∞ and semantic mentions undefined", () => {
+  it("divide by 0 is undefined — numerical agrees with the semantic (FIX-root-001)", () => {
     const r = divide(5, 0);
-    assert.equal(r.numerical, "∞");
+    assert.equal(r.numerical, "undefined");
+    assert.equal(r.decimal, null);
     assert.ok(r.semantic.toLowerCase().includes("undefined") || r.semantic.toLowerCase().includes("cannot"));
   });
 

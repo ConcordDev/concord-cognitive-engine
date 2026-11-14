@@ -171,16 +171,27 @@ export function WebResearchTool() {
                       {res.source}
                     </span>
                   </div>
-                  <button
-                    onClick={() => citeResult(res)}
-                    disabled={citing === res.url || !!cited[res.url]}
-                    className="inline-flex shrink-0 items-center gap-1 rounded border border-yellow-800/60 px-2 py-1 text-xs text-yellow-400 hover:bg-yellow-900/30 disabled:opacity-50"
-                  >
-                    {citing === res.url
-                      ? <Loader2 className="h-3 w-3 animate-spin" />
-                      : <BookmarkPlus className="h-3 w-3" aria-hidden />}
-                    {cited[res.url] ? 'Cited' : 'Cite → DTU'}
-                  </button>
+                  {cited[res.url] ? (
+                    /* FIX-tools-008: a citation used to leave no trace but a
+                       flipped label — surface the created DTU as a link. */
+                    <a
+                      href={`/lenses/dtu?id=${encodeURIComponent(cited[res.url])}`}
+                      className="inline-flex shrink-0 items-center gap-1 rounded border border-emerald-800/60 px-2 py-1 text-xs text-emerald-300 hover:bg-emerald-900/30"
+                    >
+                      <BookmarkPlus className="h-3 w-3" aria-hidden /> Cited — view DTU
+                    </a>
+                  ) : (
+                    <button
+                      onClick={() => citeResult(res)}
+                      disabled={citing === res.url}
+                      className="inline-flex shrink-0 items-center gap-1 rounded border border-yellow-800/60 px-2 py-1 text-xs text-yellow-400 hover:bg-yellow-900/30 disabled:opacity-50"
+                    >
+                      {citing === res.url
+                        ? <Loader2 className="h-3 w-3 animate-spin" />
+                        : <BookmarkPlus className="h-3 w-3" aria-hidden />}
+                      Cite → DTU
+                    </button>
+                  )}
                 </div>
               </li>
             ))}

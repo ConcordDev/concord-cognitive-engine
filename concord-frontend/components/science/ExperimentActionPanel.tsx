@@ -493,11 +493,11 @@ export function ExperimentActionPanel() {
         </p>
         {calibRows.map((r, i) => (
           <div key={i} className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-1">
-            <input value={r.name} onChange={(e) => setCalibRows(rs => rs.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} placeholder="Instrument name" className="px-1.5 py-1 text-[11px] bg-zinc-900 border border-zinc-800 rounded text-white" />
-            <input value={r.serial} onChange={(e) => setCalibRows(rs => rs.map((x, j) => j === i ? { ...x, serial: e.target.value } : x))} placeholder="Serial #" className="px-1.5 py-1 text-[11px] bg-zinc-900 border border-zinc-800 rounded text-white" />
-            <input type="date" value={r.calibrationDate} onChange={(e) => setCalibRows(rs => rs.map((x, j) => j === i ? { ...x, calibrationDate: e.target.value } : x))} className="px-1.5 py-1 text-[11px] bg-zinc-900 border border-zinc-800 rounded text-white" title="Last calibration" />
-            <input type="date" value={r.nextCalibration} onChange={(e) => setCalibRows(rs => rs.map((x, j) => j === i ? { ...x, nextCalibration: e.target.value } : x))} className="px-1.5 py-1 text-[11px] bg-zinc-900 border border-zinc-800 rounded text-white" title="Next calibration due" />
-            <button type="button" onClick={() => setCalibRows(rs => rs.filter((_, j) => j !== i))} className="text-zinc-600 hover:text-red-400" aria-label="Remove instrument"><Trash2 className="w-3.5 h-3.5" /></button>
+            <input value={r.name} onChange={(e) => setCalibRows(rs => rs.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} aria-label="Instrument name" placeholder="Instrument name" className="px-1.5 py-1 text-[11px] bg-zinc-900 border border-zinc-800 rounded text-white" />
+            <input value={r.serial} onChange={(e) => setCalibRows(rs => rs.map((x, j) => j === i ? { ...x, serial: e.target.value } : x))} aria-label="Instrument serial number" placeholder="Serial #" className="px-1.5 py-1 text-[11px] bg-zinc-900 border border-zinc-800 rounded text-white" />
+            <input type="date" value={r.calibrationDate} onChange={(e) => setCalibRows(rs => rs.map((x, j) => j === i ? { ...x, calibrationDate: e.target.value } : x))} className="px-1.5 py-1 text-[11px] bg-zinc-900 border border-zinc-800 rounded text-white" aria-label="Last calibration date" title="Last calibration" />
+            <input type="date" value={r.nextCalibration} onChange={(e) => setCalibRows(rs => rs.map((x, j) => j === i ? { ...x, nextCalibration: e.target.value } : x))} className="px-1.5 py-1 text-[11px] bg-zinc-900 border border-zinc-800 rounded text-white" aria-label="Next calibration due date" title="Next calibration due" />
+            <button type="button" onClick={() => setCalibRows(rs => rs.filter((_, j) => j !== i))} className="inline-flex min-h-10 min-w-10 items-center justify-center text-zinc-600 hover:text-red-400" aria-label="Remove instrument"><Trash2 className="w-3.5 h-3.5" /></button>
           </div>
         ))}
         <button type="button" onClick={() => setCalibRows(rs => [...rs, { name: '', serial: '', calibrationDate: '', nextCalibration: '' }])} className="text-[11px] text-teal-400 hover:text-teal-200"><Plus className="w-3 h-3 inline" /> Add instrument</button>
@@ -510,11 +510,11 @@ export function ExperimentActionPanel() {
         </p>
         {safetyRows.map((r, i) => (
           <div key={i} className="flex items-center gap-1.5">
-            <input value={r.desc} onChange={(e) => setSafetyRows(rs => rs.map((x, j) => j === i ? { ...x, desc: e.target.value } : x))} placeholder="e.g. Fume hood inspected" className="flex-1 px-1.5 py-1 text-[11px] bg-zinc-900 border border-zinc-800 rounded text-white" />
+            <input value={r.desc} onChange={(e) => setSafetyRows(rs => rs.map((x, j) => j === i ? { ...x, desc: e.target.value } : x))} aria-label="Safety check description" placeholder="e.g. Fume hood inspected" className="flex-1 px-1.5 py-1 text-[11px] bg-zinc-900 border border-zinc-800 rounded text-white" />
             <label className="flex items-center gap-1 text-[10px] text-zinc-400">
               <input type="checkbox" checked={r.verified} onChange={(e) => setSafetyRows(rs => rs.map((x, j) => j === i ? { ...x, verified: e.target.checked } : x))} /> verified
             </label>
-            <button type="button" onClick={() => setSafetyRows(rs => rs.filter((_, j) => j !== i))} className="text-zinc-600 hover:text-red-400" aria-label="Remove safety check"><Trash2 className="w-3.5 h-3.5" /></button>
+            <button type="button" onClick={() => setSafetyRows(rs => rs.filter((_, j) => j !== i))} className="inline-flex min-h-10 min-w-10 items-center justify-center text-zinc-600 hover:text-red-400" aria-label="Remove safety check"><Trash2 className="w-3.5 h-3.5" /></button>
           </div>
         ))}
         <button type="button" onClick={() => setSafetyRows(rs => [...rs, { desc: '', verified: false }])} className="text-[11px] text-teal-400 hover:text-teal-200"><Plus className="w-3 h-3 inline" /> Add safety check</button>
@@ -528,7 +528,7 @@ export function ExperimentActionPanel() {
         {sampleRows.map((r, i) => (
           <div key={i} className="rounded border border-zinc-800 p-1.5 space-y-1">
             <div className="grid grid-cols-[1fr_1fr_1fr] gap-1">
-              <input value={r.id} onChange={(e) => setSampleRows(rs => rs.map((x, j) => j === i ? { ...x, id: e.target.value } : x))} placeholder="Sample ID" className="px-1.5 py-1 text-[11px] bg-zinc-900 border border-zinc-800 rounded text-white" />
+              <input value={r.id} onChange={(e) => setSampleRows(rs => rs.map((x, j) => j === i ? { ...x, id: e.target.value } : x))} aria-label="Sample ID" placeholder="Sample ID" className="px-1.5 py-1 text-[11px] bg-zinc-900 border border-zinc-800 rounded text-white" />
               <input value={r.name} onChange={(e) => setSampleRows(rs => rs.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} placeholder="Name" className="px-1.5 py-1 text-[11px] bg-zinc-900 border border-zinc-800 rounded text-white" />
               <input type="date" value={r.expiryDate} onChange={(e) => setSampleRows(rs => rs.map((x, j) => j === i ? { ...x, expiryDate: e.target.value } : x))} className="px-1.5 py-1 text-[11px] bg-zinc-900 border border-zinc-800 rounded text-white" title="Expiry date" />
             </div>
@@ -541,7 +541,7 @@ export function ExperimentActionPanel() {
               <label className="flex items-center gap-1"><input type="checkbox" checked={r.glovesUsed} onChange={(e) => setSampleRows(rs => rs.map((x, j) => j === i ? { ...x, glovesUsed: e.target.checked } : x))} /> gloves used</label>
               <label className="flex items-center gap-1"><input type="checkbox" checked={r.requiresSterile} onChange={(e) => setSampleRows(rs => rs.map((x, j) => j === i ? { ...x, requiresSterile: e.target.checked } : x))} /> sterile required</label>
               <label className="flex items-center gap-1"><input type="checkbox" checked={r.sterileConfirmed} onChange={(e) => setSampleRows(rs => rs.map((x, j) => j === i ? { ...x, sterileConfirmed: e.target.checked } : x))} /> sterile confirmed</label>
-              <button type="button" onClick={() => setSampleRows(rs => rs.filter((_, j) => j !== i))} className="ml-auto text-zinc-600 hover:text-red-400" aria-label="Remove sample"><Trash2 className="w-3.5 h-3.5" /></button>
+              <button type="button" onClick={() => setSampleRows(rs => rs.filter((_, j) => j !== i))} className="ml-auto inline-flex min-h-10 min-w-10 items-center justify-center text-zinc-600 hover:text-red-400" aria-label="Remove sample"><Trash2 className="w-3.5 h-3.5" /></button>
             </div>
           </div>
         ))}
@@ -559,7 +559,7 @@ export function ExperimentActionPanel() {
             <input value={r.transferredTo} onChange={(e) => setCustodyRows(rs => rs.map((x, j) => j === i ? { ...x, transferredTo: e.target.value } : x))} placeholder="Transferred to" className="px-1.5 py-1 text-[11px] bg-zinc-900 border border-zinc-800 rounded text-white" />
             <input value={r.receivedBy} onChange={(e) => setCustodyRows(rs => rs.map((x, j) => j === i ? { ...x, receivedBy: e.target.value } : x))} placeholder="Received by (next row)" className="px-1.5 py-1 text-[11px] bg-zinc-900 border border-zinc-800 rounded text-white" />
             <input type="date" value={r.date} onChange={(e) => setCustodyRows(rs => rs.map((x, j) => j === i ? { ...x, date: e.target.value } : x))} className="px-1.5 py-1 text-[11px] bg-zinc-900 border border-zinc-800 rounded text-white" />
-            <button type="button" onClick={() => setCustodyRows(rs => rs.filter((_, j) => j !== i))} className="text-zinc-600 hover:text-red-400" aria-label="Remove transfer"><Trash2 className="w-3.5 h-3.5" /></button>
+            <button type="button" onClick={() => setCustodyRows(rs => rs.filter((_, j) => j !== i))} className="inline-flex min-h-10 min-w-10 items-center justify-center text-zinc-600 hover:text-red-400" aria-label="Remove transfer"><Trash2 className="w-3.5 h-3.5" /></button>
           </div>
         ))}
         <button type="button" onClick={() => setCustodyRows(rs => [...rs, { transferredTo: '', receivedBy: '', date: '' }])} className="text-[11px] text-teal-400 hover:text-teal-200"><Plus className="w-3 h-3 inline" /> Add transfer</button>
