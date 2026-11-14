@@ -17,7 +17,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Map as MapIcon, LineChart as LineIcon, Columns3, ScatterChart as ScatterIcon,
-  Search, Contact, Loader2, AlertTriangle, Bookmark, Trash2, Link2, Play, Copy,
+  Search, Contact, Loader2, AlertTriangle, Bookmark, Trash2, Link2, Play, Pause, Copy,
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { lensRun } from '@/lib/api/client';
@@ -125,6 +125,17 @@ export function DataExplorer() {
   // --- year sliders ---
   const [tsYear, setTsYear] = useState<number | null>(null);
   const [scatterFrame, setScatterFrame] = useState(0);
+  // FIX-global-006: the mode is described as 'animated over time' but
+  // only had a manual slider. Play advances the frame on an interval.
+  const [scatterPlaying, setScatterPlaying] = useState(false);
+  useEffect(() => {
+    if (!scatterPlaying || !scatter || scatter.frames.length < 2) return;
+    const t = setInterval(() => {
+      setScatterFrame((f) => (f + 1) % scatter.frames.length);
+    }, 700);
+    return () => clearInterval(t);
+  }, [scatterPlaying, scatter]);
+  useEffect(() => { if (mode !== 'scatter') setScatterPlaying(false); }, [mode]);
 
   // --- saved views ---
   const [savedViews, setSavedViews] = useState<SavedView[]>([]);
@@ -162,7 +173,7 @@ export function DataExplorer() {
         const r = await lensRun<ScatterResult>('global', 'scatterExplorer', {
           indicatorX, indicatorY, indicatorSize: indicatorSize || undefined, yearsBack: 25,
         });
-        if (r.data.ok && r.data.result) { setScatter(r.data.result); setScatterFrame(r.data.result.frames.length - 1); }
+        if (r.data.ok && r.data.result) { setScatter(r.data.result); setScatterFrame(r.data.result.frames.length - 1); setScatterPlaying(false); }
         else { setScatter(null); setError(r.data.error || 'No data.'); }
       } else if (mode === 'catalog') {
         if (catalogQuery.trim().length < 2) { setError('Enter at least 2 characters.'); setLoading(false); return; }
@@ -520,16 +531,29 @@ export function DataExplorer() {
             showLegend={false}
           />
           <div className="space-y-1">
-            <div className="flex justify-between text-[10px] text-zinc-400">
+            <div className="flex items-center justify-between text-[10px] text-zinc-400">
               <span>Year</span>
               <span className="font-mono text-neon-purple">{scatter.years[scatterFrame]}</span>
+              <button
+                type="button"
+                data-testid="scatter-play-toggle"
+                onClick={() => {
+                  if (!scatterPlaying && scatterFrame >= scatter.frames.length - 1) setScatterFrame(0);
+                  setScatterPlaying((v) => !v);
+                }}
+                className="flex items-center gap-1 rounded border border-zinc-700 px-2 py-0.5 text-[10px] text-zinc-200 hover:bg-zinc-800"
+                aria-label={scatterPlaying ? 'Pause year animation' : 'Play year animation'}
+              >
+                {scatterPlaying ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+                {scatterPlaying ? 'Pause' : 'Play'}
+              </button>
             </div>
             <input
               type="range"
               min={0}
               max={scatter.frames.length - 1}
               value={scatterFrame}
-              onChange={(e) => setScatterFrame(Number(e.target.value))}
+              onChange={(e) => { setScatterPlaying(false); setScatterFrame(Number(e.target.value)); }}
               className="w-full accent-purple-400"
             />
             <div className="flex justify-between text-[10px] font-mono text-zinc-400">
