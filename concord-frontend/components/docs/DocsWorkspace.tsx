@@ -66,14 +66,28 @@ export function requestNewDoc() {
  * and a server refusal (a duplicate title — [[title]] links resolve
  * by title) reverts the field and names the reason.
  */
-function PageTitleField({ title, pageId, onCommit, onNotice }: {
+function PageTitleField({ title, pageId, onCommit, onNotice, focusOnMount }: {
   title: string;
   pageId: string;
   onCommit: (t: string) => Promise<boolean>;
   onNotice: (msg: string | null) => void;
+  focusOnMount?: boolean;
 }) {
   const [draft, setDraft] = useState(title);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const focusedFor = useRef<string | null>(null);
   useEffect(() => { setDraft(title); }, [title, pageId]);
+  // FIX-docs-002: a freshly created page takes keyboard focus in its title
+  // (the Notion/Docs create flow). Without this, focus stayed on the
+  // still-focused "New page" button, so the user's next Enter re-clicked
+  // it and minted a second page.
+  useEffect(() => {
+    if (focusOnMount && focusedFor.current !== pageId) {
+      focusedFor.current = pageId;
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }
+  }, [focusOnMount, pageId]);
   const commit = async () => {
     const t = draft.trim();
     if (t === title) return;
@@ -86,7 +100,7 @@ function PageTitleField({ title, pageId, onCommit, onNotice }: {
     if (!ok) setDraft(title);
   };
   return (
-    <input value={draft} onChange={e => setDraft(e.target.value)} onBlur={() => void commit()}
+    <input ref={inputRef} value={draft} onChange={e => setDraft(e.target.value)} onBlur={() => void commit()}
       onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
       aria-label="Page title"
       className="flex-1 bg-transparent text-lg font-bold text-zinc-100 focus:outline-none border-b border-transparent focus:border-zinc-700" />
@@ -152,10 +166,15 @@ export function DocsWorkspace() {
     return () => { alive = false; };
   }, [active]);
 
+  const [freshPageId, setFreshPageId] = useState<string | null>(null);
   async function createPage(parentId: string | null) {
     const r = await lensRun('docs', 'page-create', parentId ? { parentId } : {});
     await refreshTree();
-    if (r.data?.ok) await openPage(r.data.result?.page.id as string);
+    if (r.data?.ok) {
+      const id = r.data.result?.page.id as string;
+      await openPage(id);
+      setFreshPageId(id);
+    }
   }
   const createRootRef = useRef<() => void>(() => {});
   useEffect(() => {
@@ -379,7 +398,7 @@ export function DocsWorkspace() {
               <div className="flex items-center gap-2 mb-2">
                 <input value={active.icon} onChange={e => setIcon(e.target.value)} maxLength={4}
                   className="w-9 text-center text-xl bg-transparent" />
-                <PageTitleField title={active.title} pageId={active.id}
+                <PageTitleField title={active.title} pageId={active.id} focusOnMount={active.id === freshPageId}
                   onCommit={async (t) => { const r = await renamePage(t); if (!r.ok) setTitleNotice(r.error ?? 'Rename failed.'); else setTitleNotice(null); return r.ok; }}
                   onNotice={setTitleNotice} />
                 <ConfirmDeleteButton itemLabel={active.title || 'Untitled page'} deleteTitle="Delete page"
