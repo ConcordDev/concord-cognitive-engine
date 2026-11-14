@@ -276,7 +276,13 @@ export default function registerMaterialsActions(registerLensAction) {
 
     // Material-specific adjustments
     if (material.includes("stainless") || material.includes("316") || material.includes("304")) resistance += 30;
-    if (material.includes("aluminum") || material.includes("6061")) resistance += 15;
+    // FIX-materials-009: aluminium's passive oxide layer is the reason
+    // it is specified unprotected outdoors; at +15 a 6061-T6 in mild
+    // outdoor air (25 C, 50% RH) scored 45 = "high" risk with a 3-10
+    // year lifespan, worse than the alloy's known atmospheric service.
+    // +25 puts mild-outdoor aluminium at 55 = moderate (10-20 years),
+    // while marine/chemical exposure stays high.
+    if (material.includes("aluminum") || material.includes("aluminium") || material.includes("6061")) resistance += 25;
     if (material.includes("titanium")) resistance += 35;
     if (material.includes("copper") || material.includes("bronze")) resistance += 10;
     if (material.includes("carbon steel") || material.includes("mild steel")) resistance -= 20;
