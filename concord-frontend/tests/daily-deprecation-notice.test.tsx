@@ -5,18 +5,21 @@
  * docs-014 ruling (A) confirms the lens-status taxonomy is real:
  * deprecated lenses render the deprecation notice. The registry
  * already carried the truth (LENS_STATUS_MAP: daily = deprecated,
- * merge target whiteboard, post-merge role mode) and the shared
- * DeprecatedLensNotice already surfaces it for hypothesis and
- * suffering — Daily's page simply never mounted the notice, so the
- * lens loaded as a normal current lens. These pins hold the page to
- * the adoption and the component to the registry for 'daily'.
+ * merge target whiteboard, post-merge role mode).
+ *
+ * GB-1538 genus leg 5, resolution (a2): the ONE deprecation surface
+ * is the LensShell banner (the founder's shell-family
+ * implementation). Daily's per-page DeprecatedLensNotice mount is
+ * removed — it double-rendered against the shell — and these pins
+ * re-point to the banner: the registry entry, the shell locus, a
+ * no-page-mount guard, and exactly one rendered notice for daily.
  */
 import React from 'react';
 import { describe, it, expect, afterEach } from 'vitest';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { render, screen, cleanup } from '@testing-library/react';
-import { DeprecatedLensNotice } from '@/components/lens/DeprecatedLensNotice';
+import { LensShell } from '@/components/lens/LensShell';
 import { getLensStatus } from '@/lib/lenses/lens-status';
 
 const read = (p: string) => fs.readFileSync(path.join(process.cwd(), p), 'utf8');
@@ -30,25 +33,32 @@ describe('daily deprecation notice (FIX-daily-010)', () => {
     expect(entry?.postMergeRole).toBe('mode');
   });
 
-  it("the shared notice reaches daily through the shell mount, not a page mount", () => {
-    // GB-1538 genus leg 5, resolution (a): the mount moved into
-    // LensShell; daily's page carries no mount of its own (a page
-    // mount double-rendered against the shell). The FIX-daily-010
-    // intent — daily surfaces the notice — stands at the shell locus.
-    expect(read('components/lens/LensShell.tsx')).toContain('<DeprecatedLensNotice lensId={lensId} />');
+  it("the notice reaches daily through the shell banner; the page mounts no copy", () => {
+    const shell = read('components/lens/LensShell.tsx');
+    expect(shell).toContain('getLensStatus(lensId)');
+    expect(shell).toContain('role="note"');
     expect(read('app/lenses/daily/page.tsx')).not.toContain('DeprecatedLensNotice');
   });
 
-  it('the notice renders for daily with a link to the merge target', () => {
-    render(<DeprecatedLensNotice lensId="daily" />);
-    expect(screen.getByText(/This lens is deprecated\./)).toBeInTheDocument();
-    const link = screen.getByRole('link', { name: /the whiteboard lens/ });
+  it('the shell renders exactly one notice for daily with a link to the merge target', () => {
+    render(
+      <LensShell lensId="daily" disableAgentFab>
+        <div>lens body</div>
+      </LensShell>,
+    );
+    expect(screen.getAllByRole('note')).toHaveLength(1);
+    expect(screen.getByText(/This lens is/)).toBeInTheDocument();
+    const link = screen.getByRole('link', { name: 'whiteboard' });
     expect(link).toHaveAttribute('href', '/lenses/whiteboard');
     expect(screen.getByText(/as a mode/)).toBeInTheDocument();
   });
 
-  it('the notice stays silent for a lens that is not deprecated', () => {
-    const { container } = render(<DeprecatedLensNotice lensId="paper" />);
-    expect(container.firstChild).toBeNull();
+  it('the shell renders no notice for a lens that is not deprecated', () => {
+    render(
+      <LensShell lensId="paper" disableAgentFab>
+        <div>lens body</div>
+      </LensShell>,
+    );
+    expect(screen.queryAllByRole('note')).toHaveLength(0);
   });
 });

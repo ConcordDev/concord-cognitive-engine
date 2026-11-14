@@ -1,23 +1,23 @@
 /**
  * Deprecation notices for docs / feed / reflection (GB-1538 genus,
  * rider 2: FIX-docs-014 · FIX-feed-011 · FIX-reflection-005), as
- * consolidated by genus leg 5 (resolution (a)).
+ * consolidated by genus leg 5 (resolution (a2)).
  *
  * The founder's docs-014 ruling (A) confirms the lens-status taxonomy
- * is real: deprecated lenses render the deprecation notice. Leg 3 of
- * the genus mounted DeprecatedLensNotice per-page on these three
- * lenses; leg 5 then consolidated the mount into LensShell — the one
- * place every lens passes through — and removed every per-page mount
- * (they double-rendered against the shell). These pins now hold the
- * SHELL to the mount, the pages to carrying no mount of their own,
- * and the rendered output to exactly one notice per deprecated lens.
+ * is real: deprecated lenses render the deprecation notice. The ONE
+ * deprecation surface is the LensShell banner (the founder's
+ * shell-family implementation, FIX-commonsense-002 /
+ * FIX-grounding-007 / FIX-inference-010): the per-page
+ * DeprecatedLensNotice mounts are removed — they double-rendered
+ * against the shell — and these pins hold the shell banner to the
+ * registry, every page to carrying no mount of its own, and the
+ * rendered output to exactly one notice per deprecated lens.
  */
 import React from 'react';
 import { describe, it, expect, afterEach } from 'vitest';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { render, screen, cleanup } from '@testing-library/react';
-import { DeprecatedLensNotice } from '@/components/lens/DeprecatedLensNotice';
 import { LensShell } from '@/components/lens/LensShell';
 import { getLensStatus } from '@/lib/lenses/lens-status';
 
@@ -25,9 +25,9 @@ const read = (p: string) => fs.readFileSync(path.join(process.cwd(), p), 'utf8')
 afterEach(() => { cleanup(); });
 
 const CASES = [
-  { lens: 'docs', target: 'whiteboard', page: 'app/lenses/docs/page.tsx' },
-  { lens: 'feed', target: 'whiteboard', page: 'app/lenses/feed/page.tsx' },
-  { lens: 'reflection', target: 'paper', page: 'app/lenses/reflection/page.tsx' },
+  { lens: 'docs', target: 'whiteboard', role: 'mode', page: 'app/lenses/docs/page.tsx' },
+  { lens: 'feed', target: 'whiteboard', role: 'mode', page: 'app/lenses/feed/page.tsx' },
+  { lens: 'reflection', target: 'paper', role: 'mode', page: 'app/lenses/reflection/page.tsx' },
 ] as const;
 
 const PAGE_MOUNTED = [
@@ -41,9 +41,12 @@ const PAGE_MOUNTED = [
   'app/lenses/reflection/page.tsx',
 ] as const;
 
-describe('genus deprecation notices — shell consolidation (leg 5)', () => {
-  it('LensShell mounts the shared notice once, driven by its lensId', () => {
-    expect(read('components/lens/LensShell.tsx')).toContain('<DeprecatedLensNotice lensId={lensId} />');
+describe('genus deprecation notices — shell banner consolidation (leg 5, a2)', () => {
+  it('LensShell carries the banner, driven by the status map', () => {
+    const shell = read('components/lens/LensShell.tsx');
+    expect(shell).toContain('getLensStatus(lensId)');
+    expect(shell).toContain("statusEntry?.status === 'deprecated'");
+    expect(shell).toContain('role="note"');
   });
 
   it('no lens page carries a per-page mount anymore (the double-render guard)', () => {
@@ -60,21 +63,17 @@ describe('genus deprecation notices — shell consolidation (leg 5)', () => {
       expect(entry?.postMergeRole).toBe('mode');
     });
 
-    it(`the notice renders for ${c.lens} with a link to the merge target`, () => {
-      render(<DeprecatedLensNotice lensId={c.lens} />);
-      expect(screen.getByText(/This lens is deprecated\./)).toBeInTheDocument();
-      const link = screen.getByRole('link', { name: new RegExp(`the ${c.target} lens`) });
-      expect(link).toHaveAttribute('href', `/lenses/${c.target}`);
-    });
-
-    it(`the shell renders exactly one notice for ${c.lens}`, () => {
+    it(`the shell renders exactly one notice for ${c.lens} with the merge-target link`, () => {
       render(
         <LensShell lensId={c.lens} disableAgentFab>
           <div>lens body</div>
         </LensShell>,
       );
       expect(screen.getAllByRole('note')).toHaveLength(1);
-      expect(screen.getByText(/This lens is deprecated\./)).toBeInTheDocument();
+      expect(screen.getByText(/This lens is/)).toBeInTheDocument();
+      const link = screen.getByRole('link', { name: c.target });
+      expect(link).toHaveAttribute('href', `/lenses/${c.target}`);
+      expect(screen.getByText(new RegExp(`as a ${c.role}`))).toBeInTheDocument();
     });
   }
 
