@@ -353,7 +353,10 @@ export default function registerEmergencyServicesActions(registerLensAction) {
 
   const UNIT_STATUS_FLOW = {
     available: ["dispatched", "out_of_service"],
-    dispatched: ["en_route", "available"],
+    // FIX-emergency-services-009: a dispatched unit can go out of service
+    // (breakdown, crew relief) without first bouncing through en_route or
+    // available — the transition was missing from the flow entirely.
+    dispatched: ["en_route", "available", "out_of_service"],
     en_route: ["on_scene", "available"],
     on_scene: ["clear", "transporting"],
     transporting: ["clear"],
@@ -541,7 +544,9 @@ export default function registerEmergencyServicesActions(registerLensAction) {
         }
         emPushEvent(s, scope.key, incidentId, "unit_status", `${unit.name}: ${prev}→${next}`);
       }
-      if (next === "clear" || next === "available") {
+      if (next === "clear" || next === "available" || next === "out_of_service") {
+        // Out of service unassigns like available does — the incident stays
+        // open for another unit; the unit is no longer bound to it.
         unit.assignedIncidentId = null;
         if (next === "clear") unit.status = "available";
       }

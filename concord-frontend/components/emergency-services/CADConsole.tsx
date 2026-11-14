@@ -373,7 +373,7 @@ export function CADConsole() {
   // old subset stranded — is used only if a payload ever lacks it.
   const NEXT_STATUS: Record<string, string[]> = {
     available: ['dispatched', 'out_of_service'],
-    dispatched: ['en_route', 'available'],
+    dispatched: ['en_route', 'available', 'out_of_service'],
     en_route: ['on_scene', 'available'],
     on_scene: ['clear', 'transporting'],
     transporting: ['clear'],
