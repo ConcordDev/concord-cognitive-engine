@@ -164,6 +164,7 @@ export function appendAccessEvent(userId, opts = {}) {
 }
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { checkText } from "../lib/bounds.js";
 import { registerLensExportProvider } from "../lib/lens-export.js";
 import { advisory } from "../lib/lens-inputs.js";
 import { measuredPercent } from "../lib/measured-rate.js";
@@ -201,7 +202,12 @@ export default function registerPrivacyActions(registerLensAction) {
       }
       // Blank-that-saves: a DSAR with an empty note is not a request worth
       // queueing — refuse rather than persist note:"".
-      const note = clean(params?.note, 1000);
+      // GB-1539 (FIX-privacy-005): the note is NOTE class (5,000) — over
+      // that it refuses with the limit named instead of truncating
+      // silently at 1,000.
+      const badNote = checkText("note", params?.note, "note");
+      if (badNote) return badNote;
+      const note = clean(params?.note, 5000);
       if (!note) {
         return { ok: false, error: "note required" };
       }

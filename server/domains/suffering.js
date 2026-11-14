@@ -3,6 +3,7 @@
 // root cause analysis, and intervention design.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { checkMoney, checkQuantity, checkDuration, checkPercent, checkTitle, firstBoundsFailure } from "../lib/bounds.js";
 export default function registerSufferingActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -262,6 +263,18 @@ export default function registerSufferingActions(registerLensAction) {
     const interventions = artifact.data?.interventions || [];
     if (causes.length === 0) return { ok: false, error: "No causes provided." };
     if (interventions.length === 0) return { ok: false, error: "No interventions provided." };
+    // GB-1539 (FIX-suffering-010): a huge Days-to-implement (and the
+    // sibling cost/effort fields) used to flow straight into the ROI
+    // math. Out-of-policy candidate numbers refuse in the policy
+    // shape before any scoring happens.
+    for (const intv of interventions) {
+      const badIntv = firstBoundsFailure(
+        checkMoney("cost", intv?.cost),
+        checkQuantity("effort", intv?.effort),
+        checkDuration("timeToImplement", intv?.timeToImplement, "days"),
+      );
+      if (badIntv) return badIntv;
+    }
 
     const r = (v) => Math.round(v * 1000) / 1000;
 
@@ -784,6 +797,8 @@ export default function registerSufferingActions(registerLensAction) {
       const uid = sufUid(ctx);
       const title = String(params.title || "").trim();
       if (!title) return { ok: false, error: "title required" };
+      const badTitle = checkTitle("title", params.title);
+      if (badTitle) return badTitle;
       const intv = {
         id: sufId("intv"),
         title,
@@ -820,6 +835,8 @@ export default function registerSufferingActions(registerLensAction) {
       if (params.title != null) {
         const title = String(params.title).trim();
         if (!title) return { ok: false, error: "title required" };
+        const badTitle = checkTitle("title", params.title);
+        if (badTitle) return badTitle;
         intv.title = title;
       }
       let statusChanged = false;
@@ -828,7 +845,13 @@ export default function registerSufferingActions(registerLensAction) {
         statusChanged = true;
         if (params.status === "completed") intv.progress = 100;
       }
-      if (params.progress != null) intv.progress = clampNum(params.progress, 0, 100, intv.progress);
+      // GB-1539: progress is percent-class — it refuses out of range
+      // in the policy shape instead of clamping silently.
+      if (params.progress != null) {
+        const badProgress = checkPercent("progress", params.progress);
+        if (badProgress) return badProgress;
+        intv.progress = Number(params.progress);
+      }
       if (params.owner != null) intv.owner = String(params.owner).trim();
       if (params.description != null) intv.description = String(params.description).trim();
       if (statusChanged || params.note) {

@@ -7,6 +7,21 @@
 // All handlers return { ok: boolean, result?, error? } and never throw.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+
+// GB-1539 (FIX-engineering-003): a negative axial load used to fall
+// through the `load > 0` guards and surface as a silently-null factor
+// of safety. Negative loads now refuse in the bounds shape. (Positive
+// engineering loads are deliberately NOT capped by the form-field
+// classes — structural loads are physical quantities, and the
+// ticket's own expected text asks only for negative rejection.)
+function negativeLoadFailure(field, value) {
+  if (value == null) return null;
+  const n = Number(value);
+  if (Number.isFinite(n) && n < 0) {
+    return { ok: false, error: "invalid_input", reason: "bounds_quantity", field, message: `${field} must not be negative (got ${n}).` };
+  }
+  return null;
+}
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
 import { runFEA } from '../lib/simulation/fea-solver.js';
 import { buildBeamCalcReceipt, buildBeamStudy, summarizeBeamStudy } from '../lib/conkay/beam-study.js';
@@ -2142,6 +2157,8 @@ export default function registerEngineeringActions(registerLensAction) {
         units = { Pcr: 'kips', length: 'ft', E: 'psi', I: 'in^4' };
       }
 
+      const badLoad = negativeLoadFailure("loadKips", data.loadKips) || negativeLoadFailure("loadN", data.loadN);
+      if (badLoad) return badLoad;
       const loadN = Number.isFinite(Number(data.loadN)) ? Number(data.loadN) : null;
       const loadKips = Number.isFinite(Number(data.loadKips))
         ? Number(data.loadKips)

@@ -20,6 +20,7 @@
 // server/domains/), but both sit one level below server/ — the relative
 // path to the heartbeat registry is identical either way.
 import { registerHeartbeat } from "../emergent/heartbeat-registry.js";
+import { checkPercent } from "./bounds.js";
 
 export async function composeForecast(db, STATE, worldId) {
   if (!db || !worldId) return { ok: false, reason: "missing_inputs" };
@@ -511,11 +512,21 @@ export function createAlertSub(db, userId, params = {}) {
   if (!db || !userId) return { ok: false, reason: "missing_inputs" };
   try {
     ensureAlertTable(db);
-    const kind = String(params.kind || "severe_event").toLowerCase();
+    // An explicitly blank kind refuses (bad_kind below) — the old
+    // `|| "severe_event"` silently defaulted it (FIX-forecast-004's
+    // "blank kinds accepted"). Only an absent kind defaults.
+    const kind = String(params.kind ?? "severe_event").toLowerCase();
     if (!["severe_event", "drift", "weather", "any"].includes(kind)) {
       return { ok: false, reason: "bad_kind" };
     }
     const worldId = String(params.worldId || "concordia-hub");
+    // GB-1539 (FIX-forecast-004): minConfidence is a percent-class
+    // value (0–1). It used to clamp silently into range; an
+    // out-of-range floor now refuses in the bounds policy shape.
+    if (params.minConfidence != null) {
+      const badConf = checkPercent("minConfidence", Number(params.minConfidence) * 100);
+      if (badConf) return badConf;
+    }
     const minConfidence = Math.max(0, Math.min(1,
       typeof params.minConfidence === "number" ? params.minConfidence : 0.6));
     const weatherKinds = Array.isArray(params.weatherKinds)

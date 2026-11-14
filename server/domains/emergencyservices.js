@@ -34,6 +34,20 @@
 // broadcast to members already viewing the lens, and stop there.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { checkTitle, checkQuantity, firstBoundsFailure } from "../lib/bounds.js";
+
+// GB-1539 (FIX-emergency-services-003): incident priority is a 1–5
+// domain range. Out-of-range values used to clamp silently into it
+// (-99 became 1 and dispatched as a real priority); they now refuse
+// in the bounds shape.
+function checkPriority(field, value) {
+  if (value == null) return null;
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 1 || n > 5) {
+    return { ok: false, error: "invalid_input", reason: "bounds_quantity", field, message: `${field} must be between 1 and 5 (got ${value}).` };
+  }
+  return null;
+}
 import {
   createOrganization, getOrganization, joinOrganization, leaveOrganization,
   setMemberRole, setOrganizationRecruitCriteria, getOrgMembers, getOrgsForUser, listOrganizations,
@@ -75,6 +89,18 @@ export default function registerEmergencyServicesActions(registerLensAction) {
   registerLensAction("emergency-services", "dispatchOptimize", (ctx, artifact, _params) => {
     const units = artifact.data?.units || [];
     const incidents = artifact.data?.incidents || [];
+    // GB-1539 (FIX-emergency-services-003): poisoned inputs refuse
+    // instead of computing a nonsense ETA — a priority of -99 or a
+    // distance of 999999999 in the artifact data is a bounds breach,
+    // answered in the policy shape, never silently dispatched on.
+    for (const inc of incidents) {
+      const bad = checkPriority("priority", inc?.priority);
+      if (bad) return bad;
+    }
+    for (const u of units) {
+      const bad = checkQuantity("distanceKm", u?.distanceKm);
+      if (bad) return bad;
+    }
     if (units.length === 0) return { ok: true, result: { message: "Add available units to optimize dispatch." } };
     const available = units.filter(u => u.status === "available" || !u.status);
     const assigned = incidents.map(inc => {
@@ -190,12 +216,16 @@ export default function registerEmergencyServicesActions(registerLensAction) {
     const s = getEmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const scope = emScope(ctx, params, EMS_WRITE_TIERS);
     if (!scope.ok) return scope;
+    // GB-1539 (FIX-emergency-services-004): a summary over the title
+    // limit refuses — emClean's truncation to 200 was silent.
+    const badIncident = firstBoundsFailure(checkTitle("summary", params.summary), checkPriority("priority", params.priority));
+    if (badIncident) return badIncident;
     const summary = emClean(params.summary, 200);
     if (!summary) return { ok: false, error: "incident summary required" };
     const incident = {
       id: emId("inc"), summary,
       kind: INCIDENT_KINDS.includes(params.kind) ? params.kind : "other",
-      priority: Math.min(5, Math.max(1, Math.round(emNum(params.priority)) || 3)),
+      priority: Math.round(emNum(params.priority)) || 3,
       location: emClean(params.location, 200) || "",
       status: "open",
       assignedUnitId: null,
@@ -423,13 +453,15 @@ export default function registerEmergencyServicesActions(registerLensAction) {
       const s = getEmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const scope = emScope(ctx, params, EMS_WRITE_TIERS);
       if (!scope.ok) return scope;
+      const badIncident = firstBoundsFailure(checkTitle("summary", params.summary), checkPriority("priority", params.priority));
+      if (badIncident) return badIncident;
       const summary = emClean(params.summary, 200);
       if (!summary) return { ok: false, error: "incident summary required" };
       const lat = Number(params.lat), lng = Number(params.lng ?? params.lon);
       const incident = {
         id: emId("inc"), summary,
         kind: INCIDENT_KINDS.includes(params.kind) ? params.kind : "other",
-        priority: Math.min(5, Math.max(1, Math.round(emNum(params.priority)) || 3)),
+        priority: Math.round(emNum(params.priority)) || 3,
         location: emClean(params.location, 200) || "",
         lat: Number.isFinite(lat) ? lat : null,
         lng: Number.isFinite(lng) ? lng : null,

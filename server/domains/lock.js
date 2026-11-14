@@ -3,6 +3,7 @@
 // lock contention analysis, and fairness scoring.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { checkDuration, checkTitle, firstBoundsFailure } from "../lib/bounds.js";
 export default function registerLockActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -487,6 +488,16 @@ export default function registerLockActions(registerLensAction) {
       if (!["acquire", "release", "wait"].includes(action)) {
         return { ok: false, error: "action must be acquire, release or wait" };
       }
+      // GB-1539 (FIX-lock-002): negative durations were recorded as-is
+      // (-1 accepted with no message). waitMs/holdMs are durations —
+      // out-of-policy values refuse in the bounds shape.
+      const badLock = firstBoundsFailure(
+        checkDuration("waitMs", p.waitMs, "milliseconds"),
+        checkDuration("holdMs", p.holdMs, "milliseconds"),
+        checkTitle("thread", p.thread),
+        checkTitle("lock", p.lock),
+      );
+      if (badLock) return badLock;
       const store = tracesFor(ctx);
       const ev = {
         id: `lt_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`,

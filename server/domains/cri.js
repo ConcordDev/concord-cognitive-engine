@@ -4,6 +4,7 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { registerLensExportProvider } from "../lib/lens-export.js";
+import { checkQuantity, checkMoney, checkDuration, firstBoundsFailure } from "../lib/bounds.js";
 export default function registerCriActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -14,6 +15,17 @@ export default function registerCriActions(registerLensAction) {
    */
   registerLensAction("cri", "severityAssessment", (ctx, artifact, params) => {
   try {
+    // GB-1539 bounds (FIX-cri-008): an affected count of -1 used to fall
+    // through the impact ladder and silently score as 1. Out-of-policy
+    // numbers now refuse with a clear invalid_input — never coerced.
+    const crisisIn = artifact?.data?.crisis || params?.crisis || {};
+    const badBounds = firstBoundsFailure(
+      checkQuantity("affectedCount", params?.affectedCount ?? artifact?.data?.affectedCount ?? crisisIn.affectedCount),
+      checkDuration("durationHours", params?.durationHours ?? crisisIn.durationHours, "hours"),
+      checkQuantity("casualties", crisisIn.casualties ?? params?.casualties),
+      checkMoney("financialExposure", crisisIn.financialExposure ?? params?.financialExposure),
+    );
+    if (badBounds) return badBounds;
     // FIX-cri-004 (contract repair): the Crisis panel sends flat fields
     // ({ scope: 'local'|'regional'|'global', affectedCount, durationHours })
     // which used to be dropped entirely — every factor defaulted to 3 and

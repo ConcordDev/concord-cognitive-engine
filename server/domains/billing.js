@@ -2,6 +2,7 @@
 // Domain actions for billing and invoicing: invoice calculation, revenue recognition, churn prediction.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { checkDuration, checkQuantity, checkPercent, checkMoney, firstBoundsFailure } from "../lib/bounds.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
 import { requireList } from "../lib/lens-inputs.js";
 export default function registerBillingActions(registerLensAction) {
@@ -588,6 +589,11 @@ export default function registerBillingActions(registerLensAction) {
       if (!Number.isFinite(trialRaw) || trialRaw < 0) {
         return { ok: false, error: "trialDays must be a number of days, 0 or more" };
       }
+      // GB-1539: the trial also has a ceiling now — the bounds policy's
+      // duration cap (10 years). A 99999-day trial refuses in the
+      // policy shape instead of being stored.
+      const badTrial = checkDuration("trialDays", trialRaw, "days");
+      if (badTrial) return badTrial;
       const plan = {
         id: billId("plan"),
         name,
@@ -648,6 +654,10 @@ export default function registerBillingActions(registerLensAction) {
       if (!Number.isFinite(qtyRaw) || Math.round(qtyRaw) < 1) {
         return { ok: false, error: "quantity (seats) must be at least 1" };
       }
+      // GB-1539: seats also have a ceiling — the bounds policy's
+      // quantity cap (10,000) refuses in the policy shape.
+      const badQty = checkQuantity("quantity", qtyRaw);
+      if (badQty) return badQty;
       const now = new Date();
       const trialing = plan.trialDays > 0;
       const periodStart = now;
@@ -759,6 +769,8 @@ export default function registerBillingActions(registerLensAction) {
       if (params.trialDays != null) {
         const t = billNum(params.trialDays, NaN);
         if (!Number.isFinite(t) || t < 0) return { ok: false, error: "trialDays must be a number of days, 0 or more" };
+        const badTrial = checkDuration("trialDays", t, "days");
+        if (badTrial) return badTrial;
         plan.trialDays = Math.round(t);
       }
       if (params.active != null) plan.active = params.active === true;
@@ -957,6 +969,15 @@ export default function registerBillingActions(registerLensAction) {
       const value = billNum(params.value, NaN);
       if (!Number.isFinite(value) || value <= 0) return { ok: false, error: "value must be positive" };
       if (kind === "percent" && value > 100) return { ok: false, error: "percent coupon value cannot exceed 100" };
+      // GB-1539: a fixed-amount coupon is money-class (cap 1,000,000)
+      // and max-redemptions is quantity-class (cap 10,000) — both
+      // refuse over-cap in the policy shape. Validation only; no
+      // money paths touched (money OFF).
+      const badCoupon = firstBoundsFailure(
+        kind === "percent" ? checkPercent("value", value) : checkMoney("value", value),
+        params.maxRedemptions != null && params.maxRedemptions !== "" ? checkQuantity("maxRedemptions", params.maxRedemptions) : null,
+      );
+      if (badCoupon) return badCoupon;
       let maxRedemptions = null;
       if (params.maxRedemptions != null && params.maxRedemptions !== "") {
         const mr = billNum(params.maxRedemptions, NaN);

@@ -6,6 +6,7 @@
 // feed. Free public source, no API key.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { checkTitle, checkText, checkMoney, firstBoundsFailure } from "../lib/bounds.js";
 export default function registerHomeImprovementActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ─── Planning calculators ───────────────────────────────────────────
@@ -71,14 +72,23 @@ export default function registerHomeImprovementActions(registerLensAction) {
 
   registerLensAction("home-improvement", "project-add", (ctx, _a, params = {}) => {
     const s = getHiState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const name = hiClean(params.name, 160);
+    // GB-1539 (FIX-home-improvement-004/005): over-limit names refuse and
+    // budgets refuse out-of-policy values — no silent truncation, no
+    // Math.max(0, …) flooring of a negative budget.
+    const badBounds = firstBoundsFailure(
+      checkTitle("name", params.name),
+      checkMoney("budget", params.budget),
+      checkText("notes", params.notes, "note"),
+    );
+    if (badBounds) return badBounds;
+    const name = hiClean(params.name, 200);
     if (!name) return { ok: false, error: "project name required" };
     const project = {
       id: hiId("proj"), name,
       room: ROOMS.includes(params.room) ? params.room : "other",
-      budget: Math.max(0, hiNum(params.budget)),
+      budget: hiNum(params.budget),
       status: "planning",
-      notes: hiClean(params.notes, 1000) || "",
+      notes: hiClean(params.notes, 5000) || "",
       tasks: [], expenses: [],
       createdAt: new Date().toISOString(),
     };
@@ -162,10 +172,15 @@ export default function registerHomeImprovementActions(registerLensAction) {
     const s = getHiState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const project = hiProjects(s, hiActor(ctx)).find((p) => p.id === params.projectId);
     if (!project) return { ok: false, error: "project not found" };
+    const badExpense = firstBoundsFailure(
+      checkTitle("label", params.label),
+      checkMoney("amount", params.amount),
+    );
+    if (badExpense) return badExpense;
     const expense = {
       id: hiId("exp"),
-      label: hiClean(params.label, 160) || "expense",
-      amount: Math.max(0, hiNum(params.amount)),
+      label: hiClean(params.label, 200) || "expense",
+      amount: hiNum(params.amount),
       kind: ["materials", "labor", "permit", "tools", "other"].includes(params.kind) ? params.kind : "materials",
       date: hiClean(params.date, 30) || new Date().toISOString().slice(0, 10),
     };
@@ -522,7 +537,13 @@ export default function registerHomeImprovementActions(registerLensAction) {
   // ─── Home inventory / asset register (warranties, manuals) ─────────
   registerLensAction("home-improvement", "inventory-add", (ctx, _a, params = {}) => {
     const s = getHiState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const name = hiClean(params.name, 160);
+    const badAsset = firstBoundsFailure(
+      checkTitle("name", params.name),
+      checkMoney("purchasePrice", params.purchasePrice),
+      checkText("notes", params.notes, "note"),
+    );
+    if (badAsset) return badAsset;
+    const name = hiClean(params.name, 200);
     if (!name) return { ok: false, error: "asset name required" };
     const asset = {
       id: hiId("asset"), name,
@@ -532,10 +553,10 @@ export default function registerHomeImprovementActions(registerLensAction) {
       model: hiClean(params.model, 100) || "",
       serial: hiClean(params.serial, 100) || "",
       purchaseDate: hiClean(params.purchaseDate, 30) || "",
-      purchasePrice: Math.max(0, hiNum(params.purchasePrice)),
+      purchasePrice: hiNum(params.purchasePrice),
       warrantyExpires: hiClean(params.warrantyExpires, 30) || "",
       manualUrl: hiClean(params.manualUrl, 600) || "",
-      notes: hiClean(params.notes, 800) || "",
+      notes: hiClean(params.notes, 5000) || "",
       createdAt: new Date().toISOString(),
     };
     hiList(s, "inventory", hiActor(ctx)).push(asset);

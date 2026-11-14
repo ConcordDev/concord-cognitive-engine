@@ -1,5 +1,6 @@
 // server/domains/fashion.js
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { checkTitle, checkMoney, checkQuantity, firstBoundsFailure } from "../lib/bounds.js";
 import { callVision, callVisionUrl, visionPromptForDomain } from "../lib/vision-inference.js";
 import { openMeteoJson } from "../lib/weather-feed-sources.js";
 import { listFriends, areFriends } from "../lib/friendships.js";
@@ -85,15 +86,11 @@ export default function registerFashionActions(registerLensAction) {
   // matches the sweep's standing money ceiling (home-improvement's
   // MAX_MONEY, FIX-home-improvement-005) so money fields share one bound.
   // Out-of-range values are REFUSED, never floored or clamped silently.
-  const MAX_ITEM_COST = 10_000_000;
-  const fsCostError = (v) => {
-    if (v == null || v === "") return null;
-    const n = Number(v);
-    if (!Number.isFinite(n) || n < 0 || n > MAX_ITEM_COST) {
-      return `cost must be a number from $0 to $${MAX_ITEM_COST.toLocaleString("en-US")}`;
-    }
-    return null;
-  };
+  // GB-1539 (FIX-fashion-006): cost validation now consumes the ONE
+  // platform bounds policy (money: finite, no negatives, ≤ 1,000,000) —
+  // the local $10,000,000 cap and its plain-string error are retired so
+  // every surface refuses in the same invalid_input shape.
+  const fsCostError = (v) => checkMoney("cost", v);
   const fsClean = (v, max = 200) => String(v == null ? "" : v).trim().slice(0, max);
   const fsDay = (v) => fsClean(v, 10).slice(0, 10);
   const findItem = (s, userId, id) => (s.items.get(userId) || []).find((i) => i.id === id) || null;
@@ -136,7 +133,7 @@ export default function registerFashionActions(registerLensAction) {
   // wishlist-convert-to-item so "create a real closet item" has exactly
   // one implementation, not a copy-pasted second one.
   function buildWardrobeItem(params) {
-    const name = fsClean(params.name, 120);
+    const name = fsClean(params.name, 200);
     if (!name) return null;
     return {
       id: fsId("itm"), name,
@@ -159,8 +156,14 @@ export default function registerFashionActions(registerLensAction) {
   // ── Wardrobe items ──────────────────────────────────────────────────
   registerLensAction("fashion", "item-add", (ctx, _a, params = {}) => {
     const s = getFashionState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const costError = fsCostError(params.cost);
-    if (costError) return { ok: false, error: costError };
+    // GB-1539: name over the title limit and negative wear counts refuse
+    // in the policy shape too — no silent truncation or Math.max coercion.
+    const badBounds = firstBoundsFailure(
+      checkTitle("name", params.name),
+      fsCostError(params.cost),
+      checkQuantity("timesWorn", params.timesWorn),
+    );
+    if (badBounds) return badBounds;
     const item = buildWardrobeItem(params);
     if (!item) return { ok: false, error: "item name required" };
     fsListB(s.items, fsAid(ctx)).push(item);
@@ -197,9 +200,9 @@ export default function registerFashionActions(registerLensAction) {
     }
     if (params.cost != null) {
       const costError = fsCostError(params.cost);
-      if (costError) return { ok: false, error: costError };
+      if (costError) return costError;
     }
-    if (params.name != null) { const n = fsClean(params.name, 120); if (n) item.name = n; }
+    if (params.name != null) { const badName = checkTitle("name", params.name); if (badName) return badName; const n = fsClean(params.name, 200); if (n) item.name = n; }
     if (params.brand != null) item.brand = fsClean(params.brand, 80) || null;
     if (params.color != null) item.color = fsClean(params.color, 40).toLowerCase() || null;
     if (params.cost != null) item.cost = Math.max(0, fsNum(params.cost));
@@ -1420,8 +1423,11 @@ export default function registerFashionActions(registerLensAction) {
     const idx = arr.findIndex((w) => w.id === params.id);
     if (idx < 0) return { ok: false, error: "wishlist entry not found" };
     const entry = arr[idx];
-    const costError = fsCostError(params.cost != null ? params.cost : entry.price);
-    if (costError) return { ok: false, error: costError };
+    const badConvert = firstBoundsFailure(
+      checkTitle("name", entry.name),
+      fsCostError(params.cost != null ? params.cost : entry.price),
+    );
+    if (badConvert) return badConvert;
     const item = buildWardrobeItem({
       name: params.name || entry.name,
       category: params.category || entry.category || "top",

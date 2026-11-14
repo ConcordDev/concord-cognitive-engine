@@ -13,6 +13,7 @@
 // All parity state is per-user, persisted in globalThis._concordSTATE.feedLens.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { checkText } from "../lib/bounds.js";
 import { saveAfterWrites } from "../lib/lens-save-on-write.js";
 import { registerLensExportProvider } from "../lib/lens-export.js";
 import { lookupUserIdentity } from "../lib/user-identity.js";
@@ -303,7 +304,10 @@ export default function registerFeedActions(registerLensAction) {
     const userId = feedActor(ctx);
     const body = String(params.body || "").trim();
     if (!body) return { ok: false, error: "body required" };
-    if (body.length > 4000) return { ok: false, error: "body too long" };
+    // GB-1539: thread bodies are the POST class (5,000) in the policy
+    // shape — the local 4,000 cap retired to the one policy.
+    const badBody = checkText("body", body, "post");
+    if (badBody) return badBody;
     const kind = params.quotedId ? "quote" : (params.parentId ? "reply" : "post");
     if (!s.threads.has(userId)) s.threads.set(userId, new Map());
     const map = s.threads.get(userId);

@@ -2,6 +2,7 @@
 // Domain actions for attention/focus management: focus scoring, priority matrix, attention budgeting.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { checkTitle, checkDuration } from "../lib/bounds.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
 import { requireList } from "../lib/lens-inputs.js";
 import { registerLensExportProvider } from "../lib/lens-export.js";
@@ -655,8 +656,22 @@ export default function registerAttentionActions(registerLensAction) {
     try {
       const s = getFocusState();
       const userId = fActor(ctx);
-      const name = fClean(params?.name, 160);
+      // GB-1539 bounds: a name over the title limit refuses with a clear
+      // invalid_input — fClean's silent truncation to 160 hid the breach.
+      const badName = checkTitle("name", params?.name);
+      if (badName) return badName;
+      const name = fClean(params?.name, 200);
       if (!name) return { ok: false, error: "name_required" };
+      // Minutes: negatives and over-policy durations refuse; the planner's
+      // own 720-minute cap refuses in the same shape (never a silent clamp).
+      const badDur = checkDuration("durationMinutes", params?.durationMinutes, "minutes");
+      if (badDur) return badDur;
+      if (params?.durationMinutes != null && Number(params.durationMinutes) > 720) {
+        return { ok: false, error: "invalid_input", reason: "bounds_duration", field: "durationMinutes", message: "durationMinutes must be at most 720 (12 hours) for a planner task." };
+      }
+      if (params?.startMinute != null && (!Number.isFinite(Number(params.startMinute)) || Number(params.startMinute) < 0 || Number(params.startMinute) > 1439)) {
+        return { ok: false, error: "invalid_input", reason: "bounds_quantity", field: "startMinute", message: "startMinute must be between 0 and 1439." };
+      }
       const date = fDateKey(params?.date);
       if (!s.plannerDays.has(userId)) s.plannerDays.set(userId, {});
       const days = s.plannerDays.get(userId);

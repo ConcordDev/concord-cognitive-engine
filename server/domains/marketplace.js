@@ -1,5 +1,6 @@
 // server/domains/marketplace.js
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { checkTitle, checkText, checkMoney, checkQuantity, firstBoundsFailure } from "../lib/bounds.js";
 import { executeMarketplacePurchase } from "../economy/transfer.js";
 import { calculateFee } from "../economy/fees.js";
 import { moneyOrNull, badNumber } from "../lib/finite-input.js";
@@ -187,6 +188,18 @@ export default function registerMarketplaceActions(registerLensAction) {
     const title = String(params.title || "").trim();
     const priceUsd = Number(params.priceUsd);
     if (!title || !Number.isFinite(priceUsd) || priceUsd < 0) return { ok: false, error: "title + non-negative priceUsd required" };
+    // GB-1539 (FIX-market-004): the listing title had no length limit
+    // (250 chars accepted, Submit enabled). Title/description/price/
+    // shipping/stock now consume the bounds policy — validation only,
+    // no money paths touched (money OFF).
+    const badListing = firstBoundsFailure(
+      checkTitle("title", params.title),
+      checkText("description", params.description, "note"),
+      checkMoney("priceUsd", priceUsd),
+      checkMoney("shippingCostUsd", params.shippingCostUsd),
+      params.stockQty != null ? checkQuantity("stockQty", params.stockQty) : null,
+    );
+    if (badListing) return badListing;
     if (moneyOrNull(params.shippingCostUsd, 0) === null) return badNumber("shippingCostUsd", "must be a finite amount >= 0");
     const seq = ensureSeqS(s, userId);
     const listing = {
@@ -219,6 +232,13 @@ export default function registerMarketplaceActions(registerLensAction) {
     const userId = aidS(ctx);
     const l = arrayB(s.listings, userId).find(x => x.id === String(params.id || ""));
     if (!l) return { ok: false, error: "listing not found" };
+    const badUpdate = firstBoundsFailure(
+      checkTitle("title", params.title),
+      checkText("description", params.description, "note"),
+      params.priceUsd != null ? checkMoney("priceUsd", params.priceUsd) : null,
+      params.stockQty != null ? checkQuantity("stockQty", params.stockQty) : null,
+    );
+    if (badUpdate) return badUpdate;
     for (const k of ['title','description','currency']) if (typeof params[k] === 'string') l[k] = params[k];
     if (Number.isFinite(Number(params.priceUsd))) l.priceUsd = Number(params.priceUsd);
     if (Number.isFinite(Number(params.shippingCostUsd)) && Number(params.shippingCostUsd) >= 0) l.shippingCostUsd = Number(params.shippingCostUsd);

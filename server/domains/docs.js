@@ -1,4 +1,16 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { checkNumber } from "../lib/bounds.js";
+
+// GB-1539 (FIX-docs-007): a docs database NUMBER cell is user data
+// with the bounds policy's NUMBER class (finite, 0 to 1,000,000). A
+// present-but-invalid value (non-numeric, negative, over the cap)
+// refuses with the column named — the old writer silently coerced it
+// to 0, which for a quantity/amount column reads as data loss. An
+// absent or emptied cell still defaults to 0 as before.
+function docsNumberCellError(col, v) {
+  if (v == null || v === "") return null;
+  return checkNumber(col.name || col.id || "value", v);
+}
 import crypto from "node:crypto";
 import { newShareToken, isStrongShareToken } from "../lib/share-token.js";
 // server/domains/docs.js
@@ -1156,6 +1168,12 @@ export default function registerDocsActions(registerLensAction) {
     const cells = {};
     const incoming = params.cells && typeof params.cells === "object" ? params.cells : {};
     for (const col of db.columns) {
+      if (col.type === "number") {
+        const badCell = docsNumberCellError(col, incoming[col.id]);
+        if (badCell) return badCell;
+      }
+    }
+    for (const col of db.columns) {
       const v = incoming[col.id];
       if (col.type === "number") cells[col.id] = Number.isFinite(Number(v)) ? Number(v) : 0;
       else if (col.type === "checkbox") cells[col.id] = v === true;
@@ -1175,6 +1193,11 @@ export default function registerDocsActions(registerLensAction) {
     const row = db.rows.find((r) => r.id === params.rowId);
     if (!row) return { ok: false, error: "row not found" };
     const incoming = params.cells && typeof params.cells === "object" ? params.cells : {};
+    for (const col of db.columns) {
+      if (!(col.id in incoming) || col.type !== "number") continue;
+      const badCell = docsNumberCellError(col, incoming[col.id]);
+      if (badCell) return badCell;
+    }
     for (const col of db.columns) {
       if (!(col.id in incoming)) continue;
       const v = incoming[col.id];

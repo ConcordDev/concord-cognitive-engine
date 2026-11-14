@@ -1,4 +1,5 @@
 import { registerLensExportProvider } from "../lib/lens-export.js";
+import { checkTitle } from "../lib/bounds.js";
 // The frontier card opens a link, then a bearing, then a mark.
 // The cross-world feed and the royalty window stay off this domain.
 // List returns id and name. The bearing and the mark come back
@@ -162,6 +163,11 @@ export default function registerConcordLinkFrontierActions(registerLensAction) {
     try {
       const userId = linkActor(ctx);
       if (!userId) return { ok: false, error: "no_actor" };
+      // GB-1539 (FIX-concord-link-frontier-008): the walk's 300-char name
+      // had no warning anywhere and the server was never tested. A name
+      // over the title limit now refuses in the policy shape.
+      const badName = checkTitle("name", params.name);
+      if (badName) return badName;
       const name = linkClean(params.name, 4000);
       if (!name) return { ok: false, error: "name required" };
       const now = linkNow();
@@ -287,6 +293,8 @@ export default function registerConcordLinkFrontierActions(registerLensAction) {
       if (!userId) return { ok: false, error: "no_actor" };
       const id = linkClean(params.id || params.linkId, 80);
       if (!id) return { ok: false, error: "missing_link_id" };
+      const badName = checkTitle("name", params.name);
+      if (badName) return badName;
       const name = linkClean(params.name, 4000);
       if (!name) return { ok: false, error: "link name required" };
       const link = findLink(ctx, userId, id);

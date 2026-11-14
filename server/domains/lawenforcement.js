@@ -42,6 +42,7 @@
 // no figure is presented as lens-wide that was computed over less.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { checkTitle, checkText, firstBoundsFailure } from "../lib/bounds.js";
 import { registerLensExportProvider } from "../lib/lens-export.js";
 import { lookupUserIdentity } from "../lib/user-identity.js";
 import crypto from "node:crypto";
@@ -1250,6 +1251,13 @@ export default function registerLawEnforcementActions(registerLensAction) {
       const p = params || {};
       const title = str(p.title);
       if (!title) return { ok: false, error: "title is required" };
+      // GB-1539 (FIX-law-enforcement-008): a case title over the title
+      // limit refuses with the limit named — it stored unbounded before.
+      const badCase = firstBoundsFailure(
+        checkTitle("title", p.title),
+        checkText("synopsis", p.synopsis, "note"),
+      );
+      if (badCase) return badCase;
       const uidActor = actorId(ctx);
       const cs = caseStore(ctx);
       const requestedNumber = normalizeCaseNumber(p.caseNumber);
@@ -1356,9 +1364,15 @@ export default function registerLawEnforcementActions(registerLensAction) {
       if (p.title !== undefined) {
         const nextTitle = str(p.title);
         if (!nextTitle) return { ok: false, error: "title cannot be blank" };
+        const badTitle = checkTitle("title", p.title);
+        if (badTitle) return badTitle;
         rec.title = nextTitle;
       }
-      if (p.synopsis !== undefined) rec.synopsis = str(p.synopsis);
+      if (p.synopsis !== undefined) {
+        const badSynopsis = checkText("synopsis", p.synopsis, "note");
+        if (badSynopsis) return badSynopsis;
+        rec.synopsis = str(p.synopsis);
+      }
       if (p.assignedDetective !== undefined) rec.assignedDetective = str(p.assignedDetective);
       if (p.closureReason !== undefined && rec.status === "closed") rec.closureReason = str(p.closureReason);
 

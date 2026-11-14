@@ -9,6 +9,7 @@
 // Shadows Instagram / X core engagement features.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { checkText, checkTitle, firstBoundsFailure } from "../lib/bounds.js";
 import { screenLocalSync } from "../lib/content-safety/index.js";
 import { resolveUserDisplay } from "../lib/friend-presence.js";
 import { lookupUserIdentity } from "../lib/user-identity.js";
@@ -266,7 +267,16 @@ export default function registerSocialActions(registerLensAction) {
   try {
     const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actor(ctx);
-    const body = clip(params.body, 2000);
+    // GB-1539 (FIX-feed-008): the composer body is the POST class
+    // (5,000). It used to clip silently at 2,000 — under the policy an
+    // over-limit post refuses with the limit named, and an in-policy
+    // post stores whole. Poll questions are titles (200).
+    const badPost = firstBoundsFailure(
+      checkText("body", params.body, "post"),
+      checkTitle("question", params.poll?.question),
+    );
+    if (badPost) return badPost;
+    const body = clip(params.body, 5000);
     // FIX-social-006 — honor the composer's audience choice. The read
     // side (canViewPost) already enforces this exact vocabulary:
     // private = author only, followers = followers, else public.
