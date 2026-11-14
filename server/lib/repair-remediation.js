@@ -113,6 +113,23 @@ export function syncAndListQueue(report) {
   return Array.from(_queue.values()).sort((a, b) => (b.proposedAt || "").localeCompare(a.proposedAt || ""));
 }
 
+/**
+ * Enqueue an externally-built proposal (BR-01 / GB-1541: repair-brain
+ * hot-patch proposals). The entry joins the SAME queue and the SAME
+ * propose → approve → apply governance as detector candidates; this
+ * function only inserts it as `proposed` — approval and application stay
+ * the separate, auditable steps they are for every other entry. The
+ * generic `apply` above refuses any action it has no handler for, so a
+ * foreign action kind can only ever be applied by its own owning module.
+ */
+export function enqueueProposal(entry) {
+  if (!entry || typeof entry.id !== "string" || !entry.id) return { ok: false, error: "invalid_entry" };
+  if (_queue.has(entry.id)) return { ok: false, error: "duplicate_id", id: entry.id };
+  const stamped = { ...entry, status: "proposed", proposedAt: nowISO() };
+  _queue.set(entry.id, stamped);
+  return { ok: true, entry: stamped };
+}
+
 /** Read-only queue snapshot, no re-sync (used by apply/approve/reject to look an entry up). */
 export function getEntry(id) {
   return _queue.get(id) || null;
@@ -191,6 +208,7 @@ export function _resetRemediationQueue() {
 export default {
   listCandidates,
   syncAndListQueue,
+  enqueueProposal,
   getEntry,
   approve,
   reject,
