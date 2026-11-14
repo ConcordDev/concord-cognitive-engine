@@ -948,7 +948,15 @@ export default function registerCouncilActions(registerLensAction) {
     if (!title) return { ok: false, error: "title required" };
     const authorId = cUser(ctx);
     const authorName = cActorName(ctx, params);
-    cEnsureMember(s, authorId, authorName);
+    // FIX-council-008 rider (founder ruling, 2026-11-13): proposal
+    // authoring requires membership. This action used to ensure the
+    // author's membership implicitly (cEnsureMember) — but authoring
+    // is not a join: membership is explicit (FIX-council-008), so a
+    // non-member author is refused by name and joins through
+    // member-join first, exactly as voting already requires.
+    if (!cIsMember(s, authorId)) {
+      return { ok: false, error: "Join the council to author a proposal — authoring is for council members." };
+    }
     const tags = Array.isArray(params.tags)
       ? params.tags.map((t) => String(t).trim()).filter(Boolean)
       : String(params.tags || "").split(",").map((t) => t.trim()).filter(Boolean);

@@ -206,6 +206,18 @@ export function ImportDeskPanel() {
       setImportActionResult({ action, data: { error: 'Enter at least one target field to map to (comma-separated).' } });
       return;
     }
+    // FIX-import-005 leg (founder ruling, 2026-11-13): field names are
+    // capped at 120 characters (the standing field-name limit, enforced
+    // server-side as well). Refuse here first so the limit is named in
+    // the result area instead of discovered from a failed run.
+    if (action === 'mapFields' && targetFieldsInput.split(',').map((s) => s.trim()).filter(Boolean).some((f) => f.length > 120)) {
+      setImportActionResult({ action, data: { error: 'Field names are limited to 120 characters — shorten the longest target field and retry.' } });
+      return;
+    }
+    if (action === 'detectDuplicates' && keyFieldsInput.split(',').map((s) => s.trim()).filter(Boolean).some((f) => f.length > 120)) {
+      setImportActionResult({ action, data: { error: 'Field names are limited to 120 characters — shorten the longest dedup key and retry.' } });
+      return;
+    }
     setActionBusy(true);
     try {
       let input: Record<string, unknown> = { rows: analysisRows };

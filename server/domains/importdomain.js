@@ -143,6 +143,19 @@ export default function registerImportActions(registerLensAction) {
     } catch (e) { return handlerFailure(e); }
 });
 
+  // FIX-import-005 leg (founder ruling, 2026-11-13): field names are
+  // capped at 120 characters — the standing field-name limit. The base
+  // fix named this leg as an unpriced product call (no limit existed
+  // anywhere and the names land as row keys); the ruling prices it.
+  const MAX_FIELD_NAME_LENGTH = 120;
+  function fieldNameTooLong(list) {
+    if (!Array.isArray(list)) return null;
+    return list.find((f) => typeof f === "string" && f.length > MAX_FIELD_NAME_LENGTH) || null;
+  }
+  function fieldNameLimitError(name) {
+    return { ok: false, error: `Field names are limited to ${MAX_FIELD_NAME_LENGTH} characters — one name here is ${String(name).length}. Shorten it and retry.` };
+  }
+
   /**
    * mapFields
    * Suggest source-to-target field mappings using name similarity.
@@ -155,6 +168,8 @@ export default function registerImportActions(registerLensAction) {
     if (!Array.isArray(sourceFields)) return sourceFields;
     const targetFields = requireList(artifact.data?.targetFields, "targetFields");
     if (!Array.isArray(targetFields)) return targetFields;
+    const tooLongField = fieldNameTooLong(sourceFields) || fieldNameTooLong(targetFields);
+    if (tooLongField) return fieldNameLimitError(tooLongField);
 
     if (sourceFields.length === 0 || targetFields.length === 0) {
       return { ok: true, result: { message: "Provide artifact.data.sourceFields and artifact.data.targetFields as arrays of field name strings.", mappings: [], unmapped: [] } };
@@ -311,6 +326,8 @@ export default function registerImportActions(registerLensAction) {
     const rows = artifact.data?.rows || [];
     const keyFields = artifact.data?.keyFields || [];
     const fuzzy = artifact.data?.fuzzy || false;
+    const tooLongKey = fieldNameTooLong(keyFields);
+    if (tooLongKey) return fieldNameLimitError(tooLongKey);
 
     if (rows.length === 0) {
       return { ok: true, result: { message: "No rows provided. Supply artifact.data.rows and artifact.data.keyFields (array of field names to check for uniqueness).", duplicates: [], uniqueCount: 0 } };

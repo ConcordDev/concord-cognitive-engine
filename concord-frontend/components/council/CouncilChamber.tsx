@@ -483,6 +483,7 @@ export default function CouncilLensPage() {
   // ----- UI State -----
   const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null);
   const [showCreateProposal, setShowCreateProposal] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
   const [showCreateBudgetItem, setShowCreateBudgetItem] = useState(false);
   const [showCreateCommittee, setShowCreateCommittee] = useState(false);
   const [showCreateDebate, setShowCreateDebate] = useState(false);
@@ -684,7 +685,11 @@ export default function CouncilLensPage() {
       votingMethod: newProposal.votingMethod,
       authorName: actorName || undefined,
     }).then((r) => {
-      if (!r.data.ok) return;
+      if (!r.data.ok) {
+        setCreateError(r.data.error || 'That proposal could not be created.');
+        return;
+      }
+      setCreateError(null);
       setShowCreateProposal(false);
       setNewProposal({
         title: '',
@@ -3024,6 +3029,18 @@ export default function CouncilLensPage() {
                 </button>
               </div>
               <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
+                {user?.id && !viewerIsCouncilMember && (
+                  <p className="text-sm text-zinc-400">
+                    You are viewing the council as a guest. Join the council
+                    (top of this page) to author a proposal — authoring is
+                    for council members.
+                  </p>
+                )}
+                {createError && (
+                  <p role="alert" className="text-sm text-red-300">
+                    {createError}
+                  </p>
+                )}
                 <div>
                   <label className={ds.label}>Title</label>
                   <input aria-label="Title"
