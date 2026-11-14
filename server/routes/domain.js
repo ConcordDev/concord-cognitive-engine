@@ -855,6 +855,10 @@ export default function registerDomainRoutes(app, {
     const out = await runMacro("reasoning", "list_chains", {}, makeCtx(req));
     return res.json(out);
   }));
+  app.delete("/api/reasoning/chains/:chainId", asyncHandler(async (req, res) => {
+    const out = await runMacro("reasoning", "delete_chain", { chainId: req.params.chainId }, makeCtx(req));
+    return res.json(out);
+  }));
   app.post("/api/reasoning/chains/:chainId/steps", asyncHandler(async (req, res) => {
     const out = await runMacro("reasoning", "add_step", { ...req.body, chainId: req.params.chainId }, makeCtx(req));
     return res.json(out);

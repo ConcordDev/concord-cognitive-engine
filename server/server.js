@@ -18194,7 +18194,15 @@ register("reasoning", "status", (ctx, _input = {}) => {
 
 register("reasoning", "create_chain", (ctx, input = {}) => {
   enforceEthosInvariant("reasoning_create");
-  return createReasoningChain(input);
+  // Owner from auth ctx — never trust client-supplied user ids (INC-59).
+  return createReasoningChain(input, _inferenceActorId(ctx));
+}, { public: false });
+
+register("reasoning", "delete_chain", (ctx, input = {}) => {
+  enforceEthosInvariant("reasoning_delete");
+  const chainId = String(input.chainId || "");
+  if (!chainId) return { ok: false, error: "chainId required" };
+  return deleteReasoningChain(chainId, _inferenceActorId(ctx));
 }, { public: false });
 
 register("reasoning", "add_step", (ctx, input = {}) => {
@@ -18235,7 +18243,7 @@ register("reasoning", "list_chains", (ctx, _input = {}) => {
   ensureReasoningEngine();
   const chains = Array.from(ctx.state.reasoning.chains.values())
     .slice(-50)
-    .map(c => ({ id: c.id, question: c.question, type: c.type, status: c.status, stepCount: c.steps.length, confidence: c.confidence }));
+    .map(c => ({ id: c.id, ownerId: c.ownerId ?? null, question: c.question, type: c.type, status: c.status, stepCount: c.steps.length, confidence: c.confidence }));
   return { ok: true, chains };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
@@ -83832,7 +83840,7 @@ function ensureReasoningEngine() {
 }
 
 // Create a new reasoning chain
-function createReasoningChain(input = {}) {
+function createReasoningChain(input = {}, ownerId = null) {
   ensureReasoningEngine();
 
   const id = uid("chain");
@@ -83840,6 +83848,12 @@ function createReasoningChain(input = {}) {
 
   const chain = {
     id,
+    // Ownership (FIX-reasoning-005, chains leg): chains were unowned
+    // global engine state — anyone could read the list and no one could
+    // delete. The creator's actor id is stamped at creation (from ctx,
+    // never from client input — INC-59) and delete_chain is scoped to it.
+    // Chains created before this model carry ownerId null.
+    ownerId: ownerId ? String(ownerId) : null,
     question: String(input.question || "").slice(0, 1000),
     goal: String(input.goal || "derive_conclusion").slice(0, 200),
     type: String(input.type || "deductive").slice(0, 50),
@@ -83856,6 +83870,27 @@ function createReasoningChain(input = {}) {
   STATE.reasoning.stats.chainsCreated++;
 
   return { ok: true, chain };
+}
+
+// Delete a reasoning chain — owner-scoped (FIX-reasoning-005, chains leg).
+// Only the chain's stamped owner may delete it. Legacy chains (ownerId
+// null, created before the ownership model) are not member-deletable;
+// they remain for the desk to clear. The chain's steps go with it.
+function deleteReasoningChain(chainId, ownerId) {
+  ensureReasoningEngine();
+
+  const chain = STATE.reasoning.chains.get(chainId);
+  if (!chain) return { ok: false, error: "Chain not found" };
+  if (!chain.ownerId || !ownerId || chain.ownerId !== String(ownerId)) {
+    return { ok: false, error: "forbidden: not your chain" };
+  }
+  STATE.reasoning.chains.delete(chainId);
+  if (STATE.reasoning.steps instanceof Map) {
+    for (const [stepId, step] of STATE.reasoning.steps) {
+      if (step && step.chainId === chainId) STATE.reasoning.steps.delete(stepId);
+    }
+  }
+  return { ok: true, deleted: chainId };
 }
 
 // Add a step to a reasoning chain
