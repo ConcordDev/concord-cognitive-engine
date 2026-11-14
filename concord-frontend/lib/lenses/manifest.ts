@@ -2523,7 +2523,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'creative',
-    dataTier: 'SIM_GRADE_A',
+    dataTier: 'REAL_WORKSPACE',
     emptyState: {
       headline: "Curate your art.",
       caption: "Artworks, galleries, exhibits, collections \u2014 analyze, generate, validate.",
