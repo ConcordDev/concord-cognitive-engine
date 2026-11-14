@@ -67,6 +67,7 @@ import {
   Key,
   FolderOpen,
   Volume2,
+  Square,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 // ConKay is its own lens (/lenses/conkay); choosing it here routes there.
@@ -87,7 +88,7 @@ import { ChatHandoffMenu } from '@/components/chat/ChatHandoffMenu';
 import OracleResponse from '@/components/chat/OracleResponse';
 import { ToolCallCard } from '@/components/chat/ToolCallCard';
 import { ChatArtifacts, type ChatArtifact } from '@/components/chat/ChatArtifacts';
-import { isReadAloudRequest, speakText, canSpeak } from '@/lib/chat/read-aloud';
+import { isReadAloudRequest, speakText, stopSpeaking, useSpeakingId, canSpeak } from '@/lib/chat/read-aloud';
 import ComputeBadge from '@/components/chat/ComputeBadge';
 import LowConfidenceTag from '@/components/chat/LowConfidenceTag';
 import CitationChips from '@/components/chat/CitationChips';
@@ -458,6 +459,8 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
     Record<string, { id: string; title: string; content: string }>
   >({});
   const [conversationSearch, setConversationSearch] = useState('');
+  // FIX-chat-010: which message is currently being read aloud (lib state).
+  const speakingId = useSpeakingId();
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [composerPlusOpen, setComposerPlusOpen] = useState(false);
   // The header ⋮, composer + and mode pill menus close on Escape or a click
@@ -2012,7 +2015,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
     // iOS Safari only allows speech from a user gesture and the server has no TTS.
     if (isReadAloudRequest(input)) {
       const last = [...localMessages].reverse().find((m) => m.role === 'assistant' && m.content);
-      const spoke = last ? speakText(last.content) : false;
+      const spoke = last ? speakText(last.content, last.id) : false;
       const note = !last
         ? 'There is no answer in this chat to read yet.'
         : spoke
@@ -2630,16 +2633,31 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                 )}
               </button>
 
-              {/* Read aloud — assistant replies, browser speech */}
+              {/* Read aloud — assistant replies, browser speech. FIX-chat-010:
+                  while THIS message is speaking the button is a visible stop
+                  control; clicking it stops instead of restarting. */}
               {message.role === 'assistant' && canSpeak() && (
-                <button
-                  onClick={() => speakText(message.content)}
-                  className="hover:text-white transition-colors"
-                  title="Read aloud"
-                  aria-label="Read message aloud"
-                >
-                  <Volume2 className="w-3 h-3" />
-                </button>
+                speakingId === message.id ? (
+                  <button
+                    onClick={() => stopSpeaking()}
+                    className="text-neon-cyan transition-colors"
+                    title="Stop reading"
+                    aria-label="Stop reading aloud"
+                    aria-pressed="true"
+                  >
+                    <Square className="w-3 h-3 fill-current" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => speakText(message.content, message.id)}
+                    className="hover:text-white transition-colors"
+                    title="Read aloud"
+                    aria-label="Read message aloud"
+                    aria-pressed="false"
+                  >
+                    <Volume2 className="w-3 h-3" />
+                  </button>
+                )
               )}
 
               {/* Pin button — available on ALL messages */}
