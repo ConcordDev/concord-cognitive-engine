@@ -102,21 +102,13 @@ export async function composeForecast(db, STATE, worldId) {
   return { ok: true, worldId, forecast: out, composedAt: Date.now() };
 }
 
-export function persistForecast(db, worldId, forecast) {
+export function persistForecast(db, worldId, forecast, composedBy = null) {
   if (!db || !worldId || !forecast) return { ok: false, reason: "missing_inputs" };
   try {
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS world_forecasts (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        world_id TEXT NOT NULL,
-        forecast_json TEXT NOT NULL,
-        composed_at INTEGER NOT NULL DEFAULT (unixepoch())
-      )
-    `);
-    db.exec(`CREATE INDEX IF NOT EXISTS idx_forecasts_world ON world_forecasts(world_id, composed_at DESC)`);
+    ensureForecastTable(db);
     db.prepare(`
-      INSERT INTO world_forecasts (world_id, forecast_json) VALUES (?, ?)
-    `).run(worldId, JSON.stringify(forecast));
+      INSERT INTO world_forecasts (world_id, forecast_json, composed_by) VALUES (?, ?, ?)
+    `).run(worldId, JSON.stringify(forecast), composedBy ? String(composedBy) : null);
     return { ok: true };
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
 }
@@ -145,6 +137,15 @@ function ensureForecastTable(db) {
     )
   `);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_forecasts_world ON world_forecasts(world_id, composed_at DESC)`);
+  // FIX-forecast-002: archived forecasts are owned by their creator
+  // (founder ruling, DUTCH-DECISIONS-46 #12). The table predates the
+  // ruling and has no creator column — add it in place. Rows persisted
+  // before the stamp carry NULL: they belong to no one, and no owner's
+  // export may claim them.
+  const cols = db.prepare(`PRAGMA table_info(world_forecasts)`).all();
+  if (!cols.some((c) => c.name === "composed_by")) {
+    db.exec(`ALTER TABLE world_forecasts ADD COLUMN composed_by TEXT`);
+  }
 }
 
 // Fail-CLOSED numeric guard (mirrors server/domains/literary.js#badNumericField).
@@ -451,6 +452,63 @@ export function forecastArchive(db, worldId, limit = 50) {
     const trend = [...entries].reverse();
     return { ok: true, worldId, count: entries.length, entries, trend };
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}
+
+// FIX-forecast-002: the caller's OWN archived forecasts — rows they
+// composed (composed_by stamped at persist time). World archive reads
+// (forecastArchive above) stay world-scoped by design: a world's weather
+// is shared world state. Ownership governs the export, so the export's
+// archive leg is creator-scoped here. NULL-composer rows (persisted
+// before the stamp existed) belong to no one and are never returned.
+export function ownArchivedForecasts(db, userId, limit = 200) {
+  if (!db || !userId) return [];
+  try {
+    ensureForecastTable(db);
+    const rows = db.prepare(`
+      SELECT id, world_id, forecast_json, composed_at FROM world_forecasts
+      WHERE composed_by = ? ORDER BY composed_at DESC, id DESC LIMIT ?
+    `).all(String(userId), Math.min(1000, Math.max(1, parseInt(limit, 10) || 200)));
+    return rows.map((r) => {
+      let j = null;
+      try { j = JSON.parse(r.forecast_json); } catch { /* skip */ }
+      return { id: r.id, worldId: r.world_id, composedAt: r.composed_at, forecast: j };
+    }).filter((x) => x.forecast);
+  } catch { return []; }
+}
+
+// FIX-forecast-002: export-provider rows for the "forecast" domain —
+// exactly the caller's own forecast records: their alert subscriptions
+// and their archived forecasts, in the lens-export provider shape
+// ({ id, title, type, createdAt, updatedAt, data }). Another user's
+// alerts and forecasts, other worlds' unstamped history, and the shared
+// world views are never part of a personal export.
+export function forecastExportRows(db, userId, limit = 1000) {
+  if (!db || !userId) return [];
+  const cap = Math.min(1000, Math.max(1, parseInt(limit, 10) || 1000));
+  const rows = [];
+  for (const sub of listAlertSubs(db, userId, null)) {
+    const ts = sub.createdAt ? new Date(sub.createdAt * 1000).toISOString() : null;
+    rows.push({
+      id: `forecast-alert-${sub.id}`,
+      type: "forecast-alert",
+      title: `Forecast alert (${sub.kind}) — ${sub.worldId}`,
+      createdAt: ts,
+      updatedAt: ts,
+      data: sub,
+    });
+  }
+  for (const entry of ownArchivedForecasts(db, userId, cap)) {
+    const ts = entry.composedAt ? new Date(entry.composedAt * 1000).toISOString() : null;
+    rows.push({
+      id: `forecast-archive-${entry.id}`,
+      type: "forecast-archive",
+      title: `Archived forecast — ${entry.worldId}`,
+      createdAt: ts,
+      updatedAt: ts,
+      data: { worldId: entry.worldId, composedAt: entry.composedAt, forecast: entry.forecast },
+    });
+  }
+  return rows.slice(0, cap);
 }
 
 // Evaluate a freshly composed forecast against a user's alert subscriptions.

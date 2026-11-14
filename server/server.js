@@ -2397,6 +2397,7 @@ import {
   initSpotCheck,
 } from "./emergent/repair-cortex.js";
 import { createRoleGate } from "./lib/role-gate.js";
+import { registerLensExportProvider } from "./lib/lens-export.js";
 import { registerDbConsoleRoutes, dbMacroDenied } from "./lib/db-console.js";
 import { registerRepairCortexStatusRoutes } from "./lib/repair-cortex-status-routes.js";
 import {
@@ -94836,13 +94837,17 @@ structuredLog("info", "phase9_2_spectator_init", {
 // ── Phase 9.3: Voice / music / foresight ────────────────────────────────────
 
 // #16 Concordia weather forecasting.
-register("forecast", "compose", async (_ctx, input = {}) => {
+register("forecast", "compose", async (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
   const { worldId = "concordia-hub", persist = true } = input || {};
   try {
     const lib = await import("./lib/world-forecast.js");
     const r = await lib.composeForecast(db, STATE, worldId);
-    if (r.ok && persist) lib.persistForecast(db, worldId, r.forecast);
+    // FIX-forecast-002: stamp the composer — archived forecasts are
+    // owned by their creator, and the export's archive leg is scoped
+    // by this stamp. Anonymous/system composes carry no stamp and
+    // belong to no one's export.
+    if (r.ok && persist) lib.persistForecast(db, worldId, r.forecast, ctx?.actor?.userId || null);
     return r;
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
 }, { note: "Compose 24h forecast for a world. Combines forward-sim + drift + faction + embodied baselines." });
@@ -94910,7 +94915,7 @@ register("forecast", "archive", async (_ctx, input = {}) => {
 // Alert subscriptions — per-user, persisted.
 register("forecast", "subscribeAlert", async (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
-  const userId = ctx?.actor?.userId || ctx?.userId;
+  const userId = ctx?.actor?.userId;
   if (!userId) return { ok: false, reason: "no_user" };
   try {
     const lib = await import("./lib/world-forecast.js");
@@ -94920,7 +94925,7 @@ register("forecast", "subscribeAlert", async (ctx, input = {}) => {
 
 register("forecast", "listAlerts", async (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
-  const userId = ctx?.actor?.userId || ctx?.userId;
+  const userId = ctx?.actor?.userId;
   if (!userId) return { ok: false, reason: "no_user" };
   try {
     const lib = await import("./lib/world-forecast.js");
@@ -94931,7 +94936,7 @@ register("forecast", "listAlerts", async (ctx, input = {}) => {
 
 register("forecast", "unsubscribeAlert", async (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
-  const userId = ctx?.actor?.userId || ctx?.userId;
+  const userId = ctx?.actor?.userId;
   if (!userId) return { ok: false, reason: "no_user" };
   try {
     const lib = await import("./lib/world-forecast.js");
@@ -94941,13 +94946,28 @@ register("forecast", "unsubscribeAlert", async (ctx, input = {}) => {
 
 register("forecast", "checkAlerts", async (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
-  const userId = ctx?.actor?.userId || ctx?.userId;
+  const userId = ctx?.actor?.userId;
   if (!userId) return { ok: false, reason: "no_user" };
   try {
     const lib = await import("./lib/world-forecast.js");
     return await lib.checkAlerts(db, STATE, userId, input?.worldId);
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
 }, { note: "Compose a fresh forecast and return which alert subscriptions trip." });
+
+// FIX-forecast-002: the forecast domain's export provider. Until now the
+// domain registered none, so a personal export came back empty while
+// the caller's alerts and archived forecasts existed. The provider
+// returns exactly the caller's own records (lib.forecastExportRows) —
+// alerts and archived forecasts are owned by their creator
+// (DUTCH-DECISIONS-46 #12), owner-scoped like every other provider.
+registerLensExportProvider("forecast", async (ctx) => {
+  const userId = ctx?.actor?.userId || null;
+  if (!userId || !db) return [];
+  try {
+    const lib = await import("./lib/world-forecast.js");
+    return lib.forecastExportRows(db, userId);
+  } catch { return []; }
+});
 
 // #18 Glyph spell as music.
 register("sonic_glyph", "spell_to_chord", (_ctx, input = {}) => {
