@@ -904,7 +904,35 @@ export default function registerAppmakerActions(registerLensAction) {
         }
       }
 
-      const body = (page.elements || []).map(renderEl).join("\n");
+      // FIX-app-maker-001 (S1, display leg): surface each element's data
+      // binding as a caption under its box. Bindings resolve LIVE from the
+      // project (a renamed table shows its new name; a removed source names
+      // itself removed instead of posing as live). Tables are schema-only
+      // in this domain — the caption carries the table's field names, not
+      // invented rows. Unbound elements get no caption and render exactly
+      // as before.
+      function boundCaption(el) {
+        const b = el.binding;
+        if (!b || typeof b !== "object" || !b.refId) return "";
+        let text = null;
+        if (b.kind === "table") {
+          const tbl = (proj.dataModel?.tables || []).find((t) => t.id === b.refId);
+          if (tbl) {
+            const fields = (tbl.fields || []).map((f) => f?.name).filter(Boolean).slice(0, 12);
+            text = `Data: ${tbl.name}${fields.length ? ` — ${fields.join(", ")}` : ""}`;
+          }
+        } else if (b.kind === "connector") {
+          const conn = (proj.connectors || []).find((c) => c.id === b.refId);
+          if (conn) text = `Data: ${conn.name} — ${conn.kind} · ${conn.method}`;
+        }
+        if (text === null) text = `Data: ${b.label || "source"} — source removed`;
+        const top = (Number.isFinite(+el.y) ? +el.y : 0) + (Number.isFinite(+el.h) ? +el.h : 40) + 2;
+        const left = Number.isFinite(+el.x) ? +el.x : 0;
+        const width = Number.isFinite(+el.w) ? +el.w : 120;
+        return `\n<div data-binding-caption="1" style="position:absolute;left:${left}px;top:${top}px;width:${width}px;font:10px system-ui;color:#67e8f9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(text)}</div>`;
+      }
+
+      const body = (page.elements || []).map((el) => renderEl(el) + boundCaption(el)).join("\n");
       const html = `<!doctype html><html><head><meta charset="utf-8"><title>${esc(proj.name)} — ${esc(page.name)}</title></head>` +
         `<body style="margin:0;background:#020617;font-family:system-ui;min-height:100vh;">` +
         `<div style="position:relative;width:100%;min-height:100vh;">${body || '<p style="color:#64748b;padding:40px;font:14px system-ui;">Empty page — drag elements onto the canvas.</p>'}</div>` +
