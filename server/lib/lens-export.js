@@ -34,9 +34,18 @@ const SCAFFOLDING_TYPES = new Set(["domain_action"]);
 /** A DTU may ride in this lens's export only when it is this domain, or untagged and not another lens's exhaust. */
 export function dtuBelongsInLensExport(dtu, domain, callerId) {
   if (!dtu || typeof dtu !== "object") return false;
-  const owner = dtu.ownerId || dtu.userId || dtu.meta?.ownerId || null;
-  if (owner && callerId && String(owner) !== String(callerId)) return false;
+  // GB-1536 §4 follow-up (B8 D6 pointer, 2026-11-14): owner resolution
+  // is the canonical dtuListedOwner chain (author‖ownerId‖userId‖
+  // createdBy‖authorId‖creator_id) plus meta.ownerId — the same
+  // resolution the artifacts leg (exportScoped) applies. The old
+  // three-field chain misread author-stamped rows as ownerless, and
+  // ownerless rows then RODE a personal export; under the office's
+  // ownerless call (CB-0594) they FALL here too — a personal export
+  // carries only the caller's own rows.
+  const owner = dtuListedOwner(dtu) || dtu.meta?.ownerId || null;
+  if (!owner || !callerId) return false;
   if (owner === "system") return false;
+  if (String(owner) !== String(callerId)) return false;
   const tagged = String(dtu.domain || dtu.meta?.lens || dtu.machine?.kind || dtu.kind || "").trim();
   if (tagged) return dtuMatchesDomain(dtu, domain);
   const title = String(dtu.title || "");

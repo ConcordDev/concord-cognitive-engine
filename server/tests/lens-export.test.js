@@ -198,6 +198,41 @@ describe("lens-export (Q79)", () => {
     assert.ok(!serialized.includes("secret"), "leaked goal text must not appear");
   });
 
+  it("Leg A owner resolution (GB-1536 §4 follow-up, B8 D6): the canonical chain governs — author-stamped rows resolve, ownerless falls", async () => {
+    // Direct pins on the filter: the old three-field chain
+    // (ownerId‖userId‖meta.ownerId) misread author-only stamps as
+    // ownerless and admitted them.
+    assert.equal(dtuBelongsInLensExport({ id: "a", title: "Note", author: "u1" }, "notes", "u1"), true, "author-stamped caller row rides");
+    assert.equal(dtuBelongsInLensExport({ id: "b", title: "Note", author: "system" }, "notes", "u1"), false, "author-stamped system row falls");
+    assert.equal(dtuBelongsInLensExport({ id: "c", title: "Note", author: "u2" }, "notes", "u1"), false, "author-stamped other-user row falls");
+    assert.equal(dtuBelongsInLensExport({ id: "d", title: "Note" }, "notes", "u1"), false, "ownerless row falls (CB-0594, both legs)");
+    assert.equal(dtuBelongsInLensExport({ id: "e", title: "Note", creator_id: "u1" }, "notes", "u1"), true, "creator_id-stamped caller row rides");
+    assert.equal(dtuBelongsInLensExport({ id: "f", title: "Note", createdBy: "u1" }, "notes", "u1"), true, "createdBy-stamped caller row rides");
+    assert.equal(dtuBelongsInLensExport({ id: "g", title: "Note", meta: { ownerId: "u1" } }, "notes", "u1"), true, "meta.ownerId caller row rides");
+    assert.equal(dtuBelongsInLensExport({ id: "h", title: "Note", ownerId: "u1" }, "notes", null), false, "no caller — a personal export carries nothing");
+
+    // End-to-end through collectLensExport's Leg A (dtu/list leg):
+    _clearLensExportProvidersForTests();
+    const runMacro = async (domain, action) => {
+      if (domain === "lens" && action === "list") return { ok: true, artifacts: [], total: 0 };
+      if (domain === "dtu" && action === "list") {
+        return {
+          ok: true,
+          dtus: [
+            { id: "leg-a-mine", title: "Saved via author stamp", author: "u1" },
+            { id: "leg-a-system", title: "System feed row", author: "system" },
+            { id: "leg-a-ownerless", title: "Ownerless catalog row" },
+            { id: "leg-a-other", title: "Someone else's row", author: "u2" },
+          ],
+        };
+      }
+      return { ok: false, error: "unexpected" };
+    };
+    const out = await collectLensExport({ runMacro, domain: "notes", ctx: { actor: { userId: "u1" } } });
+    const ids = out.artifacts.map((a) => a.id);
+    assert.deepEqual(ids, ["leg-a-mine"], "Leg A carries only the caller's own DTU, whatever field stamps it");
+  });
+
   it("meditation provider: caller's journal session exports; another user's does not", async () => {
     _clearLensExportProvidersForTests();
     globalThis._concordSTATE = {
