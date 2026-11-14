@@ -89,9 +89,9 @@ export function PlanExportPanel() {
     <div className="space-y-4">
       {/* Impact dashboard */}
       <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
-        <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
+        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
           <Activity className="h-4 w-4 text-emerald-400" /> Impact Projection Dashboard
-        </h3>
+        </h2>
         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
           <select
             aria-label="Zone type"
@@ -153,7 +153,7 @@ export function PlanExportPanel() {
                   key={label as string}
                   className="rounded border border-emerald-500/20 bg-zinc-950 px-2 py-1.5"
                 >
-                  <div className="text-[9px] uppercase tracking-wider text-zinc-400">
+                  <div className="text-[9px] uppercase tracking-wider text-zinc-300">
                     {label}
                   </div>
                   <div className="font-mono text-sm text-emerald-300">
@@ -187,7 +187,7 @@ export function PlanExportPanel() {
                   key={label as string}
                   className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5"
                 >
-                  <div className="text-[9px] uppercase tracking-wider text-zinc-400">
+                  <div className="text-[9px] uppercase tracking-wider text-zinc-300">
                     {label}
                   </div>
                   <div className="font-mono text-xs text-zinc-200">{val}</div>
@@ -212,9 +212,9 @@ export function PlanExportPanel() {
 
       {/* Plan export */}
       <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
-        <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
+        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
           <FileText className="h-4 w-4 text-emerald-400" /> Export Plan Report
-        </h3>
+        </h2>
         <div className="flex flex-wrap items-center gap-2">
           <input
             value={title}

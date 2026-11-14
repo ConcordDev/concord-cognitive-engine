@@ -205,9 +205,9 @@ export function ScenarioStudio({ onDataChanged }: { onDataChanged?: () => void }
     <div className="space-y-4">
       {/* New scenario */}
       <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
-        <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
+        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
           <Layers className="h-4 w-4 text-emerald-400" /> New Development Scenario
-        </h3>
+        </h2>
         <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
           <input
             value={name}
@@ -301,9 +301,9 @@ export function ScenarioStudio({ onDataChanged }: { onDataChanged?: () => void }
       {/* Comparison dashboard */}
       {compare && (
         <div className="rounded-lg border border-emerald-500/20 bg-zinc-900/60 p-4">
-          <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
             <GitCompare className="h-4 w-4 text-emerald-400" /> Scenario Comparison ({compare.count})
-          </h3>
+          </h2>
           <ChartKit
             kind="bar"
             data={compare.scenarios.map((s) => ({
@@ -357,7 +357,7 @@ export function ScenarioStudio({ onDataChanged }: { onDataChanged?: () => void }
                 ))}
               </tbody>
             </table>
-            <p className="mt-1 text-[10px] text-zinc-400">
+            <p className="mt-1 text-[10px] text-zinc-300">
               Emerald = best scenario for that metric (lowest emissions, highest yield otherwise).
             </p>
           </div>
@@ -403,7 +403,7 @@ export function ScenarioStudio({ onDataChanged }: { onDataChanged?: () => void }
                   {s.description && (
                     <p className="mt-0.5 text-xs text-zinc-400">{s.description}</p>
                   )}
-                  <p className="mt-0.5 text-[10px] uppercase tracking-wider text-zinc-400">
+                  <p className="mt-0.5 text-[10px] uppercase tracking-wider text-zinc-300">
                     {s.zoneType} · use {s.useMix} · {s.lotSizeSqFt.toLocaleString()} sqft lot
                   </p>
                 </div>
@@ -413,14 +413,14 @@ export function ScenarioStudio({ onDataChanged }: { onDataChanged?: () => void }
                       setEditingScenario(editingScenario === s.id ? null : s.id);
                       setScenarioForm({ name: s.name, description: s.description || '', lotSizeSqFt: String(s.lotSizeSqFt), efficiency: String(s.efficiency) });
                     }}
-                    className="rounded p-1 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
+                    className="inline-flex min-h-[24px] min-w-[24px] items-center justify-center rounded p-1 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
                     aria-label={`Edit scenario ${s.name}`}
                   >
                     <Pencil className="h-3.5 w-3.5" />
                   </button>
                   <button
                     onClick={() => remove(s.id)}
-                    className="rounded p-1 text-zinc-600 hover:bg-zinc-800 hover:text-red-400"
+                    className="inline-flex min-h-[24px] min-w-[24px] items-center justify-center rounded p-1 text-zinc-600 hover:bg-zinc-800 hover:text-red-400"
                     aria-label="Delete scenario"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -475,7 +475,7 @@ export function ScenarioStudio({ onDataChanged }: { onDataChanged?: () => void }
                         key={label as string}
                         className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1"
                       >
-                        <div className="text-[9px] uppercase tracking-wider text-zinc-400">
+                        <div className="text-[9px] uppercase tracking-wider text-zinc-300">
                           {label}
                         </div>
                         <div className="font-mono text-sm text-emerald-300">

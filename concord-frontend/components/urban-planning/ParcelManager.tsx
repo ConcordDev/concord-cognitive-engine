@@ -166,9 +166,9 @@ export function ParcelManager({ onParcelsChange }: { onParcelsChange?: (p: Parce
   return (
     <div className="space-y-4">
       <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
-        <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
+        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
           <LandPlot className="h-4 w-4 text-emerald-400" /> Add Parcel
-        </h3>
+        </h2>
         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
           <input
             value={apn}
@@ -262,21 +262,21 @@ export function ParcelManager({ onParcelsChange }: { onParcelsChange?: (p: Parce
       </div>
 
       <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
-        <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
+        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
           <Ruler className="h-4 w-4 text-emerald-400" /> Parcel Map
-        </h3>
+        </h2>
         <CityMap parcels={mapParcels} height={380} />
-        <p className="mt-2 text-[10px] text-zinc-400">
+        <p className="mt-2 text-[10px] text-zinc-300">
           Schematic layout — zone-coloured parcels + relative spacing, not a georeferenced map.
         </p>
       </div>
 
       <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
-        <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
+        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
           <MapPinned className="h-4 w-4 text-emerald-400" /> Live Basemap (OpenStreetMap)
-        </h3>
+        </h2>
         <MapView markers={basemapMarkers} className="h-[380px]" />
-        <p className="mt-2 text-[10px] text-zinc-400">
+        <p className="mt-2 text-[10px] text-zinc-300">
           {basemapMarkers.length > 0
             ? `Real street/imagery context for ${basemapMarkers.length} parcel${basemapMarkers.length === 1 ? '' : 's'} with coordinates on file — pan/zoom, click a pin for detail.`
             : 'No parcels with coordinates on file yet — add one above with a latitude/longitude to plot it here. The basemap itself is live and pannable now.'}
@@ -312,7 +312,7 @@ export function ParcelManager({ onParcelsChange }: { onParcelsChange?: (p: Parce
                       {p.district ? ` · ${p.district}` : ''}
                     </p>
                     {p.lat != null && p.lng != null && (p.lat !== 0 || p.lng !== 0) && (
-                      <p className="text-[10px] text-zinc-400">
+                      <p className="text-[10px] text-zinc-300">
                         {p.lat.toFixed(4)}, {p.lng.toFixed(4)}
                         {p.owner ? ` · ${p.owner}` : ''}
                       </p>
@@ -330,14 +330,14 @@ export function ParcelManager({ onParcelsChange }: { onParcelsChange?: (p: Parce
                         setEditingParcel(editingParcel === p.id ? null : p.id);
                         setParcelForm({ apn: p.apn, address: p.address || '', zoneType: p.zoneType, lotSizeSqFt: String(p.lotSizeSqFt), owner: p.owner || '', district: p.district || '' });
                       }}
-                      className="rounded p-1 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
+                      className="inline-flex min-h-[24px] min-w-[24px] items-center justify-center rounded p-1 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
                       aria-label={`Edit parcel ${p.apn}`}
                     >
                       <Pencil className="h-3.5 w-3.5" />
                     </button>
                     <button
                       onClick={() => remove(p.id)}
-                      className="rounded p-1 text-zinc-600 hover:bg-zinc-800 hover:text-red-400"
+                      className="inline-flex min-h-[24px] min-w-[24px] items-center justify-center rounded p-1 text-zinc-600 hover:bg-zinc-800 hover:text-red-400"
                       aria-label="Delete parcel"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -389,7 +389,7 @@ export function ParcelManager({ onParcelsChange }: { onParcelsChange?: (p: Parce
                         key={label as string}
                         className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1"
                       >
-                        <div className="text-[9px] uppercase tracking-wider text-zinc-400">
+                        <div className="text-[9px] uppercase tracking-wider text-zinc-300">
                           {label}
                         </div>
                         <div className="font-mono text-sm text-emerald-300">

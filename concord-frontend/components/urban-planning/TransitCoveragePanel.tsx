@@ -121,9 +121,9 @@ export function TransitCoveragePanel() {
   return (
     <div className="space-y-4">
       <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
-        <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
+        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
           <TrainFront className="h-4 w-4 text-emerald-400" /> Transit Stops
-        </h3>
+        </h2>
         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
           <input
             value={name}
@@ -221,7 +221,7 @@ export function TransitCoveragePanel() {
                 key={label as string}
                 className="rounded-lg border border-emerald-500/20 bg-zinc-900/60 p-3"
               >
-                <div className="text-[10px] uppercase tracking-wider text-zinc-400">
+                <div className="text-[10px] uppercase tracking-wider text-zinc-300">
                   {label}
                 </div>
                 <div className="mt-0.5 font-mono text-lg text-emerald-300">{val}</div>
@@ -229,9 +229,9 @@ export function TransitCoveragePanel() {
             ))}
           </div>
           <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
-            <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
+            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
               <Radar className="h-4 w-4 text-emerald-400" /> Walk-Shed Catchment Map
-            </h3>
+            </h2>
             <CityMap parcels={mapParcels} catchments={result.catchments} height={420} />
           </div>
           <div className="overflow-x-auto rounded-lg border border-zinc-800 bg-zinc-900/60 p-3">

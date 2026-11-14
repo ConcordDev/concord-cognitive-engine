@@ -141,9 +141,9 @@ export function PublicCommentPanel({ onDataChanged }: { onDataChanged?: () => vo
   return (
     <div className="space-y-4">
       <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
-        <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
+        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
           <MessagesSquare className="h-4 w-4 text-emerald-400" /> Public Comment / Stakeholder Review
-        </h3>
+        </h2>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
           <select
             aria-label="Subject scenario"
@@ -250,7 +250,7 @@ export function PublicCommentPanel({ onDataChanged }: { onDataChanged?: () => vo
                         <button
                           key={st}
                           onClick={() => resolve(c.id, st)}
-                          className="inline-flex items-center gap-1 rounded border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+                          className="inline-flex min-h-[24px] items-center gap-1 rounded border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-300 hover:bg-zinc-800 hover:text-zinc-200"
                         >
                           <CheckCircle2 className="h-3 w-3" /> {st}
                         </button>
@@ -260,13 +260,13 @@ export function PublicCommentPanel({ onDataChanged }: { onDataChanged?: () => vo
                           <button
                             onClick={() => remove(c.id)}
                             disabled={busy}
-                            className="inline-flex items-center gap-1 rounded border border-red-500/40 bg-red-500/10 px-1.5 py-0.5 text-[10px] text-red-300 hover:bg-red-500/20 disabled:opacity-50"
+                            className="inline-flex min-h-[24px] items-center gap-1 rounded border border-red-500/40 bg-red-500/10 px-1.5 py-0.5 text-[10px] text-red-300 hover:bg-red-500/20 disabled:opacity-50"
                           >
                             Confirm delete
                           </button>
                           <button
                             onClick={() => setConfirmRemoveId(null)}
-                            className="inline-flex items-center gap-1 rounded border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+                            className="inline-flex min-h-[24px] items-center gap-1 rounded border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-300 hover:bg-zinc-800 hover:text-zinc-200"
                           >
                             Cancel
                           </button>
@@ -274,7 +274,7 @@ export function PublicCommentPanel({ onDataChanged }: { onDataChanged?: () => vo
                       ) : (
                         <button
                           onClick={() => setConfirmRemoveId(c.id)}
-                          className="inline-flex items-center gap-1 rounded border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-400 hover:bg-zinc-800 hover:text-red-300"
+                          className="inline-flex min-h-[24px] items-center gap-1 rounded border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-300 hover:bg-zinc-800 hover:text-red-300"
                           aria-label="Delete comment"
                         >
                           <Trash2 className="h-3 w-3" /> Delete

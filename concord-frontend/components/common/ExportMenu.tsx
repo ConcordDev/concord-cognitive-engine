@@ -49,6 +49,7 @@ export function ExportMenu({ domain }: ExportMenuProps) {
   // `url` backs a real "Save again" link a user gesture can follow.
   const [delivered, setDelivered] = useState<{ filename: string; count: number; url: string | null } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const deliveredUrlRef = useRef<string | null>(null);
 
   const clearDelivered = () => {
@@ -190,6 +191,16 @@ export function ExportMenu({ domain }: ExportMenuProps) {
   // FIX-engineering-015 (menu leg): ArrowDown / ArrowUp move between the
   // menu's options — the menu opened with no keyboard travel at all.
   const onMenuKeyDown = (e: React.KeyboardEvent) => {
+    // FIX-urban-planning-006: Escape closes the menu and returns focus to
+    // the toggle — the menu-button contract the toolbar's own menu already
+    // honours. Without this, Esc (once or twice) left the menu open with
+    // focus stranded inside it.
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      setIsOpen(false);
+      buttonRef.current?.focus();
+      return;
+    }
     if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
     const items = [...e.currentTarget.querySelectorAll<HTMLButtonElement>('button:not([disabled])')]
       .filter((b) => !b.classList.contains('sr-only'));
@@ -226,7 +237,16 @@ export function ExportMenu({ domain }: ExportMenuProps) {
   return (
     <div className="relative" ref={menuRef}>
       <button
+        ref={buttonRef}
+        aria-haspopup="dialog"
+        aria-expanded={isOpen}
         onClick={() => { setIsOpen(!isOpen); }}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape' && isOpen) {
+            e.preventDefault();
+            setIsOpen(false);
+          }
+        }}
         className="flex min-h-11 items-center gap-1.5 px-2.5 py-1.5 md:min-h-0 rounded-lg text-gray-400 hover:text-white hover:bg-lattice-surface transition-colors text-sm"
         title="Export (Ctrl+E)"
       >

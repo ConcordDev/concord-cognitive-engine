@@ -249,9 +249,9 @@ export default function UrbanPlanningLensPage() {
             )}
 
             <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
-              <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
                 <Landmark className="w-4 h-4 text-emerald-400" /> Workbench
-              </h3>
+              </h2>
               <p className="text-xs text-gray-400 mb-3">
                 The category-leader workflow lives in the tabs above: run zoning &amp; site
                 calculators (FAR, walkability, density, traffic impact), add real parcels and

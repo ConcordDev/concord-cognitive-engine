@@ -174,7 +174,7 @@ function ZoningAnalysisTool() {
             ['Density class', result.density],
           ].map(([label, val]) => (
             <div key={label as string}>
-              <div className="text-[9px] uppercase tracking-wider text-zinc-400">{label}</div>
+              <div className="text-[9px] uppercase tracking-wider text-zinc-300">{label}</div>
               <div className="font-mono text-sm text-emerald-300">{val}</div>
             </div>
           ))}
@@ -231,7 +231,7 @@ function WalkabilityScoreTool() {
             </button>
           </div>
         ))}
-        <button type="button" onClick={addRow} className="flex items-center gap-1 text-[11px] text-emerald-300 hover:text-emerald-200">
+        <button type="button" onClick={addRow} className="flex min-h-[24px] items-center gap-1 px-1 text-[11px] text-emerald-300 hover:text-emerald-200">
           <Plus className="w-3.5 h-3.5" /> Add amenity
         </button>
       </div>
@@ -250,7 +250,7 @@ function WalkabilityScoreTool() {
           <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4">
             {Object.entries(result.amenityScores).map(([cat, score]) => (
               <div key={cat} className="rounded border border-zinc-800 bg-zinc-900/60 px-2 py-1">
-                <div className="text-[9px] uppercase tracking-wider text-zinc-400">{cat}</div>
+                <div className="text-[9px] uppercase tracking-wider text-zinc-300">{cat}</div>
                 <div className="font-mono text-xs text-emerald-300">{score.toFixed(1)}</div>
               </div>
             ))}
@@ -311,7 +311,7 @@ function DensityCalculatorTool() {
             ['Transit viability', result.transitViability.replace(/-/g, ' ')],
           ].map(([label, val]) => (
             <div key={label as string}>
-              <div className="text-[9px] uppercase tracking-wider text-zinc-400">{label}</div>
+              <div className="text-[9px] uppercase tracking-wider text-zinc-300">{label}</div>
               <div className="font-mono text-sm text-emerald-300">{val}</div>
             </div>
           ))}
@@ -373,7 +373,7 @@ function TrafficImpactTool() {
               ['% increase', `${result.percentIncrease}%`],
             ].map(([label, val]) => (
               <div key={label as string}>
-                <div className="text-[9px] uppercase tracking-wider text-zinc-400">{label}</div>
+                <div className="text-[9px] uppercase tracking-wider text-zinc-300">{label}</div>
                 <div className="font-mono text-sm text-emerald-300">{val}</div>
               </div>
             ))}
@@ -384,7 +384,7 @@ function TrafficImpactTool() {
             </div>
           )}
           {result.rateBasis && (
-            <p className="text-[10px] leading-relaxed text-zinc-400">Basis: {result.rateBasis}</p>
+            <p className="text-[10px] leading-relaxed text-zinc-300">Basis: {result.rateBasis}</p>
           )}
           <div className="flex items-center gap-2 text-xs">
             <span className="text-zinc-400">Impact level:</span>
@@ -420,7 +420,7 @@ function ShadowFanDiagram({ samples, maxShadowFt }: { samples: ShadowSample[]; m
   const maxRadius = center - 18;
   return (
     <div className="rounded border border-zinc-800 bg-zinc-900/40 p-2">
-      <div className="mb-1 text-[9px] uppercase tracking-wider text-zinc-400">
+      <div className="mb-1 text-[9px] uppercase tracking-wider text-zinc-300">
         Shadow directions — top-down 2D schematic (not a 3D render, not to scale)
       </div>
       <svg viewBox={`0 0 ${size} ${size}`} className="mx-auto h-36 w-36" role="img"
@@ -442,6 +442,17 @@ function ShadowFanDiagram({ samples, maxShadowFt }: { samples: ShadowSample[]; m
       </svg>
     </div>
   );
+}
+
+// FIX-urban-planning-010: local mean solar time for the studied site —
+// the UTC offset derived from longitude alone (lng/15 hours). This is
+// mean solar time, NOT civil time: no timezone database is applied,
+// and every surface that shows the value labels it as solar time.
+function localSolarTime(hourUtc: number, lng: number): string {
+  const totalMinutes = Math.round(((((hourUtc + lng / 15) % 24) + 24) % 24) * 60) % 1440;
+  const hh = Math.floor(totalMinutes / 60);
+  const mm = totalMinutes % 60;
+  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
 }
 
 function SunStudyTool() {
@@ -466,6 +477,8 @@ function SunStudyTool() {
 
   const daylight = result?.samples.filter((s) => s.sunUp) ?? [];
   const maxShadowFt = daylight.reduce((m, s) => Math.max(m, s.shadowLengthFt ?? 0), 1);
+  // The studied site's longitude (server-echoed), for the local-solar column.
+  const siteLng = result ? result.location.lng : Number(lng);
 
   return (
     <div className="space-y-3">
@@ -504,21 +517,21 @@ function SunStudyTool() {
           <div className="text-[10px] font-medium text-amber-300">{result.label}</div>
           <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[11px] md:grid-cols-4">
             <div>
-              <div className="text-[9px] uppercase tracking-wider text-zinc-400">Envelope height</div>
+              <div className="text-[9px] uppercase tracking-wider text-zinc-300">Envelope height</div>
               <div className="font-mono text-sm text-emerald-300">{result.envelope.heightFt} ft</div>
             </div>
             <div>
-              <div className="text-[9px] uppercase tracking-wider text-zinc-400">Daylight hours</div>
+              <div className="text-[9px] uppercase tracking-wider text-zinc-300">Daylight hours</div>
               <div className="font-mono text-sm text-emerald-300">{result.daylightHours}</div>
             </div>
             <div>
-              <div className="text-[9px] uppercase tracking-wider text-zinc-400">Peak sun (UTC)</div>
+              <div className="text-[9px] uppercase tracking-wider text-zinc-300">Peak sun (UTC)</div>
               <div className="font-mono text-sm text-emerald-300">
-                {result.approxSolarNoon ? `${String(result.approxSolarNoon.hourUtc).padStart(2, '0')}:00 @ ${result.approxSolarNoon.altitudeDeg}°` : 'n/a'}
+                {result.approxSolarNoon ? `${String(result.approxSolarNoon.hourUtc).padStart(2, '0')}:00 @ ${result.approxSolarNoon.altitudeDeg}° · ${localSolarTime(result.approxSolarNoon.hourUtc, siteLng)} local solar` : 'n/a'}
               </div>
             </div>
             <div>
-              <div className="text-[9px] uppercase tracking-wider text-zinc-400">Resolution</div>
+              <div className="text-[9px] uppercase tracking-wider text-zinc-300">Resolution</div>
               <div className="font-mono text-sm text-emerald-300">{result.resolution}</div>
             </div>
           </div>
@@ -530,6 +543,7 @@ function SunStudyTool() {
               <thead>
                 <tr className="text-zinc-400">
                   <th className="py-1 pr-3 text-left font-normal">UTC hour</th>
+                  <th className="py-1 pr-3 text-left font-normal">Local solar</th>
                   <th className="py-1 pr-3 text-left font-normal">Altitude</th>
                   <th className="py-1 pr-3 text-left font-normal">Azimuth</th>
                   <th className="py-1 pr-3 text-left font-normal">Shadow length</th>
@@ -540,6 +554,7 @@ function SunStudyTool() {
                 {daylight.map((s) => (
                   <tr key={s.hourUtc} className="border-t border-zinc-800/60">
                     <td className="py-1 pr-3 font-mono text-zinc-300">{String(s.hourUtc).padStart(2, '0')}:00</td>
+                    <td className="py-1 pr-3 font-mono text-zinc-300">{localSolarTime(s.hourUtc, siteLng)}</td>
                     <td className="py-1 pr-3 font-mono text-emerald-300">{s.altitudeDeg}°</td>
                     <td className="py-1 pr-3 font-mono text-emerald-300">{s.azimuthDeg}°</td>
                     <td className="py-1 pr-3 font-mono text-emerald-300">{s.shadowLengthFt?.toLocaleString()} ft</td>
@@ -549,7 +564,10 @@ function SunStudyTool() {
               </tbody>
             </table>
           </div>
-          <p className="text-[10px] leading-relaxed text-zinc-400">{result.method}</p>
+          <p className="text-[10px] leading-relaxed text-zinc-300">
+            Local solar = mean solar time at the site&apos;s longitude (UTC + longitude/15) — not civil time; no timezone database is applied.
+          </p>
+          <p className="text-[10px] leading-relaxed text-zinc-300">{result.method}</p>
         </div>
       )}
     </div>
