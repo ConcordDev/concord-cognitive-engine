@@ -258,9 +258,12 @@ export function ChemSafetyPanel() {
                     <div className="flex items-baseline gap-2">
                       <span className="text-lg font-bold text-white">{elResult.symbol}</span>
                       <span className="text-cyan-300">{elResult.name}</span>
-                      <span className="text-zinc-400">Z={elResult.z} · {elResult.category}</span>
+                      <span className="text-zinc-400">Z={elResult.z} · {elResult.category} · group {elResult.group}, period {elResult.period}</span>
                     </div>
-                    <p className="text-zinc-300">{elResult.summary}</p>
+                    {/* FIX-chem-006: the server summary already embeds the uses
+                        and history text; rendering it above the structured
+                        Uses/history lines repeated both. The structured lines
+                        below are the single rendering. */}
                     <p className="text-zinc-400">Uses: {elResult.uses?.join(', ')}</p>
                     <p className="text-zinc-400">{elResult.history}</p>
                   </div>
