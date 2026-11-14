@@ -32,7 +32,7 @@ import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
-interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
+interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string; reason?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
   const r = await apiHelpers.lens.runDomain('law-enforcement', action, { input });
   const data = (r as { data?: { ok: boolean; result?: T } }).data;
@@ -146,6 +146,15 @@ export function LawEnforcementActionPanel() {
   async function actCase() {
     const evidence = evidenceRows.map((v) => v.trim()).filter(Boolean).map((description) => ({ description }));
     const witnesses = witnessRows.map((v) => v.trim()).filter(Boolean).map((name) => ({ name }));
+    // FIX-law-enforcement-006: the links count used to be expanded into
+    // a real array of that length — a huge typed count built a huge
+    // array in the browser and shipped it. Refuse out-of-range counts
+    // by name before anything is built or sent.
+    for (const s of suspectRows) {
+      if (!s.name.trim() || !s.evidenceLinks.trim()) continue;
+      const links = parseInt(s.evidenceLinks, 10);
+      if (!Number.isFinite(links) || links < 0 || links > 1000) { err(`Suspect "${s.name.trim()}": evidence links must be a whole number between 0 and 1,000.`); return; }
+    }
     const suspects = suspectRows
       .filter((s) => s.name.trim())
       .map((s) => ({ name: s.name.trim(), evidenceLinks: Array(Math.max(0, parseInt(s.evidenceLinks, 10) || 0)).fill(true) }));
@@ -153,7 +162,7 @@ export function LawEnforcementActionPanel() {
     setBusy('case'); setFeedback(null);
     try {
       const r = await callMacro<CaseResult>('caseAnalysis', { artifact: { data: { caseId: caseId.trim() || undefined, evidence, witnesses, suspects } } });
-      if (r.ok && r.result) { setCaseResult(r.result); pipe.publish('le.case', r.result, { label: `Case ${r.result.caseStrength}/100` }); ok(`Strength ${r.result.caseStrength} · ${r.result.status}.`); } else err(r.error ?? 'case failed');
+      if (r.ok && r.result) { setCaseResult(r.result); pipe.publish('le.case', r.result, { label: `Case ${r.result.caseStrength}/100` }); ok(`Strength ${r.result.caseStrength} · ${r.result.status}.`); } else err(r.reason ?? r.error ?? 'case failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 
@@ -162,10 +171,22 @@ export function LawEnforcementActionPanel() {
       .filter((z) => z.name.trim())
       .map((z) => ({ name: z.name.trim(), crimeRate: z.crimeRate, population: z.population, currentPatrols: z.currentPatrols }));
     if (zones.length === 0) { err('Add at least one patrol zone.'); return; }
+    // FIX-law-enforcement-006: refuse out-of-range zone numbers by name
+    // here (the server refuses them too) — negatives and absurd
+    // magnitudes used to compute straight into the plan (Patrol -1/-1;
+    // "need 100000000 units"). Blank still counts as 0.
+    for (const z of zones) {
+      const rate = z.crimeRate.trim() === '' ? 0 : Number(z.crimeRate);
+      const pop = z.population.trim() === '' ? 0 : Number(z.population);
+      const cur = z.currentPatrols.trim() === '' ? 0 : Number(z.currentPatrols);
+      if (!Number.isFinite(rate) || rate < 0 || rate > 10000) { err(`Zone "${z.name}": crime rate must be a number between 0 and 10,000.`); return; }
+      if (!Number.isFinite(pop) || pop < 0 || pop > 100000000) { err(`Zone "${z.name}": population must be a number between 0 and 100,000,000.`); return; }
+      if (!Number.isFinite(cur) || cur < 0 || cur > 100000) { err(`Zone "${z.name}": current patrols must be a number between 0 and 100,000.`); return; }
+    }
     setBusy('patrol'); setFeedback(null);
     try {
       const r = await callMacro<PatrolResult>('patrolOptimize', { artifact: { data: { zones } } });
-      if (r.ok && r.result) { setPatrolResult(r.result); pipe.publish('le.patrol', r.result, { label: `Patrol plan ${r.result.totalCurrentUnits}/${r.result.totalUnitsNeeded} units` }); ok(`${r.result.hotspots.length} high-rate staged zone(s) · need ${r.result.totalUnitsNeeded} units.`); } else err(r.error ?? 'patrol failed');
+      if (r.ok && r.result) { setPatrolResult(r.result); pipe.publish('le.patrol', r.result, { label: `Patrol plan ${r.result.totalCurrentUnits}/${r.result.totalUnitsNeeded} units` }); ok(`${r.result.hotspots.length} high-rate staged zone(s) · need ${r.result.totalUnitsNeeded} units.`); } else err(r.reason ?? r.error ?? 'patrol failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 
