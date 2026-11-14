@@ -221,7 +221,7 @@ function EntityGrowthCard({ entity }: { entity: GrowthEntity }) {
           <div>
             <h4 className="text-[10px] uppercase text-gray-400 mb-1">Domain Exposure</h4>
             <div className="grid grid-cols-5 gap-1">
-              {Object.entries(entity.domainExposure).map(([domain, count]) => (
+              {Object.entries(entity.domainExposure ?? {}).map(([domain, count]) => (
                 <div key={domain} className="text-center p-1 rounded bg-lattice-deep">
                   <div className="text-[10px] text-neon-cyan">{count}</div>
                   <div className="text-[9px] text-gray-400 truncate">{domain}</div>
@@ -256,7 +256,7 @@ function EntityGrowthCard({ entity }: { entity: GrowthEntity }) {
           <div>
             <h4 className="text-[10px] uppercase text-gray-400 mb-1">Recent Growth</h4>
             <div className="space-y-1 max-h-32 overflow-y-auto">
-              {entity.recentGrowth.map((event, i) => (
+              {(entity.recentGrowth ?? []).map((event, i) => (
                 <div key={i} className="flex items-center gap-2 text-[10px]">
                   <span className="text-gray-600">{new Date(event.at).toLocaleTimeString()}</span>
                   <span className="text-neon-cyan">{event.event}</span>
@@ -277,6 +277,10 @@ function EntityGrowthCard({ entity }: { entity: GrowthEntity }) {
 // ── Hive Cascade Card ───────────────────────────────────────────────────────
 
 function HiveCascadeSection({ metrics }: { metrics: HiveMetrics }) {
+  // FIX-attention-007: a partial metrics payload (fresh system, module
+  // still warming) must render zeros/empties, not throw — the section
+  // dereferences nested records unconditionally below.
+  const m: HiveMetrics = { totalCascades: 0, totalHiveDTUs: 0, totalSignals: 0, avgCascadeDepth: 0, avgDTUsPerCascade: 0, processingPathDistribution: {}, recentCascades: [], ...metrics };
   return (
     <div className="rounded-lg border border-lattice-border bg-lattice-surface/60 p-3">
       <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
@@ -287,10 +291,10 @@ function HiveCascadeSection({ metrics }: { metrics: HiveMetrics }) {
       {/* Stats grid */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
         {[
-          { label: 'Cascades', value: metrics.totalCascades },
-          { label: 'Hive DTUs', value: metrics.totalHiveDTUs },
-          { label: 'Avg Depth', value: metrics.avgCascadeDepth.toFixed(1) },
-          { label: 'Avg DTUs/Cascade', value: metrics.avgDTUsPerCascade.toFixed(1) },
+          { label: 'Cascades', value: m.totalCascades },
+          { label: 'Hive DTUs', value: m.totalHiveDTUs },
+          { label: 'Avg Depth', value: m.avgCascadeDepth.toFixed(1) },
+          { label: 'Avg DTUs/Cascade', value: m.avgDTUsPerCascade.toFixed(1) },
         ].map((s) => (
           <div key={s.label} className="text-center p-2 rounded bg-lattice-deep">
             <div className="text-sm font-bold text-white">{s.value}</div>
@@ -302,7 +306,7 @@ function HiveCascadeSection({ metrics }: { metrics: HiveMetrics }) {
       {/* Processing path distribution */}
       <h4 className="text-[10px] uppercase text-gray-400 mb-1">Processing Paths</h4>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-1 mb-3">
-        {Object.entries(metrics.processingPathDistribution).map(([path, count]) => (
+        {Object.entries(m.processingPathDistribution).map(([path, count]) => (
           <div key={path} className="text-center p-1 rounded bg-lattice-deep">
             <div className="text-xs text-neon-cyan">{count}</div>
             <div className="text-[9px] text-gray-400 truncate">{path}</div>
@@ -311,11 +315,11 @@ function HiveCascadeSection({ metrics }: { metrics: HiveMetrics }) {
       </div>
 
       {/* Recent cascades */}
-      {metrics.recentCascades.length > 0 && (
+      {m.recentCascades.length > 0 && (
         <>
           <h4 className="text-[10px] uppercase text-gray-400 mb-1">Recent Cascades</h4>
           <div className="space-y-1 max-h-32 overflow-y-auto">
-            {metrics.recentCascades
+            {m.recentCascades
               .slice(-5)
               .reverse()
               .map((c) => (
@@ -340,6 +344,8 @@ function HiveCascadeSection({ metrics }: { metrics: HiveMetrics }) {
 // ── Exploration Metrics Section ─────────────────────────────────────────────
 
 function ExplorationSection({ metrics }: { metrics: ExplorationMetrics }) {
+  // FIX-attention-007: same partial-payload guard as HiveCascadeSection.
+  const m: ExplorationMetrics = { totalExplorations: 0, totalFindings: 0, totalDTUsFromWeb: 0, sourceVisits: {}, domainHeatmap: {}, averageNovelty: 0, lastExplorationAt: null, ...metrics };
   return (
     <div className="rounded-lg border border-lattice-border bg-lattice-surface/60 p-3">
       <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
@@ -349,10 +355,10 @@ function ExplorationSection({ metrics }: { metrics: ExplorationMetrics }) {
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
         {[
-          { label: 'Explorations', value: metrics.totalExplorations },
-          { label: 'Findings', value: metrics.totalFindings },
-          { label: 'DTUs from Web', value: metrics.totalDTUsFromWeb },
-          { label: 'Avg Novelty', value: (metrics.averageNovelty * 100).toFixed(0) + '%' },
+          { label: 'Explorations', value: m.totalExplorations },
+          { label: 'Findings', value: m.totalFindings },
+          { label: 'DTUs from Web', value: m.totalDTUsFromWeb },
+          { label: 'Avg Novelty', value: (m.averageNovelty * 100).toFixed(0) + '%' },
         ].map((s) => (
           <div key={s.label} className="text-center p-2 rounded bg-lattice-deep">
             <div className="text-sm font-bold text-white">{s.value}</div>
@@ -362,11 +368,11 @@ function ExplorationSection({ metrics }: { metrics: ExplorationMetrics }) {
       </div>
 
       {/* Source visits */}
-      {Object.keys(metrics.sourceVisits).length > 0 && (
+      {Object.keys(m.sourceVisits).length > 0 && (
         <>
           <h4 className="text-[10px] uppercase text-gray-400 mb-1">Sources Visited</h4>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-1 mb-2">
-            {Object.entries(metrics.sourceVisits).map(([src, count]) => (
+            {Object.entries(m.sourceVisits).map(([src, count]) => (
               <div key={src} className="text-center p-1 rounded bg-lattice-deep">
                 <div className="text-xs text-neon-green">{count}</div>
                 <div className="text-[9px] text-gray-400 truncate">{src}</div>
@@ -377,11 +383,11 @@ function ExplorationSection({ metrics }: { metrics: ExplorationMetrics }) {
       )}
 
       {/* Domain heatmap */}
-      {Object.keys(metrics.domainHeatmap).length > 0 && (
+      {Object.keys(m.domainHeatmap).length > 0 && (
         <>
           <h4 className="text-[10px] uppercase text-gray-400 mb-1">Domain Heatmap</h4>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-1">
-            {Object.entries(metrics.domainHeatmap).map(([domain, count]) => (
+            {Object.entries(m.domainHeatmap).map(([domain, count]) => (
               <div key={domain} className="text-center p-1 rounded bg-lattice-deep">
                 <div className="text-xs text-neon-cyan">{count}</div>
                 <div className="text-[9px] text-gray-400 truncate">{domain}</div>
@@ -391,9 +397,9 @@ function ExplorationSection({ metrics }: { metrics: ExplorationMetrics }) {
         </>
       )}
 
-      {metrics.lastExplorationAt && (
+      {m.lastExplorationAt && (
         <div className="text-[10px] text-gray-400 mt-2">
-          Last exploration: {new Date(metrics.lastExplorationAt).toLocaleString()}
+          Last exploration: {new Date(m.lastExplorationAt).toLocaleString()}
         </div>
       )}
     </div>
