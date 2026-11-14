@@ -726,6 +726,7 @@ export default function registerSystemRoutes(app, {
     const tag = req.query.tag || null;
     const query = String(req.query.query || req.query.q || "").trim().toLowerCase();
     const scopeFilter = req.query.scope || null;
+    const visibilityFilter = String(req.query.visibility || "").trim().toLowerCase();
     // Cookie auth sets req.user. The actor middleware (when it has already
     // run) stamps userId and omits id. Either one is the signed-in owner.
     const userId = viewerIdFromCtx(req);
@@ -739,7 +740,19 @@ export default function registerSystemRoutes(app, {
     // feed-ingested + system DTUs a user never made). Opt into the library
     // with ?scope=global or ?scope=all.
     if (scopeFilter === "global") {
-      dtus = dtus.filter(d => d.scope === "global");
+      // Library-search layer (FIX-grounding-010 findability leg ·
+      // FIX-entity-009 second leg · FIX-ar-016 scoped leg): dtu.create stamps
+      // scope "local" on every ordinary create (Scope Separation), so a
+      // substrate-only filter made a user's own saved/minted DTUs
+      // unfindable in the Global Library — by exact ID, by title, and under
+      // the Private filter. Browsing stays substrate-only; when a signed-in
+      // viewer SEARCHES (q) or FILTERS BY VISIBILITY, their own DTUs join
+      // the candidate set. The corpus above already guarantees only DTUs
+      // this viewer may read are present, so the union can only ever add
+      // the viewer's own rows.
+      dtus = (userId && (query || visibilityFilter))
+        ? dtus.filter(d => d.scope === "global" || dtuListedOwner(d) === userId)
+        : dtus.filter(d => d.scope === "global");
     } else if (scopeFilter === "all") {
       dtus = userId
         ? dtus.filter(d => d.scope === "global" || !dtuListedOwner(d) || dtuListedOwner(d) === userId)
@@ -752,6 +765,16 @@ export default function registerSystemRoutes(app, {
       dtus = dtus.filter(d => !d.scope || d.scope === "global");
     }
 
+    // Visibility filter — the Global Library's Private/Public select sends
+    // this and the route never read it. "public" also matches "published"
+    // (the platform's two open visibilities). Under the corpus rule a
+    // "private" result can only ever be the viewer's own row.
+    if (visibilityFilter) {
+      dtus = dtus.filter(d => {
+        const v = String(d.meta?.visibility || d.visibility || "").toLowerCase();
+        return v === visibilityFilter || (visibilityFilter === "public" && v === "published");
+      });
+    }
     if (tier) dtus = dtus.filter(d => d.tier === tier);
     // The explorer sends `tags` (comma-separated). `tag` is the older name.
     const tagTerms = tagFilterTerms(req.query.tags || tag);
