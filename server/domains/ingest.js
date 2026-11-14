@@ -18,6 +18,10 @@ import crypto from "node:crypto";
 // the exact same STATE accessor + connector catalog the domain macros use —
 // one source of truth, no duplicated globalThis reads, no drift between
 // the scheduled-drain path and the manual/lens-driven path.
+let ingestApplyDedup = null;
+/** Test + sync-path handle on the dedup engine (FIX-ingest-009). */
+export function getApplyDedup() { return ingestApplyDedup; }
+
 export function getIngestState() {
   const STATE = globalThis._concordSTATE || (globalThis._concordSTATE = {});
   if (!STATE.ingestLens) STATE.ingestLens = {};
@@ -413,6 +417,63 @@ export default function registerIngestActions(registerLensAction) {
     return crypto.createHash("sha256").update(norm).digest("hex").slice(0, 16);
   }
 
+  // FIX-ingest-009: the dedup config's strategy + threshold were stored
+  // but never applied — the sync path always used the exact-content
+  // hash, so the panel's controls were decorative and any help text
+  // would have lied. The strategies are real now:
+  //   exact         — only records identical in every field (key order
+  //                   ignored) are duplicates.
+  //   key-field     — records sharing the key field's value are
+  //                   duplicates; a record missing the field is kept.
+  //   semantic-hash — near-duplicates: word-level (token) similarity of
+  //                   the whole record at or above the threshold marks
+  //                   a duplicate. Threshold 1.0 = token-for-token.
+  function recordTokens(record) {
+    const norm = JSON.stringify(record, Object.keys(record ?? {}).sort()) || "";
+    return new Set(norm.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean));
+  }
+  function tokenSimilarity(a, b) {
+    if (a.size === 0 && b.size === 0) return 1;
+    let inter = 0;
+    for (const t of a) if (b.has(t)) inter++;
+    const union = a.size + b.size - inter;
+    return union === 0 ? 1 : inter / union;
+  }
+
+  function applyDedup(records, cfg) {
+    if (!cfg?.enabled) return { kept: records, removed: 0 };
+    const strategy = cfg.strategy || "semantic-hash";
+    const threshold = Math.min(1, Math.max(0.5, Number(cfg.threshold ?? 1.0)));
+    const keyField = cfg.keyField || "id";
+    const seen = new Set();
+    const keptTokenSets = [];
+    const kept = [];
+    let removed = 0;
+    for (const r of records) {
+      let dup = false;
+      if (strategy === "key-field") {
+        const v = r?.[keyField];
+        if (v != null) {
+          const k = String(v);
+          if (seen.has(k)) dup = true; else seen.add(k);
+        }
+      } else if (strategy === "exact") {
+        const h = semanticHash(r);
+        if (seen.has(h)) dup = true; else seen.add(h);
+      } else {
+        const toks = recordTokens(r);
+        for (const kt of keptTokenSets) {
+          if (tokenSimilarity(toks, kt) >= threshold) { dup = true; break; }
+        }
+        if (!dup) keptTokenSets.push(toks);
+      }
+      if (dup) removed++;
+      else kept.push(r);
+    }
+    return { kept, removed };
+  }
+  ingestApplyDedup = applyDedup;
+
   // Fetch the records a REST API connection's configuration names — the
   // endpoint its operator configured (baseUrl + path), through the SSRF
   // guard every public fetch in this codebase rides (lib/public-fetch.js:
@@ -499,20 +560,13 @@ export default function registerIngestActions(registerLensAction) {
       const mapping = mappings.get(connectionId) || [];
       let mapped = delta.map((r) => applyMapping(r, mapping));
 
-      // Dedup
-      const dedupCfg = s.dedup.get(uid(ctx)) || { enabled: true, threshold: 1.0 };
-      let deduped = mapped;
-      let duplicatesRemoved = 0;
-      if (dedupCfg.enabled) {
-        const seen = new Set();
-        deduped = [];
-        for (const r of mapped) {
-          const h = semanticHash(r);
-          if (seen.has(h)) { duplicatesRemoved++; continue; }
-          seen.add(h);
-          deduped.push(r);
-        }
-      }
+      // Dedup — the saved strategy + threshold genuinely apply
+      // (FIX-ingest-009); before, only `enabled` was read and every
+      // sync used the exact-content hash regardless of the config.
+      const dedupCfg = s.dedup.get(uid(ctx)) || { enabled: true, threshold: 1.0, strategy: "semantic-hash" };
+      const dd = applyDedup(mapped, dedupCfg);
+      let deduped = dd.kept;
+      let duplicatesRemoved = dd.removed;
 
       // Advance cursor to the max cursorField value seen in the delta.
       let newCursor = priorCursor;

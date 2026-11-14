@@ -1158,6 +1158,16 @@ function DedupTab({
           <option value="exact">exact</option>
           <option value="key-field">key-field</option>
         </select>
+        {/* FIX-ingest-009: the strategies and threshold were bare names
+            with no explanation. These lines describe what the sync
+            actually does with each choice. */}
+        <p className="text-[11px] text-gray-500 mt-1.5" data-testid="dedup-strategy-help">
+          {cfg.strategy === 'exact'
+            ? 'exact: only records identical in every field count as duplicates (field order does not matter).'
+            : cfg.strategy === 'key-field'
+              ? 'key-field: records sharing the same value of the key field below are duplicates; a record missing that field is always kept.'
+              : 'semantic-hash: near-duplicates — records whose content is at least the similarity threshold alike (word-level comparison, field order ignored) count as duplicates.'}
+        </p>
       </div>
       {cfg.strategy === 'key-field' && (
         <div>
@@ -1184,6 +1194,9 @@ function DedupTab({
           onChange={(e) => setCfg({ ...cfg, threshold: Number(e.target.value) })}
           className="w-full"
         />
+        <p className="text-[11px] text-gray-500 mt-1">
+          Applies to semantic-hash only: 1.00 means content must match word-for-word; lower values also catch lightly edited copies.
+        </p>
       </div>
       <button
         onClick={save}
