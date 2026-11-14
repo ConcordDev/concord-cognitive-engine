@@ -718,6 +718,16 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     label: 'Real',
     caption: 'Reference content (seasonal checklists, maintenance schedules) is real, from open sources. Your household’s own records — members, meal plans, chores and budgets — are yours alone, saved privately on your account.',
   },
+  /**
+   * Manufacturing is the user's own shop-floor workspace — machines, work
+   * orders, lots and readings they enter, persisted per account (Review 5
+   * re-pass 2026-11-05, S1 remainder) — so the generic REAL_FREE line
+   * ("static / open-access dataset") is false for this lens.
+   */
+  manufacturing: {
+    label: 'Real',
+    caption: 'Your shop-floor workspace: machines, work orders and readings you enter, saved to your account.',
+  },
 };
 
 export function useDepthBadge(lensId: string): DepthBadgeInfo | null {
