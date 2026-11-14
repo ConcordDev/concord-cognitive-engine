@@ -85,7 +85,7 @@ describe('middleware: guest entry (GB-1536)', () => {
     expect(r.search).toBe(`?from=${encodeURIComponent(p)}`);
   });
 
-  it.each(['/explore', '/explore/engine', '/explore/world', '/onboarding', '/onboarding/location', '/onboarding/brain-mode'])(
+  it.each(['/explore', '/explore/engine', '/explore/world', '/onboarding', '/onboarding/location'])(
     'removed screen %s 308-redirects to /hub for everyone',
     (p) => {
       for (const cookies of [{}, { concord_auth: 'x' }]) {
@@ -102,6 +102,14 @@ describe('middleware: guest entry (GB-1536)', () => {
     const r = middleware(req('/onboarding/confirm-age'));
     expect(r.type).toBe('next');
     expect(r.forwarded?.get(GUEST_HEADER)).toBeNull();
+  });
+
+  it('brain-mode STAYS a live public route (founder ruling on the GB-1536 flag — no 308, not a guest page)', () => {
+    for (const cookies of [{}, { concord_auth: 'x' }]) {
+      const r = middleware(req('/onboarding/brain-mode', cookies));
+      expect(r.type).toBe('next');
+      expect(r.forwarded?.get(GUEST_HEADER)).toBeNull();
+    }
   });
 
   it('a member (session cookie) gets the normal lens, not the visitor or guest flag', () => {

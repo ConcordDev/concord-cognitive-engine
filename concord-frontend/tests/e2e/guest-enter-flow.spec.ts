@@ -7,8 +7,9 @@ import { blockUnmockedApi, corsFulfill } from './_helpers';
  *
  *   - Enter lands on /hub as a guest: normal shell, guest banner,
  *     Log in / Sign up in the topbar.
- *   - The removed screens (/explore, /onboarding, brain-mode) 308
- *     to /hub.
+ *   - The removed screens (/explore, /onboarding, location) 308
+ *     to /hub; brain-mode STAYS (founder ruling) as the one kept
+ *     post-signup step, carrying the return-to.
  *   - On a lens, a guest who tries to ACT (sending a chat message)
  *     gets the signup modal with the draft stashed — the message is
  *     never sent; Esc closes the modal and focus returns.
@@ -36,8 +37,8 @@ test.describe('GB-1536 guest entry', () => {
     await expect(page.getByRole('button', { name: 'Log in' }).first()).toBeVisible();
   });
 
-  test('the removed post-Enter screens redirect to /hub', async ({ page }) => {
-    for (const gone of ['/explore', '/explore/engine', '/onboarding', '/onboarding/location', '/onboarding/brain-mode']) {
+  test('the removed post-Enter screens redirect to /hub (brain-mode is NOT one of them)', async ({ page }) => {
+    for (const gone of ['/explore', '/explore/engine', '/onboarding', '/onboarding/location']) {
       await page.goto(gone);
       await expect(page, gone).toHaveURL(/\/hub$/);
     }
@@ -113,6 +114,12 @@ test.describe('GB-1536 guest entry', () => {
     await dialog.locator('input[type="password"]').first().fill('a-strong-password-1');
     await dialog.getByRole('button', { name: /create account|sign up/i }).last().click();
 
+    // Founder ruling on the GB-1536 flag: a NEW account routes once
+    // through the kept brain-mode screen, carrying the return-to…
+    await expect(page).toHaveURL(/\/onboarding\/brain-mode\?from=/);
+    // …and after the choice it hard-lands back exactly where the
+    // guest was.
+    await page.getByRole('button', { name: /stay private|continue/i }).first().click();
     await expect(page).toHaveURL(/\/lenses\/chem\?study=beam-1$/);
   });
 });
