@@ -1130,7 +1130,23 @@ EXTENDED_DOMAIN_RULES.set("daily", {
   validStatuses: ["draft", "logged", "reviewed", "archived"],
   transitions: { draft: ["logged", "archived"], logged: ["reviewed", "archived"], reviewed: ["archived"], archived: [] },
   requiredFields: { journal: ["title"] },
-  computedFields: (type, data) => { data.wordCount = (data.content || "").split(/\s+/).filter(Boolean).length; return data; },
+  // FIX-daily-005: Daily entries carry their text in `notes` (Today-panel
+  // artifacts: notes/workedOn/learned/goals) or `body` (journal entries) —
+  // counting only `content` left wordCount at 0 in every export of a
+  // non-empty entry. Count the entry's actual text fields, in the same
+  // composition the domain's own read-back (dyTodayEntry) uses.
+  computedFields: (type, data) => {
+    const parts = [];
+    if (typeof data.content === "string" && data.content) parts.push(data.content);
+    if (typeof data.body === "string" && data.body) parts.push(data.body);
+    if (!parts.length) {
+      for (const k of ["notes", "workedOn", "learned", "goals"]) {
+        if (typeof data[k] === "string" && data[k]) parts.push(data[k]);
+      }
+    }
+    data.wordCount = parts.join(" ").split(/\s+/).filter(Boolean).length;
+    return data;
+  },
   scoring: (type, data) => Math.round(((data.content || "").length > 50 ? 0.5 : 0.2) * 100) / 100,
 });
 

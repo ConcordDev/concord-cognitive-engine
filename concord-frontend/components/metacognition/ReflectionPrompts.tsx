@@ -44,6 +44,12 @@ export function ReflectionPrompts({ decisionId }: { decisionId?: string }) {
   const [error, setError] = useState<string | null>(null);
   const [streak, setStreak] = useState<Streak | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
+  // FIX-metacognition-001: reflections were permanent — no edit or delete
+  // control anywhere. Edit loads a saved reflection into the form and
+  // saves it back in place (reflectionSave with its id); Delete is a
+  // two-step confirm calling reflectionDelete.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -77,18 +83,48 @@ export function ReflectionPrompts({ decisionId }: { decisionId?: string }) {
     setError(null);
     const res = await lensRun('metacognition', 'reflectionSave', {
       decisionId, title: title.trim() || undefined, answers: answerList, note: note.trim() || undefined,
+      ...(editingId ? { id: editingId } : {}),
     });
     setSaving(false);
     if (res.data.ok) {
       const r = res.data.result as any;
       if (r?.streak) setStreak(r.streak as Streak);
-      setAnswers({}); setNote(''); setTitle('');
+      setAnswers({}); setNote(''); setTitle(''); setEditingId(null);
       load();
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('metacognition:record-changed'));
       }
     } else {
       setError(res.data.error || 'Failed to save reflection');
+    }
+  };
+
+  const startEdit = (r: Reflection) => {
+    const byQuestion = new Map(r.answers.map((a) => [a.question, a.answer]));
+    const next: Record<string, string> = {};
+    for (const p of prompts) {
+      const saved = byQuestion.get(p.question);
+      if (saved) next[p.id] = saved;
+    }
+    setAnswers(next);
+    setNote(r.note || '');
+    setTitle(r.title || '');
+    setEditingId(r.id);
+    setExpanded(null);
+    setError(null);
+  };
+
+  const remove = async (id: string) => {
+    const res = await lensRun('metacognition', 'reflectionDelete', { id });
+    setConfirmingDelete(null);
+    if (res.data.ok) {
+      if (editingId === id) { setEditingId(null); setAnswers({}); setNote(''); setTitle(''); }
+      load();
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('metacognition:record-changed'));
+      }
+    } else {
+      setError(res.data.error || 'Failed to delete reflection');
     }
   };
 
@@ -152,8 +188,16 @@ export function ReflectionPrompts({ decisionId }: { decisionId?: string }) {
           className="btn-neon purple w-full flex items-center justify-center gap-2"
         >
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-          {saving ? 'Saving...' : 'Save Reflection'}
+          {saving ? 'Saving...' : editingId ? 'Save Changes' : 'Save Reflection'}
         </button>
+        {editingId && (
+          <button
+            onClick={() => { setEditingId(null); setAnswers({}); setNote(''); setTitle(''); }}
+            className="w-full text-xs text-gray-400 hover:text-gray-200 py-1"
+          >
+            Cancel edit — write a new reflection instead
+          </button>
+        )}
         {streak && (
           <div className="flex items-center gap-2 text-xs text-neon-yellow">
             <Flame className="w-3.5 h-3.5" />
@@ -203,6 +247,41 @@ export function ReflectionPrompts({ decisionId }: { decisionId?: string }) {
                       {r.note && (
                         <p className="text-gray-400"><span className="text-gray-400">Note:</span> {r.note}</p>
                       )}
+                      <div className="flex items-center gap-2 pt-1">
+                        <button
+                          onClick={() => startEdit(r)}
+                          className="px-2 py-1 rounded bg-zinc-700/40 text-zinc-200 hover:bg-zinc-700/70"
+                          aria-label={`Edit reflection ${r.title}`}
+                        >
+                          Edit
+                        </button>
+                        {confirmingDelete === r.id ? (
+                          <>
+                            <button
+                              onClick={() => void remove(r.id)}
+                              className="px-2 py-1 rounded bg-rose-600/30 text-rose-200 hover:bg-rose-600/50"
+                              aria-label={`Confirm delete reflection ${r.title}`}
+                            >
+                              Delete?
+                            </button>
+                            <button
+                              onClick={() => setConfirmingDelete(null)}
+                              className="px-2 py-1 rounded bg-zinc-700/40 text-zinc-300"
+                              aria-label={`Keep reflection ${r.title}`}
+                            >
+                              Keep
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => setConfirmingDelete(r.id)}
+                            className="px-2 py-1 rounded text-rose-300 hover:bg-rose-600/20"
+                            aria-label={`Delete reflection ${r.title}`}
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>

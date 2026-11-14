@@ -164,7 +164,21 @@ function CrossDomainConnections({ domain, domainLabel }: CrossDomainConnectionsP
                 origin: 'corpus' as const,
               })
             );
-          return { items, source: 'semantic' as const };
+          // FIX-privacy-011 / FIX-suffering-011: every search hit used to be
+          // presented as a "connection", including zero- and un-scored hits —
+          // the panels filled with unrelated items (28 on Privacy, 18 on
+          // Suffering at walk time). A corpus item is a connection only when
+          // the search actually measured similarity: keep positive scores,
+          // strongest first, capped at the 20 strongest. If the floor empties
+          // the list, fall through to the graph neighbours below rather than
+          // presenting noise as connections.
+          const relevant = items
+            .filter((i) => i.similarity > 0)
+            .sort((a, b) => b.similarity - a.similarity)
+            .slice(0, 20);
+          if (relevant.length > 0) {
+            return { items: relevant, source: 'semantic' as const };
+          }
         }
       } catch {
         // Fall through to graph.force
