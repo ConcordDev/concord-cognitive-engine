@@ -68,9 +68,18 @@ export function PhilosophyChannels() {
   }
   async function addBlock() {
     if (!active || !draft.content.trim()) return;
-    await lensRun('philosophy', 'block-add', {
+    const r = await lensRun('philosophy', 'block-add', {
       channelId: active.channel.id, kind: draft.kind, content: draft.content.trim(), source: draft.source.trim(),
     });
+    // FIX-philosophy-005: the result used to go unread — the draft
+    // cleared and the list reloaded whether or not the block was added,
+    // so a refused add read exactly as a dead Add button. A refusal
+    // speaks and the draft stays put (the createChannel contract above).
+    if (!r.data?.ok) {
+      setNotice(r.data?.error || 'Block could not be added.');
+      return;
+    }
+    setNotice('Block added.');
     setDraft({ kind: 'text', content: '', source: '' });
     await reload(); await refresh();
   }

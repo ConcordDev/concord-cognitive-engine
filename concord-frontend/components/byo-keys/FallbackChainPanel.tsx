@@ -29,10 +29,22 @@ export function FallbackChainPanel() {
 
   const startEdit = (slot: string) => {
     setEditing(slot);
+    setConfirmClear(null);
     setDraft(chains[slot] ? [...chains[slot]] : []);
   };
 
+  const [confirmClear, setConfirmClear] = useState<string | null>(null);
+
   const save = async (slot: string) => {
+    // FIX-byo-keys-010: saving an emptied draft deletes the slot's whole
+    // fallback chain. That removal takes a second, armed click — the
+    // first click only explains what is about to happen.
+    if (draft.length === 0 && (chains[slot]?.length ?? 0) > 0 && confirmClear !== slot) {
+      setConfirmClear(slot);
+      setNotice('Saving now removes the whole fallback chain for this slot — click save again to confirm.');
+      return;
+    }
+    setConfirmClear(null);
     setBusy(true);
     const r = await lensRun('byo_keys', 'set_fallback', { slot, chain: draft });
     setBusy(false);
@@ -144,7 +156,7 @@ export function FallbackChainPanel() {
                     disabled={busy}
                     className="mt-3 px-3 py-1 rounded-md bg-amber-600 hover:bg-amber-500 text-amber-50 text-xs font-medium disabled:opacity-50"
                   >
-                    save chain
+                    {confirmClear === slot && draft.length === 0 ? 'confirm clear chain' : 'save chain'}
                   </button>
                 </div>
               )}

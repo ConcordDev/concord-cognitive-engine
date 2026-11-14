@@ -9,6 +9,13 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
+
+// FIX-byo-keys-010: caps are bounded — a monthly USD cap above $1M or a
+// token cap above a trillion is a typo-class entry (a 500-digit number
+// used to sail through as Infinity with no error at all).
+const MAX_USD_CAP = 1_000_000;
+const MAX_TOKEN_CAP = 1_000_000_000_000;
 
 interface BudgetRow {
   slot: string;
@@ -56,6 +63,8 @@ export function BudgetPanel() {
     const tokens = form.tokens.trim() === '' ? null : Number(form.tokens);
     if (usd != null && !(usd >= 0)) { setFormError('Monthly USD cap must be a number that is 0 or greater.'); return; }
     if (tokens != null && !(tokens >= 0)) { setFormError('Monthly token cap must be a number that is 0 or greater.'); return; }
+    if (usd != null && (!Number.isFinite(usd) || usd > MAX_USD_CAP)) { setFormError(`Monthly USD cap must be a finite number no greater than ${MAX_USD_CAP.toLocaleString()}.`); return; }
+    if (tokens != null && (!Number.isFinite(tokens) || tokens > MAX_TOKEN_CAP)) { setFormError(`Monthly token cap must be a finite number no greater than ${MAX_TOKEN_CAP.toLocaleString()}.`); return; }
     setFormError('');
     setBusy(true);
     const r = await lensRun('byo_keys', 'set_budget', { slot, monthlyUsdCap: usd, monthlyTokenCap: tokens });
@@ -139,12 +148,14 @@ export function BudgetPanel() {
                     {isEditing ? 'cancel' : hasBudget ? 'edit cap' : 'set cap'}
                   </button>
                   {hasBudget && !isEditing && (
-                    <button
-                      onClick={() => clearBudget(slot)}
+                    <StickyDeleteConfirm
+                      onConfirm={() => clearBudget(slot)}
+                      armLabel="clear"
+                      confirmLabel="Clear caps?"
+                      armAriaLabel={`Clear budget caps for ${slot}`}
+                      confirmAriaLabel="Confirm clear budget caps"
                       className="px-2 py-1 rounded-md text-[11px] bg-zinc-800 hover:bg-red-900/50 text-zinc-400"
-                    >
-                      clear
-                    </button>
+                    />
                   )}
                 </div>
               </div>

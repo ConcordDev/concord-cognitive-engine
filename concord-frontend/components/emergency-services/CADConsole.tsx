@@ -160,7 +160,7 @@ export function CADConsole() {
   const [rollup, setRollup] = useState<Rollup | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [timeline, setTimeline] = useState<TimelineEv[]>([]);
-  const [nearest, setNearest] = useState<{ recommended: NearestUnit | null; ranked: NearestUnit[] } | null>(null);
+  const [nearest, setNearest] = useState<{ recommended: NearestUnit | null; ranked: NearestUnit[]; noPosition?: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
@@ -228,10 +228,10 @@ export function CADConsole() {
     setSelectedId(incidentId);
     const [tl, nr] = await Promise.all([
       call<{ events: TimelineEv[] }>('incident-timeline', { incidentId }),
-      call<{ recommended: NearestUnit | null; ranked: NearestUnit[] }>('nearest-unit', { incidentId }),
+      call<{ recommended: NearestUnit | null; ranked: NearestUnit[]; noPosition?: boolean }>('nearest-unit', { incidentId }),
     ]);
     setTimeline(tl?.events || []);
-    setNearest(nr ? { recommended: nr.recommended, ranked: nr.ranked || [] } : null);
+    setNearest(nr ? { recommended: nr.recommended, ranked: nr.ranked || [], noPosition: nr.noPosition } : null);
   }, []);
 
   async function createIncident() {
@@ -651,8 +651,8 @@ export function CADConsole() {
           {/* Nearest-unit recommendation */}
           <div>
             <p className="mb-1.5 text-[10px] uppercase tracking-wide text-zinc-400">Nearest available units</p>
-            {!nearest && <p className="text-[11px] text-zinc-400">No map position on incident — add lat/lng to enable dispatch routing.</p>}
-            {nearest && nearest.ranked.length === 0 && <p className="text-[11px] text-zinc-400">No available geo-located units.</p>}
+            {(!nearest || nearest.noPosition) && <p className="text-[11px] text-zinc-400">No map position on incident — add lat/lng to enable dispatch routing.</p>}
+            {nearest && !nearest.noPosition && nearest.ranked.length === 0 && <p className="text-[11px] text-zinc-400">No available geo-located units.</p>}
             <div className="space-y-1">
               {nearest?.ranked.slice(0, 4).map((u, i) => (
                 <div key={u.id} className={cn(

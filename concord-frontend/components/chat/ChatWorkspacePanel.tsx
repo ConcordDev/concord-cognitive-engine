@@ -2694,6 +2694,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                     )}
                     title="Good response"
                     aria-label="Thumbs up"
+                    aria-pressed={feedbackState[message.id] === 'up'}
                   >
                     <ThumbsUp
                       className={cn(
@@ -2716,6 +2717,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                     )}
                     title="Bad response"
                     aria-label="Thumbs down"
+                    aria-pressed={feedbackState[message.id] === 'down'}
                   >
                     <ThumbsDown
                       className={cn(
@@ -2724,6 +2726,11 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                       )}
                     />
                   </button>
+                  {feedbackState[message.id] && (
+                    <span role="status" className="text-zinc-400">
+                      Thanks — feedback recorded
+                    </span>
+                  )}
                   <button
                     onClick={handleRegenerate}
                     disabled={regenerateMutation.isPending}

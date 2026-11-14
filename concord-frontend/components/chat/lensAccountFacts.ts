@@ -629,6 +629,57 @@ async function fetchHypothesisFacts(): Promise<LensFactsResult> {
   };
 }
 
+async function fetchDtusFacts(): Promise<LensFactsResult> {
+  const facts: AccountFact[] = [];
+  const unreadable: string[] = [];
+
+  // FIX-dtus-006: the DTU Browser's tier filter exposes FOUR tiers, but
+  // Ask under dtus context had no grounded facts at all, so its tier
+  // answer named Regular/MEGA/HYPER and omitted Shadow. The vocabulary
+  // fact is the Browser's own (BrowserPanel's filter list + the store's
+  // tier semantics), stated whole so a tier question can be answered
+  // from the lens's own data.
+  facts.push({
+    label: 'DTU tiers',
+    value:
+      'Regular, MEGA, HYPER and Shadow — every tier the DTU Browser filter offers. ' +
+      'Regular: a DTU as authored. MEGA: a compressed consolidation of Regular DTUs. ' +
+      'HYPER: a consolidation of MEGAs. Shadow: working DTUs that start as shadows and ' +
+      'promote through governance; they are held out of the vault/corpus lists.',
+    source: 'DTU Browser tier filter — GET /api/dtus/paginated',
+  });
+
+  const TIERS = ['regular', 'mega', 'hyper', 'shadow'] as const;
+  const counts: string[] = [];
+  let countsReadable = true;
+  for (const tier of TIERS) {
+    // The Browser's own read (apiHelpers.dtus.paginated), one per tier.
+    const res = await apiHelpers.dtus.paginated({ limit: 1, offset: 0, scope: 'mine', tier }).catch(() => null);
+    const data = res?.data as { total?: number; pagination?: { total?: number } } | undefined;
+    const total = num(data?.total) ?? num(data?.pagination?.total);
+    if (total === undefined) { countsReadable = false; break; }
+    counts.push(`${formatNumber(total)} ${tier}`);
+  }
+  if (countsReadable) {
+    facts.push({
+      label: 'Your DTUs by tier',
+      value: counts.join(', '),
+      source: 'DTU Browser — GET /api/dtus/paginated (scope mine, per tier)',
+    });
+  } else unreadable.push('the per-tier DTU counts');
+
+  return {
+    facts,
+    unreadable,
+    lensLabel: 'DTUs',
+    rule:
+      'Rule: answer questions about the DTUs lens ONLY from the facts above, and name the source you used. ' +
+      'You are answering about the DTUs lens — never describe another lens\'s contents in its place. ' +
+      'The tier list above is complete: never present a subset of the tiers as the whole set. ' +
+      'If a value is not listed above, say the DTUs surface doesn\'t give you that right now.',
+  };
+}
+
 const PROVIDERS: Record<string, () => Promise<LensFactsResult>> = {
   analytics: fetchAnalyticsFacts,
   conkay: fetchConkayFacts,
@@ -637,6 +688,7 @@ const PROVIDERS: Record<string, () => Promise<LensFactsResult>> = {
   attention: fetchAttentionFacts,
   feed: fetchFeedFacts,
   hypothesis: fetchHypothesisFacts,
+  dtus: fetchDtusFacts,
 };
 
 const DECLINE_RULE =
