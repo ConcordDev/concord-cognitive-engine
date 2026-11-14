@@ -19,6 +19,11 @@ export function beamQuery(inputs: StudyInputs): URLSearchParams {
   return q;
 }
 
+/** GB-1534: the one-page calc sheet for the same inputs (server-rendered from the signed v2 receipt). */
+export function beamSheetUrl(inputs: StudyInputs): string {
+  return `/api/conkay/demo/beam/sheet?${beamQuery(inputs)}`;
+}
+
 /**
  * The server sheds load with a real 503 + Retry-After (lib/request-admission.js),
  * most often right after a restart (`code: 'service_warming'`). The demo waits

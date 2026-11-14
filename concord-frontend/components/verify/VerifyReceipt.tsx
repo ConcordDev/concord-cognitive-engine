@@ -7,6 +7,10 @@ type Verdict = {
   reason: string | null;
   keyId?: string;
   digest?: string;
+  // GB-1534: v2 calc receipts sign their outputs; v1 receipts do not.
+  schema?: string;
+  outputsSigned?: boolean;
+  note?: string;
 };
 
 const OFFLINE = `import { createHash, createPublicKey, verify } from "node:crypto";
@@ -130,9 +134,17 @@ export default function VerifyReceipt() {
           <p style={{ ...verdictWord, color: verdict.valid ? 'var(--accent-primary)' : 'var(--accent-warm)' }}>
             {verdict.valid ? 'Valid' : 'Invalid'}
           </p>
+          {verdict.valid && verdict.outputsSigned === false && (
+            <p role="alert" style={v1Warning}>
+              {verdict.note ?? 'v1 receipt — outputs are NOT covered by the signature'}
+              {' '}The signature covers the solver identity and a hash of the inputs only.
+              The numbers this receipt reports were never signed — do not trust them on this verdict alone.
+            </p>
+          )}
           <dl style={facts}>
             <dt>Reason</dt>
             <dd>{verdict.reason ?? 'signature matches the canonical receipt'}</dd>
+            {verdict.schema && (<><dt>Schema</dt><dd>{verdict.schema === 'v1' ? 'v1 (outputs not signed)' : verdict.schema}</dd></>)}
             {verdict.keyId && (<><dt>Key id</dt><dd><code>{verdict.keyId}</code></dd></>)}
             {verdict.digest && (<><dt>Digest</dt><dd><code style={monoWrap}>{verdict.digest}</code></dd></>)}
           </dl>
@@ -256,6 +268,16 @@ const verdictWord: CSSProperties = {
   margin: 0,
   fontSize: 22,
   fontWeight: 600,
+};
+
+const v1Warning: CSSProperties = {
+  margin: '12px 0 0',
+  padding: '10px 12px',
+  borderRadius: 8,
+  border: '2px solid var(--accent-warm)',
+  color: 'var(--accent-warm)',
+  fontWeight: 600,
+  lineHeight: 1.5,
 };
 
 const facts: CSSProperties = {
