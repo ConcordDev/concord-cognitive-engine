@@ -1,5 +1,6 @@
 // server/domains/consulting.js
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { isHarnessFixtureName } from "../lib/harness-fixture.js";
 export default function registerConsultingActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // Fail-CLOSED numeric coercion for the pure-compute money macros below.
@@ -337,6 +338,10 @@ export default function registerConsultingActions(registerLensAction) {
     const s = getConsultingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const name = csClean(params.name, 120);
     if (!name) return { ok: false, error: "consultant name required" };
+    // FIX-consulting-012: refuse new harness fixtures at the door (the
+    // art.js pattern) — a consultant named like a test-harness value
+    // is a fixture, not a person on the roster.
+    if (isHarnessFixtureName(name)) return { ok: false, error: "that name looks like a test-harness value — give the consultant a real name" };
     const consultant = {
       id: csId("con"), name, role: csClean(params.role, 80) || "Consultant",
       weeklyCapacity: csNum(params.weeklyCapacity) > 0 ? csNum(params.weeklyCapacity) : 40,
@@ -385,7 +390,12 @@ export default function registerConsultingActions(registerLensAction) {
   try {
     const s = getConsultingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const u = csActor(ctx);
-    const consultants = csColl(s, "consultants", u);
+    // FIX-consulting-012: harness fixture rows that leaked into the
+    // roster in earlier QA runs stay out of the staffing lists (the
+    // art/mentorship pattern). Read-side only — the stored rows are
+    // never rewritten from code, and the owner can still delete the
+    // fixture through consultant-delete.
+    const consultants = csColl(s, "consultants", u).filter((c) => !isHarnessFixtureName(c?.name));
     const allocs = csColl(s, "allocations", u);
     const engs = csEng(s, u);
     const rows = consultants.map((c) => {
