@@ -80,7 +80,7 @@ export function ShopDashboard({ onJumpTo }: { onJumpTo: (n: ShopNav) => void }) 
         <Tile label="Visits" value={String(summary.visits)} icon={Eye} onClick={() => onJumpTo('stats')} />
         <Tile label="Views" value={String(summary.views)} icon={Eye} tone="cyan" onClick={() => onJumpTo('stats')} />
         <Tile label="Orders" value={String(summary.orderCount)} sub={`${summary.conversionRatePct}% CVR`} icon={Package} tone="amber" onClick={() => onJumpTo('orders')} />
-        <Tile label="Revenue" value={`$${summary.revenueUsd.toLocaleString()}`} sub={`$${summary.avgOrderValueUsd} AOV`} icon={DollarSign} tone="emerald" bold onClick={() => onJumpTo('stats')} />
+        <Tile label="Revenue" value={`${summary.revenueUsd.toLocaleString()} CC`} sub={`${summary.avgOrderValueUsd} CC AOV`} icon={DollarSign} tone="emerald" bold onClick={() => onJumpTo('stats')} />
       </div>
 
       {summary.series.length > 0 && (
@@ -97,8 +97,8 @@ export function ShopDashboard({ onJumpTo }: { onJumpTo: (n: ShopNav) => void }) 
                 </defs>
                 <CartesianGrid stroke="#ffffff10" strokeDasharray="2 4" vertical={false} />
                 <XAxis dataKey="date" tick={{ fontSize: 9, fill: '#94a3b8' }} interval="preserveStartEnd" />
-                <YAxis tick={{ fontSize: 9, fill: '#94a3b8' }} tickFormatter={(v) => `$${v}`} />
-                <Tooltip contentStyle={{ background: '#0d0d14', border: '1px solid #ffffff20', fontSize: 11 }} formatter={(v) => `$${Number(v).toFixed(0)}`} />
+                <YAxis tick={{ fontSize: 9, fill: '#94a3b8' }} tickFormatter={(v) => `${v} CC`} />
+                <Tooltip contentStyle={{ background: '#0d0d14', border: '1px solid #ffffff20', fontSize: 11 }} formatter={(v) => `${Number(v).toFixed(0)} CC`} />
                 <Area type="monotone" dataKey="revenue" stroke="#f97316" strokeWidth={1.5} fill="url(#shopRev)" />
               </AreaChart>
             </ResponsiveContainer>
@@ -109,7 +109,7 @@ export function ShopDashboard({ onJumpTo }: { onJumpTo: (n: ShopNav) => void }) 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Card label="Listings" value={String(dash.listingCount)} sub={`${dash.publishedCount} live · ${dash.draftCount} drafts`} icon={Tag} onClick={() => onJumpTo('listings')} />
         <Card label="Pending orders" value={String(dash.pendingOrders)} sub={`${dash.shippedOrders} shipped`} icon={Package} onClick={() => onJumpTo('orders')} />
-        <Card label="Lifetime revenue" value={`$${dash.lifetimeRevenueUsd.toLocaleString()}`} icon={TrendingUp} />
+        <Card label="Lifetime revenue" value={`${dash.lifetimeRevenueUsd.toLocaleString()} CC`} icon={TrendingUp} />
         <Card label="Active promos" value={String(dash.activePromos)} icon={Megaphone} onClick={() => onJumpTo('marketing')} />
       </div>
     </div>

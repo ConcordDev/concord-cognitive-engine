@@ -57,7 +57,7 @@ export function ShopfrontShell({ activeNav, onNavChange, badges = {}, shopName, 
             <span className="hidden text-xs font-semibold text-gray-200 sm:inline">Shop Manager</span>
           </div>
           {shopName && (
-            <div className="mt-1 hidden text-[10px] text-gray-400 truncate sm:block">{shopName} · {currency || 'USD'}</div>
+            <div className="mt-1 hidden text-[10px] text-gray-400 truncate sm:block">{shopName} · {currency || 'CC'}</div>
           )}
         </header>
         <nav className="flex-1 overflow-y-auto py-2">

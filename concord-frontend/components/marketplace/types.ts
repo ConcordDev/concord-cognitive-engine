@@ -291,7 +291,10 @@ export function normalizeServerPurchase(row: ServerPurchaseRow): Purchase {
 }
 
 export function formatPrice(cents: number) {
-  return cents === 0 ? 'Free' : `$${cents}`;
+  // FIX-marketplace-004 currency leg (founder ruling (5), 2026-11-13):
+  // these amounts are CC-denominated — the shopfront displays CC, never a
+  // $ sign. Display only; the stored values and order math are unchanged.
+  return cents === 0 ? 'Free' : `${cents} CC`;
 }
 
 export function typeIcon(type: MarketplaceItem['type']) {

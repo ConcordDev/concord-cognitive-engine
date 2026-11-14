@@ -125,7 +125,7 @@ export function OrdersPanel() {
           <p className="col-span-12 text-[10px] text-gray-400 -mb-1">Record an offline / in-person / phone sale against one of your published listings — decrements stock and appears in Orders like any other sale.</p>
           <select value={manual.listingId} onChange={e => setManual({ ...manual, listingId: e.target.value })} className="col-span-6 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
             <option value="">Pick a published listing…</option>
-            {listings.map(l => <option key={l.id} value={l.id}>{l.title} · ${l.priceUsd.toFixed(2)}{l.stockQty !== null ? ` (${l.stockQty} in stock)` : ''}</option>)}
+            {listings.map(l => <option key={l.id} value={l.id}>{l.title} · {l.priceUsd.toFixed(2)} CC{l.stockQty !== null ? ` (${l.stockQty} in stock)` : ''}</option>)}
           </select>
           <input type="number" min={1} value={manual.qty} onChange={e => setManual({ ...manual, qty: e.target.value })} placeholder="Qty" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
           <input value={manual.buyerName} onChange={e => setManual({ ...manual, buyerName: e.target.value })} placeholder="Buyer name" className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />

@@ -103,7 +103,7 @@ export function MarketplaceActionPanel() {
     setBusy('price'); setFeedback(null);
     try {
       const r = await callMacro<PriceResult>('priceOptimize', { title: listingTitle.trim(), category, currentPrice: parseFloat(listingPrice) });
-      if (r.ok && r.result) { setPriceResult(r.result); pipe.publish('marketplace.price', r.result, { label: `$${r.result.suggestedPrice}` }); ok(`Suggested $${r.result.suggestedPrice}.`); }
+      if (r.ok && r.result) { setPriceResult(r.result); pipe.publish('marketplace.price', r.result, { label: `${r.result.suggestedPrice} CC` }); ok(`Suggested ${r.result.suggestedPrice} CC.`); }
       else err(r.error ?? 'price failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
