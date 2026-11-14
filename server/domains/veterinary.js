@@ -160,6 +160,15 @@ export default function registerVeterinaryActions(registerLensAction) {
     return s;
   }
   function saveVet() {
+    // FIX-veterinary-012: route through the platform's critical save so a
+    // vet mutation (a delete above all) is durable with its read-your-
+    // write floor stamped on return, instead of riding the debounced
+    // coalesce window (up to STATE_SAVE_COALESCE_MS), inside which a
+    // snapshot-served reload could resurrect a deleted record. Falls
+    // back to the debounced save where the critical path is absent.
+    if (typeof globalThis._concordSaveStateCritical === "function") {
+      try { globalThis._concordSaveStateCritical(); return; } catch (_e) { /* fall through */ }
+    }
     if (typeof globalThis._concordSaveStateDebounced === "function") {
       try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
     }

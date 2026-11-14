@@ -187,6 +187,7 @@ import * as loopJobs from "./lib/loop-job-tracker.js";
 import { createLoopBlockSampler } from "./lib/loop-block-attribution.js";
 import { HUB_WORLD_ID, canonicalWorldId } from "./lib/world-ids.js";
 import { uniqueTmpPath, writeFileAtomicSync, createSnapshotOrdering, sweepStaleStateTmps } from "./lib/state-file-write.js";
+import { criticalStampPathFor, writeCriticalStamp, readCriticalStamp, snapshotSatisfiesFloor } from "./lib/read-your-write.js";
 import { runConsolidationCycle } from "./lib/consolidation-cycle.js";
 import { createVerifyGateService } from "./lib/verify-gate/service.js";
 import { proveClaim as _vgProveClaim } from "./lib/proof-gate.js";
@@ -12972,6 +12973,14 @@ async function tryInitNativeWebSockets(server) {
 // Production: SQLite (if available). Dev fallback: JSON file.
 // This prevents "DTUs disappeared" when server restarts or hot-reloads.
 const STATE_PATH = process.env.STATE_PATH || path.join(DATA_DIR, "concord_state.json");
+// FIX-veterinary-012: the read-your-write floor stamp for critical saves
+// (lib/read-your-write.js) — a tiny sidecar beside the state file, shared
+// with every snapshot reader in this DATA_DIR, replicas included.
+const CRITICAL_STAMP_PATH = criticalStampPathFor(STATE_PATH);
+// How long a snapshot reader waits for a pending critical save to land
+// before serving the newest snapshot anyway (loudly). Covers the
+// critical rate window (2 s) plus the save itself; 0 disables the wait.
+const RYW_WAIT_MS = Math.max(0, Number(process.env.CONCORD_RYW_WAIT_MS || 3000));
 const IS_PRODUCTION = (process.env.NODE_ENV || "").toLowerCase() === "production";
 const USE_SQLITE_STATE = db && (IS_PRODUCTION || process.env.STATE_BACKEND === "sqlite");
 let _saveTimer = null;
@@ -13059,6 +13068,10 @@ function _serializeState() {
   return {
     version: VERSION,
     savedAt: nowISO(),
+    // FIX-veterinary-012: the mutation sequence this snapshot serializes,
+    // so a snapshot reader can order it against the critical-save floor
+    // (lib/read-your-write.js). Additive — hydration reads named keys.
+    saveSeq: _stateMutationSeq,
     ...(dtuStoreActive ? {} : { dtus: toArr(STATE.dtus) }),
     shadowDtus: toArr(STATE.shadowDtus),
     wrappers: toArr(STATE.wrappers),
@@ -13358,7 +13371,7 @@ function _normalizeSettingsDefaults() {
   }
 }
 
-function loadStateFromDisk() {
+function _loadStateFromDiskOnce() {
   // INC-100: debounced saves durable-write JSON (yielding I/O) and skip the
   // sync SQLite blob upsert by default. Prefer the newer of SQLite vs JSON by
   // savedAt so a crash after a debounced save still restores the latest state.
@@ -13433,6 +13446,7 @@ function loadStateFromDisk() {
         path: c.path || STATE_PATH,
         backend: c.source === "sqlite" ? "sqlite" : (USE_SQLITE_STATE ? "json (preferred)" : "json"),
         savedAt: c.savedAt || obj.savedAt || null,
+        saveSeq: Number.isFinite(obj.saveSeq) ? obj.saveSeq : null,
       };
     } catch (e) {
       lastErr = e;
@@ -13715,6 +13729,19 @@ const CRITICAL_SAVE_MIN_INTERVAL_MS = Math.max(0, Number(process.env.CONCORD_CRI
 let _lastSyncSaveAt = 0;
 let _criticalCatchupTimer = null;
 function saveStateCritical() {
+  // FIX-veterinary-012: stamp the read-your-write floor BEFORE the
+  // rate-window decision (lib/read-your-write.js). The stamp is bytes
+  // and lands synchronously even when the full save below defers to the
+  // catch-up timer, so a snapshot reader booting inside the window can
+  // tell the on-disk snapshot predates this write and wait for the save
+  // instead of serving pre-write state. Fail-soft: a stamp I/O failure
+  // must never block the critical write itself.
+  _stateMutationSeq++;
+  try {
+    writeCriticalStamp(CRITICAL_STAMP_PATH, { seq: _stateMutationSeq, at: nowISO() });
+  } catch (e) {
+    structuredLog("warn", "state_critical_stamp_failed", { error: String(e?.message || e) });
+  }
   const sinceLast = Date.now() - _lastSyncSaveAt;
   if (sinceLast >= CRITICAL_SAVE_MIN_INTERVAL_MS) {
     saveStateSync();
@@ -13729,6 +13756,11 @@ function saveStateCritical() {
   }, Math.max(50, CRITICAL_SAVE_MIN_INTERVAL_MS - sinceLast));
   if (typeof _criticalCatchupTimer?.unref === "function") _criticalCatchupTimer.unref();
 }
+
+// Eagerly expose so domain files (which cannot reach this lexical
+// scope) can route durability-critical writes through the critical
+// path — FIX-veterinary-012 routes the veterinary lens's saveVet here.
+globalThis._concordSaveStateCritical = saveStateCritical;
 
 // ---- Periodic Safety-Net Save ----
 // REMOVED (audit 2026-07-27): a second, UNCONDITIONAL 2-minute
@@ -13758,6 +13790,38 @@ if (!READ_REPLICA) {
     const removed = sweepStaleStateTmps(STATE_PATH);
     if (removed) structuredLog("info", "state_tmp_swept", { removed });
   } catch (_e) { /* best effort */ }
+}
+
+// FIX-veterinary-012: the read-your-write floor guard. When a critical
+// save has stamped a floor (lib/read-your-write.js), a snapshot older
+// than that floor must not be served as current: the writer's save is
+// still inside its rate window or in flight. Re-read on a bounded wait
+// until a satisfying snapshot lands; if none does, serve the newest
+// anyway and say so at error level — degraded loudly, never silently,
+// and never a boot blocker. With no stamp the guard is inert and the
+// load is exactly the historical one.
+function loadStateFromDisk() {
+  const stamp = readCriticalStamp(CRITICAL_STAMP_PATH);
+  let result = _loadStateFromDiskOnce();
+  if (!stamp || !result?.loaded) return result;
+  const satisfied = () => snapshotSatisfiesFloor(
+    { saveSeq: result.saveSeq, savedAt: result.savedAt },
+    readCriticalStamp(CRITICAL_STAMP_PATH) || stamp,
+  );
+  if (satisfied()) return result;
+  const deadline = Date.now() + RYW_WAIT_MS;
+  const waitCell = new Int32Array(new SharedArrayBuffer(4));
+  while (Date.now() < deadline) {
+    try { Atomics.wait(waitCell, 0, 0, 100); } catch (_e) { break; }
+    result = _loadStateFromDiskOnce();
+    if (!result?.loaded || satisfied()) break;
+  }
+  if (result?.loaded && !satisfied()) {
+    structuredLog("error", "state_ryw_floor_unsatisfied", { floorSeq: stamp.seq, floorAt: stamp.at, loadedSeq: result.saveSeq ?? null, loadedSavedAt: result.savedAt ?? null });
+  } else if (result?.loaded) {
+    structuredLog("info", "state_ryw_floor_satisfied_after_wait", { floorSeq: stamp.seq });
+  }
+  return result;
 }
 
 const STATE_DISK = loadStateFromDisk();
