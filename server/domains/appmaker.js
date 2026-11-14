@@ -4,6 +4,7 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { assessPublicUrl, fetchPublicUrl, PUBLIC_URL_BLOCKED } from "../lib/public-fetch.js";
+import { APPMAKER_PREVIEW_RUNTIME, APPMAKER_RUNTIME_VERSION } from "../lib/appmaker-preview-runtime.js";
 
 export default function registerAppmakerActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -929,19 +930,61 @@ export default function registerAppmakerActions(registerLensAction) {
         const top = (Number.isFinite(+el.y) ? +el.y : 0) + (Number.isFinite(+el.h) ? +el.h : 40) + 2;
         const left = Number.isFinite(+el.x) ? +el.x : 0;
         const width = Number.isFinite(+el.w) ? +el.w : 120;
-        return `\n<div data-binding-caption="1" style="position:absolute;left:${left}px;top:${top}px;width:${width}px;font:10px system-ui;color:#67e8f9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(text)}</div>`;
+        return `\n<div data-binding-caption="1" data-caption-for="${esc(el.id)}" style="position:absolute;left:${left}px;top:${top}px;width:${width}px;font:10px system-ui;color:#67e8f9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(text)}</div>`;
       }
 
-      const body = (page.elements || []).map((el) => renderEl(el) + boundCaption(el)).join("\n");
-      const html = `<!doctype html><html><head><meta charset="utf-8"><title>${esc(proj.name)} — ${esc(page.name)}</title></head>` +
+      // FIX-app-maker-001 (S2): every element root carries its id so the
+      // preview runtime can attach behaviour; every page renders into its
+      // own container (only the requested page visible without JS — the
+      // runtime toggles containers for in-preview navigation).
+      const renderTagged = (el) => renderEl(el).replace(/^<(\w+)/, `<$1 data-el-id="${esc(el.id)}"`);
+      const pageBlock = (p) => {
+        const inner = (p.elements || []).map((el) => renderTagged(el) + boundCaption(el)).join("\n");
+        const hidden = p.id === page.id ? "" : "display:none;";
+        return `<div data-am-page="${esc(p.id)}" style="position:relative;width:100%;min-height:100vh;${hidden}">${inner || '<p style="color:#64748b;padding:40px;font:14px system-ui;">Empty page — drag elements onto the canvas.</p>'}</div>`;
+      };
+      const body = proj.pages.map(pageBlock).join("\n");
+
+      // The bootstrap: the project's own declarative content as DATA (the
+      // runtime interprets it; user content is never emitted as code).
+      // Connectors are reduced to id/name/kind/method — endpoints and
+      // credential material never enter the preview document.
+      const bootstrap = {
+        v: 1,
+        runtime: APPMAKER_RUNTIME_VERSION,
+        projectId: proj.id,
+        pageId: page.id,
+        pages: proj.pages.map((p) => ({
+          id: p.id, name: p.name, route: p.route,
+          elements: (p.elements || []).map((el) => ({
+            id: el.id, type: el.type, props: el.props || {},
+            ...(el.binding ? { binding: el.binding } : {}),
+          })),
+        })),
+        workflows: (proj.workflows || []).filter((w) => w.enabled !== false).map((w) => ({
+          id: w.id, name: w.name, trigger: w.trigger,
+          steps: (w.steps || []).map((s) => ({ action: s.action, target: s.target || "", config: s.config || {} })),
+        })),
+        tables: (proj.dataModel?.tables || []).map((t) => ({
+          id: t.id, name: t.name,
+          fields: (t.fields || []).map((f) => ({ name: f.name, type: f.type })),
+        })),
+        connectors: (proj.connectors || []).map((c) => ({ id: c.id, name: c.name, kind: c.kind, method: c.method })),
+      };
+      const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, "\\u003c");
+      const csp = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src https: data:; connect-src 'none'; form-action 'none'";
+      const html = `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${csp}"><title>${esc(proj.name)} — ${esc(page.name)}</title></head>` +
         `<body style="margin:0;background:#020617;font-family:system-ui;min-height:100vh;">` +
-        `<div style="position:relative;width:100%;min-height:100vh;">${body || '<p style="color:#64748b;padding:40px;font:14px system-ui;">Empty page — drag elements onto the canvas.</p>'}</div>` +
+        `<div style="position:relative;width:100%;min-height:100vh;">${body}</div>` +
+        `<script type="application/json" id="am-bootstrap">${bootstrapJson}</script>` +
+        `<script>${APPMAKER_PREVIEW_RUNTIME}</script>` +
         `</body></html>`;
 
       return {
         ok: true,
         result: {
           html,
+          runtime: bootstrap,
           page: { id: page.id, name: page.name, route: page.route, elementCount: (page.elements || []).length },
           pages: proj.pages.map((p) => ({ id: p.id, name: p.name, route: p.route })),
         },
