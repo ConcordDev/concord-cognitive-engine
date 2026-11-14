@@ -39,9 +39,11 @@ function pickMessage(e: unknown): string {
 }
 
 interface CapResult { capRatePct?: number; band?: string; noi?: number }
-interface MortgageResult { monthlyPayment?: number; totalInterest?: number; payoffYears?: number }
+// The calc-mortgage macro's own result shape (server/domains/realestate.js).
+interface MortgageResult { monthly?: { total?: number; principalAndInterest?: number; tax?: number; insurance?: number; pmi?: number; hoa?: number }; totalInterest?: number; totalCostOverTerm?: number; ltvPercent?: number }
 interface AffordResult { maxPrice?: number; maxMonthlyPayment?: number; dtiRatio?: number }
-interface RentBuyResult { breakEvenYears?: number; recommendation?: string; netDifference?: number }
+// The calc-rent-vs-buy macro's own result shape (server/domains/realestate.js).
+interface RentBuyResult { breakEvenYear?: number | null; verdict?: string; monthlyBuyTotal?: number; monthlyRent?: number }
 
 export function RealEstateActionPanel() {
   const [address, setAddress] = useState('');
@@ -51,6 +53,8 @@ export function RealEstateActionPanel() {
   const [downPct, setDownPct] = useState('');
   const [rateApr, setRateApr] = useState('');
   const [termYears, setTermYears] = useState('');
+  const [taxRate, setTaxRate] = useState('');
+  const [insurance, setInsurance] = useState('');
   const [income, setIncome] = useState('');
   const [debts, setDebts] = useState('');
   const [monthlyRent, setMonthlyRent] = useState('');
@@ -90,8 +94,16 @@ export function RealEstateActionPanel() {
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMortgage() {
+    // FIX-housing-003: same second-dialect defect as Rent v buy — this call
+    // sent downPaymentPct / interestRate (pre-divided by 100) and none of
+    // the taxRate / insurance the macro requires (it assumes none), while
+    // the tile read a monthlyPayment field the result never carries. The
+    // macro reads price / downPercent / rate (annual %) / termYears /
+    // taxRate / insurance — the Workbench MortgageTab's shape.
+    const vals = { price: parseFloat(price), downPercent: parseFloat(downPct), rate: parseFloat(rateApr), termYears: parseInt(termYears, 10), taxRate: parseFloat(taxRate), insurance: parseFloat(insurance) };
+    if (Object.values(vals).some((v) => !Number.isFinite(v))) { err('Mortgage needs price, down %, APR, term, tax %/yr and insurance $/yr — none are assumed.'); return; }
     setBusy('mortgage'); setFeedback(null);
-    try { const r = await callMacro<MortgageResult>('calc-mortgage', { price: parseFloat(price), downPaymentPct: parseFloat(downPct), interestRate: parseFloat(rateApr) / 100, termYears: parseInt(termYears, 10) }); if (r.ok && r.result) { setMortgageResult(r.result); pipe.publish('realestate.mortgage', r.result, { label: `$${r.result.monthlyPayment?.toFixed(0)}/mo` }); ok(`$${r.result.monthlyPayment?.toFixed(0)}/mo.`); } else err(r.error ?? 'mortgage failed'); }
+    try { const r = await callMacro<MortgageResult>('calc-mortgage', vals); if (r.ok && r.result?.monthly) { setMortgageResult(r.result); pipe.publish('realestate.mortgage', r.result, { label: `$${r.result.monthly.total?.toFixed(0)}/mo` }); ok(`$${r.result.monthly.total?.toFixed(0)}/mo.`); } else err(r.error ?? 'mortgage failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAfford() {
@@ -101,7 +113,17 @@ export function RealEstateActionPanel() {
   }
   async function actRentBuy() {
     setBusy('rentBuy'); setFeedback(null);
-    try { const r = await callMacro<RentBuyResult>('calc-rent-vs-buy', { homePrice: parseFloat(price), monthlyRent: parseFloat(monthlyRent), downPaymentPct: parseFloat(downPct), interestRate: parseFloat(rateApr) / 100 }); if (r.ok && r.result) { setRentBuyResult(r.result); pipe.publish('realestate.rentVsBuy', r.result, { label: r.result.recommendation ?? 'rent-vs-buy' }); ok(`${r.result.recommendation}.`); } else err(r.error ?? 'rent-vs-buy failed'); }
+    // FIX-housing-003: this call site spoke a second dialect — homePrice /
+    // monthlyRent / downPaymentPct / interestRate (pre-divided by 100) —
+    // while the macro reads price / rent / downPercent / rate (annual %),
+    // the same shape the Workbench's RentBuyTab sends. Every click failed
+    // server-side with "price must be > 0" and no tile ever appeared.
+    const priceN = parseFloat(price); const rentN = parseFloat(monthlyRent);
+    if (!Number.isFinite(priceN) || priceN <= 0 || !Number.isFinite(rentN) || rentN <= 0) { err('Rent vs Buy needs a price and a comparable monthly rent.'); return; }
+    const input: Record<string, unknown> = { price: priceN, rent: rentN };
+    const downN = parseFloat(downPct); if (Number.isFinite(downN)) input.downPercent = downN;
+    const rateN = parseFloat(rateApr); if (Number.isFinite(rateN)) input.rate = rateN;
+    try { const r = await callMacro<RentBuyResult>('calc-rent-vs-buy', input); if (r.ok && r.result) { setRentBuyResult(r.result); pipe.publish('realestate.rentVsBuy', r.result, { label: r.result.verdict ?? 'rent-vs-buy' }); ok(`${r.result.verdict}`); } else err(r.error ?? 'rent-vs-buy failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
@@ -115,7 +137,7 @@ export function RealEstateActionPanel() {
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`🏠 Property: ${address || price}`, '', `Asking: $${parseFloat(price).toLocaleString()}`, capResult ? `Cap rate: ${capResult.capRatePct?.toFixed(2)}% (${capResult.band})` : '', mortgageResult ? `Mortgage: $${mortgageResult.monthlyPayment?.toFixed(0)}/mo` : '', rentBuyResult ? `Rent-vs-buy: ${rentBuyResult.recommendation}` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
+    const body = [`🏠 Property: ${address || price}`, '', `Asking: $${parseFloat(price).toLocaleString()}`, capResult ? `Cap rate: ${capResult.capRatePct?.toFixed(2)}% (${capResult.band})` : '', mortgageResult ? `Mortgage: $${mortgageResult.monthly?.total?.toFixed(0)}/mo` : '', rentBuyResult ? `Rent-vs-buy: ${rentBuyResult.verdict}` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
     try {
       const messageId = await dmRecall.run(async () => {
         const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
@@ -129,7 +151,7 @@ export function RealEstateActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `Investor analysis — ${address || price}`, tags: ['realestate', 'analysis', 'public'], source: 'realestate:analysis:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anonymized: true, analysis: { price, capRate: capResult?.capRatePct, monthlyPayment: mortgageResult?.monthlyPayment, rentBuy: rentBuyResult?.recommendation } } }, 'knowledge', ['private', 'public_view', 'social_post']) });
+        const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `Investor analysis — ${address || price}`, tags: ['realestate', 'analysis', 'public'], source: 'realestate:analysis:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anonymized: true, analysis: { price, capRate: capResult?.capRatePct, monthlyPayment: mortgageResult?.monthly?.total, rentBuy: rentBuyResult?.verdict } } }, 'knowledge', ['private', 'public_view', 'social_post']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
@@ -142,7 +164,7 @@ export function RealEstateActionPanel() {
   async function actAgent() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
-      const task = `Property: ${address || 'unnamed'} at $${price}. ${capResult ? `Cap rate ${capResult.capRatePct?.toFixed(2)}%.` : ''} ${mortgageResult ? `Mortgage $${mortgageResult.monthlyPayment?.toFixed(0)}/mo.` : ''} ${rentBuyResult ? `Rent-vs-buy: ${rentBuyResult.recommendation}.` : ''} Suggest the single best negotiation lever for this deal (price, repair credit, closing date, financing contingency). Plain text.`;
+      const task = `Property: ${address || 'unnamed'} at $${price}. ${capResult ? `Cap rate ${capResult.capRatePct?.toFixed(2)}%.` : ''} ${mortgageResult ? `Mortgage $${mortgageResult.monthly?.total?.toFixed(0)}/mo.` : ''} ${rentBuyResult ? `Rent-vs-buy: ${rentBuyResult.verdict}.` : ''} Suggest the single best negotiation lever for this deal (price, repair credit, closing date, financing contingency). Plain text.`;
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
       const reply = readAgentReply(r.data);
       if (reply.ok) { setAgentReply(reply.text); ok('Negotiation lever ready.'); } else err(reply.reason);
@@ -176,6 +198,8 @@ export function RealEstateActionPanel() {
         <input type="text" value={downPct} onChange={(e) => setDownPct(e.target.value.replace(/[^\d.]/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Down %" />
         <input type="text" value={rateApr} onChange={(e) => setRateApr(e.target.value.replace(/[^\d.]/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="APR %" />
         <input type="text" value={termYears} onChange={(e) => setTermYears(e.target.value.replace(/\D/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Term yrs" />
+        <input type="text" value={taxRate} onChange={(e) => setTaxRate(e.target.value.replace(/[^\d.]/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Tax %/yr" />
+        <input type="text" value={insurance} onChange={(e) => setInsurance(e.target.value.replace(/\D/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Insurance $/yr" />
         <input type="text" value={income} onChange={(e) => setIncome(e.target.value.replace(/\D/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Income $/yr" />
         <input type="text" value={debts} onChange={(e) => setDebts(e.target.value.replace(/\D/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Debts $/mo" />
         <input type="text" value={monthlyRent} onChange={(e) => setMonthlyRent(e.target.value.replace(/\D/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Comp rent $/mo" />
@@ -204,9 +228,9 @@ export function RealEstateActionPanel() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         {capResult && <Tile label="Cap rate" big={`${capResult.capRatePct?.toFixed(2)}%`} sub={`${capResult.band} · NOI $${capResult.noi?.toLocaleString()}`} accent="#22c55e" />}
-        {mortgageResult && <Tile label="Mortgage" big={`$${mortgageResult.monthlyPayment?.toFixed(0)}`} sub={`/mo · int $${mortgageResult.totalInterest?.toLocaleString()}`} accent="#06b6d4" />}
+        {mortgageResult && <Tile label="Mortgage" big={`$${mortgageResult.monthly?.total?.toFixed(0)}`} sub={`/mo · P&I $${mortgageResult.monthly?.principalAndInterest?.toFixed(0)} · int $${mortgageResult.totalInterest?.toLocaleString()}`} accent="#06b6d4" />}
         {affordResult && <Tile label="Afford max" big={`$${affordResult.maxPrice?.toLocaleString()}`} sub={`DTI ${(affordResult.dtiRatio ?? 0).toFixed(2)}`} accent="#8b5cf6" />}
-        {rentBuyResult && <Tile label="Break-even" big={`${rentBuyResult.breakEvenYears?.toFixed(1)}y`} sub={rentBuyResult.recommendation} accent="#f97316" />}
+        {rentBuyResult && <Tile label="Break-even" big={rentBuyResult.breakEvenYear != null ? `${rentBuyResult.breakEvenYear}y` : '—'} sub={rentBuyResult.verdict} accent="#f97316" />}
       </div>
 
       {agentReply && (
