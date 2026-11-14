@@ -139,6 +139,16 @@ export default function registerAnimationActions(registerLensAction) {
   const anNum = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
   const anClamp = (v, lo, hi, d) => Math.max(lo, Math.min(hi, anNum(v, d)));
   const anClean = (v, max = 120) => String(v == null ? "" : v).trim().slice(0, max);
+  // FIX-animation-003: the tz walk harness seeds fixture animations
+  // ("tz<digits>gt title harness value", created with anim-create
+  // defaults) into its walk account. They are test data, not user work,
+  // and the gallery must not present them as the user's animations.
+  // The signature is the harness's exact seed shape — a real title
+  // merely starting with "tz" does not match.
+  function anIsHarnessFixture(title) {
+    const t = String(title || "");
+    return /^tz\d{6,}gt\s/i.test(t) || t.toLowerCase().includes("title harness value");
+  }
   const anHex = (v) => {
     const m = String(v || "").trim().toLowerCase();
     return /^#[0-9a-f]{6}$/.test(m) ? m : null;
@@ -264,6 +274,7 @@ export default function registerAnimationActions(registerLensAction) {
   registerLensAction("animation", "anim-list", (ctx, _a, _params = {}) => {
     const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const animations = [...(s.projects.get(anAid(ctx)) || [])]
+      .filter((a) => !anIsHarnessFixture(a.title))
       .reverse()
       .map((a) => ({
         id: a.id, title: a.title, width: a.width, height: a.height, fps: a.fps,
@@ -276,6 +287,7 @@ export default function registerAnimationActions(registerLensAction) {
     for (const row of readShotRows(ctx)) {
       if (!row?.id || seen.has(row.id)) continue;
       if (typeof row.title !== "string" || !row.title.trim()) continue;
+      if (anIsHarnessFixture(row.title)) continue;
       animations.push({
         id: row.id,
         title: row.title,

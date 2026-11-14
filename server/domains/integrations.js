@@ -6,6 +6,7 @@ import { guardAnonWrites } from "../lib/lens-authz.js";
 import crypto from "node:crypto";
 import { fetchPublicUrl } from "../lib/public-fetch.js";
 import { webhookMetaAccess, safeSignatureEqual } from "../lib/webhook-meta-access.js";
+import { persistConnectorApiKey, hasConnectorApiKey, deleteConnectorApiKey, connectorApiKeyInfo } from "../lib/connector-api-keys.js";
 
 export default function registerIntegrationsActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -515,9 +516,10 @@ export default function registerIntegrationsActions(registerLensAction) {
     const m = userMap(s, "connections", userId);
     // Honesty: never claim status "connected" or invent an account label when
     // no real credential exists. oauth2 credentials live in
-    // connector_oauth_tokens (migration 331). api_key connectors have no
-    // stored-key path yet — refuse rather than mint stripe-account/etc.
-    // internal (Concord DTU) needs no external credential.
+    // connector_oauth_tokens (migration 331); api_key credentials live in
+    // connector_api_keys (migration 509, encrypted at rest). Refuse rather
+    // than mint stripe-account/etc. internal (Concord DTU) needs no
+    // external credential.
     let credentialStored = false;
     if (connector.authType === "internal") {
       credentialStored = true;
@@ -531,9 +533,13 @@ export default function registerIntegrationsActions(registerLensAction) {
         }
       } catch { /* table may not exist on minimal builds — credentialStored stays false */ }
     } else if (connector.authType === "api_key") {
-      // No durable api-key store on this surface yet. A typed key that is not
-      // persisted must not become credentialStored:true — refuse instead.
-      credentialStored = false;
+      // FIX-integrations-003: the encrypted per-user key store
+      // (connector_api_keys, migration 509) is the durable path. A key
+      // counts only when it is stored AND still decrypts — a tampered
+      // or un-decryptable row refuses, exactly like a missing one.
+      try {
+        credentialStored = ctx?.db ? hasConnectorApiKey(ctx.db, userId, connector.id) : false;
+      } catch { /* store unavailable — credentialStored stays false */ }
     }
     if (!credentialStored) {
       return {
@@ -581,14 +587,18 @@ export default function registerIntegrationsActions(registerLensAction) {
     // snapshot forever would keep showing "Connected" for a connector the
     // real egress path has already honestly stopped trusting.
     const refreshed = connections.map((c) => {
-      if (c.authType !== "oauth2") return c; // non-oauth connectors (internal/api_key) unaffected
+      if (c.authType === "internal") return c;
       let credentialStored = c.credentialStored;
       try {
-        if (ctx?.db) {
+        if (ctx?.db && c.authType === "oauth2") {
           const row = ctx.db
             .prepare("SELECT 1 FROM connector_oauth_tokens WHERE user_id = ? AND connector_id = ? LIMIT 1")
             .get(userId, tokenKeyForCatalogId(c.connectorId));
           credentialStored = !!row;
+        } else if (ctx?.db && c.authType === "api_key") {
+          // FIX-integrations-003: same live recompute for stored keys —
+          // a revoked or un-decryptable key must stop reading Connected.
+          credentialStored = hasConnectorApiKey(ctx.db, userId, c.connectorId);
         }
       } catch { /* table unavailable on minimal builds — fall back to the stored snapshot */ }
       return credentialStored === c.credentialStored ? c : { ...c, credentialStored, needsOauth: !credentialStored };
@@ -599,11 +609,59 @@ export default function registerIntegrationsActions(registerLensAction) {
   registerLensAction("integrations", "disconnectApp", (ctx, _artifact, params = {}) => {
     const s = getIntegrationsState();
     if (!s) return { ok: false, error: "STATE unavailable" };
-    const m = s.connections.get(intActor(ctx));
+    const userId = intActor(ctx);
+    const m = s.connections.get(userId);
     if (!m || !m.has(params.connectionId)) return { ok: false, error: "Connection not found" };
+    const conn = m.get(params.connectionId);
     m.delete(params.connectionId);
+    // FIX-integrations-003: disconnecting an api_key connector revokes
+    // its stored key with it — disconnect and revocation are the same
+    // user act, and a later connect must ask for a key again.
+    if (conn?.authType === "api_key" && ctx?.db) {
+      try { deleteConnectorApiKey(ctx.db, userId, conn.connectorId); } catch { /* best effort */ }
+    }
     saveIntegrationsState();
     return { ok: true, result: { disconnected: params.connectionId } };
+  });
+
+  // ── API-key credential entry (FIX-integrations-003) ──
+  // The entry step the catalog always lacked: a user pastes their own
+  // API key for an api_key connector; it is stored encrypted per user
+  // (connector_api_keys) and never returned by any action — results
+  // carry only the last-4 hint.
+  registerLensAction("integrations", "setApiKey", (ctx, _artifact, params = {}) => {
+    const connector = CONNECTOR_CATALOG.find(c => c.id === params.connectorId);
+    if (!connector) return { ok: false, error: "Unknown connector" };
+    if (connector.authType !== "api_key") return { ok: false, error: "Connector does not use an API key" };
+    const key = typeof params.apiKey === "string" ? params.apiKey.trim() : "";
+    if (!key) return { ok: false, error: "API key required" };
+    if (key.length > 512) return { ok: false, error: "API key too long" };
+    if (!ctx?.db) return { ok: false, error: "Credential store unavailable" };
+    try {
+      const { hint } = persistConnectorApiKey(ctx.db, intActor(ctx), connector.id, key);
+      return { ok: true, result: { connectorId: connector.id, stored: true, hint } };
+    } catch {
+      return { ok: false, error: "Credential store unavailable" };
+    }
+  });
+
+  registerLensAction("integrations", "removeApiKey", (ctx, _artifact, params = {}) => {
+    const connector = CONNECTOR_CATALOG.find(c => c.id === params.connectorId);
+    if (!connector) return { ok: false, error: "Unknown connector" };
+    if (connector.authType !== "api_key") return { ok: false, error: "Connector does not use an API key" };
+    if (!ctx?.db) return { ok: false, error: "Credential store unavailable" };
+    const removed = deleteConnectorApiKey(ctx.db, intActor(ctx), connector.id);
+    return { ok: true, result: { connectorId: connector.id, removed } };
+  });
+
+  registerLensAction("integrations", "apiKeyStatus", (ctx, _artifact, params = {}) => {
+    const connector = CONNECTOR_CATALOG.find(c => c.id === params.connectorId);
+    if (!connector) return { ok: false, error: "Unknown connector" };
+    if (connector.authType !== "api_key") return { ok: false, error: "Connector does not use an API key" };
+    const info = ctx?.db
+      ? connectorApiKeyInfo(ctx.db, intActor(ctx), connector.id)
+      : { stored: false, hint: null, updatedAt: null };
+    return { ok: true, result: { connectorId: connector.id, ...info } };
   });
 
   // ── Zap workflow builder (multi-step trigger → action with branching) ──

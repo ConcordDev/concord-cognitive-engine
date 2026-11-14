@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Plug, Search, Loader2, Check, Link2, Unlink, Zap, Send, ShieldAlert } from 'lucide-react';
+import { Plug, Search, Loader2, Check, Link2, Unlink, Zap, Send, ShieldAlert, KeyRound, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
 interface Connector {
@@ -44,6 +44,42 @@ export function ConnectorCatalog() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // FIX-integrations-003: per-connector API-key status (stored + last-4
+  // hint only — the key itself is never returned) and the entry draft.
+  // The draft lives in component state only and is cleared on save.
+  const [keyInfo, setKeyInfo] = useState<Record<string, { stored: boolean; hint: string | null }>>({});
+  const [keyDraft, setKeyDraft] = useState<Record<string, string>>({});
+  const [keyBusy, setKeyBusy] = useState<string | null>(null);
+
+  const loadKeyStatus = useCallback(async (connectorId: string) => {
+    const r = await lensRun<{ stored: boolean; hint: string | null }>('integrations', 'apiKeyStatus', { connectorId });
+    if (r.data.ok && r.data.result) {
+      setKeyInfo((prev) => ({ ...prev, [connectorId]: { stored: !!r.data.result.stored, hint: r.data.result.hint ?? null } }));
+    }
+  }, []);
+
+  const saveKey = async (c: Connector) => {
+    const apiKey = (keyDraft[c.id] || '').trim();
+    if (!apiKey) return;
+    setKeyBusy(c.id);
+    setError(null);
+    try {
+      const r = await lensRun('integrations', 'setApiKey', { connectorId: c.id, apiKey });
+      if (r.data.ok) {
+        setKeyDraft((prev) => ({ ...prev, [c.id]: '' }));
+        await loadKeyStatus(c.id);
+      } else setError(r.data.error || 'Could not store the key');
+    } finally { setKeyBusy(null); }
+  };
+
+  const revokeKey = async (c: Connector) => {
+    setKeyBusy(c.id);
+    try {
+      await lensRun('integrations', 'removeApiKey', { connectorId: c.id });
+      await loadKeyStatus(c.id);
+      await loadConnections();
+    } finally { setKeyBusy(null); }
+  };
 
   const loadConnections = useCallback(async () => {
     const r = await lensRun<{ connections: Connection[] }>('integrations', 'connectionList', {});
@@ -64,6 +100,9 @@ export function ConnectorCatalog() {
 
   useEffect(() => { loadConnections(); }, [loadConnections]);
   useEffect(() => { loadCatalog(); }, [loadCatalog]);
+  useEffect(() => {
+    for (const c of connectors) if (c.authType === 'api_key') void loadKeyStatus(c.id);
+  }, [connectors, loadKeyStatus]);
 
   const connect = async (c: Connector) => {
     setBusy(c.id);
@@ -192,21 +231,15 @@ export function ConnectorCatalog() {
                       </span>
                     )
                   ) : c.authType === 'api_key' ? (
-                    // FIX-integrations-003: api_key connectors can never
-                    // connect from here today — connectApp refuses by
-                    // design (no durable key store exists yet, and the
-                    // server will not mint a connection from an
-                    // unpersisted key). The card presented a live
-                    // Connect button whose only outcome was a raw 422
-                    // 'credential required' with no entry step anywhere.
-                    // State the position instead of offering the dead
-                    // button; the credential-store build is the cure.
-                    <span
-                      className="text-xs text-yellow-400 flex items-center gap-1"
-                      title="This connector needs an API key, but secure key entry isn't available yet — so it can't be connected from here yet."
-                    >
-                      <ShieldAlert className="w-3 h-3" /> Needs API key — entry not yet available
-                    </span>
+                    keyInfo[c.id]?.stored ? (
+                      <span className="text-xs text-neon-green flex items-center gap-1" title="An encrypted API key is stored for this connector">
+                        <KeyRound className="w-3 h-3" /> Key stored{keyInfo[c.id]?.hint ? ` ••••${keyInfo[c.id].hint}` : ''}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-yellow-400 flex items-center gap-1" title="This connector needs an API key — paste it below to store it encrypted">
+                        <ShieldAlert className="w-3 h-3" /> Needs API key
+                      </span>
+                    )
                   ) : (
                     <button
                       onClick={() => connect(c)}
@@ -218,6 +251,48 @@ export function ConnectorCatalog() {
                     </button>
                   )}
                 </div>
+                {!conn && c.authType === 'api_key' && (
+                  keyInfo[c.id]?.stored ? (
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => connect(c)}
+                        disabled={busy === c.id}
+                        className="btn-secondary text-xs px-2 py-1 flex items-center gap-1"
+                      >
+                        {busy === c.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Link2 className="w-3 h-3" />} Connect
+                      </button>
+                      <button
+                        onClick={() => revokeKey(c)}
+                        disabled={keyBusy === c.id}
+                        aria-label={`Revoke the stored ${c.name} API key`}
+                        title="Revoke the stored key"
+                        className="text-xs px-2 py-1 flex items-center gap-1 text-gray-400 hover:text-red-400 disabled:opacity-40"
+                      >
+                        <Trash2 className="w-3 h-3" /> Revoke key
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <label className="sr-only" htmlFor={`apikey-${c.id}`}>{c.name} API key</label>
+                      <input
+                        id={`apikey-${c.id}`}
+                        type="password"
+                        autoComplete="off"
+                        placeholder={`${c.name} API key`}
+                        value={keyDraft[c.id] || ''}
+                        onChange={(e) => setKeyDraft((prev) => ({ ...prev, [c.id]: e.target.value }))}
+                        className="flex-1 min-w-0 bg-lattice-surface rounded px-2 py-1.5 text-xs text-gray-100 placeholder:text-gray-500"
+                      />
+                      <button
+                        onClick={() => saveKey(c)}
+                        disabled={keyBusy === c.id || !(keyDraft[c.id] || '').trim()}
+                        className="btn-secondary text-xs px-2 py-1 flex items-center gap-1"
+                      >
+                        {keyBusy === c.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <KeyRound className="w-3 h-3" />} Save key
+                      </button>
+                    </div>
+                  )
+                )}
                 <div className="grid grid-cols-2 gap-2 text-[11px]">
                   <div>
                     <div className="text-gray-400 flex items-center gap-1 mb-0.5"><Zap className="w-3 h-3" /> Triggers</div>
