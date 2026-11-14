@@ -188,7 +188,7 @@ function StreamTab({ cohortId, flash }: TabProps) {
     <div className="space-y-3">
       <div className={cardCls}>
         <h4 className="text-xs font-bold text-cyan-300 uppercase tracking-wider mb-2">Announce</h4>
-        <textarea value={text} onChange={(e) => setText(e.target.value)} rows={2}
+        <textarea id="classroom-announce-text" name="announceText" value={text} onChange={(e) => setText(e.target.value)} rows={2}
           placeholder="Share something with the class…" className={inputCls} />
         <div className="mt-2">
           <button onClick={post} disabled={busy || !text.trim()} className={btnCls}>
@@ -347,19 +347,19 @@ function AssignmentsTab({ cohortId, flash }: TabProps) {
       <div className={cardCls}>
         <h4 className="text-xs font-bold text-cyan-300 uppercase tracking-wider mb-2">New assignment</h4>
         <div className="grid sm:grid-cols-2 gap-2">
-          <input className={inputCls} placeholder="Title" value={form.title}
+          <input id="classroom-assignment-title" name="title" className={inputCls} placeholder="Title" value={form.title}
             onChange={(e) => setForm({ ...form, title: e.target.value })} />
-          <input className={inputCls} placeholder="Topic (optional)" value={form.topic}
+          <input id="classroom-assignment-topic" name="topic" className={inputCls} placeholder="Topic (optional)" value={form.topic}
             onChange={(e) => setForm({ ...form, topic: e.target.value })} />
           <label className="block text-[10px] text-zinc-400">
             Due
-            <input className={inputCls} type="datetime-local" value={form.dueAt}
+            <input id="classroom-assignment-due" name="dueAt" className={inputCls} type="datetime-local" value={form.dueAt}
               onChange={(e) => setForm({ ...form, dueAt: e.target.value })} />
             <span className="mt-0.5 block">Leave blank for no due date. A day with no time is due at 11:59pm.</span>
           </label>
-          <input className={inputCls} type="number" min={0} max={1000} placeholder="Points" value={form.points}
+          <input id="classroom-assignment-points" name="points" className={inputCls} type="number" min={0} max={1000} placeholder="Points" value={form.points}
             onChange={(e) => setForm({ ...form, points: e.target.value })} />
-          <textarea className={`${inputCls} sm:col-span-2`} rows={2} placeholder="Instructions"
+          <textarea id="classroom-assignment-instructions" name="instructions" className={`${inputCls} sm:col-span-2`} rows={2} placeholder="Instructions"
             value={form.instructions}
             onChange={(e) => setForm({ ...form, instructions: e.target.value })} />
         </div>
@@ -407,13 +407,13 @@ function AssignmentsTab({ cohortId, flash }: TabProps) {
             <div className="mt-3 border-t border-zinc-800 pt-3 space-y-2">
               <div className="bg-zinc-950/60 rounded p-2 space-y-1">
                 <div className="text-[10px] font-bold text-zinc-400 uppercase">Add submission</div>
-                <textarea className={inputCls} rows={2} placeholder="Submission content"
+                <textarea id="classroom-submission-content" name="content" className={inputCls} rows={2} placeholder="Submission content"
                   value={subForm.content}
                   onChange={(e) => setSubForm({ ...subForm, content: e.target.value })} />
                 <div className="grid grid-cols-2 gap-1">
-                  <input className={inputCls} placeholder="Student id (optional)" value={subForm.studentId}
+                  <input id="classroom-submission-student" name="studentId" className={inputCls} placeholder="Student id (optional)" value={subForm.studentId}
                     onChange={(e) => setSubForm({ ...subForm, studentId: e.target.value })} />
-                  <input className={inputCls} placeholder="DTU id (optional)" value={subForm.dtuId}
+                  <input id="classroom-submission-dtu" name="dtuId" className={inputCls} placeholder="DTU id (optional)" value={subForm.dtuId}
                     onChange={(e) => setSubForm({ ...subForm, dtuId: e.target.value })} />
                 </div>
                 <button onClick={() => submit(a.id)} className={btnCls}>Submit work</button>
@@ -449,10 +449,10 @@ function AssignmentsTab({ cohortId, flash }: TabProps) {
                     </div>
                   ) : gradeForm?.subId === s.id ? (
                     <div className="mt-1.5 flex gap-1 items-center flex-wrap">
-                      <input className={`${inputCls} w-20`} type="number" placeholder="Score"
+                      <input id="classroom-grade-score" name="score" className={`${inputCls} w-20`} type="number" placeholder="Score"
                         value={gradeForm.score}
                         onChange={(e) => setGradeForm({ ...gradeForm, score: e.target.value })} />
-                      <input className={`${inputCls} flex-1 min-w-[8rem]`} placeholder="Feedback"
+                      <input id="classroom-grade-feedback" name="feedback" className={`${inputCls} flex-1 min-w-[8rem]`} placeholder="Feedback"
                         value={gradeForm.feedback}
                         onChange={(e) => setGradeForm({ ...gradeForm, feedback: e.target.value })} />
                       <button onClick={() => grade(a.id)} className={btnCls}>Return</button>
@@ -617,9 +617,9 @@ function MaterialsTab({ cohortId, flash }: TabProps) {
       <div className={cardCls}>
         <h4 className="text-xs font-bold text-cyan-300 uppercase tracking-wider mb-2">Add material</h4>
         <div className="grid sm:grid-cols-2 gap-2">
-          <input className={inputCls} placeholder="Title" value={form.title}
+          <input id="classroom-material-title" name="title" className={inputCls} placeholder="Title" value={form.title}
             onChange={(e) => setForm({ ...form, title: e.target.value })} />
-          <select className={inputCls} value={form.kind}
+          <select id="classroom-material-kind" name="kind" className={inputCls} value={form.kind}
             onChange={(e) => setForm({ ...form, kind: e.target.value })}>
             <option value="link">Link</option>
             <option value="book">Book</option>
@@ -627,11 +627,11 @@ function MaterialsTab({ cohortId, flash }: TabProps) {
             <option value="file">File</option>
             <option value="note">Note</option>
           </select>
-          <input className={inputCls} placeholder="URL (optional)" value={form.url}
+          <input id="classroom-material-url" name="url" className={inputCls} placeholder="URL (optional)" value={form.url}
             onChange={(e) => setForm({ ...form, url: e.target.value })} />
-          <input className={inputCls} placeholder="Topic (optional)" value={form.topic}
+          <input id="classroom-material-topic" name="topic" className={inputCls} placeholder="Topic (optional)" value={form.topic}
             onChange={(e) => setForm({ ...form, topic: e.target.value })} />
-          <textarea className={`${inputCls} sm:col-span-2`} rows={2} placeholder="Notes" value={form.notes}
+          <textarea id="classroom-material-notes" name="notes" className={`${inputCls} sm:col-span-2`} rows={2} placeholder="Notes" value={form.notes}
             onChange={(e) => setForm({ ...form, notes: e.target.value })} />
         </div>
         <div className="mt-2">
@@ -739,7 +739,7 @@ function TodoTab({ cohortId }: { cohortId: number | null }) {
   return (
     <div className="space-y-3">
       <div className={`${cardCls} flex gap-2 items-center`}>
-        <input className={inputCls} placeholder="View as student id (blank = me)"
+        <input id="classroom-viewas-student" name="studentId" className={inputCls} placeholder="View as student id (blank = me)"
           value={studentId} onChange={(e) => setStudentId(e.target.value)} />
         <button onClick={() => void refresh()} className={btnCls}>View</button>
       </div>
@@ -828,19 +828,19 @@ function QuizzesTab({ cohortId, flash }: TabProps) {
     <div className="space-y-3">
       <div className={cardCls}>
         <h4 className="text-xs font-bold text-cyan-300 uppercase tracking-wider mb-2">Quiz builder</h4>
-        <input className={inputCls} placeholder="Quiz title" value={title}
+        <input id="classroom-quiz-title" name="title" className={inputCls} placeholder="Quiz title" value={title}
           onChange={(e) => setTitle(e.target.value)} />
         <div className="mt-2 space-y-2">
           {questions.map((q, i) => (
             <div key={i} className="bg-zinc-950/60 rounded p-2 space-y-1">
               <div className="flex gap-1">
-                <select className={`${inputCls} w-36`} value={q.kind}
+                <select id={`classroom-quiz-q${i}-kind`} name={`q${i}Kind`} className={`${inputCls} w-36`} value={q.kind}
                   onChange={(e) => setQ(i, { kind: e.target.value })}>
                   <option value="multiple_choice">Multiple choice</option>
                   <option value="true_false">True / false</option>
                   <option value="short_answer">Short answer</option>
                 </select>
-                <input className={`${inputCls} w-20`} type="number" min={1} placeholder="Points"
+                <input id={`classroom-quiz-q${i}-points`} name={`q${i}Points`} className={`${inputCls} w-20`} type="number" min={1} placeholder="Points"
                   value={q.points} onChange={(e) => setQ(i, { points: e.target.value })} />
                 {questions.length > 1 && (
                   <button aria-label="Delete" onClick={() => setQuestions((qs) => qs.filter((_, idx) => idx !== i))}
@@ -849,12 +849,12 @@ function QuizzesTab({ cohortId, flash }: TabProps) {
                   </button>
                 )}
               </div>
-              <input className={inputCls} placeholder={`Question ${i + 1} prompt`} value={q.prompt}
+              <input id={`classroom-quiz-q${i}-prompt`} name={`q${i}Prompt`} className={inputCls} placeholder={`Question ${i + 1} prompt`} value={q.prompt}
                 onChange={(e) => setQ(i, { prompt: e.target.value })} />
               {q.kind === 'multiple_choice' && (
                 <div className="grid grid-cols-2 gap-1">
                   {q.options.map((opt, oi) => (
-                    <input key={oi} className={inputCls} placeholder={`Option ${oi + 1}`} value={opt}
+                    <input key={oi} id={`classroom-quiz-q${i}-option-${oi}`} name={`q${i}Option${oi}`} className={inputCls} placeholder={`Option ${oi + 1}`} value={opt}
                       onChange={(e) => setQ(i, {
                         options: q.options.map((o, idx) => (idx === oi ? e.target.value : o)),
                       })} />
@@ -863,7 +863,7 @@ function QuizzesTab({ cohortId, flash }: TabProps) {
                     className="text-[10px] text-cyan-400 hover:underline text-left">+ option</button>
                 </div>
               )}
-              <input className={inputCls}
+              <input id={`classroom-quiz-q${i}-answer`} name={`q${i}CorrectAnswer`} className={inputCls}
                 placeholder={q.kind === 'true_false' ? 'Correct answer (True / False)' : 'Correct answer'}
                 value={q.correctAnswer}
                 onChange={(e) => setQ(i, { correctAnswer: e.target.value })} />
@@ -918,14 +918,14 @@ function QuizzesTab({ cohortId, flash }: TabProps) {
               <div key={q.id} className="bg-zinc-950/60 rounded p-2">
                 <div className="text-xs text-zinc-200 mb-1">{i + 1}. {q.prompt} <span className="text-zinc-400">({q.points} pt)</span></div>
                 {q.kind === 'short_answer' ? (
-                  <input className={inputCls} placeholder="Your answer"
+                  <input id={`classroom-quiz-take-${q.id}-answer`} name="answer" className={inputCls} placeholder="Your answer"
                     value={answers[q.id] ?? ''}
                     onChange={(e) => setAnswers({ ...answers, [q.id]: e.target.value })} />
                 ) : (
                   <div className="flex flex-col gap-0.5">
-                    {(q.options ?? []).map((opt) => (
+                    {(q.options ?? []).map((opt, oi) => (
                       <label key={opt} className="flex items-center gap-1.5 text-xs text-zinc-300 cursor-pointer">
-                        <input type="radio" name={q.id} checked={answers[q.id] === opt}
+                        <input id={`classroom-quiz-take-${q.id}-${oi}`} type="radio" name={q.id} checked={answers[q.id] === opt}
                           onChange={() => setAnswers({ ...answers, [q.id]: opt })} />
                         {opt}
                       </label>

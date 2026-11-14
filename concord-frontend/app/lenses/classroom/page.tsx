@@ -297,18 +297,18 @@ export default function ClassroomPage() {
             <div className="grid gap-5 md:grid-cols-2">
               <section className={cn(cardCls, 'space-y-2.5')}>
                 <h2 className="text-[13px] font-medium text-zinc-300">Create a cohort</h2>
-                <input id="classroom-cohort-name" type="text" placeholder="Cohort name" value={createForm.name}
+                <input id="classroom-cohort-name" name="name" type="text" placeholder="Cohort name" value={createForm.name}
                   onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })} className={inputCls} />
-                <input type="text" placeholder="Rubric DTU id (optional)" value={createForm.rubricDtuId}
+                <input id="classroom-cohort-rubric" name="rubricDtuId" type="text" placeholder="Rubric DTU id (optional)" value={createForm.rubricDtuId}
                   onChange={(e) => setCreateForm({ ...createForm, rubricDtuId: e.target.value })} className={inputCls} />
                 <button onClick={create} disabled={!createForm.name} className={submitCls}>Create</button>
                 {refusal('create')}
               </section>
               <section className={cn(cardCls, 'space-y-2.5')}>
                 <h2 className="text-[13px] font-medium text-zinc-300">Enrol</h2>
-                <input type="text" placeholder="Cohort id" value={enrolForm.cohortId}
+                <input id="classroom-enrol-cohort" name="cohortId" type="text" placeholder="Cohort id" value={enrolForm.cohortId}
                   onChange={(e) => setEnrolForm({ ...enrolForm, cohortId: e.target.value })} className={inputCls} />
-                <input type="text" placeholder="Student id (optional, self if blank)" value={enrolForm.studentUserId}
+                <input id="classroom-enrol-student" name="studentUserId" type="text" placeholder="Student id (optional, self if blank)" value={enrolForm.studentUserId}
                   onChange={(e) => setEnrolForm({ ...enrolForm, studentUserId: e.target.value })} className={inputCls} />
                 <button onClick={enrol} disabled={!enrolForm.cohortId} className={submitCls}>Enrol</button>
                 {refusal('enrol')}
