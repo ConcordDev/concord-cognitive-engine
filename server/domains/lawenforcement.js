@@ -42,6 +42,7 @@
 // no figure is presented as lens-wide that was computed over less.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
 import { lookupUserIdentity } from "../lib/user-identity.js";
 import crypto from "node:crypto";
 
@@ -1427,5 +1428,29 @@ export default function registerLawEnforcementActions(registerLensAction) {
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }
+  });
+
+  // FIX-law-enforcement-001: the ticket's fixture is a case, and cases
+  // are the one LE store that does NOT live in the state bag — with a
+  // database present they sit in the le_cases table (migration 362);
+  // the in-memory cases bucket is only the no-db fallback. No export
+  // leg reads the table, so the Export menu said "Nothing to export
+  // yet" over a live case load. The provider emits the caller's cases
+  // through the domain's own caseStore, which already resolves the
+  // db-vs-memory store per call. (The other LE buckets — calls, units,
+  // evidence, officers, map incidents, warrants, reports, bookings —
+  // are state-bag Maps the shared state leg already enumerates.)
+  registerLensExportProvider("law-enforcement", (ctx) => {
+    const userId = actorId(ctx);
+    if (!userId || userId === "anon") return [];
+    let cases = [];
+    try { cases = caseStore(ctx).listForUser(userId); } catch { cases = []; }
+    return (Array.isArray(cases) ? cases : []).map((c) => ({
+      id: c.id, type: "case",
+      title: c.title || c.caseNumber || c.id,
+      createdAt: c.createdAt || c.openedAt || null,
+      updatedAt: c.updatedAt || null,
+      data: c,
+    }));
   });
 }
