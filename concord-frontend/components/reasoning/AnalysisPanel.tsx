@@ -19,7 +19,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   BarChart3, Brain, Play, Loader2, AlertOctagon, ArrowUpRight,
-  AlertTriangle, Link2, HelpCircle, Search, Target,
+  AlertTriangle, Link2, HelpCircle, Search, Target, Trash2,
 } from 'lucide-react';
 import { apiHelpers, lensRun } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
@@ -38,6 +38,7 @@ interface CounterAngle {
 
 interface Chain {
   id: string;
+  ownerId?: string | null;
   question: string;
   type?: string;
   // The list_chains contract: a slim row with stepCount + status, NOT a
@@ -64,6 +65,17 @@ export function AnalysisPanel() {
   const [analysisResult, setAnalysisResult] = useState<Record<string, unknown> | null>(null);
   const [analysisRunning, setAnalysisRunning] = useState<string | null>(null);
   const [selectedChain, setSelectedChain] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deletingChain, setDeletingChain] = useState(false);
+
+  // Ownership (FIX-reasoning-005, chains leg): chains carry the creator's
+  // stamped ownerId; the delete control renders only on the caller's own
+  // chains. The server enforces the same scope on delete_chain regardless.
+  const { data: whoamiData } = useQuery({
+    queryKey: ['auth-whoami'],
+    queryFn: () => lensRun('auth', 'whoami', {}).then((r) => r.data),
+  });
+  const myUserId = (whoamiData?.result as { actor?: { userId?: string } } | undefined)?.actor?.userId || null;
 
   const { data: chainsData, isError: isError2, error: error2, refetch: refetch2 } = useQuery({
     queryKey: ['reasoning-chains'],
@@ -90,6 +102,25 @@ export function AnalysisPanel() {
     if (c?.statement) return c.statement;
     return chainPremises.length ? chainPremises[chainPremises.length - 1] : '';
   }, [trace, chainPremises]);
+
+  const handleDeleteChain = useCallback(async (chainId: string) => {
+    setDeletingChain(true);
+    try {
+      const r = await apiHelpers.reasoning.remove(chainId);
+      const out = r.data as { ok?: boolean; error?: string };
+      if (out?.ok) {
+        if (selectedChain === chainId) setSelectedChain(null);
+        setConfirmDeleteId(null);
+        queryClient.invalidateQueries({ queryKey: ['reasoning-chains'] });
+      } else {
+        setAnalysisResult({ message: `Delete failed: ${out?.error || 'Unknown error'}` });
+      }
+    } catch (e) {
+      setAnalysisResult({ message: `Delete failed: ${e instanceof Error ? e.message : 'Unknown error'}` });
+    } finally {
+      setDeletingChain(false);
+    }
+  }, [selectedChain, queryClient]);
 
   const handleAnalysisAction = useCallback(async (action: string) => {
     if (!selectedChain) {
@@ -150,6 +181,7 @@ export function AnalysisPanel() {
                 <th className="py-1.5 px-3 font-medium">Type</th>
                 <th className="py-1.5 px-3 font-medium">Steps</th>
                 <th className="py-1.5 px-3 font-medium">Status</th>
+                <th className="py-1.5 px-3 font-medium"><span className="sr-only">Actions</span></th>
               </tr>
             </thead>
             <tbody>
@@ -181,6 +213,39 @@ export function AnalysisPanel() {
                     )}>
                       {(chain.status ? chain.status === 'concluded' : !!chain.conclusion) ? 'Concluded' : 'Open'}
                     </span>
+                  </td>
+                  <td className="py-1.5 px-3">
+                    {myUserId && chain.ownerId === myUserId ? (
+                      confirmDeleteId === chain.id ? (
+                        <span className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteChain(chain.id)}
+                            disabled={deletingChain}
+                            className="text-[10px] px-2 py-0.5 rounded bg-red-400/20 text-red-300 hover:bg-red-400/30 disabled:opacity-50"
+                          >
+                            {deletingChain ? 'Deleting…' : 'Confirm delete'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeleteId(null)}
+                            className="text-[10px] px-2 py-0.5 rounded bg-zinc-500/20 text-zinc-300 hover:bg-zinc-500/30"
+                          >
+                            Keep
+                          </button>
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDeleteId(chain.id)}
+                          aria-label={`Delete chain: ${chain.question}`}
+                          title="Delete this chain"
+                          className="text-zinc-400 hover:text-red-300"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )
+                    ) : null}
                   </td>
                 </tr>
               ))}

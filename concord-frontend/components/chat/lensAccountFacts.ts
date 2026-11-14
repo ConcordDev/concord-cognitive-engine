@@ -297,9 +297,80 @@ async function fetchConkayFacts(): Promise<LensFactsResult> {
   };
 }
 
+async function fetchUxSuiteFacts(): Promise<LensFactsResult> {
+  const facts: AccountFact[] = [];
+  const unreadable: string[] = [];
+  const CATALOG_SOURCE = 'UX Suite Component Workbench catalog — POST /api/lens/run ux-suite.catalog';
+  const FAVOURITES_SOURCE = 'UX Suite Component Workbench starred list — POST /api/lens/run ux-suite.favourites-list';
+
+  // Mirror the workbench's own load (ComponentWorkbench): the same two
+  // calls, the same success test (r.data?.ok && r.data.result), the same
+  // fields it renders — the catalog's component/group counts and the
+  // caller's starred names. Nothing else is quoted.
+  try {
+    const r = await lensRun<{
+      components?: unknown[];
+      groups?: Array<{ id?: string; label?: string; count?: number }>;
+      source?: string;
+    }>('ux-suite', 'catalog', {});
+    if (r.data?.ok === false || !r.data?.result) {
+      unreadable.push('Component catalog (ux-suite.catalog)');
+    } else {
+      const components = Array.isArray(r.data.result.components) ? r.data.result.components : [];
+      const groups = Array.isArray(r.data.result.groups) ? r.data.result.groups : [];
+      const groupLine = groups
+        .map((g) => `${String(g?.label || g?.id || '')} ${num(g?.count) ?? 0}`)
+        .filter((s) => s.trim() !== '')
+        .join(', ');
+      facts.push({
+        label: 'Catalogued components',
+        value: `${components.length} components across ${groups.length} groups${groupLine ? ` — ${groupLine}` : ''}`,
+        source: CATALOG_SOURCE,
+      });
+      const source = typeof r.data.result.source === 'string' ? r.data.result.source : '';
+      if (source) {
+        facts.push({ label: 'Catalog source', value: source, source: CATALOG_SOURCE });
+      }
+    }
+  } catch {
+    unreadable.push('Component catalog (ux-suite.catalog)');
+  }
+
+  try {
+    const r = await lensRun<{ favourites?: string[] }>('ux-suite', 'favourites-list', {});
+    if (r.data?.ok === false || !r.data?.result) {
+      unreadable.push('Starred components (ux-suite.favourites-list)');
+    } else {
+      const favourites = Array.isArray(r.data.result.favourites) ? r.data.result.favourites : [];
+      const names = favourites.slice(0, 5).map((n) => `“${String(n)}”`);
+      facts.push({
+        label: 'Your starred components',
+        value: favourites.length === 0
+          ? 'None starred yet.'
+          : `${favourites.length} starred${names.length ? `: ${names.join(', ')}${favourites.length > names.length ? ', …' : ''}` : ''}`,
+        source: FAVOURITES_SOURCE,
+      });
+    }
+  } catch {
+    unreadable.push('Starred components (ux-suite.favourites-list)');
+  }
+
+  return {
+    facts,
+    unreadable,
+    lensLabel: 'UX Suite',
+    rule:
+      'Rule: answer questions about this lens ONLY from the facts above, and name the source you used. ' +
+      'The catalog is the workbench\'s live component directory — component counts, group counts, and the ' +
+      'user\'s starred components are the figures above, exactly as stated. If a value is not listed above, ' +
+      'say the surface doesn\'t give you that — never estimate or invent a number.',
+  };
+}
+
 const PROVIDERS: Record<string, () => Promise<LensFactsResult>> = {
   analytics: fetchAnalyticsFacts,
   conkay: fetchConkayFacts,
+  'ux-suite': fetchUxSuiteFacts,
 };
 
 const DECLINE_RULE =

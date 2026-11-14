@@ -1699,6 +1699,7 @@ export const apiHelpers = {
     validate: (stepId: string) =>
       api.post(`/api/reasoning/steps/${stepId}/validate`, {}),
     list: () => api.get('/api/reasoning/chains'),
+    remove: (chainId: string) => api.delete(`/api/reasoning/chains/${chainId}`),
     trace: (chainId: string) => api.get(`/api/reasoning/chains/${chainId}/trace`),
     status: () => api.get('/api/reasoning/status'),
   },
