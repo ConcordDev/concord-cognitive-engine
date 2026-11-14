@@ -45,7 +45,7 @@ export default function registerDefenseActions(registerLensAction) {
     const personnelReady = Math.min(100, Math.round((personnel / personnelTotal) * 100));
     const equipmentReady = Math.min(100, Math.round((equipment / equipmentTotal) * 100));
     const overall = Math.round(personnelReady * 0.3 + equipmentReady * 0.3 + training * 0.2 + supplies * 0.2);
-    return { ok: true, result: { personnelReadiness: personnelReady, equipmentReadiness: equipmentReady, trainingCompletion: training, supplyLevel: supplies, overallReadiness: overall, status: overall >= 80 ? "combat-ready" : overall >= 60 ? "operationally-ready" : overall >= 40 ? "limited-readiness" : "not-ready", gaps: [personnelReady < 80 ? "Personnel" : null, equipmentReady < 80 ? "Equipment" : null, training < 80 ? "Training" : null, supplies < 80 ? "Supplies" : null].filter(Boolean) } };
+    return { ok: true, result: { personnelReadiness: personnelReady, equipmentReadiness: equipmentReady, trainingCompletion: training, supplyLevel: supplies, overallReadiness: overall, weights: { personnel: 0.3, equipment: 0.3, training: 0.2, supplies: 0.2 }, status: overall >= 80 ? "combat-ready" : overall >= 60 ? "operationally-ready" : overall >= 40 ? "limited-readiness" : "not-ready", gaps: [personnelReady < 80 ? "Personnel" : null, equipmentReady < 80 ? "Equipment" : null, training < 80 ? "Training" : null, supplies < 80 ? "Supplies" : null].filter(Boolean) } };
   });
   registerLensAction("defense", "incidentResponse", (ctx, artifact, _params) => {
     const incident = artifact.data || {};

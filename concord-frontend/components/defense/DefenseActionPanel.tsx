@@ -7,7 +7,7 @@
  */
 
 import { readAgentReply } from '@/lib/agent-reply';
-import { useState } from 'react';
+import { useState, type ChangeEvent } from 'react';
 import { Shield, Activity, AlertOctagon, Sparkles, Send, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
@@ -30,7 +30,7 @@ function pickMessage(e: unknown): string { const ax = e as { response?: { data?:
 
 interface Threat { threat: string; category: string; likelihood: number; impact: number; riskScore: number; severity: string; mitigation: string }
 interface ThreatResult { threats: Threat[]; critical: number; total: number; overallThreatLevel: string; topThreat?: string }
-interface ReadyResult { personnelReadiness: number; equipmentReadiness: number; trainingCompletion: number; supplyLevel: number; overallReadiness: number; status: string; gaps: string[] }
+interface ReadyResult { personnelReadiness: number; equipmentReadiness: number; trainingCompletion: number; supplyLevel: number; overallReadiness: number; weights?: { personnel: number; equipment: number; training: number; supplies: number }; status: string; gaps: string[] }
 interface IncResult { incidentType?: string; severity?: string; responseTime?: string; escalationLevel?: string; immediateActions?: string[] }
 // No seeded data — every input starts empty.
 export function DefenseActionPanel() {
@@ -91,14 +91,22 @@ export function DefenseActionPanel() {
       if (r.ok && r.result) { setThreatResult(r.result); pipe.publish('defense.threat', r.result, { label: `Threats ${r.result.critical} crit` }); ok(`${r.result.critical} critical · top: ${r.result.topThreat}.`); } else err(r.error ?? 'threat failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
+  // FIX-defense-005: the result card must always describe the inputs on
+  // screen — editing any readiness input, or a recalculation that fails,
+  // clears the previous result instead of leaving it standing beside the
+  // new inputs or the error.
+  const editReadyInput = (set: (v: string) => void) => (e: ChangeEvent<HTMLInputElement>) => {
+    set(e.target.value);
+    if (readyResult) setReadyResult(null);
+  };
   async function actReady() {
     const pr = parseInt(personnelReady, 10), pt = parseInt(personnelTotal, 10), er = parseInt(equipReady, 10), et = parseInt(equipTotal, 10), tr = parseInt(training, 10), su = parseInt(supplies, 10);
-    if (![pr, pt, er, et, tr, su].every(Number.isFinite)) { err('All 6 readiness metrics required.'); return; }
+    if (![pr, pt, er, et, tr, su].every(Number.isFinite)) { setReadyResult(null); err('All 6 readiness metrics required.'); return; }
     setBusy('ready'); setFeedback(null);
     try {
       const r = await callMacro<ReadyResult>('readinessScore', { artifact: { data: { personnelReady: pr, personnelTotal: pt, equipmentOperational: er, equipmentTotal: et, trainingCompletionPercent: tr, suppliesPercent: su } } });
-      if (r.ok && r.result) { setReadyResult(r.result); pipe.publish('defense.ready', r.result, { label: `Ready ${r.result.overallReadiness}%` }); ok(`${r.result.overallReadiness}% · ${r.result.status}.`); } else err(r.error ?? 'ready failed');
-    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+      if (r.ok && r.result) { setReadyResult(r.result); pipe.publish('defense.ready', r.result, { label: `Ready ${r.result.overallReadiness}%` }); ok(`${r.result.overallReadiness}% · ${r.result.status}.`); } else { setReadyResult(null); err(r.error ?? 'ready failed'); }
+    } catch (e) { setReadyResult(null); err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actInc() {
     if (!incidentType.trim()) { err('Incident type required.'); return; }
@@ -183,12 +191,12 @@ export function DefenseActionPanel() {
         <div className="space-y-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/[0.03] p-3">
           <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-green-400"><Activity className="h-3 w-3" />Readiness inputs</div>
           <div className="grid grid-cols-2 gap-1">
-            <input type="text" value={personnelReady} onChange={(e) => setPersonnelReady(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="P ready" />
-            <input type="text" value={personnelTotal} onChange={(e) => setPersonnelTotal(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="P total" />
-            <input type="text" value={equipReady} onChange={(e) => setEquipReady(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="E ready" />
-            <input type="text" value={equipTotal} onChange={(e) => setEquipTotal(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="E total" />
-            <input type="text" value={training} onChange={(e) => setTraining(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Training %" />
-            <input type="text" value={supplies} onChange={(e) => setSupplies(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Supply %" />
+            <input type="text" value={personnelReady} onChange={editReadyInput(setPersonnelReady)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="P ready" />
+            <input type="text" value={personnelTotal} onChange={editReadyInput(setPersonnelTotal)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="P total" />
+            <input type="text" value={equipReady} onChange={editReadyInput(setEquipReady)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="E ready" />
+            <input type="text" value={equipTotal} onChange={editReadyInput(setEquipTotal)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="E total" />
+            <input type="text" value={training} onChange={editReadyInput(setTraining)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Training %" />
+            <input type="text" value={supplies} onChange={editReadyInput(setSupplies)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Supply %" />
           </div>
           <button type="button" disabled={!!busy} onClick={actReady} className="inline-flex items-center gap-1.5 rounded bg-emerald-500/15 px-2.5 py-1.5 text-[11px] font-medium text-emerald-200 disabled:opacity-40">
             {busy === 'ready' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Activity className="h-3.5 w-3.5" />}Calculate readiness
@@ -240,6 +248,11 @@ export function DefenseActionPanel() {
               <div className="text-zinc-400">Training <span className="text-green-200 font-mono">{readyResult.trainingCompletion}%</span></div>
               <div className="text-zinc-400">Supply <span className="text-green-200 font-mono">{readyResult.supplyLevel}%</span></div>
             </div>
+            {readyResult.weights && (
+              <div className="text-[10px] text-zinc-500 mt-1">
+                Overall = Personnel ×{Math.round(readyResult.weights.personnel * 100)}% + Equipment ×{Math.round(readyResult.weights.equipment * 100)}% + Training ×{Math.round(readyResult.weights.training * 100)}% + Supply ×{Math.round(readyResult.weights.supplies * 100)}%
+              </div>
+            )}
             {readyResult.gaps.length > 0 && <div className="text-[10px] text-red-300 mt-1">⚠ gaps: {readyResult.gaps.join(', ')}</div>}
           </div>
         )}
