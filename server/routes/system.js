@@ -715,7 +715,28 @@ export default function registerSystemRoutes(app, {
   });
 
   // ---- DTU Paginated ----
-  app.get("/api/dtus/paginated", (req, res) => {
+  // The caller's saved set: the ids of the DTUs this caller has saved
+  // into the shared library, read through the saved domain (the
+  // platform's caller-scoped saved-items substrate — domains/saved.js,
+  // kind "dtu", refId = DTU id). Paged at the macro's own 500 cap.
+  // Throws on a failed read so the caller can fail CLOSED.
+  async function callerSavedDtuIds(ctx) {
+    const ids = new Set();
+    let offset = 0;
+    for (;;) {
+      const out = await runMacro("saved", "list", { kind: "dtu", limit: 500, offset }, ctx);
+      if (!out || out.ok === false) throw new Error(out?.error || "saved_list_failed");
+      const result = out.result && Array.isArray(out.result.items) ? out.result : out;
+      const items = Array.isArray(result?.items) ? result.items : [];
+      for (const it of items) if (it?.refId) ids.add(String(it.refId));
+      const matched = Number(result?.matched ?? items.length);
+      offset += items.length;
+      if (!items.length || offset >= matched) break;
+    }
+    return ids;
+  }
+
+  app.get("/api/dtus/paginated", asyncHandler(async (req, res) => {
     // Accept both {page,pageSize} and the {offset,limit} the frontend client sends.
     const pageSize = clamp(Number(req.query.pageSize || req.query.limit || 20), 1, 100);
     const offset = Number(req.query.offset);
@@ -754,17 +775,40 @@ export default function registerSystemRoutes(app, {
         ? dtus.filter(d => d.scope === "global" || dtuListedOwner(d) === userId)
         : dtus.filter(d => d.scope === "global");
     } else if (scopeFilter === "all") {
-      // FIX-export-011 (owner-scoped export contract, 2026-11-14 ruling):
-      // scope=all is the Export Desk's "include the shared library" cut,
-      // and it used to return the whole global substrate — system feed
-      // DTUs and other users' global DTUs rode a personal export (41
-      // non-owned rows in the ticket). No caller-scoped library
-      // membership ("saved into the shared library") concept exists yet;
-      // that leg is the desk's to price. In the interim this scope
-      // carries only what the caller placed: their own DTUs, any scope.
-      // Anonymous callers have placed nothing and get nothing. The
-      // Global Library browse (scope=global above) is unchanged.
-      dtus = userId ? dtus.filter(d => dtuListedOwner(d) === userId) : [];
+      // FIX-export-011 (owner-scoped export contract, 2026-11-14 ruling;
+      // saved-set leg built 2026-11-14 under the founder's word):
+      // scope=all is the Export Desk's "include the shared library" cut.
+      // It used to return the whole global substrate — system feed DTUs
+      // and other users' global DTUs rode a personal export (41
+      // non-owned rows in the ticket). The interim contract carried only
+      // the caller's own DTUs because no caller-scoped library
+      // membership ("saved into the shared library") concept was wired
+      // to this leg. That membership IS the saved domain's per-user
+      // saved set (domains/saved.js): this scope now carries exactly
+      // the DTUs the caller has saved — whoever made them — under the
+      // ruling's invariants: ownerless rows fall even when saved, and
+      // system rows are excluded under every stamp even when saved.
+      // A caller's own UNSAVED DTUs do not ride here (they ride
+      // scope=mine). Anonymous callers have no saved set and get
+      // nothing. A failed saved-set read fails CLOSED — the leg
+      // carries nothing rather than widening. The Global Library
+      // browse (scope=global above) is unchanged.
+      if (!userId) {
+        dtus = [];
+      } else {
+        let savedIds;
+        try {
+          savedIds = await callerSavedDtuIds(makeCtx(req));
+        } catch (err) {
+          console.error("[dtus/paginated] saved-set read failed; scope=all fails closed:", err?.message || err);
+          savedIds = new Set();
+        }
+        dtus = dtus.filter(d => {
+          if (!savedIds.has(String(d.id))) return false;
+          const owner = dtuListedOwner(d);
+          return !!owner && owner !== "system";
+        });
+      }
     } else if (userId) {
       // "mine" (default + explicit scope=local/mine): the viewer's own DTUs only.
       dtus = dtus.filter(d => dtuListedOwner(d) === userId);
@@ -794,7 +838,7 @@ export default function registerSystemRoutes(app, {
     dtus.sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
     const result = paginateResults(dtus, { page, pageSize });
     return res.json(shapePaginatedBody(result));
-  });
+  }));
 
   // ---- Search (indexed, DSL, reindex, global) ----
   app.get("/api/search/indexed", (req, res) => {
