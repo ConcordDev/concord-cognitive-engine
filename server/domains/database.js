@@ -1,6 +1,7 @@
 // server/domains/database.js
 import { guardAnonWrites } from "../lib/lens-authz.js";
-import { encryptKeySync } from "../lib/byo-crypto.js";
+import { encryptKeySync, decryptKeySync } from "../lib/byo-crypto.js";
+import { testRemotePostgres, runRemoteQuery } from "../lib/db-dial.js";
 export default function registerDatabaseActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // The analysis quartet reads its input from the artifact when one is
@@ -489,10 +490,102 @@ export default function registerDatabaseActions(registerLensAction) {
     if (!c) return { ok: false, error: "connection not found" };
     c.lastUsedAt = new Date().toISOString();
     saveDatabase();
-    // Datasets live in Concord's workspace store; host/database/username are labels.
-    // This confirms the workspace copy is readable — it never contacts a remote server.
+    // DBX-3 (§8): a PostgreSQL connection pointed at a real host gets a
+    // real test — SSRF-guarded, dialed on the validated IP, reported
+    // by stage. That branch is async; everything else keeps the
+    // synchronous workspace answer below, word for word: the datasets
+    // live in Concord's workspace store and no remote is contacted.
+    const remoteHost = dbHasRemoteHost(c);
+    // HV-12 port gate (Mega Plan v2 §6): real dials sit behind
+    // CONCORD_DB_REMOTE_DIAL=1 (off by default). Flag off, a remote
+    // PostgreSQL connection gets the honest not-dialled answer — the
+    // server is not contacted and no workspace success is claimed for it.
+    if (remoteHost && c.engine === "postgresql" && process.env.CONCORD_DB_REMOTE_DIAL !== "1") {
+      return { ok: true, result: { connected: false, scope: "remote", remoteContacted: false, engine: c.engine, remoteTest: "dial_disabled", message: "Remote connection tests are turned off on this deployment (CONCORD_DB_REMOTE_DIAL is not set), so this server was not contacted. The connection's workspace copy is unaffected." } };
+    }
+    if (remoteHost && c.engine === "postgresql") return dbRemoteTest(ctx, c);
+    if (remoteHost && c.engine === "mysql") {
+      return { ok: true, result: { connected: false, scope: "remote", remoteContacted: false, engine: c.engine, remoteTest: "not_wired_for_engine", message: "Remote connection tests are wired for PostgreSQL so far, so this MySQL server was not contacted. The connection's workspace copy is unaffected." } };
+    }
     return { ok: true, result: { connected: true, scope: "workspace", remoteContacted: false, engine: c.engine, datasets: c.datasets.length } };
   });
+
+  // ── Remote connections (DBX-3/DBX-4) ──────────────────────────────────
+  // A connection is "remote" when it names a real host. Postgres is the
+  // wired engine; the helpers below are shared by connection-test and
+  // query-run so both paths decrypt, refuse, and report identically.
+  function dbHasRemoteHost(c) {
+    return typeof c.host === "string" && c.host.trim() !== "" && c.host !== "local";
+  }
+  function dbIsRemotePostgres(c) {
+    return c.engine === "postgresql" && dbHasRemoteHost(c);
+  }
+  // The stored password, decrypted in memory only (never returned,
+  // never logged). { refusal } when a stored blob no longer opens —
+  // nothing is dialed with a wrong or unreadable secret.
+  function dbRemotePassword(ctx, c) {
+    if (!c.passwordEnc) return { password: "" };
+    const password = decryptKeySync(dbActor(ctx), Buffer.from(c.passwordEnc, "base64"));
+    if (password == null) return { refusal: "The stored password could not be read — it may have been saved under a different sign-in, or the credential store has changed. Re-enter the password on the connection and try again; nothing was contacted." };
+    return { password };
+  }
+  function dbRemoteTarget(c, password) {
+    return {
+      host: c.host,
+      port: c.port ?? 5432,
+      user: c.username || undefined,
+      password: password || undefined,
+      database: c.database || undefined,
+    };
+  }
+
+  // The remote half of connection-test.
+  async function dbRemoteTest(ctx, c) {
+    const creds = dbRemotePassword(ctx, c);
+    if (creds.refusal) {
+      return { ok: true, result: { connected: false, scope: "remote", remoteContacted: false, stage: "credentials", engine: c.engine, error: creds.refusal } };
+    }
+    const r = await testRemotePostgres(dbRemoteTarget(c, creds.password));
+    return { ok: true, result: { connected: r.connected, scope: "remote", remoteContacted: r.remoteContacted, stage: r.stage, code: r.code, error: r.error, engine: c.engine, hostname: r.hostname, resolvedIp: r.resolvedIp, port: r.port, latencyMs: r.latencyMs, serverVersion: r.serverVersion } };
+  }
+
+  // The remote half of query-run (DBX-4): read-only by construction
+  // (statement gate + a server-enforced READ ONLY transaction in
+  // db-dial). History records remote runs exactly like workspace runs.
+  async function dbRemoteQuery(ctx, s, c, sql) {
+    const t0 = Date.now();
+    const creds = dbRemotePassword(ctx, c);
+    let res;
+    if (creds.refusal) {
+      res = { ok: false, stage: "credentials", remoteContacted: false, error: creds.refusal };
+    } else {
+      res = await runRemoteQuery(dbRemoteTarget(c, creds.password), sql);
+    }
+    const durationMs = res.durationMs ?? (Date.now() - t0);
+    c.lastUsedAt = new Date().toISOString();
+    const hist = dbHist(s, dbActor(ctx));
+    hist.unshift({
+      id: dbId("h"), connectionId: c.id, connectionName: c.name,
+      sql: sql.slice(0, 1000), durationMs,
+      rowCount: res.ok ? res.rowCount : 0,
+      success: !!res.ok, error: res.ok ? null : `${res.stage}: ${res.error}`,
+      at: new Date().toISOString(),
+    });
+    if (hist.length > 200) hist.length = 200;
+    saveDatabase();
+    if (!res.ok) {
+      return { ok: true, result: { error: `${res.stage}: ${res.error}`, stage: res.stage, code: res.code ?? null, position: null, durationMs, success: false, scope: "remote", remoteContacted: !!res.remoteContacted } };
+    }
+    return {
+      ok: true,
+      result: {
+        columns: res.columns || [], rows: res.rows || [],
+        rowCount: res.rowCount || 0, affected: null,
+        op: res.kind || "SELECT", durationMs, success: true, scope: "remote",
+        ...(res.truncated ? { truncated: true, cap: res.cap } : {}),
+      },
+    };
+  }
 
   // ── Datasets (tables) — typed columns + real rows ─────────────────────
 
@@ -1484,6 +1577,10 @@ export default function registerDatabaseActions(registerLensAction) {
     if (!c) return { ok: false, error: "connection not found" };
     const sql = String(params.sql || "").trim();
     if (!sql) return { ok: false, error: "sql required" };
+    // DBX-4: a remote Postgres connection executes against the real
+    // server (read-only path, async branch). Workspace connections
+    // keep the synchronous engine below, unchanged.
+    if (dbIsRemotePostgres(c) && process.env.CONCORD_DB_REMOTE_DIAL === "1") return dbRemoteQuery(ctx, s, c, sql);
     const t0 = Date.now();
     let res;
     try { res = runSqlOnConnection(c, sql, { allowDestructive: params.confirmDestructive === true }); }
@@ -1528,6 +1625,10 @@ export default function registerDatabaseActions(registerLensAction) {
     if (!c) return { ok: false, error: "connection not found" };
     const sql = String(params.sql || "").trim();
     if (!sql) return { ok: false, error: "sql required" };
+    // DBX-4: the explain planner reads the workspace store. Against a
+    // remote connection its plan would describe the wrong database —
+    // refuse honestly and point at the path that works.
+    if (dbIsRemotePostgres(c)) return { ok: true, result: { error: "Explain reads the workspace copy of a connection, so it cannot plan a remote server's query. Run EXPLAIN as a query instead — the remote query path executes it read-only." } };
     const plan = parseSql(sql);
     if (plan.error) return { ok: true, result: { error: plan.error } };
     const ex = buildExplainResult(c, plan);
