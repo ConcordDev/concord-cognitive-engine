@@ -5,6 +5,7 @@
 // reactions store, and voice-note metadata registry — all per-user scoped.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { registerHeartbeat } from "../emergent/heartbeat-registry.js";
 export default function registerMessageActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   function getMessageState() {
@@ -755,11 +756,12 @@ export default function registerMessageActions(registerLensAction) {
     return { ok: true, result: { cancelled: true } };
   });
 
-  // Flush due scheduled sends — call this on demand or wire to a heartbeat.
-  registerLensAction("message", "schedule-flush-due", (ctx, _a, _p = {}) => {
-  try {
-    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = msgActor(ctx);
+  // One flush implementation, two callers: the on-demand action below and
+  // the scheduler sweep registered after it. Due items become real
+  // messages in their channels, exactly as a manual flush has always made
+  // them — the sweep changes WHO calls the flush (the platform's clock,
+  // not a button), never what a flush does.
+  function flushDueScheduledSends(s, userId, senderName) {
     const list = listB(s.scheduled, userId);
     const now = Date.now();
     const due = list.filter(x => !x.sent && new Date(x.sendAt).getTime() <= now);
@@ -771,7 +773,7 @@ export default function registerMessageActions(registerLensAction) {
         number: `M-${String(seq.msg).padStart(6, '0')}`,
         channelId: item.channelId,
         senderId: userId,
-        senderName: ctx?.actor?.displayName || ctx?.actor?.username || userId,
+        senderName: senderName || userId,
         body: item.body,
         ts: nowIsoMsg(),
         edited: false,
@@ -786,9 +788,47 @@ export default function registerMessageActions(registerLensAction) {
       sent.push(msg);
     }
     if (sent.length > 0) saveMessageState();
+    return sent;
+  }
+
+  // Flush due scheduled sends — fired on demand by this action, and on
+  // the platform's clock by the message-scheduled-sweep heartbeat below.
+  registerLensAction("message", "schedule-flush-due", (ctx, _a, _p = {}) => {
+  try {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    const sent = flushDueScheduledSends(s, userId, ctx?.actor?.displayName || ctx?.actor?.username || userId);
     return { ok: true, result: { sentCount: sent.length, sent } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+
+  // Scheduler sweep — the wire this flush waited for. Registered on the
+  // platform's shared firing layer (emergent/heartbeat-registry, the same
+  // registry the productivity reminder sweep uses): frequency 2 on the
+  // ~15s governor tick ≈ every 30s, global scope, iterating EVERY user's
+  // queue through the one flush above. Before this registration a
+  // scheduled send fired only if its author opened the Scheduled panel
+  // and pressed "Flush due now". Kill-switch:
+  // CONCORD_MESSAGE_SCHEDULE_SWEEP=0.
+  try {
+    registerHeartbeat("message-scheduled-sweep", {
+      frequency: 2,
+      scope: "global",
+      handler: () => {
+        try {
+          if (process.env.CONCORD_MESSAGE_SCHEDULE_SWEEP === "0") return { ok: true, skipped: "disabled" };
+          const s = getMessageState();
+          if (!s || !(s.scheduled instanceof Map)) return { ok: true, skipped: "no_state" };
+          let sentCount = 0;
+          for (const userId of s.scheduled.keys()) {
+            try { sentCount += flushDueScheduledSends(s, userId, userId).length; }
+            catch (_e) { /* one user's queue never blocks the sweep */ }
+          }
+          return { ok: true, sentCount };
+        } catch (e) { return { ok: false, reason: String(e?.message || e) }; }
+      },
+    });
+  } catch (_e) { /* registry unavailable — the on-demand flush still works */ }
 
   // ── AI 2026 features ──────────────────────────────────────────
 
