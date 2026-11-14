@@ -8,7 +8,9 @@
 //   - updateSubmission: submitter-only, `submitted` status only;
 //     title/description/body round-trip; empty title refused;
 //     under_review is wrong_state (a curator is reading the work).
-//   - removeSubmission: submitter-only, `withdrawn` status only;
+//   - removeSubmission: submitter-only, `withdrawn` status only at first;
+//     the DTU verb slice (CB-0554 (1) carried leg) extends it to
+//     `declined`, which could neither withdraw nor be removed before;
 //     live/admitted rows are refused (admitted is permanent);
 //     the row is gone from mySubmissions afterwards.
 //
@@ -100,6 +102,19 @@ describe("FIX-vault-001 remove a withdrawn submission", () => {
     const r = removeSubmission(db, admitted, "u1");
     assert.equal(r.ok, false);
     assert.equal(r.reason, "admitted_records_are_permanent");
+    assert.equal(mySubmissions(db, "u1").submissions.length, 2);
+  });
+
+  it("a declined work can be removed by its submitter (DTU verb carried leg)", () => {
+    const id = postWork();
+    db.prepare(`UPDATE vault_submissions SET status = 'declined' WHERE id = ?`).run(id);
+    // A declined work cannot take the withdraw-first path — withdraw
+    // refuses non-live states, which is the dead end this leg closes.
+    assert.equal(withdraw(db, id, "u1").reason, "wrong_state");
+    assert.equal(removeSubmission(db, id, "u9").reason, "not_submitter");
+    const removed = removeSubmission(db, id, "u1");
+    assert.equal(removed.ok, true);
+    assert.equal(removed.removed, true);
     assert.equal(mySubmissions(db, "u1").submissions.length, 2);
   });
 });
