@@ -340,8 +340,28 @@ function SimulateTab({ entity, relations }: { entity: WorldEntity; relations: Wo
 function TerminalTab() {
   const [command, setCommand] = useState('');
   const [output, setOutput] = useState<string[]>([]);
+  // FIX-entity-011: terminal execution is operator-gated OFF by design
+  // (the server macro refuses with { disabled: true } before any
+  // validation or side effect unless the operator enables it), but the
+  // tab presented as fully usable and only explained itself AFTER a
+  // command was run, in raw operator wording. Probe once on mount —
+  // an empty command is side-effect-free because the gate answers
+  // first — and present the state up front in member wording, with
+  // the input disabled, when the gate is closed.
+  const [gateDisabled, setGateDisabled] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
   useEffect(() => { endRef.current?.scrollIntoView({ block: 'end' }); }, [output]);
+  useEffect(() => {
+    let live = true;
+    void (async () => {
+      try {
+        const res = await apiHelpers.lens.runDomain('entity', 'terminal', { command: '' });
+        const data = (res.data?.result ?? res.data) as Record<string, unknown> | undefined;
+        if (live && data && data.disabled) setGateDisabled(true);
+      } catch { /* a failed probe leaves the tab as it was; a real run still reports honestly */ }
+    })();
+    return () => { live = false; };
+  }, []);
 
   const exec = useMutation({
     mutationFn: async (cmd: string) => {
@@ -352,7 +372,7 @@ function TerminalTab() {
     },
     onSuccess: (data, cmd) => {
       const line = data.disabled
-        ? `${data.error} (operator must set ENABLE_TERMINAL_EXEC=true)`
+        ? 'Terminal execution is turned off on this server by the operator, so commands cannot run here.'
         : data.status === 'pending_council_approval'
         ? `${data.message} (proposal ${data.proposalId}, ${data.riskLevel} risk)`
         : data.ok === false
@@ -374,14 +394,19 @@ function TerminalTab() {
 
   return (
     <div className="space-y-2">
+      {gateDisabled && (
+        <p className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-[12px] text-amber-200">
+          Terminal execution is turned off on this server by the operator, so commands cannot run here.
+        </p>
+      )}
       <div className="h-56 overflow-y-auto whitespace-pre-wrap rounded-lg bg-black p-3 font-mono text-[12px] text-teal-300">
-        {output.length === 0 ? <p className="text-zinc-400">Ready. Risky commands are held for a council vote before they run.</p>
+        {output.length === 0 ? <p className="text-zinc-400">{gateDisabled ? 'Terminal unavailable — see the note above.' : 'Ready. Risky commands are held for a council vote before they run.'}</p>
           : output.map((l, i) => <div key={i} className={l.startsWith('$') ? 'text-zinc-100' : ''}>{l}</div>)}
         <div ref={endRef} />
       </div>
       <div className="flex gap-2">
-        <input id="entity-entityinspector-terminal-command" name="terminal-command" value={command} onChange={(e) => setCommand(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} placeholder="Enter a command" aria-label="Terminal command" className={cn(fieldCls, 'flex-1 font-mono')} />
-        <button type="button" onClick={submit} disabled={!command.trim() || exec.isPending} aria-label="Run command" className={cn(ghostBtn, 'px-3')}><Play className="h-3.5 w-3.5" /></button>
+        <input id="entity-entityinspector-terminal-command" name="terminal-command" value={command} onChange={(e) => setCommand(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} placeholder={gateDisabled ? 'Terminal disabled by the operator' : 'Enter a command'} disabled={gateDisabled} aria-label="Terminal command" className={cn(fieldCls, 'flex-1 font-mono')} />
+        <button type="button" onClick={submit} disabled={gateDisabled || !command.trim() || exec.isPending} aria-label="Run command" className={cn(ghostBtn, 'px-3')}><Play className="h-3.5 w-3.5" /></button>
       </div>
     </div>
   );
