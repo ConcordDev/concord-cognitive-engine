@@ -67,7 +67,7 @@ export function BountyLeaderboard({ refreshKey }: { refreshKey: number }) {
               <span className={`text-sm font-bold w-5 text-center ${MEDAL[r.rank - 1] || 'text-zinc-400'}`}>
                 {r.rank}
               </span>
-              <span className="text-xs text-zinc-200 truncate flex-1">{r.userId}</span>
+              <span className="text-xs text-zinc-200 truncate flex-1">{r.name || r.userId}</span>
               {tab === 'earners' ? (
                 <span className="text-xs text-amber-300 font-semibold flex items-center gap-1">
                   <Coins className="w-3 h-3" /> {r.earnedCc} CC

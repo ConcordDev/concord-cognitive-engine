@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { useUIStore } from '@/store/ui';
 import { Plus, X, Coins, Loader2, Milestone as MilestoneIcon } from 'lucide-react';
 import type { PlatformBounty } from './types';
 
@@ -35,6 +36,7 @@ export function CreateBountyForm({ onCreated, prefill, onConsumePrefill }: {
   const [milestones, setMilestones] = useState<DraftMilestone[]>([{ title: '', rewardCc: 50 }]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const addToast = useUIStore((state) => state.addToast);
 
   useEffect(() => {
     if (!prefill) return;
@@ -86,6 +88,7 @@ export function CreateBountyForm({ onCreated, prefill, onConsumePrefill }: {
     setBusy(false);
     if (r.data?.ok && r.data.result) {
       onCreated(r.data.result.bounty);
+      addToast({ type: 'success', message: `Bounty posted — ${r.data.result.bounty.poolCc} CC in the pool.` });
       reset();
       setOpen(false);
     } else {
@@ -183,6 +186,7 @@ export function CreateBountyForm({ onCreated, prefill, onConsumePrefill }: {
               onChange={(e) => setRewardCc(e.target.value === '' ? 0 : Number(e.target.value))}
               className="w-24 bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-sm text-zinc-100 focus:ring-2 focus:ring-amber-500 focus:outline-none"
             />
+            <span className="text-[10px] text-zinc-500">Minimum 1 CC — the amount you enter is the amount posted.</span>
           </label>
         ) : (
           <div className="space-y-2 rounded-lg border border-zinc-800 bg-zinc-950/50 p-2">
@@ -214,7 +218,7 @@ export function CreateBountyForm({ onCreated, prefill, onConsumePrefill }: {
               <Plus className="w-3 h-3" /> Add milestone
             </button>
             <p className="text-[10px] text-zinc-400">
-              Total pool: {milestones.reduce((s, m) => s + (m.rewardCc || 0), 0)} CC
+              Total pool: {milestones.reduce((s, m) => s + (m.rewardCc || 0), 0)} CC · each milestone minimum 1 CC
             </p>
           </div>
         )}

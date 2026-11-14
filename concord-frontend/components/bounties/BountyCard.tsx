@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { useUIStore } from '@/store/ui';
 import {
   Coins, Tag, ChevronDown, ChevronUp, Send, CheckCircle2, XCircle,
   Gavel, Milestone as MilestoneIcon, Loader2, ExternalLink, Clock,
@@ -17,12 +18,14 @@ const DIFFICULTIES = ['beginner', 'intermediate', 'advanced', 'expert'];
 interface Props {
   bounty: PlatformBounty;
   currentUserId: string;
+  currentUserRole?: string;
   onChanged: (b: PlatformBounty) => void;
   onRemoved?: (id: string) => void;
 }
 
-export function BountyCard({ bounty, currentUserId, onChanged, onRemoved }: Props) {
+export function BountyCard({ bounty, currentUserId, currentUserRole, onChanged, onRemoved }: Props) {
   const [expanded, setExpanded] = useState(false);
+  const addToast = useUIStore((state) => state.addToast);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -45,10 +48,16 @@ export function BountyCard({ bounty, currentUserId, onChanged, onRemoved }: Prop
   // dispute draft
   const [showDispute, setShowDispute] = useState(false);
   const [disputeReason, setDisputeReason] = useState('');
+  const [rulingNote, setRulingNote] = useState('');
 
   const isOwner = bounty.ownerId === currentUserId;
   const hasSubmitted = bounty.submissions.some((s) => s.claimantId === currentUserId);
   const involved = isOwner || hasSubmitted;
+  // S1: arbitration belongs to a platform admin/moderator who is NOT a party
+  // to the dispute — the same rule the server enforces. Everyone else sees
+  // who rules and what to expect, never enabled-looking controls.
+  const role = (currentUserRole || '').toLowerCase();
+  const canArbitrate = (role === 'admin' || role === 'moderator') && !involved;
 
   const submitWork = async () => {
     setBusy(true); setErr(null);
@@ -153,11 +162,14 @@ export function BountyCard({ bounty, currentUserId, onChanged, onRemoved }: Prop
   const resolveDispute = async (ruling: 'uphold' | 'overturn' | 'split') => {
     setBusy(true); setErr(null);
     const r = await lensRun<{ bounty: PlatformBounty }>('bounties', 'dispute-resolve', {
-      bountyId: bounty.id, ruling, rulingNote: `Arbiter ruling: ${ruling}`,
+      bountyId: bounty.id, ruling, rulingNote: rulingNote.trim() || undefined,
     });
     setBusy(false);
-    if (r.data?.ok && r.data.result) onChanged(r.data.result.bounty);
-    else setErr(r.data?.error || 'Could not resolve dispute');
+    if (r.data?.ok && r.data.result) {
+      onChanged(r.data.result.bounty);
+      addToast({ type: 'success', message: `Dispute ruled: ${ruling}.` });
+      setRulingNote('');
+    } else setErr(r.data?.error || 'Could not resolve dispute');
   };
 
   const milestonesPaid = bounty.milestones.filter((m) => m.status === 'paid').length;
@@ -182,6 +194,9 @@ export function BountyCard({ bounty, currentUserId, onChanged, onRemoved }: Prop
                 </span>
               )}
             </div>
+            <p className="mt-1 text-[10px] text-zinc-500">
+              Posted by <span className="text-zinc-300">{bounty.ownerName || bounty.ownerId}</span>
+            </p>
           </div>
           <div className="text-right shrink-0">
             <div className="text-amber-300 font-bold flex items-center gap-1 justify-end">
@@ -256,7 +271,14 @@ export function BountyCard({ bounty, currentUserId, onChanged, onRemoved }: Prop
                       {sub.status}
                     </span>
                   </div>
-                  <p className="text-[10px] text-zinc-400 mt-0.5">by {sub.claimantId}</p>
+                  <p className="text-[10px] text-zinc-400 mt-0.5">
+                    by {sub.claimantName || sub.claimantId}
+                    {sub.milestoneId && (
+                      <span className="text-amber-300/80">
+                        {' · '}Milestone: {bounty.milestones.find((m) => m.id === sub.milestoneId)?.title || 'scoped'}
+                      </span>
+                    )}
+                  </p>
                   {sub.link && (
                     <a href={sub.link} target="_blank" rel="noreferrer"
                       className="text-[10px] text-cyan-400 hover:underline flex items-center gap-0.5 mt-0.5">
@@ -295,18 +317,34 @@ export function BountyCard({ bounty, currentUserId, onChanged, onRemoved }: Prop
                 <Gavel className="w-3 h-3" /> Dispute — {bounty.dispute.status}
               </h4>
               <p className="text-[10px] text-red-200/80 mt-0.5">{bounty.dispute.reason}</p>
-              <p className="text-[10px] text-zinc-400">opened by {bounty.dispute.openedBy}</p>
-              {bounty.dispute.ruling && (
-                <p className="text-[10px] text-amber-300 mt-0.5">Ruling: {bounty.dispute.ruling}{bounty.dispute.rulingNote ? ` — ${bounty.dispute.rulingNote}` : ''}</p>
-              )}
+              <p className="text-[10px] text-zinc-400">opened by {bounty.dispute.openedByName || bounty.dispute.openedBy}</p>
               {bounty.dispute.status === 'open' && (
-                <div className="flex gap-1.5 mt-1.5">
-                  <button onClick={() => resolveDispute('uphold')} disabled={busy}
-                    className="text-[10px] bg-zinc-700 hover:bg-zinc-600 text-white px-2 py-0.5 rounded disabled:opacity-50">Uphold</button>
-                  <button onClick={() => resolveDispute('overturn')} disabled={busy}
-                    className="text-[10px] bg-amber-700 hover:bg-amber-600 text-white px-2 py-0.5 rounded disabled:opacity-50">Overturn</button>
-                  <button onClick={() => resolveDispute('split')} disabled={busy}
-                    className="text-[10px] bg-cyan-700 hover:bg-cyan-600 text-white px-2 py-0.5 rounded disabled:opacity-50">Split</button>
+                <p className="text-[10px] text-zinc-300 mt-1 leading-relaxed">
+                  A platform admin or moderator who is not a party to this dispute rules on it.
+                  The {bounty.poolCc} CC stays in the pool, held, until the ruling lands — neither
+                  party can rule on their own case.
+                </p>
+              )}
+              {bounty.dispute.ruling && (
+                <p className="text-[10px] text-amber-300 mt-0.5">
+                  Ruling: {bounty.dispute.ruling}
+                  {bounty.dispute.arbiterId ? ` — by ${bounty.dispute.arbiterName || bounty.dispute.arbiterId} (arbiter)` : ''}
+                  {bounty.dispute.rulingNote ? ` — ${bounty.dispute.rulingNote}` : ''}
+                </p>
+              )}
+              {bounty.dispute.status === 'open' && canArbitrate && (
+                <div className="mt-1.5 space-y-1.5">
+                  <input value={rulingNote} onChange={(e) => setRulingNote(e.target.value)}
+                    placeholder="Ruling note (optional)"
+                    className="w-full bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-[10px] text-zinc-100 focus:ring-2 focus:ring-red-500 focus:outline-none" />
+                  <div className="flex gap-1.5">
+                    <button onClick={() => resolveDispute('uphold')} disabled={busy}
+                      className="text-[10px] bg-zinc-700 hover:bg-zinc-600 text-white px-2 py-0.5 rounded disabled:opacity-50">Uphold</button>
+                    <button onClick={() => resolveDispute('overturn')} disabled={busy}
+                      className="text-[10px] bg-amber-700 hover:bg-amber-600 text-white px-2 py-0.5 rounded disabled:opacity-50">Overturn</button>
+                    <button onClick={() => resolveDispute('split')} disabled={busy}
+                      className="text-[10px] bg-cyan-700 hover:bg-cyan-600 text-white px-2 py-0.5 rounded disabled:opacity-50">Split</button>
+                  </div>
                 </div>
               )}
             </div>
@@ -320,7 +358,7 @@ export function BountyCard({ bounty, currentUserId, onChanged, onRemoved }: Prop
                 <Send className="w-3.5 h-3.5" /> Submit work
               </button>
             )}
-            {involved && (!bounty.dispute || bounty.dispute.status === 'resolved') && (
+            {involved && bounty.status !== 'cancelled' && (!bounty.dispute || bounty.dispute.status === 'resolved') && (
               <button onClick={() => setShowDispute((v) => !v)}
                 className="flex items-center gap-1 text-xs bg-red-900 hover:bg-red-800 text-red-100 px-3 py-1.5 rounded focus:ring-2 focus:ring-red-500 focus:outline-none">
                 <Gavel className="w-3.5 h-3.5" /> Open dispute

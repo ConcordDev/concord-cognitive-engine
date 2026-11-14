@@ -14,6 +14,8 @@ export interface Submission {
   id: string;
   bountyId: string;
   claimantId: string;
+  /** Display name resolved server-side at read time; null when unknown. */
+  claimantName?: string | null;
   summary: string;
   link: string;
   notes: string;
@@ -28,11 +30,13 @@ export interface Submission {
 export interface Dispute {
   id: string;
   openedBy: string;
+  openedByName?: string | null;
   reason: string;
   status: 'open' | 'resolved';
   ruling: 'uphold' | 'overturn' | 'split' | null;
   rulingNote: string | null;
   arbiterId?: string;
+  arbiterName?: string | null;
   resolvedAt: string | null;
   openedAt: string;
 }
@@ -42,6 +46,8 @@ export interface PlatformBounty {
   title: string;
   description: string;
   ownerId: string;
+  /** Display name resolved server-side at read time; null when unknown. */
+  ownerName?: string | null;
   category: string;
   tags: string[];
   difficulty: string;
@@ -62,8 +68,17 @@ export interface PlatformBounty {
 export interface LeaderRow {
   rank: number;
   userId: string;
+  /** Display name resolved server-side at read time; null when unknown. */
+  name?: string | null;
   earnedCc: number;
   resolved: number;
+}
+
+/** Board-wide totals from the list verb — one meaning under any filter. */
+export interface BoardTotals {
+  openPoolCc: number;
+  paidOutCc: number;
+  bountyCount: number;
 }
 
 export const STATUS_STYLE: Record<string, string> = {
