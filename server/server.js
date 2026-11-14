@@ -8752,6 +8752,10 @@ function authMiddleware(req, res, next) {
   // handler verifies a signature and writes nothing. Unconditional so a
   // stale Authorization header cannot turn a public check into a 401.
   if (req.method === "POST" && req.path === "/api/receipts/verify") return next();
+  // GB-1534: public calc sheet. Same shape as the verify check — the body is
+  // a receipt the caller already has; the handler verifies it first, renders
+  // it, and writes nothing.
+  if (req.method === "POST" && req.path === "/api/receipts/sheet") return next();
   // Gate 1 POST bypass: ActivityPub inbox. Per W3C AP §7 federated peers
   // POST activities here without any local auth — authentication is the
   // HTTP-Signature on the request, verified by the inbox handler itself
@@ -9060,6 +9064,10 @@ function productionWriteAuthMiddleware(req, res, next) {
   // Exact path, not a prefix, so no other route under /api/receipts/ is opened.
   // Rate limit: write.receipt-verify. See routes/receipts.js.
   if (method === "POST" && req.path === "/api/receipts/verify") return next();
+  // GB-1534: POST /api/receipts/sheet verifies a receipt and renders its
+  // calc sheet; it writes nothing. Exact path, same discipline as verify.
+  // Rate limit: write.receipt-verify. See routes/receipts.js.
+  if (method === "POST" && req.path === "/api/receipts/sheet") return next();
   // In production, require at least an API key or authenticated session for writes
   if (!req.user && !req.headers["x-api-key"] && !req.cookies?.concord_auth && !req.headers.authorization) {
     return res.status(401).json({ ok: false, error: "Authentication required for write operations in production", code: "PROD_WRITE_AUTH" });
