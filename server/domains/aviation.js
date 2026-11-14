@@ -560,6 +560,86 @@ export default function registerAviationActions(registerLensAction) {
   // For international airports (non-FAA), we fall back to the OurAirports CC0
   // dataset proxied via a small public mirror.
 
+
+  // ── OurAirports fallback (FIX-aviation-005) ──────────────────────────
+  // The header above this action has always promised an OurAirports CC0
+  // fallback for when aviationapi.com cannot serve a lookup; it was
+  // never built, so a network-level failure of the one free API (the
+  // walker's KJFK 'fetch failed', reproduced independently at fix time)
+  // failed the whole lookup. The fallback below is that promise kept:
+  // the CC0 airports.csv, fetched once, indexed by ident / gps_code /
+  // iata_code, cached for the process lifetime (a failed load cools down
+  // for 10 minutes instead of re-pulling 12 MB per lookup). It only ever
+  // REPLACES an error when it actually finds the airport — when it
+  // misses or cannot load, the primary's original error stands verbatim.
+  const OUR_AIRPORTS_CSV_URL = "https://davidmegginson.github.io/ourairports-data/airports.csv";
+  let _oaIndex = null; // Map<string, airport> once loaded
+  let _oaLoading = null; // in-flight load promise
+  let _oaFailedAt = 0; // last failed load (ms epoch)
+  function splitCsvLine(line) {
+    const out = [];
+    let cur = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (inQuotes) {
+        if (ch === '"') { if (line[i + 1] === '"') { cur += '"'; i++; } else inQuotes = false; }
+        else cur += ch;
+      } else if (ch === '"') inQuotes = true;
+      else if (ch === ",") { out.push(cur); cur = ""; }
+      else cur += ch;
+    }
+    out.push(cur);
+    return out;
+  }
+  async function loadOurAirportsIndex() {
+    if (_oaIndex) return _oaIndex;
+    if (_oaLoading) return _oaLoading;
+    if (Date.now() - _oaFailedAt < 10 * 60 * 1000) return null;
+    _oaLoading = (async () => {
+      try {
+        const r = await globalThis.fetch(OUR_AIRPORTS_CSV_URL);
+        if (!r || !r.ok || typeof r.text !== "function") throw new Error("ourairports unavailable");
+        const text = await r.text();
+        const index = new Map();
+        const lines = String(text).split("\n");
+        for (let i = 1; i < lines.length; i++) {
+          const f = splitCsvLine(lines[i]);
+          if (f.length < 14 || !f[1]) continue;
+          const region = String(f[9] || "");
+          const rec = {
+            ident: f[1],
+            name: f[3] || f[1],
+            city: f[10] ? `${f[10]}${region.includes("-") ? `, ${region.split("-").pop()}` : ""}` : "",
+            lat: Number(f[4]) || 0,
+            lng: Number(f[5]) || 0,
+            elev_ft: Number(f[6]) || 0,
+            runways: [],
+            frequencies: { tower: "", ground: "", atis: "", approach: "", awos: "" },
+            fuel: [],
+          };
+          index.set(f[1].toUpperCase(), rec);
+          if (f[12]) index.set(String(f[12]).toUpperCase(), rec);
+          if (f[13]) index.set(String(f[13]).toUpperCase(), rec);
+        }
+        if (index.size === 0) throw new Error("ourairports index empty");
+        _oaIndex = index;
+        return index;
+      } catch (_e) {
+        _oaFailedAt = Date.now();
+        return null;
+      } finally {
+        _oaLoading = null;
+      }
+    })();
+    return _oaLoading;
+  }
+  async function ourAirportsFallback(ident) {
+    const index = await loadOurAirportsIndex();
+    if (!index) return null;
+    return index.get(ident) || null;
+  }
+
   registerLensAction("aviation", "airport-lookup", async (_ctx, _artifact, params = {}) => {
     const ident = String(params.ident || "").toUpperCase().trim();
     if (!ident) return { ok: false, error: "ident required (e.g. KSFO)" };
@@ -567,10 +647,16 @@ export default function registerAviationActions(registerLensAction) {
       // Primary: aviationapi.com for US (and many ICAO) airports
       const url = `https://api.aviationapi.com/v1/airports?apt=${encodeURIComponent(ident)}`;
       const r = await globalThis.fetch(url);
-      if (!r.ok) return { ok: false, error: `aviationapi.com ${r.status}` };
+      if (!r.ok) {
+        const fb = await ourAirportsFallback(ident);
+        if (fb) return { ok: true, result: { airport: fb, source: "OurAirports (CC0) — aviationapi.com fallback" } };
+        return { ok: false, error: `aviationapi.com ${r.status}` };
+      }
       const data = await r.json();
       const records = data?.[ident];
       if (!Array.isArray(records) || records.length === 0) {
+        const fb = await ourAirportsFallback(ident);
+        if (fb) return { ok: true, result: { airport: fb, source: "OurAirports (CC0) — aviationapi.com fallback" } };
         return { ok: false, error: `${ident} not found in FAA database` };
       }
       const a = records[0];
@@ -626,6 +712,8 @@ export default function registerAviationActions(registerLensAction) {
         },
       };
     } catch (e) {
+      const fb = await ourAirportsFallback(ident).catch(() => null);
+      if (fb) return { ok: true, result: { airport: fb, source: "OurAirports (CC0) — aviationapi.com fallback" } };
       return { ok: false, error: `airport lookup failed: ${e?.message || "network"}` };
     }
   });
