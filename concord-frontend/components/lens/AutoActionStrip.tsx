@@ -30,6 +30,7 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '@/hooks/useAuth';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -56,6 +57,12 @@ interface ActionMeta {
    *  this action (extracted from its `input: { field1, field2? }` doc
    *  comment). Absent for the majority — the raw-JSON fallback covers those. */
   fields?: ActionInputField[];
+  /** GB-1538 genus leg 4 (FIX-grounding-001, office ruling (i)): present
+   *  when the human ACL gate would deny this action to a member. The strip
+   *  skips gated actions for users whose role cannot run them — firing
+   *  them only earns an honest 403. Absent for member-runnable actions. */
+  gated?: boolean;
+  requiresRole?: string;
 }
 
 interface FieldRow {
@@ -119,6 +126,21 @@ function classifyAction(a: ActionMeta): { icon: typeof Zap; tint: string } {
 function shouldHide(a: ActionMeta): boolean {
   if (HIDDEN_EXACT.has(a.action)) return true;
   return HIDDEN_PREFIXES.some(p => a.action.startsWith(p));
+}
+
+// Roles that satisfy an ACL gate, mirroring PRIVILEGED_ROLES in
+// server/lib/macro-acl-human-gate.js (owner-tier rules are admin-
+// satisfiable there too, so one list serves both tiers).
+export const GATE_PRIVILEGED_ROLES: ReadonlySet<string> = new Set([
+  'owner', 'admin', 'founder', 'sovereign',
+]);
+
+/** Whether an action survives the gate filter for a user with `role`:
+ *  ungated actions always show; gated actions show only to privileged
+ *  roles. Exported for the genus leg-4 pin. */
+export function actionVisibleForRole(a: ActionMeta, role: string | null | undefined): boolean {
+  if (!a.gated) return true;
+  return !!role && GATE_PRIVILEGED_ROLES.has(role);
 }
 
 function prettyLabel(name: string): string {
@@ -185,9 +207,13 @@ export function AutoActionStrip({
   });
 
   const runAction = useRunArtifact(domain);
+  const { user } = useAuth();
 
   const visible = (data?.actions || [])
     .filter(a => !shouldHide(a))
+    // GB-1538 genus leg 4: skip actions the discovery metadata marks
+    // gated for this user's role (office ruling (i) on FIX-grounding-001).
+    .filter(a => actionVisibleForRole(a, user?.role))
     .filter(a => (filter ? filter(a) : true));
 
   // Group by kind for the row layout.
