@@ -296,6 +296,32 @@ export function DataExplorer() {
       .map((p) => ({ year: p.year, value: p.value }));
   }, [timeseries, tsYear]);
 
+  // FIX-global-005: the stat cards must describe the VISIBLE window.
+  // They used to render the server result's full-range latest /
+  // pctChange verbatim, so moving the year cutoff shortened the chart
+  // but "Latest" still showed the newest year of the whole series.
+  // Derived here from the same valued points the chart draws, with
+  // the server's own formula (first/last valued point, pct rounded to
+  // 3dp) — at the default cutoff (maxYear) the numbers are identical
+  // to the server's; trimmed, they follow the slider.
+  const tsStats = useMemo(() => {
+    if (!timeseries) return null;
+    const visible = timeseries.points.filter(
+      (p) => p.value != null && (tsYear == null || p.year <= tsYear),
+    ) as { year: number; value: number }[];
+    if (visible.length === 0) return { latest: null, earliest: null, pctChange: null };
+    const first = visible[0];
+    const last = visible[visible.length - 1];
+    const pctChange = first.value !== 0
+      ? Math.round(((last.value - first.value) / Math.abs(first.value)) * 100 * 1000) / 1000
+      : null;
+    return {
+      latest: { year: last.year, value: last.value },
+      earliest: { year: first.year, value: first.value },
+      pctChange,
+    };
+  }, [timeseries, tsYear]);
+
   const scatterChartData = useMemo(() => {
     if (!scatter || !scatter.frames[scatterFrame]) return [];
     return scatter.frames[scatterFrame].points.map((p) => ({
@@ -459,17 +485,17 @@ export function DataExplorer() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1.5">
-              <div className="text-[10px] uppercase tracking-wider text-zinc-400">Latest ({timeseries.latest.year})</div>
-              <div className="mt-0.5 font-mono text-lg text-neon-cyan">{fmt(timeseries.latest.value, timeseries.indicator)}</div>
+              <div className="text-[10px] uppercase tracking-wider text-zinc-400">Latest{tsStats?.latest ? ` (${tsStats.latest.year})` : ''}</div>
+              <div className="mt-0.5 font-mono text-lg text-neon-cyan">{tsStats?.latest ? fmt(tsStats.latest.value, timeseries.indicator) : '—'}</div>
             </div>
             <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1.5">
-              <div className="text-[10px] uppercase tracking-wider text-zinc-400">Earliest ({timeseries.earliest.year})</div>
-              <div className="mt-0.5 font-mono text-lg text-zinc-300">{fmt(timeseries.earliest.value, timeseries.indicator)}</div>
+              <div className="text-[10px] uppercase tracking-wider text-zinc-400">Earliest{tsStats?.earliest ? ` (${tsStats.earliest.year})` : ''}</div>
+              <div className="mt-0.5 font-mono text-lg text-zinc-300">{tsStats?.earliest ? fmt(tsStats.earliest.value, timeseries.indicator) : '—'}</div>
             </div>
             <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1.5">
               <div className="text-[10px] uppercase tracking-wider text-zinc-400">Change</div>
-              <div className={cn('mt-0.5 font-mono text-lg', (timeseries.pctChange ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400')}>
-                {timeseries.pctChange == null ? '—' : `${timeseries.pctChange > 0 ? '+' : ''}${timeseries.pctChange}%`}
+              <div className={cn('mt-0.5 font-mono text-lg', (tsStats?.pctChange ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400')}>
+                {tsStats?.pctChange == null ? '—' : `${tsStats.pctChange > 0 ? '+' : ''}${tsStats.pctChange}%`}
               </div>
             </div>
           </div>
