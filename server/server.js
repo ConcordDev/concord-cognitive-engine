@@ -68511,6 +68511,36 @@ function sumCompletedQuestXp(userId) {
   return { xp, completed };
 }
 
+// FIX-game-004 (founder ruling (2), 2026-11-13): period XP for the
+// leaderboard's Weekly/Monthly filters. The score-bearing events already
+// carry timestamps in their source records — DTUs their createdAt,
+// council votes their timestamp, quest completions the artifact updatedAt
+// the completion handler stamps — so a period score is the SAME formula
+// as refreshGameProfile's lifetime XP, summed over events at or after
+// the window start. Quest completions are dated by updatedAt (the stamp
+// the completion write leaves); an artifact edited after completion
+// counts at its last edit, which is the honest limit of the record.
+function gamePeriodXp(userId, sinceMs) {
+  const inWindow = (t) => {
+    const ms = new Date(t).getTime();
+    return Number.isFinite(ms) && ms >= sinceMs;
+  };
+  const mine = (d) => d.authorId === userId || d.source === userId;
+  const dtus = dtusArray().filter(d => mine(d) && inWindow(d.createdAt));
+  const mega = dtus.filter(d => d.tier === "mega").length;
+  const hyper = dtus.filter(d => d.tier === "hyper").length;
+  const votes = Array.from(STATE.councilVotes?.values() || []).flat()
+    .filter(v => v.voterId === userId && inWindow(v.timestamp)).length;
+  let questXp = 0;
+  for (const art of _lensDomainArtifacts("game")) {
+    if (!art || art.type !== "quest" || art.ownerId !== userId) continue;
+    if (art.data?.status !== "completed" || !inWindow(art.updatedAt)) continue;
+    const reward = Number(art.data?.xpReward);
+    if (Number.isFinite(reward)) questXp += Math.max(0, Math.min(2000, reward));
+  }
+  return (dtus.length * 10) + (mega * 50) + (hyper * 100) + (votes * 5) + questXp;
+}
+
 function refreshGameProfile(userId) {
   const profile = getGameProfile(userId);
   const dtuCount = dtusArray().filter(d => d.authorId === userId || d.source === userId).length;
@@ -68588,11 +68618,26 @@ app.get("/api/game/leaderboard", (req, res) => {
     // disagreed with their header/dashboard XP (FIX-game-001).
     refreshGameProfile(uid);
   }
+  // FIX-game-004: ?period=weekly|monthly ranks by XP earned inside the
+  // window (gamePeriodXp over the timestamped score events); alltime —
+  // and any absent/unknown period — keeps the lifetime board exactly as
+  // before. Badges are lifetime honours and stay the profile's count in
+  // every period; xp and level are the period figures.
+  const period = String(req.query?.period || "alltime").toLowerCase();
+  const windowMs = period === "weekly" ? 7 * 24 * 3600 * 1000
+    : period === "monthly" ? 30 * 24 * 3600 * 1000 : 0;
+  const since = windowMs ? Date.now() - windowMs : 0;
   const entries = Array.from(STATE.gameProfiles.values())
-    .map(p => ({ userId: p.userId, xp: p.xp || 0, level: p.level || 1, badges: (p.badges || []).length, badgeList: p.badges || [] }))
+    .map(p => {
+      if (!windowMs) {
+        return { userId: p.userId, xp: p.xp || 0, level: p.level || 1, badges: (p.badges || []).length, badgeList: p.badges || [] };
+      }
+      const xp = gamePeriodXp(p.userId, since);
+      return { userId: p.userId, xp, level: Math.floor(Math.sqrt(xp / 100)) + 1, badges: (p.badges || []).length, badgeList: p.badges || [] };
+    })
     .sort((a, b) => b.xp - a.xp)
     .slice(0, 20);
-  res.json({ ok: true, leaderboard: entries, totalPlayers: STATE.gameProfiles.size });
+  res.json({ ok: true, leaderboard: entries, totalPlayers: STATE.gameProfiles.size, period: windowMs ? period : "alltime" });
 });
 
 // POST /api/game/quests/:questId/complete — mark the quest artifact completed.

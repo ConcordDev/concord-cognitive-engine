@@ -742,10 +742,12 @@ export default function GameApp() {
   });
   const profileData = profileResp?.profile || null;
 
-  // Fetch leaderboard from /api/game/leaderboard
+  // Fetch leaderboard from /api/game/leaderboard — FIX-game-004: the
+  // selected period rides the query, so Weekly/Monthly return the
+  // server's windowed board instead of re-slicing the lifetime rows.
   const { data: leaderboardResp, isError: isError4, error: error4, refetch: refetch4 } = useQuery({
-    queryKey: ['game', 'leaderboard'],
-    queryFn: () => api.get('/api/game/leaderboard').then(r => r.data),
+    queryKey: ['game', 'leaderboard', lbPeriod],
+    queryFn: () => api.get('/api/game/leaderboard', { params: { period: lbPeriod } }).then(r => r.data),
   });
   const leaderboardData = (leaderboardResp?.leaderboard || INITIAL_LEADERBOARD) as Record<string, unknown>[];
 
