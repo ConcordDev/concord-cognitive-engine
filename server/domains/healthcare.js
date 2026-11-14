@@ -837,7 +837,11 @@ export default function registerHealthcareActions(registerLensAction) {
     const filtered = q ? list.filter(p =>
       `${p.firstName} ${p.lastName} ${p.mrn}`.toLowerCase().includes(q)
     ) : list;
-    return { ok: true, result: { patients: filtered.slice().sort((a, b) => a.lastName.localeCompare(b.lastName)) } };
+    // FIX-healthcare-011: deterministic name order — lastName ties
+    // (families, same-name patients) fall to firstName, then MRN, so
+    // the list order is stable and reads as sorted, not arbitrary.
+    return { ok: true, result: { patients: filtered.slice().sort((a, b) =>
+      a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName) || String(a.mrn).localeCompare(String(b.mrn))) } };
     } catch (e) { return handlerFailure(e); }
 });
 

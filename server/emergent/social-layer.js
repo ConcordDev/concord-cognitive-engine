@@ -1049,11 +1049,17 @@ export function deletePost(STATE, { userId, postId }) {
   return { ok: true, postId: id };
 }
 
-export function getUserPosts(STATE, userId, { limit = 30, offset = 0, viewerId = null } = {}) {
+export function getUserPosts(STATE, userId, { limit = 30, offset = 0, viewerId = null, mediaOnly = false } = {}) {
   const social = getSocialState(STATE);
   const posts = [];
   for (const post of social.posts.values()) {
-    if (post.userId === userId && canViewPost(viewerId, post, STATE)) posts.push(post);
+    if (post.userId === userId && canViewPost(viewerId, post, STATE)) {
+      // FIX-metalearning-012: the profile Media tabs pass mediaOnly —
+      // honour it here (media = a mediaUrl / media list, per mediaList)
+      // instead of returning every post to a tab labelled "media".
+      if (mediaOnly && mediaList(post).length === 0) continue;
+      posts.push(post);
+    }
   }
   posts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   return { ok: true, posts: posts.slice(offset, offset + limit).map(serializePost), total: posts.length };

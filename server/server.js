@@ -70436,7 +70436,7 @@ app.delete("/api/social/post/:postId", requireAuth(), (req, res) => {
 app.get("/api/social/posts/user/:userId", (req, res) => {
   try {
     const viewerId = req.user?.id || req.actor?.userId || null;
-    res.json(socialGetUserPosts(STATE, req.params.userId, { limit: Number(req.query.limit || 30), offset: Number(req.query.offset || 0), viewerId }));
+    res.json(socialGetUserPosts(STATE, req.params.userId, { limit: Number(req.query.limit || 30), offset: Number(req.query.offset || 0), viewerId, mediaOnly: req.query.mediaOnly === "true" || req.query.mediaOnly === "1" }));
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 

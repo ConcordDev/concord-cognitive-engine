@@ -161,6 +161,7 @@ export default function createSocialCoreRoutes({ db, requireAuth }) {
       limit: Number(req.query.limit || 30),
       offset: Number(req.query.offset || 0),
       viewerId,
+      mediaOnly: req.query.mediaOnly === "true" || req.query.mediaOnly === "1",
     }));
   });
 

@@ -2,9 +2,10 @@
 //
 // Phase BE1 — photo gallery + sharing.
 //
-// PhotoMode.tsx posts a data: URL (base64 PNG) to savePhoto; this
-// module writes the blob under ./data/photos/<id>.png and inserts
-// the row. sharePhoto mints a kind='photo' DTU so the royalty cascade
+// Clients post a data: URL to savePhoto; this module writes the blob
+// under ./data/photos/<id>.<ext> — the extension the bytes earn
+// (FIX-photos-008; it was always .png when imports were re-encoded) —
+// and inserts the row. sharePhoto mints a kind='photo' DTU so the royalty cascade
 // fires when the photo is cited.
 
 import crypto from "node:crypto";
@@ -22,17 +23,51 @@ async function _ensureDir(dir) {
   try { await fsp.mkdir(dir, { recursive: true }); } catch { /* exists */ }
 }
 
-async function _writeBlob(dataUrl, blobPath) {
-  // dataUrl looks like 'data:image/png;base64,iVBORw0...'.
-  const m = String(dataUrl || "").match(/^data:(image\/\w+);base64,(.+)$/);
-  if (!m) return { ok: false, error: "invalid_data_url" };
-  const buf = Buffer.from(m[2], "base64");
+/**
+ * FIX-photos-008: the image format from the BYTES, never from a claim.
+ * An imported JPEG used to be re-encoded to PNG by the client before
+ * it ever reached the server, so the original format (and its EXIF)
+ * was destroyed and the detail view truthfully reported "PNG". The
+ * client now sends the original bytes; the blob is stored under the
+ * extension its magic bytes earn, and reads report the real format.
+ */
+export function imageFormatOf(buf) {
+  if (!Buffer.isBuffer(buf) || buf.length < 12) return null;
+  if (buf.subarray(0, 8).equals(PNG_SIGNATURE)) return { ext: "png", mime: "image/png", label: "PNG" };
+  if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return { ext: "jpg", mime: "image/jpeg", label: "JPEG" };
+  if (buf.toString("ascii", 0, 4) === "GIF8") return { ext: "gif", mime: "image/gif", label: "GIF" };
+  if (buf.toString("ascii", 0, 4) === "RIFF" && buf.toString("ascii", 8, 12) === "WEBP") return { ext: "webp", mime: "image/webp", label: "WebP" };
+  return null;
+}
+
+/** JPEG dimensions from the first SOF0/SOF2 segment. Returns {} if none. */
+function jpegDimensions(buf) {
+  if (!Buffer.isBuffer(buf) || buf.length < 4 || buf[0] !== 0xff || buf[1] !== 0xd8) return {};
+  let off = 2;
+  while (off + 9 < buf.length) {
+    if (buf[off] !== 0xff) return {};
+    const marker = buf[off + 1];
+    if (marker === 0xc0 || marker === 0xc2) {
+      return { height: buf.readUInt16BE(off + 5), width: buf.readUInt16BE(off + 7) };
+    }
+    const len = buf.readUInt16BE(off + 2);
+    if (!Number.isFinite(len) || len < 2) return {};
+    off += 2 + len;
+  }
+  return {};
+}
+
+function blobDimensions(buf) {
+  return imageFormatOf(buf)?.ext === "jpg" ? jpegDimensions(buf) : pngDimensions(buf);
+}
+
+async function _writeBlob(buf, blobPath) {
   if (buf.byteLength > MAX_BLOB_BYTES) return { ok: false, error: "blob_too_large" };
   try {
-    // Async fs — a ≤5 MB PNG write must not block the event loop.
+    // Async fs — a ≤5 MB write must not block the event loop.
     await _ensureDir(path.dirname(blobPath));
     await fsp.writeFile(blobPath, buf);
-    return { ok: true, bytes: buf.byteLength, ...pngDimensions(buf) };
+    return { ok: true, bytes: buf.byteLength, ...blobDimensions(buf) };
   } catch (err) {
     return { ok: false, error: err?.message };
   }
@@ -66,11 +101,19 @@ function pngDimensions(buf) {
  */
 export function fillPhotoMetaFromBlob(db, row) {
   if (!db || !row) return row;
-  if (row.width != null && row.height != null && row.size_bytes != null) return row;
-  if (!row.blob_path) return row;
+  // FIX-photos-008: the format rides every read, sniffed from the blob
+  // itself (there is no format column; the bytes are the truth). Rows
+  // stored before the fix hold PNG bytes and report PNG, correctly.
+  let format = null;
+  try {
+    if (row.blob_path) format = imageFormatOf(fs.readFileSync(row.blob_path))?.label ?? null;
+  } catch { /* an unreadable blob reports no format rather than a guess */ }
+  const withFormat = { ...row, format };
+  if (row.width != null && row.height != null && row.size_bytes != null) return withFormat;
+  if (!row.blob_path) return withFormat;
   let buf;
-  try { buf = fs.readFileSync(row.blob_path); } catch { return row; }
-  const dims = pngDimensions(buf);
+  try { buf = fs.readFileSync(row.blob_path); } catch { return withFormat; }
+  const dims = blobDimensions(buf);
   const filled = {
     width: row.width ?? dims.width ?? null,
     height: row.height ?? dims.height ?? null,
@@ -82,7 +125,7 @@ export function fillPhotoMetaFromBlob(db, row) {
         .run(filled.width, filled.height, filled.size_bytes, row.id);
     } catch { /* the backfill is best-effort; the read still returns the truth */ }
   }
-  return { ...row, ...filled };
+  return { ...withFormat, ...filled };
 }
 
 export async function savePhoto(db, userId, opts = {}) {
@@ -93,9 +136,17 @@ export async function savePhoto(db, userId, opts = {}) {
     return { ok: false, error: "invalid_visibility" };
   }
 
+  // FIX-photos-008: decode the data URL and store the bytes AS SENT —
+  // no re-encode — under the extension the bytes themselves earn.
+  const m = String(dataUrl).match(/^data:(image\/\w+);base64,(.+)$/);
+  if (!m) return { ok: false, error: "invalid_data_url" };
+  const buf = Buffer.from(m[2], "base64");
+  const format = imageFormatOf(buf);
+  if (!format) return { ok: false, error: "unsupported_image_format" };
+
   const id = `ph_${crypto.randomBytes(8).toString("hex")}`;
-  const blobPath = path.join(PHOTO_DIR, `${id}.png`);
-  const blob = await _writeBlob(dataUrl, blobPath);
+  const blobPath = path.join(PHOTO_DIR, `${id}.${format.ext}`);
+  const blob = await _writeBlob(buf, blobPath);
   if (!blob.ok) return blob;
   // Truncate so an absurd client-supplied name can't bloat a row forever.
   const filename = typeof originalFilename === "string" ? originalFilename.slice(0, 255) : null;
@@ -110,7 +161,7 @@ export async function savePhoto(db, userId, opts = {}) {
       blob.width ?? null, blob.height ?? null, blob.bytes ?? null, filename,
     );
     logger.info?.("photo-gallery", "saved", { id, userId, bytes: blob.bytes });
-    return { ok: true, id, blobPath, bytes: blob.bytes, width: blob.width, height: blob.height };
+    return { ok: true, id, blobPath, bytes: blob.bytes, width: blob.width, height: blob.height, format: format.label };
   } catch (err) {
     // Rollback the blob.
     await fsp.unlink(blobPath).catch(() => { /* ignore */ });
@@ -156,9 +207,14 @@ export async function sharePhoto(db, photoId, opts = {}) {
     // bytes cannot be read or stored, the share fails honestly
     // rather than minting a DTU whose content is only its caption.
     let artifactRef;
+    let blobMime = "image/png";
     try {
       const buf = fs.readFileSync(p.blob_path);
-      artifactRef = await storeArtifact(dtuId, buf, "image/png", p.original_filename || `${photoId}.png`);
+      // FIX-photos-008: register the artifact under the blob's REAL
+      // format, not a blanket image/png.
+      const fmt = imageFormatOf(buf);
+      blobMime = fmt?.mime || "image/png";
+      artifactRef = await storeArtifact(dtuId, buf, blobMime, p.original_filename || `${photoId}.${fmt?.ext || "png"}`);
     } catch (err) {
       logger.debug?.("photo-gallery", "share_artifact_failed", { error: err?.message });
       return { ok: false, error: "photo_blob_unreadable" };
@@ -175,7 +231,7 @@ export async function sharePhoto(db, photoId, opts = {}) {
       authorId: p.user_id,
       human: { summary: title, bullets: [] },
       core: { definitions: [], claims: [], examples: [] },
-      machine: { kind: "photo", verifier: { format: "image/png", sizeBytes: artifactRef.sizeBytes, hash: artifactRef.hash } },
+      machine: { kind: "photo", verifier: { format: blobMime, sizeBytes: artifactRef.sizeBytes, hash: artifactRef.hash } },
       artifact: artifactRef,
       lineage: { parents: [], children: [] },
       authority: { score: 0.5 },
