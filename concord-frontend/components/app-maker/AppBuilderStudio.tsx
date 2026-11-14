@@ -28,6 +28,7 @@ import {
   Link2, Unlink, Store, GitBranch, AlertTriangle, Info, Pencil,
 } from 'lucide-react';
 import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
+import { handlePreviewBridgeMessage } from '@/lib/app-maker/preview-bridge';
 
 const DOMAIN = 'app-maker';
 
@@ -1457,6 +1458,13 @@ function LivePreview({ project, run }: { project: Project; run: RunFn }) {
   const [html, setHtml] = useState('');
   const [pageId, setPageId] = useState<string>(project.pages[0]?.id || '');
   const [loading, setLoading] = useState(false);
+  const frameRef = useRef<HTMLIFrameElement | null>(null);
+  // One preview session per mount of the Preview tab (S3/S4): bridge
+  // requests carry it so the server can scope the preview data copy.
+  const sessionRef = useRef<string | null>(null);
+  if (sessionRef.current === null) {
+    sessionRef.current = `pv_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+  }
 
   const render = useCallback(async (pid: string) => {
     setLoading(true);
@@ -1467,6 +1475,28 @@ function LivePreview({ project, run }: { project: Project; run: RunFn }) {
 
   useEffect(() => { if (pageId) render(pageId); }, [pageId, render]);
 
+  // The bridge: the frame (opaque origin, no credentials) asks; this
+  // handler verifies the message came from OUR frame and matches the
+  // strict schema, forwards to the server under the owner's session,
+  // and posts the reply back. See lib/app-maker/preview-bridge.ts.
+  useEffect(() => {
+    const onMessage = (ev: MessageEvent) => {
+      const frame = frameRef.current;
+      if (!frame) return;
+      void handlePreviewBridgeMessage({
+        source: ev.source,
+        frameWindow: frame.contentWindow,
+        data: ev.data,
+        projectId: project.id,
+        sessionId: sessionRef.current || '',
+        run,
+        reply: (r) => { frame.contentWindow?.postMessage(r, '*'); },
+      });
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, [project.id, run]);
+
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
@@ -1474,14 +1504,15 @@ function LivePreview({ project, run }: { project: Project; run: RunFn }) {
           {project.pages.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
         <button onClick={() => render(pageId)} className="text-xs text-gray-400 hover:text-neon-cyan flex items-center gap-1">
-          {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />} Refresh
+          {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />} Reset preview
         </button>
-        <span className="text-[10px] text-gray-400 ml-auto flex items-center gap-1"><FileCode className="w-3 h-3" /> display-only preview — buttons &amp; workflows don&apos;t run here</span>
+        <span className="text-[10px] text-gray-400 ml-auto flex items-center gap-1"><FileCode className="w-3 h-3" /> live preview — workflows run here; table data is a preview copy</span>
       </div>
       <iframe
+        ref={frameRef}
         title="App live preview"
         srcDoc={html}
-        sandbox="allow-same-origin"
+        sandbox="allow-scripts"
         className="w-full h-[480px] bg-[#020617] border border-lattice-edge rounded-lg"
       />
     </div>
