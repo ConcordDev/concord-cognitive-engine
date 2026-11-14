@@ -3,6 +3,7 @@
 // solution chemistry, and thermochemistry.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
 import { saveAfterWrites } from "../lib/lens-save-on-write.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 
@@ -21,6 +22,40 @@ export default function registerChemActions(registerLensAction) {
     return g;
   }
   function chemActor(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
+  // State-resident records (lab notebook entries, saved structures) live in
+  // the per-user state maps, not the artifact store, so an artifacts-only
+  // export declared "Nothing to export" over standing records. Register
+  // them with the shared export, scoped to the calling user — the same
+  // adoption the affect lens made for its state-resident check-ins.
+  registerLensExportProvider("chem", (ctx) => {
+    const userId = chemActor(ctx);
+    const s = chemState();
+    const rows = [];
+    for (const e of s.chemLabNotebook.get(userId) || []) {
+      rows.push({
+        id: e.id,
+        type: "lab-notebook-entry",
+        title: e.title,
+        createdAt: e.createdAt,
+        updatedAt: e.updatedAt || e.createdAt,
+        data: e,
+      });
+    }
+    const structures = s.chemStructures.get(userId);
+    if (structures) {
+      for (const rec of structures.values()) {
+        rows.push({
+          id: rec.id,
+          type: "structure",
+          title: rec.name,
+          createdAt: rec.createdAt,
+          updatedAt: rec.createdAt,
+          data: rec,
+        });
+      }
+    }
+    return rows;
+  });
   function chemId(prefix) { return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`; }
   // Periodic table subset (atomic masses)
   const ELEMENTS = {
@@ -145,14 +180,24 @@ export default function registerChemActions(registerLensAction) {
   registerLensAction("chem", "balanceReaction", (ctx, artifact, params) => {
     let reactants, products;
 
+    // FIX-chem-002: a typed coefficient is not part of a formula — "2H2"
+    // is the compound H2 carrying a coefficient, and the coefficients are
+    // what this action SOLVES for. Feeding the digit to parseFormula
+    // folded it into the atom counts, so the exact equations users type
+    // from textbooks (2H2 + O2 -> 2H2O) came back as self-consistent
+    // garbage (22H2 + O2 -> 22H2O). Strip the leading coefficient from
+    // every token here only — stoichiometry keeps typed coefficients,
+    // which are load-bearing there (FIX-chem-001).
+    const bareFormula = (token) => String(token).trim().replace(/^\d+(?:\.\d+)?\s*/, "");
+
     if (params.equation) {
       const sides = params.equation.split(/->|→|=/).map(s => s.trim());
       if (sides.length !== 2) return { ok: false, error: "Equation must have exactly one arrow (->)." };
-      reactants = sides[0].split('+').map(s => s.trim()).filter(Boolean);
-      products = sides[1].split('+').map(s => s.trim()).filter(Boolean);
+      reactants = sides[0].split('+').map(bareFormula).filter(Boolean);
+      products = sides[1].split('+').map(bareFormula).filter(Boolean);
     } else {
-      reactants = artifact.data?.reactants || [];
-      products = artifact.data?.products || [];
+      reactants = (artifact.data?.reactants || []).map(bareFormula).filter(Boolean);
+      products = (artifact.data?.products || []).map(bareFormula).filter(Boolean);
     }
 
     if (reactants.length === 0 || products.length === 0) {

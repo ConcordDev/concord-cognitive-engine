@@ -402,8 +402,14 @@ export function updateSubmission(db, submissionId, submitterId, input = {}) {
  * row in the submitter's own list forever; a withdrawn work was never
  * admitted, so deleting its row touches nothing the archive promised to
  * keep. Only the submitter, only from `withdrawn` — an admitted record
- * stays permanent, and a live or declined submission is removed through
- * its own path (withdraw first), never silently.
+ * stays permanent, and a live submission is removed through its own
+ * path (withdraw first), never silently.
+ *
+ * Declined rows ride the same verb (the DTU archive/delete ruling,
+ * CB-0554 (1), carried leg): a declined work was likewise never admitted,
+ * but it sat in a dead end — withdraw refuses it (not a live state) and
+ * remove refused it (not withdrawn) — so `declined` is removable here
+ * too, under the same submitter-only gate.
  */
 export function removeSubmission(db, submissionId, submitterId) {
   if (!db) return { ok: false, reason: "no_db" };
@@ -411,7 +417,7 @@ export function removeSubmission(db, submissionId, submitterId) {
   if (!row) return { ok: false, reason: "not_found" };
   if (row.submitter_id !== String(submitterId || "")) return { ok: false, reason: "not_submitter" };
   if (row.status === "admitted") return { ok: false, reason: "admitted_records_are_permanent" };
-  if (row.status !== "withdrawn") return { ok: false, reason: "wrong_state", status: row.status };
+  if (row.status !== "withdrawn" && row.status !== "declined") return { ok: false, reason: "wrong_state", status: row.status };
   db.prepare(`DELETE FROM vault_submissions WHERE id = ?`).run(row.id);
   return { ok: true, id: row.id, removed: true };
 }
