@@ -38,6 +38,16 @@ export interface KPIStripProps {
   className?: string;
 }
 
+export function formatKpiValue(v: number | string, unit?: string): string {
+  // FIX-accounting-012: money KPIs are cents-accurate — the compact $1.2M /
+  // whole-dollar shapes made real changes invisible on a finance dashboard
+  // (a $12.49 expense read "$12"; cash swings under $50K vanished into $M).
+  if (typeof v === 'number' && unit === '$') {
+    return `$${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+  return formatValue(v, unit);
+}
+
 function formatValue(v: number | string, unit?: string): string {
   if (typeof v === 'string') return unit ? `${v}${unit}` : v;
   // Compact number formatting: $1.2M / $145K / $342
@@ -99,7 +109,7 @@ export function KPIStrip({ kpis, periodLabel, className }: KPIStripProps) {
                 {kpi.label}
               </div>
               <div className="text-2xl font-mono font-semibold text-amber-200 tabular-nums">
-                {formatValue(kpi.value, kpi.unit)}
+                {formatKpiValue(kpi.value, kpi.unit)}
               </div>
               <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
                 {kpi.deltaPct !== undefined && (
