@@ -12,14 +12,14 @@ function runMacroStub(calls) {
   return async (domain, action, input) => {
     calls.push([domain, action, input]);
     if (domain === "lens" && action === "list") {
-      return { ok: true, artifacts: [{ id: "art_1", type: "note", title: "Artifact one" }] };
+      return { ok: true, artifacts: [{ id: "art_1", type: "note", title: "Artifact one", ownerId: "u1" }] };
     }
     if (domain === "dtu" && action === "list") {
       assert.equal(input.mine, true);
       assert.equal(input.domain, "transfer");
       return { ok: true, dtus: [
-        { id: "dtu_own_1", title: "GitHub transfer — topic:file-transfer (25)", tags: ["transfer"], human: { summary: "mapping notes" }, createdAt: "2026-11-01T00:00:00Z" },
-        { id: "art_1", title: "Duplicate id — must dedupe", tags: [] },
+        { id: "dtu_own_1", title: "GitHub transfer — topic:file-transfer (25)", tags: ["transfer"], ownerId: "u1", human: { summary: "mapping notes" }, createdAt: "2026-11-01T00:00:00Z" },
+        { id: "art_1", title: "Duplicate id — must dedupe", tags: [], ownerId: "u1" },
       ] };
     }
     return { ok: false, error: "unexpected" };
