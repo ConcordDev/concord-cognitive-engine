@@ -367,10 +367,276 @@ async function fetchUxSuiteFacts(): Promise<LensFactsResult> {
   };
 }
 
+/**
+ * Defense facts (FIX-defense-006) — the Ask from Defense answered with
+ * generic web-search results because the analyst had a context label and
+ * none of the lens's readiness inputs. The reads mirror the Defense
+ * surface's own DashboardStats verbatim (the same four lensRun boards,
+ * the same success test — data.ok with a result), which are exactly the
+ * readiness inputs the ticket names.
+ */
+async function fetchDefenseFacts(): Promise<LensFactsResult> {
+  const facts: AccountFact[] = [];
+  const unreadable: string[] = [];
+
+  const [assetsR, threatsR, personnelR, supplyR] = await Promise.all([
+    lensRun('defense', 'asset-rollup', {}).catch(() => null),
+    lensRun('defense', 'threat-board', {}).catch(() => null),
+    lensRun('defense', 'personnel-roster', {}).catch(() => null),
+    lensRun('defense', 'supply-board', {}).catch(() => null),
+  ]);
+
+  const assets = assetsR?.data?.ok ? (assetsR.data.result as Record<string, unknown> | undefined) : undefined;
+  const fleetReadiness = num(assets?.fleetReadiness);
+  const inService = num(assets?.inService);
+  const assetsTotal = num(assets?.total);
+  if (fleetReadiness !== undefined && inService !== undefined && assetsTotal !== undefined) {
+    const availability = num(assets?.availabilityPct);
+    facts.push({
+      label: 'Fleet readiness',
+      value: `${formatNumber(fleetReadiness)}% across ${formatNumber(inService)} in-service assets (${formatNumber(assetsTotal)} total${availability !== undefined ? `, ${formatNumber(availability)}% available` : ''})`,
+      source: 'Defense Dashboard stats — defense.asset-rollup',
+    });
+  } else unreadable.push('the asset rollup');
+
+  const threats = threatsR?.data?.ok ? (threatsR.data.result as Record<string, unknown> | undefined) : undefined;
+  const threatsTotal = num(threats?.total);
+  if (threatsTotal !== undefined) {
+    const highest = typeof threats?.highestSeverity === 'string' ? threats.highestSeverity : 'none';
+    const activeWatch = num(threats?.activeWatch);
+    facts.push({
+      label: 'Threat picture',
+      value: `${formatNumber(threatsTotal)} tracked threats — highest severity ${highest}${activeWatch !== undefined ? `, ${formatNumber(activeWatch)} on active watch` : ''}`,
+      source: 'Defense Dashboard stats — defense.threat-board',
+    });
+  } else unreadable.push('the threat board');
+
+  const personnel = personnelR?.data?.ok ? (personnelR.data.result as Record<string, unknown> | undefined) : undefined;
+  const rosterTotal = num(personnel?.total);
+  if (rosterTotal !== undefined) {
+    const deployable = num(personnel?.deployable);
+    facts.push({
+      label: 'Personnel',
+      value: `${formatNumber(rosterTotal)} on the roster${deployable !== undefined ? `, ${formatNumber(deployable)} available to deploy` : ''}`,
+      source: 'Defense Dashboard stats — defense.personnel-roster',
+    });
+  } else unreadable.push('the personnel roster');
+
+  const supply = supplyR?.data?.ok ? (supplyR.data.result as Record<string, unknown> | undefined) : undefined;
+  const supplyTotal = num(supply?.total);
+  if (supplyTotal !== undefined) {
+    const openCount = num(supply?.openCount);
+    const fulfillment = num(supply?.fulfillmentPct);
+    facts.push({
+      label: 'Supply',
+      value: `${formatNumber(supplyTotal)} supply requests${openCount !== undefined ? ` — ${formatNumber(openCount)} open` : ''}${fulfillment !== undefined ? `, fulfillment ${formatNumber(fulfillment)}%` : ''}`,
+      source: 'Defense Dashboard stats — defense.supply-board',
+    });
+  } else unreadable.push('the supply board');
+
+  return {
+    facts,
+    unreadable,
+    lensLabel: 'Defense',
+    rule:
+      'Rule: answer questions about Defense readiness ONLY from the facts above, and name the source you used. ' +
+      'If a readiness input is not listed above, say the Defense surface doesn\'t give you that right now — never ' +
+      'describe readiness, threats, personnel, or supply from general knowledge or web results.',
+  };
+}
+
+/**
+ * Attention facts (FIX-attention-005, grounding leg) — the Ask from
+ * Attention punted ("Which lens are you looking at?") because the analyst
+ * had a label and none of the lens's live state. The reads mirror the
+ * Attention desks' own calls: the attention status (the Focus desk), and
+ * the thread list (the Threads desk), read the way AttentionThreads
+ * reads them.
+ */
+async function fetchAttentionFacts(): Promise<LensFactsResult> {
+  const facts: AccountFact[] = [];
+  const unreadable: string[] = [];
+
+  const statusR = await lensRun('attention', 'status', {}).catch(() => null);
+  const status = statusR?.data?.ok ? (statusR.data.result as Record<string, unknown> | undefined) : undefined;
+  if (status && typeof status === 'object') {
+    const activeThreads = Array.isArray(status.activeThreads)
+      ? status.activeThreads.length
+      : num(status.activeThreads);
+    const queue = num(status.queueLength) ?? num(status.queueDepth);
+    const stats = status.stats as Record<string, unknown> | undefined;
+    const completed = num(stats?.threadsCompleted) ?? num(status.totalCompleted);
+    const focus = typeof status.focus === 'string' ? status.focus : undefined;
+    if (activeThreads !== undefined || queue !== undefined) {
+      facts.push({
+        label: 'Attention state',
+        value: `${formatNumber(activeThreads ?? 0)} active threads, ${formatNumber(queue ?? 0)} queued${focus ? ` — current focus: ${focus}` : ''}${completed !== undefined ? `, ${formatNumber(completed)} completed` : ''}`,
+        source: 'Attention Focus desk — attention.status',
+      });
+    }
+  }
+  if (facts.length === 0) unreadable.push('the attention status');
+
+  const threadsR = await lensRun('attention', 'list_threads', {}).catch(() => null);
+  const threadsData = threadsR?.data?.ok ? threadsR.data.result : undefined;
+  const threads = Array.isArray(threadsData)
+    ? threadsData
+    : ((threadsData as { threads?: unknown[] } | undefined)?.threads ?? []);
+  const top = threads[0] as Record<string, unknown> | undefined;
+  const topDesc = typeof top?.description === 'string' ? top.description : undefined;
+  if (topDesc) {
+    facts.push({
+      label: 'Top thread',
+      value: topDesc,
+      source: 'Attention Threads desk — attention.list_threads',
+    });
+  }
+
+  return {
+    facts,
+    unreadable,
+    lensLabel: 'Attention',
+    rule:
+      'Rule: answer questions about the Attention lens ONLY from the facts above, and name the source you used. ' +
+      'You are answering about the Attention lens — never ask which lens the user means when the facts above are ' +
+      'present. If a value is not listed above, say the Attention surface doesn\'t give you that right now.',
+  };
+}
+
+/**
+ * Feed facts (FIX-feed-009, answer leg) — the Ask from Feed answered
+ * about another lens because a reused thread's history was the only
+ * context the analyst had: the facts block is built for the launch's
+ * domain on every send, so these live values are the counterweight.
+ * The reads mirror the Feed surface's own timeline hook (useFeedPosts):
+ * the For You endpoint's first page, the scheduler's scheduled list,
+ * and the caller's bookmark set.
+ */
+async function fetchFeedFacts(): Promise<LensFactsResult> {
+  const facts: AccountFact[] = [];
+  const unreadable: string[] = [];
+
+  try {
+    const res = await api.get('/api/social/feed/foryou', { params: { limit: 20, offset: 0 } });
+    const posts = (res.data as { posts?: unknown[] } | undefined)?.posts;
+    if (Array.isArray(posts)) {
+      facts.push({
+        label: 'For You timeline',
+        value: `${formatNumber(posts.length)} posts on the first page`,
+        source: 'Feed timeline — GET /api/social/feed/foryou',
+      });
+    } else unreadable.push('the For You timeline');
+  } catch {
+    unreadable.push('the For You timeline');
+  }
+
+  try {
+    const res = await api.get('/api/social/scheduled');
+    const data = res.data as { scheduled?: unknown[]; posts?: unknown[] } | unknown[] | undefined;
+    const rows = Array.isArray(data) ? data : (data?.scheduled ?? data?.posts);
+    if (Array.isArray(rows)) {
+      facts.push({
+        label: 'Scheduled posts',
+        value: `${formatNumber(rows.length)} scheduled`,
+        source: 'Feed scheduler — GET /api/social/scheduled',
+      });
+    }
+  } catch { /* the scheduled count is an extra; its absence is not a decline trigger */ }
+
+  try {
+    const res = await api.get('/api/social/bookmarks', { params: { limit: 500 } });
+    const data = res.data as unknown[] | { bookmarks?: unknown[]; ids?: unknown[] } | undefined;
+    const rows = Array.isArray(data) ? data : (data?.bookmarks ?? data?.ids);
+    if (Array.isArray(rows)) {
+      facts.push({
+        label: 'Bookmarks',
+        value: `${formatNumber(rows.length)} bookmarked posts`,
+        source: 'Feed bookmarks — GET /api/social/bookmarks',
+      });
+    }
+  } catch { /* as above */ }
+
+  return {
+    facts,
+    unreadable,
+    lensLabel: 'Feed',
+    rule:
+      'Rule: answer questions about the Feed lens ONLY from the facts above, and name the source you used. ' +
+      'You are answering about the Feed lens and the user\'s own feed state — never describe another lens\'s ' +
+      'contents in its place. If a value is not listed above, say the Feed surface doesn\'t give you that right now.',
+  };
+}
+
+/**
+ * Hypothesis facts (FIX-hypothesis-006, answer leg) — the Ask from
+ * Hypothesis answered about another lens for the same reason: no facts
+ * for the launch's domain. The reads mirror HypothesisLab's own hyp()
+ * calls verbatim (hypothesis list + metrics, read off data.result the
+ * way the lab reads them), and the average confidence renders exactly
+ * as the lab renders it ((avgConfidence * 100).toFixed(0) + '%').
+ */
+async function fetchHypothesisFacts(): Promise<LensFactsResult> {
+  const facts: AccountFact[] = [];
+  const unreadable: string[] = [];
+
+  const metricsR = await lensRun('hypothesis', 'metrics', {}).catch(() => null);
+  const metrics = metricsR?.data?.ok ? (metricsR.data.result as Record<string, unknown> | undefined) : undefined;
+  const total = num(metrics?.total);
+  if (total !== undefined) {
+    const byStatus = (metrics?.byStatus ?? {}) as Record<string, unknown>;
+    const parts = ['proposed', 'testing', 'confirmed', 'rejected', 'refined', 'archived']
+      .map((s) => ({ s, n: num(byStatus[s]) ?? 0 }))
+      .filter((p) => p.n > 0)
+      .map((p) => `${formatNumber(p.n)} ${p.s}`);
+    const avg = num(metrics?.avgConfidence);
+    facts.push({
+      label: 'Hypotheses',
+      value: `${formatNumber(total)} tracked${parts.length ? ` — ${parts.join(', ')}` : ''}${avg !== undefined ? `; average confidence ${(avg * 100).toFixed(0)}%` : ''}`,
+      source: 'Hypothesis lab — hypothesis.metrics',
+    });
+    const factDtus = num(metrics?.factDTUsCreated);
+    const rejectionDtus = num(metrics?.rejectionDTUsCreated);
+    if (factDtus !== undefined && rejectionDtus !== undefined) {
+      facts.push({
+        label: 'Outcomes',
+        value: `${formatNumber(factDtus)} fact DTUs created, ${formatNumber(rejectionDtus)} rejection DTUs`,
+        source: 'Hypothesis lab — hypothesis.metrics',
+      });
+    }
+  } else unreadable.push('the hypothesis metrics');
+
+  const listR = await lensRun('hypothesis', 'list', {}).catch(() => null);
+  const listData = listR?.data?.ok ? listR.data.result : undefined;
+  const rows = Array.isArray(listData) ? listData : ((listData as { hypotheses?: unknown[] } | undefined)?.hypotheses ?? []);
+  const first = rows[0] as { machine?: { hypothesis?: { statement?: unknown; status?: unknown } } } | undefined;
+  const statement = typeof first?.machine?.hypothesis?.statement === 'string' ? first.machine.hypothesis.statement : undefined;
+  if (statement) {
+    facts.push({
+      label: 'Most recent hypothesis',
+      value: statement,
+      source: 'Hypothesis lab — hypothesis.list',
+    });
+  }
+
+  return {
+    facts,
+    unreadable,
+    lensLabel: 'Hypothesis',
+    rule:
+      'Rule: answer questions about the Hypothesis lens ONLY from the facts above, and name the source you used. ' +
+      'You are answering about the Hypothesis lens — never describe another lens\'s contents in its place. ' +
+      'If a value is not listed above, say the Hypothesis surface doesn\'t give you that right now.',
+  };
+}
+
 const PROVIDERS: Record<string, () => Promise<LensFactsResult>> = {
   analytics: fetchAnalyticsFacts,
   conkay: fetchConkayFacts,
   'ux-suite': fetchUxSuiteFacts,
+  defense: fetchDefenseFacts,
+  attention: fetchAttentionFacts,
+  feed: fetchFeedFacts,
+  hypothesis: fetchHypothesisFacts,
 };
 
 const DECLINE_RULE =
