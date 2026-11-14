@@ -23,6 +23,8 @@ interface XpLogEntry {
   refId: string | null;
   xpDelta: number;
   goldDelta: number;
+  baseXp?: number;
+  streakBonus?: number | null;
   xpAfter: number;
   levelAfter: number;
   at: string;
@@ -146,7 +148,7 @@ export function XpActivityFeed() {
                   </span>
                   <div className="min-w-0">
                     <p className="text-xs text-white truncate">{e.label || meta.label}</p>
-                    <p className="text-[10px] text-gray-500">{meta.label} · {relativeTime(e.at)}</p>
+                    <p className="text-[10px] text-gray-500">{meta.label} · {relativeTime(e.at)}{e.streakBonus != null && e.streakBonus > 1 && e.baseXp != null ? <> · base {e.baseXp} × {Number(e.streakBonus.toFixed(2))} streak</> : null}</p>
                   </div>
                 </div>
                 <div className="text-right shrink-0 font-mono text-xs">

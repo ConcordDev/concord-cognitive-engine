@@ -42,6 +42,26 @@ interface ChallengeEntry { id: string; title: string; description: string; metri
 interface BoardRow { userId: string; score: number; progressPct: number; isCurrentUser: boolean; rank: number; }
 
 const DIFFICULTY_XP: Record<string, number> = { trivial: 5, easy: 10, medium: 20, hard: 35 };
+
+/**
+ * FIX-game-006: the award for completing a task is its difficulty base
+ * XP times a streak bonus (x1.05 per streak day, capped at x2) — the
+ * server's taskComplete formula. The task row used to print only the
+ * base ("+10 XP") while the resolver paid the multiplied amount, so
+ * the same action appeared to pay +10 once and +20 later with no
+ * explanation. This mirrors the server formula for the NEXT
+ * completion so the row can show the effective award up front.
+ */
+export function nextRewardPreview(t: { difficulty: string; kind: string; streak: number; lastCompletedDay: string | null }): { base: number; streakBonus: number; effective: number } {
+  const base = DIFFICULTY_XP[t.difficulty] ?? 10;
+  const today = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const nextStreak = t.kind === 'habit' || t.lastCompletedDay === yesterday || t.lastCompletedDay === today
+    ? t.streak + 1
+    : 1;
+  const streakBonus = Math.min(2, 1 + nextStreak * 0.05);
+  return { base, streakBonus, effective: Math.round(base * streakBonus) };
+}
 const RARITY: Record<string, string> = {
   common: 'text-gray-400 border-gray-500/30',
   rare: 'text-neon-blue border-neon-blue/30',
@@ -438,7 +458,7 @@ export function HabitHub({ onXpChange }: { onXpChange?: (xp: number) => void }) 
                         <p className="text-sm text-white font-medium truncate">{t.title}</p>
                         {t.notes && <p className="text-[11px] text-gray-400 truncate">{t.notes}</p>}
                         <p className="text-[10px] text-gray-400 mt-1">
-                          {t.difficulty} · +{DIFFICULTY_XP[t.difficulty]} XP · streak {t.streak} · done {t.completions}×
+                          {t.difficulty} · +{DIFFICULTY_XP[t.difficulty]} XP{(() => { const p = nextRewardPreview(t); return p.streakBonus > 1 ? <> ×{Number(p.streakBonus.toFixed(2))} streak = +{p.effective} XP</> : null; })()} · streak {t.streak} · done {t.completions}×
                         </p>
                       </div>
                       {confirmDeleteTaskId === t.id ? (
