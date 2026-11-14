@@ -4,6 +4,7 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
 import { requireList } from "../lib/lens-inputs.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
 export default function registerAttentionActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -1057,5 +1058,60 @@ export default function registerAttentionActions(registerLensAction) {
         },
       };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // FIX-attention-004: the planner, reserved blocks, focus sessions and
+  // the distraction log live in STATE.attentionLens (per-user Maps) —
+  // no export leg enumerates that bag, so the Export menu reported
+  // "Nothing to export yet" while the panels held records, and its
+  // buttons stayed disabled. The provider emits the caller's own
+  // records: one row per planner day plus one per planner task, per
+  // reserved block, per focus session, per distraction entry.
+  registerLensExportProvider("attention", (ctx) => {
+    const s = getFocusState();
+    if (!s) return [];
+    const userId = fActor(ctx);
+    const rows = [];
+    const days = s.plannerDays.get(userId) || {};
+    for (const day of Object.values(days)) {
+      if (!day || typeof day !== "object") continue;
+      rows.push({
+        id: `planner:${day.date}`, type: "planner-day",
+        title: `Planner — ${day.date}`,
+        createdAt: null, updatedAt: null,
+        data: day,
+      });
+      (Array.isArray(day.tasks) ? day.tasks : []).forEach((t, i) => {
+        if (!t || typeof t !== "object") return;
+        rows.push({
+          id: t.id || `planner:${day.date}:task:${i}`, type: "planner-task",
+          title: t.name || `Task ${i + 1} — ${day.date}`,
+          createdAt: null, updatedAt: null,
+          data: { ...t, date: day.date },
+        });
+      });
+    }
+    for (const b of s.calendarBlocks.get(userId) || []) {
+      rows.push({
+        id: b.id, type: "calendar-block", title: b.title || "Focus Block",
+        createdAt: b.createdAt || null, updatedAt: b.createdAt || null,
+        data: b,
+      });
+    }
+    for (const sess of s.focusSessions.get(userId) || []) {
+      rows.push({
+        id: sess.id, type: "focus-session", title: sess.taskName || "Focus session",
+        createdAt: sess.startedAt || null, updatedAt: sess.endedAt || sess.startedAt || null,
+        data: sess,
+      });
+    }
+    for (const d of s.distractions.get(userId) || []) {
+      rows.push({
+        id: d.id, type: "distraction", title: d.source || "Distraction",
+        createdAt: d.loggedAt || null, updatedAt: d.loggedAt || null,
+        data: d,
+      });
+    }
+    return rows;
   });
 }
