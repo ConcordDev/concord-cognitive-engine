@@ -285,7 +285,12 @@ export function GalleryPanel({ mode }: { mode: GalleryMode }) {
 
       {settingsWorld && (
         <WorldSettingsPanel
-          world={settingsWorld}
+          // FIX-sub-worlds-007: settingsWorld is a snapshot taken when
+          // Settings was opened; a status toggle from the card (or the
+          // panel itself) refreshed `worlds` but never this snapshot,
+          // so the panel's Pause/Resume label went stale. Resolve the
+          // panel's world from the live list on every render.
+          world={worlds.find((w) => w.world_id === settingsWorld.world_id) ?? settingsWorld}
           onClose={() => setSettingsWorld(null)}
           onChanged={() => {
             void refresh();
