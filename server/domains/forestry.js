@@ -217,6 +217,47 @@ export default function registerForestryActions(registerLensAction) {
    *
    * params: { state?: 2-letter US code, limit?: 1-100 }
    */
+
+  // FIX-forestry-005: InciWeb's public API is retired — every probed
+  // path on inciweb.wildfire.gov (/api/v1, /api/v2, unversioned)
+  // answers 404 HTML (re-verified live at fix time), which is the
+  // walker's 'inciweb 404' toast verbatim. NIFC's own WFIGS Incident
+  // Locations service — the sibling of the WFIGS perimeters service
+  // this domain already queries, on the same ArcGIS host — carries
+  // the same incidents (name, discovery time, containment, point
+  // location). This helper maps its GeoJSON into the incident shape
+  // inciweb-active-fires has always returned, so the panel and the
+  // feed ingest consume one normalized shape. Fields WFIGS does not
+  // carry stay null — never invented.
+  async function fetchWfigsIncidentLocations({ state = null, limit = 50 } = {}) {
+    const where = state ? `POOState = 'US-${state}'` : "1=1";
+    const url = `${NIFC_FIRE_API}/WFIGS_Incident_Locations_Current/FeatureServer/0/query?where=${encodeURIComponent(where)}&outFields=*&f=geojson&resultRecordCount=${limit}`;
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`nifc-wfigs ${r.status}`);
+    const data = await r.json();
+    if (data?.error) throw new Error(`nifc-wfigs ${data.error.code || "error"}`);
+    return (data?.features || []).map((f) => {
+      const p = f.properties || {};
+      const coords = f.geometry?.type === "Point" ? f.geometry.coordinates : null;
+      return {
+        id: p.UniqueFireIdentifier || null,
+        name: p.IncidentName || null,
+        type: p.IncidentTypeCategory || null,
+        location: null,
+        state: typeof p.POOState === "string" ? p.POOState.replace(/^US-/, "") : null,
+        county: p.POOCounty || null,
+        sizeAcres: p.IncidentSize ?? p.DiscoveryAcres ?? null,
+        containmentPct: p.PercentContained ?? null,
+        status: null,
+        startDate: p.FireDiscoveryDateTime ? new Date(p.FireDiscoveryDateTime).toISOString() : null,
+        lastUpdated: null,
+        latitude: coords ? Number(coords[1]) : null,
+        longitude: coords ? Number(coords[0]) : null,
+        incidentUrl: null,
+      };
+    });
+  }
+
   registerLensAction("forestry", "inciweb-active-fires", async (_ctx, _artifact, params = {}) => {
     const state = params.state ? String(params.state).toUpperCase().trim() : null;
     if (state && !/^[A-Z]{2}$/.test(state)) return { ok: false, error: "state must be 2-letter code (e.g. CA)" };
@@ -247,6 +288,17 @@ export default function registerForestryActions(registerLensAction) {
         result: { fires, count: fires.length, state, source: "inciweb" },
       };
     } catch (e) {
+      // FIX-forestry-005: the InciWeb API is retired (404) — fall back
+      // to NIFC's WFIGS incident locations before reporting failure.
+      // Only a WFIGS hit replaces the outcome; if the fallback also
+      // fails, the original InciWeb error stands verbatim below.
+      try {
+        const fires = await fetchWfigsIncidentLocations({ state, limit });
+        return {
+          ok: true,
+          result: { fires, count: fires.length, state, source: "nifc-wfigs-incident-locations (inciweb fallback)" },
+        };
+      } catch { /* the primary error stands */ }
       return { ok: false, error: `inciweb unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
   });
@@ -266,6 +318,10 @@ export default function registerForestryActions(registerLensAction) {
       const r = await fetch(url);
       if (!r.ok) throw new Error(`nifc ${r.status}`);
       const data = await r.json();
+      // FIX-forestry-005: ArcGIS answers many bad queries with HTTP
+      // 200 and an { error } body — reading that as zero features made
+      // a service failure indistinguishable from 'no perimeters now'.
+      if (data?.error) throw new Error(`nifc ${data.error.code || "error"}`);
       const features = (data?.features || []).map((f) => ({
         objectId: f.properties?.OBJECTID,
         incidentName: f.properties?.poly_IncidentName,
