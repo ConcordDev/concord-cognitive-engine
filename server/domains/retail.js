@@ -2181,17 +2181,14 @@ export default function registerRetailActions(registerLensAction) {
   });
 
   // Buyer-facing read — returns published catalog with stock + ratings.
-  registerLensAction("retail", "storefront-catalog", (ctx, _a, _p = {}) => {
-  try {
-    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = retailActor(ctx);
-    const sf = ensureStorefront(s, userId);
-    if (!sf.published) return { ok: true, result: { published: false, products: [] } };
-    const productMap = s.products.get(userId);
-    const reviews = ensureRetailBucket(s, "reviews", userId);
-    // Founder ruling (FIX-retail-002): an empty selection publishes
-    // NOTHING. A product is public only when the owner explicitly
-    // selected it — there is no whole-catalog default.
+  // The public catalog shape for one owner's storefront — shared by
+  // the owner-scoped catalog and the by-slug public read below.
+  // Founder ruling (FIX-retail-002): an empty selection publishes
+  // NOTHING. A product is public only when the owner explicitly
+  // selected it — there is no whole-catalog default.
+  function publicCatalogFor(s, ownerId, sf) {
+    const productMap = s.products.get(ownerId);
+    const reviews = ensureRetailBucket(s, "reviews", ownerId);
     const skuFilter = new Set(sf.publishedSkus);
     const products = [];
     if (productMap) {
@@ -2209,10 +2206,40 @@ export default function registerRetailActions(registerLensAction) {
       }
     }
     products.sort((a, b) => a.name.localeCompare(b.name));
-    return {
-      ok: true,
-      result: { published: true, storeName: sf.name, tagline: sf.tagline, theme: sf.theme, products },
-    };
+    return { published: true, slug: sf.slug, storeName: sf.name, tagline: sf.tagline, theme: sf.theme, products };
+  }
+
+  registerLensAction("retail", "storefront-catalog", (ctx, _a, _p = {}) => {
+  try {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const sf = ensureStorefront(s, userId);
+    if (!sf.published) return { ok: true, result: { published: false, products: [] } };
+    return { ok: true, result: publicCatalogFor(s, userId, sf) };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // Public by-slug read — what the published /shop/<slug> URL serves
+  // (FIX-retail-013). storefront-publish hands the merchant a public
+  // URL and the manager UI prints "Published at /shop/<slug>", but the
+  // only catalog read was owner-scoped and no /shop route existed, so
+  // the shared URL 404'd. This resolves the slug to its storefront
+  // across owners and returns the same FIX-retail-002-filtered public
+  // catalog — never the owner's id or any non-selected product.
+  registerLensAction("retail", "storefront-public", (ctx, _a, params = {}) => {
+  try {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const slug = String(params.slug || "").trim().toLowerCase();
+    if (!slug) return { ok: false, error: "slug required" };
+    if (!s.storefronts) s.storefronts = new Map();
+    let ownerId = null;
+    let sf = null;
+    for (const [uid, f] of s.storefronts.entries()) {
+      if (f && f.slug === slug) { ownerId = uid; sf = f; break; }
+    }
+    if (!sf) return { ok: false, error: "storefront not found" };
+    if (!sf.published) return { ok: true, result: { published: false, slug } };
+    return { ok: true, result: publicCatalogFor(s, ownerId, sf) };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
