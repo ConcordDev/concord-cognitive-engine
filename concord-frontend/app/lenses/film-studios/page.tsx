@@ -17,8 +17,13 @@
  * project-delete / scene-delete. A blank title is not sent. A blank
  * location is not sent. Titles and scenes are stored in
  * film_studio_productions and film_studio_scenes, so a server restart
- * still lists them -- and still renames/deletes them. The desk tabs are
- * other macros. They are not on this screen.
+ * still lists them -- and still renames/deletes them.
+ *
+ * FIX-film-studios-002: the production desk (script, screenplay, shots,
+ * schedule, budget & team, edit/timeline, media) was a set of shipped
+ * panels no screen mounted -- the workflow stopped at sluglines. The
+ * desk now renders below the production for the OPEN production, each
+ * tab mounting the panel built for it with that production's id.
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -28,6 +33,24 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
 import { lensRun } from '@/lib/api/client';
 import { sceneLocationError } from '@/lib/form-guards';
+import { FsScriptPanel } from '@/components/film-studios/FsScriptPanel';
+import { FsScreenplayPanel } from '@/components/film-studios/FsScreenplayPanel';
+import { FsShotsPanel } from '@/components/film-studios/FsShotsPanel';
+import { FsSchedulePanel } from '@/components/film-studios/FsSchedulePanel';
+import { FsBudgetTeamPanel } from '@/components/film-studios/FsBudgetTeamPanel';
+import { FsEditPanel } from '@/components/film-studios/FsEditPanel';
+import { FsMediaPanel } from '@/components/film-studios/FsMediaPanel';
+
+type DeskTab = 'script' | 'screenplay' | 'shots' | 'schedule' | 'budget' | 'edit' | 'media';
+const DESK_TABS: { id: DeskTab; label: string }[] = [
+  { id: 'script', label: 'Script' },
+  { id: 'screenplay', label: 'Screenplay' },
+  { id: 'shots', label: 'Shots' },
+  { id: 'schedule', label: 'Schedule' },
+  { id: 'budget', label: 'Budget & Team' },
+  { id: 'edit', label: 'Edit / Timeline' },
+  { id: 'media', label: 'Media' },
+];
 
 const INT_EXT_OPTIONS = ['INT', 'EXT', 'INT/EXT'] as const;
 const TIME_OF_DAY_OPTIONS = ['DAY', 'NIGHT', 'DUSK', 'DAWN', 'MORNING', 'EVENING', 'CONTINUOUS'] as const;
@@ -129,6 +152,7 @@ export default function FilmStudiosPage() {
 
   // Two-step delete, matching the crafting lens's arm-then-confirm row pattern.
   const [confirmDeleteProduction, setConfirmDeleteProduction] = useState(false);
+  const [deskTab, setDeskTab] = useState<DeskTab>('script');
   const [confirmDeleteSceneId, setConfirmDeleteSceneId] = useState<string | null>(null);
 
   const pull = useCallback(async () => readProductions(), []);
@@ -713,6 +737,37 @@ export default function FilmStudiosPage() {
             </>
           )}
         </section>
+
+        {phase === 'ready' && openProductionRow && (
+          <section aria-label="Production desk" className="mt-6 overflow-hidden rounded-2xl border border-white/10 bg-zinc-950">
+            <div role="tablist" aria-label="Production desk tabs" className="flex flex-wrap gap-1 border-b border-white/10 px-4 py-3">
+              {DESK_TABS.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={deskTab === t.id}
+                  data-testid={`film-desk-tab-${t.id}`}
+                  onClick={() => setDeskTab(t.id)}
+                  className={deskTab === t.id
+                    ? 'rounded-full bg-teal-400 px-4 py-1.5 text-[13px] font-medium text-black'
+                    : 'rounded-full px-4 py-1.5 text-[13px] text-zinc-300 hover:bg-white/5'}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+            <div className="px-4 py-4">
+              {deskTab === 'script' && <FsScriptPanel projectId={openProductionRow.id} onChange={() => { void pull(); }} />}
+              {deskTab === 'screenplay' && <FsScreenplayPanel projectId={openProductionRow.id} />}
+              {deskTab === 'shots' && <FsShotsPanel projectId={openProductionRow.id} />}
+              {deskTab === 'schedule' && <FsSchedulePanel projectId={openProductionRow.id} onChange={() => { void pull(); }} />}
+              {deskTab === 'budget' && <FsBudgetTeamPanel projectId={openProductionRow.id} onChange={() => { void pull(); }} />}
+              {deskTab === 'edit' && <FsEditPanel projectId={openProductionRow.id} onChange={() => { void pull(); }} />}
+              {deskTab === 'media' && <FsMediaPanel projectId={openProductionRow.id} />}
+            </div>
+          </section>
+        )}
 
         {actionError ? (
           <p role="alert" className="mt-4 text-[14px] text-zinc-300">{actionError}</p>
