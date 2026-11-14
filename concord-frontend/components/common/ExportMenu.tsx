@@ -207,10 +207,21 @@ export function ExportMenu({ domain }: ExportMenuProps) {
         { id: 'json', label: 'Export as JSON', icon: FileJson, desc: 'Saved models and the current study' },
         { id: 'csv', label: 'Export as CSV', icon: FileSpreadsheet, desc: 'One row per model' },
       ]
-    : [
-        { id: 'json', label: 'Export as JSON', icon: FileJson, desc: 'Full DTU bundle' },
-        { id: 'csv', label: 'Export as CSV', icon: FileSpreadsheet, desc: 'Tabular data' },
-      ];
+    : domain === 'dtus'
+      ? [
+          // FIX-dtus-001: on the DTUs lens the generic 'Full DTU bundle'
+          // promise was false both ways — this menu exports SAVED LENS
+          // ITEMS, and the vault records the lens lists live in the DTU
+          // store, which no export path reads (the leg-1 build is the
+          // desk's shared-exporter question). State the scope in the
+          // menu itself, before the click.
+          { id: 'json', label: 'Export as JSON', icon: FileJson, desc: 'Saved lens items only — DTU vault records are not included' },
+          { id: 'csv', label: 'Export as CSV', icon: FileSpreadsheet, desc: 'Saved lens items only — DTU vault records are not included' },
+        ]
+      : [
+          { id: 'json', label: 'Export as JSON', icon: FileJson, desc: 'Full DTU bundle' },
+          { id: 'csv', label: 'Export as CSV', icon: FileSpreadsheet, desc: 'Tabular data' },
+        ];
 
   return (
     <div className="relative" ref={menuRef}>

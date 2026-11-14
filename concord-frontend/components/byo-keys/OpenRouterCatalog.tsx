@@ -20,6 +20,21 @@ interface OrModel {
 type CatalogSort = 'default' | 'name' | 'context' | 'price-in' | 'price-out';
 const PAGE_SIZE = 100;
 
+/**
+ * FIX-byo-keys-001: model descriptions are third-party text rendered on
+ * this page. Strip the characters that are invisible to a human reader
+ * (zero-width, bidi controls, word joiners, soft hyphens, stray control
+ * characters) before render, and render the description IN FULL — the
+ * card used to clamp it to two lines, leaving text in the DOM that a
+ * person reading the page could not see. After this, everything the
+ * page carries is exactly what a human can read.
+ */
+export function visibleCatalogText(s: string): string {
+  // Zero-width + bidi controls, word joiners, BOM, soft hyphen, and
+  // C0/C1 control characters other than tab/newline.
+  return s.replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u2064\uFEFF\u00AD\u0000-\u0008\u000B-\u001F\u007F-\u009F]/g, '');
+}
+
 export function OpenRouterCatalog() {
   const [query, setQuery] = useState('');
   // FIX-byo-keys-013: the catalog was hard-capped at the first 100
@@ -112,7 +127,7 @@ export function OpenRouterCatalog() {
               </div>
             </div>
             {m.name && m.name !== m.id && <div className="text-[10px] text-zinc-400">{m.name}</div>}
-            {m.description && <p className="line-clamp-2 text-[11px] text-zinc-400">{m.description}</p>}
+            {m.description && <p className="text-[11px] text-zinc-400">{visibleCatalogText(m.description)}</p>}
             <div className="mt-0.5 flex flex-wrap gap-1 text-[9px]">
               {m.architecture?.modality && <span className="rounded bg-zinc-800 px-1 font-mono text-zinc-300"><Cpu className="mr-0.5 inline h-2.5 w-2.5" />{m.architecture.modality}</span>}
               {m.architecture?.tokenizer && <span className="rounded bg-zinc-800 px-1 font-mono text-zinc-300">{m.architecture.tokenizer}</span>}
@@ -136,7 +151,7 @@ export function OpenRouterCatalog() {
             <button type="button" onClick={() => setSelectedId(null)} className="text-[11px] text-zinc-400 underline">Close</button>
           </div>
           {selected.name && <p className="mt-0.5 text-xs text-zinc-300">{selected.name}</p>}
-          {selected.description && <p className="mt-1 text-xs leading-relaxed text-zinc-400">{selected.description}</p>}
+          {selected.description && <p className="mt-1 text-xs leading-relaxed text-zinc-400">{visibleCatalogText(selected.description)}</p>}
           <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 font-mono text-[11px] text-zinc-300 md:grid-cols-3">
             <div><dt className="text-zinc-400">Context</dt><dd>{selected.context_length?.toLocaleString() || '?'}</dd></div>
             <div><dt className="text-zinc-400">Input</dt><dd>{fmtPrice(selected.pricing?.prompt)}</dd></div>
