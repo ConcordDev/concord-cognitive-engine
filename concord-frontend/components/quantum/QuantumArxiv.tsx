@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Atom, Loader2, ExternalLink } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { lensRun } from '@/lib/api/client';
 
 interface Paper { id: string; title: string; summary: string; authors: string[]; published: string; link: string; category?: string; }
 
@@ -13,32 +14,37 @@ const CATEGORIES = [
   { id: 'cond-mat.mes-hall', label: 'cond-mat.mes-hall' },
 ];
 
-function parseArxivAtom(xml: string): Paper[] {
-  const entries: Paper[] = [];
-  const doc = new DOMParser().parseFromString(xml, 'application/xml');
-  doc.querySelectorAll('entry').forEach((e) => {
-    const id = e.querySelector('id')?.textContent || '';
-    const title = e.querySelector('title')?.textContent?.replace(/\s+/g, ' ').trim() || '';
-    const summary = e.querySelector('summary')?.textContent?.replace(/\s+/g, ' ').trim() || '';
-    const authors = Array.from(e.querySelectorAll('author > name')).map((n) => n.textContent || '');
-    const published = e.querySelector('published')?.textContent || '';
-    const link = e.querySelector('link[rel="alternate"]')?.getAttribute('href') || id;
-    const category = e.querySelector('category')?.getAttribute('term') || '';
-    entries.push({ id, title, summary, authors, published, link, category });
-  });
-  return entries;
+interface MacroPaper {
+  arxivId?: string | null; title: string; summary: string; published: string;
+  authors?: string[]; abstractUrl?: string; category?: string | null;
 }
 
 export function QuantumArxiv() {
   const [cat, setCat] = useState(CATEGORIES[0].id);
 
+  // FIX-quantum-006: this panel fetched export.arxiv.org directly from
+  // the browser. arXiv sends no CORS headers, so every load failed —
+  // 0 papers and CORS errors in the console — while the lens still
+  // presented itself as REAL data. The papers now come through the
+  // server like every other arXiv surface (the physics panel was
+  // converted the same way, FIX-physics-002): the quantum domain's
+  // live_arxiv macro fetches and parses the Atom feed server-side and
+  // refuses honestly when arXiv answers nothing.
   const papers = useQuery({
     queryKey: ['arxiv-quantum', cat],
     queryFn: async () => {
-      const r = await fetch(`https://export.arxiv.org/api/query?search_query=cat:${encodeURIComponent(cat)}&start=0&max_results=20&sortBy=submittedDate&sortOrder=descending`);
-      if (!r.ok) throw new Error(`arxiv ${r.status}`);
-      const xml = await r.text();
-      return parseArxivAtom(xml);
+      const r = await lensRun({ domain: 'quantum', name: 'live_arxiv', input: { category: cat, limit: 20 } });
+      const d = r?.data?.result as { ok?: boolean; error?: string; papers?: MacroPaper[] } | undefined;
+      if (!d?.ok) throw new Error(d?.error || 'arXiv feed failed');
+      return (d.papers ?? []).map((p): Paper => ({
+        id: p.abstractUrl || p.arxivId || p.title,
+        title: p.title,
+        summary: p.summary,
+        authors: p.authors ?? [],
+        published: p.published,
+        link: p.abstractUrl || (p.arxivId ? `https://arxiv.org/abs/${p.arxivId}` : ''),
+        category: p.category || cat,
+      }));
     },
     staleTime: 30 * 60 * 1000,
   });
