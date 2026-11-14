@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { GitFork, Trash2, Loader2, RefreshCw, Rss } from 'lucide-react';
-import { lensRun } from '@/lib/api/client';
+import { apiHelpers, lensRun } from '@/lib/api/client';
 import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface Repo { id: string; fullName: string; note: string; reason: string; lastStars: number | null; lastPushedAt: string | null; openIssues?: number | null; forks?: number | null }
@@ -29,6 +29,7 @@ export function RepoWatchlist() {
   const [feedRepo, setFeedRepo] = useState('');
   const [feedMsg, setFeedMsg] = useState<string | null>(null);
   const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
+  const [feedListMsg, setFeedListMsg] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const [wl, d, fl] = await Promise.all([
@@ -61,6 +62,19 @@ export function RepoWatchlist() {
     await lensRun('fork', 'watch-refresh', { id });
     setBusy(null);
     await refresh();
+  }
+  // FIX-fork-011 (remove leg, riding the canonical DTU verb of CB-0554
+  // (1)): an ingested event DTU can be removed from the lens. dtus.delete
+  // is owner-gated server-side; a refusal is named, never silent.
+  async function delFeedItem(id: string) {
+    try {
+      const resp = await apiHelpers.dtus.delete(id) as { data?: { ok?: boolean; error?: string } };
+      if (resp.data?.ok === false) { setFeedListMsg(resp.data?.error || 'That DTU could not be deleted.'); return; }
+      setFeedListMsg(null);
+      await refresh();
+    } catch {
+      setFeedListMsg('That DTU could not be deleted.');
+    }
   }
   async function pullFeed() {
     setBusy('feed');
@@ -112,15 +126,17 @@ export function RepoWatchlist() {
         ) : (
           <ul className="space-y-1">
             {feedItems.map(item => (
-              <li key={item.id} className="flex items-baseline gap-2 text-xs">
+              <li key={item.id} className="group flex items-baseline gap-2 text-xs">
                 <span className="min-w-0 flex-1 truncate font-medium text-zinc-200">{item.title}</span>
                 <span className="shrink-0 text-[10px] text-zinc-500">
                   {[item.repo, item.actor, item.publishedAt ? item.publishedAt.slice(0, 10) : null].filter(Boolean).join(' · ')}
                 </span>
+                <StickyDeleteConfirm onConfirm={() => { void delFeedItem(item.id); }} className="shrink-0 self-center opacity-0 group-hover:opacity-100 text-rose-400" armAriaLabel={`Delete ${item.title}`} confirmLabel="Remove this DTU?" confirmAriaLabel={`Confirm delete ${item.title}`} armLabel={<Trash2 className="w-3 h-3" />} />
               </li>
             ))}
           </ul>
         )}
+        {feedListMsg && <p role="alert" className="mt-1.5 text-[10px] text-rose-300">{feedListMsg}</p>}
       </div>
 
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5 mb-3 flex flex-wrap gap-1.5">

@@ -35,7 +35,8 @@ import {
   Loader2, Check, AlertTriangle, Copy,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api, lensRun } from '@/lib/api/client';
+import { api, apiHelpers, lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
@@ -218,6 +219,22 @@ export function ClaimVerificationPanel() {
     finally { setBusy(null); }
   }
 
+  // FIX-grounding-010 (delete leg): the minted verification DTU used to be
+  // undeletable from anywhere the user could reach. It rides the canonical
+  // verb — dtus.delete is owner-gated server-side — and clearing the id
+  // re-arms Mint.
+  async function actDeleteMinted() {
+    if (!mintedDtuId) return;
+    setBusy('mint'); setFeedback(null);
+    try {
+      const resp = await apiHelpers.dtus.delete(mintedDtuId) as { data?: { ok?: boolean; error?: string } };
+      if (resp.data?.ok === false) throw new Error(resp.data?.error ?? 'delete refused');
+      setMintedDtuId(null);
+      ok('Verification DTU deleted.');
+    } catch (e) { err(pickMessage(e)); }
+    finally { setBusy(null); }
+  }
+
   async function actDm() {
     if (!ready) { err('Enter a claim.'); return; }
     if (!recipient.trim()) { err('Enter a recipient.'); return; }
@@ -387,6 +404,7 @@ export function ClaimVerificationPanel() {
               <button type="button" onClick={() => { void navigator.clipboard?.writeText(mintedDtuId).catch(() => {}); }} className="flex items-center gap-1 rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-300 hover:bg-zinc-700">
                 <Copy className="h-3 w-3" /> Copy
               </button>
+              <StickyDeleteConfirm onConfirm={() => { void actDeleteMinted(); }} armLabel="Delete" confirmLabel="Confirm delete?" armAriaLabel="Delete verification DTU" className="text-[10px] text-rose-300/80 hover:text-rose-300" />
             </p>
           )}
           {publishedDtuId && (

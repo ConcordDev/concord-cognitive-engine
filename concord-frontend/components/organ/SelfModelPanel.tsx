@@ -189,6 +189,19 @@ export function SelfModelPanel({ onGridTimelineCommand }: { onGridTimelineComman
         </span>
       </div>
 
+      {/* FIX-organ-001: the four numbers carried no stated relationship, so
+          a saturated board (every organ mature and worn) read as either a
+          fire alarm or a display default with no way to tell. The relation
+          is the one the panel itself computes, stated where it is read. */}
+      <p className="text-xs text-gray-400" data-testid="organ-health-formula">
+        How these relate: an organ&apos;s <span className="text-gray-200">health is its maturity minus its wear</span>.
+        Maturity grows as the organ handles work; wear (damage) grows with errors and
+        contradictions and is worked back down by the repair systems; plasticity — how
+        readily the organ still adapts — ebbs as maturity and wear rise. A board showing
+        every organ critical is the live state of a system whose wear has outrun repair,
+        not a placeholder: the counts below are read from the organs themselves.
+      </p>
+
       {criticalOrgans.length > 0 && (
         <div className="panel p-3 border border-red-400/30 bg-red-400/5">
           <div className="flex items-center gap-2 mb-2">

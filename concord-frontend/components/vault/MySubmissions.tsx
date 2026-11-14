@@ -47,7 +47,7 @@ const WITHDRAW_REFUSAL_COPY: Record<string, string> = {
   not_found: 'That submission could not be found.',
 };
 
-// FIX-vault-001: edit (before review) and remove (once withdrawn).
+// FIX-vault-001: edit (before review) and remove (once withdrawn or declined).
 const EDIT_REFUSAL_COPY: Record<string, string> = {
   wrong_state: 'A curator has already opened this work for review, so it can no longer be edited.',
   missing_title: 'The work still needs a title.',
@@ -58,7 +58,7 @@ const EDIT_REFUSAL_COPY: Record<string, string> = {
 
 const REMOVE_REFUSAL_COPY: Record<string, string> = {
   admitted_records_are_permanent: 'An admitted record is permanent and cannot be removed.',
-  wrong_state: 'Only a withdrawn work can be removed — withdraw it first.',
+  wrong_state: 'Only a withdrawn or declined work can be removed — withdraw it first.',
   not_submitter: 'Only the person who submitted a work can remove it.',
   not_found: 'That submission could not be found.',
 };
@@ -77,7 +77,7 @@ export interface MySubmissionsProps {
   onWithdraw: (id: string, reason: string) => Promise<string | null>;
   /** FIX-vault-001: edit a still-`submitted` work. Same resolve contract. */
   onEdit?: (id: string, fields: { title: string; description: string; body: string }) => Promise<string | null>;
-  /** FIX-vault-001: remove a withdrawn work. Same resolve contract. */
+  /** FIX-vault-001: remove a withdrawn or declined work. Same resolve contract. */
   onRemove?: (id: string) => Promise<string | null>;
 }
 
@@ -356,11 +356,11 @@ export function MySubmissions({ submissions, onWithdraw, onEdit, onRemove }: MyS
                 </div>
               ) : null}
 
-              {selected.status === 'withdrawn' && onRemove ? (
+              {(selected.status === 'withdrawn' || selected.status === 'declined') && onRemove ? (
                 <div className="mt-5">
                   {confirmingRemove ? (
                     <div className="flex items-center gap-3" data-testid="vault-remove-confirm">
-                      <span className={vault.caption}>Remove this withdrawn work from your list for good?</span>
+                      <span className={vault.caption}>Remove this {selected.status} work from your list for good?</span>
                       <button type="button" onClick={remove} disabled={busy} className={vault.buttonAccent}>
                         {busy ? 'Removing…' : 'Remove this work'}
                       </button>

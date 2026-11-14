@@ -122,6 +122,31 @@ const STATE_BADGE: Record<string, { text: string; cls: string }> = {
   no_devices: { text: 'No devices', cls: 'bg-zinc-800 text-zinc-400 border-zinc-700' },
 };
 
+// ── Offline settings queue (FIX-sync-002) ─────────────────────────────
+// A quota / auto-sync change attempted while offline used to die as a
+// bare 'Failed: Network Error': never saved, never queued, and the
+// dashboard later showed the old value with no word that the change had
+// been lost. Network-class failures now queue the change locally; the
+// queue is stated in a banner and replayed on reconnect (and on mount).
+type PendingSetting =
+  | { kind: 'quota'; deviceId: string; quotaGb: number }
+  | { kind: 'autoSync'; deviceId: string; autoSync: boolean };
+const PENDING_KEY = 'concord-sync-pending-settings';
+function loadPendingSettings(): PendingSetting[] {
+  try {
+    const raw = localStorage.getItem(PENDING_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(arr)) return [];
+    return arr.filter(
+      (p): p is PendingSetting =>
+        !!p && (p.kind === 'quota' || p.kind === 'autoSync') && typeof p.deviceId === 'string',
+    );
+  } catch { return []; }
+}
+function isNetworkFailure(err?: string | null): boolean {
+  return /network|timeout|econn|failed to fetch/i.test(err || '');
+}
+
 export function SyncDashboard() {
   const [devices, setDevices] = useState<Device[]>([]);
   const [conflicts, setConflicts] = useState<Conflict[]>([]);
@@ -136,6 +161,15 @@ export function SyncDashboard() {
   const [quotaInput, setQuotaInput] = useState('50');
   const [conflictForm, setConflictForm] = useState({ dtuId: '', title: '', localDev: '', remoteDev: '' });
   const [showConflictForm, setShowConflictForm] = useState(false);
+  const [pending, setPending] = useState<PendingSetting[]>(loadPendingSettings);
+
+  useEffect(() => {
+    try { localStorage.setItem(PENDING_KEY, JSON.stringify(pending)); } catch { /* private mode */ }
+  }, [pending]);
+
+  const queuePending = useCallback((op: PendingSetting) => {
+    setPending((q) => [...q.filter((p) => !(p.kind === op.kind && p.deviceId === op.deviceId)), op]);
+  }, []);
 
   const flash = (m: string) => {
     setToast(m);
@@ -162,6 +196,35 @@ export function SyncDashboard() {
       if (r.data?.ok) setScopeCatalog(r.data.result?.scopes || []);
     })();
   }, [refresh]);
+
+  // Replay queued offline changes: on mount (a queue can outlive the
+  // session that made it) and whenever the browser reports reconnect.
+  const replayPending = useCallback(async () => {
+    const queue = loadPendingSettings();
+    if (queue.length === 0) return;
+    const remaining: PendingSetting[] = [];
+    let applied = 0;
+    for (const op of queue) {
+      const r = op.kind === 'quota'
+        ? await lensRun(DOMAIN, 'set_quota', { deviceId: op.deviceId, quotaGb: op.quotaGb })
+        : await lensRun(DOMAIN, 'set_auto_sync', { deviceId: op.deviceId, autoSync: op.autoSync });
+      if (r.data?.ok) applied++;
+      else if (isNetworkFailure(r.data?.error)) remaining.push(op);
+      else flash(`A queued change could not be applied: ${r.data?.error || 'unknown'}`);
+    }
+    setPending(remaining);
+    if (applied > 0) {
+      flash(applied === 1 ? 'Queued change applied' : `${applied} queued changes applied`);
+      await refresh();
+    }
+  }, [refresh]);
+
+  useEffect(() => { void replayPending(); }, [replayPending]);
+  useEffect(() => {
+    const onOnline = () => { void replayPending(); };
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
+  }, [replayPending]);
 
   // Presence: heartbeat all known devices and re-derive status every 30s
   // (visibility-paused + jittered via useSmartPolling).
@@ -238,6 +301,10 @@ export function SyncDashboard() {
     const r = await lensRun(DOMAIN, 'set_auto_sync', { deviceId: id, autoSync: next });
     setBusy(null);
     if (r.data?.ok) await refresh();
+    else if (isNetworkFailure(r.data?.error)) {
+      queuePending({ kind: 'autoSync', deviceId: id, autoSync: next });
+      flash('You appear to be offline — the auto-sync change is queued and will apply on reconnect.');
+    }
     else flash(`Failed: ${r.data?.error || 'unknown'}`);
   };
 
@@ -259,6 +326,11 @@ export function SyncDashboard() {
     const r = await lensRun(DOMAIN, 'set_quota', { deviceId: id, quotaGb: gb });
     setBusy(null);
     if (r.data?.ok) { flash(`Quota set to ${gb} GB`); setQuotaEditor(null); await refresh(); }
+    else if (isNetworkFailure(r.data?.error)) {
+      queuePending({ kind: 'quota', deviceId: id, quotaGb: gb });
+      setQuotaEditor(null);
+      flash('You appear to be offline — the quota change is queued and will apply on reconnect.');
+    }
     else flash(`Failed: ${r.data?.error || 'unknown'}`);
   };
 
@@ -313,6 +385,12 @@ export function SyncDashboard() {
       {toast && (
         <div className="fixed bottom-6 right-6 z-50 rounded-lg border border-emerald-700/50 bg-emerald-950/90 px-4 py-2 text-sm text-emerald-100 shadow-lg">
           {toast}
+        </div>
+      )}
+
+      {pending.length > 0 && (
+        <div role="status" className="rounded-lg border border-amber-700/50 bg-amber-950/40 px-4 py-2 text-sm text-amber-100">
+          {pending.length} change{pending.length !== 1 ? 's' : ''} queued — not saved yet. {pending.length !== 1 ? 'They' : 'It'} will apply when you reconnect.
         </div>
       )}
 

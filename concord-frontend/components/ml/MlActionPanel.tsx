@@ -14,6 +14,7 @@ import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -160,6 +161,40 @@ export function MlActionPanel() {
       if (id) { setPublishedDtuId(id); pipe.publish('ml.publishedDtuId', id, { label: `Public model card ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
+  // FIX-ml-011 (delete/unpublish leg): the minted DTUs used to be
+  // orphaned — no delete, and no unpublish past the 30s recall. Both
+  // records now ride the canonical verb (dtus.delete is owner-gated
+  // server-side; unpublish is the existing publish route in reverse).
+  async function actDeleteMinted() {
+    if (!mintedDtuId) return;
+    setBusy('mint'); setFeedback(null);
+    try {
+      const resp = await apiHelpers.dtus.delete(mintedDtuId) as { data?: { ok?: boolean; error?: string } };
+      if (resp.data?.ok === false) throw new Error(resp.data?.error ?? 'delete refused');
+      setMintedDtuId(null);
+      ok('Minted DTU deleted.');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+  }
+  async function actDeletePublished() {
+    if (!publishedDtuId) return;
+    setBusy('publish'); setFeedback(null);
+    try {
+      const resp = await apiHelpers.dtus.delete(publishedDtuId) as { data?: { ok?: boolean; error?: string } };
+      if (resp.data?.ok === false) throw new Error(resp.data?.error ?? 'delete refused');
+      setPublishedDtuId(null);
+      ok('Model card deleted.');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+  }
+  async function actUnpublish() {
+    if (!publishedDtuId) return;
+    setBusy('publish'); setFeedback(null);
+    try {
+      const r = await api.delete(`/api/dtus/${encodeURIComponent(publishedDtuId)}/publish`);
+      if ((r.data as { ok?: boolean; error?: string })?.ok === false) throw new Error((r.data as { error?: string })?.error ?? 'unpublish refused');
+      setPublishedDtuId(null);
+      ok('Model card unpublished — it is private again.');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+  }
   async function actAgent() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
@@ -245,6 +280,26 @@ export function MlActionPanel() {
           );
         })}
       </div>
+
+      {(mintedDtuId || publishedDtuId) && (
+        <div className="space-y-1.5" data-testid="ml-dtu-records">
+          {mintedDtuId && (
+            <div className="flex items-center justify-between gap-2 rounded-md border border-zinc-800 bg-zinc-900/40 px-2.5 py-1.5">
+              <span className="min-w-0 truncate font-mono text-[10px] text-zinc-400">Minted DTU · {mintedDtuId}</span>
+              <StickyDeleteConfirm onConfirm={() => { void actDeleteMinted(); }} armLabel="Delete" confirmLabel="Confirm delete?" armAriaLabel="Delete minted DTU" className="shrink-0 text-[11px] text-rose-300/80 hover:text-rose-300" />
+            </div>
+          )}
+          {publishedDtuId && (
+            <div className="flex items-center justify-between gap-2 rounded-md border border-zinc-800 bg-zinc-900/40 px-2.5 py-1.5">
+              <span className="min-w-0 truncate font-mono text-[10px] text-zinc-400">Model card · {publishedDtuId}</span>
+              <span className="flex shrink-0 items-center gap-2">
+                <button type="button" onClick={() => { void actUnpublish(); }} className="text-[11px] text-zinc-300 hover:text-white">Unpublish</button>
+                <StickyDeleteConfirm onConfirm={() => { void actDeletePublished(); }} armLabel="Delete" confirmLabel="Confirm delete?" armAriaLabel="Delete published model card" className="text-[11px] text-rose-300/80 hover:text-rose-300" />
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
         {evalResult && (

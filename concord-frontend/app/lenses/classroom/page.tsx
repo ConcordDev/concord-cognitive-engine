@@ -279,9 +279,15 @@ export default function ClassroomPage() {
           })}
         </nav>
 
-        {status && (
-          <div className="mb-4 rounded-xl border border-teal-400/30 bg-teal-400/10 px-3 py-2 text-[13px] text-teal-100">{status}</div>
-        )}
+        {/* FIX-classroom-010: the status line's slot is always reserved —
+            when '✓ Left the cohort' appeared and vanished after 4s, the
+            cohort cards below shifted twice and clicks landed on the
+            wrong row. The banner now fills a fixed-height live region. */}
+        <div className="mb-4 min-h-[38px]" aria-live="polite">
+          {status && (
+            <div className="rounded-xl border border-teal-400/30 bg-teal-400/10 px-3 py-2 text-[13px] text-teal-100">{status}</div>
+          )}
+        </div>
 
         {loadError && (
           <div role="alert" className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-rose-700/50 bg-rose-950/50 px-3 py-2 text-[13px] text-rose-200">

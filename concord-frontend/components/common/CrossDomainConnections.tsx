@@ -36,6 +36,13 @@ interface ConnectionItem {
    * labels both instead of presenting one unmarked list.
    */
   origin: 'corpus' | 'registered';
+  /**
+   * FIX-inference-008: whose record this is, as the semantic endpoint
+   * classifies it — the viewer's own, another member's, or a platform /
+   * ownerless record. Corpus cards show titles and snippets, so the
+   * ownership rides as a label beside them.
+   */
+  ownership?: 'mine' | 'member' | 'platform';
 }
 
 /** The shape returned by graph.force after normalisation. */
@@ -155,6 +162,7 @@ function CrossDomainConnections({ domain, domainLabel }: CrossDomainConnectionsP
                 tags?: string[];
                 score?: number;
                 summary?: string;
+                ownership?: 'mine' | 'member' | 'platform';
               }) => ({
                 id: r.id,
                 title: r.title || 'Untitled',
@@ -162,6 +170,7 @@ function CrossDomainConnections({ domain, domainLabel }: CrossDomainConnectionsP
                 similarity: r.score ?? 0,
                 excerpt: r.summary,
                 origin: 'corpus' as const,
+                ownership: r.ownership,
               })
             );
           // FIX-privacy-011 / FIX-suffering-011: every search hit used to be
@@ -438,6 +447,17 @@ function CrossDomainConnections({ domain, domainLabel }: CrossDomainConnectionsP
                                 {item.origin === 'registered' && (
                                   <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-neon-purple/15 text-purple-200">
                                     Registered
+                                  </span>
+                                )}
+                                {item.origin === 'corpus' && item.ownership && (
+                                  <span
+                                    className={
+                                      item.ownership === 'mine'
+                                        ? 'inline-flex items-center px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-emerald-500/15 text-emerald-200'
+                                        : 'inline-flex items-center px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-zinc-500/15 text-zinc-300'
+                                    }
+                                  >
+                                    {item.ownership === 'mine' ? 'Yours' : item.ownership === 'member' ? 'Another member' : 'Platform'}
                                   </span>
                                 )}
                                 <span className="text-[10px] font-mono text-gray-400 tabular-nums">
