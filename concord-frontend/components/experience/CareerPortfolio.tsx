@@ -375,7 +375,7 @@ export function CareerPortfolio() {
 
           {/* Skills */}
           <section className="space-y-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-400 flex items-center gap-1.5"><Award className="w-3.5 h-3.5" /> Skills</h3>
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400 flex items-center gap-1.5"><Award className="w-3.5 h-3.5" /> Skills</h2>
             <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-3 grid grid-cols-1 sm:grid-cols-5 gap-2">
               <Field label="Skill"><input className={inputCls} value={skillName} onChange={e => setSkillName(e.target.value)} placeholder="Mixing" /></Field>
               <Field label="Category">
@@ -427,7 +427,7 @@ export function CareerPortfolio() {
           {/* Experience + Education side by side */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <section className="space-y-2">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-400 flex items-center gap-1.5"><Briefcase className="w-3.5 h-3.5" /> Experience</h3>
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400 flex items-center gap-1.5"><Briefcase className="w-3.5 h-3.5" /> Experience</h2>
               <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-3 space-y-2">
                 <div className="grid grid-cols-2 gap-2">
                   <Field label="Role"><input className={inputCls} value={role} onChange={e => setRole(e.target.value)} /></Field>
@@ -453,7 +453,7 @@ export function CareerPortfolio() {
             </section>
 
             <section className="space-y-2">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-400 flex items-center gap-1.5"><GraduationCap className="w-3.5 h-3.5" /> Education</h3>
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400 flex items-center gap-1.5"><GraduationCap className="w-3.5 h-3.5" /> Education</h2>
               <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-3 space-y-2">
                 <div className="grid grid-cols-2 gap-2">
                   <Field label="Institution"><input className={inputCls} value={institution} onChange={e => setInstitution(e.target.value)} /></Field>
