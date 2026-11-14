@@ -1261,6 +1261,20 @@ describe('ChatWorkspacePanel — message actions', () => {
     await waitFor(() => expect(feedbackFn).toHaveBeenCalledWith(expect.objectContaining({ rating: 'down' })));
   });
 
+  it('FIX-chat-009: a thumbs click is acknowledged, not just recoloured', async () => {
+    renderPanel();
+    await screen.findByText('It is four.');
+    const up = screen.getByLabelText('Thumbs up');
+    expect(up.getAttribute('aria-pressed')).toBe('false');
+    expect(screen.queryByText('Thanks — feedback recorded')).not.toBeInTheDocument();
+    fireEvent.click(up);
+    await waitFor(() =>
+      expect(feedbackFn).toHaveBeenCalledWith({ sessionId: 'conv-a', rating: 'up', messageIndex: 1 }),
+    );
+    expect(await screen.findByText('Thanks — feedback recorded')).toBeInTheDocument();
+    expect(screen.getByLabelText('Thumbs up').getAttribute('aria-pressed')).toBe('true');
+  });
+
   it('a failed feedback call raises an error toast', async () => {
     const addToast = vi.spyOn(useUIStore.getState(), 'addToast');
     feedbackFn.mockRejectedValue(new Error('500'));

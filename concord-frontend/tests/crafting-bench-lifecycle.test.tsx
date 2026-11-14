@@ -95,10 +95,15 @@ describe('bench D2 lifecycle', () => {
     const input = getByLabelText('Piece name') as HTMLInputElement;
     expect(input.value).toBe('Bench hook');
     fireEvent.change(input, { target: { value: 'Bench hook II' } });
-    await act(async () => { fireEvent.click(getByRole('button', { name: 'Save the name' })); });
+    await act(async () => { fireEvent.click(getByRole('button', { name: 'Save piece' })); });
     await waitFor(() => expect(getByText('Bench hook II')).toBeInTheDocument());
     expect(queryByText('Bench hook', { exact: true })).toBeNull();
-    expect(apiPatch).toHaveBeenCalledWith('/api/crafting/recipes/r1', { title: 'Bench hook II' });
+    // FIX-crafting-004: the save also carries the piece's project record
+    // (empty here — the seeded piece has none yet).
+    expect(apiPatch).toHaveBeenCalledWith('/api/crafting/recipes/r1', {
+      title: 'Bench hook II',
+      project: { status: 'planning', photoUrl: '', notes: '', materials: [], steps: [] },
+    });
     expect(apiPut).toHaveBeenCalledWith('/api/lens/crafting/a1', {
       title: 'Bench hook II',
       data: { name: 'Bench hook II', spec: { name: 'Bench hook II', output_type: 'piece', output_subtype: 'piece' } },
