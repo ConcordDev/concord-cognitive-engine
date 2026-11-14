@@ -168,7 +168,11 @@ export default function registerConsultingActions(registerLensAction) {
     if (!eng) return { ok: false, error: "engagement not found" };
     // Roll up unbilled time entries (no invoiceId yet).
     const unbilled = eng.timeEntries.filter((t) => !t.invoiceId);
-    if (unbilled.length === 0) return { ok: false, error: "no unbilled time entries" };
+    // FIX-consulting-013: the refusal reached the user as the raw
+    // lowercase code. Keep the code (callers branch on it) and carry
+    // the helpful sentence in `message`, the envelope's display field
+    // (same shape as engagement-delete's refusal above).
+    if (unbilled.length === 0) return { ok: false, error: "no unbilled time entries", message: "Log time on this engagement first — an invoice is generated from unbilled time entries." };
     const lineItems = unbilled.map((t) => ({
       timeEntryId: t.id, hours: t.hours, date: t.date,
       note: t.note || "Consulting services", rate: eng.rate, amount: csRound2(t.hours * eng.rate),

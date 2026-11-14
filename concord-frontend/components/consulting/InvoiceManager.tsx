@@ -59,7 +59,9 @@ export function InvoiceManager({ engagements }: { engagements: EngagementOption[
       dueInDays: dueInDays ? Number(dueInDays) : 30,
     });
     setBusy(false);
-    if (!r.data?.ok) { setError(r.data?.error || 'No unbilled time to invoice'); return; }
+    // FIX-consulting-013: prefer the server's human message over the
+    // raw machine code ('no unbilled time entries' was the toast).
+    if (!r.data?.ok) { setError(r.data?.message || r.data?.error || 'No unbilled time to invoice'); return; }
     setEngId(''); setTaxRate(''); setDueInDays('');
     await refetch();
   }
