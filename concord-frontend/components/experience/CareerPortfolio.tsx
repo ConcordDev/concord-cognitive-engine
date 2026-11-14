@@ -70,7 +70,7 @@ interface PortfolioData {
 const EMPTY_PORTFOLIO: PortfolioData = { skills: [], experience: [], education: [], endorsements: [], snapshots: [] };
 
 export function CareerPortfolio() {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const { items, isLoading, create, update, remove } = useLensData<PortfolioData>('experience', 'portfolio', { noSeed: true, limit: 50 });
   // Directory: a second, higher-limit fetch of the SAME domain/type. The
   // backend's non-social-domain visibility rule (server.js `lens.list`,
@@ -119,7 +119,11 @@ export function CareerPortfolio() {
 
   const doCreate = async () => {
     setCreating(true);
-    await create({ title: 'My Portfolio', data: EMPTY_PORTFOLIO });
+    // FIX-experience-005: title the portfolio for its OWNER. The old
+    // constant 'My Portfolio' is a first-person label — correct on the
+    // owner's own tab, wrong on every peer's Directory, where the
+    // entry then appeared to be the viewer's own unnamed portfolio.
+    await create({ title: user?.username ? `${user.username}'s Portfolio` : 'My Portfolio', data: EMPTY_PORTFOLIO });
     setCreating(false);
   };
 
@@ -252,6 +256,12 @@ export function CareerPortfolio() {
   // Other users' published portfolios only — the backend already excludes
   // private ones (see the header comment above), this just drops our own
   // entry from the list we endorse *others* from.
+  // FIX-experience-005: while auth is still resolving, user.id is
+  // unknown and this filter counts the viewer's OWN portfolio as a
+  // peer (ownerId !== '') — the Directory tab flashed (2) during load
+  // and settled to (1) once /api/auth/me landed. The count (and the
+  // directory's loading state) therefore wait for auth + fetch to
+  // settle; the filter itself is unchanged.
   const otherPortfolios = useMemo(
     () => directoryItems.filter(p => p.ownerId !== (user?.id || '') && p.id !== portfolio?.id),
     [directoryItems, user, portfolio]
@@ -293,7 +303,7 @@ export function CareerPortfolio() {
         </button>
         <button role="tab" aria-selected={view === 'directory'} onClick={() => setView('directory')}
           className={`px-3 py-2 text-xs font-medium flex items-center gap-1.5 border-b-2 -mb-px transition-colors ${view === 'directory' ? 'text-white border-neon-cyan' : 'text-gray-400 border-transparent hover:text-gray-200'}`}>
-          <Users className="w-3.5 h-3.5" /> Directory{otherPortfolios.length > 0 ? ` (${otherPortfolios.length})` : ''}
+          <Users className="w-3.5 h-3.5" /> Directory{!authLoading && !directoryLoading && otherPortfolios.length > 0 ? ` (${otherPortfolios.length})` : ''}
         </button>
       </div>
 
@@ -474,7 +484,7 @@ export function CareerPortfolio() {
       {view === 'directory' && (
         <PeerDirectory
           items={otherPortfolios}
-          isLoading={directoryLoading}
+          isLoading={directoryLoading || authLoading}
           busy={busy}
           peerStatus={peerStatus}
           onEndorse={endorsePeerSkill}
@@ -510,7 +520,12 @@ function PeerDirectory({ items, isLoading, busy, peerStatus, onEndorse }: {
         const endorsements = p.data?.endorsements || [];
         return (
           <div key={p.id} className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-3 space-y-2">
-            <p className="text-xs font-semibold text-white flex items-center gap-1.5"><Briefcase className="w-3.5 h-3.5 text-gray-400" /> {p.title}</p>
+            {/* FIX-experience-005: a legacy portfolio still titled with
+                the generic creation default names nobody — and reads as
+                the VIEWER's own portfolio. Say whose it is honestly:
+                a peer's. (New portfolios are titled for their owner at
+                creation, so their real title renders above.) */}
+            <p className="text-xs font-semibold text-white flex items-center gap-1.5"><Briefcase className="w-3.5 h-3.5 text-gray-400" /> {p.title && p.title !== 'My Portfolio' ? p.title : "A peer's portfolio"}</p>
             <div className="space-y-1">
               {skills.map(s => {
                 const key = `${p.id}:${s.id}`;
