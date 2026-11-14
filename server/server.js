@@ -11472,7 +11472,7 @@ async function tryInitWebSockets(server) {
     socket.emit("hello", { clientId, version: VERSION, ts: nowISO(), authenticated: socket.data.authenticated });
 
     // Room management
-    socket.on("room:join", ({ room }) => {
+    socket.on("room:join", async ({ room }) => {
       if (!room || typeof room !== "string") return;
 
       // Authorization check: require authenticated user (in production)
@@ -11482,11 +11482,48 @@ async function tryInitWebSockets(server) {
         return;
       }
 
+      // SECURITY: per-user rooms carry that user's private realtime
+      // traffic (direct messages, sale and invite notifications, …).
+      // A socket may only ever join its OWN user room — the server
+      // already auto-joins it on connection; an explicit join of
+      // another user's room is refused.
+      const userMatch = room.match(/^user:(.+)$/);
+      if (userMatch) {
+        if (!socket.data.userId || socket.data.userId !== userMatch[1]) {
+          console.warn('[ws] Cross-user room join blocked:', { userId: socket.data.userId, room });
+          socket.emit('error', { code: 'UNAUTHORIZED', message: 'Not authorized to join this room' });
+          return;
+        }
+      }
+
+      // SECURITY: party rooms are for the party's current members.
+      // Membership is the caller's own current party (getMyParty, the
+      // same lookup the connection handler auto-join uses); the leg
+      // fails closed on any lookup error.
+      const partyMatch = room.match(/^party:(.+)$/);
+      if (partyMatch) {
+        let isMember = false;
+        try {
+          const { getMyParty } = await import("./lib/parties.js");
+          const mine = socket.data.userId ? getMyParty(db, socket.data.userId) : null;
+          isMember = !!mine && mine.party_id === partyMatch[1];
+        } catch { isMember = false; }
+        if (!isMember) {
+          console.warn('[ws] Non-member party room join blocked:', { userId: socket.data.userId, room });
+          socket.emit('error', { code: 'UNAUTHORIZED', message: 'Not authorized to join this party' });
+          return;
+        }
+      }
+
       // SECURITY: session-scoped rooms must verify the session BELONGS
       // TO the connecting user. Previously we only checked that the
       // session existed, which let user A join `session:<bob-private>`
       // as long as the session was valid — exposing Bob's realtime
-      // events to A. Now we also verify ownership.
+      // events to A. Now we also verify ownership. Owner-less sessions
+      // are no longer joinable by elimination: an authenticated socket
+      // must be the session's owner or one of its participants
+      // (participantIds — the Set modern records carry — read alongside
+      // the legacy participants array).
       const sessionMatch = room.match(/^session:(.+)$/);
       if (sessionMatch) {
         const sessionId = sessionMatch[1];
@@ -11497,11 +11534,13 @@ async function tryInitWebSockets(server) {
         }
         const uid = socket.data.userId;
         const sessOwner = sess.userId || sess.ownerId || sess.createdBy;
-        const participants = Array.isArray(sess.participants) ? sess.participants : [];
+        const participantSet = new Set();
+        if (Array.isArray(sess.participants)) for (const p of sess.participants) participantSet.add(p);
+        if (Array.isArray(sess.participantIds)) for (const p of sess.participantIds) participantSet.add(p);
+        else if (sess.participantIds && typeof sess.participantIds.forEach === "function") sess.participantIds.forEach((p) => participantSet.add(p));
         const allowed =
-          !sessOwner || // legacy sessions without owner — allow (back-compat)
-          sessOwner === uid ||
-          participants.includes(uid);
+          !!uid &&
+          ((!!sessOwner && sessOwner === uid) || participantSet.has(uid));
         if (!allowed) {
           console.warn('[ws] Cross-user session room join blocked:', { userId: uid, room, sessOwner });
           socket.emit('error', { code: 'UNAUTHORIZED', message: 'Not authorized to join this session' });
@@ -11550,6 +11589,19 @@ async function tryInitWebSockets(server) {
       if (whiteboardMatch && !whiteboardRoomAllowed(STATE, socket.data.userId, whiteboardMatch[1])) {
         console.warn('[ws] Non-member whiteboard room join blocked:', { userId: socket.data.userId, room });
         socket.emit('error', { code: 'UNAUTHORIZED', message: 'Join this board before listening' });
+        return;
+      }
+
+      // Default-deny: only known platform room prefixes may be joined
+      // at all. The prefixes with their own authorization checks above
+      // (user:, party:, session:, org:, astronomy:, whiteboard:) have
+      // already been decided; the remaining known prefixes keep their
+      // standing authenticated-only rule. Unknown prefixes — and
+      // prefix-less room names — are refused.
+      const KNOWN_ROOM_PREFIXES = ["user:", "party:", "session:", "org:", "astronomy:", "whiteboard:", "collab:", "code:", "law:", "workspace:", "world:", "house:"];
+      if (!KNOWN_ROOM_PREFIXES.some((p) => room.startsWith(p))) {
+        console.warn('[ws] Unknown room prefix join blocked:', { userId: socket.data.userId, room });
+        socket.emit('error', { code: 'UNAUTHORIZED', message: 'Not authorized to join this room' });
         return;
       }
 
