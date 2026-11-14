@@ -11649,14 +11649,22 @@ async function tryInitWebSockets(server) {
 
       // SECURITY: subscribe must verify the user owns / is a
       // participant of the session before joining its room. Same gap
-      // that `room:join` had.
+      // that `room:join` had — and the same rule SB-04 landed there:
+      // owner or participant only (participantIds, the Set modern
+      // records carry, read alongside the legacy participants array);
+      // owner-less sessions are not joinable through this door either.
       if (sessionId) {
         const sess = STATE.sessions?.get(sessionId);
         if (sess) {
           const uid = socket.data.userId;
           const sessOwner = sess.userId || sess.ownerId || sess.createdBy;
-          const participants = Array.isArray(sess.participants) ? sess.participants : [];
-          const allowed = !sessOwner || sessOwner === uid || participants.includes(uid);
+          const participantSet = new Set();
+          if (Array.isArray(sess.participants)) for (const p of sess.participants) participantSet.add(p);
+          if (Array.isArray(sess.participantIds)) for (const p of sess.participantIds) participantSet.add(p);
+          else if (sess.participantIds && typeof sess.participantIds.forEach === "function") sess.participantIds.forEach((p) => participantSet.add(p));
+          const allowed =
+            !!uid &&
+            ((!!sessOwner && sessOwner === uid) || participantSet.has(uid));
           if (allowed) {
             c.sessionId = sessionId;
             socket.join(`session:${sessionId}`);
