@@ -18315,10 +18315,9 @@ register("hypothesis", "status", (ctx, _input = {}) => {
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
-register("hypothesis", "propose", (ctx, input = {}) => {
-  enforceEthosInvariant("hypothesis_propose");
-  return proposeHypothesis(input);
-}, { public: false });
+register("hypothesis", "propose", (_ctx, input = {}) => _hypothesisEngineCall("proposeHypothesis", [
+  input.statement, input.domain, input.priority, { force: input.force === true },
+]), { public: false });
 
 register("hypothesis", "design_experiment", (ctx, input = {}) => {
   enforceEthosInvariant("hypothesis_experiment");
@@ -18341,31 +18340,32 @@ register("hypothesis", "evaluate", (ctx, input = {}) => {
   return evaluateHypothesis(hypothesisId);
 }, { public: false });
 
-register("hypothesis", "get", (ctx, input = {}) => {
-  try {
-  enforceEthosInvariant("hypothesis_get");
-  ensureHypothesisEngine();
+// FIX-hypothesis-004: propose/get/list used to read and write the
+// monolith's own STATE.hypothesisEngine store (above) while the Lab and
+// the Ghost Fleet registrations use server/emergent/hypothesis-engine.js
+// — two stores, two envelopes, and which one answered depended on the
+// Ghost Fleet's 20s boot timer: a proposal written to one store read
+// back "Hypothesis not found" from the other, and the Lab list (which
+// expects emergent DTU shapes) showed 0 for monolith summaries. All
+// three now delegate to the emergent engine through the same
+// _hypothesisEngineCall path metrics/add_test/delete already use, so
+// the Lab's actions reach the one engine at any boot phase. The Ghost
+// Fleet re-registration of the same three stays as a same-target shadow.
+register("hypothesis", "get", async (_ctx, input = {}) => {
+  const { loadHypothesisEngine, HYPOTHESIS_ENGINE_UNAVAILABLE } = await import("./lib/hypothesis-rest.js");
+  const hypo = await loadHypothesisEngine();
+  if (!hypo?.getHypothesis) return { ...HYPOTHESIS_ENGINE_UNAVAILABLE };
   const hypothesisId = String(input.hypothesisId || input.id || "");
   if (!hypothesisId) return { ok: false, error: "hypothesisId required" };
-  const h = ctx.state.hypothesisEngine.hypotheses.get(hypothesisId);
-  if (!h) return { ok: false, error: "Hypothesis not found" };
-  return { ok: true, hypothesis: h };
-  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  const h = hypo.getHypothesis(hypothesisId);
+  return h ? { ok: true, hypothesis: h } : { ok: false, error: "not_found" };
 }, { public: true });
 
-register("hypothesis", "list", (ctx, input = {}) => {
-  try {
-  enforceEthosInvariant("hypothesis_list");
-  ensureHypothesisEngine();
-  const state = input.state;
-  let hypotheses = Array.from(ctx.state.hypothesisEngine.hypotheses.values());
-  if (state) hypotheses = hypotheses.filter(h => h.state === state);
-  hypotheses = hypotheses.slice(-50).map(h => ({
-    id: h.id, statement: h.statement.slice(0, 100), state: h.state,
-    posteriorConfidence: h.posteriorConfidence, evidenceCount: h.evidenceFor.length + h.evidenceAgainst.length
-  }));
-  return { ok: true, hypotheses };
-  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+register("hypothesis", "list", async (_ctx, input = {}) => {
+  const { loadHypothesisEngine, HYPOTHESIS_ENGINE_UNAVAILABLE } = await import("./lib/hypothesis-rest.js");
+  const hypo = await loadHypothesisEngine();
+  if (!hypo?.listHypotheses) return { ...HYPOTHESIS_ENGINE_UNAVAILABLE };
+  return ghostFleetOk(hypo.listHypotheses(input.status));
 }, { public: true });
 
 // Lifecycle-engine names the REST routes and HypothesisLab call. Ghost
@@ -18394,6 +18394,16 @@ register("hypothesis", "delete", (_ctx, input = {}) => _hypothesisEngineCall("de
 register("hypothesis", "add_evidence", (_ctx, input = {}) => _hypothesisEngineCall("addEvidence", [
   input.hypothesisId, input.side, input.dtuId, input.weight, input.summary,
 ]), { public: false });
+// FIX-hypothesis-004 (cont.): the remaining Lab lifecycle actions existed
+// ONLY as Ghost Fleet registrations, so before the fleet's boot timer
+// landed they were unregistered entirely. Same delegation, same engine.
+register("hypothesis", "update_test", (_ctx, input = {}) => _hypothesisEngineCall("updateTestResult", [input.hypothesisId, input.testId, input.result]), { public: false });
+register("hypothesis", "add_prediction", (_ctx, input = {}) => _hypothesisEngineCall("addPrediction", [input.hypothesisId, input.statement]), { public: false });
+register("hypothesis", "verify_prediction", (_ctx, input = {}) => _hypothesisEngineCall("verifyPrediction", [input.hypothesisId, input.predIndex, input.verified]), { public: false });
+register("hypothesis", "confirm", (_ctx, input = {}) => _hypothesisEngineCall("confirmHypothesis", [input.id]), { public: false });
+register("hypothesis", "reject", (_ctx, input = {}) => _hypothesisEngineCall("rejectHypothesis", [input.id, input.reason]), { public: false });
+register("hypothesis", "refine", (_ctx, input = {}) => _hypothesisEngineCall("refineHypothesis", [input.id, input.newStatement]), { public: false });
+register("hypothesis", "archive", (_ctx, input = {}) => _hypothesisEngineCall("archiveHypothesis", [input.id]), { public: false });
 
 // ===== END HYPOTHESIS ENGINE MACROS =====
 
