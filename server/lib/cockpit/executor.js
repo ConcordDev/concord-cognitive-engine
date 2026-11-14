@@ -52,7 +52,8 @@ export async function runTool(a) {
   const t0 = now();
   const wall = Math.min(spec.timeoutMs, a.run?.budget?.stepWallMs ?? spec.timeoutMs);
   const eff = effectiveSpec(a.call, { lensActions: a.deps.lensActions }) || spec;
-  const writes = eff.risk !== "read";
+  // Only write/high calls claim effects and persist args. Compute is not a write (same split as the confirm gate below).
+  const writes = eff.risk === "write" || eff.risk === "high";
   let r;
   let key = null;
   let logId = null;

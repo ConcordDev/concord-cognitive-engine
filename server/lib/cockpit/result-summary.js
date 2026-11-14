@@ -22,10 +22,11 @@ function maybeParse(v) {
  * @returns {{ values: Record<string, string|number|boolean>, text: string }}
  */
 export function summarizeResult(result, meta = {}) {
-  const values = {};
-  if (!result || typeof result !== "object") return { values, text: "" };
+  const preferred = {};
+  const fallback = {};
+  if (!result || typeof result !== "object") return { values: {}, text: "" };
   let level = [result];
-  for (let depth = 0; depth <= 3 && level.length && Object.keys(values).length < 12; depth++) {
+  for (let depth = 0; depth <= 3 && level.length && Object.keys(preferred).length < 12; depth++) {
     const next = [];
     for (const node of level) {
       const entries = Array.isArray(node) ? node.slice(0, 5).map((v, i) => [String(i), v]) : Object.entries(node);
@@ -33,16 +34,17 @@ export function summarizeResult(result, meta = {}) {
         if (SECRET_RE.test(k)) continue;
         const v = maybeParse(raw);
         if (v && typeof v === "object") { next.push(v); continue; }
-        if (!KEY_RE.test(k)) continue;
         if (v === undefined || v === null) continue;
         if (!["string", "number", "boolean"].includes(typeof v)) continue;
-        if (Object.prototype.hasOwnProperty.call(values, k)) continue;
-        if (Object.keys(values).length >= 12) break;
-        values[k] = typeof v === "string" ? defang(v.slice(0, 120)) : v;
+        const dest = KEY_RE.test(k) ? preferred : fallback;
+        if (Object.prototype.hasOwnProperty.call(dest, k)) continue;
+        if (Object.keys(dest).length >= 12) continue;
+        dest[k] = typeof v === "string" ? defang(v.slice(0, 120)) : v;
       }
     }
     level = next;
   }
+  const values = Object.keys(preferred).length ? preferred : fallback;
   const text = Object.entries(values).map(([k, v]) => `${k}=${v}`).join(", ").slice(0, 600);
   return { values, text };
 }

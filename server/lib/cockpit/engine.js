@@ -183,10 +183,14 @@ export async function tickRun(a) {
       if (action.kind === "ask_user" && !step.required && errorClass !== "scope_denied") action = { kind: "skip" };
       const base = { errorClass, errorText: errorText ? String(errorText).slice(0, 400) : null, repairs };
       switch (action.kind) {
-        case "repair": case "reask": case "retry": case "slot_change":
-          updateStep(db, step.id, { status: "ready", ...base });
-          if (action.kind === "retry" && action.delayMs) await sleep(action.delayMs);
+        case "repair": case "reask": case "slot_change":
+          // Fresh model call next tick: leftover failed args would re-validate and skip the model.
+          updateStep(db, step.id, { status: "ready", args: null, ...base });
           if (action.kind === "slot_change") updateRun(db, runId, { modelProfile: nextProfile(run.modelProfile) });
+          return { ok: true, status: "running", advanced: true };
+        case "retry":
+          updateStep(db, step.id, { status: "ready", ...base });
+          if (action.delayMs) await sleep(action.delayMs);
           return { ok: true, status: "running", advanced: true };
         case "fallback_tool":
           if (failedTool) repairs.push({ kind: "tried", tool: failedTool });

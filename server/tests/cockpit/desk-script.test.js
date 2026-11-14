@@ -64,11 +64,12 @@ test("a remote host is refused without --allow-remote", () => {
   assert.match(r.stderr, /refusing/);
 });
 
-test("the script never reads the secrets folder or prints the cookie", () => {
+test("the script never reads the secrets folder or prints the cookie value", () => {
   const src = fs.readFileSync(SCRIPT, "utf8");
   assert.ok(!src.includes(".zuko/secrets"));
-  assert.ok(!/console\.(log|error|info)\([^)]*COCKPIT_DESK_COOKIE/.test(src));
-  assert.ok(!/log\([^)]*cookie/i.test(src));
+  // The env-var name may appear in "is not set" errors. Flag only an actual cookie value or a secrets-path read.
+  assert.ok(!/console\.(log|error|info|debug|warn)\([^)]*\b(process\.env\.COCKPIT_DESK_COOKIE|o\.cookie|headers\.cookie)\b/.test(src));
+  assert.ok(!/(?:^|[^.\w])log\([^)]*\b(process\.env\.COCKPIT_DESK_COOKIE|o\.cookie|headers\.cookie)\b/.test(src));
 });
 
 test("the slow-tool seam does nothing in production, and fires once per run otherwise", () => {

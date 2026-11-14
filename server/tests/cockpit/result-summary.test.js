@@ -25,3 +25,16 @@ test("a JSON-string result is walked", () => {
   const r = summarizeResult({ ok: true, result: JSON.stringify({ query: "q", resultCount: 3 }) }, { tool: "web_search" });
   assert.equal(r.values.resultCount, 3);
 });
+
+test("plain objects without preferred keys still produce text", () => {
+  const r = summarizeResult({ worstStep: "checkout", dropOff: 42, token: "abc" }, { tool: "funnel" });
+  assert.equal(r.values.worstStep, "checkout");
+  assert.equal(r.values.dropOff, 42);
+  assert.equal("token" in r.values, false);
+  assert.match(r.text, /worstStep=checkout/);
+  assert.match(r.text, /dropOff=42/);
+  const p = summarizeResult({ title: "Beam", worstStep: "checkout" }, { tool: "t" });
+  assert.equal(p.values.title, "Beam");
+  assert.equal("worstStep" in p.values, false);
+});
+
