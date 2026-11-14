@@ -42,13 +42,13 @@ export function CountryAtlas() {
   return (
     <div className="space-y-4">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-cyan-500/15 pb-3">
-        <div className="flex items-center gap-2"><Globe className="h-5 w-5 text-sky-400" /><h2 className="text-sm font-semibold text-white">Global atlas — countries by region</h2><span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">REST Countries · via Concord server</span></div>
+        <div className="flex items-center gap-2"><Globe className="h-5 w-5 text-sky-400" /><h2 className="text-sm font-semibold text-white">Global atlas — countries by region</h2><span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">Countries dataset · World Bank population · via Concord server</span></div>
         <div className="flex items-center gap-2">
           <select aria-label="Region" value={region} onChange={(e) => setRegion(e.target.value)} className="min-h-11 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">{REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}</select>
-          {list.length > 0 && <SaveAsDtuButton compact apiSource="restcountries" apiUrl="https://restcountries.com/" title={`Country atlas — ${region} (${list.length} countries)`} content={list.slice(0, 30).map((c, i) => `${i + 1}. ${c.name.common} (${c.cca3}) · capital ${c.capital?.[0] || '—'} · pop ${c.population.toLocaleString()}`).join('\n')} extraTags={['global', 'countries', region.toLowerCase()]} rawData={{ region, countries: list }} />}
+          {list.length > 0 && <SaveAsDtuButton compact apiSource="mledoze-countries+worldbank" apiUrl="https://github.com/mledoze/countries" title={`Country atlas — ${region} (${list.length} countries)`} content={list.slice(0, 30).map((c, i) => `${i + 1}. ${c.name.common} (${c.cca3}) · capital ${c.capital?.[0] || '—'} · pop ${c.population.toLocaleString()}`).join('\n')} extraTags={['global', 'countries', region.toLowerCase()]} rawData={{ region, countries: list }} />}
         </div>
       </header>
-      {countries.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">REST Countries is unavailable right now — nothing is being shown in its place.</div>}
+      {countries.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">The countries source is unavailable right now — nothing is being shown in its place.</div>}
       {meta?.stale && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached country data{meta.fetchedAt ? ` from ${new Date(meta.fetchedAt).toLocaleString()}` : ''} — live source unavailable.</div>}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Countries</div><div className="mt-0.5 font-mono text-lg text-sky-300">{list.length}</div></div>

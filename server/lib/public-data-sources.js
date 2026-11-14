@@ -162,7 +162,47 @@ async function fetchFema(key, { signal }) {
 }
 async function fetchRestCountries(key, { signal }) {
   const [, region] = JSON.parse(key);
-  return rawJson(`https://restcountries.com/v3.1/region/${enc(region)}?fields=name,cca3,capital,region,subregion,population,area,languages,currencies`, signal, "restcountries");
+  // FIX-global-003: restcountries.com v3.1 is deprecated upstream — it
+  // 301-redirects to a deprecation envelope ({ success:false, errors }),
+  // so the atlas parsed an envelope as a country list and showed
+  // "unavailable" on every view from any host; the v5 API requires an
+  // authorization key. The atlas now reads the open dataset v3.1 itself
+  // was built from (mledoze/countries, via the jsDelivr mirror of its
+  // canonical repo), with population joined from the World Bank's
+  // keyless SP.POP.TOTL indicator by ISO-3 code, latest year winning —
+  // the one field the dataset does not carry and the atlas's sort and
+  // population tile are built on. Either source failing fails the
+  // fetch, so the cache serves its stale copy or the honest
+  // unavailable state — never a population-less atlas shown as real.
+  const [countries, popRows] = await Promise.all([
+    rawJson("https://cdn.jsdelivr.net/gh/mledoze/countries@master/dist/countries.json", signal, "restcountries"),
+    rawJson("https://api.worldbank.org/v2/country/all/indicator/SP.POP.TOTL?format=json&per_page=1000&date=2022:2024", signal, "restcountries-population"),
+  ]);
+  if (!Array.isArray(countries)) throw new UpstreamError("restcountries dataset malformed", 0);
+  const popList = Array.isArray(popRows) ? popRows[1] : null;
+  if (!Array.isArray(popList)) throw new UpstreamError("restcountries population malformed", 0);
+  const pop = new Map();
+  for (const r of popList) {
+    const iso3 = r?.countryiso3code;
+    const value = Number(r?.value);
+    if (!iso3 || !Number.isFinite(value) || value <= 0) continue;
+    const year = Number(r?.date) || 0;
+    const prev = pop.get(iso3);
+    if (!prev || year > prev.year) pop.set(iso3, { year, value: Math.round(value) });
+  }
+  return countries
+    .filter((c) => c && c.region === region)
+    .map((c) => ({
+      name: c.name,
+      cca3: c.cca3,
+      capital: c.capital || [],
+      region: c.region,
+      subregion: c.subregion,
+      population: pop.get(c.cca3)?.value ?? 0,
+      area: c.area,
+      languages: c.languages || {},
+      currencies: c.currencies || {},
+    }));
 }
 async function fetchSunriseSunset(key, { signal }) {
   const [, lat, lng] = JSON.parse(key);
