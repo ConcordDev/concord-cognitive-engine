@@ -18817,7 +18817,7 @@ register("metalearning", "status", (ctx, _input = {}) => {
 
 register("metalearning", "define_strategy", (ctx, input = {}) => {
   enforceEthosInvariant("metalearning_define");
-  return defineLearningStrategy(input);
+  return defineLearningStrategy(input, metaCallerId(ctx));
 }, { public: false });
 
 register("metalearning", "record_outcome", (ctx, input = {}) => {
@@ -18838,7 +18838,7 @@ register("metalearning", "curriculum", (ctx, input = {}) => {
   enforceEthosInvariant("metalearning_curriculum");
   const topic = String(input.topic || "");
   if (!topic) return { ok: false, error: "topic required" };
-  return generateCurriculum(topic, input);
+  return generateCurriculum(topic, input, metaCallerId(ctx));
 }, { public: true });
 
 register("metalearning", "best_strategy", (ctx, input = {}) => {
@@ -18855,7 +18855,7 @@ register("metalearning", "list_strategies", (ctx, _input = {}) => {
   ensureMetaLearningSystem();
   const strategies = Array.from(ctx.state.metaLearning.strategies.values())
     .map(s => ({
-      id: s.id, name: s.name, domain: s.domain,
+      id: s.id, name: s.name, domain: s.domain, ownerId: s.ownerId || null,
       uses: s.uses, successes: s.successes, failures: s.failures,
       // Derived from the counts at read time, so a strategy recorded
       // under the old rule also reads true; null until the first
@@ -18875,6 +18875,8 @@ register("metalearning", "delete_strategy", (ctx, input = {}) => {
   const strategyId = String(input.strategyId || "");
   const strategy = ctx.state.metaLearning.strategies.get(strategyId);
   if (!strategy) return { ok: false, error: "Strategy not found" };
+  if (!strategy.ownerId) return { ok: false, error: "This strategy predates ownership records — it has no recorded owner, so it can't be deleted from the desk." };
+  if (strategy.ownerId !== metaCallerId(ctx)) return { ok: false, error: "You can only delete strategies you defined." };
   ctx.state.metaLearning.strategies.delete(strategyId);
   // Its outcome history goes with it — orphaned rows would keep
   // feeding adaptation windows for a strategy that no longer exists.
@@ -18902,6 +18904,9 @@ register("metalearning", "delete_curriculum", (ctx, input = {}) => {
   const curriculumId = String(input.curriculumId || "");
   const idx = ctx.state.metaLearning.curriculum.findIndex(c => c.id === curriculumId);
   if (idx === -1) return { ok: false, error: "Curriculum not found" };
+  const target = ctx.state.metaLearning.curriculum[idx];
+  if (!target.ownerId) return { ok: false, error: "This curriculum is part of the shared platform corpus — it has no recorded owner, so it can't be deleted from the desk." };
+  if (target.ownerId !== metaCallerId(ctx)) return { ok: false, error: "You can only delete curricula you generated." };
   const [removed] = ctx.state.metaLearning.curriculum.splice(idx, 1);
   saveStateDebounced();
   return { ok: true, deleted: curriculumId, topic: removed.topic };
@@ -86633,8 +86638,17 @@ function ensureMetaLearningSystem() {
   }
 }
 
+// The caller a metalearning generation or deletion acts for: the
+// authenticated actor's id, or null when the call is anonymous. Ownership
+// in this system is stamped from this and only this (delete-ownership
+// fix, 2026-11-14) — a record with no ownerId is legacy / platform corpus.
+function metaCallerId(ctx) {
+  const id = ctx?.actor?.userId;
+  return id && id !== "anon" ? String(id) : null;
+}
+
 // Define a learning strategy
-function defineLearningStrategy(input = {}) {
+function defineLearningStrategy(input = {}, ownerId = null) {
   ensureMetaLearningSystem();
 
   const id = uid("strat");
@@ -86642,6 +86656,7 @@ function defineLearningStrategy(input = {}) {
     id,
     name: String(input.name || "").slice(0, 100) || "Unnamed Strategy",
     domain: String(input.domain || "general").slice(0, 100),
+    ownerId: ownerId || null,
 
     // Parameters that can be adjusted
     parameters: {
@@ -86816,7 +86831,7 @@ function adaptStrategy(strategyId) {
 }
 
 // Generate a curriculum (learning sequence) for a topic
-function generateCurriculum(topic, input = {}) {
+function generateCurriculum(topic, input = {}, ownerId = null) {
   ensureMetaLearningSystem();
   ensureSemanticEngine();
 
@@ -86859,6 +86874,7 @@ function generateCurriculum(topic, input = {}) {
     id: uid("curr"),
     topic,
     source: "corpus",
+    ownerId: ownerId || null,
     provenance: `Assembled from ${steps.length} DTU${steps.length === 1 ? "" : "s"} in the platform corpus matching "${topic}", ordered from foundational to advanced. Steps are existing material, not newly written lessons.`,
     steps,
     estimatedEffort: steps.length * 0.5,  // Rough estimate in hours
