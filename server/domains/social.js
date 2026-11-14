@@ -156,7 +156,10 @@ export default function registerSocialActions(registerLensAction) {
   }
   const sid = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   const now = () => new Date().toISOString();
-  const actor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  // SB-12: the actor is the session-resolved ctx.actor only. A top-level
+  // ctx.userId is never honoured — no production ctx builder sets one
+  // (SB-10), and honouring it let a hand-built ctx assume any identity.
+  const actor = (ctx) => ctx?.actor?.userId || "anon";
   const clip = (v, max) => String(v == null ? "" : v).trim().slice(0, max);
 
   // Extract #hashtags from arbitrary text, lowercased + deduped.

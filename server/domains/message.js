@@ -52,7 +52,9 @@ export default function registerMessageActions(registerLensAction) {
       try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
     }
   }
-  function msgActor(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
+  // SB-12: actor from ctx.actor only — a top-level ctx.userId is never
+  // honoured (see domains/social.js actor()).
+  function msgActor(ctx) { return ctx?.actor?.userId || "anon"; }
   function nextMsgId(p) { return `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`; }
   function nowIsoMsg() { return new Date().toISOString(); }
 
