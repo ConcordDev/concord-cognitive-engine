@@ -382,28 +382,46 @@ export function GraphField() {
         )}
       </div>
 
-      {/* Find a node */}
+      {/* Find a node. FIX-graph-003: the dropdown used to key entirely on
+          debouncedQ, so while the debounce/fetch caught up it kept showing
+          the PREVIOUS query's suggestions (or its no-match line) under the
+          new text, a clear left them standing until the debounce fired,
+          and the list carried no z-index over the field's z-10 chrome.
+          The render now keys on the text in the box: results show only
+          when they belong to that exact text, a pending row shows while
+          they don't yet, and clearing resets at once. */}
       <div className="relative mb-8 mt-3 w-[340px]">
-        {debouncedQ.length >= 2 && (searchQ.data?.length ?? 0) > 0 && (
-          <ul className="absolute bottom-full mb-2 w-full rounded-xl border border-white/10 bg-[#141414] p-1 shadow-2xl">
-            {searchQ.data!.map((d) => (
-              <li key={d.id}>
-                <button type="button" onClick={() => recenter(d.id)} className="flex w-full items-center rounded-md px-2.5 py-1.5 text-left text-[13px] text-zinc-300 hover:bg-white/[0.06] hover:text-zinc-50">
-                  <span className="flex-1 truncate">{d.title || d.id}</span>
-                  {d.tier && <span className="pl-2 text-[11px] text-zinc-600">{d.tier}</span>}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        {debouncedQ.length >= 2 && searchQ.isSuccess && searchQ.data.length === 0 && (
-          <p className="absolute bottom-full mb-2 px-3 text-[13px] text-zinc-500">No node matches “{debouncedQ}”.</p>
-        )}
+        {(() => {
+          const text = q.trim();
+          const settled = debouncedQ === text && !searchQ.isFetching;
+          if (text.length < 2) return null;
+          if (!settled) {
+            return <p className="absolute bottom-full z-20 mb-2 px-3 text-[13px] text-zinc-500">Searching for “{text}”…</p>;
+          }
+          if ((searchQ.data?.length ?? 0) > 0) {
+            return (
+              <ul className="absolute bottom-full z-20 mb-2 w-full rounded-xl border border-white/10 bg-[#141414] p-1 shadow-2xl">
+                {searchQ.data!.map((d) => (
+                  <li key={d.id}>
+                    <button type="button" onClick={() => recenter(d.id)} className="flex w-full items-center rounded-md px-2.5 py-1.5 text-left text-[13px] text-zinc-300 hover:bg-white/[0.06] hover:text-zinc-50">
+                      <span className="flex-1 truncate">{d.title || d.id}</span>
+                      {d.tier && <span className="pl-2 text-[11px] text-zinc-600">{d.tier}</span>}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            );
+          }
+          if (searchQ.isSuccess && searchQ.data.length === 0) {
+            return <p className="absolute bottom-full z-20 mb-2 px-3 text-[13px] text-zinc-500">No node matches “{text}”.</p>;
+          }
+          return null;
+        })()}
         <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Escape') setQ(''); if (e.key === 'Enter' && searchQ.data?.[0]) recenter(searchQ.data[0].id); }}
+          onKeyDown={(e) => { if (e.key === 'Escape') setQ(''); if (e.key === 'Enter' && debouncedQ === q.trim() && !searchQ.isFetching && searchQ.data?.[0]) recenter(searchQ.data[0].id); }}
           placeholder="Find a node…"
           aria-label="Find a node"
           className="w-full rounded-full border border-white/[0.08] bg-white/[0.03] py-3 pl-11 pr-4 text-[14px] text-zinc-100 placeholder:text-zinc-500 focus:border-white/20 focus:outline-none"
