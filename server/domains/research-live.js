@@ -104,10 +104,22 @@ function buildArxivRequest(defaultCategory, input = {}) {
   // honestly returns nothing instead of every paper containing "the".
   // Quotes/parens are stripped per term: they are arXiv syntax, not
   // search text, and a pasted phrase must not break the query grammar.
-  const queryTerms = rawQuery.split(/\s+/)
+  const allTerms = rawQuery.split(/\s+/)
     .map((t) => t.replace(/["()]/g, ""))
     .filter(Boolean)
     .slice(0, 10);
+  // FIX-reasoning-008: arXiv does not index the stopword "of" at all —
+  // verified live 2026-11-13: all:of returns totalResults 0, so the
+  // term-wise AND collapsed any query containing it to an empty feed
+  // ("chain of thought", the Reasoning library's DEFAULT filter,
+  // showed 0 papers while "reasoning llm" showed thousands). Other
+  // function words are indexed so sparsely (all:and 638, all:on 314)
+  // that AND-ing them guts real queries the same way. Drop the
+  // standard English stopwords from the clauses; if a query is ONLY
+  // stopwords, keep its terms rather than searching for nothing.
+  const STOPWORDS = new Set(["of", "the", "a", "an", "and", "or", "in", "on", "for", "with", "to", "by"]);
+  const contentTerms = allTerms.filter((t) => !STOPWORDS.has(t.toLowerCase()));
+  const queryTerms = contentTerms.length > 0 ? contentTerms : allTerms;
   const usesQuery = field !== "cat-only" && queryTerms.length > 0;
   if (anyCategory) {
     if (field === "cat-only") return bad("anyCategory cannot be combined with field cat-only");
