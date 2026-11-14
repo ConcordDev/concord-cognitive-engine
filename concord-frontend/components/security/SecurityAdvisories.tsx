@@ -24,6 +24,9 @@ const COLOR: Record<string, string> = { critical: 'border-rose-500/40 bg-rose-50
 export function SecurityAdvisories() {
   const [sev, setSev] = useState<typeof SEVERITY[number]>('high');
   const [actAdvisory, setActAdvisory] = useState<Advisory | null>(null);
+  // FIX-security-006: the advisory list had no search or sort.
+  const [query, setQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'default' | 'severity' | 'cvss' | 'newest'>('default');
 
   const advs = useQuery({
     queryKey: ['gh-advisories', sev],
@@ -38,6 +41,16 @@ export function SecurityAdvisories() {
 
   const list = advs.data?.items || [];
   const sevCounts = list.reduce<Record<string, number>>((a, v) => { a[v.severity] = (a[v.severity] || 0) + 1; return a; }, {});
+  const SEV_RANK: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+  const visibleList = list
+    .filter((a) => {
+      const q = query.trim().toLowerCase();
+      if (!q) return true;
+      return [a.ghsa_id, a.cve_id || '', a.summary].some((v) => v.toLowerCase().includes(q));
+    })
+    .sort((a, b) => sortBy === 'severity' ? (SEV_RANK[a.severity] ?? 9) - (SEV_RANK[b.severity] ?? 9)
+      : sortBy === 'cvss' ? (b.cvss?.score ?? -1) - (a.cvss?.score ?? -1)
+      : sortBy === 'newest' ? String(b.published_at || '').localeCompare(String(a.published_at || '')) : 0);
 
   return (
     <div className="space-y-4">
@@ -55,8 +68,20 @@ export function SecurityAdvisories() {
           <div key={s} className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">{s}</div><div className={`mt-0.5 font-mono text-lg ${s === 'critical' ? 'text-rose-300' : s === 'high' ? 'text-orange-300' : s === 'medium' ? 'text-amber-300' : 'text-zinc-300'}`}>{sevCounts[s] || 0}</div></div>
         ))}
       </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <input aria-label="Search advisories" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search GHSA, CVE, summary…"
+          className="flex-1 min-w-[160px] rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white" />
+        <select aria-label="Sort advisories" value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+          className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">
+          <option value="default">Delivered order</option>
+          <option value="severity">Severity</option>
+          <option value="cvss">CVSS (high first)</option>
+          <option value="newest">Newest</option>
+        </select>
+      </div>
+      {list.length > 0 && visibleList.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No advisories match the current search.</div>}
       <div className="space-y-1.5 max-h-[500px] overflow-y-auto">
-        {list.map((a) => (
+        {visibleList.map((a) => (
           <div key={a.ghsa_id} className="rounded-lg border border-rose-500/15 bg-zinc-950/60 p-2.5 hover:border-rose-500/40 transition-colors">
             <div className="flex items-start justify-between gap-2">
               <a href={a.html_url} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0 block">

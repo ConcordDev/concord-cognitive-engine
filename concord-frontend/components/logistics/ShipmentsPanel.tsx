@@ -37,6 +37,21 @@ export function ShipmentsPanel({ onSelect, createSignal }: { onSelect?: (s: Ship
   // FIX-logistics-008: the page's 'New shipment' CTA bumps this signal —
   // the form opens instead of the click only switching tabs.
   useEffect(() => { if (createSignal && createSignal > 0) setCreating(true); }, [createSignal]);
+  // FIX-logistics-009: the principal lists carried no find controls at all.
+  const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [sortBy, setSortBy] = useState<'default' | 'eta' | 'status'>('default');
+  const visibleShipments = shipments
+    .filter(s => !statusFilter || s.status === statusFilter)
+    .filter(s => {
+      const q = query.trim().toLowerCase();
+      if (!q) return true;
+      return [s.origin, s.destination, s.consignee || '', s.poNumber || '', s.trackingNumber || '', s.reference || '', s.status]
+        .some(v => v.toLowerCase().includes(q));
+    })
+    .sort((a, b) => sortBy === 'eta'
+      ? String(a.estimatedDelivery || '9999').localeCompare(String(b.estimatedDelivery || '9999'))
+      : sortBy === 'status' ? a.status.localeCompare(b.status) : 0);
 
   useEffect(() => { refresh(); }, []);
 
@@ -89,12 +104,28 @@ export function ShipmentsPanel({ onSelect, createSignal }: { onSelect?: (s: Ship
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Package className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Shipments</span>
-        <span className="ml-auto text-[10px] text-gray-400">{shipments.length}</span>
+        <span className="ml-auto text-[10px] text-gray-400">{visibleShipments.length}</span>
         <button aria-label="Add" onClick={() => setCreating(v => !v)} className="p-1 text-gray-400 hover:text-white"><Plus className="w-4 h-4" /></button>
       </header>
 
       <div className="border-b border-white/10">
         <ShipmentsMap shipments={shipments} className="h-64 w-full" />
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 px-3 py-2 border-b border-white/10">
+        <input aria-label="Search shipments" value={query} onChange={e => setQuery(e.target.value)} placeholder="Search origin, destination, consignee, PO, tracking…"
+          className="flex-1 min-w-[160px] px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <select aria-label="Filter shipments by status" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+          className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+          <option value="">All statuses</option>
+          {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
+        <select aria-label="Sort shipments" value={sortBy} onChange={e => setSortBy(e.target.value as typeof sortBy)}
+          className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+          <option value="default">Delivered order</option>
+          <option value="eta">Delivery date</option>
+          <option value="status">Status</option>
+        </select>
       </div>
 
       {creating && (
@@ -118,9 +149,11 @@ export function ShipmentsPanel({ onSelect, createSignal }: { onSelect?: (s: Ship
           <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : shipments.length === 0 ? (
           <div className="px-3 py-10 text-center text-xs text-gray-400"><Package className="w-6 h-6 mx-auto mb-2 opacity-30" />No shipments yet.</div>
+        ) : visibleShipments.length === 0 ? (
+          <div className="px-3 py-10 text-center text-xs text-gray-400">No shipments match the current search or filter.</div>
         ) : (
           <ul className="divide-y divide-white/5">
-            {shipments.map(s => (
+            {visibleShipments.map(s => (
               <li key={s.id} className="px-3 py-2 hover:bg-white/[0.03] group cursor-pointer" onClick={() => onSelect?.(s)}>
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-xs font-mono text-cyan-300" title="Use this reference in exceptions and GPS">{s.reference || s.id}</span>

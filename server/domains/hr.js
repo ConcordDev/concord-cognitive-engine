@@ -496,12 +496,29 @@ export default function registerHRActions(registerLensAction) {
 
   registerLensAction("hr", "employee-offboard", (ctx, _a, params = {}) => {
     const s = getHrState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const emp = findEmployee(s, hrAid(ctx), params.id);
+    const userId = hrAid(ctx);
+    const emp = findEmployee(s, userId, params.id);
     if (!emp) return { ok: false, error: "employee not found" };
     emp.status = params.rehire === true ? "active" : "terminated";
     emp.terminationDate = emp.status === "terminated" ? hrDay(hrNow()) : null;
+    // Offboarding closes the employee's open onboarding tasks in the same
+    // write (FIX-hr-004): a departed employee's checklist otherwise stays
+    // open forever, counted in every open-tasks total. The close is
+    // administrative and says so on the task; a rehire does not silently
+    // resurrect the list — a manager reopens what applies via
+    // onboarding-complete's reopen.
+    let onboardingClosed = 0;
+    if (emp.status === "terminated") {
+      for (const t of s.onboarding.get(userId) || []) {
+        if (t.employeeId === emp.id && !t.done) {
+          t.done = true;
+          t.closedReason = "offboarded";
+          onboardingClosed += 1;
+        }
+      }
+    }
     saveHrState();
-    return { ok: true, result: { employee: emp } };
+    return { ok: true, result: { employee: emp, onboardingClosed } };
   });
 
   // Permanent delete — terminated records only. An active employee must

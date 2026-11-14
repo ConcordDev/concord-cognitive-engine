@@ -33,6 +33,24 @@ export function VulnManager() {
   const [assetForm, setAssetForm] = useState({ name: '', type: 'service', vendor: '' });
   const [vulnForm, setVulnForm] = useState({ cveId: '', title: '', cvss: '' });
   const [statusFilter, setStatusFilter] = useState('');
+  // FIX-security-006: neither list had search; the vuln list had no sort.
+  const [assetQuery, setAssetQuery] = useState('');
+  const [vulnQuery, setVulnQuery] = useState('');
+  const [vulnSort, setVulnSort] = useState<'default' | 'cvss' | 'severity'>('default');
+  const SEV_RANK: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+  const visibleAssets = assets.filter(a => {
+    const q = assetQuery.trim().toLowerCase();
+    if (!q) return true;
+    return [a.name, a.type, a.vendor || ''].some(x => x.toLowerCase().includes(q));
+  });
+  const visibleVulns = vulns
+    .filter(v => {
+      const q = vulnQuery.trim().toLowerCase();
+      if (!q) return true;
+      return [v.cveId || '', v.title, v.severity, v.status].some(x => x.toLowerCase().includes(q));
+    })
+    .sort((a, b) => vulnSort === 'cvss' ? (b.cvss ?? -1) - (a.cvss ?? -1)
+      : vulnSort === 'severity' ? (SEV_RANK[a.severity] ?? 9) - (SEV_RANK[b.severity] ?? 9) : 0);
 
   const refresh = useCallback(async () => {
     const [al, vl, d] = await Promise.all([
@@ -107,8 +125,11 @@ export function VulnManager() {
               className="w-20 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
             <button aria-label="Add" onClick={addAsset} className="px-2 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300"><Plus className="w-3 h-3" /></button>
           </div>
+          <input aria-label="Search assets" value={assetQuery} onChange={e => setAssetQuery(e.target.value)} placeholder="Search assets…"
+            className="w-full mb-1.5 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
+          {assets.length > 0 && visibleAssets.length === 0 && <p className="text-[11px] text-zinc-500 italic mb-1">No assets match the current search.</p>}
           <ul className="space-y-1 max-h-48 overflow-y-auto">
-            {assets.map(a => (
+            {visibleAssets.map(a => (
               <li key={a.id} className="group flex items-center gap-2 bg-zinc-900/60 border border-zinc-800 rounded px-2 py-1">
                 <span className="text-xs text-zinc-200 flex-1 truncate">{a.name} <span className="text-zinc-400">{a.vendor || a.type}</span></span>
                 {a.openVulnCount > 0 && <span className="text-[10px] text-rose-400">{a.openVulnCount} open</span>}
@@ -133,7 +154,16 @@ export function VulnManager() {
               <option value="">all</option>
               {STATUSES.map(st => <option key={st} value={st}>{st}</option>)}
             </select>
+            <select aria-label="Sort vulnerabilities" value={vulnSort} onChange={e => setVulnSort(e.target.value as typeof vulnSort)}
+              className="bg-zinc-950 border border-zinc-800 rounded px-1 py-0.5 text-[10px] text-zinc-300">
+              <option value="default">delivered order</option>
+              <option value="cvss">cvss</option>
+              <option value="severity">severity</option>
+            </select>
           </div>
+          <input aria-label="Search vulnerabilities" value={vulnQuery} onChange={e => setVulnQuery(e.target.value)} placeholder="Search CVE, title…"
+            className="w-full mb-1.5 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
+          {vulns.length > 0 && visibleVulns.length === 0 && <p className="text-[11px] text-zinc-500 italic mb-1">No vulnerabilities match the current search.</p>}
           <div className="flex gap-1 mb-1.5">
             <input aria-label="CVE" value={vulnForm.cveId} onChange={e => setVulnForm({ ...vulnForm, cveId: e.target.value })} placeholder="CVE"
               className="w-24 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
@@ -144,7 +174,7 @@ export function VulnManager() {
             <button aria-label="Add" onClick={addVuln} className="px-2 rounded bg-rose-600 hover:bg-rose-500 text-white"><Plus className="w-3 h-3" /></button>
           </div>
           <ul className="space-y-1 max-h-48 overflow-y-auto">
-            {vulns.map(v => (
+            {visibleVulns.map(v => (
               <li key={v.id} className="group flex items-center gap-1.5 bg-zinc-900/60 border border-zinc-800 rounded px-2 py-1">
                 <span className={cn('text-[9px] px-1 rounded shrink-0', SEV_COLOR[v.severity])}>{v.cvss ?? '?'}</span>
                 <span className="text-xs text-zinc-200 truncate flex-1">{v.cveId ? `${v.cveId} ` : ''}{v.title}</span>

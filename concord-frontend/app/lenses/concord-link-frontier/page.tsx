@@ -28,7 +28,7 @@ interface LinkRow {
 }
 
 type Phase = 'loading' | 'ready' | 'error';
-type Mode = 'view' | 'open' | 'bearing' | 'mark';
+type Mode = 'view' | 'open' | 'bearing' | 'mark' | 'rename';
 
 function isWarming(message: string): boolean {
   return /service_overloaded|event_loop_lag|status code 503/i.test(message);
@@ -93,6 +93,7 @@ export default function ConcordLinkFrontierPage() {
   const [name, setName] = useState('');
   const [bearing, setBearing] = useState('');
   const [mark, setMark] = useState('');
+  const [rename, setRename] = useState('');
   const [busy, setBusy] = useState(false);
   const [linkQuery, setLinkQuery] = useState('');
 
@@ -236,6 +237,40 @@ export default function ConcordLinkFrontierPage() {
     }
   }, [applyBoard, busy, links, mark, mode, phase, selectedId]);
 
+  // FIX-concord-link-frontier-003: a link could be opened, borne, marked
+  // and deleted, but never renamed — a mistyped fixture name was
+  // permanent. Rename rides the same mode pattern as bearing/mark.
+  const saveRename = useCallback(async () => {
+    if (busy || phase !== 'ready' || !selectedId) return;
+    if (mode !== 'rename') {
+      const current = links.find((item) => item.id === selectedId);
+      setRename(current?.name || '');
+      setMode('rename');
+      setActionError('');
+      return;
+    }
+    const next = rename.trim();
+    if (!next) {
+      setActionError('A name is required.');
+      return;
+    }
+    setBusy(true);
+    setActionError('');
+    try {
+      await runLink('link-rename', { id: selectedId, name: next }, 'Could not rename that link.');
+      const rows = await readBoard();
+      const row = rows.find((item) => item.id === selectedId);
+      if (!row || row.name !== next) throw new Error('Saved, but the board did not read the name back.');
+      applyBoard(rows, selectedId);
+      setRename('');
+      setMode('view');
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not rename that link.');
+    } finally {
+      setBusy(false);
+    }
+  }, [applyBoard, busy, links, mode, phase, rename, selectedId]);
+
   const deleteLink = useCallback(async (id: string) => {
     if (busy || phase !== 'ready') return;
     setBusy(true);
@@ -369,6 +404,18 @@ export default function ConcordLinkFrontierPage() {
               />
             </label>
           )}
+          {phase === 'ready' && mode === 'rename' && (
+            <label className="block text-[14px] text-zinc-400">
+              Name
+              <input
+                data-testid="clf-rename-input"
+                value={rename}
+                onChange={(event) => setRename(event.target.value)}
+                className="mt-1 w-full border-b border-white/15 bg-transparent pb-2 text-[15px] text-zinc-100 outline-none"
+                autoFocus
+              />
+            </label>
+          )}
           {phase === 'ready' && mode === 'bearing' && (
             <label className="block text-[14px] text-zinc-400">
               Bearing
@@ -395,6 +442,9 @@ export default function ConcordLinkFrontierPage() {
           )}
           {phase === 'ready' && mode === 'view' && selected && (
             <div className="mt-6 flex flex-wrap gap-4">
+              <button type="button" onClick={() => { void saveRename(); }} className="text-[14px] text-zinc-100 underline">
+                Rename the link
+              </button>
               <button type="button" onClick={() => { void saveBearing(); }} className="text-[14px] text-zinc-100 underline">
                 {selected.bearing ? 'Edit the bearing' : 'Set the bearing'}
               </button>
@@ -404,6 +454,11 @@ export default function ConcordLinkFrontierPage() {
                 </button>
               ) : null}
             </div>
+          )}
+          {phase === 'ready' && mode === 'rename' && (
+            <button type="button" onClick={() => { void saveRename(); }} disabled={busy} className="mt-6 text-[14px] text-zinc-100 underline disabled:opacity-60">
+              Save the name
+            </button>
           )}
           {phase === 'ready' && mode === 'bearing' && (
             <button type="button" onClick={() => { void saveBearing(); }} disabled={busy} className="mt-6 text-[14px] text-zinc-100 underline disabled:opacity-60">

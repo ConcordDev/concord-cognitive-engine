@@ -277,6 +277,37 @@ export default function registerConcordLinkFrontierActions(registerLensAction) {
     }
   });
 
+  // Rename a link in place (FIX-concord-link-frontier-003): links could be
+  // opened, marked and deleted but never renamed, so a mistyped or stale
+  // fixture name was permanent. Mirrors link-mark's write discipline —
+  // mutate, persist, roll the in-memory row back if the write fails.
+  registerLensAction("concord-link-frontier", "link-rename", (ctx, _artifact, params = {}) => {
+    try {
+      const userId = linkActor(ctx);
+      if (!userId) return { ok: false, error: "no_actor" };
+      const id = linkClean(params.id || params.linkId, 80);
+      if (!id) return { ok: false, error: "missing_link_id" };
+      const name = linkClean(params.name, 4000);
+      if (!name) return { ok: false, error: "link name required" };
+      const link = findLink(ctx, userId, id);
+      if (!link) return { ok: false, error: "link_not_found" };
+      const previous = link.name;
+      const previousAt = link.updatedAt;
+      link.name = name;
+      link.updatedAt = linkNow();
+      try {
+        writeLinkRow(ctx, userId, link);
+      } catch (err) {
+        link.name = previous;
+        link.updatedAt = previousAt;
+        return { ok: false, error: "link_not_saved", detail: String(err?.message || err) };
+      }
+      return { ok: true, result: { linkId: link.id, link: linkFace(link) } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
   registerLensAction("concord-link-frontier", "link-delete", (ctx, _artifact, params = {}) => {
     try {
       const userId = linkActor(ctx);

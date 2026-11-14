@@ -17,6 +17,16 @@ export function DockAppointmentsPanel() {
   const [date, setDate] = useState(() => calendarDateKey());
   const [dockForm, setDockForm] = useState({ name: '', facility: '', kind: 'loading' });
   const [aptForm, setAptForm] = useState({ dockId: '', startTime: '09:00', durationMin: '60', truckNumber: '', kind: 'delivery' as 'pickup' | 'delivery' });
+  // FIX-logistics-009: find controls for the day's appointment list.
+  const [query, setQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'default' | 'time' | 'dock'>('default');
+  const visibleAppts = appts
+    .filter(a => {
+      const q = query.trim().toLowerCase();
+      if (!q) return true;
+      return [a.dockName, a.truckNumber, a.kind, a.status].some(x => (x || '').toLowerCase().includes(q));
+    })
+    .sort((a, b) => sortBy === 'time' ? a.startTime.localeCompare(b.startTime) : sortBy === 'dock' ? a.dockName.localeCompare(b.dockName) : 0);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -109,14 +119,27 @@ export function DockAppointmentsPanel() {
         <button onClick={book} disabled={!aptForm.dockId} className="col-span-2 px-3 py-1 rounded bg-amber-500 text-black font-bold hover:bg-amber-400 disabled:opacity-40 inline-flex items-center justify-center gap-1"><Plus className="w-3 h-3" />Book</button>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2 px-3 py-2 border-b border-white/10">
+        <input aria-label="Search appointments" value={query} onChange={e => setQuery(e.target.value)} placeholder="Search dock, truck, kind…"
+          className="flex-1 min-w-[160px] px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <select aria-label="Sort appointments" value={sortBy} onChange={e => setSortBy(e.target.value as typeof sortBy)}
+          className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+          <option value="default">Delivered order</option>
+          <option value="time">Start time</option>
+          <option value="dock">Dock</option>
+        </select>
+      </div>
+
       <div className="max-h-80 overflow-y-auto">
         {loading ? (
           <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : appts.length === 0 ? (
           <div className="px-3 py-10 text-center text-xs text-gray-400"><Calendar className="w-6 h-6 mx-auto mb-2 opacity-30" />No appointments on {date}.</div>
+        ) : visibleAppts.length === 0 ? (
+          <div className="px-3 py-10 text-center text-xs text-gray-400">No appointments match the current search.</div>
         ) : (
           <ul className="divide-y divide-white/5">
-            {appts.map(a => (
+            {visibleAppts.map(a => (
               <li key={a.id} className={cn('px-3 py-2 hover:bg-white/[0.03] group flex items-center gap-3', a.status === 'cancelled' && 'opacity-50')}>
                 <div className="w-14 h-10 rounded bg-amber-500/15 flex flex-col items-center justify-center text-[10px] text-amber-300 font-mono">
                   <span className="font-bold">{a.startTime}</span>

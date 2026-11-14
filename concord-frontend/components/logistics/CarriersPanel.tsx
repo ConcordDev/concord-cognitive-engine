@@ -12,6 +12,16 @@ export function CarriersPanel() {
   const [carriers, setCarriers] = useState<Carrier[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ name: '', code: '', scac: '', modes: ['parcel'] as string[], accountNumber: '' });
+  // FIX-logistics-009: find controls for the carrier list.
+  const [query, setQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'default' | 'name' | 'code'>('default');
+  const visibleCarriers = carriers
+    .filter(c => {
+      const q = query.trim().toLowerCase();
+      if (!q) return true;
+      return [c.name, c.code, c.scac].some(x => (x || '').toLowerCase().includes(q));
+    })
+    .sort((a, b) => sortBy === 'name' ? a.name.localeCompare(b.name) : sortBy === 'code' ? a.code.localeCompare(b.code) : 0);
 
   useEffect(() => { refresh(); }, []);
 
@@ -67,14 +77,27 @@ export function CarriersPanel() {
         </div>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2 px-3 py-2 border-b border-white/10">
+        <input aria-label="Search carriers" value={query} onChange={e => setQuery(e.target.value)} placeholder="Search name, code, SCAC…"
+          className="flex-1 min-w-[160px] px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <select aria-label="Sort carriers" value={sortBy} onChange={e => setSortBy(e.target.value as typeof sortBy)}
+          className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+          <option value="default">Delivered order</option>
+          <option value="name">Name</option>
+          <option value="code">Code</option>
+        </select>
+      </div>
+
       <div className="max-h-80 overflow-y-auto">
         {loading ? (
           <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : carriers.length === 0 ? (
           <div className="px-3 py-10 text-center text-xs text-gray-400"><Building className="w-6 h-6 mx-auto mb-2 opacity-30" />No carriers configured. Add FedEx / UPS / USPS / DHL above.</div>
+        ) : visibleCarriers.length === 0 ? (
+          <div className="px-3 py-10 text-center text-xs text-gray-400">No carriers match the current search.</div>
         ) : (
           <ul className="divide-y divide-white/5">
-            {carriers.map(c => (
+            {visibleCarriers.map(c => (
               <li key={c.id} className="px-3 py-2 hover:bg-white/[0.03] group flex items-center gap-3">
                 <div className="w-10 h-10 rounded bg-cyan-500/15 text-cyan-300 flex items-center justify-center text-[10px] font-mono font-bold">{c.code}</div>
                 <div className="flex-1 min-w-0">

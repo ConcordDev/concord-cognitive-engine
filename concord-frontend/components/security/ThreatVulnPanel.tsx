@@ -44,6 +44,17 @@ export function ThreatVulnPanel() {
   const [systems, setSystems] = useState<SysConfig[]>([{ hostname: '', firewall: true, encryption: true, mfa: true, defaultCredentials: false }]);
   const [threatResult, setThreatResult] = useState<ThreatResult | null>(null);
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
+  // FIX-security-006: the findings list had no search or sort.
+  const [findingQuery, setFindingQuery] = useState('');
+  const [findingSort, setFindingSort] = useState<'default' | 'severity'>('default');
+  const FINDING_SEV_RANK: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+  const visibleFindings = (scanResult?.findings || [])
+    .filter((f) => {
+      const q = findingQuery.trim().toLowerCase();
+      if (!q) return true;
+      return [f.system, f.type, f.detail, f.severity].some((v) => v.toLowerCase().includes(q));
+    })
+    .sort((a, b) => findingSort === 'severity' ? (FINDING_SEV_RANK[a.severity] ?? 9) - (FINDING_SEV_RANK[b.severity] ?? 9) : 0);
 
   const analyze = useMutation({
     mutationFn: async () => {
@@ -196,8 +207,18 @@ export function ThreatVulnPanel() {
                   <span key={sev} className={`rounded px-1.5 py-0.5 ${sevColour(sev)}`}>{sev}: {n}</span>
                 ))}
               </div>
+              <div className="flex items-center gap-1.5">
+                <input aria-label="Search findings" value={findingQuery} onChange={(e) => setFindingQuery(e.target.value)} placeholder="Search findings…"
+                  className="flex-1 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-[11px] text-zinc-200" />
+                <select aria-label="Sort findings" value={findingSort} onChange={(e) => setFindingSort(e.target.value as typeof findingSort)}
+                  className="rounded border border-zinc-800 bg-zinc-950 px-1 py-1 text-[10px] text-zinc-300">
+                  <option value="default">delivered order</option>
+                  <option value="severity">severity</option>
+                </select>
+              </div>
+              {(scanResult.findings?.length ?? 0) > 0 && visibleFindings.length === 0 && <div className="text-zinc-400">No findings match the current search.</div>}
               <div className="max-h-44 space-y-1 overflow-y-auto">
-                {scanResult.findings?.map((f, i) => (
+                {visibleFindings.map((f, i) => (
                   <div key={i} className={`rounded border px-2 py-1 ${sevColour(f.severity)}`}>
                     <div className="flex items-center justify-between">
                       <span className="font-mono text-[10px]">{f.system}</span>

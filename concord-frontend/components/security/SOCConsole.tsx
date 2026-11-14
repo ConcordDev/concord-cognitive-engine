@@ -13,7 +13,7 @@ import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import Image from 'next/image';
 import {
   Activity, Bell, ClipboardList, Link2, KeyRound, Camera, Radar,
-  Loader2, Plus, Trash2, Play, Power, CheckCircle2, AlertTriangle,
+  Loader2, Plus, Trash2, Play, Power, CheckCircle2, AlertTriangle, Pencil,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -101,6 +101,7 @@ export function SOCConsole() {
   /* Rules */
   const [rules, setRules] = useState<Rule[]>([]);
   const [ruleForm, setRuleForm] = useState({ name: '', pattern: '', field: 'message', minSeverity: 'info', threshold: '1', windowMin: '60', incidentSeverity: 'P3' });
+  const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
   const [ruleResult, setRuleResult] = useState<string | null>(null);
 
   /* Incidents */
@@ -192,6 +193,35 @@ export function SOCConsole() {
     setBusy(false);
     if (r.data?.ok) {
       setRuleForm({ name: '', pattern: '', field: 'message', minSeverity: 'info', threshold: '1', windowMin: '60', incidentSeverity: 'P3' });
+      await loadRules();
+    }
+  };
+  const resetRuleForm = () => {
+    setEditingRuleId(null);
+    setRuleForm({ name: '', pattern: '', field: 'message', minSeverity: 'info', threshold: '1', windowMin: '60', incidentSeverity: 'P3' });
+  };
+  // FIX-security-010: rules were toggle/delete-only — a name or pattern
+  // typo meant delete-and-recreate. Edit loads the rule into the form and
+  // saves through rule-update.
+  const startEditRule = (r: Rule) => {
+    setEditingRuleId(r.id);
+    setRuleForm({
+      name: r.name, pattern: r.pattern, field: r.field, minSeverity: r.minSeverity,
+      threshold: String(r.threshold), windowMin: String(r.windowMin), incidentSeverity: r.incidentSeverity,
+    });
+  };
+  const saveRule = async () => {
+    if (!editingRuleId || !ruleForm.name.trim() || !ruleForm.pattern.trim()) return;
+    setBusy(true);
+    const r = await lensRun('security', 'rule-update', {
+      id: editingRuleId,
+      ...ruleForm,
+      threshold: Number(ruleForm.threshold) || 1,
+      windowMin: Number(ruleForm.windowMin) || 60,
+    });
+    setBusy(false);
+    if (r.data?.ok) {
+      resetRuleForm();
       await loadRules();
     }
   };
@@ -417,7 +447,7 @@ export function SOCConsole() {
       {tab === 'rules' && (
         <div className="space-y-4">
           <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-3">
-            <h3 className="mb-2 text-sm font-semibold text-zinc-200">New Detection Rule</h3>
+            <h3 className="mb-2 text-sm font-semibold text-zinc-200">{editingRuleId ? 'Edit Detection Rule' : 'New Detection Rule'}</h3>
             <div className="grid gap-2 sm:grid-cols-2">
               <input aria-label="Rule name" className={inp} placeholder="Rule name" value={ruleForm.name} onChange={(e) => setRuleForm({ ...ruleForm, name: e.target.value })} />
               <input aria-label="Match pattern (substring)" className={inp} placeholder="Match pattern (substring)" value={ruleForm.pattern} onChange={(e) => setRuleForm({ ...ruleForm, pattern: e.target.value })} />
@@ -434,9 +464,20 @@ export function SOCConsole() {
               </select>
             </div>
             <div className="mt-2 flex gap-2">
-              <button className={cn(btn, 'bg-rose-600 text-white hover:bg-rose-500')} onClick={addRule} disabled={busy || !ruleForm.name.trim() || !ruleForm.pattern.trim()}>
-                <Plus className="h-3.5 w-3.5" /> Add Rule
-              </button>
+              {editingRuleId ? (
+                <>
+                  <button className={cn(btn, 'bg-rose-600 text-white hover:bg-rose-500')} onClick={saveRule} disabled={busy || !ruleForm.name.trim() || !ruleForm.pattern.trim()}>
+                    <Pencil className="h-3.5 w-3.5" /> Save changes
+                  </button>
+                  <button className={cn(btn, 'bg-zinc-700 text-white hover:bg-zinc-600')} onClick={resetRuleForm} disabled={busy}>
+                    Cancel edit
+                  </button>
+                </>
+              ) : (
+                <button className={cn(btn, 'bg-rose-600 text-white hover:bg-rose-500')} onClick={addRule} disabled={busy || !ruleForm.name.trim() || !ruleForm.pattern.trim()}>
+                  <Plus className="h-3.5 w-3.5" /> Add Rule
+                </button>
+              )}
               <button className={cn(btn, 'bg-emerald-600 text-white hover:bg-emerald-500')} onClick={evaluateRules} disabled={busy}>
                 {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />} Evaluate All
               </button>
@@ -457,6 +498,9 @@ export function SOCConsole() {
                       {r.field} ⊃ &quot;{r.pattern}&quot; · ≥{r.threshold} in {r.windowMin}m → {r.incidentSeverity} · fired {r.fireCount}×
                     </p>
                   </div>
+                  <button className="rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200" onClick={() => startEditRule(r)} title="Edit" aria-label={`Edit rule ${r.name || r.id}`}>
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
                   <button className="rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200" onClick={() => toggleRule(r.id)} title="Toggle">
                     <Power className="h-3.5 w-3.5" />
                   </button>

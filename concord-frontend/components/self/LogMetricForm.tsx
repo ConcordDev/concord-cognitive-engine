@@ -28,16 +28,35 @@ export function LogMetricForm({ onLogged }: { onLogged: () => void }) {
   const [value, setValue] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [recent, setRecent] = useState<Array<{ id: string; metric: string; value: number }>>([]);
+  const [recent, setRecent] = useState<Array<{ id: string; metric: string; value: number; at: string; note?: string }>>([]);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
+  // FIX-self-016: the ledger was only visible as the last 8 readings with
+  // no way to browse, filter or search the history the server holds.
+  const [historyMetric, setHistoryMetric] = useState('');
+  const [historyQuery, setHistoryQuery] = useState('');
+  const [historySort, setHistorySort] = useState<'newest' | 'oldest' | 'value-desc' | 'value-asc'>('newest');
 
   const loadRecent = async () => {
-    const r = await lensRun('self', 'readings', { limit: 8 });
-    const rows = (r.data?.result?.readings || []) as Array<{ id: string; metric: string; value: number }>;
+    const r = await lensRun('self', 'readings', { limit: 200 });
+    const rows = (r.data?.result?.readings || []) as Array<{ id: string; metric: string; value: number; at: string; note?: string }>;
     setRecent(rows);
   };
+
+  const metricLabel = (key: string) => METRIC_OPTIONS.find((m) => m.key === key)?.label || key;
+  const visibleHistory = recent
+    .filter((row) => !historyMetric || row.metric === historyMetric)
+    .filter((row) => {
+      const q = historyQuery.trim().toLowerCase();
+      if (!q) return true;
+      return [row.metric, metricLabel(row.metric), row.note || '', String(row.at || '').slice(0, 10)]
+        .some((v) => v.toLowerCase().includes(q));
+    })
+    .sort((a, b) => historySort === 'oldest' ? String(a.at).localeCompare(String(b.at))
+      : historySort === 'value-desc' ? b.value - a.value
+      : historySort === 'value-asc' ? a.value - b.value
+      : String(b.at).localeCompare(String(a.at)));
 
   useEffect(() => { void loadRecent(); }, []);
 
@@ -97,8 +116,27 @@ export function LogMetricForm({ onLogged }: { onLogged: () => void }) {
       </div>
       {err && <p className="mt-2 text-xs text-red-400">{err}</p>}
       {recent.length > 0 && (
-        <ul className="mt-3 space-y-1">
-          {recent.map((row) => (
+        <div className="mt-3">
+          <div className="mb-1.5 flex flex-wrap items-center gap-2">
+            <span className="text-[11px] uppercase tracking-wider text-rose-400">Reading history</span>
+            <select aria-label="Filter history by metric" value={historyMetric} onChange={(e) => setHistoryMetric(e.target.value)}
+              className="rounded border border-rose-900/40 bg-black px-1.5 py-1 text-[11px] text-rose-100">
+              <option value="">All metrics</option>
+              {METRIC_OPTIONS.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}
+            </select>
+            <input aria-label="Search reading history" value={historyQuery} onChange={(e) => setHistoryQuery(e.target.value)} placeholder="Search metric, note, date…"
+              className="min-w-[120px] flex-1 rounded border border-rose-900/40 bg-black px-1.5 py-1 text-[11px] text-rose-100 placeholder:text-rose-400" />
+            <select aria-label="Sort reading history" value={historySort} onChange={(e) => setHistorySort(e.target.value as typeof historySort)}
+              className="rounded border border-rose-900/40 bg-black px-1.5 py-1 text-[11px] text-rose-100">
+              <option value="newest">Newest</option>
+              <option value="oldest">Oldest</option>
+              <option value="value-desc">Value (high first)</option>
+              <option value="value-asc">Value (low first)</option>
+            </select>
+          </div>
+          {visibleHistory.length === 0 && <p className="text-xs italic text-rose-300/70">No readings match the current filter or search.</p>}
+        <ul className="space-y-1 max-h-64 overflow-y-auto">
+          {visibleHistory.map((row) => (
             <li key={row.id} className="flex items-center justify-between gap-2 text-xs text-rose-200">
               {editId === row.id ? (
                 <input value={editValue} onChange={(e) => setEditValue(e.target.value)} aria-label={`Edit ${row.metric}`} className="w-24 rounded border border-rose-900/40 bg-black px-1 py-0.5 text-rose-100" onBlur={async () => {
@@ -108,7 +146,7 @@ export function LogMetricForm({ onLogged }: { onLogged: () => void }) {
                   else setErr(d.data?.message || d.data?.error || 'Could not update the reading');
                 }} />
               ) : (
-                <button type="button" onClick={() => { setEditId(row.id); setEditValue(String(row.value)); }} className="text-left">{row.metric} · {row.value}</button>
+                <button type="button" onClick={() => { setEditId(row.id); setEditValue(String(row.value)); }} className="text-left">{metricLabel(row.metric)} · {row.value} <span className="text-rose-400">{String(row.at || '').slice(0, 10)}</span>{row.note ? <span className="text-rose-300/70"> · {row.note}</span> : null}</button>
               )}
               <button
                 type="button"
@@ -125,6 +163,7 @@ export function LogMetricForm({ onLogged }: { onLogged: () => void }) {
             </li>
           ))}
         </ul>
+        </div>
       )}
     </div>
   );

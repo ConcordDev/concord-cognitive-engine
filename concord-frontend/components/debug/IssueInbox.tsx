@@ -97,6 +97,7 @@ export function IssueInbox() {
   const [summary, setSummary] = useState<IssueSummary | null>(null);
   const [statusFilter, setStatusFilter] = useState<'' | 'open' | 'resolved' | 'ignored'>('open');
   const [query, setQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'last' | 'first' | 'count'>('last');
   const [loading, setLoading] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Issue | null>(null);
@@ -121,7 +122,7 @@ export function IssueInbox() {
       projectId,
       status: statusFilter || undefined,
       query: query || undefined,
-      sort: 'last',
+      sort: sortBy,
     });
     if (r.data?.ok && r.data.result) {
       setIssues(r.data.result.issues || []);
@@ -137,7 +138,7 @@ export function IssueInbox() {
       setReleaseNames((rel.data.result.releases || []).map((x: { version: string }) => x.version));
     }
     setLoading(false);
-  }, [statusFilter, query, projectId]);
+  }, [statusFilter, query, sortBy, projectId]);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => void load());
@@ -358,6 +359,18 @@ export function IssueInbox() {
           placeholder="Search issues..."
           className="flex-1 px-2 py-1 bg-lattice-surface border border-lattice-border rounded text-xs"
         />
+        {/* FIX-debug-004: the server has always sorted (last/first/count)
+            but the panel hardcoded 'last' — surface the choice. */}
+        <select
+          aria-label="Sort issues"
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+          className="px-2 py-1 bg-lattice-surface border border-lattice-border rounded text-xs"
+        >
+          <option value="last">Last seen</option>
+          <option value="first">First seen</option>
+          <option value="count">Most frequent</option>
+        </select>
       </div>
 
       {error && <p className="text-xs text-red-400">{error}</p>}

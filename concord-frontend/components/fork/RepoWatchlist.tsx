@@ -14,6 +14,7 @@ import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface Repo { id: string; fullName: string; note: string; reason: string; lastStars: number | null; lastPushedAt: string | null; openIssues?: number | null; forks?: number | null }
 interface Dash { repos: number; totalStars: number; refreshed: number; byReason: Record<string, number> }
+interface FeedItem { id: string; title: string; repo: string | null; type: string | null; actor: string | null; publishedAt: string | null }
 
 const REASONS = ['upstream', 'fork', 'competitor', 'reference', 'dependency'];
 
@@ -27,14 +28,17 @@ export function RepoWatchlist() {
   const [editForm, setEditForm] = useState({ reason: 'reference', note: '' });
   const [feedRepo, setFeedRepo] = useState('');
   const [feedMsg, setFeedMsg] = useState<string | null>(null);
+  const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
 
   const refresh = useCallback(async () => {
-    const [wl, d] = await Promise.all([
+    const [wl, d, fl] = await Promise.all([
       lensRun('fork', 'watch-list', {}),
       lensRun('fork', 'watch-dashboard', {}),
+      lensRun('fork', 'feed-list', {}),
     ]);
     setRepos((wl.data?.result?.repos as Repo[]) || []);
     setDash((d.data?.result as Dash) || null);
+    setFeedItems((fl.data?.result?.items as FeedItem[]) || []);
     setLoading(false);
   }, []);
   useEffect(() => { void refresh(); }, [refresh]);
@@ -65,6 +69,7 @@ export function RepoWatchlist() {
     setBusy(null);
     const res = r.data?.result as { ingested?: number; skipped?: number } | undefined;
     setFeedMsg(r.data?.ok ? `Ingested ${res?.ingested ?? 0} event DTUs (${res?.skipped ?? 0} dedup-skipped)` : (r.data?.error || 'Feed failed'));
+    if (r.data?.ok) await refresh();
   }
 
   if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
@@ -96,6 +101,26 @@ export function RepoWatchlist() {
           {busy === 'feed' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Rss className="w-3 h-3" />}Pull feed
         </button>
         {feedMsg && <p className="w-full text-[10px] text-zinc-400">{feedMsg}</p>}
+      </div>
+
+      {/* FIX-fork-011 (view leg): what the pull actually brought in. The
+          ingested DTUs were invisible from this lens before feed-list. */}
+      <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5 mb-3">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400 mb-1.5">Ingested from the feed</p>
+        {feedItems.length === 0 ? (
+          <p className="text-xs text-zinc-500 italic">Nothing ingested yet — pull a feed to bring its events in as DTUs.</p>
+        ) : (
+          <ul className="space-y-1">
+            {feedItems.map(item => (
+              <li key={item.id} className="flex items-baseline gap-2 text-xs">
+                <span className="min-w-0 flex-1 truncate font-medium text-zinc-200">{item.title}</span>
+                <span className="shrink-0 text-[10px] text-zinc-500">
+                  {[item.repo, item.actor, item.publishedAt ? item.publishedAt.slice(0, 10) : null].filter(Boolean).join(' · ')}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5 mb-3 flex flex-wrap gap-1.5">

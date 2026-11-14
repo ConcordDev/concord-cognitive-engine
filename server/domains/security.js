@@ -632,6 +632,33 @@ export default function registerSecurityActions(registerLensAction) {
     return { ok: true, result: { deleted: params.id } };
   });
 
+  // Edit an existing rule in place — the same field validations rule-add
+  // applies, on the fields the caller actually sends. Before this verb a
+  // rule's name and pattern were fixed at creation: the panel could only
+  // toggle or delete-and-recreate (FIX-security-010).
+  registerLensAction("security", "rule-update", (ctx, _a, params = {}) => {
+    const s = getSecState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const rule = secRules(s, secActor(ctx)).find((r) => r.id === params.id);
+    if (!rule) return { ok: false, error: "rule not found" };
+    if (params.name != null) {
+      const name = secClean(params.name, 160);
+      if (!name) return { ok: false, error: "rule name required" };
+      rule.name = name;
+    }
+    if (params.pattern != null) {
+      const pattern = secClean(params.pattern, 240);
+      if (!pattern) return { ok: false, error: "rule pattern required" };
+      rule.pattern = pattern;
+    }
+    if (params.field != null && ["message", "srcIp", "user", "host", "category", "source"].includes(params.field)) rule.field = params.field;
+    if (params.minSeverity != null && EVENT_SEVERITY.includes(params.minSeverity)) rule.minSeverity = params.minSeverity;
+    if (params.threshold != null) rule.threshold = Math.max(1, Math.round(Number(params.threshold) || 1));
+    if (params.windowMin != null) rule.windowMin = Math.max(1, Math.min(1440, Math.round(Number(params.windowMin) || 60)));
+    if (params.incidentSeverity != null && ["P1", "P2", "P3", "P4", "P5"].includes(params.incidentSeverity)) rule.incidentSeverity = params.incidentSeverity;
+    saveSecurity();
+    return { ok: true, result: { rule } };
+  });
+
   registerLensAction("security", "rule-toggle", (ctx, _a, params = {}) => {
     const s = getSecState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const rule = secRules(s, secActor(ctx)).find((r) => r.id === params.id);
