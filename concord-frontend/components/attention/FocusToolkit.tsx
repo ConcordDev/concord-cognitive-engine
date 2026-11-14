@@ -21,7 +21,7 @@ import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import {
   Timer, Play, Square, AlertTriangle, CalendarDays, CalendarClock,
   BellOff, Bell, Activity, Zap, Loader2, Plus, Trash2, CheckCircle2,
-  TrendingUp, TrendingDown, Minus, Gauge, Pencil,
+  TrendingUp, TrendingDown, Minus, Gauge, Pencil, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 
 // ── shared types ──
@@ -65,6 +65,12 @@ interface PeakHours { hourly: PeakHour[]; peakHours: PeakHour[]; lowHours: PeakH
 
 const minToHHMM = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 const todayKey = () => calendarDateKey();
+// Shift a YYYY-MM-DD key by whole days in local time (the Date
+// constructor absorbs month/year rollover).
+const shiftDateKey = (key: string, delta: number) => {
+  const [y, m, d] = key.split('-').map(Number);
+  return calendarDateKey(new Date(y || 1970, (m || 1) - 1, (d || 1) + delta));
+};
 
 export function FocusToolkit() {
   const [confirmReleaseId, setConfirmReleaseId] = useState<string | null>(null);
@@ -76,6 +82,15 @@ export function FocusToolkit() {
   const [pomTaskName, setPomTaskName] = useState('');
   const [pomEnergy, setPomEnergy] = useState<'low' | 'medium' | 'high'>('medium');
   // ── planner ──
+  // FIX-strategic-adds-005: the planner was hard-bound to today —
+  // every read and write passed date: todayKey() and no control could
+  // reach another day, so a task that persisted fine under its own
+  // date looked deleted the next morning: still stored server-side,
+  // invisible and unreachable in the UI, with the today-only scope
+  // never disclosed. The viewed date is now state, shown in a date
+  // control with prev/next + Today, and every planner action targets
+  // the viewed date.
+  const [planDate, setPlanDate] = useState<string>(() => todayKey());
   const [day, setDay] = useState<PlannerDay | null>(null);
   const [plannerStats, setPlannerStats] = useState<{ plannedMinutes: number; capacityMinutes: number; remainingMinutes: number; overbooked: boolean } | null>(null);
   const [taskName, setTaskName] = useState('');
@@ -116,9 +131,9 @@ export function FocusToolkit() {
   }, [run]);
 
   const refreshPlanner = useCallback(async () => {
-    const r = await run<{ day: PlannerDay; plannedMinutes: number; capacityMinutes: number; remainingMinutes: number; overbooked: boolean }>('plannerGet', { date: todayKey() });
+    const r = await run<{ day: PlannerDay; plannedMinutes: number; capacityMinutes: number; remainingMinutes: number; overbooked: boolean }>('plannerGet', { date: planDate });
     if (r) { setDay(r.day); setPlannerStats({ plannedMinutes: r.plannedMinutes, capacityMinutes: r.capacityMinutes, remainingMinutes: r.remainingMinutes, overbooked: r.overbooked }); }
-  }, [run]);
+  }, [run, planDate]);
 
   const refreshDistractions = useCallback(async () => {
     const r = await run<DistractionSummary>('distractionSummary');
@@ -144,13 +159,16 @@ export function FocusToolkit() {
 
   useEffect(() => {
     refreshPomodoro();
-    refreshPlanner();
     refreshDistractions();
     refreshAnalytics();
     refreshFocusMode();
     refreshCalendar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // The planner loads on mount and re-loads whenever the viewed
+  // date changes (FIX-strategic-adds-005).
+  useEffect(() => { void refreshPlanner(); }, [refreshPlanner]);
 
   // live countdown — derived from server endsAt, not a fake clock
   useEffect(() => {
@@ -194,7 +212,7 @@ export function FocusToolkit() {
     if (!taskName.trim()) return;
     setBusy('plan-add');
     await run('plannerAddTask', {
-      date: todayKey(), name: taskName.trim(),
+      date: planDate, name: taskName.trim(),
       startMinute: Number(taskStart), durationMinutes: Number(taskDuration),
     });
     setTaskName('');
@@ -202,15 +220,15 @@ export function FocusToolkit() {
     setBusy(null);
   };
   const toggleTaskDone = async (t: PlannerTask) => {
-    await run('plannerMoveTask', { date: todayKey(), taskId: t.id, done: !t.done });
+    await run('plannerMoveTask', { date: planDate, taskId: t.id, done: !t.done });
     await refreshPlanner();
   };
   const shiftTask = async (t: PlannerTask, deltaMin: number) => {
-    await run('plannerMoveTask', { date: todayKey(), taskId: t.id, startMinute: Math.max(0, Math.min(1439, t.startMinute + deltaMin)) });
+    await run('plannerMoveTask', { date: planDate, taskId: t.id, startMinute: Math.max(0, Math.min(1439, t.startMinute + deltaMin)) });
     await refreshPlanner();
   };
   const removePlannerTask = async (id: string) => {
-    await run('plannerRemoveTask', { date: todayKey(), taskId: id });
+    await run('plannerRemoveTask', { date: planDate, taskId: id });
     await refreshPlanner();
   };
 
@@ -400,6 +418,29 @@ export function FocusToolkit() {
           <h3 className="flex items-center gap-2 text-sm font-semibold text-white">
             <CalendarDays className="h-4 w-4 text-neon-purple" /> Daily Attention Planner
           </h3>
+          {/* FIX-strategic-adds-005: the viewed date, always visible,
+              with day navigation — a plan lives under its own date
+              and stays reachable until the owner deletes it. */}
+          <div className="flex items-center gap-1.5">
+            <button type="button" aria-label="Previous day" onClick={() => setPlanDate((d) => shiftDateKey(d, -1))} className="rounded border border-zinc-700 px-1.5 py-1 text-gray-300 hover:border-zinc-500 hover:text-white">
+              <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
+            </button>
+            <input
+              type="date"
+              aria-label="Planner date"
+              value={planDate}
+              onChange={(e) => { if (e.target.value) setPlanDate(e.target.value); }}
+              className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs text-white"
+            />
+            <button type="button" aria-label="Next day" onClick={() => setPlanDate((d) => shiftDateKey(d, 1))} className="rounded border border-zinc-700 px-1.5 py-1 text-gray-300 hover:border-zinc-500 hover:text-white">
+              <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+            </button>
+            {planDate !== todayKey() && (
+              <button type="button" onClick={() => setPlanDate(todayKey())} className="rounded border border-zinc-700 px-2 py-1 text-xs text-gray-300 hover:border-zinc-500 hover:text-white">
+                Today
+              </button>
+            )}
+          </div>
           {plannerStats && (
             <span className={`text-xs ${plannerStats.overbooked ? 'text-red-400' : 'text-gray-400'}`}>
               {Math.round(plannerStats.plannedMinutes / 60 * 10) / 10}h / {Math.round(plannerStats.capacityMinutes / 60)}h planned
@@ -438,7 +479,7 @@ export function FocusToolkit() {
             </div>
           ))}
           {(!day || day.tasks.length === 0) && (
-            <p className="rounded border border-dashed border-zinc-800 py-4 text-center text-xs text-gray-400">No tasks timeboxed for today.</p>
+            <p className="rounded border border-dashed border-zinc-800 py-4 text-center text-xs text-gray-400">No tasks timeboxed for {planDate === todayKey() ? 'today' : planDate}.</p>
           )}
         </div>
       </section>
