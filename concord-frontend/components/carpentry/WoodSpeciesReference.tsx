@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { Trees, Loader2, ExternalLink } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
@@ -37,12 +37,40 @@ export function WoodSpeciesReference() {
     return () => { live = false; };
   }, []);
 
+  const liveRef = useRef(true);
+  useEffect(() => {
+    liveRef.current = true;
+    return () => { liveRef.current = false; };
+  }, []);
+
   const load = useMutation({
     mutationFn: async (species: string) => {
       setBusy(species); setError(null);
       try {
         const data = await wikiSummary<WikiSummary>(species);
         setResults((prev) => ({ ...prev, [species]: data }));
+        // FIX-carpentry-012: the shared feed-cache is stale-while-
+        // revalidate by design (muse-b5's investigated disposition
+        // stands for the cache itself) — an expired entry is served
+        // stale while the server refreshes in the background. But
+        // this panel holds its own copy and never re-read, so the
+        // refresh never reached the user: the first lookup stranded
+        // them on the cached copy until a manual retry. Complete
+        // the SWR contract at this consumer: on a stale answer,
+        // re-read ONCE after a short beat and swap in the refreshed
+        // copy if it is fresh. If it is still stale, the disclosed
+        // cached copy (LookupNotice) stands — no loop, no hiding.
+        if (lookupMeta(data)?.stale) {
+          setTimeout(async () => {
+            if (!liveRef.current) return;
+            try {
+              const fresh = await wikiSummary<WikiSummary>(species);
+              if (liveRef.current && !lookupMeta(fresh)?.stale) {
+                setResults((prev) => ({ ...prev, [species]: fresh }));
+              }
+            } catch { /* keep the disclosed stale copy */ }
+          }, 1200);
+        }
       } catch (e) { setError(e instanceof Error ? e.message : 'lookup failed'); }
       finally { setBusy(null); }
     },
