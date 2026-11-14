@@ -17687,10 +17687,21 @@ register("transfer", "list_patterns", (ctx, _input = {}) => {
 register("transfer", "find_analogies", (ctx, input = {}) => {
   try {
   enforceEthosInvariant("transfer_analogies");
-  const targetDomain = String(input.domain || "general");
-  const query = String(input.query || "");
+  // FIX-transfer-008: the Transfer UI sends { source, target } — this
+  // macro read only { query, domain }, so every UI search ran with an
+  // empty query against "general" and returned []. Accept the UI's
+  // field names (the FIX-transfer-009 classify_domain shape).
+  const targetDomain = String(input.target || input.domain || "general");
+  const query = String(input.source || input.query || input.text || "");
   const results = findAnalogousPatterns(targetDomain, query);
-  return { ok: true, results };
+  if (results.length > 0) return { ok: true, results };
+  // Honest empty state: name why nothing came back instead of a bare [].
+  ensureTransferEngine();
+  const patternCount = STATE.transfer.patterns.size;
+  const note = patternCount === 0
+    ? "No analogy patterns have been extracted yet. Extract a pattern from DTUs first, then find analogies against it."
+    : `Patterns exist, but none from a domain other than "${targetDomain}" — analogies only cross domains.`;
+  return { ok: true, results, note };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
@@ -35638,7 +35649,15 @@ register("dtu", "lineage", (ctx, input = {}) => {
         .map((p) => (typeof p === "string" ? p : p?.id))
         .filter(Boolean);
     }
-    const childIds = Array.isArray(dtu.lineage?.children) ? dtu.lineage.children : [];
+    let childIds = Array.isArray(dtu.lineage?.children) ? dtu.lineage.children : [];
+    // FIX-graph-009: legacy records also carry top-level `parents` /
+    // `children` arrays, which the detail view's Metadata tab counts.
+    // The two fields are the same relation stamped in different eras;
+    // union them (deduped) so the Lineage view and the Metadata count
+    // can never disagree about how many links a DTU has.
+    const normIds = (arr) => (Array.isArray(arr) ? arr.map((p) => (typeof p === "string" ? p : p?.id)).filter(Boolean) : []);
+    parentIds = [...new Set([...parentIds, ...normIds(dtu.parents)])];
+    childIds = [...new Set([...childIds, ...normIds(dtu.children)])];
     const parents = parentIds.map((pid) => _dtuLineageRef(pid, ctx));
     const children = childIds.map((cid) => _dtuLineageRef(cid, ctx));
 
