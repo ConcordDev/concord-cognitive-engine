@@ -140,7 +140,7 @@ export function ConnectionStatus() {
   return (
     <div
       style={{ zIndex: Z_INDEX.CONNECTION_BANNER }}
-      className={`fixed left-0 right-0 bg-yellow-600/90 text-black text-center text-sm py-1 transition-[top] duration-300 ${
+      className={`pointer-events-none fixed left-0 right-0 bg-yellow-600/90 text-black text-center text-sm py-1 transition-[top] duration-300 ${
         browserOffline ? 'top-8' : 'top-0'
       }`}
       role="status"
