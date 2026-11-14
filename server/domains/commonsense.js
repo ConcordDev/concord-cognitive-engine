@@ -1611,6 +1611,75 @@ export default function registerCommonsenseActions(registerLensAction) {
       tags: ["commonsense", "check"],
     }));
   });
+  // D2 / branch (a): the answering step. A question is answered from
+  // the caller's OWN thread — the finding they stated, stamped with
+  // its date, verbatim. A disputed finding answers as contested,
+  // never as settled; colliding findings answer together, neither
+  // silently preferred. A miss answers honestly: the lens holds no
+  // finding of the caller's on it. No engine knowledge is claimed —
+  // platform knowledge is the named second leg, not built here.
+  const ANSWER_STOPWORDS = new Set([
+    "what", "when", "where", "which", "does", "did", "will", "would",
+    "should", "could", "happens", "happen", "about", "with", "from",
+    "that", "this", "there", "their", "them", "then", "than", "into",
+    "onto", "over", "under", "have", "has", "had", "are", "was", "were",
+    "the", "and", "for", "you", "your",
+  ]);
+  function answerTerms(text) {
+    return new Set(
+      String(text || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9 ]+/g, " ")
+        .split(/\s+/)
+        .filter((w) => w.length >= 3 && !ANSWER_STOPWORDS.has(w)),
+    );
+  }
+  function answerEntry(check) {
+    return {
+      checkId: check.id,
+      question: check.question,
+      finding: check.finding,
+      exception: check.exception || null,
+      statedAt: check.findingAt || check.updatedAt || check.createdAt || "",
+      disputed: !!check.flagged,
+    };
+  }
+  registerLensAction("commonsense", "check-answer", (ctx, _artifact, params = {}) => {
+    try {
+      const userId = checkActor(ctx);
+      if (!userId) return { ok: false, error: "no_actor" };
+      const question = checkClean(params.question, 4000);
+      if (!question) return { ok: false, error: "question required" };
+      const normQ = (q) => q.trim().replace(/\s+/g, " ").toLowerCase();
+      const thread = orderedChecks(ctx, userId).filter((item) => item.finding);
+      const exact = thread.filter((item) => normQ(item.question) === normQ(question));
+      let matches = exact;
+      let matchKind = exact.length ? "exact" : "none";
+      if (!matches.length) {
+        const terms = answerTerms(question);
+        if (terms.size) {
+          matches = thread.filter((item) => {
+            const own = answerTerms(item.question);
+            for (const t of terms) if (own.has(t)) return true;
+            return false;
+          }).slice(0, 5);
+          if (matches.length) matchKind = "related";
+        }
+      }
+      return {
+        ok: true,
+        result: {
+          question,
+          answered: matches.length > 0,
+          match: matchKind,
+          source: "your-thread",
+          answers: matches.map(answerEntry),
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
 
   registerLensAction("commonsense", "check-list", (ctx, _artifact, _params) => {
     try {

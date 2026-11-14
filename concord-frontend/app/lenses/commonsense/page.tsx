@@ -5,8 +5,10 @@
  *
  * The lens is a capture journal, and its copy says so (D3): the user
  * asks a question, states the obvious, and notes the exception.
- * Nothing here answers for them; every finding is stated by the user,
- * dated, and can be disputed by them (S-CS-2/S-CS-3).
+ * Branch (a)/D2: asking also answers — from the user's own thread,
+ * in their own words, stamped with the date (check-answer). Nothing
+ * else answers; every finding is stated by the user, dated, and can
+ * be disputed by them (S-CS-2/S-CS-3).
  *
  * The frame matches the concept: one panel, empty thread, Ask.
  * Ask stores a question. The finding and the exception are later
@@ -34,6 +36,22 @@ interface CheckRow {
 
 function provenanceDate(row: CheckRow, field: 'findingAt' | 'exceptionAt'): string {
   const iso = row[field] || row.updatedAt;
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+interface ThreadAnswer {
+  checkId: string;
+  question: string;
+  finding: string;
+  exception: string | null;
+  statedAt: string;
+  disputed: boolean;
+}
+
+function answerDate(iso: string): string {
   if (!iso) return '';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
@@ -124,6 +142,8 @@ export default function CommonsenseLensPage() {
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [savedNote, setSavedNote] = useState('');
+  const [answer, setAnswer] = useState<{ question: string; answers: ThreadAnswer[] } | null>(null);
+  const [answerMiss, setAnswerMiss] = useState('');
 
   const applyThread = useCallback((rows: CheckRow[], preferId?: string) => {
     setChecks(rows);
@@ -194,7 +214,20 @@ export default function CommonsenseLensPage() {
     }
     setBusy(true);
     setActionError('');
+    setAnswer(null);
+    setAnswerMiss('');
     try {
+      // D2: the thread answers first, in the user's own words. A hit
+      // renders stamped and verbatim below; a miss says so plainly.
+      // Either way the ask itself still records (or dedups) as before.
+      try {
+        const found = await runCs<{ answered?: boolean; answers?: ThreadAnswer[] }>('check-answer', { question: trimmed }, 'Could not ask that.');
+        if (found.answered && Array.isArray(found.answers) && found.answers.length) {
+          setAnswer({ question: trimmed, answers: found.answers });
+        } else {
+          setAnswerMiss('You have not stated the obvious on this yet — state it and the thread will answer with it next time.');
+        }
+      } catch (_answerErr) { /* the ask below owns the real error path */ }
       const created = await runCs<{ checkId?: string; duplicate?: boolean }>('check-ask', { question: trimmed }, 'Could not ask that.');
       const id = created.checkId;
       if (!id) throw new Error('Could not ask that.');
@@ -400,9 +433,9 @@ export default function CommonsenseLensPage() {
           {empty && (
             <div data-testid="cs-empty" className="flex min-h-[16rem] flex-col items-center justify-center gap-2 text-center">
               <p className="text-[15px] text-zinc-300">The thread is empty.</p>
-              <p className="max-w-md text-[14px] text-zinc-400">
+              <p className="max-w-md text-[14px] text-zinc-500">
                 Ask a question below. Then state the obvious answer, in your own words — and note the exception, where the obvious breaks.
-                Nothing here answers for you: what you write is stated by you, dated, and kept.
+                The thread answers from what you stated: your words, dated. Nothing else answers for you.
               </p>
             </div>
           )}
@@ -545,6 +578,25 @@ export default function CommonsenseLensPage() {
           )}
         </section>
 
+        {answer ? (
+          <section data-testid="cs-answer" aria-label="Answer from your thread" className="mt-6 rounded-2xl border border-white/10 bg-zinc-950 px-6 py-5">
+            <h3 className="font-vault text-[1.125rem] text-zinc-100">From your thread</h3>
+            {answer.answers.map((item) => (
+              <div key={item.checkId} className="mt-3">
+                <p className="text-[15px] text-zinc-300">{item.finding}</p>
+                <p className="mt-1 text-[12px] text-zinc-500">
+                  {item.disputed
+                    ? <>You disputed this finding{answerDate(item.statedAt) ? ` — stated by you, ${answerDate(item.statedAt)}` : ''}. It stands contested, not settled.</>
+                    : <>You stated the obvious{answerDate(item.statedAt) ? ` on ${answerDate(item.statedAt)}` : ''}.</>}
+                </p>
+                {item.exception ? (
+                  <p className="mt-1 text-[13px] text-zinc-400">Its boundary, as you noted it: {item.exception}</p>
+                ) : null}
+              </div>
+            ))}
+          </section>
+        ) : null}
+        {answerMiss ? <p data-testid="cs-answer-miss" className="mt-4 text-[13px] text-zinc-500">{answerMiss}</p> : null}
         {actionError ? <p role="alert" className="mt-4 text-[14px] text-zinc-300">{actionError}</p> : null}
         {savedNote ? <p data-testid="cs-saved" className="mt-4 text-[13px] text-zinc-400">{savedNote}</p> : null}
 
