@@ -38,6 +38,7 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Crown,
+  Gift,
   ClipboardList,
   Sparkles,
   Phone,
@@ -605,7 +606,7 @@ export function EventsWorkbench({
     create: createTicket,
     update: updateTicket,
     remove: removeTicket,
-  } = useLensData('events', 'TicketTier', { seed: EMPTY_DATA.TicketTier, enabled: mode === 'events' });
+  } = useLensData('events', 'TicketTier', { seed: EMPTY_DATA.TicketTier, enabled: mode === 'events' || mode === 'tickets' });
 
   // RSVP / Ticket purchase state
   const [rsvpLoading, setRsvpLoading] = useState<string | null>(null);
@@ -1037,7 +1038,7 @@ export function EventsWorkbench({
     }
   };
 
-  const storeMode = mode === 'tickets' || mode === 'runofshow' || mode === 'guests';
+  const storeMode = mode === 'runofshow' || mode === 'guests';
 
   if (isLoading && mode !== 'budget' && !storeMode) {
     return (
@@ -2125,6 +2126,207 @@ export function EventsWorkbench({
   // ---------------------------------------------------------------------------
   // Render: Content by mode
   // ---------------------------------------------------------------------------
+  const renderTickets = () => {
+    // Group by event
+    const byEvent = filtered.reduce<Record<string, LensItem[]>>((acc, t) => {
+      const evtName = String((t.data as Record<string, unknown>).eventName || 'Unassigned');
+      if (!acc[evtName]) acc[evtName] = [];
+      acc[evtName].push(t);
+      return acc;
+    }, {});
+
+    return (
+      <div className="space-y-4">
+        {Object.keys(byEvent).length === 0 ? (
+          <div className="text-center py-12">
+            <Ticket className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+            <p className={ds.textMuted}>No ticket tiers found</p>
+            <button onClick={openCreate} className={cn(ds.btnGhost, 'mt-3')}>
+              <Plus className="w-4 h-4" /> Add ticket tier
+            </button>
+          </div>
+        ) : (
+          Object.entries(byEvent).map(([eventName, tiers]) => {
+            const totalSold = tiers.reduce(
+              (s, t) => s + Number((t.data as Record<string, unknown>).sold || 0),
+              0
+            );
+            const totalAvail = tiers.reduce(
+              (s, t) => s + Number((t.data as Record<string, unknown>).totalAvailable || 0),
+              0
+            );
+            const totalRevenue = tiers.reduce(
+              (s, t) =>
+                s +
+                Number((t.data as Record<string, unknown>).sold || 0) *
+                  Number((t.data as Record<string, unknown>).price || 0),
+              0
+            );
+            const totalWaitlist = tiers.reduce(
+              (s, t) => s + Number((t.data as Record<string, unknown>).waitlist || 0),
+              0
+            );
+            const totalComp = tiers.reduce(
+              (s, t) => s + Number((t.data as Record<string, unknown>).compTickets || 0),
+              0
+            );
+            const totalCheckedIn = tiers.reduce(
+              (s, t) => s + Number((t.data as Record<string, unknown>).checkedIn || 0),
+              0
+            );
+
+            return (
+              <div key={eventName} className={ds.panel}>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className={cn(ds.heading3, 'flex items-center gap-2')}>
+                    <Ticket className="w-5 h-5 text-neon-pink" /> {eventName}
+                  </h3>
+                  <span className={ds.textMuted}>
+                    {totalSold.toLocaleString()} / {totalAvail.toLocaleString()} sold
+                  </span>
+                </div>
+
+                {/* Summary row */}
+                <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-4">
+                  <div className="p-2 bg-lattice-elevated rounded-lg text-center">
+                    <p className="text-xs text-gray-400">Revenue</p>
+                    <p className="text-sm font-bold text-green-400">{fmtCurrency(totalRevenue)}</p>
+                  </div>
+                  <div className="p-2 bg-lattice-elevated rounded-lg text-center">
+                    <p className="text-xs text-gray-400">Sold</p>
+                    <p className="text-sm font-bold">{totalSold.toLocaleString()}</p>
+                  </div>
+                  <div className="p-2 bg-lattice-elevated rounded-lg text-center">
+                    <p className="text-xs text-gray-400">Remaining</p>
+                    {/* FIX-events-008: comps are seats given away — they
+                        consume capacity. Remaining used to subtract only
+                        paid sales, so 50 available with 3 comps still
+                        read Remaining 50 instead of 47. */}
+                    <p className="text-sm font-bold">{Math.max(0, totalAvail - totalSold - totalComp).toLocaleString()}</p>
+                  </div>
+                  <div className="p-2 bg-lattice-elevated rounded-lg text-center">
+                    <p className="text-xs text-gray-400">Checked In</p>
+                    <p className="text-sm font-bold">{totalCheckedIn.toLocaleString()}</p>
+                  </div>
+                  <div className="p-2 bg-lattice-elevated rounded-lg text-center">
+                    <p className="text-xs text-gray-400">Waitlist</p>
+                    <p className="text-sm font-bold text-amber-400">{totalWaitlist}</p>
+                  </div>
+                  <div className="p-2 bg-lattice-elevated rounded-lg text-center">
+                    <p className="text-xs text-gray-400">Comps</p>
+                    <p className="text-sm font-bold">{totalComp}</p>
+                  </div>
+                </div>
+
+                {/* Overall progress */}
+                <div className="mb-4">
+                  <ProgressBar value={totalSold} max={totalAvail} color="neon-pink" />
+                </div>
+
+                {/* Tier cards */}
+                <div className={ds.grid3}>
+                  {tiers.map((t) => {
+                    const td = t.data as Record<string, unknown>;
+                    const sold = Number(td.sold || 0);
+                    const avail = Number(td.totalAvailable || 0);
+                    const comps = Number(td.compTickets || 0);
+                    const price = Number(td.price || 0);
+                    const tierRev = sold * price;
+                    const st = t.meta?.status as string;
+                    // FIX-events-006: a blank Total Available (0) means
+                    // NO CAP — the server tier model treats quantity 0
+                    // as unlimited — not a tier that is instantly sold
+                    // out (0 >= 0). Comps consume seats (events-008),
+                    // so they count toward filling a capped tier.
+                    const soldOut = avail > 0 && sold + comps >= avail;
+                    return (
+                      <div
+                        key={t.id}
+                        className={cn(ds.panelHover, 'relative')}
+                        onClick={() => openEdit(t.id)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
+                        {soldOut && (
+                          <div className="absolute top-2 right-2">
+                            <span className={ds.badge('red-400')}>SOLD OUT</span>
+                          </div>
+                        )}
+                        <h4 className="font-semibold text-sm mb-1">{String(td.tierName)}</h4>
+                        <p className="text-xl font-bold text-neon-cyan mb-2">
+                          {fmtCurrency(price)}
+                        </p>
+                        {avail > 0 ? (
+                          <ProgressBar
+                            value={sold + comps}
+                            max={avail}
+                            color={soldOut ? 'red-400' : 'neon-cyan'}
+                          />
+                        ) : (
+                          <p className="text-xs text-gray-400">
+                            No cap set · {sold.toLocaleString()} sold{comps > 0 ? ` · ${comps.toLocaleString()} comps` : ''}
+                          </p>
+                        )}
+                        <div className="grid grid-cols-2 gap-2 mt-2 text-xs">
+                          <div>
+                            <span className="text-gray-400">Revenue:</span>{' '}
+                            <span className="text-green-400">{fmtCurrency(tierRev)}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-400">Waitlist:</span>{' '}
+                            <span className="text-amber-400">{Number(td.waitlist || 0)}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-400">Comps:</span>{' '}
+                            <span>{Number(td.compTickets || 0)}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-400">Check-in:</span>{' '}
+                            <span>{Number(td.checkedIn || 0)}</span>
+                          </div>
+                        </div>
+                        {Boolean(td.perks) && (
+                          <p className="text-xs text-gray-400 mt-2 line-clamp-2">
+                            <Gift className="w-3 h-3 inline mr-1" />
+                            {String(td.perks)}
+                          </p>
+                        )}
+                        <div className="flex items-center justify-between pt-2 mt-2 border-t border-lattice-border">
+                          <span className={ds.badge(STATUS_COLORS[st] || 'gray-400')}>{st}</span>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openEdit(t.id);
+                              }}
+                              className={ds.btnGhost}
+                            aria-label="Edit">
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeTicket(t.id);
+                              }}
+                              className={cn(ds.btnGhost, 'hover:text-red-400')}
+                            aria-label="Delete">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+    );
+  };
+
+  // ---------------------------------------------------------------------------
+  // Render: Guests
+  // ---------------------------------------------------------------------------
+
   const renderContent = () => {
     switch (mode) {
       case 'dashboard':
@@ -2140,7 +2342,7 @@ export function EventsWorkbench({
       case 'budget':
         return <OperationsBudgetPanel />;
       case 'tickets':
-        return <OperationsStorePanel kind="tickets" />;
+        return renderTickets();
       case 'guests':
         return <OperationsStorePanel kind="guests" />;
       default:
@@ -2150,7 +2352,7 @@ export function EventsWorkbench({
 
   return (
     <div className="space-y-4">
-      {mode !== 'dashboard' && mode !== 'budget' && mode !== 'tickets' && mode !== 'runofshow' && mode !== 'guests' && (
+      {mode !== 'dashboard' && mode !== 'budget' && mode !== 'runofshow' && mode !== 'guests' && (
         <div className="flex justify-end">
           <button onClick={openCreate} className={ds.btnPrimary}>
             <Plus className="w-4 h-4" /> New{' '}
@@ -2194,7 +2396,7 @@ export function EventsWorkbench({
       )}
 
       {/* Filters. The Budget view reads the Host lines, not this artifact list; tickets, run of show, and guests are the Operations store. */}
-      {mode !== 'dashboard' && mode !== 'budget' && mode !== 'tickets' && mode !== 'runofshow' && mode !== 'guests' && (
+      {mode !== 'dashboard' && mode !== 'budget' && mode !== 'runofshow' && mode !== 'guests' && (
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative flex-1 min-w-[200px] max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
