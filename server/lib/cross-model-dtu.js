@@ -214,4 +214,52 @@ export function validateArtifactSchemas({ schemas, getVocabulary }) {
   };
 }
 
-export default { validateContentClasses, validateArtifactSchemas };
+/**
+ * Validate registered artifact schemas against the live lens-action
+ * registry: every schema's (domain, action) must name a real lens
+ * action, or the quality gate holds a schema nothing can ever
+ * produce output for. A `domain.*` wildcard schema (the
+ * getArtifactSchema fallback) resolves on its domain existing at all.
+ *
+ * This check is exact only where the registry is live — LENS_ACTIONS
+ * is a Map in server.js's monolith scope, published at boot as
+ * globalThis.__concordLensActions — so it is wired in the boot
+ * report-mode block, not the importable suites.
+ *
+ * @param {{ schemas: Array<{domain: string, action: string}>,
+ *           lensActions: Set<string> | Map<string, unknown> }} input
+ *   `lensActions` keys in "domain.action" form.
+ * @returns {{ errors: Array, warnings: Array, checked: object, unverifiable: Array }}
+ */
+export function validateArtifactSchemaTargets({ schemas, lensActions }) {
+  const errors = [];
+  const list = Array.isArray(schemas) ? schemas : [];
+  const keys = lensActions instanceof Map ? new Set(lensActions.keys()) : new Set(lensActions || []);
+  const domains = new Set([...keys].map((k) => String(k).split(".")[0]));
+  for (const entry of list) {
+    const where = `${entry?.domain}.${entry?.action}`;
+    if (entry?.action === "*") {
+      if (!domains.has(entry?.domain)) {
+        errors.push({
+          surface: "artifact-schemas↔lens-actions", location: where, kind: "schema_domain_unresolved",
+          detail: `wildcard schema for domain "${entry?.domain}" — no lens action is registered under that domain at all`,
+        });
+      }
+      continue;
+    }
+    if (!keys.has(where)) {
+      errors.push({
+        surface: "artifact-schemas↔lens-actions", location: where, kind: "schema_target_unresolved",
+        detail: `schema is registered for lens action "${where}", which is not in the live lens-action registry (${keys.size} actions) — quality-gate holds a schema no action can produce output for`,
+      });
+    }
+  }
+  return {
+    errors,
+    warnings: [],
+    checked: { schemas: list.length, lensActions: keys.size },
+    unverifiable: [],
+  };
+}
+
+export default { validateContentClasses, validateArtifactSchemas, validateArtifactSchemaTargets };
