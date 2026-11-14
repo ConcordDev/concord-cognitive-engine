@@ -9,7 +9,8 @@
 
 // Phase 1 — real type-aware semantics for the code lens (TS LanguageService over
 // the in-memory workspace). Lazy: typescript only loads on the first lsp-* call.
-import { guardAnonWrites } from "../lib/lens-authz.js";
+import { guardAnonWrites, actorId } from "../lib/lens-authz.js";
+import { dtuListedOwner } from "../lib/dtu-list-source.js";
 import tsLang from "../lib/ts-language-service.js";
 // Phase 3 — the verifiable build loop (make→write→run→lint→verify→done).
 import { runBuildLoop } from "../lib/build-loop.js";
@@ -488,15 +489,22 @@ export default function registerCodeActions(registerLensAction) {
 
   /**
    * snippets-list — List the caller's code snippets (DTUs of kind=code_snippet).
-   * Falls back to global snippet corpus for anon users.
+   * GB-1536 hard privacy rule: the caller is resolved with lens-authz
+   * actorId (placeholder identities — anon/anonymous/guest — are not a
+   * caller). No real actor gets an empty list, never the corpus: a
+   * guest request returns only public or seeded sample content, and a
+   * snippet is neither. With an actor, only the actor's own snippets
+   * are returned (ownerless rows fall — office call, CB-0594).
    */
   registerLensAction("code", "snippets-list", (ctx, _artifact, params = {}) => {
     const language = params.language;
     const limit = Math.min(Math.max(Number(params.limit) || 50, 1), 200);
-    const userId = ctx?.userId || ctx?.actor?.userId || null;
+    const userId = actorId(ctx);
     const snippets = collectSnippets(userId, language, limit);
     return { ok: true, result: { snippets, count: snippets.length } };
-  });
+    // GB-1536 guestRead: not write-shaped, no LLM; an anonymous actor
+    // receives [] by the actorId rule in collectSnippets.
+  }, { guestRead: true });
 
   /**
    * snippets-save — Persist a code snippet as a kind=code_snippet DTU.
@@ -517,7 +525,7 @@ export default function registerCodeActions(registerLensAction) {
       return { ok: false, error: "STATE unavailable" };
     }
     const id = `dtu_snip_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    const userId = ctx?.userId || ctx?.actor?.userId || null;
+    const userId = actorId(ctx);
     const dtu = {
       id,
       title: `Snippet: ${title}`,
@@ -526,7 +534,12 @@ export default function registerCodeActions(registerLensAction) {
       human: { summary: `Code snippet: ${title}`, bullets: [`Language: ${language}`, `${code.split("\n").length} lines`] },
       core: { definitions: [`Language: ${language}`], examples: [code.slice(0, 4000)] },
       machine: { kind: SNIPPET_KIND, code, language, title },
+      // GB-1536: stamp ownerId alongside creator_id — creator_id alone
+      // left saved snippets looking ownerless to every DTU list /
+      // visibility / export path. dtuListedOwner now also reads
+      // creator_id as a last fallback for rows saved before this stamp.
       creator_id: userId || undefined,
+      ownerId: userId || undefined,
       source: "code-lens",
       createdAt: new Date().toISOString(),
     };
@@ -566,10 +579,12 @@ export default function registerCodeActions(registerLensAction) {
    */
   registerLensAction("code", "snapshots-list", (ctx, _artifact, params = {}) => {
     const limit = Math.min(Math.max(Number(params.limit) || 25, 1), 100);
-    const userId = ctx?.userId || ctx?.actor?.userId || null;
+    // GB-1536: same rule as snippets-list — actorId-resolved caller only.
+    const userId = actorId(ctx);
     const snapshots = collectSnapshots(userId, limit);
     return { ok: true, result: { snapshots, count: snapshots.length } };
-  });
+    // GB-1536 guestRead: not write-shaped, no LLM; anonymous actors get [].
+  }, { guestRead: true });
 
   /**
    * commit-snapshot — Bundle a set of tabs into a DTU representing a
@@ -592,7 +607,7 @@ export default function registerCodeActions(registerLensAction) {
     const STATE = globalThis._concordSTATE;
     if (!STATE?.dtus) return { ok: false, error: "STATE unavailable" };
 
-    const userId = ctx?.userId || ctx?.actor?.userId || null;
+    const userId = actorId(ctx);
     const id = `dtu_snap_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const totalLines = files.reduce((sum, f) => sum + (typeof f.content === "string" ? f.content.split("\n").length : 0), 0);
     const dtu = {
@@ -613,7 +628,9 @@ export default function registerCodeActions(registerLensAction) {
         })),
         committedAt: new Date().toISOString(),
       },
+      // GB-1536: ownerId stamped alongside creator_id (see snippets-save).
       creator_id: userId || undefined,
+      ownerId: userId || undefined,
       source: "code-lens",
       createdAt: new Date().toISOString(),
     };
@@ -3169,14 +3186,21 @@ Rules:
 
 // ─── helpers ────────────────────────────────────────────────────────────
 
+// GB-1536 hard privacy rule: userId here is an actorId-resolved caller
+// (null = no real actor). No actor → nothing. With an actor, a row is
+// included ONLY when its owner — resolved through the canonical
+// dtuListedOwner chain, which reads creator_id as a last fallback — IS
+// the caller. Ownerless rows fall (office call, CB-0594): they are not
+// the caller's, and they are not public sample content either.
 function collectSnippets(userId, language, limit) {
   const STATE = globalThis._concordSTATE;
   if (!STATE?.dtus?.values) return [];
+  if (!userId) return [];
   const out = [];
   for (const dtu of STATE.dtus.values()) {
     if (dtu?.machine?.kind !== SNIPPET_KIND) continue;
     if (language && dtu.machine.language !== language) continue;
-    if (userId && dtu.creator_id && dtu.creator_id !== userId) continue;
+    if (dtuListedOwner(dtu) !== userId) continue;
     out.push(toSnippetShape(dtu));
     if (out.length >= limit * 2) break;
   }
@@ -3187,10 +3211,11 @@ function collectSnippets(userId, language, limit) {
 function collectSnapshots(userId, limit) {
   const STATE = globalThis._concordSTATE;
   if (!STATE?.dtus?.values) return [];
+  if (!userId) return [];
   const out = [];
   for (const dtu of STATE.dtus.values()) {
     if (dtu?.machine?.kind !== SNAPSHOT_KIND) continue;
-    if (userId && dtu.creator_id && dtu.creator_id !== userId) continue;
+    if (dtuListedOwner(dtu) !== userId) continue;
     out.push(toSnapshotShape(dtu));
     if (out.length >= limit * 2) break;
   }

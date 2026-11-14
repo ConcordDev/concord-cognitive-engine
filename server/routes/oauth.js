@@ -191,9 +191,30 @@ export default function registerOAuthRoutes(app, {
   }
 
   /**
-   * Complete the OAuth login: set JWT cookies and redirect to frontend.
+   * GB-1536: validate a returnTo carried through OAuth. Mirrors the
+   * client rules in concord-frontend/lib/return-to.ts — a same-origin
+   * relative path only, never back into the auth flow. Invalid → null
+   * (the caller falls back to today's behaviour).
    */
-  function completeOAuthLogin(req, res, user, provider, isNewAccount) {
+  function validateOAuthReturnTo(raw) {
+    if (typeof raw !== "string" || raw.length === 0 || raw.length > 2048) return null;
+    if (!raw.startsWith("/") || raw.startsWith("//")) return null;
+    if (raw.includes("\\")) return null;
+    if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(raw)) return null;
+    const path = raw.split(/[?#]/)[0];
+    for (const prefix of ["/login", "/register", "/signup", "/onboarding"]) {
+      if (path === prefix || path.startsWith(`${prefix}/`)) return null;
+    }
+    return raw;
+  }
+
+  /**
+   * Complete the OAuth login: set JWT cookies and redirect to frontend.
+   * GB-1536: `returnTo` (validated at the authorize step, carried in the
+   * OAuth state) lands the user back exactly where they were; the 18+
+   * confirm-age gate keeps it and carries it through.
+   */
+  function completeOAuthLogin(req, res, user, provider, isNewAccount, returnTo = null) {
     // Update last login
     AuthDB.updateUserLogin(user.id);
 
@@ -246,12 +267,22 @@ export default function registerOAuthRoutes(app, {
     if (_needsDob) {
       redirectUrl.pathname = "/onboarding/confirm-age";
       redirectUrl.searchParams.set("provider", provider);
+      // GB-1536: the age gate carries the return-to through.
+      if (returnTo) redirectUrl.searchParams.set("from", returnTo);
       res.redirect(302, redirectUrl.toString());
       return;
     }
 
-    // Redirect to frontend dashboard
-    redirectUrl.pathname = "/";
+    // Redirect to frontend dashboard — or, GB-1536, back to exactly
+    // where the guest was when they started OAuth.
+    if (returnTo) {
+      const rt = new URL(returnTo, FRONTEND_URL);
+      redirectUrl.pathname = rt.pathname;
+      redirectUrl.search = rt.search;
+      redirectUrl.hash = rt.hash;
+    } else {
+      redirectUrl.pathname = "/";
+    }
     redirectUrl.searchParams.set("auth", "success");
     redirectUrl.searchParams.set("provider", provider);
     if (isNewAccount) redirectUrl.searchParams.set("new", "1");
@@ -301,7 +332,7 @@ export default function registerOAuthRoutes(app, {
     }
 
     const state = generateOAuthState();
-    OAUTH_STATES.set(state, { createdAt: Date.now() });
+    OAUTH_STATES.set(state, { createdAt: Date.now(), returnTo: validateOAuthReturnTo(req.query.from) });
 
     const authUrl = getGoogleAuthUrl(state);
     res.redirect(302, authUrl);
@@ -371,7 +402,7 @@ export default function registerOAuthRoutes(app, {
         if (!user) {
           return res.redirect(302, `${FRONTEND_URL}/auth?error=user_not_found`);
         }
-        return completeOAuthLogin(req, res, user, "google", false);
+        return completeOAuthLogin(req, res, user, "google", false, stateEntry?.returnTo ?? null);
       }
 
       // No existing OAuth connection — check if user exists by email
@@ -398,7 +429,7 @@ export default function registerOAuthRoutes(app, {
         avatarUrl: googleUser.picture,
       });
 
-      return completeOAuthLogin(req, res, user, "google", isNewAccount);
+      return completeOAuthLogin(req, res, user, "google", isNewAccount, stateEntry?.returnTo ?? null);
     } catch (err) {
       structuredLog("error", "google_oauth_callback_failed", { error: err.message, stack: err.stack });
       return res.redirect(302, `${FRONTEND_URL}/auth?error=oauth_failed`);
@@ -413,7 +444,7 @@ export default function registerOAuthRoutes(app, {
     }
 
     const state = generateOAuthState();
-    OAUTH_STATES.set(state, { createdAt: Date.now() });
+    OAUTH_STATES.set(state, { createdAt: Date.now(), returnTo: validateOAuthReturnTo(req.query.from) });
 
     const authUrl = getAppleAuthUrl(state);
     res.redirect(302, authUrl);
@@ -492,7 +523,7 @@ export default function registerOAuthRoutes(app, {
         if (!user) {
           return res.redirect(302, `${FRONTEND_URL}/auth?error=user_not_found`);
         }
-        return completeOAuthLogin(req, res, user, "apple", false);
+        return completeOAuthLogin(req, res, user, "apple", false, stateEntry?.returnTo ?? null);
       }
 
       // No existing OAuth connection
@@ -523,7 +554,7 @@ export default function registerOAuthRoutes(app, {
         avatarUrl: null,
       });
 
-      return completeOAuthLogin(req, res, user, "apple", isNewAccount);
+      return completeOAuthLogin(req, res, user, "apple", isNewAccount, stateEntry?.returnTo ?? null);
     } catch (err) {
       structuredLog("error", "apple_oauth_callback_failed", { error: err.message, stack: err.stack });
       return res.redirect(302, `${FRONTEND_URL}/auth?error=oauth_failed`);

@@ -6,8 +6,9 @@
 // a handler TypeError (`.map is not a function` and the rest) into
 // { ok:false, error:"invalid_input" } with no stack text.
 //
-// Specs are remembered only when they carry paramSchema or nonEmptyCreate,
-// so a later register that omits a spec cannot wipe one already stored.
+// Specs are remembered only when they carry paramSchema, nonEmptyCreate
+// or guestRead (GB-1536), so a later register that omits a spec cannot
+// wipe one already stored.
 
 import { validateLensActionInput } from "./macro-param-schema.js";
 import { rejectNonFiniteInput } from "./finite-input.js";
@@ -17,7 +18,7 @@ const SPECS = new Map();
 
 export function rememberLensActionSpec(key, spec) {
   if (!spec || typeof spec !== "object") return;
-  if (!spec.paramSchema && !spec.nonEmptyCreate) return;
+  if (!spec.paramSchema && !spec.nonEmptyCreate && !spec.guestRead) return;
   SPECS.set(key, spec);
 }
 
@@ -31,7 +32,24 @@ export function lensActionSpec(domain, action) {
     ...own,
     paramSchema: { ...(shared.paramSchema || {}), ...(own.paramSchema || {}) },
     ...(own.nonEmptyCreate || shared.nonEmptyCreate ? { nonEmptyCreate: true } : {}),
+    ...(own.guestRead || shared.guestRead ? { guestRead: true } : {}),
   };
+}
+
+/**
+ * GB-1536 guestRead opt-in: true only when the action's spec explicitly
+ * carries guestRead: true. An action may be marked guestRead only if it
+ * is not write-shaped, makes no LLM/brain/paid-API call and starts no
+ * long job, and returns only public or seeded sample rows to an
+ * anonymous actor (see docs/audits/GUEST_READ_AUDIT.md). Deny-by-default:
+ * anything unmarked, misspecified or unknown is NOT guest-readable.
+ */
+export function lensActionGuestRead(domain, action) {
+  try {
+    return lensActionSpec(domain, action)?.guestRead === true;
+  } catch {
+    return false;
+  }
 }
 
 export function rejectInvalidLensInput(spec, input, ctx) {

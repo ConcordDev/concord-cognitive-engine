@@ -24,7 +24,10 @@ export function resolveListLimit(raw) {
 /** Same owner chain as privateDtuHiddenFrom, plus authorId from the paginated route. */
 export function dtuListedOwner(d) {
   if (!d || typeof d !== "object") return null;
-  return d.author || d.ownerId || d.userId || d.createdBy || d.authorId || null;
+  // GB-1536: creator_id is the LAST fallback — the code lens stamped its
+  // snippet/snapshot owner only there, so without it every DTU list /
+  // visibility / export path treated a saved snippet as ownerless.
+  return d.author || d.ownerId || d.userId || d.createdBy || d.authorId || d.creator_id || null;
 }
 
 /** Comma-separated or array tag filter. Empty means no tag constraint. */

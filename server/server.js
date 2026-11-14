@@ -2140,7 +2140,7 @@ import { billMacroCall } from "./lib/macro-billing.js";
 import { checkUserQuota, incrementUserQuota } from "./lib/macro-quota.js";
 // Gate D — per-macro param-schema validation (opt-in via spec.paramSchema).
 import { validateParamSchema } from "./lib/macro-param-schema.js";
-import { invokeLensHandler, rememberLensActionSpec, lensActionSpec } from "./lib/lens-action-dispatch.js";
+import { invokeLensHandler, rememberLensActionSpec, lensActionSpec, lensActionGuestRead } from "./lib/lens-action-dispatch.js";
 import { rejectNonFiniteInput as _rejectNonFiniteInput } from "./lib/finite-input.js";
 // World Lens / MMO presence system
 import * as cityPresence from "./lib/city-presence.js";
@@ -8982,6 +8982,19 @@ function authMiddleware(req, res, next) {
     }
   }
 
+  // GB-1536 §2b: a guestRead lens action is a public/sample READ that
+  // happens to travel over POST /api/lens/run. Credential resolution
+  // has already failed at this point, so no identity can be lost by
+  // letting exactly those calls proceed as anonymous — the H1 gate at
+  // the route re-checks the spec flag itself, and the handler only
+  // ever sees an anon actor. Anything else unresolved is a 401.
+  if (req.method === "POST" && req.path === "/api/lens/run") {
+    try {
+      const _gb = req.body && typeof req.body === "object" ? req.body : null;
+      if (_gb && lensActionGuestRead(_gb.domain, _gb.action)) return next();
+    } catch { /* fail closed */ }
+  }
+
   return res.status(401).json({
     ok: false,
     error: "Unauthorized",
@@ -9069,11 +9082,23 @@ function productionWriteAuthMiddleware(req, res, next) {
   // calc sheet; it writes nothing. Exact path, same discipline as verify.
   // Rate limit: write.receipt-verify. See routes/receipts.js.
   if (method === "POST" && req.path === "/api/receipts/sheet") return next();
-  // In production, require at least an API key or authenticated session for writes
-  if (!req.user && !req.headers["x-api-key"] && !req.cookies?.concord_auth && !req.headers.authorization) {
-    return res.status(401).json({ ok: false, error: "Authentication required for write operations in production", code: "PROD_WRITE_AUTH" });
+  // GB-1536 §2b: the guestRead pass — a public/sample READ travelling
+  // over POST /api/lens/run is not a write. Let exactly those through
+  // to the H1 gate (which re-checks the spec flag); the body must
+  // already be parsed, and any doubt fails closed to the 401 below.
+  if (method === "POST" && req.path === "/api/lens/run") {
+    try {
+      const _gb = req.body && typeof req.body === "object" ? req.body : null;
+      if (_gb && lensActionGuestRead(_gb.domain, _gb.action)) return next();
+    } catch { /* fail closed */ }
   }
-  return next();
+  // GB-1536: credential PRESENCE is not validity. req.user is resolved
+  // upstream from a verified session cookie/JWT or a hash-matched API
+  // key; reaching this line means it stayed unresolved, so a garbage
+  // Authorization header, a junk x-api-key or a forged concord_auth
+  // cookie must not carry a write. (Verified callers resolved req.user
+  // upstream and already returned next() at the top of this function.)
+  return res.status(401).json({ ok: false, error: "Authentication required for write operations in production", code: "PROD_WRITE_AUTH" });
 }
 
 // H1 — lens-action authz gate. /api/lens/run + the lens.run macro dispatch
@@ -13798,6 +13823,28 @@ if (_DTU_STORE_READY && db) {
   // Replace STATE.dtus with the write-through store
   STATE.dtus = dtuStore;
 }
+
+// GB-1536 one-time backfill, inside the state-load migration path above:
+// rows whose owner was stamped only in creator_id (the code lens's
+// snippet/snapshot saves) get ownerId := creator_id where ownerId is
+// missing, so DTU list/visibility/export paths stop treating them as
+// ownerless. Idempotent — a row that already carries ownerId is never
+// touched — and written through the store so SQLite (the source of
+// truth) carries it too. Best-effort: a backfill failure must never
+// stop the boot.
+try {
+  let _gb1536Backfilled = 0;
+  for (const _dtu of [...STATE.dtus.values()]) {
+    if (_dtu && _dtu.creator_id && !_dtu.ownerId) {
+      _dtu.ownerId = _dtu.creator_id;
+      STATE.dtus.set(_dtu.id, _dtu);
+      _gb1536Backfilled++;
+    }
+  }
+  if (_gb1536Backfilled > 0) {
+    structuredLog("info", "gb1536_creator_id_owner_backfill", { backfilled: _gb1536Backfilled });
+  }
+} catch (_e) { /* best effort — boot continues */ }
 
 // ── Lens-artifact write-through store ──────────────────────────────────────
 //
@@ -50049,10 +50096,27 @@ function _lensIsOwnerActor(ctx, artifact) {
   const userId = ctx?.actor?.userId;
   return !!userId && (artifact.ownerId === userId || artifact.createdBy === userId || artifact.createdByUser === userId);
 }
+// GB-1536: placeholder identities are not a person (the lens-authz
+// doctrine). An anonymous actor is held to the hard guest rule — only
+// explicitly public/published content — in EVERY domain, social ones
+// included, and ownerless rows fall for anon (office call, CB-0594).
+const _LENS_ANON_IDS = new Set(["anon", "anonymous", "guest"]);
+function _lensActorIsAnon(ctx) {
+  const uid = ctx?.actor?.userId;
+  return !uid || _LENS_ANON_IDS.has(String(uid).toLowerCase());
+}
+function _lensAnonVisible(artifact) {
+  const vis = artifact?.meta?.visibility;
+  return vis === "published" || vis === "public";
+}
+
 // Read visibility — same rule `lens.list`/`lens.get` already enforce: system/
 // anonymous-owned artifacts and social-domain artifacts are open; everything
 // else requires ownership, admin, or an explicit published/public visibility.
+// GB-1536: anonymous actors are scoped FIRST by the guest rule above —
+// the social bypass and the ownerless-open branch never apply to them.
 function _lensArtifactVisible(ctx, artifact) {
+  if (_lensActorIsAnon(ctx)) return _lensAnonVisible(artifact);
   if (LENS_SOCIAL_DOMAINS.has(artifact.domain)) return true;
   if (!artifact.ownerId || artifact.ownerId === "anon") return true;
   if (_lensIsOwnerActor(ctx, artifact) || _lensIsAdminActor(ctx)) return true;
@@ -50255,15 +50319,21 @@ register("lens", "list", (ctx, input={}) => {
 
   // User sovereignty: filter by ownership for non-social domains
   const SOCIAL_DOMAINS = new Set(["forum", "feed", "marketplace", "collab", "thread", "vote", "alliance", "global", "news", "questmarket"]);
-  if (!SOCIAL_DOMAINS.has(domain)) {
+  const isActivityMint = (a) => {
+    const from = a?.meta?.createdFrom;
+    if (from === "dtu-auto-sync" || from === "integrity-repair") return true;
+    if (typeof a?.id === "string" && a.id.startsWith("dtu_lens_")) return true;
+    if (typeof a?.title === "string" && a.title.startsWith("Lens:")) return true;
+    return false;
+  };
+  if (_lensActorIsAnon(ctx)) {
+    // GB-1536 hard privacy rule: a guest sees only explicitly public /
+    // published rows, in EVERY domain — the social-domain bypass below
+    // does not apply to anonymous actors, ownerless rows fall (CB-0594),
+    // and activity mints (owner-only exhaust) never ride.
+    artifacts = artifacts.filter(a => !isActivityMint(a) && _lensAnonVisible(a));
+  } else if (!SOCIAL_DOMAINS.has(domain)) {
     const currentUserId = ctx.actor?.userId || "anon";
-    const isActivityMint = (a) => {
-      const from = a?.meta?.createdFrom;
-      if (from === "dtu-auto-sync" || from === "integrity-repair") return true;
-      if (typeof a?.id === "string" && a.id.startsWith("dtu_lens_")) return true;
-      if (typeof a?.title === "string" && a.title.startsWith("Lens:")) return true;
-      return false;
-    };
     artifacts = artifacts.filter(a => {
       // Hotfix 2026-11-09: activity-minted mirrors (private exhaust copied
       // public as system) are owner-only. System-owned activity mints stay hidden.
@@ -50288,6 +50358,14 @@ register("lens", "list", (ctx, input={}) => {
   return { ok: true, artifacts, total, domain, type, schema: _domainRule ? { types: _domainRule.types, validStatuses: _domainRule.validStatuses } : null };
 });
 
+// GB-1536 guestRead opt-ins for the two core read macros: lens.list and
+// lens.get are not write-shaped, make no LLM call, and — with the
+// anon scoping in their filters (anonymous actors see only public /
+// published / system rows; ownerless rows fall for anon) — return only
+// public content to a guest. See docs/audits/GUEST_READ_AUDIT.md.
+rememberLensActionSpec("lens.list", { guestRead: true });
+rememberLensActionSpec("lens.get", { guestRead: true });
+
 register("lens", "get", (ctx, input={}) => {
   const { id, domain } = input;
   if (!id) return { ok: false, error: "id required" };
@@ -50298,6 +50376,11 @@ register("lens", "get", (ctx, input={}) => {
   const currentUserId = ctx.actor?.userId || "anon";
   const vis = artifact.meta?.visibility;
   const SOCIAL_DOMAINS = new Set(["forum", "feed", "marketplace", "collab", "thread", "vote", "alliance", "global", "news", "questmarket"]);
+  // GB-1536: anonymous actors get the guest rule in every domain (the
+  // social bypass never applies to them); don't reveal existence.
+  if (_lensActorIsAnon(ctx) && !_lensAnonVisible(artifact)) {
+    return { ok: false, error: "not found" };
+  }
   if (!SOCIAL_DOMAINS.has(artifact.domain) && artifact.ownerId && artifact.ownerId !== "anon" && artifact.ownerId !== currentUserId && vis !== "published" && vis !== "public") {
     return { ok: false, error: "not found" }; // Don't reveal existence
   }
@@ -50485,8 +50568,11 @@ register("lens", "run", async (ctx, input={}) => {
   // H1: same anon gate as the /api/lens/run handler — the lens-action dispatch below
   // bypasses the runMacro ACL, so block anonymous callers in secured production.
   // Internal/system callers have a real (non-"anon") actor.userId and pass through.
-  if (_lensActionForbiddenForAnon(ctx)) return { ok: false, error: "forbidden: authentication required" };
+  // GB-1536: the artifact is fetched silently first so a guestRead-marked
+  // action (spec opt-in on the artifact's domain) can pass; the gate's
+  // answer for everything else is unchanged.
   const artifact = STATE.lensArtifacts.get(id);
+  if (_lensActionForbiddenForAnon(ctx) && !(artifact && lensActionGuestRead(artifact.domain, action))) return { ok: false, error: "forbidden: authentication required" };
   if (!artifact) return { ok: false, error: "not found" };
   // Same visibility rule as lens.get/lens.list — a private, non-social
   // artifact can only be acted on by its owner or an admin. Previously
@@ -50926,6 +51012,12 @@ register("lens", "bulkCreate", (ctx, input={}) => {
 // These REST routes expose the observability panel and profile data.
 
 app.get("/api/context/panel/:sessionId", asyncHandler(async (req, res) => {
+  // GB-1536: a session's working set is that session owner's context
+  // (their DTU titles + activation) — never a guest read. Closed to
+  // logged-out callers here; see docs/audits/GUEST_READ_AUDIT.md.
+  if (!req.user?.id) {
+    return res.status(401).json({ ok: false, error: "auth_required" });
+  }
   res.json(await runMacro("emergent", "context.panel", { sessionId: req.params.sessionId, lens: req.query.lens }, makeCtx(req)));
 }));
 
@@ -50934,6 +51026,18 @@ app.get("/api/context/profiles", asyncHandler(async (req, res) => {
 }));
 
 app.get("/api/context/user/:userId", asyncHandler(async (req, res) => {
+  // GB-1536: a user's context profile is that user's data. The macro
+  // was registered public:true and answered for ANY userId — the route
+  // now self-gates: the caller must be that user or an admin (the same
+  // shape as /api/context/inspector below). Guests get 401.
+  const callerId = req.user?.id || null;
+  if (!callerId) {
+    return res.status(401).json({ ok: false, error: "auth_required" });
+  }
+  const role = req.user?.role;
+  if (callerId !== req.params.userId && role !== "admin" && role !== "owner" && role !== "founder") {
+    return res.status(403).json({ ok: false, error: "forbidden" });
+  }
   res.json(await runMacro("emergent", "context.userProfile", { userId: req.params.userId }, makeCtx(req)));
 }));
 
@@ -50983,6 +51087,16 @@ app.get("/api/dtus/:id/artifact", asyncHandler(async (req, res) => {
 }));
 
 app.get("/api/lens/:domain/:id/dtus", asyncHandler(async (req, res) => {
+  // GB-1536: this route returned the FULL DTU bodies linked to any
+  // artifact with no visibility check at all. Gate it on the artifact's
+  // own visibility (the /api/dtus/:id/context pattern): a viewer who
+  // cannot see the artifact gets a 404, so private artifacts' linked
+  // DTUs never leak by id — and guests see only public artifacts' DTUs.
+  const artifact = STATE.lensArtifacts.get(req.params.id);
+  if (!artifact) return res.status(404).json({ ok: false, error: "artifact_not_found" });
+  if (!_lensArtifactVisible(makeCtx(req), artifact)) {
+    return res.status(404).json({ ok: false, error: "artifact_not_found" });
+  }
   res.json(getArtifactDTUs(STATE, req.params.id));
 }));
 
@@ -51923,7 +52037,11 @@ app.post("/api/lens/run", async (req, res) => {
     // H1: gate the whole dispatch (lens-action AND macro paths) for anonymous callers
     // in secured production — the runMacro ACL doesn't protect this surface (see
     // _lensActionForbiddenForAnon). Reads use the GET /api/lens/:domain[/:id] routes.
-    if (_lensActionForbiddenForAnon(ctx)) {
+    // GB-1536: guestRead actions (spec opt-in, deny-by-default) are the
+    // one pass-through — an anonymous caller may run an action only
+    // when its spec is marked guestRead (non-write-shaped, no LLM,
+    // public/sample rows only; see docs/audits/GUEST_READ_AUDIT.md).
+    if (_lensActionForbiddenForAnon(ctx) && !lensActionGuestRead(domain, action)) {
       _lrNote("pre_dispatch", false, "authentication_required", { code: "LENS_AUTH" });
       return res.status(401).json({ ok: false, error: "authentication required", code: "LENS_AUTH" });
     }
@@ -79364,7 +79482,7 @@ async function _runMacroFromGateway(domain, name, input, gatewayCtx) {
     ctx.actor.internal = false;
     ctx.actor.kind = ctx.actor.kind || "user";
   }
-  if (_lensActionForbiddenForAnon(ctx)) {
+  if (_lensActionForbiddenForAnon(ctx) && !lensActionGuestRead(domain, name)) {
     return { ok: false, reason: "authentication required", error: "authentication required", code: "LENS_AUTH" };
   }
   const rest = _peelRedundantArtifactWrapper(input && typeof input === "object" ? input : {});
