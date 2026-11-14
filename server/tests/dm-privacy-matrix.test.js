@@ -334,6 +334,37 @@ describe("SB-11 realtime: DM events reach only the recipient, without the body",
   });
 });
 
+// ── SB-14: the monolith's DM routes require a real session ─────────────────
+// The six handlers are inline in server.js and cannot be mounted from a
+// test file, so this is a SOURCE pin, named as such: each handler's own
+// span must carry the session gate (requireAuth() is a pass-through under
+// AUTH_MODE=public). The behavioural public-mode pin for the router set is
+// R2 above; the depth suites exercise the booted server in CI.
+
+describe("SB-14 monolith DM routes (source pin)", () => {
+  it("each of the six /api/social/dm handlers 401s without a session user", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { dirname, resolve } = await import("node:path");
+    const { fileURLToPath } = await import("node:url");
+    const src = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), "../server.js"), "utf8");
+    const routes = [
+      'app.post("/api/social/dm"',
+      'app.get("/api/social/dm/conversations"',
+      'app.get("/api/social/dm/:conversationId"',
+      'app.delete("/api/social/dm/:messageId"',
+      'app.post("/api/social/dm/read"',
+      'app.post("/api/social/dm/:conversationId/read"',
+    ];
+    for (const route of routes) {
+      const at = src.indexOf(route);
+      assert.ok(at >= 0, `${route} is registered`);
+      const span = src.slice(at, at + 700);
+      assert.match(span, /if \(!req\.user\?\.id\) return res\.status\(401\)/,
+        `${route} must gate on req.user?.id (SB-14)`);
+    }
+  });
+});
+
 // ── Router surfaces (express + better-sqlite3; skip where unavailable) ─────
 
 describe("SB-11 router: social-core /dm routes", () => {

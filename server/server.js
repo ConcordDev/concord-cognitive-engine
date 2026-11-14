@@ -71022,6 +71022,9 @@ app.get("/api/social/feed/explore", (req, res) => {
 // ---- Social DMs ----
 app.post("/api/social/dm", requireAuth(), (req, res) => {
   try {
+    // SB-14: DM routes require a real session in every AUTH_MODE —
+    // requireAuth() is a pass-through in public mode, so the handler gates.
+    if (!req.user?.id) return res.status(401).json({ ok: false, error: "auth_required" });
     const fromUserId = req.user?.id || req.actor?.userId || "anon";
      
     // eslint-disable-next-line no-restricted-syntax
@@ -71031,6 +71034,9 @@ app.post("/api/social/dm", requireAuth(), (req, res) => {
 
 app.get("/api/social/dm/conversations", requireAuth(), (req, res) => {
   try {
+    // SB-14: DM routes require a real session in every AUTH_MODE —
+    // requireAuth() is a pass-through in public mode, so the handler gates.
+    if (!req.user?.id) return res.status(401).json({ ok: false, error: "auth_required" });
     const userId = req.user?.id || req.actor?.userId || "anon";
     res.json(socialGetConversations(STATE, userId));
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
@@ -71045,6 +71051,9 @@ function respondSocialDm(res, result) {
 
 app.get("/api/social/dm/:conversationId", requireAuth(), (req, res) => {
   try {
+    // SB-14: DM routes require a real session in every AUTH_MODE —
+    // requireAuth() is a pass-through in public mode, so the handler gates.
+    if (!req.user?.id) return res.status(401).json({ ok: false, error: "auth_required" });
     const userId = req.user?.id || req.actor?.userId || null;
     respondSocialDm(res, socialGetMessages(STATE, req.params.conversationId, { limit: Number(req.query.limit || 50), offset: Number(req.query.offset || 0), userId }));
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
@@ -71052,6 +71061,9 @@ app.get("/api/social/dm/:conversationId", requireAuth(), (req, res) => {
 
 app.delete("/api/social/dm/:messageId", requireAuth(), (req, res) => {
   try {
+    // SB-14: DM routes require a real session in every AUTH_MODE —
+    // requireAuth() is a pass-through in public mode, so the handler gates.
+    if (!req.user?.id) return res.status(401).json({ ok: false, error: "auth_required" });
     const userId = req.user?.id || req.actor?.userId || null;
     respondSocialDm(res, socialRecallMessage(STATE, { messageId: req.params.messageId, userId }));
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
@@ -71059,6 +71071,9 @@ app.delete("/api/social/dm/:messageId", requireAuth(), (req, res) => {
 
 app.post("/api/social/dm/read", requireAuth(), (req, res) => {
   try {
+    // SB-14: DM routes require a real session in every AUTH_MODE —
+    // requireAuth() is a pass-through in public mode, so the handler gates.
+    if (!req.user?.id) return res.status(401).json({ ok: false, error: "auth_required" });
     const userId = req.user?.id || req.actor?.userId || null;
     respondSocialDm(res, socialMarkMessagesRead(STATE, { userId, conversationId: req.body?.conversationId }));
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
@@ -71067,6 +71082,9 @@ app.post("/api/social/dm/read", requireAuth(), (req, res) => {
 // Param-path variant: frontend calls POST /api/social/dm/:conversationId/read
 app.post("/api/social/dm/:conversationId/read", requireAuth(), (req, res) => {
   try {
+    // SB-14: DM routes require a real session in every AUTH_MODE —
+    // requireAuth() is a pass-through in public mode, so the handler gates.
+    if (!req.user?.id) return res.status(401).json({ ok: false, error: "auth_required" });
     const userId = req.user?.id || req.actor?.userId || null;
     respondSocialDm(res, socialMarkMessagesRead(STATE, { userId, conversationId: req.params.conversationId }));
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
