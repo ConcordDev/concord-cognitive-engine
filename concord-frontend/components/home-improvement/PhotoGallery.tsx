@@ -96,6 +96,7 @@ export function PhotoGallery() {
           <button onClick={add} disabled={busy || (!form.beforeImage && !form.afterImage)} className="btn-neon green w-full text-sm disabled:opacity-50">
             {busy ? 'Saving...' : 'Save Gallery Entry'}
           </button>
+          {(!form.beforeImage && !form.afterImage) && <span role="note" className="text-xs text-gray-400">Add a before or after photo first.</span>}
         </div>
       )}
 

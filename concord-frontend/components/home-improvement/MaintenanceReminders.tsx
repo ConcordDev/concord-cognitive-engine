@@ -198,6 +198,7 @@ export function MaintenanceReminders() {
         <button onClick={() => add()} disabled={busy || !form.task.trim()} className="btn-neon green w-full text-xs disabled:opacity-50">
           {busy ? 'Saving...' : 'Add Reminder'}
         </button>
+        {!form.task.trim() && <span role="note" className="text-xs text-gray-400">Task is required.</span>}
       </div>
 
       {loading ? (

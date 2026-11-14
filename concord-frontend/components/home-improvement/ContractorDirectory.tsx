@@ -148,6 +148,7 @@ export function ContractorDirectory() {
           <button onClick={addPro} disabled={busy || !form.name.trim()} className="btn-neon green w-full text-sm disabled:opacity-50">
             {busy ? 'Saving...' : 'Add Contractor'}
           </button>
+          {!form.name.trim() && <span role="note" className="text-xs text-gray-400">Contractor name is required.</span>}
         </div>
       )}
 
@@ -206,6 +207,7 @@ export function ContractorDirectory() {
                       className="btn-primary px-3 py-1.5 text-xs disabled:opacity-40">Save changes</button>
                     <button type="button" onClick={() => setEditingPro(null)}
                       className="btn-secondary px-3 py-1.5 text-xs">Cancel</button>
+                    {!proEdit.name.trim() && <span role="note" className="text-xs text-gray-400 self-center">Name is required.</span>}
                   </div>
                 </div>
               )}

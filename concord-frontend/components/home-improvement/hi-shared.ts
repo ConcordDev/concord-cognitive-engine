@@ -7,6 +7,19 @@
 
 export const DOMAIN = 'home-improvement';
 
+/**
+ * FIX-home-improvement-005 (upper-bound leg): one ceiling for every money
+ * field in the lens. The walked absurd value (99999999999) sits four orders
+ * of magnitude above it; the largest plausible home project or asset sits
+ * an order of magnitude below it. Out-of-range values are refused in words
+ * next to the field instead of being accepted silently.
+ */
+export const MAX_MONEY = 10_000_000;
+export function moneyOutOfRange(v: unknown): boolean {
+  const n = Number(v);
+  return Number.isFinite(n) && (n < 0 || n > MAX_MONEY);
+}
+
 export interface HiTask { id: string; label: string; done: boolean }
 export interface HiExpense { id: string; label: string; amount: number; kind: 'materials' | 'labor' | 'permit' | 'tools' | 'other'; date: string }
 export interface HiProject {

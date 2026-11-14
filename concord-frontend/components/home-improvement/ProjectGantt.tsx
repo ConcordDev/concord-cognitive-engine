@@ -130,6 +130,7 @@ export function ProjectGantt() {
           <button onClick={createProject} disabled={busy || !newProjectName.trim()} className="btn-neon text-xs disabled:opacity-50">
             <Plus className="w-3.5 h-3.5 inline" /> Project
           </button>
+          {!newProjectName.trim() && <span role="note" className="text-xs text-gray-400 self-center">Project name is required.</span>}
         </div>
       </div>
 
@@ -217,6 +218,7 @@ export function ProjectGantt() {
             <button onClick={addPhase} disabled={busy || !phaseForm.name.trim()} className="btn-neon green w-full text-xs disabled:opacity-50">
               {busy ? 'Saving...' : 'Add Phase'}
             </button>
+            {!phaseForm.name.trim() && <span role="note" className="text-xs text-gray-400">Phase name is required.</span>}
           </div>
         </>
       )}

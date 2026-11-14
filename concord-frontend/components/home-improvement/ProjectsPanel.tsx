@@ -20,7 +20,7 @@ import {
 import { cn } from '@/lib/utils';
 import {
   DOMAIN, ROOM_OPTIONS, roomLabel, STATUS_OPTIONS, STATUS_COLORS, statusLabel,
-  EXPENSE_KINDS, cardVariants,
+  EXPENSE_KINDS, cardVariants, MAX_MONEY, moneyOutOfRange,
   type HiProject, type HiDashboard, type HiExpense,
 } from './hi-shared';
 
@@ -203,10 +203,10 @@ export function ProjectsPanel() {
                 {ROOM_OPTIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
               </select>
               <input type="number" min={0} value={newProject.budget || ''} onChange={e => setNewProject(p => ({ ...p, budget: Number(e.target.value) }))} placeholder="Budget..." className="input-lattice" />
-              {Number(newProject.budget) < 0 && <span role="note" className="col-span-full text-xs text-rose-300">Budget can&apos;t be negative.</span>}
+              {Number(newProject.budget) < 0 ? <span role="note" className="col-span-full text-xs text-rose-300">Budget can&apos;t be negative.</span> : Number(newProject.budget) > MAX_MONEY && <span role="note" className="col-span-full text-xs text-rose-300">Budget must be ${MAX_MONEY.toLocaleString()} or less.</span>}
               <input value={newProject.notes} onChange={e => setNewProject(p => ({ ...p, notes: e.target.value }))} placeholder="Notes (optional)..." className="input-lattice" />
             </div>
-            <button onClick={createProject} disabled={busy || !newProject.name.trim()} className="btn-neon green w-full focus:outline-none focus:ring-2 focus:ring-amber-500">
+            <button onClick={createProject} disabled={busy || !newProject.name.trim() || moneyOutOfRange(newProject.budget)} className="btn-neon green w-full focus:outline-none focus:ring-2 focus:ring-amber-500">
               {busy ? 'Creating...' : 'Create Project'}
             </button>
             {!newProject.name.trim() && <span role="note" className="text-xs text-gray-400">Project name is required.</span>}
@@ -345,12 +345,12 @@ export function ProjectsPanel() {
                               value={expenseDraft.amount} onChange={e => setExpenseDraft(d => ({ ...d, amount: e.target.value }))}
                               type="number" min={0} placeholder="$" className="input-lattice text-xs"
                             />
-                            {Number(expenseDraft.amount) < 0 && <span role="note" className="col-span-full text-xs text-rose-300">Amount can&apos;t be negative.</span>}
+                            {Number(expenseDraft.amount) < 0 ? <span role="note" className="col-span-full text-xs text-rose-300">Amount can&apos;t be negative.</span> : Number(expenseDraft.amount) > MAX_MONEY && <span role="note" className="col-span-full text-xs text-rose-300">Amount must be ${MAX_MONEY.toLocaleString()} or less.</span>}
                             <select value={expenseDraft.kind} onChange={e => setExpenseDraft(d => ({ ...d, kind: e.target.value as HiExpense['kind'] }))} className="input-lattice text-xs">
                               {EXPENSE_KINDS.map(k => <option key={k} value={k}>{k}</option>)}
                             </select>
                           </div>
-                          <button onClick={() => logExpense(p.id)} disabled={busy || !expenseDraft.label.trim() || !expenseDraft.amount} className="btn-neon green text-xs w-full disabled:opacity-50">Log expense</button>
+                          <button onClick={() => logExpense(p.id)} disabled={busy || !expenseDraft.label.trim() || !expenseDraft.amount || moneyOutOfRange(expenseDraft.amount)} className="btn-neon green text-xs w-full disabled:opacity-50">Log expense</button>
                           {!expenseDraft.label.trim() ? <span role="note" className="text-xs text-gray-400">Expense label is required.</span> : !expenseDraft.amount && <span role="note" className="text-xs text-gray-400">Expense amount is required.</span>}
                         </div>
                       </motion.div>

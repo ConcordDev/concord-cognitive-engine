@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
+import { MAX_MONEY, moneyOutOfRange } from './hi-shared';
 import {
   Boxes, Plus, Trash2, Loader2, ShieldCheck, ShieldAlert,
   ShieldX, FileText, Package, Pencil,
@@ -159,16 +160,17 @@ export function HomeInventory() {
               <input value={form.purchaseDate} onChange={(e) => setForm((f) => ({ ...f, purchaseDate: e.target.value }))} type="date" className="input-lattice w-full" />
             </label>
             <input value={form.purchasePrice} onChange={(e) => setForm((f) => ({ ...f, purchasePrice: e.target.value }))} type="number" min={0} placeholder="Purchase price $" className="input-lattice" />
-            {Number(form.purchasePrice) < 0 && <span role="note" className="col-span-full text-xs text-rose-300">Price can&apos;t be negative.</span>}
+            {Number(form.purchasePrice) < 0 ? <span role="note" className="col-span-full text-xs text-rose-300">Price can&apos;t be negative.</span> : Number(form.purchasePrice) > MAX_MONEY && <span role="note" className="col-span-full text-xs text-rose-300">Price must be ${MAX_MONEY.toLocaleString()} or less.</span>}
             <label className="text-xs text-gray-400">Warranty expires
               <input value={form.warrantyExpires} onChange={(e) => setForm((f) => ({ ...f, warrantyExpires: e.target.value }))} type="date" className="input-lattice w-full" />
             </label>
           </div>
           <input value={form.manualUrl} onChange={(e) => setForm((f) => ({ ...f, manualUrl: e.target.value }))} placeholder="Manual URL (optional)" className="input-lattice w-full" />
           <input value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} placeholder="Notes" className="input-lattice w-full" />
-          <button onClick={add} disabled={busy || !form.name.trim()} className="btn-neon green w-full text-sm disabled:opacity-50">
+          <button onClick={add} disabled={busy || !form.name.trim() || moneyOutOfRange(form.purchasePrice)} className="btn-neon green w-full text-sm disabled:opacity-50">
             {busy ? 'Saving...' : 'Add Asset'}
           </button>
+          {!form.name.trim() && <span role="note" className="text-xs text-gray-400">Asset name is required.</span>}
         </div>
       )}
 
@@ -217,6 +219,7 @@ export function HomeInventory() {
                         aria-label="Edit asset serial" placeholder="Serial" className="input-lattice" />
                       <input value={assetEdit.purchasePrice} onChange={(e) => setAssetEdit((f) => ({ ...f, purchasePrice: e.target.value }))}
                         aria-label="Edit asset purchase price" type="number" min={0} placeholder="Purchase price" className="input-lattice" />
+                      {moneyOutOfRange(assetEdit.purchasePrice) && <span role="note" className="col-span-full text-xs text-rose-300">Price must be between $0 and ${MAX_MONEY.toLocaleString()}.</span>}
                       <input value={assetEdit.purchaseDate} onChange={(e) => setAssetEdit((f) => ({ ...f, purchaseDate: e.target.value }))}
                         aria-label="Edit asset purchase date" type="date" className="input-lattice" />
                       <input value={assetEdit.warrantyExpires} onChange={(e) => setAssetEdit((f) => ({ ...f, warrantyExpires: e.target.value }))}
@@ -225,10 +228,11 @@ export function HomeInventory() {
                     <input value={assetEdit.notes} onChange={(e) => setAssetEdit((f) => ({ ...f, notes: e.target.value }))}
                       aria-label="Edit asset notes" placeholder="Notes" className="input-lattice w-full" />
                     <div className="flex gap-2">
-                      <button type="button" onClick={() => saveAsset(a.id)} disabled={busy || !assetEdit.name.trim()}
+                      <button type="button" onClick={() => saveAsset(a.id)} disabled={busy || !assetEdit.name.trim() || moneyOutOfRange(assetEdit.purchasePrice)}
                         className="btn-primary px-3 py-1.5 text-xs disabled:opacity-40">Save changes</button>
                       <button type="button" onClick={() => setEditingAsset(null)}
                         className="btn-secondary px-3 py-1.5 text-xs">Cancel</button>
+                      {!assetEdit.name.trim() && <span role="note" className="text-xs text-gray-400 self-center">Name is required.</span>}
                     </div>
                   </div>
                 )}

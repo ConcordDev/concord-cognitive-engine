@@ -121,6 +121,7 @@ export function IdeaBoards() {
           <button onClick={addBoard} disabled={busy || !form.name.trim()} className="btn-neon green w-full text-sm disabled:opacity-50">
             {busy ? 'Saving...' : 'Create Board'}
           </button>
+          {!form.name.trim() && <span role="note" className="text-xs text-gray-400">Board name is required.</span>}
         </div>
       )}
 
@@ -162,6 +163,7 @@ export function IdeaBoards() {
                       className="btn-primary px-3 py-1.5 text-xs disabled:opacity-40">Save changes</button>
                     <button type="button" onClick={() => setEditingBoard(null)}
                       className="btn-secondary px-3 py-1.5 text-xs">Cancel</button>
+                    {!boardEdit.name.trim() && <span role="note" className="text-xs text-gray-400 self-center">Name is required.</span>}
                   </div>
                 </div>
               )}

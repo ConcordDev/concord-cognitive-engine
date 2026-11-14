@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
+import { MAX_MONEY, moneyOutOfRange } from './hi-shared';
 import { ChartKit } from '@/components/viz';
 import {
   ShoppingCart, Plus, Trash2, Loader2, ExternalLink,
@@ -125,9 +126,11 @@ export function ShoppingList() {
           <input value={form.vendor} onChange={(e) => setForm((f) => ({ ...f, vendor: e.target.value }))} placeholder="Vendor" className="input-lattice" />
           <input value={form.vendorUrl} onChange={(e) => setForm((f) => ({ ...f, vendorUrl: e.target.value }))} placeholder="Vendor link" className="input-lattice md:col-span-2" />
         </div>
-        <button onClick={add} disabled={busy || !form.name.trim()} className="btn-neon green w-full text-sm disabled:opacity-50">
+        <button onClick={add} disabled={busy || !form.name.trim() || moneyOutOfRange(form.price)} className="btn-neon green w-full text-sm disabled:opacity-50">
           <Plus className="w-3.5 h-3.5 inline mr-1" />{busy ? 'Saving...' : 'Add Item'}
         </button>
+        {!form.name.trim() && <span role="note" className="text-xs text-gray-400">Item name is required.</span>}
+        {moneyOutOfRange(form.price) && <span role="note" className="text-xs text-rose-300">Price must be between $0 and ${MAX_MONEY.toLocaleString()}.</span>}
       </div>
 
       {loading ? (
@@ -167,7 +170,8 @@ export function ShoppingList() {
                     onChange={(e) => setPriceEdit((p) => ({ ...p, [it.id]: e.target.value }))}
                     type="number" placeholder="New price" className="input-lattice text-xs w-32"
                   />
-                  <button onClick={() => updatePrice(it.id)} disabled={busy || !priceEdit[it.id]} className="btn-neon text-xs disabled:opacity-50">Log price</button>
+                  <button onClick={() => updatePrice(it.id)} disabled={busy || !priceEdit[it.id] || moneyOutOfRange(priceEdit[it.id])} className="btn-neon text-xs disabled:opacity-50">Log price</button>
+                  {moneyOutOfRange(priceEdit[it.id]) && <span role="note" className="text-xs text-rose-300">Price must be between $0 and ${MAX_MONEY.toLocaleString()}.</span>}
                   {it.priceHistory.length > 1 && (
                     <button onClick={() => setOpenHistory((o) => (o === it.id ? null : it.id))} className="text-xs text-gray-400 hover:text-white">
                       {openHistory === it.id ? 'Hide' : `History (${it.priceHistory.length})`}
