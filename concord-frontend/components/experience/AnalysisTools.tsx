@@ -181,16 +181,35 @@ function UsabilityScoreTool() {
   const [satisfactionScore, setSatisfactionScore] = useState('75');
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const submit = async () => {
+    // FIX-experience-003: a cleared field used to coerce to 0 and compute,
+    // leaving the stale result on screen with no validation. Empty fields
+    // are named inline and the old result is cleared; the server enforces
+    // the same rule for other callers.
+    const fields: Array<[string, string]> = [
+      ['Task success rate', taskSuccessRate],
+      ['Avg time on task', avgTimeSeconds],
+      ['Error count', errorCount],
+      ['Satisfaction', satisfactionScore],
+    ];
+    const empty = fields.filter(([, v]) => v.trim() === '').map(([label]) => label);
+    if (empty.length > 0) {
+      setResult(null);
+      setError(`${empty.join(', ')} required — fill every field to compute a score.`);
+      return;
+    }
     setBusy(true);
+    setError(null);
     const r = await run('usabilityScore', {
-      taskSuccessRate: Number(taskSuccessRate) || 0,
-      avgTimeSeconds: Number(avgTimeSeconds) || 0,
-      errorCount: Number(errorCount) || 0,
-      satisfactionScore: Number(satisfactionScore) || 0,
+      taskSuccessRate: Number(taskSuccessRate),
+      avgTimeSeconds: Number(avgTimeSeconds),
+      errorCount: Number(errorCount),
+      satisfactionScore: Number(satisfactionScore),
     });
     setResult(r);
+    if (!r) setError('Could not compute a score from those values — check the fields and try again.');
     setBusy(false);
   };
 
@@ -206,6 +225,7 @@ function UsabilityScoreTool() {
       <button onClick={submit} disabled={busy} className="btn-neon cyan text-xs flex items-center gap-1 disabled:opacity-40">
         {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Gauge className="w-3 h-3" />} Compute SUS score
       </button>
+      {error && <p role="alert" className="text-[11px] text-red-400">{error}</p>}
       {result && <UsabilityScoreResult result={result} />}
     </div>
   );

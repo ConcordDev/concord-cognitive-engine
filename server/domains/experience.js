@@ -36,10 +36,21 @@ export default function registerExperienceActions(registerLensAction) {
   });
   registerLensAction("experience", "usabilityScore", (ctx, artifact, _params) => {
     const data = artifact.data || {};
-    const taskSuccess = parseFloat(data.taskSuccessRate) || 0;
-    const timeOnTask = parseFloat(data.avgTimeSeconds) || 0;
-    const errors = parseInt(data.errorCount) || 0;
-    const satisfaction = parseFloat(data.satisfactionScore) || 0;
+    // FIX-experience-003: a cleared field used to coerce to 0 and compute a
+    // fresh-looking score, so the form showed no validation and the panel
+    // kept the stale result. Missing/empty/non-numeric inputs are refused
+    // by name; an explicit 0 remains a legitimate value.
+    const missing = [];
+    const reqNum = (key) => {
+      const raw = data[key];
+      if (raw === undefined || raw === null || String(raw).trim() === "" || !Number.isFinite(Number(raw))) { missing.push(key); return 0; }
+      return Number(raw);
+    };
+    const taskSuccess = reqNum("taskSuccessRate");
+    const timeOnTask = reqNum("avgTimeSeconds");
+    const errors = reqNum("errorCount");
+    const satisfaction = reqNum("satisfactionScore");
+    if (missing.length > 0) return { ok: false, error: `Missing or invalid field(s): ${missing.join(", ")}` };
     // FIX-experience-002: taskSuccessRate is a PERCENT (the form labels
     // it "%" and the result renders it with "%"), but the formula
     // multiplied it by 25 as if it were a 0-1 fraction — 80% success
