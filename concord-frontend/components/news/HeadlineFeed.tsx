@@ -23,8 +23,29 @@ function saveSaved(ids: string[]) { try { localStorage.setItem(STORAGE_KEY, JSON
 
 const CATEGORIES = ['top', 'world', 'us', 'business', 'tech', 'science', 'health', 'sports', 'entertainment'];
 
+interface FeedFreshness {
+  status?: string;
+  stale?: boolean;
+  degraded?: boolean;
+  degradedReason?: string;
+  reason?: string;
+  fetchedAt?: string | null;
+  lastOkAt?: string | null;
+}
+
+// The headlines action reports its own freshness (status fresh | stale |
+// unavailable, plus a degraded reason when an upstream is failing). The desk
+// used to drop those fields and render a silent empty list under the lens's
+// Live badge (FIX-news-001). Humanize the machine reason for the banner.
+function reasonText(reason?: string): string {
+  if (!reason) return 'the upstream feed is not answering';
+  if (reason === 'warming') return 'the feed is still warming up — the first pull has not landed yet';
+  return reason.replace(/_/g, ' ');
+}
+
 export function HeadlineFeed() {
   const [headlines, setHeadlines] = useState<Headline[]>([]);
+  const [freshness, setFreshness] = useState<FeedFreshness | null>(null);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState('top');
   const [saved, setSaved] = useState<string[]>([]);
@@ -50,6 +71,7 @@ export function HeadlineFeed() {
       try {
         const res = await lensRun({ domain: 'news', action: 'headlines', input: { category, limit: 30 } });
         setHeadlines((res.data?.result?.headlines || []) as Headline[]);
+        setFreshness((res.data?.result || null) as FeedFreshness | null);
       } catch (e) { console.error(e); }
       finally { setLoading(false); }
     })();
@@ -92,9 +114,27 @@ export function HeadlineFeed() {
           </select>
         </label>
       </div>
+      {!loading && freshness && freshness.status === 'unavailable' && (
+        <div role="status" className="border-b border-red-500/20 bg-red-500/5 px-3 py-2 text-[11px] text-red-200">
+          Live headlines are unavailable right now — {reasonText(freshness.degradedReason || freshness.reason)}.
+          {freshness.lastOkAt ? <> Last successful pull {new Date(freshness.lastOkAt).toLocaleString()}.</> : <> No pull has succeeded yet.</>}
+        </div>
+      )}
+      {!loading && freshness && freshness.status !== 'unavailable' && (freshness.stale || freshness.degraded) && (
+        <div role="status" className="border-b border-amber-500/20 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-200">
+          Showing cached headlines — the live feed is degraded ({reasonText(freshness.degradedReason || freshness.reason)}).
+          {freshness.fetchedAt ? <> Last pulled {new Date(freshness.fetchedAt).toLocaleString()}.</> : null}
+        </div>
+      )}
       <div className="max-h-[600px] overflow-y-auto">
         {loading ? (
           <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        ) : headlines.length === 0 ? (
+          <div className="px-3 py-6 text-center text-xs text-gray-400">
+            {freshness?.status === 'unavailable'
+              ? 'No headlines to show until the live feed answers again.'
+              : 'No stories in this category right now.'}
+          </div>
         ) : (
           <ul className="divide-y divide-white/5">
             {visible.map(h => {
