@@ -269,12 +269,25 @@ export default function registerOAuthRoutes(app, {
       redirectUrl.searchParams.set("provider", provider);
       // GB-1536: the age gate carries the return-to through.
       if (returnTo) redirectUrl.searchParams.set("from", returnTo);
+      // Founder ruling on the GB-1536 flag (2026-11-14): a first-time
+      // signup continues confirm-age → brain-mode → return-to; the
+      // signup marker tells the gate this chain is a new account's.
+      if (isNewAccount) redirectUrl.searchParams.set("signup", "1");
       res.redirect(302, redirectUrl.toString());
       return;
     }
 
-    // Redirect to frontend dashboard — or, GB-1536, back to exactly
-    // where the guest was when they started OAuth.
+    // Founder ruling (2026-11-14): a first-time OAuth signup routes
+    // once through the kept brain-mode screen carrying the return-to;
+    // an existing account never does — it goes straight back to
+    // exactly where the guest was when they started OAuth (GB-1536).
+    if (isNewAccount) {
+      redirectUrl.pathname = "/onboarding/brain-mode";
+      if (returnTo) redirectUrl.searchParams.set("from", returnTo);
+      res.redirect(302, redirectUrl.toString());
+      return;
+    }
+
     if (returnTo) {
       const rt = new URL(returnTo, FRONTEND_URL);
       redirectUrl.pathname = rt.pathname;

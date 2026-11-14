@@ -152,7 +152,7 @@ const NowPlayingBar = dynamic(
 // Same fix, same reasoning as the /onboarding entry above: standalone here
 // stops that chrome (and its fetch/prefetch burst) from mounting at exactly
 // the moment the page has the least reason to show it.
-const STANDALONE_PREFIXES = ['/about', '/legal/', '/welding-portal/', '/share/animation/', '/onboarding/confirm-age', '/register', '/login', '/conkay/demo'];
+const STANDALONE_PREFIXES = ['/about', '/legal/', '/welding-portal/', '/share/animation/', '/onboarding/confirm-age', '/onboarding/brain-mode', '/register', '/login', '/conkay/demo'];
 
 interface AppShellProps {
   children: React.ReactNode;

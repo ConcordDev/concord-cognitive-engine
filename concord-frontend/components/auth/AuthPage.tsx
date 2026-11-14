@@ -95,14 +95,17 @@ export function AuthPage({ redirectTo: rawRedirectTo = '/', onAuthSuccess, embed
         return;
       }
 
-      // Success — go straight to the requested destination. GB-1536:
-      // the onboarding chain is gone (no brain-mode screen, no universe
-      // picker, no region screen), and NO frontend code routes on
-      // /api/auth/me's needsOnboarding flag anymore — region, primary
-      // lens and brain mode are Settings concerns with safe defaults
-      // (no region declared fails closed; brain mode defaults to
-      // Private). A test pins the absence of onboarding routing here.
-      if (onAuthSuccess && data.user) {
+      // Success. GB-1536 as amended by founder ruling (2026-11-14):
+      // the universe picker and region screen are gone and NO frontend
+      // code routes on /api/auth/me's needsOnboarding flag anymore —
+      // but a NEW account routes once through the kept brain-mode
+      // screen carrying the return-to, and hard-lands on the return-to
+      // after the choice. LOGIN never routes through it: an existing
+      // account goes straight to the requested destination. Region and
+      // primary lens stay Settings concerns with safe defaults.
+      if (mode === 'signup') {
+        window.location.href = `/onboarding/brain-mode?from=${encodeURIComponent(redirectTo)}`;
+      } else if (onAuthSuccess && data.user) {
         onAuthSuccess(data.user);
       } else {
         window.location.href = redirectTo;

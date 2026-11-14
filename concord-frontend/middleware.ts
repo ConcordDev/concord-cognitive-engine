@@ -30,12 +30,13 @@ const DESK_ONLY_LENS_PREFIXES = [
 ];
 
 // GB-1536: the post-Enter screens are removed altogether. Their URLs
-// 308 to /hub (confirm-age is NOT here — the 18+ gate stays).
+// 308 to /hub (confirm-age is NOT here — the 18+ gate stays; brain-mode
+// is NOT here either — founder ruling on the GB-1536 flag, 2026-11-14:
+// it STAYS as a post-signup step, public beside confirm-age below).
 const REMOVED_FLOW_REDIRECTS: Record<string, string> = {
   '/explore': '/hub',
   '/onboarding': '/hub',
   '/onboarding/location': '/hub',
-  '/onboarding/brain-mode': '/hub',
 };
 
 // A label slug that is not the lens path (Threads → /lenses/threads,
@@ -229,6 +230,10 @@ const PUBLIC_PATHS = new Set([
   // GB-1536: the onboarding screens are deleted; the 18+ confirm-age
   // gate STAYS public (OAuth sign-ups land here before they can act).
   '/onboarding/confirm-age',
+  // Founder ruling on the GB-1536 flag (2026-11-14): brain-mode STAYS
+  // as the one kept post-signup step — public like confirm-age (a new
+  // account lands here right after signup, before its return-to).
+  '/onboarding/brain-mode',
   // ConKay <-> Unity WebGL postMessage smoke (public/conkay-bridge-smoke.html).
   // Must stay public so headless proof can load without a session cookie.
   '/conkay-bridge-smoke.html',

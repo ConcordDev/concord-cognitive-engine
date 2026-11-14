@@ -50,8 +50,15 @@ function ConfirmAgeInner() {
       if (res.data?.ok) {
         localStorage.setItem('concord_entered', 'true');
         // GB-1536: the age gate carries the return-to — after
-        // confirming, land back exactly where the guest was.
-        router.push(validateReturnTo(params.get('from')));
+        // confirming, land back exactly where the guest was. Founder
+        // ruling (2026-11-14): for a first-time OAuth signup the chain
+        // runs confirm-age → brain-mode → return-to, so the signup=1
+        // marker routes through the kept brain-mode step first.
+        if (params.get('signup') === '1') {
+          router.push(`/onboarding/brain-mode?from=${encodeURIComponent(validateReturnTo(params.get('from')))}`);
+        } else {
+          router.push(validateReturnTo(params.get('from')));
+        }
       } else {
         setError(res.data?.error || 'Could not confirm your age. Please try again.');
       }

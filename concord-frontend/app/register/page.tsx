@@ -78,13 +78,14 @@ function RegisterForm() {
       // and bounces to /login ("I registered but I'm not logged in"). Require the token.
       const realSuccess = res.data?.ok && (res.data?.token || (res.data?.user?.id && res.data?.user?.id !== 'ok'));
       if (realSuccess) {
-        // Registration auto-logged you in (cookies set). GB-1536: the
-        // onboarding chain is gone — no brain-mode screen, no universe
-        // picker (brain mode defaults to Private, changeable in
-        // Settings). Land back exactly where the visitor was: the
-        // validated ?from= return-to, default /hub.
+        // Registration auto-logged you in (cookies set). GB-1536 as
+        // amended by founder ruling (2026-11-14): the universe picker
+        // is gone, but a NEW account routes once through the kept
+        // brain-mode screen carrying the validated return-to; after
+        // the choice it hard-lands back exactly where the visitor was
+        // (default /hub).
         localStorage.setItem('concord_entered', 'true');
-        window.location.href = validateReturnTo(searchParams.get('from'));
+        window.location.href = `/onboarding/brain-mode?from=${encodeURIComponent(validateReturnTo(searchParams.get('from')))}`;
       } else if (res.data?.ok) {
         // Silently rejected by a bot-defense (most often: form submitted too fast).
         setError('Registration could not be completed. Please wait a moment, then try again.');
