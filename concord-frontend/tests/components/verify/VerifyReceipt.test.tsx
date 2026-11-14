@@ -54,6 +54,40 @@ describe('VerifyReceipt', () => {
     expect(screen.getByText('bad_signature')).toBeInTheDocument();
   });
 
+  it('labels a valid v1 receipt loudly: its outputs are NOT covered by the signature', async () => {
+    vi.stubGlobal('fetch', vi.fn(() => jsonResponse(200, {
+      valid: true,
+      reason: null,
+      keyId: '53078bd870dc2e17',
+      digest: 'ab',
+      schema: 'v1',
+      outputsSigned: false,
+      note: 'v1 receipt — outputs are NOT covered by the signature',
+    })));
+    render(<VerifyReceipt />);
+    await submit();
+    expect(await screen.findByText('Valid')).toBeInTheDocument();
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toMatch(/outputs are NOT covered by the signature/);
+    expect(alert.textContent).toMatch(/never signed/);
+  });
+
+  it('shows no unsigned-outputs label for a v2 calc receipt', async () => {
+    vi.stubGlobal('fetch', vi.fn(() => jsonResponse(200, {
+      valid: true,
+      reason: null,
+      keyId: '53078bd870dc2e17',
+      digest: 'ab',
+      schema: 'concord-calc-receipt/2',
+      outputsSigned: true,
+    })));
+    render(<VerifyReceipt />);
+    await submit();
+    expect(await screen.findByText('Valid')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.queryByText(/NOT covered/)).not.toBeInTheDocument();
+  });
+
   it('says the receipt was not checked when the server returns 403 CSRF_FAILED', async () => {
     vi.stubGlobal('fetch', vi.fn(() => jsonResponse(403, {
       ok: false,
