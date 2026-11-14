@@ -10,6 +10,7 @@
 
 import express from "express";
 import { ensureSigningKey, publicKeyDocument, verifyAttestation } from "../lib/receipts/attest.js";
+import { renderCalcSheetHtml } from "../lib/receipts/calc-sheet.js";
 
 const MAX_RECEIPT_CHARS = 1_500_000;
 
@@ -47,6 +48,34 @@ export default function createReceiptRouter({ readLimit, verifyLimit } = {}) {
       return res.status(413).json({ valid: false, reason: "too_large" });
     }
     res.json(verifyAttestation(receipt));
+  });
+
+  // AUTH: public — same discipline as verify (GB-1534). The receipt is
+  // verified FIRST and the verdict is printed at the top of the sheet; an
+  // edited receipt renders with INVALID at the top, never silently. The
+  // handler writes nothing. CSRF-exempt on this exact path only (see
+  // server.js gates, which name /api/receipts/sheet beside /verify).
+  router.post("/api/receipts/sheet", verify, (req, res) => {
+    const body = req.body;
+    const receipt = body && typeof body === "object" && !Array.isArray(body) && body.receipt && typeof body.receipt === "object" && !Array.isArray(body.receipt)
+      ? body.receipt
+      : body;
+    if (!receipt || typeof receipt !== "object" || Array.isArray(receipt)) {
+      return res.status(400).json({ valid: false, reason: "malformed" });
+    }
+    let encoded;
+    try {
+      encoded = JSON.stringify(receipt);
+    } catch {
+      return res.status(400).json({ valid: false, reason: "malformed" });
+    }
+    if (encoded.length > MAX_RECEIPT_CHARS) {
+      return res.status(413).json({ valid: false, reason: "too_large" });
+    }
+    const verdict = verifyAttestation(receipt);
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", "no-store");
+    res.send(renderCalcSheetHtml(receipt, { verify: verdict }));
   });
 
   return router;
