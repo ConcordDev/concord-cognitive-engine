@@ -245,22 +245,27 @@ export async function collectLensExport({ runMacro, domain, ctx, limit = 1000 })
     if (typeof a?.title === "string" && a.title.startsWith("Lens:")) return true;
     return false;
   };
-  // Hotfix 2026-11-09: export is caller-scoped. Drop activity-minted
-  // mirrors (even if lens.list still returned a stale public copy) unless
-  // the caller owns them. Keep genuine non-activity public catalog rows.
-  // Export scope: lens.list treats social-domain artifacts as an open
-  // square (right for rendering a feed) and applies no ownership filter
-  // there, so this leg applies the takeout rule itself: an artifact
-  // owned by another user rides the export only when it is public or
-  // published. The caller's own records ride at any visibility, and
-  // ownerless rows (the public catalog) keep riding, per the hotfix
-  // note below.
+  // Owner-scoped export contract (lens-export ruling, 2026-11-14 —
+  // FIX-research-001 / FIX-export-011): a per-lens export is the
+  // caller's own takeout, so this leg is built on the Leg-A shape
+  // (dtuBelongsInLensExport below). The owner resolves through the
+  // same chain (ownerId | userId | meta.ownerId). System rows never
+  // ride a personal export, and another owner's row never rides,
+  // public or published — the 2026-11-09 hotfix's blanket keep of
+  // "genuine non-activity public catalog rows" is retired: it is
+  // what dumped 999 system feed articles into a research export
+  // that should have carried the user's references or nothing.
+  // The caller's own records ride at any visibility. Ownerless rows
+  // keep the Leg-A treatment — Leg A's source is caller-pre-scoped,
+  // so ownerless there means legacy caller rows, and ordinary
+  // ownerless artifacts export the same way here. The activity-mint
+  // filter below still applies on top (a caller-owned activity
+  // mirror rides; anyone else's is already gone by this filter).
   const exportScoped = (a) => {
-    const owner = a?.ownerId || a?.meta?.ownerId || null;
+    const owner = a?.ownerId || a?.userId || a?.meta?.ownerId || null;
     if (!owner) return true;
-    if (callerId && String(owner) === String(callerId)) return true;
-    const vis = a?.meta?.visibility ?? a?.visibility;
-    return vis === "public" || vis === "published";
+    if (owner === "system") return false;
+    return !!(callerId && String(owner) === String(callerId));
   };
   const artifacts = (Array.isArray(listed.artifacts) ? listed.artifacts : [])
     .filter((a) => a && !SCAFFOLDING_TYPES.has(a.type))

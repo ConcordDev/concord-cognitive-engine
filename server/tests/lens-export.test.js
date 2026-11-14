@@ -134,7 +134,7 @@ describe("lens-export (Q79)", () => {
     delete globalThis._concordSTATE;
   });
 
-  it("export-leak hotfix: activity-minted system mirrors are dropped unless caller-owned", async () => {
+  it("owner-scoped export contract (2026-11-14 ruling): system and other-owner rows never ride a personal export", async () => {
     _clearLensExportProvidersForTests();
     const runMacro = listMacro([
       { id: "mine-1", type: "note", title: "My note", ownerId: "u1", meta: { visibility: "private" }, data: {} },
@@ -147,6 +147,10 @@ describe("lens-export (Q79)", () => {
         data: { summary: "delete goal \"secret\" in goals lens" },
       },
       {
+        // FIX-research-001's shape: a system-owned public feed article.
+        // The pre-ruling contract kept it as "genuine public catalog";
+        // the owner-scoped ruling retires that keep — a personal export
+        // carries the caller's own rows, never the system feed.
         id: "public-feed",
         type: "feed_article",
         title: "External headline",
@@ -154,6 +158,23 @@ describe("lens-export (Q79)", () => {
         meta: { visibility: "public" },
         data: { url: "https://example.com" },
       },
+      {
+        id: "other-public",
+        type: "note",
+        title: "Someone else's public note",
+        ownerId: "u2",
+        meta: { visibility: "public" },
+        data: {},
+      },
+      {
+        id: "other-published",
+        type: "note",
+        title: "Someone else's published note",
+        ownerId: "u2",
+        meta: { visibility: "published" },
+        data: {},
+      },
+      { id: "ownerless-1", type: "note", title: "Legacy ownerless note", data: {} },
       {
         id: "dtu_lens_meditation_dtu_own",
         type: "regular",
@@ -167,7 +188,10 @@ describe("lens-export (Q79)", () => {
     assert.equal(out.ok, true);
     const ids = out.artifacts.map((a) => a.id);
     assert.ok(ids.includes("mine-1"), "own artifact kept");
-    assert.ok(ids.includes("public-feed"), "genuine public catalog kept");
+    assert.ok(!ids.includes("public-feed"), "system feed article dropped under the owner-scoped contract");
+    assert.ok(!ids.includes("other-public"), "another user's public artifact dropped");
+    assert.ok(!ids.includes("other-published"), "another user's published artifact dropped");
+    assert.ok(ids.includes("ownerless-1"), "ownerless legacy artifact kept (the Leg-A treatment)");
     assert.ok(ids.includes("dtu_lens_meditation_dtu_own"), "caller-owned activity mint kept");
     assert.ok(!ids.includes("dtu_lens_meditation_dtu_leak1"), "system activity mirror dropped");
     const serialized = JSON.stringify(out.artifacts);
