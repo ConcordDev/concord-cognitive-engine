@@ -191,6 +191,22 @@ export function ConnectorCatalog() {
                         <ShieldAlert className="w-3 h-3" /> Needs auth
                       </span>
                     )
+                  ) : c.authType === 'api_key' ? (
+                    // FIX-integrations-003: api_key connectors can never
+                    // connect from here today — connectApp refuses by
+                    // design (no durable key store exists yet, and the
+                    // server will not mint a connection from an
+                    // unpersisted key). The card presented a live
+                    // Connect button whose only outcome was a raw 422
+                    // 'credential required' with no entry step anywhere.
+                    // State the position instead of offering the dead
+                    // button; the credential-store build is the cure.
+                    <span
+                      className="text-xs text-yellow-400 flex items-center gap-1"
+                      title="This connector needs an API key, but secure key entry isn't available yet — so it can't be connected from here yet."
+                    >
+                      <ShieldAlert className="w-3 h-3" /> Needs API key — entry not yet available
+                    </span>
                   ) : (
                     <button
                       onClick={() => connect(c)}
