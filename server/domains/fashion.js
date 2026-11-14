@@ -77,6 +77,23 @@ export default function registerFashionActions(registerLensAction) {
   const fsAid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
   const fsListB = (map, k) => { if (!map.has(k)) map.set(k, []); return map.get(k); };
   const fsNum = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
+  // FIX-fashion-006: one ceiling for a wardrobe item's cost, refused by
+  // name at every entry path (item-add, item-update, wishlist-convert).
+  // A single garment's plausible cost — couture and collectible pieces
+  // included — tops out orders of magnitude below this, while the walked
+  // defect value (99,999,999,999) sits four orders above it. The figure
+  // matches the sweep's standing money ceiling (home-improvement's
+  // MAX_MONEY, FIX-home-improvement-005) so money fields share one bound.
+  // Out-of-range values are REFUSED, never floored or clamped silently.
+  const MAX_ITEM_COST = 10_000_000;
+  const fsCostError = (v) => {
+    if (v == null || v === "") return null;
+    const n = Number(v);
+    if (!Number.isFinite(n) || n < 0 || n > MAX_ITEM_COST) {
+      return `cost must be a number from $0 to $${MAX_ITEM_COST.toLocaleString("en-US")}`;
+    }
+    return null;
+  };
   const fsClean = (v, max = 200) => String(v == null ? "" : v).trim().slice(0, max);
   const fsDay = (v) => fsClean(v, 10).slice(0, 10);
   const findItem = (s, userId, id) => (s.items.get(userId) || []).find((i) => i.id === id) || null;
@@ -142,6 +159,8 @@ export default function registerFashionActions(registerLensAction) {
   // ── Wardrobe items ──────────────────────────────────────────────────
   registerLensAction("fashion", "item-add", (ctx, _a, params = {}) => {
     const s = getFashionState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const costError = fsCostError(params.cost);
+    if (costError) return { ok: false, error: costError };
     const item = buildWardrobeItem(params);
     if (!item) return { ok: false, error: "item name required" };
     fsListB(s.items, fsAid(ctx)).push(item);
@@ -175,6 +194,10 @@ export default function registerFashionActions(registerLensAction) {
       const ls = String(params.laundryStatus).toLowerCase();
       if (!LAUNDRY_STATUSES.includes(ls)) return { ok: false, error: `invalid laundryStatus (must be one of ${LAUNDRY_STATUSES.join(", ")})` };
       nextLaundryStatus = ls;
+    }
+    if (params.cost != null) {
+      const costError = fsCostError(params.cost);
+      if (costError) return { ok: false, error: costError };
     }
     if (params.name != null) { const n = fsClean(params.name, 120); if (n) item.name = n; }
     if (params.brand != null) item.brand = fsClean(params.brand, 80) || null;
@@ -1397,6 +1420,8 @@ export default function registerFashionActions(registerLensAction) {
     const idx = arr.findIndex((w) => w.id === params.id);
     if (idx < 0) return { ok: false, error: "wishlist entry not found" };
     const entry = arr[idx];
+    const costError = fsCostError(params.cost != null ? params.cost : entry.price);
+    if (costError) return { ok: false, error: costError };
     const item = buildWardrobeItem({
       name: params.name || entry.name,
       category: params.category || entry.category || "top",

@@ -13,7 +13,7 @@ import { lensRun } from '@/lib/api/client';
 import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
-import { closetItemEditInput } from './closet-item-edit';
+import { closetItemEditInput, CLOSET_COST_MAX } from './closet-item-edit';
 import { closetEmptyCopy } from './closet-empty-copy';
 
 interface Item {
@@ -75,6 +75,11 @@ export function FashionClosetPanel({ onChange }: { onChange: () => void }) {
 
   const add = async () => {
     if (!form.name.trim()) { setError('Item name is required.'); return; }
+    const costText = form.cost.trim();
+    if (costText !== '') {
+      const c = Number(costText);
+      if (!Number.isFinite(c) || c < 0 || c > CLOSET_COST_MAX) { setError('Cost must be between $0 and $10,000,000.'); return; }
+    }
     const r = await lensRun('fashion', 'item-add', {
       name: form.name.trim(), category: form.category, brand: form.brand.trim(),
       color: form.color.trim(), cost: Number(form.cost) || 0, photo: form.photo.trim(),
@@ -195,6 +200,7 @@ export function FashionClosetPanel({ onChange }: { onChange: () => void }) {
           <input placeholder="Cost ($)" inputMode="decimal" value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           {form.cost.trim() !== '' && Number(form.cost) < 0 && <span role="note" className="col-span-full text-xs text-rose-300">Cost can&apos;t be negative.</span>}
+          {form.cost.trim() !== '' && Number(form.cost) > CLOSET_COST_MAX && <span role="note" className="col-span-full text-xs text-rose-300">Cost must be $10,000,000 or less.</span>}
           <input placeholder="Photo URL (optional)" value={form.photo} onChange={(e) => { setForm({ ...form, photo: e.target.value }); setVisionNote(null); }}
             className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <button type="button" onClick={analyzePhoto} disabled={visionBusy || !form.photo.trim()}
