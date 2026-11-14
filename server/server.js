@@ -83880,12 +83880,22 @@ function recordSensorReading(sensorId, value, timestamp = null) {
   const sensor = STATE.grounding.sensors.get(sensorId);
   if (!sensor) return { ok: false, error: "Sensor not found" };
 
+  // FIX-grounding-003: a reading's value was stored as given — 'abc', NaN
+  // and objects all landed in the readings log. Mirror the sensor lens's
+  // rule (domains/sensor.js reading-record): coerce, require finite, and
+  // refuse by name; a supplied timestamp must at least parse.
+  const numValue = Number(value);
+  if (!Number.isFinite(numValue)) return { ok: false, error: "numeric value required" };
+  if (timestamp != null && Number.isNaN(new Date(timestamp).getTime())) {
+    return { ok: false, error: "invalid timestamp" };
+  }
+
   const reading = {
     id: uid("reading"),
     sensorId,
     sensorName: sensor.name,
     type: sensor.type,
-    value,
+    value: numValue,
     unit: sensor.unit,
     timestamp: timestamp || nowISO()
   };
