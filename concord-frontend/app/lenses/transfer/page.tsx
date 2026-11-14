@@ -3,7 +3,6 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
-import { DeprecatedLensNotice } from '@/components/lens/DeprecatedLensNotice';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TransferRepos } from '@/components/transfer/TransferRepos';
@@ -82,7 +81,6 @@ export default function TransferLensPage() {
       {/* FIX-transfer-004: transfer is 'deprecated' in LENS_STATUS_MAP
           (merge target paper) — surface it like the other deprecated
           lenses do (docs-014 ruling A). */}
-      <DeprecatedLensNotice lensId="transfer" />
       <NorthStarFrame
         lensId="transfer"
         crumb="Transfer"

@@ -13,7 +13,6 @@ import {
   FlaskConical, NotebookPen, BarChart3, Rss, Puzzle,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { DeprecatedLensNotice } from '@/components/lens/DeprecatedLensNotice';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
@@ -94,7 +93,6 @@ export default function MetalearningLensPage() {
         {/* FIX-metalearning-011: the inventory marks this lens deprecated
             (merge target: paper) — render the standing deprecation notice
             like the other deprecated lenses do. */}
-        <DeprecatedLensNotice lensId="metalearning" />
         <a href="#metalearning-main" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">
           Skip to metalearning content
         </a>

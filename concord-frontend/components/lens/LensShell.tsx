@@ -34,7 +34,7 @@ import React, { createContext, useContext, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 
 import { cn } from '@/lib/utils';
-import { getLensStatus } from '@/lib/lenses/lens-status';
+import { DeprecatedLensNotice } from '@/components/lens/DeprecatedLensNotice';
 import { useUIStore } from '@/store/ui';
 import { useAccessibilitySettings } from '@/hooks/useAccessibilitySettings';
 import type { EffectiveAccessibility } from '@/hooks/useAccessibilitySettings';
@@ -125,14 +125,14 @@ export function LensShell({
   // place every lens passes through, so the notice lives here and
   // follows the taxonomy: an un-deprecated lens loses its banner the
   // day its status entry changes.
-  const statusEntry = getLensStatus(lensId);
-  const deprecatedNotice = statusEntry?.status === 'deprecated' ? (
-    <div role="note" className="border-b border-amber-500/30 bg-amber-950/40 px-4 py-2 text-center text-xs text-amber-200">
-      This lens is <strong>deprecated</strong> — it is scheduled to merge into the{' '}
-      <a href={`/lenses/${statusEntry.mergeTarget}`} className="underline hover:text-amber-100">{statusEntry.mergeTarget}</a>{' '}
-      lens as a {statusEntry.postMergeRole}. It still works today, and everything you make here remains yours.
-    </div>
-  ) : null;
+  // GB-1538 genus leg 5 (resolution (a)): the notice is the shared
+  // DeprecatedLensNotice component — the surface FIX-hypothesis-008 /
+  // FIX-suffering-013 / FIX-daily-010 / FIX-transfer-004 and the genus
+  // rider (docs-014 / feed-011 / reflection-005) were pinned on —
+  // mounted once here instead of the inline strip this shell carried
+  // and instead of the per-page mounts, which double-rendered against
+  // it. One component, one mount, driven by the same status map.
+  const deprecatedNotice = <DeprecatedLensNotice lensId={lensId} />;
 
   const Wrapper = as as unknown as React.ComponentType<React.PropsWithChildren<{ className?: string }>>;
   // Sprint 17 — error-boundary wrap (production-grade reliability gate).

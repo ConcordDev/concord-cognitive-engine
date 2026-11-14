@@ -11,7 +11,6 @@ import { Home, Newspaper, Plus, Rss, Search, User, Wrench } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { DeprecatedLensNotice } from '@/components/lens/DeprecatedLensNotice';
 import { HnFrontPage } from '@/components/feed/HnFrontPage';
 import { FeedTimelinePanel, requestFeedCompose } from '@/components/feed/FeedTimelinePanel';
 import { FeedProfilePanel } from '@/components/feed/FeedProfilePanel';
@@ -74,9 +73,6 @@ export default function FeedLensPage() {
     <LensShell lensId="feed" asMain={false}>
 
       <DepthBadge lensId="feed" size="sm" className="ml-2" />
-      {/* FIX-feed-011: feed is 'deprecated' in LENS_STATUS_MAP —
-          surface the notice like the other deprecated lenses do. */}
-      <DeprecatedLensNotice lensId="feed" />
       <div className="lens-feed relative min-h-full px-8 pb-28 pt-6" data-lens-theme="feed">
         <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Feed</h1>
 

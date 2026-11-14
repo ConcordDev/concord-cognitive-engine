@@ -9,7 +9,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { titleCaseDisplayName } from '@/components/chat/claudeCleanGreeting';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
-import { DeprecatedLensNotice } from '@/components/lens/DeprecatedLensNotice';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DailyTodayPanel } from '@/components/daily/DailyTodayPanel';
@@ -61,7 +60,6 @@ export default function DailyLensPage() {
       {/* FIX-daily-010: daily is 'deprecated' in LENS_STATUS_MAP
           (merge target whiteboard) — surface it like the other
           deprecated lenses do. */}
-      <DeprecatedLensNotice lensId="daily" />
       <div data-lens-theme="daily" className="relative flex h-[calc(100vh-4rem)] flex-col overflow-hidden text-white">
         <header className="shrink-0 px-8 pt-6">
           <div className="flex items-start justify-between gap-4">
