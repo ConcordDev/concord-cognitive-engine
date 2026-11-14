@@ -60,11 +60,19 @@ export function DatamusePanel({ domain, className }: DatamusePanelProps) {
     }
     setLoading(true);
     setError(null);
-    const r = await runMacro<{ ok: boolean; words?: WordResult[]; reason?: string }>(
+    const r = await runMacro<{ ok: boolean; result?: { ok: boolean; words?: WordResult[]; reason?: string }; words?: WordResult[]; reason?: string }>(
       domain, 'live_datamuse', { word: w, kind: k, max: 25 },
     );
-    if (r?.ok) setResults(r.words || []);
-    else setError(r?.reason || 'fetch_failed');
+    // FIX-linguistics-008: /api/lens/run wraps every macro result in
+    // the { ok, result } envelope (server/lib/lens-run-http.js), so
+    // the words live at result.words — this panel read them at the
+    // top level, got undefined for every word, and rendered 'No
+    // matches' even on a healthy upstream answer. Failures are NOT
+    // enveloped (the shaper spreads them at the top level), so read
+    // the payload from result when present and the body otherwise.
+    const payload = r?.result ?? r;
+    if (payload?.ok) setResults(payload.words || []);
+    else setError(payload?.reason || r?.reason || 'fetch_failed');
     setLoading(false);
   }, [domain]);
 
