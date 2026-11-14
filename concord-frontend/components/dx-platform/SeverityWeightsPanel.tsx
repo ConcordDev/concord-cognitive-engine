@@ -250,15 +250,9 @@ export function SeverityWeightsPanel() {
         </div>
       ) : codebases.length === 0 ? (
         <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-xs text-zinc-400">
-          No codebase registered yet. Install the{' '}
-          <a href="https://marketplace.visualstudio.com/items?itemName=concord-os.concord-dx" target="_blank" rel="noreferrer" className="underline">
-            VS Code
-          </a>{' '}
-          or{' '}
-          <a href="https://plugins.jetbrains.com/plugin/concord-dx" target="_blank" rel="noreferrer" className="underline">
-            JetBrains
-          </a>{' '}
-          extension and open a workspace, or run a pass from the{' '}
+          No codebase registered yet. The VS Code and JetBrains extensions are not
+          published yet (their marketplace pages do not exist), so an editor cannot
+          register a codebase today — run a pass from the{' '}
           <Link href="/lenses/dx-platform/web-editor" className="underline">web editor</Link> demo, to
           register one.
         </div>
