@@ -31,7 +31,9 @@ export function AffectStateStrip() {
   const [draft, setDraft] = useState<string | null>(null);
   const commitDraft = () => {
     if (draft == null) return;
-    setSessionId(draft.trim() || 'default');
+    // FIX-affect-001: clearing the field returns to the caller's own
+    // session (''), never to the shared 'default' bucket.
+    setSessionId(draft.trim());
     setDraft(null);
   };
 
