@@ -366,9 +366,12 @@ export default function AgentBuilder() {
               >
                 {/* Header */}
                 <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${statusDot(agent.status)}`} />
-                    <span className="font-semibold text-base">{agent.name}</span>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={`w-2 h-2 shrink-0 rounded-full ${statusDot(agent.status)}`} />
+                    {/* FIX-society-005: the stored name is capped at 120
+                        server-side; the card still has to truncate it or a
+                        long name spills onto neighbouring cards. */}
+                    <span className="font-semibold text-base truncate">{agent.name}</span>
                   </div>
                   <span
                     className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full text-white ${typeBadgeColor(agent.type)}`}
@@ -457,6 +460,7 @@ export default function AgentBuilder() {
                     <input
                       aria-label={`Agent name for ${agent.name}`}
                       value={editForm.name}
+                      maxLength={120}
                       onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                       placeholder="Agent name"
                       className="w-full min-h-[40px] rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
@@ -763,6 +767,7 @@ export default function AgentBuilder() {
               <input
                 type="text"
                 value={agentName}
+                maxLength={120}
                 onChange={(e) => setAgentName(e.target.value)}
                 placeholder="My New Agent"
                 className="w-full bg-lattice-elevated border border-lattice-border rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-white/30"

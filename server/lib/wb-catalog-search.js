@@ -66,3 +66,20 @@ export async function searchIndicatorCatalog(wbJson, wbBase, query, limit) {
     .filter((m) => (seen.has(m.code) ? false : (seen.add(m.code), true)))
     .slice(0, limit);
 }
+
+// FIX-society-010: World Bank "most recent non-empty value" (mrnev=1) is a
+// request, not a guarantee — responses can still carry several years per
+// key. Consumers that plot or rank one row per key dedupe through here:
+// the latest year wins; ties keep the first row seen.
+export function latestPerKey(rows, keyOf, yearOf) {
+  const by = new Map();
+  for (const r of rows || []) {
+    const k = keyOf(r);
+    if (k == null || k === "") continue;
+    const y = Number(yearOf(r));
+    const prev = by.get(k);
+    if (prev && Number(yearOf(prev)) >= y) continue;
+    by.set(k, r);
+  }
+  return [...by.values()];
+}

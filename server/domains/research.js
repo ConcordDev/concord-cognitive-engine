@@ -923,6 +923,15 @@ export default function registerResearchActions(registerLensAction) {
     const title = rfClean(ref.title, 400);
     const journal = rfClean(ref.journal, 200);
     const doi = rfClean(ref.doi, 120);
+    // FIX-research-007: the bibliographic locator (volume / issue / pages)
+    // is part of every journal style — APA wants "Journal, 50(3), 367",
+    // MLA "vol. 50, no. 3, ... pp. 367", Chicago "50, no. 3 (year): 367",
+    // Vancouver "year;50(3):367". Refs predating the storage fix simply
+    // lack the fields and format as before.
+    const volume = rfClean(ref.volume, 40);
+    const issue = rfClean(ref.issue, 40);
+    const pages = rfClean(ref.pages, 60);
+    const pageLabel = pages ? (/[-–—]/.test(pages) ? `pp. ${pages}` : `p. ${pages}`) : "";
     if (style === "bibtex") {
       const authors = rfClean(ref.authors, 400) || "Unknown";
       const fields = [
@@ -930,6 +939,9 @@ export default function registerResearchActions(registerLensAction) {
         `  author={${authors}}`,
         ref.year ? `  year={${ref.year}}` : null,
         journal ? `  journal={${journal}}` : null,
+        volume ? `  volume={${volume}}` : null,
+        issue ? `  number={${issue}}` : null,
+        pages ? `  pages={${pages.replace(/[-–—]/g, "--")}}` : null,
         doi ? `  doi={${doi}}` : null,
       ].filter(Boolean).join(",\n");
       return `@${ref.type === "book" ? "book" : "article"}{${citationKey(ref)},\n${fields}\n}`;
@@ -942,29 +954,52 @@ export default function registerResearchActions(registerLensAction) {
     switch (style) {
       case "mla": {
         let out = `${endSentence(authorStr)} "${quotedTitle(titleOut)}"`;
-        if (journal) out += ` ${journal},`;
+        if (journal) {
+          out += ` ${journal},`;
+          if (volume) out += ` vol. ${volume},`;
+          if (issue) out += ` no. ${issue},`;
+        }
         out += ` ${year}`;
+        if (pages) out += `, ${pageLabel}`;
         if (doi) out += `, https://doi.org/${doi}`;
         return `${out}.`;
       }
       case "chicago": {
         let out = `${endSentence(authorStr)} "${quotedTitle(titleOut)}"`;
-        if (journal) out += ` ${journal}`;
-        out += ` (${year}).`;
+        if (journal) {
+          out += ` ${journal}`;
+          if (volume) out += ` ${volume}`;
+          if (issue) out += `, no. ${issue}`;
+        }
+        out += ` (${year})`;
+        if (pages) out += `: ${pages}`;
+        out += `.`;
         if (doi) out += ` https://doi.org/${doi}.`;
         return out;
       }
       case "vancouver": {
         let out = `${endSentence(authorStr)} ${withDot(titleOut)}`;
         if (journal) out += ` ${withDot(journal)}`;
-        out += ` ${year}.`;
+        out += ` ${year}`;
+        if (volume) {
+          out += `;${volume}`;
+          if (issue) out += `(${issue})`;
+          if (pages) out += `:${pages}`;
+        }
+        out += `.`;
         if (doi) out += ` doi:${doi}.`;
         return out;
       }
       case "apa":
       default: {
         let out = `${authorStr} (${year}). ${withDot(titleOut)}`;
-        if (journal) out += ` ${withDot(journal)}`;
+        if (journal) {
+          let seg = journal;
+          if (volume) seg += `, ${volume}`;
+          if (issue && volume) seg += `(${issue})`;
+          if (pages) seg += `, ${pages}`;
+          out += ` ${withDot(seg)}`;
+        }
         if (doi) out += ` https://doi.org/${doi}`;
         return out;
       }
@@ -990,6 +1025,9 @@ export default function registerResearchActions(registerLensAction) {
       year: Number.isFinite(Number(params.year)) ? Math.round(Number(params.year)) : null,
       type: REF_TYPES.includes(String(params.type).toLowerCase()) ? String(params.type).toLowerCase() : "article",
       journal: rfClean(params.journal, 200) || null,
+      volume: rfClean(params.volume, 40) || null,
+      issue: rfClean(params.issue, 40) || null,
+      pages: rfClean(params.pages, 60) || null,
       doi: rfClean(params.doi, 120) || null,
       url: rfClean(params.url, 500) || null,
       abstract: rfClean(params.abstract, 4000) || null,
@@ -1715,6 +1753,13 @@ export default function registerResearchActions(registerLensAction) {
       authors,
       year: w.publication_year || null,
       venue: w.primary_location?.source?.display_name || w.host_venue?.display_name || null,
+      // FIX-research-007: OpenAlex biblio carries the same locator fields.
+      volume: w.biblio?.volume ? String(w.biblio.volume) : null,
+      issue: w.biblio?.issue ? String(w.biblio.issue) : null,
+      pages: w.biblio?.first_page
+        ? (w.biblio.last_page && w.biblio.last_page !== w.biblio.first_page
+          ? `${w.biblio.first_page}-${w.biblio.last_page}` : String(w.biblio.first_page))
+        : null,
       doi,
       citationCount: typeof w.cited_by_count === "number" ? w.cited_by_count : 0,
       openAccessUrl: w.open_access?.oa_url || w.primary_location?.pdf_url || null,
@@ -1875,6 +1920,9 @@ export default function registerResearchActions(registerLensAction) {
       year: Number.isFinite(Number(w.year)) ? Math.round(Number(w.year)) : null,
       type: w.source === "arxiv" ? "preprint" : "article",
       journal: rfClean(w.venue, 200) || null,
+      volume: rfClean(w.volume, 40) || null,
+      issue: rfClean(w.issue, 40) || null,
+      pages: rfClean(w.pages, 60) || null,
       doi: rfClean(w.doi, 120) || null,
       url: rfClean(w.url || w.openAccessUrl, 500) || null,
       abstract: rfClean(w.abstract, 4000) || null,
@@ -1940,6 +1988,11 @@ export default function registerResearchActions(registerLensAction) {
         || msg["published-online"]?.["date-parts"]?.[0]?.[0]
         || msg.issued?.["date-parts"]?.[0]?.[0] || null,
       venue: (msg["container-title"] || [])[0] || null,
+      // FIX-research-007: Crossref carries the bibliographic locator —
+      // dropping it here is why formatted citations omitted it downstream.
+      volume: msg.volume ? String(msg.volume) : null,
+      issue: msg.issue ? String(msg.issue) : null,
+      pages: msg.page ? String(msg.page) : null,
       doi: msg.DOI || null,
       citationCount: typeof msg["is-referenced-by-count"] === "number" ? msg["is-referenced-by-count"] : null,
       openAccessUrl: (msg.link || []).find((l) => /pdf/i.test(l?.["content-type"] || ""))?.URL || null,

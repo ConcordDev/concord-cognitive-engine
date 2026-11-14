@@ -19,6 +19,34 @@ export interface TickEvent {
 
 export type TickViewTab = 'stream' | 'stats' | 'timeline' | 'health' | 'monitor' | 'rate';
 
+// FIX-tick-002: /api/events projects log entries to
+// { type, action, message, meta, ... } — a top-level source/domain key
+// never reaches the wire, so the stream's organ attribution read
+// 'unknown' for every event. The attribution that DOES exist: an
+// explicit source/domain (top-level or in meta), else the log type
+// itself — log types are dotted subsystem names (c2.genesis,
+// dtu.rename, hydrate), whose root is the emitting organ.
+export function eventOrgan(e: Record<string, unknown>): string {
+  const meta = (e.meta && typeof e.meta === 'object') ? e.meta as Record<string, unknown> : {};
+  const direct = [e.source, e.domain, meta.source, meta.domain, meta.componentId]
+    .find((v) => typeof v === 'string' && v.trim());
+  if (direct) return (direct as string).trim();
+  const type = typeof e.type === 'string' ? e.type.trim() : '';
+  if (type) return type.split('.')[0] || type;
+  return 'unknown';
+}
+
+export function toTickEvent(e: Record<string, unknown>, i: number): TickEvent {
+  return {
+    id: (e.id as string) || `tick-${i}`,
+    type: (e.type as string) || 'kernel',
+    signal: Number(e.severity ?? e.priority ?? 0.5),
+    stress: Number(e.stress ?? e.urgency ?? (e.type === 'error' ? 0.25 : 0.1)),
+    timestamp: (e.at as string) || (e.timestamp as string) || new Date().toISOString(),
+    organ: eventOrgan(e),
+  };
+}
+
 // ============================================================================
 // Heartbeat Pulse Visualization
 // ============================================================================

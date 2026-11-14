@@ -15,7 +15,7 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 import { registerLensExportProvider } from "../lib/lens-export.js";
-import { searchIndicatorCatalog } from "../lib/wb-catalog-search.js";
+import { searchIndicatorCatalog, latestPerKey } from "../lib/wb-catalog-search.js";
 
 const WB_BASE = "https://api.worldbank.org/v2";
 const WB_TTL = 30 * 60 * 1000; // 30-min cache — WB data is annual
@@ -467,9 +467,18 @@ export default function registerSocietyActions(register) {
       const wanted = Array.isArray(params.countries)
         ? new Set(params.countries.map((c) => String(c).toUpperCase()))
         : null;
+      // FIX-society-010: mrnev=1 is a request, not a guarantee — when the
+      // response still carries several years per country, plotting every
+      // row stacks duplicate markers and `count` counts rows ("3376
+      // countries"). Dedupe to one row per country, latest year wins
+      // (lib/wb-catalog-search.js latestPerKey).
+      const latestRows = latestPerKey(
+        (dataJson[1] || []).filter((r) => r.value != null),
+        (r) => r.countryiso3code || r.country?.id,
+        (r) => r.date,
+      );
       const rows = [];
-      for (const r of dataJson[1] || []) {
-        if (r.value == null) continue;
+      for (const r of latestRows) {
         const iso3 = r.countryiso3code || r.country?.id;
         const m = meta[iso3];
         if (!m) continue;
@@ -700,8 +709,13 @@ export default function registerSocietyActions(register) {
       const json = await wbJson(
         `${WB_BASE}/country/${codes.join(";")}/indicator/${encodeURIComponent(indicator)}?format=json&per_page=4000&mrnev=1`,
       );
-      const rows = (json[1] || [])
-        .filter((r) => r.value != null)
+      // FIX-society-010: same mrnev caveat as wb-choropleth — one row per
+      // aggregate code, latest year wins, before ranking.
+      const rows = latestPerKey(
+        (json[1] || []).filter((r) => r.value != null),
+        (r) => r.countryiso3code || r.country?.id,
+        (r) => r.date,
+      )
         .map((r) => {
           const code = r.countryiso3code || r.country?.id;
           return { code, name: AGGREGATE_CODES[code] || r.country?.value, year: Number(r.date), value: Number(r.value) };
