@@ -127,6 +127,7 @@ interface SimResult {
   energyTrace: Array<{ t: number; kinetic: number; potential: number; total: number }>;
   collisions: number;
   energyDrift: number;
+  energyDissipated?: number;
 }
 
 interface CurriculumSummary {
@@ -338,7 +339,7 @@ export function PhysicsLab() {
         setSim(r.data.result);
         setGraphBody(r.data.result.bodies[0]?.id || null);
         setStatus(
-          `Simulated ${r.data.result.duration}s · ${r.data.result.collisions} collisions · energy drift ${r.data.result.energyDrift}`,
+          `Simulated ${r.data.result.duration}s · ${r.data.result.collisions} collisions · energy drift ${r.data.result.energyDrift} J${r.data.result.energyDissipated ? ` (${r.data.result.energyDissipated} J dissipated by impacts)` : ''}`,
         );
       } else {
         setStatus(`Simulation failed: ${r.data.error || 'unknown'}`);
@@ -896,7 +897,7 @@ export function PhysicsLab() {
               </div>
               <ChartKit kind="line" data={graphSeries.data} xKey={graphSeries.xKey} series={graphSeries.series} height={220} />
               <p className="text-[10px] text-zinc-400 font-mono">
-                {sim.duration}s simulated · {sim.collisions} collisions · energy drift {sim.energyDrift} J
+                {sim.duration}s simulated · {sim.collisions} collisions · energy drift {sim.energyDrift} J{sim.energyDissipated ? ` (${sim.energyDissipated} J dissipated by impacts)` : ''}
               </p>
             </div>
           )}

@@ -910,6 +910,17 @@ export default function registerPhysicsActions(registerLensAction) {
     const series = new Map(bodies.map(b => [b.id, []]));
     const energyTrace = [];
     const collisionEvents = [];
+    // Energy accounting (FIX-physics-004): restitution impacts are physical
+    // dissipation, not integrator error — but wall bounces used to be
+    // invisible (the collision count covered body-body hits only), so a body
+    // that fell to the floor and bounced read as "0 collisions, −4,765 J
+    // drift" and the simulator looked broken. Track the joules each impact
+    // actually dissipates and count real wall impacts as collisions, so the
+    // reported drift separates into dissipated (physical) + residual
+    // (integrator). Sub-0.5 m/s contacts are resting jitter, not impacts.
+    let energyDissipated = 0;
+    const IMPACT_MIN = 0.5;
+    const keOf = (b) => 0.5 * b.mass * (b.vx * b.vx + b.vy * b.vy);
 
     function pointInFluid(b) {
       for (const f of fluids) {
@@ -1032,8 +1043,10 @@ export default function registerPhysicsActions(registerLensAction) {
               ? clamp01(settings.restitutionGlobal)
               : Math.min(a.restitution, b.restitution);
             const imp = -(1 + e) * rvn / wsum;
+            const keBefore = keOf(a) + keOf(b);
             if (invA) { a.vx -= imp * nx * invA; a.vy -= imp * ny * invA; }
             if (invB) { b.vx += imp * nx * invB; b.vy += imp * ny * invB; }
+            energyDissipated += Math.max(0, keBefore - (keOf(a) + keOf(b)));
             collisionEvents.push({ step, a: a.id, b: b.id, impulse: rnd(Math.abs(imp)) });
           }
         }
@@ -1049,21 +1062,33 @@ export default function registerPhysicsActions(registerLensAction) {
               b.x += nx * pen; b.y += ny * pen;
               const vn = b.vx * nx + b.vy * ny;
               if (vn < 0) {
+                const keB = keOf(b);
                 b.vx -= (1 + b.restitution) * vn * nx;
                 b.vy -= (1 + b.restitution) * vn * ny;
+                energyDissipated += Math.max(0, keB - keOf(b));
               }
             }
           }
         }
-        // Walls
+        // Walls — a reflection at real impact speed is a collision like any
+        // other: it counts, and its restitution loss joins the dissipation
+        // ledger. Sub-threshold flips are resting contact, left uncounted.
         if (settings.wallBounce) {
           for (const b of bodies) {
             if (b.isStatic) continue;
             const r = b.radius;
-            if (b.x - r < 0) { b.x = r; b.vx = -b.vx * b.restitution; }
-            if (b.x + r > bounds.w) { b.x = bounds.w - r; b.vx = -b.vx * b.restitution; }
-            if (b.y - r < 0) { b.y = r; b.vy = -b.vy * b.restitution; }
-            if (b.y + r > bounds.h) { b.y = bounds.h - r; b.vy = -b.vy * b.restitution; }
+            const flip = (comp) => {
+              const v = b[comp];
+              if (Math.abs(v) >= IMPACT_MIN) {
+                energyDissipated += 0.5 * b.mass * v * v * (1 - b.restitution * b.restitution);
+                collisionEvents.push({ step, a: b.id, b: "wall", impulse: rnd(Math.abs(v) * b.mass) });
+              }
+              b[comp] = -v * b.restitution;
+            };
+            if (b.x - r < 0) { b.x = r; flip("vx"); }
+            if (b.x + r > bounds.w) { b.x = bounds.w - r; flip("vx"); }
+            if (b.y - r < 0) { b.y = r; flip("vy"); }
+            if (b.y + r > bounds.h) { b.y = bounds.h - r; flip("vy"); }
           }
         }
       }
@@ -1101,6 +1126,9 @@ export default function registerPhysicsActions(registerLensAction) {
       energyDrift: energyTrace.length > 1
         ? rnd(energyTrace[energyTrace.length - 1].total - energyTrace[0].total)
         : 0,
+      // Joules the run's impacts physically dissipated (restitution). The
+      // integrator's own error is energyDrift + energyDissipated.
+      energyDissipated: rnd(energyDissipated),
     };
   }
 
