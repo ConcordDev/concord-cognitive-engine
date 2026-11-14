@@ -9,7 +9,7 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
 import { runFEA } from '../lib/simulation/fea-solver.js';
-import { buildBeamStudy, summarizeBeamStudy } from '../lib/conkay/beam-study.js';
+import { buildBeamCalcReceipt, buildBeamStudy, summarizeBeamStudy } from '../lib/conkay/beam-study.js';
 import { parseSafetyFactor, safetyCheck } from '../lib/conkay/nlp-design-intent.js';
 import crypto from 'node:crypto';
 import { meshToSTL } from '../lib/asset-gen/stl-export.js';
@@ -402,6 +402,14 @@ export function solveBeamStudy(data = {}, { onStage } = {}) {
       ...summary,
       utilizationByMember,
       analysisReceipt: study.analysisReceipt,
+      // GB-1534: the signing-grade v2 receipt — inputs AND outputs inside
+      // the signed body (analysisReceipt above is the v1 shape, kept for
+      // the FE for one release).
+      calcReceipt: buildBeamCalcReceipt(
+        { dims: study.dims, support: study.support, loadN: study.loadN, material: mat, segments: study.segments },
+        summary,
+        { utilizationByMember, job: data },
+      ),
     },
   };
 }

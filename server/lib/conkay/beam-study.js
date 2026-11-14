@@ -15,6 +15,7 @@
 import { createHash } from "node:crypto";
 import { sectionProperties } from "../compute/engineering-compute.js";
 import { attestReceipt } from "../receipts/attest.js";
+import { buildCalcReceipt, roundTo } from "../receipts/calc-receipt.js";
 
 /** Direct-stiffness beam-frame solver identity (semver from server package). */
 export const FEA_SOLVER_ID = "fea-solver@5.0.0";
@@ -89,6 +90,111 @@ export function buildAnalysisReceipt(input = {}) {
     assumptions: [...BEAM_ASSUMPTIONS],
     outOfScope: [...BEAM_OUT_OF_SCOPE],
   });
+}
+
+/** What this study does NOT check, in plain words (GB-1534 design basis). */
+export const BEAM_CHECKS_NOT_PERFORMED = Object.freeze([
+  "Shear",
+  "Lateral-torsional and local buckling",
+  "Bearing at supports",
+  "Connections",
+  "Self-weight",
+]);
+
+const HAND_FORMULAS = Object.freeze({
+  "simply-supported": {
+    stress: "σ = Mc/I, M = PL/4 (midspan point load)",
+    deflection: "δ = PL³/(48EI)",
+  },
+  cantilever: {
+    stress: "σ = Mc/I, M = PL (tip point load)",
+    deflection: "δ = PL³/(3EI)",
+  },
+  fixed: {
+    stress: "σ = Mc/I, M = PL/8 (midspan point load)",
+    deflection: "δ = PL³/(192EI)",
+  },
+});
+
+/**
+ * GB-1534 — the signing-grade v2 calc receipt for one solved beam study.
+ * Unlike the v1 analysis receipt above (kept for the FE for one release),
+ * this body signs the full inputs AND the reported outputs: results are
+ * rounded to sheet precision BEFORE signing, so the signed value is the
+ * shown value, and the verdict states its basis — a yield check at SF 1.0
+ * when no required safety factor was given, never an implied design-code
+ * pass. `summary` is summarizeBeamStudy's output with safetyCheck attached
+ * (domains/engineering.js solveBeamStudy); without a summary the receipt
+ * still signs the inputs and records verdict NOT_COMPUTED.
+ *
+ * @param {{ dims: object, support: string, loadN: number, material: { E: number, yield: number }, segments?: number }} input
+ * @param {object | null} summary
+ * @param {{ utilizationByMember?: Array, job?: object, now?: () => string }} [opts]
+ */
+export function buildBeamCalcReceipt(input = {}, summary = null, opts = {}) {
+  const normalized = normalizeBeamStudyInputs(input);
+  const sc = summary && typeof summary === "object" ? summary.safetyCheck || null : null;
+  const stated = sc ? sc.stated === true : false;
+  const requiredSF = sc && Number.isFinite(sc.requiredSafetyFactor) ? sc.requiredSafetyFactor : 1;
+  const achieved = sc && Number.isFinite(sc.achievedSafetyFactor) ? sc.achievedSafetyFactor : null;
+  const status = !summary || achieved == null ? "NOT_COMPUTED" : sc.pass ? "PASS" : "FAIL";
+  const verdictText = status === "NOT_COMPUTED"
+    ? "No stress result to check the safety factor against."
+    : !stated
+      ? `${status} vs yield at SF 1.0 — not a design-code check`
+      : sc.verdict;
+  const formulas = HAND_FORMULAS[normalized.support] || HAND_FORMULAS["simply-supported"];
+  return buildCalcReceipt({
+    solver: FEA_SOLVER_ID,
+    inputs: normalized,
+    inputHash: hashBeamStudyInputs(input),
+    units: "inputs in mm / N / MPa as entered",
+    method: "Direct-stiffness beam-frame FEA (Euler–Bernoulli elements), checked against the closed-form hand calculation for the same case",
+    designBasis: {
+      code: "none — yield check only",
+      loadFactors: "unfactored",
+      requiredSF,
+      checksPerformed: [
+        "Yield: peak bending stress against material yield at the required safety factor",
+        "Hand-calculation agreement: closed-form result against the FEA result, within tolerance",
+      ],
+      checksNotPerformed: [...BEAM_CHECKS_NOT_PERFORMED],
+    },
+    assumptions: [...BEAM_ASSUMPTIONS],
+    outOfScope: [...BEAM_OUT_OF_SCOPE],
+    results: summary ? {
+      maxStressMPa: { value: roundTo(summary.maxStressMPa, 1), unit: "MPa" },
+      maxDeflectionMm: { value: roundTo(summary.maxDeflectionMm, 2), unit: "mm" },
+      safetyFactor: { value: roundTo(summary.safetyFactor, 2), unit: "dimensionless" },
+      utilization: { value: roundTo(summary.utilization != null ? summary.utilization * 100 : null, 1), unit: "%" },
+      ...(Array.isArray(opts.utilizationByMember)
+        ? {
+            utilizationByMember: opts.utilizationByMember.map((u) => ({
+              id: u.id,
+              utilizationPct: roundTo(u.utilization != null ? u.utilization * 100 : null, 1),
+              band: u.band,
+            })),
+          }
+        : {}),
+    } : {},
+    handCheck: summary && summary.handCheck ? {
+      formula: `${formulas.stress}; ${formulas.deflection}`,
+      maxStressMPa: { value: roundTo(summary.handCheck.maxStressMPa, 1), unit: "MPa" },
+      maxDeflectionMm: { value: roundTo(summary.handCheck.maxDeflectionMm, 2), unit: "mm" },
+      stressErrorPct: roundTo(summary.handCheck.stressError != null ? summary.handCheck.stressError * 100 : null, 2),
+      deflectionErrorPct: roundTo(summary.handCheck.deflectionError != null ? summary.handCheck.deflectionError * 100 : null, 2),
+      agrees: summary.handCheck.agrees === true,
+    } : undefined,
+    verdict: {
+      status,
+      governing: sc ? sc.governing ?? null : null,
+      achievedSF: achieved == null ? null : roundTo(achieved, 2),
+      requiredSF,
+      margin: sc && Number.isFinite(sc.margin) ? roundTo(sc.margin, 4) : null,
+      text: verdictText,
+    },
+    job: opts.job,
+  }, opts);
 }
 
 
