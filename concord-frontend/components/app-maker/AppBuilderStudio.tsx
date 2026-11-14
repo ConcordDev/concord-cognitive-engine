@@ -1497,6 +1497,14 @@ function LivePreview({ project, run }: { project: Project; run: RunFn }) {
     return () => window.removeEventListener('message', onMessage);
   }, [project.id, run]);
 
+  // Leaving the Preview tab destroys the preview session (S4): its
+  // ephemeral rows live only as long as the preview does.
+  useEffect(() => {
+    const pid = project.id;
+    const sid = sessionRef.current || '';
+    return () => { void run('previewSessionClose', { projectId: pid, sessionId: sid }).catch(() => undefined); };
+  }, [project.id, run]);
+
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">

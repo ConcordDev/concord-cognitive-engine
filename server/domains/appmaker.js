@@ -992,6 +992,110 @@ export default function registerAppmakerActions(registerLensAction) {
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
+  // ─── Preview data store (FIX-app-maker-001 S4) ────────────────────
+  // The F1 data copy, concretely: app-maker tables are schema-only (the
+  // domain holds no row records), so the preview copy is a SESSION-SCOPED
+  // EPHEMERAL store. Rows exist only inside a preview session, are created
+  // only by the preview's own table actions, and live in a module-level
+  // Map — never in the persisted app state, never touching project data.
+  const previewSessions = new Map(); // `${userId}:${projectId}:${sessionId}` -> { tables: Map<name, rows[]>, touchedAt }
+  const PREVIEW_ROW_CAP = 500;
+  const PREVIEW_SESSIONS_PER_USER = 50;
+  const PREVIEW_SESSION_IDLE_MS = 30 * 60 * 1000;
+
+  function previewSessionFor(userId, projectId, sessionId, create) {
+    const now = Date.now();
+    for (const [key, sess] of previewSessions) {
+      if (now - sess.touchedAt > PREVIEW_SESSION_IDLE_MS) previewSessions.delete(key);
+    }
+    const key = `${userId}:${projectId}:${sessionId}`;
+    let sess = previewSessions.get(key);
+    if (!sess && create) {
+      const mine = [...previewSessions.keys()].filter((k) => k.startsWith(`${userId}:`));
+      if (mine.length >= PREVIEW_SESSIONS_PER_USER) previewSessions.delete(mine[0]);
+      sess = { tables: new Map(), touchedAt: now };
+      previewSessions.set(key, sess);
+    }
+    if (sess) sess.touchedAt = now;
+    return sess || null;
+  }
+
+  function cleanPreviewRow(tbl, values) {
+    const fields = new Map((tbl.fields || []).map((f) => [f.name, f]));
+    const row = {};
+    for (const [k, v] of Object.entries(values || {})) {
+      if (k === "id" || k === "createdAt" || k === "updatedAt") continue;
+      if (!fields.has(k)) return { error: `unknown field '${k}' for table '${tbl.name}'` };
+      if (typeof v === "string" && v.length > 5000) return { error: `field '${k}' is too long (5000 characters max)` };
+      if (v !== null && !["string", "number", "boolean"].includes(typeof v)) return { error: `field '${k}' must be a string, number or boolean` };
+      row[k] = v;
+    }
+    if (JSON.stringify(row).length > 16384) return { error: "row is too large (16 KB max)" };
+    return { row };
+  }
+
+  /**
+   * preview.bridge — one table action from the preview frame, relayed by
+   * the Studio parent under the owner's session (S3). Re-validates
+   * everything here: the frame's payload is untrusted by construction.
+   * Returns the table's full row set so the runtime can re-render.
+   */
+  registerLensAction("app-maker", "previewBridge", (ctx, artifact, params) => {
+    try {
+      const s = getAppState();
+      const userId = amActor(ctx);
+      const proj = findProject(s, userId, params?.projectId);
+      if (!proj) return { ok: false, error: "project_not_found" };
+      const sessionId = String(params?.sessionId || "");
+      if (!sessionId || sessionId.length > 64 || !/^[A-Za-z0-9_-]+$/.test(sessionId)) {
+        return { ok: false, error: "a valid preview session id is required" };
+      }
+      const action = String(params?.action || "");
+      if (!["create_row", "update_row", "delete_row"].includes(action)) {
+        return { ok: false, error: `'${action}' is not a preview table action` };
+      }
+      const tableName = String(params?.table || "");
+      const tbl = (proj.dataModel?.tables || []).find((t) => t.name === tableName || t.id === tableName);
+      if (!tbl) return { ok: false, error: `no table named '${tableName}' in this app` };
+      const config = params?.config && typeof params.config === "object" && !Array.isArray(params.config) ? params.config : {};
+      const sess = previewSessionFor(userId, proj.id, sessionId, true);
+      if (!sess.tables.has(tbl.name)) sess.tables.set(tbl.name, []);
+      const rows = sess.tables.get(tbl.name);
+
+      if (action === "create_row") {
+        if (rows.length >= PREVIEW_ROW_CAP) return { ok: false, error: `preview table '${tbl.name}' is full (${PREVIEW_ROW_CAP} rows)` };
+        const values = config.values && typeof config.values === "object" && !Array.isArray(config.values) ? config.values : config;
+        const { row, error } = cleanPreviewRow(tbl, values);
+        if (error) return { ok: false, error };
+        const stored = { id: amId("row"), ...row, createdAt: amNow() };
+        rows.push(stored);
+        return { ok: true, result: { table: tbl.name, row: stored, rows: [...rows] } };
+      }
+      const rowId = String(config.id || "");
+      const idx = rows.findIndex((r) => r.id === rowId);
+      if (!rowId || idx === -1) return { ok: false, error: `no row '${rowId || "(missing id)"}' in preview table '${tbl.name}'` };
+      if (action === "update_row") {
+        const values = config.values && typeof config.values === "object" && !Array.isArray(config.values) ? config.values : config;
+        const { row, error } = cleanPreviewRow(tbl, values);
+        if (error) return { ok: false, error };
+        rows[idx] = { ...rows[idx], ...row, updatedAt: amNow() };
+        return { ok: true, result: { table: tbl.name, row: rows[idx], rows: [...rows] } };
+      }
+      const [removed] = rows.splice(idx, 1);
+      return { ok: true, result: { table: tbl.name, row: removed, rows: [...rows] } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /** preview.sessionClose — drop a preview session's ephemeral rows. */
+  registerLensAction("app-maker", "previewSessionClose", (ctx, artifact, params) => {
+    try {
+      const userId = amActor(ctx);
+      const key = `${userId}:${String(params?.projectId || "")}:${String(params?.sessionId || "")}`;
+      const closed = previewSessions.delete(key);
+      return { ok: true, result: { closed } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
   // ─── Publish → snapshot (honest: no hosting infra exists) ─────────
   //
   // There is no reverse proxy, wildcard DNS, or static-hosting backend
