@@ -598,6 +598,24 @@ export default function registerNeuroActions(registerLensAction) {
     }
   });
 
+  // FIX-neuro-009: recordings could be imported and deleted but never
+  // renamed. Owner-scoped like deleteRecording; the name cap matches
+  // importSignal's 120 chars.
+  registerLensAction("neuro", "renameRecording", (ctx, _artifact, params = {}) => {
+    try {
+      const id = String(params.recordingId || "");
+      const name = String(params.name || "").trim().slice(0, 120);
+      if (!name) return { ok: false, error: "Recording name required." };
+      const rec = userRecordings(ctx).get(id);
+      if (!rec) return { ok: false, error: "Recording not found." };
+      rec.name = name;
+      persistNeuro();
+      return { ok: true, result: { id: rec.id, name: rec.name } };
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
+  });
+
   registerLensAction("neuro", "deleteRecording", (ctx, _artifact, params = {}) => {
     try {
       const id = String(params.recordingId || "");

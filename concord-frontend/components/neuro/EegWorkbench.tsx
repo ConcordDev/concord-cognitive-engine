@@ -15,7 +15,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import {
   Upload, Waves, Map as MapIcon, Filter, Scissors, Grid3x3,
-  Crosshair, FlaskConical, Trash2, Loader2, Check, AlertTriangle, FileUp,
+  Crosshair, FlaskConical, Trash2, Loader2, Check, AlertTriangle, FileUp, Pencil,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz';
@@ -107,6 +107,7 @@ export function EegWorkbench() {
 
   const [recordings, setRecordings] = useState<RecordingSummary[]>([]);
   const [activeId, setActiveId] = useState<string>('');
+  const [renameDraft, setRenameDraft] = useState<string | null>(null);
   const active = recordings.find((r) => r.id === activeId) || null;
 
   // import form
@@ -229,6 +230,18 @@ export function EegWorkbench() {
         setImportText(''); setImportName(''); setImportEvents('');
       } else err(r.data?.error || 'Import failed.');
     } catch (e: any) { err(e?.message || 'Import failed.'); }
+    finally { setBusy(null); }
+  };
+
+  const doRename = async (id: string) => {
+    const name = (renameDraft || '').trim();
+    if (!name) { err('Recording name required.'); return; }
+    setBusy('rename'); setFeedback(null);
+    try {
+      const r = await lensRun('neuro', 'renameRecording', { recordingId: id, name });
+      if (r.data?.ok) { ok(`Renamed to "${name}".`); setRenameDraft(null); await refreshRecordings(); }
+      else err(r.data?.error || 'Rename failed.');
+    } catch (e: any) { err(e?.message || 'Rename failed.'); }
     finally { setBusy(null); }
   };
 
@@ -413,10 +426,23 @@ export function EegWorkbench() {
             <option key={r.id} value={r.id}>{r.name} ({r.channelCount}ch · {r.durationSec}s)</option>
           ))}
         </select>
+        {activeId && renameDraft === null && (
+          <button type="button" onClick={() => setRenameDraft(recordings.find((r) => r.id === activeId)?.name || '')} disabled={!!busy} className="rounded-md border border-zinc-700 bg-zinc-800/60 px-2 py-1.5 text-zinc-200 hover:bg-zinc-700/60 disabled:opacity-40" aria-label="Rename recording">
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
+        )}
         {activeId && (
           <button type="button" onClick={() => doDelete(activeId)} disabled={!!busy} className="rounded-md border border-red-500/30 bg-red-500/10 px-2 py-1.5 text-red-300 hover:bg-red-500/20 disabled:opacity-40" aria-label="Delete recording">
             <Trash2 className="h-3.5 w-3.5" />
           </button>
+        )}
+        {activeId && renameDraft !== null && (
+          <span className="flex items-center gap-1">
+            <input value={renameDraft} onChange={(e) => setRenameDraft(e.target.value)} aria-label="New recording name" maxLength={120}
+              className={cn(inputCls, 'w-auto min-w-[180px]')} />
+            <button type="button" onClick={() => doRename(activeId)} disabled={!!busy} className="rounded-md bg-emerald-600 px-2 py-1.5 text-white hover:bg-emerald-500 disabled:opacity-40">Save</button>
+            <button type="button" onClick={() => setRenameDraft(null)} className="rounded-md bg-zinc-800 px-2 py-1.5 text-zinc-300">Cancel</button>
+          </span>
         )}
       </div>
 
