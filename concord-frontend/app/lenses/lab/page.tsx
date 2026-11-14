@@ -192,6 +192,15 @@ export default function LabLensPage() {
               Clear
             </button>
           </div>
+          {/* FIX-lab-004: Run gave no compute disclosure. The truth for
+              this sandbox: Run only RECORDS the experiment (code +
+              organ) to the user's lab data — no code executes, so the
+              label says exactly that instead of implying a compute
+              backend. */}
+          <p className="text-[11px] text-gray-500" data-testid="lab-compute-disclosure">
+            Compute: none. Run records this experiment (code + selected organ) to your lab
+            notebook — code is not executed, no GPU or paid compute is used, and there is no cost.
+          </p>
         </div>
 
         {/* Organ Status */}
