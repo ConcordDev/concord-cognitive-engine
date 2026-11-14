@@ -69881,10 +69881,23 @@ app.get("/api/affect/state", (req, res) => {
   res.json({ ok: true, state });
 });
 
+// FIX-affect-002: ATS sessions are per-caller (the middleware derives
+// user_<id> / an anon fingerprint). A write naming any other session is
+// refused unless the caller is an operator — the lens opens on the
+// shared "default" session, so without this any member could reset or
+// drive shared state.
+function atsWriteSession(req, requested) {
+  const own = req._atsSessionId || "default";
+  const isOperator = req.user?.role === "admin" || req.user?.role === "sovereign";
+  const target = requested || own;
+  return target === own || isOperator ? target : null;
+}
+
 // POST /api/affect/event — apply an affect event
 app.post("/api/affect/event", (req, res) => {
   if (!ATS) return res.status(501).json({ ok: false, error: "ATS not loaded" });
-  const sessionId = req.body?.source?.sessionId || req.body?.sessionId || req._atsSessionId || "default";
+  const sessionId = atsWriteSession(req, req.body?.source?.sessionId || req.body?.sessionId);
+  if (!sessionId) return res.status(403).json({ ok: false, error: "forbidden", message: "Affect sessions can only be changed by their owner or an operator." });
   const result = ATS.emitAffectEvent(sessionId, req.body);
   if (!result.ok) return res.status(400).json(result);
   res.json(result);
@@ -69902,7 +69915,8 @@ app.get("/api/affect/policy", (req, res) => {
 // POST /api/affect/reset — reset to baseline or cooldown
 app.post("/api/affect/reset", (req, res) => {
   if (!ATS) return res.status(501).json({ ok: false, error: "ATS not loaded" });
-  const sessionId = req.body?.sessionId || req._atsSessionId || "default";
+  const sessionId = atsWriteSession(req, req.body?.sessionId);
+  if (!sessionId) return res.status(403).json({ ok: false, error: "forbidden", message: "Affect sessions can only be changed by their owner or an operator." });
   const mode = req.body?.mode || "baseline";
   const result = ATS.resetAffect(sessionId, mode);
   res.json(result);

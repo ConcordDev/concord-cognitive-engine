@@ -14,7 +14,7 @@ import { ErrorState } from '@/components/common/EmptyState';
 import { LiveAffectStream } from '@/components/affect/LiveAffectStream';
 
 export function DimensionsPanel() {
-  const { sessionId, dimValues, eventList, isLoading, isError, errorMessage, refetchAll } = useAffectAts();
+  const { sessionId, dimValues, eventList, canControlSession, isLoading, isError, errorMessage, refetchAll } = useAffectAts();
   const queryClient = useQueryClient();
   const [eventType, setEventType] = useState('USER_MESSAGE');
   const [intensity, setIntensity] = useState(0.5);
@@ -181,6 +181,14 @@ export function DimensionsPanel() {
                 <Send className="w-4 h-4 text-neon-cyan" />
                 Emit Affect Event
               </h2>
+              {!canControlSession ? (
+                <p className="text-sm text-gray-400">
+                  Emitting writes this session&apos;s state, so it is limited to the
+                  session&apos;s owner — or an operator. Your own mood check-ins
+                  live under the Mood tab and always write your own state.
+                </p>
+              ) : (
+              <>
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Event Type</label>
                 <select
@@ -238,6 +246,8 @@ export function DimensionsPanel() {
                 >
                   {emitNote.text}
                 </p>
+              )}
+              </>
               )}
             </div>
           </div>
