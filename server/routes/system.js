@@ -754,9 +754,17 @@ export default function registerSystemRoutes(app, {
         ? dtus.filter(d => d.scope === "global" || dtuListedOwner(d) === userId)
         : dtus.filter(d => d.scope === "global");
     } else if (scopeFilter === "all") {
-      dtus = userId
-        ? dtus.filter(d => d.scope === "global" || !dtuListedOwner(d) || dtuListedOwner(d) === userId)
-        : dtus.filter(d => !d.scope || d.scope === "global");
+      // FIX-export-011 (owner-scoped export contract, 2026-11-14 ruling):
+      // scope=all is the Export Desk's "include the shared library" cut,
+      // and it used to return the whole global substrate — system feed
+      // DTUs and other users' global DTUs rode a personal export (41
+      // non-owned rows in the ticket). No caller-scoped library
+      // membership ("saved into the shared library") concept exists yet;
+      // that leg is the desk's to price. In the interim this scope
+      // carries only what the caller placed: their own DTUs, any scope.
+      // Anonymous callers have placed nothing and get nothing. The
+      // Global Library browse (scope=global above) is unchanged.
+      dtus = userId ? dtus.filter(d => dtuListedOwner(d) === userId) : [];
     } else if (userId) {
       // "mine" (default + explicit scope=local/mine): the viewer's own DTUs only.
       dtus = dtus.filter(d => dtuListedOwner(d) === userId);
