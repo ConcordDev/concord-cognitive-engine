@@ -2139,6 +2139,63 @@ export function processScheduledPosts(STATE) {
   return { ok: true, published, count: published.length };
 }
 
+// ── Scheduled Posts — the SQL queue (the live store) ─────────────────────
+// The frontend schedules through routes/social-groups.js into the
+// `social_scheduled_posts` SQL table — a SEPARATE queue from the in-memory
+// Map above, and for its whole life nothing read it ("No cron job yet —
+// the rows sit in the table until the frontend retrieves them"). This is
+// the consumer for that queue, drained by the same "scheduled-posts"
+// heartbeat as processScheduledPosts: one tick, both queues, one publish
+// path. Due 'pending' rows publish — plain rows through createPost (the
+// feed's real post path), group rows into social_group_posts with the
+// groups router's own INSERT shape — and flip to 'published'; a row whose
+// publish is refused (e.g. the duplicate-post guard) flips to 'failed',
+// terminal, instead of retrying every tick forever. The table itself
+// stays the record: GET /social/scheduled lists 'pending' only, so a
+// flipped row leaves the queue view without being deleted.
+export function processScheduledSqlPosts(db, STATE) {
+  if (!db || typeof db.prepare !== "function") return { ok: false, reason: "no_db", published: [], failed: [], count: 0 };
+  let hasTable = null;
+  try {
+    hasTable = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'social_scheduled_posts'").get();
+  } catch (_e) { /* fall through to the no_table skip */ }
+  if (!hasTable) return { ok: true, skipped: "no_table", published: [], failed: [], count: 0 };
+
+  const social = getSocialState(STATE);
+  const nowIso = new Date().toISOString();
+  let rows = [];
+  try {
+    rows = db.prepare(
+      "SELECT id, user_id, content, group_id, scheduled_at FROM social_scheduled_posts WHERE status = 'pending' AND scheduled_at <= ? ORDER BY scheduled_at ASC"
+    ).all(nowIso);
+  } catch (_e) {
+    return { ok: false, reason: "query_failed", published: [], failed: [], count: 0 };
+  }
+
+  const published = [];
+  const failed = [];
+  const markPublished = db.prepare("UPDATE social_scheduled_posts SET status = 'published' WHERE id = ?");
+  const markFailed = db.prepare("UPDATE social_scheduled_posts SET status = 'failed' WHERE id = ?");
+  for (const row of rows) {
+    let ok = false;
+    try {
+      if (row.group_id) {
+        const authorName = social.profiles.get(row.user_id)?.displayName || "Anonymous";
+        db.prepare(
+          "INSERT INTO social_group_posts (post_id, group_id, author_id, author_name, content, media_type, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))"
+        ).run(nextId("post"), row.group_id, row.user_id, authorName, row.content, null);
+        ok = true;
+      } else {
+        const result = createPost(STATE, { userId: row.user_id, content: row.content });
+        ok = !!result?.ok;
+      }
+    } catch (_e) { ok = false; }
+    if (ok) { markPublished.run(row.id); published.push(row.id); }
+    else { markFailed.run(row.id); failed.push(row.id); }
+  }
+  return { ok: true, published, failed, count: published.length };
+}
+
 // ── Trending Engine (velocity-based) ────────────────────────────────────
 
 function getTrendingScore(post) {
