@@ -27,6 +27,7 @@
 //     UI can be honest about what an export does and does not include.
 
 import { dtuMatchesDomain } from "./art-dtu-filter.js";
+import { dtuListedOwner } from "./dtu-list-source.js";
 
 const SCAFFOLDING_TYPES = new Set(["domain_action"]);
 
@@ -247,24 +248,23 @@ export async function collectLensExport({ runMacro, domain, ctx, limit = 1000 })
   };
   // Owner-scoped export contract (lens-export ruling, 2026-11-14 —
   // FIX-research-001 / FIX-export-011): a per-lens export is the
-  // caller's own takeout, so this leg is built on the Leg-A shape
-  // (dtuBelongsInLensExport below). The owner resolves through the
-  // same chain (ownerId | userId | meta.ownerId). System rows never
-  // ride a personal export, and another owner's row never rides,
-  // public or published — the 2026-11-09 hotfix's blanket keep of
-  // "genuine non-activity public catalog rows" is retired: it is
-  // what dumped 999 system feed articles into a research export
-  // that should have carried the user's references or nothing.
-  // The caller's own records ride at any visibility. Ownerless rows
-  // keep the Leg-A treatment — Leg A's source is caller-pre-scoped,
-  // so ownerless there means legacy caller rows, and ordinary
-  // ownerless artifacts export the same way here. The activity-mint
+  // caller's own takeout, so this leg is scoped to caller-owned rows
+  // via the canonical dtuListedOwner chain (plus meta.ownerId, where
+  // artifacts stamp it). System rows never ride a personal export,
+  // and another owner's row never rides, public or published — the
+  // 2026-11-09 hotfix's blanket keep of "genuine non-activity public
+  // catalog rows" is retired: it is what dumped 999 system feed
+  // articles into a research export that should have carried the
+  // user's references or nothing. The caller's own records ride at
+  // any visibility. OWNERLESS ROWS FALL (office call, 2026-11-14,
+  // B5's reading governs): the contract is the caller's own records,
+  // and an ownerless row is not the caller's — the public catalog
+  // stays browsable in-app; it is not a takeout. The activity-mint
   // filter below still applies on top (a caller-owned activity
   // mirror rides; anyone else's is already gone by this filter).
   const exportScoped = (a) => {
-    const owner = a?.ownerId || a?.userId || a?.meta?.ownerId || null;
-    if (!owner) return true;
-    if (owner === "system") return false;
+    const owner = dtuListedOwner(a) || a?.meta?.ownerId || null;
+    if (!owner || owner === "system") return false;
     return !!(callerId && String(owner) === String(callerId));
   };
   const artifacts = (Array.isArray(listed.artifacts) ? listed.artifacts : [])

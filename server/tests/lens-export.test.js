@@ -33,7 +33,7 @@ describe("lens-export (Q79)", () => {
 
   it("excludes domain_action scaffolding and keeps real artifacts", async () => {
     const runMacro = listMacro([
-      { id: "a1", type: "note", title: "Real note", data: {} },
+      { id: "a1", type: "note", title: "Real note", ownerId: "u1", data: {} },
       { id: "v1", type: "domain_action", title: undefined, data: { prompt: "x" } },
       { id: "v2", type: "domain_action", data: {} },
     ]);
@@ -59,7 +59,7 @@ describe("lens-export (Q79)", () => {
   it("a failing provider surfaces providerError and artifacts still export", async () => {
     registerLensExportProvider("broken", () => { throw new Error("state_exploded"); });
     const out = await collectLensExport({
-      runMacro: listMacro([{ id: "a9", type: "note", title: "Still here", data: {} }]),
+      runMacro: listMacro([{ id: "a9", type: "note", title: "Still here", ownerId: "u1", data: {} }]),
       domain: "broken",
       ctx: { actor: { userId: "u1" } },
     });
@@ -134,7 +134,7 @@ describe("lens-export (Q79)", () => {
     delete globalThis._concordSTATE;
   });
 
-  it("owner-scoped export contract (2026-11-14 ruling): system and other-owner rows never ride a personal export", async () => {
+  it("owner-scoped export contract (2026-11-14 ruling): system, other-owner and ownerless rows never ride a personal export", async () => {
     _clearLensExportProvidersForTests();
     const runMacro = listMacro([
       { id: "mine-1", type: "note", title: "My note", ownerId: "u1", meta: { visibility: "private" }, data: {} },
@@ -174,7 +174,7 @@ describe("lens-export (Q79)", () => {
         meta: { visibility: "published" },
         data: {},
       },
-      { id: "ownerless-1", type: "note", title: "Legacy ownerless note", data: {} },
+      { id: "ownerless-1", type: "note", title: "Ownerless catalog note", data: {} },
       {
         id: "dtu_lens_meditation_dtu_own",
         type: "regular",
@@ -191,7 +191,7 @@ describe("lens-export (Q79)", () => {
     assert.ok(!ids.includes("public-feed"), "system feed article dropped under the owner-scoped contract");
     assert.ok(!ids.includes("other-public"), "another user's public artifact dropped");
     assert.ok(!ids.includes("other-published"), "another user's published artifact dropped");
-    assert.ok(ids.includes("ownerless-1"), "ownerless legacy artifact kept (the Leg-A treatment)");
+    assert.ok(!ids.includes("ownerless-1"), "ownerless artifact dropped (office call 2026-11-14: ownerless rows fall — not the caller's, not a takeout)");
     assert.ok(ids.includes("dtu_lens_meditation_dtu_own"), "caller-owned activity mint kept");
     assert.ok(!ids.includes("dtu_lens_meditation_dtu_leak1"), "system activity mirror dropped");
     const serialized = JSON.stringify(out.artifacts);
