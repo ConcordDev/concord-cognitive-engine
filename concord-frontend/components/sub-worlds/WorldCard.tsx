@@ -2,6 +2,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { useState } from 'react';
 import { Users, Star, Eye, Lock, Globe, EyeOff, Boxes, Pause, Play, Loader2 } from 'lucide-react';
 
 export interface SubWorld {
@@ -55,6 +56,10 @@ export function WorldCard({
   onManage?: () => void;
   onEdit?: () => void;
 }) {
+  // FIX-sub-worlds-010: a stored thumbnail URL that 404s (a dead
+  // harness/fixture image) left a broken-image card and a console 404;
+  // fall back to the designed no-thumbnail state on load error.
+  const [thumbFailed, setThumbFailed] = useState(false);
   const PrivIcon = PRIVACY_ICON[world.privacy] || Globe;
   const archived = world.status === 'archived';
   const paused = world.status === 'paused';
@@ -62,9 +67,9 @@ export function WorldCard({
   return (
     <div className="flex flex-col rounded-xl border border-zinc-700/60 bg-zinc-900/80 overflow-hidden">
       <div className="relative h-28 bg-gradient-to-br from-cyan-900/50 to-fuchsia-900/40 flex items-center justify-center">
-        {world.thumbnail ? (
+        {world.thumbnail && !thumbFailed ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={world.thumbnail} alt={world.name} className="h-full w-full object-cover" />
+          <img src={world.thumbnail} alt={world.name} className="h-full w-full object-cover" onError={() => setThumbFailed(true)} />
         ) : (
           <Boxes className="h-10 w-10 text-cyan-400/40" />
         )}
