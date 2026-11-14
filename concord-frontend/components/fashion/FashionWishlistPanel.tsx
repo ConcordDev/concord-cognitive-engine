@@ -9,7 +9,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, Heart, Trash2, ExternalLink, ShoppingBag, X } from 'lucide-react';
+import { Loader2, Plus, Heart, Trash2, ExternalLink, ShoppingBag, X, Pencil } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
@@ -61,6 +61,17 @@ export function FashionWishlistPanel({ onChange }: { onChange?: () => void }) {
     if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
     setForm({ name: '', price: '', link: '', note: '', category: '' });
     setShowAdd(false); setError(null);
+    await refresh(); onChange?.();
+  };
+
+  // FIX-fashion-005: rename affordance (wishlist-update on the server).
+  const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null);
+  const submitRename = async () => {
+    if (!renaming) return;
+    if (!renaming.name.trim()) { setError('Item name cannot be empty.'); return; }
+    const r = await lensRun('fashion', 'wishlist-update', { id: renaming.id, name: renaming.name.trim() });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Failed to rename entry.'); return; }
+    setRenaming(null); setError(null);
     await refresh(); onChange?.();
   };
 
@@ -153,6 +164,8 @@ export function FashionWishlistPanel({ onChange }: { onChange?: () => void }) {
                   </p>
                   {w.note && <p className="text-[11px] text-zinc-400 mt-1">{w.note}</p>}
                 </div>
+                <button type="button" aria-label="Rename entry" onClick={() => setRenaming({ id: w.id, name: w.name })}
+                  className="text-zinc-600 hover:text-zinc-300 shrink-0"><Pencil className="w-3.5 h-3.5" /></button>
                 <StickyDeleteConfirm
                   onConfirm={() => remove(w.id)}
                   armAriaLabel="Remove"
@@ -163,7 +176,18 @@ export function FashionWishlistPanel({ onChange }: { onChange?: () => void }) {
                 />
               </div>
 
-              {convertForm?.id === w.id ? (
+{renaming?.id === w.id && (
+                <div className="flex items-center gap-1.5 px-3 py-2 border-t border-zinc-800 bg-zinc-950/50">
+                  <input value={renaming.name} onChange={(e) => setRenaming({ ...renaming, name: e.target.value })}
+                    aria-label="New name"
+                    className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-xs text-zinc-100" />
+                  <button type="button" onClick={submitRename}
+                    className="px-2 py-1 text-[11px] bg-fuchsia-600 hover:bg-fuchsia-500 text-white rounded-lg">Save</button>
+                  <button type="button" onClick={() => setRenaming(null)}
+                    className="px-2 py-1 text-[11px] text-zinc-400 hover:text-zinc-200">Cancel</button>
+                </div>
+              )}
+                            {convertForm?.id === w.id ? (
                 <div className="flex items-center gap-1.5 mt-2">
                   <select value={convertForm.category} onChange={(e) => setConvertForm({ ...convertForm, category: e.target.value })}
                     className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-xs text-zinc-100">

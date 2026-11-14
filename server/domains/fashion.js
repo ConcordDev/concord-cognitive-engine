@@ -289,6 +289,26 @@ export default function registerFashionActions(registerLensAction) {
     return { ok: true, result: { deleted: params.id, removedWearLogs } };
   });
 
+  // FIX-fashion-005: outfits had create/list/detail/delete/wear but no
+  // update — a typo'd outfit name was uncorrectable. Mirrors
+  // moodboard-update's shape and outfit-create's validation.
+  registerLensAction("fashion", "outfit-update", (ctx, _a, params = {}) => {
+    const s = getFashionState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const outfit = findOutfit(s, fsAid(ctx), params.id);
+    if (!outfit) return { ok: false, error: "outfit not found" };
+    if (params.name != null) {
+      const n = fsClean(params.name, 120);
+      if (!n) return { ok: false, error: "outfit name cannot be empty" };
+      outfit.name = n;
+    }
+    if (params.occasion != null) outfit.occasion = fsClean(params.occasion, 60).toLowerCase() || outfit.occasion;
+    if (params.season != null && ["spring", "summer", "fall", "winter", "all"].includes(String(params.season).toLowerCase())) {
+      outfit.season = String(params.season).toLowerCase();
+    }
+    saveFashionState();
+    return { ok: true, result: { outfit } };
+  });
+
   registerLensAction("fashion", "outfit-wear", (ctx, _a, params = {}) => {
     const s = getFashionState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = fsAid(ctx);
@@ -462,6 +482,22 @@ export default function registerFashionActions(registerLensAction) {
     const s = getFashionState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const lists = (s.packing.get(fsAid(ctx)) || []).map((p) => ({ ...p, itemCount: p.itemIds.length }));
     return { ok: true, result: { packingLists: lists, count: lists.length } };
+  });
+
+  // FIX-fashion-005: packing lists had create/list/add-item/detail but
+  // no update. Validation mirrors packing-create.
+  registerLensAction("fashion", "packing-update", (ctx, _a, params = {}) => {
+    const s = getFashionState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = (s.packing.get(fsAid(ctx)) || []).find((p) => p.id === params.id);
+    if (!list) return { ok: false, error: "packing list not found" };
+    if (params.name != null) {
+      const n = fsClean(params.name, 120);
+      if (!n) return { ok: false, error: "packing list name cannot be empty" };
+      list.name = n;
+    }
+    if (params.destination != null) list.destination = fsClean(params.destination, 120) || null;
+    saveFashionState();
+    return { ok: true, result: { packingList: list } };
   });
 
   registerLensAction("fashion", "packing-add-item", (ctx, _a, params = {}) => {
@@ -1195,6 +1231,27 @@ export default function registerFashionActions(registerLensAction) {
     saveFashionState();
     return { ok: true, result: { capsule, filled: capsule.itemIds.length } };
   });
+  // FIX-fashion-005: capsules had create/list/toggle/delete but no
+  // update. Validation mirrors capsule-create.
+  registerLensAction("fashion", "capsule-update", (ctx, _a, params = {}) => {
+    const s = getFashionStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const capsule = (s.capsules.get(fsAid(ctx)) || []).find((c) => c.id === params.id);
+    if (!capsule) return { ok: false, error: "capsule not found" };
+    if (params.name != null) {
+      const n = fsClean(params.name, 120);
+      if (!n) return { ok: false, error: "capsule name cannot be empty" };
+      capsule.name = n;
+    }
+    if (params.season != null && ["spring", "summer", "fall", "winter", "all"].includes(String(params.season).toLowerCase())) {
+      capsule.season = String(params.season).toLowerCase();
+    }
+    if (params.targetSize != null) {
+      capsule.targetSize = Math.max(5, Math.min(60, Math.round(Number(params.targetSize) || capsule.targetSize)));
+    }
+    saveFashionState();
+    return { ok: true, result: { capsule } };
+  });
+
   registerLensAction("fashion", "capsule-delete", (ctx, _a, params = {}) => {
     const s = getFashionStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
     const arr = s.capsules.get(fsAid(ctx)) || [];
@@ -1302,6 +1359,35 @@ export default function registerFashionActions(registerLensAction) {
     arr.splice(i, 1);
     saveFashionState();
     return { ok: true, result: { deleted: params.id } };
+  });
+
+  // FIX-fashion-005: wishlist entries had add/list/remove/convert but
+  // no update. Validation mirrors wishlist-add exactly.
+  registerLensAction("fashion", "wishlist-update", (ctx, _a, params = {}) => {
+    const s = getFashionStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const entry = (s.wishlist.get(fsAid(ctx)) || []).find((e) => e.id === params.id);
+    if (!entry) return { ok: false, error: "wishlist entry not found" };
+    if (params.name != null) {
+      const n = fsClean(params.name, 120);
+      if (!n) return { ok: false, error: "item name cannot be empty" };
+      entry.name = n;
+    }
+    if (params.price != null) {
+      if (params.price === "") entry.price = null;
+      else {
+        const n = Number(params.price);
+        if (!Number.isFinite(n) || n < 0) return { ok: false, error: "price must be a non-negative number" };
+        entry.price = Math.round(n * 100) / 100;
+      }
+    }
+    if (params.link != null) entry.link = fsClean(params.link, 500) || null;
+    if (params.note != null) entry.note = fsClean(params.note, 300) || null;
+    if (params.category != null) {
+      entry.category = CATEGORIES.includes(String(params.category).toLowerCase())
+        ? String(params.category).toLowerCase() : entry.category;
+    }
+    saveFashionState();
+    return { ok: true, result: { entry } };
   });
 
   registerLensAction("fashion", "wishlist-convert-to-item", (ctx, _a, params = {}) => {

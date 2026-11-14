@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, Package, Target, Trash2, ChevronRight } from 'lucide-react';
+import { Loader2, Plus, Package, Target, Trash2, ChevronRight, Pencil } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
@@ -69,6 +69,16 @@ export function FashionCapsulePanel() {
     await refresh();
   };
   const delCapsule = async (id: string) => { await lensRun('fashion', 'capsule-delete', { id }); await refresh(); };
+  // FIX-fashion-005: rename affordance (capsule-update on the server).
+  const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null);
+  const submitRename = async () => {
+    if (!renaming) return;
+    if (!renaming.name.trim()) { setError('Capsule name cannot be empty.'); return; }
+    const r = await lensRun('fashion', 'capsule-update', { id: renaming.id, name: renaming.name.trim() });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Failed to rename capsule.'); return; }
+    setRenaming(null); setError(null);
+    await refresh();
+  };
 
   const enroll = async () => {
     if (!enrollItem) { setError('Choose an item to enroll.'); return; }
@@ -127,6 +137,8 @@ export function FashionCapsulePanel() {
                     </div>
                   </button>
                   <span className="text-[11px] text-fuchsia-300 mr-2">{c.pctFilled}%</span>
+                  <button type="button" aria-label="Rename capsule" onClick={() => setRenaming({ id: c.id, name: c.name })}
+                    className="text-zinc-600 hover:text-zinc-300 mr-1"><Pencil className="w-3.5 h-3.5" /></button>
                   <StickyDeleteConfirm
                     onConfirm={() => delCapsule(c.id)}
                     armAriaLabel="Delete"
@@ -138,7 +150,18 @@ export function FashionCapsulePanel() {
                 <div className="h-1 bg-zinc-800">
                   <div className="h-full bg-fuchsia-500" style={{ width: `${Math.min(100, c.pctFilled)}%` }} />
                 </div>
-                {openCap === c.id && (
+{renaming?.id === c.id && (
+                <div className="flex items-center gap-1.5 px-3 py-2 border-t border-zinc-800 bg-zinc-950/50">
+                  <input value={renaming.name} onChange={(e) => setRenaming({ ...renaming, name: e.target.value })}
+                    aria-label="New name"
+                    className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-xs text-zinc-100" />
+                  <button type="button" onClick={submitRename}
+                    className="px-2 py-1 text-[11px] bg-fuchsia-600 hover:bg-fuchsia-500 text-white rounded-lg">Save</button>
+                  <button type="button" onClick={() => setRenaming(null)}
+                    className="px-2 py-1 text-[11px] text-zinc-400 hover:text-zinc-200">Cancel</button>
+                </div>
+              )}
+                              {openCap === c.id && (
                   <div className="border-t border-zinc-800 p-3 bg-zinc-950/50">
                     {items.length === 0 ? (
                       <p className="text-[11px] text-zinc-400 italic">Add closet items first.</p>
