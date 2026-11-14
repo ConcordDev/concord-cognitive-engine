@@ -102,10 +102,20 @@ export default function registerMentorshipActions(registerLensAction) {
 
   registerLensAction("mentorship", "developmentPlan", (ctx, artifact, _params) => {
     const data = artifact?.data || {};
+    // FIX-mentorship-007: the panel declares all three inputs required, but
+    // the action defaulted its way past empty or junk input and emitted a
+    // full 26-week plan from nothing (the walker's repro: '{bad' in every
+    // field). The server now enforces the panel's own contract — usable
+    // current skills, a target role, and usable skill gaps. A token that is
+    // empty or opens with a JSON brace/bracket is not usable text here.
+    const usable = (v) => { const s = String(v ?? "").trim(); return s.length > 0 && !/^[{\[]/.test(s); };
     // explicit currentSkills (component) OR relation skills[]
-    const currentSkills = Array.isArray(data.currentSkills) ? data.currentSkills : (Array.isArray(data.skills) ? data.skills : []);
-    const targetRole = (data.targetRole != null && String(data.targetRole).trim()) ? String(data.targetRole) : "next level";
-    const gaps = Array.isArray(data.skillGaps) ? data.skillGaps : [];
+    const currentSkills = (Array.isArray(data.currentSkills) ? data.currentSkills : (Array.isArray(data.skills) ? data.skills : [])).filter(usable).map(String);
+    const gaps = (Array.isArray(data.skillGaps) ? data.skillGaps : []).filter(usable).map(String);
+    if (currentSkills.length === 0 || gaps.length === 0 || !usable(data.targetRole)) {
+      return { ok: false, error: "not enough info: add your current skills, a target role, and your skill gaps to generate a development plan" };
+    }
+    const targetRole = String(data.targetRole);
     return {
       ok: true,
       result: {
