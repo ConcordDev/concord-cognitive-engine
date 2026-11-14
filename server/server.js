@@ -1852,11 +1852,20 @@ registerHeartbeat("scheduled-posts", {
   // filter (processScheduledPosts walks every pending post regardless of
   // which world it was authored in). Parent-only.
   scope: "global",
-  handler: async ({ state }) => {
+  handler: async ({ state, db }) => {
     try {
       const sl = await import("./emergent/social-layer.js").catch(() => null);
       if (!sl?.processScheduledPosts) return { ok: false, reason: "no_export" };
-      return sl.processScheduledPosts(state);
+      const mapResult = sl.processScheduledPosts(state);
+      // The live queue: the frontend schedules into the SQL-backed store
+      // (routes/social-groups.js → social_scheduled_posts), which had no
+      // consumer at all. Drain it on the same tick through the same
+      // publish path — one scheduler for both scheduled-post queues.
+      let sqlResult = null;
+      if (typeof sl.processScheduledSqlPosts === "function") {
+        sqlResult = sl.processScheduledSqlPosts(db, state);
+      }
+      return { ...mapResult, sql: sqlResult };
     } catch (err) {
       structuredLog("warn", "scheduled_posts_failed", { error: err?.message });
       return { ok: false, reason: "exception" };
