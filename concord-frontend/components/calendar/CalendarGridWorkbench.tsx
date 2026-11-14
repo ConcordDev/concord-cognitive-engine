@@ -1309,7 +1309,13 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
     const hours = getHoursArray();
 
     return (
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="relative flex-1 overflow-y-auto">
+        {/* FIX-calendar-003: the day header and all-day rows now live INSIDE
+            the scroll container (sticky), sharing its content box with the
+            timed grid. Outside it, the scroller's scrollbar gutter shifted
+            the timed columns ~a scrollbar width against the header, so
+            all-day chips sat between day columns. */}
+        <div className="sticky top-0 z-20 bg-lattice-deep">
         <div className="flex border-b border-lattice-border">
           <div className="w-16 flex-shrink-0" />
           {weekDates.map((date, i) => (
@@ -1355,13 +1361,15 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
           })}
         </div>
 
+        </div>
+
         {weekDates.every((d) => getEventsForDay(d).length === 0) && (
           <p className="border-b border-lattice-border py-3 text-center text-[13px] text-zinc-400">
             Nothing booked the week of {weekDates[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} — yet.
           </p>
         )}
 
-        <div className="flex-1 overflow-y-auto">
+        <div>
           <div className="relative">
             {hours.map((hour) => (
               <div key={hour} className="flex h-16 border-b border-lattice-border/50">
