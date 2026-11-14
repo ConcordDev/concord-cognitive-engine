@@ -33,6 +33,7 @@ type WorkbenchTab =
 interface WorkbenchProjectRow { id: string; name: string; trackCount?: number }
 interface WorkbenchTrackRow { id: string; name: string; kind: string }
 interface WorkbenchClipRow { id: string; name: string }
+interface DawTrackRow extends WorkbenchTrackRow { clips: WorkbenchClipRow[] }
 
 export function DawWorkbenchSection({ initialTab = 'clips' }: { initialTab?: WorkbenchTab } = {}) {
   const [active, setActive] = useState<WorkbenchTab>(initialTab);
@@ -46,6 +47,7 @@ export function DawWorkbenchSection({ initialTab = 'clips' }: { initialTab?: Wor
   // to the current project/track.
   const [projects, setProjects] = useState<WorkbenchProjectRow[]>([]);
   const [tracks, setTracks] = useState<WorkbenchTrackRow[]>([]);
+  const [dawTracks, setDawTracks] = useState<DawTrackRow[]>([]);
   const [clips, setClips] = useState<WorkbenchClipRow[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(false);
 
@@ -78,13 +80,36 @@ export function DawWorkbenchSection({ initialTab = 'clips' }: { initialTab?: Wor
   useEffect(() => {
     setTrackId('');
     setTracks([]);
+    setDawTracks([]);
     if (!projectId) return;
     let cancelled = false;
     (async () => {
       try {
         const res = await lensRun('studio', 'project-get', { id: projectId });
-        const proj = res.data?.result?.project as { tracks?: WorkbenchTrackRow[] } | undefined;
-        if (!cancelled) setTracks(proj?.tracks || []);
+        const proj = res.data?.result?.project as {
+          tracks?: WorkbenchTrackRow[];
+          daw?: { tracks?: { id: string; name: string; type?: string; clips?: WorkbenchClipRow[] }[] } | null;
+        } | undefined;
+        if (cancelled) return;
+        // FIX-011: a project carries TWO track stores — the parity tracks
+        // (project.tracks, written by track-add) and the DAW snapshot's
+        // tracks (project.daw.tracks, written by the DAW itself). The
+        // picker read only the parity store, so a project built in the
+        // DAW showed "pick a track (0)" here while project-list's
+        // trackCount (which counts the snapshot first) said 2. Merge
+        // both, parity first, deduped by id; snapshot tracks keep their
+        // clips for the clip cascade below.
+        const parity = proj?.tracks || [];
+        const dawRows: DawTrackRow[] = (proj?.daw?.tracks || [])
+          .filter((dt) => !parity.some((p) => p.id === dt.id))
+          .map((dt) => ({
+            id: dt.id,
+            name: dt.name,
+            kind: dt.type || 'audio',
+            clips: (dt.clips || []).map((c) => ({ id: c.id, name: c.name })),
+          }));
+        setDawTracks(dawRows);
+        setTracks([...parity, ...dawRows]);
       } catch (e) {
         console.error('[Studio workbench] project-get failed:', e);
       }
@@ -96,6 +121,10 @@ export function DawWorkbenchSection({ initialTab = 'clips' }: { initialTab?: Wor
     setClipId('');
     setClips([]);
     if (!projectId || !trackId) return;
+    // A DAW-snapshot track's clips live in the snapshot, not the parity
+    // clip store — read them from there (FIX-011).
+    const dawTrack = dawTracks.find((t) => t.id === trackId);
+    if (dawTrack) { setClips(dawTrack.clips); return; }
     let cancelled = false;
     (async () => {
       try {
@@ -106,7 +135,7 @@ export function DawWorkbenchSection({ initialTab = 'clips' }: { initialTab?: Wor
       }
     })();
     return () => { cancelled = true; };
-  }, [projectId, trackId]);
+  }, [projectId, trackId, dawTracks]);
 
   const TABS: { id: WorkbenchTab; label: string }[] = [
     { id: 'arrangement', label: 'Arrangement' },
