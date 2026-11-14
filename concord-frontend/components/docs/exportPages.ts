@@ -24,3 +24,32 @@ export async function loadDocsExportPayload(live: unknown): Promise<{ pages: Pag
   }
   return { pages, live: live ?? null };
 }
+
+/**
+ * Per-page export (FIX-docs-013): the workspace header export is
+ * all-or-nothing; a single page can now be exported on its own from
+ * the page toolbar. The payload is the full page document so it can
+ * be archived or shared without the rest of the workspace.
+ */
+export function pageExportPayload(page: Page): { kind: string; page: Page } {
+  return { kind: 'concord-docs-page', page };
+}
+
+export function pageExportFilename(page: Page): string {
+  const slug = (page.title || 'untitled')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60) || 'untitled';
+  return `${slug}.page.json`;
+}
+
+export function downloadPageExport(page: Page): void {
+  const blob = new Blob([JSON.stringify(pageExportPayload(page), null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = pageExportFilename(page);
+  a.click();
+  URL.revokeObjectURL(url);
+}

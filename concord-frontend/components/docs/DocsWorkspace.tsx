@@ -18,6 +18,7 @@ import { lensRun } from '@/lib/api/client';
 import { useLensStatePersistence } from '@/lib/lens-state-persistence';
 import { cn } from '@/lib/utils';
 import { setDocsWorkspaceSnapshot } from './docsSession';
+import { downloadPageExport } from './exportPages';
 import { requestDelete } from './delete-safety-store';
 import { ConfirmDeleteButton, DeleteReceiptToast, useDeleteSafety } from './DeleteSafety';
 import { BlockEditorRow, blockDeleteLabel } from './BlockEditorRow';
@@ -394,6 +395,10 @@ export function DocsWorkspace() {
                 <button onClick={snapshotNow}
                   className="px-1.5 py-0.5 text-[10px] rounded border border-zinc-800 text-zinc-400 hover:text-zinc-100 hover:border-zinc-600">
                   Save version
+                </button>
+                <button onClick={() => downloadPageExport(active)} data-testid="docs-export-page"
+                  className="px-1.5 py-0.5 text-[10px] rounded border border-zinc-800 text-zinc-400 hover:text-zinc-100 hover:border-zinc-600">
+                  Export page
                 </button>
                 <PanelTab icon={<History className="w-3 h-3" />} label="History" active={side === 'versions'}
                   onClick={() => setSide(side === 'versions' ? 'none' : 'versions')} />
