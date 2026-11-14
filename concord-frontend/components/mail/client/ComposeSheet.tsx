@@ -11,7 +11,7 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { Loader2, Maximize2, Minimize2, Paperclip, Send, Trash2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { fmtSize, gmail, type MailAttachment, type Outgoing } from './gmail';
+import { fmtSize, gmail, gmailErrorText, type MailAttachment, type Outgoing } from './gmail';
 
 export const MAX_ATTACH_BYTES = 7 * 1024 * 1024;
 
@@ -98,7 +98,16 @@ export function ComposeSheet({ init, offset = 0, onClose, onSend, onDraftSaved }
     setBusy('draft'); setError(null);
     const r = await gmail.saveDraft(m);
     setBusy(null);
-    if (!r.ok) { setError(`Draft not saved: ${r.error.replace(/_/g, ' ')}`); return false; }
+    if (!r.ok) {
+      // FIX-message-005: the raw connector reason ("no token") was printed
+      // as prose with no next step. Every other mail surface renders these
+      // failures through gmailErrorText (domains/gmail.js mirrors the
+      // reason precisely so the UI can switch on it); the composer now
+      // does the same, and says the part that matters here — the text is
+      // kept, because this sheet stays open and dirty on a failed save.
+      setError(`Draft not saved — ${gmailErrorText(r.error)} Your text stays in this composer meanwhile.`);
+      return false;
+    }
     setM((cur) => ({ ...cur, draftId: r.data.draft.id }));
     setDirty(false);
     onDraftSaved('Saved to Drafts');
