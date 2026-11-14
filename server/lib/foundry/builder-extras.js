@@ -110,6 +110,13 @@ export function normalizeBlueprint(graph) {
 export const ASSET_KINDS = ["model", "sprite", "audio", "texture"];
 
 /** Validate an asset import payload. */
+/**
+ * FIX-foundry-011: an uploaded file rides as a base64 data URL (the
+ * paper lens's pdf-attach pattern). The cap is on the data-URL text:
+ * 8,400,000 chars ≈ a 6MB file. The refusal names the limit.
+ */
+export const MAX_ASSET_DATA_URL_CHARS = 8_400_000;
+
 export function validateAsset(input) {
   const errors = [];
   if (!ASSET_KINDS.includes(input?.kind)) errors.push(`kind must be one of ${ASSET_KINDS.join(", ")}`);
@@ -117,7 +124,14 @@ export function validateAsset(input) {
   if (!name) errors.push("name is required");
   if (name.length > 160) errors.push("name too long");
   const url = String(input?.url || "").trim();
-  if (!url) errors.push("url is required");
+  const dataUrl = typeof input?.dataUrl === "string" ? input.dataUrl.trim() : "";
+  if (dataUrl) {
+    if (!/^data:[\w.+-]+\/[\w.+-]+;base64,[A-Za-z0-9+/=\s]+$/.test(dataUrl)) {
+      errors.push("uploaded file must be a base64 data URL");
+    } else if (dataUrl.length > MAX_ASSET_DATA_URL_CHARS) {
+      errors.push("file too large (6MB max)");
+    }
+  } else if (!url) errors.push("url is required");
   else if (!/^https?:\/\//i.test(url) && !url.startsWith("/")) {
     errors.push("url must be an http(s) link or an absolute path");
   }

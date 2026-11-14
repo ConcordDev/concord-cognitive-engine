@@ -46,6 +46,18 @@ const STATUS_COLOR: Record<string, string> = {
 
 const STATUSES = ['watching', 'engaged', 'neutralized'] as const;
 
+/**
+ * FIX-defense-004: the severity-change entries in a threat's history.
+ * The history also carries the creation event ("added") and status
+ * changes ("status:…"), which are NOT severity changes — counting every
+ * entry made a single Escalate click read as "2 escalation events".
+ */
+export function severityChanges(history: Threat['history']): Threat['history'] {
+  return history.filter(
+    (h) => h.event === 'escalated' || h.event === 'deescalated' || h.event.startsWith('severity:'),
+  );
+}
+
 export function ThreatBoard() {
   const [board, setBoard] = useState<ThreatBoardResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -273,12 +285,17 @@ export function ThreatBoard() {
                 </div>
               )}
               {t.note && <p className="text-[10px] text-zinc-400 mt-1">{t.note}</p>}
-              {t.history.length > 1 && (
-                <p className="text-[10px] text-zinc-400 mt-1">
-                  {t.history.length} escalation events · latest:{' '}
-                  {t.history[t.history.length - 1].event}
-                </p>
-              )}
+              {(() => {
+                const changes = severityChanges(t.history);
+                if (changes.length === 0) return null;
+                const last = changes[changes.length - 1];
+                return (
+                  <p className="text-[10px] text-zinc-400 mt-1">
+                    {changes.length} severity {changes.length === 1 ? 'change' : 'changes'} · latest:{' '}
+                    {last.event} → {last.severity}
+                  </p>
+                );
+              })()}
             </div>
           ))}
           {threats.length === 0 && (

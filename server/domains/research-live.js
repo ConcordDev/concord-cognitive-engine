@@ -47,7 +47,12 @@ function parseArxivAtom(xml) {
     const pdfUrl = arxivId ? `https://arxiv.org/pdf/${arxivId}.pdf` : null;
     const catMatch = entryXml.match(/<category[^>]*\sterm="([^"]+)"/);
     const category = catMatch ? catMatch[1] : null;
-    entries.push({ arxivId, title, summary, published, updated, authors, abstractUrl: id, pdfUrl, category });
+    // FIX-neuro-006: arXiv marks the paper's PRIMARY category in
+    // <arxiv:primary_category>; the plain <category> list includes
+    // cross-lists, so the first term is not necessarily the primary.
+    const primaryMatch = entryXml.match(/<arxiv:primary_category[^>]*term="([^"]+)"/);
+    const primaryCategory = primaryMatch ? primaryMatch[1] : null;
+    entries.push({ arxivId, title, summary, published, updated, authors, abstractUrl: id, pdfUrl, category, primaryCategory });
   }
   return entries;
 }
@@ -63,6 +68,26 @@ const CATEGORY_FOR_DOMAIN = {
   ml: "cs.LG",
   ai: "cs.AI",
 };
+
+/**
+ * FIX-neuro-006: keep a category feed to papers whose PRIMARY category
+ * is the feed's category. arXiv's `cat:` clause matches cross-listed
+ * papers too, which is how a cs.CL-primary linguistics paper listed
+ * under the Neuro lens's q-bio.NC feed. An entry whose primary category
+ * cannot be determined is kept (absence of the marker is not proof the
+ * paper is foreign), and if filtering would empty a non-empty feed the
+ * raw set stands — a category feed never fakes empty (the F13 rule).
+ * Dotless categories (physics, math, q-bio) match their subcategories.
+ */
+function filterToPrimaryCategory(entries, category) {
+  if (!category || !Array.isArray(entries) || entries.length === 0) return entries;
+  const kept = entries.filter((e) => {
+    const primary = e?.primaryCategory || null;
+    if (!primary) return true;
+    return primary === category || primary.startsWith(`${category}.`);
+  });
+  return kept.length > 0 ? kept : entries;
+}
 
 const CATEGORY_RE = /^[a-z-]+(\.[A-Za-z-]+)?$/;
 const ARXIV_FIELDS = new Set(["all", "abs", "ti", "cat-only"]);
@@ -145,7 +170,11 @@ function buildArxivMacro(register, domain) {
     if (!req.ok) return req;
     try {
       const xml = await fetchTextWithTimeout(req.url);
-      const entries = parseArxivAtom(xml);
+      const rawEntries = parseArxivAtom(xml);
+      // FIX-neuro-006: pure category feeds (no search query) list only
+      // primary-category papers; queried searches keep arXiv's own
+      // relevance semantics across categories.
+      const entries = req.query ? rawEntries : filterToPrimaryCategory(rawEntries, req.category);
       // F13 (ML pass; the shape is every arXiv lens's): an arXiv error
       // page or a rate-limit body parses to zero entries, and the macro
       // used to return that as a successful EMPTY feed — the panel then
@@ -177,4 +206,4 @@ export default function registerResearchLiveMacros(register) {
   }
 }
 
-export { CATEGORY_FOR_DOMAIN, parseArxivAtom, buildArxivRequest };
+export { CATEGORY_FOR_DOMAIN, parseArxivAtom, buildArxivRequest, filterToPrimaryCategory };
