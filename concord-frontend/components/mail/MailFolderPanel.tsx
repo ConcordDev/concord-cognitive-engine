@@ -385,13 +385,23 @@ export function MailFolderPanel({
           <EmptyState
             compact
             icon={<Inbox className="h-5 w-5" aria-hidden="true" />}
-            title={folderRows.length > 0 ? 'No matches' : folder === 'inbox' ? 'No mail yet' : 'Nothing sent yet'}
+            title={
+              folderRows.length > 0
+                ? 'No matches'
+                : folder === 'inbox' && statusFilter !== 'all'
+                  ? `No ${statusFilter} mail`
+                  : folder === 'inbox'
+                    ? 'No mail yet'
+                    : 'Nothing sent yet'
+            }
             description={
               folderRows.length > 0
                 ? 'No mail matches this filter or search.'
-                : folder === 'inbox'
-                  ? 'Friends can send you mail from the friends panel.'
-                  : 'Mail you send will appear here.'
+                : folder === 'inbox' && statusFilter !== 'all'
+                  ? `Nothing with the ${statusFilter} status — try another filter.` /* FIX-mail-006: the empty state names the active status filter instead of claiming no mail exists */
+                  : folder === 'inbox'
+                    ? 'Friends can send you mail from the friends panel.'
+                    : 'Mail you send will appear here.'
             }
             action={
               folderRows.length > 0

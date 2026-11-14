@@ -64,4 +64,16 @@ describe('Mail inbox filter-aware empty state (FIX-mail-006)', () => {
     const view = await mount();
     expect(view.container.textContent).toMatch(/No mail yet/);
   });
+
+  it('names the active filter when the inbox is empty and a filter is selected (FIX-mail-006, residue leg)', async () => {
+    h.playerMail.mockImplementation(async (action: string) => {
+      if (action === 'list') return { ok: true, mail: [] };
+      if (action === 'sent') return { ok: true, mail: [] };
+      return { ok: true };
+    });
+    const view = await mount();
+    await click(screen.getByRole('button', { name: 'unread' }));
+    expect(view.container.textContent).toMatch(/No unread mail/);
+    expect(view.container.textContent).not.toMatch(/No mail yet/);
+  });
 });
