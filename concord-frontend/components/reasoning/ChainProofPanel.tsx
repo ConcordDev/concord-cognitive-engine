@@ -5,16 +5,22 @@
  * Wires the family-#3 chain engine via /api/reasoning/chains* (apiHelpers.reasoning).
  * Domain actions (validate_logic / check_fallacies / assess_strength) run against
  * the selected chain's live trace — one call site each.
+ *
+ * The actions are stateless over the caller's params, so they run
+ * through /api/lens/run directly (FIX-reasoning-001): they used to run
+ * against a synced 'chain' DTU artifact that only this panel's seed
+ * effect ever created — when it had not landed yet (or had failed),
+ * every action handler silently returned and Assess Strength showed
+ * no result at all. The seed effect is gone with the dependency; no
+ * other surface consumes 'chain' artifacts.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Workflow, ArrowRight, CheckCircle2, AlertTriangle, Zap, Loader2, Search,
 } from 'lucide-react';
-import { apiHelpers } from '@/lib/api/client';
-import { useLensData } from '@/lib/hooks/use-lens-data';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
+import { apiHelpers, lensRun } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -51,6 +57,7 @@ export function ChainProofPanel() {
   const [newStepJustification, setNewStepJustification] = useState('');
   const [newConclusionStatement, setNewConclusionStatement] = useState('');
   const [domainActionResult, setDomainActionResult] = useState<Record<string, unknown> | null>(null);
+  const [actionRunning, setActionRunning] = useState(false);
 
   const { data: chainsData, isError: isError2, error: error2, refetch: refetch2, isLoading: chainsLoading } = useQuery({
     queryKey: ['reasoning-chains'],
@@ -63,24 +70,6 @@ export function ChainProofPanel() {
     queryFn: () => selectedChain ? apiHelpers.reasoning.trace(selectedChain).then((r) => r.data) : null,
     enabled: !!selectedChain,
   });
-
-  const { items: chainArtifacts, create: createChainArtifact, isError, error, refetch } = useLensData('reasoning', 'chain', { noSeed: true });
-  const runAction = useRunArtifact('reasoning');
-
-  const chainSeeded = useRef(false);
-  useEffect(() => {
-    if (chainSeeded.current || chainArtifacts.length > 0 || !chainsData) return;
-    const allChains: Chain[] = chainsData?.chains || chainsData || [];
-    if (allChains.length > 0) {
-      chainSeeded.current = true;
-      const first = allChains[0];
-      createChainArtifact({
-        title: first.question || 'Reasoning Chain',
-        data: { chainId: first.id, type: first.type, question: first.question },
-        meta: { status: first.status || 'active', tags: ['auto-synced'] },
-      });
-    }
-  }, [chainsData, chainArtifacts.length, createChainArtifact]);
 
   const chains: Chain[] = chainsData?.chains || chainsData || [];
   const trace: Record<string, unknown> = useMemo(
@@ -142,61 +131,48 @@ export function ChainProofPanel() {
     onError: (err) => console.error('concludeChain failed:', err instanceof Error ? err.message : err),
   });
 
+  const runDomainAction = useCallback(async (action: string, params: Record<string, unknown>) => {
+    setActionRunning(true);
+    try {
+      const res = await lensRun('reasoning', action, params);
+      if (!res.data.ok) {
+        setDomainActionResult({ message: `Action failed: ${res.data.error || 'Unknown error'}` });
+        return;
+      }
+      setDomainActionResult((res.data.result as Record<string, unknown>) || null);
+      queryClient.invalidateQueries({ queryKey: ['reasoning-chains'] });
+    } catch (e) {
+      console.error('Action failed:', e);
+      setDomainActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` });
+    } finally {
+      setActionRunning(false);
+    }
+  }, [queryClient]);
+
   const handleValidateLogic = useCallback(() => {
     if (!selectedChain || chainPremises.length === 0) return;
-    const artifactId = chainArtifacts[0]?.id;
-    if (!artifactId) return;
-    runAction.mutate(
-      { id: artifactId, action: 'validate_logic', params: { premises: chainPremises, conclusion: chainConclusionText } },
-      {
-        onSuccess: (res) => {
-          queryClient.invalidateQueries({ queryKey: ['reasoning-chains'] });
-          setDomainActionResult((res as { result?: Record<string, unknown> })?.result ?? null);
-        },
-        onError: (e) => { console.error('Action failed:', e); },
-      },
-    );
-  }, [selectedChain, chainArtifacts, chainPremises, chainConclusionText, runAction, queryClient]);
+    void runDomainAction('validate_logic', { premises: chainPremises, conclusion: chainConclusionText });
+  }, [selectedChain, chainPremises, chainConclusionText, runDomainAction]);
 
   const handleCheckFallacies = useCallback(() => {
     if (!selectedChain) return;
-    const artifactId = chainArtifacts[0]?.id;
-    if (!artifactId) return;
     const argumentText = [...chainPremises, chainConclusionText].filter(Boolean).join('. ');
-    runAction.mutate(
-      { id: artifactId, action: 'check_fallacies', params: { argument: argumentText } },
-      {
-        onSuccess: (res) => {
-          setDomainActionResult((res as { result?: Record<string, unknown> })?.result ?? null);
-        },
-        onError: (e) => { console.error('Action failed:', e); },
-      },
-    );
-  }, [selectedChain, chainArtifacts, chainPremises, chainConclusionText, runAction]);
+    void runDomainAction('check_fallacies', { argument: argumentText });
+  }, [selectedChain, chainPremises, chainConclusionText, runDomainAction]);
 
   const handleAssessStrength = useCallback(() => {
     if (!selectedChain || chainPremises.length === 0) return;
-    const artifactId = chainArtifacts[0]?.id;
-    if (!artifactId) return;
-    runAction.mutate(
-      { id: artifactId, action: 'assess_strength', params: { premises: chainPremises, conclusion: chainConclusionText } },
-      {
-        onSuccess: (res) => {
-          setDomainActionResult((res as { result?: Record<string, unknown> })?.result ?? null);
-        },
-        onError: (e) => { console.error('Action failed:', e); },
-      },
-    );
-  }, [selectedChain, chainArtifacts, chainPremises, chainConclusionText, runAction]);
+    void runDomainAction('assess_strength', { premises: chainPremises, conclusion: chainConclusionText });
+  }, [selectedChain, chainPremises, chainConclusionText, runDomainAction]);
 
-  if (isError || isError2 || isError4) {
-    const msg = [error, error2, error4]
+  if (isError2 || isError4) {
+    const msg = [error2, error4]
       .map((e) => (e instanceof Error ? e.message : ''))
       .find(Boolean) || 'chain_load_failed';
     return (
       <ErrorState
         message={msg}
-        onRetry={() => { refetch(); refetch2(); refetch4(); }}
+        onRetry={() => { refetch2(); refetch4(); }}
       />
     );
   }
@@ -250,9 +226,9 @@ export function ChainProofPanel() {
                 <span className="font-mono text-[10px] text-zinc-500">{chain.type || 'deductive'}</span>
                 <span className={cn(
                   'text-[10px] px-1.5 py-0.5 rounded',
-                  chain.conclusion ? 'bg-green-400/20 text-green-400' : 'bg-neon-blue/20 text-neon-blue',
+                  (chain.status ? chain.status === 'concluded' : !!chain.conclusion) ? 'bg-green-400/20 text-green-400' : 'bg-neon-blue/20 text-neon-blue',
                 )}>
-                  {chain.conclusion ? 'concluded' : 'open'}
+                  {(chain.status ? chain.status === 'concluded' : !!chain.conclusion) ? 'concluded' : 'open'}
                 </span>
               </div>
             </button>
@@ -267,26 +243,26 @@ export function ChainProofPanel() {
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={handleValidateLogic}
-            disabled={!selectedChain || chainPremises.length === 0 || runAction.isPending}
+            disabled={!selectedChain || chainPremises.length === 0 || actionRunning}
             className={cn(ds.btnSmall, 'bg-green-400/10 text-green-400 border border-green-400/30 hover:bg-green-400/20')}
           >
             <CheckCircle2 className="w-3.5 h-3.5" /> Validate Logic
           </button>
           <button
             onClick={handleCheckFallacies}
-            disabled={!selectedChain || runAction.isPending}
+            disabled={!selectedChain || actionRunning}
             className={cn(ds.btnSmall, 'bg-red-400/10 text-red-400 border border-red-400/30 hover:bg-red-400/20')}
           >
             <AlertTriangle className="w-3.5 h-3.5" /> Check Fallacies
           </button>
           <button
             onClick={handleAssessStrength}
-            disabled={!selectedChain || chainPremises.length === 0 || runAction.isPending}
+            disabled={!selectedChain || chainPremises.length === 0 || actionRunning}
             className={cn(ds.btnSmall, 'bg-neon-purple/10 text-neon-purple border border-neon-purple/30 hover:bg-neon-purple/20')}
           >
             <Zap className="w-3.5 h-3.5" /> Assess Strength
           </button>
-          {runAction.isPending && (
+          {actionRunning && (
             <span className={cn(ds.textMuted, 'flex items-center gap-1')}>
               <Loader2 className="w-3.5 h-3.5 animate-spin" /> Running…
             </span>

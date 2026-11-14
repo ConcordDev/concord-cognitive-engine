@@ -18235,7 +18235,7 @@ register("reasoning", "list_chains", (ctx, _input = {}) => {
   ensureReasoningEngine();
   const chains = Array.from(ctx.state.reasoning.chains.values())
     .slice(-50)
-    .map(c => ({ id: c.id, question: c.question, status: c.status, stepCount: c.steps.length, confidence: c.confidence }));
+    .map(c => ({ id: c.id, question: c.question, type: c.type, status: c.status, stepCount: c.steps.length, confidence: c.confidence }));
   return { ok: true, chains };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
