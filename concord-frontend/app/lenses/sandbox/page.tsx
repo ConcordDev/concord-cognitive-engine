@@ -152,9 +152,17 @@ function CombatSandboxInner() {
   // newly-added dummies are (re)spawned so an add/remove doesn't heal a
   // dummy mid-fight — the response's per-dummy `hp` is always the server's
   // authoritative current health.
+  // FIX-sandbox-005: syncs raced — the mount sync, add/remove, Apply and
+  // Reset all fire enterArena with no ordering, so a slow earlier
+  // response landing after a later one silently restored the earlier
+  // dummy count (the arena showed 1 vs 3 dummies between identical
+  // tries). Only the newest sync may apply its response.
+  const syncSeqRef = useRef(0);
   const syncArena = useCallback(async (count: number, hp: number, opts: { reset?: boolean } = {}) => {
+    const seq = ++syncSeqRef.current;
     try {
       const r = await lensRun('sandbox', 'enterArena', { count, hp, reset: !!opts.reset });
+      if (seq !== syncSeqRef.current) return; // superseded by a newer sync
       if (r.data?.ok && r.data.result) {
         const info = r.data.result as { cityId: string; dummies: { index: number; npcId: string; hp: number }[] };
         setDummies(
@@ -170,6 +178,7 @@ function CombatSandboxInner() {
         setArenaSyncFailed(true);
       }
     } catch {
+      if (seq !== syncSeqRef.current) return; // superseded by a newer sync
       // The sync may recover on the next user-triggered change, but until
       // it does, clicks report the failure in the hit log (FIX-sandbox-001)
       // instead of dying silently.
@@ -444,6 +453,7 @@ function CombatSandboxInner() {
           <button
             onClick={resetDummies}
             className="flex items-center gap-1 rounded bg-emerald-700 px-2 py-1 text-xs hover:bg-emerald-600"
+            title="Fully heal every dummy and clear the hit log — dummy count and HP stay as currently set"
           >
             <RotateCcw className="h-3 w-3" /> Reset
           </button>
