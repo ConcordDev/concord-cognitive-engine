@@ -2398,7 +2398,7 @@ export const apiHelpers = {
     getPost: (postId: string) => api.get(`/api/social/post/${postId}`),
     deletePost: (postId: string) => api.delete(`/api/social/post/${postId}`),
     getUserPosts: (userId: string, params?: Record<string, unknown>) =>
-      api.get(`/api/social/posts/${userId}`, { params }),
+      api.get(`/api/social/posts/user/${userId}`, { params }),
     // Reactions, Comments, Shares
     react: (data: { postId: string; type?: string }) => api.post('/api/social/react', data),
     getReactions: (postId: string) => api.get(`/api/social/reactions/${postId}`),

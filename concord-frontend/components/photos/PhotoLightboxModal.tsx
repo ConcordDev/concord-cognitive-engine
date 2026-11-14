@@ -36,6 +36,8 @@ export interface PhotoDetail {
   height: number | null;
   size_bytes: number | null;
   original_filename: string | null;
+  /** FIX-photos-008: the blob's real format, sniffed server-side from its bytes. */
+  format?: string | null;
 }
 
 interface PhotoLightboxModalProps {
@@ -191,7 +193,7 @@ export function PhotoLightboxModal({ photoId, photoIds = [], onClose, onSelect }
             </div>
             <div>
               <dt className={ds.textMuted}>File</dt>
-              <dd className="text-gray-200">PNG &middot; {formatBytes(photo.size_bytes)}</dd>
+              <dd className="text-gray-200">{photo.format || 'Unknown format'} &middot; {formatBytes(photo.size_bytes)}</dd>
             </div>
             {photo.original_filename ? (
               <div className="col-span-2">

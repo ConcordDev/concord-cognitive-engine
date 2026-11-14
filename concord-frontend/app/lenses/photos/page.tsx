@@ -58,12 +58,28 @@ function monthLabel(ts: number | null): string {
 
 type Phase = 'loading' | 'ready' | 'error';
 
-function readAsPngDataUrl(file: File): Promise<string> {
+// FIX-photos-008: imports used to be decoded and re-encoded as PNG
+// through a canvas, which destroyed the original format and its EXIF
+// — an uploaded JPG came back labelled "PNG". The file is now sent as
+// its own bytes (the decode below only VALIDATES that the browser can
+// read it as an image). Only a format the store cannot keep as-is
+// (e.g. SVG) still takes the canvas-PNG path.
+const STORABLE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
+
+function readAsImageDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
     const img = new Image();
     img.onload = () => {
       try {
+        if (STORABLE_TYPES.has(file.type)) {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result));
+          reader.onerror = () => reject(new Error('That file could not be read.'));
+          reader.readAsDataURL(file);
+          URL.revokeObjectURL(url);
+          return;
+        }
         const canvas = document.createElement('canvas');
         canvas.width = img.naturalWidth;
         canvas.height = img.naturalHeight;
@@ -203,7 +219,7 @@ export default function PhotosLensPage() {
     try {
       for (const file of list) {
         try {
-          const dataUrl = await readAsPngDataUrl(file);
+          const dataUrl = await readAsImageDataUrl(file);
           const caption = file.name.replace(/\.[^.]+$/, '');
           const response = await fetch('/api/photos/save', {
             method: 'POST',
@@ -214,7 +230,7 @@ export default function PhotosLensPage() {
           const body = await readJson(response);
           if (!response.ok || !body.ok || !body.id) {
             throw new Error(body.error === 'blob_too_large'
-              ? 'Over the 5 MB limit once converted to PNG.'
+              ? 'Over the 5 MB limit for a photo.'
               : (body.error || `HTTP ${response.status}`));
           }
           const rows = await pull();

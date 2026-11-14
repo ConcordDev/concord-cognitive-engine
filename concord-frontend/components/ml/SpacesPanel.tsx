@@ -14,10 +14,13 @@ interface Space {
   id: string; title: string; modelId: string; description: string;
   sdk: string; task: string; visibility: 'public' | 'private';
   url: string; likes: number; views: number; createdAt: string;
+  isOwner?: boolean;
 }
 
 export function SpacesPanel({ defaultModelId = '' }: { defaultModelId?: string }) {
   const [spaces, setSpaces] = useState<Space[]>([]);
+  // FIX-ml-012: the discovery listing — public spaces from all users.
+  const [publicSpaces, setPublicSpaces] = useState<Space[]>([]);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -28,6 +31,8 @@ export function SpacesPanel({ defaultModelId = '' }: { defaultModelId?: string }
     const r = await lensRun('ml', 'space-list', {});
     if (r.data?.ok && r.data.result) setSpaces((r.data.result as { spaces: Space[] }).spaces || []);
     else setError(r.data?.error || 'Failed to load spaces');
+    const pub = await lensRun('ml', 'space-list', { scope: 'public' });
+    if (pub.data?.ok && pub.data.result) setPublicSpaces((pub.data.result as { spaces: Space[] }).spaces || []);
     setLoading(false);
   }, []);
 
@@ -91,6 +96,36 @@ export function SpacesPanel({ defaultModelId = '' }: { defaultModelId?: string }
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* FIX-ml-012: discovery — public spaces are listed here for
+          everyone, so 'public' has a visible effect beyond a badge. */}
+      {publicSpaces.length > 0 && (
+        <div className="space-y-3 pt-2">
+          <h3 className="font-semibold flex items-center gap-2">
+            <Globe className="w-4 h-4 text-neon-green" /> Discover public spaces
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {publicSpaces.map((sp) => (
+              <div key={sp.id} className="panel p-4">
+                <div className="flex items-start justify-between mb-2">
+                  <h4 className="font-semibold text-sm">{sp.title}</h4>
+                  <span className="text-xs text-neon-green flex items-center gap-1">
+                    <Globe className="w-3 h-3" />{sp.isOwner ? 'public · yours' : 'public'}
+                  </span>
+                </div>
+                {sp.description && <p className="text-xs text-gray-400 mb-2 line-clamp-2">{sp.description}</p>}
+                <p className="text-xs text-neon-cyan font-mono mb-2 truncate">{sp.modelId}</p>
+                <div className="flex items-center gap-3 text-xs text-gray-400 mb-3">
+                  <span className="bg-lattice-surface px-1.5 py-0.5 rounded">{sp.sdk}</span>
+                  <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{sp.views}</span>
+                  <span className="flex items-center gap-1"><Heart className="w-3 h-3" />{sp.likes}</span>
+                </div>
+                <a href={sp.url} className="btn-neon small block text-center">Open</a>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

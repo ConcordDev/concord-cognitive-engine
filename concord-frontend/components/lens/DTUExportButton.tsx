@@ -45,7 +45,7 @@ export function DTUExportButton({
           const res = await api.get(`/api/lens/${domain}/export`, { params: { limit: 1000 } });
           const rows = Array.isArray(res.data?.artifacts) ? res.data.artifacts : [];
           if (rows.length === 0) {
-            addToast({ type: 'error', message: 'Nothing to export yet — this lens has no saved data.' });
+            addToast({ type: 'error', message: 'Nothing to export yet — this lens has no saved data. Create or save something in this lens first, then export.' });
             return;
           }
           payload = { source: 'lens-export', domain, exportedAt: new Date().toISOString(), items: rows };

@@ -635,7 +635,7 @@ function PostsTab({ userId }: { userId: string }) {
   const { data, isLoading } = useQuery({
     queryKey: ['social-posts', userId],
     queryFn: async () => {
-      const res = await api.get(`/api/social/posts/${userId}`);
+      const res = await api.get(`/api/social/posts/user/${userId}`);
       return (res.data.posts || []) as SocialPost[];
     },
   });
@@ -677,7 +677,7 @@ function MediaTab({ userId }: { userId: string }) {
   const { data, isLoading } = useQuery({
     queryKey: ['social-media', userId],
     queryFn: async () => {
-      const res = await api.get(`/api/social/posts/${userId}`, {
+      const res = await api.get(`/api/social/posts/user/${userId}`, {
         params: { mediaOnly: true },
       });
       return (res.data.posts || []) as SocialPost[];

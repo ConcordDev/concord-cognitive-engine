@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { UserPicker, type PickedUser } from '@/components/social/UserPicker';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
@@ -42,7 +43,10 @@ export function ForestryActionPanel() {
   const [tempF, setTempF] = useState('');
   const [humidity, setHumidity] = useState('');
   const [windMph, setWindMph] = useState('');
-  const [recipient, setRecipient] = useState('');
+  // FIX-forestry-009: the recipient is a PICKED user, never free text —
+  // a typed handle is not a user id, so every typed DM failed with a
+  // bare 'recipient not found' (the society-011 defect class).
+  const [recipientUser, setRecipientUser] = useState<PickedUser | null>(null);
 
   // F6: validation reads state first and falls back to the live DOM value,
   // so a paste (or autofill) that fills an input without a React change
@@ -120,7 +124,7 @@ export function ForestryActionPanel() {
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
-    if (!recipient.trim()) { err('Recipient required.'); return; }
+    if (!recipientUser) { err('Pick a recipient from the search results first — a DM goes to another user, so you can\'t send one to yourself.'); return; }
     setBusy('dm'); setFeedback(null);
     const body = [`🌲 Stand: ${standName || species}`, '', `${acres} acres · age ${age}y`,
       volumeResult ? `Volume: ${volumeResult.boardFeet?.toLocaleString()} bf · $${volumeResult.valuation?.toLocaleString()}` : '',
@@ -130,11 +134,11 @@ export function ForestryActionPanel() {
     ].filter(Boolean).join('\n');
     try {
       const messageId = await dmRecall.run(async () => {
-        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        const r = await api.post('/api/social/dm', { toUserId: recipientUser.userId, content: body });
         if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
         return r.data?.message?.id as string;
       });
-      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipientUser(null); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
@@ -193,7 +197,7 @@ export function ForestryActionPanel() {
         <input ref={humidityRef} type="text" value={humidity} onChange={(e) => setHumidity(e.target.value.replace(/[^\d.]/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Humidity %" />
         <input ref={windMphRef} type="text" value={windMph} onChange={(e) => setWindMph(e.target.value.replace(/[^\d.]/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Wind mph" />
         <div className="md:col-span-2 flex items-center gap-2 flex-wrap">
-          <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
+          <UserPicker value={recipientUser} onPick={setRecipientUser} placeholder="DM recipient — search by name" ariaLabel="DM recipient" />
           <RecallSlot ctl={dmRecall} />
           <RecallSlot ctl={publishRecall} />
         </div>

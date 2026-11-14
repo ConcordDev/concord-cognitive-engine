@@ -23,7 +23,24 @@ export function UserMenu({ powerMode, onTogglePowerMode, placement = 'below' }: 
   const { theme, setTheme } = useThemeMode();
   const ThemeIcon = theme === 'dark' ? Moon : theme === 'light' ? Sun : Monitor;
   const [showAvatarSwitcher, setShowAvatarSwitcher] = useState(false);
+  // FIX-government-010: the menu offered Sign Out without ever saying
+  // WHO is signed in. Identity comes from /api/auth/me (the platform's
+  // own identity read), fetched lazily on first open; if it cannot be
+  // read, the header simply does not render — never a guessed name.
+  const [identity, setIdentity] = useState<{ username?: string; email?: string } | null>(null);
+  const identityTried = useRef(false);
   const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open || identityTried.current) return;
+    identityTried.current = true;
+    api.get('/api/auth/me')
+      .then((res) => {
+        const user = (res.data as { user?: { username?: string; email?: string } })?.user;
+        if (user && (user.username || user.email)) setIdentity({ username: user.username, email: user.email });
+      })
+      .catch(() => { /* no header rather than a wrong name */ });
+  }, [open ]);
 
   useEffect(() => {
     if (!open) return;
@@ -72,6 +89,14 @@ export function UserMenu({ powerMode, onTogglePowerMode, placement = 'below' }: 
           className={`absolute w-48 bg-lattice-surface border border-lattice-border rounded-lg shadow-xl z-50 overflow-hidden ${placement === 'side' ? 'left-full bottom-0 ml-3' : 'right-0 top-full mt-2'}`}
           role="menu"
         >
+          {identity && (
+            <div className="border-b border-lattice-border px-4 py-3">
+              <p className="truncate text-sm font-medium text-white">{identity.username || identity.email}</p>
+              {identity.username && identity.email && (
+                <p className="truncate text-xs text-gray-400">{identity.email}</p>
+              )}
+            </div>
+          )}
           <button
             onClick={() => {
               setOpen(false);

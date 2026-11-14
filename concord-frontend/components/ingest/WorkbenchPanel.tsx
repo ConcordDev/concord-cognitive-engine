@@ -282,7 +282,10 @@ export function WorkbenchPanel() {
         </h3>
         <div className="flex items-center gap-2 flex-wrap py-2">
           {[
-            { stage: 'Queued', count: 0, color: 'bg-gray-500', textColor: 'text-gray-400' },
+            // FIX-ingest-003: no 'Queued' stage — ingest is synchronous
+            // (one mutation, no queue exists), so a Queued tile was a
+            // hardcoded 0 that could never move. The stages shown are
+            // the ones that are real.
             { stage: 'Processing', count: ingestText.isPending ? 1 : 0, color: 'bg-neon-cyan', textColor: 'text-neon-cyan' },
             { stage: 'Complete', count: totalIngested, color: 'bg-neon-green', textColor: 'text-neon-green' },
             { stage: 'Failed', count: receipt?.failures ?? 0, color: 'text-red-500', textColor: 'text-red-400' },
@@ -292,7 +295,7 @@ export function WorkbenchPanel() {
                 <p className={`text-xl font-bold font-mono ${stage.textColor}`}>{stage.count}</p>
                 <p className="text-xs text-gray-400">{stage.stage}</p>
               </div>
-              {i < 3 && <div className="w-4 h-px bg-white/20 flex-shrink-0" />}
+              {i < 2 && <div className="w-4 h-px bg-white/20 flex-shrink-0" />}
             </div>
           ))}
         </div>
