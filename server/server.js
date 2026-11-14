@@ -61,6 +61,7 @@ import { aggregateTopicCounts } from "./lib/trending-topics.js";
 import { normalizeTagList, sanitizeDtuTags, scrubStoredTags } from "./lib/dtu-tags.js";
 import { collectPaginatedEvents, emptyEventsPage } from "./lib/events-page.js";
 import { humanMacroAclDenial } from "./lib/macro-acl-human-gate.js";
+import { macroGateFor } from "./lib/macro-acl-human-gate.js";
 import { forumModDenial } from "./lib/forum-mod-gate.js";
 import { personaCreateDenial, personaModifyDenial, personaListVisible, personaPromptVisible, personaRosterPutDenial } from "./lib/persona-legacy-gate.js";
 import { lensUpdateDenial, lensOwnerlessDenial, isOwnerlessArtifact } from "./lib/lens-update-gate.js";
@@ -56763,6 +56764,13 @@ app.get("/api/lens-actions/:domain", (req, res) => {
     // shape this way. Absent for the rest — AutoActionStrip falls back to
     // its raw-JSON editor when `fields` is undefined.
     const fields = MACRO_INPUT_HINTS[`${domain}.${name}`];
+    // GB-1538 genus leg 4 (FIX-grounding-001, office ruling (i)): annotate
+    // actions the human ACL gate would deny to a member, from the gate's
+    // own rule lookup (macroGateFor shares humanMacroAclDenial's logic, so
+    // this cannot drift from enforcement). The frontend skips gated
+    // actions for users who cannot run them; the 403 stays honest for
+    // direct calls.
+    const gate = macroGateFor({ domain, name, macroAcl: MACRO_ACL, macroAclDomain: MACRO_ACL_DOMAIN });
     return {
       action: name,
       desc: ai?.desc || null,
@@ -56773,6 +56781,7 @@ app.get("/api/lens-actions/:domain", (req, res) => {
       isLive: /^live_/.test(name),
       isCompute: !ai && !/^live_/.test(name),
       ...(fields ? { fields } : {}),
+      ...(gate ? { gated: true, requiresRole: gate.requiresRole } : {}),
     };
   });
   res.json({ ok: true, domain, total: actions.length, actions });
