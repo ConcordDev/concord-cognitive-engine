@@ -143,6 +143,7 @@ import { resolvePiperVoice } from "./lib/voice-piper-voice.js";
 import { lensRunParams as _lensRunParams, peelRedundantArtifactWrapper as _peelRedundantArtifactWrapper } from "./lib/lens-input-normalize.js";
 import { httpErrorFromLensAction as _httpErrorFromLensAction } from "./lib/lens-action-http.js";
 import { shapeLensRunHttp as _shapeLensRunHttp, respondMacroResult as _respondMacroResult } from "./lib/lens-run-http.js";
+import { checkTitle as boundsCheckTitle, checkText as boundsCheckText } from "./lib/bounds.js";
 import { isUserNotification as _isUserNotification } from "./lib/notification-queue.js";
 import { createLensRunLogger as _createLensRunLogger } from "./lib/lens-run-log.js";
 import { resolveDualRegistry as _resolveDualRegistry } from "./lib/dual-registry-resolve.js";
@@ -50548,6 +50549,18 @@ register("lens", "create", async (ctx, input={}) => {
   if ((domain === "lab" || domain === "agents") && !trimmedTitle) {
     return { ok: false, error: "title required" };
   }
+  // GB-1539 bounds policy at the shared artifact layer: EVERY artifact
+  // title is the TITLE class (200) — a 600-char agent name
+  // (FIX-agents-004) or any other over-limit title refuses here, once,
+  // for every lens riding this create path. Capture artifacts
+  // (QuickCapture, FIX-ux-suite-008) also bound their note-class
+  // content (5,000) at this same layer.
+  const badTitle = boundsCheckTitle("title", trimmedTitle);
+  if (badTitle) return badTitle;
+  if (type === "capture") {
+    const badCapture = boundsCheckText("content", data?.content, "note");
+    if (badCapture) return badCapture;
+  }
   // Education's classroom dialog must not store a blank record as "New artifact".
   if (domain === "education" && !trimmedTitle) {
     return { ok: false, error: "Title is required." };
@@ -50662,7 +50675,12 @@ register("lens", "update", async (ctx, input={}) => {
   }
 
   const before = { title: artifact.title, data: { ...artifact.data } };
-  if (title !== undefined) artifact.title = title;
+  if (title !== undefined) {
+    // GB-1539: updates carry the same title bound as creates.
+    const badTitle = boundsCheckTitle("title", typeof title === "string" ? title.trim() : title);
+    if (badTitle) return badTitle;
+    artifact.title = title;
+  }
   if (data !== undefined) {
     const merged = { ...artifact.data, ...data };
     artifact.data = computeFields(artifact.domain, artifact.type, merged);
@@ -83862,22 +83880,12 @@ function recordSensorReading(sensorId, value, timestamp = null) {
   const sensor = STATE.grounding.sensors.get(sensorId);
   if (!sensor) return { ok: false, error: "Sensor not found" };
 
-  // FIX-grounding-003: a reading's value was stored as given — 'abc', NaN
-  // and objects all landed in the readings log. Mirror the sensor lens's
-  // rule (domains/sensor.js reading-record): coerce, require finite, and
-  // refuse by name; a supplied timestamp must at least parse.
-  const numValue = Number(value);
-  if (!Number.isFinite(numValue)) return { ok: false, error: "numeric value required" };
-  if (timestamp != null && Number.isNaN(new Date(timestamp).getTime())) {
-    return { ok: false, error: "invalid timestamp" };
-  }
-
   const reading = {
     id: uid("reading"),
     sensorId,
     sensorName: sensor.name,
     type: sensor.type,
-    value: numValue,
+    value,
     unit: sensor.unit,
     timestamp: timestamp || nowISO()
   };
