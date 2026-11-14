@@ -4,6 +4,7 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { DeprecatedLensNotice } from '@/components/lens/DeprecatedLensNotice';
 import { ReflectionFeed } from '@/components/reflection/ReflectionFeed';
 import { CommunityRedditSlot } from '@/lib/community/CommunityRedditSlot';
 import { ReflectionSection } from '@/components/reflection/ReflectionSection';
@@ -130,6 +131,9 @@ export default function ReflectionLensPage() {
 
   return (
     <LensShell lensId="reflection" asMain={false}>
+      {/* FIX-reflection-005: reflection is 'deprecated' in LENS_STATUS_MAP —
+          surface the notice like the other deprecated lenses do. */}
+      <DeprecatedLensNotice lensId="reflection" />
 
       <div data-lens-theme="reflection" className="relative min-h-full space-y-6 px-8 pb-28 pt-6">
         <div>

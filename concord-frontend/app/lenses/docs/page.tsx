@@ -20,6 +20,7 @@ import {
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { DeprecatedLensNotice } from '@/components/lens/DeprecatedLensNotice';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -114,6 +115,9 @@ export default function DocsLensPage() {
     <LensShell lensId="docs" asMain={false}>
 
       <DepthBadge lensId="docs" size="sm" className="ml-2" />
+      {/* FIX-docs-014: docs is 'deprecated' in LENS_STATUS_MAP —
+          surface the notice like the other deprecated lenses do. */}
+      <DeprecatedLensNotice lensId="docs" />
       <a href="#docs-main" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">
         Skip to docs content
       </a>

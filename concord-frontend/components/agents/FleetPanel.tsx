@@ -586,7 +586,15 @@ export function FleetPanel() {
                             <Terminal className="w-3 h-3" />
                           </button>
                           <StickyDeleteConfirm
-                            onConfirm={() => removeLensAgent(agent.id)}
+                            onConfirm={() => {
+                              // FIX-agents-016: deleting the SELECTED agent
+                              // clears the selection in the same gesture —
+                              // otherwise AgentSelfPanel stays mounted on the
+                              // dead id and its per-agent fetches 404 in a
+                              // loop (the walk's stale-polling storm).
+                              if (selectedAgent?.id === agent.id) setSelectedAgent(null);
+                              removeLensAgent(agent.id);
+                            }}
                             armLabel={<Trash2 className="w-3 h-3" />}
                             armAriaLabel={`Delete agent ${agent.name}`}
                             confirmAriaLabel={`Confirm delete agent ${agent.name}`}
