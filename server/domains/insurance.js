@@ -373,13 +373,23 @@ export default function registerInsuranceActions(register) {
       if (!state.clients.has(userId)) state.clients.set(userId, []);
       const riskProfile = ["low", "standard", "elevated", "high"].includes(String(params.riskProfile || "").toLowerCase())
         ? String(params.riskProfile).toLowerCase() : "standard";
+      // FIX-insurance-002: a supplied dob must be a real calendar date,
+      // the same rule policy-create applies to its dates — free text
+      // ('whenever') was previously stored and rendered as the birth date.
+      const dobRaw = String(params.dob || "").trim();
+      if (dobRaw) {
+        const d = /^\d{4}-\d{2}-\d{2}$/.test(dobRaw) ? new Date(`${dobRaw}T00:00:00Z`) : null;
+        if (!d || Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== dobRaw) {
+          return { ok: false, error: "dob must be a real date (YYYY-MM-DD)" };
+        }
+      }
       const client = {
         id: `cli_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
         name,
         phone: String(params.phone || "").trim().slice(0, 40) || null,
         email: String(params.email || "").trim().slice(0, 120) || null,
         address: String(params.address || "").trim().slice(0, 200) || null,
-        dob: String(params.dob || "").trim().slice(0, 10) || null,
+        dob: dobRaw || null,
         riskProfile,
         referralSource: String(params.referralSource || "").trim().slice(0, 120) || null,
         notes: String(params.notes || "").trim().slice(0, 400) || null,
@@ -1906,7 +1916,21 @@ export default function registerInsuranceActions(register) {
 
   registerLensAction("insurance", "renewal-pipeline-list", (ctx, _a, _params = {}) => {
     const s = getAmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const pipeline = (s.renewalPipeline.get(insAid(ctx)) || [])
+    // FIX-insurance-002: daysUntil/stage were frozen at build time, so a
+    // row built 1 day out still read "renews in 1d" after its date had
+    // passed. Recompute both at read with the build's own formula; a
+    // past-due row that was never bound reads lapsed.
+    const stored = s.renewalPipeline.get(insAid(ctx)) || [];
+    let dirty = false;
+    for (const r of stored) {
+      const t = new Date(r.renewalDate + "T00:00:00Z").getTime();
+      if (Number.isNaN(t)) continue;
+      const daysUntil = Math.floor((t - Date.now()) / INS_DAY);
+      if (daysUntil !== r.daysUntil) { r.daysUntil = daysUntil; dirty = true; }
+      if (daysUntil < 0 && r.stage !== "bound" && r.stage !== "lapsed") { r.stage = "lapsed"; dirty = true; }
+    }
+    if (dirty) saveInsState();
+    const pipeline = stored
       .slice().sort((a, b) => a.daysUntil - b.daysUntil);
     const byStage = {};
     for (const r of pipeline) byStage[r.stage] = (byStage[r.stage] || 0) + 1;
@@ -1979,6 +2003,31 @@ export default function registerInsuranceActions(register) {
     };
     if (assigned) fnol.timeline.push({ at: insNow(), event: `Routed to ${assigned} (${queue})`, actor: "router" });
     if (!pushCapped(s.fnol, userId, fnol)) return { ok: false, error: "fnol_cap" };
+    // FIX-insurance-002: an FNOL *is* a claim, but intake wrote only to
+    // the AMS store — the book (claim-list, client history, overview
+    // counts) never saw it, so the two surfaces disagreed on the claim
+    // count. File the linked claim in the book as well; fnol-list keeps
+    // reading the AMS store, so nothing double-counts there.
+    if (!ins.claims.has(userId)) ins.claims.set(userId, []);
+    const bookClaim = {
+      id: insId("clm"),
+      policyId: fnol.policyId || "",
+      policyNumber: policy ? policy.policyNumber : null,
+      carrier: fnol.carrier,
+      description,
+      kind: "other",
+      incidentDate: fnol.lossDate,
+      submittedDate: insDay(insNow()),
+      status: "submitted",
+      claimAmount: estLoss,
+      documents: 0,
+      clientId: policy ? (policy.clientId ?? null) : null,
+      claimantName: policy ? (policy.insuredName ?? null) : null,
+      fnolId: fnol.id,
+      source: "fnol",
+    };
+    ins.claims.get(userId).push(bookClaim);
+    fnol.claimId = bookClaim.id;
     saveInsState();
     return { ok: true, result: { fnol } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
