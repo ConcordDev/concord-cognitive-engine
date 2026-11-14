@@ -154,6 +154,7 @@ import { startSSE } from "./lib/sse.js";
 import { stringifyChunked } from "./lib/chunked-json.js";
 import { writeFileChunkedYielding } from "./lib/chunked-write.js";
 import { createLensArtifactStore } from "./lib/lens-artifact-store.js";
+import { sweepArtifactExhausts } from "./lib/dtu-family.js";
 import fs from "fs";
 import { startWalCheckpointer, walCheckpointerEnabled } from "./lib/wal-checkpointer.js";
 import path from "path";
@@ -2048,7 +2049,7 @@ async function _dtuSidecarListCall(args) {
 }
 import { BRAIN_CONFIG, SYSTEM_TO_BRAIN, BRAIN_PRIORITY, getBrainForSystem, getActiveBrainConfig, getSystemStatus, pickBrainEndpoint, noteEndpointStart, noteEndpointFinish, resolveBrainModel } from "./lib/brain-config.js";
 import { answerConfidence, smallModelPromptSuffix } from "./lib/answer-confidence.js";
-import { authenticatedBrainStatus, brainStatusForViewer, denyAnonymousBrainRead, mountBrainStatusRoute } from "./lib/brain-status-public.js";
+import { authenticatedBrainStatus, brainStatusForViewer, denyAnonymousBrainRead, mountBrainStatusRoute, viewerCanSeeBrainUrls } from "./lib/brain-status-public.js";
 import { installOllamaRequestGuard } from "./lib/ollama-request-guard.js";
 // Every brain request: num_ctx pinned per model (so ollama loads each model
 // once instead of reloading on every caller's different window) and, opt-in,
@@ -27805,6 +27806,14 @@ register("dtu", "delete", async (ctx, input) => {
         STATE.lensArtifacts.delete(artifact.id);
         _lensDomainIndexRemove(artifact.domain, artifact.id);
         _lensEmitDTU(ctx, artifact.domain, "delete", artifact.type, artifact);
+        // The canonical archive/delete verb (CB-0554 ruling (1)): the
+        // artifact is gone, so its remaining lifecycle exhausts (update /
+        // run / export — and the delete exhaust just minted) are orphans
+        // naming a dead record; sweep the family whole (FIX-ux-suite-015).
+        // The narrowness pins stand: this runs only inside the create-
+        // exhaust cascade, so a lifecycle-exhaust delete on a living
+        // artifact still changes nothing.
+        sweepArtifactExhausts(STATE, artifact, { onDtuRemoved: _sweepDtuSideEffects });
       }
     } catch (e) { log("dtu.warn", `lens artifact cascade (${id}): ${e?.message}`); }
   }
@@ -27859,6 +27868,29 @@ register("dtu", "delete", async (ctx, input) => {
   return { ok: true, deleted: { id, title: dtu.title } };
   } finally { releaseMutex(); }
 }, { description: "Delete a DTU by id" });
+
+// The canonical archive/delete verb (founder ruling, CB-0554 (1)): ONE
+// owner-scoped verb for removing a DTU record family, so no lens invents its
+// own delete variant. Accepts a DTU id or a lens artifact id and delegates to
+// the matching canonical delete path — dtu.delete for a DTU, lens.delete for
+// an artifact — each of which applies its own owner gate and completes the
+// family (lib/dtu-family.js): the linked artifact (create-exhaust cascade,
+// unpublished only) and every exhaust DTU of a removed artifact are removed
+// with the primary record. Holds no mutex while delegating (the platform
+// mutex is not reentrant; the delegate paths acquire it themselves).
+register("dtu", "archive", async (ctx, input) => {
+  const id = String(input.id || input.dtuId || input.artifactId || "");
+  if (!id) return { ok: false, error: "Missing id" };
+  if (STATE.dtus.has(id)) {
+    const out = await runMacro("dtu", "delete", { id }, ctx);
+    return { ...out, via: "dtu.archive" };
+  }
+  if (STATE.lensArtifacts.has(id)) {
+    const out = await runMacro("lens", "delete", { id }, ctx);
+    return { ...out, via: "dtu.archive" };
+  }
+  return { ok: false, error: "DTU not found" };
+}, { description: "Canonical owner-scoped archive/delete verb: remove a DTU or lens artifact and its whole exhaust family" });
 
 // Admin custody: set visibility and owner on existing DTUs by id.
 // Persists through upsertDTU so STATE.dtus and dtu_store stay in sync
@@ -50104,6 +50136,15 @@ function _presentLensArtifact(artifact, ctx) {
   return presented;
 }
 
+// Per-DTU cleanup for exhausts removed by the family sweep (lib/dtu-family.js):
+// the same index/embedding/write-clock hygiene dtu.delete applies to its own
+// target, factored so a swept sibling gets exactly the deleted DTU's treatment.
+function _sweepDtuSideEffects(dtuId) {
+  try { EMBEDDINGS.store.delete(dtuId); } catch { /* index cleanup is best-effort */ }
+  try { SEARCH_INDEX.dirty = true; } catch { /* same */ }
+  try { noteDtuWrite(); } catch { /* clock */ }
+}
+
 function _lensEmitDTU(ctx, domain, action, artifactType, artifact, extra={}) {
   try {
     const dtuId = uid("dtu");
@@ -50425,7 +50466,16 @@ register("lens", "delete", async (ctx, input={}) => {
   _lensDomainIndexRemove(artifact.domain, id);
   saveStateDebounced();
   _lensEmitDTU(ctx, artifact.domain, "delete", artifact.type, artifact);
-  return { ok: true, deleted: id };
+  // The canonical archive/delete verb (CB-0554 ruling (1)): deleting the
+  // artifact removes its whole exhaust family — the create/update/delete
+  // 'Lens:<domain> …' DTUs are bookkeeping for this record, and leaving them
+  // in the owner's vault left dead records naming a piece that no longer
+  // exists (FIX-crafting-002). The delete exhaust minted just above is part
+  // of the family and is swept with it. Authorization is the owner gate
+  // above; the sweep inherits it.
+  const sweptExhausts = sweepArtifactExhausts(STATE, artifact, { onDtuRemoved: _sweepDtuSideEffects });
+  if (sweptExhausts.length) saveStateDebounced();
+  return { ok: true, deleted: id, sweptExhausts: sweptExhausts.length };
   } finally { releaseMutex(); }
 });
 
@@ -61049,6 +61099,11 @@ app.get("/api/system/health", (req, res) => {
     const total = dtus.length;
     const sessions = STATE.sessions?.size || 0;
     const brainStatus = brainStatusForViewer(typeof getBrainStatus === "function" ? getBrainStatus() : {}, req.user);
+    // Instance runtime detail (uptime, memory, DTU/session counts, store
+    // status, scheduler stats) is operator-only — the same viewer scoping
+    // brainStatusForViewer applies to the brain block above. Members and
+    // anonymous callers get the status signal and nothing operational.
+    const operatorViewer = viewerCanSeeBrainUrls(req.user);
     const uptime = process.uptime();
 
     // Heartbeat liveness. `__governorTickAt` is stamped on EVERY governorTick
@@ -61081,9 +61136,7 @@ app.get("/api/system/health", (req, res) => {
       fetchScheduler = getSchedulerStats();
     } catch { /* module not loaded yet — leave null */ }
 
-    return res.json({
-      ok: true,
-      health: {
+    const health = {
         status: "operational",
         uptime: Math.floor(uptime),
         dtuCount: total,
@@ -61106,7 +61159,10 @@ app.get("/api/system/health", (req, res) => {
             return ts && (Date.now() - new Date(ts).getTime()) < 604800000;
           }).length,
         },
-      },
+    };
+    return res.json({
+      ok: true,
+      health: operatorViewer ? health : { status: health.status, brains: brainStatus },
     });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
@@ -71565,6 +71621,16 @@ app.get("/api/dtus/search/semantic", asyncHandler(async (req, res) => {
   const results = await semanticSearch(String(q), all, { lens: lens || null, topK });
 
   // Enrich results with DTU data
+  // Ownership class rides every result (FIX-inference-008): the
+  // cross-domain panel shows these records' titles and snippets, and a
+  // reader must be able to tell whose record each one is — the viewer's
+  // own, another member's, or a platform/ownerless record. The class is
+  // all that is added; no owner identifier is exposed.
+  const ownershipOf = (d) => {
+    const owner = d?.ownerId || d?.userId || d?.meta?.ownerId || null;
+    if (!owner || owner === "system") return "platform";
+    return viewerId && String(owner) === String(viewerId) ? "mine" : "member";
+  };
   const enriched = results.map(r => {
     const dtu = all.find(d => d.id === r.id);
     return {
@@ -71575,6 +71641,7 @@ app.get("/api/dtus/search/semantic", asyncHandler(async (req, res) => {
       score: Math.round(r.score * 1000) / 1000,
       rawSimilarity: Math.round((r.rawSimilarity || 0) * 1000) / 1000,
       summary: (dtu?.human?.summary || dtu?.cretiHuman || "").slice(0, 300),
+      ownership: ownershipOf(dtu),
     };
   });
   // Archived DTUs keep their vectors; include them (archive=0 opts out).
@@ -71591,6 +71658,7 @@ app.get("/api/dtus/search/semantic", asyncHandler(async (req, res) => {
           score: Math.round(h.sim * w * 1000) / 1000,
           rawSimilarity: Math.round(h.sim * 1000) / 1000,
           summary: (h.dtu.human?.summary || h.dtu.cretiHuman || "").slice(0, 300),
+          ownership: ownershipOf(h.dtu),
           archived: h.dtu._archived || true,
         });
       }
