@@ -282,7 +282,7 @@ export function DocsWorkspace() {
     const run = ++searchRunRef.current;
     const r = await lensRun('docs', 'docs-search', { query: q });
     if (run !== searchRunRef.current) return; // a newer keystroke superseded this run
-    setResults((r.data?.result?.results as { id: string; title: string; icon: string; snippet?: string }[]) || []);
+    setResults((r.data?.result?.results as { id: string; kind?: string; title: string; icon: string; snippet?: string }[]) || []);
   }, []);
 
   // Search runs as the user types (S3 / F2). The control previously
@@ -373,9 +373,9 @@ export function DocsWorkspace() {
                   </p>
                 )}
                 {results.map(r => (
-                  <button key={r.id} onClick={() => { void openPage(r.id); setResults(null); }}
+                  <button key={r.id} onClick={() => { if (r.kind === 'database') { setTab('database'); } else { void openPage(r.id); } setResults(null); }}
                     className="block w-full text-left px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-800 rounded">
-                    <span className="truncate block">{r.icon} {r.title}</span>
+                    <span className="truncate block">{r.icon} {r.title}{r.kind === 'database' && <span className="ml-1 text-[9px] uppercase tracking-wide text-zinc-400">Database</span>}</span>
                     {r.snippet && <span className="block text-[10px] text-zinc-400 truncate">{r.snippet}</span>}
                   </button>
                 ))}

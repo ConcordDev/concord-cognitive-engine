@@ -782,9 +782,30 @@ export default function registerDocsActions(registerLensAction) {
       const blockHit = p.blocks.find((b) => b.text.toLowerCase().includes(q));
       if (titleHit || blockHit) {
         results.push({
-          id: p.id, title: p.title, icon: p.icon,
+          id: p.id, kind: "page", title: p.title, icon: p.icon,
           snippet: blockHit ? blockHit.text.slice(0, 160) : "",
           matchedIn: titleHit ? "title" : "content",
+        });
+      }
+    }
+    // FIX-docs-004 (coverage leg): workspace search covered pages only,
+    // so a database whose name/columns/cells matched never appeared even
+    // though the expected shape is "matching pages AND databases".
+    for (const d of dcDatabases(s, dcActor(ctx))) {
+      const nameHit = String(d.name || "").toLowerCase().includes(q);
+      const colHit = (d.columns || []).find((c) => String(c.name || "").toLowerCase().includes(q));
+      let cellHit = null;
+      if (!nameHit && !colHit) {
+        for (const row of d.rows || []) {
+          const v = Object.values(row.cells || {}).find((x) => typeof x === "string" && x.toLowerCase().includes(q));
+          if (v) { cellHit = v; break; }
+        }
+      }
+      if (nameHit || colHit || cellHit) {
+        results.push({
+          id: d.id, kind: "database", title: d.name, icon: "🗄",
+          snippet: cellHit ? cellHit.slice(0, 160) : (colHit ? `Column: ${colHit.name}` : ""),
+          matchedIn: nameHit ? "title" : (colHit ? "column" : "content"),
         });
       }
     }
