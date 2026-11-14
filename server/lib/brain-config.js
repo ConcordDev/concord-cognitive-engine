@@ -185,11 +185,13 @@ const _visionEffectiveUrls = _visionIsCloudflare
   ? [process.env.BRAIN_VISION_URL || process.env.BRAIN_MULTIMODAL_URL || "cloudflare://workers-ai"]
   : _vision_urls;
 
+const _consciousModel = _resolveBrainModel(process.env.BRAIN_CONSCIOUS_MODEL, "concord-conscious:latest", _conscious_urls);
+
 export const BRAIN_CONFIG = Object.freeze({
   conscious: {
     url: _conscious_urls[0],
     urls: _conscious_urls,
-    model: _resolveBrainModel(process.env.BRAIN_CONSCIOUS_MODEL, "concord-conscious:latest", _conscious_urls),
+    model: _consciousModel,
     role: "chat, deep reasoning, council deliberation, user-facing interactions",
     temperature: 0.7,
     // 180s (2026-09-09): on the A40 the conscious 30B blob lives on MooseFS
@@ -221,6 +223,25 @@ export const BRAIN_CONFIG = Object.freeze({
     // CONCORD_NUM_CTX_CAP — server.js#_ollamaNumCtx clamps to it).
 contextWindow: Math.min(Number(process.env.BRAIN_CONSCIOUS_CONTEXT) || 32768, 131072),
     maxTokens: 4096,   // Full output — let it think
+  },
+  // ConKay (GB-1541, founder-confirmed 2026-11-14): the majordomo mode of
+  // Concord Chat gets its own slot so its model route is set independently
+  // of the conscious brain. Deploy sets CONKAY_MODEL=kimi-k3.1-pro:cloud
+  // (cloud tags serve through the same Ollama host as the conscious
+  // endpoints). With CONKAY_MODEL unset the slot resolves to the conscious
+  // model itself — exactly the pre-GB-1541 behaviour, when ConKay turns ran
+  // on the conscious brain and no code read CONKAY_MODEL at all.
+  conkay: {
+    url: _conscious_urls[0],
+    urls: _conscious_urls,
+    model: _resolveBrainModel(process.env.CONKAY_MODEL, _consciousModel, _conscious_urls),
+    role: "ConKay majordomo — agent-mode assistant persona with full tool access under the F0 gates",
+    temperature: Number(process.env.CONKAY_TEMPERATURE) || 0.7,
+    timeout: Number(process.env.CONKAY_TIMEOUT_MS) || 180000,
+    priority: 1,       // CRITICAL — user-facing, same as conscious
+    maxConcurrent: Number(process.env.CONKAY_CONCURRENT) || 4,
+    contextWindow: Math.min(Number(process.env.CONKAY_CONTEXT) || 32768, 131072),
+    maxTokens: 4096,
   },
   subconscious: {
     url: _subconscious_urls[0],
@@ -366,6 +387,7 @@ export const SYSTEM_TO_BRAIN = Object.freeze({
 export const BRAIN_PRIORITY = Object.freeze({
   repair: 0,       // CRITICAL
   conscious: 1,    // HIGH
+  conkay: 1,       // HIGH — user-facing (GB-1541)
   subconscious: 2, // NORMAL
   multimodal: 2,   // NORMAL — vision queries piggyback on subconscious priority
   utility: 3,      // LOW

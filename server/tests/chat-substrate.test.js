@@ -34,9 +34,11 @@ describe("Brain Routing", () => {
     ({ resolveBrain } = await import(path.join(serverRoot, "lib/brain-router.js")));
   });
 
-  it("defines all five brain types (4 cognitive + multimodal/vision)", () => {
+  it("defines all six brain types (5 cognitive + multimodal/vision)", () => {
+    // GB-1541 / BR-02 (2026-11-14): ConKay gained its own slot ("conkay") —
+    // the expected set is updated in the landing commit itself (A11 form).
     const names = Object.keys(BRAIN_CONFIG);
-    assert.deepStrictEqual(names.sort(), ["conscious", "multimodal", "repair", "subconscious", "utility"]);
+    assert.deepStrictEqual(names.sort(), ["conkay", "conscious", "multimodal", "repair", "subconscious", "utility"]);
   });
 
   it("routes chat to conscious brain", () => {
