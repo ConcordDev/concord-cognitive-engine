@@ -28,6 +28,7 @@ import { runLensHealthDetector } from "./lens-health-detector.js";
 import { runDtuLineageDetector } from "./dtu-lineage-detector.js";
 import { runHeartbeatMonitor } from "./heartbeat-monitor.js";
 import { runSecretLeakDetector } from "./secret-leak-detector.js";
+import { runRawFetchEgressDetector } from "./raw-fetch-egress-detector.js";
 import { runPerformanceHotspotDetector } from "./performance-hotspot-detector.js";
 import { runHistoricalTrendDetector } from "./historical-trend-detector.js";
 import { runPredictiveGrowthDetector } from "./predictive-growth-detector.js";
@@ -284,6 +285,14 @@ registerDetector({
 // added: it only ever emits `info` severity, and the gate fails only on new
 // high/critical — so adding it would run for 13s on every PR and could never
 // block anything. That is coverage theatre, not coverage.
+registerDetector({
+  id: "raw-fetch-egress",
+  label: "RawFetchEgressDetector",
+  consumers: ["security"],
+  dataNeeds: ["fs"],
+  description: "SB-08 ratchet: flags raw fetch / undici.request on non-literal URLs outside the SSRF guard in server/** (guard modules + tests allow-listed). Baseline = the count at landing; new occurrences fail the gate.",
+  run: runRawFetchEgressDetector,
+});
 registerDetector({
   id: "secret-leak",
   label: "SecretLeakDetector",
