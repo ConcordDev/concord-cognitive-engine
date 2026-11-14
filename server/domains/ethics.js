@@ -593,7 +593,13 @@ export default function registerEthicsActions(registerLensAction) {
     // and every normalized weight NaN (Infinity/Infinity), leaking NaN/percent
     // into the rendered record.
     const rawWeights = criteria.map((c) => Math.max(0, fnum(c.weight, 0)));
-    const weightSum = rawWeights.reduce((s, w) => s + w, 0) || 1;
+    // FIX-ethics-012: with every weight at 0 there is nothing to weigh
+    // the scores against — every total comes out 0 and the "winner" is
+    // whichever option happens to sort first. Refuse the run instead
+    // of persisting a junk record with a meaningless winner.
+    const rawWeightSum = rawWeights.reduce((s, w) => s + w, 0);
+    if (rawWeightSum <= 0) return { ok: false, error: "give at least one criterion a weight above 0" };
+    const weightSum = rawWeightSum;
     const normCriteria = criteria.map((c, i) => ({
       name: typeof c.name === "string" && c.name.trim() ? c.name : "Criterion",
       weight: rawWeights[i] / weightSum,
@@ -612,6 +618,23 @@ export default function registerEthicsActions(registerLensAction) {
         percent: Math.round(total * 10),
       };
     });
+    // FIX-ethics-012: a run where every option scores 0 on every
+    // criterion evaluated nothing (the panel sends 0 for untouched
+    // cells, so this is exactly the bad/empty-values submission) —
+    // refuse it with a validation error instead of crowning the
+    // first option "Winner" at 0% and persisting the junk record.
+    // One carve-out, deliberately: a score supplied as TEXT is the
+    // macro's shipped degrade-graceful contract (non-numeric scores
+    // clamp to 0 and the run still answers finitely — pinned by
+    // ethics-lens-macros), so a run whose only scores are text-typed
+    // keeps that behaviour; absent or numeric-zero scores refuse.
+    const anyScore = scored.some((o) => o.breakdown.some((b) => b.raw > 0));
+    if (!anyScore) {
+      const anyTextScore = options.some((o) =>
+        normCriteria.some((c) => typeof o.scores?.[c.name] === "string"));
+      if (!anyTextScore) return { ok: false, error: "score at least one option against a criterion first — a matrix with no scores has no winner" };
+    }
+
     scored.sort((a, b) => b.total - a.total);
 
     const st = getEthicsState();
