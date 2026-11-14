@@ -171,8 +171,18 @@ export default function registerGhostHuntMacros(register) {
          LIMIT ?
       `).all(Math.min(200, Math.max(1, Number(limit) || 30)));
 
+      // World filter: a row stamped with a worldId belongs to that world
+      // only. A row WITHOUT one is platform-global — the drift_alerts
+      // producer (drift-monitor, wired through the lattice orchestrator)
+      // measures platform-wide emergent drift, which is not measured in
+      // any single world, so its rows carry no worldId and read in every
+      // world. Stamping them with a world they were not measured in
+      // would invent the semantics instead of serving them.
       let residues = worldId
-        ? rows.filter(r => parseContext(r).worldId === worldId)
+        ? rows.filter(r => {
+            const w = parseContext(r).worldId;
+            return !w || w === worldId;
+          })
         : rows;
       if (severity) residues = residues.filter(r => r.severity === severity);
       if (driftType) residues = residues.filter(r => r.drift_type === driftType);

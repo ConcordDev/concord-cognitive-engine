@@ -63,6 +63,25 @@ export async function runPeriodicDriftScan({ db: _db, state: _state, tickCount: 
     return { ok: false, reason: "scan_threw", error: err?.message };
   }
 
+  // Producer: persist this scan's alerts into drift_alerts (migration 316
+  // named this orchestrator the table's persistence target; until now the
+  // alerts lived only in the monitor's in-memory store, so every SQL reader
+  // — ghost-hunt residues, patterns, news — read an ever-empty table).
+  // Best-effort like every bridge here: a persistence failure is logged and
+  // named in the return, never thrown into the heartbeat.
+  let persisted = null;
+  try {
+    const db = _db || _STATE_REF?.db || globalThis.__concordDb || null;
+    if (db && typeof mod.persistDriftAlerts === "function" && Array.isArray(scan?.alerts)) {
+      persisted = mod.persistDriftAlerts(db, scan.alerts);
+      if (persisted && !persisted.ok) {
+        try { logger.warn("lattice-orchestrator", "drift_persist_failed", { reason: persisted.reason }); } catch { /* ignore */ }
+      }
+    }
+  } catch (err) {
+    try { logger.debug("lattice-orchestrator", "drift_persist_threw", { error: err?.message }); } catch { /* ignore */ }
+  }
+
   // Bridge: route HIGH/CRITICAL findings to HLR for a resolution attempt.
   // Also emits a `world:drift-alert` socket event so the frontend
   // moodboard tints the world based on the drift level (Phase 2 idea
@@ -161,7 +180,7 @@ export async function runPeriodicDriftScan({ db: _db, state: _state, tickCount: 
     }
   } catch { /* bridge best-effort */ }
 
-  return { ok: true, scan };
+  return { ok: true, scan, persisted };
 }
 
 // ── Breakthrough cluster research pass ─────────────────────────────────────
