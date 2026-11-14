@@ -10,7 +10,7 @@
 import { useCallback, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import {
-  Plus, Trash2, Loader2, Wrench, ChevronDown, ChevronRight, History,
+  Plus, Trash2, Loader2, Wrench, ChevronDown, ChevronRight, History, Pencil,
 } from 'lucide-react';
 import type { Pain } from './PainBoard';
 
@@ -49,6 +49,8 @@ export function InterventionTracker({
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [editingIv, setEditingIv] = useState<string | null>(null);
+  const [ivForm, setIvForm] = useState({ title: '', description: '', owner: '' });
   const [draft, setDraft] = useState({ title: '', description: '', painId: '', owner: '' });
 
   const run = useCallback(async (action: string, input: Record<string, unknown>) => {
@@ -172,6 +174,33 @@ export function InterventionTracker({
                 </div>
                 {open && (
                   <div className="border-t border-white/10 p-3 space-y-3">
+                    {editingIv !== iv.id ? (
+                      <button type="button"
+                        onClick={() => { setEditingIv(iv.id); setIvForm({ title: iv.title, description: iv.description || '', owner: iv.owner || '' }); }}
+                        aria-label={`Edit intervention ${iv.title}`}
+                        className="flex items-center gap-1 px-2 py-1 rounded bg-white/5 border border-white/10 text-xs text-gray-200 hover:bg-white/10">
+                        <Pencil className="w-3 h-3" /> Edit details
+                      </button>
+                    ) : (
+                      <div className="space-y-2 rounded-lg bg-white/[0.02] border border-white/10 p-2.5">
+                        <input value={ivForm.title} onChange={(e) => setIvForm({ ...ivForm, title: e.target.value })}
+                          aria-label="Edit intervention title" placeholder="Title"
+                          className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-sm text-gray-100" />
+                        <textarea value={ivForm.description} onChange={(e) => setIvForm({ ...ivForm, description: e.target.value })}
+                          aria-label="Edit intervention description" placeholder="Description" rows={2}
+                          className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-xs text-gray-200" />
+                        <input value={ivForm.owner} onChange={(e) => setIvForm({ ...ivForm, owner: e.target.value })}
+                          aria-label="Edit intervention owner" placeholder="Owner"
+                          className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-xs text-gray-200" />
+                        <div className="flex gap-2">
+                          <button type="button" disabled={!ivForm.title.trim()}
+                            onClick={async () => { const ok = await run('intervention-update', { id: iv.id, ...ivForm }); if (ok !== false) setEditingIv(null); }}
+                            className="px-2.5 py-1 rounded bg-neon-cyan/20 text-neon-cyan text-xs hover:bg-neon-cyan/30 disabled:opacity-40">Save changes</button>
+                          <button type="button" onClick={() => setEditingIv(null)}
+                            className="px-2.5 py-1 rounded bg-white/5 border border-white/10 text-xs text-gray-300 hover:bg-white/10">Cancel</button>
+                        </div>
+                      </div>
+                    )}
                     {iv.description && <p className="text-xs text-gray-400">{iv.description}</p>}
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-gray-400">Progress</span>

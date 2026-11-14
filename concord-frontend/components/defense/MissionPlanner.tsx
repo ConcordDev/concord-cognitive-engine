@@ -9,7 +9,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { TimelineView, type TimelineEvent } from '@/components/viz';
 import { lensRun } from '@/lib/api/client';
-import { Plus, Loader2, ListChecks, AlertTriangle, Activity } from 'lucide-react';
+import { Plus, Loader2, ListChecks, AlertTriangle, Activity, Pencil } from 'lucide-react';
 import { ConfirmDeleteButton } from './ConfirmDeleteButton';
 
 interface MissionTask {
@@ -102,6 +102,27 @@ export function MissionPlanner() {
     }
     setBusy(false);
   }, [name, phase, owner, duration, dependsOn, refresh]);
+
+  // FIX-defense-003: tasks gain an in-place edit (name / phase /
+  // duration) through the existing mission-task-update verb.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', phase: 'shaping' as typeof PHASES[number], duration: '24' });
+  const saveEdit = useCallback(async (task: MissionTask) => {
+    if (!editForm.name.trim()) return;
+    setBusy(true);
+    setError(null);
+    const r = await lensRun('defense', 'mission-task-update', {
+      id: task.id, name: editForm.name.trim(), phase: editForm.phase,
+      durationHours: Number(editForm.duration),
+    });
+    if (r.data?.ok) {
+      setEditingId(null);
+      await refresh();
+    } else {
+      setError(r.data?.error || 'Failed to update task');
+    }
+    setBusy(false);
+  }, [editForm, refresh]);
 
   const cycleStatus = useCallback(async (task: MissionTask) => {
     const idx = STATUSES.indexOf(task.status);
@@ -211,12 +232,13 @@ export function MissionPlanner() {
             {tasks.map((t) => (
               <div
                 key={t.id}
-                className={`flex items-center justify-between rounded border px-2.5 py-1.5 ${
+                className={`rounded border px-2.5 py-1.5 ${
                   criticalSet.has(t.id)
                     ? 'border-amber-500/40 bg-amber-500/5'
                     : 'border-zinc-800 bg-zinc-900/60'
                 }`}
               >
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 min-w-0">
                   <button
                     onClick={() => cycleStatus(t)}
@@ -241,12 +263,44 @@ export function MissionPlanner() {
                     <span className="text-[10px] text-amber-400 shrink-0">★ critical</span>
                   )}
                 </div>
-                <ConfirmDeleteButton
-                  ariaLabel="Delete task"
-                  itemLabel={`task "${t.name}"`}
-                  disabled={busy}
-                  onConfirm={() => removeTask(t)}
-                />
+                <span className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => {
+                      setEditingId(editingId === t.id ? null : t.id);
+                      setEditForm({ name: t.name, phase: t.phase, duration: String(t.durationHours) });
+                    }}
+                    disabled={busy}
+                    className="text-zinc-500 hover:text-zinc-200 disabled:opacity-50"
+                    title="Edit task" aria-label={`Edit task ${t.name}`}
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                  <ConfirmDeleteButton
+                    ariaLabel="Delete task"
+                    itemLabel={`task "${t.name}"`}
+                    disabled={busy}
+                    onConfirm={() => removeTask(t)}
+                  />
+                </span>
+              </div>
+              {editingId === t.id && (
+                <div className="flex flex-wrap gap-2 mt-2 border-t border-zinc-800 pt-2">
+                  <input value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+                    aria-label="Edit task name" placeholder="Task name"
+                    className="flex-1 min-w-32 rounded bg-zinc-900 border border-zinc-700 px-2 py-1 text-xs text-white" />
+                  <select value={editForm.phase} onChange={(e) => setEditForm((f) => ({ ...f, phase: e.target.value as typeof PHASES[number] }))}
+                    aria-label="Edit task phase"
+                    className="rounded bg-zinc-900 border border-zinc-700 px-2 py-1 text-xs text-white">
+                    {PHASES.map((p) => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                  <input type="number" value={editForm.duration} onChange={(e) => setEditForm((f) => ({ ...f, duration: e.target.value }))}
+                    aria-label="Edit task duration hours" placeholder="Hours"
+                    className="w-20 rounded bg-zinc-900 border border-zinc-700 px-2 py-1 text-xs text-white" />
+                  <button onClick={() => saveEdit(t)} disabled={!editForm.name.trim() || busy}
+                    className="rounded bg-amber-600 hover:bg-amber-500 px-2.5 py-1 text-xs font-medium text-white disabled:opacity-50">Save</button>
+                  <button onClick={() => setEditingId(null)} className="text-xs text-zinc-400 px-1.5">Cancel</button>
+                </div>
+              )}
               </div>
             ))}
             {tasks.length === 0 && (

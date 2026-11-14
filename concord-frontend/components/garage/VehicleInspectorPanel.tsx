@@ -12,7 +12,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Copy, Check, ExternalLink, X, Trash2, Loader2 } from 'lucide-react';
+import { Copy, Check, ExternalLink, X, Trash2, Loader2, Pencil } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
 import { StatusDot } from '@/components/ui/StatusDot';
@@ -25,6 +25,8 @@ export interface InspectedVehicle {
   id: string;
   world_id: string;
   kind: string;
+  name?: string;
+  spec?: string;
   owner_kind: string;
   owner_id?: string;
   ownerDisplay?: string;
@@ -65,6 +67,30 @@ export function VehicleInspectorPanel({
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const despawnFeedback = useMacroDispatchFeedback<GarageDespawnResult>();
+  // FIX-garage-001: owner edit state (name / spec / capacity).
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ name: '', spec: '', capacity: '2' });
+  const [editBusy, setEditBusy] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  const saveEdit = async () => {
+    setEditBusy(true);
+    setEditError(null);
+    const { data: res } = await lensRun<{ vehicle: InspectedVehicle }>('garage', 'update', {
+      vehicleId,
+      name: editForm.name.trim(),
+      spec: editForm.spec.trim(),
+      capacity: Number(editForm.capacity) || undefined,
+    });
+    setEditBusy(false);
+    if (!res.ok || !res.result) {
+      setEditError((res as { reason?: string }).reason || res.error || 'update failed');
+      return;
+    }
+    const updated = (res.result as { vehicle?: InspectedVehicle }).vehicle;
+    if (updated) setData((prev) => (prev ? { ...prev, vehicle: { ...prev.vehicle, ...updated } } : prev));
+    setEditing(false);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -145,6 +171,18 @@ export function VehicleInspectorPanel({
           </div>
 
           <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5">
+            <dt className={ds.caption}>Name</dt>
+            <dd className={cn(ds.monoXs, 'text-right truncate')}>
+              {data.vehicle.name || <span className="text-gray-500 italic">unnamed</span>}
+            </dd>
+
+            {data.vehicle.spec ? (
+              <>
+                <dt className={ds.caption}>Spec</dt>
+                <dd className={cn(ds.monoXs, 'text-right')}>{data.vehicle.spec}</dd>
+              </>
+            ) : null}
+
             <dt className={ds.caption}>Owner</dt>
             <dd className={cn(ds.monoXs, 'text-right truncate')}>
               {data.vehicle.ownerDisplay
@@ -211,6 +249,50 @@ export function VehicleInspectorPanel({
               Open world
             </Link>
           </div>
+          {data.vehicle.isMine && !editing && (
+            <button
+              type="button"
+              onClick={() => {
+                setEditForm({ name: data.vehicle.name || '', spec: data.vehicle.spec || '', capacity: String(data.vehicle.capacity) });
+                setEditError(null);
+                setEditing(true);
+              }}
+              className={cn(ds.btnSecondary, 'w-full text-xs py-1.5 gap-1.5')}
+            >
+              <Pencil className="h-3.5 w-3.5" aria-hidden="true" /> Edit vehicle
+            </button>
+          )}
+          {data.vehicle.isMine && editing && (
+            <div className="space-y-2 rounded-lg border border-lattice-border p-2.5">
+              <div>
+                <label htmlFor="garage-edit-name" className={ds.caption}>Name</label>
+                <input id="garage-edit-name" value={editForm.name} maxLength={80}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  className={cn(ds.select, 'w-full py-1.5 text-sm')} />
+              </div>
+              <div>
+                <label htmlFor="garage-edit-spec" className={ds.caption}>Spec</label>
+                <input id="garage-edit-spec" value={editForm.spec} maxLength={280}
+                  onChange={(e) => setEditForm({ ...editForm, spec: e.target.value })}
+                  className={cn(ds.select, 'w-full py-1.5 text-sm')} />
+              </div>
+              <div>
+                <label htmlFor="garage-edit-capacity" className={ds.caption}>Capacity (seats)</label>
+                <input id="garage-edit-capacity" type="number" min={1} max={12} value={editForm.capacity}
+                  onChange={(e) => setEditForm({ ...editForm, capacity: e.target.value })}
+                  className={cn(ds.select, 'w-full py-1.5 text-sm')} />
+              </div>
+              {editError && <p className="text-xs text-red-300">{editError}</p>}
+              <div className="flex gap-2">
+                <button type="button" onClick={saveEdit} disabled={editBusy}
+                  className={cn(ds.btnPrimary, 'flex-1 text-xs py-1.5')}>
+                  {editBusy ? 'Saving…' : 'Save changes'}
+                </button>
+                <button type="button" onClick={() => setEditing(false)} disabled={editBusy}
+                  className={cn(ds.btnSecondary, 'flex-1 text-xs py-1.5')}>Cancel</button>
+              </div>
+            </div>
+          )}
           {data.vehicle.isMine && (
             <div className="pt-1">
               <button

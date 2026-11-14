@@ -8,7 +8,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { lensRun } from '@/lib/api/client';
-import { Plus, Loader2, AlertTriangle, ChevronUp, ChevronDown, ShieldAlert } from 'lucide-react';
+import { Plus, Loader2, AlertTriangle, ChevronUp, ChevronDown, ShieldAlert, Pencil } from 'lucide-react';
 import { ConfirmDeleteButton } from './ConfirmDeleteButton';
 
 interface Threat {
@@ -110,6 +110,27 @@ export function ThreatBoard() {
     else setError(r.data?.error || 'Failed to escalate threat');
     setBusy(false);
   }, [refresh]);
+
+  // FIX-defense-003: threats gain an in-place edit (name / category /
+  // region / note) through threat-update.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', category: '', region: '', note: '' });
+  const saveEdit = useCallback(async (threat: Threat) => {
+    if (!editForm.name.trim()) return;
+    setBusy(true);
+    setError(null);
+    const r = await lensRun('defense', 'threat-update', {
+      id: threat.id, name: editForm.name.trim(), category: editForm.category,
+      region: editForm.region, note: editForm.note,
+    });
+    if (r.data?.ok) {
+      setEditingId(null);
+      await refresh();
+    } else {
+      setError(r.data?.error || 'Failed to update threat');
+    }
+    setBusy(false);
+  }, [editForm, refresh]);
 
   const setStatus = useCallback(async (threat: Threat) => {
     const idx = STATUSES.indexOf(threat.status);
@@ -213,6 +234,17 @@ export function ThreatBoard() {
                   >
                     <ChevronDown className="w-3.5 h-3.5" />
                   </button>
+                  <button
+                    onClick={() => {
+                      setEditingId(editingId === t.id ? null : t.id);
+                      setEditForm({ name: t.name, category: t.category || '', region: t.region || '', note: t.note || '' });
+                    }}
+                    disabled={busy}
+                    aria-label={`Edit threat ${t.name}`}
+                    className="p-1 text-zinc-400 hover:text-zinc-100 disabled:opacity-30"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
                   <ConfirmDeleteButton
                     ariaLabel="Delete threat"
                     itemLabel={`threat "${t.name}"`}
@@ -221,6 +253,25 @@ export function ThreatBoard() {
                   />
                 </div>
               </div>
+              {editingId === t.id && (
+                <div className="flex flex-wrap gap-2 mt-2 border-t border-zinc-700/50 pt-2">
+                  <input value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+                    aria-label="Edit threat name" placeholder="Name"
+                    className="flex-1 min-w-32 rounded bg-zinc-900 border border-zinc-700 px-2 py-1 text-xs text-white" />
+                  <input value={editForm.category} onChange={(e) => setEditForm((f) => ({ ...f, category: e.target.value }))}
+                    aria-label="Edit threat category" placeholder="Category"
+                    className="w-28 rounded bg-zinc-900 border border-zinc-700 px-2 py-1 text-xs text-white" />
+                  <input value={editForm.region} onChange={(e) => setEditForm((f) => ({ ...f, region: e.target.value }))}
+                    aria-label="Edit threat region" placeholder="Region"
+                    className="w-28 rounded bg-zinc-900 border border-zinc-700 px-2 py-1 text-xs text-white" />
+                  <input value={editForm.note} onChange={(e) => setEditForm((f) => ({ ...f, note: e.target.value }))}
+                    aria-label="Edit threat note" placeholder="Note"
+                    className="flex-1 min-w-32 rounded bg-zinc-900 border border-zinc-700 px-2 py-1 text-xs text-white" />
+                  <button onClick={() => saveEdit(t)} disabled={!editForm.name.trim() || busy}
+                    className="rounded bg-red-600 hover:bg-red-500 px-2.5 py-1 text-xs font-medium text-white disabled:opacity-50">Save</button>
+                  <button onClick={() => setEditingId(null)} className="text-xs text-zinc-400 px-1.5">Cancel</button>
+                </div>
+              )}
               {t.note && <p className="text-[10px] text-zinc-400 mt-1">{t.note}</p>}
               {t.history.length > 1 && (
                 <p className="text-[10px] text-zinc-400 mt-1">

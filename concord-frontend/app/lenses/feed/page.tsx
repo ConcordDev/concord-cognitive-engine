@@ -40,7 +40,7 @@ const VIEWS: { id: FeedView; label: string; keys: string; hint: string; icon: ty
 export default function FeedLensPage() {
   useLensNav('feed');
   useLensIdentity('feed');
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const [view, setView] = useState<FeedView>('for-you');
 
   const compose = useCallback(() => {
@@ -102,7 +102,7 @@ export default function FeedLensPage() {
 
         <div className="flex min-w-0">
           {isTimeline(view) && <FeedTimelinePanel tab={view} onDiscover={() => setView('trending')} />}
-          {view === 'profile' && <FeedProfilePanel userId={user?.id || null} onNavigateToUser={() => setView('trending')} />}
+          {view === 'profile' && <FeedProfilePanel userId={user?.id || null} loading={authLoading} onNavigateToUser={() => setView('trending')} />}
           {view === 'tools' && <FeedToolsView />}
           {view === 'hn' && (
             <div className="min-w-0 max-w-3xl flex-1">

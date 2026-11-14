@@ -16,7 +16,8 @@ import { lensRun } from '@/lib/api/client';
 import { useDebugProject } from './ProjectContext';
 import { TimelineView } from '@/components/viz';
 import type { TimelineEvent } from '@/components/viz';
-import { CheckCircle, GitBranch, Loader2, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { CheckCircle, GitBranch, Loader2, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface Release {
   id: string;
@@ -87,6 +88,29 @@ export function ReleaseTracker() {
     },
     [load]
   );
+
+  // FIX-debug-006: releases could not be edited at all.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ version: '', environment: '', notes: '' });
+  const startEdit = (rel: Release) => {
+    setEditingId(rel.id);
+    setEditForm({ version: rel.version, environment: rel.environment, notes: rel.notes || '' });
+    setError(null);
+  };
+  const saveEdit = useCallback(async () => {
+    if (!editingId) return;
+    if (!editForm.version.trim()) { setError('Version is required'); return; }
+    setBusy(true);
+    const r = await lensRun('debug', 'release-update', {
+      projectId, id: editingId,
+      version: editForm.version.trim(),
+      environment: editForm.environment.trim() || undefined,
+      notes: editForm.notes,
+    });
+    setBusy(false);
+    if (r.data?.ok) { setEditingId(null); load(); }
+    else setError(r.data?.error || 'Release update failed');
+  }, [editingId, editForm, load, projectId]);
 
   const timeline: TimelineEvent[] = releases.map((rel) => ({
     id: rel.id,
@@ -203,13 +227,37 @@ export function ReleaseTracker() {
                   {new Date(rel.deployedAt).toLocaleString()}
                 </span>
                 <button
-                  onClick={() => remove(rel.id)}
-                  className="p-1 rounded text-red-400 hover:bg-red-400/10"
-                  title="Delete"
+                  onClick={() => startEdit(rel)}
+                  className="p-1 rounded text-gray-400 hover:bg-gray-400/10"
+                  title="Edit"
+                  aria-label={`Edit release ${rel.version}`}
                 >
-                  <Trash2 className="w-3 h-3" />
+                  <Pencil className="w-3 h-3" />
                 </button>
+                {/* FIX-debug-006: was an immediate delete. */}
+                <StickyDeleteConfirm
+                  onConfirm={() => remove(rel.id)}
+                  armLabel={<Trash2 className="w-3 h-3" />}
+                  armAriaLabel="Delete"
+                  confirmAriaLabel="Confirm delete"
+                  cancelAriaLabel="Cancel delete"
+                  className="p-1 rounded text-red-400 hover:bg-red-400/10"
+                />
               </div>
+              {editingId === rel.id && (
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  <input aria-label="Edit release version" value={editForm.version} onChange={(e) => setEditForm({ ...editForm, version: e.target.value })}
+                    className="w-28 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-100" />
+                  <input aria-label="Edit release environment" value={editForm.environment} onChange={(e) => setEditForm({ ...editForm, environment: e.target.value })}
+                    className="w-28 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-100" />
+                  <input aria-label="Edit release notes" value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} placeholder="Notes"
+                    className="min-w-[140px] flex-1 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-100" />
+                  <button onClick={() => void saveEdit()} disabled={busy}
+                    className="rounded bg-emerald-600/80 px-2 py-1 text-[11px] font-medium text-white hover:bg-emerald-500 disabled:opacity-50">Save</button>
+                  <button onClick={() => setEditingId(null)}
+                    className="rounded border border-zinc-700 px-2 py-1 text-[11px] text-zinc-300 hover:border-zinc-500">Cancel</button>
+                </div>
+              )}
               {rel.notes && <p className="text-xs text-gray-400 mt-1">{rel.notes}</p>}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mt-2">
                 <div className="text-center">

@@ -4,7 +4,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
-import { Layers, Plus, Loader2, Trash2, RotateCcw, CheckCircle2 } from 'lucide-react';
+import { Layers, Plus, Loader2, Trash2, RotateCcw, CheckCircle2, Pencil } from 'lucide-react';
 
 interface ReviewCard {
   id: string;
@@ -103,6 +103,49 @@ export function SpacedRepetitionPanel() {
     } finally { setBusy(null); }
   };
 
+  // FIX-metalearning-003: cards gain an edit path (srsUpdateCard).
+  const [editCardId, setEditCardId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ front: '', back: '', topic: '' });
+  const saveCard = async (cardId: string) => {
+    if (!editForm.front.trim()) return;
+    setBusy(cardId);
+    try {
+      const { data: r } = await lensRun<any>('metalearning', 'srsUpdateCard', {
+        id: cardId, front: editForm.front.trim(), back: editForm.back, topic: editForm.topic,
+      });
+      if (r?.ok === false) { setErr(r.error || 'Update failed'); return; }
+      setEditCardId(null);
+      await refresh();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Update failed');
+    } finally { setBusy(null); }
+  };
+  const editControl = (c: { id: string; front: string; back: string; topic: string }) => (
+    <button aria-label={`Edit card ${c.front}`} disabled={busy === c.id}
+      onClick={() => {
+        setEditCardId(editCardId === c.id ? null : c.id);
+        setEditForm({ front: c.front, back: c.back || '', topic: c.topic || '' });
+      }}
+      className="text-gray-600 hover:text-gray-200 disabled:opacity-50 flex-shrink-0">
+      <Pencil className="w-3.5 h-3.5" />
+    </button>
+  );
+  const editFormFor = (cardId: string) => editCardId !== cardId ? null : (
+    <div className="mt-2 space-y-2 border-t border-white/5 pt-2">
+      <input value={editForm.front} onChange={(e) => setEditForm((f) => ({ ...f, front: e.target.value }))}
+        aria-label="Edit card front" placeholder="Prompt / question (front)" className="input-lattice w-full text-sm" />
+      <textarea value={editForm.back} onChange={(e) => setEditForm((f) => ({ ...f, back: e.target.value }))}
+        aria-label="Edit card back" placeholder="Answer (back)" rows={2} className="input-lattice w-full text-sm" />
+      <div className="flex gap-2">
+        <input value={editForm.topic} onChange={(e) => setEditForm((f) => ({ ...f, topic: e.target.value }))}
+          aria-label="Edit card topic" placeholder="Topic" className="input-lattice flex-1 text-sm" />
+        <button onClick={() => saveCard(cardId)} disabled={!editForm.front.trim() || busy === cardId}
+          className="btn-neon text-sm px-3 disabled:opacity-50">Save</button>
+        <button onClick={() => setEditCardId(null)} className="text-xs text-gray-400 px-2">Cancel</button>
+      </div>
+    </div>
+  );
+
   // Two-step delete (F12): the first click arms an in-place confirm
   // naming the card; only the confirm calls the delete. Used by both
   // the due list and the UPCOMING list (graded cards included, F11).
@@ -175,8 +218,12 @@ export function SpacedRepetitionPanel() {
                     {(c.overdueDays ?? 0) > 0 && ` · ${c.overdueDays}d overdue`}
                   </p>
                 </div>
-                {deleteControl(c.id, c.front)}
+                <span className="flex items-start gap-1.5">
+                  {editControl(c)}
+                  {deleteControl(c.id, c.front)}
+                </span>
               </div>
+              {editFormFor(c.id)}
               {revealed[c.id] ? (
                 <>
                   {c.back && <p className="text-xs text-gray-300 mt-2 bg-lattice-deep rounded p-2">{c.back}</p>}
@@ -208,10 +255,14 @@ export function SpacedRepetitionPanel() {
           </p>
           <div className="space-y-1 max-h-32 overflow-y-auto">
             {upcoming.map((u) => (
-              <div key={u.id} className="flex justify-between items-center text-xs text-gray-400 gap-2">
-                <span className="truncate flex-1">{u.front}</span>
-                <span className="text-gray-600 flex-shrink-0">in {u.dueInDays}d</span>
-                {deleteControl(u.id, u.front)}
+              <div key={u.id} className="text-xs text-gray-400">
+                <div className="flex justify-between items-center gap-2">
+                  <span className="truncate flex-1">{u.front}</span>
+                  <span className="text-gray-600 flex-shrink-0">in {u.dueInDays}d</span>
+                  {editControl(u)}
+                  {deleteControl(u.id, u.front)}
+                </div>
+                {editFormFor(u.id)}
               </div>
             ))}
           </div>

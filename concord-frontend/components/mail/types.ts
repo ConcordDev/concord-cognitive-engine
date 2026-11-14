@@ -23,6 +23,8 @@ export interface MailRow {
   readAt?: number;
   claimedAt?: number;
   declinedAt?: number;
+  starredAt?: number | null;
+  archivedAt?: number | null;
   parentId?: string | null;
   expiresAt: number;
   attachment_dtu_ids: string[];

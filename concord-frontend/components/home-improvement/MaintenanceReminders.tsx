@@ -5,7 +5,7 @@ import { lensRun } from '@/lib/api/client';
 import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import {
   CalendarClock, Plus, Trash2, Loader2, CheckCircle2,
-  AlertTriangle, Snowflake, Sun, Leaf, Flower2,
+  AlertTriangle, Snowflake, Sun, Leaf, Flower2, Pencil,
 } from 'lucide-react';
 
 interface Reminder {
@@ -91,6 +91,21 @@ export function MaintenanceReminders() {
     setBusy(true);
     const { data } = await lensRun(DOMAIN, 'maintenance-delete', { id });
     if (data.ok) await loadList();
+    setBusy(false);
+  };
+
+  // FIX-home-improvement-011: reminders gain an edit path (maintenance-update).
+  const [editingTask, setEditingTask] = useState<string | null>(null);
+  const [taskEdit, setTaskEdit] = useState({ task: '', season: 'any', intervalDays: '365', dueDate: '' });
+  const saveTask = async (id: string) => {
+    if (!taskEdit.task.trim()) return;
+    setBusy(true); setError(null);
+    const { data } = await lensRun(DOMAIN, 'maintenance-update', {
+      id, task: taskEdit.task, season: taskEdit.season,
+      intervalDays: Number(taskEdit.intervalDays) || undefined, dueDate: taskEdit.dueDate || undefined,
+    });
+    if (data.ok) { setEditingTask(null); await loadList(); }
+    else setError(data.error || 'Failed to update reminder');
     setBusy(false);
   };
 
@@ -194,7 +209,8 @@ export function MaintenanceReminders() {
           {reminders.map((r) => {
             const SIcon = SEASON_ICON[r.season];
             return (
-              <div key={r.id} className={`panel p-3 flex items-center gap-3 ${r.overdue ? 'border-red-400/40' : ''}`}>
+              <div key={r.id} className={`panel p-3 space-y-2 ${r.overdue ? 'border-red-400/40' : ''}`}>
+              <div className="flex items-center gap-3">
                 <SIcon className={`w-4 h-4 ${SEASON_CLR[r.season]}`} />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-white truncate">{r.task}</p>
@@ -212,7 +228,38 @@ export function MaintenanceReminders() {
                 <button onClick={() => complete(r.id)} disabled={busy} className="text-neon-green hover:text-green-300 p-1" title="Mark done & reschedule">
                   <CheckCircle2 className="w-4 h-4" />
                 </button>
+                <button type="button" aria-label={`Edit reminder ${r.task}`} disabled={busy}
+                  onClick={() => {
+                    setEditingTask(editingTask === r.id ? null : r.id);
+                    setTaskEdit({ task: r.task, season: r.season, intervalDays: String(r.intervalDays), dueDate: r.dueDate || '' });
+                  }}
+                  className="text-gray-400 hover:text-gray-100 p-1">
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
                 <StickyDeleteConfirm onConfirm={() => remove(r.id)} armAriaLabel="Delete" confirmAriaLabel="Confirm delete" className="text-gray-400 hover:text-red-400 p-1" armLabel={<Trash2 className="w-3.5 h-3.5" />} disabled={busy} />
+              </div>
+              {editingTask === r.id && (
+                <div className="space-y-2 border-t border-lattice-border pt-2">
+                  <input value={taskEdit.task} onChange={(e) => setTaskEdit((f) => ({ ...f, task: e.target.value }))}
+                    aria-label="Edit reminder task" placeholder="Task" className="input-lattice w-full" />
+                  <div className="grid grid-cols-3 gap-2">
+                    <select value={taskEdit.season} onChange={(e) => setTaskEdit((f) => ({ ...f, season: e.target.value }))}
+                      aria-label="Edit reminder season" className="input-lattice">
+                      {['spring', 'summer', 'fall', 'winter', 'any'].map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                    <input value={taskEdit.intervalDays} onChange={(e) => setTaskEdit((f) => ({ ...f, intervalDays: e.target.value }))}
+                      aria-label="Edit reminder interval days" type="number" min={1} className="input-lattice" />
+                    <input value={taskEdit.dueDate} onChange={(e) => setTaskEdit((f) => ({ ...f, dueDate: e.target.value }))}
+                      aria-label="Edit reminder due date" type="date" className="input-lattice" />
+                  </div>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => saveTask(r.id)} disabled={busy || !taskEdit.task.trim()}
+                      className="btn-primary px-3 py-1.5 text-xs disabled:opacity-40">Save changes</button>
+                    <button type="button" onClick={() => setEditingTask(null)}
+                      className="btn-secondary px-3 py-1.5 text-xs">Cancel</button>
+                  </div>
+                </div>
+              )}
               </div>
             );
           })}

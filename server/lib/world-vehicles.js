@@ -31,6 +31,8 @@ export function spawnVehicle(db, {
   fare_cc = null,
   route_id = null,
   position = null,
+  name = "",
+  spec = "",
 } = {}) {
   if (!db || !worldId || !kind) return { ok: false, reason: "missing_inputs" };
   if (!["cart", "boat", "canal_taxi"].includes(kind)) return { ok: false, reason: "bad_kind" };
@@ -42,12 +44,14 @@ export function spawnVehicle(db, {
   const fare = Number.isFinite(fare_cc) ? Math.max(0, fare_cc) : DEFAULT_FARE_CC[kind];
   const pos = position || { x: 0, y: 0, z: 0 };
 
+  const cleanName = String(name || "").slice(0, 80);
+  const cleanSpec = String(spec || "").slice(0, 280);
   try {
     db.prepare(`
-      INSERT INTO world_vehicles (id, world_id, kind, owner_kind, owner_id, capacity, fare_cc, route_id, pos_x, pos_y, pos_z)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(id, worldId, kind, ownerKind, ownerId || "", cap, fare, route_id, pos.x || 0, pos.y || 0, pos.z || 0);
-    return { ok: true, vehicleId: id, kind, capacity: cap, fare_cc: fare };
+      INSERT INTO world_vehicles (id, world_id, kind, owner_kind, owner_id, capacity, fare_cc, route_id, pos_x, pos_y, pos_z, name, spec)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(id, worldId, kind, ownerKind, ownerId || "", cap, fare, route_id, pos.x || 0, pos.y || 0, pos.z || 0, cleanName, cleanSpec);
+    return { ok: true, vehicleId: id, kind, capacity: cap, fare_cc: fare, name: cleanName, spec: cleanSpec };
   } catch (err) {
     try { logger.warn?.("vehicle_spawn_failed", { error: err?.message }); } catch { /* noop */ }
     return { ok: false, reason: "insert_failed" };
@@ -59,7 +63,7 @@ export function getVehicle(db, vehicleId) {
   try {
     return db.prepare(`
       SELECT id, world_id, kind, owner_kind, owner_id, capacity, fare_cc, route_id,
-             pos_x, pos_y, pos_z, heading, condition_pct
+             pos_x, pos_y, pos_z, heading, condition_pct, name, spec
       FROM world_vehicles WHERE id = ?
     `).get(vehicleId) || null;
   } catch {
@@ -72,7 +76,7 @@ export function listVehiclesInWorld(db, worldId, { kind = null } = {}) {
   try {
     // Wave 7b — include pos_y + heading so the in-world VehicleRenderer can place
     // + orient each vehicle (was pos_x/pos_z only).
-    const cols = `id, world_id, kind, owner_kind, capacity, fare_cc, pos_x, pos_y, pos_z, heading`;
+    const cols = `id, world_id, kind, owner_kind, capacity, fare_cc, pos_x, pos_y, pos_z, heading, name, spec`;
     const stmt = kind
       ? db.prepare(`SELECT ${cols} FROM world_vehicles WHERE world_id = ? AND kind = ? LIMIT 200`)
       : db.prepare(`SELECT ${cols} FROM world_vehicles WHERE world_id = ? LIMIT 200`);
@@ -187,6 +191,40 @@ export function moveVehicle(db, vehicleId, requesterKind, requesterId, { pos_x, 
  * Remove a vehicle. Only the owner may despawn it. Occupants are cleared
  * in the same transaction so a deleted hull can't keep riders.
  */
+/**
+ * updateVehicle — FIX-garage-001: the owner edits their vehicle's
+ * name / spec / capacity. Same ownership gate as despawnVehicle:
+ * the requester must be the vehicle's owner (kind + id). Operators
+ * are handled by the caller passing the owner's own kind/id only —
+ * there is deliberately no admin override here; an operator edits
+ * through the same owner path as any player vehicle they own.
+ */
+export function updateVehicle(db, vehicleId, requesterKind, requesterId, fields = {}) {
+  if (!db || !vehicleId || !requesterKind || !requesterId) return { ok: false, reason: "missing_inputs" };
+  const veh = getVehicle(db, vehicleId);
+  if (!veh) return { ok: false, reason: "vehicle_not_found" };
+  const isOwner = veh.owner_kind === requesterKind && veh.owner_id === requesterId;
+  if (!isOwner) return { ok: false, reason: "not_authorized" };
+  const sets = [];
+  const vals = [];
+  if (fields.name !== undefined) { sets.push("name = ?"); vals.push(String(fields.name || "").slice(0, 80)); }
+  if (fields.spec !== undefined) { sets.push("spec = ?"); vals.push(String(fields.spec || "").slice(0, 280)); }
+  if (fields.capacity !== undefined && fields.capacity !== null) {
+    const cap = Number(fields.capacity);
+    if (!Number.isFinite(cap)) return { ok: false, reason: "bad_capacity" };
+    sets.push("capacity = ?"); vals.push(Math.max(1, Math.min(12, Math.trunc(cap))));
+  }
+  if (!sets.length) return { ok: false, reason: "nothing_to_update" };
+  try {
+    const r = db.prepare(`UPDATE world_vehicles SET ${sets.join(", ")}, updated_at = unixepoch() WHERE id = ?`)
+      .run(...vals, vehicleId);
+    if (!r.changes) return { ok: false, reason: "vehicle_not_found" };
+    return { ok: true, vehicle: getVehicle(db, vehicleId) };
+  } catch (err) {
+    return { ok: false, reason: "update_failed", error: err?.message };
+  }
+}
+
 export function despawnVehicle(db, vehicleId, requesterKind, requesterId) {
   if (!db || !vehicleId || !requesterKind || !requesterId) return { ok: false, reason: "missing_inputs" };
   const veh = getVehicle(db, vehicleId);

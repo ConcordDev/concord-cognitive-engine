@@ -35,6 +35,8 @@ export function AutoMLPanel({ onUseModel }: { onUseModel?: (modelId: string) => 
   // registered datasets (ml.automl-run).
   const [datasets, setDatasets] = useState<Array<{ id: string; name: string }>>([]);
   const [runDatasetId, setRunDatasetId] = useState('');
+  // FIX-ml-002: the tracked record can be named at run time.
+  const [runName, setRunName] = useState('');
   const [running, setRunning] = useState(false);
   const [receipt, setReceipt] = useState<AutomlRunReceipt | null>(null);
   const [runError, setRunError] = useState<string | null>(null);
@@ -50,7 +52,7 @@ export function AutoMLPanel({ onUseModel }: { onUseModel?: (modelId: string) => 
   const runTemplate = async () => {
     if (!selected || !runDatasetId) return;
     setRunning(true); setRunError(null); setReceipt(null);
-    const r = await lensRun('ml', 'automl-run', { templateId: selected.id, datasetId: runDatasetId });
+    const r = await lensRun('ml', 'automl-run', { templateId: selected.id, datasetId: runDatasetId, name: runName.trim() || undefined });
     if (r.data?.ok && r.data.result) setReceipt((r.data.result as { run: AutomlRunReceipt }).run);
     else setRunError(r.data?.error || 'Run failed');
     setRunning(false);
@@ -148,6 +150,10 @@ export function AutoMLPanel({ onUseModel }: { onUseModel?: (modelId: string) => 
                     <option value="">Choose one of your registered datasets…</option>
                     {datasets.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
                   </select>
+                  <input value={runName} onChange={(e) => setRunName(e.target.value)}
+                    aria-label="Run name (optional)" placeholder="Run name (optional)"
+                    maxLength={160}
+                    className="flex-1 min-w-[160px] px-3 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm focus:border-neon-purple outline-none" />
                   <button onClick={runTemplate} disabled={!runDatasetId || running} className="btn-neon purple small disabled:opacity-50">
                     {running ? <Loader2 className="w-3 h-3 animate-spin inline" /> : 'Run configuration'}
                   </button>
@@ -158,7 +164,7 @@ export function AutoMLPanel({ onUseModel }: { onUseModel?: (modelId: string) => 
                 {runError && <p role="alert" className="text-sm text-red-400">{runError}</p>}
                 {receipt && (
                   <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-2">
-                    <p className="text-sm font-medium text-emerald-300">Run complete — {receipt.datasetName}</p>
+                    <p className="text-sm font-medium text-emerald-300">Configuration run complete — {receipt.datasetName}</p>
                     <ol className="space-y-1">
                       {receipt.steps.map((s, i) => (
                         <li key={i} className="text-xs text-zinc-300"><span className="text-emerald-400">✓</span> <span className="font-medium">{s.step}:</span> {s.detail}</li>

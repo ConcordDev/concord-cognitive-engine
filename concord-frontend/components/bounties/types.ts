@@ -48,7 +48,7 @@ export interface PlatformBounty {
   rewardCc: number;
   poolCc: number;
   paidCc: number;
-  status: 'open' | 'claimed' | 'in_review' | 'paid' | 'disputed';
+  status: 'open' | 'claimed' | 'in_review' | 'paid' | 'disputed' | 'cancelled';
   createdAt: string;
   updatedAt: string;
   deadline: string | null;
@@ -72,6 +72,7 @@ export const STATUS_STYLE: Record<string, string> = {
   in_review: 'bg-amber-500/15 text-amber-300 ring-amber-500/40',
   paid: 'bg-zinc-500/15 text-zinc-300 ring-zinc-500/40',
   disputed: 'bg-red-500/15 text-red-300 ring-red-500/40',
+  cancelled: 'bg-zinc-600/15 text-zinc-400 ring-zinc-500/40',
 };
 
 export const DIFFICULTY_STYLE: Record<string, string> = {

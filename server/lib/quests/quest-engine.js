@@ -109,6 +109,79 @@ export function getCompletedQuests(db, userId, worldId) {
 }
 
 /**
+ * Return the world catalog quests a player has NOT yet accepted — the
+ * "Available" set for the quests lens. Catalog rows stay 'available'
+ * for everyone (acceptQuest never flips them), so availability is
+ * per-player: no player_quests row for (user, world, quest).
+ */
+export function getAvailableQuests(db, userId, worldId) {
+  const rows = db.prepare(`
+    SELECT q.*
+    FROM world_quests q
+    LEFT JOIN player_quests pq
+      ON pq.quest_id = q.id AND pq.user_id = ? AND pq.world_id = ?
+    WHERE q.world_id = ? AND q.status = 'available' AND pq.id IS NULL
+    ORDER BY q.created_at DESC, q.id
+    LIMIT 50
+  `).all(userId, worldId, worldId);
+
+  return rows.map(q => ({
+    ...q,
+    objectives: db.prepare(
+      'SELECT * FROM quest_objectives WHERE quest_id = ? ORDER BY order_index'
+    ).all(q.id),
+    rewards: db.prepare(
+      'SELECT * FROM quest_rewards WHERE quest_id = ?'
+    ).all(q.id),
+  }));
+}
+
+/**
+ * Author a quest into the world catalog (the web posting path — an NPC
+ * need is the other author; see quest-emergence.js). The row is marked
+ * authored when the column exists so the procedural lifecycle (TTL
+ * expiry, NPC claims) leaves it alone, exactly like content/ quests.
+ * Objectives and the optional XP reward ride the same typed tables
+ * every other quest uses. Returns the row with objectives + rewards
+ * attached, in getActiveQuests' shape.
+ */
+export function createAuthoredQuest(db, { worldId, title, description, objectives, rewardXp }) {
+  const id = crypto.randomUUID();
+  const objectivesJson = objectives.map((o) => ({
+    id: crypto.randomUUID(),
+    description: o.description || "",
+    completed: false,
+    type: o.type,
+    target: o.target,
+    requiredCount: o.requiredCount ?? 1,
+  }));
+  const rewardJson = rewardXp > 0 ? JSON.stringify({ xp: rewardXp }) : "{}";
+  if (hasAuthoredColumn(db)) {
+    db.prepare(`
+      INSERT INTO world_quests (id, world_id, giver_npc_id, title, description, objectives_json, reward_json, authored)
+      VALUES (?, ?, NULL, ?, ?, ?, ?, 1)
+    `).run(id, worldId, title, description || null, JSON.stringify(objectivesJson), rewardJson);
+  } else {
+    db.prepare(`
+      INSERT INTO world_quests (id, world_id, giver_npc_id, title, description, objectives_json, reward_json)
+      VALUES (?, ?, NULL, ?, ?, ?, ?)
+    `).run(id, worldId, title, description || null, JSON.stringify(objectivesJson), rewardJson);
+  }
+  addQuestObjectives(db, id, objectives);
+  if (rewardXp > 0) addQuestRewards(db, id, [{ rewardType: "xp", amount: rewardXp }]);
+  const row = db.prepare(`SELECT * FROM world_quests WHERE id = ?`).get(id);
+  return {
+    ...row,
+    objectives: db.prepare(
+      'SELECT * FROM quest_objectives WHERE quest_id = ? ORDER BY order_index'
+    ).all(id),
+    rewards: db.prepare(
+      'SELECT * FROM quest_rewards WHERE quest_id = ?'
+    ).all(id),
+  };
+}
+
+/**
  * Return objective rows for a quest with current player progress merged in.
  */
 export function getQuestProgress(db, userId, worldId, questId) {

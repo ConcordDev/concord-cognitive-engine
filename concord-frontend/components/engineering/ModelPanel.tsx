@@ -36,16 +36,31 @@ export function ModelPanel() {
   const deleteBtn = (key: string, label: string, onDelete: () =>
     void) =>
     armedDelete === key ? (
-      <button
-        onClick={() => {
-          setArmedDelete(null);
-          onDelete();
+      <span
+        className="inline-flex items-center gap-1 whitespace-nowrap"
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') setArmedDelete(null);
         }}
-        className="px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 text-[10px] whitespace-nowrap"
-        aria-label={`Confirm delete ${label}`}
       >
-        Delete {label}?
-      </button>
+        <button
+          autoFocus
+          onClick={() => {
+            setArmedDelete(null);
+            onDelete();
+          }}
+          className="px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 text-[10px] whitespace-nowrap"
+          aria-label={`Confirm delete ${label}`}
+        >
+          Delete {label}?
+        </button>
+        <button
+          onClick={() => setArmedDelete(null)}
+          className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 text-[10px] whitespace-nowrap hover:bg-zinc-700"
+          aria-label={`Cancel delete ${label}`}
+        >
+          Cancel
+        </button>
+      </span>
     ) : (
       <button
         onClick={() => setArmedDelete(key)}

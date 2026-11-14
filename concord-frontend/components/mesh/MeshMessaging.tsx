@@ -12,7 +12,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
-import { Loader2, Send, Lock, CheckCheck, Check, Clock, AlertTriangle } from 'lucide-react';
+import { Loader2, Send, Lock, CheckCheck, Check, Clock, AlertTriangle, Trash2 } from 'lucide-react';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface MeshMessage {
   id: string;
@@ -84,6 +85,16 @@ export function MeshMessaging() {
     },
   });
 
+  // FIX-mesh-003: delete one message from the caller's own log.
+  const del = useMutation({
+    mutationFn: async (id: string) =>
+      (await apiHelpers.lens.runDomain('mesh', 'deleteMessage', { id })).data?.result,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['mesh-conversation', target] });
+      qc.invalidateQueries({ queryKey: ['mesh-queue'] });
+    },
+  });
+
   // Mark the open thread read when it has unread inbound messages.
   useEffect(() => {
     if (target && (thread.data?.unread ?? 0) > 0) markRead.mutate();
@@ -142,15 +153,24 @@ export function MeshMessaging() {
           ) : (
             visibleMessages.map((m) => (
               <div key={m.id} className={`flex ${m.direction === 'out' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[80%] rounded-lg px-3 py-1.5 text-xs ${
+                <div className={`min-w-0 max-w-[80%] rounded-lg px-3 py-1.5 text-xs ${
                   m.direction === 'out' ? 'bg-teal-800/50 text-teal-50' : 'bg-zinc-800/60 text-zinc-100'
                 }`}>
-                  <p className="whitespace-pre-wrap break-words">{m.body}</p>
+                  <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{m.body}</p>
                   <div className="mt-1 flex items-center gap-1.5 text-[10px] text-teal-500/80">
                     <span>{new Date(m.sentAt).toLocaleTimeString()}</span>
                     {m.encrypted && <Lock className="h-2.5 w-2.5" aria-label="encrypted" />}
                     <span className="rounded bg-black/40 px-1">{m.kind}</span>
                     {m.direction === 'out' && <StateIcon m={m} />}
+                    <StickyDeleteConfirm
+                      armLabel={<Trash2 className="h-3 w-3" />}
+                      confirmLabel="Delete?"
+                      armAriaLabel="Delete message"
+                      confirmAriaLabel="Confirm delete"
+                      cancelAriaLabel="Cancel delete"
+                      className="text-teal-500/80 hover:text-rose-300"
+                      onConfirm={() => del.mutate(m.id)}
+                    />
                   </div>
                 </div>
               </div>

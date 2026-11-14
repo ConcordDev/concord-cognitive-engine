@@ -4,7 +4,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
-import { Map as MapIcon, Plus, Loader2, CheckSquare, Square, Clock, Trash2 } from 'lucide-react';
+import { Map as MapIcon, Plus, Loader2, CheckSquare, Square, Clock, Trash2, Pencil } from 'lucide-react';
 
 interface PlanStep {
   id: string;
@@ -36,6 +36,23 @@ export function LearningPlanPanel() {
   const [err, setErr] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  // FIX-metalearning-003: plans gain an edit path (planUpdate).
+  const [editPlanId, setEditPlanId] = useState<string | null>(null);
+  const [planEdit, setPlanEdit] = useState({ title: '', goal: '' });
+  const savePlan = async (planId: string) => {
+    if (!planEdit.title.trim()) return;
+    setBusy(planId);
+    try {
+      const { data: r } = await lensRun<any>('metalearning', 'planUpdate', {
+        id: planId, title: planEdit.title.trim(), goal: planEdit.goal,
+      });
+      if (r?.ok === false) { setErr(r.error || 'Update failed'); return; }
+      setEditPlanId(null);
+      await refresh();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Update failed');
+    } finally { setBusy(null); }
+  };
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -138,6 +155,13 @@ export function LearningPlanPanel() {
                 <span className="text-[10px] text-gray-400">
                   {p.stepsDone}/{p.stepsTotal} · {p.remainingHours}h left
                 </span>
+                <button onClick={() => {
+                    setEditPlanId(editPlanId === p.id ? null : p.id);
+                    setPlanEdit({ title: p.title, goal: p.goal || '' });
+                  }}
+                  className="text-gray-600 hover:text-gray-200" title="Edit plan" aria-label={`Edit plan ${p.title}`}>
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
                 {confirmDeleteId === p.id ? (
                   <button onClick={() => remove(p.id)} disabled={busy === p.id}
                     className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/25 hover:bg-red-500/35 text-red-300 disabled:opacity-50"
@@ -157,6 +181,19 @@ export function LearningPlanPanel() {
                 Plan complete · {p.totalHours}h · {p.stepsTotal} topic{p.stepsTotal !== 1 ? 's' : ''}
                 {p.remainingHours === 0 && <span className="block font-serif italic text-gray-300 mt-0.5">Every hour accounted for.</span>}
               </p>
+            )}
+            {editPlanId === p.id && (
+              <div className="mt-2 space-y-2 border-t border-white/5 pt-2">
+                <input value={planEdit.title} onChange={(e) => setPlanEdit((f) => ({ ...f, title: e.target.value }))}
+                  aria-label="Edit plan title" placeholder="Plan title" className="input-lattice w-full text-sm" />
+                <input value={planEdit.goal} onChange={(e) => setPlanEdit((f) => ({ ...f, goal: e.target.value }))}
+                  aria-label="Edit plan goal" placeholder="Goal" className="input-lattice w-full text-sm" />
+                <div className="flex gap-2">
+                  <button onClick={() => savePlan(p.id)} disabled={!planEdit.title.trim() || busy === p.id}
+                    className="btn-neon text-sm px-3 disabled:opacity-50">Save</button>
+                  <button onClick={() => setEditPlanId(null)} className="text-xs text-gray-400 px-2">Cancel</button>
+                </div>
+              </div>
             )}
             {p.goal && <p className="text-xs text-gray-400 mt-0.5">{p.goal}</p>}
             <div className="h-1.5 bg-lattice-void rounded-full overflow-hidden mt-2">

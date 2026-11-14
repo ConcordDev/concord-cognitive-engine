@@ -19,6 +19,10 @@ import {
   claimAttachments,
   deleteSentMail,
   declineMail,
+  deleteInboxMail,
+  setMailStarred,
+  setMailArchived,
+  unreadMail,
 } from "../lib/player-mail.js";
 import { registerLensExportProvider } from "../lib/lens-export.js";
 
@@ -86,8 +90,9 @@ export default function registerMailMacros(register) {
     if (!userId) return { ok: false, error: "no_user" };
     const status = ["unread", "read", "claimed", "expired", "declined"].includes(input.status)
       ? input.status : undefined;
+    const folder = ["archived", "starred"].includes(input.folder) ? input.folder : "inbox";
     const limit = Math.min(Math.max(Number(input.limit) || 50, 1), 200);
-    return { ok: true, mail: listInbox(db, userId, { status, limit }) };
+    return { ok: true, mail: listInbox(db, userId, { status, limit, folder }) };
   }, { note: "list the caller's inbox" });
 
   /**
@@ -189,6 +194,61 @@ export default function registerMailMacros(register) {
     if (!input.id) return { ok: false, error: "missing_id" };
     return declineMail(db, String(input.id), userId);
   }, { note: "decline mail (escrow returns to sender; no COD charged)" });
+
+  /**
+   * mail.trash — move a RECEIVED mail to the recipient's trash
+   * (FIX-mail-013). Recipient-local soft delete; the sender's copy is
+   * untouched. A mail with unclaimed attachments is refused — claim
+   * or decline it first so its escrow is never stranded.
+   * input: { id, userId? }
+   */
+  register("mail", "trash", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, error: "no_db" };
+    const userId = actorId(ctx, input);
+    if (!userId) return { ok: false, error: "no_user" };
+    if (!input.id) return { ok: false, error: "missing_id" };
+    return deleteInboxMail(db, String(input.id), userId);
+  }, { note: "trash a received mail (recipient-local; refuses unclaimed attachments)" });
+
+  /**
+   * mail.star — star or unstar a received mail (FIX-mail-013).
+   * input: { id, starred, userId? }
+   */
+  register("mail", "star", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, error: "no_db" };
+    const userId = actorId(ctx, input);
+    if (!userId) return { ok: false, error: "no_user" };
+    if (!input.id) return { ok: false, error: "missing_id" };
+    return setMailStarred(db, String(input.id), userId, input.starred !== false);
+  }, { note: "star or unstar a received mail" });
+
+  /**
+   * mail.archive — archive or unarchive a received mail (FIX-mail-013).
+   * input: { id, archived, userId? }
+   */
+  register("mail", "archive", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, error: "no_db" };
+    const userId = actorId(ctx, input);
+    if (!userId) return { ok: false, error: "no_user" };
+    if (!input.id) return { ok: false, error: "missing_id" };
+    return setMailArchived(db, String(input.id), userId, input.archived !== false);
+  }, { note: "archive or unarchive a received mail" });
+
+  /**
+   * mail.unread — mark a read mail unread again (FIX-mail-013).
+   * input: { id, userId? }
+   */
+  register("mail", "unread", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, error: "no_db" };
+    const userId = actorId(ctx, input);
+    if (!userId) return { ok: false, error: "no_user" };
+    if (!input.id) return { ok: false, error: "missing_id" };
+    return unreadMail(db, String(input.id), userId);
+  }, { note: "mark a read mail unread" });
 
   /**
    * mail.draft-get — the caller's autosaved compose draft, if any.

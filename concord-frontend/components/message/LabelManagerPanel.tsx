@@ -8,8 +8,9 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Tag, Plus, Loader2, AlertTriangle } from 'lucide-react';
+import { Tag, Plus, Loader2, AlertTriangle, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 
 interface Label {
@@ -67,6 +68,20 @@ export function LabelManagerPanel({ className }: { className?: string }) {
     }
   }, [name, color, load]);
 
+  const remove = useCallback(async (label: Label) => {
+    setError(null);
+    try {
+      const r = await lensRun('message', 'labels-delete', { labelId: label.id });
+      if (r?.data?.error || r?.data?.ok === false) {
+        setError(String(r?.data?.error || 'Failed to delete label'));
+        return;
+      }
+      setLabels((prev) => prev.filter((l) => l.id !== label.id));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to delete label');
+    }
+  }, []);
+
   return (
     <div className={cn('rounded-xl border border-zinc-800 bg-zinc-950/40 p-4', className)}>
       <div className="flex items-center gap-2 mb-3">
@@ -94,6 +109,14 @@ export function LabelManagerPanel({ className }: { className?: string }) {
           >
             <span className="w-2 h-2 rounded-full" style={{ backgroundColor: l.color || '#64748b' }} />
             {l.name}
+            <StickyDeleteConfirm
+              onConfirm={() => void remove(l)}
+              armLabel={<Trash2 className="w-3 h-3" />}
+              confirmLabel="Delete label?"
+              armAriaLabel={`Delete label ${l.name}`}
+              confirmAriaLabel="Confirm delete"
+              cancelAriaLabel="Cancel delete"
+            />
           </span>
         ))}
       </div>

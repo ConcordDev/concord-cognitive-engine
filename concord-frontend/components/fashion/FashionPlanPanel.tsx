@@ -5,10 +5,11 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, Luggage, BookImage, TrendingUp, ChevronRight, Layers } from 'lucide-react';
+import { Loader2, Plus, Luggage, BookImage, TrendingUp, ChevronRight, Layers, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { notifyLookbookHeader } from './lookbook-header';
 
 interface Item { id: string; name: string }
@@ -182,6 +183,22 @@ export function FashionPlanPanel({ onChange }: { onChange?: () => void | Promise
                 </button>
                 {openPk === p.id && (
                   <div className="border-t border-zinc-800 p-3 bg-zinc-950/50 space-y-2">
+                    <div className="flex items-center justify-end">
+                      <StickyDeleteConfirm
+                        armLabel={<span className="inline-flex items-center gap-1 text-[11px]"><Trash2 className="w-3 h-3" /> Delete list</span>}
+                        confirmLabel="Delete list?"
+                        armAriaLabel={`Delete packing list ${p.name}`}
+                        confirmAriaLabel="Confirm delete"
+                        cancelAriaLabel="Cancel delete"
+                        className="text-rose-400 hover:text-rose-300"
+                        onConfirm={async () => {
+                          const r = await lensRun('fashion', 'packing-delete', { id: p.id });
+                          if (r.data?.ok === false) { setError(r.data?.error || 'Could not delete the packing list.'); return; }
+                          setOpenPk(null);
+                          await refresh(); onChange?.();
+                        }}
+                      />
+                    </div>
                     {outfits.length > 0 && (
                       <div className="flex items-center gap-1.5">
                         <Layers className="w-3.5 h-3.5 text-fuchsia-400 shrink-0" />

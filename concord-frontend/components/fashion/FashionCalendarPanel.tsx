@@ -6,14 +6,15 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, CalendarDays, Plus } from 'lucide-react';
+import { Loader2, CalendarDays, Plus, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface Outfit { id: string; name: string }
 interface Item { id: string; name: string }
-interface CalEntry { date: string; label: string; kind: string }
+interface CalEntry { id: string; date: string; label: string; kind: string }
 
 function monthNow(): string { return new Date().toISOString().slice(0, 7); }
 
@@ -110,12 +111,25 @@ export function FashionCalendarPanel({ onChange }: { onChange: () => void }) {
         </div>
       ) : (
         <ul className="space-y-1">
-          {entries.map((e, idx) => (
-            <li key={idx} className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
+          {entries.map((e) => (
+            <li key={e.id} className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
               <span className="text-xs text-zinc-200">{e.label}</span>
               <span className="flex items-center gap-2">
                 <span className={cn('text-[10px] uppercase', e.kind === 'outfit' ? 'text-fuchsia-400' : 'text-zinc-400')}>{e.kind}</span>
                 <span className="text-[11px] text-zinc-400">{e.date}</span>
+                <StickyDeleteConfirm
+                  armLabel={<Trash2 className="w-3.5 h-3.5" />}
+                  confirmLabel="Delete log?"
+                  armAriaLabel={`Delete wear log for ${e.label}`}
+                  confirmAriaLabel="Confirm delete"
+                  cancelAriaLabel="Cancel delete"
+                  className="text-rose-400 hover:text-rose-300"
+                  onConfirm={async () => {
+                    const r = await lensRun('fashion', 'calendar-delete', { id: e.id });
+                    if (r.data?.ok === false) { setError(r.data?.error || 'Could not delete the wear log.'); return; }
+                    await refreshCalendar(); onChange();
+                  }}
+                />
               </span>
             </li>
           ))}

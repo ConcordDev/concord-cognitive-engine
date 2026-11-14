@@ -3,12 +3,12 @@
 /**
  * UploadSourcePanel — paste file / PDF text as a query source, list
  * stored uploads, and pick one to ground an answer in. Wires
- * expert_mode.upload_source / upload_list / upload_delete.
+ * expert_mode.upload_source / upload_list / upload_update / upload_delete.
  */
 
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
-import { FileUp, Trash2, Loader2, Paperclip, X } from 'lucide-react';
+import { FileUp, Trash2, Loader2, Paperclip, X, Pencil } from 'lucide-react';
 import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 export interface UploadDoc {
@@ -55,6 +55,10 @@ export function UploadSourcePanel({
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  // FIX-expert-mode-002: document rename.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = useState('');
+  const [renameErr, setRenameErr] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const r = await lensRun<{ uploads: UploadDoc[] }>('expert_mode', 'upload_list', {});
@@ -67,13 +71,16 @@ export function UploadSourcePanel({
   }, []);
 
   const submit = useCallback(async () => {
+    // FIX-expert-mode-002: the name is required — no silent
+    // 'Untitled document' substitution.
+    if (!name.trim()) { setErr('Name the document first.'); return; }
     if (!text.trim()) { setErr('Paste document text first.'); return; }
     setBusy(true);
     setErr(null);
     const pasteKept = text;
     const nameKept = name;
     const r = await lensRun<{ upload: UploadDoc }>('expert_mode', 'upload_source', {
-      name: name.trim() || 'Untitled document',
+      name: name.trim(),
       text,
       kind: 'text',
     });
@@ -97,6 +104,19 @@ export function UploadSourcePanel({
     if (selectedId === id) onSelect(null);
     await refresh();
   }, [selectedId, onSelect, refresh]);
+
+  const rename = useCallback(async (id: string) => {
+    const next = renameDraft.trim();
+    if (!next) { setRenameErr('Name the document first.'); return; }
+    const r = await lensRun('expert_mode', 'upload_update', { uploadId: id, name: next });
+    if (r.data.ok) {
+      setEditingId(null);
+      setRenameErr(null);
+      await refresh();
+    } else {
+      setRenameErr(humanUploadError(r.data.error));
+    }
+  }, [renameDraft, refresh]);
 
   return (
     <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-3">
@@ -129,10 +149,11 @@ export function UploadSourcePanel({
             className="w-full px-2.5 py-1.5 rounded bg-zinc-950 text-zinc-100 text-[12px] ring-1 ring-zinc-800 focus:ring-sky-500 focus:outline-none resize-y"
           />
           {err && <p className="text-[11px] text-red-400">{err}</p>}
+          {!name.trim() && <p role="note" className="text-[11px] text-zinc-400">Name the document first — the name is required.</p>}
           <button
             type="button"
             onClick={submit}
-            disabled={busy || !text.trim()}
+            disabled={busy || !text.trim() || !name.trim()}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-sky-600 hover:bg-sky-500 text-sky-50 text-[12px] font-medium disabled:opacity-50"
           >
             {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileUp className="w-3.5 h-3.5" />}
@@ -151,31 +172,56 @@ export function UploadSourcePanel({
               <li
                 key={u.id}
                 className={
-                  'flex items-center gap-2 px-2 py-1.5 rounded text-[11px] border ' +
+                  'px-2 py-1.5 rounded text-[11px] border ' +
                   (active ? 'border-sky-500 bg-sky-500/10' : 'border-zinc-800 bg-zinc-950/50')
                 }
               >
-                <button
-                  type="button"
-                  onClick={() => onSelect(active ? null : u.id)}
-                  className="flex-1 min-w-0 text-left"
-                >
-                  <span className={active ? 'text-sky-300 font-medium' : 'text-zinc-300'}>{u.name}</span>
-                  <span className="text-zinc-400 ml-1.5">{u.chars.toLocaleString()} chars</span>
-                </button>
-                {active && (
-                  <button type="button" onClick={() => onSelect(null)} title="Deselect" className="text-sky-400 hover:text-sky-200">
-                    <X className="w-3.5 h-3.5" />
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onSelect(active ? null : u.id)}
+                    className="flex-1 min-w-0 text-left"
+                  >
+                    <span className={active ? 'text-sky-300 font-medium' : 'text-zinc-300'}>{u.name}</span>
+                    <span className="text-zinc-400 ml-1.5">{u.chars.toLocaleString()} chars</span>
                   </button>
+                  {active && (
+                    <button type="button" onClick={() => onSelect(null)} title="Deselect" className="text-sky-400 hover:text-sky-200">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => { setEditingId(editingId === u.id ? null : u.id); setRenameDraft(u.name); setRenameErr(null); }}
+                    aria-label={`Rename ${u.name}`}
+                    className="inline-flex min-h-11 min-w-11 items-center justify-center text-zinc-400 hover:text-sky-300"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                  <StickyDeleteConfirm
+                    onConfirm={() => remove(u.id)}
+                    armLabel={<Trash2 className="w-3.5 h-3.5" />}
+                    confirmLabel={`Delete "${u.name}"?`}
+                    armAriaLabel={`Delete ${u.name}`}
+                    confirmAriaLabel={`Confirm delete ${u.name}`}
+                    className="inline-flex min-h-11 min-w-11 items-center justify-center text-zinc-400 hover:text-red-400"
+                  />
+                </div>
+                {editingId === u.id && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={renameDraft}
+                      onChange={(e) => setRenameDraft(e.target.value)}
+                      aria-label="Document name"
+                      maxLength={200}
+                      className="flex-1 px-2 py-1 rounded bg-zinc-950 text-zinc-100 text-[11px] ring-1 ring-zinc-800 focus:ring-sky-500 focus:outline-none"
+                    />
+                    <button type="button" onClick={() => rename(u.id)} disabled={!renameDraft.trim()} className="px-2 py-1 rounded bg-sky-600 hover:bg-sky-500 text-sky-50 text-[11px] font-medium disabled:opacity-50">Save</button>
+                    <button type="button" onClick={() => setEditingId(null)} className="px-1.5 text-[11px] text-zinc-400">Cancel</button>
+                  </div>
                 )}
-                <StickyDeleteConfirm
-                  onConfirm={() => remove(u.id)}
-                  armLabel={<Trash2 className="w-3.5 h-3.5" />}
-                  confirmLabel={`Delete "${u.name}"?`}
-                  armAriaLabel={`Delete ${u.name}`}
-                  confirmAriaLabel={`Confirm delete ${u.name}`}
-                  className="inline-flex min-h-11 min-w-11 items-center justify-center text-zinc-400 hover:text-red-400"
-                />
+                {editingId === u.id && renameErr && <p className="mt-1 text-[11px] text-red-400">{renameErr}</p>}
               </li>
             );
           })}

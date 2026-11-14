@@ -9,7 +9,7 @@
 
 import { useCallback, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
-import { Plus, Trash2, Loader2, Layers, Sparkles } from 'lucide-react';
+import { Plus, Trash2, Loader2, Layers, Sparkles, Pencil } from 'lucide-react';
 import type { Theme } from './PainBoard';
 
 interface ClusterSuggestion {
@@ -33,6 +33,8 @@ export function ThemeClusters({
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<ClusterSuggestion[] | null>(null);
+  const [editingTheme, setEditingTheme] = useState<string | null>(null);
+  const [themeForm, setThemeForm] = useState({ name: '', description: '', color: COLORS[0] });
 
   const run = useCallback(async (action: string, input: Record<string, unknown>) => {
     setBusy(true);
@@ -147,22 +149,54 @@ export function ThemeClusters({
       ) : (
         <div className="space-y-1.5">
           {themes.map((t) => (
-            <div
-              key={t.id}
-              className="flex items-center gap-2 p-2 rounded-lg bg-white/[0.03] border-l-2"
-              style={{ borderColor: t.color }}
-            >
-              <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: t.color }} />
-              <span className="text-sm flex-1 truncate">{t.name}</span>
-              <span className="text-[11px] text-gray-400">{t.painCount} pains · {t.openCount} open</span>
-              <span className="text-xs font-bold text-neon-purple" title="Aggregate impact">{t.totalImpact}</span>
-              <button
-                onClick={() => run('theme-delete', { id: t.id })}
-                className="text-gray-600 hover:text-red-400"
-                aria-label="Delete theme"
+            <div key={t.id}>
+              <div
+                className="flex items-center gap-2 p-2 rounded-lg bg-white/[0.03] border-l-2"
+                style={{ borderColor: t.color }}
               >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+                <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: t.color }} />
+                <span className="text-sm flex-1 truncate">{t.name}</span>
+                <span className="text-[11px] text-gray-400">{t.painCount} pains · {t.openCount} open</span>
+                <span className="text-xs font-bold text-neon-purple" title="Aggregate impact">{t.totalImpact}</span>
+                <button
+                  onClick={() => { setEditingTheme(editingTheme === t.id ? null : t.id); setThemeForm({ name: t.name, description: t.description || '', color: t.color }); }}
+                  className="text-gray-500 hover:text-gray-200"
+                  aria-label={`Edit theme ${t.name}`}
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => run('theme-delete', { id: t.id })}
+                  className="text-gray-600 hover:text-red-400"
+                  aria-label="Delete theme"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              {editingTheme === t.id && (
+                <div className="mt-1.5 ml-4 space-y-2 rounded-lg bg-white/[0.02] border border-white/10 p-2.5">
+                  <input value={themeForm.name} onChange={(e) => setThemeForm({ ...themeForm, name: e.target.value })}
+                    aria-label="Edit theme name" placeholder="Theme name"
+                    className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-sm text-gray-100" />
+                  <input value={themeForm.description} onChange={(e) => setThemeForm({ ...themeForm, description: e.target.value })}
+                    aria-label="Edit theme description" placeholder="Description"
+                    className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-xs text-gray-200" />
+                  <div className="flex items-center gap-2">
+                    <div className="flex gap-1">
+                      {COLORS.map((c) => (
+                        <button key={c} type="button" onClick={() => setThemeForm({ ...themeForm, color: c })}
+                          className={`w-5 h-5 rounded-full ${themeForm.color === c ? 'ring-2 ring-white' : ''}`}
+                          style={{ backgroundColor: c }} aria-label={`Theme color ${c}`} />
+                      ))}
+                    </div>
+                    <button type="button" disabled={!themeForm.name.trim()}
+                      onClick={async () => { const ok = await run('theme-update', { id: t.id, ...themeForm }); if (ok) setEditingTheme(null); }}
+                      className="ml-auto px-2.5 py-1 rounded bg-neon-cyan/20 text-neon-cyan text-xs hover:bg-neon-cyan/30 disabled:opacity-40">Save changes</button>
+                    <button type="button" onClick={() => setEditingTheme(null)}
+                      className="px-2.5 py-1 rounded bg-white/5 border border-white/10 text-xs text-gray-300 hover:bg-white/10">Cancel</button>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>

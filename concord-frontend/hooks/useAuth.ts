@@ -40,42 +40,61 @@ export function useAuth(): UseAuthReturn {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const mountedRef = useRef(true);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const checkAuth = useCallback(async () => {
+  const checkAuth = useCallback(async (attempt = 0) => {
+    // FIX-civic-bonds-008: one transient /api/auth/me failure (an
+    // auth-refresh window, a 429 read-backoff) used to settle this
+    // hook on null FOREVER — on authenticated lenses the user then
+    // saw "Sign in to see your profile" while signed in and lost
+    // every own-content control gated on the user id (the Feed post
+    // Delete among them). Same genus the Social lens cured in
+    // useCurrentUser (oc-social-3afix): retry a few times before
+    // believing "signed out"; only the final settle clears loading.
+    const settleRetryOrNull = (att: number) => {
+      if (att < 3) {
+        retryTimerRef.current = setTimeout(() => { void checkAuth(att + 1); }, 3000 * (att + 1));
+      } else {
+        setUser(null);
+        setIsLoading(false);
+      }
+    };
     try {
       const resp = await api.get('/api/auth/me');
       const data = resp.data;
-      if (mountedRef.current) {
-        if (data.ok && data.user) {
-          const prefs = data.user.preferences;
-          setUser({
-            id: data.user.id,
-            username: data.user.username,
-            email: data.user.email,
-            role: data.user.role,
-            scopes: data.user.scopes,
-            ...(typeof data.user.timezone === 'string' ? { timezone: data.user.timezone } : {}),
-            ...(typeof data.user.timeZone === 'string' ? { timeZone: data.user.timeZone } : {}),
-            ...(prefs && typeof prefs === 'object' ? { preferences: prefs } : {}),
-          });
-        } else {
-          setUser(null);
-        }
+      if (!mountedRef.current) return;
+      if (data.ok && data.user) {
+        const prefs = data.user.preferences;
+        setUser({
+          id: data.user.id,
+          username: data.user.username,
+          email: data.user.email,
+          role: data.user.role,
+          scopes: data.user.scopes,
+          ...(typeof data.user.timezone === 'string' ? { timezone: data.user.timezone } : {}),
+          ...(typeof data.user.timeZone === 'string' ? { timeZone: data.user.timeZone } : {}),
+          ...(prefs && typeof prefs === 'object' ? { preferences: prefs } : {}),
+        });
+        setIsLoading(false);
+      } else {
+        settleRetryOrNull(attempt);
       }
     } catch {
-      if (mountedRef.current) setUser(null);
-    } finally {
-      if (mountedRef.current) setIsLoading(false);
+      if (mountedRef.current) settleRetryOrNull(attempt);
     }
   }, []);
 
   useEffect(() => {
     mountedRef.current = true;
     checkAuth();
-    return () => { mountedRef.current = false; };
+    return () => {
+      mountedRef.current = false;
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+    };
   }, [checkAuth]);
 
   const logout = useCallback(async () => {
+    if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
     try {
       await api.post('/api/auth/logout', {});
     } catch {

@@ -4,7 +4,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
-import { NotebookPen, Plus, Loader2, Star, Trash2 } from 'lucide-react';
+import { NotebookPen, Plus, Loader2, Star, Trash2, Pencil } from 'lucide-react';
 
 interface JournalEntry {
   id: string;
@@ -37,6 +37,24 @@ export function StudyJournalPanel() {
   const [busy, setBusy] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  // FIX-metalearning-003: journal entries gain an edit path (journalUpdate).
+  const [editEntryId, setEditEntryId] = useState<string | null>(null);
+  const [entryEdit, setEntryEdit] = useState({ reflection: '', topic: '', minutesStudied: '30' });
+  const saveEntry = async (entryId: string) => {
+    if (!entryEdit.reflection.trim()) return;
+    setBusyId(entryId);
+    try {
+      const { data: r } = await lensRun<any>('metalearning', 'journalUpdate', {
+        id: entryId, reflection: entryEdit.reflection.trim(), topic: entryEdit.topic,
+        minutesStudied: Number(entryEdit.minutesStudied),
+      });
+      if (r?.ok === false) { setErr(r.error || 'Update failed'); return; }
+      setEditEntryId(null);
+      await refresh();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Update failed');
+    } finally { setBusyId(null); }
+  };
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -164,10 +182,35 @@ export function StudyJournalPanel() {
               </span>
             </div>
             <p className="text-xs text-gray-400 mt-1">{e.reflection}</p>
+            {editEntryId === e.id && (
+              <div className="mt-2 space-y-2 border-t border-white/5 pt-2">
+                <textarea value={entryEdit.reflection} onChange={(ev) => setEntryEdit((f) => ({ ...f, reflection: ev.target.value }))}
+                  aria-label="Edit entry reflection" placeholder="Reflection" rows={2} className="input-lattice w-full text-sm" />
+                <div className="flex gap-2">
+                  <input value={entryEdit.topic} onChange={(ev) => setEntryEdit((f) => ({ ...f, topic: ev.target.value }))}
+                    aria-label="Edit entry topic" placeholder="Topic" className="input-lattice flex-1 text-sm" />
+                  <input type="number" value={entryEdit.minutesStudied} onChange={(ev) => setEntryEdit((f) => ({ ...f, minutesStudied: ev.target.value }))}
+                    aria-label="Edit entry minutes" placeholder="Minutes" className="input-lattice w-24 text-sm" />
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => saveEntry(e.id)} disabled={!entryEdit.reflection.trim() || busyId === e.id}
+                    className="btn-neon text-sm px-3 disabled:opacity-50">Save</button>
+                  <button onClick={() => setEditEntryId(null)} className="text-xs text-gray-400 px-2">Cancel</button>
+                </div>
+              </div>
+            )}
             <div className="flex items-center justify-between mt-1">
               <p className="text-[10px] text-gray-400">
                 {new Date(e.createdAt).toLocaleDateString()}
               </p>
+              <span className="flex items-center gap-1.5">
+              <button onClick={() => {
+                  setEditEntryId(editEntryId === e.id ? null : e.id);
+                  setEntryEdit({ reflection: e.reflection, topic: e.topic || '', minutesStudied: String(e.minutesStudied) });
+                }}
+                className="text-gray-600 hover:text-gray-200" title="Edit entry" aria-label={`Edit journal entry ${e.topic}`}>
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
               {confirmDeleteId === e.id ? (
                 <button onClick={() => remove(e.id)} disabled={busyId === e.id}
                   className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/25 hover:bg-red-500/35 text-red-300 disabled:opacity-50"
@@ -180,6 +223,7 @@ export function StudyJournalPanel() {
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               )}
+              </span>
             </div>
           </div>
         ))}

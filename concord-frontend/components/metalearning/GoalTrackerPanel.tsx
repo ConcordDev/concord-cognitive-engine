@@ -4,7 +4,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
-import { Target, Plus, Loader2, Flag, Trash2 } from 'lucide-react';
+import { Target, Plus, Loader2, Flag, Trash2, Pencil } from 'lucide-react';
 
 // Metrics the lens can count itself — a goal on one of these computes
 // its value from the record (S-META-6/F9). Anything else is a custom,
@@ -46,6 +46,24 @@ export function GoalTrackerPanel() {
   const [checkInVal, setCheckInVal] = useState<Record<string, string>>({});
   const [metricChoice, setMetricChoice] = useState<string>('cards_mastered');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  // FIX-metalearning-003: goals gain an edit path (goalUpdate).
+  const [editGoalId, setEditGoalId] = useState<string | null>(null);
+  const [goalEdit, setGoalEdit] = useState({ title: '', targetValue: '100', deadline: '' });
+  const saveGoal = async (goalId: string) => {
+    if (!goalEdit.title.trim()) return;
+    setBusy(goalId);
+    try {
+      const { data: r } = await lensRun<any>('metalearning', 'goalUpdate', {
+        id: goalId, title: goalEdit.title.trim(),
+        targetValue: Number(goalEdit.targetValue), deadline: goalEdit.deadline || null,
+      });
+      if (r?.ok === false) { setErr(r.error || 'Update failed'); return; }
+      setEditGoalId(null);
+      await refresh();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Update failed');
+    } finally { setBusy(null); }
+  };
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -177,12 +195,38 @@ export function GoalTrackerPanel() {
                 {g.status === 'achieved' && <Flag className="w-3 h-3 text-neon-green" />}
                 {g.title}
               </p>
-              <span className={`text-[10px] px-1.5 py-0.5 rounded ${
-                g.status === 'achieved' ? 'bg-neon-green/15 text-neon-green'
-                  : g.status === 'active' ? 'bg-neon-cyan/15 text-neon-cyan'
-                    : 'bg-white/5 text-gray-400'
-              }`}>{g.status}</span>
+              <span className="flex items-center gap-1.5">
+                <button onClick={() => {
+                    setEditGoalId(editGoalId === g.id ? null : g.id);
+                    setGoalEdit({ title: g.title, targetValue: String(g.targetValue), deadline: g.deadline || '' });
+                  }}
+                  className="text-gray-600 hover:text-gray-200" title="Edit goal" aria-label={`Edit goal ${g.title}`}>
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                  g.status === 'achieved' ? 'bg-neon-green/15 text-neon-green'
+                    : g.status === 'active' ? 'bg-neon-cyan/15 text-neon-cyan'
+                      : 'bg-white/5 text-gray-400'
+                }`}>{g.status}</span>
+              </span>
             </div>
+            {editGoalId === g.id && (
+              <div className="mt-2 space-y-2 border-t border-white/5 pt-2">
+                <input value={goalEdit.title} onChange={(e) => setGoalEdit((f) => ({ ...f, title: e.target.value }))}
+                  aria-label="Edit goal title" placeholder="Goal title" className="input-lattice w-full text-sm" />
+                <div className="flex gap-2">
+                  <input type="number" value={goalEdit.targetValue} onChange={(e) => setGoalEdit((f) => ({ ...f, targetValue: e.target.value }))}
+                    aria-label="Edit goal target" placeholder="Target" className="input-lattice flex-1 text-sm" />
+                  <input type="date" value={goalEdit.deadline} onChange={(e) => setGoalEdit((f) => ({ ...f, deadline: e.target.value }))}
+                    aria-label="Edit goal deadline" className="input-lattice flex-1 text-sm" />
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => saveGoal(g.id)} disabled={!goalEdit.title.trim() || busy === g.id}
+                    className="btn-neon text-sm px-3 disabled:opacity-50">Save</button>
+                  <button onClick={() => setEditGoalId(null)} className="text-xs text-gray-400 px-2">Cancel</button>
+                </div>
+              </div>
+            )}
             <p className="text-[10px] text-gray-400 mt-0.5">
               {g.currentValue} / {g.targetValue} {g.metric}
               {g.deadline && ` · by ${g.deadline}`}
