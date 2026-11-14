@@ -3,6 +3,7 @@
 // timeline generation, and stakeholder impact mapping.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
 export default function registerCriActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -913,5 +914,58 @@ export default function registerCriActions(registerLensAction) {
         total: sorted.length,
       },
     };
+  });
+
+  // FIX-cri-006: CRI's panel records (score snapshots, per-DTU flags,
+  // regression alerts, baselines, custom score rules) live in
+  // STATE.criLens — no export leg enumerates it, so the Export menu
+  // said "Nothing to export yet" while the Scores view held 179 scored
+  // DTUs. The provider emits the caller's own quality-loop records.
+  registerLensExportProvider("cri", (ctx) => {
+    const s = getCriState();
+    if (!s) return [];
+    const userId = criActor(ctx);
+    const rows = [];
+    for (const snap of s.snapshots.get(userId) || []) {
+      rows.push({
+        id: `cri-snapshot:${snap.at}`, type: "score-snapshot",
+        title: `Score snapshot — ${snap.at}`,
+        createdAt: snap.at || null, updatedAt: snap.at || null,
+        data: snap,
+      });
+    }
+    for (const flag of (s.flags.get(userId) || new Map()).values()) {
+      rows.push({
+        id: `cri-flag:${flag.dtuId}`, type: "dtu-flag",
+        title: flag.title || flag.dtuId,
+        createdAt: flag.at || null, updatedAt: flag.at || null,
+        data: flag,
+      });
+    }
+    for (const alert of s.alerts.get(userId) || []) {
+      rows.push({
+        id: alert.id, type: "regression-alert",
+        title: alert.title || alert.id,
+        createdAt: alert.at || null, updatedAt: alert.at || null,
+        data: alert,
+      });
+    }
+    for (const [dtuId, base] of (s.baselines.get(userId) || new Map()).entries()) {
+      rows.push({
+        id: `cri-baseline:${dtuId}`, type: "dtu-baseline",
+        title: dtuId,
+        createdAt: base.at || null, updatedAt: base.at || null,
+        data: { dtuId, ...base },
+      });
+    }
+    if (s.rules.has(userId)) {
+      rows.push({
+        id: "cri:score-rules", type: "score-rules",
+        title: "Custom score rules",
+        createdAt: null, updatedAt: null,
+        data: s.rules.get(userId),
+      });
+    }
+    return rows;
   });
 }
