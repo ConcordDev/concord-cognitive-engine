@@ -231,7 +231,7 @@ function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps) {
         descendants?: Array<{ id: string; title?: string; summary?: string; tier?: string }>;
       };
     },
-    enabled: Boolean(dtuId) && activeTab === 'lineage',
+    enabled: Boolean(dtuId) && (activeTab === 'lineage' || activeTab === 'metadata'),
     staleTime: 60_000,
   });
 
@@ -245,6 +245,29 @@ function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps) {
   const citationDtus = lineageData?.citations || [];
   const citedByDtus = lineageData?.citedBy || [];
   const royaltyCascade = lineageData?.royaltyCascade || [];
+
+  // FIX-graph-009: the Metadata tab counted only the legacy top-level
+  // `dtu.parents` / `dtu.children` fields, which current records do not
+  // carry (creation stamps lineage.parents instead) — so Metadata read
+  // 0 while the Lineage tab read 1 for the same DTU. Both tabs now use
+  // one count: the lineage endpoint's when loaded, else the same union
+  // the server macro derives (lineage object form, array form, and the
+  // legacy top-level fields, deduped).
+  const recordLinkIds = (list: unknown): string[] =>
+    Array.isArray(list)
+      ? list.map((x) => (typeof x === 'string' ? x : (x as { id?: string })?.id)).filter((x): x is string => Boolean(x))
+      : [];
+  const recordParentIds = [...new Set([
+    ...recordLinkIds((dtu as { lineage?: { parents?: unknown } } | null)?.lineage?.parents),
+    ...recordLinkIds((dtu as { lineage?: unknown } | null)?.lineage),
+    ...recordLinkIds((dtu as { parents?: unknown } | null)?.parents),
+  ])];
+  const recordChildIds = [...new Set([
+    ...recordLinkIds((dtu as { lineage?: { children?: unknown } } | null)?.lineage?.children),
+    ...recordLinkIds((dtu as { children?: unknown } | null)?.children),
+  ])];
+  const parentCount = lineageData ? parentDtus.length : recordParentIds.length;
+  const childCount = lineageData ? childDtus.length : recordChildIds.length;
 
   // Fetch royalty cascade earnings for this DTU
   const { data: cascadeData } = useQuery({
@@ -920,7 +943,7 @@ function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps) {
                         sourceCount={dtu.meta?.sourceCount as number | undefined}
                         sourceDtus={
                           (dtu.meta?.sourceDtus as Array<{ id: string; title?: string }>) ||
-                          (dtu.parents || []).map((id: string) => ({ id }))
+                          recordParentIds.map((id: string) => ({ id }))
                         }
                         megaCount={dtu.meta?.megaCount as number | undefined}
                         totalDtuCount={dtu.meta?.totalDtuCount as number | undefined}
@@ -980,7 +1003,7 @@ function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps) {
                     items={
                       parentDtus.length > 0
                         ? parentDtus
-                        : (dtu.parents || []).map((id: string) => ({ id }))
+                        : recordParentIds.map((id: string) => ({ id }))
                     }
                     emptyText="No parent DTUs (this is a root thought)"
                     onNavigate={onNavigate}
@@ -1007,7 +1030,7 @@ function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps) {
                     items={
                       childDtus.length > 0
                         ? childDtus
-                        : (dtu.children || []).map((id: string) => ({ id }))
+                        : recordChildIds.map((id: string) => ({ id }))
                     }
                     emptyText="No children DTUs yet"
                     onNavigate={onNavigate}
@@ -1136,8 +1159,8 @@ function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps) {
                         ['Resonance', dtu.resonance?.toFixed(3)],
                         ['Coherence', dtu.coherence?.toFixed(3)],
                         ['Stability', dtu.stability?.toFixed(3)],
-                        ['Parents', dtu.parents?.length || 0],
-                        ['Children', dtu.children?.length || 0],
+                        ['Parents', parentCount],
+                        ['Children', childCount],
                       ]
                         .filter(([, v]) => v !== undefined && v !== null && v !== '')
                         .map(([key, val]) => (
