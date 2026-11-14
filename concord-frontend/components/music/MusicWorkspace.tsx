@@ -1028,6 +1028,28 @@ export function MusicWorkspace() {
                   Post your music for free. Background play, real artist profiles, remix rights for listeners. You keep 90%+. No ads, no algorithmic gatekeeping.
                 </p>
 
+                {/* FIX-014: with no library tracks and no global-realm
+                    seeds, the sections below rendered as bare headings
+                    over void — the walker's 'zero entries, reachability-
+                    only'. One honest empty state with the way in. */}
+                {displayTracks.length === 0 && (
+                  <div className="rounded-xl border border-lattice-border bg-lattice-surface/50 px-6 py-10 text-center">
+                    <Music className="mx-auto mb-3 h-8 w-8 text-gray-500" />
+                    <p className="text-sm font-medium text-zinc-200">No music here yet</p>
+                    <p className="mx-auto mt-1 max-w-md text-[13px] leading-relaxed text-zinc-500">
+                      Your library is empty and no tracks have been published to the shared catalog yet.
+                      Upload the first one — posting is free and you keep 90%+ of every sale.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setView('upload')}
+                      className="mt-4 rounded-full bg-neon-cyan/90 px-5 py-2 text-sm font-medium text-black transition-colors hover:bg-neon-cyan"
+                    >
+                      Upload a track
+                    </button>
+                  </div>
+                )}
+
                 {/* New Releases (chronological) */}
                 <section>
                   <div className="flex items-center justify-between mb-3">
