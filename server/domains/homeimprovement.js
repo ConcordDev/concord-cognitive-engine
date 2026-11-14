@@ -89,16 +89,32 @@ export default function registerHomeImprovementActions(registerLensAction) {
 
   registerLensAction("home-improvement", "project-list", (ctx, _a, _params = {}) => {
     const s = getHiState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    // FIX-home-improvement-010: Budget "Spent" counted only the manual
+    // expense log, so a purchased shopping item never moved it. Purchased
+    // items roll into spent: assigned items into their project, the rest
+    // reported as unassignedShoppingSpent so the Budget headline can
+    // include them without inventing a project for them.
+    const shopping = hiList(s, "shopping", hiActor(ctx));
+    const purchasedOf = (pid) => shopping
+      .filter((it) => it.purchased && (pid === undefined ? !it.projectId : it.projectId === pid))
+      .reduce((n, it) => n + it.price * (it.qty || 1), 0);
+    const projectIds = new Set(hiProjects(s, hiActor(ctx)).map((p) => p.id));
+    const unassignedShoppingSpent = Math.round(shopping
+      .filter((it) => it.purchased && (!it.projectId || !projectIds.has(it.projectId)))
+      .reduce((n, it) => n + it.price * (it.qty || 1), 0) * 100) / 100;
     const projects = hiProjects(s, hiActor(ctx)).map((p) => {
-      const spent = p.expenses.reduce((n, e) => n + e.amount, 0);
+      const expenseSpent = p.expenses.reduce((n, e) => n + e.amount, 0);
+      const shoppingSpent = purchasedOf(p.id);
+      const spent = expenseSpent + shoppingSpent;
       return {
         ...p, taskCount: p.tasks.length,
         tasksDone: p.tasks.filter((t) => t.done).length,
         spent: Math.round(spent * 100) / 100,
+        shoppingSpent: Math.round(shoppingSpent * 100) / 100,
         budgetRemaining: Math.round((p.budget - spent) * 100) / 100,
       };
     });
-    return { ok: true, result: { projects, count: projects.length } };
+    return { ok: true, result: { projects, count: projects.length, unassignedShoppingSpent } };
   });
 
   registerLensAction("home-improvement", "project-status", (ctx, _a, params = {}) => {
@@ -170,6 +186,12 @@ export default function registerHomeImprovementActions(registerLensAction) {
       tasks += p.tasks.length;
       tasksDone += p.tasks.filter((t) => t.done).length;
     }
+    // FIX-home-improvement-010: purchased shopping rolls into spent here
+    // too (all of it — the dashboard is the whole-home view).
+    const shoppingSpent = hiList(s, "shopping", hiActor(ctx))
+      .filter((it) => it.purchased)
+      .reduce((n, it) => n + it.price * (it.qty || 1), 0);
+    spent += shoppingSpent;
     return {
       ok: true,
       result: {
@@ -177,6 +199,7 @@ export default function registerHomeImprovementActions(registerLensAction) {
         activeProjects: projects.filter((p) => p.status === "in_progress").length,
         totalBudget: Math.round(budget * 100) / 100,
         totalSpent: Math.round(spent * 100) / 100,
+        shoppingSpent: Math.round(shoppingSpent * 100) / 100,
         tasks, tasksDone,
       },
     };
