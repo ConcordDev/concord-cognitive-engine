@@ -146,11 +146,21 @@ export function QualityLoopPanel() {
     },
   });
   const dtus = useMemo(() => corpus.data || [], [corpus.data]);
-  // FIX-cri-001: "scored" means creti is a score OBJECT — a DTU's creti
-  // TEXT (a string present on nearly every record) is not a score. This
-  // matches the server's trend-snapshot normDtu and the Scores panel,
-  // so the badge count and the per-DTU scores finally agree.
-  const scored = useMemo(() => dtus.filter((d) => d.creti && typeof d.creti === 'object'), [dtus]);
+  // FIX-cri-002: "scored" must mean what the server means. cri's
+  // normDtu keeps creti only when it is an OBJECT of numeric dimension
+  // scores, but /api/dtus serializes creti as summary text — so the old
+  // truthiness filter counted every DTU as scored (the header read
+  // "N/N DTUs scored", the Compare dropdowns populated) while every
+  // macro downstream scored none of them and Compare could only fail.
+  const scored = useMemo(
+    () => dtus.filter((d) => {
+      const c = d.creti as unknown;
+      if (!c || typeof c !== 'object') return false;
+      const rec = c as Record<string, unknown>;
+      return CRETI_DIMS.some((dim) => typeof rec[dim] === 'number');
+    }),
+    [dtus],
+  );
 
   return (
     <div className="rounded-xl border border-cyan-500/20 bg-zinc-950/60 p-4 space-y-4">
@@ -919,6 +929,24 @@ function CompareTab({ scored }: { scored: DtuCreti[] }) {
     })),
     [result],
   );
+
+  // FIX-cri-002: with fewer than two scored DTUs there is nothing a
+  // comparison could ever return — say so plainly instead of rendering
+  // populated-looking dropdowns whose only outcome was a silent pane.
+  if (scored.length < 2) {
+    return (
+      <div className="rounded-md border border-zinc-800 bg-zinc-950/40 px-4 py-6 text-center">
+        <GitCompare className="mx-auto mb-2 h-5 w-5 text-zinc-500" />
+        <p className="text-xs font-medium text-zinc-300">No scored DTUs to compare yet</p>
+        <p className="mx-auto mt-1 max-w-sm text-[11px] leading-relaxed text-zinc-500">
+          A comparison needs two DTUs with numeric CRETI quality scores.
+          {scored.length === 1
+            ? ' Only one DTU in this corpus carries them so far.'
+            : ' None of the DTUs in this corpus carry them yet — the corpus lists CRETI as summary text, not scores.'}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
