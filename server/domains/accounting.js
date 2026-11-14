@@ -1154,6 +1154,44 @@ export default function registerAccountingActions(registerLensAction) {
 
   // ── AR Aging Report (buckets from invoices) ──
 
+
+  // FIX-accounting-013: invoice lifecycle postings. Creating an invoice
+  // recognises revenue against Accounts Receivable; marking it paid
+  // collects cash against that receivable; voiding an open invoice
+  // reverses the recognition. Before this, the invoice actions touched
+  // only the invoice row — the journal, the audit log, and the revenue
+  // and cash balances never moved (AR invisible to the ledger). Entries
+  // ride the same persisted journal and audit log as je-post, in its
+  // exact entry shape, with the invoice as the entry's source.
+  function postInvoiceJournal(s, userId, { date, memo, invoice, lines }) {
+    seedDefaultCoA(userId, s);
+    const coa = s.coa.get(userId);
+    for (const l of lines) {
+      if (!coa || !coa.has(l.accountId)) return null;
+    }
+    if (!s.journal.has(userId)) s.journal.set(userId, []);
+    if (!s.seq.has(userId)) s.seq.set(userId, { je: 1, inv: 1 });
+    const seq = s.seq.get(userId);
+    const totalDebit = lines.reduce((a, l) => a + (l.debit || 0), 0);
+    const totalCredit = lines.reduce((a, l) => a + (l.credit || 0), 0);
+    const entry = {
+      id: nextId("je"),
+      number: `JE-${String(seq.je).padStart(5, "0")}`,
+      date, memo, citedDtuId: null, source: "accounting-invoice", sourceId: invoice.id,
+      lines: lines.map((l) => ({ accountId: l.accountId, debit: l.debit || 0, credit: l.credit || 0, memo: String(l.memo || "").slice(0, 120) })),
+      totalDebit, totalCredit,
+      postedAt: nowIso(),
+    };
+    seq.je++;
+    s.journal.get(userId).push(entry);
+    recordAudit(s, userId, {
+      action: "invoice-je", entityType: "journal-entry", entityId: entry.id,
+      summary: `Posted ${entry.number} — ${memo}`,
+      after: { number: entry.number, date, memo, totalDebit, totalCredit, source: "accounting-invoice", sourceId: invoice.id },
+    });
+    return entry;
+  }
+
   registerLensAction("accounting", "invoice-create", (ctx, _artifact, params = {}) => {
   try {
     const s = getAccountingState();
@@ -1180,8 +1218,18 @@ export default function registerAccountingActions(registerLensAction) {
     };
     seq.inv++;
     s.invoices.get(userId).push(invoice);
+    const je = postInvoiceJournal(s, userId, {
+      date: issuedAt,
+      memo: `Invoice ${invoice.number} — ${customerName}`,
+      invoice,
+      lines: [
+        { accountId: "acct_1100", debit: total, credit: 0, memo: `Receivable — ${invoice.number}` },
+        { accountId: "acct_4000", debit: 0, credit: total, memo: `Revenue — ${invoice.number}` },
+      ],
+    });
+    if (je) invoice.journalEntryId = je.id;
     saveAccountingState();
-    return { ok: true, result: { invoice } };
+    return { ok: true, result: { invoice, journalEntry: je } };
     } catch (e) { return handlerFailure(e); }
 });
 
@@ -1197,10 +1245,40 @@ export default function registerAccountingActions(registerLensAction) {
     if (inv.status === "void" || inv.status === "credited") {
       return { ok: false, error: `invoice is ${inv.status}` };
     }
+    if (inv.status === "paid") {
+      // Already collected — a second mark-paid must not post the
+      // collection a second time.
+      return { ok: true, result: { invoice: inv, alreadyPaid: true } };
+    }
     inv.status = "paid";
     inv.paidAt = String(params.paidAt || nowIso().slice(0, 10));
+    if (!inv.journalEntryId) {
+      // Legacy invoice (created before invoice postings existed): book
+      // the recognition leg first so the collection leg has a receivable
+      // to clear and the books end in the same place.
+      const booked = postInvoiceJournal(s, userId, {
+        date: inv.issuedAt || inv.paidAt,
+        memo: `Invoice ${inv.number} — ${inv.customerName} (recognition booked on payment)`,
+        invoice: inv,
+        lines: [
+          { accountId: "acct_1100", debit: inv.total, credit: 0, memo: `Receivable — ${inv.number}` },
+          { accountId: "acct_4000", debit: 0, credit: inv.total, memo: `Revenue — ${inv.number}` },
+        ],
+      });
+      if (booked) inv.journalEntryId = booked.id;
+    }
+    const je = postInvoiceJournal(s, userId, {
+      date: inv.paidAt,
+      memo: `Payment received — ${inv.number}`,
+      invoice: inv,
+      lines: [
+        { accountId: "acct_1000", debit: inv.total, credit: 0, memo: `Cash — ${inv.number}` },
+        { accountId: "acct_1100", debit: 0, credit: inv.total, memo: `Receivable cleared — ${inv.number}` },
+      ],
+    });
+    if (je) inv.paymentJournalEntryId = je.id;
     saveAccountingState();
-    return { ok: true, result: { invoice: inv } };
+    return { ok: true, result: { invoice: inv, journalEntry: je } };
   });
 
   registerLensAction("accounting", "invoice-void", (ctx, _artifact, params = {}) => {
@@ -1216,6 +1294,20 @@ export default function registerAccountingActions(registerLensAction) {
     inv.status = "void";
     inv.voidedAt = nowIso();
     inv.voidReason = String(params.reason || "").slice(0, 200);
+    if (inv.journalEntryId) {
+      // Reverse the recognition so a voided invoice leaves no phantom
+      // receivable or revenue behind.
+      const je = postInvoiceJournal(s, userId, {
+        date: inv.voidedAt.slice(0, 10),
+        memo: `Void reversal — ${inv.number}`,
+        invoice: inv,
+        lines: [
+          { accountId: "acct_4000", debit: inv.total, credit: 0, memo: `Revenue reversed — ${inv.number}` },
+          { accountId: "acct_1100", debit: 0, credit: inv.total, memo: `Receivable reversed — ${inv.number}` },
+        ],
+      });
+      if (je) inv.voidJournalEntryId = je.id;
+    }
     saveAccountingState();
     return { ok: true, result: { invoice: inv } };
   });
