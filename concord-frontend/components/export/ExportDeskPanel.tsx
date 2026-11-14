@@ -276,7 +276,7 @@ export function ExportDeskPanel() {
           <span>
             Include the shared library
             <span className="mt-0.5 block text-xs text-zinc-200">
-              Adds your own DTUs from the shared library. System and other users' DTUs never ride an export. Your vault stays the default.
+              Adds the DTUs you've saved from the shared library — your saved set, whoever made them. System DTUs and anything you haven't saved never ride an export. Your vault stays the default.
             </span>
           </span>
         </label>
