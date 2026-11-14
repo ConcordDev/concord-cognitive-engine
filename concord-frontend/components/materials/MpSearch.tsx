@@ -16,7 +16,7 @@ interface Material {
   isStable?: boolean; isMagnetic?: boolean;
 }
 
-interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
+interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string; reason?: string; message?: string; signupUrl?: string }
 
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
   const r = await apiHelpers.lens.runDomain('materials', action, { input });
@@ -32,11 +32,19 @@ export function MpSearch() {
   const [formula, setFormula] = useState('');
   const [materials, setMaterials] = useState<Material[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // FIX-materials-006: the operator key note (missing_api_key) is a
+  // configuration state, not a failure — rendered calm, with the
+  // signup path, like the FRED/NPS panels render theirs.
+  const [keyNote, setKeyNote] = useState<string | null>(null);
   const [actMaterial, setActMaterial] = useState<Material | null>(null);
 
   const search = useMutation({
     mutationFn: async () => callMacro<{ materials: Material[] }>('mp-search', { formula: formula.trim() }),
-    onSuccess: (env) => { if (env.ok && env.result) { setMaterials(env.result.materials); setError(null); } else { setMaterials([]); setError(env.error || 'failed'); } },
+    onSuccess: (env) => {
+      if (env.ok && env.result) { setMaterials(env.result.materials); setError(null); setKeyNote(null); }
+      else if (env.reason === 'missing_api_key') { setMaterials([]); setError(null); setKeyNote(env.message || 'A Materials Project API key is required.'); }
+      else { setMaterials([]); setKeyNote(null); setError(env.error || 'failed'); }
+    },
   });
 
   return (
@@ -55,6 +63,7 @@ export function MpSearch() {
           Search
         </button>
       </form>
+      {keyNote && <div className="rounded border border-amber-500/25 bg-amber-500/5 px-3 py-2 text-xs text-amber-200">{keyNote}</div>}
       {error && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">{error}</div>}
       <div className="space-y-1.5">
         {materials.map((m) => (

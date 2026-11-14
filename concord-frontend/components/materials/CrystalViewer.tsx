@@ -100,7 +100,11 @@ export function CrystalViewer() {
       setStructure(r.data.result);
     } else {
       setStructure(null);
-      setError(r.data.error || 'failed to load structure');
+      // FIX-materials-006: a missing operator key is a configuration
+      // state — show the server's setup message, not the raw reason.
+      setError(r.data.reason === 'missing_api_key'
+        ? (r.data.message || 'A Materials Project API key is required.')
+        : (r.data.error || 'failed to load structure'));
     }
   }
 

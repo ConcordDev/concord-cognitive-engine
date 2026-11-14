@@ -113,6 +113,16 @@ export function AcademicSearchPanel() {
         </button>
       </div>
 
+      {/* FIX-research-002: this surface is literature SEARCH only —
+          there is no synthesized-answer action anywhere in the lens,
+          so a natural-language question typed here silently degrades
+          to keyword matching and reads as a failed answer. The
+          ticket's accepted second leg: say so, plainly, up front. */}
+      <p className="text-[11px] text-gray-400">
+        Search only — this finds papers by keyword and does not answer questions.
+        Phrase the query as terms (e.g. “A36 steel yield strength”) rather than a question.
+      </p>
+
       {error && (
         <div className="flex items-center gap-2 text-xs text-rose-300 bg-rose-500/10 border border-rose-500/20 rounded p-2">
           <p className="flex-1">{error}</p>
