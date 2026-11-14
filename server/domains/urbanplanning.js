@@ -429,7 +429,7 @@ export default function registerUrbanplanningActions(registerLensAction) {
     if (!STATE) return null;
     if (!STATE.urbanPlanningLens) STATE.urbanPlanningLens = {};
     const s = STATE.urbanPlanningLens;
-    for (const k of ["scenarios", "parcels", "comments", "projects"]) {
+    for (const k of ["scenarios", "parcels", "comments", "projects", "stops"]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
     return s;
@@ -590,6 +590,56 @@ export default function registerUrbanplanningActions(registerLensAction) {
       const next = arr.filter((p) => p.id !== id);
       if (!id || next.length === arr.length) return { ok: false, error: "not_found" };
       s.parcels.set(upAid(ctx), next);
+      saveUpState();
+      return { ok: true, result: { removed: 1 } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ── Transit stops — persisted per user, like parcels ───────────────
+  // FIX-urban-planning-002: stops lived only in the panel's useState, so
+  // a reload dropped every stop while parcels (same workspace) survived.
+  // The stop store mirrors the parcel trio above exactly.
+  registerLensAction("urban-planning", "stop-add", (ctx, _a, params = {}) => {
+    try {
+      const s = getUpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const lat = Number(params.lat); const lng = Number(params.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return { ok: false, error: "stop latitude + longitude are required" };
+      if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return { ok: false, error: "stop coordinates out of range" };
+      const mode = ["bus", "brt", "rail", "ferry"].includes(String(params.mode || "").toLowerCase()) ? String(params.mode).toLowerCase() : "bus";
+      const stop = {
+        id: upId("stop"),
+        name: upClean(params.name, 120) || `${mode} stop`,
+        mode,
+        lat, lng,
+        createdAt: upNow(),
+      };
+      upList(s.stops, upAid(ctx)).push(stop);
+      saveUpState();
+      return { ok: true, result: { stop } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  registerLensAction("urban-planning", "stop-list", (ctx, _a, _params = {}) => {
+    try {
+      const s = getUpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      return { ok: true, result: { stops: upList(s.stops, upAid(ctx)) } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  registerLensAction("urban-planning", "stop-remove", (ctx, _a, params = {}) => {
+    try {
+      const s = getUpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const arr = upList(s.stops, upAid(ctx));
+      const id = String(params.id || "");
+      const next = arr.filter((x) => x.id !== id);
+      if (!id || next.length === arr.length) return { ok: false, error: "not_found" };
+      s.stops.set(upAid(ctx), next);
       saveUpState();
       return { ok: true, result: { removed: 1 } };
     } catch (e) {

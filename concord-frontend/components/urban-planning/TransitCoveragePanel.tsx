@@ -52,35 +52,43 @@ export function TransitCoveragePanel() {
     if (r.data.ok && r.data.result) setParcels(r.data.result.parcels);
   }, []);
 
+  // FIX-urban-planning-002: stops persist server-side like parcels do —
+  // load the saved stops on mount instead of starting from an empty
+  // in-memory list that a reload wiped.
+  const loadStops = useCallback(async () => {
+    const r = await lensRun<{ stops: Stop[] }>('urban-planning', 'stop-list', {});
+    if (r.data.ok && r.data.result) setStops(r.data.result.stops);
+  }, []);
+
   useEffect(() => {
     loadParcels();
+    loadStops();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const addStop = useCallback(() => {
+  const addStop = useCallback(async () => {
     if (!lat || !lng) {
       setError('stop latitude + longitude are required');
       return;
     }
     setError(null);
-    setStops((s) => [
-      ...s,
-      {
-        id: `stop_${Date.now().toString(36)}_${s.length}`,
-        name: name.trim() || `${mode} stop ${s.length + 1}`,
-        mode,
-        lat: Number(lat),
-        lng: Number(lng),
-      },
-    ]);
-    setName('');
-    setLat('');
-    setLng('');
+    const r = await lensRun<{ stop: Stop }>('urban-planning', 'stop-add', {
+      name: name.trim(), mode, lat: Number(lat), lng: Number(lng),
+    });
+    if (r.data.ok && r.data.result?.stop) {
+      setStops((s) => [...s, r.data.result.stop]);
+      setName('');
+      setLat('');
+      setLng('');
+    } else {
+      setError(r.data.error || 'stop could not be saved');
+    }
   }, [name, mode, lat, lng]);
 
-  const removeStop = useCallback((id: string) => {
+  const removeStop = useCallback(async (id: string) => {
     setStops((s) => s.filter((x) => x.id !== id));
     setResult(null);
+    await lensRun('urban-planning', 'stop-remove', { id });
   }, []);
 
   // Run the transit-coverage catchment-buffer analysis on the server.
