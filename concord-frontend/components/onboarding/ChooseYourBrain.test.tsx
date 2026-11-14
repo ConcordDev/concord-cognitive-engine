@@ -102,13 +102,14 @@ describe('ChooseYourBrain', () => {
     await waitFor(() => expect(onComplete).toHaveBeenCalled());
   });
 
-  it('falls back to router.push("/onboarding") when no onComplete is given', async () => {
+  it('stays put when no onComplete is given (GB-1536: Settings home, no onboarding chain)', async () => {
     post.mockResolvedValueOnce({ data: { ok: true, brainMode: 'private', brainModeSetAt: 123 } });
     renderWithClient();
 
     fireEvent.click(screen.getByText(/Stay Private/));
 
-    await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/onboarding'));
+    await waitFor(() => expect(post).toHaveBeenCalledWith('/api/auth/choose-brain-mode', { brainMode: 'private' }));
+    expect(pushMock).not.toHaveBeenCalled();
   });
 
   it('shows an error message and does not navigate when the request fails', async () => {

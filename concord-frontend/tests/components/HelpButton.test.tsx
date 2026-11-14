@@ -113,7 +113,8 @@ describe('HelpButton', () => {
     render(<HelpButton />);
     fireEvent.click(screen.getByLabelText('Help and feedback'));
     const onboarding = screen.getByText('Getting started — replay the intro').closest('a');
-    expect(onboarding?.getAttribute('href')).toBe('/onboarding');
+    // GB-1536: the onboarding screens are deleted; the intro link lands on /hub.
+    expect(onboarding?.getAttribute('href')).toBe('/hub');
     const email = screen.getByText(/Email us/).closest('a');
     expect(email?.getAttribute('href')).toBe('mailto:support@concord-os.org');
   });
