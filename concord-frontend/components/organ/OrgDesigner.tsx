@@ -633,8 +633,16 @@ function CompTab() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <Stat label="Total Comp" value={usd(data.totalComp)} />
         <Stat label="Headcount" value={String(data.headcount)} />
-        <Stat label="Avg Comp" value={usd(data.avgComp)} />
+        <Stat label="Avg Comp" value={data.avgComp == null ? '—' : usd(data.avgComp)} />
       </div>
+      {/* FIX-organ-004: people with no comp recorded are excluded from
+          the averages — say so, with the count, instead of letting a
+          $0 average pose as a measured one. */}
+      {data.missingComp > 0 && (
+        <p className="text-[11px] text-amber-400">
+          {data.missingComp} {data.missingComp === 1 ? 'person has' : 'people have'} no comp recorded — excluded from the averages above.
+        </p>
+      )}
       <div className="panel p-3">
         <h3 className="text-xs font-semibold mb-2 text-gray-400">Compensation by Department</h3>
         <ChartKit
@@ -663,7 +671,7 @@ function CompTab() {
                 <td className="p-2 text-right">{d.headcount}</td>
                 <td className="p-2 text-right text-amber-400">{d.openReqs}</td>
                 <td className="p-2 text-right font-mono">{usd(d.totalComp)}</td>
-                <td className="p-2 text-right font-mono text-gray-400">{usd(d.avgComp)}</td>
+                <td className="p-2 text-right font-mono text-gray-400">{d.avgComp == null ? '—' : usd(d.avgComp)}{d.missingComp > 0 && <span className="ml-1 text-amber-400" title={`${d.missingComp} with no comp recorded, excluded from this average`}>({d.missingComp} missing)</span>}</td>
               </tr>
             ))}
           </tbody>

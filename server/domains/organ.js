@@ -847,16 +847,25 @@ export default function registerOrganActions(registerLensAction) {
       const roster = oList(s, "roster", oActor(ctx)).filter((e) => e.status !== "departed");
       if (roster.length === 0) return { ok: true, result: { message: "No roster — import or add employees first.", departments: [], subtrees: [] } };
 
+      // FIX-organ-004: a blank comp is stored as 0 (normEmployee), so
+      // compensation === 0 means "no comp recorded", not a $0 salary.
+      // Averages must not be dragged by unrecorded comp: they are
+      // computed over the people WITH comp, and the missing count is
+      // reported (the tenure-attrition treatment of a missing start
+      // date, applied to comp). Totals and headcount are unchanged.
+      const hasComp = (e) => e.compensation > 0;
       const byDept = {};
       for (const e of roster) {
         const d = e.department || "Unassigned";
-        if (!byDept[d]) byDept[d] = { department: d, headcount: 0, totalComp: 0, openReqs: 0 };
+        if (!byDept[d]) byDept[d] = { department: d, headcount: 0, compHeadcount: 0, missingComp: 0, totalComp: 0, openReqs: 0 };
         byDept[d].headcount++;
+        if (hasComp(e)) byDept[d].compHeadcount++;
+        else byDept[d].missingComp++;
         byDept[d].totalComp += e.compensation;
         if (e.status === "open_req") byDept[d].openReqs++;
       }
       const departments = Object.values(byDept)
-        .map((d) => ({ ...d, totalComp: oRound(d.totalComp), avgComp: oRound(d.totalComp / Math.max(1, d.headcount)) }))
+        .map((d) => ({ ...d, totalComp: oRound(d.totalComp), avgComp: d.compHeadcount ? oRound(d.totalComp / d.compHeadcount) : null }))
         .sort((a, b) => b.totalComp - a.totalComp);
 
       // Subtree comp rollup per manager.
@@ -876,12 +885,15 @@ export default function registerOrganActions(registerLensAction) {
         .sort((a, b) => b.subtreeComp - a.subtreeComp);
 
       const totalComp = roster.reduce((sum, e) => sum + e.compensation, 0);
+      const compHeadcount = roster.filter(hasComp).length;
       return {
         ok: true,
         result: {
           totalComp: oRound(totalComp),
           headcount: roster.length,
-          avgComp: oRound(totalComp / Math.max(1, roster.length)),
+          compHeadcount,
+          missingComp: roster.length - compHeadcount,
+          avgComp: compHeadcount ? oRound(totalComp / compHeadcount) : null,
           departments,
           subtrees: subtrees.slice(0, 25),
         },
