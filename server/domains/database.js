@@ -795,7 +795,20 @@ export default function registerDatabaseActions(registerLensAction) {
     if (!csvText.trim()) return { ok: false, error: "csv required" };
     const parsed = parseCsv(csvText);
     if (parsed.length < 2) return { ok: false, error: "csv needs a header row and at least one data row" };
+    // FIX-database-004: identifier rewriting and type inference used
+    // to happen silently — a header "unit price" became unit_price
+    // and a numeric column containing "abc" was typed text, with
+    // nothing said. The import still proceeds (its per-row errors
+    // already surface), but every rewrite and every mixed-type
+    // coercion is now named in result.warnings.
+    const warnings = [];
+    const rawHeader = parsed[0].map((h) => String(h ?? "").trim());
     const header = parsed[0].map((h) => dbIdent(h, 64));
+    rawHeader.forEach((raw, j) => {
+      if (raw && header[j] && raw !== header[j]) {
+        warnings.push(`column "${raw}" was renamed to "${header[j]}"`);
+      }
+    });
     if (header.some((h) => !h)) return { ok: false, error: "csv header has an empty column name" };
     if (new Set(header).size !== header.length) return { ok: false, error: "csv header has duplicate column names" };
     const dataRows = parsed.slice(1).filter((r) => !(r.length === 1 && r[0].trim() === ""));
@@ -812,7 +825,11 @@ export default function registerDatabaseActions(registerLensAction) {
         }
       }
     } else {
-      const name = dbIdent(params.name || "imported", 64);
+      const rawName = String(params.name || "imported");
+      const name = dbIdent(rawName, 64);
+      if (rawName.trim() && rawName.trim() !== name) {
+        warnings.push(`dataset name "${rawName.trim()}" was renamed to "${name}"`);
+      }
       if (!name) return { ok: false, error: "dataset name required" };
       if (c.datasets.some((d) => d.name === name)) return { ok: false, error: "dataset name already exists" };
       const columns = header.map((h, j) => {
@@ -821,6 +838,20 @@ export default function registerDatabaseActions(registerLensAction) {
         if (vals.length && vals.every((v) => /^-?\d+$/.test(v))) type = "integer";
         else if (vals.length && vals.every((v) => /^-?\d+(\.\d+)?$/.test(v))) type = "real";
         else if (vals.length && vals.every((v) => /^(true|false)$/i.test(v))) type = "boolean";
+        if (type === "text" && vals.length) {
+          // A column that is MOSTLY one typed shape but not entirely
+          // was silently downgraded to text — name the coercion and
+          // the first value that forced it.
+          const numeric = vals.filter((v) => /^-?\d+(\.\d+)?$/.test(v));
+          const boolish = vals.filter((v) => /^(true|false)$/i.test(v));
+          const shape = numeric.length >= boolish.length
+            ? { hits: numeric, kind: "numeric" }
+            : { hits: boolish, kind: "boolean" };
+          if (shape.hits.length > 0 && shape.hits.length < vals.length) {
+            const offender = vals.find((v) => !/^-?\d+(\.\d+)?$/.test(v) && !/^(true|false)$/i.test(v)) ?? vals.find((v) => !shape.hits.includes(v));
+            warnings.push(`column "${h}" was typed as text: ${vals.length - shape.hits.length} of ${vals.length} values are not ${shape.kind} (e.g. "${offender}")`);
+          }
+        }
         return { name: h, type };
       });
       if (columns[0].name === "id" && columns[0].type === "integer") columns[0].pk = true;
@@ -852,6 +883,7 @@ export default function registerDatabaseActions(registerLensAction) {
         datasetId: ds.id, dataset: ds.name,
         imported, rejected: errors.length, totalRows: dataRows.length,
         errors: errors.slice(0, 20),
+        warnings,
       },
     };
   });
