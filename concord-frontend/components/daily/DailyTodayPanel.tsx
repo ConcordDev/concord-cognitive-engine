@@ -403,16 +403,23 @@ export function DailyTodayPanel() {
   }, [playingClip]);
 
   // -- Add session ----------------------------------------------------------
+  // FIX-daily-003: a session needs a project and, when given, a duration in
+  // 1..1440 minutes — the old handler stored parseInt('-1') verbatim and the
+  // form let a 300-character project name through. Empty duration keeps the
+  // standing 30-minute default.
+  const sessionMinutes = parseInt(newDuration, 10);
+  const durationInvalid = newDuration.trim() !== '' && (!Number.isFinite(sessionMinutes) || sessionMinutes < 1 || sessionMinutes > 1440);
+  const sessionFormValid = newProject.trim().length > 0 && !durationInvalid;
   const addSession = useCallback(() => {
-    if (!newProject.trim()) return;
+    if (!newProject.trim() || durationInvalid) return;
     const sessionData = {
-      id: `s${Date.now()}`, project: newProject, duration: parseInt(newDuration) || 30,
+      id: `s${Date.now()}`, project: newProject, duration: Number.isFinite(sessionMinutes) ? sessionMinutes : 30,
       category: newGenre || 'General', startedAt: new Date().toISOString(),
     };
     setSessions((prev) => [...prev, sessionData]);
     createSession({ title: newProject, data: sessionData as unknown as Record<string, unknown> });
     setNewProject(''); setNewGenre(''); setNewDuration(''); setShowSessionForm(false);
-  }, [newProject, newGenre, newDuration, createSession]);
+  }, [newProject, newGenre, newDuration, createSession, durationInvalid, sessionMinutes]);
 
   // -- Calendar helpers -----------------------------------------------------
   const calDays = useMemo(() => {
@@ -724,7 +731,8 @@ export function DailyTodayPanel() {
                   createEntry({ title: selectedDate, data });
                 }
               }}
-              className="btn-neon purple text-sm w-full flex items-center justify-center gap-2"
+              disabled={!journalNotes.trim() && !workedOn.trim()}
+              className="btn-neon purple text-sm w-full flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Save Entry
             </button>
@@ -745,15 +753,16 @@ export function DailyTodayPanel() {
                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }} className="overflow-hidden mb-4">
                   <div className="p-3 rounded-lg bg-white/5 border border-lattice-border space-y-2">
-                    <input type="text" value={newProject} onChange={(e) => setNewProject(e.target.value)}
+                    <input type="text" value={newProject} onChange={(e) => setNewProject(e.target.value)} maxLength={120}
                       placeholder="Project name..." className="input-lattice w-full text-sm" />
                     <div className="flex gap-2">
                       <input type="text" value={newGenre} onChange={(e) => setNewGenre(e.target.value)}
                         placeholder="Genre..." className="input-lattice flex-1 text-sm" />
-                      <input type="number" value={newDuration} onChange={(e) => setNewDuration(e.target.value)}
+                      <input type="number" value={newDuration} onChange={(e) => setNewDuration(e.target.value)} min={1} max={1440} aria-invalid={durationInvalid}
                         placeholder="Minutes" className="input-lattice w-24 text-sm" />
                     </div>
-                    <button onClick={addSession} className="btn-neon purple text-xs w-full focus:outline-none focus:ring-2 focus:ring-amber-500">Add</button>
+                    {durationInvalid && <p className="text-[11px] text-red-300">Minutes must be between 1 and 1440 — leave it empty for the 30-minute default.</p>}
+                    <button onClick={addSession} disabled={!sessionFormValid} className="btn-neon purple text-xs w-full focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-40 disabled:cursor-not-allowed">Add</button>
                   </div>
                 </motion.div>
               )}
