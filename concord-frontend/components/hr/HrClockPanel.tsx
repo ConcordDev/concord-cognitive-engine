@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 
 interface Employee { id: string; name: string }
 interface ClockEntry {
-  id: string; employeeId: string; employeeName: string;
+  id: string; employeeId: string; employeeName: string; employeeStatus?: string;
   clockIn: string; clockOut: string | null; hours: number; note: string | null;
 }
 
@@ -104,7 +104,7 @@ export function HrClockPanel() {
                 <div className="flex items-center gap-2">
                   <Clock className={cn('w-3.5 h-3.5', en.clockOut ? 'text-zinc-400' : 'text-emerald-400')} />
                   <div>
-                    <p className="text-xs text-zinc-200">{en.employeeName}</p>
+                    <p className="text-xs text-zinc-200">{en.employeeName}{en.employeeStatus === "terminated" ? " (Former)" : ""}</p>
                     <p className="text-[10px] text-zinc-400">
                       {fmtTime(en.clockIn)}{en.clockOut ? ` → ${fmtTime(en.clockOut)} · ${en.hours}h` : ''}
                       {en.note ? ` · ${en.note}` : ''}
