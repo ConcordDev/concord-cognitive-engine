@@ -70,7 +70,7 @@ interface AuditTrailResult {
 }
 interface TrendingResult {
   date: string; count: number; source: string;
-  claims: Array<{ kind: string; headline: string; suggestedClaim: string; checkability: string; views?: number }>;
+  claims: Array<{ kind: string; headline: string; suggestedClaim?: string | null; checkability?: string; views?: number; sourceUrl?: string | null; sourceName?: string; note?: string }>;
 }
 interface FactCheckCard {
   id: string; claim: string; verdict: string; verdictColor: string; emoji: string;
@@ -753,16 +753,29 @@ export function FactGroundingWorkbench() {
                     <span className="text-[11px] font-medium text-zinc-200">{c.headline}</span>
                     <span className={`rounded px-1.5 py-0.5 text-[9px] ${
                       c.checkability === 'high' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-amber-500/15 text-amber-300'
-                    }`}>{c.kind} · {c.checkability}</span>
+                    }`}>{c.kind}{c.checkability ? ` · ${c.checkability}` : ''}</span>
                   </div>
-                  <p className="mt-1 text-[10px] text-zinc-400">Suggested claim: {c.suggestedClaim}</p>
-                  <button
-                    type="button"
-                    onClick={() => { setClaim(c.suggestedClaim); setTab('aggregate'); }}
-                    className="mt-1.5 flex items-center gap-1 rounded bg-zinc-800 px-2 py-1 text-[10px] text-cyan-300 hover:bg-zinc-700"
-                  >
-                    <Link2 className="h-3 w-3" /> Check this claim
-                  </button>
+                  {c.suggestedClaim && (
+                    <>
+                      <p className="mt-1 text-[10px] text-zinc-400">Suggested claim: {c.suggestedClaim}</p>
+                      <button
+                        type="button"
+                        onClick={() => { setClaim(c.suggestedClaim as string); setTab('aggregate'); }}
+                        className="mt-1.5 flex items-center gap-1 rounded bg-zinc-800 px-2 py-1 text-[10px] text-cyan-300 hover:bg-zinc-700"
+                      >
+                        <Link2 className="h-3 w-3" /> Check this claim
+                      </button>
+                    </>
+                  )}
+                  {c.note && <p className="mt-1 text-[10px] text-zinc-500">{c.note}</p>}
+                  {c.sourceUrl && (
+                    <p className="mt-1 text-[10px] text-zinc-500">
+                      Source:{' '}
+                      <a href={c.sourceUrl} target="_blank" rel="noreferrer" className="text-cyan-300/80 underline decoration-dotted hover:text-cyan-200">
+                        {c.sourceName || c.sourceUrl}
+                      </a>
+                    </p>
+                  )}
                 </div>
               ))}
             </div>

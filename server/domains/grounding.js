@@ -1173,27 +1173,48 @@ export default function registerGroundingActions(registerLensAction) {
         : [];
       const news = Array.isArray(json && json.news) ? json.news : [];
 
+      // FIX-grounding-011: item-level citations. The featured payload
+      // carries each article's page URL (content_urls.desktop.page);
+      // fall back to the canonical wiki URL built from the article's
+      // own title — never to an invented source.
+      const pageUrl = (art) => {
+        const cu = art && art.content_urls && art.content_urls.desktop && art.content_urls.desktop.page;
+        if (typeof cu === "string" && cu) return cu;
+        const raw = gClean(art && art.title, 200) || gClean(art && art.titles && art.titles.normalized, 200);
+        return raw ? `https://en.wikipedia.org/wiki/${encodeURIComponent(raw.replace(/\s+/g, "_"))}` : null;
+      };
+
       const items = [];
       for (const n of news.slice(0, limit)) {
         const story = gClean(n && n.story, 400).replace(/<[^>]+>/g, "");
         if (story) {
+          const firstLink = Array.isArray(n.links) ? n.links[0] : null;
           items.push({
             kind: "news",
             headline: story,
             suggestedClaim: story.split(/[.;]/)[0].trim().slice(0, 240),
             checkability: "high",
+            sourceUrl: pageUrl(firstLink),
+            sourceName: "Wikipedia — In the news",
           });
         }
       }
       for (const a of articles.slice(0, limit)) {
         const title = gClean(a && a.titles && a.titles.normalized, 200) || gClean(a && a.title, 200);
         if (title && !title.startsWith("Special:") && !title.startsWith("Main Page")) {
+          // FIX-grounding-011: a most-read entry supports NO truth claim
+          // — the API reports readership, not reporting. The item used
+          // to mint `Recent reporting about "<title>" is accurate.` for
+          // every topic, a claim the source does not make, in the lens
+          // whose whole job is checking claims. Topics now carry their
+          // citation and an honest note instead of a fabricated claim.
           items.push({
             kind: "topic",
             headline: title,
-            suggestedClaim: `Recent reporting about "${title}" is accurate.`,
             views: Math.round(Number(a && a.views) || 0),
-            checkability: "medium",
+            sourceUrl: pageUrl(a),
+            sourceName: "Wikipedia — Most read",
+            note: "Trending by readership — this source reports views, not a claim. Open the article and pick a statement to check.",
           });
         }
       }
