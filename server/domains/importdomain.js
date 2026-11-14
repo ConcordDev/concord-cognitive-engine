@@ -746,7 +746,7 @@ export default function registerImportActions(registerLensAction) {
     return { ok: true, result: { row, validation: validateSessionRows(session) } };
   });
 
-  registerLensAction("import", "commitCorrectionSession", (ctx, artifact, params) => {
+  registerLensAction("import", "commitCorrectionSession", async (ctx, artifact, params) => {
     const s = getImportState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const sessions = importList(s.sessions, importActId(ctx));
@@ -757,11 +757,61 @@ export default function registerImportActions(registerLensAction) {
     if (validation.invalidRows > 0 && !params.force) {
       return { ok: false, error: `${validation.invalidRows} rows still have errors — fix them or pass force:true` };
     }
+    // FIX-import-002: committing used to mark the session committed and
+    // mint NOTHING — a JSON array or CSV import produced zero items
+    // ("0 imported"; the array elsewhere became one raw artifact).
+    // Commit now mints ONE DTU per row, so every element/row lands as
+    // its own item, titled from the row and carrying the row's fields.
+    const runCreate = (typeof ctx?.macro?.run === "function")
+      ? (spec) => ctx.macro.run("dtu", "create", spec)
+      : null;
+    const dtuIds = [];
+    const importFailures = [];
+    if (runCreate) {
+      for (const r of session.rows) {
+        const row = r.current || {};
+        const title = String(row.title || row.name || `${session.name} — row ${r.rowIndex + 1}`).slice(0, 200);
+        const content = typeof row.content === "string" && row.content
+          ? row.content
+          : (typeof row.body === "string" && row.body ? row.body
+            : (typeof row.text === "string" && row.text ? row.text : JSON.stringify(row)));
+        try {
+          const created = await runCreate({
+            title,
+            content,
+            tags: ["imported", "import-row"],
+            source: "import-session",
+            declaredSourceType: "data",
+            meta: {
+              origin: "imported",
+              domain: "import",
+              kind: "imported-record",
+              importSessionId: session.id,
+              rowIndex: r.rowIndex,
+              row,
+            },
+          });
+          if (created && created.ok !== false && (created.id || created.dtu?.id)) {
+            dtuIds.push(created.id || created.dtu.id);
+          } else {
+            importFailures.push({ rowIndex: r.rowIndex, error: String(created?.error || "create returned no id") });
+          }
+        } catch (e) {
+          importFailures.push({ rowIndex: r.rowIndex, error: String(e?.message || e) });
+        }
+      }
+      // Every row refused: the commit did not import anything — say so
+      // instead of reporting a silent success, and leave the session
+      // uncommitted so it can be retried.
+      if (dtuIds.length === 0 && session.rows.length > 0) {
+        return { ok: false, error: `import failed: no rows could be imported (${importFailures[0]?.error || "unknown error"})`, result: { importFailures, validation } };
+      }
+    }
     session.committed = true;
     session.committedAt = importNowIso();
     session.updatedAt = importNowIso();
     importSave();
-    return { ok: true, result: { committedRows: session.rows.map((r) => r.current), correctedCount: session.rows.filter((r) => r.corrected).length, validation } };
+    return { ok: true, result: { committedRows: session.rows.map((r) => r.current), correctedCount: session.rows.filter((r) => r.corrected).length, validation, imported: dtuIds.length, dtuIds, importFailures, minting: runCreate ? "per-row" : "unavailable-no-macro-runner" } };
   });
 
   function summarizeSession(session) {

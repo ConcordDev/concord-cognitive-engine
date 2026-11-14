@@ -88,6 +88,65 @@ const FORMAT_EXTENSIONS = {
   pdf: ".pdf", dtu: ".dtu",
 };
 
+// FIX-import-002: row-shaped data files (a JSON array of records, a
+// { rows: [...] } / { dtus: [...] } envelope, or CSV text) must import
+// as ONE DTU PER ROW. The parser mirrors the Import desk's own
+// parseImportFile/parseCsv semantics (quote-aware, honestly minimal)
+// so the drop path and the desk path read a file the same way. Returns
+// null when the content is not row-shaped — the caller keeps the
+// single-DTU path for freeform files.
+function parseCsvRows(text) {
+  const table = [];
+  let row = [];
+  let field = "";
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === "\"" && text[i + 1] === "\"") { field += "\""; i++; }
+      else if (c === "\"") { inQuotes = false; }
+      else field += c;
+    } else if (c === "\"") {
+      inQuotes = true;
+    } else if (c === ",") {
+      row.push(field); field = "";
+    } else if (c === "\n" || c === "\r") {
+      if (c === "\r" && text[i + 1] === "\n") i++;
+      row.push(field); field = "";
+      if (row.length > 1 || row[0] !== "") table.push(row);
+      row = [];
+    } else {
+      field += c;
+    }
+  }
+  if (field !== "" || row.length > 0) { row.push(field); table.push(row); }
+  if (table.length < 2) return [];
+  const header = table[0].map((h) => String(h).trim());
+  if (!header.some(Boolean)) return [];
+  return table.slice(1)
+    .map((r) => Object.fromEntries(header.map((h, i) => [h, String(r[i] ?? "").trim()])))
+    .filter((r) => Object.values(r).some((v) => v !== ""));
+}
+
+export function parseImportRows(filename, text) {
+  const lower = String(filename || "").toLowerCase();
+  if (lower.endsWith(".json")) {
+    let parsed;
+    try { parsed = JSON.parse(text); } catch { return null; }
+    const arr = Array.isArray(parsed) ? parsed
+      : (Array.isArray(parsed?.rows) ? parsed.rows
+        : (Array.isArray(parsed?.dtus) ? parsed.dtus : null));
+    if (!arr) return null;
+    const rows = arr.filter((r) => r && typeof r === "object" && !Array.isArray(r));
+    return rows.length === arr.length && rows.length > 0 ? rows : null;
+  }
+  if (lower.endsWith(".csv")) {
+    const rows = parseCsvRows(text);
+    return rows.length > 0 ? rows : null;
+  }
+  return null;
+}
+
 export default function createUniversalExportRouter(STATE, runMacro, makeCtx) {
   const router = Router();
 
@@ -320,23 +379,78 @@ export default function createUniversalExportRouter(STATE, runMacro, makeCtx) {
         ? fileBuffer.toString("utf-8").slice(0, 262144) // 256KB text cap for DTU content
         : `[${category}:${filename}] Binary ${primaryType} file (${fileBuffer.length} bytes)`;
 
+      const baseMeta = {
+        origin: "imported",
+        importedAt: new Date().toISOString(),
+        originalFilename: filename,
+        mimeType: mimeType || "application/octet-stream",
+        fileSize: fileBuffer.length,
+        category,
+        primaryType,
+        domain: effectiveDomain,
+        destination: destination || null,
+      };
+
+      // FIX-import-002: a row-shaped data file imports per row — a
+      // 2-item JSON array becomes 2 items, not one raw artifact holding
+      // the array text; a CSV becomes one item per row instead of
+      // failing/queueing as an unparsed blob. Capped so one drop cannot
+      // mint unbounded items; the cap is reported, never silent.
+      const rowCap = 500;
+      const importRows = category === "data" ? parseImportRows(filename, fileBuffer.toString("utf-8")) : null;
+      if (importRows && importRows.length > 0) {
+        const dtuIds = [];
+        const importFailures = [];
+        for (let i = 0; i < Math.min(importRows.length, rowCap); i++) {
+          const row = importRows[i];
+          const rowTitle = String(row.title || row.name || `${effectiveTitle} — item ${i + 1}`).slice(0, 200);
+          const rowContent = typeof row.content === "string" && row.content
+            ? row.content
+            : (typeof row.body === "string" && row.body ? row.body
+              : (typeof row.text === "string" && row.text ? row.text : JSON.stringify(row)));
+          try {
+            const created = await runMacro("dtu", "create", {
+              title: rowTitle,
+              content: rowContent,
+              tags: [...new Set([...autoTags, "import-row"])],
+              source: "file-import",
+              declaredSourceType: category,
+              meta: { ...baseMeta, kind: "imported-record", rowIndex: i, row },
+            }, ctx);
+            if (created && created.ok !== false && (created.id || created.dtu?.id)) dtuIds.push(created.id || created.dtu.id);
+            else importFailures.push({ rowIndex: i, error: String(created?.error || "create returned no id") });
+          } catch (e) {
+            importFailures.push({ rowIndex: i, error: String(e?.message || e) });
+          }
+        }
+        if (dtuIds.length === 0) {
+          return res.status(422).json({ ok: false, error: `import failed: no rows could be imported (${importFailures[0]?.error || "unknown error"})`, importFailures });
+        }
+        return res.json({
+          ok: true,
+          dtuId: dtuIds[0],
+          dtuIds,
+          imported: dtuIds.length,
+          importFailures,
+          rowsTotal: importRows.length,
+          rowsTruncated: importRows.length > rowCap ? importRows.length - rowCap : 0,
+          title: effectiveTitle,
+          category,
+          primaryType,
+          domain: effectiveDomain,
+          fileSize: fileBuffer.length,
+          tags: [...new Set(autoTags)],
+          origin: "imported",
+        });
+      }
+
       const dtu = await runMacro("dtu", "create", {
         title: effectiveTitle,
         content: dtuContent,
         tags: [...new Set(autoTags)],
         source: "file-import",
         declaredSourceType: category,
-        meta: {
-          origin: "imported",
-          importedAt: new Date().toISOString(),
-          originalFilename: filename,
-          mimeType: mimeType || "application/octet-stream",
-          fileSize: fileBuffer.length,
-          category,
-          primaryType,
-          domain: effectiveDomain,
-          destination: destination || null,
-        },
+        meta: baseMeta,
       }, ctx);
 
       res.json({
