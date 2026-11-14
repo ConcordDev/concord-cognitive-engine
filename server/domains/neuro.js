@@ -470,6 +470,7 @@ export default function registerNeuroActions(registerLensAction) {
       const format = String(params.format || "csv").toLowerCase();
       const name = String(params.name || "recording").slice(0, 120);
       let channels = [];
+      let timebase = null;
       let sampleRate = Number(params.sampleRate) || 256;
 
       if (format === "csv") {
@@ -486,12 +487,47 @@ export default function registerNeuroActions(registerLensAction) {
         const labels = headerIsNumeric
           ? header.map((_, i) => `CH${i + 1}`)
           : header.map((h, i) => h || `CH${i + 1}`);
-        channels = labels.map(label => ({ name: label, samples: [], sampleRate }));
+        // FIX-neuro-008: a time column (time_s and kin) is the
+        // recording's timebase, not an EEG channel — importing it as
+        // one fed the time ramp into preprocess/ICA as signal (IC1
+        // <- time_s, 16.4% of variance in the walker's import). The
+        // first time-labelled column is lifted out of the channel
+        // list and carried as the timebase instead.
+        const TIME_LABELS = new Set([
+          "time", "times", "timestamp", "timestamps",
+          "second", "seconds", "sec", "secs",
+        ]);
+        const isTimeLabel = (label) => {
+          const norm = String(label || "").toLowerCase().replace(/[\s()]/g, "").replace(/_/g, "");
+          return TIME_LABELS.has(norm) || norm === "timesec" || norm === "timesecs"
+            || norm === "timesecond" || norm === "timeseconds" || norm === "times";
+        };
+        let timeCol = -1;
+        if (!headerIsNumeric) {
+          timeCol = labels.findIndex((label) => isTimeLabel(label));
+        }
+        const timeValues = [];
+        channels = labels
+          .filter((_, i) => i !== timeCol)
+          .map(label => ({ name: label, samples: [], sampleRate }));
         for (const row of dataRows) {
           const cells = row.split(delim);
+          let out = 0;
           for (let c = 0; c < colCount; c++) {
             const v = Number(cells[c]);
-            channels[c].samples.push(Number.isFinite(v) ? v : 0);
+            if (c === timeCol) { timeValues.push(v); continue; }
+            channels[out++].samples.push(Number.isFinite(v) ? v : 0);
+          }
+        }
+        if (timeCol >= 0 && timeValues.length >= 2) {
+          const first = timeValues[0];
+          const last = timeValues[timeValues.length - 1];
+          const finite = timeValues.every((v) => Number.isFinite(v));
+          const increasing = timeValues.every((v, i) => i === 0 || v > timeValues[i - 1]);
+          if (finite && increasing && last > first) {
+            timebase = { label: labels[timeCol], startSec: first, endSec: last, samples: timeValues.length };
+          } else {
+            timebase = { label: labels[timeCol], startSec: null, endSec: null, samples: timeValues.length };
           }
         }
       } else if (format === "edf-json" || format === "fif-json") {
@@ -516,8 +552,10 @@ export default function registerNeuroActions(registerLensAction) {
       const recordingId = newId("rec");
       const recording = {
         id: recordingId, name, format, sampleRate,
-        channels, channelCount: channels.length, sampleCount,
-        durationSec: Math.round((sampleCount / sampleRate) * 1000) / 1000,
+        channels, channelCount: channels.length, sampleCount, timebase,
+        durationSec: timebase && timebase.endSec != null
+          ? Math.round((timebase.endSec - timebase.startSec) * 1000) / 1000
+          : Math.round((sampleCount / sampleRate) * 1000) / 1000,
         events: Array.isArray(params.events) ? params.events.map((e, i) => ({
           id: e.id || `evt_${i}`,
           label: String(e.label || `event ${i + 1}`),
@@ -535,6 +573,7 @@ export default function registerNeuroActions(registerLensAction) {
           channelCount: channels.length, sampleCount,
           durationSec: recording.durationSec,
           channelNames: channels.map(c => c.name),
+          timebase: recording.timebase,
           eventCount: recording.events.length,
         },
       };
