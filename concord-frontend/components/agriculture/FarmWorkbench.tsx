@@ -152,8 +152,14 @@ function FieldsTab({
   onSelect: (f: Field) => void;
 }) {
   const [creating, setCreating] = useState(false);
+  // FIX-agriculture-011: the numeric draft fields are held as STRINGS in
+  // text inputs. They were type=number inputs coerced via
+  // Number(e.target.value) on every keystroke: a number input reports ''
+  // while the user has typed only '-', so the draft became 0, the minus
+  // vanished, and a western longitude like -93.6319 was stored as
+  // +93.6319. Parse + range-check once, at save.
   const [draft, setDraft] = useState({
-    name: '', acreage: 40, lat: 40.0, lng: -100.0, soilType: 'loam', currentCrop: 'corn',
+    name: '', acreage: '40', lat: '40.0', lng: '-100.0', soilType: 'loam', currentCrop: 'corn',
   });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState({ name: '', acreage: 0, soilType: '', currentCrop: '' });
@@ -163,16 +169,20 @@ function FieldsTab({
   const save = async () => {
     if (!draft.name.trim()) { setFormError('Field name is required.'); return; }
     if (!(Number(draft.acreage) > 0)) { setFormError('Acreage must be a number greater than 0.'); return; }
+    const lat = Number(draft.lat), lng = Number(draft.lng);
+    if (!Number.isFinite(lat) || lat < -90 || lat > 90) { setFormError('Latitude must be a number between -90 and 90.'); return; }
+    if (!Number.isFinite(lng) || lng < -180 || lng > 180) { setFormError('Longitude must be a number between -180 and 180.'); return; }
     setFormError(null);
     try {
       const res = await lensRun({
-        domain: 'agriculture', action: 'field-create', input: draft,
+        domain: 'agriculture', action: 'field-create',
+        input: { ...draft, acreage: Number(draft.acreage), lat, lng },
       });
       if (res.data?.ok === false) { setFormError(res.data?.message || res.data?.error || 'Could not save that field.'); return; }
       const field = (res.data as { result?: { field?: AgField } })?.result?.field;
       if (field) setLastField(field);
       setCreating(false);
-      setDraft({ name: '', acreage: 40, lat: 40.0, lng: -100.0, soilType: 'loam', currentCrop: 'corn' });
+      setDraft({ name: '', acreage: '40', lat: '40.0', lng: '-100.0', soilType: 'loam', currentCrop: 'corn' });
       notifyAgricultureFieldsChanged();
       await onChange();
     } catch (e) { console.error(e); }
@@ -228,23 +238,23 @@ function FieldsTab({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <label className="flex flex-col gap-1">
               <span className="text-[10px] uppercase text-gray-400">Acreage</span>
-              <input type="number" min="0" step="0.1"
+              <input type="text" inputMode="decimal"
                 value={draft.acreage}
-                onChange={(e) => setDraft({ ...draft, acreage: Number(e.target.value) })}
+                onChange={(e) => setDraft({ ...draft, acreage: e.target.value })}
                 className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono" />
             </label>
             <label className="flex flex-col gap-1">
               <span className="text-[10px] uppercase text-gray-400">Latitude</span>
-              <input type="number" min="-90" max="90" step="0.0001"
+              <input type="text" inputMode="decimal"
                 value={draft.lat}
-                onChange={(e) => setDraft({ ...draft, lat: Number(e.target.value) })}
+                onChange={(e) => setDraft({ ...draft, lat: e.target.value })}
                 className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono" />
             </label>
             <label className="flex flex-col gap-1">
               <span className="text-[10px] uppercase text-gray-400">Longitude</span>
-              <input type="number" min="-180" max="180" step="0.0001"
+              <input type="text" inputMode="decimal"
                 value={draft.lng}
-                onChange={(e) => setDraft({ ...draft, lng: Number(e.target.value) })}
+                onChange={(e) => setDraft({ ...draft, lng: e.target.value })}
                 className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono" />
             </label>
           </div>
