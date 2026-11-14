@@ -685,7 +685,17 @@ export default function registerMaterialsActions(registerLensAction) {
    */
   registerLensAction("materials", "mp-search", async (_ctx, _artifact, params = {}) => {
     const apiKey = process.env.MATERIALS_PROJECT_API_KEY;
-    if (!apiKey) return { ok: false, error: "MATERIALS_PROJECT_API_KEY env required (free at materialsproject.org)" };
+    if (!apiKey) return {
+      // FIX-materials-006: the platform's key-gated shape (the
+      // key-required-live.js contract) — reason 'missing_api_key'
+      // stays HTTP 200 through the lens-run shaper and panels render
+      // it as the calm operator note, instead of a plain error
+      // string that shaped to a 422 and a red failure box.
+      ok: false, reason: "missing_api_key",
+      envVar: "MATERIALS_PROJECT_API_KEY",
+      signupUrl: "https://materialsproject.org",
+      message: "Set MATERIALS_PROJECT_API_KEY in .env to enable this panel. Free signup: https://materialsproject.org",
+    };
     const formula = params.formula ? String(params.formula).trim() : null;
     const elements = Array.isArray(params.elements) ? params.elements : null;
     if (!formula && !elements) return { ok: false, error: "formula or elements required" };
@@ -737,7 +747,17 @@ export default function registerMaterialsActions(registerLensAction) {
    */
   registerLensAction("materials", "mp-material", async (_ctx, _artifact, params = {}) => {
     const apiKey = process.env.MATERIALS_PROJECT_API_KEY;
-    if (!apiKey) return { ok: false, error: "MATERIALS_PROJECT_API_KEY env required" };
+    if (!apiKey) return {
+      // FIX-materials-006: the platform's key-gated shape (the
+      // key-required-live.js contract) — reason 'missing_api_key'
+      // stays HTTP 200 through the lens-run shaper and panels render
+      // it as the calm operator note, instead of a plain error
+      // string that shaped to a 422 and a red failure box.
+      ok: false, reason: "missing_api_key",
+      envVar: "MATERIALS_PROJECT_API_KEY",
+      signupUrl: "https://materialsproject.org",
+      message: "Set MATERIALS_PROJECT_API_KEY in .env to enable this panel. Free signup: https://materialsproject.org",
+    };
     const materialId = String(params.materialId || "").trim();
     if (!materialId) return { ok: false, error: "materialId required (e.g. 'mp-149')" };
     if (!/^mp-\d+$/.test(materialId)) return { ok: false, error: "materialId format must be 'mp-<digits>'" };
@@ -1057,7 +1077,17 @@ export default function registerMaterialsActions(registerLensAction) {
   registerLensAction("materials", "mp-structure", async (_ctx, _artifact, params = {}) => {
     try {
       const apiKey = process.env.MATERIALS_PROJECT_API_KEY;
-      if (!apiKey) return { ok: false, error: "MATERIALS_PROJECT_API_KEY env required (free at materialsproject.org)" };
+      if (!apiKey) return {
+        // FIX-materials-006: the platform's key-gated shape (the
+        // key-required-live.js contract) — reason 'missing_api_key'
+        // stays HTTP 200 through the lens-run shaper and panels render
+        // it as the calm operator note, instead of a plain error
+        // string that shaped to a 422 and a red failure box.
+        ok: false, reason: "missing_api_key",
+        envVar: "MATERIALS_PROJECT_API_KEY",
+        signupUrl: "https://materialsproject.org",
+        message: "Set MATERIALS_PROJECT_API_KEY in .env to enable this panel. Free signup: https://materialsproject.org",
+      };
       const materialId = String(params.materialId || "").trim();
       if (!/^mp-\d+$/.test(materialId)) return { ok: false, error: "materialId format must be 'mp-<digits>'" };
       const url = `${MP_BASE}/materials/summary/?material_ids=${encodeURIComponent(materialId)}&_fields=material_id,formula_pretty,structure,symmetry,volume`;
