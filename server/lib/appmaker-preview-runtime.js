@@ -119,6 +119,9 @@ export const APPMAKER_PREVIEW_RUNTIME = `(function () {
     window.addEventListener("message", function (ev) {
       var d = ev && ev.data;
       if (!d || d.kind !== "am-bridge-reply" || d.v !== 1) return;
+      // Only replies to requests THIS runtime sent are honoured — a
+      // forged requestId is ignored, never rendered.
+      if (!Object.prototype.hasOwnProperty.call(pending, d.requestId)) return;
       var t = pending[d.requestId];
       if (t) { clearTimeout(t); delete pending[d.requestId]; }
       if (d.ok === false) { complain("Table action refused: " + (d.error || "unknown error")); return; }
