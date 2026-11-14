@@ -56,7 +56,7 @@ export function OwnerPortalPanel() {
           <input
             value={ownerName}
             onChange={(e) => setOwnerName(e.target.value)}
-            placeholder="Owner name — view their pets, visits, bills & meds"
+            placeholder="Owner or patient name — view their pets, visits, bills & meds"
             className="w-full rounded border border-zinc-800 bg-zinc-900 py-2 pl-9 pr-3 text-sm text-white"
           />
         </div>

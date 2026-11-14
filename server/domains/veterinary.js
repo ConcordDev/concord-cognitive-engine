@@ -821,9 +821,30 @@ export default function registerVeterinaryActions(registerLensAction) {
       const owner = vtClean(params.owner, 120);
       if (!owner) return { ok: false, error: "owner name required" };
       const userId = vtActor(ctx);
-      const ownerLc = owner.toLowerCase();
-      const pets = vtPatients(s, userId)
-        .filter((p) => (p.owner || "").toLowerCase() === ownerLc)
+      const queryLc = owner.toLowerCase();
+      const allPatients = vtPatients(s, userId);
+      // FIX-veterinary-011: the portal matched OWNER names only, so
+      // searching the patient's name — the natural front-desk lookup,
+      // and what the ticket's expected state allows ("Patient/owner
+      // match") — found nothing and even echoed the pet's name back
+      // as the portal's owner. Resolve the query as an owner first;
+      // if no owner matches, resolve it as a patient name and open
+      // that patient's owner's portal. The returned `owner` is the
+      // STORED owner name, never the raw query.
+      let matchedOwner = null;
+      let ownerPets = allPatients.filter((p) => (p.owner || "").toLowerCase() === queryLc);
+      if (ownerPets.length > 0) {
+        matchedOwner = ownerPets[0].owner;
+      } else {
+        const byPet = allPatients.filter((p) => (p.name || "").toLowerCase() === queryLc);
+        if (byPet.length > 0) {
+          matchedOwner = byPet[0].owner;
+          const moLc = (matchedOwner || "").toLowerCase();
+          ownerPets = allPatients.filter((p) => (p.owner || "").toLowerCase() === moLc);
+        }
+      }
+      const ownerLc = (matchedOwner || owner).toLowerCase();
+      const pets = ownerPets
         .map((p) => ({
           id: p.id, name: p.name, species: p.species, breed: p.breed,
           ageYears: p.ageYears, weightLbs: p.weightLbs,
@@ -840,7 +861,7 @@ export default function registerVeterinaryActions(registerLensAction) {
       return {
         ok: true,
         result: {
-          owner, pets, appointments: appts, invoices, prescriptions: rxs,
+          owner: matchedOwner || owner, pets, appointments: appts, invoices, prescriptions: rxs,
           petCount: pets.length,
           balanceDue: Math.round(balanceDue * 100) / 100,
         },
