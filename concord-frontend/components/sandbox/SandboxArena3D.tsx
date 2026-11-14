@@ -105,6 +105,20 @@ export function SandboxArena3D({
     const ro = new ResizeObserver(handleResize);
     ro.observe(mount);
 
+    // FIX-sandbox-010: opening/closing DevTools can make the browser
+    // drop the WebGL context (GPU reset / context budget); the canvas
+    // then stays blank forever because render() on a lost context is a
+    // no-op and nothing here listened for it. preventDefault on the
+    // lost event opts into restoration, and the restored handler
+    // re-sizes and re-draws so the arena comes back on its own.
+    const onContextLost = (e: Event) => { e.preventDefault(); };
+    const onContextRestored = () => {
+      handleResize();
+      renderer.render(scene, camera);
+    };
+    renderer.domElement.addEventListener('webglcontextlost', onContextLost);
+    renderer.domElement.addEventListener('webglcontextrestored', onContextRestored);
+
     const pickDummy = (clientX: number, clientY: number): string | null => {
       const rect = renderer.domElement.getBoundingClientRect();
       pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
@@ -216,6 +230,8 @@ export function SandboxArena3D({
       ro.disconnect();
       renderer.domElement.removeEventListener('click', onClick);
       renderer.domElement.removeEventListener('contextmenu', onContext);
+      renderer.domElement.removeEventListener('webglcontextlost', onContextLost);
+      renderer.domElement.removeEventListener('webglcontextrestored', onContextRestored);
       renderer.dispose();
       floorGeo.dispose();
       floorMat.dispose();
