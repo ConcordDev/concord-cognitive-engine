@@ -6,7 +6,7 @@ import { lensRun } from '@/lib/api/client';
 import { CityMap } from './CityMap';
 import type { MapParcel } from './CityMap';
 import type { MapMarker } from '@/components/common/MapView';
-import { LandPlot, Plus, Trash2, Loader2, RefreshCw, Ruler, MapPinned } from 'lucide-react';
+import { LandPlot, Plus, Trash2, Loader2, RefreshCw, Ruler, MapPinned, Pencil } from 'lucide-react';
 
 // Real OpenStreetMap basemap (already platform-wired — see lib/maplibre/osm.ts,
 // consumed by ~30 other lens map surfaces via components/common/MapView).
@@ -110,6 +110,23 @@ export function ParcelManager({ onParcelsChange }: { onParcelsChange?: (p: Parce
       await refresh();
     },
     [refresh],
+  );
+
+  // FIX-urban-planning-003: parcels gain an edit path (parcel-update).
+  const [editingParcel, setEditingParcel] = useState<string | null>(null);
+  const [parcelForm, setParcelForm] = useState({ apn: '', address: '', zoneType: 'residential', lotSizeSqFt: '5000', owner: '', district: '' });
+  const saveParcel = useCallback(
+    async (id: string) => {
+      setBusy(true);
+      const r = await lensRun('urban-planning', 'parcel-update', {
+        id, apn: parcelForm.apn, address: parcelForm.address, zoneType: parcelForm.zoneType,
+        lotSizeSqFt: Number(parcelForm.lotSizeSqFt) || 0, owner: parcelForm.owner, district: parcelForm.district,
+      });
+      setBusy(false);
+      if (r.data.ok) { setEditingParcel(null); await refresh(); }
+      else setError(r.data.error || 'update failed');
+    },
+    [parcelForm, refresh],
   );
 
   // Run the 3D massing envelope macro for a parcel's zone + lot size.
@@ -309,6 +326,16 @@ export function ParcelManager({ onParcelsChange }: { onParcelsChange?: (p: Parce
                       Massing
                     </button>
                     <button
+                      onClick={() => {
+                        setEditingParcel(editingParcel === p.id ? null : p.id);
+                        setParcelForm({ apn: p.apn, address: p.address || '', zoneType: p.zoneType, lotSizeSqFt: String(p.lotSizeSqFt), owner: p.owner || '', district: p.district || '' });
+                      }}
+                      className="rounded p-1 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
+                      aria-label={`Edit parcel ${p.apn}`}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                    <button
                       onClick={() => remove(p.id)}
                       className="rounded p-1 text-zinc-600 hover:bg-zinc-800 hover:text-red-400"
                       aria-label="Delete parcel"
@@ -317,6 +344,38 @@ export function ParcelManager({ onParcelsChange }: { onParcelsChange?: (p: Parce
                     </button>
                   </div>
                 </div>
+                {editingParcel === p.id && (
+                  <div className="mt-2 space-y-2 rounded border border-zinc-800 bg-zinc-950 p-2.5">
+                    <div className="grid grid-cols-2 gap-2">
+                      <input value={parcelForm.apn} onChange={(e) => setParcelForm({ ...parcelForm, apn: e.target.value })}
+                        aria-label="Edit parcel APN" placeholder="APN"
+                        className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-100" />
+                      <input value={parcelForm.address} onChange={(e) => setParcelForm({ ...parcelForm, address: e.target.value })}
+                        aria-label="Edit parcel address" placeholder="Address"
+                        className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-100" />
+                      <select value={parcelForm.zoneType} onChange={(e) => setParcelForm({ ...parcelForm, zoneType: e.target.value })}
+                        aria-label="Edit parcel zone"
+                        className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-100">
+                        {ZONES.map((z) => <option key={z} value={z}>{z}</option>)}
+                      </select>
+                      <input value={parcelForm.lotSizeSqFt} onChange={(e) => setParcelForm({ ...parcelForm, lotSizeSqFt: e.target.value })}
+                        aria-label="Edit parcel lot size" type="number" min={0} placeholder="Lot sq ft"
+                        className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-100" />
+                      <input value={parcelForm.owner} onChange={(e) => setParcelForm({ ...parcelForm, owner: e.target.value })}
+                        aria-label="Edit parcel owner" placeholder="Owner"
+                        className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-100" />
+                      <input value={parcelForm.district} onChange={(e) => setParcelForm({ ...parcelForm, district: e.target.value })}
+                        aria-label="Edit parcel district" placeholder="District"
+                        className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-100" />
+                    </div>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => saveParcel(p.id)} disabled={busy || !parcelForm.apn.trim()}
+                        className="rounded bg-emerald-600 px-2.5 py-1 text-[11px] text-white hover:bg-emerald-500 disabled:opacity-40">Save changes</button>
+                      <button type="button" onClick={() => setEditingParcel(null)}
+                        className="rounded border border-zinc-700 px-2.5 py-1 text-[11px] text-zinc-300 hover:bg-zinc-800">Cancel</button>
+                    </div>
+                  </div>
+                )}
                 {m && (
                   <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-5">
                     {[

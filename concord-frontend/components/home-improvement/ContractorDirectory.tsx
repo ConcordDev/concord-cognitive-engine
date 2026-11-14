@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
-import { Wrench, Plus, Trash2, Loader2, Star, Phone, Mail, BadgeCheck, FileText } from 'lucide-react';
+import { Wrench, Plus, Trash2, Loader2, Star, Phone, Mail, BadgeCheck, FileText, Pencil } from 'lucide-react';
 
 interface Quote {
   id: string;
@@ -78,6 +78,18 @@ export function ContractorDirectory() {
     const { data } = await lensRun(DOMAIN, 'pro-add', { ...form });
     if (data.ok) { setForm({ name: '', trade: 'general', phone: '', email: '', license: '', notes: '' }); setShowForm(false); await load(); }
     else setError(data.error || 'Failed to add contractor');
+    setBusy(false);
+  };
+
+  // FIX-home-improvement-011: contractors gain an edit path (pro-update).
+  const [editingPro, setEditingPro] = useState<string | null>(null);
+  const [proEdit, setProEdit] = useState({ name: '', trade: 'general', phone: '', email: '', license: '', notes: '' });
+  const savePro = async (id: string) => {
+    if (!proEdit.name.trim()) return;
+    setBusy(true); setError(null);
+    const { data } = await lensRun(DOMAIN, 'pro-update', { id, ...proEdit });
+    if (data.ok) { setEditingPro(null); await load(); }
+    else setError(data.error || 'Failed to update contractor');
     setBusy(false);
   };
 
@@ -159,8 +171,44 @@ export function ContractorDirectory() {
                     {p.quoteCount > 0 && <span className="text-neon-green">Lowest quote: ${p.lowestQuote.toLocaleString()}</span>}
                   </div>
                 </button>
-                <StickyDeleteConfirm onConfirm={() => removePro(p.id)} armAriaLabel="Delete" confirmAriaLabel="Confirm delete" className="text-gray-400 hover:text-red-400 p-1" armLabel={<Trash2 className="w-3.5 h-3.5" />} disabled={busy} />
+                <span className="flex items-center gap-1">
+                  <button type="button" aria-label={`Edit contractor ${p.name}`} disabled={busy}
+                    onClick={() => {
+                      setEditingPro(editingPro === p.id ? null : p.id);
+                      setProEdit({ name: p.name, trade: p.trade, phone: p.phone || '', email: p.email || '', license: p.license || '', notes: p.notes || '' });
+                      setOpenPro(p.id);
+                    }}
+                    className="text-gray-400 hover:text-gray-100 p-1">
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                  <StickyDeleteConfirm onConfirm={() => removePro(p.id)} armAriaLabel="Delete" confirmAriaLabel="Confirm delete" className="text-gray-400 hover:text-red-400 p-1" armLabel={<Trash2 className="w-3.5 h-3.5" />} disabled={busy} />
+                </span>
               </div>
+
+              {editingPro === p.id && (
+                <div className="space-y-2 border-t border-lattice-border pt-2">
+                  <input value={proEdit.name} onChange={(e) => setProEdit((f) => ({ ...f, name: e.target.value }))}
+                    aria-label="Edit contractor name" placeholder="Name" className="input-lattice w-full" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input value={proEdit.trade} onChange={(e) => setProEdit((f) => ({ ...f, trade: e.target.value }))}
+                      aria-label="Edit contractor trade" placeholder="Trade" className="input-lattice" />
+                    <input value={proEdit.phone} onChange={(e) => setProEdit((f) => ({ ...f, phone: e.target.value }))}
+                      aria-label="Edit contractor phone" placeholder="Phone" className="input-lattice" />
+                    <input value={proEdit.email} onChange={(e) => setProEdit((f) => ({ ...f, email: e.target.value }))}
+                      aria-label="Edit contractor email" placeholder="Email" className="input-lattice" />
+                    <input value={proEdit.license} onChange={(e) => setProEdit((f) => ({ ...f, license: e.target.value }))}
+                      aria-label="Edit contractor license" placeholder="License" className="input-lattice" />
+                  </div>
+                  <input value={proEdit.notes} onChange={(e) => setProEdit((f) => ({ ...f, notes: e.target.value }))}
+                    aria-label="Edit contractor notes" placeholder="Notes" className="input-lattice w-full" />
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => savePro(p.id)} disabled={busy || !proEdit.name.trim()}
+                      className="btn-primary px-3 py-1.5 text-xs disabled:opacity-40">Save changes</button>
+                    <button type="button" onClick={() => setEditingPro(null)}
+                      className="btn-secondary px-3 py-1.5 text-xs">Cancel</button>
+                  </div>
+                </div>
+              )}
 
               {openPro === p.id && (
                 <div className="space-y-3 border-t border-lattice-border pt-2">

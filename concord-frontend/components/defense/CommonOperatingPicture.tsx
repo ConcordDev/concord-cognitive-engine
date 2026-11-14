@@ -3,13 +3,13 @@
 /**
  * CommonOperatingPicture — geospatial COP for the defense lens.
  * Plots assets / threats / operations on a world map.
- * Backed by defense.cop-add / cop-map / cop-remove macros.
+ * Backed by defense.cop-add / cop-map / cop-update / cop-remove macros.
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { MapView, type MapMarker } from '@/components/viz';
 import { lensRun } from '@/lib/api/client';
-import { MapPin, Plus, Loader2, Crosshair } from 'lucide-react';
+import { MapPin, Plus, Loader2, Crosshair, Pencil } from 'lucide-react';
 import { ConfirmDeleteButton } from './ConfirmDeleteButton';
 
 interface CopMarker {
@@ -108,6 +108,28 @@ export function CommonOperatingPicture() {
     }
     setBusy(false);
   }, [kind, label, affiliation, lat, lon, note, refresh]);
+
+  // FIX-defense-003: own plotted markers gain an in-place edit.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ label: '', lat: '', lon: '', note: '' });
+  const saveEdit = useCallback(async (marker: CopMarker) => {
+    if (!editForm.label.trim()) return;
+    setBusy(true);
+    setError(null);
+    const r = await lensRun('defense', 'cop-update', {
+      id: marker.id, label: editForm.label.trim(),
+      lat: editForm.lat === '' ? undefined : Number(editForm.lat),
+      lon: editForm.lon === '' ? undefined : Number(editForm.lon),
+      note: editForm.note,
+    });
+    if (r.data?.ok) {
+      setEditingId(null);
+      await refresh();
+    } else {
+      setError(r.data?.error || 'Failed to update marker');
+    }
+    setBusy(false);
+  }, [editForm, refresh]);
 
   const remove = useCallback(async (marker: CopMarker) => {
     setBusy(true);
@@ -265,8 +287,9 @@ export function CommonOperatingPicture() {
           {markers.map((m) => (
             <div
               key={m.id}
-              className="flex items-center justify-between rounded border border-zinc-800 bg-zinc-900/60 px-2.5 py-1.5"
+              className="rounded border border-zinc-800 bg-zinc-900/60 px-2.5 py-1.5"
             >
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 min-w-0">
                 <MapPin
                   className={`w-3.5 h-3.5 shrink-0 ${
@@ -284,13 +307,51 @@ export function CommonOperatingPicture() {
                 <span className="text-[10px] text-zinc-400 shrink-0">{m.kind}</span>
               </div>
               {m.id.startsWith('cop_') && (
-                <ConfirmDeleteButton
-                  ariaLabel="Remove marker"
-                  itemLabel={`marker "${m.label}"`}
-                  disabled={busy}
-                  onConfirm={() => remove(m)}
-                />
+                <span className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => {
+                      setEditingId(editingId === m.id ? null : m.id);
+                      setEditForm({
+                        label: m.label,
+                        lat: m.lat != null ? String(m.lat) : '',
+                        lon: m.lon != null ? String(m.lon) : '',
+                        note: m.note || '',
+                      });
+                    }}
+                    disabled={busy}
+                    className="text-zinc-500 hover:text-zinc-200 disabled:opacity-50"
+                    title="Edit marker" aria-label={`Edit marker ${m.label}`}
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                  <ConfirmDeleteButton
+                    ariaLabel="Remove marker"
+                    itemLabel={`marker "${m.label}"`}
+                    disabled={busy}
+                    onConfirm={() => remove(m)}
+                  />
+                </span>
               )}
+            </div>
+            {editingId === m.id && (
+              <div className="flex flex-wrap gap-2 mt-2 border-t border-zinc-800 pt-2">
+                <input value={editForm.label} onChange={(e) => setEditForm((f) => ({ ...f, label: e.target.value }))}
+                  aria-label="Edit marker label" placeholder="Label"
+                  className="flex-1 min-w-32 rounded bg-zinc-900 border border-zinc-700 px-2 py-1 text-xs text-white" />
+                <input type="number" step="any" value={editForm.lat} onChange={(e) => setEditForm((f) => ({ ...f, lat: e.target.value }))}
+                  aria-label="Edit marker latitude" placeholder="Lat"
+                  className="w-24 rounded bg-zinc-900 border border-zinc-700 px-2 py-1 text-xs text-white" />
+                <input type="number" step="any" value={editForm.lon} onChange={(e) => setEditForm((f) => ({ ...f, lon: e.target.value }))}
+                  aria-label="Edit marker longitude" placeholder="Lon"
+                  className="w-24 rounded bg-zinc-900 border border-zinc-700 px-2 py-1 text-xs text-white" />
+                <input value={editForm.note} onChange={(e) => setEditForm((f) => ({ ...f, note: e.target.value }))}
+                  aria-label="Edit marker note" placeholder="Note"
+                  className="flex-1 min-w-32 rounded bg-zinc-900 border border-zinc-700 px-2 py-1 text-xs text-white" />
+                <button onClick={() => saveEdit(m)} disabled={!editForm.label.trim() || busy}
+                  className="rounded bg-cyan-600 hover:bg-cyan-500 px-2.5 py-1 text-xs font-medium text-white disabled:opacity-50">Save</button>
+                <button onClick={() => setEditingId(null)} className="text-xs text-zinc-400 px-1.5">Cancel</button>
+              </div>
+            )}
             </div>
           ))}
         </div>

@@ -17,10 +17,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { calendarDateKey } from '@/lib/calendar-date';
 import { ChartKit } from '@/components/viz';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import {
   Timer, Play, Square, AlertTriangle, CalendarDays, CalendarClock,
   BellOff, Bell, Activity, Zap, Loader2, Plus, Trash2, CheckCircle2,
-  TrendingUp, TrendingDown, Minus, Gauge,
+  TrendingUp, TrendingDown, Minus, Gauge, Pencil,
 } from 'lucide-react';
 
 // ── shared types ──
@@ -224,6 +225,28 @@ export function FocusToolkit() {
     setBusy(null);
   };
 
+  // FIX-attention-003 / FIX-strategic-adds-006: log entries gain edit
+  // + delete (distractionUpdate / distractionDelete).
+  const [dxEditId, setDxEditId] = useState<string | null>(null);
+  const [dxEdit, setDxEdit] = useState({ source: '', kind: 'other', durationMinutes: '0', note: '' });
+  const saveDistraction = async (id: string) => {
+    if (!dxEdit.source.trim()) return;
+    setBusy('dx-edit');
+    await run('distractionUpdate', {
+      id, source: dxEdit.source.trim(), kind: dxEdit.kind,
+      durationMinutes: Number(dxEdit.durationMinutes) || 0, note: dxEdit.note.trim() || null,
+    });
+    setDxEditId(null);
+    await refreshDistractions();
+    await refreshAnalytics();
+    setBusy(null);
+  };
+  const deleteDistraction = async (id: string) => {
+    await run('distractionDelete', { id });
+    await refreshDistractions();
+    await refreshAnalytics();
+  };
+
   // ── focus mode ──
   const toggleFocusMode = async () => {
     setBusy('fm');
@@ -246,6 +269,21 @@ export function FocusToolkit() {
   };
   const releaseBlock = async (id: string) => {
     await run('calendarRelease', { blockId: id });
+    await refreshCalendar();
+  };
+
+  // FIX-strategic-adds-006: focus blocks gain an edit (calendarUpdate).
+  const [calEditId, setCalEditId] = useState<string | null>(null);
+  const [calEdit, setCalEdit] = useState({ title: '', start: '540', duration: '90' });
+  const [calEditError, setCalEditError] = useState('');
+  const saveBlock = async (id: string) => {
+    setCalEditError('');
+    const r = await run('calendarUpdate', {
+      blockId: id, title: calEdit.title || undefined,
+      startMinute: Number(calEdit.start), durationMinutes: Number(calEdit.duration),
+    });
+    if (r === null) { setCalEditError('That slot overlaps an existing block.'); return; }
+    setCalEditId(null);
     await refreshCalendar();
   };
 
@@ -454,10 +492,21 @@ export function FocusToolkit() {
           {calError && <p className="mb-2 text-xs text-red-400">{calError}</p>}
           <div className="space-y-1">
             {calBlocks.map((b) => (
-              <div key={b.id} className="flex items-center justify-between rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs">
+              <div key={b.id} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs">
+              <div className="flex items-center justify-between">
                 <span className="text-gray-300">
                   <span className="font-mono text-neon-blue">{minToHHMM(b.startMinute)}–{minToHHMM(b.endMinute)}</span> · {b.title}
                 </span>
+                <span className="inline-flex items-center gap-1">
+                <button type="button" aria-label={`Edit block ${b.title}`}
+                  onClick={() => {
+                    setCalEditId(calEditId === b.id ? null : b.id);
+                    setCalEdit({ title: b.title, start: String(b.startMinute), duration: String(b.durationMinutes) });
+                    setCalEditError('');
+                  }}
+                  className="text-gray-400 hover:text-gray-100">
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
                 {/* FIX-strategic-adds-007: releasing a focus block removes
                     the record — two-step confirm, first click arms. */}
                 {confirmReleaseId === b.id ? (
@@ -470,6 +519,33 @@ export function FocusToolkit() {
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 )}
+                </span>
+              </div>
+              {calEditId === b.id && (
+                <div className="mt-2 space-y-1.5">
+                  <div className="flex flex-wrap items-end gap-2">
+                    <input value={calEdit.title} onChange={(e) => setCalEdit((f) => ({ ...f, title: e.target.value }))}
+                      aria-label="Edit block title" placeholder="Block title" className="input-lattice flex-1" style={{ minWidth: 100 }} />
+                    <label className="flex flex-col gap-1 text-[10px] text-gray-400">
+                      Start
+                      <input type="time" value={minToHHMM(Number(calEdit.start))}
+                        onChange={(e) => { const [h, m] = e.target.value.split(':'); setCalEdit((f) => ({ ...f, start: String(Number(h) * 60 + Number(m)) })); }}
+                        aria-label="Edit block start" className="input-lattice" />
+                    </label>
+                    <label className="flex flex-col gap-1 text-[10px] text-gray-400">
+                      Minutes
+                      <input type="number" min={15} max={480} value={calEdit.duration}
+                        onChange={(e) => setCalEdit((f) => ({ ...f, duration: e.target.value }))}
+                        aria-label="Edit block minutes" className="input-lattice w-20" />
+                    </label>
+                    <button type="button" onClick={() => void saveBlock(b.id)}
+                      className="rounded bg-neon-blue/15 px-2.5 py-1.5 text-xs text-neon-blue ring-1 ring-neon-blue/30">Save</button>
+                    <button type="button" onClick={() => setCalEditId(null)}
+                      className="rounded px-2.5 py-1.5 text-xs text-gray-400 hover:bg-white/[0.05]">Cancel</button>
+                  </div>
+                  {calEditError && <p className="text-xs text-red-400">{calEditError}</p>}
+                </div>
+              )}
               </div>
             ))}
             {calBlocks.length === 0 && <p className="rounded border border-dashed border-zinc-800 py-3 text-center text-xs text-gray-400">No focus blocks reserved today.</p>}
@@ -504,6 +580,61 @@ export function FocusToolkit() {
             Log
           </button>
         </div>
+        {distractions && distractions.recent.length > 0 && (
+          <div className="mb-3 space-y-1">
+            <p className="mb-1 text-xs text-gray-400">Recent entries</p>
+            {distractions.recent.map((e) => (
+              <div key={e.id} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="min-w-0 flex-1 truncate text-gray-200">{e.source}</span>
+                  <span className="capitalize text-gray-400">{e.kind}</span>
+                  <span className="font-mono text-yellow-400">{e.durationMinutes}m</span>
+                  <button type="button" aria-label={`Edit distraction ${e.source}`}
+                    onClick={() => {
+                      setDxEditId(dxEditId === e.id ? null : e.id);
+                      setDxEdit({ source: e.source, kind: e.kind, durationMinutes: String(e.durationMinutes), note: e.note || '' });
+                    }}
+                    className="text-gray-400 hover:text-gray-100">
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                  <StickyDeleteConfirm
+                    onConfirm={() => void deleteDistraction(e.id)}
+                    armLabel={<Trash2 className="h-3.5 w-3.5" />}
+                    armAriaLabel={`Delete distraction ${e.source}`}
+                    confirmLabel="Delete?"
+                    confirmAriaLabel="Confirm delete distraction"
+                    cancelAriaLabel="Cancel delete distraction"
+                    className="text-gray-400 hover:text-red-400"
+                  />
+                </div>
+                {e.note && dxEditId !== e.id && <p className="mt-0.5 text-gray-400">{e.note}</p>}
+                {dxEditId === e.id && (
+                  <div className="mt-2 flex flex-wrap items-end gap-2">
+                    <input value={dxEdit.source} onChange={(ev) => setDxEdit((f) => ({ ...f, source: ev.target.value }))}
+                      aria-label="Edit distraction source" className="input-lattice flex-1" style={{ minWidth: 120 }} />
+                    <select value={dxEdit.kind} onChange={(ev) => setDxEdit((f) => ({ ...f, kind: ev.target.value }))}
+                      aria-label="Edit distraction kind" className="input-lattice">
+                      <option value="notification">Notification</option>
+                      <option value="person">Person</option>
+                      <option value="self">Self</option>
+                      <option value="meeting">Meeting</option>
+                      <option value="other">Other</option>
+                    </select>
+                    <input type="number" min={0} max={480} value={dxEdit.durationMinutes}
+                      onChange={(ev) => setDxEdit((f) => ({ ...f, durationMinutes: ev.target.value }))}
+                      aria-label="Edit distraction minutes" className="input-lattice w-20" />
+                    <input value={dxEdit.note} onChange={(ev) => setDxEdit((f) => ({ ...f, note: ev.target.value }))}
+                      aria-label="Edit distraction note" placeholder="Note" className="input-lattice flex-1" style={{ minWidth: 120 }} />
+                    <button type="button" onClick={() => void saveDistraction(e.id)} disabled={busy === 'dx-edit' || !dxEdit.source.trim()}
+                      className="rounded bg-yellow-500/15 px-2.5 py-1.5 text-xs text-yellow-300 ring-1 ring-yellow-500/30 disabled:opacity-50">Save</button>
+                    <button type="button" onClick={() => setDxEditId(null)}
+                      className="rounded px-2.5 py-1.5 text-xs text-gray-400 hover:bg-white/[0.05]">Cancel</button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
         {distractions && (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <div>

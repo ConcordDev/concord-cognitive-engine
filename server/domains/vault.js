@@ -365,6 +365,57 @@ export function withdraw(db, submissionId, submitterId, reason = null) {
   return { ok: true, id: row.id, status: "withdrawn" };
 }
 
+/**
+ * Edit a submission before review (FIX-vault-001). The submitter may
+ * correct the work's title, description, or body only while it is still
+ * `submitted` — once a curator opens review, the work is read as
+ * submitted and changing it would change what was reviewed. The work's
+ * kind and lineage are its identity and provenance, not editable fields:
+ * a different work is a new submission.
+ */
+export function updateSubmission(db, submissionId, submitterId, input = {}) {
+  if (!db) return { ok: false, reason: "no_db" };
+  const row = getSubmissionRow(db, submissionId);
+  if (!row) return { ok: false, reason: "not_found" };
+  if (row.submitter_id !== String(submitterId || "")) return { ok: false, reason: "not_submitter" };
+  if (row.status !== "submitted") return { ok: false, reason: "wrong_state", status: row.status };
+  const sets = [];
+  const vals = [];
+  if (Object.prototype.hasOwnProperty.call(input, "title")) {
+    const title = trimmed(input.title);
+    if (!title) return { ok: false, reason: "missing_title" };
+    sets.push("title = ?"); vals.push(title.slice(0, 300));
+  }
+  if (Object.prototype.hasOwnProperty.call(input, "description")) {
+    sets.push("description = ?"); vals.push(trimmed(input.description).slice(0, 4000));
+  }
+  if (Object.prototype.hasOwnProperty.call(input, "body")) {
+    sets.push("body = ?"); vals.push(typeof input.body === "string" ? input.body.slice(0, 200000) : "");
+  }
+  if (!sets.length) return { ok: false, reason: "nothing_to_update" };
+  db.prepare(`UPDATE vault_submissions SET ${sets.join(", ")} WHERE id = ?`).run(...vals, row.id);
+  return { ok: true, id: row.id, status: row.status };
+}
+
+/**
+ * Remove a withdrawn submission (FIX-vault-001). Withdrawal leaves the
+ * row in the submitter's own list forever; a withdrawn work was never
+ * admitted, so deleting its row touches nothing the archive promised to
+ * keep. Only the submitter, only from `withdrawn` — an admitted record
+ * stays permanent, and a live or declined submission is removed through
+ * its own path (withdraw first), never silently.
+ */
+export function removeSubmission(db, submissionId, submitterId) {
+  if (!db) return { ok: false, reason: "no_db" };
+  const row = getSubmissionRow(db, submissionId);
+  if (!row) return { ok: false, reason: "not_found" };
+  if (row.submitter_id !== String(submitterId || "")) return { ok: false, reason: "not_submitter" };
+  if (row.status === "admitted") return { ok: false, reason: "admitted_records_are_permanent" };
+  if (row.status !== "withdrawn") return { ok: false, reason: "wrong_state", status: row.status };
+  db.prepare(`DELETE FROM vault_submissions WHERE id = ?`).run(row.id);
+  return { ok: true, id: row.id, removed: true };
+}
+
 // ── Invariant 2 helper: machine evidence can never BE the statement ───────
 
 /** Collect every string in an arbitrary JSON-ish value (bounded depth). */
@@ -812,6 +863,8 @@ export default function registerVaultActions(registerLensAction) {
 
   registerLensAction("vault", "submit", needsActor(({ db, p, userId }) => submit(db, userId, p)));
   registerLensAction("vault", "withdraw", needsActor(({ db, p, userId }) => withdraw(db, p.submissionId, userId, p.reason)));
+  registerLensAction("vault", "update_submission", needsActor(({ db, p, userId }) => updateSubmission(db, p.submissionId, userId, p)));
+  registerLensAction("vault", "remove_submission", needsActor(({ db, p, userId }) => removeSubmission(db, p.submissionId, userId)));
   registerLensAction("vault", "my_submissions", needsActor(({ db, p, userId }) => mySubmissions(db, userId, p)));
 
   // Public reads — admitted records only, by construction (invariant 3).

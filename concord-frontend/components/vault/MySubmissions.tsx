@@ -47,6 +47,22 @@ const WITHDRAW_REFUSAL_COPY: Record<string, string> = {
   not_found: 'That submission could not be found.',
 };
 
+// FIX-vault-001: edit (before review) and remove (once withdrawn).
+const EDIT_REFUSAL_COPY: Record<string, string> = {
+  wrong_state: 'A curator has already opened this work for review, so it can no longer be edited.',
+  missing_title: 'The work still needs a title.',
+  nothing_to_update: 'Nothing changed.',
+  not_submitter: 'Only the person who submitted a work can edit it.',
+  not_found: 'That submission could not be found.',
+};
+
+const REMOVE_REFUSAL_COPY: Record<string, string> = {
+  admitted_records_are_permanent: 'An admitted record is permanent and cannot be removed.',
+  wrong_state: 'Only a withdrawn work can be removed — withdraw it first.',
+  not_submitter: 'Only the person who submitted a work can remove it.',
+  not_found: 'That submission could not be found.',
+};
+
 export function statusLabel(status: string): string {
   return STATUS_LABEL[status] || status;
 }
@@ -59,14 +75,24 @@ export interface MySubmissionsProps {
   submissions: MySubmission[];
   /** Resolves with null on success or the refusal reason. */
   onWithdraw: (id: string, reason: string) => Promise<string | null>;
+  /** FIX-vault-001: edit a still-`submitted` work. Same resolve contract. */
+  onEdit?: (id: string, fields: { title: string; description: string; body: string }) => Promise<string | null>;
+  /** FIX-vault-001: remove a withdrawn work. Same resolve contract. */
+  onRemove?: (id: string) => Promise<string | null>;
 }
 
-export function MySubmissions({ submissions, onWithdraw }: MySubmissionsProps) {
+export function MySubmissions({ submissions, onWithdraw, onEdit, onRemove }: MySubmissionsProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // FIX-vault-001 state: the edit form and the remove confirm.
+  const [editing, setEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editBody, setEditBody] = useState('');
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
   // FIX-vault-002: the list had no search, filter, or sort — with
   // more than a handful of submissions there was no way to find one
   // entry. Client-side controls over the caller's own rows: a text
@@ -98,6 +124,8 @@ export function MySubmissions({ submissions, onWithdraw }: MySubmissionsProps) {
     setConfirming(false);
     setReason('');
     setError('');
+    setEditing(false);
+    setConfirmingRemove(false);
   };
 
   const withdraw = async () => {
@@ -112,6 +140,46 @@ export function MySubmissions({ submissions, onWithdraw }: MySubmissionsProps) {
     }
     setConfirming(false);
     setReason('');
+  };
+
+  const startEdit = () => {
+    if (!selected) return;
+    setEditTitle(selected.title);
+    setEditDescription(selected.description || '');
+    setEditBody(selected.body || '');
+    setError('');
+    setEditing(true);
+  };
+
+  const saveEdit = async () => {
+    if (!selected || !onEdit || busy) return;
+    setBusy(true);
+    setError('');
+    const refusal = await onEdit(selected.id, {
+      title: editTitle,
+      description: editDescription,
+      body: editBody,
+    });
+    setBusy(false);
+    if (refusal) {
+      setError(EDIT_REFUSAL_COPY[refusal] || refusal);
+      return;
+    }
+    setEditing(false);
+  };
+
+  const remove = async () => {
+    if (!selected || !onRemove || busy) return;
+    setBusy(true);
+    setError('');
+    const refusal = await onRemove(selected.id);
+    setBusy(false);
+    if (refusal) {
+      setError(REMOVE_REFUSAL_COPY[refusal] || refusal);
+      return;
+    }
+    setConfirmingRemove(false);
+    setSelectedId(null);
   };
 
   if (submissions.length === 0) return null;
@@ -231,6 +299,78 @@ export function MySubmissions({ submissions, onWithdraw }: MySubmissionsProps) {
                   ) : (
                     <button type="button" onClick={() => setConfirming(true)} className={vault.button}>
                       Withdraw
+                    </button>
+                  )}
+                </div>
+              ) : null}
+
+              {selected.status === 'submitted' && onEdit ? (
+                <div className="mt-5">
+                  {editing ? (
+                    <div className="space-y-2" data-testid="vault-edit-form">
+                      <label className="block">
+                        <span className={cn(vault.label, 'mb-1 block')}>Title</span>
+                        <input
+                          className={vault.input}
+                          value={editTitle}
+                          maxLength={300}
+                          aria-label="Edit submission title"
+                          onChange={(e) => setEditTitle(e.target.value)}
+                        />
+                      </label>
+                      <label className="block">
+                        <span className={cn(vault.label, 'mb-1 block')}>Description</span>
+                        <textarea
+                          className={vault.input}
+                          value={editDescription}
+                          rows={3}
+                          maxLength={4000}
+                          aria-label="Edit submission description"
+                          onChange={(e) => setEditDescription(e.target.value)}
+                        />
+                      </label>
+                      <label className="block">
+                        <span className={cn(vault.label, 'mb-1 block')}>Body</span>
+                        <textarea
+                          className={vault.input}
+                          value={editBody}
+                          rows={6}
+                          aria-label="Edit submission body"
+                          onChange={(e) => setEditBody(e.target.value)}
+                        />
+                      </label>
+                      <div className="flex items-center gap-3">
+                        <button type="button" onClick={saveEdit} disabled={busy} className={vault.buttonAccent}>
+                          {busy ? 'Saving…' : 'Save changes'}
+                        </button>
+                        <button type="button" onClick={() => setEditing(false)} disabled={busy} className={vault.button}>
+                          Cancel edit
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button type="button" onClick={startEdit} className={vault.button}>
+                      Edit this work
+                    </button>
+                  )}
+                </div>
+              ) : null}
+
+              {selected.status === 'withdrawn' && onRemove ? (
+                <div className="mt-5">
+                  {confirmingRemove ? (
+                    <div className="flex items-center gap-3" data-testid="vault-remove-confirm">
+                      <span className={vault.caption}>Remove this withdrawn work from your list for good?</span>
+                      <button type="button" onClick={remove} disabled={busy} className={vault.buttonAccent}>
+                        {busy ? 'Removing…' : 'Remove this work'}
+                      </button>
+                      <button type="button" onClick={() => setConfirmingRemove(false)} disabled={busy} className={vault.button}>
+                        Keep it
+                      </button>
+                    </div>
+                  ) : (
+                    <button type="button" onClick={() => setConfirmingRemove(true)} className={vault.button}>
+                      Remove
                     </button>
                   )}
                 </div>

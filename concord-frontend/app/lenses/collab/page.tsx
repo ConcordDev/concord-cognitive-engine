@@ -414,7 +414,7 @@ export default function CollabLensPage() {
                       disabled={busy}
                       className={confirmClose ? 'font-medium text-red-300 underline' : 'text-zinc-400 underline hover:text-zinc-200'}
                     >
-                      {confirmClose ? `Close “${selected.title}”? This deletes the room.` : 'Close room'}
+                      {confirmClose ? `Delete “${selected.title}”? This permanently deletes the room.` : 'Delete room'}
                     </button>
                     {confirmClose && (
                       <button type="button" onClick={() => setConfirmClose(false)} className="text-zinc-400 underline hover:text-zinc-200">

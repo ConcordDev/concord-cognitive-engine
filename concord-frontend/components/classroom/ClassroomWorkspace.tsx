@@ -170,6 +170,13 @@ function StreamTab({ cohortId, flash }: TabProps) {
     else flash('err', 'Announcement failed');
   };
 
+  // FIX-classroom-007: announcements gain a delete (stream-delete).
+  const delEntry = async (entryId: string) => {
+    const r = await run('stream-delete', { entryId });
+    if (r) { flash('ok', 'Announcement deleted'); void refresh(); }
+    else flash('err', 'Delete failed');
+  };
+
   const events = stream.map((e) => ({
     id: e.id, label: e.text, time: e.createdAt,
     tone: (e.kind === 'grade' ? 'good' : e.kind === 'assignment' ? 'info'
@@ -203,8 +210,21 @@ function StreamTab({ cohortId, flash }: TabProps) {
             <li key={e.id} className="bg-zinc-900/60 border border-zinc-800 rounded p-2 text-xs">
               <div className="flex justify-between gap-2">
                 <span className="text-zinc-200">{e.text}</span>
-                <span className="text-[10px] text-zinc-400 whitespace-nowrap">
-                  {new Date(e.createdAt).toLocaleString()}
+                <span className="flex items-center gap-1.5 whitespace-nowrap">
+                  <span className="text-[10px] text-zinc-400">
+                    {new Date(e.createdAt).toLocaleString()}
+                  </span>
+                  {e.kind === 'announcement' && (
+                    <StickyDeleteConfirm
+                      onConfirm={() => void delEntry(e.id)}
+                      armLabel={<Trash2 className="w-3 h-3" />}
+                      armAriaLabel="Delete announcement"
+                      confirmLabel="Delete?"
+                      confirmAriaLabel="Confirm delete announcement"
+                      cancelAriaLabel="Cancel delete announcement"
+                      className="text-zinc-400 hover:text-red-400"
+                    />
+                  )}
                 </span>
               </div>
               <span className="text-[10px] font-mono text-cyan-500/80">{e.kind}</span>
@@ -272,6 +292,17 @@ function AssignmentsTab({ cohortId, flash }: TabProps) {
     const r = await run('assignment-delete', { assignmentId: id });
     if (r) { flash('ok', 'Deleted'); void refresh(); if (openId === id) setOpenId(null); }
     else flash('err', 'Delete failed');
+  };
+
+  // FIX-classroom-007: submissions gain a delete (grade cascades server-side).
+  const delSubmission = async (submissionId: string, assignmentId: string) => {
+    const r = await run('submission-delete', { submissionId });
+    if (r) {
+      flash('ok', 'Submission deleted');
+      const sr = await run<{ submissions: Submission[] }>('submission-list', { assignmentId });
+      setSubmissions(sr?.submissions ?? []);
+      void refresh();
+    } else flash('err', 'Delete failed');
   };
 
   const openSubmissions = async (id: string) => {
@@ -394,10 +425,21 @@ function AssignmentsTab({ cohortId, flash }: TabProps) {
                 <div key={s.id} className="bg-zinc-950/60 rounded p-2 text-xs">
                   <div className="flex justify-between gap-2">
                     <span className="font-mono text-[10px] text-zinc-400">{s.studentId}</span>
+                    <span className="flex items-center gap-1.5">
+                    <StickyDeleteConfirm
+                      onConfirm={() => void delSubmission(s.id, a.id)}
+                      armLabel={<Trash2 className="w-3 h-3" />}
+                      armAriaLabel={`Delete submission by ${s.studentId}`}
+                      confirmLabel="Delete?"
+                      confirmAriaLabel="Confirm delete submission"
+                      cancelAriaLabel="Cancel delete submission"
+                      className="text-zinc-400 hover:text-red-400"
+                    />
                     <span className={`text-[10px] px-1.5 rounded ${
                       s.status === 'returned' ? 'bg-emerald-900/50 text-emerald-300'
                         : s.status === 'graded' ? 'bg-amber-900/50 text-amber-300'
                         : 'bg-zinc-800 text-zinc-400'}`}>{s.status}</span>
+                    </span>
                   </div>
                   <div className="text-zinc-300 mt-0.5">{s.content}</div>
                   {s.grade ? (
@@ -756,6 +798,12 @@ function QuizzesTab({ cohortId, flash }: TabProps) {
     } else flash('err', 'Quiz create failed — check question prompts/options');
   };
 
+  const delQuiz = async (quizId: string) => {
+    const r = await run('quiz-delete', { quizId });
+    if (r) { flash('ok', 'Quiz deleted'); void refresh(); }
+    else flash('err', 'Delete failed');
+  };
+
   const take = async (q: Quiz) => {
     const r = await run<{ quiz: Quiz }>('quiz-get', { quizId: q.id });
     if (r?.quiz) { setTaking(r.quiz); setAnswers({}); setResult(null); }
@@ -845,7 +893,19 @@ function QuizzesTab({ cohortId, flash }: TabProps) {
                 {q.questionCount ?? q.questions?.length ?? 0} questions · {q.totalPoints} pts · {q.attemptCount ?? 0} attempts
               </div>
             </div>
-            <button onClick={() => take(q)} className={btnCls}>Take</button>
+            <span className="flex items-center gap-1.5">
+              <button onClick={() => take(q)} className={btnCls}>Take</button>
+              {/* FIX-classroom-007: quizzes gain a delete (attempts cascade server-side). */}
+              <StickyDeleteConfirm
+                onConfirm={() => void delQuiz(q.id)}
+                armLabel={<Trash2 className="w-3 h-3" />}
+                armAriaLabel={`Delete quiz ${q.title}`}
+                confirmLabel="Delete quiz?"
+                confirmAriaLabel="Confirm delete quiz"
+                cancelAriaLabel="Cancel delete quiz"
+                className="text-[10px] px-1.5 py-0.5 rounded bg-rose-900/40 text-rose-300 hover:bg-rose-900/60"
+              />
+            </span>
           </div>
         </div>
       ))}

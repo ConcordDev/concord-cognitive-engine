@@ -197,6 +197,25 @@ export default function VaultPage() {
     return null;
   }, [read, apply]);
 
+  /** FIX-vault-001: edit a submission before review / remove a withdrawn one. */
+  const onEditSubmission = useCallback(async (id: string, fields: { title: string; description: string; body: string }): Promise<string | null> => {
+    const res = await lensRun<{ ok?: boolean; error?: string; reason?: string }>('vault', 'update_submission', { submissionId: id, ...fields });
+    if (!res.data?.ok) return res.data?.error || res.data?.reason || 'update_failed';
+    try {
+      apply(await read());
+    } catch { /* the edit itself was confirmed; the list refreshes on the next load */ }
+    return null;
+  }, [read, apply]);
+
+  const onRemoveSubmission = useCallback(async (id: string): Promise<string | null> => {
+    const res = await lensRun<{ ok?: boolean; error?: string; reason?: string }>('vault', 'remove_submission', { submissionId: id });
+    if (!res.data?.ok) return res.data?.error || res.data?.reason || 'remove_failed';
+    try {
+      apply(await read());
+    } catch { /* the removal itself was confirmed; the list refreshes on the next load */ }
+    return null;
+  }, [read, apply]);
+
   const shown = useMemo(
     () => (curatorFilter ? admitted.filter((r) => r.curatorId === curatorFilter) : admitted),
     [admitted, curatorFilter],
@@ -289,7 +308,7 @@ export default function VaultPage() {
               <>
                 <SubmitWorkPanel open={formOpen} onOpenChange={setFormOpen} onSubmitted={onSubmitted} />
                 {notice ? <p role="alert" className="mt-3 text-sm text-red-700">{notice}</p> : null}
-                <MySubmissions submissions={mine} onWithdraw={onWithdraw} />
+                <MySubmissions submissions={mine} onWithdraw={onWithdraw} onEdit={onEditSubmission} onRemove={onRemoveSubmission} />
               </>
             ) : (
               <p data-testid="vault-signin" className={cn(vault.caption, 'mt-8')}>Sign in to submit a work.</p>

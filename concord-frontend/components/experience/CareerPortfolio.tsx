@@ -48,6 +48,7 @@ import {
   Globe, Lock, Users,
 } from 'lucide-react';
 import { Icon as SvgIcon } from '@/components/icons/Icon';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 const inputCls = 'w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-xs text-white focus:border-neon-cyan focus:outline-none';
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -89,7 +90,9 @@ export function CareerPortfolio() {
   const [editExp, setEditExp] = useState<number | null>(null);
   const [editEdu, setEditEdu] = useState<number | null>(null);
 
-  // Skill draft
+  // Skill draft. FIX-experience-004: skills gain the edit the
+  // experience/education rows already had.
+  const [editSkill, setEditSkill] = useState<string | null>(null);
   const [skillName, setSkillName] = useState('');
   const [skillCategory, setSkillCategory] = useState('technical');
   const [skillLevel, setSkillLevel] = useState('intermediate');
@@ -125,16 +128,32 @@ export function CareerPortfolio() {
     await update(portfolio.id, { data: { ...data, ...patch } });
   };
 
+  const clearSkillDraft = () => {
+    setEditSkill(null);
+    setSkillName(''); setSkillCategory('technical'); setSkillLevel('intermediate');
+    setSkillYears('1'); setSkillEvidence('');
+  };
+  const startEditSkill = (s: Skill) => {
+    setEditSkill(s.id);
+    setSkillName(s.name); setSkillCategory(s.category); setSkillLevel(s.level);
+    setSkillYears(String(s.yearsExperience));
+    setSkillEvidence(s.evidence.join('\n'));
+  };
   const addSkill = async () => {
     if (!skillName.trim()) return;
     const skill: Skill = {
-      id: skillName.trim().toLowerCase().replace(/\s+/g, '-'),
+      // An edit keeps the skill's id — endorsements key on it.
+      id: editSkill ?? skillName.trim().toLowerCase().replace(/\s+/g, '-'),
       name: skillName.trim(), category: skillCategory, level: skillLevel,
       yearsExperience: Number(skillYears) || 0,
       evidence: skillEvidence.split('\n').map(s => s.trim()).filter(Boolean),
     };
-    await saveData({ skills: [...data.skills.filter(s => s.id !== skill.id), skill] });
-    setSkillName(''); setSkillEvidence(''); setSkillYears('1');
+    if (editSkill) {
+      await saveData({ skills: data.skills.map(s => (s.id === editSkill ? skill : s)) });
+    } else {
+      await saveData({ skills: [...data.skills.filter(s => s.id !== skill.id), skill] });
+    }
+    clearSkillDraft();
   };
   const removeSkill = async (id: string) => saveData({ skills: data.skills.filter(s => s.id !== id) });
 
@@ -362,7 +381,10 @@ export function CareerPortfolio() {
               <Field label="Years"><input type="number" min={0} className={inputCls} value={skillYears} onChange={e => setSkillYears(e.target.value)} /></Field>
               <Field label="Evidence links (one per line)"><input className={inputCls} value={skillEvidence} onChange={e => setSkillEvidence(e.target.value)} placeholder="https://..." /></Field>
             </div>
-            <button onClick={addSkill} disabled={!skillName.trim()} className="btn-neon cyan text-xs flex items-center gap-1 disabled:opacity-40"><Plus className="w-3 h-3" /> Add skill</button>
+            <div className="flex items-center gap-2">
+              <button onClick={addSkill} disabled={!skillName.trim()} className="btn-neon cyan text-xs flex items-center gap-1 disabled:opacity-40"><Plus className="w-3 h-3" /> {editSkill ? 'Save changes' : 'Add skill'}</button>
+              {editSkill && <button onClick={clearSkillDraft} className="btn-neon text-xs">Cancel edit</button>}
+            </div>
 
             <div className="space-y-1.5">
               {data.skills.map(s => {
@@ -373,7 +395,18 @@ export function CareerPortfolio() {
                       <p className="text-xs text-white">{s.name} <span className="text-[10px] text-gray-400">· {s.category} · {s.level} · {s.yearsExperience}y</span></p>
                       <p className="text-[10px] text-gray-400">{s.evidence.length} evidence link{s.evidence.length === 1 ? '' : 's'} · {endorseCount} endorsement{endorseCount === 1 ? '' : 's'} <span className="text-gray-600">(peer-only — publish above so others can endorse you)</span></p>
                     </div>
-                    <button onClick={() => removeSkill(s.id)} className="text-gray-400 hover:text-red-400 shrink-0" aria-label="remove skill"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <span className="flex items-center gap-2 shrink-0">
+                      <button onClick={() => startEditSkill(s)} className="text-gray-400 hover:text-white" aria-label={`edit skill ${s.name}`}>Edit</button>
+                      <StickyDeleteConfirm
+                        onConfirm={() => removeSkill(s.id)}
+                        armLabel={<Trash2 className="w-3.5 h-3.5" />}
+                        confirmLabel="Remove skill?"
+                        armAriaLabel="remove skill"
+                        confirmAriaLabel={`Confirm remove skill ${s.name}`}
+                        cancelAriaLabel="Cancel remove skill"
+                        className="text-gray-400 hover:text-red-400"
+                      />
+                    </span>
                   </div>
                 );
               })}

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Mail, Inbox, Coins, Package, X, Paperclip, Search, Trash2 } from 'lucide-react';
+import { Mail, Inbox, Coins, Package, X, Paperclip, Search, Trash2, Star, Archive, ArchiveRestore, MailOpen } from 'lucide-react';
 import { Skeleton, EmptyState, ErrorState } from '@/components/ui';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
@@ -58,6 +58,8 @@ export function MailFolderPanel({
   const [flash, setFlash] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null);
   const [claimNote, setClaimNote] = useState<{ mailId: string; msg: string } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmTrash, setConfirmTrash] = useState(false);
+  const [inboxView, setInboxView] = useState<'inbox' | 'starred' | 'archived'>('inbox');
   const [declineArmId, setDeclineArmId] = useState<string | null>(null);
   const [openNote, setOpenNote] = useState<string | null>(null);
 
@@ -70,7 +72,7 @@ export function MailFolderPanel({
     setLoadError(null);
     try {
       const [i, s] = await Promise.all([
-        playerMail('list'),
+        playerMail('list', inboxView === 'inbox' ? {} : { folder: inboxView }),
         playerMail('sent'),
       ]);
       if (!i.ok || !s.ok) {
@@ -89,7 +91,7 @@ export function MailFolderPanel({
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [inboxView]);
 
   useEffect(() => { setLoading(true); refresh(); }, [refresh]);
 
@@ -130,6 +132,57 @@ export function MailFolderPanel({
         setConfirmDelete(false);
         void refresh();
       }
+    } finally { setBusy(null); }
+  }, [refresh, showFlash]);
+
+  // FIX-mail-013 — inbox management on received mail: star, mark
+  // unread, archive/unarchive, trash. All recipient-local (the
+  // sender's copy is untouched); a trash refusal is worded, never
+  // silent.
+  const handleStar = useCallback(async (m: MailRow) => {
+    setBusy(`star-${m.id}`);
+    try {
+      const j = await playerMail('star', { id: m.id, starred: !m.starredAt });
+      if (!j.ok) { showFlash('err', 'Could not update the star just now.'); return; }
+      void refresh();
+    } finally { setBusy(null); }
+  }, [refresh, showFlash]);
+
+  const handleUnread = useCallback(async (m: MailRow) => {
+    setBusy(`unread-${m.id}`);
+    try {
+      const j = await playerMail('unread', { id: m.id });
+      if (!j.ok) { showFlash('err', 'Only a read mail can be marked unread.'); return; }
+      showFlash('ok', 'Marked unread.');
+      void refresh();
+    } finally { setBusy(null); }
+  }, [refresh, showFlash]);
+
+  const handleArchive = useCallback(async (m: MailRow) => {
+    setBusy(`archive-${m.id}`);
+    try {
+      const j = await playerMail('archive', { id: m.id, archived: !m.archivedAt });
+      if (!j.ok) { showFlash('err', 'Could not update the archive just now.'); return; }
+      showFlash('ok', m.archivedAt ? 'Moved back to your inbox.' : 'Archived.');
+      setSelected(null);
+      void refresh();
+    } finally { setBusy(null); }
+  }, [refresh, showFlash]);
+
+  const handleTrash = useCallback(async (mailId: string) => {
+    setBusy(`trash-${mailId}`);
+    try {
+      const j = await playerMail('trash', { id: mailId });
+      if (!j.ok) {
+        showFlash('err', j.error === 'has_unclaimed_attachments'
+          ? 'Claim or decline this mail first — its attachments are held in escrow and cannot be trashed yet.'
+          : 'Could not trash this mail just now.');
+        return;
+      }
+      showFlash('ok', 'Moved to trash.');
+      setSelected(null);
+      setConfirmTrash(false);
+      void refresh();
     } finally { setBusy(null); }
   }, [refresh, showFlash]);
 
@@ -267,6 +320,26 @@ export function MailFolderPanel({
             />
           </div>
           {folder === 'inbox' && (
+            <div className="flex flex-wrap gap-1" role="group" aria-label="Inbox view">
+              {(['inbox', 'starred', 'archived'] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => { setInboxView(v); setSelected(null); }}
+                  aria-pressed={inboxView === v}
+                  className={cn(
+                    'rounded-full border px-2 py-0.5 text-[10px] capitalize transition-colors',
+                    inboxView === v
+                      ? 'border-neon-blue/50 bg-neon-blue/15 text-neon-blue'
+                      : 'border-lattice-border bg-lattice-elevated/50 text-gray-400 hover:bg-lattice-elevated hover:text-gray-200',
+                  )}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+          )}
+          {folder === 'inbox' && (
             <div className="flex flex-wrap gap-1" role="group" aria-label="Filter by status">
               {STATUS_FILTERS.map((f) => (
                 <button
@@ -342,7 +415,7 @@ export function MailFolderPanel({
               return (
                 <li key={m.id}>
                   <button
-                    onClick={() => { setConfirmDelete(false); setOpenNote(null); setSelected(m); }}
+                    onClick={() => { setConfirmDelete(false); setConfirmTrash(false); setOpenNote(null); setSelected(m); }}
                     style={depth > 0 ? { marginLeft: depth * 14 } : undefined}
                     aria-current={isSelected ? 'true' : undefined}
                     className={cn(
@@ -357,6 +430,7 @@ export function MailFolderPanel({
                     <div className="flex items-center justify-between gap-2 text-[11px]">
                       <span className="flex min-w-0 items-center gap-1.5">
                         {isUnread && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-neon-blue" aria-hidden="true" />}
+                        {!!m.starredAt && <Star className="h-3 w-3 shrink-0 fill-amber-300 text-amber-300" aria-label="Starred" />}
                         <span className={cn('truncate', isUnread ? 'text-gray-100' : 'text-gray-400')}>
                           {otherLabel}
                         </span>
@@ -473,6 +547,70 @@ export function MailFolderPanel({
                 Forward
               </button>
             </div>
+            {folder === 'inbox' && (
+              <div className="mt-3 space-y-2">
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void handleStar(selected)}
+                    disabled={busy === `star-${selected.id}`}
+                    aria-pressed={!!selected.starredAt}
+                    className={cn('inline-flex items-center gap-1 rounded-md border border-lattice-border px-2.5 py-1 text-[11px] text-gray-200 transition-colors hover:border-amber-300/50 hover:text-white', ds.focusRing)}
+                  >
+                    <Star className={cn('h-3 w-3', selected.starredAt ? 'fill-amber-300 text-amber-300' : '')} /> {selected.starredAt ? 'Starred' : 'Star'}
+                  </button>
+                  {selected.status === 'read' && (
+                    <button
+                      type="button"
+                      onClick={() => void handleUnread(selected)}
+                      disabled={busy === `unread-${selected.id}`}
+                      className={cn('inline-flex items-center gap-1 rounded-md border border-lattice-border px-2.5 py-1 text-[11px] text-gray-200 transition-colors hover:border-neon-blue/50 hover:text-white', ds.focusRing)}
+                    >
+                      <MailOpen className="h-3 w-3" /> Mark unread
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => void handleArchive(selected)}
+                    disabled={busy === `archive-${selected.id}`}
+                    className={cn('inline-flex items-center gap-1 rounded-md border border-lattice-border px-2.5 py-1 text-[11px] text-gray-200 transition-colors hover:border-neon-blue/50 hover:text-white', ds.focusRing)}
+                  >
+                    {selected.archivedAt
+                      ? <><ArchiveRestore className="h-3 w-3" /> Move to inbox</>
+                      : <><Archive className="h-3 w-3" /> Archive</>}
+                  </button>
+                  {!confirmTrash && (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmTrash(true)}
+                      className={cn('inline-flex items-center gap-1 rounded-md border border-lattice-border px-2.5 py-1 text-[11px] text-gray-300 transition-colors hover:border-red-500/40 hover:text-red-200', ds.focusRing)}
+                    >
+                      <Trash2 className="h-3 w-3" /> Trash
+                    </button>
+                  )}
+                </div>
+                {confirmTrash && (
+                  <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                    <span className="text-gray-300">Move this mail to your trash? The sender keeps their copy.</span>
+                    <button
+                      type="button"
+                      onClick={() => void handleTrash(selected.id)}
+                      disabled={busy === `trash-${selected.id}`}
+                      className={cn('rounded-md border border-red-500/40 bg-red-500/10 px-2.5 py-1 text-red-200 transition-colors hover:bg-red-500/20', ds.focusRing)}
+                    >
+                      Trash it
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmTrash(false)}
+                      className={cn('rounded-md border border-lattice-border px-2.5 py-1 text-gray-300 transition-colors hover:bg-lattice-elevated', ds.focusRing)}
+                    >
+                      Keep it
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
             {folder === 'sent' && (
               <div className="mt-3">
                 {!confirmDelete ? (

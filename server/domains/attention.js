@@ -751,6 +751,51 @@ export default function registerAttentionActions(registerLensAction) {
   });
 
   /**
+   * distractionUpdate — edit a logged distraction entry.
+   * FIX-attention-003 / FIX-strategic-adds-006: entries could be
+   * logged but never edited or deleted.
+   * params: { id, source?, kind?, durationMinutes?, note? }
+   */
+  registerLensAction("attention", "distractionUpdate", (ctx, _artifact, params) => {
+    try {
+      const s = getFocusState();
+      const userId = fActor(ctx);
+      const entry = (s.distractions.get(userId) || []).find((e) => e.id === params?.id);
+      if (!entry) return { ok: false, error: "entry_not_found" };
+      if (params?.source != null) {
+        const source = fClean(params.source, 120);
+        if (!source) return { ok: false, error: "source_required" };
+        entry.source = source;
+      }
+      const kinds = ["notification", "person", "self", "meeting", "other"];
+      if (params?.kind != null && kinds.includes(params.kind)) entry.kind = params.kind;
+      if (params?.durationMinutes != null) {
+        entry.durationMinutes = Math.max(0, Math.min(480, fNum(params.durationMinutes, entry.durationMinutes)));
+      }
+      if (params?.note != null) entry.note = params.note ? fClean(params.note, 300) : null;
+      persistFocusState();
+      return { ok: true, result: { entry } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /**
+   * distractionDelete — remove a logged distraction entry.
+   * params: { id }
+   */
+  registerLensAction("attention", "distractionDelete", (ctx, _artifact, params) => {
+    try {
+      const s = getFocusState();
+      const userId = fActor(ctx);
+      const list = s.distractions.get(userId) || [];
+      const next = list.filter((e) => e.id !== params?.id);
+      if (next.length === list.length) return { ok: false, error: "entry_not_found" };
+      s.distractions.set(userId, next);
+      persistFocusState();
+      return { ok: true, result: { deleted: params?.id } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /**
    * distractionSummary — counts by source/kind plus a today figure.
    */
   registerLensAction("attention", "distractionSummary", (ctx, _artifact, _params) => {
@@ -962,6 +1007,42 @@ export default function registerAttentionActions(registerLensAction) {
           totalReservedHours: Math.round((totalReservedMinutes / 60) * 100) / 100,
         },
       };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /**
+   * calendarUpdate — edit a reserved focus block (title / date / start
+   * / duration), with calendarReserve's conflict detection applied
+   * against the OTHER blocks. FIX-strategic-adds-006: blocks could be
+   * reserved and released but never edited.
+   * params: { blockId, title?, date?, startMinute?, durationMinutes? }
+   */
+  registerLensAction("attention", "calendarUpdate", (ctx, _artifact, params) => {
+    try {
+      const s = getFocusState();
+      const userId = fActor(ctx);
+      const blocks = s.calendarBlocks.get(userId) || [];
+      const block = blocks.find((b) => b.id === params?.blockId);
+      if (!block) return { ok: false, error: "block_not_found" };
+      const date = params?.date != null ? fDateKey(params.date) : block.date;
+      const startMinute = params?.startMinute != null
+        ? Math.max(0, Math.min(1439, fNum(params.startMinute, block.startMinute)))
+        : block.startMinute;
+      const durationMinutes = params?.durationMinutes != null
+        ? Math.max(15, Math.min(480, fNum(params.durationMinutes, block.durationMinutes)))
+        : block.durationMinutes;
+      const endMinute = Math.min(1440, startMinute + durationMinutes);
+      const conflict = blocks.find((b) => b.id !== block.id &&
+        b.date === date && startMinute < (b.startMinute + b.durationMinutes) && endMinute > b.startMinute);
+      if (conflict) return { ok: false, error: "time_conflict", result: { conflict } };
+      block.date = date;
+      block.startMinute = startMinute;
+      block.durationMinutes = durationMinutes;
+      block.endMinute = endMinute;
+      if (params?.title != null) block.title = fClean(params.title, 120) || block.title;
+      blocks.sort((a, b) => (a.date.localeCompare(b.date)) || (a.startMinute - b.startMinute));
+      persistFocusState();
+      return { ok: true, result: { block } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 

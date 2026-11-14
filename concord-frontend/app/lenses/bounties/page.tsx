@@ -270,6 +270,10 @@ export default function BountiesPage() {
                       bounty={b}
                       currentUserId={currentUserId}
                       onChanged={onBountyChanged}
+                      onRemoved={(id) => {
+                        setBounties((prev) => prev.filter((x) => x.id !== id));
+                        setActivityKey((k) => k + 1);
+                      }}
                     />
                   ))}
                 </ul>

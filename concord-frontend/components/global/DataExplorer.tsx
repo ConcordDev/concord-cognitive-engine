@@ -11,13 +11,13 @@
  *   - Scatter      → global.scatterExplorer
  *   - Catalog      → global.searchIndicators
  *   - Profile      → global.countryProfile
- * Plus saved/shareable views via global.saveView / listViews / deleteView.
+ * Plus saved/shareable views via global.saveView / listViews / renameView / deleteView.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Map as MapIcon, LineChart as LineIcon, Columns3, ScatterChart as ScatterIcon,
-  Search, Contact, Loader2, AlertTriangle, Bookmark, Trash2, Link2, Play, Pause, Copy,
+  Search, Contact, Loader2, AlertTriangle, Bookmark, Trash2, Link2, Play, Pause, Copy, Pencil,
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { lensRun } from '@/lib/api/client';
@@ -141,6 +141,10 @@ export function DataExplorer() {
   const [savedViews, setSavedViews] = useState<SavedView[]>([]);
   const [shareLink, setShareLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  // FIX-global-007: the saver names the view; saved views can be renamed.
+  const [viewName, setViewName] = useState('');
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = useState('');
 
   const refreshViews = useCallback(async () => {
     const r = await lensRun<{ views: SavedView[] }>('global', 'listViews', {});
@@ -206,17 +210,19 @@ export function DataExplorer() {
   }, [mode, indicator, country, tsYear, compareCodes, indicatorX, indicatorY, indicatorSize, catalogQuery]);
 
   const saveCurrentView = useCallback(async () => {
-    const label = `${MODES.find((m) => m.key === mode)?.label}: ${
+    const autoLabel = `${MODES.find((m) => m.key === mode)?.label}: ${
       mode === 'choropleth' || mode === 'compare' ? indicator
       : mode === 'scatter' ? `${indicatorX} × ${indicatorY}`
       : mode === 'catalog' ? catalogQuery
       : `${country} · ${indicator}`
     }`;
+    const label = viewName.trim() || autoLabel;
     const r = await lensRun<{ shareLink: string }>('global', 'saveView', {
       view: { mode, label, config: currentConfig },
     });
     if (r.data.ok && r.data.result) {
       setShareLink(r.data.result.shareLink);
+      setViewName('');
       // A successful save supersedes an earlier failure's error
       // (FIX-global-009): the banner outlived the failed Run it belonged
       // to and sat beside the new share link, claiming the view had
@@ -229,7 +235,20 @@ export function DataExplorer() {
     } else {
       setError(r.data.error || 'Could not save view.');
     }
-  }, [mode, indicator, indicatorX, indicatorY, catalogQuery, country, currentConfig, refreshViews, queryClient]);
+  }, [mode, indicator, indicatorX, indicatorY, catalogQuery, country, currentConfig, refreshViews, queryClient, viewName]);
+
+  const renameView = useCallback(async (id: string) => {
+    const label = renameDraft.trim();
+    if (!label) return;
+    const r = await lensRun('global', 'renameView', { id, label });
+    if (r.data.ok) {
+      setError(null);
+      setRenamingId(null);
+      void refreshViews();
+    } else {
+      setError(r.data.error || 'Could not rename view.');
+    }
+  }, [renameDraft, refreshViews]);
 
   const deleteView = useCallback(async (id: string) => {
     const r = await lensRun('global', 'deleteView', { id });
@@ -357,6 +376,14 @@ export function DataExplorer() {
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
             Run query
           </button>
+          <input
+            value={viewName}
+            onChange={(e) => setViewName(e.target.value)}
+            aria-label="View name"
+            placeholder="View name (optional)"
+            maxLength={120}
+            className="w-44 rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-200"
+          />
           <button
             type="button"
             onClick={() => void saveCurrentView()}
@@ -663,18 +690,42 @@ export function DataExplorer() {
           </h4>
           <div className="space-y-1">
             {savedViews.map((v) => (
-              <div key={v.id} className="flex items-center gap-2 rounded border border-zinc-800 bg-zinc-950/60 px-2 py-1.5">
-                <button
-                  type="button"
-                  onClick={() => applyView(v)}
-                  className="flex-1 truncate text-left text-[11px] text-zinc-200 hover:text-neon-cyan"
-                >
-                  {v.label}
-                </button>
-                <span className="font-mono text-[10px] text-zinc-400">
-                  {new Date(v.createdAt).toLocaleDateString()}
-                </span>
-                <StickyDeleteConfirm onConfirm={() => { void deleteView(v.id); }} className="text-zinc-400 hover:text-rose-400" armAriaLabel={`Delete view ${v.label}`} confirmLabel={`Delete “${v.label}”?`} confirmAriaLabel={`Confirm delete view ${v.label}`} armLabel={<Trash2 className="h-3.5 w-3.5" />} />
+              <div key={v.id} className="rounded border border-zinc-800 bg-zinc-950/60 px-2 py-1.5">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => applyView(v)}
+                    className="flex-1 truncate text-left text-[11px] text-zinc-200 hover:text-neon-cyan"
+                  >
+                    {v.label}
+                  </button>
+                  <span className="font-mono text-[10px] text-zinc-400">
+                    {new Date(v.createdAt).toLocaleDateString()}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => { setRenamingId(renamingId === v.id ? null : v.id); setRenameDraft(v.label); }}
+                    aria-label={`Rename view ${v.label}`}
+                    className="text-zinc-400 hover:text-zinc-100"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                  <StickyDeleteConfirm onConfirm={() => { void deleteView(v.id); }} className="text-zinc-400 hover:text-rose-400" armAriaLabel={`Delete view ${v.label}`} confirmLabel={`Delete “${v.label}”?`} confirmAriaLabel={`Confirm delete view ${v.label}`} armLabel={<Trash2 className="h-3.5 w-3.5" />} />
+                </div>
+                {renamingId === v.id && (
+                  <div className="mt-2 flex gap-2">
+                    <input
+                      value={renameDraft}
+                      onChange={(e) => setRenameDraft(e.target.value)}
+                      aria-label="New view name"
+                      maxLength={120}
+                      className="flex-1 rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-[11px] text-zinc-200"
+                    />
+                    <button type="button" onClick={() => void renameView(v.id)} disabled={!renameDraft.trim()}
+                      className="rounded bg-neon-cyan/15 px-2.5 py-1 text-[11px] font-medium text-neon-cyan disabled:opacity-50">Save</button>
+                    <button type="button" onClick={() => setRenamingId(null)} className="text-[11px] text-zinc-400 px-1.5">Cancel</button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

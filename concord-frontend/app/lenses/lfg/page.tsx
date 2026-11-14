@@ -193,12 +193,12 @@ export default function LfgLensPage() {
             </h2>
             <div className="mb-3 flex flex-wrap gap-1">
               <label className="sr-only" htmlFor="lfg-filter-world">Filter by world</label>
-              <select id="lfg-filter-world" aria-label="Filter by world" value={filterWorld} onChange={(e) => setFilterWorld(e.target.value)} className="rounded-md border border-slate-700 bg-slate-900/60 px-2 py-0.5 text-[11px] text-slate-100">
+              <select id="lfg-filter-world" name="filterWorld" aria-label="Filter by world" value={filterWorld} onChange={(e) => setFilterWorld(e.target.value)} className="rounded-md border border-slate-700 bg-slate-900/60 px-2 py-0.5 text-[11px] text-slate-100">
                 <option value="all">All worlds</option>
                 {WORLDS.map((w) => <option key={w} value={w}>{w}</option>)}
               </select>
               <label className="sr-only" htmlFor="lfg-filter-role">Filter by role</label>
-              <select id="lfg-filter-role" aria-label="Filter by role" value={filterRole} onChange={(e) => setFilterRole(e.target.value as Role | 'all')} className="rounded-md border border-slate-700 bg-slate-900/60 px-2 py-0.5 text-[11px] text-slate-100">
+              <select id="lfg-filter-role" name="filterRole" aria-label="Filter by role" value={filterRole} onChange={(e) => setFilterRole(e.target.value as Role | 'all')} className="rounded-md border border-slate-700 bg-slate-900/60 px-2 py-0.5 text-[11px] text-slate-100">
                 <option value="all">All roles</option>
                 {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
               </select>
@@ -278,26 +278,26 @@ export default function LfgLensPage() {
             </h2>
             <label className="mb-2 block">
               <span className="text-[10px] uppercase tracking-wider text-slate-400">World</span>
-              <select aria-label="Post world" value={postForm.worldId} onChange={(e) => setPostForm({ ...postForm, worldId: e.target.value })} className="mt-0.5 block w-full rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-100">
+              <select id="lfg-post-world" name="worldId" aria-label="Post world" value={postForm.worldId} onChange={(e) => setPostForm({ ...postForm, worldId: e.target.value })} className="mt-0.5 block w-full rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-100">
                 {WORLDS.map((w) => <option key={w} value={w}>{w}</option>)}
               </select>
             </label>
             <label className="mb-2 block">
               <span className="text-[10px] uppercase tracking-wider text-slate-400">Your role</span>
-              <select aria-label="Post role" value={postForm.role} onChange={(e) => setPostForm({ ...postForm, role: e.target.value as Role })} className="mt-0.5 block w-full rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-100">
+              <select id="lfg-post-role" name="role" aria-label="Post role" value={postForm.role} onChange={(e) => setPostForm({ ...postForm, role: e.target.value as Role })} className="mt-0.5 block w-full rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-100">
                 {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
               </select>
             </label>
             <label className="mb-2 block">
               <span className="text-[10px] uppercase tracking-wider text-slate-400">Party type</span>
-              <select aria-label="Party type" value={postForm.partyType} onChange={(e) => setPostForm({ ...postForm, partyType: e.target.value as 'normal' | 'raid' })} className="mt-0.5 block w-full rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-100">
+              <select id="lfg-post-party-type" name="partyType" aria-label="Party type" value={postForm.partyType} onChange={(e) => setPostForm({ ...postForm, partyType: e.target.value as 'normal' | 'raid' })} className="mt-0.5 block w-full rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-100">
                 <option value="normal">Normal (8 max)</option>
                 <option value="raid">Raid (40 max)</option>
               </select>
             </label>
             <label className="mb-2 block">
               <span className="text-[10px] uppercase tracking-wider text-slate-400">Note (optional)</span>
-              <textarea ref={noteRef} aria-label="Request note" aria-describedby="lfg-note-count" value={postForm.note} onChange={(e) => setPostForm({ ...postForm, note: e.target.value })} rows={3} maxLength={240} className="mt-0.5 block w-full rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-100" />
+              <textarea ref={noteRef} id="lfg-post-note" name="note" aria-label="Request note" aria-describedby="lfg-note-count" value={postForm.note} onChange={(e) => setPostForm({ ...postForm, note: e.target.value })} rows={3} maxLength={240} className="mt-0.5 block w-full rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-100" />
               {/* FIX-lfg-004: the 240-char cap was silent. The bound is named. */}
               <span id="lfg-note-count" className="mt-0.5 block text-right text-[10px] text-slate-400">{postForm.note.length}/240</span>
             </label>

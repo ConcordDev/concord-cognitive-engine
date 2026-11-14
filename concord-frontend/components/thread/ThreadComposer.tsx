@@ -42,6 +42,7 @@ export function ThreadComposer() {
   const [drafts, setDrafts] = useState<DraftMeta[]>([]);
   const [dash, setDash] = useState<Dash | null>(null);
   const [active, setActive] = useState<Draft | null>(null);
+  const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [platform, setPlatform] = useState('x');
   const [preview, setPreview] = useState<Post[]>([]);
@@ -83,18 +84,18 @@ export function ThreadComposer() {
     const r = await lensRun('thread', 'draft-detail', { id });
     if (r.data?.ok) {
       const d = r.data.result?.draft as Draft;
-      setActive(d); setContent(d.content); setPlatform(d.platform);
+      setActive(d); setTitle(d.title); setContent(d.content); setPlatform(d.platform);
       setSchedAt(d.scheduledAt ? toLocalInput(d.scheduledAt) : '');
     }
   }
-  function newDraft() { setActive(null); setContent(''); setSchedAt(''); setConfirmDeleteId(null); }
+  function newDraft() { setActive(null); setTitle(''); setContent(''); setSchedAt(''); setConfirmDeleteId(null); }
 
   async function save() {
     if (!content.trim()) return;
     if (active) {
-      await lensRun('thread', 'draft-update', { id: active.id, content });
+      await lensRun('thread', 'draft-update', { id: active.id, content, ...(title.trim() ? { title: title.trim() } : {}) });
     } else {
-      const r = await lensRun('thread', 'thread-draft', { content, platform });
+      const r = await lensRun('thread', 'thread-draft', { content, platform, ...(title.trim() ? { title: title.trim() } : {}) });
       if (r.data?.ok) setActive(r.data.result?.draft as Draft);
     }
     await refresh();
@@ -246,6 +247,9 @@ export function ThreadComposer() {
 
         {/* Editor */}
         <div>
+          <input value={title} onChange={e => setTitle(e.target.value)} aria-label="Thread title" maxLength={120}
+            placeholder="Thread title (optional — defaults to the first line)"
+            className="w-full mb-1.5 bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs font-semibold text-zinc-100 focus:outline-none focus:ring-2 focus:ring-sky-500" />
           <div className="flex gap-1.5 mb-1.5">
             <select value={platform} onChange={e => setPlatform(e.target.value)} aria-label="Platform"
               className="bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1 text-xs text-zinc-200">

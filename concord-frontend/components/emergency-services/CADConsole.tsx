@@ -188,6 +188,7 @@ export function CADConsole() {
   const [eLat, setELat] = useState('');
   const [eLng, setELng] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [confirmIncidentDeleteId, setConfirmIncidentDeleteId] = useState<string | null>(null);
 
   const flash = (kind: 'ok' | 'err', text: string) => {
     setMsg({ kind, text });
@@ -318,6 +319,32 @@ export function CADConsole() {
     if (!res.ok) { flash('err', `Edit failed (${res.error}).`); return; }
     flash('ok', `Unit ${eName.trim()} updated.`);
     setEditingId(null);
+    await refreshAll();
+  }
+
+  async function closeIncident(incident: Incident) {
+    setBusy(true);
+    const res = await callRaw('incident-status', { id: incident.id, status: 'resolved' });
+    setBusy(false);
+    if (!res.ok) { flash('err', `Close failed (${res.error}).`); return; }
+    flash('ok', `Incident closed — ${incident.summary}.`);
+    setSelectedId(null);
+    await refreshAll();
+  }
+
+  async function deleteIncident(incident: Incident) {
+    setBusy(true);
+    const res = await callRaw('incident-delete', { id: incident.id });
+    setBusy(false);
+    setConfirmIncidentDeleteId(null);
+    if (!res.ok) {
+      flash('err', res.error === 'incident_has_active_unit'
+        ? `A unit is still working this incident — stand it down before deleting the record.`
+        : `Delete failed (${res.error}).`);
+      return;
+    }
+    flash('ok', `Incident deleted — ${incident.summary}.`);
+    setSelectedId(null);
     await refreshAll();
   }
 
@@ -579,6 +606,47 @@ export function CADConsole() {
           <p className="flex items-center gap-1.5 text-xs font-semibold text-cyan-300">
             <Crosshair className="h-3.5 w-3.5" /> Incident Detail — {selectedIncident.summary}
           </p>
+
+          {/* Lifecycle exits — close the incident, or delete the record
+              behind the same two-step confirm the roster uses. */}
+          <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+            {selectedIncident.status !== 'resolved' && selectedIncident.status !== 'cancelled' && confirmIncidentDeleteId !== selectedIncident.id && (
+              <button
+                onClick={() => void closeIncident(selectedIncident)}
+                disabled={busy}
+                className="rounded border border-zinc-700 bg-zinc-800 px-2 py-1 text-zinc-200 hover:bg-zinc-700 disabled:opacity-40"
+              >
+                Close incident
+              </button>
+            )}
+            {confirmIncidentDeleteId !== selectedIncident.id ? (
+              <button
+                onClick={() => setConfirmIncidentDeleteId(selectedIncident.id)}
+                disabled={busy}
+                className="rounded border border-rose-500/30 bg-rose-500/10 px-2 py-1 text-rose-200 hover:bg-rose-500/20 disabled:opacity-40"
+              >
+                Delete
+              </button>
+            ) : (
+              <>
+                <span className="text-rose-200">Delete this incident record?</span>
+                <button
+                  onClick={() => void deleteIncident(selectedIncident)}
+                  disabled={busy}
+                  className="rounded bg-rose-600 px-2 py-1 font-medium text-white hover:bg-rose-500 disabled:opacity-40"
+                >
+                  Confirm delete
+                </button>
+                <button
+                  onClick={() => setConfirmIncidentDeleteId(null)}
+                  disabled={busy}
+                  className="rounded border border-zinc-700 bg-zinc-800 px-2 py-1 text-zinc-300 hover:bg-zinc-700 disabled:opacity-40"
+                >
+                  Cancel
+                </button>
+              </>
+            )}
+          </div>
 
           {/* Nearest-unit recommendation */}
           <div>

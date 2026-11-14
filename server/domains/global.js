@@ -1010,6 +1010,27 @@ export default function registerGlobalActions(registerLensAction) {
    * Remove a saved view by id.
    * params.id (required).
    */
+  // FIX-global-007: saved views gain a rename.
+  registerLensAction("global", "renameView", (ctx, _artifact, params) => {
+    try {
+      const userId = ctx?.actor?.userId || ctx?.userId;
+      if (!userId) return { ok: false, error: "Authentication required." };
+      const id = String(params.id || "").trim();
+      if (!id) return { ok: false, error: "View id is required." };
+      const label = String(params.label || "").trim();
+      if (!label) return { ok: false, error: "View name is required." };
+      const store = savedViewStore();
+      const list = store.get(userId) || [];
+      const view = list.find((v) => v.id === id);
+      if (!view) return { ok: false, error: "Saved view not found." };
+      view.label = label.slice(0, 120);
+      store.set(userId, list);
+      return { ok: true, result: { saved: view, total: list.length } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
   registerLensAction("global", "deleteView", (ctx, _artifact, params) => {
     try {
       const userId = ctx?.actor?.userId || ctx?.userId;

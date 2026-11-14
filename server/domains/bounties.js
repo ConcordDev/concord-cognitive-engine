@@ -263,6 +263,7 @@ export default function registerBountiesActions(registerLensAction) {
       const b = s.bounties.get(clean(params.bountyId, 64));
       if (!b) return { ok: false, error: "bounty not found" };
       if (b.status === "paid") return { ok: false, error: "bounty already paid out" };
+      if (b.status === "cancelled") return { ok: false, error: "bounty is cancelled" };
       if (b.ownerId === userId) return { ok: false, error: "owner cannot submit to own bounty" };
       const summary = clean(params.summary, 240);
       if (summary.length < 8) return { ok: false, error: "summary must be at least 8 characters" };
@@ -439,6 +440,94 @@ export default function registerBountiesActions(registerLensAction) {
       b.updatedAt = now();
       save();
       return { ok: true, result: { dispute: { ...b.dispute }, bounty: publicView(b, ctx) } };
+    } catch (err) { return { ok: false, error: String(err && err.message || err) }; }
+  });
+
+  // ── Owner lifecycle: edit / cancel / delete (FIX-bounties-001) ──────
+  // No CC is debited when a bounty is posted (create never escrows —
+  // earnings are credited only at review/release), so cancelling moves
+  // no money and there is no refund to fabricate: these verbs change
+  // record state only. The reward and milestone structure are the
+  // bounty's posted terms and are NOT editable — cancel and repost to
+  // change them.
+  registerLensAction("bounties", "update", (ctx, _a, params = {}) => {
+    try {
+      const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = actor(ctx);
+      const b = s.bounties.get(clean(params.bountyId, 64));
+      if (!b) return { ok: false, error: "bounty not found" };
+      if (b.ownerId !== userId) return { ok: false, error: "only the bounty owner can edit it" };
+      if (b.status !== "open" || (b.submissions || []).length > 0) {
+        return { ok: false, error: "a bounty can only be edited before the first submission" };
+      }
+      if (params.title !== undefined) {
+        const title = clean(params.title, 160);
+        if (title.length < 6) return { ok: false, error: "title must be at least 6 characters" };
+        b.title = title;
+      }
+      if (params.description !== undefined) {
+        const description = clean(params.description, 6000);
+        if (description.length < 12) return { ok: false, error: "description must be at least 12 characters" };
+        b.description = description;
+      }
+      if (params.category !== undefined && CATEGORIES.includes(params.category)) b.category = params.category;
+      if (params.difficulty !== undefined && DIFFICULTIES.includes(params.difficulty)) b.difficulty = params.difficulty;
+      if (params.tags !== undefined) b.tags = parseTags(params.tags);
+      if (params.deadline !== undefined) {
+        if (params.deadline === null || String(params.deadline).trim() === "") {
+          b.deadline = null;
+        } else {
+          const d = String(params.deadline).trim();
+          const parsed = /^\d{4}-\d{2}-\d{2}$/.test(d) ? new Date(`${d}T00:00:00Z`) : null;
+          if (!parsed || Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== d) {
+            return { ok: false, error: "deadline must be a date (YYYY-MM-DD)" };
+          }
+          if (d < new Date().toISOString().slice(0, 10)) {
+            return { ok: false, error: "deadline must be today or later" };
+          }
+          b.deadline = d;
+        }
+      }
+      b.updatedAt = now();
+      save();
+      return { ok: true, result: { bounty: publicView(b, ctx) } };
+    } catch (err) { return { ok: false, error: String(err && err.message || err) }; }
+  });
+
+  registerLensAction("bounties", "cancel", (ctx, _a, params = {}) => {
+    try {
+      const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = actor(ctx);
+      const b = s.bounties.get(clean(params.bountyId, 64));
+      if (!b) return { ok: false, error: "bounty not found" };
+      if (b.ownerId !== userId) return { ok: false, error: "only the bounty owner can cancel it" };
+      if (b.status === "cancelled") return { ok: false, error: "bounty is already cancelled" };
+      if (b.status === "paid") return { ok: false, error: "bounty already paid out" };
+      if (b.status === "disputed") return { ok: false, error: "bounty is under dispute — resolve the dispute first" };
+      if ((b.milestones || []).some((m) => m.status === "paid")) {
+        return { ok: false, error: "part of this bounty is already paid out" };
+      }
+      if (b.acceptedSubmissionId) return { ok: false, error: "bounty has an accepted submission" };
+      b.status = "cancelled";
+      b.cancelledAt = now();
+      b.updatedAt = now();
+      save();
+      return { ok: true, result: { bounty: publicView(b, ctx) } };
+    } catch (err) { return { ok: false, error: String(err && err.message || err) }; }
+  });
+
+  registerLensAction("bounties", "delete", (ctx, _a, params = {}) => {
+    try {
+      const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = actor(ctx);
+      const b = s.bounties.get(clean(params.bountyId, 64));
+      if (!b) return { ok: false, error: "bounty not found" };
+      if (b.ownerId !== userId) return { ok: false, error: "only the bounty owner can delete it" };
+      if (b.status !== "cancelled") return { ok: false, error: "cancel the bounty before deleting it" };
+      s.bounties.delete(b.id);
+      ownerSet(s, userId).delete(b.id);
+      save();
+      return { ok: true, result: { deleted: true, bountyId: b.id } };
     } catch (err) { return { ok: false, error: String(err && err.message || err) }; }
   });
 

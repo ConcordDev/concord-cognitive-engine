@@ -16,6 +16,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { useDebugProject } from './ProjectContext';
 import { IngestPanel } from './IngestPanel';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { ChartKit } from '@/components/viz';
 import {
   AlertTriangle,
@@ -460,14 +461,17 @@ export function IssueInbox() {
                   >
                     <EyeOff className="w-3.5 h-3.5" />
                   </button>
-                  <button
-                    onClick={() => deleteIssue(issue.id)}
+                  {/* FIX-debug-001: the trash deleted immediately — the
+                      platform two-step confirm now stands in its place. */}
+                  <StickyDeleteConfirm
+                    onConfirm={() => deleteIssue(issue.id)}
                     disabled={busyId === issue.id}
-                    title="Delete"
+                    armLabel={<Trash2 className="w-3.5 h-3.5" />}
+                    armAriaLabel="Delete"
+                    confirmAriaLabel="Confirm delete"
+                    cancelAriaLabel="Cancel delete"
                     className="p-1 rounded text-red-400 hover:bg-red-400/10 disabled:opacity-30"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  />
                 </div>
               </div>
             </div>

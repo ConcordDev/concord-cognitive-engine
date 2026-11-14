@@ -12,6 +12,7 @@ import {
   Box,
   GitCompare,
   RefreshCw,
+  Pencil,
 } from 'lucide-react';
 
 interface Massing {
@@ -114,6 +115,9 @@ export function ScenarioStudio({ onDataChanged }: { onDataChanged?: () => void }
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [compare, setCompare] = useState<CompareResult | null>(null);
+  // FIX-urban-planning-003: scenario edit state (scenario-update).
+  const [editingScenario, setEditingScenario] = useState<string | null>(null);
+  const [scenarioForm, setScenarioForm] = useState({ name: '', description: '', lotSizeSqFt: '5000', efficiency: '0.82' });
 
   // New-scenario form.
   const [name, setName] = useState('');
@@ -403,14 +407,60 @@ export function ScenarioStudio({ onDataChanged }: { onDataChanged?: () => void }
                     {s.zoneType} · use {s.useMix} · {s.lotSizeSqFt.toLocaleString()} sqft lot
                   </p>
                 </div>
-                <button
-                  onClick={() => remove(s.id)}
-                  className="rounded p-1 text-zinc-600 hover:bg-zinc-800 hover:text-red-400"
-                  aria-label="Delete scenario"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => {
+                      setEditingScenario(editingScenario === s.id ? null : s.id);
+                      setScenarioForm({ name: s.name, description: s.description || '', lotSizeSqFt: String(s.lotSizeSqFt), efficiency: String(s.efficiency) });
+                    }}
+                    className="rounded p-1 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
+                    aria-label={`Edit scenario ${s.name}`}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => remove(s.id)}
+                    className="rounded p-1 text-zinc-600 hover:bg-zinc-800 hover:text-red-400"
+                    aria-label="Delete scenario"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
+              {editingScenario === s.id && (
+                <div className="mb-2 space-y-2 rounded border border-zinc-800 bg-zinc-950 p-2.5">
+                  <input value={scenarioForm.name} onChange={(e) => setScenarioForm({ ...scenarioForm, name: e.target.value })}
+                    aria-label="Edit scenario name" placeholder="Scenario name"
+                    className="w-full rounded border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-100" />
+                  <input value={scenarioForm.description} onChange={(e) => setScenarioForm({ ...scenarioForm, description: e.target.value })}
+                    aria-label="Edit scenario description" placeholder="Description"
+                    className="w-full rounded border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-100" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input value={scenarioForm.lotSizeSqFt} onChange={(e) => setScenarioForm({ ...scenarioForm, lotSizeSqFt: e.target.value })}
+                      aria-label="Edit scenario lot size" type="number" min={0} placeholder="Lot sq ft"
+                      className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-100" />
+                    <input value={scenarioForm.efficiency} onChange={(e) => setScenarioForm({ ...scenarioForm, efficiency: e.target.value })}
+                      aria-label="Edit scenario efficiency" type="number" min={0.4} max={1} step={0.01} placeholder="Efficiency"
+                      className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-100" />
+                  </div>
+                  <div className="flex gap-2">
+                    <button type="button" disabled={busy || !scenarioForm.name.trim()}
+                      onClick={async () => {
+                        setBusy(true);
+                        const r = await lensRun('urban-planning', 'scenario-update', {
+                          id: s.id, name: scenarioForm.name, description: scenarioForm.description,
+                          lotSizeSqFt: Number(scenarioForm.lotSizeSqFt) || 0, efficiency: Number(scenarioForm.efficiency) || 0.82,
+                        });
+                        setBusy(false);
+                        if (r.data.ok) { setEditingScenario(null); setCompare(null); await refresh(); onDataChanged?.(); }
+                        else setError(r.data.error || 'update failed');
+                      }}
+                      className="rounded bg-emerald-600 px-2.5 py-1 text-[11px] text-white hover:bg-emerald-500 disabled:opacity-40">Save changes</button>
+                    <button type="button" onClick={() => setEditingScenario(null)}
+                      className="rounded border border-zinc-700 px-2.5 py-1 text-[11px] text-zinc-300 hover:bg-zinc-800">Cancel</button>
+                  </div>
+                </div>
+              )}
               {s.impacts && (
                 <>
                   <MassingBox m={s.impacts} />

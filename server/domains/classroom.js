@@ -325,6 +325,29 @@ export default function registerClassroomActions(registerLensAction) {
     }
   });
 
+  // FIX-classroom-007: submissions gain a delete; its grade goes with
+  // it (a grade against a deleted submission is an orphan).
+  registerLensAction("classroom", "submission-delete", (ctx, _artifact, params = {}) => {
+    try {
+      const state = getClassState();
+      if (!state) return { ok: false, error: "STATE unavailable" };
+      const userId = uid(ctx);
+      const id = String(params.submissionId || params.id || "");
+      const list = state.submissions.get(userId) || [];
+      const next = list.filter((s) => s.id !== id);
+      if (next.length === list.length) return { ok: false, error: "submission not found" };
+      state.submissions.set(userId, next);
+      const grades = state.grades.get(userId) || [];
+      const kept = grades.filter((g) => g.submissionId !== id);
+      const gradesRemoved = grades.length - kept.length;
+      if (gradesRemoved) state.grades.set(userId, kept);
+      saveClassState();
+      return { ok: true, result: { deleted: id, gradesRemoved } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
   registerLensAction("classroom", "submission-list", (ctx, _artifact, params = {}) => {
     try {
       const state = getClassState();
@@ -475,6 +498,26 @@ export default function registerClassroomActions(registerLensAction) {
       pushTo(state.stream, userId, entry);
       saveClassState();
       return { ok: true, result: { entry } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // FIX-classroom-007: stream entries (announcements) gain a delete.
+  // The stream is per-user state, so the caller can only ever remove
+  // entries from their own stream.
+  registerLensAction("classroom", "stream-delete", (ctx, _artifact, params = {}) => {
+    try {
+      const state = getClassState();
+      if (!state) return { ok: false, error: "STATE unavailable" };
+      const userId = uid(ctx);
+      const id = String(params.entryId || params.id || "");
+      const list = state.stream.get(userId) || [];
+      const next = list.filter((e) => e.id !== id);
+      if (next.length === list.length) return { ok: false, error: "stream entry not found" };
+      state.stream.set(userId, next);
+      saveClassState();
+      return { ok: true, result: { deleted: id } };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
@@ -691,6 +734,29 @@ export default function registerClassroomActions(registerLensAction) {
       })),
     };
   }
+
+  // FIX-classroom-007: quizzes gain a delete; its attempts go with it
+  // (an attempt against a deleted quiz is an orphan).
+  registerLensAction("classroom", "quiz-delete", (ctx, _artifact, params = {}) => {
+    try {
+      const state = getClassState();
+      if (!state) return { ok: false, error: "STATE unavailable" };
+      const userId = uid(ctx);
+      const id = String(params.quizId || params.id || "");
+      const list = state.quizzes.get(userId) || [];
+      const next = list.filter((q) => q.id !== id);
+      if (next.length === list.length) return { ok: false, error: "quiz not found" };
+      state.quizzes.set(userId, next);
+      const attempts = state.quizAttempts.get(userId) || [];
+      const kept = attempts.filter((a) => a.quizId !== id);
+      const attemptsRemoved = attempts.length - kept.length;
+      if (attemptsRemoved) state.quizAttempts.set(userId, kept);
+      saveClassState();
+      return { ok: true, result: { deleted: id, attemptsRemoved } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
 
   registerLensAction("classroom", "quiz-list", (ctx, _artifact, params = {}) => {
     try {

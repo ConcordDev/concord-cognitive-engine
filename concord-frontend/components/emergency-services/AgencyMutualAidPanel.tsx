@@ -37,6 +37,7 @@ import {
 import { lensRun } from '@/lib/api/client';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 /* ──────────────────────────── types ─────────────────────────────────── */
 
@@ -46,6 +47,7 @@ type OrgRole = 'leader' | 'officer' | 'member' | 'apprentice';
 interface OrgSummary {
   id: string; name: string; type: string; leaderId: string;
   memberCount: number; myRole?: OrgRole; myEmsRole?: EmsRole;
+  recruitCriteria?: string;
 }
 interface OrgMember { userId: string; role: OrgRole; emsRole: EmsRole }
 interface AgencyMembersResult {
@@ -109,6 +111,7 @@ function CreateOrJoin({ notify, onDone }: { notify: (f: Feedback) => void; onDon
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState<'create' | 'join' | 'browse'>('create');
   const [name, setName] = useState('');
+  const [visibility, setVisibility] = useState<'private' | 'open'>('private');
   const [joinId, setJoinId] = useState('');
   const [browse, setBrowse] = useState<OrgSummary[] | null>(null);
 
@@ -116,9 +119,11 @@ function CreateOrJoin({ notify, onDone }: { notify: (f: Feedback) => void; onDon
     if (!name.trim()) { notify({ kind: 'err', text: 'Enter an agency name.' }); return; }
     setBusy(true);
     try {
-      await run('agency-create', { name });
+      await run('agency-create', { name, visibility });
       setName('');
-      notify({ kind: 'ok', text: 'Agency created — you are its chief.' });
+      notify({ kind: 'ok', text: visibility === 'open'
+        ? 'Agency created — you are its chief, and it is listed in Browse open agencies.'
+        : 'Agency created — you are its chief. It is private: only members see it.' });
       onDone();
     } catch (e) { notify({ kind: 'err', text: (e as Error).message }); } finally { setBusy(false); }
   };
@@ -131,7 +136,11 @@ function CreateOrJoin({ notify, onDone }: { notify: (f: Feedback) => void; onDon
       notify({ kind: 'ok', text: `Joined as ${res ? EMS_ROLE_META[res.emsRole].label : 'a member'}.` });
       setJoinId('');
       onDone();
-    } catch (e) { notify({ kind: 'err', text: (e as Error).message }); } finally { setBusy(false); }
+    } catch (e) {
+      notify({ kind: 'err', text: (e as Error).message === 'agency_not_open'
+        ? 'That agency is private — it is not open to join. Its chief can open the listing from the agency workspace.'
+        : (e as Error).message });
+    } finally { setBusy(false); }
   };
 
   const loadBrowse = useCallback(async () => {
@@ -162,11 +171,25 @@ function CreateOrJoin({ notify, onDone }: { notify: (f: Feedback) => void; onDon
       </div>
 
       {mode === 'create' && (
-        <div className="flex gap-2">
-          <input className={INPUT} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Riverside Fire &amp; EMS" />
-          <button onClick={create} disabled={busy} className={cn(BTN, 'bg-red-600 text-white hover:bg-red-500 whitespace-nowrap')}>
-            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />} Create
-          </button>
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <input className={INPUT} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Riverside Fire &amp; EMS" />
+            <button onClick={create} disabled={busy} className={cn(BTN, 'bg-red-600 text-white hover:bg-red-500 whitespace-nowrap')}>
+              {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />} Create
+            </button>
+          </div>
+          <label className="flex items-center gap-2 text-[11px] text-zinc-400">
+            Listing
+            <select
+              aria-label="Agency listing"
+              value={visibility}
+              onChange={(e) => setVisibility(e.target.value as 'private' | 'open')}
+              className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white"
+            >
+              <option value="private">Private — only members see it</option>
+              <option value="open">Open — listed in Browse open agencies</option>
+            </select>
+          </label>
         </div>
       )}
 
@@ -421,6 +444,8 @@ function AgencyWorkspace({
     } catch (e) { notify({ kind: 'err', text: (e as Error).message }); } finally { setBusy(false); }
   };
 
+  const [confirmingLeave, setConfirmingLeave] = useState(false);
+
   const leave = async () => {
     setBusy(true);
     try {
@@ -428,7 +453,44 @@ function AgencyWorkspace({
       if (!r.data?.ok) throw new Error(r.data?.error || 'agency-leave failed');
       notify({ kind: 'ok', text: `Left ${org.name}.` });
       onLeft();
+    } catch (e) { notify({ kind: 'err', text: (e as Error).message }); } finally { setBusy(false); setConfirmingLeave(false); }
+  };
+
+  const setListing = async (visibility: 'open' | 'private') => {
+    setBusy(true);
+    try {
+      await run('agency-set-visibility', { orgId: org.id, visibility });
+      notify({ kind: 'ok', text: visibility === 'open'
+        ? `${org.name} is now listed in Browse open agencies.`
+        : `${org.name} is now private — only members see it.` });
+      await load();
+    } catch (e) {
+      notify({ kind: 'err', text: (e as Error).message === 'leader_only'
+        ? 'Only the agency chief can change the listing.'
+        : (e as Error).message });
+    } finally { setBusy(false); }
+  };
+
+  const closeBoardIncident = async (incident: Incident) => {
+    setBusy(true);
+    try {
+      await run('incident-status', { orgId: org.id, id: incident.id, status: 'resolved' });
+      notify({ kind: 'ok', text: `Closed — ${incident.summary}.` });
+      await load();
     } catch (e) { notify({ kind: 'err', text: (e as Error).message }); } finally { setBusy(false); }
+  };
+
+  const deleteBoardIncident = async (incident: Incident) => {
+    setBusy(true);
+    try {
+      await run('incident-delete', { orgId: org.id, id: incident.id });
+      notify({ kind: 'ok', text: `Deleted — ${incident.summary}.` });
+      await load();
+    } catch (e) {
+      notify({ kind: 'err', text: (e as Error).message === 'incident_has_active_unit'
+        ? 'A unit is still working this incident — stand it down before deleting the record.'
+        : (e as Error).message });
+    } finally { setBusy(false); }
   };
 
   const addIncident = async () => {
@@ -463,11 +525,42 @@ function AgencyWorkspace({
           <span className="text-[13px] font-semibold text-white">{detail.organization.name}</span>
           {myEmsRole && <RoleBadge role={myEmsRole} />}
         </div>
-        {detail.myOrgRole !== 'leader' && (
-          <button onClick={leave} disabled={busy} className={cn(BTN, 'text-zinc-400 hover:text-rose-400')}>
-            <LogOut className="w-3.5 h-3.5" /> Leave
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {detail.myOrgRole === 'leader' && (
+            detail.organization.recruitCriteria === 'open' ? (
+              <>
+                <span className="text-[10px] text-emerald-300">Listed in Browse open agencies</span>
+                <button onClick={() => void setListing('private')} disabled={busy} className={cn(BTN, 'text-zinc-400 hover:text-zinc-200')}>
+                  <Eye className="w-3.5 h-3.5" /> Make private
+                </button>
+              </>
+            ) : (
+              <>
+                <span className="text-[10px] text-zinc-400">Private — members only</span>
+                <button onClick={() => void setListing('open')} disabled={busy} className={cn(BTN, 'text-zinc-400 hover:text-zinc-200')}>
+                  <Eye className="w-3.5 h-3.5" /> List in Browse
+                </button>
+              </>
+            )
+          )}
+          {detail.myOrgRole !== 'leader' && (
+            confirmingLeave ? (
+              <>
+                <span className="text-[10px] text-rose-200">Leave {org.name}?</span>
+                <button onClick={leave} disabled={busy} className={cn(BTN, 'bg-rose-600 text-white hover:bg-rose-500')}>
+                  Confirm leave
+                </button>
+                <button onClick={() => setConfirmingLeave(false)} disabled={busy} className={cn(BTN, 'text-zinc-400 hover:text-zinc-200')}>
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <button onClick={() => setConfirmingLeave(true)} disabled={busy} className={cn(BTN, 'text-zinc-400 hover:text-rose-400')}>
+                <LogOut className="w-3.5 h-3.5" /> Leave
+              </button>
+            )
+          )}
+        </div>
       </div>
 
       {myEmsRole && (
@@ -535,7 +628,32 @@ function AgencyWorkspace({
               {!canWrite && <p className="text-[9px] text-zinc-600 mb-1.5">Trainee view — read-only.</p>}
               {incidents.length === 0
                 ? <p className="text-[10px] text-zinc-400 py-2 text-center">No incidents logged for this agency yet.</p>
-                : <ul className="space-y-0.5">{incidents.slice(0, 8).map((i) => <li key={i.id} className="text-[10px] text-zinc-300">{i.summary} <span className="text-zinc-400">· {i.status}</span></li>)}</ul>}
+                : <ul className="space-y-0.5">{incidents.slice(0, 8).map((i) => (
+                  <li key={i.id} className="flex items-center gap-1.5 text-[10px] text-zinc-300">
+                    <span className="flex-1 truncate">{i.summary} <span className="text-zinc-400">· {i.status}</span></span>
+                    {canWrite && i.status !== 'resolved' && i.status !== 'cancelled' && (
+                      <button
+                        onClick={() => void closeBoardIncident(i)}
+                        disabled={busy}
+                        aria-label={`Close incident ${i.summary}`}
+                        className="shrink-0 rounded border border-zinc-700 bg-zinc-800 px-1.5 py-0.5 text-[9px] text-zinc-200 hover:bg-zinc-700 disabled:opacity-40"
+                      >
+                        Close
+                      </button>
+                    )}
+                    {canWrite && (
+                      <StickyDeleteConfirm
+                        onConfirm={() => void deleteBoardIncident(i)}
+                        armLabel="Delete"
+                        confirmLabel="Confirm delete?"
+                        armAriaLabel={`Delete incident ${i.summary}`}
+                        confirmAriaLabel="Confirm delete"
+                        cancelAriaLabel="Cancel delete"
+                        className="shrink-0 rounded border border-rose-500/30 bg-rose-500/10 px-1.5 py-0.5 text-[9px] text-rose-200 hover:bg-rose-500/20 disabled:opacity-40"
+                      />
+                    )}
+                  </li>
+                ))}</ul>}
             </div>
             <div className="rounded-md border border-zinc-800 bg-zinc-900/30 p-2.5">
               <div className="flex items-center gap-1.5 mb-1.5"><Truck className="w-3.5 h-3.5 text-emerald-400" /><span className={LABEL}>Unit roster ({units.length})</span></div>

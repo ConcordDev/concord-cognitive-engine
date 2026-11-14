@@ -251,6 +251,24 @@ export default function registerHomeImprovementActions(registerLensAction) {
     return { ok: true, result: { board } };
   });
 
+  // FIX-home-improvement-011: boards, inventory, maintenance tasks and
+  // contractors could be created and deleted but never edited. One
+  // update verb per record type, mirroring its add verb's fields.
+  registerLensAction("home-improvement", "board-update", (ctx, _a, params = {}) => {
+    const s = getHiState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const board = hiList(s, "boards", hiActor(ctx)).find((b) => b.id === params.id);
+    if (!board) return { ok: false, error: "board not found" };
+    if (params.name != null) {
+      const name = hiClean(params.name, 120);
+      if (!name) return { ok: false, error: "board name required" };
+      board.name = name;
+    }
+    if (params.room != null) board.room = hiClean(params.room, 80) || board.room;
+    if (params.description != null) board.description = hiClean(params.description, 600);
+    saveHi();
+    return { ok: true, result: { board } };
+  });
+
   registerLensAction("home-improvement", "board-list", (ctx, _a, _params = {}) => {
     const s = getHiState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const boards = hiList(s, "boards", hiActor(ctx)).map((b) => ({ ...b, ideaCount: b.ideas.length }));
@@ -317,6 +335,24 @@ export default function registerHomeImprovementActions(registerLensAction) {
       createdAt: new Date().toISOString(),
     };
     hiList(s, "pros", hiActor(ctx)).push(pro);
+    saveHi();
+    return { ok: true, result: { pro } };
+  });
+
+  registerLensAction("home-improvement", "pro-update", (ctx, _a, params = {}) => {
+    const s = getHiState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const pro = hiList(s, "pros", hiActor(ctx)).find((p) => p.id === params.id);
+    if (!pro) return { ok: false, error: "contractor not found" };
+    if (params.name != null) {
+      const name = hiClean(params.name, 120);
+      if (!name) return { ok: false, error: "contractor name required" };
+      pro.name = name;
+    }
+    if (params.trade != null) pro.trade = hiClean(params.trade, 80) || pro.trade;
+    if (params.phone != null) pro.phone = hiClean(params.phone, 40);
+    if (params.email != null) pro.email = hiClean(params.email, 120);
+    if (params.license != null) pro.license = hiClean(params.license, 80);
+    if (params.notes != null) pro.notes = hiClean(params.notes, 800);
     saveHi();
     return { ok: true, result: { pro } };
   });
@@ -480,6 +516,29 @@ export default function registerHomeImprovementActions(registerLensAction) {
       createdAt: new Date().toISOString(),
     };
     hiList(s, "inventory", hiActor(ctx)).push(asset);
+    saveHi();
+    return { ok: true, result: { asset } };
+  });
+
+  registerLensAction("home-improvement", "inventory-update", (ctx, _a, params = {}) => {
+    const s = getHiState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const asset = hiList(s, "inventory", hiActor(ctx)).find((a) => a.id === params.id);
+    if (!asset) return { ok: false, error: "asset not found" };
+    if (params.name != null) {
+      const name = hiClean(params.name, 160);
+      if (!name) return { ok: false, error: "asset name required" };
+      asset.name = name;
+    }
+    if (params.category != null) asset.category = hiClean(params.category, 80) || asset.category;
+    if (params.room != null && ROOMS.includes(params.room)) asset.room = params.room;
+    if (params.brand != null) asset.brand = hiClean(params.brand, 100);
+    if (params.model != null) asset.model = hiClean(params.model, 100);
+    if (params.serial != null) asset.serial = hiClean(params.serial, 100);
+    if (params.purchaseDate != null) asset.purchaseDate = hiClean(params.purchaseDate, 30);
+    if (params.purchasePrice != null) asset.purchasePrice = Math.max(0, hiNum(params.purchasePrice));
+    if (params.warrantyExpires != null) asset.warrantyExpires = hiClean(params.warrantyExpires, 30);
+    if (params.manualUrl != null) asset.manualUrl = hiClean(params.manualUrl, 600);
+    if (params.notes != null) asset.notes = hiClean(params.notes, 800);
     saveHi();
     return { ok: true, result: { asset } };
   });
@@ -667,6 +726,22 @@ export default function registerHomeImprovementActions(registerLensAction) {
     return { ok: true, result: { reminder } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+
+  registerLensAction("home-improvement", "maintenance-update", (ctx, _a, params = {}) => {
+    const s = getHiState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const reminder = hiList(s, "maintenance", hiActor(ctx)).find((m) => m.id === params.id);
+    if (!reminder) return { ok: false, error: "maintenance task not found" };
+    if (params.task != null) {
+      const task = hiClean(params.task, 200);
+      if (!task) return { ok: false, error: "task description required" };
+      reminder.task = task;
+    }
+    if (params.season != null && ["spring", "summer", "fall", "winter", "any"].includes(params.season)) reminder.season = params.season;
+    if (params.intervalDays != null) reminder.intervalDays = Math.max(1, Math.round(hiNum(params.intervalDays)) || reminder.intervalDays);
+    if (params.dueDate != null) reminder.dueDate = hiClean(params.dueDate, 30) || reminder.dueDate;
+    saveHi();
+    return { ok: true, result: { reminder } };
+  });
 
   registerLensAction("home-improvement", "maintenance-list", (ctx, _a, _params = {}) => {
     const s = getHiState(); if (!s) return { ok: false, error: "STATE unavailable" };

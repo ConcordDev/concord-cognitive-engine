@@ -613,6 +613,31 @@ export default function registerSufferingActions(registerLensAction) {
     }
   });
 
+  // FIX-suffering-004: themes could be created and deleted but never
+  // edited — a typo meant delete + recreate (losing the pain links'
+  // grouping context in the operator's head, if not the data).
+  registerLensAction("suffering", "theme-update", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getSufState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const uid = sufUid(ctx);
+      const list = s.themes.get(uid) || [];
+      const theme = list.find((t) => t.id === params.id);
+      if (!theme) return { ok: false, error: "theme not found" };
+      if (params.name != null) {
+        const name = String(params.name).trim();
+        if (!name) return { ok: false, error: "name required" };
+        theme.name = name;
+      }
+      if (params.description != null) theme.description = String(params.description).trim();
+      if (params.color != null) theme.color = String(params.color);
+      saveSufState();
+      return { ok: true, result: { theme } };
+    } catch (e) {
+      return { ok: false, error: e?.message || String(e) };
+    }
+  });
+
   registerLensAction("suffering", "theme-delete", (ctx, _artifact, params = {}) => {
     try {
       const s = getSufState();
@@ -790,6 +815,13 @@ export default function registerSufferingActions(registerLensAction) {
       const intv = list.find((i) => i.id === params.id);
       if (!intv) return { ok: false, error: "intervention not found" };
       const statuses = ["proposed", "in_progress", "completed", "abandoned"];
+      // FIX-suffering-004: the title is editable too (status, progress,
+      // owner and description already were).
+      if (params.title != null) {
+        const title = String(params.title).trim();
+        if (!title) return { ok: false, error: "title required" };
+        intv.title = title;
+      }
       let statusChanged = false;
       if (params.status != null && statuses.includes(params.status) && params.status !== intv.status) {
         intv.status = params.status;

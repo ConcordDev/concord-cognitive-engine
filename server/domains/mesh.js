@@ -441,6 +441,33 @@ export default function registerMeshActions(register) {
   }, { description: "Mark mesh message(s) read." });
 
   /**
+   * deleteMessage — FIX-mesh-003: remove one message from the caller's
+   * own mesh log (the log is per-user; nothing here transmits, so the
+   * delete is local to the caller's copy). A still-queued store-and-
+   * forward frame for the message goes with it.
+   */
+  registerLensAction("mesh", "deleteMessage", (ctx, artifact, params) => {
+    try {
+      const uid = userId(ctx);
+      const data = { ...(artifact?.data || {}), ...(params || {}) };
+      const id = String(data.id || data.messageId || "");
+      if (!id) return { ok: false, error: "message id required" };
+      const all = userArr(meshState().meshMessages, uid);
+      const i = all.findIndex((m) => m.id === id);
+      if (i < 0) return { ok: false, error: "message not found" };
+      all.splice(i, 1);
+      const queue = userArr(meshState().meshQueue, uid);
+      let removedFrames = 0;
+      for (let j = queue.length - 1; j >= 0; j--) {
+        if (queue[j].messageId === id) { queue.splice(j, 1); removedFrames++; }
+      }
+      return { ok: true, result: { deleted: id, removedFrames } };
+    } catch (e) {
+      return { ok: false, error: e?.message || "deleteMessage failed" };
+    }
+  }, { description: "Delete one message from the caller's own mesh log." });
+
+  /**
    * signalMetrics — per-transport signal quality: RSSI estimate, hop
    * count, latency, link budget. Derived deterministically from the real
    * TRANSPORT_SPECS plus any user-observed node quality readings.

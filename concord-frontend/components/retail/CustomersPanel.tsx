@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
-import { Users, Plus, Trash2, Star, Mail } from 'lucide-react';
+import { Users, Plus, Trash2, Star, Mail, Pencil, Eye, Search } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { SkeletonTableRows } from '@/components/ui';
@@ -22,6 +22,24 @@ export function CustomersPanel() {
   const [form, setForm] = useState({ name: '', email: '', phone: '', city: '', state: '' });
   const [addError, setAddError] = useState<string | null>(null);
   const [activeSegment, setActiveSegment] = useState<'all' | 'new' | 'repeat' | 'vip' | 'atRisk' | 'dormant'>('all');
+  // FIX-retail-007: search + a detail view with an edit form.
+  const [query, setQuery] = useState('');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<{ name: string; email: string; phone: string; city: string; state: string; acceptsMarketing: boolean } | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  async function saveEdit(id: string) {
+    if (!editForm) return;
+    if (!editForm.name.trim()) { setEditError('Name is required.'); return; }
+    if (!/^[^\s@]+@[^\s@]+$/.test(editForm.email.trim())) { setEditError('Email must include a name and a domain, like name@example.com.'); return; }
+    try {
+      const r = await lensRun({ domain: 'retail', action: 'customers-update', input: { id, ...editForm } });
+      if (r.data?.ok === false) { setEditError(String(r.data.message || r.data.error || 'Could not save the customer.')); return; }
+      setEditError(null);
+      setEditForm(null);
+      await refresh();
+    } catch (e) { setEditError(e instanceof Error ? e.message : 'Could not save the customer.'); }
+  }
 
   useEffect(() => { refresh(); }, []);
 
@@ -63,7 +81,11 @@ export function CustomersPanel() {
 
   const day = 86400000;
   const now = Date.now();
-  const filtered = customers.filter(c => {
+  const q = query.trim().toLowerCase();
+  const searched = q
+    ? customers.filter(c => c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q) || c.city.toLowerCase().includes(q))
+    : customers;
+  const filtered = searched.filter(c => {
     if (activeSegment === 'all') return true;
     if (activeSegment === 'new') return c.orderCount <= 1;
     if (activeSegment === 'repeat') return c.orderCount >= 2 && c.orderCount < 5;
@@ -118,17 +140,26 @@ export function CustomersPanel() {
         </div>
       )}
 
+      <div className="px-3 py-2 border-b border-white/10 flex items-center gap-2">
+        <Search className="w-3.5 h-3.5 text-gray-500" />
+        <input value={query} onChange={e => setQuery(e.target.value)} aria-label="Search customers" placeholder="Search name, email, or city"
+          className="flex-1 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <span className="text-[10px] text-gray-400">{filtered.length} shown</span>
+      </div>
+
       <div className="max-h-96 overflow-y-auto">
         {loading ? (
           <SkeletonTableRows rows={5} columns={4} />
         ) : filtered.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-400"><Users className="w-6 h-6 mx-auto mb-2 opacity-30" />No customers in {activeSegment}.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Users className="w-6 h-6 mx-auto mb-2 opacity-30" />{q ? `No customers match "${query.trim()}".` : `No customers in ${activeSegment}.`}</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {filtered.map(c => {
               const isVip = c.totalSpent >= 1000 || c.orderCount >= 5;
+              const selected = selectedId === c.id;
               return (
-                <li key={c.id} className="px-3 py-2 hover:bg-white/[0.03] group flex items-center gap-3">
+                <li key={c.id} className="px-3 py-2 hover:bg-white/[0.03] group">
+                  <div className="flex items-center gap-3">
                   <div className={cn('w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold', isVip ? 'bg-amber-500/20 text-amber-300' : 'bg-emerald-500/15 text-emerald-300')}>
                     {c.name.slice(0, 1).toUpperCase()}
                   </div>
@@ -144,7 +175,46 @@ export function CustomersPanel() {
                     <div className="text-sm font-mono tabular-nums text-white">${c.totalSpent.toFixed(0)}</div>
                     <div className="text-[10px] text-gray-400">{c.orderCount} order{c.orderCount === 1 ? '' : 's'}</div>
                   </div>
+                  <button onClick={() => { setSelectedId(selected ? null : c.id); setEditForm(null); setEditError(null); }}
+                    aria-label={`View customer ${c.name}`} aria-expanded={selected}
+                    className="p-1 text-gray-400 hover:text-white">
+                    <Eye className="w-3.5 h-3.5" />
+                  </button>
                   <StickyDeleteConfirm onConfirm={() => remove(c.id)} armAriaLabel={`Delete customer ${c.name}`} confirmAriaLabel={`Confirm delete customer ${c.name}`} className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 p-1 text-gray-400 hover:text-rose-400" armLabel={<Trash2 className="w-3 h-3" />} />
+                  </div>
+                  {selected && (
+                    <div className="mt-2 ml-12 border-t border-white/5 pt-2 text-xs text-gray-300 space-y-1">
+                      <p>Email: {c.email}</p>
+                      {c.phone && <p>Phone: {c.phone}</p>}
+                      <p>Location: {c.city}{c.state ? `, ${c.state}` : ''}</p>
+                      <p>Lifetime: ${c.totalSpent.toFixed(2)} across {c.orderCount} order{c.orderCount === 1 ? '' : 's'}{c.lastOrderAt ? ` · last order ${new Date(c.lastOrderAt).toLocaleDateString()}` : ''}</p>
+                      <p>Marketing: {c.acceptsMarketing ? 'opted in' : 'opted out'}{c.tags.length > 0 ? ` · Tags: ${c.tags.join(', ')}` : ''}</p>
+                      {editForm ? (
+                        <div className="grid grid-cols-2 gap-2 pt-1">
+                          {editError && <div className="col-span-2 rounded border border-rose-500/30 bg-rose-500/10 px-2 py-1.5 text-[11px] text-rose-300" role="alert">{editError}</div>}
+                          <input aria-label="Edit customer name" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} placeholder="Name" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                          <input aria-label="Edit customer email" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} placeholder="Email" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                          <input aria-label="Edit customer phone" value={editForm.phone} onChange={e => setEditForm({ ...editForm, phone: e.target.value })} placeholder="Phone" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                          <input aria-label="Edit customer city" value={editForm.city} onChange={e => setEditForm({ ...editForm, city: e.target.value })} placeholder="City" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                          <input aria-label="Edit customer state" value={editForm.state} onChange={e => setEditForm({ ...editForm, state: e.target.value })} placeholder="State" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                          <label className="flex items-center gap-2 text-[11px] text-gray-300">
+                            <input type="checkbox" checked={editForm.acceptsMarketing} onChange={e => setEditForm({ ...editForm, acceptsMarketing: e.target.checked })} aria-label="Edit customer marketing opt-in" />
+                            Accepts marketing
+                          </label>
+                          <div className="col-span-2 flex gap-2">
+                            <button onClick={() => saveEdit(c.id)} className="px-3 py-1.5 text-xs rounded bg-emerald-500 text-black font-bold hover:bg-emerald-400">Save</button>
+                            <button onClick={() => setEditForm(null)} className="text-xs text-gray-400 px-2">Cancel</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button onClick={() => setEditForm({ name: c.name, email: c.email, phone: c.phone, city: c.city, state: c.state, acceptsMarketing: c.acceptsMarketing })}
+                          aria-label={`Edit customer ${c.name}`}
+                          className="inline-flex items-center gap-1 mt-1 px-2 py-1 rounded border border-white/10 text-[11px] text-gray-200 hover:bg-white/5">
+                          <Pencil className="w-3 h-3" /> Edit customer
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </li>
               );
             })}

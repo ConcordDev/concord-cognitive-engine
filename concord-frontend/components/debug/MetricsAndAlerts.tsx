@@ -590,13 +590,16 @@ export function MetricsAndAlerts() {
                     {rule.lastValue != null && ` · last ${rule.lastValue}`}
                   </p>
                 </div>
-                <button
-                  onClick={() => deleteRule(rule.id)}
+                {/* FIX-debug-002: was an immediate delete behind the
+                    trash icon — the two-step confirm now stands here. */}
+                <StickyDeleteConfirm
+                  onConfirm={() => deleteRule(rule.id)}
+                  armLabel={<Trash2 className="w-3.5 h-3.5" />}
+                  armAriaLabel="Delete"
+                  confirmAriaLabel="Confirm delete"
+                  cancelAriaLabel="Cancel delete"
                   className="p-1 rounded text-red-400 hover:bg-red-400/10 shrink-0"
-                  title="Delete"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                />
               </div>
             ))}
           </div>

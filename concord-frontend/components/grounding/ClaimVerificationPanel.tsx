@@ -85,6 +85,9 @@ export function ClaimVerificationPanel() {
   const [credibilityResult, setCredibilityResult] = useState<CredibilityResult | null>(null);
   const [decomposeResult, setDecomposeResult] = useState<DecomposeResult | null>(null);
   const [mintedDtuId, setMintedDtuId] = useState<string | null>(null);
+  // FIX-grounding-010 (name leg): the mint auto-titled from the claim and
+  // offered no way to name the saved DTU.
+  const [mintName, setMintName] = useState('');
   const [publishedDtuId, setPublishedDtuId] = useState<string | null>(null);
   const [agentReply, setAgentReply] = useState<string | null>(null);
 
@@ -181,7 +184,7 @@ export function ClaimVerificationPanel() {
       const r = await api.post('/api/lens/run', {
         domain: 'dtu', name: 'create',
         input: withContentLicense({
-          title: `Verification — ${claim.trim().slice(0, 60)}${claim.length > 60 ? '…' : ''}`,
+          title: mintName.trim() ? mintName.trim().slice(0, 120) : `Verification — ${claim.trim().slice(0, 60)}${claim.length > 60 ? '…' : ''}`,
           tags: ['grounding', 'verification', factResult?.verdict ?? 'unchecked'],
           source: 'grounding:verification:mint',
           meta: {
@@ -310,6 +313,11 @@ export function ClaimVerificationPanel() {
       <div>
         <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block" htmlFor="cvp-claim">Claim</label>
         <textarea id="cvp-claim" value={claim} onChange={(e) => setClaim(e.target.value)} rows={2} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-400/40 resize-none" placeholder="e.g. The fastest land animal is the cheetah." />
+      </div>
+
+      <div>
+        <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block" htmlFor="cvp-mint-name">Saved DTU name (optional)</label>
+        <input id="cvp-mint-name" value={mintName} onChange={(e) => setMintName(e.target.value)} maxLength={120} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-400/40" placeholder="Name the verification DTU you Mint — blank keeps the claim title" />
       </div>
 
       {/* Evidence list — feeds factCheck + claimDecomposition */}

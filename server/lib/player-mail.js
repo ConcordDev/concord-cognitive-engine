@@ -150,14 +150,21 @@ export function listInbox(db, userId, opts = {}) {
   const status = opts.status; // optional filter
   const limit = Math.min(Math.max(1, opts.limit || 50), 200);
   try {
-    const where = status
-      ? `to_user_id = ? AND status = ?`
-      : `to_user_id = ?`;
-    const params = status ? [userId, status] : [userId];
+    // FIX-mail-013: trashed rows never list; the default view hides
+    // archived rows, the 'archived' view shows only them, and the
+    // 'starred' view shows starred rows across the inbox.
+    const folder = opts.folder === "archived" ? "archived" : opts.folder === "starred" ? "starred" : "inbox";
+    let where = `to_user_id = ? AND recipient_deleted_at IS NULL`;
+    const params = [userId];
+    if (status) { where += ` AND status = ?`; params.push(status); }
+    if (folder === "archived") where += ` AND archived_at IS NOT NULL`;
+    else if (folder === "starred") where += ` AND starred_at IS NOT NULL`;
+    else where += ` AND archived_at IS NULL`;
     return db.prepare(`
       SELECT id, from_user_id AS fromUser, to_user_id AS toUser, world_id AS worldId, subject, body,
              status, sent_at AS sentAt, read_at AS readAt, claimed_at AS claimedAt,
              declined_at AS declinedAt, parent_id AS parentId,
+             starred_at AS starredAt, archived_at AS archivedAt,
              expires_at AS expiresAt, attachment_dtu_ids, attachment_cc AS attachmentCc,
              cod_cc AS codCc
       FROM player_mail
@@ -259,6 +266,75 @@ export function deleteSentMail(db, mailId, userId) {
     });
     tx();
     return { ok: true, deleted: true, refundedCc: refundCc };
+  } catch (err) {
+    return { ok: false, error: err?.message };
+  }
+}
+
+/**
+ * FIX-mail-013 — recipient-side inbox management. All four are local
+ * to the recipient's view of the one shared row (499's sender-side
+ * precedent): the sender's copy, the claim record, and any escrow are
+ * never touched.
+ *
+ * Trash is a soft delete (recipient_deleted_at). A mail still carrying
+ * UNCLAIMED attachments is refused: its gift CC / DTUs sit in escrow,
+ * and quietly dropping the row would strand them — the recipient
+ * claims or declines first (decline returns the escrow to the sender).
+ */
+export function deleteInboxMail(db, mailId, userId) {
+  if (!db || !mailId || !userId) return { ok: false, error: "missing_inputs" };
+  try {
+    const row = db.prepare(`SELECT to_user_id AS toUser, status, recipient_deleted_at AS recipientDeletedAt, attachment_cc AS attachmentCc, cod_cc AS codCc, attachment_dtu_ids AS attachmentDtuIds FROM player_mail WHERE id = ?`).get(mailId);
+    if (!row) return { ok: false, error: "not_found" };
+    if (row.toUser !== userId) return { ok: false, error: "not_authorized" };
+    if (row.recipientDeletedAt) return { ok: true, deleted: true, alreadyDeleted: true };
+    const unclaimed = (row.status === "unread" || row.status === "read")
+      && ((Number(row.attachmentCc) || 0) > 0 || (Number(row.codCc) || 0) > 0 || _parseJsonArray(row.attachmentDtuIds).length > 0);
+    if (unclaimed) return { ok: false, error: "has_unclaimed_attachments" };
+    db.prepare(`UPDATE player_mail SET recipient_deleted_at = unixepoch() WHERE id = ? AND to_user_id = ?`).run(mailId, userId);
+    return { ok: true, deleted: true };
+  } catch (err) {
+    return { ok: false, error: err?.message };
+  }
+}
+
+export function setMailStarred(db, mailId, userId, starred) {
+  if (!db || !mailId || !userId) return { ok: false, error: "missing_inputs" };
+  try {
+    const r = db.prepare(`UPDATE player_mail SET starred_at = ${starred ? "unixepoch()" : "NULL"} WHERE id = ? AND to_user_id = ? AND recipient_deleted_at IS NULL`).run(mailId, userId);
+    if (r.changes === 0) return { ok: false, error: "not_found" };
+    return { ok: true, starred: !!starred };
+  } catch (err) {
+    return { ok: false, error: err?.message };
+  }
+}
+
+export function setMailArchived(db, mailId, userId, archived) {
+  if (!db || !mailId || !userId) return { ok: false, error: "missing_inputs" };
+  try {
+    const r = db.prepare(`UPDATE player_mail SET archived_at = ${archived ? "unixepoch()" : "NULL"} WHERE id = ? AND to_user_id = ? AND recipient_deleted_at IS NULL`).run(mailId, userId);
+    if (r.changes === 0) return { ok: false, error: "not_found" };
+    return { ok: true, archived: !!archived };
+  } catch (err) {
+    return { ok: false, error: err?.message };
+  }
+}
+
+/** Mark a read mail unread again. Claimed/expired/declined mail keeps
+ *  its terminal status — only the read → unread step exists. */
+export function unreadMail(db, mailId, userId) {
+  if (!db || !mailId || !userId) return { ok: false, error: "missing_inputs" };
+  try {
+    const r = db.prepare(`UPDATE player_mail SET status = 'unread', read_at = NULL WHERE id = ? AND to_user_id = ? AND status = 'read'`).run(mailId, userId);
+    if (r.changes === 0) {
+      const row = db.prepare(`SELECT to_user_id, status FROM player_mail WHERE id = ?`).get(mailId);
+      if (!row) return { ok: false, error: "not_found" };
+      if (row.to_user_id !== userId) return { ok: false, error: "not_authorized" };
+      if (row.status === "unread") return { ok: true }; // already unread — idempotent
+      return { ok: false, error: "not_read" };
+    }
+    return { ok: true };
   } catch (err) {
     return { ok: false, error: err?.message };
   }

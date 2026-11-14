@@ -63,6 +63,8 @@ interface Vehicle {
   id: string;
   world_id: string;
   kind: string;
+  name?: string;
+  spec?: string;
   owner_kind: string;
   owner_id?: string;
   ownerDisplay?: string;
@@ -118,6 +120,8 @@ export default function GarageLensPage() {
 
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
   const [spawnKind, setSpawnKind] = useState<string>('cart');
+  const [spawnName, setSpawnName] = useState('');
+  const [spawnSpec, setSpawnSpec] = useState('');
 
   const spawnFeedback = useMacroDispatchFeedback<GarageSpawnResult>();
 
@@ -179,12 +183,16 @@ export default function GarageLensPage() {
       worldId,
       kind: spawnKind,
       ownerKind: 'player',
+      name: spawnName.trim(),
+      spec: spawnSpec.trim(),
     });
     if (result) {
+      setSpawnName('');
+      setSpawnSpec('');
       await refresh();
       setTab('mine');
     }
-  }, [spawnFeedback, worldId, spawnKind, refresh]);
+  }, [spawnFeedback, worldId, spawnKind, spawnName, spawnSpec, refresh]);
 
   const activeFleet = tab === 'world' ? worldFleet : myFleet;
   const filteredFleet = useMemo(() => {
@@ -197,6 +205,7 @@ export default function GarageLensPage() {
       if (!q) return true;
       return v.id.toLowerCase().includes(q)
         || v.kind.toLowerCase().includes(q)
+        || (v.name || '').toLowerCase().includes(q)
         || (v.ownerDisplay || '').toLowerCase().includes(q)
         || (v.owner_id || '').toLowerCase().includes(q);
     });
@@ -209,6 +218,15 @@ export default function GarageLensPage() {
   }, [worldFleet]);
 
   const columns: DataTableColumn<Vehicle>[] = useMemo(() => [
+    {
+      id: 'name',
+      header: 'Name',
+      sortable: true,
+      accessor: (v) => v.name
+        ? <span className="text-gray-100">{v.name}</span>
+        : <span className="text-gray-500 italic">unnamed</span>,
+      sortValue: (v) => v.name || '',
+    },
     {
       id: 'kind',
       header: 'Kind',
@@ -363,6 +381,28 @@ export default function GarageLensPage() {
                 >
                   {SPAWNABLE_KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
                 </select>
+              </div>
+              <div>
+                <label htmlFor="garage-spawn-name" className={ds.label}>Name</label>
+                <input
+                  id="garage-spawn-name"
+                  value={spawnName}
+                  onChange={(e) => setSpawnName(e.target.value)}
+                  maxLength={80}
+                  placeholder="e.g. Old Reliable"
+                  className={cn(ds.select, 'w-44 py-1.5 text-sm')}
+                />
+              </div>
+              <div>
+                <label htmlFor="garage-spawn-spec" className={ds.label}>Spec</label>
+                <input
+                  id="garage-spawn-spec"
+                  value={spawnSpec}
+                  onChange={(e) => setSpawnSpec(e.target.value)}
+                  maxLength={280}
+                  placeholder="Oak bed, iron-rim wheels…"
+                  className={cn(ds.select, 'w-56 py-1.5 text-sm')}
+                />
               </div>
               <button
                 type="button"

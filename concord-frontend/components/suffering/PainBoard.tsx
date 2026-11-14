@@ -12,7 +12,7 @@ import { useCallback, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import {
   Plus, Trash2, Loader2, ChevronDown, ChevronRight, Quote, X,
-  ArrowUpDown,
+  ArrowUpDown, Pencil,
 } from 'lucide-react';
 
 export interface Evidence {
@@ -40,6 +40,7 @@ export interface Pain {
 export interface Theme {
   id: string;
   name: string;
+  description?: string;
   color: string;
   painCount: number;
   openCount: number;
@@ -228,7 +229,21 @@ function PainRow({
 }) {
   const [quote, setQuote] = useState('');
   const [source, setSource] = useState('');
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ title: '', description: '', severity: 5, frequency: 5, impact: 5, effort: 5 });
   const theme = themes.find((t) => t.id === pain.themeId);
+
+  const startEdit = () => {
+    setEditForm({
+      title: pain.title, description: pain.description || '',
+      severity: pain.severity, frequency: pain.frequency, impact: pain.impact, effort: pain.effort,
+    });
+    setEditing(true);
+  };
+  const saveEdit = async () => {
+    const ok = await onRun('pain-update', { id: pain.id, ...editForm });
+    if (ok) setEditing(false);
+  };
 
   return (
     <div className="rounded-lg bg-white/[0.03] border border-white/10">
@@ -294,7 +309,41 @@ function PainRow({
               <option value="">None</option>
               {themes.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
+            {!editing && (
+              <button type="button" onClick={startEdit} aria-label={`Edit pain point ${pain.title}`}
+                className="ml-auto flex items-center gap-1 px-2 py-1 rounded bg-white/5 border border-white/10 text-gray-200 hover:bg-white/10">
+                <Pencil className="w-3 h-3" /> Edit
+              </button>
+            )}
           </div>
+
+          {editing && (
+            <div className="space-y-2 rounded-lg bg-white/[0.02] border border-white/10 p-2.5">
+              <input value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                aria-label="Edit pain title" placeholder="Title"
+                className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-sm text-gray-100" />
+              <textarea value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                aria-label="Edit pain description" placeholder="Description" rows={2}
+                className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-xs text-gray-200" />
+              <div className="flex flex-wrap gap-2 text-[11px] text-gray-400">
+                {(['severity', 'frequency', 'impact', 'effort'] as const).map((k) => (
+                  <label key={k} className="flex items-center gap-1 capitalize">
+                    {k}
+                    <input type="number" min={1} max={10} value={editForm[k]}
+                      onChange={(e) => setEditForm({ ...editForm, [k]: Number(e.target.value) })}
+                      aria-label={`Edit pain ${k}`}
+                      className="w-14 bg-white/5 border border-white/10 rounded px-1.5 py-1 text-gray-100" />
+                  </label>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <button type="button" onClick={saveEdit} disabled={!editForm.title.trim()}
+                  className="px-2.5 py-1 rounded bg-neon-cyan/20 text-neon-cyan text-xs hover:bg-neon-cyan/30 disabled:opacity-40">Save changes</button>
+                <button type="button" onClick={() => setEditing(false)}
+                  className="px-2.5 py-1 rounded bg-white/5 border border-white/10 text-xs text-gray-300 hover:bg-white/10">Cancel</button>
+              </div>
+            </div>
+          )}
 
           <div>
             <p className="text-xs text-gray-400 mb-1.5 flex items-center gap-1">

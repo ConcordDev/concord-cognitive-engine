@@ -21,6 +21,7 @@ interface MetricPoint {
 interface Experiment {
   id: string;
   name: string;
+  kind?: string;
   modelId: string;
   datasetId: string;
   status: 'running' | 'completed' | 'failed';
@@ -145,7 +146,9 @@ export function ExperimentTracker() {
                 </span>
               </div>
               <div className="text-xs text-gray-400">
-                Epoch {exp.metrics.length}/{exp.hyperparams.epochs}
+                {exp.kind === 'automl-config'
+                  ? 'Configuration run — no training logged'
+                  : `Epoch ${exp.metrics.length}/${exp.hyperparams.epochs}`}
               </div>
               <div className="mt-1.5 h-1 bg-lattice-surface rounded-full overflow-hidden">
                 <div className="h-full bg-neon-purple" style={{ width: `${progress}%` }} />
@@ -193,6 +196,16 @@ export function ExperimentTracker() {
                   />
                 </div>
               </div>
+              {selected.kind === 'automl-config' && (
+                <p role="note" className="mb-4 rounded-lg border border-lattice-border bg-lattice-surface p-3 text-xs text-zinc-400">
+                  AutoML configuration run — this record holds the suggested configuration for your dataset, not a training run. Nothing was trained and no score is claimed; log the real metrics of your training run into a tracked experiment.
+                </p>
+              )}
+              {selected.status === 'running' && selected.metrics.length === 0 && (
+                <p role="note" className="mb-4 rounded-lg border border-lattice-border bg-lattice-surface p-3 text-xs text-zinc-400">
+                  Waiting for epoch logs — nothing trains in the browser. Log metrics from your training run (Log metrics), try one synthetic step (Simulate epoch), then Finish.
+                </p>
+              )}
               {manualOpen && selected.status === 'running' && (
                 <div className="mb-4 grid grid-cols-2 gap-2 rounded-lg border border-lattice-border bg-lattice-surface p-3 md:grid-cols-4">
                   <input value={manualMetrics.trainLoss} type="number" step="0.0001" placeholder="Train loss"

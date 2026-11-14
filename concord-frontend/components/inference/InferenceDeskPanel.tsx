@@ -13,9 +13,10 @@ import { motion } from 'framer-motion';
 import {
   GitMerge, Plus, ArrowRight, Database, Search, Zap,
   Clock, Gauge, Activity, ListOrdered, ChevronDown, ChevronUp,
-  RefreshCw, AlertCircle, CheckCircle2, Timer, Link,
+  RefreshCw, AlertCircle, CheckCircle2, Timer, Link, Trash2,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface UnifyResult {
@@ -162,14 +163,32 @@ function DeskSentences({ results, raw }: { results: Record<string, unknown>; raw
 }
 
 
-interface DeskFact { subject: string; predicate: string; object: string; negated?: boolean; source?: string }
+interface DeskFact { id?: string; subject: string; predicate: string; object: string; negated?: boolean; source?: string }
 
 /** D2: the knowledge base as a visible, provenance-stamped place. */
 function KbFactList() {
+  const queryClient = useQueryClient();
   const { data } = useQuery({
     queryKey: ['inference-kb-list'],
     queryFn: () => apiHelpers.inference.query({}).then((r) => r.data),
   });
+  // FIX-inference-004: the Facts panel gains the delete the Rule Engine
+  // already had. kb-remove keys on the fact id; kb-list carries ids on
+  // every fact, so resolve any row the query payload left id-less by
+  // its subject|predicate|object key.
+  const { data: kbData } = useQuery({
+    queryKey: ['inference-kb-ids'],
+    queryFn: () => lensRun('inference', 'kb-list', {}).then((r) => r.data),
+  });
+  const idByKey = new Map<string, string>();
+  for (const f of ((kbData?.result?.facts ?? []) as DeskFact[])) {
+    if (f.id) idByKey.set(`${f.subject}|${f.predicate}|${f.object}|${f.negated ? 1 : 0}`, f.id);
+  }
+  const removeFact = async (id: string) => {
+    await lensRun('inference', 'kb-remove', { id });
+    await queryClient.invalidateQueries({ queryKey: ['inference-kb-list'] });
+    await queryClient.invalidateQueries({ queryKey: ['inference-kb-ids'] });
+  };
   const facts = (data?.facts ?? []) as DeskFact[];
   const contradictions = (data?.contradictions ?? []) as Array<{ subject: string; predicate: string; object: string }>;
   const contraKeys = new Set(contradictions.map((c) => `${c.subject}|${c.predicate}|${c.object}`));
@@ -179,14 +198,30 @@ function KbFactList() {
   return (
     <div className="space-y-1">
       <p className="text-[11px] uppercase tracking-wide text-gray-400">Knowledge base ({facts.length})</p>
-      {facts.map((f, i) => (
-        <p key={i} className="text-xs text-gray-300">
-          {f.subject} {f.predicate} {f.object}
-          {f.negated ? <span className="text-amber-300"> (negated)</span> : null}
-          {f.source ? <span className="text-gray-400"> · {f.source}</span> : null}
-          {contraKeys.has(`${f.subject}|${f.predicate}|${f.object}`) ? <span className="text-red-300"> · ⚠ contradicted by its negation</span> : null}
-        </p>
-      ))}
+      {facts.map((f, i) => {
+        const factId = f.id || idByKey.get(`${f.subject}|${f.predicate}|${f.object}|${f.negated ? 1 : 0}`);
+        return (
+          <div key={i} className="flex items-center justify-between gap-2">
+            <p className="text-xs text-gray-300">
+              {f.subject} {f.predicate} {f.object}
+              {f.negated ? <span className="text-amber-300"> (negated)</span> : null}
+              {f.source ? <span className="text-gray-400"> · {f.source}</span> : null}
+              {contraKeys.has(`${f.subject}|${f.predicate}|${f.object}`) ? <span className="text-red-300"> · ⚠ contradicted by its negation</span> : null}
+            </p>
+            {factId ? (
+              <StickyDeleteConfirm
+                onConfirm={() => removeFact(factId)}
+                armLabel={<Trash2 className="w-3 h-3" />}
+                confirmLabel="Delete fact?"
+                armAriaLabel={`Delete fact ${f.subject} ${f.predicate} ${f.object}`}
+                confirmAriaLabel="Confirm delete fact"
+                cancelAriaLabel="Cancel delete fact"
+                className="p-0.5 text-gray-500 hover:text-rose-400"
+              />
+            ) : null}
+          </div>
+        );
+      })}
     </div>
   );
 }
