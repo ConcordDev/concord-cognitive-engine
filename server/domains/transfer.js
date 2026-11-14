@@ -611,6 +611,50 @@ export default function registerTransferActions(registerLensAction) {
     });
   }
 
+  // FIX-transfer-006: structural validation for a CSV payload at
+  // connector registration. parseCsv is deliberately lenient at READ
+  // time (short rows pad with null, extra cells drop), which meant a
+  // malformed CSV registered silently as a healthy connector ("1 row
+  // and 2 fields" from garbage). Registration now rejects: an empty
+  // payload, a header with no data rows, an unterminated quote, and
+  // any data row whose field count differs from the header's — with
+  // the reason named, and no connector created.
+  function validateCsvPayload(text) {
+    const src = String(text || "");
+    if (!src.trim()) return "CSV payload is empty.";
+    const widths = [];
+    let cur = 0;
+    let field = "";
+    let inQuotes = false;
+    let rowHasContent = false;
+    const endRow = () => { widths.push(cur + 1); cur = 0; rowHasContent = false; };
+    for (let i = 0; i < src.length; i++) {
+      const c = src[i];
+      if (inQuotes) {
+        if (c === '"' && src[i + 1] === '"') i++;
+        else if (c === '"') inQuotes = false;
+      } else if (c === '"') { inQuotes = true; rowHasContent = true; }
+      else if (c === ",") { cur++; rowHasContent = true; }
+      else if (c === "\n" || c === "\r") {
+        if (c === "\r" && src[i + 1] === "\n") i++;
+        if (rowHasContent || cur > 0 || field !== "") endRow();
+        field = "";
+      } else { field += c; if (c.trim()) rowHasContent = true; }
+    }
+    if (inQuotes) return "Malformed CSV: unterminated quoted field.";
+    if (rowHasContent || cur > 0 || field !== "") endRow();
+    if (widths.length === 0) return "CSV payload is empty.";
+    if (widths.length === 1) return "CSV has a header row but no data rows.";
+    const headerWidth = widths[0];
+    if (headerWidth < 1) return "CSV header row is empty.";
+    for (let r = 1; r < widths.length; r++) {
+      if (widths[r] !== headerWidth) {
+        return `Malformed CSV: row ${r + 1} has ${widths[r]} field(s) but the header has ${headerWidth}.`;
+      }
+    }
+    return null;
+  }
+
   // Infer a field type from a sample of values.
   function inferType(values) {
     const sample = values.filter(v => v !== null && v !== undefined && v !== "").slice(0, 50);
@@ -696,6 +740,13 @@ export default function registerTransferActions(registerLensAction) {
         createdAt: existing?.createdAt || nowIso(),
         updatedAt: nowIso(),
       };
+      // FIX-transfer-006: a fresh CSV payload must be structurally
+      // sound before the connector exists — malformed input is
+      // rejected with the reason, and nothing is registered.
+      if (kind === "csv" && params.payload !== undefined) {
+        const csvError = validateCsvPayload(connector.payload);
+        if (csvError) return { ok: false, error: csvError };
+      }
       // Probe the connector so the UI can show row/field counts immediately.
       const rows = readConnectorRows(connector);
       connector.schema = deriveSchema(rows);
