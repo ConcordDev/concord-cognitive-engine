@@ -329,6 +329,12 @@ export async function collectLensExport({ runMacro, domain, ctx, limit = 1000 })
           summary: (typeof d.human?.summary === "string" && d.human.summary)
             || (typeof d.cretiHuman === "string" ? d.cretiHuman : ""),
           content: typeof d.content === "string" ? d.content : "",
+          // meditation-001 leg 2: the lenses' own mints keep the user's
+          // payload in meta (the meditation journal at meta.session.journal,
+          // a cooking recipe at meta.cook.recipe). An owner's takeout of
+          // their own DTU carries meta with it, or that text is silently
+          // missing from their export.
+          ...(d.meta && typeof d.meta === "object" && !Array.isArray(d.meta) ? { meta: d.meta } : {}),
         },
       }, domain))
       .filter(Boolean);
