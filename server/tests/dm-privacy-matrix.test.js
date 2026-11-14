@@ -17,8 +17,12 @@
  *        production path builds such a ctx (SB-10), so this is a latent
  *        trap, not a live spoof; SB-12 removes the fallback and this case
  *        turns green.
- *      * "SB-13 TARGET" — the shared "anon" bucket in the message domain's
- *        per-user stores: two distinct anon callers share one key.
+ *      * "SB-13 TARGET" — the shared "anon" key in the message domain's
+ *        per-user stores: write-classified actions are already refused for
+ *        anon by the registrar guard, but index-message/index-backfill
+ *        persist into the search corpus without a write-classified name and
+ *        the own-store reads stay open — one anon caller indexes, another
+ *        searches. SB-13 refuses the shared key at those handlers.
  *    The matrix passes entire only when SB-12/13 land. SB-14's ground (the
  *    monolith's own /api/social/dm/* routes under AUTH_MODE=public) is not
  *    mountable from a test file — those handlers are inline in server.js —
@@ -273,21 +277,23 @@ describe("SB-11 message lens actions", () => {
     noBodyNoMeta(hitsC, "M2");
   });
 
-  it("SB-13 TARGET: two distinct anon callers must not share one saved bucket", () => {
+  it("SB-13 TARGET: two distinct anon callers must not share the per-user stores", () => {
     const { actions } = setup();
-    // Two different unauthenticated callers; both resolve to the "anon"
-    // actor today. SB-13 refuses per-user actions for a missing actor;
-    // this case is red until then, by design.
+    // The live path (premise correction, CB-0633): write-classified actions
+    // are already refused for anon by the registrar guard — but index-message
+    // persists into the per-user search corpus without a write-classified
+    // name, and the own-store reads (search, saved-list) stay open, so one
+    // anon caller could index and another could search it back out.
     const anon1 = { actor: { userId: "anon" }, db: null };
     const anon2 = { actor: { userId: "anon" }, db: null };
-    const saved = actions.get("message.save-message")(anon1, null, {
-      messageId: "m-anon-1", body: BODY, sender: A,
+    const idx = actions.get("message.index-message")(anon1, null, {
+      messageId: "m-anon-1", body: `${TERM} anon corpus`, sender: A, ts: new Date().toISOString(),
     });
-    assert.equal(saved.ok, true);
-    const list2 = actions.get("message.saved-list")(anon2, null, {});
-    const leaked = (list2.result?.entries || list2.result?.saved || [])
-      .some((e) => JSON.stringify(e).includes(BODY));
-    assert.equal(leaked, false, "a second anon caller must not see the first's saved items");
+    assert.equal(idx.ok, false, "indexing under the shared anon key must be refused");
+    const hits = actions.get("message.search-messages")(anon2, null, { query: TERM });
+    assert.equal(hits.ok, false, "searching under the shared anon key must be refused");
+    const savedList = actions.get("message.saved-list")(anon2, null, {});
+    assert.equal(savedList.ok, false, "the saved store refuses the shared anon key");
   });
 });
 

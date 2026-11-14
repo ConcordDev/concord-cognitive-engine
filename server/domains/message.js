@@ -4,7 +4,7 @@
 // Adds saved (starred) messages, full-text search across DM history snapshots,
 // reactions store, and voice-note metadata registry — all per-user scoped.
 
-import { guardAnonWrites } from "../lib/lens-authz.js";
+import { guardAnonWrites, refuseAnonWrite } from "../lib/lens-authz.js";
 import { registerHeartbeat } from "../emergent/heartbeat-registry.js";
 export default function registerMessageActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -75,6 +75,8 @@ export default function registerMessageActions(registerLensAction) {
   try {
     const s = getMessageState();
     if (!s) return { ok: false, error: "STATE unavailable" };
+    // SB-13: per-user stores never key on the shared "anon" identity.
+    const noAnon = refuseAnonWrite(ctx); if (noAnon) return noAnon;
     const userId = msgActor(ctx);
     const map = s.saved.get(userId);
     if (!map) return { ok: true, result: { saved: [] } };
@@ -154,6 +156,9 @@ export default function registerMessageActions(registerLensAction) {
   registerLensAction("message", "index-message", (ctx, _artifact, params = {}) => {
     const s = getMessageState();
     if (!s) return { ok: false, error: "STATE unavailable" };
+    // SB-13: index-message persists into the per-user corpus but its name
+    // is not write-classified for the registrar guard — refuse anon here.
+    const noAnon = refuseAnonWrite(ctx); if (noAnon) return noAnon;
     const userId = msgActor(ctx);
     const messageId = String(params.messageId || "");
     if (!messageId) return { ok: false, error: "messageId required" };
@@ -171,6 +176,8 @@ export default function registerMessageActions(registerLensAction) {
   registerLensAction("message", "index-backfill", (ctx, _artifact, _params = {}) => {
     const s = getMessageState();
     if (!s) return { ok: false, error: "STATE unavailable" };
+    // SB-13: same unclassified persisting path as index-message.
+    const noAnon = refuseAnonWrite(ctx); if (noAnon) return noAnon;
     const userId = msgActor(ctx);
     const seen = new Set((s.searchIdx.get(userId) || []).map((m) => m.messageId));
     const before = seen.size;
@@ -202,6 +209,8 @@ export default function registerMessageActions(registerLensAction) {
   try {
     const s = getMessageState();
     if (!s) return { ok: false, error: "STATE unavailable" };
+    // SB-13: the corpus is a per-user store — no reads under the shared key.
+    const noAnon = refuseAnonWrite(ctx); if (noAnon) return noAnon;
     const userId = msgActor(ctx);
     const query = String(params.query || "").trim().toLowerCase();
     if (!query) return { ok: false, error: "query required" };
@@ -930,6 +939,8 @@ export default function registerMessageActions(registerLensAction) {
   registerLensAction("message", "ai-search-messages", (ctx, _a, params = {}) => {
   try {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    // SB-13: searches the caller's own corpus/channels — refuse anon.
+    const noAnon = refuseAnonWrite(ctx); if (noAnon) return noAnon;
     const userId = msgActor(ctx);
     const q = String(params.query || "").trim().toLowerCase();
     if (!q) return { ok: false, error: "query required" };
@@ -956,6 +967,8 @@ export default function registerMessageActions(registerLensAction) {
   registerLensAction("message", "inbox-summary", (ctx, _a, _p = {}) => {
   try {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    // SB-13: aggregates the caller's own stores — refuse anon.
+    const noAnon = refuseAnonWrite(ctx); if (noAnon) return noAnon;
     const userId = msgActor(ctx);
     const channels = listB(s.channels, userId);
     const messagesMap = mapB(s.messages, userId);
