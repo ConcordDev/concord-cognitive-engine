@@ -282,6 +282,39 @@ export default function registerDefenseActions(registerLensAction) {
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
+  // FIX-defense-003: COP markers gain an in-place edit.
+  registerLensAction("defense", "cop-update", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getDefState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = defActor(ctx);
+      const id = String(params.id || "");
+      if (!id) return { ok: false, error: "id required" };
+      const map = s.ops.get(userId);
+      if (!map || !map.has(id) || !map.get(id).isCopMarker) return { ok: false, error: "marker not found" };
+      const m = map.get(id);
+      if (params.label !== undefined) {
+        const label = String(params.label || "").trim();
+        if (!label) return { ok: false, error: "label required" };
+        if (label.length > 80) return { ok: false, error: "label too long (max 80)" };
+        m.label = label;
+      }
+      if (params.lat !== undefined) {
+        if (!validLat(params.lat)) return { ok: false, error: "lat must be -90..90" };
+        m.lat = Number(params.lat);
+      }
+      if (params.lon !== undefined) {
+        if (!validLon(params.lon)) return { ok: false, error: "lon must be -180..180" };
+        m.lon = Number(params.lon);
+      }
+      if (["friendly", "hostile", "neutral", "unknown"].includes(params.affiliation)) m.affiliation = params.affiliation;
+      if (typeof params.note === "string") m.note = params.note.slice(0, 240);
+      m.updatedAt = nowIso();
+      saveDefState();
+      return { ok: true, result: { marker: m } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
   /* ── Mission planner — phased tasks with dependencies ─────────── */
 
   registerLensAction("defense", "mission-task-add", (ctx, _artifact, params = {}) => {
@@ -576,6 +609,23 @@ export default function registerDefenseActions(registerLensAction) {
           changed = true;
         }
       }
+      // FIX-defense-003: name + severity join the edit surface.
+      if (params.name !== undefined) {
+        const name = String(params.name || "").trim();
+        if (!name) return { ok: false, error: "name required" };
+        if (name.length > 100) return { ok: false, error: "name too long (max 100)" };
+        if (t.name !== name) { t.name = name; changed = true; }
+      }
+      if (params.severity !== undefined) {
+        if (!["low", "medium", "high", "critical"].includes(params.severity)) {
+          return { ok: false, error: "invalid severity" };
+        }
+        if (t.severity !== params.severity) {
+          t.severity = params.severity;
+          t.history.push({ at: nowIso(), event: `severity:${params.severity}`, severity: t.severity });
+          changed = true;
+        }
+      }
       if (typeof params.note === "string") {
         t.note = params.note.slice(0, 240);
         changed = true;
@@ -757,6 +807,36 @@ export default function registerDefenseActions(registerLensAction) {
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
+  // FIX-defense-003: supply requests gain an in-place edit.
+  registerLensAction("defense", "supply-update", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getDefState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = defActor(ctx);
+      const map = s.supply.get(userId);
+      const id = String(params.id || "");
+      if (!map || !map.has(id)) return { ok: false, error: "request not found" };
+      const req = map.get(id);
+      if (params.item !== undefined) {
+        const item = String(params.item || "").trim();
+        if (!item) return { ok: false, error: "item required" };
+        if (item.length > 80) return { ok: false, error: "item too long (max 80)" };
+        req.item = item;
+      }
+      if (params.quantity !== undefined) {
+        const quantity = Number(params.quantity);
+        if (!Number.isFinite(quantity) || quantity <= 0) return { ok: false, error: "quantity must be > 0" };
+        req.quantity = Math.round(quantity);
+      }
+      if (["ammunition", "fuel", "rations", "medical", "parts", "equipment"].includes(params.category)) req.category = params.category;
+      if (["routine", "priority", "urgent", "flash"].includes(params.priority)) req.priority = params.priority;
+      if (typeof params.destination === "string") req.destination = params.destination.slice(0, 80);
+      req.updatedAt = nowIso();
+      saveDefState();
+      return { ok: true, result: { request: req } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
   registerLensAction("defense", "supply-delete", (ctx, _artifact, params = {}) => {
     try {
       const s = getDefState();
@@ -824,6 +904,30 @@ export default function registerDefenseActions(registerLensAction) {
         postedAt: nowIso(),
       };
       map.set(msg.id, msg);
+      saveDefState();
+      return { ok: true, result: { message: msg } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // FIX-defense-003: comms log entries gain an in-place edit.
+  registerLensAction("defense", "comms-update", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getDefState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = defActor(ctx);
+      const map = s.comms.get(userId);
+      const id = String(params.id || "");
+      if (!map || !map.has(id)) return { ok: false, error: "message not found" };
+      const msg = map.get(id);
+      if (params.body !== undefined) {
+        const body = String(params.body || "").trim();
+        if (!body) return { ok: false, error: "body required" };
+        if (body.length > 1000) return { ok: false, error: "body too long (max 1000)" };
+        msg.body = body;
+      }
+      if (["unclassified", "confidential", "secret", "top_secret"].includes(params.classification)) msg.classification = params.classification;
+      if (["routine", "priority", "immediate", "flash"].includes(params.precedence)) msg.precedence = params.precedence;
+      msg.editedAt = nowIso();
       saveDefState();
       return { ok: true, result: { message: msg } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }

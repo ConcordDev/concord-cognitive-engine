@@ -737,11 +737,16 @@ export default function registerMlActions(registerLensAction) {
     const ratio = Math.round(samples / features);
     const exp = {
       id: mlId("exp"),
-      name: `AutoML · Tabular Classification · ${ds.name}`,
+      // FIX-ml-002: the run may be named; the record is a CONFIGURATION
+      // run and says so (kind) — it no longer stores the tree count as
+      // "epochs", which made the tracker read it as a training run
+      // that completed at Epoch 0/200 with no score.
+      name: mlClean(params.name || "", 160) || `AutoML · Tabular Classification · ${ds.name}`,
+      kind: "automl-config",
       modelId: "xgboost",
       datasetId: ds.id,
       status: "completed",
-      hyperparams: { learningRate: suggestion.learningRate, batchSize: 32, epochs: suggestion.nEstimators, optimizer: "xgboost" },
+      hyperparams: { learningRate: suggestion.learningRate, batchSize: 32, nEstimators: suggestion.nEstimators, maxDepth: suggestion.maxDepth, epochs: 0, optimizer: "xgboost" },
       metrics: [],
       tags: ["automl", "tabular-classification"],
       startedAt: new Date().toISOString(),

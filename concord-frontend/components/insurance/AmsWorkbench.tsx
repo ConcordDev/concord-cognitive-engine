@@ -365,9 +365,16 @@ function CarrierRating() {
                 <span className="text-[10px] text-gray-400">· {c.baseCommissionPct}% comm</span>
                 <span className="text-[10px] text-gray-400">· rate {c.rateIndex}×</span>
                 <span className="ml-auto text-[10px] text-cyan-300">service {c.claimsServiceScore}/10</span>
-                <button onClick={() => delCarrier(c.id)} className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-400" title="Remove">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                {/* FIX-insurance-004: carrier removal gains a confirmation. */}
+                <StickyDeleteConfirm
+                  onConfirm={() => delCarrier(c.id)}
+                  armLabel={<Trash2 className="w-3.5 h-3.5" />}
+                  armAriaLabel={`Remove carrier ${c.name}`}
+                  confirmLabel="Remove carrier?"
+                  confirmAriaLabel="Confirm remove carrier"
+                  cancelAriaLabel="Cancel remove carrier"
+                  className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-400"
+                />
               </li>
             ))}
           </ul>
@@ -594,6 +601,14 @@ function FnolIntake({ policies }: { policies: PolicyLite[] }) {
     finally { setBusy(false); }
   }
 
+  // FIX-insurance-004: FNOL intakes gain a delete.
+  async function delFnol(id: string) {
+    try {
+      const r = await lensRun('insurance', 'fnol-delete', { id });
+      if (r.data?.ok) await refresh();
+    } catch (e) { console.error('[AMS] fnol-delete', e); }
+  }
+
   async function setStatus(id: string, status: string) {
     try {
       const r = await lensRun('insurance', 'fnol-update', { id, status });
@@ -667,6 +682,15 @@ function FnolIntake({ policies }: { policies: PolicyLite[] }) {
                     )}
                   >{st}</button>
                 ))}
+                <StickyDeleteConfirm
+                  onConfirm={() => delFnol(f.id)}
+                  armLabel={<Trash2 className="w-3.5 h-3.5" />}
+                  armAriaLabel="Delete FNOL"
+                  confirmLabel="Delete?"
+                  confirmAriaLabel="Confirm delete FNOL"
+                  cancelAriaLabel="Cancel delete FNOL"
+                  className="ml-auto text-gray-400 hover:text-red-400"
+                />
               </div>
             </li>
           ))}
@@ -721,6 +745,14 @@ function CommissionRecon({ policies }: { policies: PolicyLite[] }) {
       }
     } catch (e) { console.error('[AMS] statement-import', e); }
     finally { setBusy(false); }
+  }
+
+  // FIX-insurance-004: imported statements gain a delete.
+  async function delStatement(id: string) {
+    try {
+      const r = await lensRun('insurance', 'statement-delete', { id });
+      if (r.data?.ok) await refresh();
+    } catch (e) { console.error('[AMS] statement-delete', e); }
   }
 
   async function reconcile(statementId: string) {
@@ -800,6 +832,15 @@ function CommissionRecon({ policies }: { policies: PolicyLite[] }) {
                   <button onClick={() => reconcile(s.id)} disabled={busy} className={cn(btnGhost, 'ml-auto')}>
                     <RefreshCw className="w-3.5 h-3.5" /> Reconcile
                   </button>
+                  <StickyDeleteConfirm
+                    onConfirm={() => delStatement(s.id)}
+                    armLabel={<Trash2 className="w-3.5 h-3.5" />}
+                    armAriaLabel={`Delete statement ${s.carrier} ${s.period}`}
+                    confirmLabel="Delete statement?"
+                    confirmAriaLabel="Confirm delete statement"
+                    cancelAriaLabel="Cancel delete statement"
+                    className="text-gray-400 hover:text-red-400"
+                  />
                 </div>
                 {rc && (
                   <div className="mt-2 space-y-2">

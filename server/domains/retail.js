@@ -1394,6 +1394,36 @@ export default function registerRetailActions(registerLensAction) {
     return { ok: true, result: { customer } };
   });
 
+  // FIX-retail-007: customers gain an in-place edit.
+  registerLensAction("retail", "customers-update", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const id = String(params.id || "");
+    const list = ensureRetailBucket(s, "customers", userId);
+    const c = list.find(x => x.id === id);
+    if (!c) return { ok: false, error: "customer not found" };
+    if (params.name !== undefined) {
+      const name = String(params.name || "").trim();
+      if (!name) return { ok: false, error: "name required" };
+      c.name = name;
+    }
+    if (params.email !== undefined) {
+      const email = String(params.email || "").trim().toLowerCase();
+      if (!email) return { ok: false, error: "email required", message: "Email is required." };
+      if (!/^[^\s@]+@[^\s@]+$/.test(email)) {
+        return { ok: false, error: "invalid_input", field: "email", message: "Email must include a name and a domain, like name@example.com." };
+      }
+      c.email = email;
+    }
+    if (typeof params.phone === "string") c.phone = params.phone;
+    if (typeof params.city === "string") c.city = params.city;
+    if (typeof params.state === "string") c.state = params.state;
+    if (params.acceptsMarketing !== undefined) c.acceptsMarketing = params.acceptsMarketing !== false;
+    if (Array.isArray(params.tags)) c.tags = params.tags;
+    saveRetailState();
+    return { ok: true, result: { customer: c } };
+  });
+
   registerLensAction("retail", "customers-delete", (ctx, _a, params = {}) => {
     const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = retailActor(ctx);

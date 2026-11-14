@@ -619,6 +619,23 @@ export default function registerMessageActions(registerLensAction) {
     return { ok: true, result: { label: lbl } };
   });
 
+  registerLensAction("message", "labels-delete", (ctx, _a, params = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    const labelId = String(params.labelId || "");
+    if (!labelId) return { ok: false, error: "labelId required" };
+    const list = listB(s.labels, userId);
+    const idx = list.findIndex(l => l.id === labelId);
+    if (idx < 0) return { ok: false, error: "label not found" };
+    const [label] = list.splice(idx, 1);
+    // Strip the deleted label from every message it was applied to —
+    // a label id must never dangle in a message's label set.
+    const labelMap = mapB(s.messageLabels, userId);
+    for (const set of labelMap.values()) set.delete(labelId);
+    saveMessageState();
+    return { ok: true, result: { deleted: true, label } };
+  });
+
   registerLensAction("message", "labels-apply", (ctx, _a, params = {}) => {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = msgActor(ctx);

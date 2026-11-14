@@ -36,7 +36,7 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import {
   createOrganization, getOrganization, joinOrganization, leaveOrganization,
-  setMemberRole, getOrgMembers, getOrgsForUser, listOrganizations,
+  setMemberRole, setOrganizationRecruitCriteria, getOrgMembers, getOrgsForUser, listOrganizations,
 } from "../lib/world-organizations.js";
 
 export default function registerEmergencyServicesActions(registerLensAction) {
@@ -232,6 +232,28 @@ export default function registerEmergencyServicesActions(registerLensAction) {
     saveEms();
     emitOrgRealtime("ems:incident-status", { incident }, scope.orgId);
     return { ok: true, result: { incident } };
+  });
+
+  registerLensAction("emergency-services", "incident-delete", (ctx, _a, params = {}) => {
+    try {
+      const s = getEmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const scope = emScope(ctx, params, EMS_WRITE_TIERS);
+      if (!scope.ok) return scope;
+      const incidents = emList(s.incidents, scope.key);
+      const idx = incidents.findIndex((i) => i.id === params.id);
+      if (idx < 0) return { ok: false, error: "incident not found" };
+      const incident = incidents[idx];
+      const units = emList(s.units, scope.key);
+      const active = units.find((u) => u.assignedIncidentId === incident.id && ["dispatched", "en_route", "on_scene", "transporting"].includes(u.status));
+      if (active) return { ok: false, error: "incident_has_active_unit", result: { incident } };
+      incidents.splice(idx, 1);
+      // Clear any stale assignment pointer a stood-down unit still
+      // carries — the incident is gone, the pointer must not dangle.
+      for (const u of units) if (u.assignedIncidentId === incident.id) u.assignedIncidentId = null;
+      saveEms();
+      emitOrgRealtime("ems:incident-deleted", { incidentId: incident.id }, scope.orgId);
+      return { ok: true, result: { deleted: true, incident } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
 
   registerLensAction("emergency-services", "unit-add", (ctx, _a, params = {}) => {
@@ -691,6 +713,9 @@ export default function registerEmergencyServicesActions(registerLensAction) {
         description: emClean(params.description, 500),
         districtId: params.districtId ? emClean(params.districtId, 100) : null,
         purpose: emClean(params.purpose, 300) || "Mutual-aid emergency response agency",
+        // FIX-emergency-services-014: an agency is private ("closed")
+        // unless its creator opts into the public Browse listing.
+        recruitCriteria: params.visibility === "open" ? "open" : "closed",
       });
       if (!res.ok) return res;
       return { ok: true, result: { organization: res.organization, role: "chief", orgRole: "leader" } };
@@ -707,6 +732,13 @@ export default function registerEmergencyServicesActions(registerLensAction) {
       // officer/leader (EMS "supervisor"/"chief") requires an existing
       // supervisor+ to call agency-set-role.
       const requested = params.role === "apprentice" ? "apprentice" : "member";
+      // FIX-emergency-services-014: a private ("closed") agency is not
+      // joinable by ID — its chief opens the listing first.
+      const orgForJoin = getOrganization(ctx?.db, orgId);
+      if (orgForJoin && orgForJoin.recruitCriteria === "closed"
+        && !getOrgMembers(ctx?.db, orgId).some((m) => m.userId === userId)) {
+        return { ok: false, error: "agency_not_open" };
+      }
       const res = joinOrganization(ctx?.db, orgId, userId, requested);
       if (!res.ok) return res;
       return { ok: true, result: { role: res.role, emsRole: EMS_ROLE_BY_ORG_ROLE[res.role] || "trainee" } };
@@ -771,12 +803,28 @@ export default function registerEmergencyServicesActions(registerLensAction) {
 
   registerLensAction("emergency-services", "agency-list", (ctx, _a, params = {}) => {
     try {
+      const memberOf = new Set(getOrgsForUser(ctx?.db, emActor(ctx)).map((m) => m.orgId));
       const orgs = listOrganizations(ctx?.db, {
         type: EMS_ORG_TYPE,
         districtId: params.districtId,
         limit: Math.min(intOr(params.limit, 50), 100),
-      });
+        // FIX-emergency-services-014: private ("closed") agencies are
+        // discovery-visible only to their own members.
+      }).filter((o) => o.recruitCriteria !== "closed" || memberOf.has(o.id));
       return { ok: true, result: { organizations: orgs } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  registerLensAction("emergency-services", "agency-set-visibility", (ctx, _a, params = {}) => {
+    try {
+      const actorId = emActor(ctx);
+      const orgId = emClean(params.orgId, 100);
+      if (!orgId) return { ok: false, error: "orgId_required" };
+      const criteria = params.visibility === "open" ? "open" : params.visibility === "private" ? "closed" : null;
+      if (!criteria) return { ok: false, error: "visibility_required" };
+      const res = setOrganizationRecruitCriteria(ctx?.db, orgId, criteria, actorId);
+      if (!res.ok) return res;
+      return { ok: true, result: { organization: getOrganization(ctx?.db, orgId), recruitCriteria: criteria } };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
 

@@ -509,6 +509,25 @@ export default function registerMetalearningActions(registerLensAction) {
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
 
+  // FIX-metalearning-003: the lens's own record types gain edit verbs
+  // (creates + deletes existed; no type could be edited).
+  registerLensAction("metalearning", "srsUpdateCard", (ctx, _a, params = {}) => {
+    try {
+      const s = getMLState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const card = (s.cards.get(mlActor(ctx)) || []).find((c) => c.id === params.id);
+      if (!card) return { ok: false, error: "card not found" };
+      if (params.front != null) {
+        const front = mlClean(params.front, 500);
+        if (!front) return { ok: false, error: "card front (prompt) required" };
+        card.front = front;
+      }
+      if (params.back != null) card.back = mlClean(params.back, 2000);
+      if (params.topic != null) card.topic = mlClean(params.topic, 160) || card.topic;
+      saveML();
+      return { ok: true, result: { card } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
   registerLensAction("metalearning", "srsReview", (ctx, _a, params = {}) => {
     try {
       const s = getMLState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -604,6 +623,22 @@ export default function registerMetalearningActions(registerLensAction) {
         createdAt: new Date().toISOString(),
       };
       mlList(s.plans, mlActor(ctx)).push(plan);
+      saveML();
+      return { ok: true, result: { plan } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  registerLensAction("metalearning", "planUpdate", (ctx, _a, params = {}) => {
+    try {
+      const s = getMLState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const plan = (s.plans.get(mlActor(ctx)) || []).find((p) => p.id === params.id);
+      if (!plan) return { ok: false, error: "plan not found" };
+      if (params.title != null) {
+        const title = mlClean(params.title, 200);
+        if (!title) return { ok: false, error: "plan title required" };
+        plan.title = title;
+      }
+      if (params.goal != null) plan.goal = mlClean(params.goal, 500);
       saveML();
       return { ok: true, result: { plan } };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
@@ -940,6 +975,27 @@ export default function registerMetalearningActions(registerLensAction) {
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
 
+  registerLensAction("metalearning", "goalUpdate", (ctx, _a, params = {}) => {
+    try {
+      const s = getMLState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const goal = (s.goals.get(mlActor(ctx)) || []).find((g) => g.id === params.id);
+      if (!goal) return { ok: false, error: "goal not found" };
+      if (params.title != null) {
+        const title = mlClean(params.title, 200);
+        if (!title) return { ok: false, error: "goal title required" };
+        goal.title = title;
+      }
+      if (params.metric != null) {
+        goal.metric = mlClean(params.metric, 120) || goal.metric;
+        goal.metricKind = goalMetricKind(goal.metric);
+      }
+      if (params.targetValue != null) goal.targetValue = mlNum(params.targetValue, goal.targetValue);
+      if (params.deadline != null) goal.deadline = params.deadline ? mlClean(params.deadline, 40) : null;
+      saveML();
+      return { ok: true, result: { goal } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
   registerLensAction("metalearning", "goalList", (ctx, _a, _params = {}) => {
     try {
       const s = getMLState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1022,6 +1078,22 @@ export default function registerMetalearningActions(registerLensAction) {
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
 
+  registerLensAction("metalearning", "experimentUpdate", (ctx, _a, params = {}) => {
+    try {
+      const s = getMLState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const exp = (s.experiments.get(mlActor(ctx)) || []).find((x) => x.id === params.id);
+      if (!exp) return { ok: false, error: "experiment not found" };
+      if (params.title != null) {
+        const title = mlClean(params.title, 200);
+        if (!title) return { ok: false, error: "experiment title required" };
+        exp.title = title;
+      }
+      if (params.hypothesis != null) exp.hypothesis = mlClean(params.hypothesis, 500);
+      saveML();
+      return { ok: true, result: { experiment: exp } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
   registerLensAction("metalearning", "experimentList", (ctx, _a, _params = {}) => {
     try {
       const s = getMLState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1095,6 +1167,25 @@ export default function registerMetalearningActions(registerLensAction) {
         createdAt: new Date().toISOString(),
       };
       mlList(s.journal, mlActor(ctx)).push(entry);
+      saveML();
+      return { ok: true, result: { entry } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  registerLensAction("metalearning", "journalUpdate", (ctx, _a, params = {}) => {
+    try {
+      const s = getMLState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const entry = (s.journal.get(mlActor(ctx)) || []).find((j) => j.id === params.id);
+      if (!entry) return { ok: false, error: "journal entry not found" };
+      if (params.reflection != null) {
+        const reflection = mlClean(params.reflection, 4000);
+        if (!reflection) return { ok: false, error: "reflection text required" };
+        entry.reflection = reflection;
+      }
+      if (params.topic != null) entry.topic = mlClean(params.topic, 160) || entry.topic;
+      if (params.technique != null) entry.technique = mlClean(params.technique, 160);
+      if (params.minutesStudied != null) entry.minutesStudied = Math.max(0, Math.round(mlNum(params.minutesStudied, entry.minutesStudied)));
+      if (params.effectiveness != null) entry.effectiveness = Math.max(1, Math.min(5, Math.round(mlNum(params.effectiveness, entry.effectiveness))));
       saveML();
       return { ok: true, result: { entry } };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }

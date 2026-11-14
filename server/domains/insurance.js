@@ -1158,6 +1158,17 @@ export default function registerInsuranceActions(register) {
     };
   });
 
+  // FIX-insurance-004: reminders gain a delete (create/complete existed).
+  registerLensAction("insurance", "reminder-delete", (ctx, _a, params = {}) => {
+    const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.reminders.get(insAid(ctx)) || [];
+    const i = arr.findIndex((r) => r.id === params.id);
+    if (i < 0) return { ok: false, error: "reminder not found" };
+    arr.splice(i, 1);
+    saveInsState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
   registerLensAction("insurance", "reminder-complete", (ctx, _a, params = {}) => {
     const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const rem = (s.reminders.get(insAid(ctx)) || []).find((r) => r.id === params.id);
@@ -1465,6 +1476,22 @@ export default function registerInsuranceActions(register) {
     pact.revokedAt = pactNow();
     saveInsState();
     return { ok: true, result: { pactId: pact.id, status: "revoked" } };
+  });
+
+  // ── Remove a revoked pact (insured only) ────────────────────────────
+  // FIX-death-insurance-007: a revoked pact is a dead record — revoke
+  // already ended it and moved nothing further. Removing the record
+  // moves no sparks; live/expired/fired pacts (a fired pact is the
+  // record of an executed payout) cannot be removed.
+  registerLensAction("insurance", "pact-remove", (ctx, _a, params = {}) => {
+    const s = getPactState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const bucket = s.pacts.get(pactUid(ctx)) || [];
+    const idx = bucket.findIndex((p) => p.id === params.pactId);
+    if (idx < 0) return { ok: false, error: "pact not found" };
+    if (pactStatus(bucket[idx]) !== "revoked") return { ok: false, error: "only revoked pacts can be removed" };
+    const [removed] = bucket.splice(idx, 1);
+    saveInsState();
+    return { ok: true, result: { removed: true, pactId: removed.id } };
   });
 
   // ── #2 Renewal / auto-renew ─────────────────────────────────────────
@@ -2071,6 +2098,17 @@ export default function registerInsuranceActions(register) {
     return { ok: true, result: { fnol } };
   });
 
+  // FIX-insurance-004: FNOL intakes gain a delete.
+  registerLensAction("insurance", "fnol-delete", (ctx, _a, params = {}) => {
+    const s = getAmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.fnol.get(insAid(ctx)) || [];
+    const i = arr.findIndex((f) => f.id === params.id);
+    if (i < 0) return { ok: false, error: "fnol not found" };
+    arr.splice(i, 1);
+    saveInsState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
   // ── #4 Commission reconciliation against carrier statements ─────────
   registerLensAction("insurance", "statement-import", (ctx, _a, params = {}) => {
     const s = getAmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -2095,6 +2133,17 @@ export default function registerInsuranceActions(register) {
     if (!pushCapped(s.statements, insAid(ctx), statement)) return { ok: false, error: "statement_cap" };
     saveInsState();
     return { ok: true, result: { statement } };
+  });
+
+  // FIX-insurance-004: imported commission statements gain a delete.
+  registerLensAction("insurance", "statement-delete", (ctx, _a, params = {}) => {
+    const s = getAmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.statements.get(insAid(ctx)) || [];
+    const i = arr.findIndex((st) => st.id === params.id);
+    if (i < 0) return { ok: false, error: "statement not found" };
+    arr.splice(i, 1);
+    saveInsState();
+    return { ok: true, result: { deleted: params.id } };
   });
 
   registerLensAction("insurance", "statement-list", (ctx, _a, _params = {}) => {

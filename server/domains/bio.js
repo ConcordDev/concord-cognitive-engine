@@ -1106,6 +1106,34 @@ export default function registerBioActions(registerLensAction) {
     return { ok: true, result: { sequence: seq } };
   });
 
+  // FIX-bio-003: saved sequences gain an in-place edit.
+  registerLensAction("bio", "sequence-update", (ctx, _artifact, params = {}) => {
+    const s = getBioState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = bioActor(ctx);
+    const id = String(params.id || "");
+    const map = s.sequences.get(userId);
+    if (!map || !map.has(id)) return { ok: false, error: "sequence not found" };
+    const seq = map.get(id);
+    if (params.name !== undefined) {
+      const name = String(params.name || "").trim();
+      if (!name) return { ok: false, error: "name required" };
+      if (name.length > 80) return { ok: false, error: "name too long (max 80)" };
+      seq.name = name;
+    }
+    if (params.sequence !== undefined) {
+      const sequence = String(params.sequence || "").replace(/\s/g, "").toUpperCase();
+      if (!sequence) return { ok: false, error: "sequence required" };
+      if (sequence.length > 100_000) return { ok: false, error: "sequence too long (max 100000)" };
+      seq.sequence = sequence;
+      seq.length = sequence.length;
+    }
+    if (["dna", "rna", "protein"].includes(params.kind)) seq.kind = params.kind;
+    if (typeof params.description === "string") seq.description = params.description.slice(0, 200);
+    seq.updatedAt = nowIsoBio();
+    saveBioState();
+    return { ok: true, result: { sequence: seq } };
+  });
+
   registerLensAction("bio", "sequence-list", (ctx, _artifact, _params = {}) => {
     const s = getBioState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = bioActor(ctx);

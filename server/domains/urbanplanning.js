@@ -555,6 +555,33 @@ export default function registerUrbanplanningActions(registerLensAction) {
     }
   });
 
+  // FIX-urban-planning-003: parcels could be added and removed but
+  // never edited — a typo meant delete + recreate.
+  registerLensAction("urban-planning", "parcel-update", (ctx, _a, params = {}) => {
+    try {
+      const s = getUpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const parcel = upList(s.parcels, upAid(ctx)).find((p) => p.id === String(params.id || ""));
+      if (!parcel) return { ok: false, error: "not_found" };
+      if (params.apn != null) {
+        const apn = upClean(params.apn, 40);
+        if (!apn) return { ok: false, error: "parcel apn/parcelId required" };
+        parcel.apn = apn;
+      }
+      if (params.address != null) parcel.address = upClean(params.address, 160);
+      if (params.zoneType != null) {
+        const zone = String(params.zoneType).toLowerCase();
+        parcel.zoneType = ZONE_SPECS[zone] ? zone : parcel.zoneType;
+      }
+      if (params.lotSizeSqFt != null) parcel.lotSizeSqFt = Math.max(0, upNum(params.lotSizeSqFt, parcel.lotSizeSqFt));
+      if (params.owner != null) parcel.owner = upClean(params.owner, 120);
+      if (params.district != null) parcel.district = upClean(params.district, 80);
+      saveUpState();
+      return { ok: true, result: { parcel } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
   registerLensAction("urban-planning", "parcel-remove", (ctx, _a, params = {}) => {
     try {
       const s = getUpState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -738,6 +765,40 @@ export default function registerUrbanplanningActions(registerLensAction) {
           { efficiency: sc.efficiency, useMix: sc.useMix }),
       }));
       return { ok: true, result: { scenarios } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // FIX-urban-planning-003: scenarios gain the same edit path.
+  registerLensAction("urban-planning", "scenario-update", (ctx, _a, params = {}) => {
+    try {
+      const s = getUpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const uid = upAid(ctx);
+      const scenario = upList(s.scenarios, uid).find((sc) => sc.id === String(params.id || ""));
+      if (!scenario) return { ok: false, error: "not_found" };
+      if (params.name != null) {
+        const name = upClean(params.name, 120);
+        if (!name) return { ok: false, error: "scenario name required" };
+        scenario.name = name;
+      }
+      if (params.description != null) scenario.description = upClean(params.description, 280);
+      if (params.zoneType != null) {
+        const zone = String(params.zoneType).toLowerCase();
+        scenario.zoneType = ZONE_SPECS[zone] ? zone : scenario.zoneType;
+      }
+      if (params.lotSizeSqFt != null) scenario.lotSizeSqFt = Math.max(0, upNum(params.lotSizeSqFt, scenario.lotSizeSqFt));
+      if (params.useMix != null) scenario.useMix = String(params.useMix).toLowerCase();
+      if (params.efficiency != null) scenario.efficiency = Math.min(1, Math.max(0.4, upNum(params.efficiency, scenario.efficiency)));
+      if (params.parcelId !== undefined) {
+        const parcelId = upClean(params.parcelId, 40) || null;
+        if (parcelId && !upList(s.parcels, uid).some((p) => p.id === parcelId)) {
+          return { ok: false, error: "parcel not found" };
+        }
+        scenario.parcelId = parcelId;
+      }
+      saveUpState();
+      return { ok: true, result: { scenario } };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }

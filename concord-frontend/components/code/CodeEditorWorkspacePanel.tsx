@@ -7,7 +7,8 @@ import LensAgentFab from '@/components/lens/LensAgentFab';
 import { QuickScriptProjectBadge } from '@/components/code/QuickScriptProjectBadge';
 import { RunStamp, UnfurlPre, QuietSuccessEdge } from '@/components/code/delight';
 import { useMutation } from '@tanstack/react-query';
-import { api, lensRun } from '@/lib/api/client';
+import { api, apiHelpers, lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { cn } from '@/lib/utils';
@@ -38,7 +39,7 @@ import {
   Loader2, BookOpen,
   Save, Maximize2, Minimize2, Layers,
   XCircle, BarChart3, AlertTriangle,
-  Key,
+  Key, Pencil, Trash2,
 } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -249,7 +250,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: {
   }), [codeHyperDTUs.length, codeMegaDTUs.length, codeRegularDTUs.length]);
 
   // Persist scripts to backend
-  const { isLoading, isError, error, refetch, create: saveScript, update: updateScript, items: savedScripts } = useLensData('code', 'script', { noSeed: true });
+  const { isLoading, isError, error, refetch, create: saveScript, update: updateScript, remove: removeScript, items: savedScripts } = useLensData('code', 'script', { noSeed: true });
 
   const [files, setFiles] = useState<FileNode[]>([]);
   const [tabs, setTabs] = useState<Tab[]>([
@@ -793,6 +794,85 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: {
       setActiveTabId(newTabs[0].id);
     }
   };
+
+  // ── FIX-code-002: scratch scripts can be named, renamed, removed ──
+  // Tabs were in-memory buffers with auto-names (untitled.js /
+  // script_N.js) and the saved set had no list at all: no rename, no
+  // remove. Rename lives on the tab (the name Save persists) and in
+  // the Explorer's Saved scripts list; removing a saved script also
+  // deletes the library DTU its save minted (the recorded dtuId link),
+  // so no orphan private DTU stays behind.
+  const [renamingTabId, setRenamingTabId] = useState<string | null>(null);
+  const [tabNameDraft, setTabNameDraft] = useState('');
+  const [renamingScriptId, setRenamingScriptId] = useState<string | null>(null);
+  const [scriptNameDraft, setScriptNameDraft] = useState('');
+  const [scriptNotice, setScriptNotice] = useState('');
+
+  const openSavedScript = useCallback((script: { id: string; title?: string; data?: { content?: string; language?: string; languageChosen?: boolean; dtuId?: string; scriptType?: ScriptType } }) => {
+    const data = script.data;
+    const scriptName = script.title || 'untitled';
+    const newTab: Tab = {
+      id: script.id,
+      name: scriptName,
+      language: resolveTabLanguage(scriptName, data?.language, data?.languageChosen),
+      languageChosen: data?.languageChosen === true,
+      dtuId: data?.dtuId,
+      content: String(data?.content || ''),
+      isDirty: false,
+      scriptType: (data?.scriptType as ScriptType) || 'snippet',
+    };
+    setTabs((prev) => (prev.some((t) => t.id === script.id) ? prev : [...prev, newTab]));
+    setActiveTabId(script.id);
+    if (newTab.scriptType) setActiveScriptType(newTab.scriptType);
+  }, []);
+
+  const commitTabRename = useCallback(async () => {
+    const tabId = renamingTabId;
+    setRenamingTabId(null);
+    if (!tabId) return;
+    const name = tabNameDraft.trim().slice(0, 120);
+    if (!name) return;
+    setTabs((prev) => prev.map((t) => (t.id === tabId ? { ...t, name } : t)));
+    // A tab opened from a saved script renames the artifact itself;
+    // its linked DTU takes the new title on the next Save (Phase 2).
+    if (savedScripts.some((s) => s.id === tabId)) {
+      try { await updateScript(tabId, { title: name }); void refetch(); }
+      catch { setScriptNotice('Renamed in the tab — the saved script could not be renamed. Save to retry.'); }
+    }
+  }, [renamingTabId, tabNameDraft, savedScripts, updateScript, refetch]);
+
+  const commitScriptRename = useCallback(async (scriptId: string) => {
+    const name = scriptNameDraft.trim().slice(0, 120);
+    setRenamingScriptId(null);
+    if (!name) return;
+    setTabs((prev) => prev.map((t) => (t.id === scriptId ? { ...t, name } : t)));
+    try { await updateScript(scriptId, { title: name }); void refetch(); }
+    catch { setScriptNotice('That script could not be renamed.'); }
+  }, [scriptNameDraft, updateScript, refetch]);
+
+  const removeSavedScript = useCallback(async (script: { id: string; title?: string; data?: { dtuId?: string } }) => {
+    setScriptNotice('');
+    try { await removeScript(script.id); }
+    catch { setScriptNotice('That script could not be removed.'); return; }
+    const dtuId = script.data?.dtuId;
+    if (dtuId) {
+      try {
+        const resp = await apiHelpers.dtus.delete(dtuId) as { data?: { ok?: boolean } };
+        if (resp?.data && resp.data.ok === false) throw new Error('refused');
+      } catch { setScriptNotice('Script removed — its library DTU could not be deleted and remains in your library.'); }
+    }
+    setTabs((prev) => {
+      if (!prev.some((t) => t.id === script.id)) return prev;
+      if (prev.length === 1) {
+        setActiveTabId('main');
+        return [{ id: 'main', name: 'untitled.js', language: 'javascript', content: '', isDirty: false, scriptType: 'snippet' }];
+      }
+      const next = prev.filter((t) => t.id !== script.id);
+      if (activeTabId === script.id) setActiveTabId(next[0].id);
+      return next;
+    });
+    void refetch();
+  }, [removeScript, activeTabId, refetch]);
 
   const openFile = (file: FileNode) => {
     if (file.type !== 'file') return;
@@ -1680,6 +1760,59 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: {
                         </div>
                       ) : files.map((file) => renderFileNode(file))}
                     </div>
+                    {/* FIX-code-002: the saved scratch scripts, listed —
+                        open, rename, or remove (removal also deletes the
+                        library DTU the save minted). */}
+                    <div className="border-t border-green-900/30 p-2 space-y-1">
+                      <span className="text-xs font-semibold text-green-500 uppercase font-mono tracking-wider">Saved scripts ({savedScripts.length})</span>
+                      {scriptNotice && <p role="note" className="text-[11px] text-amber-300">{scriptNotice}</p>}
+                      {savedScripts.length === 0 ? (
+                        <p className="text-[11px] text-gray-500">None yet — Save puts the current tab here, under its tab name.</p>
+                      ) : savedScripts.map((s) => {
+                        const title = (s as { title?: string }).title || 'untitled';
+                        return (
+                          <div key={s.id} className="flex items-center gap-1 rounded px-1 py-1 hover:bg-lattice-elevated">
+                            {renamingScriptId === s.id ? (
+                              <>
+                                <input
+                                  autoFocus
+                                  value={scriptNameDraft}
+                                  onChange={(e) => setScriptNameDraft(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') { e.preventDefault(); void commitScriptRename(s.id); }
+                                    if (e.key === 'Escape') setRenamingScriptId(null);
+                                  }}
+                                  aria-label="Saved script name"
+                                  maxLength={120}
+                                  className="min-w-0 flex-1 rounded bg-lattice-elevated px-1.5 py-0.5 text-xs text-white outline-none"
+                                />
+                                <button onClick={() => void commitScriptRename(s.id)} aria-label="Save name" className="p-1 text-emerald-400"><Check className="w-3.5 h-3.5" /></button>
+                                <button onClick={() => setRenamingScriptId(null)} aria-label="Cancel rename" className="p-1 text-gray-400"><X className="w-3.5 h-3.5" /></button>
+                              </>
+                            ) : (
+                              <>
+                                <button onClick={() => openSavedScript(s as { id: string; title?: string; data?: { content?: string; language?: string; languageChosen?: boolean; dtuId?: string; scriptType?: ScriptType } })}
+                                  className="min-w-0 flex-1 truncate text-left text-xs text-gray-300 hover:text-white" title={`Open ${title}`}>
+                                  {title}
+                                </button>
+                                <button onClick={() => { setScriptNameDraft(title); setRenamingScriptId(s.id); }}
+                                  aria-label={`Rename saved script ${title}`} className="p-1 text-gray-400 hover:text-white">
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </button>
+                                <StickyDeleteConfirm
+                                  onConfirm={() => void removeSavedScript(s as { id: string; title?: string; data?: { dtuId?: string } })}
+                                  armLabel={<Trash2 className="w-3.5 h-3.5" />}
+                                  confirmLabel="Remove?"
+                                  armAriaLabel={`Remove saved script ${title}`}
+                                  confirmAriaLabel="Confirm remove"
+                                  cancelAriaLabel="Cancel remove"
+                                />
+                              </>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                     {/* DTU Context */}
                     <div className="p-3 border-t border-white/10 space-y-3">
                       <LensContextPanel
@@ -1813,7 +1946,35 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: {
                     if (tab.scriptType) setActiveScriptType(tab.scriptType);
                   }} tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                   <FileCode className="w-4 h-4 text-neon-blue" />
-                  <span className="text-sm">{tab.name}</span>
+                  {renamingTabId === tab.id ? (
+                    <input
+                      autoFocus
+                      value={tabNameDraft}
+                      onChange={(e) => setTabNameDraft(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') { e.preventDefault(); void commitTabRename(); }
+                        if (e.key === 'Escape') setRenamingTabId(null);
+                      }}
+                      onBlur={() => void commitTabRename()}
+                      aria-label="Script name"
+                      maxLength={120}
+                      className="w-36 rounded bg-lattice-elevated px-1.5 py-0.5 text-sm text-white outline-none"
+                    />
+                  ) : (
+                    <>
+                      <span className="text-sm" onDoubleClick={(e) => { e.stopPropagation(); setActiveTabId(tab.id); setTabNameDraft(tab.name); setRenamingTabId(tab.id); }}>{tab.name}</span>
+                      {tab.id === activeTabId && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setTabNameDraft(tab.name); setRenamingTabId(tab.id); }}
+                          className="p-0.5 rounded hover:bg-lattice-border/50"
+                          aria-label={`Rename ${tab.name}`}
+                        >
+                          <Pencil className="w-3 h-3" />
+                        </button>
+                      )}
+                    </>
+                  )}
                   {tab.isDirty && <span className="w-2 h-2 bg-neon-blue rounded-full" />}
                   {tabs.length > 1 && (
                     <button

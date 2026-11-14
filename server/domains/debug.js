@@ -1057,6 +1057,47 @@ export default function registerDebugActions(registerLensAction) {
     }
   });
 
+  // Edit a release (FIX-debug-006 — releases could be created and
+  // deleted but never edited). Issues tie to a release by its version
+  // string, so a rename reties the project's issues in the same write.
+  registerLensAction("debug", "release-update", (ctx, _a, params = {}) => {
+    const s = getDebugState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    try {
+      const userId = dbgActor(ctx);
+      const arr = dbgList(s.releases, userId);
+      const rel = arr.find((r) => r.id === params.id);
+      if (!rel) return { ok: false, error: "release not found" };
+      const resolved = dbgResolveProject(s, userId, params);
+      if (resolved.error) return { ok: false, error: resolved.error };
+      const relProject = dbgRecordProject(rel, resolved.defaultId);
+      if (params.version != null) {
+        const version = dbgClean(params.version, 60);
+        if (!version) return { ok: false, error: "version required" };
+        if (version !== rel.version) {
+          if (arr.some((r) => r.id !== rel.id && r.version === version
+            && dbgRecordProject(r, resolved.defaultId) === relProject)) {
+            return { ok: false, error: "release already tracked" };
+          }
+          const oldVersion = rel.version;
+          for (const issue of dbgList(s.issues, userId)) {
+            if (Array.isArray(issue.releases) && issue.releases.includes(oldVersion)
+              && dbgRecordProject(issue, resolved.defaultId) === relProject) {
+              issue.releases = issue.releases.map((v) => (v === oldVersion ? version : v));
+            }
+          }
+          rel.version = version;
+        }
+      }
+      if (params.environment != null) rel.environment = dbgClean(params.environment, 40) || rel.environment;
+      if (params.notes != null) rel.notes = dbgClean(params.notes, 1000);
+      saveDebug();
+      return { ok: true, result: { release: rel } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
   registerLensAction("debug", "release-delete", (ctx, _a, params = {}) => {
     const s = getDebugState();
     if (!s) return { ok: false, error: "STATE unavailable" };

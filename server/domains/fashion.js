@@ -191,12 +191,19 @@ export default function registerFashionActions(registerLensAction) {
 
   registerLensAction("fashion", "item-delete", (ctx, _a, params = {}) => {
     const s = getFashionState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const arr = s.items.get(fsAid(ctx)) || [];
+    const userId = fsAid(ctx);
+    const arr = s.items.get(userId) || [];
     const i = arr.findIndex((x) => x.id === params.id);
     if (i < 0) return { ok: false, error: "item not found" };
     arr.splice(i, 1);
+    // FIX-fashion-003: the item's wear-log entries go with it — an
+    // orphaned entry kept "Worn this mo." counting a deleted item.
+    const log = s.wearLog.get(userId) || [];
+    const kept = log.filter((w) => w.itemId !== params.id);
+    const removedWearLogs = log.length - kept.length;
+    if (removedWearLogs > 0) s.wearLog.set(userId, kept);
     saveFashionState();
-    return { ok: true, result: { deleted: params.id } };
+    return { ok: true, result: { deleted: params.id, removedWearLogs } };
   });
 
   registerLensAction("fashion", "item-wear", (ctx, _a, params = {}) => {
@@ -267,12 +274,19 @@ export default function registerFashionActions(registerLensAction) {
 
   registerLensAction("fashion", "outfit-delete", (ctx, _a, params = {}) => {
     const s = getFashionState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const arr = s.outfits.get(fsAid(ctx)) || [];
+    const userId = fsAid(ctx);
+    const arr = s.outfits.get(userId) || [];
     const i = arr.findIndex((o) => o.id === params.id);
     if (i < 0) return { ok: false, error: "outfit not found" };
     arr.splice(i, 1);
+    // FIX-fashion-003: same cascade as item-delete — the outfit's
+    // wear-log entries go with it.
+    const log = s.wearLog.get(userId) || [];
+    const kept = log.filter((w) => w.outfitId !== params.id);
+    const removedWearLogs = log.length - kept.length;
+    if (removedWearLogs > 0) s.wearLog.set(userId, kept);
     saveFashionState();
-    return { ok: true, result: { deleted: params.id } };
+    return { ok: true, result: { deleted: params.id, removedWearLogs } };
   });
 
   registerLensAction("fashion", "outfit-wear", (ctx, _a, params = {}) => {
@@ -394,12 +408,26 @@ export default function registerFashionActions(registerLensAction) {
     const entries = (s.wearLog.get(userId) || [])
       .filter((w) => String(w.date).startsWith(month))
       .map((w) => ({
+        id: w.id,
         date: w.date,
         label: w.outfitId ? (outfitName.get(w.outfitId) || "(outfit)") : (itemName.get(w.itemId) || "(item)"),
         kind: w.outfitId ? "outfit" : "item",
       }))
       .sort((a, b) => a.date.localeCompare(b.date));
     return { ok: true, result: { month, entries, daysLogged: new Set(entries.map((e) => e.date)).size } };
+  });
+
+  // FIX-fashion-002: a single wear-log entry can be removed (the
+  // calendar rows previously had no delete at all).
+  registerLensAction("fashion", "calendar-delete", (ctx, _a, params = {}) => {
+    const s = getFashionState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fsAid(ctx);
+    const log = s.wearLog.get(userId) || [];
+    const i = log.findIndex((w) => w.id === params.id);
+    if (i < 0) return { ok: false, error: "wear log entry not found" };
+    log.splice(i, 1);
+    saveFashionState();
+    return { ok: true, result: { deleted: params.id } };
   });
 
   // ── Packing lists ───────────────────────────────────────────────────
@@ -415,6 +443,19 @@ export default function registerFashionActions(registerLensAction) {
     fsListB(s.packing, fsAid(ctx)).push(list);
     saveFashionState();
     return { ok: true, result: { packingList: list } };
+  });
+
+  // FIX-fashion-002: a packing list can be deleted whole (previously
+  // items could be removed but the list itself could not).
+  registerLensAction("fashion", "packing-delete", (ctx, _a, params = {}) => {
+    const s = getFashionState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fsAid(ctx);
+    const arr = s.packing.get(userId) || [];
+    const i = arr.findIndex((p) => p.id === params.id);
+    if (i < 0) return { ok: false, error: "packing list not found" };
+    arr.splice(i, 1);
+    saveFashionState();
+    return { ok: true, result: { deleted: params.id } };
   });
 
   registerLensAction("fashion", "packing-list", (ctx, _a, _params = {}) => {
