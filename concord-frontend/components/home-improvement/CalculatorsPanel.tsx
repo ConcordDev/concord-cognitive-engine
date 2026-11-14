@@ -194,7 +194,7 @@ export function CalculatorsPanel() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="lens-card">
                     <p className="text-xs text-gray-400">Estimated Cost</p>
-                    <p className="text-lg font-bold text-neon-cyan">${(d.estimatedCost || 0).toLocaleString()}</p>
+                    <p className="text-lg font-bold text-neon-cyan">{typeof d.estimatedCost === 'string' ? d.estimatedCost : `$${(d.estimatedCost || 0).toLocaleString()}`}</p>
                   </div>
                   <div className="lens-card">
                     <p className="text-xs text-gray-400">Processing Time</p>

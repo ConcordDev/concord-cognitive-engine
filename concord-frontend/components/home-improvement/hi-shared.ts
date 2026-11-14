@@ -54,7 +54,9 @@ export interface PermitResult {
   projectType: string;
   requiresPermit: boolean;
   permitType: string;
-  estimatedCost: number;
+  // The domain returns the permit cost as a range string ("$100-$500");
+  // the panel renders it verbatim (FIX-home-improvement-002).
+  estimatedCost: string;
   processingTime: string;
   inspectionsRequired: string[];
   tip: string;
