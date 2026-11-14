@@ -104,7 +104,7 @@ export function ExperimentTracker() {
     setBusy(null);
   };
 
-  const logManualEpoch = async (exp: Experiment, metrics: { trainLoss: number; valLoss: number; accuracy: number }) => {
+  const logManualEpoch = async (exp: Experiment, metrics: { trainLoss?: number; valLoss?: number; accuracy?: number }) => {
     setBusy(exp.id);
     await lensRun('ml', 'experiment-log', {
       experimentId: exp.id, epoch: exp.metrics.length + 1, ...metrics,
@@ -218,13 +218,20 @@ export function ExperimentTracker() {
                     onChange={(e) => setManualMetrics((m) => ({ ...m, accuracy: e.target.value }))}
                     className="rounded border border-lattice-border bg-lattice-bg px-2 py-1.5 text-sm font-mono outline-none focus:border-neon-cyan" />
                   <button className="btn-neon small"
-                    disabled={busy === selected.id || !manualMetrics.trainLoss || !manualMetrics.valLoss || !manualMetrics.accuracy}
+                    disabled={busy === selected.id || ![manualMetrics.trainLoss, manualMetrics.valLoss, manualMetrics.accuracy].some((v) => v.trim() !== '' && Number.isFinite(parseFloat(v)))}
+                    title="Record needs at least one metric — the server defaults the rest, exactly as experiment-log already accepts"
                     onClick={async () => {
-                      await logManualEpoch(selected, {
-                        trainLoss: parseFloat(manualMetrics.trainLoss),
-                        valLoss: parseFloat(manualMetrics.valLoss),
-                        accuracy: parseFloat(manualMetrics.accuracy),
-                      });
+                      // FIX-ml-004: Record used to demand ALL THREE fields
+                      // before it would enable, so logging a lone train
+                      // loss (the walker's repro) silently did nothing —
+                      // epoch stayed 0, chart empty. experiment-log
+                      // accepts any subset and defaults the rest; send
+                      // only the fields actually entered.
+                      const metrics: { trainLoss?: number; valLoss?: number; accuracy?: number } = {};
+                      if (manualMetrics.trainLoss.trim() !== '') metrics.trainLoss = parseFloat(manualMetrics.trainLoss);
+                      if (manualMetrics.valLoss.trim() !== '') metrics.valLoss = parseFloat(manualMetrics.valLoss);
+                      if (manualMetrics.accuracy.trim() !== '') metrics.accuracy = parseFloat(manualMetrics.accuracy);
+                      await logManualEpoch(selected, metrics);
                       setManualMetrics({ trainLoss: '', valLoss: '', accuracy: '' });
                     }}>
                     Record
