@@ -241,12 +241,21 @@ export function ThreatBoard() {
 
       {/* New threat */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2 border-t border-zinc-800 pt-3">
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Threat name"
-          className="col-span-2 bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white"
-        />
+        <div className="col-span-2">
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Threat name"
+            maxLength={100}
+            aria-label="Threat name (max 100 characters)"
+            className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white"
+          />
+          {/* FIX-defense-010: the server refuses names over 100 chars; the
+              field now carries that cap with a live counter, so an over-long
+              name is rejected at the field instead of being accepted and
+              then silently unsaved. */}
+          <span className="mt-0.5 block text-right font-mono text-[10px] text-zinc-500">{name.length}/100</span>
+        </div>
         <input
           value={category}
           onChange={(e) => setCategory(e.target.value)}
