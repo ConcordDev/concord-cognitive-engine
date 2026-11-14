@@ -162,18 +162,32 @@ describe("settings snapshots", () => {
 });
 
 describe("settings account & security", () => {
-  it("accountOverview reports posture honestly: 2FA is unavailable", () => {
+  it("accountOverview reports posture honestly: without the user_totp table, 2FA reads unavailable", () => {
     const r = call("accountOverview", ctxA);
     assert.equal(r.ok, true);
     assert.equal(r.result.twoFactorAvailable, false);
     assert.equal(r.result.twoFactorEnabled, false);
   });
 
-  it("setTwoFactor refuses instead of faking an enrolment or recovery codes", () => {
+  it("accountOverview reads the caller's real 2FA state from user_totp when the table exists", () => {
+    const dbWith = (row) => ({ prepare: () => ({ get: () => row }) });
+    const on = call("accountOverview", { ...ctxA, db: dbWith({ enabled: 1 }) });
+    assert.equal(on.result.twoFactorAvailable, true);
+    assert.equal(on.result.twoFactorEnabled, true);
+    const off = call("accountOverview", { ...ctxA, db: dbWith(undefined) });
+    assert.equal(off.result.twoFactorAvailable, true);
+    assert.equal(off.result.twoFactorEnabled, false);
+    // Another user's state never leaks into this caller's overview.
+    const other = call("accountOverview", { ...ctxB, db: dbWith({ enabled: 1 }) });
+    assert.equal(other.result.userId, "user_b");
+  });
+
+  it("setTwoFactor refuses the toggle and names the verified enrolment path", () => {
     for (const enabled of [true, false]) {
       const r = call("setTwoFactor", ctxA, { enabled });
       assert.equal(r.ok, false);
-      assert.match(r.error, /not available/);
+      assert.match(r.error, /not available as a settings toggle/);
+      assert.match(r.error, /\/api\/auth\/2fa\/setup/);
       assert.equal(r.result, undefined);
     }
     assert.equal(call("accountOverview", ctxA).result.twoFactorEnabled, false);
