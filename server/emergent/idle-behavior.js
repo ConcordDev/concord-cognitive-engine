@@ -8,7 +8,7 @@ import { wouldAdmitCreation } from "../lib/background-governor.js";
 import { assessCreation, maybeCritique } from "../lib/emergents/quality/creation-gate.js";
 import { emitFeedEvent } from "./feed.js";
 import { TASK_PROMPTS } from "../lib/prompt-registry.js";
-import { recordIdleOutcome, trySpendIdleModelCall } from "../lib/idle-budget.js";
+import { recordIdleOutcome, trySpendIdleModelCall, lastIdleSampleSig, setIdleSampleSig } from "../lib/idle-budget.js";
 
 const IDLE_ACTIONS = ["browse_lens", "observe_substrate", "dream", "communicate"];
 
@@ -111,6 +111,32 @@ export function sampleSubstrate(lens, db, limit = 5, rand = Math.random) {
 }
 
 /**
+ * IDLE-02 (GB-1540): the degeneracy test for an observe sample. The
+ * observation prompt is built from the sample's TITLES only, so a sample
+ * is degenerate when its titles carry nothing a specific observation
+ * could attach to. Returns the skip class or null:
+ *   "thin"        — fewer than 2 items (a pattern over ≤1 title is invention)
+ *   "monoculture" — the titles collapse to one distinct title
+ *                   (the "Wood, Wood, Wood" shape)
+ *   "repeat"      — the title multiset equals this citizen's last
+ *                   observed sample (the same encounter twice)
+ */
+export function sampleSignature(items) {
+  return (items || [])
+    .map((i) => String(i?.title || "").trim().toLowerCase())
+    .sort()
+    .join("|");
+}
+
+export function assessSampleDegeneracy(items, lastSig) {
+  if (!items || items.length < 2) return "thin";
+  const titles = items.map((i) => String(i?.title || "").trim().toLowerCase()).filter(Boolean);
+  if (new Set(titles).size < 2) return "monoculture";
+  if (lastSig && sampleSignature(items) === lastSig) return "repeat";
+  return null;
+}
+
+/**
  * Find other emergents whose lens/domain overlaps with this emergent's.
  */
 function findOverlappingEmergents(emergentIdentity, db, limit = 5) {
@@ -174,6 +200,13 @@ export async function runIdleBehavior(emergentIdentity, db, realtimeEmit) {
     case "observe_substrate": {
       const items = sampleSubstrate(null, db, 5);
       if (items.length === 0) return { action };
+      // IDLE-02: a degenerate sample skips the model call entirely —
+      // before admission, so no budget is spent; the reason is counted.
+      const degeneracy = assessSampleDegeneracy(items, lastIdleSampleSig(db, emergentIdentity.id));
+      if (degeneracy) {
+        recordIdleOutcome(db, emergentIdentity.id, "degenerate");
+        return { action, skipped: `degenerate:${degeneracy}` };
+      }
       const admit = _admitBrainCall(emergentIdentity.id, db);
       if (admit !== "ok") return { action: "throttled", throttledBy: admit };
       try {
@@ -193,6 +226,9 @@ export async function runIdleBehavior(emergentIdentity, db, realtimeEmit) {
           emergent: emergentIdentity,
           data: { observation },
         }, db, realtimeEmit);
+        // IDLE-02: remember the sample this citizen actually observed
+        // from — the next identical sample is a repeat, not a new call.
+        setIdleSampleSig(db, emergentIdentity.id, sampleSignature(items));
         return { action, observation };
       } catch {
         return { action };
