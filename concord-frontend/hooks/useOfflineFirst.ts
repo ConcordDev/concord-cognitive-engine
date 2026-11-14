@@ -101,21 +101,38 @@ export function useOfflineFirstDTU(dtuId: string | null) {
       try {
         const res = await globalThis.fetch(`/api/dtus/${dtuId}`);
         if (res.ok) {
-          const serverData = await res.json();
-          if (mountedRef.current) {
-            setData(serverData);
-            setSource('server');
-            setStale(false);
-            setLoading(false);
+          const body = await res.json();
+          // GET /api/dtus/:id answers the platform envelope
+          // { ok: true, dtu } (the dtu.get macro's shape); a bare DTU
+          // passes as-is. Anything else is not a DTU — fall through to
+          // the cache/error legs instead of handing consumers (and the
+          // IndexedDB cache, whose dtus table keys on `id`) a shape
+          // neither can use.
+          const serverData =
+            body && typeof body === 'object' && !Array.isArray(body)
+              ? ((body as { dtu?: unknown }).dtu ?? body)
+              : body;
+          if (
+            serverData &&
+            typeof serverData === 'object' &&
+            !Array.isArray(serverData) &&
+            (serverData as { id?: unknown }).id === dtuId
+          ) {
+            if (mountedRef.current) {
+              setData(serverData);
+              setSource('server');
+              setStale(false);
+              setLoading(false);
+            }
+            // Cache locally
+            try {
+              await getDB().dtus.put({ ...(serverData as Record<string, unknown>), synced: true });
+              touchDTU(dtuId);
+            } catch {
+              // Cache write failed — non-critical
+            }
+            return;
           }
-          // Cache locally
-          try {
-            await getDB().dtus.put({ ...serverData, synced: true });
-            touchDTU(dtuId);
-          } catch {
-            // Cache write failed — non-critical
-          }
-          return;
         }
       } catch {
         // Server unreachable — fall through
