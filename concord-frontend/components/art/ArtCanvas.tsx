@@ -138,6 +138,18 @@ function elBBox(el: El, w: number, h: number): [number, number, number, number] 
 
 export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: () => void }) {
   const [artwork, setArtwork] = useState<Artwork | null>(null);
+  // FIX-art-009: stroke commits are fire-and-forget async — a layer-clear
+  // issued while a commit was still in flight reached the server first,
+  // and the late commit resurrected a cleared stroke (the Studio card then
+  // showed a stroke the blank canvas disowned). Stroke mutations from this
+  // canvas now run through one queue so the server sees them in the order
+  // the user issued them.
+  const mutationQueue = useRef<Promise<unknown>>(Promise.resolve());
+  const enqueueMutation = useCallback(<T,>(fn: () => Promise<T>): Promise<T> => {
+    const run = mutationQueue.current.then(fn, fn);
+    mutationQueue.current = run.catch(() => undefined);
+    return run;
+  }, []);
   const [brushes, setBrushes] = useState<BrushPreset[]>([]);
   const [blendModes, setBlendModes] = useState<string[]>([]);
   const [swatches, setSwatches] = useState<string[]>([]);
@@ -304,7 +316,7 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
     // go through the pressure-ribbon macro so the committed stroke actually
     // tapers; everything else (mouse/touch, constant 0.5) uses plain commit.
     const macro = el.pressure ? 'stroke-commit-pressure' : 'stroke-commit';
-    const r = await lensRun('art', macro, { artworkId: artwork.id, layerId: activeLayer, stroke: el });
+    const r = await enqueueMutation(() => lensRun('art', macro, { artworkId: artwork.id, layerId: activeLayer, stroke: el }));
     if (r.data?.ok === false) {
       // roll back on rejection (e.g. locked layer)
       setArtwork((prev) => prev && ({
@@ -323,7 +335,7 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
       const m = await lensRun('art', 'symmetry-mirror-stroke', { artworkId: artwork.id, layerId: activeLayer, strokeId });
       if (m.data?.ok) await reload();
     }
-  }, [artwork, activeLayer, guides, reload]);
+  }, [artwork, activeLayer, guides, reload, enqueueMutation]);
 
   const drawLivePreview = (kind: string, a: number[], b: number[]) => {
     render();
@@ -535,11 +547,11 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
     setArtwork((prev) => prev && ({
       ...prev, layers: prev.layers.map((l) => (l.id === activeLayer ? { ...l, strokes: l.strokes.slice(0, -1) } : l)),
     }));
-    await lensRun('art', 'stroke-undo', { artworkId: artwork.id, layerId: activeLayer });
+    await enqueueMutation(() => lensRun('art', 'stroke-undo', { artworkId: artwork.id, layerId: activeLayer }));
   };
   const redo = async () => {
     if (!artwork) return;
-    await lensRun('art', 'stroke-redo', { artworkId: artwork.id, layerId: activeLayer });
+    await enqueueMutation(() => lensRun('art', 'stroke-redo', { artworkId: artwork.id, layerId: activeLayer }));
     await reload();
   };
 
@@ -655,7 +667,7 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
     setArtwork((prev) => prev && ({
       ...prev, layers: prev.layers.map((l) => (l.id === layerId ? { ...l, strokes: [] } : l)),
     }));
-    await lensRun('art', 'layer-clear', { artworkId: artwork.id, layerId });
+    await enqueueMutation(() => lensRun('art', 'layer-clear', { artworkId: artwork.id, layerId }));
   };
 
   // ── AI vision critique — snapshots the live canvas and asks the vision
