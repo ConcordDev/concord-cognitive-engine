@@ -11,6 +11,7 @@ import { lensRun } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { EMAIL_REQUIRED, REGISTRATION_STATUS } from './registration-copy';
+import { countsAsPast, utcToday } from './event-when';
 import { ChartKit, TimelineView } from '@/components/viz';
 import {
   Ticket, Users, Armchair, DollarSign, ListChecks, ScanLine, Mail,
@@ -654,7 +655,7 @@ export function EventOps() {
                     ? 'bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/40'
                     : 'bg-lattice-elevated text-gray-400 hover:text-white'
                 )}>
-                {e.name} <span className="opacity-60">· {e.type}</span>
+                {e.name} <span className="opacity-60">· {e.type}{countsAsPast(e.date, utcToday()) ? ' · Past' : ''}</span>
               </button>
             ))}
           </div>

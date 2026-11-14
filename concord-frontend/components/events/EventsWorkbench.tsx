@@ -38,7 +38,6 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Crown,
-  Gift,
   ClipboardList,
   Sparkles,
   Phone,
@@ -53,7 +52,9 @@ import {
 } from 'lucide-react';
 import { Icon as SvgIcon } from '@/components/icons/Icon';
 import { OperationsBudgetPanel } from './OperationsBudgetPanel';
+import { OperationsStorePanel } from './OperationsStorePanel';
 import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
+import { countsAsPast, countsAsUpcoming, utcToday } from './event-when';
 
 /** Adapts the bespoke SvgIcon (name-prop API) to the lucide-icon-component
  *  shape (`className`-prop, no `name`) this file's tab/type tables expect. */
@@ -467,6 +468,12 @@ export function EventsWorkbench({
     statedNet: number;
     formula: string;
   } | null>(null);
+  const [opsFigures, setOpsFigures] = useState<{
+    rsvpRate: number;
+    avgAttendance: number;
+    totalSpent: number;
+    netPosition: number;
+  } | null>(null);
 
   const fetchEventsReal = useCallback(async (): Promise<LensItem[]> => {
     const listRes = await lensRun({ domain: 'events', action: 'event-list', input: {} });
@@ -497,6 +504,10 @@ export function EventsWorkbench({
         statedActual?: number;
         statedNet?: number;
         formula?: string;
+        rsvpRate?: number;
+        avgAttendance?: number;
+        totalSpent?: number;
+        netPosition?: number;
       };
       const statedBudgeted = Number(result.statedBudgeted);
       const statedActual = Number(result.statedActual);
@@ -506,6 +517,12 @@ export function EventsWorkbench({
         statedActual: Number.isFinite(statedActual) ? statedActual : 0,
         statedNet: Number.isFinite(statedNet) ? statedNet : 0,
         formula: result.formula || 'Budgeted − Actual = Net',
+      });
+      setOpsFigures({
+        rsvpRate: Number(result.rsvpRate) || 0,
+        avgAttendance: Number(result.avgAttendance) || 0,
+        totalSpent: Number(result.totalSpent) || 0,
+        netPosition: Number(result.netPosition) || 0,
       });
     } catch (e) {
       setIsError(true);
@@ -567,14 +584,14 @@ export function EventsWorkbench({
     create: createGuest,
     update: updateGuest,
     remove: removeGuest,
-  } = useLensData('events', 'Guest', { seed: EMPTY_DATA.Guest, enabled: mode === 'guests' });
+  } = useLensData('events', 'Guest', { seed: EMPTY_DATA.Guest, enabled: false });
   const {
     items: runofshows,
     isLoading: rosLoading,
     create: createROS,
     update: updateROS,
     remove: removeROS,
-  } = useLensData('events', 'RunOfShow', { seed: EMPTY_DATA.RunOfShow, enabled: mode === 'runofshow' });
+  } = useLensData('events', 'RunOfShow', { seed: EMPTY_DATA.RunOfShow, enabled: false });
   const {
     items: budgets,
     isLoading: budgetLoading,
@@ -588,7 +605,7 @@ export function EventsWorkbench({
     create: createTicket,
     update: updateTicket,
     remove: removeTicket,
-  } = useLensData('events', 'TicketTier', { seed: EMPTY_DATA.TicketTier, enabled: mode === 'tickets' || mode === 'events' });
+  } = useLensData('events', 'TicketTier', { seed: EMPTY_DATA.TicketTier, enabled: mode === 'events' });
 
   // RSVP / Ticket purchase state
   const [rsvpLoading, setRsvpLoading] = useState<string | null>(null);
@@ -855,8 +872,9 @@ export function EventsWorkbench({
 
   // Computed dashboard metrics
   const dashMetrics = useMemo(() => {
+    const today = utcToday();
     const upcoming = events.filter((e) =>
-      ['planning', 'confirmed'].includes(e.meta?.status as string)
+      countsAsUpcoming((e.data as Record<string, unknown>).date, e.meta?.status, today)
     ).length;
     const liveNow = events.filter((e) => e.meta?.status === 'live').length;
     // Real ticketing rollups (sum of each event's own tiers[]), not the
@@ -876,22 +894,6 @@ export function EventsWorkbench({
     );
     const vendorsPending = vendors.filter((v) => v.meta?.status === 'pending').length;
     const vendorsConfirmed = vendors.filter((v) => v.meta?.status === 'confirmed').length;
-    const totalRegistered = events.reduce(
-      (s, e) => s + Number((e.data as Record<string, unknown>).registered || 0),
-      0
-    );
-    const totalCapacity = events.reduce(
-      (s, e) => s + Number((e.data as Record<string, unknown>).capacity || 0),
-      0
-    );
-    const avgAttendance = pct(totalRegistered, totalCapacity);
-    const budgetTotal = budgets.reduce((s, b) => {
-      const cats = parseJsonSafe<Array<{ budgeted: number; actual: number }>>(
-        (b.data as Record<string, unknown>).categories,
-        []
-      );
-      return s + cats.reduce((c, cat) => c + (cat.actual || 0), 0);
-    }, 0);
     const sponsorTotal = budgets.reduce((s, b) => {
       const sps = parseJsonSafe<Array<{ amount: number }>>(
         (b.data as Record<string, unknown>).sponsorships,
@@ -907,8 +909,6 @@ export function EventsWorkbench({
       revenueMonth,
       vendorsPending,
       vendorsConfirmed,
-      avgAttendance,
-      budgetTotal,
       sponsorTotal,
     };
   }, [events, vendors, budgets]);
@@ -1037,7 +1037,9 @@ export function EventsWorkbench({
     }
   };
 
-  if (isLoading && mode !== 'budget') {
+  const storeMode = mode === 'tickets' || mode === 'runofshow' || mode === 'guests';
+
+  if (isLoading && mode !== 'budget' && !storeMode) {
     return (
       <div className="flex items-center justify-center h-full p-8" role="status" aria-live="polite" aria-busy="true">
         <div className="text-center space-y-3">
@@ -1049,7 +1051,7 @@ export function EventsWorkbench({
     );
   }
 
-  if (isError && mode !== 'budget') {
+  if (isError && mode !== 'budget' && !storeMode) {
     return (
       <div className="flex items-center justify-center h-full p-8" role="alert" aria-live="assertive">
         <ErrorState error={error?.message} onRetry={refetch} />
@@ -1088,9 +1090,9 @@ export function EventsWorkbench({
         <MetricCard
           icon={Users}
           label="Avg Attendance"
-          value={`${dashMetrics.avgAttendance}%`}
-          sub="across all events"
-          trend={dashMetrics.avgAttendance > 70 ? 'up' : 'down'}
+          value={opsFigures ? `${opsFigures.avgAttendance}%` : '—'}
+          sub="Checked in ÷ registered"
+          trend={opsFigures && opsFigures.avgAttendance > 70 ? 'up' : 'down'}
         />
       </div>
 
@@ -1160,7 +1162,7 @@ export function EventsWorkbench({
             <div className="flex items-center justify-between">
               <span className={ds.textMuted}>Total Spent</span>
               <span className="text-amber-400 font-semibold">
-                {fmtCurrency(dashMetrics.budgetTotal)}
+                {fmtCurrency(opsFigures?.totalSpent ?? 0)}
               </span>
             </div>
             <div className="flex items-center justify-between">
@@ -1177,6 +1179,19 @@ export function EventsWorkbench({
                   : '—'}
               </span>
             </div>
+            <div className="flex items-center justify-between">
+              <span className={ds.textMuted}>Net Position</span>
+              {(() => {
+                const net = opsFigures?.netPosition ?? 0;
+                return (
+                  <span
+                    className={cn('font-semibold', net >= 0 ? 'text-green-400' : 'text-red-400')}
+                  >
+                    {opsFigures ? fmtCurrency(net) : '—'}
+                  </span>
+                );
+              })()}
+            </div>
           </div>
         </div>
       </div>
@@ -1189,14 +1204,19 @@ export function EventsWorkbench({
         <div className="divide-y divide-lattice-border">
           {events
             .filter((e) => ['planning', 'confirmed', 'live'].includes(e.meta?.status as string))
-            .sort((a, b) =>
-              String((a.data as Record<string, unknown>).date || '').localeCompare(
+            .sort((a, b) => {
+              const today = utcToday();
+              const ap = countsAsPast((a.data as Record<string, unknown>).date, today) ? 1 : 0;
+              const bp = countsAsPast((b.data as Record<string, unknown>).date, today) ? 1 : 0;
+              if (ap !== bp) return ap - bp;
+              return String((a.data as Record<string, unknown>).date || '').localeCompare(
                 String((b.data as Record<string, unknown>).date || '')
-              )
-            )
+              );
+            })
             .map((evt) => {
               const d = evt.data as Record<string, unknown>;
               const st = evt.meta?.status as string;
+              const past = countsAsPast(d.date, utcToday());
               const evtType = EVENT_TYPES.find((t) => t.id === d.eventType);
               const EvtIcon = evtType?.icon || CalendarDays;
               return (
@@ -1227,6 +1247,7 @@ export function EventsWorkbench({
                     max={Number(d.capacity || 1)}
                     color="neon-pink"
                   />
+                  {past && <span className={ds.badge('gray-400')}>Past</span>}
                   <span className={ds.badge(STATUS_COLORS[st] || 'gray-400')}>{st}</span>
                 </div>
               );
@@ -1308,6 +1329,7 @@ export function EventsWorkbench({
           {filtered.map((item, index) => {
             const d = item.data as Record<string, unknown>;
             const st = item.meta?.status as string;
+            const past = countsAsPast(d.date, utcToday());
             const evtType = EVENT_TYPES.find((t) => t.id === d.eventType);
             const EvtIcon = evtType?.icon || CalendarDays;
             return (
@@ -1324,7 +1346,10 @@ export function EventsWorkbench({
                     <EvtIcon className="w-5 h-5 text-neon-pink shrink-0" />
                     <h3 className={cn(ds.heading3, 'truncate')}>{item.title}</h3>
                   </div>
-                  <span className={ds.badge(STATUS_COLORS[st] || 'gray-400')}>{st}</span>
+                  <span className="flex items-center gap-1">
+                    {past && <span className={ds.badge('gray-400')}>Past</span>}
+                    <span className={ds.badge(STATUS_COLORS[st] || 'gray-400')}>{st}</span>
+                  </span>
                 </div>
                 <div className="space-y-1 mb-3">
                   <p className={ds.textMuted}>
@@ -1432,6 +1457,7 @@ export function EventsWorkbench({
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {countsAsPast(d.date, utcToday()) && <span className={ds.badge('gray-400')}>Past</span>}
               <span className={ds.badge(STATUS_COLORS[st] || 'gray-400')}>{st}</span>
               <button onClick={() => openEdit(item.id)} className={ds.btnSecondary}>
                 <Edit2 className="w-4 h-4" /> Edit
@@ -2097,377 +2123,6 @@ export function EventsWorkbench({
   );
 
   // ---------------------------------------------------------------------------
-  // Render: Run-of-Show
-  // ---------------------------------------------------------------------------
-  const renderRunOfShow = () => (
-    <div className="space-y-4">
-      {filtered.length === 0 ? (
-        <div className="text-center py-12">
-          <ListChecks className="w-10 h-10 text-gray-600 mx-auto mb-3" />
-          <p className={ds.textMuted}>No run-of-show timelines found</p>
-          <button onClick={openCreate} className={cn(ds.btnGhost, 'mt-3')}>
-            <Plus className="w-4 h-4" /> Create one
-          </button>
-        </div>
-      ) : (
-        filtered.map((item) => {
-          const d = item.data as Record<string, unknown>;
-          const segments = parseJsonSafe<
-            Array<{
-              time: string;
-              duration: number;
-              activity: string;
-              responsible: string;
-              avCues: string;
-              transition: string;
-              contingency: string;
-            }>
-          >(d.segments, []);
-          const st = item.meta?.status as string;
-          return (
-            <div key={item.id} className={ds.panel}>
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <ListChecks className="w-6 h-6 text-amber-400" />
-                  <div>
-                    <h3 className={ds.heading3}>{item.title}</h3>
-                    <p className={ds.textMuted}>
-                      {String(d.eventName || '')} -- {String(d.date || '')}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={ds.badge(STATUS_COLORS[st] || 'gray-400')}>{st}</span>
-                  <button onClick={() => openEdit(item.id)} className={ds.btnGhost} aria-label="Edit">
-                    <Edit2 className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => removeROS(item.id)}
-                    className={cn(ds.btnGhost, 'hover:text-red-400')}
-                  aria-label="Delete">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-              {/* Segments table */}
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-left text-gray-400 border-b border-lattice-border">
-                      <th className="pb-2 pr-3 w-16">Time</th>
-                      <th className="pb-2 pr-3 w-14">Dur.</th>
-                      <th className="pb-2 pr-3">Activity</th>
-                      <th className="pb-2 pr-3">Responsible</th>
-                      <th className="pb-2 pr-3">AV / Tech Cues</th>
-                      <th className="pb-2 pr-3">Transition</th>
-                      <th className="pb-2">Contingency</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-lattice-border">
-                    {segments.map((seg, i) => (
-                      <tr key={i} className="text-gray-300 hover:bg-lattice-elevated/30">
-                        <td className={cn('py-2 pr-3', ds.textMono, 'text-neon-cyan')}>
-                          {seg.time}
-                        </td>
-                        <td className="py-2 pr-3 text-gray-400">{seg.duration}m</td>
-                        <td className="py-2 pr-3 font-medium">{seg.activity}</td>
-                        <td className="py-2 pr-3 text-gray-400">{seg.responsible}</td>
-                        <td className="py-2 pr-3 text-xs text-gray-400">{seg.avCues}</td>
-                        <td className="py-2 pr-3 text-xs text-gray-400">{seg.transition}</td>
-                        <td className="py-2 text-xs text-amber-400/80">{seg.contingency}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              {segments.length === 0 && (
-                <p className={cn(ds.textMuted, 'py-4 text-center')}>No segments added yet</p>
-              )}
-              {/* The real run-of-show timeline (agenda-item-add/agenda-timeline) lives in
-                  Event Operations, keyed to a STATE-backed event — link there instead of a
-                  same-page action that would run against this generic artifact's mismatched
-                  shape. */}
-              <div className="flex items-center gap-2 mt-3 pt-3 border-t border-lattice-border">
-                <button onClick={jumpToEventOps} className={cn(ds.btnSecondary, ds.btnSmall)}>
-                  <ListChecks className="w-4 h-4" /> Build real run-of-show in Event Operations
-                </button>
-              </div>
-            </div>
-          );
-        })
-      )}
-    </div>
-  );
-
-  // ---------------------------------------------------------------------------
-  // Render: Tickets
-  // ---------------------------------------------------------------------------
-  const renderTickets = () => {
-    // Group by event
-    const byEvent = filtered.reduce<Record<string, LensItem[]>>((acc, t) => {
-      const evtName = String((t.data as Record<string, unknown>).eventName || 'Unassigned');
-      if (!acc[evtName]) acc[evtName] = [];
-      acc[evtName].push(t);
-      return acc;
-    }, {});
-
-    return (
-      <div className="space-y-4">
-        {Object.keys(byEvent).length === 0 ? (
-          <div className="text-center py-12">
-            <Ticket className="w-10 h-10 text-gray-600 mx-auto mb-3" />
-            <p className={ds.textMuted}>No ticket tiers found</p>
-            <button onClick={openCreate} className={cn(ds.btnGhost, 'mt-3')}>
-              <Plus className="w-4 h-4" /> Add ticket tier
-            </button>
-          </div>
-        ) : (
-          Object.entries(byEvent).map(([eventName, tiers]) => {
-            const totalSold = tiers.reduce(
-              (s, t) => s + Number((t.data as Record<string, unknown>).sold || 0),
-              0
-            );
-            const totalAvail = tiers.reduce(
-              (s, t) => s + Number((t.data as Record<string, unknown>).totalAvailable || 0),
-              0
-            );
-            const totalRevenue = tiers.reduce(
-              (s, t) =>
-                s +
-                Number((t.data as Record<string, unknown>).sold || 0) *
-                  Number((t.data as Record<string, unknown>).price || 0),
-              0
-            );
-            const totalWaitlist = tiers.reduce(
-              (s, t) => s + Number((t.data as Record<string, unknown>).waitlist || 0),
-              0
-            );
-            const totalComp = tiers.reduce(
-              (s, t) => s + Number((t.data as Record<string, unknown>).compTickets || 0),
-              0
-            );
-            const totalCheckedIn = tiers.reduce(
-              (s, t) => s + Number((t.data as Record<string, unknown>).checkedIn || 0),
-              0
-            );
-
-            return (
-              <div key={eventName} className={ds.panel}>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className={cn(ds.heading3, 'flex items-center gap-2')}>
-                    <Ticket className="w-5 h-5 text-neon-pink" /> {eventName}
-                  </h3>
-                  <span className={ds.textMuted}>
-                    {totalSold.toLocaleString()} / {totalAvail.toLocaleString()} sold
-                  </span>
-                </div>
-
-                {/* Summary row */}
-                <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-4">
-                  <div className="p-2 bg-lattice-elevated rounded-lg text-center">
-                    <p className="text-xs text-gray-400">Revenue</p>
-                    <p className="text-sm font-bold text-green-400">{fmtCurrency(totalRevenue)}</p>
-                  </div>
-                  <div className="p-2 bg-lattice-elevated rounded-lg text-center">
-                    <p className="text-xs text-gray-400">Sold</p>
-                    <p className="text-sm font-bold">{totalSold.toLocaleString()}</p>
-                  </div>
-                  <div className="p-2 bg-lattice-elevated rounded-lg text-center">
-                    <p className="text-xs text-gray-400">Remaining</p>
-                    {/* FIX-events-008: comps are seats given away — they
-                        consume capacity. Remaining used to subtract only
-                        paid sales, so 50 available with 3 comps still
-                        read Remaining 50 instead of 47. */}
-                    <p className="text-sm font-bold">{Math.max(0, totalAvail - totalSold - totalComp).toLocaleString()}</p>
-                  </div>
-                  <div className="p-2 bg-lattice-elevated rounded-lg text-center">
-                    <p className="text-xs text-gray-400">Checked In</p>
-                    <p className="text-sm font-bold">{totalCheckedIn.toLocaleString()}</p>
-                  </div>
-                  <div className="p-2 bg-lattice-elevated rounded-lg text-center">
-                    <p className="text-xs text-gray-400">Waitlist</p>
-                    <p className="text-sm font-bold text-amber-400">{totalWaitlist}</p>
-                  </div>
-                  <div className="p-2 bg-lattice-elevated rounded-lg text-center">
-                    <p className="text-xs text-gray-400">Comps</p>
-                    <p className="text-sm font-bold">{totalComp}</p>
-                  </div>
-                </div>
-
-                {/* Overall progress */}
-                <div className="mb-4">
-                  <ProgressBar value={totalSold} max={totalAvail} color="neon-pink" />
-                </div>
-
-                {/* Tier cards */}
-                <div className={ds.grid3}>
-                  {tiers.map((t) => {
-                    const td = t.data as Record<string, unknown>;
-                    const sold = Number(td.sold || 0);
-                    const avail = Number(td.totalAvailable || 0);
-                    const comps = Number(td.compTickets || 0);
-                    const price = Number(td.price || 0);
-                    const tierRev = sold * price;
-                    const st = t.meta?.status as string;
-                    // FIX-events-006: a blank Total Available (0) means
-                    // NO CAP — the server tier model treats quantity 0
-                    // as unlimited — not a tier that is instantly sold
-                    // out (0 >= 0). Comps consume seats (events-008),
-                    // so they count toward filling a capped tier.
-                    const soldOut = avail > 0 && sold + comps >= avail;
-                    return (
-                      <div
-                        key={t.id}
-                        className={cn(ds.panelHover, 'relative')}
-                        onClick={() => openEdit(t.id)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
-                        {soldOut && (
-                          <div className="absolute top-2 right-2">
-                            <span className={ds.badge('red-400')}>SOLD OUT</span>
-                          </div>
-                        )}
-                        <h4 className="font-semibold text-sm mb-1">{String(td.tierName)}</h4>
-                        <p className="text-xl font-bold text-neon-cyan mb-2">
-                          {fmtCurrency(price)}
-                        </p>
-                        {avail > 0 ? (
-                          <ProgressBar
-                            value={sold + comps}
-                            max={avail}
-                            color={soldOut ? 'red-400' : 'neon-cyan'}
-                          />
-                        ) : (
-                          <p className="text-xs text-gray-400">
-                            No cap set · {sold.toLocaleString()} sold{comps > 0 ? ` · ${comps.toLocaleString()} comps` : ''}
-                          </p>
-                        )}
-                        <div className="grid grid-cols-2 gap-2 mt-2 text-xs">
-                          <div>
-                            <span className="text-gray-400">Revenue:</span>{' '}
-                            <span className="text-green-400">{fmtCurrency(tierRev)}</span>
-                          </div>
-                          <div>
-                            <span className="text-gray-400">Waitlist:</span>{' '}
-                            <span className="text-amber-400">{Number(td.waitlist || 0)}</span>
-                          </div>
-                          <div>
-                            <span className="text-gray-400">Comps:</span>{' '}
-                            <span>{Number(td.compTickets || 0)}</span>
-                          </div>
-                          <div>
-                            <span className="text-gray-400">Check-in:</span>{' '}
-                            <span>{Number(td.checkedIn || 0)}</span>
-                          </div>
-                        </div>
-                        {Boolean(td.perks) && (
-                          <p className="text-xs text-gray-400 mt-2 line-clamp-2">
-                            <Gift className="w-3 h-3 inline mr-1" />
-                            {String(td.perks)}
-                          </p>
-                        )}
-                        <div className="flex items-center justify-between pt-2 mt-2 border-t border-lattice-border">
-                          <span className={ds.badge(STATUS_COLORS[st] || 'gray-400')}>{st}</span>
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openEdit(t.id);
-                              }}
-                              className={ds.btnGhost}
-                            aria-label="Edit">
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                removeTicket(t.id);
-                              }}
-                              className={cn(ds.btnGhost, 'hover:text-red-400')}
-                            aria-label="Delete">
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
-    );
-  };
-
-  // ---------------------------------------------------------------------------
-  // Render: Guests
-  // ---------------------------------------------------------------------------
-  const renderGuests = () => (
-    <div className="space-y-3">
-      {filtered.length === 0 ? (
-        <div className="text-center py-12">
-          <ClipboardList className="w-10 h-10 text-gray-600 mx-auto mb-3" />
-          <p className={ds.textMuted}>No guests found</p>
-          <button onClick={openCreate} className={cn(ds.btnGhost, 'mt-3')}>
-            <Plus className="w-4 h-4" /> Add Guest
-          </button>
-        </div>
-      ) : (
-        <div className={ds.grid3}>
-          {filtered.map((item) => {
-            const d = item.data as Record<string, unknown>;
-            const st = item.meta?.status as string;
-            return (
-              <div key={item.id} className={ds.panelHover} onClick={() => openEdit(item.id)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Users className="w-5 h-5 text-neon-cyan shrink-0" />
-                    <h3 className={cn(ds.heading3, 'truncate')}>{item.title}</h3>
-                  </div>
-                  <span className={ds.badge(STATUS_COLORS[st] || 'gray-400')}>{st}</span>
-                </div>
-                <div className="space-y-1 mb-3">
-                  {Boolean(d.email) && <p className={ds.textMuted}>{String(d.email)}</p>}
-                  {Boolean(d.phone) && <p className="text-xs text-gray-400">{String(d.phone)}</p>}
-                  {Boolean(d.dietaryRestrictions) && (
-                    <p className="text-xs text-amber-400">{String(d.dietaryRestrictions)}</p>
-                  )}
-                  {Boolean(d.tableAssignment) && (
-                    <p className="text-xs text-gray-400">Table: {String(d.tableAssignment)}</p>
-                  )}
-                  {Boolean(d.plusOne) && (
-                    <p className="text-xs text-neon-purple">+1: {String(d.plusOneName || 'Yes')}</p>
-                  )}
-                </div>
-                <div className="flex items-center justify-end gap-1 pt-2 border-t border-lattice-border mt-2">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openEdit(item.id);
-                    }}
-                    className={ds.btnGhost}
-                  aria-label="Edit">
-                    <Edit2 className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeGuest(item.id);
-                    }}
-                    className={cn(ds.btnGhost, 'hover:text-red-400')}
-                  aria-label="Delete">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-
-  // ---------------------------------------------------------------------------
   // Render: Content by mode
   // ---------------------------------------------------------------------------
   const renderContent = () => {
@@ -2481,13 +2136,13 @@ export function EventsWorkbench({
       case 'vendors':
         return renderVendors();
       case 'runofshow':
-        return renderRunOfShow();
+        return <OperationsStorePanel kind="segments" />;
       case 'budget':
         return <OperationsBudgetPanel />;
       case 'tickets':
-        return renderTickets();
+        return <OperationsStorePanel kind="tickets" />;
       case 'guests':
-        return renderGuests();
+        return <OperationsStorePanel kind="guests" />;
       default:
         return null;
     }
@@ -2495,7 +2150,7 @@ export function EventsWorkbench({
 
   return (
     <div className="space-y-4">
-      {mode !== 'dashboard' && mode !== 'budget' && (
+      {mode !== 'dashboard' && mode !== 'budget' && mode !== 'tickets' && mode !== 'runofshow' && mode !== 'guests' && (
         <div className="flex justify-end">
           <button onClick={openCreate} className={ds.btnPrimary}>
             <Plus className="w-4 h-4" /> New{' '}
@@ -2512,23 +2167,18 @@ export function EventsWorkbench({
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {(() => {
           const allEvts = events;
-          const upcoming = allEvts.filter(
-            (e) => e.meta?.status === 'planning' || e.meta?.status === 'confirmed'
+          const today = utcToday();
+          const upcoming = allEvts.filter((e) =>
+            countsAsUpcoming((e.data as Record<string, unknown>).date, e.meta?.status, today)
           ).length;
-          const past = allEvts.filter((e) => e.meta?.status === 'completed').length;
-          const totalCap = allEvts.reduce(
-            (s, e) => s + Number((e.data as Record<string, unknown>).capacity || 0),
-            0
-          );
-          const totalReg = allEvts.reduce(
-            (s, e) => s + Number((e.data as Record<string, unknown>).registered || 0),
-            0
-          );
-          const rsvpRate = totalCap > 0 ? Math.round((totalReg / totalCap) * 100) : 0;
+          const past = allEvts.filter((e) =>
+            countsAsPast((e.data as Record<string, unknown>).date, today)
+          ).length;
+          const rsvpRate = opsFigures ? opsFigures.rsvpRate : null;
           return [
             { label: 'Upcoming', value: upcoming, icon: CalendarDays },
             { label: 'Past Events', value: past, icon: CheckCircle2 },
-            { label: 'RSVP Rate', value: `${rsvpRate}%`, icon: Users },
+            { label: 'RSVP Rate', value: rsvpRate === null ? '—' : `${rsvpRate}%`, icon: Users },
             { label: 'Total Events', value: allEvts.length, icon: Sparkles },
           ].map((stat) => (
             <div key={stat.label} className={ds.panel + ' flex items-center gap-3 p-3'}>
@@ -2543,8 +2193,8 @@ export function EventsWorkbench({
       </div>
       )}
 
-      {/* Filters. The Budget view reads the Host lines, not this artifact list. */}
-      {mode !== 'dashboard' && mode !== 'budget' && (
+      {/* Filters. The Budget view reads the Host lines, not this artifact list; tickets, run of show, and guests are the Operations store. */}
+      {mode !== 'dashboard' && mode !== 'budget' && mode !== 'tickets' && mode !== 'runofshow' && mode !== 'guests' && (
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative flex-1 min-w-[200px] max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -2598,7 +2248,7 @@ export function EventsWorkbench({
       )}
 
       {/* Loading */}
-      {isLoading && mode !== 'budget' ? (
+      {isLoading && mode !== 'budget' && !storeMode ? (
         <div className="text-center py-12">
           <p className={ds.textMuted}>Loading event data...</p>
         </div>
