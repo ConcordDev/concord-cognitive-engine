@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Plug, Trash2, Flame } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
-export interface EnergyDevice { id: string; name: string; category: string; wattage: number; alwaysOn: boolean; totalKwh: number }
+export interface EnergyDevice { id: string; name: string; category: string; wattage: number; alwaysOn: boolean; totalKwh: number; liveKwh?: number }
 interface Consumer { deviceId: string; name: string; kwh: number; cost: number }
 
 const CATEGORIES = ['meter', 'hvac', 'appliance', 'lighting', 'electronics', 'ev_charger', 'water_heater', 'kitchen', 'laundry'];
@@ -168,7 +168,7 @@ export function EnergyDevicesPanel({
                   <div>
                     <p className="text-sm font-semibold text-zinc-100">{d.name}</p>
                     <p className="text-[11px] text-zinc-400 capitalize">
-                      {d.category.replace(/_/g, ' ')}{d.wattage > 0 ? ` · ${d.wattage}W` : ''} · {d.totalKwh} kWh logged
+                      {d.category.replace(/_/g, ' ')}{d.wattage > 0 ? ` · ${d.wattage}W` : ''} · {d.totalKwh} kWh logged{d.liveKwh ? ` · ${d.liveKwh} kWh from live samples` : ''}
                     </p>
                   </div>
                   <button aria-label="Delete" type="button" onClick={() => del(d.id)} className="text-zinc-600 hover:text-rose-400">

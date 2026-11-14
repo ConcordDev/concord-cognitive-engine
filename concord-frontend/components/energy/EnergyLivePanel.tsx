@@ -35,6 +35,8 @@ export function EnergyLivePanel({
   const [current, setCurrent] = useState(0);
   const [peak, setPeak] = useState(0);
   const [avgWatts, setAvgWatts] = useState(0);
+  const [windowKwh, setWindowKwh] = useState(0);
+  const [windowCost, setWindowCost] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [polling, setPolling] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,11 +50,14 @@ export function EnergyLivePanel({
       if (s.data?.ok) {
         const res = s.data.result as {
           samples: LiveSample[]; current: number; peak: number; avgWatts: number;
+          kwh?: number; cost?: number | null;
         };
         setSamples(res.samples || []);
         setCurrent(res.current || 0);
         setPeak(res.peak || 0);
         setAvgWatts(res.avgWatts || 0);
+        setWindowKwh(res.kwh || 0);
+        setWindowCost(res.cost ?? null);
         setError(null);
       } else {
         setError(s.data?.error || 'Failed to load live readings.');
@@ -145,7 +150,12 @@ export function EnergyLivePanel({
         <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
           <Activity className="w-3.5 h-3.5 text-lime-400" /> Live consumption (last 2h)
         </h3>
-        {chartData.length > 1 ? (
+        {samples.length > 0 && (
+          <p className="text-[11px] text-zinc-400 mb-2">
+            {windowKwh} kWh from samples in this window{windowCost != null ? ` · ≈ $${windowCost.toFixed(2)}` : ''}
+          </p>
+        )}
+        {chartData.length > 0 ? (
           <ChartKit kind="area" data={chartData} xKey="t" height={170}
             series={[{ key: 'watts', label: 'Watts', color: '#a3e635' }]} showLegend={false} />
         ) : (

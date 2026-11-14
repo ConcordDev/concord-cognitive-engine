@@ -397,11 +397,23 @@ export default function registerEnergyActions(registerLensAction) {
     const s = getEnergyState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = enAid(ctx);
     const readings = s.readings.get(userId) || [];
+    // FIX-energy-001: a meter's live samples integrate to kWh too (see
+    // liveKwhBetween) — reported beside totalKwh, which stays the
+    // logged-readings total it has always been.
+    ensureLiveState(s);
+    const liveByDevice = new Map();
+    for (const x of s.livePower.get(userId) || []) {
+      if (!x.deviceId) continue;
+      if (!liveByDevice.has(x.deviceId)) liveByDevice.set(x.deviceId, []);
+      liveByDevice.get(x.deviceId).push(x);
+    }
     const devices = (s.devices.get(userId) || []).map((d) => {
       const dr = readings.filter((r) => r.deviceId === d.id);
+      const series = (liveByDevice.get(d.id) || []).slice().sort((a, b) => a.ts - b.ts);
       return {
         ...d,
         totalKwh: Math.round(dr.reduce((a, r) => a + r.kwh, 0) * 100) / 100,
+        liveKwh: liveKwhBetween(series),
         readingCount: dr.length,
       };
     });
@@ -736,6 +748,22 @@ export default function registerEnergyActions(registerLensAction) {
     }
   }
 
+  // FIX-energy-001: the energy under a wattage series. A live sample is
+  // an instantaneous reading, so the energy it represents accrues across
+  // the interval to the next sample of the SAME meter — trapezoidal
+  // integration ((w1 + w2) / 2 × Δt). A lone sample accrues nothing yet;
+  // samples were previously never integrated at all, so submitted
+  // wattage fed the Now/Peak/Avg tiles but no kWh figure anywhere.
+  // Series must be one meter's samples, sorted by ts.
+  function liveKwhBetween(series) {
+    let kwh = 0;
+    for (let i = 1; i < series.length; i++) {
+      const dtH = (series[i].ts - series[i - 1].ts) / 3600000;
+      if (dtH > 0) kwh += ((series[i - 1].watts + series[i].watts) / 2) * dtH / 1000;
+    }
+    return Math.round(kwh * 1000) / 1000;
+  }
+
   // ── Real-time consumption stream ────────────────────────────────────
   // A "live sample" is a user-submitted instantaneous wattage reading
   // (from a smart meter / clamp / plug). The macro keeps a rolling
@@ -789,12 +817,15 @@ export default function registerEnergyActions(registerLensAction) {
     const current = wattValues.length ? wattValues[wattValues.length - 1] : 0;
     const peak = wattValues.length ? Math.max(...wattValues) : 0;
     const avg = wattValues.length ? Math.round(wattValues.reduce((a, v) => a + v, 0) / wattValues.length) : 0;
+    const kwh = liveKwhBetween(samples);
     return {
       ok: true,
       result: {
         samples: samples.map((x) => ({ id: x.id, watts: x.watts, at: x.at, deviceName: x.deviceName })),
         current, peak, avgWatts: avg,
         count: samples.length,
+        kwh,
+        cost: enCost(kwh, userRate(s, userId)),
         minutes,
       },
     };
