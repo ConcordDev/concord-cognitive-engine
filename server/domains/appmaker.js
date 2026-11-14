@@ -611,6 +611,19 @@ export default function registerAppmakerActions(registerLensAction) {
         w: Number.isFinite(+el.w) ? +el.w : 120,
         h: Number.isFinite(+el.h) ? +el.h : 40,
         props: typeof el.props === "object" && el.props ? el.props : {},
+        // FIX-app-maker-001: the save mapping used to rebuild each element
+        // from geometry+props only, silently stripping its data binding —
+        // a saved canvas came back with every binding gone. Preserve a
+        // sanitized binding.
+        ...(el.binding && typeof el.binding === "object" && (el.binding.kind === "table" || el.binding.kind === "connector")
+          ? { binding: {
+              kind: el.binding.kind,
+              refId: amClean(el.binding.refId || "", 80),
+              label: amClean(el.binding.label || "", 120),
+              ...(typeof el.binding.query === "string" ? { query: el.binding.query.slice(0, 500) } : {}),
+              ...(typeof el.binding.boundAt === "string" ? { boundAt: el.binding.boundAt } : {}),
+            } }
+          : {}),
       }));
       if (typeof params?.name === "string") page.name = amClean(params.name, 60);
       proj.updatedAt = amNow();

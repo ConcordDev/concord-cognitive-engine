@@ -1476,7 +1476,7 @@ function LivePreview({ project, run }: { project: Project; run: RunFn }) {
         <button onClick={() => render(pageId)} className="text-xs text-gray-400 hover:text-neon-cyan flex items-center gap-1">
           {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />} Refresh
         </button>
-        <span className="text-[10px] text-gray-400 ml-auto flex items-center gap-1"><FileCode className="w-3 h-3" /> sandboxed iframe</span>
+        <span className="text-[10px] text-gray-400 ml-auto flex items-center gap-1"><FileCode className="w-3 h-3" /> display-only preview — buttons &amp; workflows don&apos;t run here</span>
       </div>
       <iframe
         title="App live preview"
