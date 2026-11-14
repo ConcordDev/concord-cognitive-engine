@@ -30,8 +30,13 @@ describe('daily deprecation notice (FIX-daily-010)', () => {
     expect(entry?.postMergeRole).toBe('mode');
   });
 
-  it("the daily page mounts the shared notice", () => {
-    expect(read('app/lenses/daily/page.tsx')).toContain('<DeprecatedLensNotice lensId="daily" />');
+  it("the shared notice reaches daily through the shell mount, not a page mount", () => {
+    // GB-1538 genus leg 5, resolution (a): the mount moved into
+    // LensShell; daily's page carries no mount of its own (a page
+    // mount double-rendered against the shell). The FIX-daily-010
+    // intent — daily surfaces the notice — stands at the shell locus.
+    expect(read('components/lens/LensShell.tsx')).toContain('<DeprecatedLensNotice lensId={lensId} />');
+    expect(read('app/lenses/daily/page.tsx')).not.toContain('DeprecatedLensNotice');
   });
 
   it('the notice renders for daily with a link to the merge target', () => {

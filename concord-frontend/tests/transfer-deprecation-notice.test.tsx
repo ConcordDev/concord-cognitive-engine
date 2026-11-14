@@ -31,8 +31,13 @@ describe('transfer deprecation notice (FIX-transfer-004)', () => {
     expect(entry?.postMergeRole).toBe('engine');
   });
 
-  it("the transfer page mounts the shared notice", () => {
-    expect(read('app/lenses/transfer/page.tsx')).toContain('<DeprecatedLensNotice lensId="transfer" />');
+  it("the shared notice reaches transfer through the shell mount, not a page mount", () => {
+    // GB-1538 genus leg 5, resolution (a): the mount moved into
+    // LensShell; transfer's page carries no mount of its own (a page
+    // mount double-rendered against the shell). The FIX-transfer-004
+    // intent — transfer surfaces the notice — stands at the shell locus.
+    expect(read('components/lens/LensShell.tsx')).toContain('<DeprecatedLensNotice lensId={lensId} />');
+    expect(read('app/lenses/transfer/page.tsx')).not.toContain('DeprecatedLensNotice');
   });
 
   it('the notice renders for transfer with a link to the merge target', () => {

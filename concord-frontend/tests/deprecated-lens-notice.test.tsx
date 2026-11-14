@@ -21,8 +21,15 @@ describe('deprecated lens notice', () => {
     expect(notice).toContain('This lens is deprecated.');
   });
 
-  it('both deprecated lens pages mount it', () => {
-    expect(read('app/lenses/hypothesis/page.tsx')).toContain('<DeprecatedLensNotice lensId="hypothesis" />');
-    expect(read('app/lenses/suffering/page.tsx')).toContain('<DeprecatedLensNotice lensId="suffering" />');
+  it('the shell mounts it once; the pages mount no copy of their own', () => {
+    // GB-1538 genus leg 5, resolution (a): the mount moved from the
+    // pages into LensShell (the one place every lens passes through),
+    // so the notice renders exactly once per page. The intent of the
+    // original pin — hypothesis and suffering surface the notice —
+    // is preserved at the stronger locus: their pages render inside
+    // the shell, and neither page carries a duplicate mount.
+    expect(read('components/lens/LensShell.tsx')).toContain('<DeprecatedLensNotice lensId={lensId} />');
+    expect(read('app/lenses/hypothesis/page.tsx')).not.toContain('DeprecatedLensNotice');
+    expect(read('app/lenses/suffering/page.tsx')).not.toContain('DeprecatedLensNotice');
   });
 });
