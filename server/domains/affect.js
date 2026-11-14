@@ -86,6 +86,16 @@ export default function registerAffectActions(registerLensAction) {
       overwhelmed: { valence: 0.15, arousal: 0.8, dominance: 0.15 },
       devastated: { valence: 0.05, arousal: 0.6, dominance: 0.1 },
       uneasy: { valence: 0.25, arousal: 0.6, dominance: 0.2 },
+      // FIX-affect-004: common grounded/settled feeling words the lexicon
+      // missed — "I felt steady" matched nothing and read as no sentiment.
+      steady: { valence: 0.65, arousal: 0.2, dominance: 0.65 },
+      stable: { valence: 0.6, arousal: 0.2, dominance: 0.6 },
+      grounded: { valence: 0.65, arousal: 0.2, dominance: 0.6 },
+      relieved: { valence: 0.75, arousal: 0.3, dominance: 0.5 },
+      relief: { valence: 0.75, arousal: 0.3, dominance: 0.5 },
+      numb: { valence: 0.25, arousal: 0.1, dominance: 0.2 },
+      restless: { valence: 0.3, arousal: 0.7, dominance: 0.3 },
+      tense: { valence: 0.25, arousal: 0.7, dominance: 0.3 },
     };
 
     const lexicon = { ...defaultLexicon, ...(artifact.data.lexicon || {}) };
