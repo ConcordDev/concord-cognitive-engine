@@ -8,8 +8,14 @@ import { wouldAdmitCreation } from "../lib/background-governor.js";
 import { assessCreation, maybeCritique } from "../lib/emergents/quality/creation-gate.js";
 import { emitFeedEvent } from "./feed.js";
 import { TASK_PROMPTS } from "../lib/prompt-registry.js";
+import { recordIdleOutcome, trySpendIdleModelCall } from "../lib/idle-budget.js";
 
 const IDLE_ACTIONS = ["browse_lens", "observe_substrate", "dream", "communicate"];
+
+// IDLE-01 (GB-1540): the deterministic-first default weights — 27 of 30
+// idle actions are the free browse, so ≥90% of idle life is deterministic
+// by construction. Exported for the pin.
+export const IDLE_WEIGHT_DEFAULTS = { browse_lens: 27, observe_substrate: 1, dream: 1, communicate: 1 };
 
 /**
  * Choose an idle action weighted by the emergent's characteristics.
@@ -17,10 +23,13 @@ const IDLE_ACTIONS = ["browse_lens", "observe_substrate", "dream", "communicate"
 function chooseIdleAction(emergentIdentity) {
   // Weights are env-overridable (CONCORD_IDLE_WEIGHTS="browse_lens:8,observe_substrate:1,dream:1,communicate:1")
   // so ops can dial brain-call density down without redeploying.
-  // Default: heavily favor browse_lens (no brain cost) so 812 emergents × 60s tick
-  // doesn't starve the conscious brain used for user-facing chat.
-  // 8:1:1:1 → 8/11 = 73% browse_lens (free), 27% brain call (3 actions).
-  let weights = { browse_lens: 8, observe_substrate: 1, dream: 1, communicate: 1 };
+  // Default (IDLE-01, GB-1540): deterministic-first — 27:1:1:1 → 27/30 = 90%
+  // of idle actions are browse_lens (no brain cost), so the background brain
+  // is reserved for rare meaningful moments by construction. The per-citizen
+  // daily budget in lib/idle-budget.js is the hard guarantee behind the
+  // weights; the earlier 8:1:1:1 shape drew brain actions at 27% of ticks
+  // and produced ~135 model calls/min across the fleet.
+  let weights = { ...IDLE_WEIGHT_DEFAULTS };
   const envW = process.env.CONCORD_IDLE_WEIGHTS;
   if (envW) {
     try {
@@ -52,6 +61,23 @@ function _canCallBrain(emergentId) {
 }
 function _markBrainCall(emergentId) {
   _lastBrainCall.set(emergentId, Date.now());
+}
+
+// IDLE-01 (GB-1540): the one admission gate every brain action passes —
+// the soft per-emergent cooldown AND the hard per-citizen daily budget
+// (lib/idle-budget.js, DB-counted so it survives restarts). Admission
+// spends the call and marks the cooldown together, as late as the action
+// allows, so a refusal never spends and a spend is always a real call.
+// A refusal is counted by class, keeping the 90/10 split measurable.
+// Returns "ok" | "cooldown" | "budget".
+function _admitBrainCall(emergentId, db) {
+  if (!_canCallBrain(emergentId)) {
+    recordIdleOutcome(db, emergentId, "cooldown");
+    return "cooldown";
+  }
+  if (!trySpendIdleModelCall(db, emergentId)) return "budget";
+  _markBrainCall(emergentId);
+  return "ok";
 }
 
 /**
@@ -139,15 +165,18 @@ export async function runIdleBehavior(emergentIdentity, db, realtimeEmit) {
       // and changes nothing, so it is NOT recorded as activity. Logging it
       // was ~73% of all "emergent activity" — 10M template rows in two weeks
       // ("Browsed lens substrate: Wood, Wood, Wood"), stored twice.
+      // IDLE-01 counts it in the aggregate daily outcome counters only
+      // (one row per citizen per day) — the 90/10 measurement, not activity.
+      recordIdleOutcome(db, emergentIdentity.id, "deterministic");
       return { action };
     }
 
     case "observe_substrate": {
-      if (!_canCallBrain(emergentIdentity.id)) return { action: "throttled" };
       const items = sampleSubstrate(null, db, 5);
       if (items.length === 0) return { action };
+      const admit = _admitBrainCall(emergentIdentity.id, db);
+      if (admit !== "ok") return { action: "throttled", throttledBy: admit };
       try {
-        _markBrainCall(emergentIdentity.id);
         const result = await infer({
           role: "subconscious",
           intent: TASK_PROMPTS.emergentObservation({ name: emergentIdentity.given_name, items }),
@@ -171,9 +200,9 @@ export async function runIdleBehavior(emergentIdentity, db, realtimeEmit) {
     }
 
     case "dream": {
-      if (!_canCallBrain(emergentIdentity.id)) return { action: "throttled" };
+      const admit = _admitBrainCall(emergentIdentity.id, db);
+      if (admit !== "ok") return { action: "throttled", throttledBy: admit };
       try {
-        _markBrainCall(emergentIdentity.id);
         const result = await infer({
           role: "subconscious",
           intent: TASK_PROMPTS.emergentDream({ name: emergentIdentity.given_name }),
@@ -197,9 +226,9 @@ export async function runIdleBehavior(emergentIdentity, db, realtimeEmit) {
     case "communicate": {
       // Don't communicate too often
       if (recentCommunicationCount(emergentIdentity.id, 60 * 60 * 1000, db) >= 3) {
+        recordIdleOutcome(db, emergentIdentity.id, "deterministic");
         return { action: "browse_lens" }; // fall back
       }
-      if (!_canCallBrain(emergentIdentity.id)) return { action: "throttled" };
 
       const candidates = findOverlappingEmergents(emergentIdentity, db, 5);
       if (candidates.length === 0) return { action };
@@ -214,8 +243,12 @@ export async function runIdleBehavior(emergentIdentity, db, realtimeEmit) {
       const pre = wouldAdmitCreation({ kind: "communication", fromId: emergentIdentity.id, toId: targetIdentity.id });
       if (!pre.allow) return { action, skipped: `governor:${pre.reason}` };
 
+      // IDLE-01: admission (cooldown + daily budget) is spent only here,
+      // once the call is certain to be attempted.
+      const admit = _admitBrainCall(emergentIdentity.id, db);
+      if (admit !== "ok") return { action: "throttled", throttledBy: admit };
+
       try {
-        _markBrainCall(emergentIdentity.id);
         const result = await infer({
           role: "subconscious",
           intent: TASK_PROMPTS.emergentIdleMessage({ fromName: emergentIdentity.given_name, toName: targetIdentity.given_name }),
