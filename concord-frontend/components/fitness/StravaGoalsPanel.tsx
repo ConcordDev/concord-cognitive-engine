@@ -52,25 +52,39 @@ export function StravaGoalsPanel() {
 
   useEffect(() => { void refresh(); }, [refresh]);
 
+  const [addingGoal, setAddingGoal] = useState(false);
   const addGoal = async () => {
+    if (addingGoal) return;
     const target = Number(goalForm.target);
     if (!target || target <= 0) { setError('Goal target must be greater than zero.'); return; }
-    const r = await lensRun('fitness', 'goal-create', { metric: goalForm.metric, target, period: goalForm.period });
-    if (r.data?.ok === false) { setError(r.data?.error || 'Could not create goal'); return; }
-    setGoalForm({ metric: 'distance', target: '', period: 'week' });
-    await refresh();
+    setAddingGoal(true);
+    try {
+      const r = await lensRun('fitness', 'goal-create', { metric: goalForm.metric, target, period: goalForm.period });
+      if (r.data?.ok === false) { setError(r.data?.error || 'Could not create goal'); return; }
+      setGoalForm({ metric: 'distance', target: '', period: 'week' });
+      await refresh();
+    } finally { setAddingGoal(false); }
   };
   const delGoal = async (id: string) => { await lensRun('fitness', 'goal-delete', { id }); await refresh(); };
 
+  const [addingGear, setAddingGear] = useState(false);
   const addGear = async () => {
+    // In-flight guard: without it a double fire (double-click, harness
+    // re-click) posts gear-add twice and mints duplicate rows — the
+    // form only clears after the request returns, so the second click
+    // sees the same valid form.
+    if (addingGear) return;
     if (!gearForm.name.trim()) { setError('Gear name is required.'); return; }
-    const r = await lensRun('fitness', 'gear-add', {
-      name: gearForm.name.trim(), kind: gearForm.kind,
-      retireAtKm: Number(gearForm.retireAtKm) || 0,
-    });
-    if (r.data?.ok === false) { setError(r.data?.error || 'Could not add gear'); return; }
-    setGearForm({ name: '', kind: 'shoes', retireAtKm: '' });
-    await refresh();
+    setAddingGear(true);
+    try {
+      const r = await lensRun('fitness', 'gear-add', {
+        name: gearForm.name.trim(), kind: gearForm.kind,
+        retireAtKm: Number(gearForm.retireAtKm) || 0,
+      });
+      if (r.data?.ok === false) { setError(r.data?.error || 'Could not add gear'); return; }
+      setGearForm({ name: '', kind: 'shoes', retireAtKm: '' });
+      await refresh();
+    } finally { setAddingGear(false); }
   };
   const toggleRetire = async (g: Gear) => {
     await lensRun('fitness', 'gear-retire', { id: g.id, unretire: g.retired });
@@ -102,8 +116,8 @@ export function StravaGoalsPanel() {
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
             {['week', 'month', 'year'].map((p) => <option key={p} value={p}>{p}</option>)}
           </select>
-          <button type="button" onClick={addGoal}
-            className="flex items-center justify-center gap-1 bg-orange-600 hover:bg-orange-500 text-white text-xs font-medium rounded-lg">
+          <button type="button" onClick={addGoal} disabled={addingGoal}
+            className="flex items-center justify-center gap-1 bg-orange-600 hover:bg-orange-500 text-white text-xs font-medium rounded-lg disabled:opacity-50">
             <Plus className="w-3.5 h-3.5" /> Add
           </button>
         </div>
@@ -170,8 +184,8 @@ export function StravaGoalsPanel() {
           <input id="fitness-retire-at-km" name="retire-at-km" aria-label="Retire at km" placeholder="Retire at km" inputMode="numeric" value={gearForm.retireAtKm}
             onChange={(e) => setGearForm({ ...gearForm, retireAtKm: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-          <button type="button" onClick={addGear}
-            className="flex items-center justify-center gap-1 bg-orange-600 hover:bg-orange-500 text-white text-xs font-medium rounded-lg">
+          <button type="button" onClick={addGear} disabled={addingGear}
+            className="flex items-center justify-center gap-1 bg-orange-600 hover:bg-orange-500 text-white text-xs font-medium rounded-lg disabled:opacity-50">
             <Plus className="w-3.5 h-3.5" /> Add
           </button>
         </div>

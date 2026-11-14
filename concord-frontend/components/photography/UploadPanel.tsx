@@ -10,6 +10,7 @@ import { useLensData } from '@/lib/hooks/use-lens-data';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import type { PhotoItem } from './photo-types';
 import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
+import { readPhotoExif, type PhotoExif } from './exif';
 
 /** Upload form — media API + lens artifact create. Extracted from page.tsx. */
 export function UploadPanel({ onUploaded }: { onUploaded?: () => void }) {
@@ -22,12 +23,20 @@ export function UploadPanel({ onUploaded }: { onUploaded?: () => void }) {
   const [uploadCamera, setUploadCamera] = useState('');
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadPreview, setUploadPreview] = useState<string | null>(null);
+  const [fileExif, setFileExif] = useState<PhotoExif | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = useCallback(
     (file: File) => {
       if (!file.type.startsWith('image/')) return;
       setUploadFile(file);
+      // Read the file's own EXIF so the upload shows (and the saved
+      // photo carries) the camera/date/exposure the file records,
+      // instead of the uploader retyping camera info by hand.
+      void readPhotoExif(file).then((exif) => {
+        setFileExif(exif);
+        if (exif.camera) setUploadCamera((cur) => cur || exif.camera || '');
+      });
       setUploadPreview(URL.createObjectURL(file));
       if (!uploadTitle) setUploadTitle(file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' '));
     },
@@ -71,6 +80,7 @@ export function UploadPanel({ onUploaded }: { onUploaded?: () => void }) {
       setUploadDesc('');
       setUploadTags('');
       setUploadFile(null);
+      setFileExif(null);
       if (uploadPreview) URL.revokeObjectURL(uploadPreview);
       setUploadPreview(null);
       refetch();
@@ -87,8 +97,13 @@ export function UploadPanel({ onUploaded }: { onUploaded?: () => void }) {
       description: uploadDesc,
       tags: uploadTags.split(',').map((t) => t.trim()).filter(Boolean),
       camera: uploadCamera,
+      ...(fileExif?.lens ? { lens: fileExif.lens } : {}),
+      ...(fileExif?.iso ? { iso: fileExif.iso } : {}),
+      ...(fileExif?.aperture ? { aperture: fileExif.aperture } : {}),
+      ...(fileExif?.shutter ? { shutter: fileExif.shutter } : {}),
+      ...(fileExif?.focalLength ? { focalLength: fileExif.focalLength } : {}),
     });
-  }, [uploadTitle, uploadDesc, uploadTags, uploadCamera, uploadMutation]);
+  }, [uploadTitle, uploadDesc, uploadTags, uploadCamera, uploadMutation, fileExif]);
 
   return (
     <div className="max-w-md mx-auto bg-white/5 border border-white/10 rounded-lg p-6 space-y-4">
@@ -152,6 +167,20 @@ export function UploadPanel({ onUploaded }: { onUploaded?: () => void }) {
         rows={2}
         className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm resize-none"
       />
+      {fileExif && (fileExif.camera || fileExif.takenAt || fileExif.iso || fileExif.aperture || fileExif.shutter || fileExif.focalLength) && (
+        <p className="text-xs text-gray-400">
+          From the file:{' '}
+          {[
+            fileExif.camera,
+            fileExif.takenAt ? new Date(fileExif.takenAt).toLocaleString() : null,
+            fileExif.aperture ? `f/${fileExif.aperture}` : null,
+            fileExif.shutter ? `${fileExif.shutter}s` : null,
+            fileExif.iso ? `ISO ${fileExif.iso}` : null,
+            fileExif.focalLength ? `${fileExif.focalLength}mm` : null,
+            fileExif.lens,
+          ].filter(Boolean).join(' · ')}
+        </p>
+      )}
       <input
         value={uploadCamera}
         onChange={(e) => setUploadCamera(e.target.value)}

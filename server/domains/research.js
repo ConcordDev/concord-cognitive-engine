@@ -6,6 +6,7 @@ import { guardAnonWrites, refuseAnonWrite } from "../lib/lens-authz.js";
 import { autoSource, publishAutoSourceSummary, buildSummaryPrompt, autoSourceEnabled, autoSourceUsage } from "../lib/auto-source.js";
 import { callVision, callVisionUrl, visionPromptForDomain } from "../lib/vision-inference.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
+import { crossrefAuthorName } from "../lib/crossref-authors.js";
 import { computeContentHash } from "../lib/dtu-protocol.js";
 
 export default function registerResearchActions(registerLensAction) {
@@ -1934,8 +1935,7 @@ export default function registerResearchActions(registerLensAction) {
     return {
       id: msg.URL || (msg.DOI ? `https://doi.org/${msg.DOI}` : null),
       title: (msg.title || [])[0] || null,
-      authors: (msg.author || []).slice(0, 50).map((a) =>
-        [a.given, a.family].filter(Boolean).join(" ") || a.name || "Unknown"),
+      authors: (msg.author || []).slice(0, 50).map(crossrefAuthorName),
       year: msg["published-print"]?.["date-parts"]?.[0]?.[0]
         || msg["published-online"]?.["date-parts"]?.[0]?.[0]
         || msg.issued?.["date-parts"]?.[0]?.[0] || null,

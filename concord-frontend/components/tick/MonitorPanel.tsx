@@ -219,16 +219,13 @@ export function MonitorPanel() {
     const currentTick = hb.data?.currentTick;
     if (currentTick == null || history.length === 0) return;
 
-    // tickDurationMs derived from the gap between the last two real
-    // tick rows minus the documented 15s governor interval (anything
-    // above the interval is the block's own runtime).
-    let tickDurationMs = 0;
-    if (history.length >= 2) {
-      const a = new Date(history[history.length - 2].at).getTime();
-      const b = new Date(history[history.length - 1].at).getTime();
-      const gap = b - a;
-      if (Number.isFinite(gap) && gap > 0) tickDurationMs = Math.max(0, gap - 15_000);
-    }
+    // No duration is derived here: the governor is interval-driven, so
+    // the gap between tick rows is the interval itself and carries no
+    // duration signal (an earlier build subtracted the interval and
+    // sent the ~always-zero residue, which is why the latency
+    // histogram read "0 samples" forever). Real block durations are
+    // measured server-side and the histogram reads them there.
+    const tickDurationMs = 0;
 
     const run = async () => {
       await lensRun('tick', 'recordSample', {

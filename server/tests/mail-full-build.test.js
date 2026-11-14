@@ -165,17 +165,24 @@ describe("mail full build (real migrated DB)", () => {
     assert.equal(again.ok, true);
   });
 
-  it("S4: a claimed copy refuses deletion — it carries the claim record", async () => {
+  it("S4: a claimed copy leaves the Sent list — the claim record itself persists (FIX-mail-018)", async () => {
     db.prepare(`INSERT INTO dtus (id, creator_id, data) VALUES ('dtu_m', 'u1', json('{}'))`).run();
     const send = await reg.run("send", u1, { toUserId: "u2", subject: "Claim then keep", body: "b", attachmentDtuIds: ["dtu_m"], attachmentCc: 10 });
     assert.equal(send.ok, true);
     const claim = await reg.run("claim", u2, { id: send.id });
     assert.equal(claim.ok, true);
+    // Removal from Sent is a sender-VIEW operation: it succeeds on a
+    // claimed copy, refunds nothing (the escrow already paid out), and
+    // the row + its claim record survive untouched.
     const del = await reg.run("delete", u1, { id: send.id });
-    assert.equal(del.ok, false);
-    assert.equal(del.error, "already_claimed");
+    assert.equal(del.ok, true);
+    assert.equal(del.deleted, true);
+    assert.equal(del.refundedCc, 0);
     const sent = await reg.run("sent", u1, {});
-    assert.equal(sent.mail.length, 1);
+    assert.equal(sent.mail.length, 0);
+    const row = db.prepare(`SELECT status, attachment_cc AS acc FROM player_mail WHERE id = ?`).get(send.id);
+    assert.equal(row.status, "claimed");
+    assert.equal(row.acc, 10);
   });
 
   it("S6: the export provider returns exactly the caller's own sent + received mail", async () => {

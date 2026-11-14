@@ -25,7 +25,7 @@
  *    know that id before publish, so it seeds off the archetype instead.
  *    Archetype, feature, dimensions, and palette all match exactly; only
  *    sub-meter jitter may differ slightly from the published building.
- *  - Auto-rotation is driven by THREE.Clock (elapsed wall time), never
+ *  - Auto-rotation is driven by THREE.Timer (elapsed wall time), never
  *    Math.random() — there is no randomness anywhere in this render path.
  */
 
@@ -173,10 +173,11 @@ export function BuildingPreview({
         camera.position.set(center.x + radius * 1.3, center.y + radius * 0.85, center.z + radius * 1.3);
         camera.lookAt(center);
 
-        const clock = new THREE.Clock();
-        const tick = () => {
+        const timer = new THREE.Timer();
+        const tick = (now?: number) => {
           if (disposed || !renderer) return;
-          const dt = clock.getDelta();
+          timer.update(now);
+          const dt = timer.getDelta();
           // Deterministic time-based auto-orbit — never Math.random().
           rig.rotation.y += dt * 0.35;
           renderer.render(scene, camera);

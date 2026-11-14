@@ -340,6 +340,17 @@ function _recordError(moduleId) {
   meta.totalErrors += 1;
 }
 
+/** Pooled raw timing samples across every registered module. */
+export function getHeartbeatTimingSamples() {
+  const out = [];
+  for (const arr of _timingHistory.values()) {
+    for (const ms of arr) {
+      if (Number.isFinite(ms) && ms > 0) out.push(ms);
+    }
+  }
+  return out;
+}
+
 /** Sorted-array quantile helper (q in [0,1]). */
 function _quantile(sortedArr, q) {
   if (!sortedArr.length) return 0;

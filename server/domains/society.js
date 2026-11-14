@@ -15,6 +15,7 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 import { registerLensExportProvider } from "../lib/lens-export.js";
+import { searchIndicatorCatalog } from "../lib/wb-catalog-search.js";
 
 const WB_BASE = "https://api.worldbank.org/v2";
 const WB_TTL = 30 * 60 * 1000; // 30-min cache — WB data is annual
@@ -515,25 +516,11 @@ export default function registerSocietyActions(register) {
       // indicator registry and filter client-side. ~25k entries total —
       // we scan the first ~6 pages (3000 indicators) which covers the
       // ~1,400 actively-populated codes.
-      const matches = [];
-      for (let page = 1; page <= 6 && matches.length < limit; page++) {
-        const json = await wbJson(`${WB_BASE}/indicator?format=json&per_page=500&page=${page}`);
-        const list = json[1] || [];
-        for (const ind of list) {
-          const name = String(ind.name || "");
-          const id = String(ind.id || "");
-          if (name.toLowerCase().includes(query) || id.toLowerCase().includes(query)) {
-            matches.push({
-              code: id,
-              name,
-              source: ind.source?.value || null,
-              topics: Array.isArray(ind.topics) ? ind.topics.map((t) => t.value).filter(Boolean) : [],
-            });
-            if (matches.length >= limit) break;
-          }
-        }
-        if (!list.length) break;
-      }
+      // Ranking + scan live in lib/wb-catalog-search.js (pure, shared
+      // with the tests): matches are collected across the whole scan
+      // and ranked by relevance — raw catalog order buried exact hits,
+      // and stopping at the limit hid deep-catalog codes entirely.
+      const matches = await searchIndicatorCatalog(wbJson, WB_BASE, query, limit);
       return { ok: true, result: { query, matches, count: matches.length, source: "world-bank-open-data" } };
     } catch (e) {
       return { ok: false, error: `worldbank unreachable: ${e instanceof Error ? e.message : String(e)}` };

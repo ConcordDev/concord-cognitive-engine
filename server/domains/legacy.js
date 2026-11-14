@@ -401,6 +401,26 @@ export default function registerLegacyActions(registerLensAction) {
   };
   const LEGACY_LANGS = new Set(["COBOL", "PL/I", "Fortran", "Perl", "VB.NET", "Classic ASP", "JSP"]);
 
+  // Content signatures for the extension-less case (a pasted snippet or
+  // a path with no usable extension). Conservative on purpose: a file
+  // only earns a language when a signature actually matches, otherwise
+  // it stays "Unknown" rather than guessing.
+  const LANG_SNIFF = [
+    ["Go", /^\s*package\s+\w+|func\s+main\s*\(|fmt\.Print/],
+    ["Java", /\bpublic\s+(class|static)\b|System\.out\.println|public\s+static\s+void\s+main/],
+    ["Python", /^\s*def\s+\w+\s*\(|^\s*from\s+\w+\s+import\s|^\s*import\s+(os|sys|re)\b|\bprint\s*\(/m],
+    ["Ruby", /^\s*def\s+\w+.*\bend\b|\bputs\s|\brequire\s+['"]/s],
+    ["JavaScript", /\b(var|let|const)\s+\w+\s*=|\bfunction\s+\w+\s*\(|console\.log\s*\(|=>|require\s*\(|module\.exports/],
+  ];
+  function sniffLanguage(content) {
+    const text = String(content || "");
+    if (!text.trim()) return "Unknown";
+    for (const [lang, re] of LANG_SNIFF) {
+      if (re.test(text)) return lang;
+    }
+    return "Unknown";
+  }
+
   // Branch/decision keywords used as a cyclomatic-complexity proxy.
   const BRANCH_RE = /\b(if|else if|elif|for|while|case|when|catch|&&|\|\||\?|EVALUATE|PERFORM\s+UNTIL)\b/g;
   // Import/include keywords used as a dependency proxy.
@@ -412,7 +432,7 @@ export default function registerLegacyActions(registerLensAction) {
     const path = lgClean(file.path || file.name || "unknown", 300);
     const content = String(file.content || "");
     const ext = (path.split(".").pop() || "").toLowerCase();
-    const language = file.language ? lgClean(file.language, 40) : (LANG_EXT[ext] || "Unknown");
+    const language = file.language ? lgClean(file.language, 40) : (LANG_EXT[ext] || sniffLanguage(content));
     const rawLines = content.split("\n");
     const linesOfCode = content
       ? rawLines.filter(l => l.trim() && !/^\s*(\/\/|#|\*|--|\*>)/.test(l)).length

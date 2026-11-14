@@ -232,8 +232,10 @@ export function readMail(db, mailId, userId) {
  * Local to the sender's outbox: the recipient's copy is the same row
  * read from the other side, and it is never touched — the row survives
  * for the recipient; only the sender's view of it ends. A copy already
- * claimed carries the claim record (payout + DTU transfer history), so
- * it is refused rather than silently erasing the receipt.
+ * claimed can leave the Sent list the same way: the row and its claim
+ * record (payout + DTU transfer history) persist untouched — only the
+ * sender_deleted_at view marker is set, and nothing refunds, because
+ * the escrow already paid out to the recipient.
  *
  * @returns {{ ok, deleted?, error? }}
  */
@@ -243,12 +245,17 @@ export function deleteSentMail(db, mailId, userId) {
     const row = db.prepare(`SELECT from_user_id AS fromUser, status, sender_deleted_at AS senderDeletedAt, attachment_cc AS attachmentCc FROM player_mail WHERE id = ?`).get(mailId);
     if (!row) return { ok: false, error: "not_found" };
     if (row.fromUser !== userId) return { ok: false, error: "not_authorized" };
-    if (row.status === "claimed") return { ok: false, error: "already_claimed" };
     if (row.senderDeletedAt) return { ok: true, deleted: true, alreadyDeleted: true };
-    const refundCc = row.status !== "claimed" ? Math.max(0, Number(row.attachmentCc) || 0) : 0;
+    const claimed = row.status === "claimed";
+    const refundCc = claimed ? 0 : Math.max(0, Number(row.attachmentCc) || 0);
     const tx = db.transaction(() => {
       if (refundCc > 0) _walletCredit(db, userId, refundCc, `mail_unclaimed_refund:${mailId}`);
-      db.prepare(`UPDATE player_mail SET attachment_cc = 0, sender_deleted_at = unixepoch() WHERE id = ? AND from_user_id = ?`).run(mailId, userId);
+      if (claimed) {
+        // View removal only: attachment_cc is part of the claim record.
+        db.prepare(`UPDATE player_mail SET sender_deleted_at = unixepoch() WHERE id = ? AND from_user_id = ?`).run(mailId, userId);
+      } else {
+        db.prepare(`UPDATE player_mail SET attachment_cc = 0, sender_deleted_at = unixepoch() WHERE id = ? AND from_user_id = ?`).run(mailId, userId);
+      }
     });
     tx();
     return { ok: true, deleted: true, refundedCc: refundCc };

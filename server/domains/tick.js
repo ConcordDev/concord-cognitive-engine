@@ -5,6 +5,14 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerTickActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
+  // The latency histogram's fallback reads the heartbeat registry's
+  // pooled timing samples. Handlers in this domain are invoked
+  // synchronously by callers, so the registry module is loaded once
+  // here at registration and read from the cache on the request path.
+  let heartbeatRegistry = null;
+  import("../emergent/heartbeat-registry.js")
+    .then((m) => { heartbeatRegistry = m; })
+    .catch(() => { /* registry unavailable — the histogram fallback stays empty */ });
   /**
    * healthPulse
    * Compute system health from tick data: heartbeat regularity, jitter
@@ -768,11 +776,24 @@ export default function registerTickActions(registerLensAction) {
       const all = s.samples.get(uid) || [];
       const windowMs = Math.max(60000, tkNum(params.windowMs, 3600000));
       const cutoff = Date.now() - windowMs;
-      const durations = all
+      let durations = all
         .filter((x) => x.at >= cutoff && x.tickDurationMs > 0)
         .map((x) => x.tickDurationMs);
+      let source = "recorded-samples";
       if (durations.length === 0) {
-        return { ok: true, result: { message: "No latency samples in window.", buckets: [], percentiles: {} } };
+        // The recorded samples carry no usable duration: the client
+        // cannot measure governor block time (the governor is
+        // interval-driven, so tick gaps are the interval itself). The
+        // real per-module block timings live server-side in the
+        // heartbeat registry — fall back to those pooled samples.
+        const pooled = (heartbeatRegistry?.getHeartbeatTimingSamples?.() || []).filter((ms) => ms > 0);
+        if (pooled.length > 0) {
+          durations = pooled;
+          source = "heartbeat-timing";
+        }
+      }
+      if (durations.length === 0) {
+        return { ok: true, result: { message: "No latency samples in window.", buckets: [], percentiles: {}, sampleCount: 0, source } };
       }
       // Fixed buckets relative to the 15s governor budget.
       const edges = [0, 50, 100, 250, 500, 1000, 2500, 5000, 10000, 15000, Infinity];
@@ -797,6 +818,7 @@ export default function registerTickActions(registerLensAction) {
         result: {
           windowMs,
           sampleCount: durations.length,
+          source,
           buckets,
           percentiles: {
             p50: pct(50), p90: pct(90), p95: pct(95), p99: pct(99),
