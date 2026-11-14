@@ -5,15 +5,30 @@
  * scope=all is the Export Desk's "include the shared library" cut. It
  * used to return the whole global substrate: system feed DTUs and
  * other users' global DTUs rode a personal export (the ticket counted
- * 41 non-owned rows). No caller-scoped library-membership ("saved
- * into the shared library") concept exists yet, so the interim
- * contract is: scope=all carries only what the caller placed — their
- * own DTUs, any scope — and anonymous callers get nothing. The Global
- * Library browse (scope=global) is NOT this contract and must not
- * change: it stays substrate-only on a plain browse.
+ * 41 non-owned rows).
  *
- * Harness mirrors tests/library-search-layer.test.js (the route
- * mounted as production mounts it, DTUs seeded in dtu.create's shape).
+ * INTERIM (B9, fa89ebdb8): with no caller-scoped library-membership
+ * concept wired to the leg, scope=all carried only the caller's own
+ * DTUs and anonymous callers got nothing.
+ *
+ * SAVED-SET CONTRACT (this build, founder-authorized 2026-11-14,
+ * superseding the interim where the saved-set scope applies): the
+ * membership concept is the saved domain's per-user saved set
+ * (domains/saved.js — kind "dtu", refId = DTU id). scope=all now
+ * carries exactly the DTUs the caller has saved — whoever made them —
+ * under the ruling's invariants: ownerless rows fall even when saved,
+ * system rows are excluded under every stamp even when saved, a
+ * caller's own UNSAVED DTUs do not ride here (they ride scope=mine),
+ * another caller's saved items never ride, and anonymous callers get
+ * nothing. The Global Library browse (scope=global) is NOT this
+ * contract and must not change: it stays substrate-only on a plain
+ * browse.
+ *
+ * Harness mirrors the original suite's (the route mounted as
+ * production mounts it, DTUs seeded in dtu.create's shape), with
+ * runMacro wired to the REAL saved domain (in-memory store) and
+ * makeCtx stamping the actor the way production's does, so the
+ * saved-set read is exercised end to end.
  *
  * Run:
  *   node --test --test-timeout=300000 tests/dtus-paginated-all-scope.test.js
@@ -22,6 +37,7 @@ import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
 import express from "express";
 import registerSystemRoutes from "../routes/system.js";
+import registerSavedMacros from "../domains/saved.js";
 import { privateDtuHiddenFrom } from "../lib/dtu-read-access.js";
 
 const OWNER = "all-owner";
@@ -34,6 +50,7 @@ function seedDtus() {
     ["dtu_all_own_global", { ...base, id: "dtu_all_own_global", title: "Own Placed Global", scope: "global", visibility: "public", ownerId: OWNER, author: OWNER, source: "user" }],
     ["dtu_all_other_global", { ...base, id: "dtu_all_other_global", title: "Other Global", scope: "global", visibility: "public", ownerId: OTHER, author: OTHER, source: "user" }],
     ["dtu_all_system_global", { ...base, id: "dtu_all_system_global", title: "System Feed", scope: "global", visibility: "public", ownerId: "system", author: "system", source: "feed" }],
+    ["dtu_all_ownerless_global", { ...base, id: "dtu_all_ownerless_global", title: "Ownerless Global", scope: "global", visibility: "public", source: "feed" }],
     ["dtu_all_other_private", { ...base, id: "dtu_all_other_private", title: "Other Private", scope: "local", visibility: "private", ownerId: OTHER, author: OTHER, source: "user" }],
   ]);
 }
@@ -47,6 +64,25 @@ function paginateResults(items, { page = 1, pageSize = 20 } = {}) {
   };
 }
 const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+
+// The real saved domain, registered into a bare registry and driven
+// through a runMacro that mimics production's envelope unwrapping.
+const savedRegistry = new Map();
+registerSavedMacros((domain, action, handler) => {
+  savedRegistry.set(`${domain}.${action}`, handler);
+});
+async function runMacro(domain, action, input, ctx) {
+  const handler = savedRegistry.get(`${domain}.${action}`);
+  if (!handler) return { ok: false, error: "not wired in this harness" };
+  const out = await handler(ctx, input);
+  if (!out || out.ok === false) return out || { ok: false, error: "empty" };
+  return out.result !== undefined ? out.result : out;
+}
+const ctxFor = (userId) => ({ actor: userId ? { userId, role: "member" } : null, userId: userId || null });
+async function saveDtu(userId, refId, title) {
+  const out = await runMacro("saved", "add", { kind: "dtu", refId, title }, ctxFor(userId));
+  assert.ok(out && out.item, `saved.add failed for ${userId}/${refId}: ${JSON.stringify(out)}`);
+}
 
 async function startHttp(STATE) {
   const userVisibleDTUs = (userId) => [...STATE.dtus.values()].filter((d) => {
@@ -70,8 +106,8 @@ async function startHttp(STATE) {
   const passthrough = () => (_req, _res, next) => next();
   registerSystemRoutes(app, {
     STATE,
-    makeCtx: () => ({}),
-    runMacro: async () => ({ ok: false, error: "not wired in this harness" }),
+    makeCtx: (req) => ctxFor(req?.actor?.userId || null),
+    runMacro,
     requireRole: () => passthrough(),
     db: null,
     userVisibleDTUs,
@@ -102,25 +138,42 @@ async function startHttp(STATE) {
 
 const ids = (body) => (body.items || body.dtus || []).map((d) => d.id).sort();
 
-describe("FIX-export-011 — /api/dtus/paginated scope=all is owner-scoped", () => {
+describe("FIX-export-011 — /api/dtus/paginated scope=all is the caller's saved set", () => {
   let http;
   before(async () => {
+    globalThis._concordSTATE = { savedLens: { items: new Map(), folders: new Map() } };
+    // OWNER saves: another user's public DTU, a system DTU, an
+    // ownerless DTU, and one of their own. OTHER saves: OWNER's public
+    // DTU only. Nobody saves dtu_all_own_global for OWNER, and OTHER's
+    // private DTU is never visible to OWNER at all.
+    await saveDtu(OWNER, "dtu_all_other_global", "Other Global");
+    await saveDtu(OWNER, "dtu_all_system_global", "System Feed");
+    await saveDtu(OWNER, "dtu_all_ownerless_global", "Ownerless Global");
+    await saveDtu(OWNER, "dtu_all_own_local", "Own Local");
+    await saveDtu(OTHER, "dtu_all_own_global", "Own Placed Global");
     http = await startHttp({ dtus: seedDtus() });
   });
   after(async () => { if (http) await http.close(); });
 
-  it("scope=all returns the caller's own DTUs only — both scopes, nothing of anyone else's, no system rows", async () => {
+  it("scope=all returns exactly the caller's saved set — another owner's saved DTU rides; system and ownerless rows fall even though saved", async () => {
     const r = await http.get(`/api/dtus/paginated?scope=all&limit=100`, { userId: OWNER });
     assert.equal(r.status, 200);
-    assert.deepEqual(ids(r.body), ["dtu_all_own_global", "dtu_all_own_local"]);
+    assert.deepEqual(ids(r.body), ["dtu_all_other_global", "dtu_all_own_local"]);
   });
 
-  it("scope=all for another caller returns THEIR own — the filter follows the caller, not a fixed set", async () => {
+  it("scope=all follows the caller's OWN saved set — OTHER's export is OTHER's saves, not OWNER's", async () => {
     const r = await http.get(`/api/dtus/paginated?scope=all&limit=100`, { userId: OTHER });
-    assert.deepEqual(ids(r.body), ["dtu_all_other_global", "dtu_all_other_private"]);
+    assert.deepEqual(ids(r.body), ["dtu_all_own_global"]);
   });
 
-  it("scope=all anonymous returns nothing — no placed content, no substrate leak", async () => {
+  it("a caller who saved nothing gets nothing under scope=all — their own DTUs ride scope=mine instead (the interim superseded)", async () => {
+    const mine = await http.get(`/api/dtus/paginated?scope=mine&limit=100`, { userId: OTHER });
+    assert.deepEqual(ids(mine.body), ["dtu_all_other_global", "dtu_all_other_private"]);
+    const fresh = await http.get(`/api/dtus/paginated?scope=all&limit=100`, { userId: "all-third" });
+    assert.deepEqual(ids(fresh.body), []);
+  });
+
+  it("scope=all anonymous returns nothing — no saved set, no substrate leak", async () => {
     const r = await http.get(`/api/dtus/paginated?scope=all&limit=100`);
     assert.deepEqual(ids(r.body), []);
   });
