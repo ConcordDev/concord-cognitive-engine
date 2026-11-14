@@ -46,7 +46,7 @@ interface BillingResult {
   monthlyBreakdown: MonthRow[];
 }
 
-const fmtUsd = (v: number) => `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const fmtUsd = (v: number) => (v == null || !Number.isFinite(v) ? '—' : `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
 let seq = 0;
 const newKey = () => `te_${Date.now()}_${seq++}`;
 

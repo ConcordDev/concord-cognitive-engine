@@ -56,7 +56,7 @@ const fmtUsd = (v: number, opts: Intl.NumberFormatOptions = {}) =>
     ...opts,
   }).format(v);
 
-const fmtPct = (v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
+const fmtPct = (v: number) => (v == null || !Number.isFinite(v) ? '—' : `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`);
 
 function Panel({ title, right, children, className }: { title: string; right?: React.ReactNode; children: React.ReactNode; className?: string }) {
   return (
