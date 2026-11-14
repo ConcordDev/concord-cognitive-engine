@@ -95,6 +95,14 @@ export function AuthPage({ redirectTo: rawRedirectTo = '/', onAuthSuccess, embed
         return;
       }
 
+      // FIX-settings-005: sign-in with two-factor on returns a
+      // challenge instead of a session. Hand off to the second-factor
+      // step, carrying this surface's destination.
+      if (mode === 'signin' && data.twoFactorRequired && data.challengeId) {
+        window.location.href = `/login/2fa?challenge=${encodeURIComponent(data.challengeId)}&from=${encodeURIComponent(redirectTo)}`;
+        return;
+      }
+
       // Success. GB-1536 as amended by founder ruling (2026-11-14):
       // the universe picker and region screen are gone and NO frontend
       // code routes on /api/auth/me's needsOnboarding flag anymore —

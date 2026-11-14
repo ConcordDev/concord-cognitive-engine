@@ -25,6 +25,14 @@ function LoginForm() {
       // Fetch CSRF token before login (needed for the POST itself in production)
       await api.get('/api/auth/csrf-token').catch((e) => console.warn('[Auth] CSRF pre-fetch failed:', e));
       const res = await api.post('/api/auth/login', { username, password });
+      if (res.data?.ok && res.data?.twoFactorRequired && res.data?.challengeId) {
+        // FIX-settings-005: the password checked out, but this account
+        // has two-factor on — no session exists yet. Hand off to the
+        // challenge step, carrying the validated destination.
+        const dest = validateReturnTo(searchParams.get('from'));
+        window.location.href = `/login/2fa?challenge=${encodeURIComponent(res.data.challengeId)}&from=${encodeURIComponent(dest)}`;
+        return;
+      }
       if (res.data?.ok) {
         // Mark as entered so HomeClient shows dashboard
         localStorage.setItem('concord_entered', 'true');

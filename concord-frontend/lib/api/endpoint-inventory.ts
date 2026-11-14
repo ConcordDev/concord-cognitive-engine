@@ -70,6 +70,12 @@ export const ENDPOINT_INVENTORY: EndpointEntry[] = [
 
   // ── Auth ──────────────────────────────────────────────────────
   { method: 'POST', path: '/api/auth/login', usedBy: ['login'], helperKey: 'auth.login' },
+  { method: 'POST', path: '/api/auth/login/verify-2fa', usedBy: ['login'] },
+  { method: 'GET', path: '/api/auth/2fa/status', usedBy: ['settings'] },
+  { method: 'POST', path: '/api/auth/2fa/setup', usedBy: ['settings'] },
+  { method: 'POST', path: '/api/auth/2fa/enable', usedBy: ['settings'] },
+  { method: 'POST', path: '/api/auth/2fa/disable', usedBy: ['settings'] },
+  { method: 'POST', path: '/api/auth/2fa/recovery-codes', usedBy: ['settings'] },
   { method: 'POST', path: '/api/auth/register', usedBy: ['register'], helperKey: 'auth.register' },
   { method: 'POST', path: '/api/auth/logout', usedBy: ['shell'], helperKey: 'auth.logout' },
   { method: 'GET', path: '/api/auth/me', usedBy: ['shell'], helperKey: 'auth.me' },
