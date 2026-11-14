@@ -116,7 +116,7 @@ describe('Plugin Gallery lens page', () => {
     render(<PluginsPage />);
 
     await waitFor(() =>
-      expect(screen.getByText('No plugins have been published to the gallery yet.')).toBeInTheDocument(),
+      expect(screen.getByText('No plugins have been published to the gallery yet — publish the first one below.')).toBeInTheDocument(),
     );
     expect(screen.queryByTestId('plugin-gallery-list')).not.toBeInTheDocument();
   });

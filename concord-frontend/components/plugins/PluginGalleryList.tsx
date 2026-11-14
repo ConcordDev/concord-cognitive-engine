@@ -40,6 +40,40 @@ export function PluginGalleryList() {
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
   const [installTarget, setInstallTarget] = useState<GalleryPlugin | null>(null);
+  // FIX-plugins-001: the gallery had no publish path in the UI although
+  // POST /api/plugins/gallery/publish exists — an empty gallery could
+  // never gain its first plugin from this surface.
+  const [showPublish, setShowPublish] = useState(false);
+  const [pubForm, setPubForm] = useState({ pluginId: '', name: '', version: '1.0.0', description: '', source: '', signature: '' });
+  const [pubBusy, setPubBusy] = useState(false);
+  const [pubError, setPubError] = useState<string | null>(null);
+
+  async function handlePublish(e: React.FormEvent) {
+    e.preventDefault();
+    setPubBusy(true); setPubError(null);
+    try {
+      const res = await fetch('/api/plugins/gallery/publish', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pluginId: pubForm.pluginId.trim(), name: pubForm.name.trim(),
+          version: pubForm.version.trim() || '1.0.0', description: pubForm.description.trim(),
+          source: pubForm.source, signature: pubForm.signature.trim() || undefined,
+        }),
+      });
+      const body = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+      if (body?.ok) {
+        setToast(`Published ${pubForm.name.trim() || pubForm.pluginId.trim()} to the gallery.`);
+        setShowPublish(false);
+        setPubForm({ pluginId: '', name: '', version: '1.0.0', description: '', source: '', signature: '' });
+        await fetchGallery(query);
+      } else {
+        setPubError(body?.error || `Publish failed (HTTP ${res.status})`);
+      }
+    } catch {
+      setPubError('Publish failed — network error.');
+    } finally { setPubBusy(false); }
+  }
   const [toast, setToast] = useState<string | null>(null);
   const [rateError, setRateError] = useState<string | null>(null);
 
@@ -164,7 +198,7 @@ export function PluginGalleryList() {
 
       {hasLoadedOnce && !error && plugins.length === 0 && (
         <p className="text-[11px] text-slate-400">
-          {query.trim() ? `No plugins match "${query.trim()}".` : 'No plugins have been published to the gallery yet.'}
+          {query.trim() ? `No plugins match "${query.trim()}".` : 'No plugins have been published to the gallery yet — publish the first one below.'}
         </p>
       )}
 
@@ -248,6 +282,47 @@ export function PluginGalleryList() {
           ))}
         </ul>
       )}
+
+      <div className="mt-4 border-t border-zinc-800 pt-3">
+        <button type="button" onClick={() => setShowPublish((v) => !v)} aria-expanded={showPublish}
+          className="inline-flex min-h-11 items-center rounded-md border border-zinc-700 px-3 py-1.5 text-[11px] font-medium text-slate-200 hover:bg-zinc-900">
+          Publish a plugin
+        </button>
+        {showPublish && (
+          <form onSubmit={handlePublish} className="mt-3 space-y-2" aria-label="Publish a plugin">
+            <p className="text-[11px] text-slate-400">
+              Plugins run in the sandbox and are validated before listing. Installing users see the
+              plugin&apos;s declared capabilities in a consent dialog before anything loads. A signature
+              is optional; unsigned plugins are labelled as such.
+            </p>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <input aria-label="Plugin ID" placeholder="plugin-id (unique)" value={pubForm.pluginId} required
+                onChange={(e) => setPubForm({ ...pubForm, pluginId: e.target.value })}
+                className="rounded-md border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-[12px] text-slate-100" />
+              <input aria-label="Plugin name" placeholder="Name" value={pubForm.name} required
+                onChange={(e) => setPubForm({ ...pubForm, name: e.target.value })}
+                className="rounded-md border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-[12px] text-slate-100" />
+              <input aria-label="Plugin version" placeholder="Version" value={pubForm.version}
+                onChange={(e) => setPubForm({ ...pubForm, version: e.target.value })}
+                className="rounded-md border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-[12px] text-slate-100" />
+            </div>
+            <input aria-label="Plugin description" placeholder="Description" value={pubForm.description}
+              onChange={(e) => setPubForm({ ...pubForm, description: e.target.value })}
+              className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-[12px] text-slate-100" />
+            <textarea aria-label="Plugin source" placeholder="Plugin source (JavaScript)" value={pubForm.source} required rows={6}
+              onChange={(e) => setPubForm({ ...pubForm, source: e.target.value })}
+              className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-2 py-1.5 font-mono text-[12px] text-slate-100" />
+            <input aria-label="Plugin signature (optional)" placeholder="Signature (optional)" value={pubForm.signature}
+              onChange={(e) => setPubForm({ ...pubForm, signature: e.target.value })}
+              className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-[12px] text-slate-100" />
+            {pubError && <p role="alert" className="text-[11px] text-red-300">{pubError}</p>}
+            <button type="submit" disabled={pubBusy}
+              className="inline-flex min-h-11 items-center rounded-md bg-cyan-600 px-3 py-1.5 text-[11px] font-medium text-white hover:bg-cyan-500 disabled:opacity-40">
+              {pubBusy ? 'Publishing…' : 'Publish to gallery'}
+            </button>
+          </form>
+        )}
+      </div>
 
       {installTarget && (
         <PluginInstallConsent
