@@ -1,18 +1,29 @@
 'use client';
 
 /**
- * Collab — one room.
+ * Collab — rooms, documents, sessions.
  *
- * room-list is the left pane. Open a room calls room-open, then shows
- * the title only after room-list contains that id and the same title,
- * and shows the note only after room-detail returns that same note.
- * A blank title is not sent. A blank note is not sent. Title and note
- * live in collab_rooms, so a server restart still lists them.
- * Participants are not rendered. The hub is a different surface.
+ * room-list is the left pane of the Rooms view. Open a room calls
+ * room-open, then shows the title only after room-list contains that
+ * id and the same title, and shows the note only after room-detail
+ * returns that same note. A blank title is not sent. A blank note is
+ * not sent. Title and note live in collab_rooms, so a server restart
+ * still lists them.
+ *
+ * FIX-collab-001 mounted the rest of the floor on this page: the
+ * Documents and Sessions views are the domain's own substrate
+ * components (CollabDocWorkspace, CollabHub), previously built and
+ * mounted nowhere; a room now carries members with tiers, an invite
+ * flow, a discussion thread and a presence roster
+ * (RoomSharingPanel), and rooms shared with the signed-in user ride
+ * room-list marked as shared.
  */
 
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { CollabDocWorkspace } from '@/components/collab/CollabDocWorkspace';
+import { CollabHub } from '@/components/collab/CollabHub';
+import { RoomSharingPanel } from '@/components/collab/RoomSharingPanel';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
 import { lensRun } from '@/lib/api/client';
@@ -21,20 +32,28 @@ interface RoomRow {
   id: string;
   title: string;
   note: string;
+  shared?: boolean;
+  myTier?: string;
 }
 
 type Phase = 'loading' | 'ready' | 'error';
 
-function rowsFrom(rows: unknown): { id: string; title: string }[] {
+function rowsFrom(rows: unknown): { id: string; title: string; shared?: boolean; myTier?: string }[] {
   if (!Array.isArray(rows)) return [];
-  const out: { id: string; title: string }[] = [];
+  const out: { id: string; title: string; shared?: boolean; myTier?: string }[] = [];
   for (const row of rows) {
     if (!row || typeof row !== 'object') continue;
     const id = (row as { id?: string }).id;
     const title = (row as { title?: string }).title;
     if (typeof id !== 'string' || !id) continue;
     if (typeof title !== 'string' || !title.trim()) continue;
-    out.push({ id, title: title.trim() });
+    const shared = (row as { shared?: unknown }).shared === true;
+    const myTier = (row as { myTier?: unknown }).myTier;
+    out.push({
+      id, title: title.trim(),
+      ...(shared ? { shared: true } : {}),
+      ...(typeof myTier === 'string' ? { myTier } : {}),
+    });
   }
   return out;
 }
@@ -89,9 +108,82 @@ async function readRooms(): Promise<RoomRow[]> {
   const out: RoomRow[] = [];
   for (const row of slim) {
     const detail = await runCollab<{ room?: unknown }>('room-detail', { id: row.id }, 'Could not read the room.');
-    out.push({ id: row.id, title: row.title, note: noteFrom(detail.room) });
+    out.push({
+      id: row.id, title: row.title, note: noteFrom(detail.room),
+      ...(row.shared ? { shared: true } : {}),
+      ...(row.myTier ? { myTier: row.myTier } : {}),
+    });
   }
   return out;
+}
+
+interface RoomInviteRow {
+  id: string;
+  roomId: string;
+  roomTitle: string | null;
+  tier: string;
+  status: string;
+}
+
+/**
+ * Pending room invitations addressed to the signed-in user, with
+ * accept/decline. Fails soft to nothing: a lens whose invite read
+ * fails simply shows no invitations section.
+ */
+function RoomInvites({ onAccepted }: { onAccepted: () => void }) {
+  const [invites, setInvites] = useState<RoomInviteRow[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState('');
+
+  const load = useCallback(async () => {
+    try {
+      const result = await runCollab<{ invitations?: RoomInviteRow[] }>(
+        'room-invite-list', {}, 'Could not read invitations.',
+      );
+      setInvites((result.invitations || []).filter((row) => row.status === 'pending'));
+    } catch {
+      setInvites([]);
+    }
+  }, []);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const respond = useCallback(async (invite: RoomInviteRow, accept: boolean) => {
+    setBusy(true);
+    setNote('');
+    try {
+      await runCollab('room-invite-respond', { inviteId: invite.id, accept }, 'Could not answer that invitation.');
+      setInvites((rows) => rows.filter((row) => row.id !== invite.id));
+      if (accept) onAccepted();
+    } catch (err) {
+      setNote(err instanceof Error ? err.message : 'Could not answer that invitation.');
+    } finally {
+      setBusy(false);
+    }
+  }, [onAccepted]);
+
+  if (invites.length === 0 && !note) return null;
+  return (
+    <section aria-label="Room invitations" data-testid="cb-room-invites" className="mb-5 rounded-2xl border border-white/10 bg-zinc-950 px-6 py-4">
+      <h2 className="text-[14px] font-medium text-zinc-200">Room invitations</h2>
+      <ul className="mt-2 space-y-2">
+        {invites.map((invite) => (
+          <li key={invite.id} className="flex flex-wrap items-center gap-3 text-[14px] text-zinc-300">
+            <span>
+              {invite.roomTitle || 'A room'} <span className="text-zinc-500">· {invite.tier} access</span>
+            </span>
+            <button type="button" disabled={busy} onClick={() => { void respond(invite, true); }} className="text-zinc-100 underline disabled:opacity-60">
+              Accept
+            </button>
+            <button type="button" disabled={busy} onClick={() => { void respond(invite, false); }} className="text-zinc-400 underline hover:text-zinc-200 disabled:opacity-60">
+              Decline
+            </button>
+          </li>
+        ))}
+      </ul>
+      {note && <p role="alert" className="mt-2 text-[13px] text-red-300">{note}</p>}
+    </section>
+  );
 }
 
 interface RoomComposerProps {
@@ -206,6 +298,7 @@ export default function CollabLensPage() {
   const [editNote, setEditNote] = useState('');
   const [confirmClose, setConfirmClose] = useState(false);
   const [receipt, setReceipt] = useState('');
+  const [view, setView] = useState<'rooms' | 'documents' | 'sessions'>('rooms');
 
   const pull = useCallback(async () => readRooms(), []);
 
@@ -303,21 +396,25 @@ export default function CollabLensPage() {
     setBusy(true);
     setActionError('');
     try {
+      // A shared room's edit-tier member edits the note only — the
+      // title is the owner's, and the server refuses a member rename
+      // by name, so the title is not sent at all on that path.
+      const sharedEdit = !!selected.shared;
       await runCollab<{ room?: unknown }>(
         'room-update',
-        { id: selected.id, title: trimmed, note: nextNote },
+        sharedEdit ? { id: selected.id, note: nextNote } : { id: selected.id, title: trimmed, note: nextNote },
         'Could not save that room.',
       );
       // The page's read-back discipline, kept: the edit shows only
       // after the list + detail read the new values back.
       const rows = await readRooms();
       const row = rows.find((item) => item.id === selected.id);
-      if (!row || row.title !== trimmed || row.note !== nextNote) {
+      if (!row || (!sharedEdit && row.title !== trimmed) || row.note !== nextNote) {
         throw new Error('Saved, but the room did not read it back.');
       }
       setRooms(rows);
       setEditing(false);
-      setReceipt(`Saved “${trimmed}”.`);
+      setReceipt(`Saved “${sharedEdit ? row.title : trimmed}”.`);
     } catch (err) {
       setActionError(friendlyRoomError(err instanceof Error ? err.message : '', 'Could not save that room.'));
     } finally {
@@ -358,6 +455,31 @@ export default function CollabLensPage() {
           A room is a title and a note, saved to your account and listed here when you return.
         </p>
 
+        <div role="group" aria-label="Collab views" className="mb-5 flex gap-2">
+          {(
+            [
+              ['rooms', 'Rooms'],
+              ['documents', 'Documents'],
+              ['sessions', 'Sessions'],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              data-testid={`cb-view-${value}`}
+              aria-pressed={view === value}
+              onClick={() => setView(value)}
+              className={`rounded-full border px-4 py-2 text-[14px] ${view === value ? 'border-teal-300/60 text-zinc-50' : 'border-white/10 text-zinc-400 hover:text-zinc-200'}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {view === 'rooms' && (
+        <>
+        {phase === 'ready' && <RoomInvites onAccepted={load} />}
+
         <section
           aria-label="Room"
           className="grid min-h-[22rem] overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 md:grid-cols-[16rem_1fr]"
@@ -393,6 +515,7 @@ export default function CollabLensPage() {
                       className={`text-left font-vault text-[1.35rem] leading-7 ${selected?.id === room.id ? 'text-zinc-100 underline' : 'text-zinc-400 hover:text-zinc-200'}`}
                     >
                       {room.title}
+                      {room.shared ? <span className="ml-2 align-middle font-sans text-[12px] not-italic text-teal-300">shared</span> : null}
                     </button>
                   </li>
                 ))}
@@ -405,24 +528,29 @@ export default function CollabLensPage() {
                 )}
                 {selected && (
                   <div className="mt-5 flex gap-4 text-[14px]">
-                    <button type="button" onClick={startEdit} disabled={busy} className="text-zinc-100 underline disabled:opacity-60">
-                      Edit room
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { void closeRoom(); }}
-                      disabled={busy}
-                      className={confirmClose ? 'font-medium text-red-300 underline' : 'text-zinc-400 underline hover:text-zinc-200'}
-                    >
-                      {confirmClose ? `Delete “${selected.title}”? This permanently deletes the room.` : 'Delete room'}
-                    </button>
-                    {confirmClose && (
+                    {(!selected.shared || selected.myTier === 'edit') && (
+                      <button type="button" onClick={startEdit} disabled={busy} className="text-zinc-100 underline disabled:opacity-60">
+                        Edit room
+                      </button>
+                    )}
+                    {!selected.shared && (
+                      <button
+                        type="button"
+                        onClick={() => { void closeRoom(); }}
+                        disabled={busy}
+                        className={confirmClose ? 'font-medium text-red-300 underline' : 'text-zinc-400 underline hover:text-zinc-200'}
+                      >
+                        {confirmClose ? `Delete “${selected.title}”? This permanently deletes the room.` : 'Delete room'}
+                      </button>
+                    )}
+                    {confirmClose && !selected.shared && (
                       <button type="button" onClick={() => setConfirmClose(false)} className="text-zinc-400 underline hover:text-zinc-200">
                         Keep it
                       </button>
                     )}
                   </div>
                 )}
+                {selected && <RoomSharingPanel key={selected.id} roomId={selected.id} />}
               </div>
             </>
           )}
@@ -434,6 +562,7 @@ export default function CollabLensPage() {
                   <input
                     id="cb-edit-title-field"
                     data-testid="cb-edit-title"
+                    disabled={!!selected.shared}
                     value={editTitle}
                     maxLength={TITLE_MAX}
                     aria-invalid={editTitleError ? true : undefined}
@@ -490,6 +619,20 @@ export default function CollabLensPage() {
         >
           Open a room
         </button>
+        </>
+        )}
+
+        {view === 'documents' && (
+          <section aria-label="Documents" data-testid="cb-documents-view">
+            <CollabDocWorkspace />
+          </section>
+        )}
+
+        {view === 'sessions' && (
+          <section aria-label="Sessions" data-testid="cb-sessions-view">
+            <CollabHub />
+          </section>
+        )}
       </div>
     </LensShell>
   );
