@@ -212,3 +212,57 @@ test("default-deny — world: keeps its rule; unknown prefixes are refused", { s
   assert.equal(await joinOutcome(sockC, "bogus:sb04-test"), "unauthorized");
   assert.equal(await joinOutcome(sockC, "bare-room-name"), "unauthorized");
 });
+
+// ── SB-04 twin leg: the subscribe handler ──────────────────────────
+// subscribe joins session:<id> by the side door; its session leg must
+// carry the same rule as room:join (owner or participant, no
+// owner-less allow, participantIds read). The verdict signal is the
+// UNAUTHORIZED frame plus room membership proven by event delivery —
+// the trailing 'subscribed' ack fires either way.
+
+// Emit subscribe and settle on the handler's verdict:
+// 'unauthorized' (error frame), 'acked' (subscribed ack, no error),
+// or 'timeout'.
+function subscribeOutcome(socket, sessionId, timeoutMs = 4_000) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = (v) => {
+      if (settled) return;
+      settled = true;
+      socket.off("subscribed", onAck);
+      socket.off("error", onError);
+      resolve(v);
+    };
+    const onAck = () => done("acked");
+    const onError = (p) => done(p?.code === "UNAUTHORIZED" ? "unauthorized" : "error");
+    socket.on("subscribed", onAck);
+    socket.on("error", onError);
+    socket.emit("subscribe", { sessionId });
+    setTimeout(() => done("timeout"), timeoutMs);
+  });
+}
+
+test("subscribe twin — a third party is refused and receives nothing; the owner is in", { skip }, async () => {
+  const sockA = await connectSocket(userA.token);
+  const sockC = await connectSocket(userC.token);
+  const aEvents = collectEvents(sockA, "sb04:session-event");
+  const cEvents = collectEvents(sockC, "sb04:session-event");
+
+  assert.equal(await subscribeOutcome(sockC, "sb04-sess-a"), "unauthorized");
+  assert.equal(await subscribeOutcome(sockA, "sb04-sess-a"), "acked");
+
+  const io = globalThis._concordREALTIME?.io;
+  assert.ok(io, "realtime io is live");
+  io.to("session:sb04-sess-a").emit("sb04:session-event", { n: 1 });
+  await wait(600);
+  assert.equal(aEvents.length, 1, "the owner receives the session room's event");
+  assert.equal(cEvents.length, 0, "the refused third party receives nothing");
+});
+
+test("subscribe twin — a participantIds participant subscribes; the owner-less allow is gone", { skip }, async () => {
+  const sockA = await connectSocket(userA.token);
+  const sockC = await connectSocket(userC.token);
+  assert.equal(await subscribeOutcome(sockC, "sb04-sess-shared"), "acked", "a participantIds participant subscribes");
+  assert.equal(await subscribeOutcome(sockC, "sb04-sess-ownerless"), "unauthorized", "owner-less sessions refuse the third party");
+  assert.equal(await subscribeOutcome(sockA, "sb04-sess-ownerless"), "unauthorized", "owner-less sessions refuse everyone");
+});
