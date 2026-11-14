@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { apiHelpers } from '@/lib/api/client';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { ErrorState } from '@/components/common/EmptyState';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import {
@@ -113,6 +114,23 @@ export function StrategiesDeskPanel() {
       queryClient.invalidateQueries({ queryKey: ['metalearning-curricula'] });
     },
     onError: (err) => console.error('runCurriculum failed:', err instanceof Error ? err.message : err),
+  });
+
+  const deleteCurriculumMut = useMutation({
+    mutationFn: (curriculumId: string) => apiHelpers.metalearning.deleteCurriculum(curriculumId),
+    onSuccess: (res, curriculumId) => {
+      const data = res.data as { ok?: boolean; error?: string } | undefined;
+      if (data?.ok === false) {
+        setResults({ error: data.error || 'That curriculum could not be deleted.' });
+        return;
+      }
+      // The row vanishing from Saved curricula is the receipt; if the
+      // deleted curriculum is the one on display, clear the display.
+      setResults((prev: unknown) => ((prev as { id?: string } | null)?.id === curriculumId ? null : prev));
+      queryClient.invalidateQueries({ queryKey: ['metalearning-curricula'] });
+      queryClient.invalidateQueries({ queryKey: ['metalearning-status'] });
+    },
+    onError: (err) => setResults({ error: err instanceof Error ? err.message : 'That curriculum could not be deleted.' }),
   });
 
   const recordOutcome = useMutation({
@@ -500,13 +518,23 @@ export function StrategiesDeskPanel() {
               <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Saved curricula</p>
               <div className="space-y-1">
                 {savedCurricula.map((c) => (
-                  <button
-                    key={c.id}
-                    onClick={() => setResults(c)}
-                    className="w-full text-left text-xs text-gray-300 hover:text-white px-2 py-1 rounded hover:bg-white/5 transition-colors"
-                  >
-                    {c.topic} <span className="text-gray-400">· {c.steps.length} steps{c.createdAt ? ` · ${new Date(c.createdAt).toLocaleDateString()}` : ''}</span>
-                  </button>
+                  <div key={c.id} className="flex items-center gap-1">
+                    <button
+                      onClick={() => setResults(c)}
+                      className="flex-1 text-left text-xs text-gray-300 hover:text-white px-2 py-1 rounded hover:bg-white/5 transition-colors"
+                    >
+                      {c.topic} <span className="text-gray-400">· {c.steps.length} steps{c.createdAt ? ` · ${new Date(c.createdAt).toLocaleDateString()}` : ''}</span>
+                    </button>
+                    <StickyDeleteConfirm
+                      onConfirm={() => deleteCurriculumMut.mutate(c.id)}
+                      disabled={deleteCurriculumMut.isPending}
+                      className="text-rose-400 px-1"
+                      armLabel={<Trash2 className="w-3 h-3" />}
+                      confirmLabel={`Delete “${c.topic}”?`}
+                      armAriaLabel={`Delete curriculum ${c.topic}`}
+                      confirmAriaLabel={`Confirm delete curriculum ${c.topic}`}
+                    />
+                  </div>
                 ))}
               </div>
             </div>

@@ -30,6 +30,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { ChartKit, TimelineView, TreeDiagram } from '@/components/viz';
 import type { TimelineEvent, TreeNode } from '@/components/viz';
 
@@ -207,7 +208,7 @@ export function LockProfiler() {
         .split('\n')
         .map((s) => s.trim())
         .filter(Boolean);
-      await recordEvent({
+      const rec = await recordEvent({
         thread: form.thread.trim(),
         lock: form.lock.trim(),
         action: form.action,
@@ -219,7 +220,9 @@ export function LockProfiler() {
       setEvents((prev) => [
         ...prev,
         {
-          id: `local_${Date.now()}`,
+          // The server-recorded id, so the chip's per-event delete
+          // (FIX-lock-004) names the real trace record.
+          id: rec?.recorded?.id || `local_${Date.now()}`,
           thread: form.thread.trim(),
           lock: form.lock.trim(),
           action: form.action,
@@ -274,12 +277,14 @@ export function LockProfiler() {
         { thread: 'worker-4', lock: 'cache', action: 'acquire', holdMs: 15, ts: t0 + 85, stack: ['readPath()', 'cacheGet()'] },
         { thread: 'worker-4', lock: 'cache', action: 'release', ts: t0 + 100, stack: ['readPath()', 'cacheGet()'] },
       ];
+      const recordedIds: (string | undefined)[] = [];
       for (const ev of scenario) {
-        await recordEvent(ev);
+        const r = await recordEvent(ev);
+        recordedIds.push(r?.recorded?.id);
       }
       setEvents(
         scenario.map((ev, i) => ({
-          id: `s_${i}`,
+          id: recordedIds[i] || `s_${i}`,
           thread: ev.thread,
           lock: ev.lock,
           action: ev.action as LockEvent['action'],
@@ -296,6 +301,23 @@ export function LockProfiler() {
       setBusy(false);
     }
   }, [recordEvent, refreshAll]);
+
+  const [armedEventId, setArmedEventId] = useState<string | null>(null);
+  const handleDeleteEvent = useCallback(async (id: string) => {
+    setErr(null);
+    try {
+      const res = await lensRun('lock', 'deleteLockEvent', { id });
+      if (res.data?.ok === false) {
+        throw new Error(res.data?.error || 'deleteLockEvent failed');
+      }
+      setEvents((prev) => prev.filter((ev) => ev.id !== id));
+      await refreshAll();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'deleteLockEvent failed');
+    } finally {
+      setArmedEventId(null);
+    }
+  }, [refreshAll]);
 
   const handleClear = useCallback(async () => {
     setBusy(true);
@@ -402,13 +424,15 @@ export function LockProfiler() {
               )}
               Re-analyze
             </button>
-            <button
-              onClick={handleClear}
+            <StickyDeleteConfirm
+              onConfirm={() => { void handleClear(); }}
               disabled={busy}
               className="btn-secondary text-xs flex items-center gap-1 disabled:opacity-50 text-rose-400"
-            >
-              <Trash2 className="w-3 h-3" /> Clear
-            </button>
+              armLabel={<><Trash2 className="w-3 h-3" /> Clear</>}
+              confirmLabel="Clear the whole trace?"
+              armAriaLabel="Clear lock trace"
+              confirmAriaLabel="Confirm clear lock trace"
+            />
           </div>
         </div>
 
@@ -476,7 +500,7 @@ export function LockProfiler() {
             {events.slice(-20).map((ev) => (
               <span
                 key={ev.id}
-                className={`text-[10px] px-1.5 py-0.5 rounded font-mono border ${
+                className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded font-mono border ${
                   ev.action === 'acquire'
                     ? 'border-neon-cyan/30 text-neon-cyan'
                     : ev.action === 'wait'
@@ -486,6 +510,17 @@ export function LockProfiler() {
                 title={ev.stack.join(' / ')}
               >
                 {ev.thread}·{ev.lock}·{ev.action}
+                <StickyDeleteConfirm
+                  armed={armedEventId === ev.id}
+                  onArm={() => setArmedEventId(ev.id)}
+                  onCancel={() => setArmedEventId(null)}
+                  onConfirm={() => { void handleDeleteEvent(ev.id); }}
+                  armLabel={<Trash2 className="w-2.5 h-2.5" />}
+                  confirmLabel="Delete?"
+                  armAriaLabel={`Delete event ${ev.thread} ${ev.lock} ${ev.action}`}
+                  confirmAriaLabel={`Confirm delete event ${ev.thread} ${ev.lock} ${ev.action}`}
+                  className="text-rose-400"
+                />
               </span>
             ))}
           </div>

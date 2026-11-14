@@ -523,6 +523,28 @@ export default function registerLockActions(registerLensAction) {
   });
 
   /**
+   * deleteLockEvent — remove ONE recorded event from the caller's own
+   * trace (FIX-lock-004: the trace had only a bulk Clear). The store
+   * is per-user, so an event id belonging to another user is simply
+   * not found here — the refusal names that plainly.
+   * params: { id }
+   */
+  registerLensAction("lock", "deleteLockEvent", (ctx, artifact, params) => {
+    try {
+      const id = String(params?.id || artifact?.data?.id || "");
+      if (!id) return { ok: false, error: "event id required" };
+      const store = tracesFor(ctx);
+      const idx = store.findIndex((ev) => ev.id === id);
+      if (idx === -1) return { ok: false, error: `lock event ${id} not found in your trace` };
+      const [removed] = store.splice(idx, 1);
+      saveLockState();
+      return { ok: true, result: { deleted: removed.id, totalEvents: store.length } };
+    } catch (e) {
+      return { ok: false, error: e?.message || "deleteLockEvent failed" };
+    }
+  });
+
+  /**
    * holdTimeline  [M]
    * Live lock-hold timeline — reconstruct hold spans from the recorded
    * acquire→release trace so the UI can draw which thread held which
