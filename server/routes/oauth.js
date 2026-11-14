@@ -16,6 +16,7 @@
 
 import crypto from "crypto";
 import { asyncHandler } from "../lib/async-handler.js";
+import { signInChallenges } from "../lib/totp.js";
 import {
   getAvailableProviders,
   generateOAuthState,
@@ -215,6 +216,37 @@ export default function registerOAuthRoutes(app, {
    * confirm-age gate keeps it and carries it through.
    */
   function completeOAuthLogin(req, res, user, provider, isNewAccount, returnTo = null) {
+    // Two-factor gate (FIX-settings-005): an enrolled EXISTING account
+    // earns no session from the provider callback alone — mint a
+    // sign-in challenge and send the browser to the same second-factor
+    // step the password path uses. No tokens, no cookies, no
+    // last-login stamp until POST /api/auth/login/verify-2fa completes
+    // it. Brand-new accounts pass through (no 2FA can exist yet), as
+    // does any DB without the user_totp table.
+    if (!isNewAccount && db) {
+      let enabled = false;
+      try {
+        const row = db.prepare("SELECT enabled FROM user_totp WHERE user_id = ?").get(user.id);
+        enabled = !!(row && row.enabled);
+      } catch (_e) { enabled = false; }
+      if (enabled) {
+        const challengeId = signInChallenges.mint(user.id);
+        auditLog("auth", "login_2fa_challenge", {
+          userId: user.id,
+          username: user.username,
+          provider,
+          ip: req.ip,
+          userAgent: req.headers["user-agent"],
+        });
+        const challengeUrl = new URL(FRONTEND_URL);
+        challengeUrl.pathname = "/login/2fa";
+        challengeUrl.searchParams.set("challenge", challengeId);
+        if (returnTo) challengeUrl.searchParams.set("from", returnTo);
+        res.redirect(302, challengeUrl.toString());
+        return;
+      }
+    }
+
     // Update last login
     AuthDB.updateUserLogin(user.id);
 

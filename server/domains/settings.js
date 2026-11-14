@@ -521,22 +521,34 @@ export default function registerSettingsActions(registerLensAction) {
   // ---- account / security -------------------------------------------------
 
   // accountOverview — what the settings lens can honestly report. Two-factor
-  // auth is not implemented (no TOTP/WebAuthn enrolment exists and the login
-  // flow has no second step), so it is reported as unavailable rather than as
-  // a toggleable switch. Per-device session history is not recorded at login,
-  // so only the request's own session is listed; real "sign out everywhere"
-  // is POST /api/auth/revoke-all-sessions, real linked sign-in providers are
-  // GET /api/auth/me/connections.
+  // auth (FIX-settings-005) is REAL: TOTP enrolment lives at
+  // POST /api/auth/2fa/setup + /enable and the second factor is enforced
+  // at sign-in, so the overview reads the caller's actual state from the
+  // user_totp table (migration 511) through ctx.db. A database without
+  // the table (a minimal build) reports unavailable — honestly, because
+  // on that database it is. Per-device session history is not recorded at
+  // login, so only the request's own session is listed; real "sign out
+  // everywhere" is POST /api/auth/revoke-all-sessions, real linked sign-in
+  // providers are GET /api/auth/me/connections.
   reg("settings", "accountOverview", (ctx) => {
     try {
       const userId = actorId(ctx);
       const sec = ensureSecurity(userId);
+      let twoFactorAvailable = false;
+      let twoFactorEnabled = false;
+      try {
+        if (ctx?.db && typeof ctx.db.prepare === "function") {
+          const row = ctx.db.prepare("SELECT enabled FROM user_totp WHERE user_id = ?").get(userId);
+          twoFactorAvailable = true;
+          twoFactorEnabled = !!(row && row.enabled);
+        }
+      } catch (_e) { /* user_totp absent on this DB → 2FA unavailable here */ }
       return {
         ok: true,
         result: {
           userId,
-          twoFactorAvailable: false,
-          twoFactorEnabled: false,
+          twoFactorAvailable,
+          twoFactorEnabled,
           lastPasswordChange: sec.lastPasswordChange,
         },
       };
@@ -571,12 +583,15 @@ export default function registerSettingsActions(registerLensAction) {
   reg("settings", "revokeSession", () => ({ ok: false, error: NOT_TRACKED }));
   reg("settings", "revokeOtherSessions", () => ({ ok: false, error: NOT_TRACKED }));
 
-  // setTwoFactor — there is no second-factor mechanism to enable, so claiming
-  // one (and issuing "recovery codes" that recover nothing) would be a false
-  // security promise. Honest failure until real TOTP/WebAuthn lands.
+  // setTwoFactor — 2FA is real now (FIX-settings-005), but it is still not
+  // a toggle: enrolment must verify a code from the user's authenticator
+  // before enforcement turns on, and that verified flow is owned by the
+  // auth routes. A bare macro flipping the flag (or issuing "recovery
+  // codes" from here) would be a false security promise, so this refuses
+  // and names the real path.
   reg("settings", "setTwoFactor", () => ({
     ok: false,
-    error: "two-factor authentication is not available yet — no second factor is enforced at sign-in",
+    error: "two-factor authentication is not available as a settings toggle — enrol from Account & Security, where a code from your authenticator is verified before it turns on (POST /api/auth/2fa/setup, then POST /api/auth/2fa/enable)",
   }));
 
   // changePassword — pre-flight policy check + bookkeeping ONLY. This does
