@@ -19,9 +19,12 @@ interface AQIPanelProps {
 }
 
 export function AQIPanel({ lat, lng }: AQIPanelProps) {
-  const { data, loading, error, refresh, lastFetchedAt } = useAqiData({ lat, lng });
+  const { data, loading, locating, error, refresh, lastFetchedAt } = useAqiData({ lat, lng });
 
-  if (loading && !data) {
+  // FIX-graph-010: while the coordinates are still resolving the panel
+  // used to fall through to the failure branch ('AQI failed: no data')
+  // — the locating phase is a loading state, not a failure.
+  if ((loading || locating) && !data) {
     return (
       <div className="bg-[#0d1117] border border-lattice-border rounded-lg p-6 flex items-center justify-center text-gray-400">
         <Loader2 className="w-5 h-5 animate-spin mr-2" /> {data ? 'Refreshing…' : 'Locating…'}
