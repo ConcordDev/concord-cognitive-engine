@@ -1572,7 +1572,7 @@ export function EventsWorkbench({
                   </div>
                 </div>
               ) : (
-                <p className={ds.textMuted}>No attendees yet. Be the first to RSVP!</p>
+                <p className={ds.textMuted}>No attendees yet — registrations will appear here as guests RSVP.</p>
               );
             })()}
           </div>
