@@ -415,30 +415,100 @@ export function createCraftingRouter({ db, requireAuth }) {
     }
   });
 
+  // FIX-crafting-004 — the project record a piece carries in
+  // data.project: materials, steps, status, photo, notes (the bench's
+  // project editor). Validation speaks: every refusal names its field.
+  const PROJECT_STATUSES = ["planning", "in_progress", "paused", "finished"];
+  function validateCraftingProject(input) {
+    if (!input || typeof input !== "object" || Array.isArray(input)) {
+      return { error: "project must be an object" };
+    }
+    const status = input.status === undefined ? "planning" : input.status;
+    if (!PROJECT_STATUSES.includes(status)) {
+      return { error: `project.status must be one of ${PROJECT_STATUSES.join(", ")}` };
+    }
+    const photoUrl = input.photoUrl === undefined ? "" : input.photoUrl;
+    if (typeof photoUrl !== "string" || photoUrl.length > 500 || (photoUrl && !/^https?:\/\//i.test(photoUrl))) {
+      return { error: "project.photoUrl must be an http(s) URL or empty" };
+    }
+    const notes = input.notes === undefined ? "" : input.notes;
+    if (typeof notes !== "string" || notes.length > 2000) {
+      return { error: "project.notes must be text of at most 2000 characters" };
+    }
+    const rawMaterials = input.materials === undefined ? [] : input.materials;
+    if (!Array.isArray(rawMaterials) || rawMaterials.length > 50) {
+      return { error: "project.materials must be a list of at most 50" };
+    }
+    const materials = [];
+    for (let i = 0; i < rawMaterials.length; i++) {
+      const m = rawMaterials[i];
+      const label = `project.materials[${i}]`;
+      if (!m || typeof m !== "object") return { error: `${label} must be an object` };
+      const name = typeof m.name === "string" ? m.name.trim() : "";
+      if (!name || name.length > 120) return { error: `${label}.name is required (at most 120 characters)` };
+      const quantity = m.quantity;
+      if (typeof quantity !== "number" || !Number.isFinite(quantity) || quantity < 0 || quantity > 100000) {
+        return { error: `${label}.quantity must be a number from 0 to 100000` };
+      }
+      const unitCost = m.unitCost;
+      if (typeof unitCost !== "number" || !Number.isFinite(unitCost) || unitCost < 0 || unitCost > 1000000) {
+        return { error: `${label}.unitCost must be a number from 0 to 1000000` };
+      }
+      materials.push({ name, quantity, unitCost });
+    }
+    const rawSteps = input.steps === undefined ? [] : input.steps;
+    if (!Array.isArray(rawSteps) || rawSteps.length > 100) {
+      return { error: "project.steps must be a list of at most 100" };
+    }
+    const steps = [];
+    for (let i = 0; i < rawSteps.length; i++) {
+      const s = rawSteps[i];
+      const label = `project.steps[${i}]`;
+      if (!s || typeof s !== "object") return { error: `${label} must be an object` };
+      const text = typeof s.label === "string" ? s.label.trim() : "";
+      if (!text || text.length > 200) return { error: `${label}.label is required (at most 200 characters)` };
+      steps.push({ label: text, done: s.done === true });
+    }
+    return { project: { status, photoUrl, notes, materials, steps } };
+  }
+
   // ── Bench lifecycle (D2) ── rename / remove one of the caller's own
   // saved pieces. Owner-scoped exactly like GET /recipes above: a piece
   // that is not the caller's is a 404, never a write. The row's title and
   // its spec name move together — the bench shows the title, the design
-  // carries the spec.
+  // carries the spec. FIX-crafting-004 widens the same PATCH: an
+  // optional validated `project` rides along (merged into
+  // data.project), and a project-only save keeps the existing title —
+  // the title is required only when no project is sent.
   router.patch("/recipes/:id", (req, res) => {
     try {
       const userId = req.user.id;
       const name = typeof req.body?.title === "string" ? req.body.title.trim() : "";
-      if (!name) return res.status(422).json({ ok: false, error: "name required" });
+      const hasProject = req.body != null && typeof req.body === "object" && req.body.project !== undefined;
+      if (!name && !hasProject) return res.status(422).json({ ok: false, error: "name required" });
       if (name.length > 200) return res.status(422).json({ ok: false, error: "name too long" });
+      let project;
+      if (hasProject) {
+        const checked = validateCraftingProject(req.body.project);
+        if (checked.error) return res.status(422).json({ ok: false, error: checked.error });
+        project = checked.project;
+      }
       const row = db.prepare(
-        "SELECT data FROM dtus WHERE id = ? AND creator_id = ? AND type = 'recipe'"
+        "SELECT title, data FROM dtus WHERE id = ? AND creator_id = ? AND type = 'recipe'"
       ).get(req.params.id, userId);
       if (!row) return res.status(404).json({ ok: false, error: "recipe not found" });
+      const finalName = name || row.title;
       let data = {};
       try { data = JSON.parse(row.data || "{}"); } catch { data = {}; }
-      if (data && typeof data === "object" && data.spec && typeof data.spec === "object") {
+      if (!data || typeof data !== "object") data = {};
+      if (name && data.spec && typeof data.spec === "object") {
         data = { ...data, spec: { ...data.spec, name } };
       }
+      if (project) data = { ...data, project };
       db.prepare(
         "UPDATE dtus SET title = ?, data = ? WHERE id = ? AND creator_id = ?"
-      ).run(name, JSON.stringify(data), req.params.id, userId);
-      res.json({ ok: true, recipe: { id: req.params.id, name } });
+      ).run(finalName, JSON.stringify(data), req.params.id, userId);
+      res.json({ ok: true, recipe: { id: req.params.id, name: finalName, ...(project ? { project } : {}) } });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }

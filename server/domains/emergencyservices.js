@@ -496,7 +496,12 @@ export default function registerEmergencyServicesActions(registerLensAction) {
       if (!scope.ok) return scope;
       const incident = emList(s.incidents, scope.key).find((i) => i.id === params.incidentId);
       if (!incident) return { ok: false, error: "incident not found" };
-      if (!emHasGeo(incident)) return { ok: false, error: "incident has no map position" };
+      // FIX-emergency-services-010: a position-less incident is a normal
+      // state (geo is optional at create; the detail panel renders its
+      // "add lat/lng" note for exactly this case), not a failed request.
+      // Answer ok with the empty ranking + noPosition so merely opening
+      // the detail does not book a failed request on the shell's tracker.
+      if (!emHasGeo(incident)) return { ok: true, result: { incidentId: incident.id, recommended: null, ranked: [], candidateCount: 0, noPosition: true } };
       const iLat = incident.lat, iLng = emLngOf(incident);
       const candidates = emList(s.units, scope.key)
         .filter((u) => u.status === "available" && emHasGeo(u))
