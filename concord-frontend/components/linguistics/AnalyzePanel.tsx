@@ -49,6 +49,7 @@ export function AnalyzePanel() {
       <div className="flex gap-3">
         <input
           type="text"
+          data-open-text-target
           value={analyzeText}
           onChange={e => { setAnalyzeText(e.target.value); if (!e.target.value.trim()) setAnalyzeResult(null); }}
           onKeyDown={e => e.key === 'Enter' && handleAnalyze()}
