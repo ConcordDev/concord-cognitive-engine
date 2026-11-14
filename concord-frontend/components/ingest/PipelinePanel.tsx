@@ -1240,7 +1240,7 @@ interface OcrResult {
   avgConfidence: number | null; lowConfidencePages: number[];
   headings: { page: number; text: string }[];
   perPage: { page: number; wordCount: number; charCount: number; lineCount: number; headingCount: number; confidence: number | null; empty: boolean }[];
-  chunkCount: number; documentText: string;
+  chunkCount: number; chunks: string[]; documentText: string;
 }
 
 function OcrTab({
@@ -1342,6 +1342,42 @@ function OcrTab({
                   <span className="truncate">{h.text}</span>
                 </div>
               ))}
+            </div>
+          )}
+          {/* FIX-ingest-008: the macro returns the full structure —
+              per-page fields and the chunk texts themselves — but the
+              tab used to render only the count tiles, so there was
+              nothing to review. The structured output is shown below:
+              every page's fields, then every chunk's text. */}
+          {result.perPage.length > 0 && (
+            <div className="space-y-1">
+              <h4 className="text-xs font-semibold text-white">Pages</h4>
+              {result.perPage.map((p) => (
+                <div key={p.page} className="flex flex-wrap items-center gap-x-2 text-[11px] text-gray-300">
+                  <span className="text-gray-600">p{p.page}</span>
+                  <span>{p.wordCount} words</span>
+                  <span className="text-gray-600">·</span>
+                  <span>{p.lineCount} lines</span>
+                  <span className="text-gray-600">·</span>
+                  <span>{p.headingCount} headings</span>
+                  <span className="text-gray-600">·</span>
+                  <span>{p.confidence != null ? `${(p.confidence * 100).toFixed(0)}% confidence` : 'no confidence reported'}</span>
+                  {p.empty && <span className="text-yellow-400">· empty page</span>}
+                </div>
+              ))}
+            </div>
+          )}
+          {result.chunks.length > 0 && (
+            <div className="space-y-1.5">
+              <h4 className="text-xs font-semibold text-white">Chunks for review</h4>
+              <div className="space-y-1.5 max-h-64 overflow-y-auto">
+                {result.chunks.map((c, i) => (
+                  <div key={i} className="rounded border border-lattice-border bg-lattice-surface px-2.5 py-2">
+                    <p className="text-[10px] uppercase tracking-wider text-gray-500">Chunk {i + 1} · {c.length} chars</p>
+                    <p className="mt-1 whitespace-pre-wrap text-[11px] text-gray-300">{c}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
