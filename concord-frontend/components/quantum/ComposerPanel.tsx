@@ -8,7 +8,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Atom, Zap, Play, Loader2, Layers, X, StepForward,
-  StepBack, Save, FolderOpen, Trash2, Download, Upload, Sparkles,
+  StepBack, Save, FolderOpen, Trash2, Download, Upload, Sparkles, Copy, Check,
 } from 'lucide-react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensState } from '@/hooks/useLensState';
@@ -174,6 +174,21 @@ export function ComposerPanel() {
     const res = await run('exportQASM', { circuit });
     if (res) setQasm((res as { qasm: string }).qasm || '');
   }, [circuit, run]);
+
+  // FIX-quantum-005: the exported QASM used to land in the textarea
+  // and stop there — no way to take the file out of the lens. Copy
+  // puts the exact source on the clipboard with a visible confirm.
+  const [qasmCopied, setQasmCopied] = useState(false);
+  const handleCopyQASM = useCallback(async () => {
+    if (!qasm.trim()) return;
+    try {
+      await navigator.clipboard.writeText(qasm);
+      setQasmCopied(true);
+      setTimeout(() => setQasmCopied(false), 2000);
+    } catch {
+      setError('Copy failed — select the QASM text and copy it manually.');
+    }
+  }, [qasm]);
 
   const handleImportQASM = useCallback(async () => {
     if (!qasm.trim()) { setError('Paste OpenQASM source first.'); return; }
@@ -545,6 +560,13 @@ export function ComposerPanel() {
           <button onClick={handleImportQASM} disabled={!!busy}
             className="btn-neon flex items-center gap-1.5 disabled:opacity-40">
             <Upload className="w-4 h-4" /> Import QASM
+          </button>
+          <button onClick={handleCopyQASM} disabled={!qasm.trim()}
+            data-testid="quantum-copy-qasm"
+            className="btn-neon flex items-center gap-1.5 disabled:opacity-40">
+            {qasmCopied
+              ? <><Check className="w-4 h-4" /> Copied</>
+              : <><Copy className="w-4 h-4" /> Copy QASM</>}
           </button>
         </div>
       </div>
