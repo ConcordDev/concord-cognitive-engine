@@ -161,7 +161,8 @@ import dynamicSprint11 from 'next/dynamic';
 const AgentModePanel = dynamicSprint11(() => import('@/components/chat/AgentModePanel'), { ssr: false });
 const InitiativeBell = dynamicSprint11(() => import('@/components/chat/InitiativeBell'), { ssr: false });
 import { useEvent } from '@/lib/realtime/event-bus';
-import { createSseParser, waitForSavedReply, fetchSessionMessages, type SavedChatMessage } from '@/lib/chat/reply-reconcile';
+import { createSseParser, waitForSavedReply, fetchSessionMessages, mergeHydratedThread, type SavedChatMessage } from '@/lib/chat/reply-reconcile';
+import { createStreamDeadline } from '@/lib/chat/stream-deadline';
 import { RunCard } from '@/components/cockpit/RunCard';
 import { isCockpitEvent, type PublicRun, type PublicStep } from '@/lib/cockpit/run-client';
 import {
@@ -785,6 +786,11 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
       setThreadLoading(false);
       return;
     }
+    // FIX-chat-001: the ids the thread holds as the fetch starts belong
+    // to the previous selection; a send completing mid-fetch appends to
+    // the live thread, and hydration must merge around those appends
+    // (see mergeHydratedThread), never replace them away.
+    const baseIds = new Set(localMessages.map((m) => m.id));
     let cancelled = false;
     setThreadLoading(true);
     (async () => {
@@ -819,7 +825,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
             confidenceReason: typeof meta.answerConfidenceReason === 'string' ? meta.answerConfidenceReason : undefined,
           };
         });
-        setLocalMessages(hydrated);
+        setLocalMessages((prev) => mergeHydratedThread(hydrated, prev, baseIds));
         // Backfill localStorage so the next open is hot-path again.
         try { saveMessagesForSession(selectedConversation, hydrated as ChatMessageLike[]); } catch { /* private mode */ }
       } catch { /* anon, offline, or 403 — leave empty */ }
@@ -1300,7 +1306,13 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
       // the stream (flagged as a stall, NOT a user abort) so the catch below
       // falls through to the buffered POST instead of hanging. The nginx 15s
       // SSE heartbeat normally keeps bytes flowing; this is the client backstop.
+      // FIX-goddess-001: heartbeats are bytes too, so the idle watchdog alone
+      // cannot bound the turn — a stream that heartbeats but never answers
+      // re-arms it forever and the fallback/error paths never run. The stream
+      // leg also carries a TOTAL deadline (the proxy ceiling the buffered
+      // POST already lives under); expiry is treated exactly like a stall.
       const IDLE_STALL_MS = 45000;
+      const STREAM_TOTAL_MS = 120000;
       let idleStalled = false;
 
       // If delivery fails after the server already finished the turn (stream
@@ -1405,28 +1417,28 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
           });
 
           if (reader) {
-            let idleTimer: ReturnType<typeof setTimeout> | null = null;
-            const armIdle = () => {
-              if (idleTimer) clearTimeout(idleTimer);
-              idleTimer = setTimeout(() => {
+            const deadline = createStreamDeadline({
+              idleMs: IDLE_STALL_MS,
+              totalMs: STREAM_TOTAL_MS,
+              onExpire: () => {
                 idleStalled = true;
                 try { reader.cancel(); } catch { /* already closed */ }
                 try { abortController.abort(); } catch { /* already aborted */ }
-              }, IDLE_STALL_MS);
-            };
+              },
+            });
             try {
-              armIdle(); // start the clock before the first read
+              deadline.start(); // start the clocks before the first read
               while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
-                armIdle(); // bytes arrived — reset the stall clock
+                deadline.beat(); // bytes arrived — reset the stall clock (never the total)
                 // Lines can be split across reads; the parser keeps the tail.
                 sse.push(decoder.decode(value, { stream: true }));
               }
               sse.push(decoder.decode());
               sse.end();
             } finally {
-              if (idleTimer) clearTimeout(idleTimer);
+              deadline.stop();
             }
           }
 

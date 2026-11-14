@@ -34,6 +34,7 @@
 // the live value comes from resolveAgentMaxTurns.
 
 import { sanitizeAgentHistory, DONT_INVENT_LINE } from "./chat/agent-history-sanitize.js";
+import { withAskGrant } from "./mcp-hermes-identity.js";
 import { brainChat, provenanceFrom } from "./byo-router.js";
 import { normalizeToolCall, normalizeCallParams } from "./chat/tool-call-normalize.js";
 import { cockpitFlag } from "./cockpit/flags.js";
@@ -1166,7 +1167,7 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         // Same MCP execution-bridge handlers external clients use (audit /
         // auth / dry_run). In-process — not an HTTP self-fetch.
         const { runLensActionMcp } = await import("./mcp-execution-bridge.js");
-        const actor = ctx?.actor || (ctx?.userId ? { userId: ctx.userId, id: ctx.userId } : null);
+        const actor = withAskGrant(ctx?.actor || (ctx?.userId ? { userId: ctx.userId, id: ctx.userId } : null));
         const bridge = await runLensActionMcp(
           ctx?.db || null,
           {
@@ -1447,7 +1448,7 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
       }
       case "conkay_solver_list": {
         const { conkaySolverListMcp } = await import("./mcp-execution-bridge.js");
-        const actor = ctx?.actor || (ctx?.userId ? { userId: ctx.userId, id: ctx.userId } : null);
+        const actor = withAskGrant(ctx?.actor || (ctx?.userId ? { userId: ctx.userId, id: ctx.userId } : null));
         const bridge = await conkaySolverListMcp(
           ctx?.db || null,
           { domain: call.params.domain, fidelity: call.params.fidelity },
@@ -1464,7 +1465,7 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
       }
       case "conkay_ir_schema": {
         const { conkayIrSchemaMcp } = await import("./mcp-execution-bridge.js");
-        const actor = ctx?.actor || (ctx?.userId ? { userId: ctx.userId, id: ctx.userId } : null);
+        const actor = withAskGrant(ctx?.actor || (ctx?.userId ? { userId: ctx.userId, id: ctx.userId } : null));
         const bridge = await conkayIrSchemaMcp(
           ctx?.db || null, {}, ctx?.STATE || ctx?.state || null,
           { actor, req: ctx?.req || null },
@@ -1479,7 +1480,7 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
       }
       case "conkay_solve": {
         const { conkaySolveMcp } = await import("./mcp-execution-bridge.js");
-        const actor = ctx?.actor || (ctx?.userId ? { userId: ctx.userId, id: ctx.userId } : null);
+        const actor = withAskGrant(ctx?.actor || (ctx?.userId ? { userId: ctx.userId, id: ctx.userId } : null));
         const bridge = await conkaySolveMcp(
           ctx?.db || null,
           {
@@ -1532,7 +1533,7 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           };
         }
         const { conkayCompileBriefMcp } = await import("./mcp-execution-bridge.js");
-        const actor = ctx?.actor || (ctx?.userId ? { userId: ctx.userId, id: ctx.userId } : null);
+        const actor = withAskGrant(ctx?.actor || (ctx?.userId ? { userId: ctx.userId, id: ctx.userId } : null));
         const bridge = await conkayCompileBriefMcp(
           ctx?.db || null,
           { brief },
@@ -1588,7 +1589,7 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         const domain = String(call.params.domain || "");
         if (!domain) return { tool: call.tool, ok: false, error: "domain required" };
         const { listLensActionsMcp } = await import("./mcp-execution-bridge.js");
-        const actor = ctx?.actor || (ctx?.userId ? { userId: ctx.userId, id: ctx.userId } : null);
+        const actor = withAskGrant(ctx?.actor || (ctx?.userId ? { userId: ctx.userId, id: ctx.userId } : null));
         const bridge = await listLensActionsMcp(
           ctx?.db || null,
           { domain },
