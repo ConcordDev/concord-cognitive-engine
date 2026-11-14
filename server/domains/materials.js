@@ -121,7 +121,11 @@ export default function registerMaterialsActions(registerLensAction) {
       }
       if (requirements.maxDensity) {
         const val = parseFloat(mat.density) || 0;
-        if (val <= requirements.maxDensity || val === 0) passes.push(`Density: ${val} <= ${requirements.maxDensity} g/cm\u00B3`);
+        // FIX-materials-008: an unrecorded density (parses to 0) is not
+        // a pass -- no data cannot satisfy a maximum; it fails
+        // as not recorded, like a property that was never measured.
+        if (val === 0) fails.push(`Density: not recorded (requirement <= ${requirements.maxDensity} g/cm\u00B3)`);
+        else if (val <= requirements.maxDensity) passes.push(`Density: ${val} <= ${requirements.maxDensity} g/cm\u00B3`);
         else fails.push(`Density: ${val} > ${requirements.maxDensity} g/cm\u00B3`);
       }
       if (requirements.minMelting) {
@@ -131,7 +135,10 @@ export default function registerMaterialsActions(registerLensAction) {
       }
       if (requirements.maxCost) {
         const val = parseFloat(mat.pricePerUnit || mat.cost) || 0;
-        if (val <= requirements.maxCost || val === 0) passes.push(`Cost: $${val} <= $${requirements.maxCost}`);
+        // FIX-materials-008: same rule as density — an unrecorded cost
+        // is not a free material; it fails as not recorded.
+        if (val === 0) fails.push(`Cost: not recorded (requirement <= $${requirements.maxCost})`);
+        else if (val <= requirements.maxCost) passes.push(`Cost: $${val} <= $${requirements.maxCost}`);
         else fails.push(`Cost: $${val} > $${requirements.maxCost}`);
       }
 
@@ -150,13 +157,35 @@ export default function registerMaterialsActions(registerLensAction) {
 
     const qualifying = filtered.filter(f => f.meetsAll);
 
+    // FIX-materials-008: the recommendation must say what it is. A
+    // candidate that meets NONE of the stated requirements is not a
+    // "closest match" under a trophy — when nothing qualifies and the
+    // best-ranked candidate still passes zero requirements, there is
+    // no recommendation at all (recommended: null, basis 'none'), and
+    // the panel says "No match" in words. A partial passer keeps the
+    // closest-match label with its basis named, so the panel can warn
+    // instead of celebrating.
+    const best = filtered[0];
+    let recommended = null;
+    let recommendationBasis = "none";
+    if (qualifying.length > 0) {
+      recommended = qualifying[0].name;
+      recommendationBasis = "meets-all";
+    } else if (best && best.passes > 0) {
+      recommended = best.name + " (closest match)";
+      recommendationBasis = "closest-partial";
+    }
+
     return {
       ok: true,
       result: {
         requirements,
         totalCandidates: candidates.length,
         qualifying: qualifying.length,
-        recommended: qualifying[0]?.name || (filtered[0]?.name + " (closest match)"),
+        recommended,
+        recommendationBasis,
+        recommendedMeets: recommendationBasis === "closest-partial" ? best.passes : undefined,
+        recommendedOf: recommendationBasis === "closest-partial" ? best.passes + best.fails : undefined,
         rankings: filtered,
         application: requirements.application || "General purpose",
       },
