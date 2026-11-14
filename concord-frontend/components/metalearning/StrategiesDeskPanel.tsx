@@ -160,14 +160,23 @@ export function StrategiesDeskPanel() {
 
   const deleteStrategyMut = useMutation({
     mutationFn: (strategyId: string) => apiHelpers.metalearning.deleteStrategy(strategyId),
-    onSuccess: () => {
+    onSuccess: (res) => {
+      // The route answers 200 with the macro's body, so a refusal
+      // (not yours / ownerless corpus) resolves here with ok:false —
+      // surface it in the Results panel like the curriculum leg does,
+      // and keep the confirm armed; only a real delete closes it.
+      const data = res.data as { ok?: boolean; error?: string } | undefined;
+      if (data?.ok === false) {
+        setResults({ error: data.error || 'That strategy could not be deleted.' });
+        return;
+      }
       setConfirmDeleteId(null);
       queryClient.invalidateQueries({ queryKey: ['metalearning-strategies'] });
       queryClient.invalidateQueries({ queryKey: ['metalearning-status'] });
       queryClient.invalidateQueries({ queryKey: ['metalearning-best'] });
       queryClient.invalidateQueries({ queryKey: ['metalearning-adaptations'] });
     },
-    onError: (err) => console.error('deleteStrategy failed:', err instanceof Error ? err.message : err),
+    onError: (err) => setResults({ error: err instanceof Error ? err.message : 'That strategy could not be deleted.' }),
   });
 
   const { data: adaptationsData } = useQuery({
