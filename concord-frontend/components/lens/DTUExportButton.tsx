@@ -99,12 +99,19 @@ export function DTUExportButton({
       const blob = new Blob([received], { type: 'application/octet-stream' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
+      const filename = `${domain}-${Date.now()}.dtu`;
       a.href = url;
-      a.download = `${domain}-${Date.now()}.dtu`;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+
+      // FIX-paper-012: every failure path already toasted, but success
+      // was silent apart from the button's brief checkmark — the file
+      // simply appeared in Downloads with no in-app word. Confirm in
+      // words, naming the file that was saved.
+      addToast({ type: 'success', message: `Exported ${filename} — check your downloads.` });
 
       setExported(true);
       setTimeout(() => setExported(false), 2000);
