@@ -220,6 +220,19 @@ export async function runIdleBehavior(emergentIdentity, db, realtimeEmit) {
         // an observation (no canned fallback text).
         const observation = result?.finalText?.trim()?.slice(0, 200);
         if (!observation) return { action, skipped: result?.error ? "brain_error" : "empty_output" };
+        // IDLE-03: observations pass the novelty gate before they
+        // persist, carrying their sampled source DTUs as the link.
+        const assessment = assessCreation({
+          kind: "observation",
+          text: observation,
+          emergentId: emergentIdentity.id,
+          db,
+          artifactIds: items.map((i) => i.id).filter(Boolean),
+          requireDtuLink: true,
+        });
+        if (assessment.status === "rejected") {
+          return { action, skipped: "quality:" + assessment.reasons.join(",") };
+        }
         emitFeedEvent({
           type: "observation",
           emergentId: emergentIdentity.id,
@@ -247,6 +260,18 @@ export async function runIdleBehavior(emergentIdentity, db, realtimeEmit) {
         }, db);
         const dreamText = result?.finalText?.trim()?.slice(0, 250);
         if (!dreamText) return { action, skipped: result?.error ? "brain_error" : "empty_output" };
+        // IDLE-03: dreams pass the novelty gate too. They carry no DTU
+        // link by design — an accepted dream persists to the feed but
+        // is never promotable.
+        const assessment = assessCreation({
+          kind: "dream",
+          text: dreamText,
+          emergentId: emergentIdentity.id,
+          db,
+        });
+        if (assessment.status === "rejected") {
+          return { action, skipped: "quality:" + assessment.reasons.join(",") };
+        }
         emitFeedEvent({
           type: "dream",
           emergentId: emergentIdentity.id,
