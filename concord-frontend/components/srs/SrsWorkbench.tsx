@@ -1661,6 +1661,42 @@ function Stat({
 interface SharedBundle { deck?: { name?: string }; cards?: unknown[] }
 interface SharedDtu { id: string; title?: string; machine?: { kind?: string; bundle?: SharedBundle } }
 
+interface BundleCard { front?: string; back?: string; question?: string }
+
+/**
+ * The dtu.create input for publishing a deck (FIX-srs-003).
+ *
+ * The council gate scores a DTU's knowledge core (definitions / examples /
+ * claims / nextActions) — a DTU whose whole content sits in `machine.bundle`
+ * scores ~0 and every publish was rejected as "low_value", so Shared decks
+ * could never be populated. The cards ARE the deck's knowledge: carry them
+ * in core.examples (front → back, the DTU's citable content), with the
+ * bundle kept in machine for Add-to-my-decks import. The nextAction is the
+ * deck's real use. Examples cap at 50 cards / ~280 chars a side so a huge
+ * deck stays a sane DTU; the machine bundle always holds the full deck.
+ */
+export function sharedDeckDtuInput(bundle: SharedBundle, deckId: string) {
+  const deckName = bundle.deck?.name || 'Deck';
+  const cards = (bundle.cards || []) as BundleCard[];
+  const examples = cards.slice(0, 50).map((c) => {
+    const front = String(c.front || c.question || '').slice(0, 280);
+    const back = String(c.back || '').slice(0, 280);
+    return back ? `${front} → ${back}` : front;
+  }).filter((s) => s.trim().length > 0);
+  return {
+    title: deckName + ' (shared deck)',
+    tags: ['srs', 'shared-deck'],
+    source: 'srs-lens:shared-deck',
+    human: { summary: 'Shared SRS deck "' + deckName + '" — ' + cards.length + ' cards, published from the SRS lens. Adding it creates a copy in your own decks.' },
+    core: {
+      examples,
+      nextActions: ['Add this deck to your decks from the SRS lens to study it.'],
+    },
+    machine: { kind: 'srs_deck_bundle', version: 1, bundle },
+    meta: { visibility: 'public', consent: { allowCitations: true }, createdFrom: 'srs', srs: { deckId, deckName } },
+  };
+}
+
 function SharedDecksPanel({
   decks, refreshDecks, flash,
 }: {
@@ -1684,14 +1720,7 @@ function SharedDecksPanel({
     const bundle = r.data?.result?.bundle as SharedBundle | undefined;
     if (!r.data?.ok || !bundle) { setBusy(false); flash(r.data?.error || 'Could not read that deck.'); return; }
     const deckName = bundle.deck?.name || 'Deck';
-    const created = await lensRun('dtu', 'create', {
-      title: deckName + ' (shared deck)',
-      tags: ['srs', 'shared-deck'],
-      source: 'srs-lens:shared-deck',
-      human: { summary: 'Shared SRS deck "' + deckName + '" — ' + (bundle.cards?.length ?? 0) + ' cards, published from the SRS lens. Adding it creates a copy in your own decks.' },
-      machine: { kind: 'srs_deck_bundle', version: 1, bundle },
-      meta: { visibility: 'public', consent: { allowCitations: true }, createdFrom: 'srs', srs: { deckId: shareDeck, deckName } },
-    });
+    const created = await lensRun('dtu', 'create', sharedDeckDtuInput(bundle as SharedBundle, shareDeck));
     const id = dtuRecordId(created.data);
     if (!id) { setBusy(false); flash('Not published. ' + (created.data?.error || 'The record store refused it.')); return; }
     const rb = dtuReadBackCall(id);
