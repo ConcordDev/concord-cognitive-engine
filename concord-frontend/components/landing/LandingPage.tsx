@@ -95,7 +95,7 @@ export function LandingPage(_props: LandingPageProps) {
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <a
-            href="/explore"
+            href="/hub"
             className="px-8 py-4 border border-gray-700 rounded-xl text-gray-200 font-semibold text-lg hover:border-neon-cyan/50 hover:text-white transition-all"
           >
             Look around first

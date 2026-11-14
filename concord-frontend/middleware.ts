@@ -8,6 +8,36 @@ import { lookupOwnerDtu } from './lib/dtu/public-fetch';
 const ANON_BROWSE_HEADER = 'x-concord-anon-browse';
 const PUBLIC_BROWSE_LENSES = new Set(['/lenses/music', '/lenses/market']);
 
+// GB-1536 "Enter means Enter": guests (signed-out visitors) browse /hub
+// and every non-admin lens read-only in the normal shell. Only this
+// middleware may set the guest header — any inbound copy is stripped.
+// Keep the literal in sync with lib/guest-constants.ts (GUEST_HEADER).
+const GUEST_HEADER = 'x-concord-guest';
+
+// Desk-only / operator lenses never open to guests — they keep the
+// sign-in redirect even though /lenses/* generally guest-passes.
+const DESK_ONLY_LENS_PREFIXES = [
+  '/lenses/admin',
+  '/lenses/security',
+  '/lenses/vault',
+  '/lenses/privacy',
+  '/lenses/sentinel',
+  '/lenses/debug',
+  '/lenses/ops',
+  '/lenses/system',
+  '/lenses/lock',
+  '/lenses/byo-keys',
+];
+
+// GB-1536: the post-Enter screens are removed altogether. Their URLs
+// 308 to /hub (confirm-age is NOT here — the 18+ gate stays).
+const REMOVED_FLOW_REDIRECTS: Record<string, string> = {
+  '/explore': '/hub',
+  '/onboarding': '/hub',
+  '/onboarding/location': '/hub',
+  '/onboarding/brain-mode': '/hub',
+};
+
 // A label slug that is not the lens path (Threads → /lenses/threads,
 // Visuals → /lenses/visuals) 308s to the canonical route. Checked before
 // auth so the URL itself moves. The list is the registry tabLabels.
@@ -179,7 +209,6 @@ function buildCsp(nonce: string, opts?: { frameAncestors?: "'none'" | "'self'"; 
 const PUBLIC_PATHS = new Set([
   '/',
   '/about',          // previous marketing homepage, kept public after `/` became the splash
-  '/explore',        // public "look around first" showcase — no account needed
   // No-login ConKay demo: runs the real beam FEA through the GET-only
   // /api/conkay/demo/* routes and saves nothing. Logged-out visits to
   // /lenses/conkay are sent here instead of to /login (see below).
@@ -197,7 +226,9 @@ const PUBLIC_PATHS = new Set([
   '/signup',         // alias → /register
   '/forgot-password',
   '/reset-password',  // token arrives via ?token= — the page itself must be public
-  '/onboarding',
+  // GB-1536: the onboarding screens are deleted; the 18+ confirm-age
+  // gate STAYS public (OAuth sign-ups land here before they can act).
+  '/onboarding/confirm-age',
   // ConKay <-> Unity WebGL postMessage smoke (public/conkay-bridge-smoke.html).
   // Must stay public so headless proof can load without a session cookie.
   '/conkay-bridge-smoke.html',
@@ -369,6 +400,14 @@ export function middleware(request: NextRequest): NextResponse | Promise<NextRes
     return NextResponse.redirect(dest, status);
   }
 
+  // GB-1536: the removed post-Enter screens 308 to /hub for EVERY
+  // request (bookmarks, old emails, stale links) — Enter means /hub now.
+  const removedDest =
+    REMOVED_FLOW_REDIRECTS[pathname] || (pathname.startsWith('/explore/') ? '/hub' : undefined);
+  if (removedDest) {
+    return NextResponse.redirect(new URL(removedDest, request.url), 308);
+  }
+
   // Nonce is generated for every request (not just authenticated ones) —
   // the CSP must cover the public /login, /explore, etc. pages too. Base64
   // of a random UUID, the standard pattern (128 bits of entropy, never
@@ -393,6 +432,9 @@ export function middleware(request: NextRequest): NextResponse | Promise<NextRes
   forwardedHeaders.set('x-nonce', nonce);
   // Only this middleware may say "signed-out visitor browse": drop any copy the client sent.
   forwardedHeaders.delete(ANON_BROWSE_HEADER);
+  // GB-1536: same for the guest header — a client must never mint its
+  // own guest flag (role gates key off it downstream).
+  forwardedHeaders.delete(GUEST_HEADER);
 
   function withCspHeaders(response: NextResponse): NextResponse {
     let effectiveCsp = csp;
@@ -462,6 +504,13 @@ export function middleware(request: NextRequest): NextResponse | Promise<NextRes
     });
   }
 
+  // GB-1536: the lens-view app routes (/lens/*) guest-pass too — a
+  // signed-out visit there carries the guest flag like /lenses/* does.
+  if (!hasSessionCookie && pathname.startsWith('/lens/')) {
+    forwardedHeaders.set(GUEST_HEADER, '1');
+    return withCspHeaders(NextResponse.next(passThroughOptions));
+  }
+
   // Allow public prefixes through
   if (PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
     return withCspHeaders(NextResponse.next(passThroughOptions));
@@ -477,18 +526,24 @@ export function middleware(request: NextRequest): NextResponse | Promise<NextRes
     request.cookies.has('concord_auth') ||
     request.cookies.has('concord_refresh');
 
-  // Visitors may browse Music and Market read-only (public items, 30 s previews; every write still
-  // needs sign-in). The lens renders its visitor surface; every other lens keeps the redirect below.
-  if (!hasSession && PUBLIC_BROWSE_LENSES.has(pathname)) {
-    forwardedHeaders.set(ANON_BROWSE_HEADER, '1');
-    return withCspHeaders(NextResponse.next(passThroughOptions));
-  }
-
-  if (!hasSession && pathname === '/lenses/conkay') {
-    return withCspHeaders(NextResponse.redirect(new URL('/conkay/demo', request.url)));
-  }
-
+  // GB-1536 "Enter means Enter": a signed-out visitor guest-passes to
+  // /hub and every non-admin lens, read-only, in the normal shell —
+  // signup happens when they try to ACT, not at the door. Music and
+  // Market keep their anon-browse flag as well (the 30 s preview
+  // machinery reads it); /lenses/conkay now renders the lens itself in
+  // guest mode instead of bouncing to the demo. Desk-only lenses and
+  // every other app route keep the sign-in redirect.
   if (!hasSession) {
+    const isDeskOnlyLens = DESK_ONLY_LENS_PREFIXES.some(
+      (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+    );
+    if (!isDeskOnlyLens && (pathname === '/hub' || pathname.startsWith('/lenses/'))) {
+      forwardedHeaders.set(GUEST_HEADER, '1');
+      if (PUBLIC_BROWSE_LENSES.has(pathname)) {
+        forwardedHeaders.set(ANON_BROWSE_HEADER, '1');
+      }
+      return withCspHeaders(NextResponse.next(passThroughOptions));
+    }
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('from', pathname);
     return withCspHeaders(NextResponse.redirect(loginUrl));

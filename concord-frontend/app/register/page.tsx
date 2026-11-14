@@ -1,13 +1,22 @@
 'use client';
 
-import { useState, useRef, FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState, useRef, FormEvent } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api/client';
 import { Brain, UserPlus, Eye, EyeOff } from 'lucide-react';
+import { validateReturnTo } from '@/lib/return-to';
 
 export default function RegisterPage() {
-  const router = useRouter();
+  return (
+    <Suspense>
+      <RegisterForm />
+    </Suspense>
+  );
+}
+
+function RegisterForm() {
+  const searchParams = useSearchParams();
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
@@ -69,12 +78,13 @@ export default function RegisterPage() {
       // and bounces to /login ("I registered but I'm not logged in"). Require the token.
       const realSuccess = res.data?.ok && (res.data?.token || (res.data?.user?.id && res.data?.user?.id !== 'ok'));
       if (realSuccess) {
-        // Registration auto-logged you in (cookies set) — go straight to
-        // onboarding. Brain-mode choice (Private vs High Power) runs
-        // FIRST, before the universe-seeding step, since it governs
-        // whether anything after it can ever touch a cloud LLM provider.
+        // Registration auto-logged you in (cookies set). GB-1536: the
+        // onboarding chain is gone — no brain-mode screen, no universe
+        // picker (brain mode defaults to Private, changeable in
+        // Settings). Land back exactly where the visitor was: the
+        // validated ?from= return-to, default /hub.
         localStorage.setItem('concord_entered', 'true');
-        router.push('/onboarding/brain-mode');
+        window.location.href = validateReturnTo(searchParams.get('from'));
       } else if (res.data?.ok) {
         // Silently rejected by a bot-defense (most often: form submitted too fast).
         setError('Registration could not be completed. Please wait a moment, then try again.');

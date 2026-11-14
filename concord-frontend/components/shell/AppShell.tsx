@@ -1,6 +1,7 @@
 'use client';
 
-import { useAnonBrowse } from '@/lib/anon-browse';
+import { useGuest } from '@/lib/guest';
+import { GuestBanner } from './GuestBanner';
 import { isFullHeightLens } from '@/lib/full-height-lenses';
 import { TOGGLE_SESSIONS_EVENT } from './RailAccount';
 import { PanelRight } from 'lucide-react';
@@ -151,14 +152,16 @@ const NowPlayingBar = dynamic(
 // Same fix, same reasoning as the /onboarding entry above: standalone here
 // stops that chrome (and its fetch/prefetch burst) from mounting at exactly
 // the moment the page has the least reason to show it.
-const STANDALONE_PREFIXES = ['/about', '/legal/', '/welding-portal/', '/share/animation/', '/onboarding', '/register', '/login', '/explore', '/conkay/demo'];
+const STANDALONE_PREFIXES = ['/about', '/legal/', '/welding-portal/', '/share/animation/', '/onboarding/confirm-age', '/register', '/login', '/conkay/demo'];
 
 interface AppShellProps {
   children: React.ReactNode;
 }
 
 export function AppShell({ children }: AppShellProps) {
-  const anonBrowse = useAnonBrowse();
+  // GB-1536: a guest renders the NORMAL shell (guest ≠ standalone) —
+  // the flag only adds the guest banner + Topbar auth buttons.
+  const guest = useGuest();
   // Central event-router — subscribes to every namespaced CustomEvent
   // dispatched across the app and routes it to the right macro /
   // navigation / toast. See lib/event-router.ts for the table.
@@ -320,9 +323,11 @@ export function AppShell({ children }: AppShellProps) {
 
   // Full page mode OR standalone route OR diegetic (in-world station) frame:
   // render children without shell chrome.
-  // A signed-out visitor on Music/Market (set by the middleware) gets the same chrome-free shell as /explore:
-  // the member sidebar/topbar and their auth-only fetches have nothing to show a visitor.
-  const isStandalone = anonBrowse || STANDALONE_PREFIXES.some((p) => pathname.startsWith(p));
+  // GB-1536: guests are NOT standalone — a signed-out visitor on any
+  // browsable lens (Music/Market included) gets the normal shell with
+  // the guest banner; read-only is enforced at the action layer, not
+  // by hiding the chrome.
+  const isStandalone = STANDALONE_PREFIXES.some((p) => pathname.startsWith(p));
   if (fullPageMode || isStandalone || diegetic) {
     return <>{children}</>;
   }
@@ -365,8 +370,10 @@ export function AppShell({ children }: AppShellProps) {
 
       <div className="flex-1 flex flex-col min-w-0">
         {/* Desktop uses the sidebar rail (RailAccount) — no top bar, per the
-            lens north stars. Mobile keeps it: it holds the menu button. */}
-        <div className="lg:hidden">
+            lens north stars. Mobile keeps it: it holds the menu button.
+            GB-1536: guests keep the Topbar at every width — it carries
+            their Log in / Sign up, and they have no RailAccount. */}
+        <div className={guest ? undefined : 'lg:hidden'}>
         <Topbar
             trailing={
               <>
@@ -385,6 +392,7 @@ export function AppShell({ children }: AppShellProps) {
             }
           />
         </div>
+        {guest && <GuestBanner />}
         <OperatorErrorBanner />
 
         <main

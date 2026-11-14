@@ -1,13 +1,13 @@
 'use client';
 
 /**
- * ChooseYourBrain — Private Mode / High Power Mode onboarding screen.
+ * ChooseYourBrain — Private Mode / High Power Mode choice.
  *
- * Runs BEFORE the universe-seeding step (ChooseYourUniverse /
- * /onboarding) since this choice governs whether anything after it can
- * ever touch a cloud LLM provider. Private is pre-selected and is the
- * durable default for every account, new or existing — a user must
- * actively pick High Power to leave it.
+ * GB-1536: no longer a forced post-signup screen — it lives in
+ * Settings (profile → Settings, next to UniverseSettings). Brain mode
+ * defaults to Private for every account; this is where a user must
+ * actively pick High Power to leave it. The choice governs whether
+ * anything the user does can ever touch a cloud LLM provider.
  *
  * The copy here is deliberately plain and specific (not euphemistic):
  * it names the actual third-party providers and states outright that
@@ -35,7 +35,6 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { useMutation } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { ShieldCheck, Zap, ArrowRight, Check } from 'lucide-react';
@@ -44,12 +43,12 @@ import { cn } from '@/lib/utils';
 type BrainMode = 'private' | 'high_power';
 
 interface Props {
-  /** Called after a successful choice. Default: router.push('/onboarding'). */
+  /** Called after a successful choice. Default: stay (GB-1536 — the
+   * component lives in Settings now; there is no next onboarding step). */
   onComplete?: () => void;
 }
 
 export function ChooseYourBrain({ onComplete }: Props) {
-  const router = useRouter();
   const [selected, setSelected] = useState<BrainMode>('private');
   const [error, setError] = useState<string | null>(null);
   const [highPowerAllowed, setHighPowerAllowed] = useState(true);
@@ -71,7 +70,7 @@ export function ChooseYourBrain({ onComplete }: Props) {
     },
     onSuccess: () => {
       if (onComplete) onComplete();
-      else router.push('/onboarding');
+      // GB-1536: no default navigation — in Settings the user stays put.
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Failed to save';

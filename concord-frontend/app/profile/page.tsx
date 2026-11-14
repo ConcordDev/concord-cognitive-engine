@@ -22,6 +22,7 @@ import { DTUDetailView } from '@/components/dtu/DTUDetailView';
 import { CreatorAnalytics } from '@/components/social/CreatorAnalytics';
 import { StreakIndicator } from '@/components/social/StreakIndicator';
 import { UniverseSettings } from '@/components/settings/UniverseSettings';
+import { ChooseYourBrain } from '@/components/onboarding/ChooseYourBrain';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -496,7 +497,16 @@ export default function ProfilePage() {
           </div>
         )}
         {activeTab === 'settings' && (
-          <UniverseSettings />
+          <div className="space-y-8">
+            <UniverseSettings />
+            {/* GB-1536: brain mode is a Settings choice now, not a
+                forced post-signup screen — it defaults to Private and
+                lives here, next to UniverseSettings. */}
+            <section aria-label="Brain mode">
+              <h2 className="mb-3 text-lg font-semibold text-white">Brain mode</h2>
+              <ChooseYourBrain />
+            </section>
+          </div>
         )}
       </main>
     </div>

@@ -5,6 +5,8 @@ import { DM_Sans, JetBrains_Mono, Source_Serif_4 } from 'next/font/google';
 import { headers } from 'next/headers';
 import { AnonBrowseProvider } from '@/lib/anon-browse';
 import { ANON_BROWSE_HEADER } from '@/lib/anon-browse-constants';
+import { GuestProvider, GuestAuthProvider } from '@/lib/guest';
+import { GUEST_HEADER } from '@/lib/guest-constants';
 
 /**
  * Self-hosted fonts via next/font — no render-blocking @import in globals.css.
@@ -146,6 +148,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // nonce up automatically from the incoming CSP header at render time.
   const requestHeaders = await headers();
   const anonBrowse = requestHeaders.get(ANON_BROWSE_HEADER) === '1';
+  // GB-1536: the middleware-minted guest flag, same pattern as anon-browse.
+  const guest = requestHeaders.get(GUEST_HEADER) === '1';
 
   return (
     <html
@@ -163,7 +167,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body className="min-h-screen bg-lattice-void">
         <AnonBrowseProvider value={anonBrowse}>
-          <Providers>{children}</Providers>
+          <GuestProvider value={guest}>
+            <GuestAuthProvider>
+              <Providers>{children}</Providers>
+            </GuestAuthProvider>
+          </GuestProvider>
         </AnonBrowseProvider>
       </body>
     </html>

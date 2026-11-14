@@ -4,6 +4,7 @@ import { useState, FormEvent, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Brain, ShieldCheck } from 'lucide-react';
 import { api } from '@/lib/api/client';
+import { validateReturnTo } from '@/lib/return-to';
 
 // Post-OAuth age gate. Google/Apple never return a date of birth, so an OAuth
 // account lands with date_of_birth = NULL and the server redirects it here
@@ -48,7 +49,9 @@ function ConfirmAgeInner() {
       const res = await api.post('/api/auth/confirm-age', { dateOfBirth });
       if (res.data?.ok) {
         localStorage.setItem('concord_entered', 'true');
-        router.push('/');
+        // GB-1536: the age gate carries the return-to — after
+        // confirming, land back exactly where the guest was.
+        router.push(validateReturnTo(params.get('from')));
       } else {
         setError(res.data?.error || 'Could not confirm your age. Please try again.');
       }

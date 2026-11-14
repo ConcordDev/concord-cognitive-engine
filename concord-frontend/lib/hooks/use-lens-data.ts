@@ -14,6 +14,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useGuest } from '@/lib/guest';
 
 export interface LensItem<T = Record<string, unknown>> {
   id: string;
@@ -60,6 +61,9 @@ export function useLensData<T = Record<string, unknown>>(
   const { seed = [], search, tags, status, limit = 200, noSeed = false, enabled = true } = options;
   const qc = useQueryClient();
   const seeded = useRef(false);
+  // GB-1536: guests never seed (no writes, ever) and instead see the
+  // seed arrays as labelled sample content when the shelf is empty.
+  const guest = useGuest();
 
   // Fetch artifacts from backend
   const { data: response, isLoading, isError, error, refetch } = useQuery({
@@ -92,9 +96,11 @@ export function useLensData<T = Record<string, unknown>>(
   // Auto-seed if backend returned empty and we have seed data.
   // ONLY in development — in production, empty means genuinely empty,
   // and seeding would mask real auth/connection failures.
+  // GB-1536: a guest NEVER triggers the /bulk seed write, in ANY
+  // NODE_ENV — the sample rendering below replaces it for guests.
   const isDev = process.env.NODE_ENV === 'development';
   useEffect(() => {
-    if (!isDev || noSeed || seeded.current || !response || isLoading) return;
+    if (guest || !isDev || noSeed || seeded.current || !response || isLoading) return;
     if (response.ok && response.total === 0 && seed.length > 0) {
       seeded.current = true;
       // @env-config-ok: 1min poll for live-data lenses
@@ -107,9 +113,34 @@ export function useLensData<T = Record<string, unknown>>(
           seeded.current = false;
         });
     }
-  }, [isDev, response, isLoading, domain, type, seed, noSeed, qc]);
+  }, [guest, isDev, response, isLoading, domain, type, seed, noSeed, qc]);
 
-  const items: LensItem<T>[] = response?.artifacts || [];
+  // GB-1536 §5: sample content for guests. When a guest's list is empty
+  // and the lens ships a SEED_* array, render those rows client-side,
+  // read-only, flagged meta.sample — views label them "Example — sign
+  // up to make your own". They are never written anywhere; mutations
+  // against them are refused by the guest backstop in the API client.
+  const realItems: LensItem<T>[] = response?.artifacts || [];
+  const showSamples = guest && !isLoading && !!response?.ok && realItems.length === 0 && seed.length > 0;
+  const sampleItems: LensItem<T>[] = showSamples
+    ? seed.map((s, i) => ({
+        id: `sample-${domain}-${type}-${i}`,
+        title: s.title || 'Example',
+        data: (s.data || {}) as T,
+        meta: {
+          tags: [],
+          status: 'sample',
+          visibility: 'public',
+          ...((s.meta || {}) as Record<string, unknown>),
+          sample: true,
+        },
+        createdAt: '',
+        updatedAt: '',
+        version: 0,
+      }))
+    : [];
+  const items: LensItem<T>[] = showSamples ? sampleItems : realItems;
+  const isSample = showSamples;
 
   // Create mutation
   const createMut = useMutation({
@@ -153,7 +184,10 @@ export function useLensData<T = Record<string, unknown>>(
 
   return {
     items,
-    total: response?.total || 0,
+    // GB-1536: true when `items` are guest sample rows (views label
+    // them "Example — sign up to make your own" and keep them read-only).
+    isSample,
+    total: isSample ? items.length : response?.total || 0,
     isLoading,
     isError,
     error,

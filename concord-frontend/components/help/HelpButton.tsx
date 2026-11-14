@@ -177,7 +177,7 @@ export function HelpButton() {
                 <h2 className="text-white font-semibold mb-1">Need a hand?</h2>
                 <button type="button" data-overlay-close="" aria-label="Close" onClick={() => setOpen(false)} className="text-xs text-gray-400 hover:text-white">Close</button>
               </div>
-              <Link href="/onboarding" onClick={() => setOpen(false)} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-lattice-deep text-gray-300 hover:text-white transition-colors">
+              <Link href="/hub" onClick={() => setOpen(false)} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-lattice-deep text-gray-300 hover:text-white transition-colors">
                 <BookOpen className="w-4 h-4 text-neon-blue shrink-0" />
                 <span>Getting started — replay the intro</span>
               </Link>

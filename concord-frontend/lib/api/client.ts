@@ -6,6 +6,16 @@ import { getApiBase } from './base';
 import { isHandlerDefectRefusal, refusalToastMessage } from './lens-refusal';
 import { clearServerBusy, isServiceOverloadedPayload, noteServerBusy } from '@/lib/realtime/server-busy';
 import { createRestartWindow, isRestartFailure, type RestartWindow } from './restart-window';
+import {
+  GuestActionBlocked,
+  isGuestActionBlocked,
+  isGuestMode,
+  lensRunAllowedForGuest,
+  openGuestAuth,
+} from '@/lib/guest-bridge';
+import { currentReturnTo } from '@/lib/return-to';
+
+export { GuestActionBlocked, isGuestActionBlocked } from '@/lib/guest-bridge';
 import type {
   CreateDTURequest,
   UpdateDTURequest,
@@ -432,6 +442,28 @@ api.interceptors.request.use(
       // the instance type, not its config.
       return Promise.reject(new axios.CanceledError('rate_limit_backoff'));
     }
+    // GB-1536 client backstop: a guest's non-GET is NEVER sent. The
+    // request is refused here with a typed GuestActionBlocked and the
+    // signup modal opens with the return-to — no silent failure, no
+    // fake success, no navigation. Sole exception: a /api/lens/run call
+    // whose (domain, action) is on the guest-read mirror list goes
+    // through, and the server's spec registry gives the real verdict.
+    if (typeof window !== 'undefined' && isGuestMode() && !isGet) {
+      const url = typeof config.url === 'string' ? config.url : '';
+      let allowed = false;
+      if (url.includes('/api/lens/run')) {
+        let body: unknown = config.data;
+        if (typeof body === 'string') {
+          try { body = JSON.parse(body); } catch { body = null; }
+        }
+        allowed = lensRunAllowedForGuest(body);
+      }
+      if (!allowed) {
+        const returnTo = currentReturnTo();
+        openGuestAuth(returnTo);
+        return Promise.reject(new GuestActionBlocked(returnTo));
+      }
+    }
     if (typeof window !== 'undefined') {
       // SECURITY: Add CSRF token for state-changing requests
       // Credentials are handled by httpOnly cookies (withCredentials: true)
@@ -593,6 +625,18 @@ api.interceptors.response.use(
           return Promise.reject(error);
         }
 
+        // GB-1536: a guest holds no session to refresh — a 401 is the
+        // read-only boundary answering, not an expired login. A guest
+        // ACTION that still reached the server (e.g. a fetch outside
+        // this client) opens the signup modal with the return-to; a
+        // guest read just rejects. Never a login-page bounce.
+        if (isGuestMode()) {
+          if (error.config?.method?.toUpperCase() !== 'GET') {
+            openGuestAuth(currentReturnTo());
+          }
+          return Promise.reject(error);
+        }
+
         // ── Auto-refresh on access-token expiry ──────────────────────────
         // The 7-day access cookie expires while the 30-day refresh cookie
         // is still valid. Try a single refresh; on success, replay the
@@ -642,9 +686,12 @@ api.interceptors.response.use(
           path === '/register' ||
           path === '/forgot-password';
         if (!isPublicPage) {
-          // Clear entered flag to prevent redirect loop on next visit
+          // Clear entered flag to prevent redirect loop on next visit.
+          // GB-1536: carry where the user was — /login?from=<here> —
+          // instead of the old bare /login that stranded them at '/'.
           try { localStorage.removeItem('concord_entered'); } catch {}
-          window.location.href = '/login';
+          const from = encodeURIComponent(window.location.pathname + window.location.search);
+          window.location.href = `/login?from=${from}`;
         }
       }
       // ---- Version Conflict Detection (Category 2: Concurrency) ----
@@ -779,6 +826,10 @@ api.interceptors.response.use(
     // lensRun read code / retryAfterS from error.response.data, which the
     // ConcordError conversion would drop.
     if (isGeocoderUnavailableResponse(error)) return Promise.reject(error);
+    // A guest-backstop rejection never reached the network and is not an
+    // axios error — keep the typed GuestActionBlocked so callers can
+    // branch on it instead of reading it as a network failure (GB-1536 §2a).
+    if (isGuestActionBlocked(error)) return Promise.reject(error);
     return Promise.reject(fromAxiosError(error));
   }
 );

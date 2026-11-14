@@ -13,6 +13,12 @@ interface OAuthButtonsProps {
   onError?: (error: string) => void;
   /** Additional class names for the container */
   className?: string;
+  /**
+   * GB-1536: where the user lands after OAuth completes. Threaded to
+   * the authorize endpoint as ?from= and carried in the OAuth state;
+   * the server validates it again before redirecting.
+   */
+  returnTo?: string;
 }
 
 interface ProviderConfig {
@@ -74,6 +80,7 @@ export function OAuthButtons({
   labelPrefix = 'Continue with',
   onError,
   className = '',
+  returnTo,
 }: OAuthButtonsProps) {
   const [availableProviders, setAvailableProviders] = useState<string[]>([]);
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
@@ -122,9 +129,14 @@ export function OAuthButtons({
 
   const handleOAuthClick = useCallback((provider: string) => {
     setLoadingProvider(provider);
-    // Redirect to the OAuth initiation endpoint
-    window.location.href = `${BASE_URL}/api/auth/${provider}`;
-  }, []);
+    // Redirect to the OAuth initiation endpoint. GB-1536: carry the
+    // returnTo so the callback lands the user back where they were (the
+    // server validates it again and stores it in the OAuth state).
+    const from = returnTo && returnTo.startsWith('/') && !returnTo.startsWith('//')
+      ? `?from=${encodeURIComponent(returnTo)}`
+      : '';
+    window.location.href = `${BASE_URL}/api/auth/${provider}${from}`;
+  }, [returnTo]);
 
   // Don't render anything if no providers available
   if (isLoadingProviders) {

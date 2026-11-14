@@ -24,6 +24,7 @@ import { useState, useEffect, useRef, useCallback, Fragment } from 'react';
 import { useSocket } from '@/hooks/useSocket';
 import { useSessionId, resetSessionId } from '@/hooks/useSessionId';
 import { api } from '@/lib/api/client';
+import { useGuest, useGuestAction, useRestoredDraft } from '@/lib/guest';
 import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/ui';
@@ -281,6 +282,20 @@ export function PersistentChatRail({
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
+  // GB-1536: sending a chat message is an ACT — for a guest it opens
+  // the signup modal with the typed text stashed as the intent draft;
+  // after auth the user lands back with the text restored in the box
+  // (restored, never auto-sent).
+  const guest = useGuest();
+  const guestAction = useGuestAction();
+  const restoredDraft = useRestoredDraft();
+  useEffect(() => {
+    if (!guest && restoredDraft?.chat) {
+      setInputValue((prev) => (prev ? prev : restoredDraft.chat));
+    }
+    // Runs once when the post-auth draft arrives.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restoredDraft]);
   const [chatStatus, setChatStatus] = useState<ChatStatus>('idle');
   // When the LLM queue is under load, the server tells us our position +
   // estimated wait. Cleared when status leaves 'queued'.
@@ -701,12 +716,20 @@ export function PersistentChatRail({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (guest) {
+      guestAction(() => {}, { draft: { chat: inputValue } });
+      return;
+    }
     sendMessage(inputValue);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
+      if (guest) {
+        guestAction(() => {}, { draft: { chat: inputValue } });
+        return;
+      }
       sendMessage(inputValue);
     }
   };
