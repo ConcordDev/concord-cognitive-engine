@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { X, Loader2, Beaker, Atom, Calculator, Activity, FlaskConical } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { SigningStatus, signingInfoFrom, type SigningInfo } from './SigningStatus';
 
 export interface MWResult {
   formula: string;
@@ -103,6 +104,7 @@ export function ChemWorkbench({ open, onClose }: Props) {
 function MWTab() {
   const [formula, setFormula] = useState('C6H12O6');
   const [result, setResult] = useState<MWResult | null>(null);
+  const [signing, setSigning] = useState<SigningInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
   // FIX-chem-004: the mount calculation (default formula) and a user's
   // Calc click race — under a slow backend the earlier request can
@@ -118,9 +120,12 @@ function MWTab() {
         domain: 'chem', action: 'molecular-weight', input: { formula },
       });
       if (seq !== calcSeq.current) return; // a newer Calc superseded this response
-      const data = r.data as { ok?: boolean; error?: string; result?: MWResult };
-      if (data.ok) setResult(data.result || null);
-      else { setError(data.error || 'Failed'); setResult(null); }
+      const outer = r.data as { ok?: boolean; error?: string; result?: unknown };
+      // The handler envelope (result + signed/reason/receiptId siblings) rides in outer.result.
+      const inner = (outer.result && typeof outer.result === 'object' && 'ok' in (outer.result as object)
+        ? outer.result : outer) as { ok?: boolean; error?: string; result?: MWResult };
+      if (outer.ok && inner.ok !== false) { setResult(inner.result || null); setSigning(inner.result ? signingInfoFrom(inner) : null); }
+      else { setError(inner.error || outer.error || 'Failed'); setResult(null); setSigning(null); }
     } catch (e) { if (seq === calcSeq.current) setError((e as Error).message); }
   };
   useEffect(() => { calc(); }, []);  // eslint-disable-line react-hooks/exhaustive-deps
@@ -145,6 +150,7 @@ function MWTab() {
             <span className="ml-2 text-2xl text-gray-100">{result.molecularWeight}</span>
             <span className="text-[11px] text-gray-400 ml-1">{result.units}</span>
           </p>
+          <SigningStatus info={signing} className="mt-2" />
           <div className="mt-3 space-y-1">
             <p className="text-[10px] uppercase text-gray-400 tracking-wider">Composition</p>
             {result.components.map((c) => (

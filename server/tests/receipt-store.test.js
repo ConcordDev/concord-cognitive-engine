@@ -17,7 +17,7 @@ import { buildCalcReceipt } from "../lib/receipts/calc-receipt.js";
 import { issueStoredReceipt, storeReceipt, getStoredReceipt, classifyReceiptKey } from "../lib/receipts/store.js";
 import createReceiptRouter from "../routes/receipts.js";
 import createConkayDemoRouter from "../routes/conkay-demo.js";
-import registerChemActions from "../domains/chem.js";
+import registerChemActions, { withChemReceipt } from "../domains/chem.js";
 
 const ENV_KEYS = ["CONCORD_RECEIPT_SIGNING_KEY", "CONCORD_RECEIPT_SIGNING_KEY_PATH", "CONCORD_RECEIPT_EXTRA_PUBLIC_KEYS"];
 const pass = (_q, _s, n) => n();
@@ -193,7 +193,23 @@ describe("chem lens receipts", () => {
     });
   });
 
-  it("other pure compute actions issue receipts too; failures and errors do not", () => {
+  it("molecular-weight signs reference + envelope INSIDE the signed body", () => {
+    const out = run("molecular-weight", ctx(), { formula: "H2O" });
+    assert.equal(out.signed, true);
+    assert.match(out.receipt.reference.source, /IUPAC/);
+    assert.equal(out.receipt.reference.value, 18.015);
+    assert.ok(out.receipt.reference.tolerance > 0);
+    assert.ok(out.receipt.designBasis.validityEnvelope.ranges.totalAtoms);
+    assert.ok(out.receipt.assumptions.length >= 1);
+    assert.equal(verifyAttestation(out.receipt).valid, true);
+    // tampering with the reference breaks the signature
+    const t = JSON.parse(JSON.stringify(out.receipt));
+    t.reference.value = 19;
+    assert.equal(verifyAttestation(t).valid, false);
+  });
+
+  it("refuses to sign without a reference + envelope: numbers kept, unsigned, nothing stored", () => {
+    const before = db.prepare("SELECT COUNT(*) n FROM receipt_store").get().n;
     for (const [name, input] of [
       ["calc-ph", { concentration: 0.01, kind: "acid" }],
       ["calc-molarity", { moles: 2, liters: 4 }],
@@ -202,7 +218,60 @@ describe("chem lens receipts", () => {
     ]) {
       const out = run(name, ctx(), input);
       assert.equal(out.ok, true, name);
-      assert.equal(out.saved, true, name);
+      assert.ok(out.result, name);
+      assert.equal(out.signed, false, name);
+      assert.equal(out.saved, false, name);
+      assert.equal(out.reason, "missing_reference", name);
+      assert.equal(out.receiptId, undefined, name);
+      assert.equal(out.receipt.signature.signature, null, name);
+      assert.equal(verifyAttestation(out.receipt).valid, false, name);
+    }
+    assert.equal(db.prepare("SELECT COUNT(*) n FROM receipt_store").get().n, before);
+  });
+
+  it("withChemReceipt: reference without envelope / envelope without reference / mismatch are unsigned", () => {
+    const handler = () => ({ ok: true, result: { x: 1 } });
+    const envelope = { ranges: { x: "0..2" }, assumptions: ["a"], check: () => null };
+    const reference = () => ({ case: "c", source: "s", value: 1, tolerance: 0.1, reported: 1 });
+    const go = (spec) => withChemReceipt("t", handler, { spec })(ctx(), { data: {} }, {});
+    assert.equal(go({ reference }).reason, "missing_envelope");
+    assert.equal(go({ envelope }).reason, "missing_reference");
+    assert.equal(go({ envelope: { ...envelope, assumptions: [] }, reference }).reason, "missing_envelope");
+    assert.equal(go({ envelope, reference: () => ({ case: "c", source: "s", value: 1, tolerance: 0, reported: 1 }) }).reason, "malformed_reference");
+    assert.match(go({ envelope, reference: () => ({ case: "c", source: "s", value: 1, tolerance: 0.1, reported: 2 }) }).reason, /^reference_mismatch/);
+    assert.match(go({ envelope: { ...envelope, check: () => "x_too_big" }, reference }).reason, /^outside_envelope:x_too_big/);
+    const ok = go({ envelope, reference });
+    assert.equal(ok.signed, true);
+    assert.equal(ok.saved, true);
+  });
+
+  it("out-of-envelope molecular-weight still computes, unsigned, with a reason and no stored id", () => {
+    for (const formula of ["Tc2O7", "UF6Po", "H2O.5H2O", "(H2O", "h2o"]) {
+      const out = run("molecular-weight", ctx(), { formula });
+      if (!out.ok) continue; // parser rejected: no number, nothing to sign
+      assert.equal(out.signed, false, formula);
+      assert.match(out.reason, /^outside_envelope:/, formula);
+      assert.equal(out.receiptId, undefined, formula);
+      assert.equal(out.receipt.signature.signature, null, formula);
+    }
+    const tc = run("molecular-weight", ctx(), { formula: "NaTcO4" });
+    assert.equal(tc.ok, true);
+    assert.equal(typeof tc.result.molecularWeight, "number");
+    assert.equal(tc.signed, false);
+    assert.match(tc.reason, /no_standard_atomic_weight:Tc/);
+    assert.equal(getStoredReceipt(db, tc.receipt.receiptId || "rcpt_00000000"), null);
+  });
+
+  it("other pure compute actions: legacy expectations replaced by unsigned (kept for failure/error shape)", () => {
+    for (const [name, input] of [
+      ["calc-ph", { concentration: 0.01, kind: "acid" }],
+      ["calc-molarity", { moles: 2, liters: 4 }],
+      ["calc-gas-law", { P: 1, V: 22.4, T: 273.15 }],
+      ["calc-dilution", { m1: 2, v1: 1, m2: 1 }],
+    ]) {
+      const out = run(name, ctx(), input);
+      assert.equal(out.ok, true, name);
+      assert.equal(out.saved, false, name);
     }
     const bad = run("molecular-weight", ctx(), { formula: "" });
     assert.equal(bad.ok, false);

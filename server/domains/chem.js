@@ -8,38 +8,52 @@ import { saveAfterWrites } from "../lib/lens-save-on-write.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 import { buildCalcReceipt } from "../lib/receipts/calc-receipt.js";
 import { issueStoredReceipt } from "../lib/receipts/store.js";
+import { evaluateSigningGate, unsignedReceipt } from "../lib/receipts/sign-gate.js";
 
 const CHEM_RECEIPT_MAX_INPUT_CHARS = 4000;
 
 /**
  * Wrap a pure chem compute handler so a successful answer also carries a v2
- * calc receipt signed over its inputs AND outputs, stored under a receiptId
- * that reads back at GET /api/receipts/:id. The numbers are returned exactly
- * as the handler computed them; if signing or storing fails the numbers still
- * come back with saved:false and the reason (never a failed solve).
+ * calc receipt — but ONLY when the action declares a verified reference AND a
+ * validity envelope (`deps.spec`, see lib/receipts/sign-gate.js) and the
+ * inputs/result pass both. Otherwise the numbers still come back, with
+ * signed:false + a reason and an unsigned (signature-less, never stored)
+ * receipt. Signed receipts are stored under a receiptId that reads back at
+ * GET /api/receipts/:id; the reference + envelope live INSIDE the signed body.
+ * A store failure on a signed receipt returns signed:true, saved:false.
  * `deps.store` is a test seam.
  */
 export function withChemReceipt(action, handler, deps = {}) {
   return (ctx, artifact, params) => {
     const out = handler(ctx, artifact, params);
     if (!out || out.ok !== true || !out.result || typeof out.result !== "object") return out;
+    const solver = { id: `chem.${action}`, version: "1" };
+    let inputs = {};
     try {
-      const inputs = { ...((artifact && artifact.data && typeof artifact.data === "object") ? artifact.data : {}), ...(params || {}) };
+      inputs = { ...((artifact && artifact.data && typeof artifact.data === "object") ? artifact.data : {}), ...(params || {}) };
       if (JSON.stringify(inputs).length > CHEM_RECEIPT_MAX_INPUT_CHARS) {
-        return { ...out, saved: false, saveError: "inputs_too_large_to_sign" };
+        return { ...out, signed: false, saved: false, reason: "outside_envelope:inputs_too_large_to_sign", saveError: "inputs_too_large_to_sign" };
+      }
+      const gate = evaluateSigningGate(deps.spec, inputs, out.result);
+      if (!gate.ok) {
+        return { ...out, signed: false, saved: false, reason: gate.reason, receipt: unsignedReceipt({ solver, inputs, results: out.result, reason: gate.reason }) };
       }
       const unsigned = buildCalcReceipt({
-        solver: { id: `chem.${action}`, version: "1" },
+        solver,
         inputs,
         method: `Concord chem lens action "${action}" (deterministic calculation)`,
+        designBasis: gate.designBasis,
+        assumptions: gate.assumptions,
+        reference: gate.reference,
         results: out.result,
       });
       const issued = issueStoredReceipt(unsigned, { db: ctx && ctx.db, store: deps.store });
       return issued.saved
-        ? { ...out, saved: true, receiptId: issued.receiptId, receiptUrl: issued.receiptUrl, receipt: issued.receipt }
-        : { ...out, saved: false, saveError: issued.saveError, receipt: issued.receipt };
+        ? { ...out, signed: true, saved: true, receiptId: issued.receiptId, receiptUrl: issued.receiptUrl, receipt: issued.receipt }
+        : { ...out, signed: true, saved: false, saveError: issued.saveError, receipt: issued.receipt };
     } catch (e) {
-      return { ...out, saved: false, saveError: `receipt_failed:${e instanceof Error ? e.message : String(e)}` };
+      const reason = `receipt_failed:${e instanceof Error ? e.message : String(e)}`;
+      return { ...out, signed: false, saved: false, reason, saveError: reason };
     }
   };
 }
@@ -47,7 +61,9 @@ export function withChemReceipt(action, handler, deps = {}) {
 export default function registerChemActions(registerLensAction) {
   registerLensAction = saveAfterWrites(guardAnonWrites(registerLensAction)); // anonymous callers can read, not write (lib/lens-authz.js)
   const CHEM_STRUCTURE_CAP = 400;
-  const registerCalc = (name, fn) => registerLensAction("chem", name, withChemReceipt(name, fn));
+  // `spec` (reference + envelope) is what lets an action sign; without it the
+  // action returns its numbers unsigned with reason "missing_reference".
+  const registerCalc = (name, fn, spec) => registerLensAction("chem", name, withChemReceipt(name, fn, { spec }));
 
   // ── Per-user persistent state (structures, lab notebook) ──
   // chemStructures and chemLabNotebook are in LENS_STATE_KEYS, so saved
@@ -977,6 +993,57 @@ export default function registerChemActions(registerLensAction) {
     return resolve(tokens);
   }
 
+  // Signing spec for molecular-weight. The PERIODIC_TABLE masses are the IUPAC
+  // (CIAAW) *abridged* standard atomic weights (conventional values, e.g.
+  // H 1.008, C 12.011). Elements with no IUPAC standard atomic weight (Tc, Pm,
+  // and every Z >= 84 except Th, Pa, U) carry a longest-lived mass NUMBER in
+  // the table, not a standard weight, so they are outside the envelope.
+  // Reference check: M = sum(n_i * Ar_i) recomputed from the result's own
+  // component rows must agree with the reported mass to the 3-decimal rounding
+  // the handler applies; an anchor (H2O = 2*1.008 + 15.999 = 18.015) pins the
+  // table itself. This verifies arithmetic + table consistency, not the table.
+  const MW_NO_STANDARD_WEIGHT = new Set(["Tc", "Pm", ...Object.entries(PERIODIC_TABLE).filter(([, e]) => e.z >= 84 && ![90, 91, 92].includes(e.z)).map(([k]) => k)]);
+  const MW_MAX_ATOMS = 100000;
+  const MW_FORMULA_RE = /^(?:[A-Z][a-z]?\d*|\(|\)\d*)+$/;
+  const MW_SPEC = {
+    envelope: {
+      ranges: { formulaChars: "1-100 chars, grammar [A-Z][a-z]?<n> with ( ) groups only", totalAtoms: `1..${MW_MAX_ATOMS}`, elements: "H..Bi (Z 1-83 except Tc, Pm) plus Th, Pa, U — elements with an IUPAC standard atomic weight" },
+      assumptions: [
+        "Atomic masses are the IUPAC/CIAAW abridged standard atomic weights (conventional values) at natural isotopic abundance",
+        "Formula is a simple condensed formula; charges, hydrates (·), isotopes and brackets are not interpreted",
+        "Result is the mass of one formula unit in g/mol, rounded to 3 decimals",
+      ],
+      check: (_inputs, result) => {
+        const f = result && result.formula;
+        if (typeof f !== "string" || f.length < 1 || f.length > 100) return "formula_length";
+        if (!MW_FORMULA_RE.test(f)) return "unsupported_formula_syntax";
+        let depth = 0;
+        for (const ch of f) { if (ch === "(") depth++; else if (ch === ")" && --depth < 0) return "unbalanced_parentheses"; }
+        if (depth !== 0) return "unbalanced_parentheses";
+        const comps = Array.isArray(result.components) ? result.components : [];
+        let atoms = 0;
+        for (const c of comps) {
+          if (MW_NO_STANDARD_WEIGHT.has(c.element)) return `no_standard_atomic_weight:${c.element}`;
+          atoms += Number(c.count) || 0;
+        }
+        if (!(atoms >= 1 && atoms <= MW_MAX_ATOMS)) return "total_atoms";
+        return null;
+      },
+    },
+    reference: (_inputs, result) => {
+      const comps = Array.isArray(result.components) ? result.components : [];
+      const sum = comps.reduce((a, c) => a + c.atomicMass * c.count, 0);
+      const anchor = 2 * PERIODIC_TABLE.H.mass + PERIODIC_TABLE.O.mass;
+      return {
+        case: `M = sum(n_i*Ar_i) for ${result.formula} (IUPAC abridged standard atomic weights); anchor H2O = 18.015 g/mol`,
+        source: "IUPAC/CIAAW abridged standard atomic weights (conventional values)",
+        value: Math.round(sum * 1000) / 1000,
+        tolerance: Math.abs(anchor - 18.015) < 1e-9 ? 0.0006 : NaN,
+        reported: result.molecularWeight,
+      };
+    },
+  };
+
   registerCalc("molecular-weight", (_ctx, _artifact, params = {}) => {
     const formula = String(params.formula || "").trim();
     if (!formula) return { ok: false, error: "formula required (e.g. H2O, C6H12O6, Ca(OH)2)" };
@@ -1021,7 +1088,7 @@ export default function registerChemActions(registerLensAction) {
         components: components.sort((a, b) => b.contribution - a.contribution),
       },
     };
-  });
+  }, MW_SPEC);
 
   // ── Molarity / dilution / pH / gas law calculators ──
 
