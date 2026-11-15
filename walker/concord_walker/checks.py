@@ -5,6 +5,7 @@ from . import safety, colors
 from .cdp import Cdp, wait_until
 from .auth import new_context, assert_account, AccountMismatch, whoami, expected_username
 from .util import control_label, scrub, human_et
+from .runstate import LensBudget  # WALK-05 budget hook: the run-shared per-lens tracker
 
 ERROR_TEXT = re.compile(r"(?i)^\s*(something went wrong|application error|unhandled runtime error|"
                         r"this page could not be found|404|page not found|failed to load( lens)?|error loading|"
@@ -37,7 +38,7 @@ class LensWalk:
     """One lens, one account. Call run(); then .findings / .result."""
 
     def __init__(self, browser, cfg, rec, lens, account_key, log, allow_write=False, admin=False,
-                 phases=None, inv_entry=None, url_override=None, gate_check=None):
+                 phases=None, inv_entry=None, url_override=None, gate_check=None, budget=None):
         self.b, self.cfg, self.rec, self.lens, self.acct, self.log = browser, cfg, rec, lens, account_key, log
         self.slug, self.url = lens["slug"], lens["url"]
         # A gate check = a non-admin account opening an admin lens: the gate
@@ -57,6 +58,10 @@ class LensWalk:
         self.ev = rec.evidence_dir(self.slug)
         self.findings, self.result = [], LensResult(slug=self.slug, url=self.url, account=account_key,
                                                     admin=admin, started=human_et(), checks={})
+        # WALK-05 budget hook: `budget` is the run-shared LensBudget (or None
+        # for the per-walk cap alone, the pre-hook behaviour).
+        self.budget = budget
+        self._budget_noted = False
         self.console_errors, self.page_errors, self.bad_responses, self.crashes = [], [], [], 0
         self.dialog_mode = "dismiss"
         self.native_dialogs = []
@@ -65,7 +70,33 @@ class LensWalk:
 
     # ---------------------------------------------------------------- infra
     def over_budget(self):
-        return time.time() - self.t_start > self.th["lens_budget_s"]
+        # WALK-05 hook: the per-walk cap (as landed) OR the run-shared per-lens
+        # budget — cumulative across every walk of this lens in the run,
+        # counting this walk's elapsed time. run() notes each finished walk
+        # into the tracker (see _note_budget), so a lens re-walked for many
+        # tickets cannot spend a fresh full budget on every ticket.
+        if time.time() - self.t_start > self.th["lens_budget_s"]:
+            return True
+        if self.budget is not None:
+            return self.budget.spent(self.slug) + (time.time() - self.t_start) > self.budget.budget_s
+        return False
+
+    def _note_budget(self):
+        """WALK-05 hook, called once at walk end: fold this walk's elapsed
+        time into the run-shared tracker and stamp the result for the
+        journal / RESULTS layer — budget_aborted lists the phases the budget
+        stopped, so a budget-cut walk never reads as a clean pass downstream."""
+        elapsed = time.time() - self.t_start
+        if self.budget is not None and not self._budget_noted:
+            self.budget.note(self.slug, elapsed)
+            self._budget_noted = True
+        aborted = [ph for ph, d in self.result["checks"].items()
+                   if d.get("status") == "NOT_RUN" and d.get("reason") == "lens time budget exceeded"]
+        self.result["budget"] = {"lens": self.slug, "elapsed_s": int(elapsed),
+                                  "budget_s": self.budget.budget_s if self.budget is not None else self.th["lens_budget_s"],
+                                  "spent_s": int(self.budget.spent(self.slug)) if self.budget is not None else int(elapsed)}
+        if aborted:
+            self.result["budget_aborted"] = aborted
 
     def attach(self, page):
         def on_console(m):
@@ -256,6 +287,7 @@ class LensWalk:
         self.console_network()
         self.result["finished"] = human_et()
         self.result["elapsed_s"] = int(time.time() - self.t_start)
+        self._note_budget()
         return self.result
 
     def reset_page(self, page, cdp):

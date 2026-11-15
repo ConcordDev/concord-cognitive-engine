@@ -89,6 +89,7 @@ class LensBudget:
     def __init__(self, budget_s):
         self.budget_s = budget_s
         self.started = {}
+        self.spent_map = {}
 
     def start(self, lens):
         self.started.setdefault(lens, time.monotonic())
@@ -100,6 +101,15 @@ class LensBudget:
     def over(self, lens):
         e = self.elapsed(lens)
         return e is not None and e > self.budget_s
+
+    def note(self, lens, seconds):
+        """Accumulate a finished walk's elapsed seconds (the checks.py
+        LensWalk hook calls this at walk end, so the per-lens budget is
+        cumulative across every walk of the lens in the run)."""
+        self.spent_map[lens] = self.spent_map.get(lens, 0.0) + max(0.0, float(seconds))
+
+    def spent(self, lens):
+        return self.spent_map.get(lens, 0.0)
 
 
 def _pid_alive(pid):

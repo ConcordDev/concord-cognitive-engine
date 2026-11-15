@@ -99,6 +99,8 @@ def cmd_walk(args, cfg, log):
                          "(or use --no-auth for a signed-out smoke)" % cfg["accounts"]["t1"]["username"])
     log("run %s: %d lens(es), phases=%s, write=%s, dry=%s" % (rid, len(lenses), phases, args.allow_write, dry))
     summary = []
+    from concord_walker.runstate import LensBudget
+    walk_budget = LensBudget(cfg["thresholds"]["lens_budget_s"])  # WALK-05 hook: one run-shared per-lens budget
     with RunLock(os.path.join(cfg.get("runs_dir") or cfg["_walker_dir"], "run.lock")), sync_playwright() as pw:
         browser = pw.chromium.launch(channel="chrome", headless=True, args=["--disable-dev-shm-usage"])
         try:
@@ -118,7 +120,7 @@ def cmd_walk(args, cfg, log):
                         lphases = ["reach"]
                 try:
                     lw = LensWalk(browser, cfg, rec, lens, acct, log, allow_write=args.allow_write, admin=admin,
-                                  phases=lphases, inv_entry=lens, gate_check=gate)
+                                  phases=lphases, inv_entry=lens, gate_check=gate, budget=walk_budget)
                     res = lw.run()
                 except AccountMismatch as e:
                     log("ABORT: account check failed on %s: %s" % (slug, e))
