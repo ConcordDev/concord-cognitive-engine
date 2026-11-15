@@ -1,4 +1,10 @@
-// server/migrations/504_player_mail_inbox_mgmt.js
+// server/migrations/512_player_mail_inbox_mgmt.js
+//
+// Renumbered from 504: it collided with 504_photo_alt_tags.js, and
+// schema_version.version is a PRIMARY KEY, so the migrator refuses
+// duplicate versions. Every column add below is guarded by a
+// table_info check, so re-applying it on a DB that already ran it
+// under 504 is a no-op.
 //
 // FIX-mail-013: received mail had no inbox management at all — the only
 // action on an inbox row was saving it as a DTU. Standard management
