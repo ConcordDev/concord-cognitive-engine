@@ -20,11 +20,16 @@ CATEGORY_WORDS = {
     "timing": r"slow|latency|takes \d|seconds|\d+\s?ms|timeout|timed out|load time|hang",
     "pageerror": r"console|uncaught|exception|typeerror|error boundary|crash",
     "http": r"\b(4\d\d|5\d\d)\b|500|502|503|404|failed request|network error",
-    "tab_error": r"something went wrong|error|crash|blank|white screen|404|not found|fails to render",
+    # WALK-03: narrowed to render-context phrases. The bare words (error|crash|blank|404|not found)
+    # swallowed validation, export and console tickets (FIX-trades-009 "accepts blank form" classified
+    # here); those classes must win or fall out, never be decided as a tab error.
+    "tab_error": r"something went wrong|white screen|fails to render|error (page|screen|state|boundary)|renders? an error|\btab\b.{0,30}(error|blank|crash|empty|not found)",
     "crash": r"crash|aw, snap|renderer|out of memory|oom",
     "reach": r"404|not found|doesn.t load|fails to load|blank page|redirect",
     "hotkey": r"hotkey|keystroke|first key|steal|closes on (first )?(key|typing)",
     "persistence": r"reload|persist|vanish|disappear|lost after",
+    # WALK-04h: chat / LLM-output tickets (the recipe lives in chatcheck.py).
+    "chat": r"\b(chat|composer|chatbot|assistant|llm)\b|ai (reply|response|answer|output)|model (reply|response)",
 }
 
 
