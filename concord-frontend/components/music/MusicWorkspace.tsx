@@ -1034,9 +1034,9 @@ export function MusicWorkspace() {
                     only'. One honest empty state with the way in. */}
                 {displayTracks.length === 0 && (
                   <div className="rounded-xl border border-lattice-border bg-lattice-surface/50 px-6 py-10 text-center">
-                    <Music className="mx-auto mb-3 h-8 w-8 text-gray-500" />
+                    <Music className="mx-auto mb-3 h-8 w-8 text-gray-400" />
                     <p className="text-sm font-medium text-zinc-200">No music here yet</p>
-                    <p className="mx-auto mt-1 max-w-md text-[13px] leading-relaxed text-zinc-500">
+                    <p className="mx-auto mt-1 max-w-md text-[13px] leading-relaxed text-zinc-400">
                       Your library is empty and no tracks have been published to the shared catalog yet.
                       Upload the first one — posting is free and you keep 90%+ of every sale.
                     </p>
@@ -1147,7 +1147,7 @@ export function MusicWorkspace() {
                         className="group bg-white/[0.03] rounded-xl border border-white/5 hover:border-white/10 p-4 text-left transition-all"
                       >
                         <div className="w-full aspect-square rounded-lg bg-gradient-to-br from-neon-cyan/10 to-neon-purple/10 flex items-center justify-center mb-3 overflow-hidden">
-                          <ListMusic className="w-12 h-12 text-gray-600" />
+                          <ListMusic className="w-12 h-12 text-gray-400" />
                         </div>
                         <p className="text-sm font-medium truncate">{pl.name}</p>
                         <p className="text-xs text-gray-400">{pl.tracks.length} tracks</p>
@@ -2270,7 +2270,7 @@ export function MusicWorkspace() {
                           <p className="font-mono text-neon-green">
                             +${(listing.price * listing.downloads).toFixed(2)}
                           </p>
-                          <p className="text-gray-600">{formatRelativeTime(listing.listedAt)}</p>
+                          <p className="text-gray-400">{formatRelativeTime(listing.listedAt)}</p>
                         </div>
                       </div>
                     ))}
@@ -2438,7 +2438,7 @@ export function MusicWorkspace() {
                 <div
                   className={cn(
                     'p-1.5 rounded transition-colors',
-                    nowPlaying.muted ? 'text-gray-600' : 'text-gray-400'
+                    nowPlaying.muted ? 'text-gray-400' : 'text-gray-400'
                   )}
                 >
                   <Volume2 className="w-4 h-4" />

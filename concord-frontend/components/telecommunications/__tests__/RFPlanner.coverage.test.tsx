@@ -71,7 +71,8 @@ describe('RFPlanner', () => {
     const v = await mount();
     for (const t of ['Sites', 'Spectrum', 'Outages / SLA']) {
       await goTab(t);
-      await exercise({ passes: 1, text: 'x', skip: new RegExp(`${tabRe.source}|cancel|close|dismiss|clear|^×$`, 'i') });
+      // Deletes are two-step (arm, then Confirm): pass 1 arms every row's delete, pass 2 confirms.
+      await exercise({ passes: 2, text: 'x', skip: new RegExp(`${tabRe.source}|cancel|close|dismiss|clear|^×$`, 'i') });
       await settle();
     }
     expect(sent().some((x) => /Delete$/.test(x))).toBe(true);

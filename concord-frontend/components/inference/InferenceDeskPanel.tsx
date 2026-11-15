@@ -216,7 +216,7 @@ function KbFactList() {
                 armAriaLabel={`Delete fact ${f.subject} ${f.predicate} ${f.object}`}
                 confirmAriaLabel="Confirm delete fact"
                 cancelAriaLabel="Cancel delete fact"
-                className="p-0.5 text-gray-500 hover:text-rose-400"
+                className="p-0.5 text-gray-400 hover:text-rose-400"
               />
             ) : null}
           </div>
@@ -800,7 +800,7 @@ export function InferenceDeskPanel({ mode }: { mode: DeskMode }) {
                       </span>
                     )}
                     {entry.timestamp && (
-                      <span className="text-gray-600">
+                      <span className="text-gray-400">
                         {new Date(entry.timestamp).toLocaleTimeString()}
                       </span>
                     )}

@@ -157,7 +157,9 @@ describe('ARCaptureGallery — delete flow', () => {
     render(<ARCaptureGallery canvasRef={makeCanvasRef(document.createElement('canvas'))} sceneId={null} />);
     await screen.findByText('to delete');
 
-    fireEvent.click(screen.getByLabelText('Delete capture cap_x'));
+    // Two-step delete; the arm label is the capture's label.
+    fireEvent.click(screen.getByLabelText('Delete capture to delete'));
+    fireEvent.click(screen.getByLabelText('Confirm delete capture to delete'));
 
     await waitFor(() => expect(lensRun).toHaveBeenCalledWith('ar', 'captureDelete', { captureId: 'cap_x' }));
     await waitFor(() => expect(screen.queryByText('to delete')).not.toBeInTheDocument());

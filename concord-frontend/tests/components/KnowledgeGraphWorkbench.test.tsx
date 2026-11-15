@@ -258,7 +258,9 @@ describe('KnowledgeGraphWorkbench', () => {
     // Select node n1 via tree button.
     fireEvent.click(screen.getByTestId('tree-node-n1'));
     expect(screen.getByText('Node Detail')).toBeDefined();
-    expect(screen.getByText(/person · #n1/)).toBeDefined();
+    // Entity type is an editable select now; the id sits on its own line.
+    expect(screen.getByText('#n1')).toBeDefined();
+    expect((screen.getByLabelText('Entity type') as HTMLSelectElement).value).toBe('person');
 
     // Rename.
     const renameInput = screen.getByDisplayValue('Ada Lovelace');
@@ -282,21 +284,25 @@ describe('KnowledgeGraphWorkbench', () => {
 
     // Delete an existing attribute.
     fireEvent.click(screen.getByTestId('tree-node-n1'));
+    // Deletes are two-step (StickyDeleteConfirm): arm, then confirm.
     fireEvent.click(screen.getByRole('button', { name: 'Delete attribute born' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm delete attribute born' }));
     await waitFor(() =>
       expect(lensRunMock).toHaveBeenCalledWith('entity', 'node-update', expect.objectContaining({ deleteAttribute: true })),
     );
 
     // Delete an incident edge.
     fireEvent.click(screen.getByTestId('tree-node-n1'));
-    fireEvent.click(screen.getByRole('button', { name: 'Delete edge' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Delete edge to / }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm delete edge' }));
     await waitFor(() =>
       expect(lensRunMock).toHaveBeenCalledWith('entity', 'edge-delete', expect.objectContaining({ id: 'e1' })),
     );
 
     // Delete node.
     fireEvent.click(screen.getByTestId('tree-node-n1'));
-    fireEvent.click(screen.getByRole('button', { name: 'Delete node' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete node Ada Lovelace' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm delete node Ada Lovelace' }));
     await waitFor(() =>
       expect(lensRunMock).toHaveBeenCalledWith('entity', 'node-delete', expect.objectContaining({ id: 'n1' })),
     );
@@ -386,7 +392,8 @@ describe('KnowledgeGraphWorkbench', () => {
   it('deletes a schema (schema-delete)', async () => {
     await renderLoaded();
     clickTab('Schemas');
-    fireEvent.click(screen.getByRole('button', { name: 'Delete schema' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete schema Person' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm delete schema Person' }));
     await waitFor(() =>
       expect(lensRunMock).toHaveBeenCalledWith('entity', 'schema-delete', expect.objectContaining({ id: 's1' })),
     );

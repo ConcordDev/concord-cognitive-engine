@@ -55,6 +55,12 @@ vi.mock('@/lib/headless-probes', () => ({ probesByGroup: () => [] }));
 vi.mock('@/hooks/useLensNav', () => ({ useLensNav: () => {} }));
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
 
+// The lens is an operator surface: the page gates on the viewer's role before
+// the inner page mounts. The four states below run as an operator; the gate
+// itself is pinned in the last describe block.
+const authState: { user: { role: string } | null; isLoading: boolean } = { user: { role: 'owner' }, isLoading: false };
+vi.mock('@/hooks/useAuth', () => ({ useAuth: () => authState }));
+
 import SystemLensPage from '@/app/lenses/system/page';
 
 function renderPage() {
@@ -88,7 +94,7 @@ function report(stats: typeof baseStats) {
   };
 }
 
-beforeEach(() => { runDomainMock.mockReset(); });
+beforeEach(() => { runDomainMock.mockReset(); authState.user = { role: 'owner' }; authState.isLoading = false; });
 
 describe('system lens — four UX states', () => {
   it('LOADING: shows a role=status spinner while cartograph is in flight', async () => {
@@ -140,5 +146,25 @@ describe('system lens — four UX states', () => {
     expect(overviewTab).toHaveAttribute('aria-current', 'page');
     const metricsTab = view!.getByRole('button', { name: /Metrics/ });
     expect(metricsTab).not.toHaveAttribute('aria-current');
+  });
+});
+
+describe('system lens — operator gate', () => {
+  it('a signed-in non-operator never mounts the inner page or calls the cartograph', async () => {
+    authState.user = { role: 'member' };
+    let view: ReturnType<typeof render>;
+    await act(async () => { view = renderPage(); });
+    expect(runDomainMock).not.toHaveBeenCalled();
+    expect(view!.queryByTestId('system-overview-loading')).toBeNull();
+    expect(view!.queryByTestId('system-overview-grid')).toBeNull();
+  });
+
+  it('while auth is still resolving it shows a status line, not the lens', async () => {
+    authState.user = null;
+    authState.isLoading = true;
+    let view: ReturnType<typeof render>;
+    await act(async () => { view = renderPage(); });
+    expect(view!.getByText('Checking access…')).toBeInTheDocument();
+    expect(runDomainMock).not.toHaveBeenCalled();
   });
 });

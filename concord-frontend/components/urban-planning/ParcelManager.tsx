@@ -330,14 +330,14 @@ export function ParcelManager({ onParcelsChange }: { onParcelsChange?: (p: Parce
                         setEditingParcel(editingParcel === p.id ? null : p.id);
                         setParcelForm({ apn: p.apn, address: p.address || '', zoneType: p.zoneType, lotSizeSqFt: String(p.lotSizeSqFt), owner: p.owner || '', district: p.district || '' });
                       }}
-                      className="inline-flex min-h-[24px] min-w-[24px] items-center justify-center rounded p-1 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
+                      className="inline-flex min-h-[24px] min-w-[24px] items-center justify-center rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
                       aria-label={`Edit parcel ${p.apn}`}
                     >
                       <Pencil className="h-3.5 w-3.5" />
                     </button>
                     <button
                       onClick={() => remove(p.id)}
-                      className="inline-flex min-h-[24px] min-w-[24px] items-center justify-center rounded p-1 text-zinc-600 hover:bg-zinc-800 hover:text-red-400"
+                      className="inline-flex min-h-[24px] min-w-[24px] items-center justify-center rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-red-400"
                       aria-label="Delete parcel"
                     >
                       <Trash2 className="h-3.5 w-3.5" />

@@ -205,7 +205,7 @@ export function ContactPreferenceGraph() {
             </span>
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm text-zinc-100">{nameOf(n)}</span>
-              {n.username && <span className="block truncate text-sm text-zinc-500">@{n.username}</span>}
+              {n.username && <span className="block truncate text-sm text-zinc-400">@{n.username}</span>}
             </span>
             <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[13px] ${n.rel === 'mutual' ? 'border-cyan-400/40 text-cyan-200' : 'border-white/15 text-zinc-300'}`}>
               {REL_LABEL[n.rel]}

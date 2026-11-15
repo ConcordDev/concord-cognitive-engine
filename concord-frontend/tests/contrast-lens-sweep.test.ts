@@ -35,6 +35,10 @@ function tsxFiles(dir: string): string[] {
   return out;
 }
 
+function filesOf(lens: string): string[] {
+  return [`components/${lens}`, `app/lenses/${lens}`].flatMap((d) => tsxFiles(path.join(root, d)));
+}
+
 describe('muted-text contrast sweep (CB-0434)', () => {
   it('no claimed lens still colours text with a sub-AA neutral 500/600 step', () => {
     const bad = /text-(zinc|gray|neutral|slate|stone)-(500|600)/;
@@ -68,8 +72,8 @@ describe('muted-text contrast sweep (CB-0434)', () => {
   it('mesh teal labels sit at the passing teal step, not teal-700 (3.6:1)', () => {
     const hits: string[] = [];
     for (const f of filesOf('mesh')) {
-      const src = fs.readFileSync(f, 'utf8');
-      for (const m of src.matchAll(/text-teal-700/g)) hits.push(path.relative(ROOT, f) + ': ' + m[0]);
+      const src = readFileSync(f, 'utf8');
+      for (const m of src.matchAll(/text-teal-700/g)) hits.push(path.relative(root, f) + ': ' + m[0]);
     }
     expect(hits).toEqual([]);
   });
@@ -77,8 +81,8 @@ describe('muted-text contrast sweep (CB-0434)', () => {
   it('tools amber labels sit at the passing step, not yellow-700/800 (4.0 / 2.9:1)', () => {
     const hits: string[] = [];
     for (const f of filesOf('tools')) {
-      const src = fs.readFileSync(f, 'utf8');
-      for (const m of src.matchAll(/text-yellow-(700|800)/g)) hits.push(path.relative(ROOT, f) + ': ' + m[0]);
+      const src = readFileSync(f, 'utf8');
+      for (const m of src.matchAll(/text-yellow-(700|800)/g)) hits.push(path.relative(root, f) + ': ' + m[0]);
     }
     expect(hits).toEqual([]);
   });

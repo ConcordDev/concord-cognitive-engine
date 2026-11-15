@@ -161,7 +161,7 @@ export function CatchLog({ catches, loading, reason, onRetry, justCaughtId, dens
               const note = parseCatchMeta(c).note;
               return note
                 ? <span className="text-gray-300 italic">{note}</span>
-                : <span className="text-gray-500">—</span>;
+                : <span className="text-gray-400">—</span>;
             },
           } satisfies DataTableColumn<CatchRow>,
           {

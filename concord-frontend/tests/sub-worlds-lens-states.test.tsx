@@ -206,8 +206,8 @@ describe('sub-worlds lens — four UX states', () => {
     // 2. The REAL cross-world travel hook was invoked with the destination —
     //    not just a status message claiming a trip that never happened.
     await waitFor(() => expect(mockTravel).toHaveBeenCalledWith(PUBLIC_WORLD.world_id));
-    // 3. Only after travel resolves does the page route into the 3D world lens.
-    await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/lenses/world'));
+    // 3. Only after travel resolves does the page route into the 3D world lens, deep-linked to that world.
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith(`/lenses/world?worldId=${PUBLIC_WORLD.world_id}`));
   });
 
   it('Enter surfaces an honest error and never navigates when travel fails', async () => {
