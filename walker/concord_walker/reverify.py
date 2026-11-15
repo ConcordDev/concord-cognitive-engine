@@ -17,10 +17,12 @@ except Exception:  # WALK-04d is additive; its absence never breaks the walker
     VisionJudge = None
     wants_visual = lambda t: False
 from . import hiddentext
+from . import privacy_checks as _pc
 
 FIXED, STILL, HUMAN = "FIXED", "STILL_FAILING", "NEEDS_HUMAN"
 ORDER = ["crash", "hotkey", "delete_confirm", "crud_missing", "escape", "focus_return", "focus_trap", "focus_visible", "export",
-         "contrast", "overflow390", "unnamed", "keyboard", "timing", "chat", "validation", "hidden_text", "tab_error", "reach", "pageerror", "http", "persistence"]
+         "contrast", "overflow390", "unnamed", "keyboard", "timing", "chat", "validation", "hidden_text", "tab_error", "reach", "pageerror", "http", "persistence",
+         "privacy"]
 WRITE_CATS = {"hotkey", "delete_confirm", "persistence", "chat", "validation", "crud_missing"}
 
 
@@ -178,6 +180,9 @@ class Reverifier:
         if cat == "validation":
             # WALK-04a: the form bad-input recipe drives its own walk.
             return run_validation_recipe(self, t)
+        if cat == "privacy":
+            # WALK-04c: the two-account privacy probe drives its own contexts.
+            return self._privacy(t)
         lw = self.smoke(t["lens"], write=(cat in WRITE_CATS))
         same = [f for f in lw.findings if f["check"] == cat or (cat in ("escape", "focus_return", "focus_trap") and f["check"] in ("escape", "focus_return", "focus_trap"))]
         ev = [e for f in same for e in f["evidence"]][:4] or [lw.result.get("initial_evidence")]
@@ -525,6 +530,37 @@ class Reverifier:
             lw._close(ctx)
 
     # ------------------------------------------------------------ recipes
+    def _privacy(self, t):
+        """WALK-04c dispatch: the two-account foreign-row probe. Needs a live
+        labelled fixture from this run's write lane and at least one API path
+        named in the ticket; anything missing reads NEEDS_HUMAN with the
+        reason — never a guessed verdict."""
+        import re as _re
+        paths = list(dict.fromkeys(_re.findall(r"/api/[A-Za-z0-9_./-]+", ticket_text(t))))
+        label = None
+        for f in (self.rec.fixtures or {}).values():
+            if f.get("lens") == t["lens"] and f.get("state") not in ("deleted", "never_created"):
+                label = f.get("label")
+        if not self.allow_write:
+            return {"verdict": HUMAN, "method": "privacy:foreign-rows", "category": "privacy",
+                    "notes": "privacy probe needs --allow-write (t1 creates the labelled fixture first)"}
+        if not label:
+            return {"verdict": HUMAN, "method": "privacy:foreign-rows", "category": "privacy",
+                    "notes": "no live labelled fixture for this lens in this run"}
+        if not paths:
+            return {"verdict": HUMAN, "method": "privacy:foreign-rows", "category": "privacy",
+                    "notes": "ticket names no /api/ path to probe"}
+        acct, admin = self.account_for(t["lens"])
+        lw = LensWalk(self.b, self.cfg, self.rec, self.inv[t["lens"]], acct, self.log,
+                      allow_write=False, admin=admin)
+        ctx, page, _cdp = lw.open()
+        try:
+            row = _pc.probe_foreign_rows(lw, ctx, label, paths, self.log)
+        finally:
+            lw._close(ctx)
+        row["evidence"] = [lw.result.get("initial_evidence")]
+        return row
+
     def r_deities_002(self, t):
         # Ticket: first 390x844 reload crashed the tab ('Aw, Snap!' code 9); second reload OK.
         return self._crash_loop(t, mobile=True, n=10)

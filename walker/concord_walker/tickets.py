@@ -28,6 +28,7 @@ CATEGORY_WORDS = {
     "reach": r"404|not found|doesn.t load|fails to load|blank page|redirect",
     "hotkey": r"hotkey|keystroke|first key|steal|closes on (first )?(key|typing)",
     "persistence": r"reload|persist|vanish|disappear|lost after",
+    "privacy": r"another (user|account)|other (user|account)|someone else|cross.account|visible to (others|everyone|all users)|leaks?\b|websocket|socket\.io|real.?time (update|message|notification)s? (not|never|doesn|don)",
     # WALK-04a: form validation / bad-input tickets (the recipe lives in formfuzz.py).
     "validation": r"valid|invalid|accepts? (a )?(blank|empty|negative|invalid)|blank (form|title|field|input|name)|"
                   r"empty (form|title|field|input|name)|negative (value|amount|number|input|price)|"
