@@ -12,9 +12,9 @@ from .matching import fuzzy_match, match_any
 from . import colors
 
 FIXED, STILL, HUMAN = "FIXED", "STILL_FAILING", "NEEDS_HUMAN"
-ORDER = ["crash", "hotkey", "delete_confirm", "escape", "focus_return", "focus_trap", "focus_visible", "export",
+ORDER = ["crash", "hotkey", "delete_confirm", "crud_missing", "escape", "focus_return", "focus_trap", "focus_visible", "export",
          "contrast", "overflow390", "unnamed", "keyboard", "timing", "chat", "validation", "tab_error", "reach", "pageerror", "http", "persistence"]
-WRITE_CATS = {"hotkey", "delete_confirm", "persistence", "chat", "validation"}
+WRITE_CATS = {"hotkey", "delete_confirm", "persistence", "chat", "validation", "crud_missing"}
 
 
 def ticket_text(t):
@@ -288,6 +288,17 @@ class Reverifier:
         if cat in ("pageerror", "http"):
             return {"verdict": STILL if same else HUMAN, "method": "console/network", "category": cat, "evidence": ev,
                     "notes": "errors still present" if same else "none seen on walked paths; ticket path may differ"}
+        if cat == "crud_missing":
+            st = (chk.get("create_delete") or {})
+            status = st.get("status")
+            if status == "PASS":
+                return {"verdict": FIXED, "method": "own fixture create/delete", "category": cat, "evidence": ev,
+                        "notes": "create + delete both exercised end-to-end on an own labelled fixture; the CRUD surface exists"}
+            if status in ("NA", "PARTIAL", "FAIL"):
+                return {"verdict": STILL, "method": "own fixture create/delete", "category": cat, "evidence": ev,
+                        "notes": "write walk could not complete create+delete (%s: %s); the claimed missing/unusable CRUD surface reproduces" % (status, scrub(str(st.get("reason") or st), 160))}
+            return {"verdict": HUMAN, "method": "own fixture create/delete", "category": cat, "evidence": ev,
+                    "notes": "create_delete status %s; tester to decide" % status}
         if cat in WRITE_CATS:
             st = (chk.get("create_delete") or {})
             hit = [f for f in lw.findings if f["check"] == cat]
