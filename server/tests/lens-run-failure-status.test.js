@@ -214,7 +214,11 @@ describe("/api/lens/run and artifact create failure status", { timeout: 180000 }
       type: "project",
       title: "Reload Me",
       data: { title: "Reload Me", bpm: 96 },
-      meta: { status: "draft" },
+      // GB-1536: this suite runs as the anonymous local-first actor, and a
+      // guest's list read only returns public/published rows (create defaults
+      // to private). Mark the draft public so the fresh read can see it; the
+      // lifecycle status is still "draft", asserted below.
+      meta: { status: "draft", visibility: "public" },
     });
     assert.equal(good.status, 200, JSON.stringify(good.body));
     assert.equal(good.body.ok, true);

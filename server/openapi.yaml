@@ -3422,6 +3422,53 @@ paths:
       summary: NPC spouses currently wed to the caller (follow set)
       responses: { '200': { description: Spouse follow set } }
 
+  # ── Signed calculation receipts (public, no auth) ─────────────────────────
+  /.well-known/concord-receipt-keys.json:
+    get:
+      tags: [Health]
+      summary: Public signing keys used to verify calculation receipts
+      security: []
+      responses: { '200': { description: Public key document } }
+  /api/receipts/verify:
+    post:
+      tags: [Health]
+      summary: Verify a signed calculation receipt
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Verification verdict }
+        '400': { description: Malformed receipt }
+        '413': { description: Receipt too large }
+  /api/receipts/sheet:
+    post:
+      tags: [Health]
+      summary: Render a verified calculation sheet (HTML) for a receipt
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: HTML calculation sheet with the verdict at the top }
+        '400': { description: Malformed receipt }
+        '413': { description: Receipt too large }
+  /api/receipts/{id}:
+    get:
+      tags: [Health]
+      summary: Fetch a stored signed receipt by receiptId or signature digest
+      security: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: The receipt exactly as signed }
+        '400': { description: Malformed receipt id }
+        '404': { description: Receipt not found }
+
 components:
   securitySchemes:
     cookieAuth:
