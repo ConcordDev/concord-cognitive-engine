@@ -147,6 +147,7 @@ import { resolvePiperVoice } from "./lib/voice-piper-voice.js";
 import { lensRunParams as _lensRunParams, peelRedundantArtifactWrapper as _peelRedundantArtifactWrapper } from "./lib/lens-input-normalize.js";
 import { httpErrorFromLensAction as _httpErrorFromLensAction } from "./lib/lens-action-http.js";
 import { shapeLensRunHttp as _shapeLensRunHttp, respondMacroResult as _respondMacroResult } from "./lib/lens-run-http.js";
+import { applyReceiptDeclaration as _applyReceiptDeclaration } from "./lib/receipts/declarations.js";
 import { checkTitle as boundsCheckTitle, checkText as boundsCheckText } from "./lib/bounds.js";
 import { isUserNotification as _isUserNotification } from "./lib/notification-queue.js";
 import { createLensRunLogger as _createLensRunLogger } from "./lib/lens-run-log.js";
@@ -8773,6 +8774,9 @@ function authMiddleware(req, res, next) {
   // a receipt the caller already has; the handler verifies it first, renders
   // it, and writes nothing.
   if (req.method === "POST" && req.path === "/api/receipts/sheet") return next();
+  // Stored-receipt read-by-id. GET only, exact one-segment shape; reads one
+  // signed calc artifact, no user data. Rate limit: read.receipt-keys.
+  if (req.method === "GET" && /^\/api\/receipts\/[A-Za-z0-9_-]{8,80}$/.test(req.path)) return next();
   // Gate 1 POST bypass: ActivityPub inbox. Per W3C AP §7 federated peers
   // POST activities here without any local auth — authentication is the
   // HTTP-Signature on the request, verified by the inbox handler itself
@@ -42678,12 +42682,13 @@ app.use("/api/blueprints", createBlueprintsRouter({ requireAuth, db }));
 // account (GET only; see routes/conkay-demo.js and the authMiddleware
 // bypass for /api/conkay/demo/*). Mounted before the signed-in routers.
 import createConkayDemoRouter from "./routes/conkay-demo.js";
-app.use("/api/conkay/demo", createConkayDemoRouter({ rateLimit: perEndpointRateLimit("read.conkay-demo") }));
+app.use("/api/conkay/demo", createConkayDemoRouter({ rateLimit: perEndpointRateLimit("read.conkay-demo"), db }));
 // Public Ed25519 receipt keys + POST /api/receipts/verify (no auth, rate-limited).
 import createReceiptRouter from "./routes/receipts.js";
 app.use(createReceiptRouter({
   readLimit: perEndpointRateLimit("read.receipt-keys"),
   verifyLimit: perEndpointRateLimit("write.receipt-verify"),
+  db,
 }));
 // ConKay free-text NLP → design intent → FEA/partMesh mesh arrays (v1 apply_mesh path)
 import createConkayDesignRouter from "./routes/conkay-design.js";
@@ -52300,7 +52305,8 @@ app.post("/api/lens/run", async (req, res) => {
         emitMacroLife("macro:completed", { ok: false, ms: Date.now() - _lifeStartedAt, error: _httpErr.body.error });
         return res.status(_httpErr.status).json(_httpErr.body);
       }
-      const shaped = _shapeLensRunHttp(lensRaw);
+      // Receipt declarations hook: the ONE signing decision (lib/receipts/declarations.js). Never fails the solve.
+      const shaped = _shapeLensRunHttp(_applyReceiptDeclaration({ domain, action, inputs: rest, raw: lensRaw, db }));
       const result = shaped.body.ok ? shaped.body.result : shaped.body;
       _lrNote("lens_action", shaped.body.ok !== false, shaped.body.error, { reason: shaped.body.reason, code: shaped.body.code });
       emitMacroLife("macro:completed", { ok: shaped.body.ok !== false, ms: Date.now() - _lifeStartedAt });
@@ -52327,7 +52333,7 @@ app.post("/api/lens/run", async (req, res) => {
         emitMacroLife("macro:completed", { ok: false, ms: Date.now() - _lifeStartedAt, error: _macroHttpErr.body.error });
         return res.status(_macroHttpErr.status).json(_macroHttpErr.body);
       }
-      const shaped = _shapeLensRunHttp(macroRaw);
+      const shaped = _shapeLensRunHttp(_applyReceiptDeclaration({ domain, action, inputs: rest, raw: macroRaw, db }));
       const result = shaped.body.ok ? shaped.body.result : shaped.body;
       _lrNote("macro", shaped.body.ok !== false, shaped.body.error, { reason: shaped.body.reason, code: shaped.body.code });
       emitMacroLife("macro:completed", { ok: shaped.body.ok !== false, ms: Date.now() - _lifeStartedAt });

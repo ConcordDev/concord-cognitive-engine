@@ -11,10 +11,11 @@
 import express from "express";
 import { ensureSigningKey, publicKeyDocument, verifyAttestation } from "../lib/receipts/attest.js";
 import { renderCalcSheetHtml } from "../lib/receipts/calc-sheet.js";
+import { classifyReceiptKey, getStoredReceipt } from "../lib/receipts/store.js";
 
 const MAX_RECEIPT_CHARS = 1_500_000;
 
-export default function createReceiptRouter({ readLimit, verifyLimit } = {}) {
+export default function createReceiptRouter({ readLimit, verifyLimit, db } = {}) {
   const router = express.Router();
   const read = readLimit || ((_req, _res, next) => next());
   const verify = verifyLimit || ((_req, _res, next) => next());
@@ -77,6 +78,25 @@ export default function createReceiptRouter({ readLimit, verifyLimit } = {}) {
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Cache-Control", "no-store");
     res.send(renderCalcSheetHtml(receipt, { verify: verdict }));
+  });
+
+  // Read-by-id: the stored receipt exactly as signed (migration 514), by
+  // receiptId (rcpt_…) or by the signature digest. Body is the receipt itself
+  // (not an envelope), so it can be POSTed straight back to /verify. GET-only;
+  // no auth, no CSRF. Registered after the fixed /verify and /sheet paths and
+  // matches one path segment only.
+  // AUTH: public — receipts are calculation artifacts with no user data.
+  router.get("/api/receipts/:id", read, (req, res) => {
+    const key = String(req.params.id || "");
+    if (!classifyReceiptKey(key)) return res.status(400).json({ ok: false, error: "malformed_receipt_id" });
+    try {
+      const receipt = getStoredReceipt(db, key);
+      if (!receipt) return res.status(404).json({ ok: false, error: "receipt_not_found" });
+      res.setHeader("Cache-Control", "public, max-age=300");
+      res.json(receipt);
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e instanceof Error ? e.message : String(e) });
+    }
   });
 
   return router;

@@ -6,10 +6,15 @@ import { guardAnonWrites } from "../lib/lens-authz.js";
 import { registerLensExportProvider } from "../lib/lens-export.js";
 import { saveAfterWrites } from "../lib/lens-save-on-write.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
+import { CHEM_FUELS, CHEM_BOUNDS, solveChemEquilibrium } from "../lib/receipts/chem-equilibrium.js";
 
 export default function registerChemActions(registerLensAction) {
   registerLensAction = saveAfterWrites(guardAnonWrites(registerLensAction)); // anonymous callers can read, not write (lib/lens-authz.js)
   const CHEM_STRUCTURE_CAP = 400;
+  // Signing is NOT decided here. Every chem action returns its numbers; whether a
+  // receipt is signed is decided once, after the handler, by the declarations hook
+  // on POST /api/lens/run (lib/receipts/declarations.js). No declaration = unsigned.
+  const registerCalc = (name, fn) => registerLensAction("chem", name, fn);
 
   // ── Per-user persistent state (structures, lab notebook) ──
   // chemStructures and chemLabNotebook are in LENS_STATE_KEYS, so saved
@@ -108,7 +113,7 @@ export default function registerChemActions(registerLensAction) {
    * empirical formula, and degree of unsaturation.
    * artifact.data.formula = "C6H12O6" or params.formula
    */
-  registerLensAction("chem", "molecularAnalysis", (ctx, artifact, params) => {
+  registerCalc("molecularAnalysis", (ctx, artifact, params) => {
     const formula = params.formula || artifact.data?.formula;
     if (!formula) return { ok: false, error: "No molecular formula provided." };
 
@@ -177,7 +182,7 @@ export default function registerChemActions(registerLensAction) {
    * artifact.data.reactants = ["H2", "O2"], artifact.data.products = ["H2O"]
    * OR params.equation = "H2 + O2 -> H2O"
    */
-  registerLensAction("chem", "balanceReaction", (ctx, artifact, params) => {
+  registerCalc("balanceReaction", (ctx, artifact, params) => {
     let reactants, products;
 
     // FIX-chem-002: a typed coefficient is not part of a formula — "2H2"
@@ -939,7 +944,7 @@ export default function registerChemActions(registerLensAction) {
     return resolve(tokens);
   }
 
-  registerLensAction("chem", "molecular-weight", (_ctx, _artifact, params = {}) => {
+  registerCalc("molecular-weight", (_ctx, _artifact, params = {}) => {
     const formula = String(params.formula || "").trim();
     if (!formula) return { ok: false, error: "formula required (e.g. H2O, C6H12O6, Ca(OH)2)" };
     if (formula.length > 100) return { ok: false, error: "formula too long" };
@@ -985,9 +990,55 @@ export default function registerChemActions(registerLensAction) {
     };
   });
 
+  // ── Adiabatic flame temperature (Cantera equilibrium, HP) ──
+  // The real solve: the SAME kernel path as the no-login demo
+  // (lib/receipts/chem-equilibrium.js -> ConKay chem.equilibrium solver). This
+  // handler only validates and returns the numbers; whether the answer is
+  // signed against the cited Turns 3e reference is decided afterwards by the
+  // declarations hook (lib/receipts/declarations.js, chem.equilibrium). Inputs
+  // beyond the certified envelope but inside the hard sanity limits are still
+  // solved and returned — unsigned, with the bound named.
+  const EQ_HARD = { phi: [0.05, 10], T0: [100, 3000], P0: [0.01, 200] };
+  registerCalc("equilibrium", async (_ctx, _artifact, params = {}) => {
+    const fuel = typeof params.fuel === "string" ? params.fuel.toUpperCase() : (params.fuel === undefined ? "CH4" : null);
+    if (!fuel || !CHEM_FUELS[fuel]) return { ok: false, error: "fuel must be CH4 or H2" };
+    const num = (v, d) => (v === undefined || v === null || v === "" ? d : Number(v));
+    const phi = num(params.phi, 1), T0 = num(params.T0, 300), P0 = num(params.P0, 1);
+    for (const [name, v] of [["phi", phi], ["T0", T0], ["P0", P0]]) {
+      if (!Number.isFinite(v) || v < EQ_HARD[name][0] || v > EQ_HARD[name][1]) {
+        return { ok: false, error: `${name} must be a number between ${EQ_HARD[name][0]} and ${EQ_HARD[name][1]}` };
+      }
+    }
+    const spec = { fuel, phi, T0, P0atm: P0 };
+    let outcome;
+    try { outcome = await solveChemEquilibrium(spec); }
+    catch (e) { outcome = { status: "NOT_COMPUTED", reason: `the chemistry solve failed: ${e instanceof Error ? e.message : String(e)}` }; }
+    const computed = outcome.status !== "NOT_COMPUTED" && Number.isFinite(outcome.tAd);
+    const ref = CHEM_FUELS[fuel].reference;
+    const inEnvelope = phi >= CHEM_BOUNDS.phi.min && phi <= CHEM_BOUNDS.phi.max && T0 >= CHEM_BOUNDS.T0.min && T0 <= CHEM_BOUNDS.T0.max && P0 >= CHEM_BOUNDS.P0atm.min && P0 <= CHEM_BOUNDS.P0atm.max;
+    const atReference = phi === 1 && T0 === 300 && P0 === 1;
+    const tK = computed ? Math.round(outcome.tAd * 10) / 10 : undefined;
+    return {
+      ok: true,
+      result: {
+        fuel, phi, T0, P0, mechanism: CHEM_FUELS[fuel].mechanism,
+        status: outcome.status,
+        ...(outcome.reason ? { reason: outcome.reason } : {}),
+        ...(computed ? { adiabaticFlameTemperatureK: tK, majorProducts: outcome.products } : {}),
+        reference: ref,
+        referenceCase: atReference,
+        verdict: !computed ? "NOT_COMPUTED"
+          : atReference ? (Math.abs(outcome.tAd - ref.value) <= ref.tolerance ? "PASS" : "FAIL")
+          : inEnvelope ? "NOT_A_REFERENCE_CASE" : "OUT_OF_ENVELOPE",
+        solver: outcome.solver,
+        assumptions: outcome.assumptions,
+      },
+    };
+  });
+
   // ── Molarity / dilution / pH / gas law calculators ──
 
-  registerLensAction("chem", "calc-molarity", (_ctx, _artifact, params = {}) => {
+  registerCalc("calc-molarity", (_ctx, _artifact, params = {}) => {
     const moles = params.moles != null ? Number(params.moles) : null;
     const liters = params.liters != null ? Number(params.liters) : null;
     const molarity = params.molarity != null ? Number(params.molarity) : null;
@@ -1007,7 +1058,7 @@ export default function registerChemActions(registerLensAction) {
     return { ok: true, result };
   });
 
-  registerLensAction("chem", "calc-dilution", (_ctx, _artifact, params = {}) => {
+  registerCalc("calc-dilution", (_ctx, _artifact, params = {}) => {
     const m1 = Number(params.m1);
     const v1 = Number(params.v1);
     const m2 = Number(params.m2);
@@ -1032,7 +1083,7 @@ export default function registerChemActions(registerLensAction) {
     return { ok: true, result };
   });
 
-  registerLensAction("chem", "calc-ph", (_ctx, _artifact, params = {}) => {
+  registerCalc("calc-ph", (_ctx, _artifact, params = {}) => {
     const concentration = Number(params.concentration);
     if (!Number.isFinite(concentration) || concentration <= 0) {
       return { ok: false, error: "concentration must be > 0 (mol/L)" };
@@ -1063,7 +1114,7 @@ export default function registerChemActions(registerLensAction) {
     };
   });
 
-  registerLensAction("chem", "calc-gas-law", (_ctx, _artifact, params = {}) => {
+  registerCalc("calc-gas-law", (_ctx, _artifact, params = {}) => {
     const R = 0.08206; // L·atm·K-1·mol-1
     const P = params.P != null ? Number(params.P) : null; // atm
     const V = params.V != null ? Number(params.V) : null; // L
@@ -1504,7 +1555,7 @@ export default function registerChemActions(registerLensAction) {
    * params.amounts = { "H2": { grams: 4 }, "O2": { grams: 40 } }
    * params.actualYield = { compound: "H2O", grams: 30 }  (optional)
    */
-  registerLensAction("chem", "stoichiometry", (_ctx, _artifact, params = {}) => {
+  registerCalc("stoichiometry", (_ctx, _artifact, params = {}) => {
     const equation = String(params.equation || "").trim();
     if (!equation) return { ok: false, error: "equation required (e.g. 2H2 + O2 -> 2H2O)" };
     const sides = equation.split(/->|→|=/).map((s) => s.trim());
