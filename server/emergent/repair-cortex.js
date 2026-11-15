@@ -3775,6 +3775,7 @@ function clearBrainCooldown() {
 // ── Deterministic Executors ─────────────────────────────────────────────────
 // These are the ACTUAL fixes. Not text descriptions. Real functions.
 
+const REPO_ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..", "..");
 const EXECUTORS = {
   // ── State Repairs ────────────────────────────────────────────────────────
   rebuild_dtu_index: {
@@ -4010,60 +4011,32 @@ const EXECUTORS = {
 
   apply_code_patch: {
     category: "logic",
-    description: "Apply a search-and-replace patch to a server source file to fix a syntax or runtime error",
+    description: "PROPOSE (never apply) a search-and-replace patch for a source file. The patch is queued for human approval; it is written only via lib/repair-hotpatch.js applyHotpatch (CONCORD_REPAIR_HOTPATCH=1 + approved entry + test gate + byte-identical rollback). Model confidence never authorizes a write.",
     canApply: (context) => {
-      if (!context?.filePath || !context?.search || !context?.replace) return false;
-      // Only allow patching files within the server directory
-      const serverDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
-      const target = path.resolve(context.filePath);
-      return target.startsWith(serverDir) && /\.(js|cjs|mjs)$/.test(target);
+      if (!context?.filePath || !context?.search || typeof context?.replace !== "string") return false;
+      const target = path.resolve(REPO_ROOT, context.filePath);
+      return target.startsWith(path.join(REPO_ROOT, "server") + path.sep) && /\.(js|cjs|mjs)$/.test(target);
     },
     execute: async (context) => {
       if (!context?.filePath || !context?.search || typeof context?.replace !== "string") {
         return { success: false, reason: "Missing filePath, search, or replace in context" };
       }
-
-      const serverDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
-      const target = path.resolve(context.filePath);
-
-      if (!target.startsWith(serverDir)) {
-        return { success: false, reason: "Path escape attempt blocked — only server/ files allowed" };
-      }
-
-      if (!/\.(js|cjs|mjs)$/.test(target)) {
-        return { success: false, reason: "Only .js/.cjs/.mjs files may be patched" };
-      }
-
-      let content;
-      try {
-        content = fs.readFileSync(target, "utf-8");
-      } catch (readErr) {
-        return { success: false, reason: `Cannot read file: ${readErr.message}` };
-      }
-
-      if (!content.includes(context.search)) {
-        return { success: false, reason: "Search string not found in file — patch not applied" };
-      }
-
-      // Backup original content in RUNTIME_PATCHES for rollback
-      const backupKey = `file_patch:${target}`;
-      if (!RUNTIME_PATCHES.has(backupKey)) {
-        RUNTIME_PATCHES.set(backupKey, { type: "file_backup", original: content, appliedAt: nowISO() });
-      }
-
-      const patched = content.replace(context.search, context.replace);
-
-      try {
-        fs.writeFileSync(target, patched, "utf-8");
-      } catch (writeErr) {
-        return { success: false, reason: `Cannot write file: ${writeErr.message}` };
-      }
-
+      // This executor can NEVER write a file. It only enqueues a proposal;
+      // success:false so the cycle does not record it as a learned fix.
+      const { proposeSearchReplace } = await import("../lib/repair-hotpatch.js");
+      const res = await proposeSearchReplace({
+        error: context.error?.message || context.reason || "repair-cortex apply_code_patch",
+        filePath: context.filePath,
+        search: context.search,
+        replace: context.replace,
+        rootDir: REPO_ROOT,
+      });
+      if (!res.ok) return { success: false, reason: `patch not queued: ${res.error}` };
       return {
-        success: true,
-        message: `Patched ${path.relative(serverDir, target)}: replaced ${context.search.slice(0, 60).replace(/\n/g, "\\n")}…`,
-        rollbackAvailable: true,
-        backupKey,
+        success: false,
+        queued: true,
+        proposalId: res.id || res.entry?.id,
+        reason: "patch proposal queued; awaiting approval (nothing written)",
       };
     },
   },

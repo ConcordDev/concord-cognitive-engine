@@ -184,6 +184,58 @@ export async function proposeHotpatch({ error, context = "", filePath, rootDir, 
   return { ok: true, entry: enq.entry };
 }
 
+/**
+ * Convert a model-supplied search/replace pair into a queued PROPOSAL. Never
+ * writes the target. The (single, exact, unique) match is expanded to whole
+ * lines and expressed as a context-free unified-diff hunk, verified through
+ * applyUnifiedDiff, and enqueued via proposeHotpatch — so it takes the same
+ * approve → flag → test-gate → rollback path as every other hot-patch.
+ * `filePath` may be repo-relative or an absolute path inside rootDir.
+ */
+export async function proposeSearchReplace({ error, context = "", filePath, search, replace, rootDir, audit = defaultAudit } = {}) {
+  if (typeof filePath !== "string" || !filePath || typeof search !== "string" || !search || typeof replace !== "string") {
+    return { ok: false, error: "invalid_patch_request" };
+  }
+  let rel = filePath;
+  if (path.isAbsolute(rel)) {
+    const r = path.relative(rootDir, rel);
+    if (r.startsWith("..") || path.isAbsolute(r)) return { ok: false, error: "path_not_allowed", filePath };
+    rel = r;
+  }
+  rel = rel.replace(/\\/g, "/");
+  if (!isPathAllowed(rel)) return { ok: false, error: "path_not_allowed", filePath: rel };
+  if (!/\.(js|cjs|mjs)$/.test(rel)) return { ok: false, error: "unsupported_file_type", filePath: rel };
+  let content;
+  try {
+    content = await readFile(path.join(rootDir, rel), "utf8");
+  } catch (e) {
+    return { ok: false, error: "target_unreadable", detail: String(e?.message || e) };
+  }
+  const first = content.indexOf(search);
+  if (first === -1) return { ok: false, error: "search_not_found" };
+  if (content.indexOf(search, first + 1) !== -1) return { ok: false, error: "search_not_unique" };
+  const lineStart = content.lastIndexOf("\n", first - 1) + 1;
+  const endIdx = first + search.length;
+  const nl = content.indexOf("\n", endIdx);
+  const lineEnd = nl === -1 ? content.length : nl;
+  const oldBlock = content.slice(lineStart, lineEnd);
+  const newBlock = content.slice(lineStart, first) + replace + content.slice(endIdx, lineEnd);
+  const oldLines = oldBlock.split("\n");
+  const newLines = newBlock.split("\n");
+  const startLine = content.slice(0, lineStart).split("\n").length;
+  const diff = [
+    `--- a/${rel}`,
+    `+++ b/${rel}`,
+    `@@ -${startLine},${oldLines.length} +${startLine},${newLines.length} @@`,
+    ...oldLines.map((l) => `-${l}`),
+    ...newLines.map((l) => `+${l}`),
+  ].join("\n");
+  const brainCall = async () => ({ ok: true, proposal: { file: rel, diff, rationale: "search/replace proposed by repair brain; awaiting human approval" } });
+  const res = await proposeHotpatch({ error, context, filePath: rel, rootDir, brainCall, audit });
+  if (!res.ok && res.error === "duplicate_id") return { ok: true, alreadyQueued: true, id: res.id };
+  return res;
+}
+
 async function defaultTestGate({ rootDir, filePath }) {
   if (/\.m?js$/.test(filePath)) {
     const { execFile } = await import("node:child_process");
@@ -259,4 +311,4 @@ export async function rollbackHotpatch(id, { rootDir, audit = defaultAudit } = {
   return { ok: true, entry };
 }
 
-export default { hotpatchEnabled, isPathAllowed, applyUnifiedDiff, proposeHotpatch, applyHotpatch, rollbackHotpatch };
+export default { hotpatchEnabled, isPathAllowed, applyUnifiedDiff, proposeHotpatch, proposeSearchReplace, applyHotpatch, rollbackHotpatch };
