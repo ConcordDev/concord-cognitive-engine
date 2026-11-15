@@ -268,6 +268,54 @@ def cmd_reverify(args, cfg, log):
     log("reverify done: %s" % rec.run_dir)
 
 
+def cmd_reverify_ci(args, cfg, log):
+    """WALK-06: the --from-ci lane — non-lens code tickets verified by CI + code
+    evidence at the deploy sha. Offline by design: no browser, no session."""
+    from concord_walker import ci_verify
+    from concord_walker.fold import extract_from_git
+    from concord_walker.ledger import WalkerLedger
+    if not args.from_repo or not args.deploy_sha:
+        raise SystemExit("--from-ci needs --from-repo <clone> --deploy-sha <sha> (fold + code evidence read at the pinned sha)")
+    if not args.expect_sha:
+        raise SystemExit("--from-ci needs --expect-sha <sha> (the CI payload must be for exactly this sha)")
+    if args.expect_sha != args.deploy_sha:
+        raise SystemExit("--expect-sha must equal --deploy-sha for --from-ci (fold, code evidence and CI payload pin to one sha)")
+    try:
+        checks = ci_verify.load_checks(args.ci_checks)
+    except ci_verify.CiError as e:
+        raise SystemExit(str(e))
+    fold = extract_from_git(args.from_repo, args.deploy_sha)
+    log("fold @ %s: %s" % (args.deploy_sha, fold.counts()))
+    store = TicketStore(cfg["audit_dir"], fold=fold)
+    rid = run_id() + "-from-ci"
+    rec = RunRecorder(cfg, rid, dry=args.dry_run)
+    log.path = os.path.join(rec.run_dir, "walker.log")
+    with open(os.path.join(rec.run_dir, "canonical.jsonl"), "w") as f:
+        f.write(fold.canonical_text())
+    ledger = WalkerLedger(os.path.join(cfg.get("records_dir") or os.path.join(cfg["_walker_dir"], "records"),
+                                       "walker.jsonl"), dry=args.dry_run)
+    ids = list(args.ids)
+    if args.from_status:
+        ids += [i for i in store.base if store.status(i) == args.from_status.upper()]
+    if not ids:
+        ids = fold.ci_ids()
+    results = ci_verify.run_ci_lane(store=store, repo=args.from_repo, deploy_sha=args.deploy_sha,
+                                    expect_sha=args.expect_sha, checks=checks, ids=ids,
+                                    ledger=ledger, run_id_str=rid)
+    with open(os.path.join(rec.run_dir, "reverify.jsonl"), "w") as f:
+        for r in results:
+            f.write(json.dumps(r) + "\n")
+    with open(os.path.join(rec.run_dir, "REVERIFY.md"), "w") as f:
+        f.write("# Re-verify (CI lane) %s (%s)\n\n| ticket | prior | verdict | reason |\n|---|---|---|---|\n" % (rid, human_et()))
+        for r in results:
+            f.write("| %s | %s | %s | %s |\n" % (r["id"], r.get("prior_status") or "-", r["verdict"],
+                                                  (r.get("reason") or "").replace("|", "/")[:200]))
+    n_ok = sum(1 for r in results if r["verdict"] == "VERIFIED")
+    log("from-ci done: %d VERIFIED, %d unmoved/routed of %d; ledger %d written, %d suppressed (dry); run %s"
+        % (n_ok, len(results) - n_ok, len(results), ledger.written, ledger.suppressed, rec.run_dir))
+    return results
+
+
 def cmd_whoami(args, cfg, log):
     from playwright.sync_api import sync_playwright
     with sync_playwright() as pw:
@@ -306,6 +354,8 @@ def main():
     p.add_argument("--from-repo", help="WALK-01: read the ticket fold from this repo clone at --deploy-sha (fix_tickets.jsonl + records/*.jsonl)")
     p.add_argument("--deploy-sha", help="WALK-01: the pinned sha the fold is read at (with --from-repo)")
     p.add_argument("--expect-sha", help="WALK-01: sha gate — write status rows only if the live build sha matches; mismatch runs dry")
+    p.add_argument("--from-ci", action="store_true", help="WALK-06: verify non-lens code tickets by CI + code evidence at the deploy sha (offline; no browser, no session)")
+    p.add_argument("--ci-checks", help="WALK-06: CI checks payload for the expect sha: {sha, runs[{name, status, conclusion, html_url}]}")
     p.add_argument("--resume", help="WALK-05: resume this run id — ids finished in its journal (done|skipped) are not re-run")
     p.add_argument("--lens-budget-s", type=int, help="WALK-05: per-lens time budget in seconds (default from config thresholds, else 900)")
     p.add_argument("--allow-write", action="store_true")
@@ -329,9 +379,12 @@ def main():
     elif args.cmd == "sweep":
         cmd_walk(args, cfg, log)
     elif args.cmd == "reverify":
-        if not args.ids and not args.from_status:
+        if getattr(args, "from_ci", False):
+            cmd_reverify_ci(args, cfg, log)
+        elif not args.ids and not args.from_status:
             raise SystemExit("give ticket ids (e.g. FIX-007 FIX-deities-002) or --from-status FIXED_PENDING_VERIFY")
-        cmd_reverify(args, cfg, log)
+        else:
+            cmd_reverify(args, cfg, log)
     elif args.cmd == "login":
         login(cfg, args.account, "headed" if args.headed else "secrets-file", log)
     elif args.cmd == "whoami":

@@ -66,9 +66,12 @@ def apply_records(base, updates, records):
             if d["id"] in base:
                 updates.setdefault(d["id"], []).append(row)
             else:
+                # WALK-06: the stub keeps the row's fixed_commit/fixed_by — for a
+                # records-only id that commit is the CI lane's code evidence.
                 base[d["id"]] = {"id": d["id"], "lens": d.get("lens"), "status": row["status"],
                                  "title": d.get("fix_note") or "", "_records_only": True,
-                                 "_record_file": name}
+                                 "_record_file": name,
+                                 "fixed_commit": d.get("fixed_commit"), "fixed_by": d.get("fixed_by")}
     return base, updates
 
 
