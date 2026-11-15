@@ -10,6 +10,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '@/lib/api/client';
+import { isGuestMode } from '@/lib/guest-bridge';
 
 export interface AuthUser {
   id: string;
@@ -79,8 +80,19 @@ export function useAuth(): UseAuthReturn {
       } else {
         settleRetryOrNull(attempt);
       }
-    } catch {
-      if (mountedRef.current) settleRetryOrNull(attempt);
+    } catch (err) {
+      if (!mountedRef.current) return;
+      // GB-1536 guest: the middleware already established "no session"
+      // (it set the guest flag), so a 401/403 from /me is the definitive
+      // signed-out answer, not a refresh-window blip — settle now instead
+      // of holding a guest in "loading" through ~18 s of retries.
+      const status = (err as { response?: { status?: number } } | null)?.response?.status;
+      if ((status === 401 || status === 403) && isGuestMode()) {
+        setUser(null);
+        setIsLoading(false);
+        return;
+      }
+      settleRetryOrNull(attempt);
     }
   }, []);
 
