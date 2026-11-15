@@ -6,11 +6,11 @@
 // shared export (lib/lens-export.js), scoped to the calling user: the
 // same adoption the affect lens made for its state-resident check-ins.
 //
-// Run: node --test server/domains/chem-notebook-export.test.js
+// Run: node --test server/tests/chem-notebook-export.test.js
 
 import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import registerChemActions from "./chem.js";
+import registerChemActions from "../domains/chem.js";
 import { collectLensExport, hasLensExportProvider } from "../lib/lens-export.js";
 
 const actions = new Map();

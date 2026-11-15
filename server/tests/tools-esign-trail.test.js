@@ -7,11 +7,11 @@
 // the panel); the result now names its state: pending / failed /
 // verified.
 //
-// Run: node --test server/domains/tools-esign-trail.test.js
+// Run: node --test server/tests/tools-esign-trail.test.js
 
 import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import registerToolsActions from "./tools.js";
+import registerToolsActions from "../domains/tools.js";
 
 const actions = new Map();
 registerToolsActions((domain, action, fn) => actions.set(`${domain}:${action}`, fn));

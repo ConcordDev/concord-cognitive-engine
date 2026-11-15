@@ -7,11 +7,11 @@
 // on a lock another thread holds, which never acquires it later in the
 // trace, contributes an edge.
 //
-// Run: node --test server/domains/lock-deadlock-trace.test.js
+// Run: node --test server/tests/lock-deadlock-trace.test.js
 
 import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import registerLockActions from "./lock.js";
+import registerLockActions from "../domains/lock.js";
 
 const actions = new Map();
 registerLockActions((domain, action, fn) => actions.set(`${domain}:${action}`, fn));

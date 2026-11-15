@@ -7,11 +7,11 @@
 // nor breaking; the apis list is also read from params (the panel's
 // call shape), not only from artifact data.
 //
-// Run: node --test server/domains/integrations-compat-versions.test.js
+// Run: node --test server/tests/integrations-compat-versions.test.js
 
 import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import registerIntegrationsActions from "./integrations.js";
+import registerIntegrationsActions from "../domains/integrations.js";
 
 const actions = new Map();
 registerIntegrationsActions((domain, action, fn) => actions.set(`${domain}:${action}`, fn));

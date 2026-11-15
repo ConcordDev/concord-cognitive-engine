@@ -4,7 +4,7 @@
 // another user's events (the store is per-user by construction).
 import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import registerLockActions from "./lock.js";
+import registerLockActions from "../domains/lock.js";
 
 const actions = new Map();
 registerLockActions((domain, name, fn) => actions.set(name, fn));

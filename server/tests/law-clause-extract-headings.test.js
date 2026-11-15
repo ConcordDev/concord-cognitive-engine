@@ -5,11 +5,11 @@
 // ALL-CAPS. A short, mostly-capitalised, punctuation-free line following
 // a blank line is now a heading too; ordinary prose does not split.
 //
-// Run: node --test server/domains/law-clause-extract-headings.test.js
+// Run: node --test server/tests/law-clause-extract-headings.test.js
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import registerLawActions from "./law.js";
+import registerLawActions from "../domains/law.js";
 
 const actions = new Map();
 registerLawActions((domain, action, fn) => actions.set(`${domain}:${action}`, fn));
