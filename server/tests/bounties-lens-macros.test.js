@@ -228,7 +228,7 @@ describe("bounties — fail-CLOSED numeric guard (no fabricated CC)", () => {
       rewardCc: 1e308,
     });
     assert.equal(r.ok, false, "poisoned reward must be rejected");
-    assert.match(r.error, /numeric field/);
+    assert.match(r.error, /Reward must be a whole number between 1 and 1,000,000 CC/);
     // Nothing was created.
     assert.equal(call("list", ctxOther, {}).result.total, 0);
   });
@@ -248,7 +248,7 @@ describe("bounties — fail-CLOSED numeric guard (no fabricated CC)", () => {
       milestones: [{ title: "ok", rewardCc: 10 }, { title: "bad", rewardCc: 1e308 }],
     });
     assert.equal(r.ok, false);
-    assert.match(r.error, /milestones\[1\]/);
+    assert.match(r.error, /Milestone 2's reward must be a whole number between 1 and 1,000,000 CC/);
     assert.equal(call("list", ctxOther, {}).result.total, 0);
   });
 
