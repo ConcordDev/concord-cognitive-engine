@@ -49,7 +49,8 @@ export async function lensContextEvidence(a) {
   try {
     const timeout = new Promise((resolve) => {
       timer = setTimeout(() => resolve({ ok: false, reason: "timeout" }), limit);
-      if (typeof timer.unref === "function") timer.unref();
+      // Deliberately NOT unref'd: the finally block clears it, and an unref'd timer lets the event loop
+      // drain while a never-answering tool is awaited, which aborts the run instead of timing the step out.
     });
     const r = await Promise.race([
       Promise.resolve(a.exec({ tool: "run_lens_action", params: { domain: a.lensId, action, params: {} } })),
