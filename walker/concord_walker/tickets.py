@@ -28,6 +28,11 @@ CATEGORY_WORDS = {
     "reach": r"404|not found|doesn.t load|fails to load|blank page|redirect",
     "hotkey": r"hotkey|keystroke|first key|steal|closes on (first )?(key|typing)",
     "persistence": r"reload|persist|vanish|disappear|lost after",
+    # WALK-04a: form validation / bad-input tickets (the recipe lives in formfuzz.py).
+    "validation": r"valid|invalid|accepts? (a )?(blank|empty|negative|invalid)|blank (form|title|field|input|name)|"
+                  r"empty (form|title|field|input|name)|negative (value|amount|number|input|price)|"
+                  r"no error (message|shown|appears)|missing.{0,20}error|error message|out.of.range|"
+                  r"reversed dates?|end (date )?before start|99999|whitespace.only",
     # WALK-04h: chat / LLM-output tickets (the recipe lives in chatcheck.py).
     "chat": r"\b(chat|composer|chatbot|assistant|llm)\b|ai (reply|response|answer|output)|model (reply|response)",
 }

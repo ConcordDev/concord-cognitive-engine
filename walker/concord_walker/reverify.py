@@ -3,6 +3,7 @@ read-only nearby smoke of the same lens, and decide FIXED / STILL_FAILING / NEED
 Judgment calls are never auto-decided: they go to the needs-tester queue."""
 import re, time
 from .checks import LensWalk
+from .formfuzz import run_validation_recipe
 from .cdp import wait_until
 from .auth import assert_account, AccountMismatch
 from .tickets import CATEGORY_WORDS
@@ -12,8 +13,8 @@ from . import colors
 
 FIXED, STILL, HUMAN = "FIXED", "STILL_FAILING", "NEEDS_HUMAN"
 ORDER = ["crash", "hotkey", "delete_confirm", "escape", "focus_return", "focus_trap", "focus_visible", "export",
-         "contrast", "overflow390", "unnamed", "keyboard", "timing", "chat", "tab_error", "reach", "pageerror", "http", "persistence"]
-WRITE_CATS = {"hotkey", "delete_confirm", "persistence", "chat"}
+         "contrast", "overflow390", "unnamed", "keyboard", "timing", "chat", "validation", "tab_error", "reach", "pageerror", "http", "persistence"]
+WRITE_CATS = {"hotkey", "delete_confirm", "persistence", "chat", "validation"}
 
 
 def ticket_text(t):
@@ -146,6 +147,9 @@ class Reverifier:
             # WALK-04h: the chat recipe drives its own walk (send budget on self).
             from .chatcheck import run_chat_check
             return run_chat_check(self, t)
+        if cat == "validation":
+            # WALK-04a: the form bad-input recipe drives its own walk.
+            return run_validation_recipe(self, t)
         lw = self.smoke(t["lens"], write=(cat in WRITE_CATS))
         same = [f for f in lw.findings if f["check"] == cat or (cat in ("escape", "focus_return", "focus_trap") and f["check"] in ("escape", "focus_return", "focus_trap"))]
         ev = [e for f in same for e in f["evidence"]][:4] or [lw.result.get("initial_evidence")]
