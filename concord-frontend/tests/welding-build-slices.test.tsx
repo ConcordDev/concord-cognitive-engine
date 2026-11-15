@@ -119,6 +119,11 @@ describe('welding build slices', () => {
     fireEvent.click(await screen.findByRole('button', { name: /WPS/ }));
     expect(await screen.findByText(/Procedure Qualification Records \(PQR\)/)).toBeTruthy();
     fireEvent.change(screen.getByPlaceholderText('Supports WPS #'), { target: { value: 'WPS-001' } });
+    // A PQR names the welder who ran the coupon: without one the button is disabled and says why.
+    expect((screen.getByRole('button', { name: /Record PQR/ }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getAllByRole('alert').some((a) => /welder/i.test(a.textContent || ''))).toBe(true);
+    expect(h.store.pqr.length).toBe(0);
+    fireEvent.change(screen.getByPlaceholderText('Welder'), { target: { value: 'R. Okafor' } });
     fireEvent.click(screen.getByRole('button', { name: /Record PQR/ }));
     expect(await screen.findByText(/PQR-001/)).toBeTruthy();
     expect(h.store.pqr.length).toBe(1);

@@ -71,13 +71,15 @@ describe('dx-platform DxWorkbench — four UX states', () => {
   });
 
   it('ERROR: shows role=alert + a Retry that re-issues the listCodebases call', async () => {
-    lensRunMock.mockImplementation(listResolves({ __error: 'boom' }));
+    lensRunMock.mockImplementation(listResolves({ __error: 'codebase index exploded' }));
     let view: ReturnType<typeof render>;
     await act(async () => { view = render(<DxWorkbench />); });
 
     await waitFor(() => expect(view!.getByTestId('dx-workbench-error')).toBeInTheDocument());
     expect(view!.getByTestId('dx-workbench-error')).toHaveAttribute('role', 'alert');
-    expect(view!.getByTestId('dx-workbench-error').textContent).toMatch(/boom/);
+    // Free-text server errors pass through; a bare machine token (e.g. 'boom') is
+    // translated to words by dxErrorWords instead of being shown raw.
+    expect(view!.getByTestId('dx-workbench-error').textContent).toMatch(/codebase index exploded/);
 
     const before = lensRunMock.mock.calls.filter((c) => c[1] === 'listCodebases').length;
     await act(async () => { fireEvent.click(view!.getByText('Retry')); });

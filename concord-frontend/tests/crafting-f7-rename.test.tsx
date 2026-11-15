@@ -137,11 +137,16 @@ describe('F7 rename convergence', () => {
       data: { recipeId: 'r1', name: 'Bench hook', benchPiece: true, spec: SPEC },
       meta: { visibility: 'private' },
     });
-    const { getByRole, getByLabelText, getByText } = render(<CraftingPage />);
+    const { getByRole, getByLabelText, getByText, container } = render(<CraftingPage />);
     await waitFor(() => expect(getByText('Bench hook')).toBeInTheDocument());
     await act(async () => { fireEvent.click(getByRole('button', { name: 'Edit' })); });
     fireEvent.change(getByLabelText('Piece name'), { target: { value: '   ' } });
-    await act(async () => { fireEvent.click(getByRole('button', { name: 'Save piece' })); });
+    // The Save button is disabled while the name is blank (FIX-crafting-005); the form
+    // itself (Enter) still refuses out loud rather than vanishing.
+    expect((getByRole('button', { name: 'Save piece' }) as HTMLButtonElement).disabled).toBe(true);
+    const form = container.querySelector('form');
+    expect(form).toBeTruthy();
+    await act(async () => { fireEvent.submit(form as HTMLFormElement); });
     await waitFor(() => expect(getByText('A piece needs a name.')).toBeInTheDocument());
     expect(apiPatch).not.toHaveBeenCalled();
     expect(apiPut).not.toHaveBeenCalled();

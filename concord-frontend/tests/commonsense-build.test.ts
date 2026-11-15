@@ -25,8 +25,10 @@ describe("S-CS-1(b) / D3 — the plain-voice relabel", () => {
   });
   it("the empty state teaches the loop and states the product", () => {
     assert.ok(page.includes("The thread is empty."));
-    assert.ok(page.includes("Nothing here answers for you"));
-    assert.ok(page.includes("stated by you, dated, and kept"));
+    // The thread now answers from the user's own stated findings (branch A2) — and says so,
+    // still claiming no answering capability beyond that.
+    assert.ok(page.includes("The thread answers from what you stated: your words, dated."));
+    assert.ok(page.includes("Nothing else answers for you"));
   });
   it("no answering capability is claimed anywhere in the copy", () => {
     assert.ok(!page.includes("Ask anything"));
