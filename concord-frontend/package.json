@@ -130,7 +130,7 @@
     "@vitejs/plugin-react": "^6.2.1",
     "@vitest/coverage-v8": "4.1.11",
     "autoprefixer": "^10.6.2",
-    "eslint": "^9.39.5",
+    "eslint": "^10.14.0",
     "eslint-config-next": "^16.4.5",
     "eslint-plugin-unused-imports": "^4.4.1",
     "globals": "^17.14.0",
