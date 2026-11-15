@@ -16,7 +16,7 @@ class RunRecorder:
 
     def evidence_dir(self, slug):
         # dry runs keep screenshots inside the run dir so the shared evidence/ tree only gets filed-ticket evidence
-        root = os.path.join(self.run_dir, "evidence") if self.dry else os.path.join(self.cfg["audit_dir"], "evidence")
+        root = os.path.join(self.run_dir, "evidence") if self.dry else (self.cfg.get("evidence_dir") or os.path.join(self.cfg["audit_dir"], "evidence"))
         d = os.path.join(root, slug, "walker-" + self.rid)
         os.makedirs(d, exist_ok=True)
         return d
@@ -27,7 +27,9 @@ class RunRecorder:
     def finding(self, rec):
         append_jsonl(os.path.join(self.run_dir, "findings.jsonl"), rec)
 
-    def judgment(self, lens, kind, question, evidence=None, ticket_id=None, account="zuko_qa_t1"):
+    def judgment(self, lens, kind, question, evidence=None, ticket_id=None, account=None):
+        if account is None:
+            account = self.cfg["accounts"]["t1"]["username"]
         rec = {"ts": ts_et(), "run": self.rid, "lens": lens, "kind": kind, "question": scrub(question, 400),
                "evidence": evidence or [], "ticket_id": ticket_id, "account": account, "status": "NEEDS_TESTER"}
         append_jsonl(os.path.join(self.run_dir, "needs_tester.jsonl"), rec)
@@ -49,7 +51,7 @@ class RunRecorder:
         left = [f for f in self.fixtures.values() if f["state"] not in ("deleted", "never_created")]
         if not left:
             return []
-        lines = ["\n## Lens walker run %s (%s, zuko_qa_t1)\n" % (self.rid, human_et())]
+        lines = ["\n## Lens walker run %s (%s, %s)\n" % (self.rid, human_et(), self.cfg["accounts"]["t1"]["username"])]
         for f in left:
             lines.append("- %s: fixture '%s' state=%s. %s Needs manual cleanup.\n" % (f["lens"], f["label"], f["state"], f["note"]))
         if not self.dry:

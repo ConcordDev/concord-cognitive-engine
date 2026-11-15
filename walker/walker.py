@@ -37,8 +37,15 @@ READ_PHASES = ["reach", "surface", "tabs", "keyboard", "openers", "export", "con
 
 
 def load_inventory(cfg):
-    with open(os.path.join(cfg["audit_dir"], "inventory.json")) as f:
-        return json.load(f)
+    # A run-local inventory in the audit dir wins; otherwise the versioned one
+    # at the walker root (generated from lens-registry.ts — tools/generate_inventory.py).
+    for path in (os.path.join(cfg["audit_dir"], "inventory.json"),
+                 os.path.join(cfg["_walker_dir"], "inventory.json")):
+        if os.path.exists(path):
+            with open(path) as f:
+                return json.load(f)
+    raise SystemExit("inventory.json not found in the audit dir or the walker root; "
+                     "generate it with tools/generate_inventory.py")
 
 
 def wait_for_memory(cfg, log):
@@ -109,8 +116,8 @@ def cmd_walk(args, cfg, log):
     store = TicketStore(cfg["audit_dir"])
     phases = args.phases.split(",") if args.phases else READ_PHASES + (["write"] if args.allow_write else [])
     if not args.no_auth and not has_session(cfg, "t1"):
-        raise SystemExit("no saved session for zuko_qa_t1 (auth/t1.json). Run: walker.py login --account t1 --headed  "
-                         "(or use --no-auth for a signed-out smoke)")
+        raise SystemExit("no saved session for %s (auth/t1.json). Run: walker.py login --account t1 --headed  "
+                         "(or use --no-auth for a signed-out smoke)" % cfg["accounts"]["t1"]["username"])
     log("run %s: %d lens(es), phases=%s, write=%s, dry=%s" % (rid, len(lenses), phases, args.allow_write, dry))
     summary = []
     with RunLock(os.path.join(cfg.get("runs_dir") or cfg["_walker_dir"], "run.lock")), sync_playwright() as pw:
@@ -122,15 +129,17 @@ def cmd_walk(args, cfg, log):
                     break
                 slug = lens["slug"]
                 acct, admin, lphases = (None if args.no_auth else "t1"), False, phases
+                gate = False
                 if slug in cfg["admin_lenses"]:
                     if args.admin and has_session(cfg, "admin") and not args.no_auth:
                         acct, admin = "admin", True
                         lphases = [p for p in phases if p != "write"]
                     else:
-                        lphases = ["reach", "surface", "contrast", "mobile"]  # non-admin gate check only
+                        gate = True  # non-admin gate check: the gate holding is the PASS
+                        lphases = ["reach"]
                 try:
                     lw = LensWalk(browser, cfg, rec, lens, acct, log, allow_write=args.allow_write, admin=admin,
-                                  phases=lphases, inv_entry=lens)
+                                  phases=lphases, inv_entry=lens, gate_check=gate)
                     res = lw.run()
                 except AccountMismatch as e:
                     log("ABORT: account check failed on %s: %s" % (slug, e))
@@ -195,7 +204,7 @@ def cmd_reverify(args, cfg, log):
     ledger = WalkerLedger(os.path.join(cfg.get("records_dir") or os.path.join(cfg["_walker_dir"], "records"),
                                        "walker.jsonl"), dry=dry)
     if not has_session(cfg, "t1"):
-        raise SystemExit("no saved session for zuko_qa_t1; run walker.py login --account t1 --headed first")
+        raise SystemExit("no saved session for %s; run walker.py login --account t1 --headed first" % cfg["accounts"]["t1"]["username"])
     ids = list(args.ids)
     if args.from_status:
         ids += [i for i in store.base if store.status(i) == args.from_status.upper()]
@@ -270,7 +279,7 @@ def main():
 
     def walk_opts(p):
         p.add_argument("--allow-write", action="store_true", help="create+delete ONE own labelled fixture per lens (never admin/write-skip lenses)")
-        p.add_argument("--admin", action="store_true", help="walk the 5 admin lenses with zuko_qa_admin (look-only) if auth/admin.json exists")
+        p.add_argument("--admin", action="store_true", help="walk the admin lenses with the admin account (look-only) if auth/admin.json exists")
         p.add_argument("--dry-run", action="store_true", help="don't append tickets / queue / leftovers to the shared audit files")
         p.add_argument("--no-auth", action="store_true", help="signed-out smoke (implies --dry-run)")
         p.add_argument("--phases", help="comma list from: " + ",".join(READ_PHASES + ["write"]))

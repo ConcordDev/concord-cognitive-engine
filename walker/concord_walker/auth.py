@@ -2,13 +2,16 @@
 
 Credentials are never printed or logged. Two ways to get a session:
   1. `walker.py login --account t1 --headed` opens a visible Chrome at /login on $DISPLAY;
-     a human (or a computer-use agent filling vault login 3945594 by reference) signs in.
+     a human (or a computer-use agent) signs in as the account named in config.
      The walker polls /api/auth/me and saves Playwright storage state to auth/<account>.json (0600).
-  2. `walker.py login --account t1 --secrets-file` reads username=/password= from the 0600 file
-     named in config (e.g. /workspace/secrets/walker-zuko_qa_t1.txt) and types them. Values never leave memory.
+  2. `walker.py login --account t1 --secrets-file` reads username=/password= from the 0600
+     saved-account file named in config (secrets/concord-zukoqa.env, zukoqb.env or
+     zukoqadmin.env) and types them. Values never leave memory. The expected username
+     for every account check comes from that file when it carries one (WALK-02) —
+     the config names the account, the saved file is the identity of record.
 """
 import json, os, time
-from .util import load_config
+from .util import load_config, resolve_config_path
 
 
 class AccountMismatch(RuntimeError):
@@ -48,6 +51,26 @@ def whoami(context, base_url):
     return {"ok": ok, "status": status, "username": user, "role": role}
 
 
+def secrets_path(cfg, account_key):
+    """The account's saved .env file (config-relative paths resolve to the walker dir)."""
+    p = cfg["accounts"][account_key].get("secrets_file")
+    return resolve_config_path(cfg["_walker_dir"], p) if p else None
+
+
+def expected_username(cfg, account_key):
+    """The username /api/auth/me must show for this account. The saved secrets
+    file's username= line wins when the file exists and carries one (the saved
+    test accounts' real usernames live only in those files); otherwise the
+    config's account name. Only the username line is ever read here — the
+    password is neither returned nor logged."""
+    path = secrets_path(cfg, account_key)
+    if path and os.path.exists(path):
+        user = _read_secrets_file(path).get("username")
+        if user:
+            return user
+    return cfg["accounts"][account_key]["username"]
+
+
 def assert_account(context, cfg, account_key, purpose, log=None):
     """Abort (raise) unless the session is exactly the expected QA account with an allowed role."""
     acct = cfg["accounts"][account_key]
@@ -56,8 +79,9 @@ def assert_account(context, cfg, account_key, purpose, log=None):
         log("auth/me before %s: user=%s role=%s status=%s" % (purpose, me.get("username"), me.get("role"), me.get("status")))
     if not me["ok"]:
         raise AccountMismatch("signed out or auth/me failed before %s (status %s)" % (purpose, me.get("status")))
-    if me["username"] != acct["username"]:
-        raise AccountMismatch("auth/me shows %r, expected %r before %s" % (me["username"], acct["username"], purpose))
+    want = expected_username(cfg, account_key)
+    if me["username"] != want:
+        raise AccountMismatch("auth/me shows %r, expected %r before %s" % (me["username"], want, purpose))
     role = str(me.get("role") or "").lower()
     if role in [r.lower() for r in cfg.get("forbidden_roles", [])]:
         raise AccountMismatch("auth/me role %r is forbidden" % role)
@@ -110,8 +134,8 @@ def login(cfg, account_key, method, log, timeout_s=600):
         page = ctx.new_page()
         page.goto(cfg["base_url"] + "/login", wait_until="load", timeout=45000)
         if method == "secrets-file":
-            path = acct["secrets_file"]
-            if not os.path.exists(path):
+            path = secrets_path(cfg, account_key)
+            if not path or not os.path.exists(path):
                 raise SystemExit("secrets file %s not found; create it (0600) with username= and password= lines, "
                                  "or use --headed" % path)
             vals = _read_secrets_file(path)
@@ -130,8 +154,8 @@ def login(cfg, account_key, method, log, timeout_s=600):
             pwd = None
             page.keyboard.press("Enter")
         else:
-            log("Headed login window open on DISPLAY=%s. Sign in as %s (vault login %s). Waiting up to %ss..."
-                % (os.environ.get("DISPLAY"), acct["username"], acct["vault_login_id"], timeout_s))
+            log("Headed login window open on DISPLAY=%s. Sign in as %s. Waiting up to %ss..."
+                % (os.environ.get("DISPLAY"), acct["username"], timeout_s))
         t0 = time.time()
         while time.time() - t0 < timeout_s:
             me = whoami(ctx, cfg["base_url"])
@@ -140,8 +164,9 @@ def login(cfg, account_key, method, log, timeout_s=600):
             time.sleep(2)
         if not me["ok"]:
             raise SystemExit("login not completed (auth/me status %s)" % me.get("status"))
-        if me["username"] != acct["username"]:
-            raise SystemExit("signed in as %r, expected %r; NOT saving session" % (me["username"], acct["username"]))
+        want = expected_username(cfg, account_key)
+        if me["username"] != want:
+            raise SystemExit("signed in as %r, expected %r; NOT saving session" % (me["username"], want))
         old = os.umask(0o077)
         try:
             ctx.storage_state(path=out)

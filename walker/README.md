@@ -1,12 +1,17 @@
 # Concord ultimate lens walker
 
-Automated walker for the Concord live lens audit. It walks every lens in `../inventory.json`, runs the
+Automated walker for the Concord live lens audit. It walks every lens in `inventory.json`, runs the
 standard checks, saves screenshot evidence, files tickets in the exact `fix_tickets.jsonl` format (deduped
 against what's already there), cleans up its own fixtures, and re-verifies tickets by ID.
 
 **Status (2026-11-13):** built and self-tested. Per Dutch's sequence, **do not run a sweep or re-verify
 against the live site until the builders finish their fixes.** The only live run so far was a signed-out,
 read-only, dry-run smoke on `deities` and `chat`.
+
+**Copies (WALK-02, 2026-11-14):** this tree (on the Mac, `~/.zuko/walker/`) is the **source of truth**.
+The old box copy is **gone** — live runs execute from the box, restored from this source of truth by
+Zuko 2, who also owns the test-account sign-ins. Paths in `config.json` are relative to the walker
+dir, so the tree runs from wherever it is checked out.
 
 ## Layout
 ```
@@ -23,36 +28,46 @@ walker/
     colors.py            CSS colour parsing (rgb/hsl/oklch/oklab/lab/lch/color()) + WCAG ratio
     safety.py            click allow/deny policy
   selftest/              local fake lens with deliberate bugs + run_selftest.py
+  inventory.json         the lens list, generated from concord-frontend/lib/lens-registry.ts
+                         (tools/generate_inventory.py); a copy in the audit dir overrides it
+  tools/                 generate_inventory.py
+  secrets/               saved test-account .env files (0600, gitignored); never commit or print
   auth/                  saved sessions (0600, gitignored); never commit or print
+  audit/                 the audit dir (config-relative): fix_tickets.jsonl, evidence/, reports/
   runs/<run-id>/         walker.log, lens-<slug>.json, findings.jsonl, new_tickets.jsonl, dedup.jsonl,
                          needs_tester.jsonl, fixtures.jsonl, SUMMARY.md / REVERIFY.md, LEFTOVERS.md
-  queue/needs_tester.jsonl   cumulative judgment queue (also mirrored to ../reports/NEEDS_TESTER_QUEUE.md)
+  queue/needs_tester.jsonl   cumulative judgment queue (also mirrored to audit/reports/NEEDS_TESTER_QUEUE.md)
 ```
-Evidence for real (non-dry) runs goes to `../evidence/<slug>/walker-<run-id>/`. Dry runs keep their
-screenshots in `runs/<run-id>/evidence/`.
+Evidence for real (non-dry) runs goes to `audit/evidence/<slug>/walker-<run-id>/` (or the configured
+`evidence_dir`). Dry runs keep their screenshots in `runs/<run-id>/evidence/`.
 
-## Setup (already done on the box)
+## Setup (on the run host — the box; the Mac copy is the source of truth)
 ```
-cd /workspace/concord-live-audit/walker
+cd <walker checkout>
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 ```
 It uses the system Google Chrome (`channel="chrome"`), headless, so there's no Playwright browser download.
 
 ## Accounts and sign-in (required before any authenticated run)
-| key | account | used for |
+The saved test accounts (names only — the credentials live in the 0600 `.env` files, owned by Zuko 2):
+| key | account file | used for |
 |---|---|---|
-| `t1` | `zuko_qa_t1` (vault login 3945594) | the walker account: every lens except the 5 admin lenses |
-| `t2` | `zuko_qa_t2` (vault login 4482532) | cross-account checks only, always in its **own isolated context** (incognito equivalent) |
-| `admin` | `zuko_qa_admin` (vault login 3912468) | **only** admin, ops, psyops, repair-telemetry and system, with `--admin`, forced look-only |
+| `t1` | `secrets/concord-zukoqa.env` | the walker account: every lens except the admin lenses |
+| `t2` | `secrets/concord-zukoqb.env` | cross-account checks only, always in its **own isolated context** (incognito equivalent) |
+| `admin` | `secrets/concord-zukoqadmin.env` | **only** the admin look-only set — admin, command-center, debug, ops, system, sentinel, psyops, repair-telemetry — with `--admin`, forced look-only |
+
+The config names each account (`concord-zukoqa`, `zukoqb`, `zukoqadmin`); the **expected username** for
+the `/api/auth/me` guard is taken from the account's `.env` file (`username=` line) whenever that file is
+present — the real usernames live only in those files. A username mismatch aborts the run.
 
 The walker can't read vault passwords. It gets a session in one of two ways:
 1. **Headed login (preferred):** `.venv/bin/python walker.py login --account t1 --headed`
-   This opens a visible Chrome at `/login` on `$DISPLAY`. A human, or a computer-use agent filling vault login
-   3945594 by reference, signs in with the **username** `zuko_qa_t1` (the email form returns "Invalid
-   credentials"). The walker polls `/api/auth/me`, refuses to save if the username differs, and writes
+   This opens a visible Chrome at `/login` on `$DISPLAY`. A human, or a computer-use agent, signs in with
+   the account's **username** (the email form returns "Invalid credentials"). The walker polls
+   `/api/auth/me`, refuses to save if the username differs from the expected one, and writes
    `auth/t1.json` (0600).
-2. **Secrets file:** if Dutch drops a 0600 file at the path in `config.json`
-   (`/workspace/secrets/walker-zuko_qa_t1.txt` with `username=` and `password=` lines), run
+2. **Secrets file:** with the account's 0600 `.env` file in place at the path in `config.json`
+   (`secrets/concord-zukoqa.env` with `username=` and `password=` lines), run
    `walker.py login --account t1 --secrets-file`. The values are typed, never printed or logged.
 
 It never copies cookies from the shared tester browser profile. Its sessions are its own logins. After each
@@ -65,10 +80,12 @@ Check a session with `walker.py whoami --account t1`.
 .venv/bin/python walker.py lens deities
 # one lens, also create + delete ONE own labelled fixture (checks the delete confirm)
 .venv/bin/python walker.py lens notes --allow-write
-# full sweep of all 267 lenses (resume with --start-from <slug>, subset with --only a,b,c / --category X / --limit N)
+# full sweep of every lens in inventory.json (270 at the 2026-11-14 registry; resume with
+# --start-from <slug>, subset with --only a,b,c / --category X / --limit N)
 .venv/bin/python walker.py sweep
 .venv/bin/python walker.py sweep --start-from music
-# include the 5 admin lenses on zuko_qa_admin (look-only); without --admin they get a non-admin gate check as t1
+# include the admin lenses on the admin account (look-only); without --admin they get a gate check
+# as t1 — a held gate (403, no-access page, or login redirect) is a PASS, not a failure
 .venv/bin/python walker.py sweep --admin
 # don't touch shared audit files (no tickets, queue or leftovers written)
 .venv/bin/python walker.py sweep --only chat,board --dry-run
@@ -141,7 +158,7 @@ For each ticket ID:
 - NEEDS_HUMAN → no status change, queue only.
 
 ## Needs tester / Zuko queue
-`queue/needs_tester.jsonl` plus `../reports/NEEDS_TESTER_QUEUE.md`. Kinds include `timing`,
+`queue/needs_tester.jsonl` plus `audit/reports/NEEDS_TESTER_QUEUE.md`. Kinds include `timing`,
 `tab_selection`, `export_empty`, `export_nothing`, `export_clipboard`, `export_missing`, `instant_create`,
 `create_unverified`, `delete_ambiguous`, `possible_regression`, `reverify`, `fixed_not_claimed`.
 
@@ -161,8 +178,8 @@ For each ticket ID:
   once.
 - **`/api/auth/me` guard** before every lens, create (open and submit), delete and delete-confirm. It aborts
   the whole run if the session isn't the expected username or role, or the role is owner, founder or sovereign.
-- `zuko_qa_t2` and `zuko_qa_admin` always get their own browser contexts. It never signs anything into the shared tester profile.
-- Leftovers (anything not verified deleted) go to `runs/<id>/LEFTOVERS.md` and `../reports/LEFTOVER_FIXTURES.md`.
+- The `t2` and `admin` accounts always get their own browser contexts. It never signs anything into the shared tester profile.
+- Leftovers (anything not verified deleted) go to `runs/<id>/LEFTOVERS.md` and `audit/reports/LEFTOVER_FIXTURES.md`.
 - No repo, DB, server, Mac or tmux access. It's a pure browser client of https://concord-os.org.
 
 ## Self-test (offline, no live site)

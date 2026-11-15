@@ -3,13 +3,30 @@ interaction is native mouse/keyboard on controls that safety.py allows."""
 import json, os, re, time, csv, io
 from . import safety, colors
 from .cdp import Cdp, wait_until
-from .auth import new_context, assert_account, AccountMismatch, whoami
+from .auth import new_context, assert_account, AccountMismatch, whoami, expected_username
 from .util import control_label, scrub, human_et
 
 ERROR_TEXT = re.compile(r"(?i)^\s*(something went wrong|application error|unhandled runtime error|"
                         r"this page could not be found|404|page not found|failed to load( lens)?|error loading|"
                         r"chunkloaderror|internal server error|500|an unexpected error occurred|oops)\b")
 NOTHING_TO_EXPORT = re.compile(r"(?i)nothing to export|no data to export|nothing selected")
+NO_ACCESS_TEXT = re.compile(r"(?i)no access|access denied|not authorized|not authorised|forbidden|"
+                            r"admin(s|istrator)? only|requires admin|permission denied|insufficient permission")
+
+
+def gate_verdict(status, texts, signed_out):
+    """Admin-gate outcome for a NON-admin account on an admin lens (WALK-02).
+    The gate holding IS the pass: a login redirect, a 403, or a no-access page
+    all mean the lens refused the member account as designed. Returns "PASS"
+    for those, else None (the caller falls through to the normal reach logic,
+    so a 500 or a crash page on an admin lens still files as a failure)."""
+    if signed_out:
+        return "PASS"
+    if status == 403:
+        return "PASS"
+    if any(NO_ACCESS_TEXT.search(t or "") for t in (texts or [])):
+        return "PASS"
+    return None
 
 
 class LensResult(dict):
@@ -20,9 +37,12 @@ class LensWalk:
     """One lens, one account. Call run(); then .findings / .result."""
 
     def __init__(self, browser, cfg, rec, lens, account_key, log, allow_write=False, admin=False,
-                 phases=None, inv_entry=None):
+                 phases=None, inv_entry=None, gate_check=None):
         self.b, self.cfg, self.rec, self.lens, self.acct, self.log = browser, cfg, rec, lens, account_key, log
         self.slug, self.url = lens["slug"], lens["url"]
+        # A gate check = a non-admin account opening an admin lens: the gate
+        # holding (login redirect / 403 / no-access page) is the PASS (WALK-02).
+        self.gate_check = (self.slug in cfg.get("admin_lenses", []) and not admin) if gate_check is None else gate_check
         if cfg["base_url"] != "https://concord-os.org":
             self.url = cfg["base_url"].rstrip("/") + "/lenses/" + self.slug
         self.allow_write = allow_write and not admin and self.slug not in cfg.get("write_skip_lenses", [])
@@ -82,7 +102,7 @@ class LensWalk:
             if self.acct:
                 from .auth import storage_path
                 me = whoami(ctx, self.cfg["base_url"])
-                if me.get("ok") and me.get("username") == self.cfg["accounts"][self.acct]["username"]:
+                if me.get("ok") and me.get("username") == expected_username(self.cfg, self.acct):
                     path = storage_path(self.cfg, self.acct)
                     old = os.umask(0o077)
                     try:
@@ -245,6 +265,10 @@ class LensWalk:
         self.result["timing_desktop"] = t
         if self.signed_out(page):
             ev = self.shot(page, "signed-out")
+            if self.gate_check:
+                # an admin lens bouncing a member account to /login is the gate holding
+                self.mark("reach_desktop", "PASS", gate="admin", reason="redirected to /login", final_url=page.url, evidence=ev)
+                return False
             if self.acct:
                 raise AccountMismatch("session redirected to /login on %s" % self.slug)
             self.mark("reach_desktop", "AUTH_GATE", final_url=page.url, evidence=ev)
@@ -253,13 +277,24 @@ class LensWalk:
         errs = self.error_texts(ax)
         ev = self.shot(page, "desktop-initial")
         self.result["initial_evidence"] = ev
+        if self.gate_check and gate_verdict(t["status"], ax.texts(), False) == "PASS":
+            self.mark("reach_desktop", "PASS", gate="admin", reason="403 / no-access page", evidence=ev, **t)
+            return False  # gate held; there is no member surface to check behind it
         if t["error"] or (t["status"] and t["status"] >= 400) or errs:
             self.finding("reach", "high", "Lens fails to load on desktop (%s)" % (errs[0] if errs else t["status"] or t["error"]),
-                         ["Open %s at 1280x900 as zuko_qa_t1" % self.url, "Wait for load"],
+                         ["Open %s at 1280x900 as %s" % (self.url, self.cfg["accounts"][self.acct]["username"] if self.acct else "signed-out"), "Wait for load"],
                          "Lens renders its main view", "Navigation status %s, error %s, error text: %s" % (t["status"], t["error"], "; ".join(errs[:2]) or "none"),
                          [ev], area="%s/route" % self.slug)
             self.mark("reach_desktop", "FAIL", **t)
             return not errs or len(ax.by_role("button")) > 3
+        if self.gate_check:
+            # the gate did NOT hold: a member account can load an admin lens
+            self.finding("reach", "high", "Admin lens loads for a non-admin account (gate did not hold)",
+                         ["Open %s at 1280x900 as %s" % (self.url, self.cfg["accounts"][self.acct]["username"] if self.acct else "signed-out"), "Wait for load"],
+                         "The admin lens refuses non-admin accounts (403 / no-access / login redirect)",
+                         "The lens rendered its surface for a non-admin account", [ev], area="%s/route" % self.slug)
+            self.mark("reach_desktop", "FAIL", gate="admin", reason="gate did not hold", **t)
+            return True
         self.mark("reach_desktop", "PASS", **t)
         # load timing
         if t["load_ms"] > self.th["load_ms_low"]:
@@ -553,7 +588,7 @@ class LensWalk:
                                  ["Open %s at 1280x900" % self.url, "Click '%s'%s" % (key, (" then " + path_via[5:]) if path_via.startswith("menu:") else "")],
                                  "A non-empty, parseable export file", note, ev, element=key, area="%s/export" % self.slug)
                 elif verdict == "EMPTY":
-                    self.judge("export_empty", "Export via '%s' produced an empty dataset (%s). Expected if zuko_qa_t1 has no data in this lens?" % (key, note), ev)
+                    self.judge("export_empty", "Export via '%s' produced an empty dataset (%s). Expected if %s has no data in this lens?" % (key, note, self.cfg["accounts"][self.acct]["username"] if self.acct else "this account"), ev)
             elif NOTHING_TO_EXPORT.search(texts):
                 ev.append(self.shot(page, "export-nothing"))
                 row = {"control": key, "via": path_via, "verdict": "NOTHING_TO_EXPORT"}
