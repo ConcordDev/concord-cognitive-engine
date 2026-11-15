@@ -4,11 +4,11 @@
 // window never appeared as due soon. Scheduled appointments now ride
 // both lists (past-dated still-scheduled = overdue/missed).
 //
-// Run: node --test server/domains/veterinary-reminders-appointments.test.js
+// Run: node --test server/tests/veterinary-reminders-appointments.test.js
 
 import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import registerVeterinaryActions from "./veterinary.js";
+import registerVeterinaryActions from "../domains/veterinary.js";
 
 const actions = new Map();
 registerVeterinaryActions((domain, action, fn) => actions.set(`${domain}:${action}`, fn));

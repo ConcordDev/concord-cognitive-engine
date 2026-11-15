@@ -7,11 +7,11 @@
 // claim, and a null artifact crashed the handler outright. Params are now
 // the fallback; an attached artifact still wins.
 //
-// Run: node --test server/domains/grounding-verification-input.test.js
+// Run: node --test server/tests/grounding-verification-input.test.js
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import registerGroundingActions from "./grounding.js";
+import registerGroundingActions from "../domains/grounding.js";
 
 const actions = new Map();
 registerGroundingActions((domain, action, fn) => actions.set(`${domain}:${action}`, fn));

@@ -7,11 +7,11 @@
 // equations balance exactly as before, and stoichiometry is untouched
 // (typed coefficients are load-bearing there — FIX-chem-001).
 //
-// Run: node --test server/domains/chem-balance-coefficients.test.js
+// Run: node --test server/tests/chem-balance-coefficients.test.js
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import registerChemActions from "./chem.js";
+import registerChemActions from "../domains/chem.js";
 
 const actions = new Map();
 registerChemActions((domain, action, fn) => actions.set(`${domain}:${action}`, fn));

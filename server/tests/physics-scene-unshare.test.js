@@ -4,11 +4,11 @@
 // scene-unshare now revokes the owner's code (the shares entry is deleted,
 // so the code stops loading) and clears the scene's shareCode.
 //
-// Run: node --test server/domains/physics-scene-unshare.test.js
+// Run: node --test server/tests/physics-scene-unshare.test.js
 
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
-import registerPhysicsActions from "./physics.js";
+import registerPhysicsActions from "../domains/physics.js";
 
 const actions = new Map();
 registerPhysicsActions((domain, action, fn) => actions.set(`${domain}:${action}`, fn));

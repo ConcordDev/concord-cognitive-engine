@@ -5,11 +5,11 @@
 // corpus. index-backfill walks the caller's channels (and shared
 // channels they belong to) and indexes what is missing. Idempotent.
 //
-// Run: node --test server/domains/message-index-backfill.test.js
+// Run: node --test server/tests/message-index-backfill.test.js
 
 import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import registerMessageActions from "./message.js";
+import registerMessageActions from "../domains/message.js";
 
 const actions = new Map();
 registerMessageActions((domain, action, fn) => actions.set(`${domain}:${action}`, fn));

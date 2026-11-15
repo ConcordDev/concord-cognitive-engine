@@ -6,12 +6,12 @@
 // fallback in inference:unify and in metalearning's three analysis
 // actions; an attached artifact still wins.
 //
-// Run: node --test server/domains/params-fallback-actions.test.js
+// Run: node --test server/tests/params-fallback-actions.test.js
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import registerInference from "./inference.js";
-import registerMetalearning from "./metalearning.js";
+import registerInference from "../domains/inference.js";
+import registerMetalearning from "../domains/metalearning.js";
 
 const actions = new Map();
 const reg = (d, a, fn) => actions.set(`${d}:${a}`, fn);

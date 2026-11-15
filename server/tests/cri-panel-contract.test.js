@@ -6,11 +6,11 @@
 // { group }). Both actions now dual-read the run input; with no custom
 // steps the timeline generates the standard five-phase plan, labelled.
 //
-// Run: node --test server/domains/cri-panel-contract.test.js
+// Run: node --test server/tests/cri-panel-contract.test.js
 
 import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import registerCriActions from "./cri.js";
+import registerCriActions from "../domains/cri.js";
 
 const actions = new Map();
 registerCriActions((domain, action, fn) => actions.set(`${domain}:${action}`, fn));

@@ -4,11 +4,11 @@
 // coefficients that do not conserve atoms. It now refuses, naming the
 // element that is off; a balanced equation computes as before.
 //
-// Run: node --test server/domains/chem-stoichiometry-balance.test.js
+// Run: node --test server/tests/chem-stoichiometry-balance.test.js
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import registerChemActions from "./chem.js";
+import registerChemActions from "../domains/chem.js";
 
 const actions = new Map();
 registerChemActions((domain, action, fn) => actions.set(`${domain}:${action}`, fn));
