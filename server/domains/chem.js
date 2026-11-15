@@ -6,10 +6,48 @@ import { guardAnonWrites } from "../lib/lens-authz.js";
 import { registerLensExportProvider } from "../lib/lens-export.js";
 import { saveAfterWrites } from "../lib/lens-save-on-write.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
+import { buildCalcReceipt } from "../lib/receipts/calc-receipt.js";
+import { issueStoredReceipt } from "../lib/receipts/store.js";
+
+const CHEM_RECEIPT_MAX_INPUT_CHARS = 4000;
+
+/**
+ * Wrap a pure chem compute handler so a successful answer also carries a v2
+ * calc receipt signed over its inputs AND outputs, stored under a receiptId
+ * that reads back at GET /api/receipts/:id. The numbers are returned exactly
+ * as the handler computed them; if signing or storing fails the numbers still
+ * come back with saved:false and the reason (never a failed solve).
+ * `deps.store` is a test seam.
+ */
+export function withChemReceipt(action, handler, deps = {}) {
+  return (ctx, artifact, params) => {
+    const out = handler(ctx, artifact, params);
+    if (!out || out.ok !== true || !out.result || typeof out.result !== "object") return out;
+    try {
+      const inputs = { ...((artifact && artifact.data && typeof artifact.data === "object") ? artifact.data : {}), ...(params || {}) };
+      if (JSON.stringify(inputs).length > CHEM_RECEIPT_MAX_INPUT_CHARS) {
+        return { ...out, saved: false, saveError: "inputs_too_large_to_sign" };
+      }
+      const unsigned = buildCalcReceipt({
+        solver: { id: `chem.${action}`, version: "1" },
+        inputs,
+        method: `Concord chem lens action "${action}" (deterministic calculation)`,
+        results: out.result,
+      });
+      const issued = issueStoredReceipt(unsigned, { db: ctx && ctx.db, store: deps.store });
+      return issued.saved
+        ? { ...out, saved: true, receiptId: issued.receiptId, receiptUrl: issued.receiptUrl, receipt: issued.receipt }
+        : { ...out, saved: false, saveError: issued.saveError, receipt: issued.receipt };
+    } catch (e) {
+      return { ...out, saved: false, saveError: `receipt_failed:${e instanceof Error ? e.message : String(e)}` };
+    }
+  };
+}
 
 export default function registerChemActions(registerLensAction) {
   registerLensAction = saveAfterWrites(guardAnonWrites(registerLensAction)); // anonymous callers can read, not write (lib/lens-authz.js)
   const CHEM_STRUCTURE_CAP = 400;
+  const registerCalc = (name, fn) => registerLensAction("chem", name, withChemReceipt(name, fn));
 
   // ── Per-user persistent state (structures, lab notebook) ──
   // chemStructures and chemLabNotebook are in LENS_STATE_KEYS, so saved
@@ -108,7 +146,7 @@ export default function registerChemActions(registerLensAction) {
    * empirical formula, and degree of unsaturation.
    * artifact.data.formula = "C6H12O6" or params.formula
    */
-  registerLensAction("chem", "molecularAnalysis", (ctx, artifact, params) => {
+  registerCalc("molecularAnalysis", (ctx, artifact, params) => {
     const formula = params.formula || artifact.data?.formula;
     if (!formula) return { ok: false, error: "No molecular formula provided." };
 
@@ -177,7 +215,7 @@ export default function registerChemActions(registerLensAction) {
    * artifact.data.reactants = ["H2", "O2"], artifact.data.products = ["H2O"]
    * OR params.equation = "H2 + O2 -> H2O"
    */
-  registerLensAction("chem", "balanceReaction", (ctx, artifact, params) => {
+  registerCalc("balanceReaction", (ctx, artifact, params) => {
     let reactants, products;
 
     // FIX-chem-002: a typed coefficient is not part of a formula — "2H2"
@@ -939,7 +977,7 @@ export default function registerChemActions(registerLensAction) {
     return resolve(tokens);
   }
 
-  registerLensAction("chem", "molecular-weight", (_ctx, _artifact, params = {}) => {
+  registerCalc("molecular-weight", (_ctx, _artifact, params = {}) => {
     const formula = String(params.formula || "").trim();
     if (!formula) return { ok: false, error: "formula required (e.g. H2O, C6H12O6, Ca(OH)2)" };
     if (formula.length > 100) return { ok: false, error: "formula too long" };
@@ -987,7 +1025,7 @@ export default function registerChemActions(registerLensAction) {
 
   // ── Molarity / dilution / pH / gas law calculators ──
 
-  registerLensAction("chem", "calc-molarity", (_ctx, _artifact, params = {}) => {
+  registerCalc("calc-molarity", (_ctx, _artifact, params = {}) => {
     const moles = params.moles != null ? Number(params.moles) : null;
     const liters = params.liters != null ? Number(params.liters) : null;
     const molarity = params.molarity != null ? Number(params.molarity) : null;
@@ -1007,7 +1045,7 @@ export default function registerChemActions(registerLensAction) {
     return { ok: true, result };
   });
 
-  registerLensAction("chem", "calc-dilution", (_ctx, _artifact, params = {}) => {
+  registerCalc("calc-dilution", (_ctx, _artifact, params = {}) => {
     const m1 = Number(params.m1);
     const v1 = Number(params.v1);
     const m2 = Number(params.m2);
@@ -1032,7 +1070,7 @@ export default function registerChemActions(registerLensAction) {
     return { ok: true, result };
   });
 
-  registerLensAction("chem", "calc-ph", (_ctx, _artifact, params = {}) => {
+  registerCalc("calc-ph", (_ctx, _artifact, params = {}) => {
     const concentration = Number(params.concentration);
     if (!Number.isFinite(concentration) || concentration <= 0) {
       return { ok: false, error: "concentration must be > 0 (mol/L)" };
@@ -1063,7 +1101,7 @@ export default function registerChemActions(registerLensAction) {
     };
   });
 
-  registerLensAction("chem", "calc-gas-law", (_ctx, _artifact, params = {}) => {
+  registerCalc("calc-gas-law", (_ctx, _artifact, params = {}) => {
     const R = 0.08206; // L·atm·K-1·mol-1
     const P = params.P != null ? Number(params.P) : null; // atm
     const V = params.V != null ? Number(params.V) : null; // L
@@ -1504,7 +1542,7 @@ export default function registerChemActions(registerLensAction) {
    * params.amounts = { "H2": { grams: 4 }, "O2": { grams: 40 } }
    * params.actualYield = { compound: "H2O", grams: 30 }  (optional)
    */
-  registerLensAction("chem", "stoichiometry", (_ctx, _artifact, params = {}) => {
+  registerCalc("stoichiometry", (_ctx, _artifact, params = {}) => {
     const equation = String(params.equation || "").trim();
     if (!equation) return { ok: false, error: "equation required (e.g. 2H2 + O2 -> 2H2O)" };
     const sides = equation.split(/->|→|=/).map((s) => s.trim());

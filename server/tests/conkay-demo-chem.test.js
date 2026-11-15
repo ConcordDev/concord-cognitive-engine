@@ -92,7 +92,10 @@ describe("conkay demo chem equilibrium (GB-1534)", () => {
       assert.equal(res.status, 200);
       const body = await res.json();
       assert.equal(body.ok, true);
+      // This router is mounted without a database, so the store is honestly
+      // unavailable: the signed receipt still comes back, saved:false + why.
       assert.equal(body.saved, false);
+      assert.equal(body.saveError, "no_database");
       const receipt = body.result.calcReceipt;
       assert.equal(receipt.receiptSchema, "concord-calc-receipt/2");
       assert.equal(receipt.reference.value, 2226);

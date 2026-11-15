@@ -14,6 +14,7 @@ import { listSnapshots, loadSnapshot, loadSnapshotFile } from "../lib/conkay/sho
 import { attestReceipt, ensureSigningKey, verifyAttestation } from "../lib/receipts/attest.js";
 import { renderCalcSheetHtml } from "../lib/receipts/calc-sheet.js";
 import { buildCalcReceipt, roundTo } from "../lib/receipts/calc-receipt.js";
+import { issueStoredReceipt } from "../lib/receipts/store.js";
 import { openDesign } from "../lib/conkay/index.js";
 import { chemKernelKey } from "../lib/conkay/chem/cantera.js";
 import { hydrateAssembly } from "../lib/conkay/assembly/build.js";
@@ -45,7 +46,14 @@ function studyInput(q) {
   };
 }
 
-export default function createConkayDemoRouter({ rateLimit }) {
+/** Fields every stored-receipt response carries (saved:true + id + URL, or saved:false + why). */
+function savedFields(issued) {
+  return issued.saved
+    ? { saved: true, receiptId: issued.receiptId, receiptUrl: issued.receiptUrl }
+    : { saved: false, saveError: issued.saveError };
+}
+
+export default function createConkayDemoRouter({ rateLimit, db, store } = {}) {
   const router = express.Router();
   const limit = rateLimit || ((_req, _res, next) => next());
 
@@ -60,7 +68,10 @@ export default function createConkayDemoRouter({ rateLimit }) {
     try {
       const solved = solveBeamStudy(studyInput(req.query));
       if (!solved.ok) return res.status(400).json({ ok: false, error: solved.error });
-      res.json({ ok: true, saved: false, result: solved.result });
+      // Sign the receipt over a fresh receiptId and store it. A store failure
+      // never fails the solve: the signed receipt still comes back, saved:false.
+      const issued = issueStoredReceipt(solved.result.calcReceipt, { db, store });
+      res.json({ ok: true, ...savedFields(issued), result: { ...solved.result, calcReceipt: issued.receipt } });
     } catch (e) {
       res.status(500).json({ ok: false, error: e instanceof Error ? e.message : String(e) });
     }
@@ -236,9 +247,10 @@ export default function createConkayDemoRouter({ rateLimit }) {
       const spec = chemInput(req.query);
       if (!spec.ok) return res.status(400).json({ ok: false, error: spec.error });
       const outcome = await solveChemEquilibrium(spec);
-      const receipt = chemCalcReceipt(spec, outcome);
+      const issued = issueStoredReceipt(chemCalcReceipt(spec, outcome), { db, store });
+      const receipt = issued.receipt;
       res.json({
-        ok: true, saved: false,
+        ok: true, ...savedFields(issued),
         result: {
           fuel: spec.fuel, phi: spec.phi, T0: spec.T0, P0: spec.P0atm, mechanism: CHEM_FUELS[spec.fuel].mechanism,
           status: outcome.status,
