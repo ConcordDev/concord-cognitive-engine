@@ -17,7 +17,7 @@ from .util import ts_et
 COLUMNS = ["id", "verdict", "recipe", "evidence", "live_sha"]
 
 
-def build_rows(run_dir, ledger_rows=(), live_sha="unknown"):
+def build_rows(run_dir, ledger_rows=(), live_sha="unverified"):
     """One results row per reverify result, in run order."""
     rows = []
     path = os.path.join(run_dir, "reverify.jsonl")

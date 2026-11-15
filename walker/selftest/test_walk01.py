@@ -101,7 +101,7 @@ def test_ledger_writes_union_rows_and_never_touches_main():
     rows = read_ledger(led.path)
     check("ledger reads back 1 row", len(rows) == 1 and rows[0]["status"] == "VERIFIED")
     check("main file bytes unchanged by a verdict", open(main, "rb").read() == before)
-    check("NEEDS_HUMAN (upd None) writes no row", led.write_verdict(res, None, live_sha="x", run_id="r", account="t1") is None
+    check("NEEDS_HUMAN (upd None) writes no row", led.write_verdict(res, None, live_sha="abcdef1", run_id="r", account="t1") is None
           and len(read_ledger(led.path)) == 1)
     dry = WalkerLedger(os.path.join(d, "records", "walker.jsonl"), dry=True)
     dry.write_verdict(res, upd, live_sha="x", run_id="r", account="t1")
@@ -112,7 +112,7 @@ def test_ledger_survives_torn_last_line():
     d = tempfile.mkdtemp()
     p = os.path.join(d, "walker.jsonl")
     led = WalkerLedger(p)
-    led.write(tid="FIX-a-001", status="VERIFIED", live_sha="s", run_id="r", recipe="m", result="FIXED",
+    led.write(tid="FIX-a-001", status="VERIFIED", live_sha="abcdef1", run_id="r", recipe="m", result="FIXED",
               evidence_path="", account="t1")
     with open(p, "a") as f:
         f.write('{"id": "FIX-a-002", "status": "VER')  # crash mid-write
@@ -131,10 +131,6 @@ def test_sha_gate():
     check("gate passes on a match", g["ok"] and g["source"] == "health", str(g))
     g = sha_gate.gate("cafef00d", "https://x", fetch=lambda u: pages[u])
     check("gate fails closed on mismatch (dry, 0 rows)", not g["ok"] and "dry" in g["reason"], str(g))
-    pages2 = {"https://x/health": json.dumps({"ok": True}),
-              "https://x/": '<script src="/_next/static/next42/chunk.js"></script>'}
-    g = sha_gate.gate("next42", "https://x", fetch=lambda u: pages2[u])
-    check("gate falls back to the Next build id", g["ok"] and g["source"] == "html", str(g))
     g = sha_gate.gate("next42", "https://x", fetch=lambda u: (_ for _ in ()).throw(OSError("down")))
     check("unreachable live sha fails closed", not g["ok"], str(g))
 

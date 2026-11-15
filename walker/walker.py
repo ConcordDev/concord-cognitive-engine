@@ -152,6 +152,11 @@ def write_summary(rec, summary, left, dry):
 
 
 def cmd_reverify(args, cfg, log):
+    from concord_walker.sha_gate import is_hex_sha as _is_hex
+    if getattr(args, "expect_sha", None) and not _is_hex(args.expect_sha):
+        raise SystemExit("--expect-sha %r is not a hex git sha (>=7 chars)" % args.expect_sha)
+    if args.apply_status and not getattr(args, "expect_sha", None):
+        raise SystemExit("--apply-status needs --expect-sha <git sha>: status rows are written only when /health's buildSha matches it")
     from playwright.sync_api import sync_playwright
     from concord_walker import sha_gate
     from concord_walker.ledger import WalkerLedger
@@ -164,10 +169,13 @@ def cmd_reverify(args, cfg, log):
     gate_dry = False
     live = None
     if getattr(args, "expect_sha", None):
+        if not sha_gate.is_hex_sha(args.expect_sha):
+            raise SystemExit("--expect-sha %r is not a hex git sha (>=7 chars)" % args.expect_sha)
         g = sha_gate.gate(args.expect_sha, cfg["base_url"])
-        live = g["live"]
-        log("sha gate: %s (live=%s via %s)" % (g["reason"], g["live"], g["source"]))
-        if not g["ok"]:
+        log("sha gate: %s (live=%s via %s; frontend_build=%s)" % (g["reason"], g["live"], g["source"], g["frontend_build"]))
+        if g["ok"]:
+            live = g["live"]
+        else:
             gate_dry = True
     dry = args.dry_run or gate_dry
     rec = RunRecorder(cfg, rid, dry=dry)
@@ -247,7 +255,7 @@ def cmd_reverify(args, cfg, log):
                         # WALK-01: verdicts land ONLY in records/walker.jsonl (union
                         # schema); fix_tickets.jsonl is never written by a verdict.
                         acct = "admin" if res.get("lens") in cfg.get("admin_lenses", []) else "t1"
-                        row = ledger.write_verdict(res, upd, live_sha=(live or getattr(args, "deploy_sha", None) or "unknown"),
+                        row = ledger.write_verdict(res, upd, live_sha=live,
                                                    run_id=rid, account=acct)
                         log("  ledger %s -> %s%s" % (tid, upd["status"], " (dry: not written)" if dry else ""))
                     elif res["verdict"] == "FIXED":
@@ -261,7 +269,7 @@ def cmd_reverify(args, cfg, log):
             rec.flush_leftovers()
     log("ledger: %d verdict row(s) written, %d suppressed (dry)" % (ledger.written, ledger.suppressed))
     # WALK-05: per-run RESULTS (md + csv) with the live sha stamped on every row.
-    results_mod.write_results(rec.run_dir, results_mod.build_rows(rec.run_dir, live_sha=(live or getattr(args, "deploy_sha", None) or "unknown")), rid)
+    results_mod.write_results(rec.run_dir, results_mod.build_rows(rec.run_dir, live_sha=live or "unverified"), rid)
     with open(os.path.join(rec.run_dir, "REVERIFY.md"), "w") as f:
         f.write("# Re-verify %s (%s)\n\n| ticket | lens | prior | verdict | method | notes |\n|---|---|---|---|---|---|\n" % (rid, human_et()))
         for r in results:
@@ -280,6 +288,9 @@ def cmd_reverify_ci(args, cfg, log):
         raise SystemExit("--from-ci needs --from-repo <clone> --deploy-sha <sha> (fold + code evidence read at the pinned sha)")
     if not args.expect_sha:
         raise SystemExit("--from-ci needs --expect-sha <sha> (the CI payload must be for exactly this sha)")
+    from concord_walker import sha_gate
+    if not sha_gate.is_hex_sha(args.expect_sha) or not sha_gate.is_hex_sha(args.deploy_sha):
+        raise SystemExit("--expect-sha and --deploy-sha must be hex git shas (>=7 chars)")
     if args.expect_sha != args.deploy_sha:
         raise SystemExit("--expect-sha must equal --deploy-sha for --from-ci (fold, code evidence and CI payload pin to one sha)")
     try:
@@ -355,7 +366,7 @@ def main():
     p.add_argument("--from-status", help="also take every ticket currently in this status, e.g. FIXED_PENDING_VERIFY")
     p.add_argument("--from-repo", help="WALK-01: read the ticket fold from this repo clone at --deploy-sha (fix_tickets.jsonl + records/*.jsonl)")
     p.add_argument("--deploy-sha", help="WALK-01: the pinned sha the fold is read at (with --from-repo)")
-    p.add_argument("--expect-sha", help="WALK-01: sha gate — write status rows only if the live build sha matches; mismatch runs dry")
+    p.add_argument("--expect-sha", help="WALK-01: sha gate — hex git sha; REQUIRED with --apply-status. Rows are written only if /health buildSha matches; anything else runs dry")
     p.add_argument("--from-ci", action="store_true", help="WALK-06: verify non-lens code tickets by CI + code evidence at the deploy sha (offline; no browser, no session)")
     p.add_argument("--ci-checks", help="WALK-06: CI checks payload for the expect sha: {sha, runs[{name, status, conclusion, html_url}]}")
     p.add_argument("--resume", help="WALK-05: resume this run id — ids finished in its journal (done|skipped) are not re-run")

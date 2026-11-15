@@ -27,6 +27,9 @@ class WalkerLedger:
         if self.dry:
             self.suppressed += 1
             return row
+        from .sha_gate import is_hex_sha
+        if not is_hex_sha(live_sha):
+            raise ValueError("refusing to write a ledger row without a hex git live_sha (got %r)" % (live_sha,))
         os.makedirs(os.path.dirname(self.path), exist_ok=True)
         line = json.dumps(row) + "\n"
         with file_lock(self.path):

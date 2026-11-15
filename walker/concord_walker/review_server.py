@@ -50,10 +50,13 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--page", required=True)
     ap.add_argument("--human-out", required=True)
-    ap.add_argument("--live-sha", default="unknown")
+    ap.add_argument("--live-sha", required=True, help="hex git sha of the gate-confirmed live build")
     ap.add_argument("--run-id", default="review")
     ap.add_argument("--port", type=int, default=8765)
     args = ap.parse_args()
+    from .sha_gate import is_hex_sha
+    if not is_hex_sha(args.live_sha):
+        raise SystemExit("--live-sha must be a hex git sha (>=7 chars)")
     with open(args.page) as f:
         page = f.read()
     srv = HTTPServer(("127.0.0.1", args.port), make_handler(page, args.human_out, args.live_sha, args.run_id))

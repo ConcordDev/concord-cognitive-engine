@@ -96,7 +96,9 @@ Check a session with `walker.py whoami --account t1`.
 
 # re-verify tickets by ID (also runs a read-only nearby smoke of each lens)
 .venv/bin/python walker.py reverify FIX-007 FIX-deities-002
-.venv/bin/python walker.py reverify --from-status FIXED_PENDING_VERIFY --apply-status
+# --apply-status REQUIRES --expect-sha <git sha>: rows are written only if /health's buildSha matches it
+# (a Next.js build id never counts); any gate failure runs dry with 0 rows
+.venv/bin/python walker.py reverify --from-status FIXED_PENDING_VERIFY --apply-status --expect-sha <git-sha>
 .venv/bin/python walker.py reverify FIX-007 --allow-write     # lets FIX-007 actually send its labelled message
 ```
 Only one walker runs at a time (`run.lock`). Before each lens it waits for at least 1.5 GB of free memory
@@ -152,7 +154,7 @@ For each ticket ID:
    **NEEDS_HUMAN**, with screenshots in the queue.
 4. A nearby smoke (full read-only walk of the same lens) is always attached, and new smoke findings are filed (deduped).
 
-`--apply-status` appends `retest_update` records in the existing format:
+`--apply-status` (which requires `--expect-sha`, a hex git sha that must match `/health` `buildSha`; the HTML Next build id is logged as `frontend_build` but never satisfies the gate) appends `retest_update` records in the existing format:
 - STILL_FAILING → `REOPENED` if the ticket was FIXED_PENDING_VERIFY or VERIFIED, else `OPEN` ("still reproduces").
 - FIXED → `VERIFIED` **only** if a builder marked the ticket FIXED_PENDING_VERIFY. Otherwise it goes to the queue ("no longer reproduces; close?").
 - NEEDS_HUMAN → no status change, queue only.
