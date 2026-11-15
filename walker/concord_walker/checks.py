@@ -1,0 +1,1016 @@
+"""Standard per-lens checks. All DOM reads go through DevTools protocol (cdp.py); all
+interaction is native mouse/keyboard on controls that safety.py allows."""
+import json, os, re, time, csv, io
+from . import safety, colors
+from .cdp import Cdp, wait_until
+from .auth import new_context, assert_account, AccountMismatch, whoami
+from .util import control_label, scrub, human_et
+
+ERROR_TEXT = re.compile(r"(?i)^\s*(something went wrong|application error|unhandled runtime error|"
+                        r"this page could not be found|404|page not found|failed to load( lens)?|error loading|"
+                        r"chunkloaderror|internal server error|500|an unexpected error occurred|oops)\b")
+NOTHING_TO_EXPORT = re.compile(r"(?i)nothing to export|no data to export|nothing selected")
+
+
+class LensResult(dict):
+    pass
+
+
+class LensWalk:
+    """One lens, one account. Call run(); then .findings / .result."""
+
+    def __init__(self, browser, cfg, rec, lens, account_key, log, allow_write=False, admin=False,
+                 phases=None, inv_entry=None):
+        self.b, self.cfg, self.rec, self.lens, self.acct, self.log = browser, cfg, rec, lens, account_key, log
+        self.slug, self.url = lens["slug"], lens["url"]
+        if cfg["base_url"] != "https://concord-os.org":
+            self.url = cfg["base_url"].rstrip("/") + "/lenses/" + self.slug
+        self.allow_write = allow_write and not admin and self.slug not in cfg.get("write_skip_lenses", [])
+        self.admin = admin
+        self.th = cfg["thresholds"]
+        self.phases = phases or ["reach", "surface", "tabs", "keyboard", "openers", "export", "contrast", "mobile", "write"]
+        self.inv = inv_entry or {}
+        self.ev = rec.evidence_dir(self.slug)
+        self.findings, self.result = [], LensResult(slug=self.slug, url=self.url, account=account_key,
+                                                    admin=admin, started=human_et(), checks={})
+        self.console_errors, self.page_errors, self.bad_responses, self.crashes = [], [], [], 0
+        self.dialog_mode = "dismiss"
+        self.native_dialogs = []
+        self.t_start = time.time()
+        self.shot_n = 0
+
+    # ---------------------------------------------------------------- infra
+    def over_budget(self):
+        return time.time() - self.t_start > self.th["lens_budget_s"]
+
+    def attach(self, page):
+        def on_console(m):
+            if m.type == "error":
+                self.console_errors.append(scrub(m.text, 200))
+        def on_resp(r):
+            try:
+                if r.status >= 400 and self.cfg["base_url"].split("//")[1].split("/")[0] in r.url:
+                    path = r.url.split("//", 1)[1].split("/", 1)[-1].split("?")[0]
+                    self.bad_responses.append((r.status, "/" + path[:80]))
+            except Exception:
+                pass
+        def on_dialog(d):
+            self.native_dialogs.append({"type": d.type, "msg": scrub(d.message, 120), "t": time.time()})
+            try:
+                (d.accept() if self.dialog_mode == "accept" else d.dismiss())
+            except Exception:
+                pass
+        def on_crash(_):
+            self.crashes += 1
+        page.on("console", on_console)
+        page.on("pageerror", lambda e: self.page_errors.append(scrub(str(e), 200)))
+        page.on("response", on_resp)
+        page.on("dialog", on_dialog)
+        page.on("crash", on_crash)
+
+    def open(self, mobile=False, account=None):
+        vp = self.cfg["viewport_mobile"] if mobile else self.cfg["viewport_desktop"]
+        ctx = new_context(self.b, self.cfg, account if account is not None else self.acct, vp, mobile=mobile)
+        page = ctx.new_page()
+        self.attach(page)
+        return ctx, page, Cdp(ctx, page)
+
+    def _close(self, ctx):
+        """Persist refreshed session cookies (token rotation) back to auth/<acct>.json, then close.
+        Only saved when auth/me still shows the expected account."""
+        try:
+            if self.acct:
+                from .auth import storage_path
+                me = whoami(ctx, self.cfg["base_url"])
+                if me.get("ok") and me.get("username") == self.cfg["accounts"][self.acct]["username"]:
+                    path = storage_path(self.cfg, self.acct)
+                    old = os.umask(0o077)
+                    try:
+                        ctx.storage_state(path=path)
+                    finally:
+                        os.umask(old)
+        except Exception:
+            pass
+        try:
+            ctx.close()
+        except Exception:
+            pass
+
+    def shot(self, page, name, clip=None, full=False, jpeg=False):
+        self.shot_n += 1
+        ext = "jpg" if jpeg else "png"
+        safe = re.sub(r"[^a-zA-Z0-9_.-]+", "-", name)[:60]
+        path = os.path.join(self.ev, "walker-%02d-%s.%s" % (self.shot_n, safe, ext))
+        try:
+            kw = dict(path=path, full_page=full, timeout=15000)
+            if clip:
+                kw["clip"] = clip
+            if jpeg:
+                kw.update(type="jpeg", quality=60)
+            page.screenshot(**kw)
+            return self.rec.rel(path)
+        except Exception as e:
+            self.log("  screenshot failed", name, type(e).__name__)
+            return None
+
+    def finding(self, check, severity, title, steps, expected, actual, evidence, element=None, root_cause=None, area=None):
+        ev = [e for e in (evidence or []) if e]
+        if not ev:
+            # every finding must carry screenshot evidence; refuse silently-evidenced findings
+            self.rec.judgment(self.slug, "finding_without_evidence", "Walker saw '%s' but could not capture a screenshot; verify by hand." % title)
+            return
+        f = {"check": check, "lens": self.slug, "severity": severity, "title": title,
+             "repro_steps": steps, "expected": expected, "actual": actual, "evidence": ev,
+             "element": element, "root_cause": root_cause,
+             "suspected_area": area or "%s/%s" % (self.slug, check), "account": self.cfg["accounts"][self.acct]["username"] if self.acct else None}
+        self.findings.append(f)
+        self.rec.finding(dict(f, run=self.rec.rid))
+        self.log("  FINDING [%s/%s] %s" % (check, severity, title))
+
+    def judge(self, kind, q, ev=None):
+        self.rec.judgment(self.slug, kind, q, [e for e in (ev or []) if e],
+                          account=self.cfg["accounts"][self.acct]["username"] if self.acct else "signed-out")
+
+    def mark(self, check, st, **details):
+        d = dict(details)
+        if "status" in d:
+            d["http_status"] = d.pop("status")
+        d["status"] = st
+        self.result["checks"][check] = d
+
+    def nav(self, page, cdp, label="load"):
+        t0 = time.time()
+        resp, err = None, None
+        try:
+            resp = page.goto(self.url, wait_until="domcontentloaded", timeout=self.th["nav_timeout_ms"])
+            t_dcl = time.time() - t0
+            page.wait_for_load_state("load", timeout=self.th["nav_timeout_ms"])
+            t_load = time.time() - t0
+        except Exception as e:
+            err = type(e).__name__
+            t_dcl = t_load = time.time() - t0
+        try:
+            page.wait_for_load_state("networkidle", timeout=self.th["settle_ms_judgment"])
+            settled = True
+        except Exception:
+            settled = False
+        t_settle = time.time() - t0
+        # Visual readiness: Concord shows an animated splash for a few seconds after load. Wait until two
+        # consecutive low-res screenshots are identical (or 15 s), so checks run on the real UI.
+        last, same, stable = None, 0, False
+        t_ready = time.time()
+        while time.time() - t0 < t_settle + 15:
+            try:
+                shot = page.screenshot(type="jpeg", quality=30, timeout=5000)
+            except Exception:
+                break
+            same = same + 1 if shot == last else 0
+            if same >= 2:
+                stable = True
+                break
+            last = shot
+            time.sleep(0.5)
+        t_ready = time.time() - t0
+        return {"status": resp.status if resp else None, "dcl_ms": int(t_dcl * 1000), "load_ms": int(t_load * 1000),
+                "settle_ms": int(t_settle * 1000), "settled": settled, "ready_ms": int(t_ready * 1000),
+                "visually_stable": stable, "error": err, "final_url": page.url}
+
+    def error_texts(self, ax):
+        return [t for t in ax.texts() if len(t) < 90 and ERROR_TEXT.search(t)]
+
+    def signed_out(self, page):
+        return "/login" in page.url
+
+    # ---------------------------------------------------------------- run
+    def run(self):
+        self.log("lens %s as %s%s%s" % (self.slug, self.acct or "signed-out", " [ADMIN look-only]" if self.admin else "",
+                                         " [write]" if self.allow_write else ""))
+        ctx, page, cdp = self.open()
+        try:
+            if self.acct:
+                assert_account(ctx, self.cfg, self.acct, "lens start", self.log)
+            ok = self.reach(page, cdp)
+            if ok:
+                for ph, fn in (("surface", self.surface), ("tabs", self.tabs), ("keyboard", self.keyboard),
+                               ("openers", self.openers), ("export", self.export), ("contrast", self.contrast)):
+                    if ph not in self.phases:
+                        self.mark(ph, "NOT_RUN", reason="phase not selected")
+                        continue
+                    if self.over_budget():
+                        self.mark(ph, "NOT_RUN", reason="lens time budget exceeded")
+                        continue
+                    if self.crashes:
+                        self.mark(ph, "NOT_RUN", reason="renderer crashed")
+                        break
+                    try:
+                        self.reset_page(page, cdp)
+                        fn(page, cdp)
+                    except AccountMismatch:
+                        raise
+                    except Exception as e:
+                        self.log("  phase %s error: %s" % (ph, scrub(repr(e), 200)))
+                        self.mark(ph, "ERROR", error=scrub(repr(e), 200))
+        finally:
+            self._close(ctx)
+        if "mobile" in self.phases and not self.over_budget():
+            try:
+                self.mobile()
+            except AccountMismatch:
+                raise
+            except Exception as e:
+                self.mark("mobile_390", "ERROR", error=scrub(repr(e), 200))
+        if "write" in self.phases:
+            if self.allow_write and self.acct and not self.over_budget():
+                try:
+                    self.write_flow()
+                except AccountMismatch:
+                    raise
+                except Exception as e:
+                    self.mark("create_delete", "ERROR", error=scrub(repr(e), 200))
+            else:
+                self.mark("create_delete", "NOT_RUN", reason="read-only run" if not self.allow_write else "write-skip lens / admin / no session")
+        self.console_network()
+        self.result["finished"] = human_et()
+        self.result["elapsed_s"] = int(time.time() - self.t_start)
+        return self.result
+
+    def reset_page(self, page, cdp):
+        """Return to a clean lens state between phases (close popups by reload)."""
+        if cdp.ax().popups() or self.url.split("?")[0] not in page.url:
+            self.nav(page, cdp)
+
+    # ---------------------------------------------------------------- phases
+    def reach(self, page, cdp):
+        t = self.nav(page, cdp)
+        self.result["timing_desktop"] = t
+        if self.signed_out(page):
+            ev = self.shot(page, "signed-out")
+            if self.acct:
+                raise AccountMismatch("session redirected to /login on %s" % self.slug)
+            self.mark("reach_desktop", "AUTH_GATE", final_url=page.url, evidence=ev)
+            return True  # still run read-only checks on what renders (signed-out smoke)
+        ax = cdp.ax()
+        errs = self.error_texts(ax)
+        ev = self.shot(page, "desktop-initial")
+        self.result["initial_evidence"] = ev
+        if t["error"] or (t["status"] and t["status"] >= 400) or errs:
+            self.finding("reach", "high", "Lens fails to load on desktop (%s)" % (errs[0] if errs else t["status"] or t["error"]),
+                         ["Open %s at 1280x900 as zuko_qa_t1" % self.url, "Wait for load"],
+                         "Lens renders its main view", "Navigation status %s, error %s, error text: %s" % (t["status"], t["error"], "; ".join(errs[:2]) or "none"),
+                         [ev], area="%s/route" % self.slug)
+            self.mark("reach_desktop", "FAIL", **t)
+            return not errs or len(ax.by_role("button")) > 3
+        self.mark("reach_desktop", "PASS", **t)
+        # load timing
+        if t["load_ms"] > self.th["load_ms_low"]:
+            sev = "medium" if t["load_ms"] > self.th["load_ms_medium"] else "low"
+            self.finding("timing", sev, "Lens load takes %.1f s on desktop" % (t["load_ms"] / 1000),
+                         ["Open %s at 1280x900 (cold context)" % self.url, "Measure navigation to load event"],
+                         "Load event under %.0f s" % (self.th["load_ms_low"] / 1000),
+                         "Load %d ms, DOMContentLoaded %d ms, network settled %s at %d ms, visually ready at %d ms" % (t["load_ms"], t["dcl_ms"], t["settled"], t["settle_ms"], t["ready_ms"]),
+                         [ev], area="%s/perf" % self.slug)
+        if not t["settled"]:
+            self.judge("timing", "Network never went idle within %d s (polling or stuck request?)" % (self.th["settle_ms_judgment"] / 1000), [ev])
+        self.result["perf_metrics"] = {k: v for k, v in cdp.perf_metrics().items()
+                                       if k in ("JSHeapUsedSize", "Nodes", "LayoutCount", "RecalcStyleCount", "ScriptDuration", "TaskDuration")}
+        return True
+
+    def surface(self, page, cdp):
+        ax = cdp.ax()
+        tabs = ax.by_role("tab")
+        buttons = [n for n in ax.by_role("button") if n.backend]
+        links = ax.by_role("link")
+        inputs = ax.by_role("textbox", "searchbox", "combobox", "spinbutton")
+        unnamed = [n for n in buttons if not n.name.strip()]
+        unfocus = [n for n in buttons + tabs if not n.disabled and not n.focusable and n.name.strip()]
+        self.result["surface"] = {"tabs": [control_label(n.name) for n in tabs][:60], "buttons": len(buttons), "links": len(links),
+                                  "inputs": len(inputs), "unnamed_buttons": len(unnamed), "non_focusable": len(unfocus),
+                                  "disabled_buttons": sum(1 for n in buttons if n.disabled)}
+        status = "PASS"
+        if unnamed:
+            shots = []
+            for n in unnamed[:3]:
+                b = cdp.box(n.backend)
+                if b and b[1] + b[3] <= self.cfg["viewport_desktop"][1]:
+                    shots.append(self.shot(page, "unnamed-button", clip=self._pad(b)))
+            shots.append(self.result.get("initial_evidence"))
+            self.finding("unnamed", "low", "%d button(s) have no accessible name" % len(unnamed),
+                         ["Open %s at 1280x900" % self.url, "Inspect the Accessibility tree (DevTools) for role=button nodes"],
+                         "Every button exposes an accessible name (text or aria-label)",
+                         "%d of %d buttons have an empty accessible name (icon-only)" % (len(unnamed), len(buttons)), shots,
+                         area="%s/a11y labels" % self.slug)
+            status = "FAIL"
+        if unfocus:
+            names = ", ".join(sorted({control_label(n.name) for n in unfocus})[:8])
+            self.finding("keyboard", "medium", "%d control(s) can't be reached by keyboard" % len(unfocus),
+                         ["Open %s at 1280x900" % self.url, "Press Tab through the page", "Check the Accessibility tree 'focusable' state of each button/tab"],
+                         "Every enabled button and tab is keyboard-focusable",
+                         "Not focusable: %s" % names, [self.result.get("initial_evidence")], element=names.split(",")[0],
+                         area="%s/a11y keyboard" % self.slug)
+            status = "FAIL"
+        self.mark("surface_inventory", status, **self.result["surface"])
+
+    def tabs(self, page, cdp):
+        ax = cdp.ax()
+        tabs = [n for n in ax.by_role("tab") if n.backend and safety.is_tab_safe(n.name, self.admin)]
+        skipped = [control_label(n.name) for n in ax.by_role("tab") if not safety.is_tab_safe(n.name, self.admin)]
+        tabs = tabs[: self.th["max_tabs_per_lens"]]
+        out, status = [], "PASS" if tabs else "NA"
+        names = [n.name for n in tabs]
+        for name in names:
+            if self.over_budget() or self.crashes:
+                break
+            ax = cdp.ax()
+            node = next((n for n in ax.by_role("tab") if n.name == name and n.backend), None)
+            if not node:
+                out.append({"tab": control_label(name), "status": "NOT_FOUND"})
+                continue
+            pe0 = len(self.page_errors)
+            t0 = time.time()
+            if not cdp.click(node.backend):
+                out.append({"tab": control_label(name), "status": "NOT_VISIBLE"})
+                continue
+            sel, dt = wait_until(lambda: next((n for n in cdp.ax().by_role("tab") if n.name == name and n.props.get("selected")), None),
+                                 timeout=self.th["tab_switch_ms_judgment"] / 1000)
+            ms = int((time.time() - t0) * 1000)
+            try:
+                page.wait_for_load_state("networkidle", timeout=4000)
+            except Exception:
+                pass
+            ax2 = cdp.ax()
+            errs = self.error_texts(ax2)
+            ev = self.shot(page, "tab-" + control_label(name, 24), jpeg=True)
+            row = {"tab": control_label(name), "selected": bool(sel), "switch_ms": ms if sel else None, "evidence": ev}
+            if errs or len(self.page_errors) > pe0 or self.crashes:
+                row["status"] = "FAIL"; status = "FAIL"
+                self.finding("tab_error", "high" if self.crashes else "medium",
+                             "'%s' tab shows an error" % control_label(name),
+                             ["Open %s at 1280x900" % self.url, "Click the '%s' tab" % control_label(name)],
+                             "Tab content renders without errors",
+                             "Error text: %s; new uncaught page errors: %d%s" % ("; ".join(errs[:2]) or "none", len(self.page_errors) - pe0,
+                                                                                 "; renderer crashed" if self.crashes else ""),
+                             [ev], element=name, area="%s/tab %s" % (self.slug, control_label(name)))
+            elif not sel:
+                row["status"] = "UNKNOWN"
+                self.judge("tab_selection", "Clicked tab '%s' but it never reported aria-selected; did the view change?" % control_label(name), [ev])
+            else:
+                row["status"] = "PASS"
+                if ms > self.th["tab_switch_ms_low"]:
+                    self.finding("timing", "low", "Switching to the '%s' tab takes %.1f s" % (control_label(name), ms / 1000),
+                                 ["Open %s at 1280x900" % self.url, "Click the '%s' tab and time until it is selected" % control_label(name)],
+                                 "Tab switch under %.1f s" % (self.th["tab_switch_ms_low"] / 1000), "Took %d ms" % ms, [ev],
+                                 element=name, area="%s/perf" % self.slug)
+            out.append(row)
+        self.mark("tabs_reachable", status, tabs=out, skipped_for_safety=skipped)
+
+    def keyboard(self, page, cdp):
+        """Tab sweep: sample focus stops; flag stops with no visible focus change (pixel-identical)."""
+        seen, samples, no_visible, prev = [], 0, [], None
+        page.mouse.click(2, 2)
+        for i in range(self.th["tab_key_presses"]):
+            page.keyboard.press("Tab")
+            time.sleep(0.4 if (prev is not None or samples < 12) else 0.12)  # let focus-ring transitions finish
+            f = cdp.ax().focused()
+            if prev is not None:
+                # re-capture previous stop now that it is unfocused
+                pnode, pclip, pbytes = prev
+                try:
+                    after = page.screenshot(clip=pclip, timeout=5000)
+                    if after == pbytes:
+                        no_visible.append(pnode)
+                except Exception:
+                    pass
+                prev = None
+            if not f or not f.backend:
+                continue
+            if seen and f.backend == seen[0]:
+                break  # wrapped
+            seen.append(f.backend)
+            if samples < 12 and f.role in ("button", "tab", "link", "textbox", "checkbox", "menuitem", "combobox", "switch"):
+                b = cdp.box(f.backend)
+                if b and 0 <= b[1] and b[1] + b[3] <= self.cfg["viewport_desktop"][1]:
+                    clip = self._pad(b, 6)
+                    try:
+                        prev = (f, clip, page.screenshot(clip=clip, timeout=5000))
+                        samples += 1
+                    except Exception:
+                        pass
+        status = "PASS"
+        if no_visible:
+            names = sorted({control_label(n.name) for n in no_visible})
+            ev = []
+            for n in no_visible[:2]:
+                cdp.focus(n.backend)
+                b = cdp.box(n.backend)
+                if b:
+                    ev.append(self.shot(page, "focus-not-visible", clip=self._pad(b, 6)))
+            ev.append(self.shot(page, "focus-not-visible-page"))
+            self.finding("focus_visible", "low", "No visible focus indicator on %d of %d sampled controls" % (len(no_visible), samples),
+                         ["Open %s at 1280x900" % self.url, "Press Tab repeatedly", "Compare each control focused vs unfocused"],
+                         "Focused controls show a visible focus ring", "Pixel-identical focused/unfocused rendering for: %s" % ", ".join(names[:8]),
+                         ev, area="%s/a11y focus" % self.slug)
+            status = "FAIL"
+        self.mark("keyboard_focus", status, stops=len(seen), sampled=samples, no_visible=len(no_visible))
+
+    def _popup_new(self, cdp, before, opener_backend):
+        ax = cdp.ax()
+        new = [p for p in ax.popups() if p.backend not in before]
+        op = next((n for n in ax.live() if n.backend == opener_backend), None)
+        if new:
+            return ax, new[0]
+        if op is not None and op.props.get("expanded"):
+            return ax, None
+        return None
+
+    def openers(self, page, cdp):
+        ax = cdp.ax()
+        cands = [n for n in ax.by_role("button", "menuitem") if n.backend and not n.disabled
+                 and safety.is_opener_safe(n.name, self.admin) and not safety.EXPORT.search(n.name)]
+        seen, rows, status = set(), [], "NA"
+        for n in cands:
+            if len(rows) >= self.th["max_openers_per_lens"] or self.over_budget():
+                break
+            key = control_label(n.name)
+            if key in seen:
+                continue
+            seen.add(key)
+            self.reset_page(page, cdp)
+            ax = cdp.ax()
+            node = next((x for x in ax.by_role("button", "menuitem") if x.name == n.name and x.backend and not x.disabled), None)
+            if not node:
+                continue
+            before = {p.backend for p in ax.popups()}
+            if not cdp.click(node.backend):
+                continue
+            got, _ = wait_until(lambda: self._popup_new(cdp, before, node.backend), timeout=2.0)
+            if not got:
+                rows.append({"opener": key, "status": "NO_POPUP"})
+                continue
+            ax, pop = got
+            kind = pop.role if pop else "expanded"
+            ev_open = self.shot(page, "open-" + key[:20])
+            row = {"opener": key, "popup": kind, "evidence": ev_open}
+            status = "PASS" if status == "NA" else status
+            # focus trap (dialogs only)
+            if pop is not None and pop.role in ("dialog", "alertdialog"):
+                escaped = 0
+                for _ in range(10):
+                    page.keyboard.press("Tab"); time.sleep(0.08)
+                    ax3 = cdp.ax(); f = ax3.focused(); p3 = next((p for p in ax3.popups() if p.backend == pop.backend), None)
+                    if f and p3 and not ax3.is_inside(f, p3) and f.backend != p3.backend:
+                        escaped += 1
+                if escaped:
+                    ev = self.shot(page, "focus-escapes-" + key[:20])
+                    self.finding("focus_trap", "low", "Focus leaves the '%s' dialog on Tab" % key,
+                                 ["Open %s at 1280x900" % self.url, "Click '%s'" % key, "Press Tab 10 times"],
+                                 "Focus stays inside the open dialog", "Focus moved behind the dialog on %d of 10 Tab presses" % escaped,
+                                 [ev_open, ev], element=key, area="%s/dialog focus trap" % self.slug)
+                    row["trap"] = "FAIL"; status = "FAIL"
+            # Escape
+            page.keyboard.press("Escape")
+            closed, _ = wait_until(lambda: (pop is None and not any(x.props.get("expanded") for x in cdp.ax().live() if x.backend == node.backend))
+                                   or (pop is not None and not any(p.backend == pop.backend for p in cdp.ax().popups())), timeout=2.0)
+            ev_after = self.shot(page, "after-escape-" + key[:20])
+            if not closed:
+                row["escape"] = "FAIL"; status = "FAIL"
+                self.finding("escape", "medium" if kind in ("dialog", "alertdialog") else "low",
+                             "Escape doesn't close the '%s' %s" % (key, "dialog" if kind in ("dialog", "alertdialog") else "menu/panel"),
+                             ["Open %s at 1280x900" % self.url, "Click '%s'" % key, "Press Escape"],
+                             "Escape closes the overlay and returns focus to '%s'" % key, "Overlay still open after Escape",
+                             [ev_open, ev_after], element=key, area="%s/overlay keyboard" % self.slug)
+                self._force_close(page, cdp)
+            else:
+                row["escape"] = "PASS"
+                f = cdp.ax().focused()
+                if not f or f.backend != node.backend:
+                    row["focus_return"] = "FAIL"; status = "FAIL"
+                    self.finding("focus_return", "low", "Focus doesn't return to '%s' after Escape" % key,
+                                 ["Open %s at 1280x900" % self.url, "Click '%s'" % key, "Press Escape", "Check which element has focus"],
+                                 "Focus returns to the control that opened the overlay",
+                                 "Focus went to %s" % (("'%s' (%s)" % (control_label(f.name), f.role)) if f else "the document body"),
+                                 [ev_open, ev_after], element=key, area="%s/overlay focus" % self.slug)
+                else:
+                    row["focus_return"] = "PASS"
+            rows.append(row)
+        self.mark("escape_focus", status, openers=rows, candidates=len(cands))
+
+    def _force_close(self, page, cdp):
+        ax = cdp.ax()
+        for p in ax.popups():
+            for d in ax.descendants(p):
+                if d.role == "button" and d.backend and safety.is_close_safe(d.name):
+                    cdp.click(d.backend); time.sleep(0.4)
+                    return
+        self.nav(page, cdp)
+
+    def export(self, page, cdp):
+        if self.admin:
+            self.mark("export", "NOT_RUN", reason="admin lens: look-only")
+            return
+        ax = cdp.ax()
+        cands = [n for n in ax.by_role("button", "link", "menuitem") if n.backend and not n.disabled and safety.is_export_safe(n.name)]
+        if not cands:
+            prev = str((self.inv.get("checks") or {}).get("export", ""))
+            self.mark("export", "NO_CONTROL", previous=prev[:80])
+            if prev.upper().startswith("PASS"):
+                self.judge("export_missing", "Export was PASS in the human walk but the walker found no Export/Download control on the main view. Moved behind a menu or removed?",
+                           [self.result.get("initial_evidence")])
+            return
+        rows, status = [], "PASS"
+        for n in cands[:2]:
+            key = control_label(n.name)
+            self.reset_page(page, cdp)
+            node = next((x for x in cdp.ax().live() if x.name == n.name and x.backend and not x.disabled), None)
+            if not node:
+                continue
+            before = {p.backend for p in cdp.ax().popups()}
+            dl = self._try_download(page, lambda: cdp.click(node.backend), 6000)
+            path_via = "direct"
+            ev = []
+            if not dl:
+                got = self._popup_new(cdp, before, node.backend)
+                if got:
+                    ev.append(self.shot(page, "export-menu-" + key[:16]))
+                    ax2, pop = got
+                    scope = ax2.descendants(pop) if pop else ax2.live()
+                    opts = [d for d in scope if d.role in ("menuitem", "button", "option", "link", "menuitemradio")
+                            and d.backend and not d.disabled and d.backend != node.backend and safety.is_menu_format_safe(d.name)]
+                    for o in opts[:1]:
+                        path_via = "menu:" + control_label(o.name)
+                        dl = self._try_download(page, lambda: cdp.click(o.backend), 8000)
+            texts = " | ".join(cdp.ax().texts())
+            if dl:
+                fpath = os.path.join(self.ev, "walker-export-" + re.sub(r"[^\w.-]", "_", dl.suggested_filename)[:60])
+                dl.save_as(fpath)
+                size = os.path.getsize(fpath)
+                verdict, note = self._validate_export(fpath)
+                ev.append(self.rec.rel(fpath))
+                row = {"control": key, "via": path_via, "file": self.rec.rel(fpath), "bytes": size, "verdict": verdict, "note": note}
+                if verdict == "FAIL":
+                    status = "FAIL"
+                    ev.append(self.shot(page, "export-bad-file"))
+                    self.finding("export", "medium", "Export via '%s' downloads an unusable file" % key,
+                                 ["Open %s at 1280x900" % self.url, "Click '%s'%s" % (key, (" then " + path_via[5:]) if path_via.startswith("menu:") else "")],
+                                 "A non-empty, parseable export file", note, ev, element=key, area="%s/export" % self.slug)
+                elif verdict == "EMPTY":
+                    self.judge("export_empty", "Export via '%s' produced an empty dataset (%s). Expected if zuko_qa_t1 has no data in this lens?" % (key, note), ev)
+            elif NOTHING_TO_EXPORT.search(texts):
+                ev.append(self.shot(page, "export-nothing"))
+                row = {"control": key, "via": path_via, "verdict": "NOTHING_TO_EXPORT"}
+                self.judge("export_nothing", "'%s' says nothing to export. Is that right for this account's data in the lens?" % key, ev)
+            else:
+                ev.append(self.shot(page, "export-no-file"))
+                row = {"control": key, "via": path_via, "verdict": "NO_FILE"}
+                if re.search(r"(?i)copied|clipboard", texts):
+                    self.judge("export_clipboard", "'%s' appears to copy to clipboard instead of downloading; acceptable?" % key, ev)
+                else:
+                    status = "FAIL"
+                    self.finding("export", "medium", "'%s' produces no file" % key,
+                                 ["Open %s at 1280x900" % self.url, "Click '%s'" % key, "Wait 8 s for a download or a format menu"],
+                                 "A download starts (or a format menu leads to one)", "No download, no format menu, no message", ev,
+                                 element=key, area="%s/export" % self.slug)
+            rows.append(row)
+        self.mark("export", status, attempts=rows)
+
+    def _try_download(self, page, click, timeout):
+        try:
+            with page.expect_download(timeout=timeout) as info:
+                if click() is False:
+                    raise TimeoutError
+            return info.value
+        except Exception:
+            return None
+
+    def _validate_export(self, fpath):
+        size = os.path.getsize(fpath)
+        if size == 0:
+            return "FAIL", "0-byte file"
+        low = fpath.lower()
+        try:
+            if low.endswith(".json"):
+                with open(fpath) as f:
+                    d = json.load(f)
+                def empty(x):
+                    if isinstance(x, (list, dict)) and not x:
+                        return True
+                    if isinstance(x, dict):
+                        vals = [v for v in x.values() if isinstance(v, (list, dict))]
+                        return bool(vals) and all(empty(v) for v in vals)
+                    return False
+                return ("EMPTY", "JSON has no records") if empty(d) else ("PASS", "valid JSON, %d bytes" % size)
+            if low.endswith(".csv"):
+                with open(fpath, newline="") as f:
+                    rows = list(csv.reader(io.StringIO(f.read())))
+                if len(rows) <= 1:
+                    return "EMPTY", "CSV has header only" if rows else "CSV empty"
+                return "PASS", "CSV %d rows" % (len(rows) - 1)
+        except Exception as e:
+            return "FAIL", "file does not parse (%s)" % type(e).__name__
+        return "PASS", "%d bytes" % size
+
+    def contrast(self, page, cdp):
+        snap = cdp.snapshot()
+        res = contrast_from_snapshot(snap, self.th, self.cfg["viewport_desktop"])
+        self.result["contrast"] = {k: v for k, v in res.items() if k != "examples"}
+        if not res["failing_groups"]:
+            self.mark("contrast", "PASS", checked=res["checked"], unknown=res["unknown"])
+            return
+        ev = [self.shot(page, "contrast-page")]
+        for ex in res["examples"][:3]:
+            ev.append(self.shot(page, "contrast-%s-on-%s" % (ex["fg"][1:], ex["bg"][1:]), clip=self._pad(ex["box"], 4)))
+        worst = res["failing_groups"][0]
+        sev = "medium" if worst["ratio"] < self.th["contrast_medium_sev"] and not worst["large"] else "low"
+        desc = "; ".join("%s on %s = %.2f:1 (%s, %d nodes)" % (g["fg"], g["bg"], g["ratio"], "large" if g["large"] else "normal", g["count"])
+                         for g in res["failing_groups"][:5])
+        self.finding("contrast", sev, "%d text colour pair(s) fail WCAG AA contrast" % len(res["failing_groups"]),
+                     ["Open %s at 1280x900 (dark scheme)" % self.url, "Inspect text colour vs effective background in DevTools"],
+                     "Normal text >= 4.5:1, large text >= 3:1", desc, ev, area="%s/theme tokens" % self.slug,
+                     root_cause="RCA-contrast-theme-tokens" if any(g["ratio"] < 2.0 for g in res["failing_groups"]) else None)
+        if res["unknown"]:
+            self.result["contrast"]["note"] = "%d text nodes over images/gradients not judged" % res["unknown"]
+        self.mark("contrast", "FAIL", groups=res["failing_groups"][:8], checked=res["checked"])
+
+    def mobile(self):
+        ctx, page, cdp = self.open(mobile=True)
+        try:
+            t = self.nav(page, cdp)
+            if self.signed_out(page) and self.acct:
+                raise AccountMismatch("signed out at 390")
+            lm = cdp.layout_metrics()
+            ev_full = self.shot(page, "m390-full", full=True)
+            ev_vp = self.shot(page, "m390-viewport")
+            ax = cdp.ax()
+            errs = self.error_texts(ax)
+            row = {"timing": t, "layout": lm, "evidence": [ev_vp, ev_full]}
+            status = "PASS"
+            if errs or self.crashes:
+                status = "FAIL"
+                self.finding("reach", "high", "Lens fails to render at 390 px", ["Open %s at 390x844" % self.url],
+                             "Lens renders at 390 px", "Error: %s%s" % ("; ".join(errs[:2]), " renderer crash" if self.crashes else ""),
+                             [ev_vp], area="%s/mobile" % self.slug)
+            dev_w = self.cfg["viewport_mobile"][0]
+            # On a mobile-emulated page, content wider than the device makes Chrome widen the layout
+            # viewport (zoom-out), so both content_w and viewport_w > 390 mean horizontal overflow.
+            eff_w = max(lm["content_w"] or 0, lm["viewport_w"] or 0)
+            overflow = eff_w - dev_w
+            lm["content_w"], lm["viewport_w"] = eff_w, dev_w
+            if overflow > 2:
+                snap = cdp.snapshot()
+                offenders = overflow_offenders(snap, dev_w)
+                status = "FAIL"
+                self.finding("overflow390", "medium" if overflow > 0.3 * 390 else "low",
+                             "Page scrolls sideways at 390 px (content %dpx wide)" % lm["content_w"],
+                             ["Open %s at 390x844" % self.url, "Scroll horizontally"],
+                             "No horizontal page scroll at 390 px", "Content width %dpx vs viewport %dpx. Widest elements: %s"
+                             % (lm["content_w"], lm["viewport_w"], ", ".join(offenders[:3]) or "n/a"),
+                             [ev_vp, ev_full], area="%s/mobile layout" % self.slug)
+            # off-screen tabs/buttons with no scroll container
+            snap = cdp.snapshot()
+            scrollers = scroll_container_backends(snap)
+            off, small = [], 0
+            for n in ax.by_role("tab", "button"):
+                if not n.backend or n.disabled:
+                    continue
+                b = cdp.box(n.backend)
+                if not b:
+                    continue
+                if (b[0] + b[2] > dev_w + 2 or b[0] < -2) and not (_ancestor_backends(snap, n.backend) & scrollers):
+                    off.append(control_label(n.name))
+                if b[2] < self.th["min_tap_px"] or b[3] < self.th["min_tap_px"]:
+                    small += 1
+            row.update(offscreen=off[:20], small_tap_targets=small)
+            if off:
+                status = "FAIL"
+                self.finding("overflow390", "low", "%d control(s) off-screen at 390 px with no way to scroll to them" % len(off),
+                             ["Open %s at 390x844" % self.url, "Look for tabs/buttons past the right edge"],
+                             "All tabs and buttons reachable at 390 px", "Off-screen: %s" % ", ".join(off[:8]), [ev_vp, ev_full],
+                             element=off[0], area="%s/mobile layout" % self.slug)
+            self.mark("mobile_390", status, **row)
+        finally:
+            self._close(ctx)
+
+    # ---------------------------------------------------------------- write mode
+    def write_flow(self):
+        """Create one labelled fixture, reload-verify, delete it (checking for a confirm), log leftovers."""
+        from .util import now_et
+        label = "%s-%s-%s-%s" % (self.cfg["fixture_prefix"], self.slug, now_et().strftime("%Y-%m-%d"), self.rec.rid[-6:])
+        ctx, page, cdp = self.open()
+        try:
+            self.nav(page, cdp)
+            ax = cdp.ax()
+            opener = next((n for n in ax.by_role("button") if n.backend and not n.disabled and safety.CREATE_OPENER.search(n.name)), None)
+            if not opener:
+                self.mark("create_delete", "NA", reason="no New/Create/Add control on main view")
+                return
+            texts_before = set(ax.texts())
+            assert_account(ctx, self.cfg, self.acct, "create (open form)", self.log)
+            before = {p.backend for p in ax.popups()}
+            cdp.click(opener.backend)
+            got, _ = wait_until(lambda: self._popup_new(cdp, before, opener.backend), timeout=2.5)
+            ax = cdp.ax()
+            dlg = got[1] if got else None
+            if not dlg:
+                newt = [t for t in set(ax.texts()) - texts_before if re.search(r"(?i)untitled|^new\b", t)]
+                ev = self.shot(page, "create-no-dialog")
+                if newt:
+                    self.rec.fixture("(instant-create via '%s')" % control_label(opener.name), self.slug, "possible_instant_create",
+                                     "Clicking '%s' may have created a blank item with no form." % control_label(opener.name))
+                    self.judge("instant_create", "Clicking '%s' showed no form; it may have created a blank item instantly. Verify and clean up." % control_label(opener.name), [ev])
+                self.mark("create_delete", "NOT_RUN", reason="opener showed no dialog/form", evidence=ev)
+                return
+            dtexts = " ".join(d.name for d in ax.descendants(dlg))
+            if safety.PUBLIC_HINT.search(dtexts):
+                self.shot(page, "create-public-abort")
+                page.keyboard.press("Escape")
+                self.mark("create_delete", "NOT_RUN", reason="create form mentions public/feed visibility; not written")
+                return
+            field = next((d for d in ax.descendants(dlg) if d.role in ("textbox",) and d.backend and not d.disabled), None)
+            if not field:
+                page.keyboard.press("Escape")
+                self.mark("create_delete", "NOT_RUN", reason="create form has no text field")
+                return
+            cdp.click(field.backend)
+            page.keyboard.type(label, delay=35)
+            time.sleep(0.4)
+            ax = cdp.ax()
+            still = next((p for p in ax.popups() if p.backend == dlg.backend), None)
+            if not still:
+                ev = self.shot(page, "hotkey-steal")
+                self.finding("hotkey", "high", "Create form closes while typing (keystrokes taken as hotkeys)",
+                             ["Open %s" % self.url, "Click '%s'" % control_label(opener.name), "Type a title into the first field"],
+                             "Form stays open and receives the typed text", "Form closed during typing", [ev],
+                             root_cause="RCA-form-hotkey-steal", area="%s/hotkeys vs form input" % self.slug)
+                self.rec.fixture(label, self.slug, "unknown", "Form closed mid-typing; check nothing half-created.")
+                self.mark("create_delete", "FAIL", reason="hotkey steal")
+                return
+            submit = next((d for d in ax.descendants(still) if d.role == "button" and d.backend and not d.disabled
+                           and safety.CREATE_SUBMIT.search(d.name)), None)
+            if not submit:
+                page.keyboard.press("Escape")
+                self.mark("create_delete", "NOT_RUN", reason="no Create/Save button in form")
+                return
+            assert_account(ctx, self.cfg, self.acct, "create (submit)", self.log)
+            self.rec.fixture(label, self.slug, "create_clicked", "via '%s' > '%s'" % (control_label(opener.name), control_label(submit.name)))
+            cdp.click(submit.backend)
+            time.sleep(1.5)
+            ev_created = self.shot(page, "created")
+            self.nav(page, cdp)
+            ax = cdp.ax()
+            present = [n for n in ax.live() if label in (n.name or "")]
+            if not present:
+                ev = self.shot(page, "created-not-after-reload")
+                self.judge("create_unverified", "Submitted fixture '%s' but it isn't visible after reload. Validation error, other view, or persistence bug?" % label, [ev_created, ev])
+                self.rec.fixture(label, self.slug, "unknown", "Not visible after reload; may exist in another view.")
+                self.mark("create_delete", "PARTIAL", reason="not visible after reload")
+                return
+            self.rec.fixture(label, self.slug, "created")
+            self._delete_fixture(ctx, page, cdp, label)
+        finally:
+            self._close(ctx)
+
+    def _delete_fixture(self, ctx, page, cdp, label):
+        ax = cdp.ax()
+        lab = next(n for n in ax.live() if label in (n.name or ""))
+        target = None
+        # 1) row-scoped: nearest ancestor (<=4 up) containing exactly one delete control and exactly one fixture label
+        for anc in ax.ancestors(lab)[:4]:
+            desc = ax.descendants(anc)
+            dels = [d for d in desc if d.role in ("button", "menuitem") and d.backend and safety.DELETE_CTRL.search(d.name)]
+            labs = [d for d in desc if label in (d.name or "")]
+            others = [d for d in desc if d.role in ("listitem", "row", "article") ]
+            if len(dels) == 1 and len(labs) >= 1 and len(others) <= 1:
+                target = dels[0]; break
+            if len(dels) > 1:
+                break
+        # 2) open its detail and look for a single delete control in a dialog that shows the label
+        if not target and lab.backend:
+            before = {p.backend for p in ax.popups()}
+            cdp.click(lab.backend); time.sleep(1.0)
+            ax = cdp.ax()
+            for p in ax.popups():
+                desc = ax.descendants(p)
+                if any(label in (d.name or "") for d in desc):
+                    dels = [d for d in desc if d.role in ("button", "menuitem") and d.backend and safety.DELETE_CTRL.search(d.name)]
+                    if len(dels) == 1:
+                        target = dels[0]
+        if not target:
+            ev = self.shot(page, "delete-ambiguous")
+            self.rec.fixture(label, self.slug, "leftover", "No unambiguous delete control tied to the fixture label.")
+            self.judge("delete_ambiguous", "Could not find a delete control tied unambiguously to fixture '%s'; delete by hand." % label, [ev])
+            self.mark("create_delete", "PARTIAL", reason="delete control ambiguous")
+            return
+        assert_account(ctx, self.cfg, self.acct, "delete", self.log)
+        ev_before = self.shot(page, "delete-before")
+        self.native_dialogs.clear()
+        self.dialog_mode = "accept"
+        before = {p.backend for p in cdp.ax().popups()}
+        cdp.click(target.backend)  # exactly once
+        time.sleep(1.0)
+        confirm_seen = bool(self.native_dialogs)
+        ax = cdp.ax()
+        if not confirm_seen:
+            for p in ax.popups():
+                if p.backend in before:
+                    continue
+                txt = " ".join(d.name for d in ax.descendants(p))
+                if safety.CONFIRM_TEXT.search(txt) or p.role == "alertdialog":
+                    confirm_seen = True
+                    btn = next((d for d in ax.descendants(p) if d.role == "button" and d.backend and safety.CONFIRM_DELETE.search(d.name)), None)
+                    ev_confirm = self.shot(page, "delete-confirm")
+                    if btn:
+                        assert_account(ctx, self.cfg, self.acct, "delete (confirm)", self.log)
+                        cdp.click(btn.backend); time.sleep(1.0)
+                    break
+        self.dialog_mode = "dismiss"
+        self.nav(page, cdp)
+        gone = not any(label in (n.name or "") for n in cdp.ax().live())
+        ev_after = self.shot(page, "delete-after")
+        if gone:
+            self.rec.fixture(label, self.slug, "deleted")
+        else:
+            self.rec.fixture(label, self.slug, "leftover", "Delete clicked once; still present after reload.")
+        if not confirm_seen and gone:
+            self.finding("delete_confirm", "medium", "Delete removes an item instantly with no confirmation",
+                         ["Open %s" % self.url, "Create a labelled QA item", "Click its '%s' control once" % control_label(target.name)],
+                         "A confirm step (or undo) before the item is removed", "Item removed immediately; no confirm or undo",
+                         [ev_before, ev_after], element=control_label(target.name), area="%s/delete" % self.slug)
+            self.mark("create_delete", "FAIL", confirm=False, deleted=True)
+        elif not gone:
+            self.finding("persistence", "medium", "Deleting an own item doesn't remove it",
+                         ["Open %s" % self.url, "Create a labelled QA item", "Delete it (confirm if asked)", "Reload"],
+                         "Item gone after reload", "Item still present after one delete attempt and reload", [ev_before, ev_after],
+                         area="%s/delete" % self.slug)
+            self.mark("create_delete", "FAIL", confirm=confirm_seen, deleted=False)
+        else:
+            self.mark("create_delete", "PASS", confirm=True, deleted=True)
+
+    # ---------------------------------------------------------------- aggregate
+    def console_network(self):
+        five = [r for r in self.bad_responses if r[0] >= 500]
+        four = [r for r in self.bad_responses if 400 <= r[0] < 500]
+        self.result["console"] = {"console_errors": len(self.console_errors), "page_errors": len(self.page_errors),
+                                  "http_5xx": sorted(set("%d %s" % r for r in five))[:10],
+                                  "http_4xx": sorted(set("%d %s" % r for r in four))[:10]}
+        ev = self.result.get("initial_evidence")
+        if self.page_errors and ev:
+            self.finding("pageerror", "medium", "%d uncaught JavaScript error(s) while walking the lens" % len(self.page_errors),
+                         ["Open %s with DevTools console open" % self.url, "Click through the tabs"],
+                         "No uncaught exceptions", "First: %s" % scrub(self.page_errors[0], 140), [ev], area="%s/runtime" % self.slug)
+        if five and ev:
+            self.finding("http", "medium", "API returns 5xx while loading the lens",
+                         ["Open %s with DevTools Network open" % self.url],
+                         "No server errors on lens load", "; ".join(sorted(set("%d %s" % r for r in five))[:4]), [ev], area="%s/api" % self.slug)
+        self.mark("console_network", "FAIL" if (self.page_errors or five) else "PASS", **self.result["console"])
+
+    @staticmethod
+    def _pad(b, p=4):
+        x, y, w, h = b
+        return {"x": max(0, x - p), "y": max(0, y - p), "width": max(1, w + 2 * p), "height": max(1, h + 2 * p)}
+
+
+# -------------------------------------------------------------------- snapshot analysis
+def _snap_doc(snap):
+    d = snap["documents"][0]
+    return d, snap["strings"]
+
+
+def contrast_from_snapshot(snap, th, viewport):
+    d, S = _snap_doc(snap)
+    nodes, lay = d["nodes"], d["layout"]
+    parent = nodes["parentIndex"]; ntype = nodes["nodeType"]; nval = nodes.get("nodeValue", [])
+    lay_of = {ni: li for li, ni in enumerate(lay["nodeIndex"])}
+    # style index order matches computedStyles request
+    COLOR, BG, BGIMG, FS, FW, OP, VIS, DISP = range(8)
+
+    def style(ni):
+        li = lay_of.get(ni)
+        if li is None:
+            return None
+        st = lay["styles"][li]
+        return [S[i] if i >= 0 else "" for i in st] if st else None
+
+    groups, checked, unknown, examples = {}, 0, 0, {}
+    for li, ni in enumerate(lay["nodeIndex"]):
+        if ntype[ni] != 3:
+            continue
+        txt = S[nval[ni]] if nval and nval[ni] >= 0 else ""
+        if len(txt.strip()) < 2:
+            continue
+        x, y, w, h = lay["bounds"][li]
+        if w < 1 or h < 1 or x > viewport[0] or x + w < 0:
+            continue
+        pe = parent[ni]
+        if _disabled_ancestor(nodes, S, pe):
+            continue  # WCAG 1.4.3 exempts inactive controls
+        st = style(ni) or style(pe)
+        if not st or st[VIS] in ("hidden", "collapse") or st[DISP] == "none":
+            continue
+        fg = colors.parse(st[COLOR])
+        if not fg or fg[3] == 0:
+            continue
+        # walk ancestors for background
+        layers, cur, img = [], pe, False
+        hidden = False
+        while cur is not None and cur >= 0:
+            s2 = style(cur)
+            if s2:
+                if s2[OP] and s2[OP] not in ("", "1") and float(s2[OP] or 1) < 0.05:
+                    hidden = True; break
+                if s2[BGIMG] and s2[BGIMG] != "none":
+                    img = True; break
+                bg = colors.parse(s2[BG])
+                if bg and bg[3] > 0:
+                    layers.append(bg)
+                    if bg[3] >= 0.999:
+                        break
+            cur = parent[cur]
+        if hidden:
+            continue
+        if img:
+            unknown += 1
+            continue
+        base = (255, 255, 255, 1.0)
+        for lyr in reversed(layers):
+            base = colors.blend(lyr, base)
+        fgc = colors.blend(fg, base) if fg[3] < 1 else fg
+        r = colors.ratio(fgc, base)
+        try:
+            fs = float(st[FS].replace("px", "")) if st[FS] else 16
+        except ValueError:
+            fs = 16
+        fwv = st[FW]
+        bold = (fwv == "bold") or (fwv.isdigit() and int(fwv) >= 700)
+        large = fs >= 24 or (fs >= 18.66 and bold)
+        need = th["contrast_large"] if large else th["contrast_normal"]
+        checked += 1
+        if r + 1e-6 < need:
+            k = (colors.hexify(fgc), colors.hexify(base), large)
+            g = groups.setdefault(k, {"fg": k[0], "bg": k[1], "large": large, "ratio": round(r, 2), "count": 0})
+            g["count"] += 1
+            if k not in examples and y + h <= viewport[1] and y >= 0:
+                examples[k] = {"fg": k[0], "bg": k[1], "box": (x, y, w, h)}
+    fail = sorted(groups.values(), key=lambda g: (g["ratio"], -g["count"]))
+    ex = [examples[(g["fg"], g["bg"], g["large"])] for g in fail if (g["fg"], g["bg"], g["large"]) in examples]
+    return {"checked": checked, "unknown": unknown, "failing_groups": fail, "examples": ex}
+
+
+def _disabled_ancestor(nodes, S, ni, depth=4):
+    parent = nodes["parentIndex"]
+    while ni is not None and ni >= 0 and depth > 0:
+        at = _attrs(nodes, S, ni)
+        if "disabled" in at or at.get("aria-disabled") == "true":
+            return True
+        ni = parent[ni]; depth -= 1
+    return False
+
+
+def _attrs(nodes, S, ni):
+    a = (nodes.get("attributes") or [[]])[ni] if nodes.get("attributes") else []
+    return {S[a[i]]: S[a[i + 1]] for i in range(0, len(a) - 1, 2)}
+
+
+def overflow_offenders(snap, vw):
+    d, S = _snap_doc(snap)
+    nodes, lay = d["nodes"], d["layout"]
+    parent, ntype, nname = nodes["parentIndex"], nodes["nodeType"], nodes["nodeName"]
+    off = set()
+    for li, ni in enumerate(lay["nodeIndex"]):
+        if ntype[ni] != 1:
+            continue
+        x, y, w, h = lay["bounds"][li]
+        if x + w > vw + 2 and w > 0 and h > 0:
+            off.add(ni)
+    tops = [ni for ni in off if parent[ni] not in off]
+    out = []
+    for ni in tops[:6]:
+        at = _attrs(nodes, S, ni)
+        cls = (at.get("class") or "").split()
+        out.append("%s%s" % (S[nname[ni]].lower(), ("." + ".".join(cls[:2])) if cls else ""))
+    return out
+
+
+def scroll_container_backends(snap):
+    d, S = _snap_doc(snap)
+    nodes, lay = d["nodes"], d["layout"]
+    back = nodes["backendNodeId"]
+    out = set()
+    for li, ni in enumerate(lay["nodeIndex"]):
+        st = lay["styles"][li]
+        if st and len(st) > 9 and st[9] >= 0 and S[st[9]] in ("auto", "scroll"):
+            out.add(back[ni])
+    return out
+
+
+def _ancestor_backends(snap, backend):
+    d, S = _snap_doc(snap)
+    nodes = d["nodes"]
+    back, parent = nodes["backendNodeId"], nodes["parentIndex"]
+    try:
+        ni = back.index(backend)
+    except ValueError:
+        return set()
+    out = set()
+    while ni is not None and ni >= 0:
+        out.add(back[ni])
+        ni = parent[ni]
+    return out

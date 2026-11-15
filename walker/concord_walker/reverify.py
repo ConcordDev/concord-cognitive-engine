@@ -1,0 +1,310 @@
+"""Re-verify mode: replay a ticket's repro (recipe or classified standard check), plus a
+read-only nearby smoke of the same lens, and decide FIXED / STILL_FAILING / NEEDS_HUMAN.
+Judgment calls are never auto-decided: they go to the needs-tester queue."""
+import re, time
+from .checks import LensWalk
+from .cdp import wait_until
+from .auth import assert_account, AccountMismatch
+from .tickets import CATEGORY_WORDS
+from .util import scrub, ts_et, control_label
+from . import colors
+
+FIXED, STILL, HUMAN = "FIXED", "STILL_FAILING", "NEEDS_HUMAN"
+ORDER = ["crash", "hotkey", "delete_confirm", "escape", "focus_return", "focus_trap", "focus_visible", "export",
+         "contrast", "overflow390", "unnamed", "keyboard", "timing", "tab_error", "reach", "pageerror", "http", "persistence"]
+WRITE_CATS = {"hotkey", "delete_confirm", "persistence"}
+
+
+def ticket_text(t):
+    rs = t.get("repro_steps")
+    rs = " ".join(rs) if isinstance(rs, list) else (rs or "")
+    return " ".join(str(t.get(k) or "") for k in ("title", "actual", "expected")) + " " + rs
+
+
+def classify(t):
+    txt = ticket_text(t).lower()
+    title = (t.get("title") or "").lower()
+    # Title wins: first category whose words hit the title, else the whole text.
+    for scope in (title, txt):
+        for c in ORDER:
+            if re.search(CATEGORY_WORDS[c], scope):
+                return c
+    return None
+
+
+def elements(t):
+    txt = (t.get("title") or "") + " " + (t.get("actual") or "")
+    names = re.findall(r"(?<![A-Za-z])'([^']{2,40})'(?![A-Za-z])|\"([^\"]{2,40})\"|\u2018([^\u2019]{2,40})\u2019|\u201c([^\u201d]{2,40})\u201d", txt)
+    return [next(x for x in g if x) for g in names]
+
+
+def wants_mobile(t):
+    return bool(re.search(r"390|mobile|phone|narrow", ticket_text(t), re.I))
+
+
+class Reverifier:
+    def __init__(self, browser, cfg, rec, store, log, inventory, allow_write=False):
+        self.b, self.cfg, self.rec, self.store, self.log = browser, cfg, rec, store, log
+        self.inv = {l["slug"]: l for l in inventory}
+        self.allow_write = allow_write
+        self.walks = {}
+        self.recipes = {"FIX-007": self.r_fix007, "FIX-deities-002": self.r_deities_002}
+
+    def account_for(self, lens):
+        if lens in self.cfg["admin_lenses"]:
+            from .auth import has_session
+            return ("admin", True) if has_session(self.cfg, "admin") else ("t1", False)
+        return ("t1", False)
+
+    def smoke(self, lens, write=False):
+        key = (lens, write)
+        if key not in self.walks:
+            acct, admin = self.account_for(lens)
+            lw = LensWalk(self.b, self.cfg, self.rec, self.inv[lens], acct, self.log, allow_write=write, admin=admin,
+                          inv_entry=self.inv[lens],
+                          phases=["reach", "surface", "tabs", "keyboard", "openers", "export", "contrast", "mobile"] + (["write"] if write else []))
+            lw.run()
+            self.walks[key] = lw
+        return self.walks[key]
+
+    @staticmethod
+    def _row(r):
+        return ", ".join("%s=%s" % (k, v) for k, v in r.items() if k != "evidence")
+
+    def run(self, tid):
+        t = self.store.get(tid)
+        if not t:
+            return {"id": tid, "verdict": HUMAN, "method": "none", "notes": "ticket id not found in fix_tickets.jsonl"}
+        lens = t.get("lens")
+        if lens not in self.inv:
+            return {"id": tid, "lens": lens, "verdict": HUMAN, "method": "none", "notes": "lens not in inventory"}
+        self.log("reverify %s (%s, status %s)" % (tid, lens, t.get("status")))
+        if tid in self.recipes:
+            res = self.recipes[tid](t)
+        else:
+            res = self.generic(t)
+        lw = self.smoke(lens)
+        res.update(id=tid, lens=lens, prior_status=t.get("status") or "OPEN",
+                   smoke={"findings": len(lw.findings), "checks": {k: v.get("status") for k, v in lw.result["checks"].items()}})
+        res["evidence"] = list(dict.fromkeys(e for e in (res.get("evidence") or []) if e))
+        if res["verdict"] == HUMAN:
+            self.rec.judgment(lens, "reverify", "%s: %s" % (tid, res.get("notes", "")), res.get("evidence"), ticket_id=tid)
+        return res
+
+    # ------------------------------------------------------------ generic
+    def generic(self, t):
+        cat = classify(t)
+        elems = elements(t)
+        if cat is None:
+            lw = self.smoke(t["lens"])
+            return {"verdict": HUMAN, "method": "smoke-only", "category": None, "evidence": [lw.result.get("initial_evidence")],
+                    "notes": "repro not automatable (no standard check matches); screenshot + smoke attached"}
+        if cat in WRITE_CATS and not self.allow_write:
+            lw = self.smoke(t["lens"])
+            return {"verdict": HUMAN, "method": "needs-write", "category": cat, "evidence": [lw.result.get("initial_evidence")],
+                    "notes": "repro needs a create/delete; rerun with --allow-write (own labelled fixture) or a tester"}
+        lw = self.smoke(t["lens"], write=(cat in WRITE_CATS))
+        same = [f for f in lw.findings if f["check"] == cat or (cat in ("escape", "focus_return", "focus_trap") and f["check"] in ("escape", "focus_return", "focus_trap"))]
+        ev = [e for f in same for e in f["evidence"]][:4] or [lw.result.get("initial_evidence")]
+        chk = lw.result["checks"]
+
+        def elem_hit(f):
+            return any(e.lower() in (f.get("element") or "").lower() or (f.get("element") or "").lower() in e.lower() for e in elems if e)
+
+        if cat == "crash":
+            return self._crash_loop(t, mobile=wants_mobile(t))
+        if cat == "contrast":
+            hexes = set(h.lower() for h in re.findall(r"#[0-9a-fA-F]{6}", ticket_text(t)))
+            groups = (chk.get("contrast") or {}).get("groups") or []
+            if hexes:
+                hit = [g for g in groups if g["fg"] in hexes or g["bg"] in hexes]
+                return {"verdict": STILL if hit else FIXED, "method": "contrast pairs from DOMSnapshot", "category": cat, "evidence": ev,
+                        "notes": "ticket colours %s %s" % (sorted(hexes), "still fail" if hit else "no longer fail AA")}
+            if (chk.get("contrast") or {}).get("status") == "PASS":
+                return {"verdict": FIXED, "method": "contrast", "category": cat, "evidence": ev, "notes": "no text pair fails AA on main view"}
+            return {"verdict": HUMAN, "method": "contrast", "category": cat, "evidence": ev,
+                    "notes": "some pairs still fail but the ticket names no colours; tester to match element"}
+        if cat in ("escape", "focus_return", "focus_trap"):
+            rows = (chk.get("escape_focus") or {}).get("openers") or []
+            tested = [r for r in rows if any(e.lower() in r["opener"].lower() for e in elems)]
+            if not elems or not tested:
+                return {"verdict": HUMAN, "method": "openers", "category": cat, "evidence": ev,
+                        "notes": "ticket's overlay (%s) not among the safe openers walked (%s)" % (elems or "unnamed", [r["opener"] for r in rows][:6])}
+            bad = [f for f in same if elem_hit(f)]
+            return {"verdict": STILL if bad else FIXED, "method": "Escape/focus on '%s'" % tested[0]["opener"], "category": cat,
+                    "evidence": ev if bad else [tested[0].get("evidence")], "notes": self._row(tested[0])}
+        if cat == "export":
+            ex = chk.get("export") or {}
+            if ex.get("status") == "PASS":
+                return {"verdict": FIXED, "method": "export download", "category": cat, "evidence": [a.get("file") for a in ex.get("attempts", [])] + ev[:1],
+                        "notes": scrub(str(ex.get("attempts")), 200)}
+            if ex.get("status") == "FAIL":
+                return {"verdict": STILL, "method": "export download", "category": cat, "evidence": ev, "notes": scrub(str(ex.get("attempts")), 200)}
+            return {"verdict": HUMAN, "method": "export", "category": cat, "evidence": ev, "notes": "export status %s (empty/nothing/no control)" % ex.get("status")}
+        if cat == "overflow390":
+            m = chk.get("mobile_390") or {}
+            if elems:
+                off = m.get("offscreen") or []
+                hit = [o for o in off if any(e.lower() in o.lower() for e in elems)]
+                if hit:
+                    return {"verdict": STILL, "method": "390 off-screen controls", "category": cat, "evidence": m.get("evidence"), "notes": "still off-screen: %s" % hit}
+                return {"verdict": HUMAN, "method": "390 layout", "category": cat, "evidence": m.get("evidence"),
+                        "notes": "named element not flagged off-screen; tester confirm layout from screenshot"}
+            if re.search(r"horizontal|sideways|scrolls? (left|right)|overflow", ticket_text(t), re.I):
+                over = (m.get("layout") or {}).get("content_w", 0) - (m.get("layout") or {}).get("viewport_w", 390)
+                return {"verdict": STILL if over > 2 else FIXED, "method": "390 content width", "category": cat, "evidence": m.get("evidence"),
+                        "notes": "content overflow %dpx" % over}
+            return {"verdict": HUMAN, "method": "390 layout", "category": cat, "evidence": m.get("evidence"),
+                    "notes": "visual layout issue; compare 390 screenshot to ticket"}
+        if cat in ("unnamed", "keyboard", "focus_visible"):
+            if same:
+                hit = [f for f in same if not elems or elem_hit(f)]
+                if hit:
+                    return {"verdict": STILL, "method": cat, "category": cat, "evidence": ev, "notes": scrub(hit[0]["actual"], 200)}
+            key = {"unnamed": "surface_inventory", "keyboard": "surface_inventory", "focus_visible": "keyboard_focus"}[cat]
+            if (chk.get(key) or {}).get("status") == "PASS" or not same:
+                return {"verdict": FIXED if not elems else HUMAN, "method": cat, "category": cat, "evidence": ev,
+                        "notes": "no %s issue detected on main view%s" % (cat, "; named element not individually confirmed" if elems else "")}
+        if cat == "timing":
+            tm = lw.result.get("timing_desktop") or {}
+            slow = [f for f in same if not elems or elem_hit(f)]
+            if re.search(r"load", ticket_text(t), re.I) and not elems:
+                return {"verdict": STILL if slow else FIXED, "method": "load timing", "category": cat, "evidence": ev,
+                        "notes": "load %s ms, settle %s ms" % (tm.get("load_ms"), tm.get("settle_ms"))}
+            if slow:
+                return {"verdict": STILL, "method": "timing", "category": cat, "evidence": ev, "notes": scrub(slow[0]["actual"], 160)}
+            return {"verdict": HUMAN, "method": "timing", "category": cat, "evidence": ev, "notes": "interaction timing not reproducible by standard checks"}
+        if cat == "tab_error":
+            rows = (chk.get("tabs_reachable") or {}).get("tabs") or []
+            tested = [r for r in rows if any(e.lower() in r["tab"].lower() for e in elems)]
+            if tested:
+                bad = [r for r in tested if r.get("status") == "FAIL"]
+                return {"verdict": STILL if bad else FIXED, "method": "tab click", "category": cat,
+                        "evidence": [r.get("evidence") for r in tested], "notes": "; ".join(self._row(r) for r in tested)[:200]}
+            return {"verdict": HUMAN, "method": "tab click", "category": cat, "evidence": ev, "notes": "named tab not found among %d tabs" % len(rows)}
+        if cat == "reach":
+            okd = (chk.get("reach_desktop") or {}).get("status") == "PASS"
+            okm = (chk.get("mobile_390") or {}).get("status") != "FAIL" or not wants_mobile(t)
+            return {"verdict": FIXED if okd and okm else STILL, "method": "reach desktop+390", "category": cat, "evidence": ev,
+                    "notes": "desktop %s, 390 %s" % ((chk.get("reach_desktop") or {}).get("status"), (chk.get("mobile_390") or {}).get("status"))}
+        if cat in ("pageerror", "http"):
+            return {"verdict": STILL if same else HUMAN, "method": "console/network", "category": cat, "evidence": ev,
+                    "notes": "errors still present" if same else "none seen on walked paths; ticket path may differ"}
+        if cat in WRITE_CATS:
+            st = (chk.get("create_delete") or {})
+            hit = [f for f in lw.findings if f["check"] == cat]
+            if st.get("status") == "PASS" and not hit:
+                return {"verdict": FIXED, "method": "own fixture create/delete", "category": cat, "evidence": ev, "notes": scrub(str(st), 200)}
+            if hit:
+                return {"verdict": STILL, "method": "own fixture create/delete", "category": cat, "evidence": ev, "notes": scrub(hit[0]["actual"], 200)}
+            return {"verdict": HUMAN, "method": "own fixture create/delete", "category": cat, "evidence": ev, "notes": scrub(str(st), 200)}
+        return {"verdict": HUMAN, "method": cat, "category": cat, "evidence": ev, "notes": "no decision rule"}
+
+    def _crash_loop(self, t, mobile=True, n=10):
+        lens = t["lens"]
+        acct, admin = self.account_for(lens)
+        lw = LensWalk(self.b, self.cfg, self.rec, self.inv[lens], acct, self.log, admin=admin, inv_entry=self.inv[lens])
+        crashes, evid, loads = 0, [], []
+        for i in range(n):
+            ctx, page, cdp = lw.open(mobile=mobile)
+            try:
+                if acct:
+                    assert_account(ctx, self.cfg, acct, "crash loop", self.log)
+                c0 = lw.crashes
+                tm = lw.nav(page, cdp)
+                try:
+                    page.reload(wait_until="load", timeout=self.cfg["thresholds"]["nav_timeout_ms"])
+                except Exception:
+                    pass
+                time.sleep(1.0)
+                alive = True
+                try:
+                    cdp.ax()
+                except Exception:
+                    alive = False
+                loads.append(tm["load_ms"])
+                if lw.crashes > c0 or not alive:
+                    crashes += 1
+                    evid.append(lw.shot(page, "crash-iter-%d" % i))
+                elif i == n - 1:
+                    evid.append(lw.shot(page, "crash-loop-final"))
+            finally:
+                lw._close(ctx)
+        return {"verdict": STILL if crashes else FIXED, "method": "%d cold loads + reload at %s" % (n, "390x844" if mobile else "1280x900"),
+                "category": "crash", "evidence": [e for e in evid if e],
+                "notes": "%d/%d crashed; load ms %s%s" % (crashes, n, loads, "" if crashes else " (intermittent bug: 'not reproduced in %d tries')" % n)}
+
+    # ------------------------------------------------------------ recipes
+    def r_deities_002(self, t):
+        # Ticket: first 390x844 reload crashed the tab ('Aw, Snap!' code 9); second reload OK.
+        return self._crash_loop(t, mobile=True, n=10)
+
+    def r_fix007(self, t):
+        # Ticket: mobile chat composer fill/click timeouts at 390x844; expected composer accepts input and send works.
+        lens = t["lens"]
+        lw = LensWalk(self.b, self.cfg, self.rec, self.inv[lens], "t1", self.log, inv_entry=self.inv[lens])
+        ctx, page, cdp = lw.open(mobile=True)
+        try:
+            assert_account(ctx, self.cfg, "t1", "chat composer check", self.log)
+            lw.nav(page, cdp)
+            ax = cdp.ax()
+            boxes = [n for n in ax.by_role("textbox") if n.backend and not n.disabled]
+            comp = next((n for n in boxes if re.search(r"(?i)message|ask|chat|type|prompt|say", n.name)), boxes[-1] if boxes else None)
+            if not comp:
+                ev = lw.shot(page, "fix007-no-composer")
+                return {"verdict": STILL, "method": "390 composer", "evidence": [ev], "notes": "no composer textbox found at 390x844"}
+            probe = "qa-walker composer check"
+            t0 = time.time()
+            clicked = cdp.click(comp.backend)
+            page.keyboard.type(probe, delay=20)
+            fill_s = time.time() - t0
+            ax2 = cdp.ax()
+            c2 = next((n for n in ax2.live() if n.backend == comp.backend), None)
+            filled = bool(c2 and probe in (c2.value or c2.name or ""))
+            send = next((n for n in ax2.by_role("button") if re.search(r"(?i)\bsend\b|submit", n.name)), None)
+            send_ok = bool(send and not send.disabled)
+            ev = [lw.shot(page, "fix007-composer-filled")]
+            note = "click %s, typed in %.1fs, value set %s, Send %s" % (clicked, fill_s, filled, "enabled" if send_ok else "missing/disabled")
+            if not (clicked and filled and fill_s < 8):
+                page.keyboard.press("Control+A"); page.keyboard.press("Backspace")
+                return {"verdict": STILL, "method": "390 composer fill", "evidence": ev, "notes": note}
+            if not self.allow_write:
+                page.keyboard.press("Control+A"); page.keyboard.press("Backspace")
+                return {"verdict": HUMAN, "method": "390 composer fill (send not exercised: read-only)", "evidence": ev,
+                        "notes": note + ". Fill/click timeout NOT reproduced; Send needs --allow-write or a tester."}
+            # write: send own labelled message once, then log it as a fixture
+            label = "%s-chat-%s" % (self.cfg["fixture_prefix"], self.rec.rid)
+            page.keyboard.press("Control+A"); page.keyboard.press("Backspace")
+            page.keyboard.type(label, delay=20)
+            assert_account(ctx, self.cfg, "t1", "chat send (create)", self.log)
+            self.rec.fixture(label, lens, "create_clicked", "FIX-007 composer send at 390")
+            if send_ok:
+                cdp.click(send.backend)
+            else:
+                page.keyboard.press("Enter")
+            shown, dt = wait_until(
+                lambda: any(label in (n.name or "") for n in cdp.ax().live() if n.role in ("StaticText", "paragraph", "article", "listitem")), timeout=15)
+            ev.append(lw.shot(page, "fix007-after-send"))
+            self.rec.fixture(label, lens, "leftover", "Chat message/thread from FIX-007 send check; delete the thread by its label.")
+            return {"verdict": FIXED if shown else STILL, "method": "390 composer fill + send", "evidence": ev,
+                    "notes": note + "; sent message %s in transcript after %.1fs" % ("appeared" if shown else "did NOT appear", dt)}
+        finally:
+            lw._close(ctx)
+
+
+def status_update(store, res, tester):
+    """Build a retest_update record in the existing format, or None (NEEDS_HUMAN goes to the queue)."""
+    prior = (res.get("prior_status") or "OPEN").upper()
+    if res["verdict"] == STILL:
+        status = "REOPENED" if prior in ("FIXED_PENDING_VERIFY", "VERIFIED") else "OPEN"
+        verdict = "still reproduces (lens walker)"
+    elif res["verdict"] == FIXED:
+        if prior != "FIXED_PENDING_VERIFY":
+            return None  # not claimed fixed by a builder: tester decides
+        status, verdict = "VERIFIED", "fixed: repro passes + nearby smoke (lens walker)"
+    else:
+        return None
+    ev = [e for e in (res.get("evidence") or []) if e]
+    return {"type": "retest_update", "id": res["id"], "lens": res["lens"], "verdict": verdict,
+            "note": scrub("%s. Method: %s. Smoke: %d new finding(s)." % (res.get("notes", ""), res.get("method"), res.get("smoke", {}).get("findings", 0)), 400),
+            "evidence": ev, "evidence_path": "; ".join(ev), "status": status, "tester": tester, "ts": ts_et()}

@@ -1,0 +1,9 @@
+.venv/
+auth/
+runs/
+queue/
+state/
+run.lock
+__pycache__/
+evidence/
+*.env
