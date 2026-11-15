@@ -63,13 +63,13 @@ function makesFrom(rows: unknown): Make[] {
   return out;
 }
 
-function errorFrom(res: { data?: { error?: unknown; reason?: unknown; result?: { error?: unknown } | null } } | null, fallback: string): string {
+function errorFrom(res: { data?: { error?: unknown; reason?: unknown; result?: unknown } } | null, fallback: string): string {
   const data = res?.data;
   if (data && typeof data.error === 'string' && data.error) return data.error;
   if (data && typeof data.reason === 'string' && data.reason) return data.reason;
   // Macro refusals carry their words on the result (e.g. maker.create's
   // duplicate_name) — surface them instead of the generic fallback.
-  const resultError = data?.result?.error;
+  const resultError = (data?.result as { error?: unknown } | null | undefined)?.error;
   if (typeof resultError === 'string' && resultError) return resultError;
   return fallback;
 }
