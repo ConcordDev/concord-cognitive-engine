@@ -133,7 +133,7 @@ describe('FoundryWorldsPanel — UX states', () => {
 
 describe('FoundryWorldsPanel — publish lifecycle (FIX-foundry-007, ruling A)', () => {
   it('a published world offers Unpublish, refuses Delete; after unpublishing, Delete completes', async () => {
-    let beta = { id: 'fw_2', name: 'Beta World', description: '', status: 'published', publishedWorldId: 'world-xyz', updatedAt: 1 };
+    let beta: { id: string; name: string; description: string; status: string; publishedWorldId: string | null; updatedAt: number } = { id: 'fw_2', name: 'Beta World', description: '', status: 'published', publishedWorldId: 'world-xyz', updatedAt: 1 };
     lensRun.mockImplementation((_domain: string, name: string, input?: Record<string, unknown>) => {
       if (name === 'list') return Promise.resolve(env({ ok: true, worlds: [beta] }));
       if (name === 'unpublish') {

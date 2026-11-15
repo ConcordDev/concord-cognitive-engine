@@ -42,7 +42,7 @@ describe('RealEstateWorkbench calculators (FIX-housing-003)', () => {
     expect(screen.getByText(/Break-even: year 6/)).toBeTruthy();
     const rentCall = h.lensRun.mock.calls.find((c) => (c[0] as { action?: string }).action === 'calc-rent-vs-buy');
     expect(rentCall).toBeTruthy();
-    expect((rentCall[0] as { input: Record<string, unknown> }).input).toMatchObject({ price: 500000, rent: 2500, downPercent: 20, rate: 7 });
+    expect((rentCall![0] as { input: Record<string, unknown> }).input).toMatchObject({ price: 500000, rent: 2500, downPercent: 20, rate: 7 });
   });
 
   it('renders nothing while closed', async () => {

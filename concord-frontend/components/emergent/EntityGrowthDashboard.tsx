@@ -280,7 +280,7 @@ function HiveCascadeSection({ metrics }: { metrics: HiveMetrics }) {
   // FIX-attention-007: a partial metrics payload (fresh system, module
   // still warming) must render zeros/empties, not throw — the section
   // dereferences nested records unconditionally below.
-  const m: HiveMetrics = { totalCascades: 0, totalHiveDTUs: 0, totalSignals: 0, avgCascadeDepth: 0, avgDTUsPerCascade: 0, processingPathDistribution: {}, recentCascades: [], ...metrics };
+  const m: HiveMetrics = { totalCascades: 0, totalHiveDTUs: 0, totalSignals: 0, avgCascadeDepth: 0, avgDTUsPerCascade: 0, processingPathDistribution: {}, recentCascades: [], ...(metrics as Partial<HiveMetrics>) };
   return (
     <div className="rounded-lg border border-lattice-border bg-lattice-surface/60 p-3">
       <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
@@ -345,7 +345,7 @@ function HiveCascadeSection({ metrics }: { metrics: HiveMetrics }) {
 
 function ExplorationSection({ metrics }: { metrics: ExplorationMetrics }) {
   // FIX-attention-007: same partial-payload guard as HiveCascadeSection.
-  const m: ExplorationMetrics = { totalExplorations: 0, totalFindings: 0, totalDTUsFromWeb: 0, sourceVisits: {}, domainHeatmap: {}, averageNovelty: 0, lastExplorationAt: null, ...metrics };
+  const m: ExplorationMetrics = { totalExplorations: 0, totalFindings: 0, totalDTUsFromWeb: 0, sourceVisits: {}, domainHeatmap: {}, averageNovelty: 0, lastExplorationAt: null, ...(metrics as Partial<ExplorationMetrics>) };
   return (
     <div className="rounded-lg border border-lattice-border bg-lattice-surface/60 p-3">
       <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">

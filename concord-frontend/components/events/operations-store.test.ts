@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { guestRows, segmentRows, storeEmptyCopy, tierRows } from "./operations-store.ts";
+import { guestRows, segmentRows, storeEmptyCopy, tierRows } from "./operations-store";
 
 const launch = { id: "evt_1", name: "Launch" };
 

@@ -5,12 +5,14 @@ import { X, RotateCcw, Trash2, Play, Pencil } from 'lucide-react';
 import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import type { QueueJob } from './JobList';
 
-export interface QueueJobUpdate {
+// A type alias (not an interface) so it carries an implicit index signature
+// and stays assignable to the Record<string, unknown> the data hook accepts.
+export type QueueJobUpdate = {
   name: string;
   priority: string;
   maxAttempts: number;
   payload: Record<string, unknown>;
-}
+};
 
 export interface QueueEvent {
   id: string;

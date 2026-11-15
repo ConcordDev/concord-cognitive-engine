@@ -96,7 +96,7 @@ export function ComposeMailPanel({ onSent, seed }: { onSent: () => void; seed?: 
         if (d.body) setComposeBody((prev) => prev || d.body);
         if (d.attachmentCc) setComposeCcText((prev) => prev || String(d.attachmentCc));
         if (d.codCc) setComposeCodText((prev) => prev || String(d.codCc));
-        if (d.parentId) setParentId((prev) => prev || d.parentId);
+        if (d.parentId) { const draftParent = d.parentId; setParentId((prev) => prev || draftParent); }
         if (d.attachmentDtuIds?.length) {
           setComposeAttachments(d.attachmentDtuIds.map((id) => ({
             id, title: d.attachmentTitles?.[id] || id,

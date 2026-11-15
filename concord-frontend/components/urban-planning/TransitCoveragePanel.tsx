@@ -75,8 +75,9 @@ export function TransitCoveragePanel() {
     const r = await lensRun<{ stop: Stop }>('urban-planning', 'stop-add', {
       name: name.trim(), mode, lat: Number(lat), lng: Number(lng),
     });
-    if (r.data.ok && r.data.result?.stop) {
-      setStops((s) => [...s, r.data.result.stop]);
+    const added = r.data.result?.stop;
+    if (r.data.ok && added) {
+      setStops((s) => [...s, added]);
       setName('');
       setLat('');
       setLng('');

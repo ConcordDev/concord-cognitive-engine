@@ -298,9 +298,9 @@ export function ScoresPanel() {
             </h2>
             <div className="flex items-center gap-2">
               {[
-                { stage: 'Open', count: dtus.filter(d => getComposite(d) < 0.3).length, color: 'bg-red-500', textColor: 'text-red-400' },
-                { stage: 'Investigating', count: dtus.filter(d => { const c = getComposite(d); return c >= 0.3 && c < 0.6; }).length, color: 'bg-amber-400', textColor: 'text-amber-400' },
-                { stage: 'Resolved', count: dtus.filter(d => getComposite(d) >= 0.6).length, color: 'bg-neon-green', textColor: 'text-neon-green' },
+                { stage: 'Open', count: dtus.filter(d => (getComposite(d) ?? 0) < 0.3).length, color: 'bg-red-500', textColor: 'text-red-400' },
+                { stage: 'Investigating', count: dtus.filter(d => { const c = getComposite(d) ?? 0; return c >= 0.3 && c < 0.6; }).length, color: 'bg-amber-400', textColor: 'text-amber-400' },
+                { stage: 'Resolved', count: dtus.filter(d => (getComposite(d) ?? 0) >= 0.6).length, color: 'bg-neon-green', textColor: 'text-neon-green' },
               ].map((stage, i) => (
                 <div key={stage.stage} className="flex items-center gap-2 flex-1">
                   <div className="flex-1 bg-lattice-deep rounded-lg p-3 text-center border border-white/5">
@@ -372,7 +372,7 @@ export function ScoresPanel() {
                   >
                     <div className="flex justify-between items-center">
                       <span className="text-xs text-white truncate flex-1">{d.title || d.summary?.slice(0, 40) || d.id.slice(0, 8)}</span>
-                      <span className="text-xs font-mono text-neon-green ml-2">{(getComposite(d) * 100).toFixed(0)}%</span>
+                      <span className="text-xs font-mono text-neon-green ml-2">{((getComposite(d) ?? 0) * 100).toFixed(0)}%</span>
                     </div>
                   </button>
                 ))}
@@ -392,7 +392,7 @@ export function ScoresPanel() {
                   >
                     <div className="flex justify-between items-center">
                       <span className="text-xs text-white truncate flex-1">{d.title || d.summary?.slice(0, 40) || d.id.slice(0, 8)}</span>
-                      <span className="text-xs font-mono text-amber-400 ml-2">{(getComposite(d) * 100).toFixed(0)}%</span>
+                      <span className="text-xs font-mono text-amber-400 ml-2">{((getComposite(d) ?? 0) * 100).toFixed(0)}%</span>
                     </div>
                   </button>
                 ))}

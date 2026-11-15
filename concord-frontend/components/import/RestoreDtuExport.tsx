@@ -52,9 +52,10 @@ export function RestoreDtuExport() {
         // FIX-import-009: a custom-lens export (concord-custom-lens/v1) is a
         // lens definition, not a DTU batch — route it to the custom domain's
         // own restore instead of rejecting it for lacking dtus.
-        const definition = parsed.definition && parsed.definition.spec === 'concord-custom-lens/v1'
+        type LensDefinition = { spec?: string; canvas?: { name?: string } };
+        const definition: LensDefinition | null = parsed.definition && parsed.definition.spec === 'concord-custom-lens/v1'
           ? parsed.definition
-          : (parsed as { spec?: string }).spec === 'concord-custom-lens/v1' ? parsed : null;
+          : (parsed as LensDefinition).spec === 'concord-custom-lens/v1' ? (parsed as LensDefinition) : null;
         if (definition) {
           const r = await lensRun('custom', 'importCanvas', { definition });
           if (!r.data.ok) throw new Error(r.data.error || 'Lens restore failed.');

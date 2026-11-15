@@ -61,7 +61,7 @@ interface FactCheckResult {
 interface CredibilityResult {
   message?: string;
   sourceCount?: number; averageCredibility?: number; overallAssessment?: string;
-  sources?: Array<{ name: string; credibilityScore: number; credibilityLabel: string; type: string }>;
+  sources?: Array<{ name: string; credibilityScore: number; credibilityLabel: string; type: string; url?: string }>;
   recommendations?: string[];
 }
 interface DecomposeResult {

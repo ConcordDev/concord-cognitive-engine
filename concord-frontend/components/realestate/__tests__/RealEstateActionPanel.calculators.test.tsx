@@ -71,8 +71,8 @@ describe('RealEstateActionPanel calculators (FIX-housing-003)', () => {
     expect(screen.getAllByText(/Buying wins after 6 years\./).length).toBeGreaterThan(0);
     const call = h.runDomain.mock.calls.find((c) => c[1] === 'calc-rent-vs-buy');
     expect(call).toBeTruthy();
-    expect(call[0]).toBe('realestate');
-    expect(call[2]).toEqual({ input: { price: 500000, rent: 2500, downPercent: 20, rate: 7 } });
+    expect(call![0]).toBe('realestate');
+    expect(call![2]).toEqual({ input: { price: 500000, rent: 2500, downPercent: 20, rate: 7 } });
   });
 
   it('Mortgage sends price/downPercent/rate/taxRate/insurance and renders the PITI tile', async () => {
@@ -91,7 +91,7 @@ describe('RealEstateActionPanel calculators (FIX-housing-003)', () => {
     expect(screen.getByText(/P&I \$2661/)).toBeTruthy();
     const call = h.runDomain.mock.calls.find((c) => c[1] === 'calc-mortgage');
     expect(call).toBeTruthy();
-    expect(call[2]).toEqual({ input: { price: 500000, downPercent: 20, rate: 7, termYears: 30, taxRate: 1.1, insurance: 1200 } });
+    expect(call![2]).toEqual({ input: { price: 500000, downPercent: 20, rate: 7, termYears: 30, taxRate: 1.1, insurance: 1200 } });
   });
 
   it('Mortgage with empty fields says what is missing and calls nothing', async () => {

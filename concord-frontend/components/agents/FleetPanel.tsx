@@ -592,7 +592,7 @@ export function FleetPanel() {
                               // otherwise AgentSelfPanel stays mounted on the
                               // dead id and its per-agent fetches 404 in a
                               // loop (the walk's stale-polling storm).
-                              if (selectedAgent?.id === agent.id) setSelectedAgent(null);
+                              setSelectedAgent((cur) => (cur?.id === agent.id ? null : cur));
                               removeLensAgent(agent.id);
                             }}
                             armLabel={<Trash2 className="w-3 h-3" />}

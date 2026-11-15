@@ -1,7 +1,7 @@
 import Dexie, { Table } from 'dexie';
 
 // DTU record for offline storage
-interface DTURecord {
+export interface DTURecord {
   id: string;
   tier: 'regular' | 'mega' | 'hyper' | 'shadow';
   content: string;

@@ -114,7 +114,7 @@ export function DocsWorkspace() {
   const didRestore = useRef(false);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [results, setResults] = useState<{ id: string; title: string; icon: string; snippet?: string }[] | null>(null);
+  const [results, setResults] = useState<{ id: string; kind?: string; title: string; icon: string; snippet?: string }[] | null>(null);
   const [tab, setTab] = useState<Tab>('editor');
   const [side, setSide] = useState<SidePanel>('none');
   const [showTemplates, setShowTemplates] = useState(false);

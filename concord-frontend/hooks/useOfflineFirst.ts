@@ -10,6 +10,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getDB, isOnline } from '@/lib/offline/db';
+import type { DTURecord } from '@/lib/offline/db';
 import { downloadArtifact, isCloudConnected } from '@/lib/offline/cloud-bridge';
 import type { ExternalRef } from '@/lib/offline/cloud-bridge';
 import { touchDTU } from '@/lib/offline/storage-manager';
@@ -126,7 +127,7 @@ export function useOfflineFirstDTU(dtuId: string | null) {
             }
             // Cache locally
             try {
-              await getDB().dtus.put({ ...(serverData as Record<string, unknown>), synced: true });
+              await getDB().dtus.put({ ...(serverData as DTURecord), synced: true });
               touchDTU(dtuId);
             } catch {
               // Cache write failed — non-critical

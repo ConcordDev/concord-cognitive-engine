@@ -53,8 +53,9 @@ export function ConnectorCatalog() {
 
   const loadKeyStatus = useCallback(async (connectorId: string) => {
     const r = await lensRun<{ stored: boolean; hint: string | null }>('integrations', 'apiKeyStatus', { connectorId });
-    if (r.data.ok && r.data.result) {
-      setKeyInfo((prev) => ({ ...prev, [connectorId]: { stored: !!r.data.result.stored, hint: r.data.result.hint ?? null } }));
+    const status = r.data.result;
+    if (r.data.ok && status) {
+      setKeyInfo((prev) => ({ ...prev, [connectorId]: { stored: !!status.stored, hint: status.hint ?? null } }));
     }
   }, []);
 

@@ -611,6 +611,7 @@ export type SocketEvent =
   | 'council:theater:voice'
   | 'council:theater:complete'
   // Combat netcode
+  | 'combat:attack:ack'
   | 'combat:dodge:ack'
   | 'combat:block:ack'
   // Flow Combat — procedural emergent combat

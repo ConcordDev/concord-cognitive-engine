@@ -2432,12 +2432,6 @@ export function EventsWorkbench({
                     {s}
                   </option>
                 ))}
-              {mode === 'runofshow' &&
-                ['draft', 'finalized'].map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
               {mode === 'tickets' &&
                 ['active', 'completed', 'cancelled'].map((s) => (
                   <option key={s} value={s}>

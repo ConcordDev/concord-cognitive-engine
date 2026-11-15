@@ -215,7 +215,7 @@ export function MineHousesPanel({
     } finally { setBusy(null); }
   }, [renameDraft, refreshMine, loadHouseDetail, onFlash]);
 
-  const unclaimHouse = useCallback(async (houseId: string, name: string) => {
+  const unclaimHouse = useCallback(async (houseId: string, name: string | null) => {
     setBusy(`unclaim-${houseId}`);
     try {
       const r = await lensRun('housing', 'unclaim', { houseId });

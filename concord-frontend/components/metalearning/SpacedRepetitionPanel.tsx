@@ -120,7 +120,7 @@ export function SpacedRepetitionPanel() {
       setErr(e instanceof Error ? e.message : 'Update failed');
     } finally { setBusy(null); }
   };
-  const editControl = (c: { id: string; front: string; back: string; topic: string }) => (
+  const editControl = (c: { id: string; front: string; back?: string; topic: string }) => (
     <button aria-label={`Edit card ${c.front}`} disabled={busy === c.id}
       onClick={() => {
         setEditCardId(editCardId === c.id ? null : c.id);

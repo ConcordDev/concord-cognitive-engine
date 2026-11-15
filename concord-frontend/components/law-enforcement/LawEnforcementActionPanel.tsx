@@ -423,11 +423,12 @@ export function LawEnforcementActionPanel() {
           // beat report to a person) and Publish (mints a PUBLIC DTU) —
           // arm a named confirm before they fire. Analysis tiles run
           // directly, as before.
-          const needsConfirm = act.id === 'dm' || act.id === 'publish';
+          const confirmId = act.id === 'dm' || act.id === 'publish' ? act.id : null;
+          const needsConfirm = confirmId !== null;
           const armed = armingConfirm === act.id;
           return (
             <button key={act.id} type="button" disabled={!!busy}
-              onClick={() => { if (needsConfirm && !armed) { setArmingConfirm(act.id); return; } setArmingConfirm(null); void act.handler(); }}
+              onClick={() => { if (confirmId && !armed) { setArmingConfirm(confirmId); return; } setArmingConfirm(null); void act.handler(); }}
               aria-pressed={needsConfirm ? armed : undefined}
               className={cn('flex flex-col items-start gap-1.5 p-2.5 rounded-lg text-left border transition-all', armed ? 'bg-amber-500/10 border-amber-500/50' : 'bg-zinc-900/40 border-zinc-800 hover:bg-zinc-800/60 hover:border-zinc-700', 'disabled:opacity-40 disabled:cursor-not-allowed')}>
               <div className="w-7 h-7 rounded-md flex items-center justify-center" style={{ backgroundColor: act.accent + '20', color: act.accent }}>
