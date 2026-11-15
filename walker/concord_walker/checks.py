@@ -37,7 +37,7 @@ class LensWalk:
     """One lens, one account. Call run(); then .findings / .result."""
 
     def __init__(self, browser, cfg, rec, lens, account_key, log, allow_write=False, admin=False,
-                 phases=None, inv_entry=None, gate_check=None):
+                 phases=None, inv_entry=None, url_override=None, gate_check=None):
         self.b, self.cfg, self.rec, self.lens, self.acct, self.log = browser, cfg, rec, lens, account_key, log
         self.slug, self.url = lens["slug"], lens["url"]
         # A gate check = a non-admin account opening an admin lens: the gate
@@ -45,6 +45,10 @@ class LensWalk:
         self.gate_check = (self.slug in cfg.get("admin_lenses", []) and not admin) if gate_check is None else gate_check
         if cfg["base_url"] != "https://concord-os.org":
             self.url = cfg["base_url"].rstrip("/") + "/lenses/" + self.slug
+        if url_override:
+            # WALK-03: a ticket that names its own path is walked at that path,
+            # not just the lens root (reach rule in reverify.py).
+            self.url = url_override
         self.allow_write = allow_write and not admin and self.slug not in cfg.get("write_skip_lenses", [])
         self.admin = admin
         self.th = cfg["thresholds"]
@@ -320,7 +324,12 @@ class LensWalk:
         unfocus = [n for n in buttons + tabs if not n.disabled and not n.focusable and n.name.strip()]
         self.result["surface"] = {"tabs": [control_label(n.name) for n in tabs][:60], "buttons": len(buttons), "links": len(links),
                                   "inputs": len(inputs), "unnamed_buttons": len(unnamed), "non_focusable": len(unfocus),
-                                  "disabled_buttons": sum(1 for n in buttons if n.disabled)}
+                                  "disabled_buttons": sum(1 for n in buttons if n.disabled),
+                                  # WALK-03: names, so reverify can confirm the ticket's own control
+                                  # individually instead of judging the whole surface.
+                                  "button_names": [control_label(n.name) for n in buttons if n.name.strip()][:80],
+                                  "tab_names": [control_label(n.name) for n in tabs if n.name.strip()][:60],
+                                  "non_focusable_names": sorted({control_label(n.name) for n in unfocus})[:40]}
         status = "PASS"
         if unnamed:
             shots = []
@@ -445,7 +454,9 @@ class LensWalk:
                          "Focused controls show a visible focus ring", "Pixel-identical focused/unfocused rendering for: %s" % ", ".join(names[:8]),
                          ev, area="%s/a11y focus" % self.slug)
             status = "FAIL"
-        self.mark("keyboard_focus", status, stops=len(seen), sampled=samples, no_visible=len(no_visible))
+        self.mark("keyboard_focus", status, stops=len(seen), sampled=samples, no_visible=len(no_visible),
+                  # WALK-03: names for individual confirmation in reverify.
+                  no_visible_names=sorted({control_label(n.name) for n in no_visible})[:20])
 
     def _popup_new(self, cdp, before, opener_backend):
         ax = cdp.ax()
@@ -538,10 +549,27 @@ class LensWalk:
                     return
         self.nav(page, cdp)
 
+    # WALK-03: strings that identify the rows this lens is showing right now —
+    # the yardstick an export's content is compared against. Chrome words are
+    # excluded; a file full of other rows is the wrong-content genus.
+    _CHROME_WORDS = {"export", "download", "search", "menu", "close", "settings", "home", "back",
+                     "next", "previous", "submit", "cancel", "save", "delete", "edit", "create",
+                     "new", "add", "filter", "sort", "help", "profile", "notifications",
+                     "sign out", "log out", "select all", "actions"}
+
+    def _visible_identifiers(self, cdp):
+        out = []
+        for t in cdp.ax().texts():
+            t = " ".join((t or "").split())
+            if len(t) >= 4 and t.lower() not in self._CHROME_WORDS and t not in out:
+                out.append(t)
+        return out[:60]
+
     def export(self, page, cdp):
         if self.admin:
             self.mark("export", "NOT_RUN", reason="admin lens: look-only")
             return
+        visible_ids = self._visible_identifiers(cdp)
         ax = cdp.ax()
         cands = [n for n in ax.by_role("button", "link", "menuitem") if n.backend and not n.disabled and safety.is_export_safe(n.name)]
         if not cands:
@@ -578,10 +606,17 @@ class LensWalk:
                 fpath = os.path.join(self.ev, "walker-export-" + re.sub(r"[^\w.-]", "_", dl.suggested_filename)[:60])
                 dl.save_as(fpath)
                 size = os.path.getsize(fpath)
-                verdict, note = self._validate_export(fpath)
+                verdict, note, content = self._validate_export(fpath, visible=visible_ids)
                 ev.append(self.rec.rel(fpath))
-                row = {"control": key, "via": path_via, "file": self.rec.rel(fpath), "bytes": size, "verdict": verdict, "note": note}
-                if verdict == "FAIL":
+                row = {"control": key, "via": path_via, "file": self.rec.rel(fpath), "bytes": size, "verdict": verdict, "note": note,
+                       "content": content}
+                if content == "wrong":
+                    status = "FAIL"
+                    ev.append(self.shot(page, "export-wrong-content"))
+                    self.finding("export", "medium", "Export via '%s' downloads content that does not match this lens" % key,
+                                 ["Open %s at 1280x900" % self.url, "Click '%s'%s" % (key, (" then " + path_via[5:]) if path_via.startswith("menu:") else "")],
+                                 "The exported file contains the rows the lens shows", note, ev, element=key, area="%s/export" % self.slug)
+                elif verdict == "FAIL":
                     status = "FAIL"
                     ev.append(self.shot(page, "export-bad-file"))
                     self.finding("export", "medium", "Export via '%s' downloads an unusable file" % key,
@@ -616,11 +651,18 @@ class LensWalk:
         except Exception:
             return None
 
-    def _validate_export(self, fpath):
+    def _validate_export(self, fpath, visible=None, fixture_label=None):
+        """(verdict, note, content). Verdict is the file's own shape, as before.
+        Content (WALK-03) compares the file against what the lens shows:
+        "match" (a visible identifier — or the own-fixture label — is in the
+        file), "wrong" (records exist, >=2 visible identifiers known, zero
+        overlap: the wrong-scope/empty-set genus), "empty", "uncomparable"
+        (format or page state gives nothing honest to compare)."""
         size = os.path.getsize(fpath)
         if size == 0:
-            return "FAIL", "0-byte file"
+            return "FAIL", "0-byte file", "empty"
         low = fpath.lower()
+        file_strings = []
         try:
             if low.endswith(".json"):
                 with open(fpath) as f:
@@ -632,23 +674,58 @@ class LensWalk:
                         vals = [v for v in x.values() if isinstance(v, (list, dict))]
                         return bool(vals) and all(empty(v) for v in vals)
                     return False
-                return ("EMPTY", "JSON has no records") if empty(d) else ("PASS", "valid JSON, %d bytes" % size)
-            if low.endswith(".csv"):
+                if empty(d):
+                    return "EMPTY", "JSON has no records", "empty"
+                stack = [d]
+                while stack and len(file_strings) < 500:
+                    x = stack.pop()
+                    if isinstance(x, str):
+                        file_strings.append(x)
+                    elif isinstance(x, dict):
+                        stack.extend(x.values())
+                    elif isinstance(x, list):
+                        stack.extend(x)
+                verdict, note = "PASS", "valid JSON, %d bytes" % size
+            elif low.endswith(".csv"):
                 with open(fpath, newline="") as f:
                     rows = list(csv.reader(io.StringIO(f.read())))
                 if len(rows) <= 1:
-                    return "EMPTY", "CSV has header only" if rows else "CSV empty"
-                return "PASS", "CSV %d rows" % (len(rows) - 1)
+                    return "EMPTY", "CSV has header only" if rows else "CSV empty", "empty"
+                file_strings = [c for r in rows[1:] for c in r if c]
+                verdict, note = "PASS", "CSV %d rows" % (len(rows) - 1)
+            else:
+                verdict, note = "PASS", "%d bytes" % size
         except Exception as e:
-            return "FAIL", "file does not parse (%s)" % type(e).__name__
-        return "PASS", "%d bytes" % size
+            return "FAIL", "file does not parse (%s)" % type(e).__name__, "uncomparable"
+        return verdict, note, self._content_verdict(fpath, file_strings, visible, fixture_label)
+
+    @staticmethod
+    def _content_verdict(fpath, file_strings, visible, fixture_label):
+        if fixture_label:
+            try:
+                raw = open(fpath, errors="ignore").read()
+            except Exception:
+                return "uncomparable"
+            return "match" if fixture_label in raw else "wrong"
+        if not file_strings or not visible:
+            return "uncomparable"
+        def norm(x):
+            return re.sub(r"\s+", " ", str(x).lower()).strip()
+        fstrings = [norm(x) for x in file_strings if norm(x)]
+        for v in visible:
+            nv = norm(v)
+            if nv and any(nv in fs or (fs and fs in nv) for fs in fstrings):
+                return "match"
+        return "wrong" if len(visible) >= 2 else "uncomparable"
 
     def contrast(self, page, cdp):
         snap = cdp.snapshot()
         res = contrast_from_snapshot(snap, self.th, self.cfg["viewport_desktop"])
-        self.result["contrast"] = {k: v for k, v in res.items() if k != "examples"}
+        # WALK-03: examples (with text) stay in the result — reverify attributes
+        # failing pairs to the ticket's named element from them.
+        self.result["contrast"] = dict(res)
         if not res["failing_groups"]:
-            self.mark("contrast", "PASS", checked=res["checked"], unknown=res["unknown"])
+            self.mark("contrast", "PASS", checked=res["checked"], unknown=res["unknown"], groups=[], examples=res["examples"])
             return
         ev = [self.shot(page, "contrast-page")]
         for ex in res["examples"][:3]:
@@ -663,7 +740,29 @@ class LensWalk:
                      root_cause="RCA-contrast-theme-tokens" if any(g["ratio"] < 2.0 for g in res["failing_groups"]) else None)
         if res["unknown"]:
             self.result["contrast"]["note"] = "%d text nodes over images/gradients not judged" % res["unknown"]
-        self.mark("contrast", "FAIL", groups=res["failing_groups"][:8], checked=res["checked"])
+        self.mark("contrast", "FAIL", groups=res["failing_groups"][:8], examples=res["examples"], checked=res["checked"])
+
+    def visible_texts(self, page, cdp):
+        return cdp.ax().texts()
+
+    def contrast_view(self, page, cdp, tab_name=None):
+        """WALK-03: contrast of ONE view — the current view, or the view behind a
+        named tab (the caller fuzzy-resolves the name against the live tabs and
+        passes the exact AX name). Returns contrast_from_snapshot's dict or None
+        when the tab cannot be opened / no snapshot is available."""
+        if tab_name:
+            node = next((n for n in cdp.ax().by_role("tab") if n.name == tab_name and n.backend), None)
+            if not node or not cdp.click(node.backend):
+                return None
+            try:
+                page.wait_for_load_state("networkidle", timeout=4000)
+            except Exception:
+                pass
+            time.sleep(0.6)
+        snap = cdp.snapshot()
+        if not snap:
+            return None
+        return contrast_from_snapshot(snap, self.th, self.cfg["viewport_desktop"])
 
     def mobile(self):
         ctx, page, cdp = self.open(mobile=True)
@@ -983,9 +1082,9 @@ def contrast_from_snapshot(snap, th, viewport):
             g = groups.setdefault(k, {"fg": k[0], "bg": k[1], "large": large, "ratio": round(r, 2), "count": 0})
             g["count"] += 1
             if k not in examples and y + h <= viewport[1] and y >= 0:
-                examples[k] = {"fg": k[0], "bg": k[1], "box": (x, y, w, h)}
+                examples[k] = {"fg": k[0], "bg": k[1], "box": (x, y, w, h), "text": txt.strip()[:48]}
     fail = sorted(groups.values(), key=lambda g: (g["ratio"], -g["count"]))
-    ex = [examples[(g["fg"], g["bg"], g["large"])] for g in fail if (g["fg"], g["bg"], g["large"]) in examples]
+    ex = [dict(examples[(g["fg"], g["bg"], g["large"])], fg=g["fg"], bg=g["bg"]) for g in fail if (g["fg"], g["bg"], g["large"]) in examples]
     return {"checked": checked, "unknown": unknown, "failing_groups": fail, "examples": ex}
 
 
