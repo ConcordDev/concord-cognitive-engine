@@ -7,7 +7,7 @@
 // sections open with their own <h2>), so they now render as <h2> with
 // identical classes. The Lighthouse score itself re-runs at the desk
 // post-deploy; this pin holds the markup the re-run will measure.
-import { describe, it } from "node:test";
+import { describe, it } from "vitest";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";

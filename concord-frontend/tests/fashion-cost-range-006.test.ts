@@ -3,7 +3,7 @@
 // sent, the Add form refuses before the call, and the over-max note
 // stands beside the haiku lane's negative note (whose pinned shape in
 // tests/numeric-notes-h13.test.ts is untouched).
-import { describe, it } from "node:test";
+import { describe, it } from "vitest";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";

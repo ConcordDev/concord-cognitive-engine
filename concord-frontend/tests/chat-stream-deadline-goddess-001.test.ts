@@ -10,7 +10,7 @@
 // timers) + the panel wiring (source). Run:
 // node --experimental-strip-types --test
 // concord-frontend/tests/chat-stream-deadline-goddess-001.test.ts
-import { describe, it } from "node:test";
+import { describe, it } from "vitest";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";

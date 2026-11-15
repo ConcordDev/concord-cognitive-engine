@@ -131,8 +131,12 @@ describe("materials — network actions reject without API key (no egress)", () 
   it("mp-search: rejects when MATERIALS_PROJECT_API_KEY is unset", async () => {
     delete process.env.MATERIALS_PROJECT_API_KEY;
     const r = await lensRun("materials", "mp-search", { params: { formula: "SiO2" } });
+    // FIX-materials-006: the platform key-gated shape, not a bare error string.
     assert.equal(r.result.ok, false);
-    assert.match(String(r.result.error), /MATERIALS_PROJECT_API_KEY/);
+    assert.equal(r.result.reason, "missing_api_key");
+    assert.equal(r.result.envVar, "MATERIALS_PROJECT_API_KEY");
+    assert.match(String(r.result.message), /MATERIALS_PROJECT_API_KEY/);
+    assert.equal(r.result.results, undefined, "no fabricated results without a key");
   });
 
   it("mp-material: rejects a malformed material id before any fetch", async () => {
