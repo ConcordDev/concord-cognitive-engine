@@ -121,6 +121,64 @@ def _read_secrets_file(path):
     return vals
 
 
+def _backend_family(cdp, backend):
+    """backendNodeId of this node and its ancestors. CDP only — no page JS."""
+    ids = {backend}
+    try:
+        cdp.s.send("DOM.getDocument", {"depth": 0})
+        pushed = cdp.s.send("DOM.pushNodesByBackendIdsToFrontend", {"backendNodeIds": [backend]})
+        cur = (pushed.get("nodeIds") or [None])[0]
+        seen = set()
+        while cur and cur not in seen:
+            seen.add(cur)
+            desc = (cdp.s.send("DOM.describeNode", {"nodeId": cur}).get("node") or {})
+            if desc.get("backendNodeId"):
+                ids.add(desc["backendNodeId"])
+            cur = desc.get("parentId")
+    except Exception:
+        pass
+    return ids
+
+
+def _field_is_exposed(cdp, backend):
+    """True when a click at the field's center would hit it (or a child), not a splash overlay."""
+    b = cdp.box(backend)
+    if not b:
+        return False
+    x, y, w, h = b
+    try:
+        hit = cdp.s.send("DOM.getNodeForLocation", {"x": int(x + w / 2), "y": int(y + h / 2)})
+    except Exception:
+        return False
+    hit_b = hit.get("backendNodeId")
+    if not hit_b:
+        return False
+    if hit_b == backend:
+        return True
+    return hit_b in _backend_family(cdp, backend) or backend in _backend_family(cdp, hit_b)
+
+
+def _login_fields(cdp):
+    ax = cdp.ax()
+    boxes = [n for n in ax.by_role("textbox") if n.backend]
+    ufield = next((n for n in boxes if "user" in n.name.lower() or "email" in n.name.lower()), boxes[0] if boxes else None)
+    pfield = next((n for n in boxes if "password" in n.name.lower()), None)
+    return ufield, pfield
+
+
+def _wait_login_form(cdp, timeout_s=30):
+    """Wait until username+password exist and the username field is not covered by the splash."""
+    t0 = time.time()
+    last = (None, None)
+    while time.time() - t0 < timeout_s:
+        last = _login_fields(cdp)
+        ufield, pfield = last
+        if ufield and pfield and _field_is_exposed(cdp, ufield.backend):
+            return ufield, pfield
+        time.sleep(0.2)
+    return last
+
+
 def login(cfg, account_key, method, log, timeout_s=600):
     from playwright.sync_api import sync_playwright
     from .cdp import Cdp
@@ -143,16 +201,48 @@ def login(cfg, account_key, method, log, timeout_s=600):
             if not pwd:
                 raise SystemExit("secrets file has no password= line")
             cdp = Cdp(ctx, page)
-            ax = cdp.ax()
-            boxes = [n for n in ax.by_role("textbox") if n.backend]
-            ufield = next((n for n in boxes if "user" in n.name.lower() or "email" in n.name.lower()), boxes[0] if boxes else None)
-            pfield = next((n for n in boxes if "password" in n.name.lower()), None)
+            wait_s = 30 if timeout_s is None else max(5, min(30, timeout_s))
+            ufield, pfield = _wait_login_form(cdp, timeout_s=wait_s)
             if not (ufield and pfield):
                 raise SystemExit("could not find username/password fields on /login")
-            cdp.click(ufield.backend); page.keyboard.type(user, delay=20)
-            cdp.click(pfield.backend); page.keyboard.type(pwd, delay=20)
+            if not _field_is_exposed(cdp, ufield.backend):
+                raise SystemExit("login form was still covered by a splash/overlay after %ss" % wait_s)
+
+            def _fill():
+                uf, pf = _login_fields(cdp)
+                if not (uf and pf):
+                    return 0
+                cdp.click(uf.backend)
+                page.keyboard.type(user, delay=20)
+                cdp.click(pf.backend)
+                page.keyboard.type(pwd, delay=20)
+                ax = cdp.ax()
+                for n in ax.by_role("textbox"):
+                    if n.backend == uf.backend or "user" in n.name.lower() or "email" in n.name.lower():
+                        return len(n.value or "")
+                return 0
+
+            typed = _fill()
+            if typed < 1:
+                time.sleep(0.5)
+                typed = _fill()
+            if typed < 1:
+                pwd = None
+                raise SystemExit("typed username did not land in the login field")
             pwd = None
             page.keyboard.press("Enter")
+            # If Enter was swallowed (SPA form), click the Sign In button after a short pause.
+            t_click = time.time()
+            while time.time() - t_click < 3:
+                me = whoami(ctx, cfg["base_url"])
+                if me["ok"]:
+                    break
+                time.sleep(0.5)
+            if not me["ok"]:
+                submit = next((n for n in cdp.ax().by_role("button") if n.backend and "sign in" in (n.name or "").lower()), None)
+                if submit and _field_is_exposed(cdp, submit.backend):
+                    cdp.click(submit.backend)
+                    log("clicked Sign In after Enter did not establish a session")
         else:
             log("Headed login window open on DISPLAY=%s. Sign in as %s. Waiting up to %ss..."
                 % (os.environ.get("DISPLAY"), acct["username"], timeout_s))

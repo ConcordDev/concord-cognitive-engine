@@ -65,7 +65,7 @@ class H(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path.startswith("/api/auth/me"):
-            return self._send(200, json.dumps({"ok": True, "user": {"username": "zuko_qa_t1", "role": "member"}}), "application/json")
+            return self._send(200, json.dumps({"ok": True, "user": {"username": "concord-zukoqa", "role": "member"}}), "application/json")
         if self.path.startswith("/api/items"):
             return self._send(200, json.dumps(ITEMS), "application/json")
         if self.path.startswith("/api/export"):

@@ -379,6 +379,7 @@ def main():
     g = p.add_mutually_exclusive_group(required=True)
     g.add_argument("--headed", action="store_true")
     g.add_argument("--secrets-file", action="store_true")
+    p.add_argument("--login-timeout", type=int, default=600, help="seconds to wait for /api/auth/me to show a session after submit (default 600)")
     p = sub.add_parser("whoami", help="GET /api/auth/me with a saved session")
     p.add_argument("--account", choices=["t1", "t2", "admin"], default="t1")
     args = ap.parse_args()
@@ -399,7 +400,7 @@ def main():
         else:
             cmd_reverify(args, cfg, log)
     elif args.cmd == "login":
-        login(cfg, args.account, "headed" if args.headed else "secrets-file", log)
+        login(cfg, args.account, "headed" if args.headed else "secrets-file", log, timeout_s=args.login_timeout)
     elif args.cmd == "whoami":
         cmd_whoami(args, cfg, log)
 

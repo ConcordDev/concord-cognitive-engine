@@ -65,10 +65,12 @@ The walker can't read vault passwords. It gets a session in one of two ways:
    This opens a visible Chrome at `/login` on `$DISPLAY`. A human, or a computer-use agent, signs in with
    the account's **username** (the email form returns "Invalid credentials"). The walker polls
    `/api/auth/me`, refuses to save if the username differs from the expected one, and writes
-   `auth/t1.json` (0600).
+   `auth/t1.json` (0600). Add `--login-timeout N` (default 600) to cap the session wait.
 2. **Secrets file:** with the account's 0600 `.env` file in place at the path in `config.json`
    (`secrets/concord-zukoqa.env` with `username=` and `password=` lines), run
-   `walker.py login --account t1 --secrets-file`. The values are typed, never printed or logged.
+   `walker.py login --account t1 --secrets-file [--login-timeout N]`. The values are typed, never printed or logged.
+   The walker waits (up to 30s) for the splash to clear before typing, retries an empty username once,
+   and falls back to clicking Sign In if Enter is swallowed.
 
 It never copies cookies from the shared tester browser profile. Its sessions are its own logins. After each
 lens it writes rotated cookies back to `auth/<acct>.json`, but only while auth/me still shows the right account.
