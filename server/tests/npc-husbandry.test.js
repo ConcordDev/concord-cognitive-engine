@@ -12,6 +12,7 @@ import Database from "better-sqlite3";
 import * as mig104 from "../migrations/104_player_companions.js";
 import * as mig142 from "../migrations/142_mount_substrate.js";
 import * as mig177 from "../migrations/177_world_vehicles.js";
+import * as mig505 from "../migrations/505_world_vehicle_name_spec.js";
 import { ensureCrossbreedingTables } from "../lib/creature-crossbreeding.js";
 import { npcAcquireMount, npcSpawnVehicle, npcMintGear } from "../lib/npc-husbandry.js";
 
@@ -21,6 +22,7 @@ beforeEach(() => {
   mig104.up(db);
   mig142.up(db);
   mig177.up(db);
+  mig505.up(db); // spawnVehicle writes name/spec (FIX-garage-001)
   ensureCrossbreedingTables(db);
   db.exec(`CREATE TABLE IF NOT EXISTS dtus (
     id TEXT PRIMARY KEY, type TEXT NOT NULL, title TEXT, creator_id TEXT,

@@ -47,8 +47,10 @@ const chiefB = { actor: { userId: "chief_b" }, userId: "chief_b", db: _orgDb };
 const responderB = { actor: { userId: "responder_b" }, userId: "responder_b", db: _orgDb };
 const outsider = { actor: { userId: "rando" }, userId: "rando", db: _orgDb };
 
-function makeAgency(ctx, name) {
-  const r = call("agency-create", ctx, { name });
+// FIX-emergency-services-014: a new agency is PRIVATE ("closed") unless its chief opens it. These tests
+// exercise joining and mutual aid, so they open the agency explicitly; the private default has its own test.
+function makeAgency(ctx, name, visibility = "open") {
+  const r = call("agency-create", ctx, { name, visibility });
   assert.equal(r.ok !== false, true, "agency-create must succeed");
   return r.result.organization.id;
 }
@@ -60,6 +62,13 @@ describe("emergency-services agency lifecycle (thin wrappers over world-organiza
     assert.equal(r.result.organization.leaderId, "chief_a");
     assert.equal(r.result.role, "chief");
     assert.equal(r.result.orgRole, "leader");
+  });
+
+  it("agency-create: a new agency is private by default, so a stranger cannot join it by id", () => {
+    const orgId = makeAgency(chiefA, "Private Dept", "closed");
+    const r = call("agency-join", outsider, { orgId });
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "agency_not_open");
   });
 
   it("agency-create requires a name", () => {

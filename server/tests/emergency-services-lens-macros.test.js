@@ -130,16 +130,21 @@ describe("emergency-services · dispatchOptimize (component-exact shape)", () =>
     assert.equal(typeof r.result.message, "string");
   });
 
-  it("fail-CLOSED poisoned numeric: distanceKm 'Infinity' yields a FINITE ETA, not 'Infinity minutes'", async () => {
+  it("fail-CLOSED poisoned numeric: distanceKm 'Infinity' is refused by name, never turned into an ETA", async () => {
     const r = await dispatch("dispatchOptimize", {
       units: [{ name: "Ghost", status: "available", distanceKm: "1e999" }],
       incidents: [{ type: "medical", priority: 2 }],
     }, ctxA);
-    assert.equal(r.ok, true);
-    const eta = r.result.assignments[0].eta;
-    const etaNum = parseInt(eta, 10);
-    assert.ok(Number.isFinite(etaNum), `eta must be finite, got "${eta}"`);
-    assert.ok(!/Infinity/.test(eta), `eta leaked Infinity: "${eta}"`);
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "invalid_input");
+    assert.ok(!JSON.stringify(r).includes("Infinity"));
+    // A finite distance still yields a finite ETA.
+    const good = await dispatch("dispatchOptimize", {
+      units: [{ name: "Medic 1", status: "available", distanceKm: 25 }],
+      incidents: [{ type: "medical", priority: 2 }],
+    }, ctxA);
+    assert.equal(good.ok, true);
+    assert.equal(good.result.assignments[0].eta, "30 minutes");
   });
 });
 
