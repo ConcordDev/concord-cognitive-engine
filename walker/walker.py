@@ -10,28 +10,7 @@ from concord_walker.records import RunRecorder
 from concord_walker.tickets import TicketStore
 from concord_walker.checks import LensWalk
 from concord_walker.reverify import Reverifier, status_update
-class RunLock:
-    def __init__(self, path):
-        self.path = path
-
-    def __enter__(self):
-        if os.path.exists(self.path):
-            try:
-                pid = int(open(self.path).read().strip() or 0)
-                os.kill(pid, 0)
-                raise SystemExit("walker run.lock held by live pid %d; respect it (another sweep is running)" % pid)
-            except (ValueError, ProcessLookupError, PermissionError):
-                pass
-        with open(self.path, "w") as f:
-            f.write(str(os.getpid()))
-        return self
-
-    def __exit__(self, *a):
-        try:
-            os.remove(self.path)
-        except OSError:
-            pass
-
+from concord_walker.runstate import RunLock  # WALK-05: stale-aware lock (runstate.py)
 
 READ_PHASES = ["reach", "surface", "tabs", "keyboard", "openers", "export", "contrast", "mobile"]
 
@@ -174,8 +153,10 @@ def cmd_reverify(args, cfg, log):
     from playwright.sync_api import sync_playwright
     from concord_walker import sha_gate
     from concord_walker.ledger import WalkerLedger
+    from concord_walker.runstate import Journal, Heartbeat, LensBudget
+    from concord_walker import results as results_mod
     inv = load_inventory(cfg)
-    rid = run_id() + "-reverify"
+    rid = args.resume if getattr(args, "resume", None) else run_id() + "-reverify"
     # WALK-01 sha gate: a mismatch (or an unreadable live sha) forces the run dry —
     # it continues and reports, but writes 0 status rows anywhere.
     gate_dry = False
@@ -208,6 +189,15 @@ def cmd_reverify(args, cfg, log):
     ids = list(args.ids)
     if args.from_status:
         ids += [i for i in store.base if store.status(i) == args.from_status.upper()]
+    # WALK-05: the run journal + heartbeat. On --resume the journal already holds
+    # the prior attempt's lines; finished ids (done|skipped) are never re-run.
+    journal = Journal(rec.run_dir)
+    heartbeat = Heartbeat(rec.run_dir)
+    if getattr(args, "resume", None):
+        before = len(ids)
+        ids = journal.remaining(ids)
+        log("resume %s: %d id(s) finished in the journal, %d remaining" % (args.resume, before - len(ids), len(ids)))
+    budget = LensBudget(getattr(args, "lens_budget_s", None) or cfg.get("thresholds", {}).get("lens_budget_s", 900))
     results = []
     with RunLock(os.path.join(cfg.get("runs_dir") or cfg["_walker_dir"], "run.lock")), sync_playwright() as pw:
         browser = pw.chromium.launch(channel="chrome", headless=True, args=["--disable-dev-shm-usage"])
@@ -216,21 +206,35 @@ def cmd_reverify(args, cfg, log):
             for tid in ids:
                 if not wait_for_memory(cfg, log):
                     break
+                heartbeat.beat("reverify %s" % tid)
+                _lens = (store.get(tid) or {}).get("lens")
+                if _lens:
+                    budget.start(_lens)
+                    if budget.over(_lens):
+                        journal.record("reverify", tid, "failed", "time_budget: lens %s over %ds" % (_lens, budget.budget_s))
+                        log("  => %s skipped: lens %s over its time budget" % (tid, _lens))
+                        continue
                 if store.lane(tid) == "ci":
                     # WALK-01 routing: non-lens code tickets verify via the WALK-06
                     # CI-evidence lane at the deploy sha — never walked as lens None.
                     res = {"id": tid, "verdict": "CI_LANE", "method": "ci-evidence",
                            "notes": "non-lens code ticket; routed to the WALK-06 CI lane"}
                     results.append(res)
+                    journal.record("reverify", tid, "skipped", "ci-lane (WALK-06)")
                     log("  => %s CI_LANE (WALK-06)" % tid)
                     with open(os.path.join(rec.run_dir, "reverify.jsonl"), "a") as f:
                         f.write(json.dumps(res) + "\n")
                     continue
                 try:
                     res = rv.run(tid)
+                    journal.record("reverify", tid, "done", res["verdict"])
                 except AccountMismatch as e:
+                    journal.record("reverify", tid, "failed", "account mismatch: %s" % e)
                     log("ABORT: account check failed during %s: %s" % (tid, e))
                     break
+                except Exception as e:
+                    journal.record("reverify", tid, "failed", "%s: %s" % (type(e).__name__, e))
+                    raise
                 results.append(res)
                 log("  => %s %s (%s)" % (tid, res["verdict"], res.get("notes", "")[:140]))
                 with open(os.path.join(rec.run_dir, "reverify.jsonl"), "a") as f:
@@ -254,6 +258,8 @@ def cmd_reverify(args, cfg, log):
             browser.close()
             rec.flush_leftovers()
     log("ledger: %d verdict row(s) written, %d suppressed (dry)" % (ledger.written, ledger.suppressed))
+    # WALK-05: per-run RESULTS (md + csv) with the live sha stamped on every row.
+    results_mod.write_results(rec.run_dir, results_mod.build_rows(rec.run_dir, live_sha=(live or getattr(args, "deploy_sha", None) or "unknown")), rid)
     with open(os.path.join(rec.run_dir, "REVERIFY.md"), "w") as f:
         f.write("# Re-verify %s (%s)\n\n| ticket | lens | prior | verdict | method | notes |\n|---|---|---|---|---|---|\n" % (rid, human_et()))
         for r in results:
@@ -300,6 +306,8 @@ def main():
     p.add_argument("--from-repo", help="WALK-01: read the ticket fold from this repo clone at --deploy-sha (fix_tickets.jsonl + records/*.jsonl)")
     p.add_argument("--deploy-sha", help="WALK-01: the pinned sha the fold is read at (with --from-repo)")
     p.add_argument("--expect-sha", help="WALK-01: sha gate — write status rows only if the live build sha matches; mismatch runs dry")
+    p.add_argument("--resume", help="WALK-05: resume this run id — ids finished in its journal (done|skipped) are not re-run")
+    p.add_argument("--lens-budget-s", type=int, help="WALK-05: per-lens time budget in seconds (default from config thresholds, else 900)")
     p.add_argument("--allow-write", action="store_true")
     p.add_argument("--apply-status", action="store_true", help="write verdict rows (VERIFIED/REOPENED/OPEN) to records/walker.jsonl")
     p.add_argument("--dry-run", action="store_true")
