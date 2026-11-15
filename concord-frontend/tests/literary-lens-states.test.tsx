@@ -93,13 +93,13 @@ describe('literary lens — four UX states', () => {
     expect(container.querySelector('[role="status"]')).toBeTruthy();
   });
 
-  it('EMPTY (corpus): shows the honest "no corpus ingested" CTA when chunks === 0', async () => {
+  it('EMPTY (corpus): shows the honest "no works in the library yet" empty state when chunks === 0', async () => {
     lensRun.mockImplementation((_d: string, name: string) => {
       if (name === 'stats') return reply({ ok: true, sources: 0, chunks: 0, embedded: 0 });
       return reply({ ok: true, nodes: [], edges: [] });
     });
     const { getByText } = render(<LiteraryLensPage />);
-    await waitFor(() => expect(getByText(/No corpus ingested yet/i)).toBeInTheDocument());
+    await waitFor(() => expect(getByText(/No works in the library yet/i)).toBeInTheDocument());
   });
 
   it('a11y: the search input carries an accessible name', async () => {

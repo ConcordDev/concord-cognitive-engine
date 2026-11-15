@@ -48,7 +48,8 @@ describe('H14 crypto wallet row', () => {
     'aria-label={`Copy address ${shortAddr}`}',
     'aria-label="Receive to this wallet (QR code)"',
     'aria-label="Copy wallet address"',
-    'aria-label="Remove wallet"',
+    // Removal is a two-step confirm now: the label names the armed state.
+    "aria-label={confirmDeleteWalletId === wallet.id ? 'Confirm remove wallet' : 'Remove wallet'}",
   ])('has %s', (needle) => {
     expect(s).toContain(needle);
   });

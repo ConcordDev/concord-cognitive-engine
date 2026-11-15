@@ -17,14 +17,16 @@ describe('H12 long text', () => {
     expect(src('components/bounties/BountyCard.tsx')).toMatch(/whitespace-pre-wrap[^>]*min-w-0 break-words \[overflow-wrap:anywhere\]">\{bounty\.description\}/);
   });
   it.each([
-    ['components/fashion/FashionClosetPanel.tsx', 'placeholder="Item name" maxLength={120}'],
+    // Items mirror fsClean(params.name, 200) = BOUNDS.TITLE; outfits/capsules stay at 120.
+    ['components/fashion/FashionClosetPanel.tsx', 'placeholder="Item name" maxLength={BOUNDS.TITLE}'],
     ['components/fashion/FashionOutfitsPanel.tsx', 'placeholder="Outfit name" maxLength={120}'],
     ['components/fashion/FashionCapsulePanel.tsx', 'placeholder="Capsule name" maxLength={120}'],
-  ])('%s caps the name at the server bound of 120', (f, needle) => {
+  ])('%s caps the name at the server's bound', (f, needle) => {
     expect(src(f)).toContain(needle);
   });
   it('the server bound the cap mirrors still exists', () => {
     const server = readFileSync(resolve(__dirname, '../../server/domains/fashion.js'), 'utf8');
-    expect(server).toMatch(/fsClean\(params\.name, 120\)/);
+    expect(server).toMatch(/fsClean\(params\.name, 120\)/); // outfits + capsules
+    expect(server).toMatch(/fsClean\(params\.name, 200\)/); // wardrobe items (BOUNDS.TITLE)
   });
 });

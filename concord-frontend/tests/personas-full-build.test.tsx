@@ -28,6 +28,9 @@ vi.mock('@/hooks/useAuth', () => ({
   useAuth: () => ({ user: { id: 'me-1', username: 'tester' } }),
 }));
 vi.mock('@/components/viz', () => ({ ChartKit: () => null }));
+// SaveAsDtuButton needs a QueryClientProvider (it mutates through react-query);
+// it is not under test here — the publish arm/confirm flow is.
+vi.mock('@/components/dtu/SaveAsDtuButton', () => ({ SaveAsDtuButton: () => null }));
 vi.mock('@/components/personas/persona-envelope', () => ({
   runPersona: async (action: string, input: Record<string, unknown>) => {
     callLog.push(action);

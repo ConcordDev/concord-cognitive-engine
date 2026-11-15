@@ -45,6 +45,12 @@ function scenesOf(scenes: { id: string; location: string; slugline: string }[]) 
   return { data: { ok: true, result: { scenes, count: scenes.length }, error: null } };
 }
 
+// The script panel loads its revisions beside the scenes; an unmocked action throws
+// into an unhandled rejection that fails the whole vitest run.
+function revisionsOf(revisions: unknown[]) {
+  return { data: { ok: true, result: { revisions, count: revisions.length }, error: null } };
+}
+
 beforeEach(() => {
   lensRun.mockReset();
   authUser.current = null;
@@ -90,6 +96,7 @@ describe('film studios production', () => {
         projects.push({ id: 'prj_1', title: input?.title || '' });
         return { data: { ok: true, result: { project: { id: 'prj_1', title: input?.title } }, error: null } };
       }
+      if (action === 'revision-list') return revisionsOf([]);
       throw new Error(action);
     });
     const view = render(<FilmStudiosPage />);
@@ -110,6 +117,7 @@ describe('film studios production', () => {
       if (action === 'project-create') {
         return { data: { ok: true, result: { project: { id: 'prj_missing', title: 'Lost production' } }, error: null } };
       }
+      if (action === 'revision-list') return revisionsOf([]);
       throw new Error(action);
     });
     const view = render(<FilmStudiosPage />);
@@ -125,6 +133,7 @@ describe('film studios production', () => {
     lensRun.mockImplementation(async (_d: string, action: string) => {
       if (action === 'project-list') return listed(projects);
       if (action === 'scene-list') return scenesOf([]);
+      if (action === 'revision-list') return revisionsOf([]);
       throw new Error(action);
     });
     const view = render(<FilmStudiosPage />);
@@ -152,6 +161,7 @@ describe('film studios production', () => {
         });
         return { data: { ok: true, result: { scene: { id: 'scn_1', location: input?.location } }, error: null } };
       }
+      if (action === 'revision-list') return revisionsOf([]);
       throw new Error(action);
     });
     const view = render(<FilmStudiosPage />);
@@ -179,6 +189,7 @@ describe('film studios production', () => {
         projects[0] = { ...projects[0], title: input?.title || '' };
         return { data: { ok: true, result: { project: { id: 'prj_1', title: input?.title } }, error: null } };
       }
+      if (action === 'revision-list') return revisionsOf([]);
       throw new Error(action);
     });
     const view = render(<FilmStudiosPage />);
@@ -196,6 +207,7 @@ describe('film studios production', () => {
     lensRun.mockImplementation(async (_d: string, action: string) => {
       if (action === 'project-list') return listed(projects);
       if (action === 'scene-list') return scenesOf([]);
+      if (action === 'revision-list') return revisionsOf([]);
       throw new Error(action);
     });
     const view = render(<FilmStudiosPage />);
@@ -217,6 +229,7 @@ describe('film studios production', () => {
         deleted = true;
         return { data: { ok: true, result: { deleted: 'prj_1' }, error: null } };
       }
+      if (action === 'revision-list') return revisionsOf([]);
       throw new Error(action);
     });
     const view = render(<FilmStudiosPage />);
@@ -245,6 +258,7 @@ describe('film studios production', () => {
         removed = true;
         return { data: { ok: true, result: { deleted: 'scn_1' }, error: null } };
       }
+      if (action === 'revision-list') return revisionsOf([]);
       throw new Error(action);
     });
     const view = render(<FilmStudiosPage />);
@@ -267,6 +281,7 @@ describe('film studios production', () => {
     lensRun.mockImplementation(async (_d: string, action: string) => {
       if (action === 'project-list') return listed(projects);
       if (action === 'scene-list') return scenesOf([]);
+      if (action === 'revision-list') return revisionsOf([]);
       throw new Error(action);
     });
     const view = render(<FilmStudiosPage />);
@@ -282,6 +297,7 @@ describe('film studios production', () => {
     lensRun.mockImplementation(async (_d: string, action: string) => {
       if (action === 'project-list') return listed(projects);
       if (action === 'scene-list') return scenesOf(scenes);
+      if (action === 'revision-list') return revisionsOf([]);
       throw new Error(action);
     });
     const view = render(<FilmStudiosPage />);
@@ -320,6 +336,7 @@ describe('film studios production', () => {
         projects.push({ id, title: input?.title || '' });
         return { data: { ok: true, result: { project: { id, title: input?.title } }, error: null } };
       }
+      if (action === 'revision-list') return revisionsOf([]);
       throw new Error(action);
     });
     const view = render(<FilmStudiosPage />);

@@ -57,11 +57,12 @@ describe('photos lens — organize', () => {
       return json({ ok: true, photos: PHOTOS });
     });
     render(<PhotosLensPage />);
-    fireEvent.click(await screen.findByLabelText('Edit caption Beach day'));
+    fireEvent.click(await screen.findByLabelText('Edit details for Beach day'));
     fireEvent.change(screen.getByLabelText('Caption for Beach day'), { target: { value: 'Beach at noon' } });
     await act(async () => { fireEvent.click(screen.getByText('Save')); });
     await screen.findByText('Beach at noon');
-    expect(posted).toEqual([{ caption: 'Beach at noon' }]);
+    // FIX-photos-006: the editor carries alt text + tags beside the caption.
+    expect(posted).toEqual([{ caption: 'Beach at noon', altText: '', tags: '' }]);
   });
 
   it('albums view lists real albums and adding a photo posts membership', async () => {
