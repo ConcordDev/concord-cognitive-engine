@@ -915,6 +915,14 @@ class LensWalk:
                 page.keyboard.press("Escape")
                 self.mark("create_delete", "NOT_RUN", reason="no Create/Save button in form")
                 return
+            # WALK-04b (G2): re-scan the dialog NOW — a form may reveal
+            # public/feed wording only after interaction (post-typing).
+            dtexts_late = " ".join(d.name for d in ax.descendants(still))
+            if safety.PUBLIC_HINT.search(dtexts_late):
+                self.shot(page, "create-public-abort-late")
+                page.keyboard.press("Escape")
+                self.mark("create_delete", "NOT_RUN", reason="create form mentions public/feed visibility (revealed after interaction); not written")
+                return
             assert_account(ctx, self.cfg, self.acct, "create (submit)", self.log)
             self.rec.fixture(label, self.slug, "create_clicked", "via '%s' > '%s'" % (control_label(opener.name), control_label(submit.name)))
             cdp.click(submit.backend)
