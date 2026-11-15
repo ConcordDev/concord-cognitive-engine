@@ -39,19 +39,26 @@ describe("cri — severityAssessment (exact composite scoring)", () => {
   });
 
   it("escalation modifiers stack on top of the base score", async () => {
-    // base 50 (all defaults) + casualties(+20) + financialExposure>1M(+10)
-    // + affectedSystems.length>5(+10) = 90 → critical
+    // base 50 (all defaults) + casualties(+20) + affectedSystems.length>5(+10) = 80 → critical.
+    // (financialExposure is bounded to <= 1,000,000 by GB-1539, so the "> 1M" +10 modifier can no longer
+    // be reached through this macro; exposure exactly at the cap adds nothing.)
     const r = await lensRun("cri", "severityAssessment", {
       data: { crisis: {
         casualties: 3,
-        financialExposure: 2_000_000,
+        financialExposure: 1_000_000,
         affectedSystems: ["a", "b", "c", "d", "e", "f"],
       } },
     });
-    assert.equal(r.result.escalationModifiers.totalModifier, 40);
+    assert.equal(r.result.escalationModifiers.totalModifier, 30);
     assert.equal(r.result.escalationModifiers.affectedSystemCount, 6);
-    assert.equal(r.result.severityScore, 90);
+    assert.equal(r.result.severityScore, 80);
     assert.equal(r.result.severityLevel, "critical");
+  });
+
+  it("financialExposure above the money bound is refused, not scored", async () => {
+    const r = await lensRun("cri", "severityAssessment", { data: { crisis: { financialExposure: 2_000_000 } } });
+    assert.equal(r.result.ok, false);
+    assert.equal(r.result.error, "invalid_input");
   });
 
   it("out-of-range factors are clamped into 1..5", async () => {
@@ -134,10 +141,13 @@ describe("cri — responseTimeline (critical-path / CPM)", () => {
     assert.ok(String(r.result.error).toLowerCase().includes("circular"));
   });
 
-  it("empty steps → friendly message, no crash", async () => {
+  it("empty steps → the labelled standard 5-phase plan (FIX-cri-004), no crash", async () => {
     const r = await lensRun("cri", "responseTimeline", { data: { responseSteps: [] } });
     assert.equal(r.ok, true);
-    assert.ok(String(r.result.message).toLowerCase().includes("no response steps"));
+    assert.equal(r.result.planSource, "standard-5-phase");
+    assert.equal(r.result.stepCount, 5);
+    assert.equal(r.result.totalDurationMinutes, 15 + 60 + 240 + 480 + 120); // default severity "high" → scale 1
+    assert.equal(r.result.phases[0].phase, "Detect & triage");
   });
 });
 

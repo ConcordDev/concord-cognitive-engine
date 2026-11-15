@@ -34,11 +34,11 @@ describe("bounties — create contracts (validation + exact rollups)", () => {
     assert.deepEqual(b.tags, ["safari", "auth"]);
   });
 
-  it("create: milestones override rewardCc — pool is the sum of milestone rewards (floored to >=1 each)", async () => {
+  it("create: milestones override rewardCc — pool is the sum of whole-CC milestone rewards", async () => {
     const r = await lensRun("bounties", "create", {
       params: {
         title: "Build the dashboard", description: "Multi-part build with milestones",
-        milestones: [{ title: "Wireframe", rewardCc: 100 }, { title: "Implement", rewardCc: 300.9 }],
+        milestones: [{ title: "Wireframe", rewardCc: 100 }, { title: "Implement", rewardCc: 300 }],
         rewardCc: 5, // ignored because milestones present
       },
     }, ctx);
@@ -46,10 +46,21 @@ describe("bounties — create contracts (validation + exact rollups)", () => {
     const b = r.result.bounty;
     assert.equal(b.milestones.length, 2);
     assert.equal(b.milestones[0].rewardCc, 100);
-    assert.equal(b.milestones[1].rewardCc, 300); // floor(300.9)
+    assert.equal(b.milestones[1].rewardCc, 300);
     assert.equal(b.rewardCc, 400); // 100 + 300
     assert.equal(b.poolCc, 400);
     assert.equal(b.milestones[0].status, "open");
+  });
+
+  it("create: a fractional milestone reward is refused, not floored", async () => {
+    const r = await lensRun("bounties", "create", {
+      params: {
+        title: "Build the dashboard", description: "Multi-part build with milestones",
+        milestones: [{ title: "Wireframe", rewardCc: 100 }, { title: "Implement", rewardCc: 300.9 }],
+      },
+    }, ctx);
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /milestone 2 reward must be at least 1 CC/);
   });
 
   it("create: an unknown category/difficulty falls back to 'other'/'intermediate'", async () => {

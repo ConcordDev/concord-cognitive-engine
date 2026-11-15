@@ -630,13 +630,14 @@ describe("crypto — portfolio rollups, ticker, DCA-run, order-fill (wave 13 top
   // which short-circuits before any fetch. Realized P&L + cost-basis math is
   // price-independent, so the asserted values are exact under no-egress.
 
-  it("portfolio-summary: a fresh portfolio reports all-zero rollups and unavailable price source", async () => {
+  it("portfolio-summary: a fresh portfolio reports zero cost/lots and null (not $0) value/PnL with an unavailable price source", async () => {
     const fresh = await depthCtx("crypto-t13-summary-empty-" + randomUUID());
     const r = await lensRun("crypto", "portfolio-summary", {}, fresh);
-    assert.equal(r.result.totalValueUsd, 0);
+    // FIX-crypto-007: with nothing priced, value and PnL are null — never a fabricated $0.
+    assert.equal(r.result.totalValueUsd, null);
     assert.equal(r.result.totalCostUsd, 0);
-    assert.equal(r.result.unrealizedPnlUsd, 0);
-    assert.equal(r.result.unrealizedPnlPct, 0);
+    assert.equal(r.result.unrealizedPnlUsd, null);
+    assert.equal(r.result.unrealizedPnlPct, null);
     assert.equal(r.result.lotCount, 0);
     assert.equal(r.result.symbolCount, 0);
     assert.deepEqual(r.result.byChain, []);
@@ -656,10 +657,10 @@ describe("crypto — portfolio rollups, ticker, DCA-run, order-fill (wave 13 top
     const r = await lensRun("crypto", "portfolio-summary", {}, ctx);
     assert.equal(r.result.realizedPnlYtdUsd, 160); // the sell counted into YTD realized
     assert.equal(r.result.lotCount, 0);            // lot fully closed
-    assert.equal(r.result.totalValueUsd, 0);
+    assert.equal(r.result.totalValueUsd, null);    // nothing priced → null, not $0 (FIX-crypto-007)
   });
 
-  it("portfolio-summary: lot count + symbol count reflect open lots (value/PnL fall back to 0 when prices unavailable)", async () => {
+  it("portfolio-summary: lot count + symbol count reflect open lots (value/PnL are null when prices are unavailable)", async () => {
     const ctx = await depthCtx("crypto-t13-summary-lots-" + randomUUID());
     const a = "tok" + randomUUID().slice(0, 6);
     const b = "tok" + randomUUID().slice(0, 6);
@@ -668,10 +669,12 @@ describe("crypto — portfolio rollups, ticker, DCA-run, order-fill (wave 13 top
     const r = await lensRun("crypto", "portfolio-summary", {}, ctx);
     assert.equal(r.result.lotCount, 2);
     assert.equal(r.result.symbolCount, 2);
-    // Under no-egress prices are unavailable → value 0, but COST is still summed.
+    // Under no-egress prices are unavailable → value/PnL null (FIX-crypto-007), but COST is still summed.
     assert.equal(r.result.priceSource, "unavailable");
     assert.equal(r.result.totalCostUsd, 140); // 40 + 100, price-independent
-    assert.equal(r.result.totalValueUsd, 0);
+    assert.equal(r.result.totalValueUsd, null);
+    assert.equal(r.result.unrealizedPnlUsd, null);
+    assert.deepEqual(r.result.unpricedSymbols.map((x) => x.toLowerCase()).sort(), [a, b].sort());
     // byChain carries each lot's chain with a zero (priced) value but a real lot count.
     const chains = r.result.byChain.map((c) => c.chain).sort();
     assert.deepEqual(chains, ["base", "solana"]);

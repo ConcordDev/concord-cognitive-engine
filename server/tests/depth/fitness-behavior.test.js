@@ -204,7 +204,9 @@ describe("fitness — activity CRUD + derived metrics (shared ctx)", () => {
   it("activity-create: a non-positive duration is rejected", async () => {
     const bad = await lensRun("fitness", "activity-create", { params: { type: "run", durationSec: 0 } }, ctx);
     assert.equal(bad.result.ok, false);
-    assert.match(bad.result.error, /durationSec must be > 0/);
+    assert.equal(bad.result.error, "invalid_input");
+    assert.equal(bad.result.field, "durationSec");
+    assert.match(bad.result.message, /durationSec must be a number of seconds from 1 to 86400/);
   });
 
   it("activity-kudos toggles a kudos then a second call removes it", async () => {
@@ -256,11 +258,13 @@ describe("fitness — training-load + physiology (shared ctx)", () => {
     assert.equal(r.result.source, "supplied effort");
   });
 
-  it("vo2max-estimate: no effort and no logged run is rejected", async () => {
+  it("vo2max-estimate: no effort and no logged run is an honest empty result, not a failed read", async () => {
     const fresh = await depthCtx("fitness-vo2-empty");
-    const bad = await lensRun("fitness", "vo2max-estimate", {}, fresh);
-    assert.equal(bad.result.ok, false);
-    assert.match(bad.result.error, /distanceKm/);
+    const empty = await lensRun("fitness", "vo2max-estimate", {}, fresh);
+    assert.equal(empty.ok, true);
+    assert.equal(empty.result.empty, true);
+    assert.equal(empty.result.vo2max, null);
+    assert.match(empty.result.reason, /Log a run of at least 1\.5 km/);
   });
 
   it("race-predictor: predicted times increase monotonically with distance", async () => {

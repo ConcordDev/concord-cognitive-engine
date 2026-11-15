@@ -419,7 +419,7 @@ describe("automotive — extra surfaces: OBD / predictive / compare / shops / re
   it("renewals-create → renewals-list: a past renewalDate decorates as expired", async () => {
     const veh = await lensRun("automotive", "vehicles-create", { params: { name: "Ren", odometer: 0 } }, ctx);
     const vid = veh.result.vehicle.id;
-    const cre = await lensRun("automotive", "renewals-create", { params: { vehicleId: vid, kind: "insurance", renewalDate: "2000-01-01" } }, ctx);
+    const cre = await lensRun("automotive", "renewals-create", { params: { vehicleId: vid, kind: "insurance", title: "Policy", renewalDate: "2000-01-01" } }, ctx);
     assert.equal(cre.result.renewal.kind, "insurance");
     assert.equal(cre.result.renewal.reminderDays, 30); // default
     const list = await lensRun("automotive", "renewals-list", { params: { vehicleId: vid } }, ctx);
@@ -431,9 +431,12 @@ describe("automotive — extra surfaces: OBD / predictive / compare / shops / re
 
   it("renewals-create: rejects a missing renewalDate", async () => {
     const veh = await lensRun("automotive", "vehicles-create", { params: { name: "RenBad", odometer: 0 } }, ctx);
-    const bad = await lensRun("automotive", "renewals-create", { params: { vehicleId: veh.result.vehicle.id, kind: "warranty" } }, ctx);
+    const bad = await lensRun("automotive", "renewals-create", { params: { vehicleId: veh.result.vehicle.id, kind: "warranty", title: "Powertrain" } }, ctx);
     assert.equal(bad.result.ok, false);
-    assert.match(bad.result.error, /renewalDate required/);
+    assert.match(bad.result.error, /renewalDate must be a real date/);
+    const noTitle = await lensRun("automotive", "renewals-create", { params: { vehicleId: veh.result.vehicle.id, kind: "warranty", renewalDate: "2030-01-01" } }, ctx);
+    assert.equal(noTitle.result.ok, false);
+    assert.match(noTitle.result.error, /title required/);
   });
 
   it("renewals-upcoming: surfaces a soon-due renewal within the window", async () => {
@@ -441,7 +444,7 @@ describe("automotive — extra surfaces: OBD / predictive / compare / shops / re
     const vid = veh.result.vehicle.id;
     // renewal 10 days out with reminderDays 30 → status due_soon.
     const soon = new Date(Date.now() + 10 * 86_400_000).toISOString().slice(0, 10);
-    await lensRun("automotive", "renewals-create", { params: { vehicleId: vid, kind: "registration", renewalDate: soon, reminderDays: 30 } }, ctx);
+    await lensRun("automotive", "renewals-create", { params: { vehicleId: vid, kind: "registration", title: "Reg", renewalDate: soon, reminderDays: 30 } }, ctx);
     const up = await lensRun("automotive", "renewals-upcoming", { params: { withinDays: 60 } }, ctx);
     assert.ok(up.result.renewals.some((r) => r.vehicleId === vid && r.status === "due_soon"));
   });

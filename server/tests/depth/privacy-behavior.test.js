@@ -275,21 +275,29 @@ describe("privacy — retention policy editor (round-trip + validation, shared c
     assert.equal(chat.isDefault, true);
   });
 
-  it("retentionSet: an override reads back via retentionGet; windowDays caps at 10 years", async () => {
-    const set = await lensRun("privacy", "retentionSet", { params: { category: "search_queries", windowDays: 99999, action: "anonymize" } }, ctx);
-    assert.equal(set.result.windowDays, 3650);  // capped at 10y
+  it("retentionSet: an override reads back via retentionGet; the 10-year maximum is accepted, beyond it is refused", async () => {
+    const set = await lensRun("privacy", "retentionSet", { params: { category: "search_queries", windowDays: 3650, action: "anonymize" } }, ctx);
+    assert.equal(set.result.windowDays, 3650);  // the 10y maximum itself
     assert.equal(set.result.action, "anonymize");
     const get = await lensRun("privacy", "retentionGet", {}, ctx);
     const sq = get.result.policies.find((p) => p.category === "search_queries");
     assert.equal(sq.windowDays, 3650);
     assert.equal(sq.action, "anonymize");
     assert.equal(sq.isDefault, false);
+    // FIX-privacy-002: an out-of-range window is refused, never silently clamped to 3650.
+    const over = await lensRun("privacy", "retentionSet", { params: { category: "search_queries", windowDays: 99999, action: "anonymize" } }, ctx);
+    assert.equal(over.result.ok, false);
+    assert.match(over.result.error, /windowDays must be a whole number of days between 0 and 3650/);
   });
 
-  it("retentionSet: an invalid action falls back to delete; negative windowDays clamps to 0", async () => {
-    const set = await lensRun("privacy", "retentionSet", { params: { category: "drafts", windowDays: -5, action: "shred" } }, ctx);
+  it("retentionSet: an invalid action falls back to delete; a negative or fractional windowDays is refused", async () => {
+    const set = await lensRun("privacy", "retentionSet", { params: { category: "drafts", windowDays: 0, action: "shred" } }, ctx);
     assert.equal(set.result.action, "delete"); // invalid action → default
-    assert.equal(set.result.windowDays, 0);    // negative clamped
+    assert.equal(set.result.windowDays, 0);
+    const neg = await lensRun("privacy", "retentionSet", { params: { category: "drafts", windowDays: -5, action: "delete" } }, ctx);
+    assert.equal(neg.result.ok, false);
+    const frac = await lensRun("privacy", "retentionSet", { params: { category: "drafts", windowDays: 1.5, action: "delete" } }, ctx);
+    assert.equal(frac.result.ok, false);
   });
 
   it("retentionSet: an unknown category is rejected", async () => {

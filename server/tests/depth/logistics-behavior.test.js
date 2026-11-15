@@ -653,7 +653,11 @@ describe("logistics — remaining CRUD/list/dashboard (wave 11 top-up B)", () =>
     await lensRun("logistics", "shipments-set-status", { params: { id: s2.result.shipment.id, status: "exception" } }, d);
     await lensRun("logistics", "fleet-vehicles-add", { params: { number: "DV-1", kind: "van" } }, d);
     await lensRun("logistics", "docks-create", { params: { name: "DK-1", facility: "F1" } }, d);
-    await lensRun("logistics", "loads-post", { params: { origin: "E", destination: "F", ratePerMile: 2.0 } }, d);
+    await lensRun("logistics", "loads-post", { params: { origin: "E", destination: "F", ratePerMile: 2.0, weightLbs: 1000 } }, d);
+    // A load with no weight is refused (not silently posted), so it never reaches the tally.
+    const noWeight = await lensRun("logistics", "loads-post", { params: { origin: "G", destination: "H", ratePerMile: 2.0 } }, d);
+    assert.equal(noWeight.result.ok, false);
+    assert.equal(noWeight.result.error, "invalid_input");
 
     const sum = await lensRun("logistics", "dashboard-summary", {}, d);
     assert.equal(sum.result.totalShipments, 2);

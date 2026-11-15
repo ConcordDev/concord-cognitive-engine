@@ -253,7 +253,9 @@ describe("pets — weight log + history trend (shared ctx)", () => {
   it("weight-log rejects a non-positive weight, then logs valid entries and rounds to 2dp", async () => {
     const bad = await lensRun("pets", "weight-log", { params: { petId, weightKg: 0 } }, ctx);
     assert.equal(bad.result.ok, false);
-    assert.ok(String(bad.result.error).includes("weightKg must be > 0"));
+    assert.equal(bad.result.error, "invalid_input");
+    assert.equal(bad.result.field, "weightKg");
+    assert.match(bad.result.message, /Weight must be a number greater than 0/);
 
     const a = await lensRun("pets", "weight-log", { params: { petId, weightKg: 10.123, date: dayStr(5 * DAY) } }, ctx);
     assert.equal(a.ok, true);
