@@ -55,7 +55,9 @@ function listed(projects: { id: string; title: string }[]) {
   return { data: { ok: true, result: { projects, count: projects.length }, error: null } };
 }
 function scenesOf(scenes: { id: string; location: string; slugline: string }[]) {
-  return { data: { ok: true, result: { scenes, count: scenes.length }, error: null } };
+  // Real scene-list rows carry the script-breakdown list the Script panel maps over.
+  const rows = scenes.map((sc, i) => ({ number: String(i + 1), breakdownElements: [], ...sc }));
+  return { data: { ok: true, result: { scenes: rows, count: rows.length, totalPages: 0 }, error: null } };
 }
 
 // The script panel loads its revisions beside the scenes; an unmocked action throws
