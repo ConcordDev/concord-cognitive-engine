@@ -229,10 +229,14 @@ describe("plumbing — dispatch + workflow lifecycle (wave 10 top-up)", () => {
     assert.match(r.result.error, /tech_not_found/);
   });
 
-  it("dispatchAssign clamps startHour/durationHours; dispatchUpdate transitions status", async () => {
-    const a = await lensRun("plumbing", "dispatchAssign", { params: { jobTitle: "Water heater swap", startHour: 99, durationHours: 99 } }, ctx);
+  it("dispatchAssign clamps startHour but refuses an out-of-range durationHours; dispatchUpdate transitions status", async () => {
+    const tooLong = await lensRun("plumbing", "dispatchAssign", { params: { jobTitle: "Water heater swap", durationHours: 99 } }, ctx);
+    assert.equal(tooLong.result.ok, false);
+    assert.equal(tooLong.result.error, "invalid_input");
+    assert.equal(tooLong.result.field, "durationHours");
+    const a = await lensRun("plumbing", "dispatchAssign", { params: { jobTitle: "Water heater swap", startHour: 99, durationHours: 12 } }, ctx);
     assert.equal(a.result.assignment.startHour, 23);      // clamped to 23
-    assert.equal(a.result.assignment.durationHours, 12);  // clamped to 12
+    assert.equal(a.result.assignment.durationHours, 12);  // at the upper bound
     assert.equal(a.result.assignment.status, "scheduled");
     const upd = await lensRun("plumbing", "dispatchUpdate", { params: { assignmentId: a.result.assignment.id, status: "en_route" } }, ctx);
     assert.equal(upd.result.assignment.status, "en_route");

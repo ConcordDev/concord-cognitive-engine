@@ -102,10 +102,15 @@ describe("carpentry — estimating & costing (wave 11 top-up)", () => {
     assert.equal(r.result.items[0].lineTotal, 50);
   });
 
-  it("materialTakeoff: rejects an empty takeoff (no valid items)", async () => {
-    const r = await lensRun("carpentry", "materialTakeoff", { params: { items: [{ quantity: 0, unitCost: 5 }] } });
-    assert.equal(r.result.ok, false);
-    assert.match(String(r.result.error), /no valid takeoff items/i);
+  it("materialTakeoff: rejects an empty takeoff (no valid items) and refuses a zero quantity outright", async () => {
+    const blank = await lensRun("carpentry", "materialTakeoff", { params: { items: [{ unitCost: 5 }] } });
+    assert.equal(blank.result.ok, false);
+    assert.match(String(blank.result.error), /no valid takeoff items/i);
+    // A quantity that is present but out of range is refused, not silently dropped.
+    const zero = await lensRun("carpentry", "materialTakeoff", { params: { items: [{ quantity: 0, unitCost: 5 }] } });
+    assert.equal(zero.result.ok, false);
+    assert.equal(zero.result.error, "invalid_input");
+    assert.equal(zero.result.field, "quantity");
   });
 });
 

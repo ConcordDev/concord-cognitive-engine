@@ -29,13 +29,17 @@ describe("tournaments — create + defaults (exact computed values)", () => {
     assert.equal(t.entrants.length, 0);
   });
 
-  it("create: an unknown format falls back to single_elimination; caps clamp", async () => {
+  it("create: an unknown format falls back to single_elimination; maxEntrants out of range is refused; teamSize clamps", async () => {
+    // FIX-tournaments-003: maxEntrants outside [2, 128] is refused by name, not silently clamped.
+    const tooMany = await lensRun("tournaments", "create", { params: { title: "Refused Cup", maxEntrants: 9999 } });
+    assert.equal(tooMany.result.ok, false);
+    assert.equal(tooMany.result.error, "max_entrants_must_be_2_to_128");
     const r = await lensRun("tournaments", "create", {
-      params: { title: "Clamp Cup", format: "bo3_ladder", maxEntrants: 9999, teamSize: 99 },
+      params: { title: "Clamp Cup", format: "bo3_ladder", maxEntrants: 128, teamSize: 99 },
     });
     const t = r.result.tournament;
     assert.equal(t.format, "single_elimination"); // invalid format → fallback
-    assert.equal(t.maxEntrants, 128);             // clamped to max 128
+    assert.equal(t.maxEntrants, 128);             // the upper bound itself is accepted
     assert.equal(t.mode, "team");                 // teamSize > 1 → team
     assert.equal(t.teamSize, 10);                 // clamped to max 10
   });

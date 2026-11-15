@@ -40,10 +40,11 @@ describe("bio — sequence-analyze (exact GC / Tm / ORF)", () => {
     assert.equal(r.result.tm, 16);               // 2*8 + 4*0
   });
 
-  it("sequence-analyze: protein composition + molecular weight (110 Da/aa)", async () => {
+  it("sequence-analyze: protein composition + molecular weight (residue masses + one water, FIX-bio-004)", async () => {
     const r = await lensRun("bio", "sequence-analyze", { params: { sequence: "MKVLA", kind: "protein" } });
     assert.equal(r.ok, true);
-    assert.equal(r.result.molecularWeight, 550); // 5 * 110
+    // M131.19 + K128.17 + V99.13 + L113.16 + A71.08 = 542.73, + 18.02 water = 560.75 -> 560.8 (1dp). The old flat 110 Da/aa estimate (550) was replaced.
+    assert.equal(r.result.molecularWeight, 560.8);
     assert.equal(r.result.composition.M, 1);
     assert.equal(r.result.composition.K, 1);
     assert.equal(r.result.composition.L, 1);

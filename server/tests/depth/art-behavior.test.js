@@ -954,6 +954,9 @@ describe("art — network + auth macros: deterministic pre-fetch validation (wav
     assert.equal(r.result.ok, false);
     // The lens dispatcher refuses an anonymous write before the handler runs (#1538), which is the deterministic
     // pre-egress refusal now; the handler's own auth/db gates stay behind it as defence in depth.
-    assert.equal(r.result.error, "auth_required", `unexpected error: ${r.result.error}`);
+    // GB-1536: lens.run now also applies the guest-visibility rule to the harness artifact for an anonymous
+    // actor and answers "not found" (existence is not revealed) before the write gate is even reached. Either
+    // refusal is correct and both happen before the handler touches the db or disk.
+    assert.ok(["auth_required", "not found"].includes(r.result.error), `unexpected error: ${r.result.error}`);
   });
 });

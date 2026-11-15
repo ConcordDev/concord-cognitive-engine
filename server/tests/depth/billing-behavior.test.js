@@ -10,12 +10,20 @@ describe("billing — calc actions", () => {
     assert.equal(r.result.totalCustomers, 2);
     assert.equal(typeof r.result.atRiskCount, "number");
   });
-  it("invoiceCalculation: totals line items and applies tax", async () => {
-    const r = await lensRun("billing", "invoiceCalculation", { data: { lineItems: [{ description: "svc", quantity: 2, unitPrice: 50 }] }, params: { taxRate: 10 } });
+  it("invoiceCalculation: totals line items and applies tax (taxRate is a decimal 0..1)", async () => {
+    const r = await lensRun("billing", "invoiceCalculation", { data: { lineItems: [{ description: "svc", quantity: 2, unitPrice: 50 }] }, params: { taxRate: 0.1 } });
     assert.equal(r.ok, true);
-    assert.ok(Array.isArray(r.result.lineItems) && r.result.lineItems.length === 1);
-    const totalish = r.result.total ?? r.result.grandTotal ?? r.result.totalDue ?? r.result.subtotal;
-    assert.ok(Number(totalish) > 0, "a positive total was computed");
+    assert.equal(r.result.lineItems.length, 1);
+    assert.equal(r.result.subtotal, 100);
+    assert.equal(r.result.tax.taxAmount, 10);
+    assert.equal(r.result.tax.ratePct, 10);
+    assert.equal(r.result.total, 110);
+  });
+
+  it("invoiceCalculation: a percentage-style taxRate (10) is refused, not silently applied as 1000%", async () => {
+    const r = await lensRun("billing", "invoiceCalculation", { data: { lineItems: [{ description: "svc", quantity: 2, unitPrice: 50 }] }, params: { taxRate: 10 } });
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /taxRate must be a decimal from 0 to 1/);
   });
 });
 

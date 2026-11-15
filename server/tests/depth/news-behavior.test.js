@@ -493,7 +493,7 @@ describe("news — network macros with every upstream blocked (deterministic una
       assert.equal(sec.status, "unavailable");
       assert.equal(sec.stale, false);
       assert.equal(sec.fetchedAt, null);
-      assert.match(String(sec.unavailableReason), /blocked under test \(no-egress\)/);
+      assert.match(String(sec.unavailableReason), /blocked under test \(no-egress[,)]/);
     }
   });
 });

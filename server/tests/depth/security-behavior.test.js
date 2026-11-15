@@ -184,15 +184,19 @@ describe("security — vuln/asset management round-trips + CVSS contracts", () =
   let ctx;
   before(async () => { ctx = await depthCtx("security-vuln-crud"); });
 
-  it("vuln-add: CVSS 9.8 derives 'critical' severity and clamps to [0,10]", async () => {
+  it("vuln-add: CVSS 9.8 derives 'critical' severity; a CVSS outside [0,10] is refused", async () => {
     const add = await lensRun("security", "vuln-add", { params: { title: "Log4Shell", cveId: "CVE-2021-44228", cvss: 9.8, kev: true } }, ctx);
     assert.equal(add.ok, true);
     assert.equal(add.result.vuln.severity, "critical");
     assert.equal(add.result.vuln.cvss, 9.8);
     assert.equal(add.result.vuln.status, "open");   // default
-    const over = await lensRun("security", "vuln-add", { params: { title: "Clamped", cvss: 42 } }, ctx);
-    assert.equal(over.result.vuln.cvss, 10);        // clamped to 10
-    assert.equal(over.result.vuln.severity, "critical");
+    const over = await lensRun("security", "vuln-add", { params: { title: "TooHigh", cvss: 42 } }, ctx);
+    assert.equal(over.result.ok, false);            // refused, not clamped to 10
+    assert.equal(over.result.error, "invalid_input");
+    assert.equal(over.result.field, "cvss");
+    const ok = await lensRun("security", "vuln-add", { params: { title: "Boundary", cvss: 10 } }, ctx);
+    assert.equal(ok.result.vuln.cvss, 10);          // the upper bound itself is accepted
+    assert.equal(ok.result.vuln.severity, "critical");
   });
 
   it("vuln-add: missing title is rejected", async () => {

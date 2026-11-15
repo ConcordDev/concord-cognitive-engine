@@ -71,10 +71,17 @@ describe("black-market — auction lifecycle (create → bid → settle)", () =>
     assert.match(badTier.result.error, /encryptionLevel invalid/);
   });
 
-  it("auction-create: clamps minBid to ≥1 and stamps an open auction with no bids", async () => {
+  it("auction-create: refuses an out-of-range minBid/durationMin, then stamps an open auction with no bids", async () => {
     const ctx = await depthCtx("bm-auc-clamp");
-    const r = await lensRun("black-market", "auction-create",
-      { params: { title: "Sealed dossier", preview: "redacted", payload: "secret cargo manifest", minBid: -5, durationMin: 30 } }, ctx);
+    const base = { title: "Sealed dossier", preview: "redacted", payload: "secret cargo manifest" };
+    const neg = await lensRun("black-market", "auction-create", { params: { ...base, minBid: -5, durationMin: 30 } }, ctx);
+    assert.equal(neg.result.ok, false);
+    assert.match(neg.result.error, /minBid must be between 1 and 1000000/);
+    const longDur = await lensRun("black-market", "auction-create", { params: { ...base, minBid: 5, durationMin: 10081 } }, ctx);
+    assert.equal(longDur.result.ok, false);
+    assert.match(longDur.result.error, /durationMin must be between 1 and 10080/);
+
+    const r = await lensRun("black-market", "auction-create", { params: { ...base, minBid: 1, durationMin: 30 } }, ctx);
     const a = r.result.auction;
     assert.equal(a.minBid, 1);
     assert.equal(a.status, "open");

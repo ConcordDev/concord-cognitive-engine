@@ -27,26 +27,47 @@ async function recordedRun(c) {
 }
 
 describe("experience — analytical calc contracts (exact computed values)", () => {
-  it("usabilityScore: SUS formula caps at 100 and grades A", async () => {
+  it("usabilityScore: perfect inputs score 100 / grade A with the hand-checkable components", async () => {
+    const r = await lensRun("experience", "usabilityScore", {
+      data: { taskSuccessRate: 100, avgTimeSeconds: 0, errorCount: 0, satisfactionScore: 100 },
+    });
+    // FIX-experience-002: all four terms are percents, each worth at most 25.
+    // 0.25 * (100 + max(0,100-0/2) + max(0,100-0) + 100) = 100
+    assert.equal(r.result.susScore, 100);
+    assert.equal(r.result.grade, "A");
+    assert.deepEqual(r.result.components, { taskSuccess: 25, time: 25, errors: 25, satisfaction: 25 });
+    assert.equal(r.result.benchmark, "Industry average SUS score is 68");
+  });
+
+  it("usabilityScore: a 4% success rate no longer pins the score at 100 (regression for the x25 percent bug)", async () => {
     const r = await lensRun("experience", "usabilityScore", {
       data: { taskSuccessRate: 4, avgTimeSeconds: 40, errorCount: 2, satisfactionScore: 80 },
     });
-    // sus = 4*25 + max(0,100-40/2)*.25 + max(0,100-2*10)*.25 + 80*.25
-    //     = 100 + 20 + 20 + 20 = 160 → min(100,160)
-    assert.equal(r.result.susScore, 100);
-    assert.equal(r.result.grade, "A");
-    assert.equal(r.result.benchmark, "Industry average SUS score is 68");
+    // 0.25 * (4 + 80 + 80 + 80) = 61
+    assert.equal(r.result.susScore, 61);
+    assert.equal(r.result.grade, "C");
   });
 
   it("usabilityScore: middling inputs land a C grade with exact sus", async () => {
     const r = await lensRun("experience", "usabilityScore", {
-      data: { taskSuccessRate: 2, avgTimeSeconds: 100, errorCount: 4, satisfactionScore: 50 },
+      data: { taskSuccessRate: 60, avgTimeSeconds: 100, errorCount: 4, satisfactionScore: 50 },
     });
-    // 2*25 + max(0,100-50)*.25 + max(0,100-40)*.25 + 50*.25
-    // = 50 + 12.5 + 15 + 12.5 = 90 → round 90... wait recompute below
-    // 50 + (50*.25=12.5) + (60*.25=15) + (50*.25=12.5) = 90 → grade A (>=80)
-    assert.equal(r.result.susScore, 90);
-    assert.equal(r.result.grade, "A");
+    // 0.25 * (60 + max(0,100-50) + max(0,100-40) + 50) = 0.25 * 220 = 55 → C (50..67)
+    assert.equal(r.result.susScore, 55);
+    assert.equal(r.result.grade, "C");
+  });
+
+  it("usabilityScore: a blank field or an out-of-range percent is refused, not scored", async () => {
+    const blank = await lensRun("experience", "usabilityScore", {
+      data: { taskSuccessRate: "", avgTimeSeconds: 40, errorCount: 2, satisfactionScore: 80 },
+    });
+    assert.equal(blank.result.ok, false);
+    assert.match(blank.result.error, /Missing or invalid field\(s\): taskSuccessRate/);
+    const over = await lensRun("experience", "usabilityScore", {
+      data: { taskSuccessRate: 101, avgTimeSeconds: 40, errorCount: 2, satisfactionScore: 80 },
+    });
+    assert.equal(over.result.ok, false);
+    assert.match(over.result.error, /taskSuccessRate must be a percent from 0 to 100/);
   });
 
   it("journeyMap: averages satisfaction and identifies the lowest stage", async () => {

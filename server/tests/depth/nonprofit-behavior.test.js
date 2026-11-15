@@ -234,7 +234,9 @@ describe("nonprofit — campaign + donation CRUD round-trips (shared ctx)", () =
     const c = await lensRun("nonprofit", "campaign-create", { params: { name: "Zero Gift", goal: 10 } }, ctx);
     const bad = await lensRun("nonprofit", "donation-log", { params: { campaignId: c.result.campaign.id, amount: 0 } }, ctx);
     assert.equal(bad.result.ok, false);
-    assert.ok(bad.result.error.includes("donation amount must be positive"));
+    assert.equal(bad.result.error, "invalid_input");
+    assert.equal(bad.result.field, "amount");
+    assert.match(bad.result.message, /amount must be a number greater than 0/);
   });
 
   it("validation: donation-log against an unknown campaign is rejected", async () => {

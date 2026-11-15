@@ -111,11 +111,16 @@ describe("sync — auto-sync / scopes / quota / heartbeat (shared ctx)", () => {
 
     const bad = await lensRun("sync", "set_quota", { params: { deviceId, quotaGb: 0 } }, ctx);
     assert.equal(bad.result.ok, false);
-    assert.equal(bad.result.error, "invalid_quota");
+    assert.equal(bad.result.error, "Quota must be greater than 0 GB");
 
     const neg = await lensRun("sync", "set_quota", { params: { deviceId, quotaGb: -5 } }, ctx);
     assert.equal(neg.result.ok, false);
-    assert.equal(neg.result.error, "invalid_quota");
+    assert.equal(neg.result.error, "Quota must be greater than 0 GB");
+
+    // FIX-sync-003: a quota above 1,000,000 GB is refused rather than stored.
+    const huge = await lensRun("sync", "set_quota", { params: { deviceId, quotaGb: 1000001 } }, ctx);
+    assert.equal(huge.result.ok, false);
+    assert.equal(huge.result.error, "Quota must be no more than 1,000,000 GB");
   });
 
   it("heartbeat marks the device online and stamps lastSeenAt", async () => {
