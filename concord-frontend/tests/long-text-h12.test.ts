@@ -21,7 +21,7 @@ describe('H12 long text', () => {
     ['components/fashion/FashionClosetPanel.tsx', 'placeholder="Item name" maxLength={BOUNDS.TITLE}'],
     ['components/fashion/FashionOutfitsPanel.tsx', 'placeholder="Outfit name" maxLength={120}'],
     ['components/fashion/FashionCapsulePanel.tsx', 'placeholder="Capsule name" maxLength={120}'],
-  ])('%s caps the name at the server's bound', (f, needle) => {
+  ])('%s caps the name at the server bound', (f, needle) => {
     expect(src(f)).toContain(needle);
   });
   it('the server bound the cap mirrors still exists', () => {
