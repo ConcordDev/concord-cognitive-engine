@@ -1829,7 +1829,7 @@ export default function registerResearchActions(registerLensAction) {
           try {
             xml = await (await fetch(url, { signal: AbortSignal.timeout(9000) })).text();
             break;
-          } catch (e) { lastErr = e; if (attempt === 0) await new Promise((r) => setTimeout(r, 600)); }
+          } catch (e) { lastErr = e; if (attempt === 0) await new Promise((r) => { setTimeout(r, 600); }); }
         }
         if (xml === null) {
           return { ok: false, reason: "arxiv_unreachable", error: `arXiv is unreachable right now (${String(lastErr?.message || lastErr)}) — it may be a brief outage; try again in a moment.` };

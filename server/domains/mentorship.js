@@ -108,7 +108,7 @@ export default function registerMentorshipActions(registerLensAction) {
     // field). The server now enforces the panel's own contract — usable
     // current skills, a target role, and usable skill gaps. A token that is
     // empty or opens with a JSON brace/bracket is not usable text here.
-    const usable = (v) => { const s = String(v ?? "").trim(); return s.length > 0 && !/^[{\[]/.test(s); };
+    const usable = (v) => { const s = String(v ?? "").trim(); return s.length > 0 && !/^[{[]/.test(s); };
     // explicit currentSkills (component) OR relation skills[]
     const currentSkills = (Array.isArray(data.currentSkills) ? data.currentSkills : (Array.isArray(data.skills) ? data.skills : [])).filter(usable).map(String);
     const gaps = (Array.isArray(data.skillGaps) ? data.skillGaps : []).filter(usable).map(String);

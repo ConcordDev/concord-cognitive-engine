@@ -14,6 +14,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { compileFunction } from "node:vm";
 
 const SERVER_JS = readFileSync(new URL("../server.js", import.meta.url), "utf8");
 
@@ -52,13 +53,13 @@ function buildHandler(patterns) {
   let handler = null;
   const register = (domain, name, fn) => { if (domain === "transfer" && name === "find_analogies") handler = fn; };
   const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
-  const sandbox = new Function(
-    "register", "STATE", "clamp", "ensureTransferEngine", "enforceEthosInvariant",
+  const sandbox = compileFunction(
     `${extractConst("STOP_WORDS")}
      ${extractFn("tokenizeText")}
      ${extractFn("findAnalogousPatterns")}
      ${extractRegistration()}
      return register;`,
+    ["register", "STATE", "clamp", "ensureTransferEngine", "enforceEthosInvariant"],
   );
   sandbox(register, STATE, clamp, () => {}, () => {});
   assert.ok(handler, "handler captured");

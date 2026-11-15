@@ -17,6 +17,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { compileFunction } from "node:vm";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -52,8 +53,7 @@ function buildMacros() {
   assert.ok(parts[0] && parts[2] && parts[3], "generation + ensure functions extractable");
   const STATE = {};
   let n = 0;
-  const factory = new Function(
-    "STATE",
+  const factory = compileFunction(
     `
     let __n = 0;
     const uid = (p) => p + "_t" + (++__n);
@@ -72,6 +72,7 @@ function buildMacros() {
     ${parts.filter(Boolean).join("\n")}
     return __macros;
     `,
+    ["STATE"],
   );
   const macros = factory(STATE);
   return { macros, STATE };

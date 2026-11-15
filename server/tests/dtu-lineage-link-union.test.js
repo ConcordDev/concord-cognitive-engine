@@ -9,6 +9,7 @@
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
+import { compileFunction } from "node:vm";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -26,7 +27,7 @@ function loadLineage(dtus) {
   const register = (domain, action, fn) => { if (domain === "dtu" && action === "lineage") handler = fn; };
   const ctxMayReadDtu = () => true;
   const _dtuLineageAncestorChain = () => [];
-  const fn = new Function("STATE", "register", "ctxMayReadDtu", "_dtuLineageAncestorChain", macroSrc);
+  const fn = compileFunction(macroSrc, ["STATE", "register", "ctxMayReadDtu", "_dtuLineageAncestorChain"]);
   fn(STATE, register, ctxMayReadDtu, _dtuLineageAncestorChain);
   if (!handler) throw new Error("lineage handler not registered");
   return handler;

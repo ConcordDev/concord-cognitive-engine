@@ -689,20 +689,28 @@ export default function registerPrivacyActions(registerLensAction) {
     const s = privacyState();
     const rows = [];
     const dsars = s.dsars.get(uid);
-    if (dsars) for (const r of dsars.values()) {
-      rows.push({ id: r.id, type: "dsar_request", title: `${r.kind} request`, createdAt: r.submittedAt, updatedAt: r.resolvedAt || r.submittedAt, data: r });
+    if (dsars) {
+      for (const r of dsars.values()) {
+        rows.push({ id: r.id, type: "dsar_request", title: `${r.kind} request`, createdAt: r.submittedAt, updatedAt: r.resolvedAt || r.submittedAt, data: r });
+      }
     }
     const flows = s.flows.get(uid);
-    if (flows) for (const f of flows.values()) {
-      rows.push({ id: f.id, type: "data_flow", title: f.destination, createdAt: f.registeredAt, updatedAt: f.updatedAt || f.registeredAt, data: f });
+    if (flows) {
+      for (const f of flows.values()) {
+        rows.push({ id: f.id, type: "data_flow", title: f.destination, createdAt: f.registeredAt, updatedAt: f.updatedAt || f.registeredAt, data: f });
+      }
     }
     const retention = s.retention.get(uid);
-    if (retention) for (const [category, v] of retention.entries()) {
-      rows.push({ id: `retention_${category}`, type: "retention_policy", title: category, createdAt: v.updatedAt, updatedAt: v.updatedAt, data: { category, ...v } });
+    if (retention) {
+      for (const [category, v] of retention.entries()) {
+        rows.push({ id: `retention_${category}`, type: "retention_policy", title: category, createdAt: v.updatedAt, updatedAt: v.updatedAt, data: { category, ...v } });
+      }
     }
     const sharing = s.lensSharing.get(uid);
-    if (sharing) for (const [lensId, v] of sharing.entries()) {
-      rows.push({ id: `sharing_${lensId}`, type: "lens_sharing", title: lensId, createdAt: v.updatedAt, updatedAt: v.updatedAt, data: { lensId, ...v } });
+    if (sharing) {
+      for (const [lensId, v] of sharing.entries()) {
+        rows.push({ id: `sharing_${lensId}`, type: "lens_sharing", title: lensId, createdAt: v.updatedAt, updatedAt: v.updatedAt, data: { lensId, ...v } });
+      }
     }
     const dpo = s.dpo.get(uid);
     if (dpo) {

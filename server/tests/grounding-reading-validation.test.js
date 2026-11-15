@@ -10,6 +10,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { compileFunction } from "node:vm";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -32,9 +33,9 @@ function makeHarness() {
     },
   };
   let n = 0;
-  const factory = new Function(
-    "ensureGroundingEngine", "STATE", "uid", "nowISO", "saveStateDebounced",
+  const factory = compileFunction(
     `return (${fnSrc});`,
+    ["ensureGroundingEngine", "STATE", "uid", "nowISO", "saveStateDebounced"],
   );
   const fn = factory(
     () => {},

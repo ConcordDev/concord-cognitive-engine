@@ -86,7 +86,7 @@ function enumerateRoutes() {
         // Mounted router: recover its mount prefix from the layer regexp.
         let mount = "";
         const src = layer.regexp?.source || "";
-        const m = /^\/\^\\\/(.*?)\\\/\?\(\?\=/.exec(src) || /^\/\^\\\/(.*?)\\\/\?\$/.exec(src);
+        const m = /^\/\^\\\/(.*?)\\\/\?\(\?=/.exec(src) || /^\/\^\\\/(.*?)\\\/\?\$/.exec(src);
         if (m) mount = "/" + m[1].replace(/\\\//g, "/");
         walk(layer.handle.stack, prefix + mount);
       }

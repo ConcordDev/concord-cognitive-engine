@@ -120,9 +120,11 @@ describe("calc sheet (GB-1534)", () => {
     for (let i = 0; i < size; i++) { reserve(6, i); reserve(i, 6); }
     reserve(size - 8, 8);
     const CENTERS = { 1: [], 2: [6, 18], 3: [6, 22], 4: [6, 26], 5: [6, 30], 6: [6, 34], 7: [6, 22, 38], 8: [6, 24, 42], 9: [6, 26, 46], 10: [6, 28, 50] };
-    for (const r of CENTERS[version]) for (const c of CENTERS[version]) {
-      if ((r === 6 && c === 6) || (r === 6 && c === size - 7) || (r === size - 7 && c === 6)) continue;
-      for (let dr = -2; dr <= 2; dr++) for (let dc = -2; dc <= 2; dc++) reserve(r + dr, c + dc);
+    for (const r of CENTERS[version]) {
+      for (const c of CENTERS[version]) {
+        if ((r === 6 && c === 6) || (r === 6 && c === size - 7) || (r === size - 7 && c === 6)) continue;
+        for (let dr = -2; dr <= 2; dr++) for (let dc = -2; dc <= 2; dc++) reserve(r + dr, c + dc);
+      }
     }
     for (let i = 0; i < 9; i++) { reserve(8, i); reserve(i, 8); }
     for (let i = 0; i < 8; i++) reserve(8, size - 1 - i);
