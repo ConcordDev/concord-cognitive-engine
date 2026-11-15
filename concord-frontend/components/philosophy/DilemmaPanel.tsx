@@ -249,7 +249,7 @@ export function DilemmaPanel() {
       if (reply) {
         setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2));
         ok('Synthesis ready.');
-      } else err('Agent returned empty.');
+      } else err('The assistant sent back no reply. Try again.');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }

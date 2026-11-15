@@ -137,7 +137,7 @@ export function MentorshipActionPanel() {
       const task = `Mentor coaching brief. ${matchResult ? `Pair: ${matchResult.mentor} → ${matchResult.mentee} (${matchResult.compatibility} match).` : ''} ${progResult ? `Progress: ${progResult.completionRate}% goals, ${progResult.momentum} momentum.` : ''} ${fbResult ? `Feedback ${fbResult.avgRating}/5.` : ''} ${planResult ? `Targeting ${planResult.targetRole} in ${planResult.timelineWeeks}wk.` : ''} Suggest one concrete topic for next session + one stretch challenge. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
       const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Brief ready.'); } else err('Agent returned empty.');
+      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Brief ready.'); } else err('The assistant sent back no reply. Try again.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 

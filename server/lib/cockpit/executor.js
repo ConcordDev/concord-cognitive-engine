@@ -81,7 +81,8 @@ export async function runTool(a) {
   try {
     const timeout = new Promise((resolve) => {
       timer = setTimeout(() => resolve({ ok: false, reason: "timeout", error: "This step ran out of time." }), wall);
-      if (typeof timer.unref === "function") timer.unref();
+      // Deliberately NOT unref'd: the finally block clears it, and an unref'd timer lets the event loop
+      // drain while a never-answering tool is awaited, which aborts the run instead of timing the step out.
     });
     // Desk seam (refused in production): the first call of this tool in this run never answers in time.
     const slow = deskSlowThisCall(a.run.id, a.call.tool);
