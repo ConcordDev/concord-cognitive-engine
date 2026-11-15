@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, fireEvent } from '@testing-library/react';
+import { render, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 
 const { lensRun, authUser } = vi.hoisted(() => ({
@@ -37,6 +37,19 @@ vi.mock('@/components/lens/DTUExportButton', () => ({
 }));
 
 import FilmStudiosPage from '@/app/lenses/film-studios/page';
+
+
+// The screen carries two 'Add scene' buttons once a production is open: the page's own
+// scene form and the Production desk's Script panel (efc4a85bc). These tests drive the
+// page's own form, so pick the one outside the desk region.
+const pageAddScene = (view: ReturnType<typeof render>) =>
+  view.getAllByRole('button', { name: 'Add scene' }).find((b) => !b.closest('[aria-label="Production desk"]')) as HTMLElement;
+const findPageAddScene = (view: ReturnType<typeof render>) =>
+  waitFor(() => {
+    const b = view.queryAllByRole('button', { name: 'Add scene' }).find((x) => !x.closest('[aria-label="Production desk"]'));
+    if (!b) throw new Error('page Add scene not found');
+    return b as HTMLElement;
+  });
 
 function listed(projects: { id: string; title: string }[]) {
   return { data: { ok: true, result: { projects, count: projects.length }, error: null } };
@@ -105,7 +118,7 @@ describe('film studios production', () => {
     fireEvent.click(view.getByRole('button', { name: '+ New production' }));
     expect(await view.findByRole('button', { name: 'Door production' })).toHaveAttribute('aria-pressed', 'true');
     expect(view.getByText('Nothing selected.')).toBeInTheDocument();
-    expect(view.getByRole('button', { name: 'Add scene' })).toBeEnabled();
+    expect(await findPageAddScene(view)).toBeEnabled();
     const save = lensRun.mock.calls.find((call) => call[1] === 'project-create');
     expect(save?.[0]).toBe('film-studios');
     expect(save?.[2]).toEqual({ title: 'Door production' });
@@ -138,9 +151,9 @@ describe('film studios production', () => {
     });
     const view = render(<FilmStudiosPage />);
     fireEvent.click(await view.findByRole('button', { name: 'Door production' }));
-    expect(await view.findByRole('button', { name: 'Add scene' })).toBeEnabled();
-    fireEvent.click(view.getByRole('button', { name: 'Add scene' }));
-    fireEvent.click(view.getByRole('button', { name: 'Add scene' }));
+    expect(await findPageAddScene(view)).toBeEnabled();
+    fireEvent.click(pageAddScene(view));
+    fireEvent.click(pageAddScene(view));
     expect(await view.findByRole('alert')).toHaveTextContent(/A location is required/);
     expect(lensRun.mock.calls.map((call) => call[1])).not.toContain('scene-add');
   });
@@ -166,11 +179,11 @@ describe('film studios production', () => {
     });
     const view = render(<FilmStudiosPage />);
     fireEvent.click(await view.findByRole('button', { name: 'Door production' }));
-    fireEvent.click(await view.findByRole('button', { name: 'Add scene' }));
+    fireEvent.click(await findPageAddScene(view));
     fireEvent.change(view.getByTestId('film-location'), { target: { value: '  Kitchen  ' } });
     fireEvent.change(view.getByTestId('film-intext'), { target: { value: 'EXT' } });
     fireEvent.change(view.getByTestId('film-timeofday'), { target: { value: 'NIGHT' } });
-    fireEvent.click(view.getByRole('button', { name: 'Add scene' }));
+    fireEvent.click(pageAddScene(view));
     expect(await view.findByRole('heading', { name: 'EXT. Kitchen - NIGHT' })).toBeInTheDocument();
     expect(view.queryByText('Nothing selected.')).toBeNull();
     expect(view.getByTestId('film-scene-location')).toHaveTextContent('Kitchen');

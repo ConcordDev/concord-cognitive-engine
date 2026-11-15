@@ -40,7 +40,7 @@ vi.mock('framer-motion', () => ({
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
-import { AffectSessionProvider } from '../AffectSessionContext';
+import { AffectSessionProvider, useAffectSession } from '../AffectSessionContext';
 import { AffectStateStrip } from '../AffectStateStrip';
 import { DimensionsPanel } from '../DimensionsPanel';
 
@@ -66,13 +66,25 @@ const ADMIN = { id: 'op1', username: 'op', email: 'op@example.com', role: 'admin
 afterEach(() => cleanup());
 
 describe('AffectStateStrip session controls (FIX-affect-002)', () => {
-  it('a member on the shared default session gets the note, not Reset/Cooldown', async () => {
+  it('a member on a named shared session (default) gets the note, not Reset/Cooldown', async () => {
     authState.user = MEMBER;
     const view = render(<AffectStateStrip />);
     await settleLoaded(view.container);
+    // Naming the shared 'default' session is a deliberate view of someone else's state.
+    fireEvent.change(screen.getByLabelText('Affect session id'), { target: { value: 'default' } });
+    fireEvent.keyDown(screen.getByLabelText('Affect session id'), { key: 'Enter' });
+    await settle();
     expect(buttons()).not.toContain('Reset');
     expect(buttons()).not.toContain('Cooldown');
     expect(view.container.textContent).toContain("Reset and cooldown act on the session's owner");
+  });
+
+  it('a member on the untouched (empty = own) session keeps Reset/Cooldown (FIX-affect-001)', async () => {
+    authState.user = MEMBER;
+    const view = render(<AffectStateStrip />);
+    await settleLoaded(view.container);
+    expect(buttons()).toContain('Reset');
+    expect(buttons()).toContain('Cooldown');
   });
 
   it('a member viewing their own session keeps Reset/Cooldown', async () => {
@@ -97,12 +109,24 @@ describe('AffectStateStrip session controls (FIX-affect-002)', () => {
 });
 
 describe('DimensionsPanel emit gate (FIX-affect-002)', () => {
-  it('a member on the shared session gets the note, not the emitter', async () => {
+  it('a member on a named shared session gets the note, not the emitter', async () => {
     authState.user = MEMBER;
-    const view = render(<DimensionsPanel />);
+    function Foreign() {
+      const { setSessionId } = useAffectSession();
+      React.useEffect(() => { setSessionId('default'); }, [setSessionId]);
+      return null;
+    }
+    const view = render(<><Foreign /><DimensionsPanel /></>);
     await settle();
     expect(buttons()).not.toContain('Emit Event');
     expect(view.container.textContent).toContain('limited to the');
+  });
+
+  it('a member on their own (empty) session keeps the emitter', async () => {
+    authState.user = MEMBER;
+    render(<DimensionsPanel />);
+    await settle();
+    expect(buttons()).toContain('Emit Event');
   });
 
   it('an operator keeps the emitter', async () => {

@@ -71,11 +71,23 @@ describe('RFPlanner', () => {
     const v = await mount();
     for (const t of ['Sites', 'Spectrum', 'Outages / SLA']) {
       await goTab(t);
-      // Deletes are two-step (arm, then Confirm): pass 1 arms every row's delete, pass 2 confirms.
-      await exercise({ passes: 2, text: 'x', skip: new RegExp(`${tabRe.source}|cancel|close|dismiss|clear|^×$`, 'i') });
+      await exercise({ passes: 1, text: 'x', skip: new RegExp(`${tabRe.source}|delete|remove|trash|discard|cancel|close|dismiss|clear|^×$`, 'i') });
       await settle();
     }
-    expect(sent().some((x) => /Delete$/.test(x))).toBe(true);
+    // Deletes are two-step (arm the row's trash, then Confirm) — drive each one explicitly
+    // so a lone arm click can never read as a delete.
+    const deleteOne = async (tab: string, arm: string, macro: string) => {
+      await goTab(tab);
+      await settle();
+      lensRunMock.mockClear();
+      await act(async () => { fireEvent.click(screen.getAllByRole('button', { name: arm })[0]); });
+      expect(sent()).not.toContain(macro); // armed, nothing deleted yet
+      await act(async () => { fireEvent.click(screen.getAllByRole('button', { name: /^Confirm/ })[0]); await new Promise((r) => setTimeout(r, 30)); });
+      expect(sent()).toContain(macro);
+    };
+    await deleteOne('Sites', 'Delete site', 'towerDelete');
+    await deleteOne('Spectrum', 'Delete allocation', 'spectrumDelete');
+    await deleteOne('Outages / SLA', 'Delete outage record', 'outageDelete');
     expect(v.container.textContent?.length).toBeGreaterThan(50);
   });
 
