@@ -26,9 +26,10 @@ async function callMacro<T>(action: string, input: Record<string, unknown>): Pro
 }
 
 type Feedback = { kind: 'ok' | 'err'; text: string } | null;
-type ActionId = 'mw' | 'molarity' | 'ph' | 'dilution' | 'analyze' | 'balance' | 'solution' | 'mint' | 'dm' | 'publish' | 'agent';
+type ActionId = 'eq' | 'mw' | 'molarity' | 'ph' | 'dilution' | 'analyze' | 'balance' | 'solution' | 'mint' | 'dm' | 'publish' | 'agent';
 function pickMessage(e: unknown): string { const ax = e as { response?: { data?: { error?: string } }; message?: string }; return ax?.response?.data?.error ?? ax?.message ?? 'request failed'; }
 
+interface EqResult { fuel: string; phi: number; T0: number; P0: number; status: string; reason?: string; adiabaticFlameTemperatureK?: number; majorProducts?: { species: string; moleFraction: number }[]; verdict?: string; reference?: { case: string; value: number; unit: string; tolerance: number } }
 interface MWComponent { element: string; name?: string; count: number; atomicMass: number; contribution: number; percentMass: number }
 interface MWResult { formula: string; molecularWeight: number; units: string; components: MWComponent[] }
 interface MolarityResult { moles?: number; liters?: number; molarity?: number; formula?: string }
@@ -40,6 +41,11 @@ interface SolutionResult { pH?: number; pOH?: number; nature?: string; type?: st
 
 export function ChemActionPanel() {
   const [formula, setFormula] = useState('');
+  const [eqFuel, setEqFuel] = useState<'CH4' | 'H2'>('CH4');
+  const [eqPhi, setEqPhi] = useState('1');
+  const [eqT0, setEqT0] = useState('300');
+  const [eqP0, setEqP0] = useState('1');
+  const [eqResult, setEqResult] = useState<EqResult | null>(null);
   const [molMoles, setMolMoles] = useState('');
   const [molLiters, setMolLiters] = useState('');
   const [molMolarity, setMolMolarity] = useState('');
@@ -84,6 +90,20 @@ export function ChemActionPanel() {
     try {
       const r = await callMacro<MWResult>('molecular-weight', { formula: formula.trim() });
       if (r.ok && r.result) { setMwResult(r.result); markSigning('mw', r); pipe.publish('chem.mw', r.result, { label: `MW ${r.result.molecularWeight}` }); ok(`MW = ${r.result.molecularWeight} g/mol.`); } else err(r.error ?? 'mw failed');
+    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+  }
+  async function actEquilibrium() {
+    const phi = Number(eqPhi), T0 = Number(eqT0), P0 = Number(eqP0);
+    if (![phi, T0, P0].every(Number.isFinite)) { err('phi, T0 and P0 must be numbers.'); return; }
+    setBusy('eq'); setFeedback(null);
+    try {
+      const r = await callMacro<EqResult>('equilibrium', { fuel: eqFuel, phi, T0, P0 });
+      if (r.ok && r.result) {
+        setEqResult(r.result); markSigning('eq', r);
+        const t = r.result.adiabaticFlameTemperatureK;
+        if (typeof t === 'number') { pipe.publish('chem.equilibrium', r.result, { label: `T_ad ${t} K` }); ok(`T_ad = ${t} K.`); }
+        else err(r.result.reason ?? 'the chemistry kernel did not compute a result');
+      } else err(r.error ?? 'equilibrium failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMolarity() {
@@ -218,6 +238,7 @@ export function ChemActionPanel() {
   }
 
   const actions = [
+    { id: 'eq' as ActionId, label: 'Flame T', desc: 'equilibrium (Cantera)', icon: FlaskConical, accent: '#ef4444', handler: actEquilibrium },
     { id: 'mw' as ActionId, label: 'MW', desc: 'molecular-weight', icon: Scale, accent: '#10b981', handler: actMW },
     { id: 'molarity' as ActionId, label: 'Molarity', desc: 'calc-molarity M=mol/L', icon: Beaker, accent: '#3b82f6', handler: actMolarity },
     { id: 'ph' as ActionId, label: 'pH', desc: 'calc-ph from conc.', icon: FlaskConical, accent: '#f59e0b', handler: actPh },
@@ -308,6 +329,14 @@ export function ChemActionPanel() {
         </div>
       </div>
 
+      <div className="grid grid-cols-4 gap-2">
+        <div className="text-[10px] uppercase tracking-wider text-red-400 font-semibold col-span-4">Flame temperature (Turns 3e reference at CH4, phi 1, 300 K, 1 atm)</div>
+        <select aria-label="Equilibrium fuel" value={eqFuel} onChange={(e) => setEqFuel(e.target.value as 'CH4' | 'H2')} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white"><option value="CH4">CH4</option><option value="H2">H2</option></select>
+        <input type="text" aria-label="Equivalence ratio phi" value={eqPhi} onChange={(e) => setEqPhi(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="phi" />
+        <input type="text" aria-label="Initial temperature K" value={eqT0} onChange={(e) => setEqT0(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="T0 K" />
+        <input type="text" aria-label="Initial pressure atm" value={eqP0} onChange={(e) => setEqP0(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="P0 atm" />
+      </div>
+
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
         {actions.map(a => {
           const Icon = a.icon; const isBusy = busy === a.id;
@@ -330,6 +359,16 @@ export function ChemActionPanel() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
+        {eqResult && (
+          <div className="rounded-md border border-red-500/30 bg-red-500/5 p-2.5" data-testid="eq-result">
+            <div className="text-[10px] uppercase tracking-wider text-red-300 font-semibold">{eqResult.fuel} / air · phi {eqResult.phi} · {eqResult.T0} K · {eqResult.P0} atm</div>
+            {typeof eqResult.adiabaticFlameTemperatureK === 'number'
+              ? <div className="text-2xl font-bold text-red-300">{eqResult.adiabaticFlameTemperatureK} <span className="text-xs text-zinc-400">K adiabatic flame</span></div>
+              : <div className="text-sm font-semibold text-zinc-300">Not computed{eqResult.reason ? ` — ${eqResult.reason}` : ''}</div>}
+            <SigningStatus info={signing.eq} className="my-1" />
+            {eqResult.reference && <div className="text-[10px] text-zinc-400">Reference: {eqResult.reference.case} — {eqResult.reference.value} ± {eqResult.reference.tolerance} {eqResult.reference.unit}{eqResult.verdict ? ` · ${eqResult.verdict.replace(/_/g, ' ')}` : ''}</div>}
+          </div>
+        )}
         {mwResult && (
           <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-emerald-300 font-semibold">{mwResult.formula}</div>

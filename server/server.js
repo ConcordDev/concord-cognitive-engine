@@ -147,6 +147,7 @@ import { resolvePiperVoice } from "./lib/voice-piper-voice.js";
 import { lensRunParams as _lensRunParams, peelRedundantArtifactWrapper as _peelRedundantArtifactWrapper } from "./lib/lens-input-normalize.js";
 import { httpErrorFromLensAction as _httpErrorFromLensAction } from "./lib/lens-action-http.js";
 import { shapeLensRunHttp as _shapeLensRunHttp, respondMacroResult as _respondMacroResult } from "./lib/lens-run-http.js";
+import { applyReceiptDeclaration as _applyReceiptDeclaration } from "./lib/receipts/declarations.js";
 import { checkTitle as boundsCheckTitle, checkText as boundsCheckText } from "./lib/bounds.js";
 import { isUserNotification as _isUserNotification } from "./lib/notification-queue.js";
 import { createLensRunLogger as _createLensRunLogger } from "./lib/lens-run-log.js";
@@ -52304,7 +52305,8 @@ app.post("/api/lens/run", async (req, res) => {
         emitMacroLife("macro:completed", { ok: false, ms: Date.now() - _lifeStartedAt, error: _httpErr.body.error });
         return res.status(_httpErr.status).json(_httpErr.body);
       }
-      const shaped = _shapeLensRunHttp(lensRaw);
+      // Receipt declarations hook: the ONE signing decision (lib/receipts/declarations.js). Never fails the solve.
+      const shaped = _shapeLensRunHttp(_applyReceiptDeclaration({ domain, action, inputs: rest, raw: lensRaw, db }));
       const result = shaped.body.ok ? shaped.body.result : shaped.body;
       _lrNote("lens_action", shaped.body.ok !== false, shaped.body.error, { reason: shaped.body.reason, code: shaped.body.code });
       emitMacroLife("macro:completed", { ok: shaped.body.ok !== false, ms: Date.now() - _lifeStartedAt });
@@ -52331,7 +52333,7 @@ app.post("/api/lens/run", async (req, res) => {
         emitMacroLife("macro:completed", { ok: false, ms: Date.now() - _lifeStartedAt, error: _macroHttpErr.body.error });
         return res.status(_macroHttpErr.status).json(_macroHttpErr.body);
       }
-      const shaped = _shapeLensRunHttp(macroRaw);
+      const shaped = _shapeLensRunHttp(_applyReceiptDeclaration({ domain, action, inputs: rest, raw: macroRaw, db }));
       const result = shaped.body.ok ? shaped.body.result : shaped.body;
       _lrNote("macro", shaped.body.ok !== false, shaped.body.error, { reason: shaped.body.reason, code: shaped.body.code });
       emitMacroLife("macro:completed", { ok: shaped.body.ok !== false, ms: Date.now() - _lifeStartedAt });

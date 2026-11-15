@@ -121,7 +121,7 @@ function MWTab() {
       });
       if (seq !== calcSeq.current) return; // a newer Calc superseded this response
       const outer = r.data as { ok?: boolean; error?: string; result?: unknown };
-      // The handler envelope (result + signed/reason/receiptId siblings) rides in outer.result.
+      // The shaped handler result rides in outer.result; signed/signingReason/receiptId are merged inside it by the server's declarations hook.
       const inner = (outer.result && typeof outer.result === 'object' && 'ok' in (outer.result as object)
         ? outer.result : outer) as { ok?: boolean; error?: string; result?: MWResult };
       if (outer.ok && inner.ok !== false) { setResult(inner.result || null); setSigning(inner.result ? signingInfoFrom(inner) : null); }

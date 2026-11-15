@@ -1,7 +1,9 @@
 'use client';
 
-// Signed / unsigned verdict rendered inline with a chem answer. The fields
-// are siblings of `result` on the lens/run envelope (not inside it). Unsigned
+// Signed / unsigned verdict rendered inline with a chem answer. The server's
+// declarations hook (POST /api/lens/run) merges the signing fields INSIDE
+// `result` (signed, saved, signingReason, receiptId, receiptUrl) — the HTTP
+// shaper drops siblings of `result`. signingInfoFrom reads either nesting. Unsigned
 // is deliberately the louder state: a number without a verified reference and
 // validity envelope must not be relied on for sign-off.
 
@@ -17,6 +19,13 @@ const REASON_TEXT: Record<string, string> = {
   missing_reference: 'no verified reference for this calculation',
   missing_envelope: 'no declared validity envelope',
   malformed_reference: 'reference check could not be evaluated',
+  missing_declaration: 'no cited reference case is declared for this calculation',
+  llm_backed_action: 'AI-generated answer, never signed',
+  incomplete_declaration: 'its reference/envelope declaration is incomplete',
+  out_of_envelope: 'inputs are outside the validated range',
+  not_computed: 'the solver did not compute a result',
+  reference_mismatch: 'the result disagrees with its own reference check',
+  no_signing_key: 'this server has no signing key',
 };
 
 export function describeUnsignedReason(reason?: string): string {
@@ -49,12 +58,14 @@ export function SigningStatus({ info, className = '' }: { info?: SigningInfo | n
   );
 }
 
-/** Pull the signing fields off a lens/run envelope. Absent `signed` is treated as unsigned. */
+/** Pull the signing fields off a lens/run response (fields live inside `result`; top level is also read). */
 export function signingInfoFrom(env: unknown): SigningInfo {
-  const e = (env && typeof env === 'object' ? env : {}) as Record<string, unknown>;
+  const top = (env && typeof env === 'object' ? env : {}) as Record<string, unknown>;
+  const inner = top.result && typeof top.result === 'object' ? (top.result as Record<string, unknown>) : null;
+  const e = inner && ('signed' in inner || 'signingReason' in inner) ? inner : top;
   return {
     signed: e.signed === true,
-    reason: typeof e.reason === 'string' ? e.reason : undefined,
+    reason: typeof e.signingReason === 'string' ? e.signingReason : typeof e.reason === 'string' ? e.reason : undefined,
     saveError: typeof e.saveError === 'string' ? e.saveError : undefined,
     receiptId: typeof e.receiptId === 'string' ? e.receiptId : undefined,
     receiptUrl: typeof e.receiptUrl === 'string' ? e.receiptUrl : undefined,

@@ -1,5 +1,6 @@
 // The signed/unsigned verdict must render inline with the molecular-weight
-// answer, read from the lens/run envelope (siblings of `result`).
+// answer. The server's declarations hook merges the signing fields INSIDE
+// `result` (the HTTP shaper drops siblings); the legacy sibling shape still reads.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, cleanup, waitFor } from '@testing-library/react';
 import React from 'react';
@@ -24,18 +25,19 @@ import { ChemWorkbench } from '@/components/chem/ChemWorkbench';
 import { SigningStatus, signingInfoFrom, describeUnsignedReason } from '@/components/chem/SigningStatus';
 
 const mw = { formula: 'H2O', molecularWeight: 18.015, units: 'g/mol', components: [] };
-const envelope = (extra: Record<string, unknown>) => ({ data: { ok: true, result: { ok: true, result: mw, ...extra } } });
+const envelope = (extra: Record<string, unknown>) => ({ data: { ok: true, result: { ...mw, ...extra } } });
+const legacyEnvelope = (extra: Record<string, unknown>) => ({ data: { ok: true, result: { ok: true, result: mw, ...extra } } });
 
 describe('chem signing status, inline with the answer', () => {
   beforeEach(() => postMock.mockReset());
   afterEach(() => cleanup());
 
   it('unsigned envelope: warning + reason shown next to the number', async () => {
-    postMock.mockResolvedValue(envelope({ signed: false, saved: false, reason: 'outside_envelope:no_standard_atomic_weight:Tc' }));
+    postMock.mockResolvedValue(envelope({ signed: false, saved: false, signingReason: 'out_of_envelope:formula contains Tc' }));
     render(React.createElement(ChemWorkbench, { open: true, onClose: () => {} }));
     const warn = await screen.findByTestId('signing-status-unsigned');
     expect(warn.textContent).toContain("Unsigned — no verified reference; don't rely on this for sign-off");
-    expect(warn.textContent).toContain('no standard atomic weight');
+    expect(warn.textContent).toContain('outside the validated range');
     expect(warn.textContent).toContain('Tc');
     expect(screen.queryByTestId('signing-status-signed')).toBeNull();
     // same result card as the number
@@ -53,9 +55,21 @@ describe('chem signing status, inline with the answer', () => {
   });
 
   it('an envelope with no signing fields is treated as unsigned, never as signed', async () => {
-    postMock.mockResolvedValue({ data: { ok: true, result: { ok: true, result: mw } } });
+    postMock.mockResolvedValue({ data: { ok: true, result: mw } });
     render(React.createElement(ChemWorkbench, { open: true, onClose: () => {} }));
     await waitFor(() => expect(screen.getByTestId('signing-status-unsigned')).toBeTruthy());
+  });
+
+  it('legacy sibling-shaped envelope still reads signed', async () => {
+    postMock.mockResolvedValue(legacyEnvelope({ signed: true, saved: true, receiptId: 'rcpt_legacy01' }));
+    render(React.createElement(ChemWorkbench, { open: true, onClose: () => {} }));
+    expect((await screen.findByTestId('signing-status-signed')).textContent).toContain('rcpt_legacy01');
+  });
+
+  it('declarations reasons read as plain text', () => {
+    expect(describeUnsignedReason('missing_declaration')).toContain('no cited reference case');
+    expect(describeUnsignedReason('out_of_envelope:phi 3 above 2')).toBe('inputs are outside the validated range (phi 3 above 2)');
+    expect(signingInfoFrom({ result: { signed: false, signingReason: 'not_computed:x' } }).reason).toBe('not_computed:x');
   });
 
   it('SigningStatus unit: reasons are human-readable and null info renders nothing', () => {
