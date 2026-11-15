@@ -11,7 +11,20 @@
 // no mocks, no shape-only checks.
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
-import { lensRun, depthCtx } from "./_harness.js";
+import { lensRun, depthCtx, load } from "./_harness.js";
+
+// A pact beneficiary must be a real user (a620c7658: beneficiary_unresolved
+// otherwise), so seed the beneficiary into the in-memory users table.
+async function seedUser(userId) {
+  const { STATE } = await load();
+  const db = STATE.db;
+  if (!db || db.prepare("SELECT id FROM users WHERE id = ?").get(userId)) return;
+  const username = String(userId).replace(/[^a-z0-9]/gi, "").slice(0, 24) || `u${Date.now().toString(36)}`;
+  db.prepare(
+    `INSERT INTO users (id, username, email, password_hash, created_at) VALUES (?, ?, ?, 'x', datetime('now'))`
+  ).run(userId, username, `${username}@insurance.test`);
+}
+
 
 describe("insurance — clients, carriers, statements, assets", () => {
   let ctx;
@@ -165,7 +178,7 @@ describe("insurance — policy lifecycle against the untested macros", () => {
 
 describe("insurance — claims, FNOL, pacts, reminders", () => {
   let ctx;
-  before(async () => { ctx = await depthCtx("q63-insurance-claims"); });
+  before(async () => { ctx = await depthCtx("q63-insurance-claims"); await seedUser("beneficiary-1"); });
 
   it("claim-file -> claim-list -> claim-delete round-trip", async () => {
     const filed = await lensRun("insurance", "claim-file", { params: { carrier: "SafeCo", description: "Water damage", kind: "property" } }, ctx);

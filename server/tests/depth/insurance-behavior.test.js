@@ -12,7 +12,20 @@
 // carrier broker API key — returns ok:false by design), nothing LLM/network.
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
-import { lensRun, depthCtx } from "./_harness.js";
+import { lensRun, depthCtx, load } from "./_harness.js";
+
+// A pact beneficiary must be a real user (a620c7658: beneficiary_unresolved
+// otherwise), so seed the beneficiary into the in-memory users table.
+async function seedUser(userId) {
+  const { STATE } = await load();
+  const db = STATE.db;
+  if (!db || db.prepare("SELECT id FROM users WHERE id = ?").get(userId)) return;
+  const username = String(userId).replace(/[^a-z0-9]/gi, "").slice(0, 24) || `u${Date.now().toString(36)}`;
+  db.prepare(
+    `INSERT INTO users (id, username, email, password_hash, created_at) VALUES (?, ?, ?, 'x', datetime('now'))`
+  ).run(userId, username, `${username}@insurance.test`);
+}
+
 
 describe("insurance — calc contracts (exact computed values)", () => {
   it("coverageGap: enumerates missing coverage types from held policies", async () => {
@@ -222,6 +235,7 @@ describe("insurance — inheritance-pact split + handshake (shared ctx)", () => 
   before(async () => {
     insured = await depthCtx("insurance-pact-insured");
     bene = await depthCtx("insurance-pact-bene");
+    await seedUser(bene.actor.userId);
   });
 
   it("pact-write: rejects self-beneficiary (suicide-pact guard)", async () => {
@@ -231,6 +245,26 @@ describe("insurance — inheritance-pact split + handshake (shared ctx)", () => 
     }, insured);
     assert.equal(self.result.ok, false);
     assert.match(self.result.error, /self_pact_blocked/);
+    // The guard fires even when the insured IS a resolvable user, and even
+    // when the self entry is hidden among real beneficiaries.
+    await seedUser(insured.actor.userId);
+    const mixed = await lensRun("insurance", "pact-write", {
+      params: { payoutSparks: 100, premiumSparks: 10,
+        beneficiaries: [{ userId: bene.actor.userId, sharePct: 50 }, { userId: insured.actor.userId, sharePct: 50 }] },
+    }, insured);
+    assert.equal(mixed.result.ok, false);
+    assert.match(mixed.result.error, /self_pact_blocked/);
+    const list = await lensRun("insurance", "pact-list", {}, insured);
+    assert.deepEqual(list.result.written, [], "a refused self-pact is never stored");
+  });
+
+  it("pact-write: rejects a beneficiary who is not a real user", async () => {
+    const r = await lensRun("insurance", "pact-write", {
+      params: { payoutSparks: 100, premiumSparks: 10,
+        beneficiaries: [{ userId: "no-such-user-xyz", sharePct: 100 }] },
+    }, insured);
+    assert.equal(r.result.ok, false);
+    assert.equal(r.result.error, "beneficiary_unresolved");
   });
 
   it("pact-write → pact-respond → pact-record-payout: payout splits by accepted share", async () => {

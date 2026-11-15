@@ -1391,6 +1391,14 @@ export default function registerInsuranceActions(register) {
     const beneficiaries = normaliseBeneficiaries(params.beneficiaries, params.beneficiaryUserId);
     if (beneficiaries && beneficiaries.error) return { ok: false, error: "invalid_input", message: beneficiaries.error };
     if (!beneficiaries.length) return { ok: false, error: "at least one beneficiary required" };
+    // Suicide-pact prevention: insured cannot be a beneficiary of their own pact.
+    // Checked BEFORE the users-table lookup below so the guard fires on its own
+    // terms regardless of whether the insured's row resolves (it previously ran
+    // after, so an unresolved insured surfaced as beneficiary_unresolved and the
+    // self-pact rule was never the one that refused).
+    if (beneficiaries.some((b) => b.userId === userId)) {
+      return { ok: false, error: "self_pact_blocked: beneficiary cannot equal insured" };
+    }
     if (typeof ctx?.db?.prepare === "function") {
       for (const b of beneficiaries) {
         let row = true;
@@ -1398,10 +1406,6 @@ export default function registerInsuranceActions(register) {
         catch { row = true; }
         if (!row) return { ok: false, error: "beneficiary_unresolved" };
       }
-    }
-    // Suicide-pact prevention: insured cannot be a beneficiary of their own pact.
-    if (beneficiaries.some((b) => b.userId === userId)) {
-      return { ok: false, error: "self_pact_blocked: beneficiary cannot equal insured" };
     }
 
     const freq = ["upfront", "weekly", "monthly"].includes(params.premiumFrequency)
