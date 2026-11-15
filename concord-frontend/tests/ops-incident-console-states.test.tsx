@@ -37,9 +37,12 @@ vi.mock('@/components/viz', () => ({
 // read text content, not animation, so motion is a passthrough here.
 vi.mock('framer-motion', async () => {
   const React = await import('react');
-  const passthrough = (tag: string) =>
-    React.forwardRef(({ children, ...props }: Record<string, unknown>, ref: unknown) =>
+  const passthrough = (tag: string) => {
+    const Passthrough = React.forwardRef(({ children, ...props }: Record<string, unknown>, ref: unknown) =>
       React.createElement(tag, { ...props, ref }, children as React.ReactNode));
+    Passthrough.displayName = `motion.${tag}`;
+    return Passthrough;
+  };
   return {
     motion: new Proxy({}, { get: (_t, prop: string) => passthrough(prop) }),
     AnimatePresence: ({ children }: { children?: React.ReactNode }) =>

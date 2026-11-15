@@ -20,6 +20,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import {
   Users, Repeat, Mail, Receipt, Globe, HeartHandshake, Trophy,
   Plus, Trash2, Loader2, X, ChevronDown, ChevronRight,
@@ -592,7 +593,7 @@ function CommsTab({ donors, reloadDonors }: { donors: Donor[]; reloadDonors: () 
         )}
         {feedback && <p role="status" className={`text-[11px] ${feedback.startsWith('Sent ') ? 'text-emerald-400' : 'text-amber-300'}`}>{feedback}</p>}
         {feedback === 'Not sent: connect Gmail' && (
-          <p className="text-[11px] text-zinc-300">Sending runs through your own Gmail. <a href="/lenses/integrations" className="text-sky-300 underline">Connect Gmail in the Integrations lens</a>, then come back — your draft is kept here.</p>
+          <p className="text-[11px] text-zinc-300">Sending runs through your own Gmail. <Link href="/lenses/integrations" className="text-sky-300 underline">Connect Gmail in the Integrations lens</Link>, then come back — your draft is kept here.</p>
         )}
       </div>
     </div>

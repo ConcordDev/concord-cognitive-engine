@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Phone } from 'lucide-react';
 
 /**
@@ -22,9 +23,9 @@ export function CrisisResources() {
         <strong className="text-rose-100">741741</strong> for the Crisis Text Line. In immediate
         danger, call your local emergency number (911 US · 112 EU). More support lines, including
         international numbers, are in the{' '}
-        <a href="/lenses/mental-health" className="underline decoration-rose-300/60 underline-offset-2 hover:text-rose-100">
+        <Link href="/lenses/mental-health" className="underline decoration-rose-300/60 underline-offset-2 hover:text-rose-100">
           Mental Health lens
-        </a>
+        </Link>
         .
       </p>
     </div>
