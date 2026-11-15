@@ -10,10 +10,6 @@ from concord_walker.records import RunRecorder
 from concord_walker.tickets import TicketStore
 from concord_walker.checks import LensWalk
 from concord_walker.reverify import Reverifier, status_update
-
-READ_PHASES = ["reach", "surface", "tabs", "keyboard", "openers", "export", "contrast", "mobile"]
-
-
 class RunLock:
     def __init__(self, path):
         self.path = path
@@ -35,6 +31,9 @@ class RunLock:
             os.remove(self.path)
         except OSError:
             pass
+
+
+READ_PHASES = ["reach", "surface", "tabs", "keyboard", "openers", "export", "contrast", "mobile"]
 
 
 def load_inventory(cfg):
@@ -164,16 +163,42 @@ def write_summary(rec, summary, left, dry):
 
 def cmd_reverify(args, cfg, log):
     from playwright.sync_api import sync_playwright
+    from concord_walker import sha_gate
+    from concord_walker.ledger import WalkerLedger
     inv = load_inventory(cfg)
     rid = run_id() + "-reverify"
-    rec = RunRecorder(cfg, rid, dry=args.dry_run)
+    # WALK-01 sha gate: a mismatch (or an unreadable live sha) forces the run dry —
+    # it continues and reports, but writes 0 status rows anywhere.
+    gate_dry = False
+    live = None
+    if getattr(args, "expect_sha", None):
+        g = sha_gate.gate(args.expect_sha, cfg["base_url"])
+        live = g["live"]
+        log("sha gate: %s (live=%s via %s)" % (g["reason"], g["live"], g["source"]))
+        if not g["ok"]:
+            gate_dry = True
+    dry = args.dry_run or gate_dry
+    rec = RunRecorder(cfg, rid, dry=dry)
     log.path = os.path.join(rec.run_dir, "walker.log")
-    store = TicketStore(cfg["audit_dir"])
+    # WALK-01 ingest: the fold at the pinned deploy sha when --from-repo is given;
+    # the legacy single-file read otherwise.
+    fold = None
+    if getattr(args, "from_repo", None):
+        from concord_walker.fold import extract_from_git
+        if not getattr(args, "deploy_sha", None):
+            raise SystemExit("--from-repo needs --deploy-sha (the fold is read at a pinned sha)")
+        fold = extract_from_git(args.from_repo, args.deploy_sha)
+        log("fold @ %s: %s" % (args.deploy_sha, fold.counts()))
+        with open(os.path.join(rec.run_dir, "canonical.jsonl"), "w") as f:
+            f.write(fold.canonical_text())
+    store = TicketStore(cfg["audit_dir"], fold=fold)
+    ledger = WalkerLedger(os.path.join(cfg.get("records_dir") or os.path.join(cfg["_walker_dir"], "records"),
+                                       "walker.jsonl"), dry=dry)
     if not has_session(cfg, "t1"):
         raise SystemExit("no saved session for zuko_qa_t1; run walker.py login --account t1 --headed first")
     ids = list(args.ids)
     if args.from_status:
-        ids += [i for i in store.base if store.status(i) == args.from_status]
+        ids += [i for i in store.base if store.status(i) == args.from_status.upper()]
     results = []
     with RunLock(os.path.join(cfg.get("runs_dir") or cfg["_walker_dir"], "run.lock")), sync_playwright() as pw:
         browser = pw.chromium.launch(channel="chrome", headless=True, args=["--disable-dev-shm-usage"])
@@ -182,6 +207,16 @@ def cmd_reverify(args, cfg, log):
             for tid in ids:
                 if not wait_for_memory(cfg, log):
                     break
+                if store.lane(tid) == "ci":
+                    # WALK-01 routing: non-lens code tickets verify via the WALK-06
+                    # CI-evidence lane at the deploy sha — never walked as lens None.
+                    res = {"id": tid, "verdict": "CI_LANE", "method": "ci-evidence",
+                           "notes": "non-lens code ticket; routed to the WALK-06 CI lane"}
+                    results.append(res)
+                    log("  => %s CI_LANE (WALK-06)" % tid)
+                    with open(os.path.join(rec.run_dir, "reverify.jsonl"), "a") as f:
+                        f.write(json.dumps(res) + "\n")
+                    continue
                 try:
                     res = rv.run(tid)
                 except AccountMismatch as e:
@@ -191,20 +226,25 @@ def cmd_reverify(args, cfg, log):
                 log("  => %s %s (%s)" % (tid, res["verdict"], res.get("notes", "")[:140]))
                 with open(os.path.join(rec.run_dir, "reverify.jsonl"), "a") as f:
                     f.write(json.dumps(res) + "\n")
-                if args.apply_status and not args.dry_run:
+                if args.apply_status:
                     upd = status_update(store, res, cfg["tester_name"])
                     if upd:
-                        store.append_update(upd)
-                        log("  appended retest_update %s -> %s" % (tid, upd["status"]))
+                        # WALK-01: verdicts land ONLY in records/walker.jsonl (union
+                        # schema); fix_tickets.jsonl is never written by a verdict.
+                        acct = "admin" if res.get("lens") in cfg.get("admin_lenses", []) else "t1"
+                        row = ledger.write_verdict(res, upd, live_sha=(live or getattr(args, "deploy_sha", None) or "unknown"),
+                                                   run_id=rid, account=acct)
+                        log("  ledger %s -> %s%s" % (tid, upd["status"], " (dry: not written)" if dry else ""))
                     elif res["verdict"] == "FIXED":
                         rec.judgment(res["lens"], "fixed_not_claimed", "%s no longer reproduces but no builder marked it FIXED_PENDING_VERIFY; close?" % tid,
                                      res.get("evidence"), ticket_id=tid)
             # smoke findings from the lenses walked
             for (lens, _w), lw in rv.walks.items():
-                file_findings(store, rec, lw.findings, args.dry_run, log, cfg["tester_name"])
+                file_findings(store, rec, lw.findings, dry, log, cfg["tester_name"])
         finally:
             browser.close()
             rec.flush_leftovers()
+    log("ledger: %d verdict row(s) written, %d suppressed (dry)" % (ledger.written, ledger.suppressed))
     with open(os.path.join(rec.run_dir, "REVERIFY.md"), "w") as f:
         f.write("# Re-verify %s (%s)\n\n| ticket | lens | prior | verdict | method | notes |\n|---|---|---|---|---|---|\n" % (rid, human_et()))
         for r in results:
@@ -248,8 +288,11 @@ def main():
     p = sub.add_parser("reverify", help="replay tickets by id")
     p.add_argument("ids", nargs="*")
     p.add_argument("--from-status", help="also take every ticket currently in this status, e.g. FIXED_PENDING_VERIFY")
+    p.add_argument("--from-repo", help="WALK-01: read the ticket fold from this repo clone at --deploy-sha (fix_tickets.jsonl + records/*.jsonl)")
+    p.add_argument("--deploy-sha", help="WALK-01: the pinned sha the fold is read at (with --from-repo)")
+    p.add_argument("--expect-sha", help="WALK-01: sha gate — write status rows only if the live build sha matches; mismatch runs dry")
     p.add_argument("--allow-write", action="store_true")
-    p.add_argument("--apply-status", action="store_true", help="append retest_update records (VERIFIED/REOPENED/OPEN) to fix_tickets.jsonl")
+    p.add_argument("--apply-status", action="store_true", help="write verdict rows (VERIFIED/REOPENED/OPEN) to records/walker.jsonl")
     p.add_argument("--dry-run", action="store_true")
     p = sub.add_parser("login", help="save a session for a QA account")
     p.add_argument("--account", choices=["t1", "t2", "admin"], required=True)

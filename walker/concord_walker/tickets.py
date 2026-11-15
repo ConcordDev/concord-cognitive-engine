@@ -40,11 +40,22 @@ def _text(t):
 
 
 class TicketStore:
-    def __init__(self, audit_dir):
+    def __init__(self, audit_dir, fold=None):
+        # WALK-01: with a fold (GB-1544), the read path is the branch fold at a
+        # pinned sha (fix_tickets.jsonl + records/*.jsonl); without one, the
+        # legacy single-file read stands. self.path stays the main file either
+        # way: it is written ONLY by append_tickets (new walker tickets).
         self.path = os.path.join(audit_dir, "fix_tickets.jsonl")
-        self.reload()
+        self.fold = fold
+        if fold is not None:
+            self.base, self.updates = fold.base, fold.updates
+        else:
+            self.reload()
 
     def reload(self):
+        if self.fold is not None:
+            self.base, self.updates = self.fold.base, self.fold.updates
+            return
         self.base, self.updates = {}, {}
         with open(self.path) as f:
             for line in f:
@@ -69,14 +80,18 @@ class TicketStore:
             return None
         t = dict(t)
         for u in self.updates.get(tid, []):
-            if u.get("status") and u.get("type") in (None, "retest_update", "followup", "correction"):
+            if u.get("status") and u.get("type") in (None, "retest_update", "followup", "correction", "record"):
                 t["status"] = u["status"]
             t.setdefault("_updates", []).append(u)
         return t
 
     def status(self, tid):
         t = self.get(tid)
-        return (t or {}).get("status") or "OPEN"
+        return str((t or {}).get("status") or "OPEN").strip().upper()
+
+    def lane(self, tid):
+        from .fold import lane_of
+        return lane_of(self.get(tid))
 
     def lens_tickets(self, lens):
         return [self.get(i) for i, t in self.base.items() if t.get("lens") == lens]
