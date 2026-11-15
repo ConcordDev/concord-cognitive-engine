@@ -10,6 +10,12 @@ from .tickets import CATEGORY_WORDS
 from .util import scrub, ts_et, control_label
 from .matching import fuzzy_match, match_any
 from . import colors
+
+try:
+    from .vision import VisionJudge, wants_visual
+except Exception:  # WALK-04d is additive; its absence never breaks the walker
+    VisionJudge = None
+    wants_visual = lambda t: False
 from . import hiddentext
 
 FIXED, STILL, HUMAN = "FIXED", "STILL_FAILING", "NEEDS_HUMAN"
@@ -93,6 +99,7 @@ class Reverifier:
                         "FIX-chem-003": self._prod_scan, "FIX-docs-015": self._prod_scan,
                         "FIX-global-016": self._prod_scan, "FIX-metalearning-014": self._prod_scan,
                         "FIX-repos-002": self._prod_reload, "FIX-ingest-001": self._prod_compare}
+        self.vision = VisionJudge(cfg, rec, log) if VisionJudge else None
         from .chatcheck import SendBudget
         self.chat_budget = SendBudget(cfg)
 
@@ -138,10 +145,25 @@ class Reverifier:
         return res
 
     # ------------------------------------------------------------ generic
+    def _vision_or_human(self, t, cat, method, ev, notes):
+        """WALK-04d: a visual row the deterministic checks cannot decide goes
+        to the vision judge when it is enabled; whenever the judge declines
+        (disabled, no pair, demoted category handled inside), the pre-upgrade
+        NEEDS_HUMAN return stands byte for byte."""
+        if self.vision is not None:
+            res = self.vision.judge_ticket(self, t, cat, mobile=wants_mobile(t))
+            if res is not None:
+                return res
+        return {"verdict": HUMAN, "method": method, "category": cat, "evidence": ev, "notes": notes}
+
     def generic(self, t):
         cat = classify(t)
         elems = elements(t)
         if cat is None:
+            if wants_visual(t) and self.vision is not None:
+                res = self.vision.judge_ticket(self, t, "visual", mobile=wants_mobile(t))
+                if res is not None:
+                    return res
             lw = self.smoke(t["lens"])
             return {"verdict": HUMAN, "method": "smoke-only", "category": None, "evidence": [lw.result.get("initial_evidence")],
                     "notes": "repro not automatable (no standard check matches); screenshot + smoke attached"}
@@ -180,8 +202,8 @@ class Reverifier:
             # the ticket. The ticket's tab or element must be walked and the
             # failing pairs attributed (or the scoped view found clean).
             if not elems:
-                return {"verdict": HUMAN, "method": "contrast", "category": cat, "evidence": ev,
-                        "notes": "ticket names no colours and no tab/element to walk; main-view contrast alone cannot verify it"}
+                return self._vision_or_human(t, cat, "contrast", ev,
+                        "ticket names no colours and no tab/element to walk; main-view contrast alone cannot verify it")
             chkc = chk.get("contrast") or {}
             groups = chkc.get("groups") or []
             examples = chkc.get("examples") or []
@@ -193,8 +215,8 @@ class Reverifier:
             if scoped:
                 return scoped
             if groups:
-                return {"verdict": HUMAN, "method": "contrast", "category": cat, "evidence": ev,
-                        "notes": "pairs still fail on the walked views but none is attributable to the ticket's element (%s); tester to match element" % (elems,)}
+                return self._vision_or_human(t, cat, "contrast", ev,
+                        "pairs still fail on the walked views but none is attributable to the ticket's element (%s); tester to match element" % (elems,))
             return {"verdict": HUMAN, "method": "contrast", "category": cat, "evidence": ev,
                     "notes": "the ticket's element (%s) was not reached on any walked view" % (elems,)}
         if cat in ("escape", "focus_return", "focus_trap"):
@@ -230,14 +252,14 @@ class Reverifier:
                 hit = [o for o in off if match_any(elems, [o])]
                 if hit:
                     return {"verdict": STILL, "method": "390 off-screen controls", "category": cat, "evidence": m.get("evidence"), "notes": "still off-screen: %s" % hit}
-                return {"verdict": HUMAN, "method": "390 layout", "category": cat, "evidence": m.get("evidence"),
-                        "notes": "named element not flagged off-screen; tester confirm layout from screenshot"}
+                return self._vision_or_human(t, cat, "390 layout", m.get("evidence"),
+                        "named element not flagged off-screen; tester confirm layout from screenshot")
             if re.search(r"horizontal|sideways|scrolls? (left|right)|overflow", ticket_text(t), re.I):
                 over = (m.get("layout") or {}).get("content_w", 0) - (m.get("layout") or {}).get("viewport_w", 390)
                 return {"verdict": STILL if over > 2 else FIXED, "method": "390 content width", "category": cat, "evidence": m.get("evidence"),
                         "notes": "content overflow %dpx" % over}
-            return {"verdict": HUMAN, "method": "390 layout", "category": cat, "evidence": m.get("evidence"),
-                    "notes": "visual layout issue; compare 390 screenshot to ticket"}
+            return self._vision_or_human(t, cat, "390 layout", m.get("evidence"),
+                    "visual layout issue; compare 390 screenshot to ticket")
         if cat in ("unnamed", "keyboard", "focus_visible"):
             if same:
                 hit = [f for f in same if not elems or elem_hit(f)]
