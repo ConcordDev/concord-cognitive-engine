@@ -33,11 +33,10 @@ CATEGORY_WORDS = {
                   r"empty (form|title|field|input|name)|negative (value|amount|number|input|price)|"
                   r"no error (message|shown|appears)|missing.{0,20}error|error message|out.of.range|"
                   r"reversed dates?|end (date )?before start|99999|whitespace.only",
-    # WALK-04b: missing-CRUD tickets (no way to delete/edit/archive/create).
-    # Decided by the write lane's own create+delete exercise in reverify.py.
-    "crud_missing": r"(no|missing|without|can'?t|cannot|unable to|nowhere to|no way to)\b.{0,30}(delete|remove|edit|archive|create|add)\b|(delete|remove|edit|archive).{0,24}(is |are )?(missing|not available|no button|no option|does ?n'?t exist|unavailable)",
     # WALK-04h: chat / LLM-output tickets (the recipe lives in chatcheck.py).
     "chat": r"\b(chat|composer|chatbot|assistant|llm)\b|ai (reply|response|answer|output)|model (reply|response)",
+    # WALK-04g: hidden text / test data on live (the scanner lives in hiddentext.py).
+    "hidden_text": r"hidden (text|content|data|element)|invisible (text|content|data)|ai[- ]directed|prompt injection|test data (on|in|visible|shown|leak)|seeded (demo )?data (shown|visible|on)|harness (data|text|string|value|mentor|transaction)",
 }
 
 

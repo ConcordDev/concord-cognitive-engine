@@ -10,11 +10,12 @@ from .tickets import CATEGORY_WORDS
 from .util import scrub, ts_et, control_label
 from .matching import fuzzy_match, match_any
 from . import colors
+from . import hiddentext
 
 FIXED, STILL, HUMAN = "FIXED", "STILL_FAILING", "NEEDS_HUMAN"
-ORDER = ["crash", "hotkey", "delete_confirm", "crud_missing", "escape", "focus_return", "focus_trap", "focus_visible", "export",
-         "contrast", "overflow390", "unnamed", "keyboard", "timing", "chat", "validation", "tab_error", "reach", "pageerror", "http", "persistence"]
-WRITE_CATS = {"hotkey", "delete_confirm", "persistence", "chat", "validation", "crud_missing"}
+ORDER = ["crash", "hotkey", "delete_confirm", "escape", "focus_return", "focus_trap", "focus_visible", "export",
+         "contrast", "overflow390", "unnamed", "keyboard", "timing", "chat", "validation", "hidden_text", "tab_error", "reach", "pageerror", "http", "persistence"]
+WRITE_CATS = {"hotkey", "delete_confirm", "persistence", "chat", "validation"}
 
 
 def ticket_text(t):
@@ -86,7 +87,12 @@ class Reverifier:
         self.inv = {l["slug"]: l for l in inventory}
         self.allow_write = allow_write
         self.walks = {}
-        self.recipes = {"FIX-007": self.r_fix007, "FIX-deities-002": self.r_deities_002}
+        self.recipes = {"FIX-007": self.r_fix007, "FIX-deities-002": self.r_deities_002,
+                        # WALK-04g prod rows — POST-DEPLOY ONLY (GB-1544):
+                        # recipes exist; no live run until the deploy lands.
+                        "FIX-chem-003": self._prod_scan, "FIX-docs-015": self._prod_scan,
+                        "FIX-global-016": self._prod_scan, "FIX-metalearning-014": self._prod_scan,
+                        "FIX-repos-002": self._prod_reload, "FIX-ingest-001": self._prod_compare}
         from .chatcheck import SendBudget
         self.chat_budget = SendBudget(cfg)
 
@@ -161,6 +167,8 @@ class Reverifier:
 
         if cat == "crash":
             return self._crash_loop(t, mobile=wants_mobile(t))
+        if cat == "hidden_text":
+            return self._hidden_text(t)
         if cat == "contrast":
             hexes = set(h.lower() for h in re.findall(r"#[0-9a-fA-F]{6}", ticket_text(t)))
             groups = (chk.get("contrast") or {}).get("groups") or []
@@ -288,17 +296,6 @@ class Reverifier:
         if cat in ("pageerror", "http"):
             return {"verdict": STILL if same else HUMAN, "method": "console/network", "category": cat, "evidence": ev,
                     "notes": "errors still present" if same else "none seen on walked paths; ticket path may differ"}
-        if cat == "crud_missing":
-            st = (chk.get("create_delete") or {})
-            status = st.get("status")
-            if status == "PASS":
-                return {"verdict": FIXED, "method": "own fixture create/delete", "category": cat, "evidence": ev,
-                        "notes": "create + delete both exercised end-to-end on an own labelled fixture; the CRUD surface exists"}
-            if status in ("NA", "PARTIAL", "FAIL"):
-                return {"verdict": STILL, "method": "own fixture create/delete", "category": cat, "evidence": ev,
-                        "notes": "write walk could not complete create+delete (%s: %s); the claimed missing/unusable CRUD surface reproduces" % (status, scrub(str(st.get("reason") or st), 160))}
-            return {"verdict": HUMAN, "method": "own fixture create/delete", "category": cat, "evidence": ev,
-                    "notes": "create_delete status %s; tester to decide" % status}
         if cat in WRITE_CATS:
             st = (chk.get("create_delete") or {})
             hit = [f for f in lw.findings if f["check"] == cat]
@@ -399,6 +396,100 @@ class Reverifier:
         return {"verdict": STILL if crashes else FIXED, "method": "%d cold loads + reload at %s" % (n, "390x844" if mobile else "1280x900"),
                 "category": "crash", "evidence": [e for e in evid if e],
                 "notes": "%d/%d crashed; load ms %s%s" % (crashes, n, loads, "" if crashes else " (intermittent bug: 'not reproduced in %d tries')" % n)}
+
+    # ------------------------------------------------ hidden text (WALK-04g)
+    def _hidden_text(self, t, reloads=1):
+        """DOMSnapshot hidden-vs-visible scan for AI-directed phrasing
+        and harness strings (concord_walker/hiddentext.py). Hidden
+        findings or visible harness text -> STILL; a clean scan ->
+        FIXED; no snapshot -> NEEDS_HUMAN, never a pass."""
+        lens = t["lens"]
+        acct, admin = self.account_for(lens)
+        lw = LensWalk(self.b, self.cfg, self.rec, self.inv[lens], acct, self.log, admin=admin, inv_entry=self.inv[lens])
+        ctx, page, cdp = lw.open()
+        try:
+            if acct:
+                assert_account(ctx, self.cfg, acct, "hidden-text scan", self.log)
+            lw.nav(page, cdp)
+            targets = hiddentext.targets_from_ticket(t, quoted=elements(t))
+            if reloads > 1:
+                def provider(i):
+                    if i:
+                        try:
+                            page.reload(wait_until="load", timeout=self.cfg["thresholds"]["nav_timeout_ms"])
+                        except Exception:
+                            return None
+                    try:
+                        return hiddentext.capture(cdp.s)
+                    except Exception:
+                        return None
+                res = hiddentext.reload_capture(provider, targets, n=reloads)
+                if res["loads_ok"] == 0:
+                    return {"verdict": HUMAN, "method": "hidden-text reload capture", "category": "hidden_text",
+                            "evidence": [], "notes": "no snapshot could be captured in %d loads" % reloads}
+                findings = res["findings"]
+                ev = [lw.shot(page, "hidden-text-reload")]
+                scope = "%d loads (%d ok), per-load findings %s" % (reloads, res["loads_ok"], res["per_load"])
+            else:
+                res = hiddentext.scan_cdp(cdp, targets)
+                if res is None:
+                    return {"verdict": HUMAN, "method": "hidden-text scan", "category": "hidden_text",
+                            "evidence": [], "notes": "DOMSnapshot capture failed; unscannable lens"}
+                findings = res["findings"]
+                ev = [lw.shot(page, "hidden-text-scan")]
+                scope = "%d text nodes checked, %d visible" % (res["checked"], res["visible"])
+            hid = [f for f in findings if f["kind"] == "hidden"]
+            vis = [f for f in findings if f["kind"] == "visible_harness"]
+            if hid or vis:
+                first = (hid or vis)[0]
+                return {"verdict": STILL, "method": "DOMSnapshot hidden-text scan", "category": "hidden_text",
+                        "evidence": ev,
+                        "notes": "%s; %d hidden + %d visible-harness findings; first: %s at %s (%s)" % (
+                            scope, len(hid), len(vis), scrub(first["text"], 120), first["path"],
+                            ",".join(first["classes"]) or "visible")}
+            return {"verdict": FIXED, "method": "DOMSnapshot hidden-text scan", "category": "hidden_text",
+                    "evidence": ev, "notes": "%s; no hidden or harness text found" % scope}
+        finally:
+            lw._close(ctx)
+
+    # WALK-04g prod rows — POST-DEPLOY ONLY (GB-1544): the recipes
+    # exist so the post-deploy run can execute them; nothing here runs
+    # live before the combined deploy lands (GB-1542).
+    def _prod_scan(self, t):
+        return self._hidden_text(t)
+
+    def _prod_reload(self, t):
+        # repos-002: the injection is intermittent — capture 10 loads.
+        return self._hidden_text(t, reloads=10)
+
+    def _prod_compare(self, t):
+        # ingest-001: one DTU id in global search but not in the lens's
+        # own list (or the reverse). The list side is gathered here; the
+        # global-search side is a live shell walk that does not exist in
+        # the walker's route set yet, so the recipe returns the gathered
+        # half + NEEDS_HUMAN naming the missing leg, never a verdict
+        # from half the evidence.
+        elems = elements(t)
+        if not elems:
+            return {"verdict": HUMAN, "method": "search/list compare", "category": "hidden_text",
+                    "evidence": [], "notes": "ticket names no DTU id to compare"}
+        needle = elems[0]
+        lens = t["lens"]
+        acct, admin = self.account_for(lens)
+        lw = LensWalk(self.b, self.cfg, self.rec, self.inv[lens], acct, self.log, admin=admin, inv_entry=self.inv[lens])
+        ctx, page, cdp = lw.open()
+        try:
+            if acct:
+                assert_account(ctx, self.cfg, acct, "search/list compare", self.log)
+            lw.nav(page, cdp)
+            list_texts = cdp.ax().texts()
+            cmp = hiddentext.search_compare([], list_texts, needle)
+            return {"verdict": HUMAN, "method": "search/list compare", "category": "hidden_text",
+                    "evidence": [lw.shot(page, "ingest-compare-list")],
+                    "notes": "list side gathered: needle %r %s in the lens list; global-search side not walkable in this build — tester completes the compare" % (
+                        needle, "present" if cmp["in_list"] else "absent")}
+        finally:
+            lw._close(ctx)
 
     # ------------------------------------------------------------ recipes
     def r_deities_002(self, t):
