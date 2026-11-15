@@ -510,6 +510,7 @@ export default function createAuthRouter({
   // the password verified, lives 5 minutes, and burns after 5 failed
   // attempts or on success. One error shape for every failure — the
   // response never says which factor was tried or why it failed.
+  // AUTH: public — pre-session by design; the server-minted, single-use sign-in challenge id is the credential; protected by authRateLimitMiddleware.
   router.post("/login/verify-2fa", authRateLimitMiddleware, async (req, res) => {
     const { challengeId, code } = req.body || {};
     const challenge = typeof challengeId === "string" ? signInChallenges.get(challengeId) : null;

@@ -50,11 +50,12 @@ export default function createReceiptRouter({ readLimit, verifyLimit } = {}) {
     res.json(verifyAttestation(receipt));
   });
 
-  // AUTH: public — same discipline as verify (GB-1534). The receipt is
-  // verified FIRST and the verdict is printed at the top of the sheet; an
-  // edited receipt renders with INVALID at the top, never silently. The
-  // handler writes nothing. CSRF-exempt on this exact path only (see
-  // server.js gates, which name /api/receipts/sheet beside /verify).
+  // Same discipline as verify (GB-1534). The receipt is verified FIRST and
+  // the verdict is printed at the top of the sheet; an edited receipt
+  // renders with INVALID at the top, never silently. The handler writes
+  // nothing. CSRF-exempt on this exact path only (see server.js gates,
+  // which name /api/receipts/sheet beside /verify).
+  // AUTH: public — unauthenticated receipt calc-sheet render by design; writes nothing.
   router.post("/api/receipts/sheet", verify, (req, res) => {
     const body = req.body;
     const receipt = body && typeof body === "object" && !Array.isArray(body) && body.receipt && typeof body.receipt === "object" && !Array.isArray(body.receipt)
