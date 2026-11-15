@@ -373,15 +373,21 @@ describe("fitness.activity-* — Strava activity round-trip + relative effort", 
 
   it("validation-rejection: bad type + zero duration", () => {
     assert.match(call("activity-create", ctxA, { type: "teleport", durationSec: 100 }).error, /type required/i);
-    assert.match(call("activity-create", ctxA, { type: "run", durationSec: 0 }).error, /durationSec must be > 0/i);
+    const zero = call("activity-create", ctxA, { type: "run", durationSec: 0 });
+    assert.equal(zero.error, "invalid_input");
+    assert.equal(zero.field, "durationSec");
+    assert.match(zero.message, /durationSec must be a number of seconds from 1 to 86400/i);
   });
 
   it("fail-CLOSED: poisoned distance/duration never leak Infinity into derived metrics", () => {
     const ctx = { actor: { userId: "fit_act_poison" }, userId: "fit_act_poison" };
     const r = call("activity-create", ctx, { type: "run", distanceKm: "1e999", durationSec: 1800, avgHr: Infinity });
-    // distance coerces to a finite value (fnum) so the activity is valid…
-    assert.equal(r.ok, true);
-    assertNoNonFinite(r.result);
+    // A distance that parses to Infinity is REFUSED by name (never coerced, never stored), so nothing
+    // non-finite can reach a derived metric.
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "invalid_input");
+    assert.equal(r.field, "distanceKm");
+    assertNoNonFinite(r);
   });
 });
 
@@ -411,7 +417,11 @@ describe("fitness.vo2max-estimate / race-predictor — VDOT physiology", () => {
 
   it("validation-rejection: no effort + no logged run", () => {
     const ctx = { actor: { userId: "fit_vo_empty" }, userId: "fit_vo_empty" };
-    assert.match(call("vo2max-estimate", ctx, {}).error, /supply distanceKm/i);
+    // An athlete with no effort and no logged run gets an honest empty result, not a failed read.
+    const empty = call("vo2max-estimate", ctx, {});
+    assert.equal(empty.ok, true);
+    assert.equal(empty.result.empty, true);
+    assert.equal(empty.result.vo2max, null);
     assert.match(call("race-predictor", ctx, {}).error, /supply vo2max/i);
   });
 });

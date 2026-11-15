@@ -35,6 +35,8 @@ function freshDb() {
       pos_z REAL NOT NULL DEFAULT 0,
       heading REAL NOT NULL DEFAULT 0,
       condition_pct INTEGER NOT NULL DEFAULT 100,
+      name          TEXT    NOT NULL DEFAULT '',
+      spec          TEXT    NOT NULL DEFAULT '',
       created_at INTEGER NOT NULL DEFAULT (unixepoch()),
       updated_at INTEGER NOT NULL DEFAULT (unixepoch())
     );

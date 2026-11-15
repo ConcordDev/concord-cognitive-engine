@@ -112,10 +112,13 @@ describe("emergency-services — nearest-unit dispatch", () => {
     assert.ok(r.result.ranked[0].distanceKm < r.result.ranked[1].distanceKm);
   });
 
-  it("nearest-unit fails when the incident has no map position", () => {
+  it("nearest-unit answers ok with an empty ranking when the incident has no map position (FIX-emergency-services-010)", () => {
     const inc = call("incident-create-geo", ctxA, {}, { summary: "No geo", priority: 3 });
     const r = call("nearest-unit", ctxA, {}, { incidentId: inc.result.incident.id });
-    assert.equal(r.ok, false);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.noPosition, true);
+    assert.equal(r.result.recommended, null);
+    assert.deepEqual(r.result.ranked, []);
   });
 });
 
