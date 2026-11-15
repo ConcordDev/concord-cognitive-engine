@@ -41,7 +41,13 @@ vi.mock('@tanstack/react-query', () => ({
       };
     }
     if (key === 'reasoning-chains') {
-      return { data: { chains: [] }, isError: false, error: null, refetch: vi.fn() };
+      return {
+        data: { chains: [{ id: 'chain-1', ownerId: 'u1', question: 'Does the remedy work?', type: 'deductive', stepCount: 2, status: 'open' }] },
+        isError: false, error: null, refetch: vi.fn(),
+      };
+    }
+    if (key === 'auth-whoami') {
+      return { data: { result: { actor: { userId: 'u1' } } }, isError: false, error: null, refetch: vi.fn() };
     }
     if (key === 'reasoning-status') {
       return { data: { status: {} }, isError: false, error: null, refetch: vi.fn() };
@@ -68,7 +74,10 @@ vi.mock('@/lib/hooks/use-lens-data', () => ({
 // ── runAction.mutateAsync is the ONLY backend boundary this test drives —
 //    it resolves with a real counterArgumentGen-shaped result (all five
 //    pre-existing attack types + the two new map-sourced ones). ────────────
+// FIX-reasoning-001: the stateless engines run through lensRun on the SELECTED chain's
+// premises/conclusion — not through a synced chain artifact. lensRun is the boundary.
 const runActionMutateAsync = vi.fn();
+const lensRunMock = vi.hoisted(() => vi.fn());
 vi.mock('@/lib/hooks/use-lens-artifacts', () => ({
   useArtifacts: () => ({ data: [], isLoading: false }),
   useCreateArtifact: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(() => Promise.resolve({})) }),
@@ -93,7 +102,7 @@ vi.mock('@/lib/api/client', () => ({
       conclude: vi.fn(() => Promise.resolve({ data: {} })),
     },
   },
-  lensRun: vi.fn(() => Promise.resolve({ data: { ok: true, result: {} } })),
+  lensRun: (...args: unknown[]) => lensRunMock(...args),
 }));
 
 // ── headless chrome + heavy side panels → inert stubs (not under test) ─────
@@ -162,9 +171,22 @@ const COUNTER_ARGUMENT_RESULT = {
   map: { mapId: 'map_abc123', title: 'Robust debate', scheme: 'authority' },
 };
 
-async function openAnalysisTabAndRunCounterArgumentGen() {
+function engineReturns(result: Record<string, unknown>) {
+  lensRunMock.mockImplementation(async (_domain: string, action: string) => {
+    if (action === 'whoami') return { data: { ok: true, result: { actor: { userId: 'u1' } } } };
+    return { data: { ok: true, result } };
+  });
+}
+
+async function openAnalysisTabAndSelectChain() {
   render(<ReasoningLensPage />);
   fireEvent.click(screen.getByText('Analysis'));
+  // The engines need a selected chain to read premises from.
+  await act(async () => { fireEvent.click(await screen.findByText('Does the remedy work?')); });
+}
+
+async function openAnalysisTabAndRunCounterArgumentGen() {
+  await openAnalysisTabAndSelectChain();
   const button = await screen.findByText('Generate Counter-Arguments');
   await act(async () => { fireEvent.click(button); });
 }
@@ -172,10 +194,11 @@ async function openAnalysisTabAndRunCounterArgumentGen() {
 describe('reasoning lens — counterArgumentGen angles card list (replaces raw JSON dump)', () => {
   beforeEach(() => {
     runActionMutateAsync.mockReset();
+    lensRunMock.mockReset();
   });
 
   it('renders a distinct card per angle with a type-specific badge — never a raw JSON dump', async () => {
-    runActionMutateAsync.mockResolvedValue({ ok: true, result: COUNTER_ARGUMENT_RESULT });
+    engineReturns(COUNTER_ARGUMENT_RESULT);
     await openAnalysisTabAndRunCounterArgumentGen();
 
     // Every angle's detail text renders as real content.
@@ -202,30 +225,40 @@ describe('reasoning lens — counterArgumentGen angles card list (replaces raw J
   });
 
   it('still falls back to raw JSON for a non-angles result shape (e.g. strengthAssessment), so only counterArgumentGen gets the card list', async () => {
-    runActionMutateAsync.mockResolvedValue({
-      ok: true,
-      result: { totalClaims: 2, strongestClaim: 'c1', weakestClaim: 'c2', strengthMap: { c1: { strength: 80 }, c2: { strength: 20 } } },
-    });
-    render(<ReasoningLensPage />);
-    fireEvent.click(screen.getByText('Analysis'));
+    engineReturns({ totalClaims: 2, strongestClaim: 'c1', weakestClaim: 'c2', strengthMap: { c1: { strength: 80 }, c2: { strength: 20 } } });
+    await openAnalysisTabAndSelectChain();
     const button = await screen.findByText('Full Strength Assessment');
     await act(async () => { fireEvent.click(button); });
     await waitFor(() => expect(screen.getByText(/"totalClaims"/)).toBeTruthy());
   });
 
   it('renders the honest guidance message (not a dump, not a card list) when the backend returns {message}', async () => {
-    runActionMutateAsync.mockResolvedValue({ ok: true, result: { message: 'No reasoning artifacts synced yet.' } });
+    engineReturns({ message: 'No usable premises in that chain yet.' });
     await openAnalysisTabAndRunCounterArgumentGen();
-    await waitFor(() => expect(screen.getByText('No reasoning artifacts synced yet.')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('No usable premises in that chain yet.')).toBeTruthy());
     expect(screen.queryByText('Weak Link')).toBeNull();
   });
 
-  it('does not send a mapId from this panel (documented decision — the local Argument Maps tab is not backend-persisted)', async () => {
-    runActionMutateAsync.mockResolvedValue({ ok: true, result: COUNTER_ARGUMENT_RESULT });
+  it('runs the engine on the selected chain\'s own premises + conclusion, and never sends a mapId (the local Argument Maps tab is not backend-persisted)', async () => {
+    engineReturns(COUNTER_ARGUMENT_RESULT);
     await openAnalysisTabAndRunCounterArgumentGen();
-    await waitFor(() => expect(runActionMutateAsync).toHaveBeenCalled());
-    const call = runActionMutateAsync.mock.calls[0][0];
-    expect(call.action).toBe('counterArgumentGen');
-    expect(call.params).not.toHaveProperty('mapId');
+    await waitFor(() => expect(lensRunMock.mock.calls.some((c) => c[1] === 'counterArgumentGen')).toBe(true));
+    const call = lensRunMock.mock.calls.find((c) => c[1] === 'counterArgumentGen')!;
+    expect(call[0]).toBe('reasoning');
+    expect(call[2]).toEqual({
+      premises: ['Experts say it works', 'everyone knows that already'],
+      conclusion: 'everyone knows that already',
+    });
+    expect(call[2]).not.toHaveProperty('mapId');
+  });
+
+  it('with no chain selected it says so and calls no engine', async () => {
+    engineReturns(COUNTER_ARGUMENT_RESULT);
+    render(<ReasoningLensPage />);
+    fireEvent.click(screen.getByText('Analysis'));
+    const button = await screen.findByText('Generate Counter-Arguments');
+    await act(async () => { fireEvent.click(button); });
+    expect(await screen.findByText('Select a chain in the table above first.')).toBeTruthy();
+    expect(lensRunMock.mock.calls.some((c) => c[1] === 'counterArgumentGen')).toBe(false);
   });
 });

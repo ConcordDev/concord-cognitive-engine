@@ -85,7 +85,8 @@ describe('FIX-debug-004 — IssueInbox exposes the server sort', () => {
     });
     render(<DebugProjectProvider><IssueInbox /></DebugProjectProvider>);
     const select = await screen.findByLabelText('Sort issues');
-    expect(sorts[0]).toBe('last');
+    // The control renders before the first list call resolves the project — wait for the call.
+    await waitFor(() => expect(sorts[0]).toBe('last'));
     fireEvent.change(select, { target: { value: 'count' } });
     await waitFor(() => expect(sorts).toContain('count'));
   });

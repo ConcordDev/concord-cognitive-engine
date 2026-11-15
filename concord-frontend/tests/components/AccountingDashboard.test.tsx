@@ -32,7 +32,7 @@ describe('AccountingDashboard', () => {
     mockLensRun({});
     render(<AccountingDashboard />);
     expect(await screen.findByText('Cash on hand')).toBeInTheDocument();
-    expect(screen.getByText('$42K')).toBeInTheDocument();
+    expect(screen.getByText('$42,000.00')).toBeInTheDocument();
     expect(screen.getByText('Open invoices')).toBeInTheDocument();
     expect(screen.getByText('3 unpaid')).toBeInTheDocument();
   });
