@@ -13,6 +13,7 @@
 // the acting user but a global index makes the open board cross-user.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { badNumber, readingOrNull } from "../lib/finite-input.js";
 import { lookupUserIdentity } from "../lib/user-identity.js";
 import { isAdmin, requireActor } from "../lib/lens-authz.js";
 
@@ -78,11 +79,19 @@ export default function registerBountiesActions(registerLensAction) {
   }
 
   // Recompute a bounty's denormalized rollups (pool, status hints).
+  // POOL DEFINITION (founder-ruled 2026-11-05, superseding the §8 Q2
+  // semantics): the pool counts the UNPAID REMAINDER ONLY — a milestone
+  // bounty pools the sum of its UNPAID milestone rewards; a plain bounty
+  // pools its reward while live and 0 once paid/resolved/cancelled. A
+  // disputed bounty's unpaid remainder stays in the pool: the held CC is
+  // the unpaid CC. (review's whole-accept reads poolFor BEFORE its status
+  // flip, so a whole-accept still pays the full pool — pinned by test.)
   function poolFor(b) {
+    if (b.status === "cancelled") return 0;
     if (Array.isArray(b.milestones) && b.milestones.length) {
-      return b.milestones.reduce((sum, m) => sum + num(m.rewardCc, 0), 0);
+      return b.milestones.reduce((sum, m) => sum + (m.status === "paid" ? 0 : num(m.rewardCc, 0)), 0);
     }
-    return num(b.rewardCc, 0);
+    return b.status === "paid" || b.status === "resolved" ? 0 : num(b.rewardCc, 0);
   }
   function paidFor(b) {
     if (Array.isArray(b.milestones) && b.milestones.length) {
@@ -117,10 +126,16 @@ export default function registerBountiesActions(registerLensAction) {
       updatedAt: b.updatedAt,
       deadline: b.deadline,
       milestones: (b.milestones || []).map((m) => ({ ...m })),
-      submissions: (b.submissions || []).map((sub) => ({ ...sub })),
+      submissions: (b.submissions || []).map((sub) => ({ ...sub, claimantName: ownerNameFor(ctx, sub.claimantId) })),
       submissionCount: (b.submissions || []).length,
       acceptedSubmissionId: b.acceptedSubmissionId || null,
-      dispute: b.dispute ? { ...b.dispute } : null,
+      dispute: b.dispute
+        ? {
+            ...b.dispute,
+            openedByName: ownerNameFor(ctx, b.dispute.openedBy),
+            arbiterName: b.dispute.arbiterId ? ownerNameFor(ctx, b.dispute.arbiterId) : null,
+          }
+        : null,
     };
   }
 
@@ -131,7 +146,10 @@ export default function registerBountiesActions(registerLensAction) {
       const userId = actor(ctx);
       // Fail-CLOSED on poisoned money inputs before any state write.
       const badTop = badNumericField(params, ["rewardCc"]);
-      if (badTop) return { ok: false, error: `invalid numeric field: ${badTop}` };
+      // FIX-bounties-003: the refusal named the internal field
+      // ('invalid numeric field: rewardCc'). It now states the bound
+      // that governs in this domain (REWARD_MAX) in words.
+      if (badTop) return { ok: false, error: "Reward must be a whole number between 1 and 1,000,000 CC" };
       const title = clean(params.title, 160);
       if (title.length < 6) return { ok: false, error: "title must be at least 6 characters" };
       const description = clean(params.description, 6000);
@@ -139,22 +157,46 @@ export default function registerBountiesActions(registerLensAction) {
       const category = CATEGORIES.includes(params.category) ? params.category : "other";
       const difficulty = DIFFICULTIES.includes(params.difficulty) ? params.difficulty : "intermediate";
       const tags = parseTags(params.tags);
+      // FIX-bounties-004: the deadline was free text stored verbatim, so a
+      // past date (2020-01-01) was accepted silently. It is a date now:
+      // strict ISO YYYY-MM-DD (round-trip checked) and not in the past.
+      let deadline = null;
+      if (params.deadline !== undefined && params.deadline !== null && String(params.deadline).trim() !== "") {
+        const d = String(params.deadline).trim();
+        const parsed = /^\d{4}-\d{2}-\d{2}$/.test(d) ? new Date(`${d}T00:00:00Z`) : null;
+        if (!parsed || Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== d) {
+          return { ok: false, error: "deadline must be a date (YYYY-MM-DD)" };
+        }
+        if (d < new Date().toISOString().slice(0, 10)) {
+          return { ok: false, error: "deadline must be today or later" };
+        }
+        deadline = d;
+      }
       const rawMilestones = Array.isArray(params.milestones) ? params.milestones : [];
       const badMilestone = rawMilestones.findIndex((m) => badNumericField(m, ["rewardCc"]));
-      if (badMilestone !== -1) return { ok: false, error: `invalid numeric field: milestones[${badMilestone}].rewardCc` };
-      const milestones = rawMilestones
-        .map((m, i) => ({
+      if (badMilestone !== -1) return { ok: false, error: `Milestone ${badMilestone + 1}'s reward must be a whole number between 1 and 1,000,000 CC` };
+      const wholeReward = (v) => {
+        if (v === undefined || v === null || v === "") return null;
+        const n = readingOrNull(v, { min: 1, max: 1e12, fallback: null });
+        if (n === null || n !== Math.floor(n)) return null;
+        return n;
+      };
+      const milestones = [];
+      for (const m of rawMilestones.slice(0, 12)) {
+        const reward = wholeReward(m && m.rewardCc);
+        if (reward === null) return { ok: false, error: `milestone ${milestones.length + 1} reward must be at least 1 CC` };
+        milestones.push({
           id: id("ms"),
-          index: i,
-          title: clean(m && m.title, 120) || `Milestone ${i + 1}`,
-          rewardCc: Math.max(1, Math.floor(num(m && m.rewardCc, 0))),
-          status: "open", // open -> submitted -> paid
-        }))
-        .slice(0, 12);
+          index: milestones.length,
+          title: clean(m && m.title, 120) || `Milestone ${milestones.length + 1}`,
+          rewardCc: reward,
+          status: "open",
+        });
+      }
       const rewardCc = milestones.length
         ? milestones.reduce((sum, m) => sum + m.rewardCc, 0)
-        : Math.max(1, Math.floor(num(params.rewardCc, 0)));
-      if (rewardCc < 1) return { ok: false, error: "rewardCc must be at least 1 (or supply milestones)" };
+        : wholeReward(params.rewardCc);
+      if (rewardCc === null) return { ok: false, error: "rewardCc must be at least 1 (or supply milestones)" };
       const bounty = {
         id: id("bty"),
         title,
@@ -169,7 +211,7 @@ export default function registerBountiesActions(registerLensAction) {
         submissions: [],
         acceptedSubmissionId: null,
         dispute: null,
-        deadline: params.deadline ? clean(params.deadline, 40) : null,
+        deadline,
         createdAt: now(),
         updatedAt: now(),
       };
@@ -184,6 +226,18 @@ export default function registerBountiesActions(registerLensAction) {
   registerLensAction("bounties", "list", (ctx, _a, params = {}) => {
     try {
       const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      // Board-wide totals (F7, ported from the lens build): computed over
+      // EVERY bounty, never the filtered page, so the header figures keep
+      // one meaning under any filter. Cancelled bounties leave the board
+      // entire; a disputed bounty is unpaid, so its pool stays counted.
+      const allRows = [...s.bounties.values()];
+      const totals = {
+        openPoolCc: allRows
+          .filter((x) => x.status !== "paid" && x.status !== "cancelled")
+          .reduce((sum, x) => sum + poolFor(x), 0),
+        paidOutCc: allRows.reduce((sum, x) => sum + paidFor(x), 0),
+        bountyCount: allRows.filter((x) => x.status !== "cancelled").length,
+      };
       const q = clean(params.query, 80).toLowerCase();
       const category = CATEGORIES.includes(params.category) ? params.category : null;
       const difficulty = DIFFICULTIES.includes(params.difficulty) ? params.difficulty : null;
@@ -210,6 +264,7 @@ export default function registerBountiesActions(registerLensAction) {
         result: {
           bounties: rows.slice(0, limit).map((b) => publicView(b, ctx)),
           total: rows.length,
+          totals,
           categories: CATEGORIES,
           difficulties: DIFFICULTIES,
         },
@@ -235,6 +290,7 @@ export default function registerBountiesActions(registerLensAction) {
       const b = s.bounties.get(clean(params.bountyId, 64));
       if (!b) return { ok: false, error: "bounty not found" };
       if (b.status === "paid") return { ok: false, error: "bounty already paid out" };
+      if (b.status === "cancelled") return { ok: false, error: "bounty is cancelled" };
       if (b.ownerId === userId) return { ok: false, error: "owner cannot submit to own bounty" };
       const summary = clean(params.summary, 240);
       if (summary.length < 8) return { ok: false, error: "summary must be at least 8 characters" };
@@ -280,6 +336,11 @@ export default function registerBountiesActions(registerLensAction) {
 
       if (decision === "reject") {
         sub.status = "rejected";
+        // A bounty whose last live submission is rejected is open again —
+        // "claimed" describes a bounty with work in hand, and none remains.
+        if (b.status === "claimed" && !(b.submissions || []).some((x) => x.status === "pending" || x.status === "accepted")) {
+          b.status = "open";
+        }
         b.updatedAt = now();
         save();
         return { ok: true, result: { submission: sub, bounty: publicView(b, ctx) } };
@@ -349,6 +410,7 @@ export default function registerBountiesActions(registerLensAction) {
       const userId = actor(ctx);
       const b = s.bounties.get(clean(params.bountyId, 64));
       if (!b) return { ok: false, error: "bounty not found" };
+      if (b.status === "cancelled") return { ok: false, error: "bounty is cancelled" };
       const involved = b.ownerId === userId || (b.submissions || []).some((x) => x.claimantId === userId);
       if (!involved) return { ok: false, error: "only the owner or a claimant can open a dispute" };
       if (b.dispute && b.dispute.status === "open") return { ok: false, error: "a dispute is already open" };
@@ -385,7 +447,11 @@ export default function registerBountiesActions(registerLensAction) {
       if (!auth.ok) return { ok: false, error: auth.reason };
       const role = String(ctx?.actor?.role || "").toLowerCase();
       const canArbitrate = isAdmin(ctx) || role === "moderator";
-      if (!canArbitrate) return { ok: false, error: "forbidden" };
+      if (!canArbitrate) {
+        // Refusals carry their reason in words (S1): the authorisation is
+        // unchanged — the surface must be able to say WHY, not guess.
+        return { ok: false, error: "only a platform admin or moderator who is not a party to this dispute can rule on it" };
+      }
       const userId = auth.actorId;
       const isParty = b.ownerId === userId || (b.submissions || []).some((x) => x.claimantId === userId);
       if (isParty) return { ok: false, error: "parties to a dispute cannot arbitrate" };
@@ -400,7 +466,10 @@ export default function registerBountiesActions(registerLensAction) {
       b.dispute.arbiterId = userId;
       b.dispute.resolvedAt = now();
       if (ruling === "overturn") {
-        b.status = (b.submissions || []).length ? "claimed" : "open";
+        // "claimed" only while a live (pending/accepted) submission stands —
+        // a rejected submission on record does not hold the bounty claimed.
+        const hasLive = (b.submissions || []).some((x) => x.status === "pending" || x.status === "accepted");
+        b.status = hasLive ? "claimed" : "open";
         b.acceptedSubmissionId = null;
       } else {
         const allPaid = (b.milestones || []).length
@@ -414,19 +483,107 @@ export default function registerBountiesActions(registerLensAction) {
     } catch (err) { return { ok: false, error: String(err && err.message || err) }; }
   });
 
+  // ── Owner lifecycle: edit / cancel / delete (FIX-bounties-001) ──────
+  // No CC is debited when a bounty is posted (create never escrows —
+  // earnings are credited only at review/release), so cancelling moves
+  // no money and there is no refund to fabricate: these verbs change
+  // record state only. The reward and milestone structure are the
+  // bounty's posted terms and are NOT editable — cancel and repost to
+  // change them.
+  registerLensAction("bounties", "update", (ctx, _a, params = {}) => {
+    try {
+      const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = actor(ctx);
+      const b = s.bounties.get(clean(params.bountyId, 64));
+      if (!b) return { ok: false, error: "bounty not found" };
+      if (b.ownerId !== userId) return { ok: false, error: "only the bounty owner can edit it" };
+      if (b.status !== "open" || (b.submissions || []).length > 0) {
+        return { ok: false, error: "a bounty can only be edited before the first submission" };
+      }
+      if (params.title !== undefined) {
+        const title = clean(params.title, 160);
+        if (title.length < 6) return { ok: false, error: "title must be at least 6 characters" };
+        b.title = title;
+      }
+      if (params.description !== undefined) {
+        const description = clean(params.description, 6000);
+        if (description.length < 12) return { ok: false, error: "description must be at least 12 characters" };
+        b.description = description;
+      }
+      if (params.category !== undefined && CATEGORIES.includes(params.category)) b.category = params.category;
+      if (params.difficulty !== undefined && DIFFICULTIES.includes(params.difficulty)) b.difficulty = params.difficulty;
+      if (params.tags !== undefined) b.tags = parseTags(params.tags);
+      if (params.deadline !== undefined) {
+        if (params.deadline === null || String(params.deadline).trim() === "") {
+          b.deadline = null;
+        } else {
+          const d = String(params.deadline).trim();
+          const parsed = /^\d{4}-\d{2}-\d{2}$/.test(d) ? new Date(`${d}T00:00:00Z`) : null;
+          if (!parsed || Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== d) {
+            return { ok: false, error: "deadline must be a date (YYYY-MM-DD)" };
+          }
+          if (d < new Date().toISOString().slice(0, 10)) {
+            return { ok: false, error: "deadline must be today or later" };
+          }
+          b.deadline = d;
+        }
+      }
+      b.updatedAt = now();
+      save();
+      return { ok: true, result: { bounty: publicView(b, ctx) } };
+    } catch (err) { return { ok: false, error: String(err && err.message || err) }; }
+  });
+
+  registerLensAction("bounties", "cancel", (ctx, _a, params = {}) => {
+    try {
+      const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = actor(ctx);
+      const b = s.bounties.get(clean(params.bountyId, 64));
+      if (!b) return { ok: false, error: "bounty not found" };
+      if (b.ownerId !== userId) return { ok: false, error: "only the bounty owner can cancel it" };
+      if (b.status === "cancelled") return { ok: false, error: "bounty is already cancelled" };
+      if (b.status === "paid") return { ok: false, error: "bounty already paid out" };
+      if (b.status === "disputed") return { ok: false, error: "bounty has an open dispute — resolve the dispute first" };
+      if ((b.milestones || []).some((m) => m.status === "paid")) {
+        return { ok: false, error: "part of this bounty is already paid out" };
+      }
+      if (b.acceptedSubmissionId) return { ok: false, error: "bounty has an accepted submission" };
+      b.status = "cancelled";
+      b.cancelledAt = now();
+      b.updatedAt = now();
+      save();
+      return { ok: true, result: { bounty: publicView(b, ctx) } };
+    } catch (err) { return { ok: false, error: String(err && err.message || err) }; }
+  });
+
+  registerLensAction("bounties", "delete", (ctx, _a, params = {}) => {
+    try {
+      const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = actor(ctx);
+      const b = s.bounties.get(clean(params.bountyId, 64));
+      if (!b) return { ok: false, error: "bounty not found" };
+      if (b.ownerId !== userId) return { ok: false, error: "only the bounty owner can delete it" };
+      if (b.status !== "cancelled") return { ok: false, error: "cancel the bounty before deleting it" };
+      s.bounties.delete(b.id);
+      ownerSet(s, userId).delete(b.id);
+      save();
+      return { ok: true, result: { deleted: true, bountyId: b.id } };
+    } catch (err) { return { ok: false, error: String(err && err.message || err) }; }
+  });
+
   // ── Leaderboard of top earners / resolvers ─────────────────────────
-  registerLensAction("bounties", "leaderboard", (_ctx, _a, params = {}) => {
+  registerLensAction("bounties", "leaderboard", (ctx, _a, params = {}) => {
     try {
       const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const limit = Math.min(50, Math.max(1, num(params.limit, 10)));
       const earners = [...s.earnings.entries()]
-        .map(([userId, earnedCc]) => ({ userId, earnedCc, resolved: s.resolved.get(userId) || 0 }))
+        .map(([userId, earnedCc]) => ({ userId, name: ownerNameFor(ctx, userId), earnedCc, resolved: s.resolved.get(userId) || 0 }))
         .filter((r) => r.earnedCc > 0)
         .sort((a, b) => b.earnedCc - a.earnedCc)
         .slice(0, limit)
         .map((r, i) => ({ rank: i + 1, ...r }));
       const resolvers = [...s.resolved.entries()]
-        .map(([userId, resolved]) => ({ userId, resolved, earnedCc: s.earnings.get(userId) || 0 }))
+        .map(([userId, resolved]) => ({ userId, name: ownerNameFor(ctx, userId), resolved, earnedCc: s.earnings.get(userId) || 0 }))
         .filter((r) => r.resolved > 0)
         .sort((a, b) => b.resolved - a.resolved)
         .slice(0, limit)

@@ -149,7 +149,7 @@ function BankFeedTab() {
           : 'Live aggregator not configured. Set CONCORD_BANK_AGGREGATOR_URL + token env to enable real bank-feed sync.'}
       </div>
       <section className="bg-black/30 border border-white/10 rounded-lg p-3 space-y-2">
-        <h3 className="text-xs font-semibold text-gray-300">Link an institution</h3>
+        <h2 className="text-xs font-semibold text-gray-300">Link an institution</h2>
         <input className={inp} placeholder="Institution name (e.g. Chase Business)" value={name} onChange={(e) => setName(e.target.value)} />
         <div className="grid grid-cols-2 gap-2">
           <input className={inp} placeholder="Account mask (last 4)" value={mask} onChange={(e) => setMask(e.target.value)} />
@@ -172,7 +172,7 @@ function BankFeedTab() {
                 <button type="button" onClick={() => sync(i.id)} disabled={syncing === i.id} className={btnGhost}>
                   {syncing === i.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />} Sync
                 </button>
-                <button aria-label="Delete" type="button" onClick={() => unlink(i.id)} className="text-gray-600 hover:text-rose-400">
+                <button aria-label="Delete" type="button" onClick={() => unlink(i.id)} className="text-gray-400 hover:text-rose-400">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -282,7 +282,7 @@ function CurrencyTab() {
       </section>
 
       <section className="bg-black/30 border border-white/10 rounded-lg p-3 space-y-2">
-        <h3 className="text-xs font-semibold text-gray-300">FX revaluation</h3>
+        <h2 className="text-xs font-semibold text-gray-300">FX revaluation</h2>
         {positions.map((p, i) => (
           <div key={i} className="grid grid-cols-1 md:grid-cols-4 gap-1.5">
             <input className={inp} placeholder="Label" value={p.label}
@@ -373,9 +373,9 @@ function DimensionsTab() {
   return (
     <div className="space-y-3">
       <section className="bg-black/30 border border-white/10 rounded-lg p-3 space-y-2">
-        <h3 className="text-xs font-semibold text-gray-300">New dimension tag</h3>
+        <h2 className="text-xs font-semibold text-gray-300">New dimension tag</h2>
         <div className="flex items-center gap-1.5">
-          <select className="bg-black/40 border border-white/10 rounded px-2 py-1.5 text-xs text-gray-100"
+          <select aria-label="Dimension kind" className="bg-black/40 border border-white/10 rounded px-2 py-1.5 text-xs text-gray-100"
             value={kind} onChange={(e) => setKind(e.target.value as typeof kind)}>
             <option value="class">Class</option>
             <option value="location">Location</option>
@@ -394,7 +394,7 @@ function DimensionsTab() {
             <li key={d.id} className="flex items-center gap-1.5 bg-black/20 border border-white/10 rounded px-2 py-1">
               <span className="text-[9px] uppercase text-gray-400 bg-black/40 rounded px-1">{d.kind}</span>
               <span className="text-xs text-gray-200 flex-1 truncate">{d.name}</span>
-              <button aria-label="Delete" type="button" onClick={() => del(d.id)} className="text-gray-600 hover:text-rose-400">
+              <button aria-label="Delete" type="button" onClick={() => del(d.id)} className="text-gray-400 hover:text-rose-400">
                 <Trash2 className="w-3 h-3" />
               </button>
             </li>
@@ -403,8 +403,8 @@ function DimensionsTab() {
       )}
       <section className="bg-black/30 border border-white/10 rounded-lg p-3 space-y-2">
         <div className="flex items-center gap-2">
-          <h3 className="text-xs font-semibold text-gray-300 flex-1">Segment P&amp;L</h3>
-          <select className="bg-black/40 border border-white/10 rounded px-2 py-1 text-xs text-gray-100"
+          <h2 className="text-xs font-semibold text-gray-300 flex-1">Segment P&amp;L</h2>
+          <select aria-label="Segment kind" className="bg-black/40 border border-white/10 rounded px-2 py-1 text-xs text-gray-100"
             value={segKind} onChange={(e) => setSegKind(e.target.value as typeof segKind)}>
             <option value="class">By class</option>
             <option value="location">By location</option>
@@ -503,9 +503,9 @@ function PayrollTaxTab() {
   return (
     <div className="space-y-3">
       <section className="bg-black/30 border border-white/10 rounded-lg p-3 space-y-2">
-        <h3 className="text-xs font-semibold text-gray-300">Form 941 — quarterly payroll tax</h3>
+        <h2 className="text-xs font-semibold text-gray-300">Form 941 — quarterly payroll tax</h2>
         <div className="flex items-center gap-1.5">
-          <select className="bg-black/40 border border-white/10 rounded px-2 py-1.5 text-xs text-gray-100"
+          <select aria-label="Quarter" className="bg-black/40 border border-white/10 rounded px-2 py-1.5 text-xs text-gray-100"
             value={quarter} onChange={(e) => setQuarter(Number(e.target.value))}>
             {[1, 2, 3, 4].map((q) => <option key={q} value={q}>Q{q}</option>)}
           </select>
@@ -524,10 +524,10 @@ function PayrollTaxTab() {
         )}
       </section>
       <section className="bg-black/30 border border-white/10 rounded-lg p-3 space-y-2">
-        <h3 className="text-xs font-semibold text-gray-300">ACH direct-deposit batch</h3>
+        <h2 className="text-xs font-semibold text-gray-300">ACH direct-deposit batch</h2>
         {runs.length === 0 ? <Empty text="No pay runs yet — run payroll first." /> : (
           <div className="flex items-center gap-1.5">
-            <select className={inp} value={runId} onChange={(e) => setRunId(e.target.value)}>
+            <select aria-label="Payroll run" className={inp} value={runId} onChange={(e) => setRunId(e.target.value)}>
               {runs.map((r) => <option key={r.id} value={r.id}>{r.payDate} ({r.periodStart}–{r.periodEnd})</option>)}
             </select>
             <button type="button" className={btn} onClick={prepAch}>Prepare ACH</button>
@@ -629,18 +629,18 @@ function RecurringBillsTab() {
   return (
     <div className="space-y-3">
       <section className="bg-black/30 border border-white/10 rounded-lg p-3 space-y-2">
-        <h3 className="text-xs font-semibold text-gray-300">Schedule a recurring bill</h3>
-        <select className={inp} value={vendorId} onChange={(e) => setVendorId(e.target.value)}>
+        <h2 className="text-xs font-semibold text-gray-300">Schedule a recurring bill</h2>
+        <select aria-label="Recurring bill vendor" className={inp} value={vendorId} onChange={(e) => setVendorId(e.target.value)}>
           <option value="">Select vendor…</option>
           {vendors.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
         </select>
-        <select className={inp} value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+        <select aria-label="Recurring bill account" className={inp} value={accountId} onChange={(e) => setAccountId(e.target.value)}>
           <option value="">Select expense account…</option>
           {accounts.map((a) => <option key={a.id} value={a.id}>{a.code} · {a.name}</option>)}
         </select>
         <div className="grid grid-cols-2 gap-2">
           <input className={inp} placeholder="Amount" inputMode="decimal" value={total} onChange={(e) => setTotal(e.target.value)} />
-          <select className={inp} value={cadence} onChange={(e) => setCadence(e.target.value)}>
+          <select aria-label="Recurring bill cadence" className={inp} value={cadence} onChange={(e) => setCadence(e.target.value)}>
             <option value="weekly">Weekly</option>
             <option value="monthly">Monthly</option>
             <option value="quarterly">Quarterly</option>
@@ -672,7 +672,7 @@ function RecurringBillsTab() {
               <button type="button" onClick={() => toggle(b.id)} className="text-[10px] text-gray-400 hover:text-gray-200">
                 {b.active ? 'Pause' : 'Resume'}
               </button>
-              <button aria-label="Delete" type="button" onClick={() => del(b.id)} className="text-gray-600 hover:text-rose-400">
+              <button aria-label="Delete" type="button" onClick={() => del(b.id)} className="text-gray-400 hover:text-rose-400">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </li>
@@ -729,9 +729,9 @@ function ReceiptTab() {
   return (
     <div className="space-y-3">
       <section className="bg-black/30 border border-white/10 rounded-lg p-3 space-y-2">
-        <h3 className="text-xs font-semibold text-gray-300 flex items-center gap-1">
+        <h2 className="text-xs font-semibold text-gray-300 flex items-center gap-1">
           <ScanLine className="w-3.5 h-3.5" /> Receipt OCR text
-        </h3>
+        </h2>
         <p className="text-[10px] text-gray-400">
           Paste the raw text from the mobile receipt scan (on-device OCR). Concord parses the real text — it never invents amounts.
         </p>
@@ -756,7 +756,7 @@ function ReceiptTab() {
           {parsed.missing.length > 0 && (
             <p className="text-[10px] text-amber-300">OCR could not find: {parsed.missing.join(', ')}.</p>
           )}
-          <select className={inp} value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+          <select aria-label="Expense account for scanned bill" className={inp} value={accountId} onChange={(e) => setAccountId(e.target.value)}>
             <option value="">Select expense account…</option>
             {accounts.map((a) => <option key={a.id} value={a.id}>{a.code} · {a.name}</option>)}
           </select>
@@ -793,7 +793,7 @@ function AuditLogTab() {
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <select className="bg-black/40 border border-white/10 rounded px-2 py-1.5 text-xs text-gray-100"
+        <select aria-label="Filter type" className="bg-black/40 border border-white/10 rounded px-2 py-1.5 text-xs text-gray-100"
           value={filterType} onChange={(e) => setFilterType(e.target.value)}>
           <option value="">All changes</option>
           <option value="journal-entry">Journal entries</option>

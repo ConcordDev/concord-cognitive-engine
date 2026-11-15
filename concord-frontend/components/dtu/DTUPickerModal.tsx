@@ -105,6 +105,9 @@ export function DTUPickerModal({
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
         className="bg-lattice-surface border border-white/10 rounded-xl w-full max-w-lg overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >

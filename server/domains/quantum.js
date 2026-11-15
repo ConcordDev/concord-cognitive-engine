@@ -729,6 +729,23 @@ export default function registerQuantumActions(registerLensAction) {
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
+  // ─── Macro: renameCircuit (FIX-quantum-004) ─────────────────────────
+  registerLensAction("quantum", "renameCircuit", (ctx, _artifact, params) => {
+    try {
+      const s = getQState();
+      if (!s) return { ok: false, error: "State store unavailable." };
+      const name = String(params?.name || "").trim().slice(0, 120);
+      if (!name) return { ok: false, error: "A circuit name is required." };
+      const list = qUserCircuits(s, qActor(ctx));
+      const rec = list.find((c) => c.id === params?.id);
+      if (!rec) return { ok: false, error: "Circuit not found." };
+      rec.name = name;
+      rec.updatedAt = new Date().toISOString();
+      saveQ();
+      return { ok: true, result: { renamed: { id: rec.id, name: rec.name } } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
   // ─── Macro: deleteCircuit ───────────────────────────────────────────
   registerLensAction("quantum", "deleteCircuit", (ctx, _artifact, params) => {
     try {

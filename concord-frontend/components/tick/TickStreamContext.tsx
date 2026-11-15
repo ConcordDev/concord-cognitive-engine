@@ -9,6 +9,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import type { TickEvent } from '@/components/tick/tick-model';
+import { toTickEvent } from '@/components/tick/tick-model';
 
 export type TickStats = {
   avgSignal: number;
@@ -69,14 +70,9 @@ export function TickStreamProvider({ children }: { children: ReactNode }) {
       if (eventIds === prevEventIdsRef.current) return;
       prevEventIdsRef.current = eventIds;
 
-      const ticks: TickEvent[] = events.events.slice(0, 50).map((e: Record<string, unknown>, i: number) => ({
-        id: (e.id as string) || `tick-${i}`,
-        type: (e.type as string) || 'kernel',
-        signal: Number(e.severity ?? e.priority ?? 0.5),
-        stress: Number(e.stress ?? e.urgency ?? (e.type === 'error' ? 0.25 : 0.1)),
-        timestamp: (e.at as string) || (e.timestamp as string) || new Date().toISOString(),
-        organ: (e.source as string) || (e.domain as string) || 'unknown',
-      }));
+      const ticks: TickEvent[] = events.events.slice(0, 50).map(
+        (e: Record<string, unknown>, i: number) => toTickEvent(e, i),
+      );
       setTickHistory(ticks);
     }
   }, [events]);
@@ -143,6 +139,7 @@ export function TickStreamProvider({ children }: { children: ReactNode }) {
   const lastTickTime = tickHistory.length > 0 ? new Date(tickHistory[0].timestamp).getTime() : null;
 
   const formatMs = useCallback((ms: number) => {
+    if (ms == null || !Number.isFinite(ms)) return '—';
     if (ms < 1000) return `${ms.toFixed(0)}ms`;
     if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
     return `${(ms / 60000).toFixed(1)}m`;

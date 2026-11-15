@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { MarketplaceOrderMenu, PayOrderButton, type BuyerOrder } from '@/components/marketplace/MarketplaceOrderMenu';
 import { checkoutFromLensResult, paidSentence } from '@/components/marketplace/marketplaceOrder';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface StoreListing {
   listingId: string;
@@ -333,14 +334,14 @@ export function StorefrontPanel() {
             type="number"
             value={minPrice}
             onChange={(e) => setMinPrice(e.target.value)}
-            placeholder="Min $"
+            placeholder="Min (CC)"
             className="col-span-1 px-1.5 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono"
           />
           <input
             type="number"
             value={maxPrice}
             onChange={(e) => setMaxPrice(e.target.value)}
-            placeholder="Max $"
+            placeholder="Max (CC)"
             className="col-span-1 px-1.5 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono"
           />
         </div>
@@ -408,7 +409,7 @@ export function StorefrontPanel() {
                     </div>
                     <div className="mt-auto flex items-center justify-between pt-1.5">
                       <span className="text-sm font-mono tabular-nums text-orange-300">
-                        ${l.priceUsd.toFixed(2)}
+                        {l.priceUsd.toFixed(2)} CC
                       </span>
                       <button
                         onClick={() => addToCart(l)}
@@ -429,10 +430,10 @@ export function StorefrontPanel() {
 
       {/* Cart drawer */}
       {showCart && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex justify-end" onClick={() => setShowCart(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className="fixed inset-0 z-50 bg-black/60 flex justify-end" onClick={() => setShowCart(false)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <div
             className="w-full max-w-md bg-lattice-deep border-l border-orange-500/20 h-full overflow-y-auto"
-            onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <header className="px-4 py-3 border-b border-white/10 flex items-center gap-2 sticky top-0 bg-lattice-deep">
               <ShoppingCart className="w-4 h-4 text-orange-400" />
               <span className="text-sm font-semibold text-gray-200">Your cart</span>
@@ -465,7 +466,7 @@ export function StorefrontPanel() {
                       };
                       return (
                         <li key={o.orderId} className="font-mono">
-                          <div>{o.number} — ${o.totalUsd.toFixed(2)} sticker</div>
+                          <div>{o.number} — {o.totalUsd.toFixed(2)} CC sticker</div>
                           {paidSentence(row) ? (
                             <MarketplaceOrderMenu order={row} />
                           ) : (
@@ -507,7 +508,7 @@ export function StorefrontPanel() {
                               <div className="text-[10px] text-gray-400">{ln.variationLabel}</div>
                             )}
                             <div className="text-[10px] text-gray-400 font-mono tabular-nums">
-                              ${ln.unitPriceUsd.toFixed(2)} ea
+                              {ln.unitPriceUsd.toFixed(2)} CC ea
                             </div>
                           </div>
                           <input
@@ -528,8 +529,8 @@ export function StorefrontPanel() {
                       ))}
                     </ul>
                     <div className="px-3 py-1.5 text-[10px] text-gray-400 flex justify-between tabular-nums">
-                      <span>Subtotal ${sh.subtotalUsd.toFixed(2)}</span>
-                      <span>Shipping ${sh.shippingUsd.toFixed(2)}</span>
+                      <span>Subtotal {sh.subtotalUsd.toFixed(2)} CC</span>
+                      <span>Shipping {sh.shippingUsd.toFixed(2)} CC</span>
                     </div>
                   </div>
                 ))}
@@ -559,7 +560,7 @@ export function StorefrontPanel() {
                 <div className="flex items-center justify-between text-sm border-t border-white/10 pt-2">
                   <span className="font-semibold text-gray-300">Total</span>
                   <span className="font-mono tabular-nums text-orange-300 font-bold">
-                    ${cartGrand.toFixed(2)}
+                    {cartGrand.toFixed(2)} CC
                   </span>
                 </div>
                 {cartTotal !== cartGrand && (
@@ -651,7 +652,7 @@ export function StorefrontPanel() {
                   {shop.listings.map((l) => (
                     <li key={l.listingId} className="py-2 flex items-center justify-between text-xs">
                       <span className="text-white truncate flex-1">{l.title}</span>
-                      <span className="font-mono tabular-nums text-orange-300">${l.priceUsd.toFixed(2)}</span>
+                      <span className="font-mono tabular-nums text-orange-300">{l.priceUsd.toFixed(2)} CC</span>
                     </li>
                   ))}
                 </ul>

@@ -76,7 +76,7 @@ export function NvdCveFeed() {
           <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">NVD · via Concord server</span>
         </div>
         <div className="flex items-center gap-2">
-          <select value={severity} onChange={(e) => setSeverity(e.target.value as typeof SEVERITY_FILTERS[number])} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">
+          <select name="severity" aria-label="Filter by severity" value={severity} onChange={(e) => setSeverity(e.target.value as typeof SEVERITY_FILTERS[number])} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">
             {SEVERITY_FILTERS.map((s) => <option key={s} value={s}>{s || 'all severities'}</option>)}
           </select>
           {list.length > 0 && (

@@ -130,11 +130,11 @@ export function ResearchBibliographyPanel({ onChange }: { onChange: () => void }
           <Quote className="w-3.5 h-3.5 text-red-400" /> Bibliography builder
         </h3>
         <div className="flex gap-2 mb-2">
-          <select value={style} onChange={(e) => setStyle(e.target.value)}
+          <select aria-label="Citation style" value={style} onChange={(e) => setStyle(e.target.value)}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
             {STYLES.map((st) => <option key={st} value={st}>{st.toUpperCase()}</option>)}
           </select>
-          <select value={scope} onChange={(e) => setScope(e.target.value)}
+          <select aria-label="Bibliography scope" value={scope} onChange={(e) => setScope(e.target.value)}
             className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
             <option value="">Entire library</option>
             {collections.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}

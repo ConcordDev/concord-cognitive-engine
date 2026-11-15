@@ -10,9 +10,12 @@
 // All macros are pure delegations; the engine owns the SQL + the
 // "rewards claimed exactly once" invariant (player_quests.rewarded_at gate).
 
+import { registerLensExportProvider } from "../lib/lens-export.js";
 import {
   getActiveQuests,
   getCompletedQuests,
+  getAvailableQuests,
+  createAuthoredQuest,
   getQuestProgress,
   checkQuestCompletion,
   claimQuestRewards,
@@ -99,7 +102,40 @@ function reshapeQuestForLens(db, userId, worldId, q) {
   };
 }
 
+export function questExportRows(ctx) {
+  const db = ctx?.db;
+  const userId = ctx?.actor?.userId || ctx?.actor?.id || ctx?.userId || null;
+  if (!db || !userId) return [];
+  try {
+    const rows = db.prepare(`
+      SELECT q.id, q.title, q.description, pq.status, pq.world_id, pq.completed_at
+      FROM player_quests pq
+      JOIN world_quests q ON q.id = pq.quest_id
+      WHERE pq.user_id = ?
+      ORDER BY COALESCE(pq.completed_at, 0) DESC
+      LIMIT 200
+    `).all(userId);
+    return rows.map((r) => ({
+      id: `${r.world_id || "world"}:${r.id}`,
+      type: "quest",
+      title: r.title || String(r.id),
+      createdAt: r.completed_at || null,
+      updatedAt: r.completed_at || null,
+      data: {
+        questId: r.id,
+        title: r.title || String(r.id),
+        description: r.description || "",
+        status: r.status || "active",
+        worldId: r.world_id || null,
+      },
+    }));
+  } catch {
+    return [];
+  }
+}
+
 export default function registerQuestsMacros(register) {
+  registerLensExportProvider("quests", questExportRows);
   /**
    * quests.accept — write a player_quests row for an authored world_quests
    * catalog id. Does NOT flip world_quests.status (multiplayer: catalog stays
@@ -167,6 +203,88 @@ export default function registerQuestsMacros(register) {
     const quests = rows.map((q) => reshapeQuestForLens(db, userId, worldId, q));
     return { ok: true, quests };
   }, { note: "lens-shaped completed/rewarded quest history for /lenses/quests" });
+
+  /**
+   * quests.available — the world catalog quests this player has NOT yet
+   * accepted, lens-shaped like `quests.mine`. Catalog rows stay
+   * 'available' for everyone (accept never flips them), so availability
+   * is per-player. FIX-quests-001: the lens's Available tab had no
+   * listing macro at all, so a web user could never see or accept one.
+   * input: { userId?, worldId? }  → { ok, quests }
+   */
+  register("quests", "available", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const userId = ctxUser(ctx, input);
+    if (!userId) return { ok: false, reason: "no_user" };
+    const worldId = ctxWorld(ctx, input);
+    let rows;
+    try {
+      rows = getAvailableQuests(db, userId, worldId);
+    } catch {
+      return { ok: false, reason: "no_world_quests" };
+    }
+    const quests = rows.map((q) => reshapeQuestForLens(db, userId, worldId, q));
+    return { ok: true, quests };
+  }, { note: "catalog quests this player has not accepted yet, lens-shaped" });
+
+  /**
+   * quests.create — post a quest into the world catalog from the web.
+   * The quest joins the same world_quests records NPC offers use and
+   * becomes acceptable by anyone in the world (including its author)
+   * through quests.accept. Objectives use the engine's real types;
+   * the reward is XP only — a posted quest mints no currency.
+   * input: { title, description?, objectives: [{ type, target,
+   *   requiredCount?, description? }], rewardXp?, worldId? }
+   *   → { ok, quest } (lens-shaped)
+   */
+  register("quests", "create", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const userId = ctxUser(ctx, input);
+    if (!userId) return { ok: false, reason: "no_user" };
+    const badNum = badNumericField(input, ["rewardXp"]);
+    if (badNum) return { ok: false, reason: `invalid_${badNum}` };
+    const title = String(input.title || "").trim().slice(0, 120);
+    if (!title) return { ok: false, reason: "title_required" };
+    const rawObjectives = Array.isArray(input.objectives) ? input.objectives : [];
+    if (rawObjectives.length < 1 || rawObjectives.length > 5) {
+      return { ok: false, reason: "objectives_required" };
+    }
+    const OBJECTIVE_TYPES = new Set(["kill", "gather", "talk_to", "deliver", "reach_location", "interact", "observe"]);
+    const objectives = [];
+    for (const o of rawObjectives) {
+      const type = String(o?.type || "").trim();
+      if (!OBJECTIVE_TYPES.has(type)) return { ok: false, reason: "invalid_objective_type" };
+      const target = String(o?.target || "").trim().slice(0, 120);
+      if (!target) return { ok: false, reason: "objective_target_required" };
+      const countRaw = o?.requiredCount === undefined || o?.requiredCount === null ? 1 : Number(o.requiredCount);
+      if (!Number.isFinite(countRaw) || countRaw < 1 || countRaw > 100) {
+        return { ok: false, reason: "invalid_required_count" };
+      }
+      objectives.push({
+        type,
+        target,
+        requiredCount: Math.round(countRaw),
+        description: String(o?.description || "").trim().slice(0, 200),
+      });
+    }
+    const rewardXp = Math.min(500, Math.max(0, Math.round(Number(input.rewardXp || 0))));
+    const worldId = ctxWorld(ctx, input);
+    let row;
+    try {
+      row = createAuthoredQuest(db, {
+        worldId,
+        title,
+        description: String(input.description || "").trim().slice(0, 600),
+        objectives,
+        rewardXp,
+      });
+    } catch {
+      return { ok: false, reason: "no_world_quests" };
+    }
+    return { ok: true, quest: reshapeQuestForLens(db, userId, worldId, row) };
+  }, { note: "post a quest into the world catalog (web authoring; XP reward only)" });
 
   /**
    * quests.progress — objective rows for a quest with merged player progress.

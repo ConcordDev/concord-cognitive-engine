@@ -54,7 +54,7 @@ export function WiringPanel() {
               </span>
             </div>
             <div className="flex flex-wrap gap-1">
-              {info.components.map((c) => (
+              {info.components.slice(0, 48).map((c) => (
                 <span
                   key={c}
                   className="text-xs px-1.5 py-0.5 bg-lattice-surface rounded text-gray-300 font-mono"
@@ -71,6 +71,9 @@ export function WiringPanel() {
                   {r}
                 </span>
               ))}
+              {info.components.length > 48 && (
+                <span className="text-xs text-gray-400 italic">{info.components.length - 48} more components</span>
+              )}
               {info.components.length === 0 && info.serverRoutes.length === 0 && (
                 <span className="text-xs text-gray-400 italic">No component imports or detected /api/ calls.</span>
               )}

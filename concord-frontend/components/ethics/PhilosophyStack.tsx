@@ -64,10 +64,10 @@ export function PhilosophyStack() {
           <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">philosophy.stackexchange.com · {tag}</span>
         </div>
         <div className="flex items-center gap-2">
-          <select value={tag} onChange={(e) => setTag(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">
+          <select value={tag} onChange={(e) => setTag(e.target.value)} className="min-h-11 rounded border border-zinc-800 bg-zinc-950 px-2 text-xs text-white">
             {TAGS.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
           </select>
-          <select value={sort} onChange={(e) => setSort(e.target.value as typeof SORTS[number]['id'])} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">
+          <select value={sort} onChange={(e) => setSort(e.target.value as typeof SORTS[number]['id'])} className="min-h-11 rounded border border-zinc-800 bg-zinc-950 px-2 text-xs text-white">
             {SORTS.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
           </select>
           {list.length > 0 && (

@@ -838,6 +838,10 @@ export default function registerGoalsActions(registerLensAction) {
       const promotedChildren = [];
       for (const o of list) if (o.parentId === params.id) { o.parentId = null; promotedChildren.push(o.id); }
       lastTrashId = trashItem(s, userId, "objective", removedObj, idx, { promotedChildren });
+      const checks = ensureList(s.checkins, userId);
+      for (let i = checks.length - 1; i >= 0; i--) {
+        if (checks[i].goalId === params.id) checks.splice(i, 1);
+      }
       save();
     } else if (op === "restore") {
       const entry = takeTrash(s, userId, "objective", params.trashId);
@@ -1112,7 +1116,7 @@ export default function registerGoalsActions(registerLensAction) {
       objectives.push(objective);
       let recurring = null;
       const cadenceDaysApply = { daily: 1, weekly: 7, monthly: 30, quarterly: 91 };
-      if (cadenceDaysApply[tpl.cadence]) {
+      if (params.alsoRecurring === true && cadenceDaysApply[tpl.cadence]) {
         const recList = ensureList(s.recurring, userId);
         recurring = {
           id: `rec_${nextSeq(s, userId, "rec")}`,

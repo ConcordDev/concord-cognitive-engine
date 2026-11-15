@@ -140,7 +140,7 @@ export function SupplyChainOverview({ onJump }: { onJump: (destination: 'tower' 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between -mb-2">
-        <span className="text-[10px] text-zinc-500">
+        <span className="text-[10px] text-zinc-400">
           {lastLoadedAt ? `Updated ${timeAgo(lastLoadedAt)}` : ''}
         </span>
         <button type="button" onClick={refresh} disabled={refreshing}
@@ -190,7 +190,7 @@ export function SupplyChainOverview({ onJump }: { onJump: (destination: 'tower' 
             Manage in Control Tower <ArrowRight className="w-3 h-3" />
           </button>
         </div>
-        <p className="text-[10px] text-zinc-500 mb-2">
+        <p className="text-[10px] text-zinc-400 mb-2">
           {data.exceptions.scan
             ? <>Shipment &amp; PO alerts are live. Inventory &amp; supplier alerts are from your last Control Tower scan · {timeAgo(data.exceptions.scan.scannedAt)}.</>
             : <>Shipment &amp; PO alerts are live. Run a scan in the Control Tower to add inventory &amp; supplier alerts here.</>}

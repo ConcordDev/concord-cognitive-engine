@@ -2,7 +2,13 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, cleanup, fireEvent, waitFor, within } from '@testing-library/react';
 
-const { apiGet } = vi.hoisted(() => ({ apiGet: vi.fn() }));
+const { apiGet, openAuth } = vi.hoisted(() => ({ apiGet: vi.fn(), openAuth: vi.fn() }));
+// GB-1536: a visitor's write control opens the ONE signup modal in place (useGuestAuth) instead of
+// linking away to /login. Spy on openAuth; the rest of lib/guest stays real.
+vi.mock('@/lib/guest', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/guest')>()),
+  useGuestAuth: () => ({ openAuth }),
+}));
 vi.mock('@/lib/api/client', () => ({ api: { get: (...a: unknown[]) => apiGet(...a) } }));
 vi.mock('next/link', () => ({ default: ({ children, href, ...rest }: { children: React.ReactNode; href: string }) => <a href={href} {...rest}>{children}</a> }));
 vi.mock('@/components/music/MusicWorkspace', () => ({ MusicWorkspace: () => <div data-testid="member-music-workspace" /> }));
@@ -22,6 +28,7 @@ const SIGNED_OUT_PREVIEW = { 'x-concord-preview': 'true', 'x-concord-preview-sec
 beforeEach(() => {
   window.history.replaceState(null, '', '/lenses/music');
   apiGet.mockReset();
+  openAuth.mockReset();
   vi.stubGlobal('fetch', vi.fn(async () => ({ status: 206, headers: new Headers(SIGNED_OUT_PREVIEW) }) as unknown as Response));
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); window.history.replaceState(null, '', '/'); });
@@ -53,19 +60,24 @@ describe('Music for a signed-out visitor', () => {
     expect(prompt.getAttribute('href')).toBe(`/login?from=${encodeURIComponent('/lenses/music')}`);
   });
 
-  it('every write is a sign-in link back to this page, never a button that errors', async () => {
+  it('every write is a sign-up gate that opens the auth modal, never a write that errors', async () => {
     apiGet.mockResolvedValue({ data: { ok: true, items: [TRACK('m1', 'Night Drive')], total: 1 } });
     render(<SignedOutMusicBrowse />);
     await waitFor(() => expect(screen.getByTestId('visitor-track-m1')).toBeTruthy());
     const up = screen.getByTestId('visitor-upload');
-    expect(up.tagName).toBe('A');
+    expect(up.tagName).toBe('BUTTON');
+    expect(up.getAttribute('type')).toBe('button'); // never a form submit
     expect(up.textContent).toMatch(/Sign in to upload/);
-    expect(up.getAttribute('href')).toContain('/login?from=');
-    expect(screen.getByText(/Sign in to like or comment/).closest('a')!.getAttribute('href')).toContain('/login?from=');
-    // the visitor frame offers sign-in + create account, and says what a visitor can do
-    expect(screen.getByTestId('visitor-signin').getAttribute('href')).toContain('/login?from=');
-    expect(screen.getByTestId('visitor-register').getAttribute('href')).toBe('/register');
-    expect(screen.getByTestId('visitor-note').textContent).toMatch(/30 seconds/);
+    fireEvent.click(up);
+    expect(openAuth).toHaveBeenCalledTimes(1);
+    expect(openAuth).toHaveBeenCalledWith('signup');
+    fireEvent.click(screen.getByText(/Sign in to like or comment/).closest('button')!);
+    expect(openAuth).toHaveBeenCalledTimes(2);
+    // Gating a write made no call beyond the one public read (the mock api has no write verbs).
+    for (const c of apiGet.mock.calls) expect(c[0]).toBe('/api/media/public-feed');
+    // The old in-frame sign-in/register/note chrome is retired: guests get it from the normal
+    // shell's Topbar + GuestBanner (pinned in tests/appshell-visitor-browse.test.tsx).
+    expect(screen.queryByTestId('visitor-signin')).toBeNull();
   });
 
   it('search and the Trending tab refetch the public catalog (no write calls are ever made)', async () => {
@@ -118,10 +130,16 @@ describe('Market for a signed-out visitor', () => {
     expect(within(media).queryByText(/Sign in to buy/)).toBeNull();
     const svc = screen.getByTestId('visitor-listing-s1');
     expect(within(svc).getByText('20 CC')).toBeTruthy();
-    const buy = within(svc).getByText(/Sign in to buy/).closest('a')!;
-    expect(buy.getAttribute('href')).toBe(`/login?from=${encodeURIComponent('/lenses/music')}`);
+    const buy = within(svc).getByText(/Sign in to buy/).closest('button')!;
+    expect(buy.getAttribute('type')).toBe('button');
+    fireEvent.click(buy);
+    expect(openAuth).toHaveBeenCalledWith('signup');
     expect(screen.getByTestId('visitor-list-something').textContent).toMatch(/Sign in to list something/);
-    expect(screen.queryByRole('button', { name: /buy|purchase|list/i })).toBeNull(); // there is nothing that can write
+    // Nothing can write: every buy/purchase/list control is a "Sign in to …" auth gate.
+    const writeish = screen.queryAllByRole('button', { name: /buy|purchase|list/i });
+    expect(writeish.length).toBeGreaterThan(0);
+    for (const b of writeish) expect(b.textContent).toMatch(/^\s*Sign in to /);
+    for (const c of apiGet.mock.calls) expect(c[0]).toBe('/api/marketplace/listings');
   });
 
   it('filters by category and search, and says so when nothing matches', async () => {

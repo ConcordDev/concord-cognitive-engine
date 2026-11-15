@@ -47,6 +47,7 @@ export function AtlasShell({ activeNav, onNavChange, badges = {}, panel, map }: 
               type="button"
               onClick={() => onNavChange(n.id)}
               title={n.label}
+              aria-label={n.label}
               className={cn(
                 'relative w-12 h-12 m-0.5 rounded flex items-center justify-center transition-colors',
                 active ? 'bg-teal-500/15 text-teal-200' : 'text-gray-400 hover:text-white hover:bg-white/[0.04]',

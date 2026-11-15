@@ -16,6 +16,7 @@
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { TimelineView, type TimelineEvent } from '@/components/viz';
 import {
   Activity, Play, Plus, Pause, Trash2, Loader2, CheckCircle2, XCircle,
@@ -574,10 +575,15 @@ function TemporalPanel() {
             {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Camera className="w-3 h-3" />}
             Record
           </button>
-          <button onClick={clear} disabled={busy}
-            className="btn-secondary text-xs flex items-center gap-1 disabled:opacity-50">
-            <Eraser className="w-3 h-3" /> Clear
-          </button>
+          <StickyDeleteConfirm
+            onConfirm={() => { void clear(); }}
+            armLabel={<><Eraser className="w-3 h-3" /> Clear</>}
+            confirmLabel="Clear history?"
+            armAriaLabel="Clear history"
+            confirmAriaLabel="Confirm clear history"
+            className="btn-secondary text-xs flex items-center gap-1 disabled:opacity-50"
+            disabled={busy}
+          />
         </div>
         {historyLen !== null && (
           <div className="text-[10px] text-gray-400">History length: {historyLen} snapshot(s)</div>

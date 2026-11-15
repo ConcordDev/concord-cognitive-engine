@@ -78,10 +78,10 @@ describe('mental-health build — S-MH-3 + F5 labels', () => {
 });
 
 describe('mental-health build — S-MH-4 declaration', () => {
-  it('manifest declares mental-health REAL_LIVE', () => {
+  it('manifest declares mental-health REAL_WORKSPACE (FIX-mental-health-004: personal tracking data is workspace tier, not live-polled)', () => {
     const i = manifest.indexOf("domain: 'mental-health'");
     expect(i).toBeGreaterThanOrEqual(0);
     const block = manifest.slice(i, i + 1400);
-    expect(block).toContain("dataTier: 'REAL_LIVE'");
+    expect(block).toContain("dataTier: 'REAL_WORKSPACE'");
   });
 });

@@ -13,6 +13,7 @@ function memDb() {
     mail: new Map(),
     wallets: new Map(),
     dtus: new Map(),
+    users: new Set(["u1", "u2"]),
     ledger: [],
   };
   function _trim(s) { return String(s).replace(/\s+/g, " ").trim(); }
@@ -130,6 +131,9 @@ function memDb() {
   }
   function _get(sql, args) {
     const n = _trim(sql);
+    if (n.startsWith("SELECT id FROM users WHERE id = ?")) {
+      return t.users.has(args[0]) ? { id: args[0] } : null;
+    }
     if (n.startsWith("SELECT concordia_credits AS balance FROM users")) {
       const w = t.wallets.get(args[0]);
       return w !== undefined ? { balance: w } : null;
@@ -175,6 +179,15 @@ describe("Phase U1 — player mail", () => {
   it("sendMail validates non-empty subject and distinct users", () => {
     assert.equal(sendMail(db, { fromUserId: "u1", toUserId: "u1", subject: "x" }).error, "cannot_mail_self");
     assert.equal(sendMail(db, { fromUserId: "u1", toUserId: "u2", subject: "" }).error, "subject_required");
+  });
+
+  it("sendMail refuses a name that is not a user id and writes no mail or gift", () => {
+    db._seedWallet("u1", 500);
+    const r = sendMail(db, { fromUserId: "u1", toUserId: "B the person", subject: "Hi", attachmentCc: 1 });
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "recipient_unresolved");
+    assert.equal(db._t.mail.size, 0);
+    assert.equal(db._t.wallets.get("u1"), 500);
   });
 
   it("sendMail with no attachments succeeds without wallet activity", () => {

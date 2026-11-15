@@ -19,6 +19,7 @@ export function ProjectsBacklog() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ name: '', description: '', expectedReductionTonnesPerYear: '', costUsd: '', paybackYears: '' });
+  const [formNote, setFormNote] = useState<string | null>(null);
 
   useEffect(() => { refresh(); }, []);
 
@@ -32,12 +33,20 @@ export function ProjectsBacklog() {
   }
 
   async function create() {
-    if (!form.name.trim()) return;
+    if (!form.name.trim()) {
+      setFormNote('A project needs a name.');
+      return;
+    }
+    setFormNote(null);
     try {
-      await lensRun({ domain: 'environment', action: 'projects-create', input: { ...form, expectedReductionTonnesPerYear: Number(form.expectedReductionTonnesPerYear) || 0, costUsd: Number(form.costUsd) || 0, paybackYears: Number(form.paybackYears) || undefined } });
+      const r = await lensRun({ domain: 'environment', action: 'projects-create', input: { ...form, expectedReductionTonnesPerYear: Number(form.expectedReductionTonnesPerYear) || 0, costUsd: Number(form.costUsd) || 0, paybackYears: Number(form.paybackYears) || undefined } });
+      if (r.data?.ok === false) {
+        setFormNote(r.data.error || 'Could not add that project.');
+        return;
+      }
       setForm({ name: '', description: '', expectedReductionTonnesPerYear: '', costUsd: '', paybackYears: '' });
       await refresh();
-    } catch (e) { console.error('[Projects] create', e); }
+    } catch (e) { setFormNote(e instanceof Error ? e.message : 'Could not add that project.'); }
   }
 
   async function setStatus(id: string, status: string) {
@@ -64,6 +73,7 @@ export function ProjectsBacklog() {
         <input type="number" step="0.1" value={form.paybackYears} onChange={e => setForm({ ...form, paybackYears: e.target.value })} placeholder="Payback yrs" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Description" className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <button onClick={create} className="px-3 py-1.5 text-xs rounded bg-emerald-500 text-black font-bold hover:bg-emerald-400 inline-flex items-center justify-center gap-1"><Plus className="w-3 h-3" />Add</button>
+        {formNote && <p className="col-span-5 text-xs text-amber-200" role="status">{formNote}</p>}
       </div>
       <div className="max-h-80 overflow-y-auto">
         {loading ? (
@@ -86,7 +96,7 @@ export function ProjectsBacklog() {
                 </div>
                 {p.description && <div className="text-[11px] text-gray-400 ml-5 mb-1">{p.description}</div>}
                 <div className="ml-5 flex items-center gap-1">
-                  <select value={p.status} onChange={e => setStatus(p.id, e.target.value)} className={cn('text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded border-0', STATUS_COLOUR[p.status])}>
+                  <select aria-label="Project status" value={p.status} onChange={e => setStatus(p.id, e.target.value)} className={cn('min-h-11 text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded border-0', STATUS_COLOUR[p.status])}>
                     {Object.keys(STATUS_COLOUR).map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
                   </select>
                 </div>

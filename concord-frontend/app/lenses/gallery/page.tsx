@@ -18,6 +18,7 @@ import { LensShell } from '@/components/lens/LensShell';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
 import { lensRun } from '@/lib/api/client';
+import { absoluteHttpUrlError } from '@/lib/form-guards';
 
 interface Work {
   id: string;
@@ -25,6 +26,38 @@ interface Work {
   image?: string;
   artist?: string;
   dtuId?: string;
+}
+
+/**
+ * FIX-gallery-001: a hung work's image is an arbitrary external URL.
+ * When it cannot be loaded (dead host, 404, a file-page URL pasted
+ * instead of the image URL) the wall used to show the browser's
+ * broken-image glyph with no explanation. The work now falls back to
+ * a labelled tile naming the failure; the work itself stays on the
+ * wall and can be taken down or re-hung with a working URL.
+ */
+export function WallImage({ src, title }: { src: string; title: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    let host = src;
+    try { host = new URL(src).host || src; } catch { /* keep the raw value */ }
+    return (
+      <div className="mb-3 flex max-h-80 w-full items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] px-4 py-10 text-center">
+        <p className="text-[12px] text-zinc-400">
+          Image didn’t load from {host}. The work is saved — check the image URL or take it down and re-hang it.
+        </p>
+      </div>
+    );
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- arbitrary user/museum-supplied URLs, not a local asset.
+    <img
+      src={src}
+      alt={title}
+      onError={() => setFailed(true)}
+      className="mb-3 max-h-80 w-auto max-w-full rounded-lg border border-white/10 object-contain"
+    />
+  );
 }
 
 type Phase = 'loading' | 'ready' | 'error';
@@ -137,6 +170,11 @@ export default function GalleryPage() {
       setActionError('A title is required.');
       return;
     }
+    const imageError = absoluteHttpUrlError(imageUrl);
+    if (imageError) {
+      setActionError(imageError);
+      return;
+    }
     setBusy(true);
     setActionError('');
     try {
@@ -232,7 +270,10 @@ export default function GalleryPage() {
 
   return (
     <LensShell lensId="gallery" asMain={false}>
-      <div data-lens-theme="gallery" className="relative min-h-full bg-black px-8 pb-28 pt-6">
+      {/* FIX-gallery-003: while the hang form is open the page carries
+          extra bottom padding so the form's last field can scroll fully
+          clear of the fixed Hang button. */}
+      <div data-lens-theme="gallery" className={`relative min-h-full bg-black px-4 pt-6 sm:px-8 ${composing ? 'pb-44' : 'pb-28'}`}>
         <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Gallery</h1>
 
         {/* Substrate tier declaration (F1): the wall is a real, persistent,
@@ -252,7 +293,7 @@ export default function GalleryPage() {
           className="flex min-h-[22rem] flex-col justify-center rounded-2xl border border-white/10 bg-zinc-950 px-6 py-16"
         >
           {phase === 'loading' && (
-            <p data-testid="gallery-loading" role="status" aria-busy="true" className="text-[14px] text-zinc-500">
+            <p data-testid="gallery-loading" role="status" aria-busy="true" className="text-[14px] text-zinc-400">
               Opening the wall.
             </p>
           )}
@@ -266,7 +307,7 @@ export default function GalleryPage() {
           )}
           {phase === 'ready' && works.length === 0 && !composing && (
             <div data-testid="gallery-empty">
-              <p className="text-[14px] text-zinc-500">The wall is empty.</p>
+              <p className="text-[14px] text-zinc-400">The wall is empty.</p>
               <div className="mt-6 h-px w-2/3 bg-white/10" aria-hidden="true" />
               <div className="mt-3 h-px w-1/2 bg-white/10" aria-hidden="true" />
             </div>
@@ -298,16 +339,11 @@ export default function GalleryPage() {
                   ) : (
                     <>
                       {work.image ? (
-                        // eslint-disable-next-line @next/next/no-img-element -- arbitrary user/museum-supplied URLs, not a local asset.
-                        <img
-                          src={work.image}
-                          alt={work.title}
-                          className="mb-3 max-h-80 w-auto max-w-full rounded-lg border border-white/10 object-contain"
-                        />
+                        <WallImage src={work.image} title={work.title} />
                       ) : null}
                       <div className="flex flex-wrap items-baseline gap-3">
                         <h2 className="font-vault text-[1.5rem] text-zinc-100">{work.title}</h2>
-                        {work.artist ? <span className="text-[13px] text-zinc-500">{work.artist}</span> : null}
+                        {work.artist ? <span className="text-[13px] text-zinc-400">{work.artist}</span> : null}
                       </div>
                       <div className="mt-2 flex gap-3 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
                         <button type="button" onClick={() => startEdit(work)} className="text-[12px] text-zinc-400 underline">
@@ -359,7 +395,7 @@ export default function GalleryPage() {
                     if (event.key === 'Enter') { event.preventDefault(); void hang(); }
                   }}
                   placeholder="https://..."
-                  className="mt-2 w-full border-b border-white/15 bg-transparent pb-2 text-[14px] text-zinc-100 outline-none"
+                  className="mt-2 w-full border-b border-white/15 bg-transparent pb-2 text-[14px] text-zinc-100 outline-none placeholder:text-zinc-400"
                 />
               </label>
             </div>
@@ -373,7 +409,11 @@ export default function GalleryPage() {
           type="button"
           onClick={() => { void hang(); }}
           disabled={phase !== 'ready' || busy}
-          className="fixed bottom-8 right-8 z-30 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-60"
+          // FIX-gallery-003: sit on the platform's mobile CTA line — above
+          // the fixed bottom nav (bottom-[4rem+safe-area], the
+          // NorthStarFrame placement) instead of bottom-8, where the
+          // button overlapped the nav zone and the open form's lower area.
+          className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] right-4 z-30 max-w-[calc(100vw-2rem)] rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-60 sm:right-8 lg:bottom-8"
         >
           Hang a work
         </button>

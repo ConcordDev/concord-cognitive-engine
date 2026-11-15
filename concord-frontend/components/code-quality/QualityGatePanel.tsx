@@ -4,12 +4,12 @@ import { useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import type { CQGate, CQGateVerdict, CQScan } from './types';
 
-const NUM_FIELDS: Array<{ key: keyof CQGate; label: string }> = [
-  { key: 'maxCritical', label: 'Max critical' },
-  { key: 'maxHigh', label: 'Max high' },
-  { key: 'maxBlockerDebtHours', label: 'Max debt (h)' },
-  { key: 'minMaintainability', label: 'Min maintainability' },
-  { key: 'maxDuplicationPct', label: 'Max duplication %' },
+const NUM_FIELDS: Array<{ key: keyof CQGate; label: string; max: number }> = [
+  { key: 'maxCritical', label: 'Max critical', max: 1000000 },
+  { key: 'maxHigh', label: 'Max high', max: 1000000 },
+  { key: 'maxBlockerDebtHours', label: 'Max debt (h)', max: 1000000 },
+  { key: 'minMaintainability', label: 'Min maintainability', max: 100 },
+  { key: 'maxDuplicationPct', label: 'Max duplication %', max: 100 },
 ];
 
 export function QualityGatePanel({ scan }: { scan: CQScan | null }) {
@@ -27,6 +27,15 @@ export function QualityGatePanel({ scan }: { scan: CQScan | null }) {
 
   async function saveGate() {
     if (!gate) return;
+    // FIX-code-quality-006: refuse in words at the form — a value the
+    // server would reject is named here with its range, not sent.
+    for (const f of NUM_FIELDS) {
+      const v = gate[f.key] as number;
+      if (!Number.isFinite(v) || v < 0 || v > f.max) {
+        setError(`${f.label} must be a number between 0 and ${f.max.toLocaleString('en-US')}.`);
+        return;
+      }
+    }
     setSaving(true);
     setError(null);
     try {
@@ -64,9 +73,14 @@ export function QualityGatePanel({ scan }: { scan: CQScan | null }) {
             <input
               type="number"
               min={0}
+              max={f.max}
               value={gate[f.key] as number}
               onChange={(e) =>
-                setGate({ ...gate, [f.key]: Math.max(0, Number(e.target.value)) })
+                // FIX-code-quality-006: no silent rewrite — a typed
+                // minus or text stays visible (and Save names it)
+                // instead of being clamped/dropped without a word;
+                // clearing the field leaves it empty, not 0.
+                setGate({ ...gate, [f.key]: Number(e.target.value) })
               }
               className="bg-black/40 border border-gray-700 rounded px-2 py-1 font-mono text-sm"
             />

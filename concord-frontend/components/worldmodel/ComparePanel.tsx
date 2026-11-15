@@ -79,6 +79,10 @@ export function ComparePanel() {
             <Stat label="Net swing" value={result.totalSwing} tone={result.totalSwing >= 0 ? 'good' : 'bad'} />
             <span className={`text-xs ${result.totalSwing >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{result.verdict}</span>
           </div>
+          {/* FIX-worldmodel-006: an identically-configured compare says why it ties. */}
+          {(result as { hint?: string | null }).hint && (
+            <p className="text-xs text-amber-400">{(result as { hint?: string | null }).hint}</p>
+          )}
           <div className="grid gap-4 lg:grid-cols-2">
             <div className={card}>
               <h4 className="mb-2 text-xs font-semibold text-indigo-300">Baseline trajectory</h4>

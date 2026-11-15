@@ -185,7 +185,8 @@ export default function UrbanPlanningLensPage() {
         actions={(
           <>
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-            <DTUExportButton domain="urban-planning" data={counts ?? {}} compact />
+            {/* FIX-urban-planning-005: the .dtu export carries the caller's own lens records — with an empty payload the button loads them itself. The dashboard counts are not the user's data. */}
+            <DTUExportButton domain="urban-planning" data={{}} compact />
           </>
         )}
         tabs={MODE_TABS.map((t) => ({ id: t.key, label: t.label, icon: t.icon, keys: t.keys, hint: t.hint }))}
@@ -249,9 +250,9 @@ export default function UrbanPlanningLensPage() {
             )}
 
             <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
-              <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
                 <Landmark className="w-4 h-4 text-emerald-400" /> Workbench
-              </h3>
+              </h2>
               <p className="text-xs text-gray-400 mb-3">
                 The category-leader workflow lives in the tabs above: run zoning &amp; site
                 calculators (FAR, walkability, density, traffic impact), add real parcels and

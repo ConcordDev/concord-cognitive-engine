@@ -12,10 +12,11 @@
  * rows, and the analysis runs for real over exactly what they entered.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Loader2, Plus, TrendingUp, Trash2, BarChart3 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { useLensStatePersistence } from '@/lib/lens-state-persistence';
 
 interface TrendRow { name: string; category: string; popularity: number; trending: boolean }
 interface CategoryBreakdown { category: string; count: number; trending: number }
@@ -24,7 +25,17 @@ interface AnalysisResult { totalTrends: number; categories: number; byCategory: 
 const CATEGORIES = ['Tops', 'Bottoms', 'Dresses', 'Outerwear', 'Shoes', 'Accessories', 'Activewear', 'Formal'];
 
 export function FashionTrendSandboxPanel() {
-  const [rows, setRows] = useState<TrendRow[]>([]);
+  // Rows are the user's own entered observations; they used to live in
+  // bare useState and vanished on ANY unmount (reload or a tab switch),
+  // with no warning (FIX-fashion-001). They now ride the lens UI-state
+  // persistence idiom: restored once on mount, re-persisted on change,
+  // so entered trends survive until the user removes them.
+  const { restore, persist } = useLensStatePersistence('fashion');
+  const [rows, setRows] = useState<TrendRow[]>(() => {
+    const saved = restore()?.trendRows;
+    return Array.isArray(saved) ? (saved as TrendRow[]) : [];
+  });
+  useEffect(() => { persist({ ...(restore() ?? {}), trendRows: rows }); }, [rows, persist, restore]);
   const [form, setForm] = useState<TrendRow>({ name: '', category: 'Tops', popularity: 50, trending: true });
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
@@ -88,7 +99,7 @@ export function FashionTrendSandboxPanel() {
           {rows.map((row, idx) => (
             <li key={idx} className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
               <span className="text-xs text-zinc-200">
-                {row.name} <span className="text-zinc-500">· {row.category} · {row.popularity}%{row.trending ? ' · trending' : ''}</span>
+                {row.name} <span className="text-zinc-400">· {row.category} · {row.popularity}%{row.trending ? ' · trending' : ''}</span>
               </span>
               <button aria-label={`Remove ${row.name}`} type="button" onClick={() => removeRow(idx)} className="text-zinc-600 hover:text-rose-400">
                 <Trash2 className="w-3.5 h-3.5" />

@@ -1,0 +1,802 @@
+[
+ {
+  "pr": 2357,
+  "planHead": "04b7b5d4b",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "`docs/cockpit/**` superset on main (#2358) and the branch"
+ },
+ {
+  "pr": 2356,
+  "planHead": "8bbe2dc1b",
+  "verdict": "TARGET",
+  "verdictText": "TARGET",
+  "ticket": "HV-51",
+  "evidence": "target of the harvest"
+ },
+ {
+  "pr": 2355,
+  "planHead": "15f79e529",
+  "verdict": "HARVEST-ALL",
+  "verdictText": "HARVEST-ALL",
+  "ticket": "HV-20",
+  "evidence": "not on branch; fitness.js moved under branch fixes"
+ },
+ {
+  "pr": 2354,
+  "planHead": "1d20b6967",
+  "verdict": "HARVEST-ALL",
+  "verdictText": "HARVEST-ALL",
+  "ticket": "HV-21",
+  "evidence": "not on branch"
+ },
+ {
+  "pr": 2352,
+  "planHead": "aad164e90",
+  "verdict": "HARVEST-PART",
+  "verdictText": "HARVEST-PART (minus the 3 majors)",
+  "ticket": "HV-32",
+  "evidence": "not on branch"
+ },
+ {
+  "pr": 2351,
+  "planHead": "c915c64e1",
+  "verdict": "HARVEST-ALL",
+  "verdictText": "HARVEST-ALL",
+  "ticket": "HV-31",
+  "evidence": "not on branch"
+ },
+ {
+  "pr": 2350,
+  "planHead": "c4f9a43bf",
+  "verdict": "HARVEST-ALL",
+  "verdictText": "HARVEST-ALL",
+  "ticket": "HV-30",
+  "evidence": "not on branch"
+ },
+ {
+  "pr": 2349,
+  "planHead": "33026d68e",
+  "verdict": "HARVEST-ALL",
+  "verdictText": "HARVEST-ALL (beats #2325)",
+  "ticket": "HV-22",
+  "evidence": "`chrome-fix-a6.test.tsx` absent"
+ },
+ {
+  "pr": 2348,
+  "planHead": "b596b7279",
+  "verdict": "HARVEST-ALL",
+  "verdictText": "HARVEST-ALL",
+  "ticket": "HV-23",
+  "evidence": "`formatter-throws-p1.test.mjs` absent"
+ },
+ {
+  "pr": 2347,
+  "planHead": "2e239f9ac",
+  "verdict": "HARVEST-ALL",
+  "verdictText": "HARVEST-ALL",
+  "ticket": "HV-24",
+  "evidence": "`hr-retain-label.test.js` absent"
+ },
+ {
+  "pr": 2346,
+  "planHead": "d2abdffc3",
+  "verdict": "HARVEST-ALL",
+  "verdictText": "HARVEST-ALL (flag on the new macro)",
+  "ticket": "HV-13",
+  "evidence": "`bounty-proposal.js` + 2 tests absent"
+ },
+ {
+  "pr": 2345,
+  "planHead": "2301b1509",
+  "verdict": "HARVEST-PART",
+  "verdictText": "HARVEST-PART (answer leg only)",
+  "ticket": "HV-25",
+  "evidence": "498 and checks test on branch; answer leg absent"
+ },
+ {
+  "pr": 2333,
+  "planHead": "de6e355e1",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "merged inside #2344; `de6e355e1` ported as `9eea5da3a` (CLAUDE-PR-CLEANUP-LOG)"
+ },
+ {
+  "pr": 2325,
+  "planHead": "7202b8229",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "superseded by #2349"
+ },
+ {
+  "pr": 2222,
+  "planHead": "08d168525",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-3; files\u2713"
+ },
+ {
+  "pr": 2218,
+  "planHead": "63ba69958",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-3; files\u2713"
+ },
+ {
+  "pr": 2217,
+  "planHead": "490557c4e",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED (follow-on is #2355)",
+  "ticket": "HV-60",
+  "evidence": "20-1 (subject in squash message)"
+ },
+ {
+  "pr": 2215,
+  "planHead": "05772d773",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-1; files\u2713"
+ },
+ {
+  "pr": 2214,
+  "planHead": "bdbe4adb9",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-1; files\u2713"
+ },
+ {
+  "pr": 2213,
+  "planHead": "83b96d6c0",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-1; files\u2713"
+ },
+ {
+  "pr": 2212,
+  "planHead": "31937e49e",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-1; files\u2713"
+ },
+ {
+  "pr": 2211,
+  "planHead": "e51b21594",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-1; files\u2713"
+ },
+ {
+  "pr": 2210,
+  "planHead": "7a697ebb7",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-1 + #2226 F1 fix in #2344; files\u2713"
+ },
+ {
+  "pr": 2209,
+  "planHead": "d1ab1e89a",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-1; files\u2713"
+ },
+ {
+  "pr": 2208,
+  "planHead": "888cd12f9",
+  "verdict": "HARVEST-PART",
+  "verdictText": "HARVEST-PART (the test file)",
+  "ticket": "HV-27",
+  "evidence": "20-1 took the build; `legal-coverage.test.tsx` (pushed 10:11, after 20-1) absent"
+ },
+ {
+  "pr": 2203,
+  "planHead": "f772f57cb",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "components on branch; tests folded by #2344 `ddeff6adb`"
+ },
+ {
+  "pr": 2202,
+  "planHead": "14eca1649",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED (geology stays held)",
+  "ticket": "HV-60",
+  "evidence": "folded by #2344; geology (#2158) deliberately held (GB-1366, `ae3bb9b15`)"
+ },
+ {
+  "pr": 2200,
+  "planHead": "416331413",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "split into #2204 + #2205, deployed Nov 4; files\u2713"
+ },
+ {
+  "pr": 2193,
+  "planHead": "9842d5bd9",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-1; files\u2713"
+ },
+ {
+  "pr": 2191,
+  "planHead": "2e7984d70",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-3; files\u2713 (remainder is #2354)"
+ },
+ {
+  "pr": 2189,
+  "planHead": "2a4ffec97",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-3; files\u2713"
+ },
+ {
+  "pr": 2188,
+  "planHead": "157f73ed9",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-1; files\u2713"
+ },
+ {
+  "pr": 2185,
+  "planHead": "3b4a39dcf",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-1; files\u2713"
+ },
+ {
+  "pr": 2183,
+  "planHead": "3cccae2bf",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-3; files\u2713"
+ },
+ {
+  "pr": 2182,
+  "planHead": "650219c18",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-1; files\u2713"
+ },
+ {
+  "pr": 2174,
+  "planHead": "c12c01897",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-3; files\u2713"
+ },
+ {
+  "pr": 2170,
+  "planHead": "eab3ca8fa",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-1 carries every subject incl. the head; files\u2713 (corrects the Nov 13 \"real leftover\" note)"
+ },
+ {
+  "pr": 2168,
+  "planHead": "b83919b02",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-1; files\u2713"
+ },
+ {
+  "pr": 2165,
+  "planHead": "ce47ecb2e",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-3; files\u2713 (`format-modulus.ts` removed by its own revert)"
+ },
+ {
+  "pr": 2163,
+  "planHead": "6d5902ac7",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "anc"
+ },
+ {
+  "pr": 2161,
+  "planHead": "ff8f1424d",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-1; files\u2713"
+ },
+ {
+  "pr": 2151,
+  "planHead": "e0c4c8c9a",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED (bounties part \u2192 HV-13)",
+  "ticket": "HV-13 / HV-60",
+  "evidence": "folded by #2344; bounties member not on branch"
+ },
+ {
+  "pr": 2150,
+  "planHead": "d47374a71",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "anc"
+ },
+ {
+  "pr": 2149,
+  "planHead": "b777bddf4",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-1; files\u2713"
+ },
+ {
+  "pr": 2148,
+  "planHead": "c5dcbd8d6",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "anc"
+ },
+ {
+  "pr": 2145,
+  "planHead": "24d7a13e6",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-1; files\u2713"
+ },
+ {
+  "pr": 2144,
+  "planHead": "51b788774",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-1; migration 496 on branch"
+ },
+ {
+  "pr": 2143,
+  "planHead": "29a1038ea",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED (automotive stays held)",
+  "ticket": "HV-60",
+  "evidence": "folded by #2344; automotive (#2137) deliberately held (`6c56f042a`)"
+ },
+ {
+  "pr": 2142,
+  "planHead": "da2e48f22",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-3; files\u2713"
+ },
+ {
+  "pr": 2141,
+  "planHead": "5d2824723",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-3"
+ },
+ {
+  "pr": 2140,
+  "planHead": "f1f114a83",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-2; files\u2713"
+ },
+ {
+  "pr": 2139,
+  "planHead": "31d4eee3b",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-2; files\u2713"
+ },
+ {
+  "pr": 2138,
+  "planHead": "d9d93ed41",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-2; files\u2713"
+ },
+ {
+  "pr": 2136,
+  "planHead": "b5ddcfef6",
+  "verdict": "HARVEST-PART",
+  "verdictText": "HARVEST-PART (branch fixes win on overlap)",
+  "ticket": "HV-13",
+  "evidence": "never in a batch; `bounties-build.test.js` absent; branch has later FIX-bounties fixes"
+ },
+ {
+  "pr": 2135,
+  "planHead": "0bc7b145c",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-2"
+ },
+ {
+  "pr": 2133,
+  "planHead": "4764889a7",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-2"
+ },
+ {
+  "pr": 2132,
+  "planHead": "ab4567569",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-2"
+ },
+ {
+  "pr": 2131,
+  "planHead": "b9e526a32",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-2; `maker.js`, migration 497 on branch"
+ },
+ {
+  "pr": 2130,
+  "planHead": "cd83b3176",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-2; files\u2713"
+ },
+ {
+  "pr": 2129,
+  "planHead": "6f0e34b92",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "refolded as #2203; tests folded by #2344"
+ },
+ {
+  "pr": 2128,
+  "planHead": "cc7cb57bb",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "tests folded by #2344; components on main"
+ },
+ {
+  "pr": 2124,
+  "planHead": "38636e67e",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-2; files\u2713"
+ },
+ {
+  "pr": 2123,
+  "planHead": "a54b55e1e",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-2"
+ },
+ {
+  "pr": 2122,
+  "planHead": "a33032aad",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-2"
+ },
+ {
+  "pr": 2120,
+  "planHead": "7705ab992",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-3; files\u2713"
+ },
+ {
+  "pr": 2119,
+  "planHead": "5487b8147",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-3"
+ },
+ {
+  "pr": 2118,
+  "planHead": "8569b3a72",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-2"
+ },
+ {
+  "pr": 2117,
+  "planHead": "8329d81d4",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "0 ahead of main; merged in #2344 (`fd96753a7`)"
+ },
+ {
+  "pr": 2116,
+  "planHead": "1b51cab8b",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-3 (head 10:24, batch 10:58); files\u2713"
+ },
+ {
+  "pr": 2114,
+  "planHead": "a095d93e8",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-3"
+ },
+ {
+  "pr": 2113,
+  "planHead": "76161d3f5",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-2; files\u2713"
+ },
+ {
+  "pr": 2112,
+  "planHead": "1d3edc7fe",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-2; files\u2713"
+ },
+ {
+  "pr": 2103,
+  "planHead": "4d0b1ba40",
+  "verdict": "HARVEST-ALL",
+  "verdictText": "HARVEST-ALL",
+  "ticket": "HV-26",
+  "evidence": "`event-when.ts` absent"
+ },
+ {
+  "pr": 2102,
+  "planHead": "ff630b716",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-3; `OperationsBudgetPanel.tsx` on branch"
+ },
+ {
+  "pr": 2100,
+  "planHead": "3099884a2",
+  "verdict": "HARVEST-ALL",
+  "verdictText": "HARVEST-ALL",
+  "ticket": "HV-26",
+  "evidence": "`operationsDiscover` absent"
+ },
+ {
+  "pr": 2099,
+  "planHead": "85dca8fff",
+  "verdict": "HARVEST-ALL",
+  "verdictText": "HARVEST-ALL",
+  "ticket": "HV-26",
+  "evidence": "`operations-store.ts`, `OperationsStorePanel.tsx` absent"
+ },
+ {
+  "pr": 2094,
+  "planHead": "3d2c55503",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-2; files\u2713"
+ },
+ {
+  "pr": 2054,
+  "planHead": "71d7f19d2",
+  "verdict": "HARVEST-PART",
+  "verdictText": "HARVEST-PART (port, CK-SC-06)",
+  "ticket": "HV-10",
+  "evidence": "`cross-model-dtu.js` exists, `validateArtifactSchemaTargets` absent; conflicting"
+ },
+ {
+  "pr": 2047,
+  "planHead": "653c3a3e8",
+  "verdict": "HARVEST-ALL",
+  "verdictText": "HARVEST-ALL (behind flag)",
+  "ticket": "HV-12",
+  "evidence": "`db-dial.js` absent"
+ },
+ {
+  "pr": 2046,
+  "planHead": "d2b876d78",
+  "verdict": "HARVEST-ALL",
+  "verdictText": "HARVEST-ALL",
+  "ticket": "HV-11",
+  "evidence": "`canonical-result.js` absent"
+ },
+ {
+  "pr": 2045,
+  "planHead": "a391ed4c5",
+  "verdict": "HARVEST-ALL",
+  "verdictText": "HARVEST-ALL (behind flag)",
+  "ticket": "HV-12",
+  "evidence": "`db-dial.js` absent"
+ },
+ {
+  "pr": 2044,
+  "planHead": "208a2376c",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-3 (head 10:22); `scriptDtu.ts` + test on branch"
+ },
+ {
+  "pr": 2043,
+  "planHead": "c03a0a06c",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-2; files\u2713"
+ },
+ {
+  "pr": 2039,
+  "planHead": "a0fff21f1",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-2"
+ },
+ {
+  "pr": 2037,
+  "planHead": "ad5391ed8",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-2"
+ },
+ {
+  "pr": 2036,
+  "planHead": "5d733799b",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-2"
+ },
+ {
+  "pr": 2035,
+  "planHead": "a714e1eee",
+  "verdict": "SUPERSEDED",
+  "verdictText": "SUPERSEDED",
+  "ticket": "HV-60",
+  "evidence": "20-2; `ssrf-guard.js:382` + test on branch"
+ },
+ {
+  "pr": 1998,
+  "planHead": "f64bd06a4",
+  "verdict": "HARVEST-PART",
+  "verdictText": "HARVEST-PART (hold @types/vscode)",
+  "ticket": "HV-33",
+  "evidence": "not on branch"
+ },
+ {
+  "pr": 1779,
+  "planHead": "92cc11c0b",
+  "verdict": "DUTCH",
+  "verdictText": "DUTCH (default: harvest docs)",
+  "ticket": "HV-35",
+  "evidence": "not on branch"
+ },
+ {
+  "pr": 1524,
+  "planHead": "48fdfa821",
+  "verdict": "DUTCH",
+  "verdictText": "DUTCH (default: defer)",
+  "ticket": "HV-L5",
+  "evidence": "not on branch"
+ },
+ {
+  "pr": 1522,
+  "planHead": "418de68b0",
+  "verdict": "DUTCH",
+  "verdictText": "DUTCH (default: defer)",
+  "ticket": "HV-L4",
+  "evidence": "not on branch"
+ },
+ {
+  "pr": 1521,
+  "planHead": "ca33cd9e4",
+  "verdict": "DUTCH",
+  "verdictText": "DUTCH (default: defer)",
+  "ticket": "HV-L2",
+  "evidence": "server already TS 7; frontend not"
+ },
+ {
+  "pr": 1520,
+  "planHead": "99d9ee3a6",
+  "verdict": "DUTCH",
+  "verdictText": "DUTCH (default: defer)",
+  "ticket": "HV-L3",
+  "evidence": "server already eslint 10; frontend not"
+ },
+ {
+  "pr": 1516,
+  "planHead": "ac836d0d1",
+  "verdict": "DUTCH",
+  "verdictText": "DUTCH (default: defer)",
+  "ticket": "HV-L6",
+  "evidence": "not on branch"
+ },
+ {
+  "pr": 1515,
+  "planHead": "afb3136af",
+  "verdict": "DUTCH",
+  "verdictText": "DUTCH (default: defer)",
+  "ticket": "HV-L7",
+  "evidence": "not on branch"
+ },
+ {
+  "pr": 1514,
+  "planHead": "342572f89",
+  "verdict": "DUTCH",
+  "verdictText": "DUTCH (default: defer)",
+  "ticket": "HV-L6",
+  "evidence": "not on branch"
+ },
+ {
+  "pr": 1511,
+  "planHead": "647bcda95",
+  "verdict": "DUTCH",
+  "verdictText": "DUTCH (default: defer)",
+  "ticket": "HV-L5",
+  "evidence": "not on branch"
+ },
+ {
+  "pr": 1506,
+  "planHead": "d139a7e20",
+  "verdict": "DUTCH",
+  "verdictText": "DUTCH (default: defer)",
+  "ticket": "HV-L1",
+  "evidence": "not on branch"
+ },
+ {
+  "pr": 1494,
+  "planHead": "60b7ab9f8",
+  "verdict": "DROP",
+  "verdictText": "DROP (not harvested)",
+  "ticket": "none",
+  "evidence": "Concordia's living branch"
+ },
+ {
+  "pr": 1389,
+  "planHead": "d888c19a6",
+  "verdict": "DUTCH",
+  "verdictText": "DUTCH (default: defer)",
+  "ticket": "HV-L8",
+  "evidence": "not on branch"
+ }
+]

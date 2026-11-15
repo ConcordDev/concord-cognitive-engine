@@ -83,14 +83,19 @@ describe('HVAC lens honesty', () => {
     expect(screen.getByTestId('load-history').textContent).toContain('load_saved_9');
   });
 
-  it('a new calculation is saved to the account and listed', async () => {
+  it('a new calculation stays on screen until Save estimate', async () => {
     mount();
     fireEvent.change(screen.getAllByPlaceholderText('e.g. 1800')[0], { target: { value: '1500' } });
     fireEvent.click(screen.getByRole('button', { name: 'Calculate load' }));
+    await waitFor(() => expect(screen.getByText('37,500')).toBeTruthy());
+    expect(screen.queryByTestId('load-saved')).toBeNull();
+    const preview = calls.filter((c) => c.action === 'hvac.loadCalculation');
+    expect(preview[0]?.input.save).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Save estimate' }));
     await waitFor(() => expect(screen.getByTestId('load-saved').textContent).toContain('load_new_1'));
-    const calc = calls.find((c) => c.action === 'hvac.loadCalculation');
-    expect(calc?.input.save).toBe(true);
-    expect(calc?.input.squareFootage).toBe(1500);
+    const savedCall = calls.filter((c) => c.action === 'hvac.loadCalculation').at(-1);
+    expect(savedCall?.input.save).toBe(true);
+    expect(savedCall?.input.squareFootage).toBe(1500);
     expect(screen.getByTestId('load-history').textContent).toContain('load_new_1');
   });
 

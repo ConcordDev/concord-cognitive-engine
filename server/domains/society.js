@@ -14,6 +14,8 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
+import { searchIndicatorCatalog, latestPerKey } from "../lib/wb-catalog-search.js";
 
 const WB_BASE = "https://api.worldbank.org/v2";
 const WB_TTL = 30 * 60 * 1000; // 30-min cache — WB data is annual
@@ -119,7 +121,56 @@ function validIndicatorCode(raw) {
   return INDICATOR_CODE_RE.test(raw);
 }
 
+
+// ── lens export provider (FIX-society-012) ─────────────────────────────
+// The Society export said "Nothing to export" over records the lens itself
+// stores: saved charts live in STATE.societyCharts (a share-id registry,
+// not a STATE.societyLens bag), and the agent schedules the autonomy tab's
+// AgentBuilder manages live in STATE.agentsLens.schedules — neither is a
+// store the shared export's legs read. This provider emits the caller's
+// own charts and agent schedules. Caller-scoped throughout; the chart
+// registry is shared by design (permalinks), so ownership is checked per
+// record, exactly as wb-list-charts checks it.
+function societyExportRows(ctx) {
+  const uid = userId(ctx);
+  if (!uid || uid === "anon") return [];
+  const rows = [];
+  for (const r of chartStore().values()) {
+    if (!r || r.owner !== uid) continue;
+    rows.push({
+      id: r.id,
+      type: "chart",
+      title: r.title || r.id,
+      createdAt: r.createdAt || null,
+      updatedAt: r.createdAt || null,
+      data: { spec: r.spec || null, permalink: `/lenses/society?chart=${r.id}` },
+    });
+  }
+  const bag = globalThis._concordSTATE?.agentsLens;
+  const schedules = bag?.schedules instanceof Map ? (bag.schedules.get(uid) || []) : [];
+  for (const sched of schedules) {
+    if (!sched || !sched.id) continue;
+    rows.push({
+      id: sched.id,
+      type: "agent-schedule",
+      title: sched.agentName || sched.agentId || sched.id,
+      createdAt: sched.createdAt || null,
+      updatedAt: sched.lastFiredAt || sched.createdAt || null,
+      data: {
+        agentId: sched.agentId || null,
+        kind: sched.kind || null,
+        spec: sched.spec || null,
+        goal: sched.goal || null,
+        enabled: sched.enabled !== false,
+        fireCount: sched.fireCount ?? 0,
+      },
+    });
+  }
+  return rows;
+}
+
 export default function registerSocietyActions(register) {
+  registerLensExportProvider("society", societyExportRows);
   register = guardAnonWrites(register); // anonymous callers can read, not write (lib/lens-authz.js)
   // Legacy-convention shim: adapt the canonical register(ctx, input) the MACROS
   // registry (and runMacro / the contract engine / macro-assassin) drive → the
@@ -416,9 +467,18 @@ export default function registerSocietyActions(register) {
       const wanted = Array.isArray(params.countries)
         ? new Set(params.countries.map((c) => String(c).toUpperCase()))
         : null;
+      // FIX-society-010: mrnev=1 is a request, not a guarantee — when the
+      // response still carries several years per country, plotting every
+      // row stacks duplicate markers and `count` counts rows ("3376
+      // countries"). Dedupe to one row per country, latest year wins
+      // (lib/wb-catalog-search.js latestPerKey).
+      const latestRows = latestPerKey(
+        (dataJson[1] || []).filter((r) => r.value != null),
+        (r) => r.countryiso3code || r.country?.id,
+        (r) => r.date,
+      );
       const rows = [];
-      for (const r of dataJson[1] || []) {
-        if (r.value == null) continue;
+      for (const r of latestRows) {
         const iso3 = r.countryiso3code || r.country?.id;
         const m = meta[iso3];
         if (!m) continue;
@@ -465,25 +525,11 @@ export default function registerSocietyActions(register) {
       // indicator registry and filter client-side. ~25k entries total —
       // we scan the first ~6 pages (3000 indicators) which covers the
       // ~1,400 actively-populated codes.
-      const matches = [];
-      for (let page = 1; page <= 6 && matches.length < limit; page++) {
-        const json = await wbJson(`${WB_BASE}/indicator?format=json&per_page=500&page=${page}`);
-        const list = json[1] || [];
-        for (const ind of list) {
-          const name = String(ind.name || "");
-          const id = String(ind.id || "");
-          if (name.toLowerCase().includes(query) || id.toLowerCase().includes(query)) {
-            matches.push({
-              code: id,
-              name,
-              source: ind.source?.value || null,
-              topics: Array.isArray(ind.topics) ? ind.topics.map((t) => t.value).filter(Boolean) : [],
-            });
-            if (matches.length >= limit) break;
-          }
-        }
-        if (!list.length) break;
-      }
+      // Ranking + scan live in lib/wb-catalog-search.js (pure, shared
+      // with the tests): matches are collected across the whole scan
+      // and ranked by relevance — raw catalog order buried exact hits,
+      // and stopping at the limit hid deep-catalog codes entirely.
+      const matches = await searchIndicatorCatalog(wbJson, WB_BASE, query, limit);
       return { ok: true, result: { query, matches, count: matches.length, source: "world-bank-open-data" } };
     } catch (e) {
       return { ok: false, error: `worldbank unreachable: ${e instanceof Error ? e.message : String(e)}` };
@@ -629,6 +675,24 @@ export default function registerSocietyActions(register) {
     return { ok: true, result: { charts, count: charts.length } };
   });
 
+  /**
+   * wb-delete-chart — Remove one of the caller's own saved charts.
+   * Loading a chart by id stays ownerless (permalinks are shareable by
+   * design); deleting is owner-only, so a shared link can never be
+   * used to erase the chart it points at.
+   * params: { id }
+   */
+  registerLensAction("society", "wb-delete-chart", (ctx, _artifact, params = {}) => {
+    const id = String(params.id || "").trim();
+    if (!id) return { ok: false, error: "id required" };
+    const store = chartStore();
+    const record = store.get(id);
+    if (!record) return { ok: false, error: "chart not found" };
+    if (record.owner !== userId(ctx)) return { ok: false, error: "only the chart's owner can delete it" };
+    store.delete(id);
+    return { ok: true, result: { deleted: id } };
+  });
+
   // ── Feature: Region / income-group aggregates and rankings ──────────
   /**
    * wb-region-rankings — Latest indicator value for every World Bank
@@ -645,8 +709,13 @@ export default function registerSocietyActions(register) {
       const json = await wbJson(
         `${WB_BASE}/country/${codes.join(";")}/indicator/${encodeURIComponent(indicator)}?format=json&per_page=4000&mrnev=1`,
       );
-      const rows = (json[1] || [])
-        .filter((r) => r.value != null)
+      // FIX-society-010: same mrnev caveat as wb-choropleth — one row per
+      // aggregate code, latest year wins, before ranking.
+      const rows = latestPerKey(
+        (json[1] || []).filter((r) => r.value != null),
+        (r) => r.countryiso3code || r.country?.id,
+        (r) => r.date,
+      )
         .map((r) => {
           const code = r.countryiso3code || r.country?.id;
           return { code, name: AGGREGATE_CODES[code] || r.country?.value, year: Number(r.date), value: Number(r.value) };

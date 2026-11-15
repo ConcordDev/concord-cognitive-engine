@@ -1,5 +1,6 @@
 // server/domains/fashion.js
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { checkTitle, checkMoney, checkQuantity, firstBoundsFailure } from "../lib/bounds.js";
 import { callVision, callVisionUrl, visionPromptForDomain } from "../lib/vision-inference.js";
 import { openMeteoJson } from "../lib/weather-feed-sources.js";
 import { listFriends, areFriends } from "../lib/friendships.js";
@@ -77,6 +78,19 @@ export default function registerFashionActions(registerLensAction) {
   const fsAid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
   const fsListB = (map, k) => { if (!map.has(k)) map.set(k, []); return map.get(k); };
   const fsNum = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
+  // FIX-fashion-006: one ceiling for a wardrobe item's cost, refused by
+  // name at every entry path (item-add, item-update, wishlist-convert).
+  // A single garment's plausible cost — couture and collectible pieces
+  // included — tops out orders of magnitude below this, while the walked
+  // defect value (99,999,999,999) sits four orders above it. The figure
+  // matches the sweep's standing money ceiling (home-improvement's
+  // MAX_MONEY, FIX-home-improvement-005) so money fields share one bound.
+  // Out-of-range values are REFUSED, never floored or clamped silently.
+  // GB-1539 (FIX-fashion-006): cost validation now consumes the ONE
+  // platform bounds policy (money: finite, no negatives, ≤ 1,000,000) —
+  // the local $10,000,000 cap and its plain-string error are retired so
+  // every surface refuses in the same invalid_input shape.
+  const fsCostError = (v) => checkMoney("cost", v);
   const fsClean = (v, max = 200) => String(v == null ? "" : v).trim().slice(0, max);
   const fsDay = (v) => fsClean(v, 10).slice(0, 10);
   const findItem = (s, userId, id) => (s.items.get(userId) || []).find((i) => i.id === id) || null;
@@ -119,7 +133,7 @@ export default function registerFashionActions(registerLensAction) {
   // wishlist-convert-to-item so "create a real closet item" has exactly
   // one implementation, not a copy-pasted second one.
   function buildWardrobeItem(params) {
-    const name = fsClean(params.name, 120);
+    const name = fsClean(params.name, 200);
     if (!name) return null;
     return {
       id: fsId("itm"), name,
@@ -142,6 +156,14 @@ export default function registerFashionActions(registerLensAction) {
   // ── Wardrobe items ──────────────────────────────────────────────────
   registerLensAction("fashion", "item-add", (ctx, _a, params = {}) => {
     const s = getFashionState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    // GB-1539: name over the title limit and negative wear counts refuse
+    // in the policy shape too — no silent truncation or Math.max coercion.
+    const badBounds = firstBoundsFailure(
+      checkTitle("name", params.name),
+      fsCostError(params.cost),
+      checkQuantity("timesWorn", params.timesWorn),
+    );
+    if (badBounds) return badBounds;
     const item = buildWardrobeItem(params);
     if (!item) return { ok: false, error: "item name required" };
     fsListB(s.items, fsAid(ctx)).push(item);
@@ -176,7 +198,11 @@ export default function registerFashionActions(registerLensAction) {
       if (!LAUNDRY_STATUSES.includes(ls)) return { ok: false, error: `invalid laundryStatus (must be one of ${LAUNDRY_STATUSES.join(", ")})` };
       nextLaundryStatus = ls;
     }
-    if (params.name != null) { const n = fsClean(params.name, 120); if (n) item.name = n; }
+    if (params.cost != null) {
+      const costError = fsCostError(params.cost);
+      if (costError) return costError;
+    }
+    if (params.name != null) { const badName = checkTitle("name", params.name); if (badName) return badName; const n = fsClean(params.name, 200); if (n) item.name = n; }
     if (params.brand != null) item.brand = fsClean(params.brand, 80) || null;
     if (params.color != null) item.color = fsClean(params.color, 40).toLowerCase() || null;
     if (params.cost != null) item.cost = Math.max(0, fsNum(params.cost));
@@ -191,12 +217,19 @@ export default function registerFashionActions(registerLensAction) {
 
   registerLensAction("fashion", "item-delete", (ctx, _a, params = {}) => {
     const s = getFashionState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const arr = s.items.get(fsAid(ctx)) || [];
+    const userId = fsAid(ctx);
+    const arr = s.items.get(userId) || [];
     const i = arr.findIndex((x) => x.id === params.id);
     if (i < 0) return { ok: false, error: "item not found" };
     arr.splice(i, 1);
+    // FIX-fashion-003: the item's wear-log entries go with it — an
+    // orphaned entry kept "Worn this mo." counting a deleted item.
+    const log = s.wearLog.get(userId) || [];
+    const kept = log.filter((w) => w.itemId !== params.id);
+    const removedWearLogs = log.length - kept.length;
+    if (removedWearLogs > 0) s.wearLog.set(userId, kept);
     saveFashionState();
-    return { ok: true, result: { deleted: params.id } };
+    return { ok: true, result: { deleted: params.id, removedWearLogs } };
   });
 
   registerLensAction("fashion", "item-wear", (ctx, _a, params = {}) => {
@@ -267,12 +300,39 @@ export default function registerFashionActions(registerLensAction) {
 
   registerLensAction("fashion", "outfit-delete", (ctx, _a, params = {}) => {
     const s = getFashionState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const arr = s.outfits.get(fsAid(ctx)) || [];
+    const userId = fsAid(ctx);
+    const arr = s.outfits.get(userId) || [];
     const i = arr.findIndex((o) => o.id === params.id);
     if (i < 0) return { ok: false, error: "outfit not found" };
     arr.splice(i, 1);
+    // FIX-fashion-003: same cascade as item-delete — the outfit's
+    // wear-log entries go with it.
+    const log = s.wearLog.get(userId) || [];
+    const kept = log.filter((w) => w.outfitId !== params.id);
+    const removedWearLogs = log.length - kept.length;
+    if (removedWearLogs > 0) s.wearLog.set(userId, kept);
     saveFashionState();
-    return { ok: true, result: { deleted: params.id } };
+    return { ok: true, result: { deleted: params.id, removedWearLogs } };
+  });
+
+  // FIX-fashion-005: outfits had create/list/detail/delete/wear but no
+  // update — a typo'd outfit name was uncorrectable. Mirrors
+  // moodboard-update's shape and outfit-create's validation.
+  registerLensAction("fashion", "outfit-update", (ctx, _a, params = {}) => {
+    const s = getFashionState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const outfit = findOutfit(s, fsAid(ctx), params.id);
+    if (!outfit) return { ok: false, error: "outfit not found" };
+    if (params.name != null) {
+      const n = fsClean(params.name, 120);
+      if (!n) return { ok: false, error: "outfit name cannot be empty" };
+      outfit.name = n;
+    }
+    if (params.occasion != null) outfit.occasion = fsClean(params.occasion, 60).toLowerCase() || outfit.occasion;
+    if (params.season != null && ["spring", "summer", "fall", "winter", "all"].includes(String(params.season).toLowerCase())) {
+      outfit.season = String(params.season).toLowerCase();
+    }
+    saveFashionState();
+    return { ok: true, result: { outfit } };
   });
 
   registerLensAction("fashion", "outfit-wear", (ctx, _a, params = {}) => {
@@ -394,12 +454,26 @@ export default function registerFashionActions(registerLensAction) {
     const entries = (s.wearLog.get(userId) || [])
       .filter((w) => String(w.date).startsWith(month))
       .map((w) => ({
+        id: w.id,
         date: w.date,
         label: w.outfitId ? (outfitName.get(w.outfitId) || "(outfit)") : (itemName.get(w.itemId) || "(item)"),
         kind: w.outfitId ? "outfit" : "item",
       }))
       .sort((a, b) => a.date.localeCompare(b.date));
     return { ok: true, result: { month, entries, daysLogged: new Set(entries.map((e) => e.date)).size } };
+  });
+
+  // FIX-fashion-002: a single wear-log entry can be removed (the
+  // calendar rows previously had no delete at all).
+  registerLensAction("fashion", "calendar-delete", (ctx, _a, params = {}) => {
+    const s = getFashionState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fsAid(ctx);
+    const log = s.wearLog.get(userId) || [];
+    const i = log.findIndex((w) => w.id === params.id);
+    if (i < 0) return { ok: false, error: "wear log entry not found" };
+    log.splice(i, 1);
+    saveFashionState();
+    return { ok: true, result: { deleted: params.id } };
   });
 
   // ── Packing lists ───────────────────────────────────────────────────
@@ -417,10 +491,39 @@ export default function registerFashionActions(registerLensAction) {
     return { ok: true, result: { packingList: list } };
   });
 
+  // FIX-fashion-002: a packing list can be deleted whole (previously
+  // items could be removed but the list itself could not).
+  registerLensAction("fashion", "packing-delete", (ctx, _a, params = {}) => {
+    const s = getFashionState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fsAid(ctx);
+    const arr = s.packing.get(userId) || [];
+    const i = arr.findIndex((p) => p.id === params.id);
+    if (i < 0) return { ok: false, error: "packing list not found" };
+    arr.splice(i, 1);
+    saveFashionState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
   registerLensAction("fashion", "packing-list", (ctx, _a, _params = {}) => {
     const s = getFashionState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const lists = (s.packing.get(fsAid(ctx)) || []).map((p) => ({ ...p, itemCount: p.itemIds.length }));
     return { ok: true, result: { packingLists: lists, count: lists.length } };
+  });
+
+  // FIX-fashion-005: packing lists had create/list/add-item/detail but
+  // no update. Validation mirrors packing-create.
+  registerLensAction("fashion", "packing-update", (ctx, _a, params = {}) => {
+    const s = getFashionState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = (s.packing.get(fsAid(ctx)) || []).find((p) => p.id === params.id);
+    if (!list) return { ok: false, error: "packing list not found" };
+    if (params.name != null) {
+      const n = fsClean(params.name, 120);
+      if (!n) return { ok: false, error: "packing list name cannot be empty" };
+      list.name = n;
+    }
+    if (params.destination != null) list.destination = fsClean(params.destination, 120) || null;
+    saveFashionState();
+    return { ok: true, result: { packingList: list } };
   });
 
   registerLensAction("fashion", "packing-add-item", (ctx, _a, params = {}) => {
@@ -1154,6 +1257,27 @@ export default function registerFashionActions(registerLensAction) {
     saveFashionState();
     return { ok: true, result: { capsule, filled: capsule.itemIds.length } };
   });
+  // FIX-fashion-005: capsules had create/list/toggle/delete but no
+  // update. Validation mirrors capsule-create.
+  registerLensAction("fashion", "capsule-update", (ctx, _a, params = {}) => {
+    const s = getFashionStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const capsule = (s.capsules.get(fsAid(ctx)) || []).find((c) => c.id === params.id);
+    if (!capsule) return { ok: false, error: "capsule not found" };
+    if (params.name != null) {
+      const n = fsClean(params.name, 120);
+      if (!n) return { ok: false, error: "capsule name cannot be empty" };
+      capsule.name = n;
+    }
+    if (params.season != null && ["spring", "summer", "fall", "winter", "all"].includes(String(params.season).toLowerCase())) {
+      capsule.season = String(params.season).toLowerCase();
+    }
+    if (params.targetSize != null) {
+      capsule.targetSize = Math.max(5, Math.min(60, Math.round(Number(params.targetSize) || capsule.targetSize)));
+    }
+    saveFashionState();
+    return { ok: true, result: { capsule } };
+  });
+
   registerLensAction("fashion", "capsule-delete", (ctx, _a, params = {}) => {
     const s = getFashionStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
     const arr = s.capsules.get(fsAid(ctx)) || [];
@@ -1263,6 +1387,35 @@ export default function registerFashionActions(registerLensAction) {
     return { ok: true, result: { deleted: params.id } };
   });
 
+  // FIX-fashion-005: wishlist entries had add/list/remove/convert but
+  // no update. Validation mirrors wishlist-add exactly.
+  registerLensAction("fashion", "wishlist-update", (ctx, _a, params = {}) => {
+    const s = getFashionStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const entry = (s.wishlist.get(fsAid(ctx)) || []).find((e) => e.id === params.id);
+    if (!entry) return { ok: false, error: "wishlist entry not found" };
+    if (params.name != null) {
+      const n = fsClean(params.name, 120);
+      if (!n) return { ok: false, error: "item name cannot be empty" };
+      entry.name = n;
+    }
+    if (params.price != null) {
+      if (params.price === "") entry.price = null;
+      else {
+        const n = Number(params.price);
+        if (!Number.isFinite(n) || n < 0) return { ok: false, error: "price must be a non-negative number" };
+        entry.price = Math.round(n * 100) / 100;
+      }
+    }
+    if (params.link != null) entry.link = fsClean(params.link, 500) || null;
+    if (params.note != null) entry.note = fsClean(params.note, 300) || null;
+    if (params.category != null) {
+      entry.category = CATEGORIES.includes(String(params.category).toLowerCase())
+        ? String(params.category).toLowerCase() : entry.category;
+    }
+    saveFashionState();
+    return { ok: true, result: { entry } };
+  });
+
   registerLensAction("fashion", "wishlist-convert-to-item", (ctx, _a, params = {}) => {
     const s = getFashionStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = fsAid(ctx);
@@ -1270,6 +1423,11 @@ export default function registerFashionActions(registerLensAction) {
     const idx = arr.findIndex((w) => w.id === params.id);
     if (idx < 0) return { ok: false, error: "wishlist entry not found" };
     const entry = arr[idx];
+    const badConvert = firstBoundsFailure(
+      checkTitle("name", entry.name),
+      fsCostError(params.cost != null ? params.cost : entry.price),
+    );
+    if (badConvert) return badConvert;
     const item = buildWardrobeItem({
       name: params.name || entry.name,
       category: params.category || entry.category || "top",

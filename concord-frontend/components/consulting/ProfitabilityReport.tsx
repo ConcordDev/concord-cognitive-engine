@@ -45,7 +45,7 @@ export function ProfitabilityReport() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <TrendingUp className="w-4 h-4 text-indigo-400" />
-          <h3 className="text-sm font-bold text-zinc-100">Profitability</h3>
+          <h2 className="text-sm font-bold text-zinc-100">Profitability</h2>
         </div>
         <button onClick={() => void refetch()} aria-label="Refresh" className="text-zinc-400 hover:text-indigo-400"><RefreshCw className="w-3.5 h-3.5" /></button>
       </div>

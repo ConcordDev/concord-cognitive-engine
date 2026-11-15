@@ -290,8 +290,10 @@ describe('MentalHealthActionPanel — remaining tiles (stats / mint / DM / publi
     fireEvent.click(screen.getByRole('button', { name: /CDC stats/ }));
     expect(await screen.findByText('Frequent mental distress')).toBeTruthy();
     expect(screen.getByText('13.2%')).toBeTruthy();
-    // publish the stats card
+    // publish the stats card — FIX-mental-health-004: the first click
+    // arms the public-action confirmation, the second publishes
     fireEvent.click(screen.getByRole('button', { name: /Publish/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Confirm publish/ }));
     expect(await screen.findByText(/Published dtu_abcd/)).toBeTruthy();
     // mint a private wellness DTU
     fireEvent.click(screen.getByRole('button', { name: /Mint/ }));

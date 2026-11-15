@@ -269,7 +269,20 @@ export default function SpectateIndexPage() {
               <p className="text-xs text-fuchsia-300/70">
                 When a world has watchers or an open prediction market, it&apos;ll appear here. Check back soon.
               </p>
+              {/* FIX-spectate-006: market creation lives in the Markets
+                  lens — say so where a user comes looking for it. */}
+              <Link href="/lenses/markets" className="text-xs font-medium text-amber-300 underline underline-offset-2 hover:text-amber-200">
+                Create a prediction market in the Markets lens →
+              </Link>
             </div>
+          )}
+
+          {view === 'worlds' && state === 'ready' && ordered.length > 0 && (
+            <p className="mb-3 text-[11px] text-fuchsia-300/60">
+              Prediction markets are created in the{' '}
+              <Link href="/lenses/markets" className="text-amber-300 underline underline-offset-2 hover:text-amber-200">Markets lens</Link>
+              {' '}— open markets then appear here for wagering.
+            </p>
           )}
 
           {/* ── Populated ───────────────────────────────────────────── */}

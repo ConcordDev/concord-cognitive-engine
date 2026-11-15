@@ -59,15 +59,28 @@ export function GraphParityPanel() {
   const [nodes, setNodes] = useState<GNode[]>([]);
   const [edges, setEdges] = useState<GEdge[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('local');
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string>('');
 
   // ── Map loading ───────────────────────────────────────────────────
   const refreshMaps = useCallback(async () => {
-    const r = await lensRun('graph', 'map-list', {});
-    setMaps((r.data?.result?.maps as MapMeta[]) || []);
-    setLoading(false);
+    setLoadError(null);
+    try {
+      const r = await lensRun('graph', 'map-list', {});
+      if (r.data?.ok === false) {
+        setLoadError(r.data.error || 'Could not load maps.');
+        setMaps([]);
+      } else {
+        setMaps((r.data?.result?.maps as MapMeta[]) || []);
+      }
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : 'Could not load maps.');
+      setMaps([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
   useEffect(() => { void refreshMaps(); }, [refreshMaps]);
 
@@ -402,7 +415,10 @@ export function GraphParityPanel() {
         </button>
       </div>
 
-      {maps.length === 0 && (
+      {loadError && (
+        <p role="alert" className="text-[11px] text-rose-300 mb-3">{loadError}</p>
+      )}
+      {maps.length === 0 && !loadError && (
         <p className="text-[11px] text-zinc-400 mb-3">No maps yet — create one in the Mind Map Builder below.</p>
       )}
 
@@ -645,7 +661,7 @@ export function GraphParityPanel() {
                     <g key={n.id}>
                       <circle cx={p.x} cy={p.y} r={n.central ? 7 : 5} fill={n.central ? '#a855f7' : '#06b6d4'} />
                       <text x={p.x} y={p.y - 9} fontSize={8} fill="#a1a1aa" textAnchor="middle">
-                        {n.label.slice(0, 14)}
+                        {String(n.label || '').slice(0, 14)}
                       </text>
                     </g>
                   );

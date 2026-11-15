@@ -341,7 +341,7 @@ export function InitiativeChip({
           <PriorityDot priority={initiative.priority} />
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-zinc-400">
+          <span className="text-[10px] text-zinc-300">
             {formatRelativeTime(initiative.createdAt)}
           </span>
           <button
@@ -374,7 +374,7 @@ export function InitiativeChip({
               'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
               action.primary
                 ? cn(config.bgColor, config.borderColor, config.accentColor, 'border hover:brightness-125')
-                : 'bg-zinc-800/50 border border-zinc-700/50 text-zinc-400 hover:text-zinc-200 hover:border-zinc-600',
+                : 'bg-zinc-800/50 border border-zinc-700/50 text-zinc-300 hover:text-zinc-100 hover:border-zinc-600',
             )}
           >
             {action.primary && <ArrowUpRight className="w-3 h-3" />}
@@ -419,12 +419,12 @@ function renderMetadata(
             </span>
           )}
           {domain && (
-            <span className="text-zinc-400">
+            <span className="text-zinc-300">
               Domain: {domain}
             </span>
           )}
           {totalNew !== undefined && totalNew > 1 && (
-            <span className="text-zinc-400">
+            <span className="text-zinc-300">
               +{totalNew - 1} more
             </span>
           )}
@@ -440,13 +440,13 @@ function renderMetadata(
       return (
         <div className="mt-2 space-y-1 text-[10px]">
           {citingDtuTitle && (
-            <div className="flex items-center gap-1 text-zinc-400">
+            <div className="flex items-center gap-1 text-zinc-300">
               <Quote className="w-2.5 h-2.5" />
               <span className="truncate">Cited in: {citingDtuTitle}</span>
             </div>
           )}
           {totalCitations !== undefined && totalCitations > 1 && (
-            <div className="flex items-center gap-1 text-zinc-400">
+            <div className="flex items-center gap-1 text-zinc-300">
               <Eye className="w-2.5 h-2.5" />
               {totalCitations} citation{totalCitations !== 1 ? 's' : ''} total
             </div>
@@ -470,12 +470,12 @@ function renderMetadata(
             </span>
           )}
           {dtuTitle && (
-            <span className="text-zinc-400 truncate max-w-[150px]">
+            <span className="text-zinc-300 truncate max-w-[150px]">
               {dtuTitle}
             </span>
           )}
           {pendingCount !== undefined && pendingCount > 1 && (
-            <span className="text-zinc-400">
+            <span className="text-zinc-300">
               {pendingCount} pending item{pendingCount !== 1 ? 's' : ''}
             </span>
           )}
@@ -542,7 +542,7 @@ function renderMetadata(
             </span>
           )}
           {confidence !== undefined && (
-            <span className="text-zinc-400">
+            <span className="text-zinc-300">
               Confidence: {Math.round(confidence * 100)}%
             </span>
           )}
@@ -597,7 +597,7 @@ export function InitiativeList({
       {overflow > 0 && (
         <div className="text-center">
           <button
-            className="text-[10px] text-zinc-400 hover:text-zinc-300 transition-colors"
+            className="text-[10px] text-zinc-300 hover:text-zinc-100 transition-colors"
             onClick={() => setShowAll((prev) => !prev)}
           >
             {showAll ? 'Show fewer' : `+${overflow} more initiative${overflow !== 1 ? 's' : ''}`}

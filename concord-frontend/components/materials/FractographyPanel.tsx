@@ -247,7 +247,7 @@ export function FractographyPanel() {
                     </ul>
                   </div>
                 )}
-                {rootCause.reference && <div className="text-[9px] text-zinc-500">Reference: {rootCause.reference}</div>}
+                {rootCause.reference && <div className="text-[9px] text-zinc-400">Reference: {rootCause.reference}</div>}
               </div>
             )}
           </div>

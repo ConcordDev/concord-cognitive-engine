@@ -367,6 +367,32 @@ export default function registerDxPlatformActions(register) {
     return { ok: true, result: { codebases, count: codebases.length } };
   });
 
+  registerLensAction("dx-platform", "renameCodebase", (ctx, _a, params = {}) => {
+    const userId = actor(ctx);
+    if (!userId) return { ok: false, error: "auth_required" };
+    const name = String(params.name || "").trim();
+    if (name.length < 1 || name.length > 80) {
+      return { ok: false, error: "invalid_input", message: "A codebase name must be 1 to 80 characters." };
+    }
+    const mine = userCodebases(getState(), userId);
+    const cb = mine.get(String(params.codebaseId || ""));
+    if (!cb) return { ok: false, error: "codebase_not_found" };
+    cb.name = name;
+    save();
+    return { ok: true, result: { codebaseId: cb.id, name: cb.name } };
+  });
+
+  registerLensAction("dx-platform", "deleteCodebase", (ctx, _a, params = {}) => {
+    const userId = actor(ctx);
+    if (!userId) return { ok: false, error: "auth_required" };
+    const mine = userCodebases(getState(), userId);
+    const id = String(params.codebaseId || "");
+    if (!mine.has(id)) return { ok: false, error: "codebase_not_found" };
+    mine.delete(id);
+    save();
+    return { ok: true, result: { codebaseId: id, deleted: true } };
+  });
+
   // ── 1. chat-with-codebase: answer a question ────────────────────────
   // Deterministic, fully grounded retrieval — never invents content. It
   // ranks indexed files/lines by token overlap with the question and
@@ -385,7 +411,7 @@ export default function registerDxPlatformActions(register) {
       return { ok: true, result: { answer: "No indexed files yet.", citations: [], grounded: false } };
     }
     const stop = new Set(["the", "a", "an", "is", "are", "of", "to", "in", "and", "or",
-      "how", "what", "where", "why", "does", "do", "i", "this", "that", "for", "with", "on"]);
+      "how", "what", "where", "why", "does", "do", "i", "this", "that", "for", "with", "on", "file"]);
     const qTokens = question.toLowerCase().match(/[a-z0-9_$]{2,}/g) || [];
     const keyTokens = [...new Set(qTokens.filter((t) => !stop.has(t)))];
     if (keyTokens.length === 0) {
@@ -403,13 +429,30 @@ export default function registerDxPlatformActions(register) {
         }
       }
     }
+    let fromPath = false;
+    if (hits.length === 0) {
+      fromPath = true;
+      const named = cb.files.filter((file) => keyTokens.some((tok) => file.path.toLowerCase().includes(tok)));
+      for (const file of named) {
+        const lines = file.content.split("\n");
+        let shown = 0;
+        for (let i = 0; i < lines.length && shown < 8; i++) {
+          const text = lines[i].trim();
+          if (!text) continue;
+          hits.push({ path: file.path, line: i + 1, text: text.slice(0, 240), score: 1 });
+          shown += 1;
+        }
+      }
+    }
     hits.sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
     const top = hits.slice(0, 12);
     const grounded = top.length > 0;
     const matchedFiles = [...new Set(top.map((h) => h.path))];
-    const answer = grounded
-      ? `Found ${hits.length} matching line(s) across ${matchedFiles.length} file(s) for: ${keyTokens.join(", ")}. The most relevant references are cited below.`
-      : `No lines in the indexed codebase reference: ${keyTokens.join(", ")}.`;
+    const answer = !grounded
+      ? `No lines in the indexed codebase reference: ${keyTokens.join(", ")}.`
+      : fromPath
+        ? `These are the opening lines of the indexed file that matches ${keyTokens.join(", ")}. This is the stored text, not a generated explanation.`
+        : `Found ${hits.length} matching line(s) across ${matchedFiles.length} file(s) for: ${keyTokens.join(", ")}. The most relevant references are cited below.`;
     return {
       ok: true,
       result: {
@@ -439,6 +482,12 @@ export default function registerDxPlatformActions(register) {
       if (cb && Array.isArray(cb.detectorConfig)) enabledSet = new Set(cb.detectorConfig);
     }
     const { findings, bySeverity, addedTotal, removedTotal, fileCount } = parseAndScanDiff(diff, enabledSet);
+    // FIX-dx-platform-017: text with no file headers is not a unified
+    // diff this parser can read — it used to sail through as a 'clean'
+    // 0-file review. A distinct token (the domain's error style) lets
+    // the surface show the 'Not a unified diff' warning; a real diff
+    // always carries at least one '+++ ' header, deletions included.
+    if (fileCount === 0) return { ok: false, error: "not_a_diff" };
     const blocking = findings.filter((f) => f.severity >= 4).length;
     // Optional commit-scoped provenance write — see the finding-history block
     // above. Only fires when the caller supplies commitSha; omitting it keeps
@@ -622,6 +671,9 @@ export default function registerDxPlatformActions(register) {
     if (!userId) return { ok: false, error: "auth_required" };
     const name = String(params.name || "").trim();
     if (!name) return { ok: false, error: "no_name" };
+    if (name.length < 2 || name.length > 80) {
+      return { ok: false, error: "invalid_input", message: "A team name must be 2 to 80 characters." };
+    }
     const s = getState();
     const teamId = uid("team");
     const inviteCode = uid("inv");
@@ -765,6 +817,38 @@ export default function registerDxPlatformActions(register) {
     }
     teams.sort((a, b) => String(a.name).localeCompare(String(b.name)));
     return { ok: true, result: { teams, count: teams.length } };
+  });
+
+  registerLensAction("dx-platform", "renameTeam", (ctx, _a, params = {}) => {
+    const userId = actor(ctx);
+    if (!userId) return { ok: false, error: "auth_required" };
+    const s = getState();
+    const team = s.teams.get(String(params.teamId || ""));
+    if (!team) return { ok: false, error: "team_not_found" };
+    if (team.ownerId !== userId) return { ok: false, error: "not_owner" };
+    const name = String(params.name || "").trim();
+    if (!name || name.length > 80) {
+      return { ok: false, error: "invalid_input", message: "A team name must be 1 to 80 characters." };
+    }
+    team.name = name;
+    save();
+    return { ok: true, result: dxPresentTeam(ctx, team, userId) };
+  });
+
+  registerLensAction("dx-platform", "deleteTeam", (ctx, _a, params = {}) => {
+    const userId = actor(ctx);
+    if (!userId) return { ok: false, error: "auth_required" };
+    const s = getState();
+    const team = s.teams.get(String(params.teamId || ""));
+    if (!team) return { ok: false, error: "team_not_found" };
+    if (team.ownerId !== userId) return { ok: false, error: "not_owner" };
+    s.teams.delete(team.id);
+    for (const bucket of s.codebases?.values?.() || []) {
+      if (!(bucket instanceof Map)) continue;
+      for (const cb of bucket.values()) if (cb.teamId === team.id) cb.teamId = null;
+    }
+    save();
+    return { ok: true, result: { teamId: team.id, deleted: true } };
   });
 
   // Aggregate findings + severity trends across all codebases attached

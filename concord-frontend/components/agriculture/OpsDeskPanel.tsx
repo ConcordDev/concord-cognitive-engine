@@ -18,6 +18,7 @@ import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { type WeatherPayload } from '@/components/lens/WeatherHero';
 import { AgFarmShell, type AgEquipment, type AgField, type AgWorkOrder } from './AgFarmShell';
+import { harvestProgressPct } from './harvestProgress';
 import { useFarmDesk } from './FarmDeskContext';
 import type { AgricultureArtifact } from './ag-types';
 
@@ -47,14 +48,12 @@ export function OpsDeskPanel({ onOpenRecords }: OpsDeskPanelProps) {
   const opsQuery = useQuery({
     queryKey: ['agriculture', 'ops-desk'],
     queryFn: async () => {
-      const [fields, equipment, orders, bins] = await Promise.all([
-        lensRun({ domain: 'agriculture', action: 'field-list', input: {} }),
+      const [equipment, orders, bins] = await Promise.all([
         lensRun({ domain: 'agriculture', action: 'equipment-list', input: {} }),
         lensRun({ domain: 'agriculture', action: 'work-orders-list', input: {} }),
         lensRun({ domain: 'agriculture', action: 'grain-bins-list', input: {} }),
       ]);
       return {
-        fields: asList<AgField>(fields.data?.result, 'fields'),
         equipment: asList<AgEquipment>(equipment.data?.result, 'equipment'),
         workOrders: asList<AgWorkOrder>(orders.data?.result, 'orders'),
         bins: asList<{ currentBushels?: number; capacityBushels?: number }>(
@@ -133,11 +132,23 @@ export function OpsDeskPanel({ onOpenRecords }: OpsDeskPanelProps) {
   const thriving = crops.filter((c) => !c.pestPressure || c.pestPressure === 'low').length;
   const stressed = crops.filter((c) => c.pestPressure === 'medium').length;
   const critical = crops.filter((c) => c.pestPressure === 'high').length;
-  const totalQty = harvestArts.reduce((s, h) => s + (h.data.quantity || 0), 0);
   const totalEstimated = crops.reduce((s, c) => s + (c.estimatedYield || 0), 0);
-  const harvestPct = totalEstimated > 0 ? Math.min((totalQty / totalEstimated) * 100, 100) : 0;
+  const harvestPct = harvestProgressPct(
+    harvestArts.map((h) => ({ status: h.data.status, quantity: h.data.quantity })),
+    totalEstimated,
+  );
 
-  const shellFields = opsQuery.data?.fields ?? [];
+  // Field count and acres are the Fields records (artifact plane). The
+  // separate field-list store was a second number that stayed at 1 while
+  // Fields was empty.
+  const recordFields: AgField[] = fieldArts.map((a) => ({
+    id: a.id,
+    name: a.data.name || a.title || 'Field',
+    acreage: Number(a.data.acreage) || 0,
+    currentCrop: a.data.currentCrop,
+  }));
+  const recordAcres = recordFields.reduce((s, f) => s + f.acreage, 0);
+  const deskLoading = fieldsQ.isLoading || opsQuery.isPending;
   const shellEquip = (opsQuery.data?.equipment ?? []).map((e) => ({
     ...e,
     status: (['idle', 'working', 'transporting', 'maintenance', 'offline'] as const).includes(
@@ -183,22 +194,22 @@ export function OpsDeskPanel({ onOpenRecords }: OpsDeskPanelProps) {
     .filter((e) => !shellKeys.has(e.key))
     .map((e) => e.projected);
   const fleetEquip: AgEquipment[] = [...shellEquip, ...artifactEquip];
-  const shellOrders = opsQuery.data?.workOrders ?? [];
+  const shellOrders = deskLoading ? [] : (opsQuery.data?.workOrders ?? []);
   const bins = opsQuery.data?.bins ?? [];
   const grainStored = bins.reduce((s, b) => s + (b.currentBushels || 0), 0);
   const grainCapacity = bins.reduce((s, b) => s + (b.capacityBushels || 0), 0);
   const equipmentWorking = fleetEquip.filter((e) => e.status === 'working').length;
-  const shellAcres = shellFields.reduce((s, f) => s + (f.acreage || 0), 0);
   const avgYield =
-    shellAcres > 0 ? Math.round((metrics.seasonYield / shellAcres) * 10) / 10 : 0;
+    recordAcres > 0 ? Math.round((metrics.seasonYield / recordAcres) * 10) / 10 : 0;
 
   const fade = reduceMotion ? {} : { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } };
 
   return (
     <div className="space-y-4">
       <AgFarmShell
-        totalFields={shellFields.length || fieldArts.length}
-        totalAcres={shellAcres || metrics.totalAcres}
+        totalFields={recordFields.length}
+        totalAcres={recordAcres}
+        deskLoading={deskLoading}
         equipmentCount={fleetEquip.length}
         equipmentWorking={equipmentWorking}
         seasonYieldBushels={metrics.seasonYield}
@@ -206,7 +217,7 @@ export function OpsDeskPanel({ onOpenRecords }: OpsDeskPanelProps) {
         grainStored={grainStored}
         grainCapacity={grainCapacity}
         grainUtilizationPct={grainCapacity > 0 ? Math.round((grainStored / grainCapacity) * 100) : 0}
-        fields={shellFields}
+        fields={recordFields}
         equipment={fleetEquip}
         workOrders={shellOrders}
       />

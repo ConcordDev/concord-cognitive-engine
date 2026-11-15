@@ -53,6 +53,9 @@ export function GisPitMap() {
 
   async function setLocation() {
     if (!siteId) { setErr('Select a site.'); return; }
+    // FIX-mining-008: Number('') is 0, so blank fields passed the
+    // finite check and placed the site at 0,0 — refuse blanks in words.
+    if (lat.trim() === '' || lng.trim() === '') { setErr('Enter both latitude and longitude.'); return; }
     const latN = Number(lat), lngN = Number(lng);
     if (!Number.isFinite(latN) || !Number.isFinite(lngN)) { setErr('Valid lat/lng required.'); return; }
     setBusy('loc'); setErr(null);

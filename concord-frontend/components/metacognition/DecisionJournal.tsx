@@ -426,12 +426,14 @@ export function DecisionJournal() {
         {showForm && (
           <div className="space-y-3 mb-4 p-3 bg-lattice-deep rounded-lg">
             <input
+              aria-label="Decision title"
               className="input-lattice w-full"
               placeholder="Decision — e.g. 'Accept the contractor's quote'"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
             <textarea
+              aria-label="Decision context"
               className="input-lattice w-full"
               rows={2}
               placeholder="Context — what do you know right now?"
@@ -439,6 +441,7 @@ export function DecisionJournal() {
               onChange={(e) => setContext(e.target.value)}
             />
             <textarea
+              aria-label="Predicted outcome"
               className="input-lattice w-full"
               rows={2}
               placeholder="Predicted outcome — what do you expect to happen?"
@@ -451,6 +454,7 @@ export function DecisionJournal() {
                   Confidence: {(confidence * 100).toFixed(0)}%
                 </label>
                 <input
+                  aria-label="Decision confidence"
                   type="range" min="0.05" max="1" step="0.05"
                   value={confidence}
                   onChange={(e) => setConfidence(parseFloat(e.target.value))}
@@ -460,6 +464,7 @@ export function DecisionJournal() {
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Domain</label>
                 <select
+                  aria-label="Decision domain"
                   className="input-lattice w-full"
                   value={domain}
                   onChange={(e) => setDomain(e.target.value)}
@@ -497,17 +502,19 @@ export function DecisionJournal() {
                           onClick={() => setChosenIdx(i)}
                           title="Mark as chosen"
                           aria-label={`Mark option ${i + 1} as chosen`}
-                          className={`shrink-0 p-1 rounded ${chosenIdx === i ? 'text-neon-yellow' : 'text-gray-500 hover:text-gray-300'}`}
+                          className={`shrink-0 p-1 rounded ${chosenIdx === i ? 'text-neon-yellow' : 'text-gray-400 hover:text-gray-300'}`}
                         >
                           <Star className="w-3.5 h-3.5" fill={chosenIdx === i ? 'currentColor' : 'none'} />
                         </button>
                         <input
+                          aria-label={`Option ${i + 1} name`}
                           className="input-lattice flex-1"
                           placeholder={`Option ${i + 1} name`}
                           value={row.name}
                           onChange={(e) => updateOptionRow(i, { name: e.target.value })}
                         />
                         <input
+                          aria-label={`Option ${i + 1} score`}
                           className="input-lattice w-24"
                           placeholder="Score"
                           inputMode="decimal"
@@ -518,7 +525,7 @@ export function DecisionJournal() {
                           <button
                             type="button"
                             onClick={() => removeOptionRow(i)}
-                            className="p-1 text-gray-500 hover:text-red-400"
+                            className="p-1 text-gray-400 hover:text-red-400"
                             aria-label={`Remove option ${i + 1}`}
                           >
                             <X className="w-3.5 h-3.5" />
@@ -547,6 +554,7 @@ export function DecisionJournal() {
                                 aria-label="Evidence content"
                               />
                               <input
+                                aria-label={`Option ${i + 1} evidence ${ei + 1} strength`}
                                 className="input-lattice w-24 text-xs py-1"
                                 placeholder="Strength (0-10)"
                                 inputMode="decimal"
@@ -556,7 +564,7 @@ export function DecisionJournal() {
                               <button
                                 type="button"
                                 onClick={() => removeEvidenceRow(i, ei)}
-                                className="p-1 text-gray-500 hover:text-red-400"
+                                className="p-1 text-gray-400 hover:text-red-400"
                                 aria-label="Remove evidence"
                               >
                                 <X className="w-3 h-3" />
@@ -587,6 +595,7 @@ export function DecisionJournal() {
                   <div>
                     <label className="text-xs text-gray-400 block mb-1">Initial anchor (optional)</label>
                     <input
+                      aria-label="Initial anchor"
                       className="input-lattice w-full"
                       placeholder="e.g. the first number you saw"
                       inputMode="decimal"
@@ -597,6 +606,7 @@ export function DecisionJournal() {
                   <div>
                     <label className="text-xs text-gray-400 block mb-1">Invested cost (optional)</label>
                     <input
+                      aria-label="Invested cost"
                       className="input-lattice w-full"
                       placeholder="e.g. time/money already spent"
                       inputMode="decimal"
@@ -716,9 +726,9 @@ export function DecisionJournal() {
                                 <li key={i} className={isChosen ? 'text-neon-yellow flex items-center gap-1' : 'flex items-center gap-1'}>
                                   {isChosen && <Star className="w-3 h-3 shrink-0" fill="currentColor" />}
                                   {opt.name}
-                                  {opt.score != null && <span className="text-gray-500"> (score {opt.score})</span>}
+                                  {opt.score != null && <span className="text-gray-400"> (score {opt.score})</span>}
                                   {opt.evidence.length > 0 && (
-                                    <span className="text-gray-500">
+                                    <span className="text-gray-400">
                                       {' '}— {opt.evidence.filter((e) => e.supports).length} for /{' '}
                                       {opt.evidence.filter((e) => !e.supports).length} against
                                     </span>
@@ -726,7 +736,7 @@ export function DecisionJournal() {
                                   {opt.evidence.some((e) => e.text) && (
                                     <ul className="mt-0.5 space-y-0.5 pl-4">
                                       {opt.evidence.filter((e) => e.text).map((e, ei) => (
-                                        <li key={ei} className="text-gray-500">
+                                        <li key={ei} className="text-gray-400">
                                           {e.supports ? 'For' : 'Against'} · strength {e.strength} — {e.text}
                                         </li>
                                       ))}
@@ -751,6 +761,7 @@ export function DecisionJournal() {
                     resolvingId === d.id ? (
                       <div className="mt-3 pt-3 border-t border-gray-700/30 space-y-2">
                         <textarea
+                          aria-label="What actually happened"
                           className="input-lattice w-full"
                           rows={2}
                           placeholder="What actually happened?"
@@ -758,6 +769,7 @@ export function DecisionJournal() {
                           onChange={(e) => setActualOutcome(e.target.value)}
                         />
                         <input
+                          aria-label="Lesson learned"
                           className="input-lattice w-full"
                           placeholder="Lesson learned (optional)"
                           value={lesson}
@@ -899,7 +911,7 @@ export function DecisionJournal() {
                 )}
                 {Array.isArray(biasReport.evaluations) && biasReport.evaluations.length > 0 && (
                   <div className="space-y-1 pt-1">
-                    <p className="text-xs text-gray-500 uppercase tracking-wide">Every pattern, evaluated</p>
+                    <p className="text-xs text-gray-400 uppercase tracking-wide">Every pattern, evaluated</p>
                     {biasReport.evaluations.map((ev, i) => (
                       <p key={i} className="text-xs text-gray-400">
                         <span className="capitalize text-gray-300">{ev.type.replace(/_/g, ' ')}</span>
@@ -910,7 +922,7 @@ export function DecisionJournal() {
                           <> — <span className="text-green-400">cleared</span> — evaluated on {ev.decisionsAnalyzed} decision{ev.decisionsAnalyzed === 1 ? '' : 's'}, not detected</>
                         )}
                         {ev.status === 'insufficient_data' && (
-                          <> — <span className="text-gray-500">needs data</span>{ev.needed ? ` — ${ev.needed}` : ''}</>
+                          <> — <span className="text-gray-400">needs data</span>{ev.needed ? ` — ${ev.needed}` : ''}</>
                         )}
                       </p>
                     ))}

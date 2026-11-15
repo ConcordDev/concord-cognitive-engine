@@ -50,6 +50,7 @@ export function AnalysisPanel() {
             type="number"
             min={1}
             max={20}
+            aria-label="Divisions per member"
             value={meshDivisions}
             onChange={(e) => setMeshDivisions(Math.max(1, Math.min(20, parseInt(e.target.value) || 1)))}
             className="w-16 bg-black/30 border border-white/10 rounded px-2 py-1 text-sm font-mono"

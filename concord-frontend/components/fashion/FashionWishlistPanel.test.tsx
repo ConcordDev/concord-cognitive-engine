@@ -140,7 +140,9 @@ describe('FashionWishlistPanel', () => {
     render(<FashionWishlistPanel />);
     await waitFor(() => expect(screen.getByText('Wool coat')).toBeInTheDocument());
 
+    // Delete is two-step now (FIX-fashion-004): arm, then confirm.
     fireEvent.click(screen.getByLabelText('Remove'));
+    fireEvent.click(screen.getByLabelText('Confirm remove'));
 
     await waitFor(() => expect(screen.getByText(/Nothing saved yet/i)).toBeInTheDocument());
     expect(lensRun).toHaveBeenCalledWith('fashion', 'wishlist-remove', { id: 'wsh_1' });

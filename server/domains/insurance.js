@@ -373,13 +373,23 @@ export default function registerInsuranceActions(register) {
       if (!state.clients.has(userId)) state.clients.set(userId, []);
       const riskProfile = ["low", "standard", "elevated", "high"].includes(String(params.riskProfile || "").toLowerCase())
         ? String(params.riskProfile).toLowerCase() : "standard";
+      // FIX-insurance-002: a supplied dob must be a real calendar date,
+      // the same rule policy-create applies to its dates — free text
+      // ('whenever') was previously stored and rendered as the birth date.
+      const dobRaw = String(params.dob || "").trim();
+      if (dobRaw) {
+        const d = /^\d{4}-\d{2}-\d{2}$/.test(dobRaw) ? new Date(`${dobRaw}T00:00:00Z`) : null;
+        if (!d || Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== dobRaw) {
+          return { ok: false, error: "dob must be a real date (YYYY-MM-DD)" };
+        }
+      }
       const client = {
         id: `cli_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
         name,
         phone: String(params.phone || "").trim().slice(0, 40) || null,
         email: String(params.email || "").trim().slice(0, 120) || null,
         address: String(params.address || "").trim().slice(0, 200) || null,
-        dob: String(params.dob || "").trim().slice(0, 10) || null,
+        dob: dobRaw || null,
         riskProfile,
         referralSource: String(params.referralSource || "").trim().slice(0, 120) || null,
         notes: String(params.notes || "").trim().slice(0, 400) || null,
@@ -461,6 +471,23 @@ export default function registerInsuranceActions(register) {
     const carrier = String(params.carrier || "").trim();
     const policyNumber = String(params.policyNumber || "").trim();
     if (!carrier || !policyNumber) return { ok: false, error: "carrier and policyNumber required" };
+    // FIX-insurance-006: policy/claim text sailed in unbounded (300+
+    // chars accepted whole). The domain's own conventions govern:
+    // names at 120 (client-add), identifiers at 64. Refuse by name
+    // over the limit instead of storing silently.
+    if (carrier.length > 120) return { ok: false, error: "carrier must be 120 characters or fewer" };
+    if (policyNumber.length > 64) return { ok: false, error: "policyNumber must be 64 characters or fewer" };
+    if (params.insuredName != null && String(params.insuredName).trim().length > 120) return { ok: false, error: "insuredName must be 120 characters or fewer" };
+    // Dates, when supplied, must be real calendar dates, and the
+    // renewal may not precede the start.
+    const isRealDate = (v) => {
+      if (typeof v !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+      const d = new Date(`${v}T00:00:00Z`);
+      return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === v;
+    };
+    if (params.effectiveDate != null && params.effectiveDate !== "" && !isRealDate(params.effectiveDate)) return { ok: false, error: "effectiveDate must be a real date (YYYY-MM-DD)" };
+    if (params.renewalDate != null && params.renewalDate !== "" && !isRealDate(params.renewalDate)) return { ok: false, error: "renewalDate must be a real date (YYYY-MM-DD)" };
+    if (params.effectiveDate && params.renewalDate && String(params.renewalDate) < String(params.effectiveDate)) return { ok: false, error: "renewalDate must not be before effectiveDate" };
     const badNum = badNumericField(params, ["annualPremium", "deductible", "liabilityLimit"]);
     if (badNum) return { ok: false, error: `invalid_${badNum}` };
     // Optional clientId resolution (persisted Client/CRM entity, above) —
@@ -516,6 +543,11 @@ export default function registerInsuranceActions(register) {
     const carrier = String(params.carrier || "").trim();
     const description = String(params.description || "").trim();
     if (!carrier || !description) return { ok: false, error: "carrier and description required" };
+    // FIX-insurance-006: same unbounded-text leg on the claim form —
+    // carrier at the domain's 120 name limit, description at the
+    // platform's 5,000 description limit (INPUT_LIMITS), refused by name.
+    if (carrier.length > 120) return { ok: false, error: "carrier must be 120 characters or fewer" };
+    if (description.length > 5000) return { ok: false, error: "description must be 5,000 characters or fewer" };
     const badNum = badNumericField(params, ["claimAmount"]);
     if (badNum) return { ok: false, error: `invalid_${badNum}` };
     // Optional clientId resolution (persisted Client/CRM entity, above) —
@@ -569,7 +601,10 @@ export default function registerInsuranceActions(register) {
   // quotes from a hardcoded carrier-rate table.
   registerLensAction("insurance", "quotes-compare", (_ctx, _artifact, params = {}) => {
     const kind = String(params.kind || "auto");
-    const zip = String(params.zip || "");
+    const zip = String(params.zip || "").trim();
+    if (!/^\d{5}$/.test(zip)) {
+      return { ok: false, error: "invalid_input", message: "ZIP must be 5 digits." };
+    }
     const coverage = ["minimum", "standard", "premium"].includes(params.coverage) ? params.coverage : "standard";
     return {
       ok: false,
@@ -811,6 +846,13 @@ export default function registerInsuranceActions(register) {
     if (!claim) return { ok: false, error: "claim not found" };
     if (params.status != null && ["submitted", "under_review", "approved", "denied", "paid", "closed"].includes(params.status)) {
       claim.status = params.status;
+    }
+    if (params.status === "paid" && params.payoutAmount == null && claim.payoutAmount == null) {
+      const policy = claim.policyId
+        ? (s.policies.get(insAid(ctx)) || []).find((p) => p.id === claim.policyId)
+        : null;
+      const deductible = policy ? insNum(policy.deductible) : 0;
+      claim.payoutAmount = Math.max(0, Math.round((insNum(claim.claimAmount) - deductible) * 100) / 100);
     }
     if (params.payoutAmount != null) claim.payoutAmount = Math.max(0, insNum(params.payoutAmount));
     if (params.adjuster != null) claim.adjuster = insClean(params.adjuster, 120) || null;
@@ -1116,6 +1158,17 @@ export default function registerInsuranceActions(register) {
     };
   });
 
+  // FIX-insurance-004: reminders gain a delete (create/complete existed).
+  registerLensAction("insurance", "reminder-delete", (ctx, _a, params = {}) => {
+    const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.reminders.get(insAid(ctx)) || [];
+    const i = arr.findIndex((r) => r.id === params.id);
+    if (i < 0) return { ok: false, error: "reminder not found" };
+    arr.splice(i, 1);
+    saveInsState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
   registerLensAction("insurance", "reminder-complete", (ctx, _a, params = {}) => {
     const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const rem = (s.reminders.get(insAid(ctx)) || []).find((r) => r.id === params.id);
@@ -1298,15 +1351,11 @@ export default function registerInsuranceActions(register) {
     const seen = new Set();
     list = list.filter((b) => (seen.has(b.userId) ? false : (seen.add(b.userId), true)));
     const total = list.reduce((a, b) => a + b.sharePct, 0);
-    if (total <= 0 && list.length) {
-      const even = Math.floor(100 / list.length);
-      list.forEach((b, i) => { b.sharePct = i === list.length - 1 ? 100 - even * (list.length - 1) : even; });
-    } else if (total !== 100 && list.length) {
-      let acc = 0;
-      list.forEach((b, i) => {
-        if (i === list.length - 1) { b.sharePct = 100 - acc; }
-        else { b.sharePct = Math.round((b.sharePct / total) * 100); acc += b.sharePct; }
-      });
+    if (list.some((b) => !(b.sharePct > 0))) {
+      return { error: "Each beneficiary share must be a number greater than 0." };
+    }
+    if (list.length && total !== 100) {
+      return { error: "Beneficiary shares must add up to 100." };
     }
     return list.map((b) => ({ userId: b.userId, sharePct: b.sharePct, accepted: false, respondedAt: null }));
   }
@@ -1331,13 +1380,32 @@ export default function registerInsuranceActions(register) {
     const premiumSparks = pactInt(params.premiumSparks);
     if (payoutSparks <= 0) return { ok: false, error: "payoutSparks must be > 0" };
     if (premiumSparks <= 0) return { ok: false, error: "premiumSparks must be > 0" };
-    const durationDays = Math.max(1, pactInt(params.durationDays, 30));
+    let durationDays = 30;
+    if (params.durationDays != null && params.durationDays !== "") {
+      durationDays = pactInt(params.durationDays, NaN);
+      if (!Number.isFinite(durationDays) || durationDays < 1) {
+        return { ok: false, error: "invalid_input", message: "Duration must be a whole number of days that is 1 or greater." };
+      }
+    }
 
     const beneficiaries = normaliseBeneficiaries(params.beneficiaries, params.beneficiaryUserId);
+    if (beneficiaries && beneficiaries.error) return { ok: false, error: "invalid_input", message: beneficiaries.error };
     if (!beneficiaries.length) return { ok: false, error: "at least one beneficiary required" };
     // Suicide-pact prevention: insured cannot be a beneficiary of their own pact.
+    // Checked BEFORE the users-table lookup below so the guard fires on its own
+    // terms regardless of whether the insured's row resolves (it previously ran
+    // after, so an unresolved insured surfaced as beneficiary_unresolved and the
+    // self-pact rule was never the one that refused).
     if (beneficiaries.some((b) => b.userId === userId)) {
       return { ok: false, error: "self_pact_blocked: beneficiary cannot equal insured" };
+    }
+    if (typeof ctx?.db?.prepare === "function") {
+      for (const b of beneficiaries) {
+        let row = true;
+        try { row = ctx.db.prepare("SELECT id FROM users WHERE id = ?").get(b.userId); }
+        catch { row = true; }
+        if (!row) return { ok: false, error: "beneficiary_unresolved" };
+      }
     }
 
     const freq = ["upfront", "weekly", "monthly"].includes(params.premiumFrequency)
@@ -1414,6 +1482,22 @@ export default function registerInsuranceActions(register) {
     return { ok: true, result: { pactId: pact.id, status: "revoked" } };
   });
 
+  // ── Remove a revoked pact (insured only) ────────────────────────────
+  // FIX-death-insurance-007: a revoked pact is a dead record — revoke
+  // already ended it and moved nothing further. Removing the record
+  // moves no sparks; live/expired/fired pacts (a fired pact is the
+  // record of an executed payout) cannot be removed.
+  registerLensAction("insurance", "pact-remove", (ctx, _a, params = {}) => {
+    const s = getPactState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const bucket = s.pacts.get(pactUid(ctx)) || [];
+    const idx = bucket.findIndex((p) => p.id === params.pactId);
+    if (idx < 0) return { ok: false, error: "pact not found" };
+    if (pactStatus(bucket[idx]) !== "revoked") return { ok: false, error: "only revoked pacts can be removed" };
+    const [removed] = bucket.splice(idx, 1);
+    saveInsState();
+    return { ok: true, result: { removed: true, pactId: removed.id } };
+  });
+
   // ── #2 Renewal / auto-renew ─────────────────────────────────────────
   registerLensAction("insurance", "pact-renew", (ctx, _a, params = {}) => {
     const s = getPactState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1423,7 +1507,13 @@ export default function registerInsuranceActions(register) {
     if (badNum) return { ok: false, error: `invalid_${badNum}` };
     const st = pactStatus(pact);
     if (st === "revoked" || st === "fired") return { ok: false, error: `cannot renew a ${st} pact` };
-    const extraDays = Math.max(1, pactInt(params.durationDays, pact.durationDays));
+    let extraDays = pact.durationDays;
+    if (params.durationDays != null && params.durationDays !== "") {
+      extraDays = pactInt(params.durationDays, NaN);
+      if (!Number.isFinite(extraDays) || extraDays < 1) {
+        return { ok: false, error: "invalid_input", message: "Renewal days must be a whole number that is 1 or greater." };
+      }
+    }
     const base = st === "expired" ? pactNow() : pact.expiresAt;
     pact.expiresAt = base + extraDays * PACT_DAY;
     pact.durationDays = extraDays;
@@ -1614,7 +1704,15 @@ export default function registerInsuranceActions(register) {
           message: `Pact ${p.id} ${p.autoRenew ? "will auto-renew" : "expires"} ${new Date(p.expiresAt * 1000).toLocaleDateString()}`,
         });
       }
-      if (st === "active" && p.premiumFrequency !== "upfront" && p.nextPremiumDueAt != null && p.nextPremiumDueAt <= horizon) {
+      for (const b of p.beneficiaries || []) {
+        if (b.respondedAt && b.accepted === false) {
+          notes.push({
+            kind: "beneficiary_declined", pactId: p.id, severity: "medium", at: b.respondedAt,
+            message: `A beneficiary declined pact ${p.id}.`,
+          });
+        }
+      }
+      if (st === "active" && p.premiumFrequency !== "upfront" && p.nextPremiumDueAt != null && p.nextPremiumDueAt < horizon) {
         notes.push({
           kind: "premium_due", pactId: p.id,
           severity: p.nextPremiumDueAt < now ? "high" : "medium",
@@ -1849,7 +1947,21 @@ export default function registerInsuranceActions(register) {
 
   registerLensAction("insurance", "renewal-pipeline-list", (ctx, _a, _params = {}) => {
     const s = getAmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const pipeline = (s.renewalPipeline.get(insAid(ctx)) || [])
+    // FIX-insurance-002: daysUntil/stage were frozen at build time, so a
+    // row built 1 day out still read "renews in 1d" after its date had
+    // passed. Recompute both at read with the build's own formula; a
+    // past-due row that was never bound reads lapsed.
+    const stored = s.renewalPipeline.get(insAid(ctx)) || [];
+    let dirty = false;
+    for (const r of stored) {
+      const t = new Date(r.renewalDate + "T00:00:00Z").getTime();
+      if (Number.isNaN(t)) continue;
+      const daysUntil = Math.floor((t - Date.now()) / INS_DAY);
+      if (daysUntil !== r.daysUntil) { r.daysUntil = daysUntil; dirty = true; }
+      if (daysUntil < 0 && r.stage !== "bound" && r.stage !== "lapsed") { r.stage = "lapsed"; dirty = true; }
+    }
+    if (dirty) saveInsState();
+    const pipeline = stored
       .slice().sort((a, b) => a.daysUntil - b.daysUntil);
     const byStage = {};
     for (const r of pipeline) byStage[r.stage] = (byStage[r.stage] || 0) + 1;
@@ -1922,6 +2034,31 @@ export default function registerInsuranceActions(register) {
     };
     if (assigned) fnol.timeline.push({ at: insNow(), event: `Routed to ${assigned} (${queue})`, actor: "router" });
     if (!pushCapped(s.fnol, userId, fnol)) return { ok: false, error: "fnol_cap" };
+    // FIX-insurance-002: an FNOL *is* a claim, but intake wrote only to
+    // the AMS store — the book (claim-list, client history, overview
+    // counts) never saw it, so the two surfaces disagreed on the claim
+    // count. File the linked claim in the book as well; fnol-list keeps
+    // reading the AMS store, so nothing double-counts there.
+    if (!ins.claims.has(userId)) ins.claims.set(userId, []);
+    const bookClaim = {
+      id: insId("clm"),
+      policyId: fnol.policyId || "",
+      policyNumber: policy ? policy.policyNumber : null,
+      carrier: fnol.carrier,
+      description,
+      kind: "other",
+      incidentDate: fnol.lossDate,
+      submittedDate: insDay(insNow()),
+      status: "submitted",
+      claimAmount: estLoss,
+      documents: 0,
+      clientId: policy ? (policy.clientId ?? null) : null,
+      claimantName: policy ? (policy.insuredName ?? null) : null,
+      fnolId: fnol.id,
+      source: "fnol",
+    };
+    ins.claims.get(userId).push(bookClaim);
+    fnol.claimId = bookClaim.id;
     saveInsState();
     return { ok: true, result: { fnol } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -1965,6 +2102,17 @@ export default function registerInsuranceActions(register) {
     return { ok: true, result: { fnol } };
   });
 
+  // FIX-insurance-004: FNOL intakes gain a delete.
+  registerLensAction("insurance", "fnol-delete", (ctx, _a, params = {}) => {
+    const s = getAmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.fnol.get(insAid(ctx)) || [];
+    const i = arr.findIndex((f) => f.id === params.id);
+    if (i < 0) return { ok: false, error: "fnol not found" };
+    arr.splice(i, 1);
+    saveInsState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
   // ── #4 Commission reconciliation against carrier statements ─────────
   registerLensAction("insurance", "statement-import", (ctx, _a, params = {}) => {
     const s = getAmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1989,6 +2137,17 @@ export default function registerInsuranceActions(register) {
     if (!pushCapped(s.statements, insAid(ctx), statement)) return { ok: false, error: "statement_cap" };
     saveInsState();
     return { ok: true, result: { statement } };
+  });
+
+  // FIX-insurance-004: imported commission statements gain a delete.
+  registerLensAction("insurance", "statement-delete", (ctx, _a, params = {}) => {
+    const s = getAmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.statements.get(insAid(ctx)) || [];
+    const i = arr.findIndex((st) => st.id === params.id);
+    if (i < 0) return { ok: false, error: "statement not found" };
+    arr.splice(i, 1);
+    saveInsState();
+    return { ok: true, result: { deleted: params.id } };
   });
 
   registerLensAction("insurance", "statement-list", (ctx, _a, _params = {}) => {
@@ -2311,6 +2470,38 @@ export default function registerInsuranceActions(register) {
         totalSigners: env.signers.length,
       },
     };
+  });
+
+  // Void: cancel an in-flight envelope. The "voided" status is the
+  // domain's own designed terminal state (esign-sign already refuses
+  // to sign a voided envelope; binder-issue requires "completed", so
+  // a voided envelope can never issue a binder). A COMPLETED envelope
+  // is the fully-signed record — it can be neither voided nor deleted.
+  registerLensAction("insurance", "esign-void", (ctx, _a, params = {}) => {
+    const s = getAmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const env = (s.envelopes.get(insAid(ctx)) || []).find((e) => e.id === params.id);
+    if (!env) return { ok: false, error: "envelope not found" };
+    if (env.status === "voided") return { ok: false, error: "envelope is already voided" };
+    if (env.status === "completed") return { ok: false, error: "a completed envelope cannot be voided" };
+    env.status = "voided";
+    env.voidedAt = insNow();
+    env.audit.push({ at: insNow(), event: "Envelope voided by owner" });
+    saveInsState();
+    return { ok: true, result: { envelopeId: env.id, status: env.status } };
+  });
+
+  // Delete: removes a VOIDED envelope (the dead-letter cleanup). Any
+  // other status is refused — void first, and completed envelopes are
+  // the signed record and are never deletable.
+  registerLensAction("insurance", "esign-delete", (ctx, _a, params = {}) => {
+    const s = getAmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.envelopes.get(insAid(ctx)) || [];
+    const i = arr.findIndex((e) => e.id === params.id);
+    if (i < 0) return { ok: false, error: "envelope not found" };
+    if (arr[i].status !== "voided") return { ok: false, error: "only a voided envelope can be deleted" };
+    arr.splice(i, 1);
+    saveInsState();
+    return { ok: true, result: { deleted: params.id } };
   });
 
   // Binder: a temporary proof of coverage. Issuable only once an

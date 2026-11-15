@@ -57,6 +57,7 @@ describe('R-S1 — fleet changes notify the page; creates receipt', () => {
     render(<FleetManager onFleetChange={onFleetChange} />);
     await screen.findByText('PR2ROBO-UNIQUE-STRING-1031');
     fireEvent.click(screen.getByRole('button', { name: 'Remove robot' }));
+    fireEvent.click(screen.getByRole('button', { name: /Confirm remove/ }));
     await waitFor(() => expect(onFleetChange).toHaveBeenCalled());
   });
 

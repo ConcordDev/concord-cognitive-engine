@@ -17,6 +17,7 @@ import { DMIndicator } from '@/components/social/DMIndicator';
 import { UserMenu } from './topbar/UserMenu';
 import { usePowerMode } from '@/hooks/usePowerMode';
 import { safeGetItem } from '@/lib/safe-storage';
+import { useGuest, useGuestAuth } from '@/lib/guest';
 
 export function Topbar({ trailing }: { trailing?: ReactNode } = {}) {
   const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed);
@@ -24,6 +25,10 @@ export function Topbar({ trailing }: { trailing?: ReactNode } = {}) {
   const setSidebarOpen = useUIStore((s) => s.setSidebarOpen);
   const { isOnline } = useOnlineStatus();
   const { powerMode, togglePowerMode } = usePowerMode();
+  // GB-1536: guests get Log in (text) + Sign up (primary) top-right —
+  // never buried in an overflow menu, visible at 390px too.
+  const guest = useGuest();
+  const { openAuth } = useGuestAuth();
   // Studio is a music-only workspace: the platform health chip ("Brains
   // offline", heartbeat, DTU count) is not about the song and stays out of it.
   const pathname = usePathname();
@@ -154,24 +159,46 @@ export function Topbar({ trailing }: { trailing?: ReactNode } = {}) {
           </div>
         )}
 
-        {/* Social indicators: DM + Notifications */}
-        <DMIndicator userId={userData?.user?.id || userData?.id || userData?._id} />
-        <NotificationBell userId={userData?.user?.id || userData?.id || userData?._id} />
-        {/* The panel toggle moves out of the bar on phones so the avatar stays on screen. */}
-        {trailing && <div className="hidden items-center gap-1.5 sm:flex">{trailing}</div>}
+        {guest ? (
+          <>
+            {/* GB-1536 §3a: guest auth actions, top-right, always visible. */}
+            <button
+              type="button"
+              onClick={() => openAuth('signin')}
+              className="px-2 py-2 text-sm text-zinc-300 transition-colors hover:text-white"
+            >
+              Log in
+            </button>
+            <button
+              type="button"
+              onClick={() => openAuth('signup')}
+              className="rounded-lg bg-neon-blue px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-neon-blue/80"
+            >
+              Sign up
+            </button>
+          </>
+        ) : (
+          <>
+            {/* Social indicators: DM + Notifications */}
+            <DMIndicator userId={userData?.user?.id || userData?.id || userData?._id} />
+            <NotificationBell userId={userData?.user?.id || userData?.id || userData?._id} />
+            {/* The panel toggle moves out of the bar on phones so the avatar stays on screen. */}
+            {trailing && <div className="hidden items-center gap-1.5 sm:flex">{trailing}</div>}
 
-        {/* User name + avatar with online status dot */}
-        <div className="flex items-center gap-1.5">
-          <div className="relative">
-            <UserMenu powerMode={powerMode} onTogglePowerMode={togglePowerMode} />
-            {/* Online status indicator */}
-            {/* Connection state: green when online, gray "saved locally" when offline */}
-            <span
-              className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-lattice-surface ${isOnline ? 'bg-green-400' : 'bg-zinc-500'}`}
-              title={isOnline ? 'Online' : 'Offline — changes saved locally'}
-            />
-          </div>
-        </div>
+            {/* User name + avatar with online status dot */}
+            <div className="flex items-center gap-1.5">
+              <div className="relative">
+                <UserMenu powerMode={powerMode} onTogglePowerMode={togglePowerMode} />
+                {/* Online status indicator */}
+                {/* Connection state: green when online, gray "saved locally" when offline */}
+                <span
+                  className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-lattice-surface ${isOnline ? 'bg-green-400' : 'bg-zinc-500'}`}
+                  title={isOnline ? 'Online' : 'Offline — changes saved locally'}
+                />
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </header>
   );

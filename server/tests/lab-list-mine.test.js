@@ -40,17 +40,24 @@ describe("lab F5 list_mine / recent_mine", () => {
     assert.ok(db, "test db required");
     ensureUser(db, userId);
     const dtuId = "dtu_lab_f5_" + Date.now().toString(36);
-    db.prepare(`
-      INSERT INTO dtus (id, owner_user_id, creator_id, title, body_json, tags_json, visibility, tier, type, created_at, updated_at)
-      VALUES (?, ?, ?, ?, '{}', ?, 'private', 'regular', ?, datetime('now'), datetime('now'))
-    `).run(
-      dtuId,
-      userId,
-      userId,
-      "Lab notebook lab-f5 alpha",
-      JSON.stringify(["lab", "lab-notebook", "lab-f5"]),
-      "knowledge",
-    );
+    // GB-1538 genus: the fixture inserts into whichever dtus shape the
+    // harness DB actually carries — the migrated shape (owner_user_id,
+    // type, tags_json, ...) or the runtime shape (creator_id,
+    // content_type, ...). The fixed column list died with "table dtus
+    // has no column named owner_user_id" on runtime-shaped DBs, which
+    // is the same schema drift the factory fix cures.
+    const cols = new Set(db.prepare("PRAGMA table_info(dtus)").all().map(r => r.name));
+    const values = {
+      id: dtuId, creator_id: userId, owner_user_id: userId,
+      title: "Lab notebook lab-f5 alpha", body_json: "{}", content: "{}",
+      content_type: "knowledge", type: "knowledge",
+      tags_json: JSON.stringify(["lab", "lab-notebook", "lab-f5"]),
+      visibility: "private", tier: "regular",
+      created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+    };
+    const present = Object.keys(values).filter(k => cols.has(k));
+    db.prepare(`INSERT INTO dtus (${present.join(", ")}) VALUES (${present.map(() => "?").join(", ")})`)
+      .run(...present.map(k => values[k]));
 
     for (const name of ["list_mine", "recent_mine"]) {
       const listed = await runMacro("lab", name, { limit: 50 }, ctx);

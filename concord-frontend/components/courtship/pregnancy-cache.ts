@@ -23,6 +23,7 @@ export interface CachedPregnancy {
   pregnancyId: string;
   partnerKind: string;
   partnerId: string;
+  partnerName?: string | null; // FIX-courtship-003: the partner's public name, cached with the row
   dueAt: number; // unix seconds, as returned by courtship.conceive
   conceivedAt: number; // unix seconds, recorded client-side at cache time
 }

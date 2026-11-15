@@ -275,8 +275,8 @@ export function ExportDeskPanel() {
           />
           <span>
             Include the shared library
-            <span className="mt-0.5 block text-xs text-zinc-500">
-              Adds system and unowned DTUs. Your vault stays the default.
+            <span className="mt-0.5 block text-xs text-zinc-200">
+              Adds the DTUs you've saved from the shared library — your saved set, whoever made them. System DTUs and anything you haven't saved never ride an export. Your vault stays the default.
             </span>
           </span>
         </label>
@@ -336,7 +336,7 @@ export function ExportDeskPanel() {
               type="button"
               onClick={() => setSingleFormat(fmt.id)}
               aria-pressed={singleFormat === fmt.id}
-              className={`rounded-full px-2 py-0.5 text-[11px] ${singleFormat === fmt.id ? 'bg-white/15 text-white' : 'text-zinc-500'}`}
+              className={`rounded-full px-2 py-0.5 text-[11px] ${singleFormat === fmt.id ? 'bg-white/15 text-white' : 'text-zinc-200'}`}
             >
               {fmt.label}
             </button>

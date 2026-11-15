@@ -245,7 +245,7 @@ export function ListingInspectorPanel({
                   </div>
                   <div className="mt-1 text-[10px] text-gray-400">{hot.daysOnMarket}d on market · {hot.tourCount} tour{hot.tourCount === 1 ? '' : 's'} requested</div>
                   {hot.basis && (
-                    <div className="mt-0.5 text-[10px] text-gray-500">
+                    <div className="mt-0.5 text-[10px] text-gray-400">
                       Basis: base {hot.basis.base}
                       {hot.basis.marketAge !== 0 && <> · market age {hot.basis.marketAge > 0 ? '+' : ''}{hot.basis.marketAge}</>}
                       {hot.basis.tours !== 0 && <> · tours +{hot.basis.tours}</>}

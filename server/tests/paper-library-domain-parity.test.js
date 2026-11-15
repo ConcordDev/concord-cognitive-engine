@@ -36,6 +36,20 @@ describe("paper.paper library CRUD", () => {
     assert.equal(call("paper-list", ctxA, {}).result.count, 1);
     assert.equal(call("paper-list", ctxB, {}).result.count, 0);
   });
+  it("FIX-paper-003: an invalid year is refused by name; a valid or absent year saves", () => {
+    const bad = call("paper-save", ctxA, { title: "Bad Year", refId: "bad-year-1", year: "abcd" });
+    assert.equal(bad.ok, false);
+    assert.match(bad.error, /whole calendar year/);
+    const five = call("paper-save", ctxA, { title: "Far Future", refId: "bad-year-2", year: 99999 });
+    assert.equal(five.ok, false);
+    const okYear = call("paper-save", ctxA, { title: "Good Year", refId: "good-year", year: 2024 });
+    assert.equal(okYear.ok, true);
+    assert.equal(okYear.result.paper.year, 2024);
+    const noYear = call("paper-save", ctxA, { title: "No Year", refId: "no-year" });
+    assert.equal(noYear.ok, true);
+    assert.equal(noYear.result.paper.year, null);
+    assert.equal(call("paper-list", ctxA, {}).result.count, 2);
+  });
   it("rejects a titleless or duplicate paper", () => {
     assert.equal(call("paper-save", ctxA, {}).ok, false);
     savePaper();

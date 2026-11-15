@@ -114,7 +114,7 @@ export function ShareButton({ postId, compact = true, hideWhenEmpty = false, cla
         placeholder="Optional commentary…"
         autoFocus
         maxLength={500}
-        className="text-xs bg-zinc-950/60 border border-zinc-800 rounded px-2 py-1 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/40 resize-none"
+        className="text-xs bg-zinc-950/60 border border-zinc-800 rounded px-2 py-1 text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-emerald-500/40 resize-none"
       />
       <div className="flex items-center gap-2">
         <button

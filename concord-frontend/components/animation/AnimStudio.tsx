@@ -668,11 +668,11 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
               className="w-12 bg-zinc-950 border border-zinc-700 rounded px-1.5 py-0.5 text-[11px] text-zinc-100" />
           </label>
           <button aria-label="Move frame left" type="button" onClick={() => moveFrame('left')} disabled={frameIdx === 0}
-            className="p-1 text-zinc-400 hover:text-zinc-200 disabled:opacity-30 disabled:hover:text-zinc-400">
+            className="inline-flex min-h-11 min-w-11 items-center justify-center p-1 text-zinc-400 hover:text-zinc-200 disabled:opacity-30 disabled:hover:text-zinc-400">
             <ChevronLeft className="w-3.5 h-3.5" />
           </button>
           <button aria-label="Move frame right" type="button" onClick={() => moveFrame('right')} disabled={frameIdx === anim.frames.length - 1}
-            className="p-1 text-zinc-400 hover:text-zinc-200 disabled:opacity-30 disabled:hover:text-zinc-400">
+            className="inline-flex min-h-11 min-w-11 items-center justify-center p-1 text-zinc-400 hover:text-zinc-200 disabled:opacity-30 disabled:hover:text-zinc-400">
             <ChevronRight className="w-3.5 h-3.5" />
           </button>
           <div className="flex-1" />
@@ -770,7 +770,7 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
           <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300">
             <Layers className="w-3.5 h-3.5 text-cyan-400" /> Frame {frameIdx + 1} layers
           </h3>
-          <button aria-label="Add" type="button" onClick={addLayer} className="text-zinc-400 hover:text-cyan-300"><Plus className="w-4 h-4" /></button>
+          <button aria-label="Add layer" type="button" onClick={addLayer} className="inline-flex min-h-11 min-w-11 items-center justify-center text-zinc-400 hover:text-cyan-300"><Plus className="w-4 h-4" /></button>
         </div>
         <ul className="space-y-1">
           {[...(frame.layers || [])].reverse().map((l) => {
@@ -780,8 +780,8 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
                 className={cn('flex items-center gap-1.5 rounded px-2 py-1 border',
                   isRef ? 'border-dashed border-amber-700/60 bg-amber-950/10'
                     : activeLayer === l.id ? 'border-cyan-600 bg-cyan-950/30' : 'border-zinc-800 bg-zinc-900')}>
-                <button type="button" onClick={() => updateLayer(l.id, { visible: !l.visible })}
-                  className="text-zinc-400 hover:text-zinc-200">
+                <button type="button" aria-label={l.visible ? `Hide layer ${l.name}` : `Show layer ${l.name}`} onClick={() => updateLayer(l.id, { visible: !l.visible })}
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center text-zinc-400 hover:text-zinc-200">
                   {l.visible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
                 </button>
                 {isRef && (

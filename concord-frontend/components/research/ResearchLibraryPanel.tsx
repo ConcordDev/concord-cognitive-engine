@@ -80,9 +80,9 @@ function HighlightsSection({ onOpenReference }: { onOpenReference: (ref: Referen
       {open && (
         <div className="p-2 space-y-1 max-h-64 overflow-y-auto bg-zinc-950/40">
           {loading ? (
-            <div className="flex justify-center py-3"><Loader2 className="w-4 h-4 animate-spin text-zinc-500" /></div>
+            <div className="flex justify-center py-3"><Loader2 className="w-4 h-4 animate-spin text-zinc-400" /></div>
           ) : items.length === 0 ? (
-            <p className="text-[11px] text-zinc-500 italic py-2 text-center">No annotations yet — open a reference and add one.</p>
+            <p className="text-[11px] text-zinc-400 italic py-2 text-center">No annotations yet — open a reference and add one.</p>
           ) : (
             items.map((a) => (
               <button key={a.id} type="button" onClick={() => jump(a.referenceId)}
@@ -221,7 +221,7 @@ function AnalyzeLibrarySection({ references, onOpenReference }: {
         background job. Every result names the items it read.
       </p>
       <div className="flex gap-2">
-        <input value={question} onChange={(e) => setQuestion(e.target.value)}
+        <input aria-label="Research question to match against library" value={question} onChange={(e) => setQuestion(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter' && !running) void run(); }}
           placeholder="Optional: a research question to match against your library"
           className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
@@ -252,7 +252,7 @@ function AnalyzeLibrarySection({ references, onOpenReference }: {
             <ul className="mt-1 space-y-0.5">
               {result.itemsRead.map((i) => (
                 <li key={i.id} className="text-[11px] text-zinc-300 truncate">
-                  • {i.title}{i.year ? <span className="text-zinc-500"> ({i.year})</span> : null}
+                  • {i.title}{i.year ? <span className="text-zinc-400"> ({i.year})</span> : null}
                 </li>
               ))}
             </ul>
@@ -277,7 +277,7 @@ function AnalyzeLibrarySection({ references, onOpenReference }: {
           <div>
             <p className="text-[11px] font-semibold text-zinc-300 mb-1">Gaps</p>
             {!result.gaps ? (
-              <p className="text-[11px] text-zinc-500 italic">Gap detection returned nothing for this run.</p>
+              <p className="text-[11px] text-zinc-400 italic">Gap detection returned nothing for this run.</p>
             ) : result.gaps.gaps.length === 0 ? (
               <p className="text-[11px] text-zinc-400">
                 No gaps found — every reference carries an abstract, coverage is continuous, and no tag is used only once.
@@ -300,7 +300,7 @@ function AnalyzeLibrarySection({ references, onOpenReference }: {
           <div>
             <p className="text-[11px] font-semibold text-zinc-300 mb-1">Question matches</p>
             {!result.question ? (
-              <p className="text-[11px] text-zinc-500 italic">
+              <p className="text-[11px] text-zinc-400 italic">
                 No question was given for this run — add one above to match it against your library.
               </p>
             ) : !result.matches || result.matches.matchCount === 0 ? (
@@ -309,7 +309,7 @@ function AnalyzeLibrarySection({ references, onOpenReference }: {
               <ul className="space-y-0.5">
                 {result.matches.matches.map((m) => (
                   <li key={m.referenceId} className="text-[11px] text-zinc-300 truncate">
-                    • {m.title} <span className="text-zinc-500">— matched: {m.matchedTokens.join(', ')}</span>
+                    • {m.title} <span className="text-zinc-400">— matched: {m.matchedTokens.join(', ')}</span>
                   </li>
                 ))}
               </ul>
@@ -413,7 +413,7 @@ export function AnalyzeQuickTools({ references, onOpenReference }: {
 <div className="space-y-1.5">
             <p className="text-[11px] font-semibold text-zinc-300">Coverage gaps</p>
             <div className="flex gap-2">
-              <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Topic (optional)"
+              <input aria-label="Gap detection topic" value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Topic (optional)"
                 className={inputCls} />
               <button type="button" onClick={runGaps} disabled={gapLoading} className={btnCls}>
                 {gapLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Find gaps'}
@@ -436,7 +436,7 @@ export function AnalyzeQuickTools({ references, onOpenReference }: {
           <div className="space-y-1.5">
             <p className="text-[11px] font-semibold text-zinc-300">Match a question to your sources</p>
             <div className="flex gap-2">
-              <input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="What are you trying to answer?"
+              <input aria-label="Question to match" value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="What are you trying to answer?"
                 className={inputCls} />
               <button type="button" onClick={runMatch} disabled={matchLoading || !question.trim()} className={btnCls}>
                 {matchLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Match'}
@@ -452,7 +452,7 @@ export function AnalyzeQuickTools({ references, onOpenReference }: {
                     <button key={m.referenceId} type="button" onClick={() => jump(m.referenceId)}
                       className="w-full text-left text-[11px] border-l-2 border-sky-700/60 pl-2 py-1 hover:bg-zinc-800/40 rounded-r transition-colors">
                       <span className="text-zinc-200">{m.title}</span>
-                      <span className="text-zinc-500"> — matched: {m.matchedTokens.join(', ')}</span>
+                      <span className="text-zinc-400"> — matched: {m.matchedTokens.join(', ')}</span>
                     </button>
                   ))}
                 </div>
@@ -463,7 +463,7 @@ export function AnalyzeQuickTools({ references, onOpenReference }: {
           <div className="space-y-1.5">
             <p className="text-[11px] font-semibold text-zinc-300">Evaluate a source</p>
             <div className="flex gap-2">
-              <select value={evalId} onChange={(e) => setEvalId(e.target.value)} className={inputCls}>
+              <select aria-label="Reference to evaluate" value={evalId} onChange={(e) => setEvalId(e.target.value)} className={inputCls}>
                 <option value="">Choose a reference…</option>
                 {references.map((r) => (
                   <option key={r.id} value={r.id}>{r.title}</option>
@@ -473,7 +473,7 @@ export function AnalyzeQuickTools({ references, onOpenReference }: {
                 {evalLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Evaluate'}
               </button>
             </div>
-            {references.length === 0 && <p className="text-[11px] text-zinc-500 italic">Add references to evaluate them.</p>}
+            {references.length === 0 && <p className="text-[11px] text-zinc-400 italic">Add references to evaluate them.</p>}
             {evalError && <p className="text-[11px] text-red-400">{evalError}</p>}
             {evalResult && (
               <div className="flex items-center gap-2 flex-wrap">
@@ -814,17 +814,17 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-4">
           {editing ? (
             <div className="grid grid-cols-2 gap-2">
-              <input placeholder="Title" value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+              <input aria-label="Edit title" placeholder="Title" value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
                 className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-              <input placeholder="Authors" value={editForm.authors} onChange={(e) => setEditForm({ ...editForm, authors: e.target.value })}
+              <input aria-label="Edit authors" placeholder="Authors" value={editForm.authors} onChange={(e) => setEditForm({ ...editForm, authors: e.target.value })}
                 className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-              <input placeholder="Year" inputMode="numeric" value={editForm.year} onChange={(e) => setEditForm({ ...editForm, year: e.target.value })}
+              <input aria-label="Edit year" placeholder="Year" inputMode="numeric" value={editForm.year} onChange={(e) => setEditForm({ ...editForm, year: e.target.value })}
                 className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-              <input placeholder="Journal" value={editForm.journal} onChange={(e) => setEditForm({ ...editForm, journal: e.target.value })}
+              <input aria-label="Edit journal" placeholder="Journal" value={editForm.journal} onChange={(e) => setEditForm({ ...editForm, journal: e.target.value })}
                 className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-              <input placeholder="DOI" value={editForm.doi} onChange={(e) => setEditForm({ ...editForm, doi: e.target.value })}
+              <input aria-label="Edit DOI" placeholder="DOI" value={editForm.doi} onChange={(e) => setEditForm({ ...editForm, doi: e.target.value })}
                 className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-              <input placeholder="Tags (comma-separated)" value={editForm.tags} onChange={(e) => setEditForm({ ...editForm, tags: e.target.value })}
+              <input aria-label="Edit tags" placeholder="Tags (comma-separated)" value={editForm.tags} onChange={(e) => setEditForm({ ...editForm, tags: e.target.value })}
                 className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
               <div className="col-span-2 flex gap-2">
                 <button type="button" onClick={saveEdit}
@@ -898,11 +898,11 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
             </div>
           </div>
           <div className="grid grid-cols-6 gap-2 mb-2">
-            <input placeholder="PDF URL (https://…)" value={pdfForm.url} onChange={(e) => setPdfForm({ ...pdfForm, url: e.target.value })}
+            <input aria-label="PDF URL" placeholder="PDF URL (https://…)" value={pdfForm.url} onChange={(e) => setPdfForm({ ...pdfForm, url: e.target.value })}
               className="col-span-3 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-            <input placeholder="Filename" value={pdfForm.filename} onChange={(e) => setPdfForm({ ...pdfForm, filename: e.target.value })}
+            <input aria-label="PDF filename" placeholder="Filename" value={pdfForm.filename} onChange={(e) => setPdfForm({ ...pdfForm, filename: e.target.value })}
               className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-            <input placeholder="Pages" inputMode="numeric" value={pdfForm.pages} onChange={(e) => setPdfForm({ ...pdfForm, pages: e.target.value })}
+            <input aria-label="PDF page count" placeholder="Pages" inputMode="numeric" value={pdfForm.pages} onChange={(e) => setPdfForm({ ...pdfForm, pages: e.target.value })}
               className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
             <button type="button" onClick={attachPdf}
               className="col-span-6 bg-red-600 hover:bg-red-500 text-white text-xs font-medium rounded-lg px-2 py-1.5">Attach PDF</button>
@@ -939,11 +939,11 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
           <h4 className="text-xs font-semibold text-zinc-300 mb-2">Annotations</h4>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
-            <input placeholder="Page" inputMode="numeric" value={annForm.page} onChange={(e) => setAnnForm({ ...annForm, page: e.target.value })}
+            <input aria-label="Annotation page" placeholder="Page" inputMode="numeric" value={annForm.page} onChange={(e) => setAnnForm({ ...annForm, page: e.target.value })}
               className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-            <input placeholder="Quote" value={annForm.quote} onChange={(e) => setAnnForm({ ...annForm, quote: e.target.value })}
+            <input aria-label="Annotation quote" placeholder="Quote" value={annForm.quote} onChange={(e) => setAnnForm({ ...annForm, quote: e.target.value })}
               className="col-span-3 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-            <input placeholder="Your note" value={annForm.text} onChange={(e) => setAnnForm({ ...annForm, text: e.target.value })}
+            <input aria-label="Annotation note" placeholder="Your note" value={annForm.text} onChange={(e) => setAnnForm({ ...annForm, text: e.target.value })}
               className="col-span-3 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
             <button type="button" onClick={addAnnotation} disabled={addingAnn}
               className="bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white text-xs font-medium rounded-lg">{addingAnn ? 'Adding…' : 'Add'}</button>
@@ -977,7 +977,7 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
           <h4 className="text-xs font-semibold text-zinc-300 mb-2 flex items-center gap-1"><Link2 className="w-3.5 h-3.5" /> Related references</h4>
           <div className="flex gap-2 mb-2">
-            <select value={relateQuery} onChange={(e) => setRelateQuery(e.target.value)}
+            <select aria-label="Link a reference" value={relateQuery} onChange={(e) => setRelateQuery(e.target.value)}
               className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
               <option value="">Link a reference…</option>
               {references.filter((r) => r.id !== selected.id && !related.some((x) => x.id === r.id)).map((r) => (
@@ -1014,7 +1014,7 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
   return (
     <div className="space-y-3">
       <div className="flex gap-2">
-        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search title, author, journal…"
+        <input aria-label="Search library" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search title, author, journal…"
           className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-100" />
         <button type="button" onClick={() => { setDuplicateNote(null); setShowAdd((v) => !v); }}
           className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-red-600 hover:bg-red-500 text-white rounded-lg">
@@ -1028,7 +1028,7 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
 
       {tags.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">
-          <Tag className="w-3 h-3 text-zinc-500" />
+          <Tag className="w-3 h-3 text-zinc-400" />
           {tags.slice(0, 20).map((t) => (
             <button key={t.tag} type="button"
               onClick={() => setActiveTag((cur) => (cur === t.tag ? null : t.tag))}
@@ -1038,7 +1038,7 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
             </button>
           ))}
           {activeTag && (
-            <button type="button" onClick={() => setActiveTag(null)} className="text-[10px] text-zinc-500 hover:text-zinc-300 underline">clear</button>
+            <button type="button" onClick={() => setActiveTag(null)} className="text-[10px] text-zinc-400 hover:text-zinc-300 underline">clear</button>
           )}
         </div>
       )}
@@ -1047,21 +1047,21 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
 
       {showAdd && (
         <div className="grid grid-cols-2 gap-2 bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
-          <input placeholder="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
+          <input aria-label="New reference title" placeholder="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
             className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-          <input placeholder="Authors" value={form.authors} onChange={(e) => setForm({ ...form, authors: e.target.value })}
+          <input aria-label="New reference authors" placeholder="Authors" value={form.authors} onChange={(e) => setForm({ ...form, authors: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-          <input placeholder="Year" inputMode="numeric" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })}
+          <input aria-label="New reference year" placeholder="Year" inputMode="numeric" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-          <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}
+          <select aria-label="New reference type" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
             {TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
-          <input placeholder="Journal" value={form.journal} onChange={(e) => setForm({ ...form, journal: e.target.value })}
+          <input aria-label="New reference journal" placeholder="Journal" value={form.journal} onChange={(e) => setForm({ ...form, journal: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-          <input placeholder="DOI" value={form.doi} onChange={(e) => setForm({ ...form, doi: e.target.value })}
+          <input aria-label="New reference DOI" placeholder="DOI" value={form.doi} onChange={(e) => setForm({ ...form, doi: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-          <input placeholder="Tags (comma-separated)" value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })}
+          <input aria-label="New reference tags" placeholder="Tags (comma-separated)" value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <button type="button" onClick={add}
             className="col-span-2 bg-red-600 hover:bg-red-500 text-white text-xs font-medium rounded-lg px-2 py-1.5">Add reference</button>
@@ -1076,7 +1076,7 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
           <div className="col-span-2 border-t border-zinc-800 pt-2">
             <p className="text-[11px] text-zinc-400 mb-1.5">…or add by identifier — a DOI, an arXiv ID, or a doi.org / arxiv.org link, resolved from the scholarly record:</p>
             <div className="flex gap-2">
-              <input placeholder="10.1038/nature16961 or 1706.03762" value={identifier}
+              <input aria-label="DOI or arXiv identifier" placeholder="10.1038/nature16961 or 1706.03762" value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') void addByIdentifier(); }}
                 className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
@@ -1104,7 +1104,7 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
       ) : (
         <>
         {(query.trim() || activeTag) && (
-          <p className="text-[11px] text-zinc-500">Showing {visibleReferences.length} of {references.length} references</p>
+          <p className="text-[11px] text-zinc-400">Showing {visibleReferences.length} of {references.length} references</p>
         )}
         <ul className="space-y-2">
           {visibleReferences.map((r) => (

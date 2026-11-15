@@ -91,9 +91,9 @@ export function MhFactorsPanel({ onChange }: { onChange: () => void }) {
         </h3>
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-2">
           <div className="flex gap-1">
-            <input value={newFactor} onChange={(e) => setNewFactor(e.target.value)} placeholder="Factor (e.g. Exercise)"
+            <input aria-label="New factor" value={newFactor} onChange={(e) => setNewFactor(e.target.value)} placeholder="Factor (e.g. Exercise)"
               className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-            <input value={newGroup} onChange={(e) => setNewGroup(e.target.value)} placeholder="Group"
+            <input aria-label="Factor group" value={newGroup} onChange={(e) => setNewGroup(e.target.value)} placeholder="Group"
               className="w-24 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
             <button aria-label="Add" type="button" onClick={addFactor}
               className="px-3 py-1.5 text-xs bg-sky-600 hover:bg-sky-500 text-white rounded-lg"><Plus className="w-3.5 h-3.5" /></button>
@@ -142,7 +142,7 @@ export function MhFactorsPanel({ onChange }: { onChange: () => void }) {
               })}
             </div>
             <div className="flex gap-1">
-              <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional note…"
+              <input aria-label="Factor log note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional note…"
                 className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
               <button type="button" onClick={logTagged}
                 className="px-3 py-1.5 text-xs bg-sky-600 hover:bg-sky-500 text-white rounded-lg">Log</button>

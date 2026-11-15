@@ -52,7 +52,7 @@ export function CouncilVoices() {
         )}
       </header>
       <form onSubmit={(e) => { e.preventDefault(); if (proposal.trim()) evaluate.mutate(); }} className="space-y-2">
-        <textarea value={proposal} onChange={(e) => setProposal(e.target.value)} placeholder="Proposal to evaluate (e.g. 'Should Concord raise the marketplace fee to 6%?')" rows={3} className="w-full rounded border border-zinc-800 bg-zinc-950 px-3 py-2 text-xs text-white" />
+        <textarea aria-label="Proposal to evaluate (e.g. 'Should Concord raise the marketplace fee to 6%?')" value={proposal} onChange={(e) => setProposal(e.target.value)} placeholder="Proposal to evaluate (e.g. 'Should Concord raise the marketplace fee to 6%?')" rows={3} className="w-full rounded border border-zinc-800 bg-zinc-950 px-3 py-2 text-xs text-white" />
         <button type="submit" disabled={!proposal.trim() || evaluate.isPending} className="inline-flex items-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-50">
           {evaluate.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
           Convene council

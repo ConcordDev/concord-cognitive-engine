@@ -21,6 +21,7 @@ export function SuppliersPortal() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ name: '', email: '', contactName: '', spendUsd: '', categoryCode: '' });
+  const [formNote, setFormNote] = useState<string | null>(null);
   const [discloseFor, setDiscloseFor] = useState<string | null>(null);
   const [discloseTonnes, setDiscloseTonnes] = useState('');
 
@@ -36,12 +37,20 @@ export function SuppliersPortal() {
   }
 
   async function add() {
-    if (!form.name.trim() || !form.email.trim()) return;
+    if (!form.name.trim() || !form.email.trim()) {
+      setFormNote('A supplier needs a name and an email.');
+      return;
+    }
+    setFormNote(null);
     try {
-      await lensRun({ domain: 'environment', action: 'suppliers-add', input: { ...form, spendUsd: Number(form.spendUsd) || 0 } });
+      const r = await lensRun({ domain: 'environment', action: 'suppliers-add', input: { ...form, spendUsd: Number(form.spendUsd) || 0 } });
+      if (r.data?.ok === false) {
+        setFormNote(r.data.error || 'Could not add that supplier.');
+        return;
+      }
       setForm({ name: '', email: '', contactName: '', spendUsd: '', categoryCode: '' });
       await refresh();
-    } catch (e) { console.error('[Suppliers] add', e); }
+    } catch (e) { setFormNote(e instanceof Error ? e.message : 'Could not add that supplier.'); }
   }
 
   async function invite(id: string) {
@@ -80,6 +89,7 @@ export function SuppliersPortal() {
         <input type="number" value={form.spendUsd} onChange={e => setForm({ ...form, spendUsd: e.target.value })} placeholder="Annual spend $" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <input value={form.categoryCode} onChange={e => setForm({ ...form, categoryCode: e.target.value })} placeholder="EEIO code (optional)" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <button onClick={add} className="px-3 py-1.5 text-xs rounded bg-violet-500 text-white font-bold hover:bg-violet-400 inline-flex items-center justify-center gap-1"><Plus className="w-3 h-3" />Add supplier</button>
+        {formNote && <p className="col-span-5 text-xs text-amber-200" role="status">{formNote}</p>}
       </div>
       <div className="max-h-96 overflow-y-auto">
         {loading ? (

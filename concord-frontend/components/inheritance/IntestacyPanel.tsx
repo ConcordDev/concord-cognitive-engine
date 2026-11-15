@@ -115,7 +115,7 @@ export function IntestacyPanel() {
                         <option key={s.stateCode} value={s.stateCode}>{s.state} ({s.stateCode})</option>
                       ))}
                     </select>
-                    {intestacyBusy && <span className="text-[10px] text-zinc-500">Looking up…</span>}
+                    {intestacyBusy && <span className="text-[10px] text-zinc-400">Looking up…</span>}
                   </div>
                 </div>
                 {intestacyResult && (
@@ -131,7 +131,7 @@ export function IntestacyPanel() {
                           )}
                         </h3>
                         <p className="mt-1 font-mono text-[10px] text-cyan-300">{intestacyResult.citation}</p>
-                        <p className="mt-0.5 text-[10px] text-zinc-500">{intestacyResult.source}</p>
+                        <p className="mt-0.5 text-[10px] text-zinc-400">{intestacyResult.source}</p>
                         <p className="mt-2 text-xs text-zinc-300">{intestacyResult.summary}</p>
                       </div>
                       <table className="w-full text-left text-xs">

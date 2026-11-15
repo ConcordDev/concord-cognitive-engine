@@ -104,7 +104,7 @@ function DTUQuickCreate({ onClose, onSuccess, source, defaultTags }: DTUQuickCre
   // cover the footer.
   return createPortal(
     <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace} />
 
       <form
         role="dialog"
@@ -249,5 +249,6 @@ function DTUQuickCreate({ onClose, onSuccess, source, defaultTags }: DTUQuickCre
 }
 
 import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 const _WrappedDTUQuickCreate = withErrorBoundary(DTUQuickCreate);
 export { _WrappedDTUQuickCreate as DTUQuickCreate };

@@ -109,22 +109,22 @@ export function AnalysisPanel() {
   }, [tablesPayload, history]);
 
   const applyRec = useCallback(async (column: string) => {
-    const target = tables.find((t) => t.columns.some((c) => c.name === column));
+    const target = tables.find((t) => (t.columns || []).some((c) => c.name === column));
     if (!target) return;
     await ws.createIndex(target.connectionId, target.name, column);
     setApplied((s) => new Set(s).add(column));
   }, [tables, ws]);
 
   const totalRows = tables.reduce((n, t) => n + t.rowCount, 0);
-  const relationCount = tables.reduce((n, t) => n + t.columns.filter((c) => c.isForeign).length, 0);
+  const relationCount = tables.reduce((n, t) => n + (t.columns || []).filter((c) => c.isForeign).length, 0);
 
   return (
     <div className="space-y-4">
       {/* Workspace dashboard — counts measured from the workspace store. */}
       <div className="panel p-4">
-        <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+        <h2 className="text-sm font-semibold flex items-center gap-2 mb-3">
           <BarChart3 className="w-4 h-4 text-neon-cyan" /> Workspace Dashboard
-        </h3>
+        </h2>
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 text-center">
           {[
             ['Connections', connectionCount],

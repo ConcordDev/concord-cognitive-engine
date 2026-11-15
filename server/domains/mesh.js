@@ -333,6 +333,16 @@ export default function registerMeshActions(register) {
       const body = String(data.body || data.text || "").trim();
       const to = data.to || data.nodeId || data.channelId || "broadcast";
       if (!body) return { ok: false, error: "message body required" };
+      // FIX-mesh-005: a provided priority was stored verbatim on the
+      // queued frame and rendered raw in the Queue tab — junk values
+      // (the audit saw the literal 'not-a-number') showed as a
+      // priority class. The vocabulary is queuePrioritize's own list;
+      // refuse anything else by name. Absent still defaults to
+      // "general" at enqueue.
+      const MESH_PRIORITIES = ["threat", "economic", "consciousness", "knowledge", "general"];
+      if (data.priority != null && data.priority !== "" && !MESH_PRIORITIES.includes(data.priority)) {
+        return { ok: false, error: "priority must be one of: threat, economic, consciousness, knowledge, general" };
+      }
 
       const nodes = userMap(meshState().meshNodes, uid);
       const channels = userMap(meshState().meshChannels, uid);
@@ -429,6 +439,33 @@ export default function registerMeshActions(register) {
       return { ok: false, error: e?.message || "markRead failed" };
     }
   }, { description: "Mark mesh message(s) read." });
+
+  /**
+   * deleteMessage — FIX-mesh-003: remove one message from the caller's
+   * own mesh log (the log is per-user; nothing here transmits, so the
+   * delete is local to the caller's copy). A still-queued store-and-
+   * forward frame for the message goes with it.
+   */
+  registerLensAction("mesh", "deleteMessage", (ctx, artifact, params) => {
+    try {
+      const uid = userId(ctx);
+      const data = { ...(artifact?.data || {}), ...(params || {}) };
+      const id = String(data.id || data.messageId || "");
+      if (!id) return { ok: false, error: "message id required" };
+      const all = userArr(meshState().meshMessages, uid);
+      const i = all.findIndex((m) => m.id === id);
+      if (i < 0) return { ok: false, error: "message not found" };
+      all.splice(i, 1);
+      const queue = userArr(meshState().meshQueue, uid);
+      let removedFrames = 0;
+      for (let j = queue.length - 1; j >= 0; j--) {
+        if (queue[j].messageId === id) { queue.splice(j, 1); removedFrames++; }
+      }
+      return { ok: true, result: { deleted: id, removedFrames } };
+    } catch (e) {
+      return { ok: false, error: e?.message || "deleteMessage failed" };
+    }
+  }, { description: "Delete one message from the caller's own mesh log." });
 
   /**
    * signalMetrics — per-transport signal quality: RSSI estimate, hop

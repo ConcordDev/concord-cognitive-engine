@@ -70,7 +70,7 @@ interface AuditTrailResult {
 }
 interface TrendingResult {
   date: string; count: number; source: string;
-  claims: Array<{ kind: string; headline: string; suggestedClaim: string; checkability: string; views?: number }>;
+  claims: Array<{ kind: string; headline: string; suggestedClaim?: string | null; checkability?: string; views?: number; sourceUrl?: string | null; sourceName?: string; note?: string }>;
 }
 interface FactCheckCard {
   id: string; claim: string; verdict: string; verdictColor: string; emoji: string;
@@ -507,7 +507,7 @@ export function FactGroundingWorkbench() {
           </div>
 
           <button
-            type="button" onClick={runAggregate} disabled={busy === 'aggregate'}
+            type="button" onClick={runAggregate} disabled={busy === 'aggregate' || !claim.trim() || !evidence.some((e) => e.text.trim())}
             className="flex w-full items-center justify-center gap-2 rounded-md bg-cyan-500/15 px-3 py-2 text-sm font-semibold text-cyan-300 hover:bg-cyan-500/25 disabled:opacity-50"
           >
             {busy === 'aggregate' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Layers className="h-4 w-4" />}
@@ -682,7 +682,7 @@ export function FactGroundingWorkbench() {
             className="w-full resize-none rounded border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-400/40"
           />
           <button
-            type="button" onClick={runBias} disabled={busy === 'bias'}
+            type="button" onClick={runBias} disabled={busy === 'bias' || !biasUrls.trim()}
             className="flex w-full items-center justify-center gap-2 rounded-md bg-cyan-500/15 px-3 py-2 text-sm font-semibold text-cyan-300 hover:bg-cyan-500/25 disabled:opacity-50"
           >
             {busy === 'bias' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Scale className="h-4 w-4" />}
@@ -753,16 +753,29 @@ export function FactGroundingWorkbench() {
                     <span className="text-[11px] font-medium text-zinc-200">{c.headline}</span>
                     <span className={`rounded px-1.5 py-0.5 text-[9px] ${
                       c.checkability === 'high' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-amber-500/15 text-amber-300'
-                    }`}>{c.kind} · {c.checkability}</span>
+                    }`}>{c.kind}{c.checkability ? ` · ${c.checkability}` : ''}</span>
                   </div>
-                  <p className="mt-1 text-[10px] text-zinc-400">Suggested claim: {c.suggestedClaim}</p>
-                  <button
-                    type="button"
-                    onClick={() => { setClaim(c.suggestedClaim); setTab('aggregate'); }}
-                    className="mt-1.5 flex items-center gap-1 rounded bg-zinc-800 px-2 py-1 text-[10px] text-cyan-300 hover:bg-zinc-700"
-                  >
-                    <Link2 className="h-3 w-3" /> Check this claim
-                  </button>
+                  {c.suggestedClaim && (
+                    <>
+                      <p className="mt-1 text-[10px] text-zinc-400">Suggested claim: {c.suggestedClaim}</p>
+                      <button
+                        type="button"
+                        onClick={() => { setClaim(c.suggestedClaim as string); setTab('aggregate'); }}
+                        className="mt-1.5 flex items-center gap-1 rounded bg-zinc-800 px-2 py-1 text-[10px] text-cyan-300 hover:bg-zinc-700"
+                      >
+                        <Link2 className="h-3 w-3" /> Check this claim
+                      </button>
+                    </>
+                  )}
+                  {c.note && <p className="mt-1 text-[10px] text-zinc-500">{c.note}</p>}
+                  {c.sourceUrl && (
+                    <p className="mt-1 text-[10px] text-zinc-500">
+                      Source:{' '}
+                      <a href={c.sourceUrl} target="_blank" rel="noreferrer" className="text-cyan-300/80 underline decoration-dotted hover:text-cyan-200">
+                        {c.sourceName || c.sourceUrl}
+                      </a>
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
@@ -870,7 +883,7 @@ export function FactGroundingWorkbench() {
               className="w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-[10px] text-white focus:outline-none focus:ring-1 focus:ring-cyan-400/40"
             />
             <button
-              type="button" onClick={linkRebuttal} disabled={busy === 'link'}
+              type="button" onClick={linkRebuttal} disabled={busy === 'link' || !rebuttalCheckId || !counterClaim.trim()}
               className="flex w-full items-center justify-center gap-2 rounded-md bg-cyan-500/15 px-3 py-1.5 text-[11px] font-semibold text-cyan-300 hover:bg-cyan-500/25 disabled:opacity-50"
             >
               {busy === 'link' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <GitFork className="h-3.5 w-3.5" />}

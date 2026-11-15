@@ -92,8 +92,8 @@ export default function MeshLensPage() {
  const tabs: {key: TabKey; label: string; icon: LucideIcon; keys: string; hint: string; count?: number }[] = [
     { key: 'overview', label: 'Overview', icon: Network, keys: 'o', hint: 'Nodes, messages, channels and queue depth' },
     { key: 'transmit', label: 'Send DTU', icon: PackagePlus, keys: 't', hint: 'Transmit a real DTU through the routing substrate' },
-    { key: 'topology', label: 'Topology', icon: Radio, keys: 'g', hint: 'Node graph: add, remove and ping', count: overview.data?.nodes },
-    { key: 'messages', label: 'Messages', icon: MessageSquare, keys: 'm', hint: 'Delivery and read state', count: overview.data?.unread || undefined },
+    { key: 'topology', label: 'Topology', icon: Radio, keys: 'g', hint: 'Node graph, including this node', count: (overview.data?.nodes ?? 0) + 1 },
+    { key: 'messages', label: 'Messages', icon: MessageSquare, keys: 'm', hint: 'Same total as Overview; unread is counted separately', count: overview.data?.messages || undefined },
     { key: 'signal', label: 'Signal', icon: SignalHigh, keys: 's', hint: 'RSSI, hops, latency and range estimate' },
     { key: 'queue', label: 'Queue', icon: Send, keys: 'q', hint: 'Store-and-forward frames', count: overview.data?.queueDepth || undefined },
     { key: 'channels', label: 'Channels', icon: Hash, keys: 'c', hint: 'Broadcast and PSK-encrypted channels', count: overview.data?.channels },
@@ -154,16 +154,17 @@ export default function MeshLensPage() {
                   data-testid="mesh-overview-empty"
                   className="rounded-lg border border-teal-900/40 bg-teal-950/10 p-6 text-center text-sm text-teal-500"
                 >
-                  <Network className="mx-auto mb-2 h-6 w-6 text-teal-700" aria-hidden />
+                  <Network className="mx-auto mb-2 h-6 w-6 text-teal-500" aria-hidden />
                   <p className="font-medium text-teal-300">No mesh yet.</p>
                   <p className="mt-1 text-xs text-teal-600">
                     Add your first peer node in <span className="text-teal-400">Topology</span>, then send a DTU in{' '}
                     <span className="text-teal-400">Send DTU</span> to start building the mesh.
+                    Topology already counts this node, so that tab reads 1 before any peer exists.
                   </p>
                 </div>
               ) : (
                 <div data-testid="mesh-overview-grid" className="grid grid-cols-2 gap-3 md:grid-cols-5">
-                  <Stat label="Nodes" value={ov?.nodes ?? 0} hint={`${ov?.onlineNodes ?? 0} online`} />
+                  <Stat label="Peers" value={ov?.nodes ?? 0} hint={`${(ov?.onlineNodes ?? 0) + 1} online, including this node`} />
                   <Stat label="Messages" value={ov?.messages ?? 0} hint={`${ov?.unread ?? 0} unread`} />
                   <Stat label="Channels" value={ov?.channels ?? 0} hint={`${ov?.encryptedChannels ?? 0} encrypted`} />
                   <Stat label="Queue depth" value={ov?.queueDepth ?? 0} hint="store-and-forward" />
@@ -193,7 +194,7 @@ function Stat({ label, value, hint }: { label: string; value: number | string; h
     <div
       className="rounded-lg border border-teal-900/40 bg-teal-950/10 p-3 text-teal-200"
     >
-      <div className="mb-1 text-[11px] uppercase tracking-wider text-teal-700">{label}</div>
+      <div className="mb-1 text-[11px] uppercase tracking-wider text-teal-500">{label}</div>
       <div className="font-mono text-xl font-semibold">{value}</div>
       {hint && <div className="mt-0.5 text-[10px] text-teal-600">{hint}</div>}
     </div>

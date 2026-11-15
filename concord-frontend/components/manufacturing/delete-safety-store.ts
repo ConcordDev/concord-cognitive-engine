@@ -16,10 +16,13 @@
  * (the macro's refusal, verbatim, with the item restored).
  *
  * The registry is module-level, so its timers survive component
- * unmounts and tab switches inside the lens. A hard page reload inside
- * the window drops the pending commit — the item survives. That
- * failure direction is deliberate: a delete may silently NOT happen;
- * it may never silently happen.
+ * unmounts and tab switches inside the lens. Leaving is a commit, not
+ * a cancel (FIX-manufacturing-008): the lists and counts already show
+ * the item gone the moment the delete is confirmed, so a reload or
+ * navigation inside the window must not silently resurrect it. When
+ * the page is hidden or unloaded (visibilitychange / pagehide) every
+ * pending commit flushes immediately — the undo window is a grace
+ * period while you stay, never a delay you have to outwait.
  */
 
 export const DELETE_UNDO_WINDOW_MS = 8000;
@@ -60,8 +63,33 @@ function setReceipt(next: DeleteReceipt | null, ttlMs: number | null): void {
   }
 }
 
+/**
+ * Commit every pending delete now. Fired when the page is being hidden
+ * or unloaded, so leaving inside the undo window completes the deletes
+ * the UI has already presented as happening (FIX-manufacturing-008).
+ */
+export function flushPendingDeletes(): void {
+  for (const key of [...pending.keys()]) {
+    const entry = pending.get(key);
+    if (!entry) continue;
+    clearTimeout(entry.timer);
+    void commitPending(key);
+  }
+}
+
+let flushHooksInstalled = false;
+function installFlushHooks(): void {
+  if (flushHooksInstalled || typeof window === 'undefined' || typeof document === 'undefined') return;
+  flushHooksInstalled = true;
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flushPendingDeletes();
+  });
+  window.addEventListener('pagehide', flushPendingDeletes);
+}
+
 /** Register a confirmed delete. The commit runs after the undo window. */
 export function requestDelete(input: { key: string; label: string; commit: () => Promise<void> }): void {
+  installFlushHooks();
   const existing = pending.get(input.key);
   if (existing) clearTimeout(existing.timer);
   const timer = setTimeout(() => { void commitPending(input.key); }, DELETE_UNDO_WINDOW_MS);

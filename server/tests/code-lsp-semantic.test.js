@@ -82,6 +82,36 @@ describe("code.lsp-completions — type-aware", () => {
   });
 });
 
+describe("code.lsp position-only requests", () => {
+  it("does not 422 when the cursor is on a word the TS service does not cover", () => {
+    const pid = seedFile();
+    run("files-write", { projectId: pid, path: "scratch.py", content: "def greet():\n    return 1\n" });
+    const hover = run("lsp-hover", { projectId: pid, path: "scratch.py", position: { line: 1, column: 5 } });
+    assert.equal(hover.ok, true, JSON.stringify(hover));
+    assert.notEqual(hover.error, "symbol or position required");
+    const sig = run("lsp-signature", { projectId: pid, path: "scratch.py", position: { line: 1, column: 5 } });
+    assert.equal(sig.ok, true, JSON.stringify(sig));
+    const refs = run("find-references", { projectId: pid, path: "scratch.py", position: { line: 1, column: 5 } });
+    assert.equal(refs.ok, true, JSON.stringify(refs));
+    assert.ok(Array.isArray(refs.result.references));
+  });
+
+  it("answers found:false for a cursor on whitespace instead of 422", () => {
+    const pid = seedFile();
+    run("files-write", { projectId: pid, path: "scratch.py", content: "def greet():\n    return 1\n" });
+    const hover = run("lsp-hover", { projectId: pid, path: "scratch.py", position: { line: 2, column: 1 } });
+    assert.equal(hover.ok, true, JSON.stringify(hover));
+    assert.equal(hover.result.found, false);
+  });
+
+  it("still 422s when neither a symbol nor a position is sent", () => {
+    const pid = seedFile();
+    const hover = run("lsp-hover", { projectId: pid, path: FILE });
+    assert.equal(hover.ok, false);
+    assert.equal(hover.error, "symbol or position required");
+  });
+});
+
 describe("code.lsp-hover — inferred types", () => {
   it("hover on `greet` shows the inferred function type", () => {
     const pid = seedFile();

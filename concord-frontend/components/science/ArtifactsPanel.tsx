@@ -44,6 +44,7 @@ import {
   REPRODUCIBILITY,
   getStatusesForArtifact,
 } from '@/components/science/science-types';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 function statusBadge(status: string) {
   const color = STATUS_COLORS[status] || 'gray-400';
@@ -890,9 +891,11 @@ function renderCard(
     currentType: ArtifactType;
     openEdit: (item: LensItem<ArtifactDataUnion>) => void;
     handleDelete: (id: string) => void;
+    confirmDeleteId: string | null;
+    setConfirmDeleteId: (id: string | null) => void;
   },
 ) {
-  const { currentType, openEdit, handleDelete } = opts;
+  const { currentType, openEdit, handleDelete, confirmDeleteId, setConfirmDeleteId } = opts;
     const d = item.data as unknown as Record<string, unknown>;
     return (
       <div key={item.id} className={ds.panelHover}>
@@ -1110,9 +1113,20 @@ function renderCard(
           <button className={cn(ds.btnGhost, ds.btnSmall)} onClick={() => openEdit(item)}>
             <Edit3 className="w-3.5 h-3.5" /> Edit
           </button>
-          <button className={cn(ds.btnDanger, ds.btnSmall)} onClick={() => handleDelete(item.id)}>
-            <Trash2 className="w-3.5 h-3.5" /> Delete
-          </button>
+          {confirmDeleteId === item.id ? (
+            <>
+              <button className={cn(ds.btnDanger, ds.btnSmall)} onClick={() => { setConfirmDeleteId(null); handleDelete(item.id); }}>
+                Delete “{item.title}”? Confirm
+              </button>
+              <button className={cn(ds.btnGhost, ds.btnSmall)} onClick={() => setConfirmDeleteId(null)}>
+                Keep
+              </button>
+            </>
+          ) : (
+            <button className={cn(ds.btnDanger, ds.btnSmall)} onClick={() => setConfirmDeleteId(item.id)}>
+              <Trash2 className="w-3.5 h-3.5" /> Delete
+            </button>
+          )}
         </div>
       </div>
     );
@@ -1180,6 +1194,10 @@ export function ArtifactsPanel({ artifactType }: { artifactType: ArtifactType })
   const handleDelete = async (id: string) => {
     await remove(id);
   };
+
+  // FIX-science-009 (delete leg): artifact deletes were one-click with no
+  // confirm and no undo — the card delete is now two-step.
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const exportCSV = () => {
     const headers = ['Title', 'Status', 'Created'];
@@ -1259,7 +1277,7 @@ export function ArtifactsPanel({ artifactType }: { artifactType: ArtifactType })
         </div>
       ) : (
         <div className={ds.grid3}>
-          {filtered.map((item) => renderCard(item, { currentType, openEdit, handleDelete }))}
+          {filtered.map((item) => renderCard(item, { currentType, openEdit, handleDelete, confirmDeleteId, setConfirmDeleteId }))}
         </div>
       )}
 
@@ -1269,12 +1287,7 @@ export function ArtifactsPanel({ artifactType }: { artifactType: ArtifactType })
           onClick={() => setShowEditor(false)}
           role="button"
           tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              (e.currentTarget as HTMLElement).click();
-            }
-          }}
+          onKeyDown={activateOnEnterOrSpace}
         >
           <div className={ds.modalContainer}>
             <div
@@ -1282,12 +1295,7 @@ export function ArtifactsPanel({ artifactType }: { artifactType: ArtifactType })
               onClick={(e) => e.stopPropagation()}
               role="button"
               tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  (e.currentTarget as HTMLElement).click();
-                }
-              }}
+              onKeyDown={activateOnEnterOrSpace}
             >
               <div className="p-6 border-b border-lattice-border">
                 <div className={ds.sectionHeader}>

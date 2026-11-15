@@ -25,6 +25,7 @@ import {
 import type { BeamStudyResult } from '@/lib/conkay/workspace-commands';
 import { DISPLAY_LABELS, VIEW_LABELS, type DisplayMode, type ViewPreset } from '@/lib/conkay/beam-view';
 import {
+  beamSheetUrl,
   DEMO_SIGNIN_HREF,
   DEMO_SIGNUP_HREF,
   depthSweepValues,
@@ -175,6 +176,20 @@ export function ConKayDemo() {
             keeping={false}
             keepLabel="Create an account to keep it"
           />
+          {result && !stale && (
+            <p className="px-1 text-xs text-slate-400">
+              <a
+                href={beamSheetUrl(inputs)}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-sky-400/30 px-3 py-1.5 font-medium text-sky-200 hover:bg-sky-400/10"
+              >
+                Calc sheet
+              </a>{' '}
+              One page: inputs, design basis, what was not checked, the hand check, and the signed
+              result — print it or save it as a PDF.
+            </p>
+          )}
         </section>
 
         <aside className="flex flex-col gap-3" aria-label="About this demo">

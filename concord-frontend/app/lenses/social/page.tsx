@@ -98,6 +98,7 @@ interface FollowingActivityItem {
   mediaType?: string;
   mediaUrl?: string | null;
   sensitiveHidden?: boolean;
+  privacy?: string;
   listing?: {
     id: string;
     title?: string | null;
@@ -237,7 +238,24 @@ export default function SocialHubPage() {
     refetchInterval: 30_000,
     enabled: Boolean(currentUserId),
   });
-  const unreadCount = unreadData?.count ?? 0;
+  // FIX-social-003: the panel this badge opens counts BOTH stores
+  // (social + the platform queue), but this badge read only the
+  // social count — 25 on the tab against 75 unread in the panel.
+  // Mirror NotificationBell: add the platform queue's unread.
+  const { data: platformUnread } = useQuery({
+    queryKey: ['notification-platform-count', currentUserId],
+    queryFn: async () => {
+      try {
+        const res = await api.get('/api/notifications/count');
+        return (res.data as { unread?: number }).unread ?? 0;
+      } catch {
+        return 0;
+      }
+    },
+    refetchInterval: 30_000,
+    enabled: Boolean(currentUserId),
+  });
+  const unreadCount = (unreadData?.count ?? 0) + (platformUnread ?? 0);
 
   const PLACES: { id: PlaceId | 'create'; label: string; keys: string; icon: typeof Home; badge?: number }[] = [
     { id: 'home', label: 'Home', keys: '1', icon: Home },
@@ -292,7 +310,7 @@ export default function SocialHubPage() {
 
   const subTabClass = (on: boolean) => cn(
     'inline-flex min-h-[44px] items-center rounded-full px-4 text-[14px] transition-colors',
-    on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+    on ? 'bg-white/10 text-zinc-50' : 'text-zinc-400 hover:text-zinc-200',
   );
 
   return (
@@ -375,15 +393,21 @@ export default function SocialHubPage() {
               <div className="min-w-0">
                 <h1 className="mb-3 mt-1 font-vault text-3xl leading-tight text-zinc-100 sm:mb-5 sm:text-5xl">Social</h1>
               </div>
-              <div className="flex shrink-0 flex-wrap items-center gap-2 pt-2 sm:gap-3">
+              <div className="flex min-w-0 flex-wrap items-center gap-2 pt-2 sm:gap-3">
                 <PushEnableButton />
                 {currentUserId ? <StreakIndicator userId={currentUserId} /> : null}
                 {currentUserId ? <DMIndicator userId={currentUserId} /> : null}
                 {currentUserId ? (
-                  <NotificationBell
-                    userId={currentUserId}
-                    onViewAll={() => { setInboxTab('notifications'); setView('inbox'); }}
-                  />
+                  /* Mobile (FIX-social-010): the Inbox place in the phone nav
+                     above carries this same unread count and opens the same
+                     inbox — the bell beside it was a duplicate header control
+                     on phones. Desktop keeps the topbar bell. */
+                  <span className="hidden lg:inline-flex">
+                    <NotificationBell
+                      userId={currentUserId}
+                      onViewAll={() => { setInboxTab('notifications'); setView('inbox'); }}
+                    />
+                  </span>
                 ) : null}
                 <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
               </div>
@@ -423,7 +447,7 @@ export default function SocialHubPage() {
                         }}
                       />
                     </div>
-                    <p className="text-sm text-zinc-500">Share something you made...</p>
+                    <p className="text-sm text-zinc-400">Share something you made...</p>
                     {currentUserId ? (
                       <QuickPostComposer
                         currentUserId={currentUserId}
@@ -699,6 +723,12 @@ function FollowingTimeline({ currentUserId, onFindPeople, onOpenPost }: { curren
             <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">
               {item.kind}
             </span>
+            {item.kind === 'post' && item.privacy === 'private' && (
+              <span className="text-[10px] font-medium text-zinc-300 border border-zinc-700 rounded px-1 py-px">Private</span>
+            )}
+            {item.kind === 'post' && item.privacy === 'followers' && (
+              <span className="text-[10px] font-medium text-zinc-300 border border-zinc-700 rounded px-1 py-px">Followers</span>
+            )}
             <span className="text-[10px] text-zinc-400 ml-auto">
               {new Date(item.createdAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}
             </span>
@@ -716,7 +746,7 @@ function FollowingTimeline({ currentUserId, onFindPeople, onOpenPost }: { curren
             )}
           </div>
           <p className="text-sm text-zinc-300 leading-snug">{item.content}</p>
-          {item.sensitiveHidden && <p className="mt-1 text-xs text-zinc-500">Sensitive media hidden</p>}
+          {item.sensitiveHidden && <p className="mt-1 text-xs text-zinc-400">Sensitive media hidden</p>}
           {/* Attached Studio track or Marketplace item → real media card
               (play button, never autoplay) instead of a bare text line.
               `relative` keeps its controls above the open-post overlay. */}

@@ -17,6 +17,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Pin, Trash2, ArrowLeft, ImagePlus, X, Pencil, Check } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface MoodboardPin {
   id: string;
@@ -146,7 +147,7 @@ export function FashionMoodboardPanel({ onChange }: { onChange?: () => void }) {
           ) : (
             <h3 className="flex items-center gap-1.5 text-xs font-semibold text-zinc-300">
               <Pin className="w-3.5 h-3.5 text-fuchsia-400" /> {openBoard.name}
-              <button aria-label="Rename board" type="button" onClick={() => startRename(openBoard)} className="text-zinc-500 hover:text-zinc-300">
+              <button aria-label="Rename board" type="button" onClick={() => startRename(openBoard)} className="text-zinc-400 hover:text-zinc-300">
                 <Pencil className="w-3 h-3" />
               </button>
             </h3>
@@ -189,7 +190,7 @@ export function FashionMoodboardPanel({ onChange }: { onChange?: () => void }) {
                   <img src={pin.imageUrl} alt={pin.note || 'Pinned inspiration'} className="w-full h-24 object-cover rounded" />
                   {pin.note && <p className="text-[10px] text-zinc-400 mt-1 line-clamp-2">{pin.note}</p>}
                   <button aria-label="Remove pin" type="button" onClick={() => removePin(pin.id)} disabled={busy === pin.id}
-                    className="absolute -top-1.5 -right-1.5 bg-zinc-950 border border-zinc-700 rounded-full p-0.5 text-zinc-500 hover:text-rose-400 disabled:opacity-50">
+                    className="absolute -top-1.5 -right-1.5 bg-zinc-950 border border-zinc-700 rounded-full p-0.5 text-zinc-400 hover:text-rose-400 disabled:opacity-50">
                     {busy === pin.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
                   </button>
                 </div>
@@ -238,10 +239,14 @@ export function FashionMoodboardPanel({ onChange }: { onChange?: () => void }) {
                   <p className="text-sm font-semibold text-zinc-100 truncate">{b.name}</p>
                   <p className="text-[10px] text-zinc-400">{b.itemCount} pin{b.itemCount === 1 ? '' : 's'}</p>
                 </button>
-                <button aria-label={`Delete ${b.name}`} type="button" onClick={() => deleteBoard(b.id)} disabled={busy === b.id}
-                  className="text-zinc-600 hover:text-rose-400 shrink-0 disabled:opacity-50">
-                  {busy === b.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                </button>
+                <StickyDeleteConfirm
+                  onConfirm={() => deleteBoard(b.id)}
+                  armAriaLabel={`Delete ${b.name}`}
+                  confirmAriaLabel={`Confirm delete ${b.name}`}
+                  disabled={busy === b.id}
+                  className="text-zinc-600 hover:text-rose-400 shrink-0 disabled:opacity-50"
+                  armLabel={busy === b.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                />
               </div>
             </li>
           ))}

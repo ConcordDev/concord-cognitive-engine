@@ -136,7 +136,7 @@ export function ResearchPdfReader({ referenceId, title, initialPage, initialPdfU
             {SOURCE_COPY[resolved.source] || resolved.source}
           </span>
         )}
-        <button type="button" onClick={onClose} aria-label="Close reader" className="text-zinc-500 hover:text-zinc-300 shrink-0">
+        <button type="button" onClick={onClose} aria-label="Close reader" className="text-zinc-400 hover:text-zinc-300 shrink-0">
           <X className="w-4 h-4" />
         </button>
       </div>
@@ -162,7 +162,7 @@ export function ResearchPdfReader({ referenceId, title, initialPage, initialPdfU
                 onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void handleUpload(f); }} />
             </label>
           )}
-          <p className="text-[11px] text-zinc-500">…or attach a PDF link from the reference page.</p>
+          <p className="text-[11px] text-zinc-400">…or attach a PDF link from the reference page.</p>
         </div>
       ) : (
         <>
@@ -172,12 +172,12 @@ export function ResearchPdfReader({ referenceId, title, initialPage, initialPdfU
               <ChevronLeft className="w-3.5 h-3.5" />
             </button>
             <span className="text-[11px] text-zinc-400">Page</span>
-            <input value={pageInput} inputMode="numeric"
+            <input aria-label="PDF page number" value={pageInput} inputMode="numeric"
               onChange={(e) => setPageInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') jumpTo(Number(pageInput)); }}
               onBlur={() => jumpTo(Number(pageInput))}
               className="w-14 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-xs text-zinc-100 text-center" />
-            {resolved?.pages ? <span className="text-[11px] text-zinc-500">of {resolved.pages}</span> : null}
+            {resolved?.pages ? <span className="text-[11px] text-zinc-400">of {resolved.pages}</span> : null}
             <button type="button" onClick={() => jumpTo(page + 1)} aria-label="Next page"
               className="p-1.5 rounded border border-zinc-700 text-zinc-300 hover:text-zinc-100">
               <ChevronRight className="w-3.5 h-3.5" />
@@ -192,7 +192,7 @@ export function ResearchPdfReader({ referenceId, title, initialPage, initialPdfU
           <iframe key={frameSrc || undefined} src={frameSrc || undefined} title={`PDF — ${title}`}
             className="w-full h-[65vh] bg-zinc-900 border border-zinc-800 rounded-xl" />
 
-          <p className="text-[11px] text-zinc-500">
+          <p className="text-[11px] text-zinc-400">
             Select a passage in the viewer and paste it as the quote — the annotation anchors to the page
             you’re on. (The built-in viewer can’t pass a selection to Concord directly yet, so the quote is pasted, not captured.)
           </p>
@@ -202,9 +202,9 @@ export function ResearchPdfReader({ referenceId, title, initialPage, initialPdfU
               <Highlighter className="w-3.5 h-3.5 text-amber-400" /> Annotate page {page}
             </h4>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <input placeholder="Quote — the passage, pasted" value={quote} onChange={(e) => setQuote(e.target.value)}
+              <input aria-label="Annotation quote" placeholder="Quote — the passage, pasted" value={quote} onChange={(e) => setQuote(e.target.value)}
                 className="col-span-2 sm:col-span-4 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-              <input placeholder="Your note" value={note} onChange={(e) => setNote(e.target.value)}
+              <input aria-label="Annotation note" placeholder="Your note" value={note} onChange={(e) => setNote(e.target.value)}
                 className="col-span-2 sm:col-span-3 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
               <button type="button" onClick={addAnnotation} disabled={saving}
                 className="col-span-2 sm:col-span-1 py-1.5 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white text-xs font-medium rounded-lg">

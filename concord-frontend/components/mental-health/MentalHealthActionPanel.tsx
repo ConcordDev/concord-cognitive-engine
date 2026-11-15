@@ -9,6 +9,7 @@
  * server/domains/mentalhealth.js as `mental-health`.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useEffect, useState } from 'react';
 import { Heart, Phone, BarChart3, BookOpen, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -38,7 +39,19 @@ interface MoodEntryIn { mood: number; date?: string }
 interface MoodResult { entries: number; avgMood: number; trend: string; lowest: number; highest: number; variance: number }
 interface PromptResult { mood: string; prompts: string[]; instruction: string; reminder?: string }
 interface TrackedMood { entries: number; average: number | null; trend: string }
-interface GratitudeEntry { id: string; items: string[]; date: string }
+interface GratitudeEntry { id: string; items: unknown[]; date: string }
+
+function gratitudeItemText(it: unknown): string {
+  if (typeof it === 'string') return it;
+  if (it && typeof it === 'object') {
+    const row = it as Record<string, unknown>;
+    for (const key of ['text', 'entry', 'body', 'content', 'item', 'note', 'value']) {
+      const value = row[key];
+      if (typeof value === 'string' && value.trim()) return value.trim();
+    }
+  }
+  return '';
+}
 
 // No seeded mood csv — enter real values.
 export function MentalHealthActionPanel() {
@@ -153,8 +166,14 @@ export function MentalHealthActionPanel() {
       if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
+  const [publishArmed, setPublishArmed] = useState(false);
   async function actPublish() {
     if (!statsResult) { err('Load CDC stats first.'); return; }
+    // FIX-mental-health-004: publishing is the lens's only public
+    // action — it arms first and publishes on the confirming click,
+    // and says plainly that it carries public CDC data only.
+    if (!publishArmed) { setPublishArmed(true); ok('This publishes a PUBLIC card with CDC statistics only — none of your personal records. Click Publish again to confirm.'); return; }
+    setPublishArmed(false);
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
@@ -173,8 +192,8 @@ export function MentalHealthActionPanel() {
     try {
       const task = `Wellness companion. Current mood: ${currentMood}. ${moodResult ? `10-day trend: ${moodResult.trend} (avg ${moodResult.avgMood}, var ${moodResult.variance}).` : ''} ${statsResult ? `Regional ${statsResult.stateAbbr} mental distress prevalence: ${statsResult.measures.map(m => `${m.measure} ${m.value}%`).join(', ')}.` : ''} Offer one small, concrete, evidence-based action for today (under 10 minutes). Plain text, 2-3 sentences. End with: "This is not medical advice. If you are in crisis, call/text 988."`;
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Action ready.'); } else err('Agent returned empty.');
+      const reply = readAgentReply(r.data);
+      if (reply.ok) { setAgentReply(reply.text); ok('Action ready.'); } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 
@@ -185,7 +204,7 @@ export function MentalHealthActionPanel() {
     { id: 'prompt' as ActionId, label: 'Journal', desc: 'journalPrompt seed', icon: BookOpen, accent: '#a855f7', handler: actPrompt },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private wellness DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
     { id: 'dm' as ActionId, label: 'DM', desc: 'Send wellness check', icon: Send, accent: '#f59e0b', handler: actDm },
-    { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public stats card', icon: Globe, accent: '#15803d', handler: actPublish },
+    { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : publishArmed ? 'Confirm publish' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : publishArmed ? 'Public CDC data only — click to confirm' : 'PUBLIC stats card — asks first', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Action', desc: 'Agent: 10-min action', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];
 
@@ -198,19 +217,19 @@ export function MentalHealthActionPanel() {
       </header>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-        <select value={country} onChange={(e) => setCountry(e.target.value as typeof country)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white">
+        <select aria-label="Country" value={country} onChange={(e) => setCountry(e.target.value as typeof country)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white">
           <option value="US">US</option>
           <option value="UK">UK</option>
           <option value="CA">CA</option>
           <option value="AU">AU</option>
         </select>
-        <input type="text" value={stateAbbr} onChange={(e) => setStateAbbr(e.target.value.toUpperCase().slice(0, 2))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="State (CA, US)" />
-        <input type="text" value={year} onChange={(e) => setYear(e.target.value.replace(/\D/g, '').slice(0, 4))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Year" />
-        <select value={currentMood} onChange={(e) => setCurrentMood(e.target.value as typeof currentMood)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white">
+        <input aria-label="State" type="text" value={stateAbbr} onChange={(e) => setStateAbbr(e.target.value.toUpperCase().slice(0, 2))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="State (CA, US)" />
+        <input aria-label="Year" type="text" value={year} onChange={(e) => setYear(e.target.value.replace(/\D/g, '').slice(0, 4))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Year" />
+        <select aria-label="Current mood" value={currentMood} onChange={(e) => setCurrentMood(e.target.value as typeof currentMood)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white">
           <option value="happy">happy</option><option value="sad">sad</option><option value="anxious">anxious</option><option value="neutral">neutral</option><option value="angry">angry</option>
         </select>
-        <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
-        <input type="text" value={moodCsv} onChange={(e) => setMoodCsv(e.target.value)} className="md:col-span-5 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono" placeholder="Optional: paste a mood series (1-10, comma-separated) to analyse instead of your tracked check-ins" />
+        <input aria-label="DM recipient" type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
+        <input aria-label="Mood series (comma-separated)" type="text" value={moodCsv} onChange={(e) => setMoodCsv(e.target.value)} className="md:col-span-5 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono" placeholder="Optional: paste a mood series (1-10, comma-separated) to analyse instead of your tracked check-ins" />
         <div className="md:col-span-5 flex items-center gap-2 flex-wrap">
           <RecallSlot ctl={dmRecall} />
           <RecallSlot ctl={publishRecall} />
@@ -271,7 +290,7 @@ export function MentalHealthActionPanel() {
         {promptResult && journalEntries.length > 0 && (
           <div className="rounded-md border border-zinc-700 bg-zinc-900/40 p-2.5 md:col-span-2">
             <div className="text-[10px] uppercase tracking-wider text-zinc-300 font-semibold">Your recent journal entries</div>
-            {journalEntries.slice(0, 3).map((e) => <div key={e.id} className="text-[11px] text-zinc-300 mt-1">{e.date} — {e.items.join(' · ')}</div>)}
+            {journalEntries.slice(0, 3).map((e) => <div key={e.id} className="text-[11px] text-zinc-300 mt-1">{e.date} — {e.items.map(gratitudeItemText).filter(Boolean).join(' · ')}</div>)}
           </div>
         )}
       </div>

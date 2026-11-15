@@ -9,9 +9,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import {
   Beaker, Plus, Loader2, Trash2, Square, Activity, CheckCircle, XCircle, X, LineChart,
 } from 'lucide-react';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface MetricPoint {
   epoch: number; trainLoss: number; valLoss: number; accuracy: number; learningRate: number;
@@ -19,6 +21,7 @@ interface MetricPoint {
 interface Experiment {
   id: string;
   name: string;
+  kind?: string;
   modelId: string;
   datasetId: string;
   status: 'running' | 'completed' | 'failed';
@@ -101,7 +104,7 @@ export function ExperimentTracker() {
     setBusy(null);
   };
 
-  const logManualEpoch = async (exp: Experiment, metrics: { trainLoss: number; valLoss: number; accuracy: number }) => {
+  const logManualEpoch = async (exp: Experiment, metrics: { trainLoss?: number; valLoss?: number; accuracy?: number }) => {
     setBusy(exp.id);
     await lensRun('ml', 'experiment-log', {
       experimentId: exp.id, epoch: exp.metrics.length + 1, ...metrics,
@@ -143,7 +146,9 @@ export function ExperimentTracker() {
                 </span>
               </div>
               <div className="text-xs text-gray-400">
-                Epoch {exp.metrics.length}/{exp.hyperparams.epochs}
+                {exp.kind === 'automl-config'
+                  ? 'Configuration run — no training logged'
+                  : `Epoch ${exp.metrics.length}/${exp.hyperparams.epochs}`}
               </div>
               <div className="mt-1.5 h-1 bg-lattice-surface rounded-full overflow-hidden">
                 <div className="h-full bg-neon-purple" style={{ width: `${progress}%` }} />
@@ -178,12 +183,29 @@ export function ExperimentTracker() {
                       </button>
                     </>
                   )}
-                  <button aria-label="Delete" className="btn-neon small pink" disabled={busy === selected.id}
-                    onClick={() => remove(selected.id)}>
-                    {confirmRemoveId === selected.id ? 'Confirm?' : <Trash2 className="w-3 h-3" />}
-                  </button>
+                  <StickyDeleteConfirm
+                    armed={confirmRemoveId === selected.id}
+                    onArm={() => setConfirmRemoveId(selected.id)}
+                    onConfirm={() => { void remove(selected.id); }}
+                    onCancel={() => setConfirmRemoveId(null)}
+                    disabled={busy === selected.id}
+                    armLabel={<Trash2 className="w-3 h-3" />}
+                    armAriaLabel="Delete"
+                    confirmLabel={`Delete "${selected.name}"?`}
+                    className="btn-neon small pink"
+                  />
                 </div>
               </div>
+              {selected.kind === 'automl-config' && (
+                <p role="note" className="mb-4 rounded-lg border border-lattice-border bg-lattice-surface p-3 text-xs text-zinc-400">
+                  AutoML configuration run — this record holds the suggested configuration for your dataset, not a training run. Nothing was trained and no score is claimed; log the real metrics of your training run into a tracked experiment.
+                </p>
+              )}
+              {selected.status === 'running' && selected.metrics.length === 0 && (
+                <p role="note" className="mb-4 rounded-lg border border-lattice-border bg-lattice-surface p-3 text-xs text-zinc-400">
+                  Waiting for epoch logs — nothing trains in the browser. Log metrics from your training run (Log metrics), try one synthetic step (Simulate epoch), then Finish.
+                </p>
+              )}
               {manualOpen && selected.status === 'running' && (
                 <div className="mb-4 grid grid-cols-2 gap-2 rounded-lg border border-lattice-border bg-lattice-surface p-3 md:grid-cols-4">
                   <input value={manualMetrics.trainLoss} type="number" step="0.0001" placeholder="Train loss"
@@ -196,13 +218,20 @@ export function ExperimentTracker() {
                     onChange={(e) => setManualMetrics((m) => ({ ...m, accuracy: e.target.value }))}
                     className="rounded border border-lattice-border bg-lattice-bg px-2 py-1.5 text-sm font-mono outline-none focus:border-neon-cyan" />
                   <button className="btn-neon small"
-                    disabled={busy === selected.id || !manualMetrics.trainLoss || !manualMetrics.valLoss || !manualMetrics.accuracy}
+                    disabled={busy === selected.id || ![manualMetrics.trainLoss, manualMetrics.valLoss, manualMetrics.accuracy].some((v) => v.trim() !== '' && Number.isFinite(parseFloat(v)))}
+                    title="Record needs at least one metric — the server defaults the rest, exactly as experiment-log already accepts"
                     onClick={async () => {
-                      await logManualEpoch(selected, {
-                        trainLoss: parseFloat(manualMetrics.trainLoss),
-                        valLoss: parseFloat(manualMetrics.valLoss),
-                        accuracy: parseFloat(manualMetrics.accuracy),
-                      });
+                      // FIX-ml-004: Record used to demand ALL THREE fields
+                      // before it would enable, so logging a lone train
+                      // loss (the walker's repro) silently did nothing —
+                      // epoch stayed 0, chart empty. experiment-log
+                      // accepts any subset and defaults the rest; send
+                      // only the fields actually entered.
+                      const metrics: { trainLoss?: number; valLoss?: number; accuracy?: number } = {};
+                      if (manualMetrics.trainLoss.trim() !== '') metrics.trainLoss = parseFloat(manualMetrics.trainLoss);
+                      if (manualMetrics.valLoss.trim() !== '') metrics.valLoss = parseFloat(manualMetrics.valLoss);
+                      if (manualMetrics.accuracy.trim() !== '') metrics.accuracy = parseFloat(manualMetrics.accuracy);
+                      await logManualEpoch(selected, metrics);
                       setManualMetrics({ trainLoss: '', valLoss: '', accuracy: '' });
                     }}>
                     Record
@@ -275,6 +304,9 @@ function NewExperimentModal({ onClose, onCreated }: { onClose: () => void; onCre
 
   const create = async () => {
     if (!cfg.name.trim()) { setError('Name required'); return; }
+    if (cfg.name.trim().length > 200) { setError('Name must be 200 characters or fewer.'); return; }
+    if (!Number.isInteger(cfg.epochs) || cfg.epochs < 1) { setError('Epochs must be a whole number that is 1 or greater.'); return; }
+    if (!Number.isInteger(cfg.batchSize) || cfg.batchSize < 1) { setError('Batch size must be a whole number that is 1 or greater.'); return; }
     setBusy(true); setError(null);
     const r = await lensRun('ml', 'experiment-start', cfg);
     if (r.data?.ok) onCreated();
@@ -282,9 +314,9 @@ function NewExperimentModal({ onClose, onCreated }: { onClose: () => void; onCre
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={onClose} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
       <div className="bg-lattice-bg border border-lattice-border rounded-xl w-full max-w-lg p-6 space-y-4"
-        onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold">New Experiment</h2>
           <button onClick={onClose} className="p-1 hover:bg-white/10 rounded" aria-label="Close"><X className="w-5 h-5" /></button>

@@ -71,23 +71,31 @@ const BENCH_DEFAULTS = {
   mintedDtuId: null as string | null,
   publishedDtuId: null as string | null,
   agentReply: null as string | null,
+  agentSig: '',
 };
 type Bench = typeof BENCH_DEFAULTS;
 
 export function EngineeringActionPanel() {
   const [ws, setWs, wsSave] = useEngWorkspace('bench', BENCH_DEFAULTS);
-  const { tolParts, forceN, areaMm2, yieldMpa, unitValue, unitFrom, unitTo, tolResult, tolSig, stressResult, unitResult, mintedDtuId, publishedDtuId, agentReply } = ws;
+  const { tolParts, forceN, areaMm2, yieldMpa, unitValue, unitFrom, unitTo, tolResult, tolSig, stressResult, unitResult, mintedDtuId, publishedDtuId, agentReply, agentSig } = ws;
   // The stack-up describes the parts it ran on; when a part is removed
   // or edited afterwards, the result marks itself stale.
   const tolSigOf = (parts: TolPartInput[]) =>
     JSON.stringify(parts.filter((p) => p.name.trim().length > 0).map((p) => [p.name, p.nominal, p.tolerance]));
   const tolStale = !!tolResult && tolSig !== '' && tolSig !== tolSigOf(tolParts);
+  // The AI review describes the bench it was requested on (the same
+  // parts + the stress inputs); when those change afterwards — a
+  // removed part included — the review marks itself stale instead of
+  // presenting a removed part's assessment as current (the tolSig
+  // treatment, extended to the review text).
+  const agentSigOf = () => JSON.stringify({ tol: tolSigOf(tolParts), stress: [forceN, areaMm2, yieldMpa] });
+  const agentStale = !!agentReply && agentSig !== '' && agentSig !== agentSigOf();
   const put = <K extends keyof Bench>(k: K) => (v: Bench[K]) => setWs((s) => ({ ...s, [k]: v }));
   const setTolParts = (f: (p: TolPartInput[]) => TolPartInput[]) => setWs((s) => ({ ...s, tolParts: f(s.tolParts) }));
   const setForceN = put('forceN'); const setAreaMm2 = put('areaMm2'); const setYieldMpa = put('yieldMpa');
   const setUnitValue = put('unitValue'); const setUnitFrom = put('unitFrom'); const setUnitTo = put('unitTo');
   const setTolResult = put('tolResult'); const setTolSig = put('tolSig'); const setStressResult = put('stressResult'); const setUnitResult = put('unitResult');
-  const setMintedDtuId = put('mintedDtuId'); const setPublishedDtuId = put('publishedDtuId'); const setAgentReply = put('agentReply');
+  const setMintedDtuId = put('mintedDtuId'); const setPublishedDtuId = put('publishedDtuId'); const setAgentReply = put('agentReply'); const setAgentSig = put('agentSig');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -185,7 +193,7 @@ export function EngineeringActionPanel() {
       const task = `Mechanical engineering review. ${tolResult ? `Stack-up nominal ${tolResult.stackUp.nominal} ±${tolResult.stackUp.worstCaseTolerance} (RSS ±${tolResult.stackUp.rssTolerance}).` : ''} ${stressResult ? `Stress ${stressResult.appliedStress} vs yield ${stressResult.yieldStrength}, SF ${stressResult.safetyFactor} (${stressResult.status}).` : ''} Identify the single biggest design risk + one optimization opportunity. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
       const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Review ready.'); } else err('The review agent returned no text.');
+      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); setAgentSig(agentSigOf()); ok('Review ready.'); } else err('The review agent returned no text.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 
@@ -219,24 +227,27 @@ export function EngineeringActionPanel() {
             </button>
           </div>
           <div className="mt-1 space-y-1 max-h-40 overflow-y-auto pr-0.5" data-testid="tol-parts">
-            {tolParts.length === 0 && <p className="text-[10px] text-zinc-500">No parts yet — add each dimension in the stack with +.</p>}
+            {tolParts.length === 0 && <p className="text-[10px] text-zinc-400">No parts yet — add each dimension in the stack with +.</p>}
             {tolParts.map((p, i) => (
               <div key={i} className="flex items-center gap-1">
                 <input
                   value={p.name}
                   onChange={(e) => setTolField(i, 'name', e.target.value)}
+                  aria-label="Tolerance part name"
                   placeholder="Part"
                   className="min-w-0 flex-1 bg-zinc-900 border border-zinc-800 rounded px-1.5 py-1 text-[10px] text-white"
                 />
                 <input
                   value={p.nominal}
                   onChange={(e) => setTolField(i, 'nominal', e.target.value)}
+                  aria-label="Nominal dimension"
                   placeholder="Nom."
                   className="w-14 bg-zinc-900 border border-zinc-800 rounded px-1.5 py-1 text-[10px] text-white font-mono text-right"
                 />
                 <input
                   value={p.tolerance}
                   onChange={(e) => setTolField(i, 'tolerance', e.target.value)}
+                  aria-label="Tolerance"
                   placeholder="±Tol"
                   className="w-14 bg-zinc-900 border border-zinc-800 rounded px-1.5 py-1 text-[10px] text-white font-mono text-right"
                 />
@@ -249,18 +260,18 @@ export function EngineeringActionPanel() {
         </div>
         <div className="space-y-1.5">
           <div className="text-[10px] uppercase tracking-wider text-red-400 font-semibold">Stress</div>
-          <input type="text" value={forceN} onChange={(e) => setForceN(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white font-mono" placeholder="Force N" />
-          <input type="text" value={areaMm2} onChange={(e) => setAreaMm2(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white font-mono" placeholder="Area mm²" />
-          <input type="text" value={yieldMpa} onChange={(e) => setYieldMpa(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white font-mono" placeholder="Yield MPa" />
+          <input type="text" value={forceN} onChange={(e) => setForceN(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white font-mono" placeholder="Force N" aria-label="Force in newtons" />
+          <input type="text" value={areaMm2} onChange={(e) => setAreaMm2(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white font-mono" placeholder="Area mm²" aria-label="Area in square millimetres" />
+          <input type="text" value={yieldMpa} onChange={(e) => setYieldMpa(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white font-mono" placeholder="Yield MPa" aria-label="Yield strength in MPa" />
         </div>
         <div className="space-y-1.5">
           <div className="text-[10px] uppercase tracking-wider text-purple-400 font-semibold">Units</div>
-          <input type="text" value={unitValue} onChange={(e) => setUnitValue(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white font-mono" placeholder="Value" />
+          <input type="text" value={unitValue} onChange={(e) => setUnitValue(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white font-mono" placeholder="Value" aria-label="Value to convert" />
           <div className="grid grid-cols-2 gap-1">
-            <select value={unitFrom} onChange={(e) => setUnitFrom(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white">{[...new Set(UNIT_PAIRS.map(p => p[0]))].map(u => <option key={u} value={u}>{u}</option>)}</select>
-            <select value={unitTo} onChange={(e) => setUnitTo(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white">{[...new Set(UNIT_PAIRS.map(p => p[1]))].map(u => <option key={u} value={u}>{u}</option>)}</select>
+            <select aria-label="Convert from unit" value={unitFrom} onChange={(e) => setUnitFrom(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white">{[...new Set(UNIT_PAIRS.map(p => p[0]))].map(u => <option key={u} value={u}>{u}</option>)}</select>
+            <select aria-label="Convert to unit" value={unitTo} onChange={(e) => setUnitTo(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white">{[...new Set(UNIT_PAIRS.map(p => p[1]))].map(u => <option key={u} value={u}>{u}</option>)}</select>
           </div>
-          <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
+          <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" aria-label="DM recipient" />
           <div className="flex items-center gap-2 flex-wrap">
             <RecallSlot ctl={dmRecall} />
             <RecallSlot ctl={publishRecall} />
@@ -316,7 +327,7 @@ export function EngineeringActionPanel() {
         )}
       </div>
 
-      {agentReply && (<div className="rounded-md border border-yellow-500/30 bg-yellow-500/5 p-3 max-h-60 overflow-y-auto"><div className="flex items-center gap-1.5 text-yellow-400 font-semibold mb-1.5 uppercase tracking-wider text-[10px]"><Wand2 className="w-3 h-3" /> Design review</div><pre className="whitespace-pre-wrap font-sans text-[11px] text-zinc-200 leading-relaxed">{agentReply}</pre></div>)}
+      {agentReply && (<div className="rounded-md border border-yellow-500/30 bg-yellow-500/5 p-3 max-h-60 overflow-y-auto"><div className="flex items-center gap-1.5 text-yellow-400 font-semibold mb-1.5 uppercase tracking-wider text-[10px]"><Wand2 className="w-3 h-3" /> Design review</div>{agentStale && (<p role="alert" className="text-[10px] text-amber-300 mb-1.5">Stale — the parts or stress inputs changed after this review ran; it may describe a part that is no longer on the bench. Run Review again for the current bench.</p>)}<pre className={`whitespace-pre-wrap font-sans text-[11px] text-zinc-200 leading-relaxed ${agentStale ? 'opacity-60' : ''}`}>{agentReply}</pre></div>)}
 
       <AnimatePresence>
         {feedback && (<motion.div key={feedback.text} initial={{ opacity: 0, y: -2 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -2 }} className={cn('px-3 py-2 rounded text-[11px] flex items-start gap-2 border', feedback.kind === 'ok' ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30' : 'bg-red-500/10 text-red-300 border-red-500/30')}>{feedback.kind === 'ok' ? <Check className="h-3 w-3 mt-0.5" /> : <AlertTriangle className="h-3 w-3 mt-0.5" />}<span>{feedback.text}</span></motion.div>)}

@@ -14,7 +14,51 @@
 // every handler returns { ok, result?, error? }.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
+
+// ── lens export provider (FIX-world-creator-011) ──────────────────────
+// The manifest promises an export and the universal lens chrome mounts
+// the Export menu for this lens, but a creator's worlds never reached
+// it: drafts live in STATE.worldCreatorLens.drafts, a per-user Map, and
+// the export's state leg cannot see inside a Map value — so the menu
+// exported artifacts and DTUs only, never the worlds themselves. This
+// provider emits the caller's drafts at full fidelity (the scene is
+// the record), scoped by the store's own per-user buckets.
+function worldCreatorExportRows(ctx) {
+  const state = globalThis._concordSTATE;
+  const uid = ctx?.actor?.userId || ctx?.userId || null;
+  if (!state || !uid || uid === "anon") return [];
+  const drafts = state.worldCreatorLens?.drafts;
+  if (!(drafts instanceof Map)) return [];
+  const mine = drafts.get(uid);
+  if (!Array.isArray(mine)) return [];
+  return mine.map((d) => ({
+    id: d.id,
+    type: "world-draft",
+    title: d.name || d.id,
+    createdAt: d.createdAt ?? null,
+    updatedAt: d.updatedAt ?? d.createdAt ?? null,
+    data: {
+      name: d.name || "",
+      description: d.description || "",
+      universeType: d.universeType || null,
+      template: d.template ?? null,
+      biome: d.biome || null,
+      visibility: d.visibility || "private",
+      publishedWorldId: d.publishedWorldId ?? null,
+      rules: d.rules || {},
+      terrain: d.terrain || {},
+      props: Array.isArray(d.props) ? d.props : [],
+      spawnPoints: Array.isArray(d.spawnPoints) ? d.spawnPoints : [],
+      zones: Array.isArray(d.zones) ? d.zones : [],
+      npcs: Array.isArray(d.npcs) ? d.npcs : [],
+      factions: Array.isArray(d.factions) ? d.factions : [],
+    },
+  }));
+}
+
 export default function registerWorldCreatorActions(registerLensAction) {
+  registerLensExportProvider("world-creator", worldCreatorExportRows);
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ---- state helpers -------------------------------------------------
   function getState() {
@@ -287,8 +331,14 @@ export default function registerWorldCreatorActions(registerLensAction) {
       const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const draft = findDraft(s, aid(ctx), clean(params.id, 80));
       if (!draft) return { ok: false, error: "draft not found" };
-      if (params.name != null) { const n = clean(params.name, 64); if (n.length >= 3) draft.name = n; }
-      if (params.description != null) draft.description = clean(params.description, 500);
+      if (params.name != null) {
+        const rawName = String(params.name);
+        if (rawName.trim().length > 64) return { ok: false, error: "invalid_input", message: "A world name is 64 characters or fewer." };
+        const n = rawName.trim();
+        if (n.length < 3) return { ok: false, error: "world name must be ≥ 3 characters" };
+        draft.name = n;
+      }
+      if (params.description != null) draft.description = String(params.description).slice(0, 500);
       if (params.universeType != null) draft.universeType = clean(params.universeType, 40);
       if (params.biome != null && BIOMES[clean(params.biome, 40)]) draft.biome = clean(params.biome, 40);
       if (params.rules != null) draft.rules = clampRules({ ...draft.rules, ...params.rules });
@@ -313,7 +363,39 @@ export default function registerWorldCreatorActions(registerLensAction) {
       const i = arr.findIndex((d) => d.id === clean(params.id, 80));
       if (i < 0) return { ok: false, error: "draft not found" };
       const [removed] = arr.splice(i, 1);
+      // FIX-world-creator-013 — the draft's playtest copies die with
+      // it (the ticket's uncleanable-debris leg): every worlds-table
+      // row stamped as THIS draft's playtest copy — the linked mint
+      // and any unlinked orphan alike — is deleted, owner-guarded.
+      // Only playtest-marked rows cascade; founded worlds and store
+      // mirrors never die with a draft. Best-effort: the draft delete
+      // stands even if the table is unreachable.
+      try {
+        const db = ctx?.db;
+        if (db) {
+          const uid = aid(ctx);
+          const doomed = new Set();
+          if (removed.publishedWorldId) doomed.add(removed.publishedWorldId);
+          const rows = db.prepare(`SELECT id, rule_modulators FROM worlds WHERE status = 'active'`).all();
+          for (const row of rows) {
+            let mods = {};
+            try { mods = JSON.parse(row.rule_modulators || "{}"); } catch (_e) { mods = {}; }
+            if (mods?.playtest?.draftId === removed.id) doomed.add(row.id);
+          }
+          for (const id of doomed) {
+            const row = db.prepare(`SELECT created_by, rule_modulators FROM worlds WHERE id = ?`).get(id);
+            if (!row || row.created_by !== uid) continue;
+            let mods = {};
+            try { mods = JSON.parse(row.rule_modulators || "{}"); } catch (_e) { mods = {}; }
+            if (!mods?.playtest) continue;
+            db.prepare(`DELETE FROM worlds WHERE id = ?`).run(id);
+          }
+        }
+      } catch (_e) { /* best-effort cascade */ }
       save();
+      if (typeof globalThis._concordSaveStateSync === "function") {
+        try { globalThis._concordSaveStateSync(); } catch (_e) { /* the debounced save still runs */ }
+      }
       return { ok: true, result: { deleted: removed.id } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
@@ -646,6 +728,13 @@ export default function registerWorldCreatorActions(registerLensAction) {
             description: draft.description,
             physics_modulators: {},
             rule_modulators: { ...draft.rules, biome: draft.biome },
+            // FIX-world-creator-013 (founder ruling A, 2026-11-13):
+            // a playtest mint is a PRIVATE, owner-only copy of this
+            // draft — never a public world. The marker rides the POST
+            // so /api/worlds stamps it onto the row; every public
+            // enumeration (GET /api/worlds, Sub-Worlds Discover) cuts
+            // marked rows, and draft-delete discards them.
+            playtest: { draftId: draft.id },
           },
         },
       };

@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { FileSignature, Loader2, Trash2, Plus, PenTool } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface Section { key: string; prompt: string; content: string }
 interface Signature { signerName: string; signedAt: string; ip: string }
@@ -112,7 +113,7 @@ export function ProposalBuilder() {
                   <PenTool className="w-3 h-3" />Sign
                 </button>
               )}
-              <button onClick={() => del(p.id)} aria-label="Delete" className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+              <StickyDeleteConfirm onConfirm={() => { void del(p.id); }} armLabel={<Trash2 className="w-3.5 h-3.5" />} armAriaLabel={`Delete proposal ${p.title}`} confirmAriaLabel={`Confirm delete proposal ${p.title}`} className="opacity-0 group-hover:opacity-100 text-rose-400" />
             </div>
             <div className="mt-1.5 h-1 rounded-full bg-zinc-800 overflow-hidden">
               <div className="h-full bg-indigo-500" style={{ width: `${p.completeness}%` }} />
@@ -143,7 +144,7 @@ export function ProposalBuilder() {
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)} role="button" tabIndex={0}>
           <div className="w-full max-w-md bg-zinc-950 border border-zinc-800 rounded-xl p-4 max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()} role="button" tabIndex={0}>
-            <h4 className="text-sm font-bold text-zinc-100 mb-3">New Proposal</h4>
+            <h2 className="text-sm font-bold text-zinc-100 mb-3">New Proposal</h2>
             <div className="space-y-2">
               <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Proposal title"
                 className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200" />
@@ -174,7 +175,7 @@ export function ProposalBuilder() {
       {signFor && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setSignFor(null)} role="button" tabIndex={0}>
           <div className="w-full max-w-xs bg-zinc-950 border border-zinc-800 rounded-xl p-4" onClick={e => e.stopPropagation()} role="button" tabIndex={0}>
-            <h4 className="text-sm font-bold text-zinc-100 mb-1">E-signature acceptance</h4>
+            <h2 className="text-sm font-bold text-zinc-100 mb-1">E-signature acceptance</h2>
             <p className="text-[10px] text-zinc-400 mb-3">Typing a name records a binding acceptance with a timestamp.</p>
             <input value={signerName} onChange={e => setSignerName(e.target.value)} placeholder="Signer full name"
               className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200 mb-3" />

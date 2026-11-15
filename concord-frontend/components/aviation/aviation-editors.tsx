@@ -12,7 +12,7 @@ import {
 
 type EditorProps = { form: FormFields; setField: SetField };
 
-export function FlightEditor({ form, setField }: EditorProps) {
+export function FlightEditor({ form, setField, draftScope }: EditorProps & { draftScope: string }) {
   return (
   <div className="space-y-4">
     <div className={ds.grid2}>
@@ -59,8 +59,8 @@ export function FlightEditor({ form, setField }: EditorProps) {
       <div><label className={ds.label}>Vis Min (SM)</label><input type="number" step="0.5" className={ds.input} value={(form.visibilityReq as number) || ''} onChange={e => setField('visibilityReq', parseFloat(e.target.value) || 0)} /></div>
     </div>
     <div><label className={ds.label}>Weather Minimums Notes</label><input className={ds.input} value={(form.weatherMins as string) || ''} onChange={e => setField('weatherMins', e.target.value)} placeholder="IFR alternate required, 1-2-3 rule..." /></div>
-    <div><label className={ds.label}>Squawks</label><DraftedTextarea lensId="aviation" draftKey="flight_squawks" initial={(form.squawks as string) || ''} onValueChange={(v) => setField('squawks', v)} className={cn(ds.textarea, 'h-16')} placeholder="Post-flight squawks..." /></div>
-    <div><label className={ds.label}>Remarks</label><DraftedTextarea lensId="aviation" draftKey="flight_remarks" initial={(form.remarks as string) || ''} onValueChange={(v) => setField('remarks', v)} className={cn(ds.textarea, 'h-20')} placeholder="Flight remarks..." /></div>
+    <div><label className={ds.label}>Squawks</label><DraftedTextarea lensId="aviation" draftKey={`flight_squawks:${draftScope}`} initial={(form.squawks as string) || ''} onValueChange={(v) => setField('squawks', v)} className={cn(ds.textarea, 'h-16')} placeholder="Post-flight squawks..." /></div>
+    <div><label className={ds.label}>Remarks</label><DraftedTextarea lensId="aviation" draftKey={`flight_remarks:${draftScope}`} initial={(form.remarks as string) || ''} onValueChange={(v) => setField('remarks', v)} className={cn(ds.textarea, 'h-20')} placeholder="Flight remarks..." /></div>
   </div>
 );
 }

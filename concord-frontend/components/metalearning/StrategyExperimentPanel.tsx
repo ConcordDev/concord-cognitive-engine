@@ -4,7 +4,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
-import { FlaskConical, Plus, Loader2, Trash2 } from 'lucide-react';
+import { FlaskConical, Plus, Loader2, Trash2, Pencil } from 'lucide-react';
 
 interface ArmStats { name: string; n: number; mean: number; stdDev: number; }
 interface Experiment {
@@ -35,6 +35,23 @@ export function StrategyExperimentPanel() {
   const [busy, setBusy] = useState<string | null>(null);
   const [trial, setTrial] = useState<Record<string, { arm: string; score: string }>>({});
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  // FIX-metalearning-003: experiments gain an edit path (experimentUpdate).
+  const [editExpId, setEditExpId] = useState<string | null>(null);
+  const [expEdit, setExpEdit] = useState({ title: '', hypothesis: '' });
+  const saveExp = async (expId: string) => {
+    if (!expEdit.title.trim()) return;
+    setBusy(expId);
+    try {
+      const { data: r } = await lensRun<any>('metalearning', 'experimentUpdate', {
+        id: expId, title: expEdit.title.trim(), hypothesis: expEdit.hypothesis,
+      });
+      if (r?.ok === false) { setErr(r.error || 'Update failed'); return; }
+      setEditExpId(null);
+      await refresh();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Update failed');
+    } finally { setBusy(null); }
+  };
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -142,6 +159,14 @@ export function StrategyExperimentPanel() {
             <div key={e.id} className="bg-lattice-surface rounded-lg p-3 border border-white/5">
               <div className="flex items-start justify-between gap-2">
                 <p className="text-sm font-semibold">{e.title}</p>
+                <span className="flex items-start gap-1.5">
+                <button onClick={() => {
+                    setEditExpId(editExpId === e.id ? null : e.id);
+                    setExpEdit({ title: e.title, hypothesis: e.hypothesis || '' });
+                  }}
+                  className="text-gray-600 hover:text-gray-200 flex-shrink-0" title="Edit experiment" aria-label={`Edit experiment ${e.title}`}>
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
                 {confirmDeleteId === e.id ? (
                   <button onClick={() => remove(e.id)} disabled={busy === e.id}
                     className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/25 hover:bg-red-500/35 text-red-300 disabled:opacity-50 flex-shrink-0"
@@ -154,7 +179,21 @@ export function StrategyExperimentPanel() {
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 )}
+                </span>
               </div>
+              {editExpId === e.id && (
+                <div className="mt-2 space-y-2 border-t border-white/5 pt-2">
+                  <input value={expEdit.title} onChange={(ev) => setExpEdit((f) => ({ ...f, title: ev.target.value }))}
+                    aria-label="Edit experiment title" placeholder="Experiment title" className="input-lattice w-full text-sm" />
+                  <input value={expEdit.hypothesis} onChange={(ev) => setExpEdit((f) => ({ ...f, hypothesis: ev.target.value }))}
+                    aria-label="Edit experiment hypothesis" placeholder="Hypothesis" className="input-lattice w-full text-sm" />
+                  <div className="flex gap-2">
+                    <button onClick={() => saveExp(e.id)} disabled={!expEdit.title.trim() || busy === e.id}
+                      className="btn-neon text-sm px-3 disabled:opacity-50">Save</button>
+                    <button onClick={() => setEditExpId(null)} className="text-xs text-gray-400 px-2">Cancel</button>
+                  </div>
+                </div>
+              )}
               {e.hypothesis && <p className="text-xs text-gray-400">{e.hypothesis}</p>}
               <div className="grid grid-cols-2 gap-2 mt-2">
                 {[s.armA, s.armB].map((arm, i) => (

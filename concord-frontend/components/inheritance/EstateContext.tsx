@@ -6,6 +6,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import type { TimelineEvent } from '@/components/viz';
 import {
   run,
+  heirSlotPriceCc,
   type Listing, type Beneficiary, type WillVersion, type Asset,
   type Executor, type Lock, type Notice, type Overview,
   type IntestacyStateSummary, type IntestacyLookupResult,
@@ -88,27 +89,39 @@ function useEstateValue(onNavigate?: (tab: string) => void) {
 
   const addBeneficiary = async () => {
     if (!bName.trim()) return flash('Beneficiary needs a name.');
+    if (bShare.trim()) {
+      const share = Number(bShare);
+      if (!Number.isFinite(share) || share < 0 || share > 100) return flash('Share must be a number from 0 to 100.');
+    }
+    if (bHeir.trim() && !/^[A-Za-z0-9_.:@+-]{1,80}$/.test(bHeir.trim())) {
+      return flash('Heir user ID can only use letters, numbers, and . _ : @ + - (up to 80 characters).');
+    }
     const r = await run('add_beneficiary', {
       name: bName, relationship: bRel, sharePct: Number(bShare) || 0,
       contingent: !!bContingentOn.trim(), contingentOn: bContingentOn.trim() || null,
       heirUserId: bHeir.trim() || null,
     });
     if (r?.ok) { setBName(''); setBRel(''); setBShare(''); setBContingentOn(''); setBHeir(''); flash('Beneficiary added.'); void loadAll(); }
-    else flash(`Failed: ${r?.error || 'unknown'}`);
+    else flash(r?.message || 'Could not add that beneficiary.');
   };
   const removeBeneficiary = async (id: string) => {
     const r = await run('remove_beneficiary', { beneficiaryId: id });
     if (r?.ok) { flash('Beneficiary removed.'); void loadAll(); }
   };
   const reShare = async (id: string, pct: number) => {
+    if (!Number.isFinite(pct) || pct < 0 || pct > 100) return flash('Share must be a number from 0 to 100.');
     const r = await run('update_beneficiary', { beneficiaryId: id, sharePct: pct });
     if (r?.ok) void loadAll();
+    else flash(r?.message || 'Share must be a number from 0 to 100.');
   };
   // Send a designation notice to an heir user so they can accept/decline
   // (the receiving half — My Notices — was already wired; this closes the loop).
   const notifyHeir = async (b: Beneficiary, heirUserId: string) => {
     const heir = heirUserId.trim();
     if (!heir) return flash('Enter the heir’s user ID first.');
+    if (!/^[A-Za-z0-9_.:@+-]{1,80}$/.test(heir)) {
+      return flash('Heir user ID can only use letters, numbers, and . _ : @ + - (up to 80 characters).');
+    }
     setNotifyBusy(b.id);
     flash(`Notifying ${b.name}…`);
     const r = await run('notify_heir', { heirUserId: heir, beneficiaryId: b.id });
@@ -137,6 +150,11 @@ function useEstateValue(onNavigate?: (tab: string) => void) {
   const restoreWill = async (version: number) => {
     const r = await run('restore_will_version', { version });
     if (r?.ok) { flash(`Restored v${version} as v${r.result.will.version}.`); void loadAll(); }
+  };
+  const deleteWill = async (version: number) => {
+    const r = await run('delete_will_version', { version });
+    if (r?.ok) { flash(`Deleted will v${version}.`); void loadAll(); }
+    else flash(`Failed: ${r?.error || 'unknown'}`);
   };
 
   // ── Asset form ─────────────────────────────────────────────────────
@@ -205,12 +223,20 @@ function useEstateValue(onNavigate?: (tab: string) => void) {
   const [olBusy, setOlBusy] = useState(false);
   const openListing = async () => {
     if (!olNpc.trim()) return flash('Enter the dying NPC id to list.');
+    const price = heirSlotPriceCc(olPrice);
+    if (price == null) return flash('Price has to be a number from 0 to 1,000,000. 0 is allowed.');
     setOlBusy(true);
     const r = (await run('open_listing', {
-      dyingNpcId: olNpc.trim(), heirSlotPriceCc: Number(olPrice) || 10,
+      dyingNpcId: olNpc.trim(), heirSlotPriceCc: price,
     })) as any;
     setOlBusy(false);
     if (r?.ok) { setOlNpc(''); setOlPrice('10'); flash(`✓ Heir slot listed (#${r.result?.listingId ?? ''}).`); void loadAll(); }
+    else flash(`Failed: ${r?.error || r?.reason || 'unknown'}`);
+  };
+
+  const closeListing = async (listing: Listing) => {
+    const r = (await run('close_listing', { listingId: listing.id })) as any;
+    if (r?.ok) { flash('Listing withdrawn.'); void loadAll(); }
     else flash(`Failed: ${r?.error || r?.reason || 'unknown'}`);
   };
 
@@ -371,6 +397,7 @@ function useEstateValue(onNavigate?: (tab: string) => void) {
     authorWill,
     viewWill,
     restoreWill,
+    deleteWill,
     addAsset,
     removeAsset,
     assignExecutor,
@@ -380,6 +407,7 @@ function useEstateValue(onNavigate?: (tab: string) => void) {
     revokeLock,
     respondNotice,
     openListing,
+    closeListing,
     claimSlot,
     lookupIntestacy,
   };

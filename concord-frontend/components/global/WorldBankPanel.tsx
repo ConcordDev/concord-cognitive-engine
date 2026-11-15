@@ -103,7 +103,7 @@ export function WorldBankPanel({ domain, className }: WorldBankPanelProps) {
     <section className={cn('rounded-lg border border-zinc-800 bg-zinc-950/80 overflow-hidden', className)}>
       <header className="flex items-center gap-2 px-3 py-2 border-b border-zinc-800/80 bg-zinc-900/40">
         <LineChart className="w-4 h-4 text-emerald-300" aria-hidden="true" />
-        <h3 className="text-sm font-medium text-zinc-100 flex-1">World Bank · {indicatorName || indicator}</h3>
+        <h2 className="text-sm font-medium text-zinc-100 flex-1">World Bank · {indicatorName || indicator}</h2>
         <span className="text-[10px] text-emerald-400 font-mono">REAL data</span>
         <button
           type="button"
@@ -117,17 +117,17 @@ export function WorldBankPanel({ domain, className }: WorldBankPanelProps) {
       </header>
 
       <div className="px-3 py-2 border-b border-zinc-800/40 flex gap-2 flex-wrap">
-        <select
+        <select aria-label="Country"
           value={country}
           onChange={(e) => setCountry(e.target.value)}
-          className="text-xs bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-zinc-100"
+          className="min-h-11 text-xs bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-zinc-100"
         >
           {POPULAR_COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
-        <select
+        <select aria-label="Indicator"
           value={indicator}
           onChange={(e) => setIndicator(e.target.value)}
-          className="text-xs bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-zinc-100 flex-1 min-w-0"
+          className="min-h-11 text-xs bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-zinc-100 flex-1 min-w-0"
         >
           {POPULAR_INDICATORS.map(i => <option key={i.code} value={i.code}>{i.label}</option>)}
         </select>

@@ -42,7 +42,15 @@ export function TemporalRepos() {
           {list.length > 0 && <SaveAsDtuButton compact apiSource="github-temporal" apiUrl={`https://github.com/topics/${topic}`} title={`GitHub temporal — topic:${topic} (${list.length})`} content={list.slice(0, 20).map((r, i) => `${i + 1}. ★${(r.stargazers_count ?? 0).toLocaleString()} · ${r.full_name}\n   ${r.description || ''}\n   ${r.html_url}`).join('\n\n')} extraTags={['temporal', 'github', topic]} rawData={{ topic, repos: list }} />}
         </div>
       </header>
-      {repos.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">GitHub results unavailable right now — nothing is being shown in their place.</div>}
+      {repos.isError && (
+        <div className="flex items-center justify-between gap-2 rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">
+          <span>GitHub results unavailable right now — nothing is being shown in their place.</span>
+          {/* FIX-temporal-003: the unavailable state was terminal — Retry
+              re-runs the pull instead of stranding the tab on a rate-limit
+              or transient failure. */}
+          <button type="button" onClick={() => void repos.refetch()} className="shrink-0 rounded border border-red-400/40 px-2 py-0.5 font-medium text-red-200 hover:bg-red-500/10">Retry</button>
+        </div>
+      )}
       {repos.data?.stale && !repos.isError && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached GitHub results{repos.data.fetchedAt ? ` from ${new Date(repos.data.fetchedAt).toLocaleString()}` : ''} — live refresh is rate-limited.</div>}
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Repos</div><div className="mt-0.5 font-mono text-lg text-sky-300">{list.length}</div></div>

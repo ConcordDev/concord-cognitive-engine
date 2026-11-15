@@ -18,7 +18,7 @@
  * input object, so this is the correct dispatch for them (see sim.js).
  */
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { recordStudioRun } from '@/lib/sim/studio-activity';
 import { fmtClean, formatPValue } from '@/lib/sim/format';
@@ -189,6 +189,12 @@ function GoalSeekTool() {
   const [res, setRes] = useState<GoalSeekResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // FIX-sim-010: the result renders below a long form — bring it into
+  // view when it lands, or the run reads as "nothing happened".
+  const outcomeRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (res || error) outcomeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [res, error]);
 
   const run = useCallback(async () => {
     setBusy(true);
@@ -257,7 +263,9 @@ function GoalSeekTool() {
       <button onClick={run} disabled={busy} className={ds.btnPrimary}>
         {busy ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Target className="w-4 h-4" />} Solve
       </button>
-      {error && <ErrBox msg={error} />}
+      <div ref={outcomeRef}>
+        {error && <ErrBox msg={error} />}
+      </div>
       {res && (
         <div className="space-y-3">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -416,6 +424,12 @@ function CalibrateTool() {
   const [res, setRes] = useState<CalibrateResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // FIX-sim-010: same visibility fix as Goal Seek — the result lands
+  // below a long form; scroll it into view when it arrives.
+  const outcomeRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (res || error) outcomeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [res, error]);
 
   const run = useCallback(async () => {
     setBusy(true);
@@ -488,7 +502,9 @@ function CalibrateTool() {
       <button onClick={run} disabled={busy} className={ds.btnPrimary}>
         {busy ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Crosshair className="w-4 h-4" />} Calibrate
       </button>
-      {error && <ErrBox msg={error} />}
+      <div ref={outcomeRef}>
+        {error && <ErrBox msg={error} />}
+      </div>
       {res && (
         <div className="space-y-3">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

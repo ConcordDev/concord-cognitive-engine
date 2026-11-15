@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const lensRun = vi.hoisted(() => vi.fn());
@@ -26,6 +26,19 @@ describe('CrossLensRecentsPanel', () => {
     expect(await screen.findByText('Study')).toBeInTheDocument();
     expect(screen.getByText(/engineering/i)).toBeInTheDocument();
     expect(screen.getByText(/3d ago/i)).toBeInTheDocument();
+  });
+
+  it('does not flash the From elsewhere shell while the first read is in flight', async () => {
+    lensRun.mockImplementation(() => new Promise((resolve) => {
+      setTimeout(() => resolve({ data: { ok: true, result: { ok: true, surfaces: [] } } }), 30);
+    }));
+    const view = render(<CrossLensRecentsPanel lensId="debate" hideWhenEmpty />);
+    // First paint, read still in flight: no shell, no header.
+    expect(view.container.firstChild).toBeNull();
+    expect(screen.queryByText('From elsewhere')).not.toBeInTheDocument();
+    // After the read settles empty, the panel stays hidden.
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 60)); });
+    expect(view.container.firstChild).toBeNull();
   });
 
   it('degrades silently on quiet macro failures', async () => {

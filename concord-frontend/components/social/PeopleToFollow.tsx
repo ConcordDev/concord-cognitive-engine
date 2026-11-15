@@ -104,7 +104,7 @@ export function PeopleToFollow({ currentUserId, onOpenProfile, className }: Peop
               )}
               <span className="min-w-0">
                 <span className="block truncate text-sm text-zinc-100">{person.displayName}</span>
-                <span className="flex items-center gap-1 text-[11px] text-zinc-500">
+                <span className="flex items-center gap-1 text-[11px] text-zinc-400">
                   <Users className="h-3 w-3" aria-hidden="true" />
                   {formatNumber(person.followerCount)} followers
                 </span>

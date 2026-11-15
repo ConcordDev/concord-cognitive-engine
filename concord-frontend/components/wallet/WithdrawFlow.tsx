@@ -577,7 +577,7 @@ function WithdrawFlow({
         <div
           className="absolute inset-0 bg-black/70 backdrop-blur-sm"
           onClick={onClose}
-          aria-hidden="true" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
+          aria-hidden="true" role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace} />
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -635,6 +635,7 @@ function WithdrawalStatusBadge({ status }: { status: string }) {
 }
 
 import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 const _WrappedWithdrawFlow = withErrorBoundary(WithdrawFlow);
 export { _WrappedWithdrawFlow as WithdrawFlow };
 export default _WrappedWithdrawFlow;

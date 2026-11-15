@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { lensRun, apiHelpers } from '@/lib/api/client';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -274,7 +275,7 @@ export default function ReplayForensics() {
         {/* Timeline bar */}
         <div
           className="relative h-8 bg-white/5 rounded-lg cursor-pointer group"
-          onClick={handleTimelineClick} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          onClick={handleTimelineClick} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           {/* Time markers */}
           {[0, 25, 50, 75, 100].map((pct) => (
             <div

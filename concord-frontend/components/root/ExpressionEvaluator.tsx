@@ -83,6 +83,7 @@ export function ExpressionEvaluator({ onSaved }: { onSaved?: () => void }) {
         <input
           className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:border-violet-500 text-sm"
           placeholder="(2 + 3) * 4 - ⊚"
+          aria-label="Expression to evaluate"
           value={expr}
           onChange={(e) => setExpr(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') void evaluate(); }}

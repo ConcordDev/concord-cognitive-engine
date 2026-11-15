@@ -3,7 +3,11 @@
  *
  * Open a room calls collab.room-open and shows the title only after
  * room-list contains that id and the same title, and the note only
- * after room-detail returns it. Participants stay off the card.
+ * after room-detail returns it. (FIX-collab-001 later mounted the
+ * floor: participants now render in the sharing panel under the room
+ * card, and a room-invite-list read rides the ready surface — the two
+ * call-count pins below therefore count room-list / room-open calls
+ * specifically, which is what they always meant.)
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -62,7 +66,7 @@ describe('collab room card', () => {
     const view = render(<CollabLensPage />);
     expect(await view.findByText('No room open.', {}, { timeout: 8000 })).toBeInTheDocument();
     expect(view.queryByRole('alert')).toBeNull();
-    expect(lensRun).toHaveBeenCalledTimes(2);
+    expect(lensRun.mock.calls.filter((call) => call[1] === 'room-list')).toHaveLength(2);
   });
 
   it('ERROR: a failed list shows role=alert and Retry reloads', async () => {
@@ -80,7 +84,7 @@ describe('collab room card', () => {
     fireEvent.click(await view.findByRole('button', { name: 'Open a room' }));
     fireEvent.click(view.getByRole('button', { name: 'Open a room' }));
     expect(view.getByText('A title is required.')).toBeInTheDocument();
-    expect(lensRun).toHaveBeenCalledTimes(1);
+    expect(lensRun.mock.calls.some((call) => call[1] === 'room-open')).toBe(false);
   });
 
   it('does not send a blank note', async () => {

@@ -82,23 +82,23 @@ export function AdvocacyPanel() {
       {/* Record an advocacy action */}
       <div className="p-3 border-b border-white/10 space-y-2">
         <div className="grid grid-cols-6 gap-2">
-          <input value={form.billId} onChange={e => setForm({ ...form, billId: e.target.value })} placeholder="Bill ID (HR1234-119)" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
-          <input value={form.billTitle} onChange={e => setForm({ ...form, billTitle: e.target.value })} placeholder="Bill title" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <select value={form.stance} onChange={e => setForm({ ...form, stance: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+          <input aria-label="Bill ID (HR1234-119)" value={form.billId} onChange={e => setForm({ ...form, billId: e.target.value })} placeholder="Bill ID (HR1234-119)" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+          <input aria-label="Bill title" value={form.billTitle} onChange={e => setForm({ ...form, billTitle: e.target.value })} placeholder="Bill title" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <select aria-label="Stance" value={form.stance} onChange={e => setForm({ ...form, stance: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
             <option value="support">Support</option>
             <option value="oppose">Oppose</option>
             <option value="comment">Comment</option>
           </select>
-          <select value={form.channel} onChange={e => setForm({ ...form, channel: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+          <select aria-label="Channel" value={form.channel} onChange={e => setForm({ ...form, channel: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
             <option value="comment">Comment</option>
             <option value="call">Call</option>
             <option value="email">Email</option>
             <option value="letter">Letter</option>
           </select>
         </div>
-        <input value={form.representative} onChange={e => setForm({ ...form, representative: e.target.value })} placeholder="Representative contacted (optional)" className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <input aria-label="Representative contacted (optional)" value={form.representative} onChange={e => setForm({ ...form, representative: e.target.value })} placeholder="Representative contacted (optional)" className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         {form.channel !== 'call' && (
-          <textarea value={form.message} onChange={e => setForm({ ...form, message: e.target.value })} placeholder="Your message to your representative" rows={2} className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <textarea aria-label="Your message to your representative" value={form.message} onChange={e => setForm({ ...form, message: e.target.value })} placeholder="Your message to your representative" rows={2} className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         )}
         <div className="mb-2">
           <LocalRecordNotice>

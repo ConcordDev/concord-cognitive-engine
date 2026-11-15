@@ -180,7 +180,8 @@ export function WalletShell({
                     {tx.kind} {tx.asset}
                   </div>
                   <div className="text-[11px] text-gray-400 truncate">
-                    {tx.counterparty ?? '—'} · {new Date(tx.timestamp).toLocaleString()}
+                    {/* FIX-crypto-011: never print the literal "Invalid Date" for an unparseable stored timestamp. */}
+                    {tx.counterparty ?? '—'} · {Number.isNaN(new Date(tx.timestamp).getTime()) ? 'date not recorded' : new Date(tx.timestamp).toLocaleString()}
                   </div>
                 </div>
                 <div className="text-right">

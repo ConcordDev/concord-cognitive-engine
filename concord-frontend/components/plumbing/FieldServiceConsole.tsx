@@ -14,6 +14,7 @@ import { lensRun } from '@/lib/api/client';
 import { calendarDateKey } from '@/lib/calendar-date';
 import { ChartKit, TimelineView } from '@/components/viz';
 import type { TimelineEvent } from '@/components/viz';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { ClientAutocomplete } from '@/components/plumbing/ClientAutocomplete';
 import type { ClientRecord } from '@/components/plumbing/ClientAutocomplete';
 import { TechCertifications } from '@/components/plumbing/TechCertifications';
@@ -126,6 +127,7 @@ export function FieldServiceConsole() {
   const [ops, setOps] = useState<OpsSummary | null>(null);
   const [techs, setTechs] = useState<Tech[]>([]);
   const [clients, setClients] = useState<ClientRecord[]>([]);
+  const [clientName, setClientName] = useState('');
   const [lanes, setLanes] = useState<Lane[]>([]);
   const [unassigned, setUnassigned] = useState<Assignment[]>([]);
   const [emergencyCount, setEmergencyCount] = useState(0);
@@ -281,6 +283,21 @@ export function FieldServiceConsole() {
     setClients((cs) => (cs.some((c) => c.id === client.id) ? cs : [...cs, client]));
   }, []);
 
+  const addClient = async () => {
+    const name = clientName.trim();
+    if (!name || busy) return;
+    setBusy(true);
+    setErr(null);
+    const r = await run<{ client: ClientRecord }>('clientAdd', { name });
+    setBusy(false);
+    if (r?.client) {
+      handleClientCreated(r.client);
+      setClientName('');
+    } else {
+      setErr('Could not add that client.');
+    }
+  };
+
   useEffect(() => {
     void refreshAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -311,6 +328,11 @@ export function FieldServiceConsole() {
 
   const assignJob = () => guarded(async () => {
     if (!jobTitle.trim()) { setErr('Job title required'); return; }
+    const duration = Number(jobDur);
+    if (!jobDur.trim() || !Number.isFinite(duration) || duration < 0.5 || duration > 12) {
+      setErr('Duration must be a number from 0.5 to 12 hours.');
+      return;
+    }
     const r = await run('dispatchAssign', {
       jobTitle, client: jobClient, clientId: jobClientId || undefined, address: jobAddr,
       techId: jobTech || undefined, date: jobDate,
@@ -334,26 +356,55 @@ export function FieldServiceConsole() {
 
   const addPriceItem = () => guarded(async () => {
     if (!piName.trim()) { setErr('Item name required'); return; }
-    const r = await run('priceItemAdd', {
-      name: piName, kind: piKind, cost: Number(piCost) || 0,
+    if (piCost.trim() && (!(Number(piCost) >= 0) || Number(piCost) > 1_000_000)) { setErr('Cost must be a number from 0 to 1,000,000.'); return; }
+    const { data } = await lensRun('plumbing', 'priceItemAdd', {
+      name: piName, kind: piKind, cost: piCost.trim() ? Number(piCost) : 0,
       markupPct: Number(piMarkup) || 0, sku: piSku,
     });
-    if (!r) { setErr('priceItemAdd failed'); return; }
+    if (!data?.ok) { setErr(data?.message || 'Could not add that price.'); return; }
     setPiName(''); setPiCost(''); setPiSku('');
     await refreshPriceBook();
   });
 
   const [confirmRemovePb, setConfirmRemovePb] = useState<string | null>(null);
+  const [markupDraft, setMarkupDraft] = useState<Record<string, string>>({});
+  const [markupErr, setMarkupErr] = useState<string | null>(null);
   const removePriceItem = (id: string) => guarded(async () => {
     await run('priceItemRemove', { itemId: id });
     setConfirmRemovePb(null);
     await refreshPriceBook();
   });
 
-  const updateMarkup = (id: string, markupPct: number) => guarded(async () => {
-    await run('priceItemUpdate', { itemId: id, markupPct });
-    await refreshPriceBook();
-  });
+  const previewPrice = (cost: number, raw: string) => {
+    const n = Number(raw);
+    if (!Number.isFinite(n)) return null;
+    const pct = Math.max(0, Math.min(500, n));
+    return Math.round(cost * (1 + pct / 100) * 100) / 100;
+  };
+  const persistMarkup = (id: string, raw: string, current: number) => {
+    const n = Number(raw);
+    if (!Number.isFinite(n)) {
+      setMarkupDraft((d) => ({ ...d, [id]: String(current) }));
+      setMarkupErr('Markup has to be a number from 0 to 500.');
+      return;
+    }
+    const pct = Math.max(0, Math.min(500, n));
+    if (pct === current) return;
+    guarded(async () => {
+      const { data } = await lensRun('plumbing', 'priceItemUpdate', { itemId: id, markupPct: pct });
+      if (!data?.ok) {
+        setMarkupErr(data?.error || data?.message || 'Could not save that markup.');
+        return;
+      }
+      setMarkupErr(null);
+      setMarkupDraft((d) => {
+        const next = { ...d };
+        delete next[id];
+        return next;
+      });
+      await refreshPriceBook();
+    });
+  };
 
   const setLine = (idx: number, patch: Partial<{ name: string; quantity: string; unitPrice: string; priceItemId: string | null }>) => {
     setInvLines((ls) => ls.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
@@ -483,6 +534,27 @@ export function FieldServiceConsole() {
     if (!r) { setErr('partStock failed'); return; }
     setPartName(''); setPartSku(''); setPartQty(''); setPartCost('');
     await Promise.all([refreshParts(), refreshOps()]);
+  });
+
+  const deleteAssignment = (assignmentId: string) => guarded(async () => {
+    await run('dispatchDelete', { assignmentId });
+    await Promise.all([refreshDispatch(), refreshOps()]);
+  });
+  const deleteInvoice = (invoiceId: string) => guarded(async () => {
+    await run('invoiceDelete', { invoiceId });
+    await Promise.all([refreshInvoices(), refreshOps()]);
+  });
+  const deletePlan = (planId: string) => guarded(async () => {
+    await run('planDelete', { id: planId });
+    await refreshPlans();
+  });
+  const deleteInspection = (inspectionId: string) => guarded(async () => {
+    await run('inspectionDelete', { id: inspectionId });
+    await refreshInspections();
+  });
+  const deleteClient = (clientId: string) => guarded(async () => {
+    await run('clientDelete', { clientId });
+    await refreshClients();
   });
 
   const completeJob = (assignmentId: string) => guarded(async () => {
@@ -644,7 +716,7 @@ export function FieldServiceConsole() {
             <div className={cardCls}>
               <h4 className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-white"><Calendar className="h-3.5 w-3.5 text-blue-400" /> Schedule a Job</h4>
               <div className="grid grid-cols-2 gap-2">
-                <input className={`${inputCls} col-span-2`} placeholder="Job title" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} />
+                <input className={`${inputCls} col-span-2`} placeholder="Job title" value={jobTitle} onChange={(e) => { setJobTitle(e.target.value); if (e.target.value.trim()) setErr((cur) => (cur === 'Job title required' ? '' : cur)); }} />
                 <ClientAutocomplete clients={clients} value={jobClient} clientId={jobClientId} onSelect={selectJobClient} onCreated={handleClientCreated} />
                 <input className={inputCls} placeholder="Address" value={jobAddr} onChange={(e) => setJobAddr(e.target.value)} />
                 <select className={inputCls} value={jobTech} onChange={(e) => setJobTech(e.target.value)}>
@@ -684,7 +756,7 @@ export function FieldServiceConsole() {
                     <span className="text-zinc-400">{lane.loadHours}h scheduled</span>
                   </div>
                   <div className="divide-y divide-zinc-900">
-                    {lane.assignments.map((a) => <AssignmentRow key={a.id} a={a} onUpdate={updateAssignment} onComplete={completeJob} />)}
+                    {lane.assignments.map((a) => <AssignmentRow key={a.id} a={a} onUpdate={updateAssignment} onComplete={completeJob} onDelete={deleteAssignment} />)}
                     {lane.assignments.length === 0 && <p className="px-2 py-1.5 text-[11px] text-zinc-400">No jobs.</p>}
                   </div>
                 </div>
@@ -693,7 +765,7 @@ export function FieldServiceConsole() {
                 <div className="rounded border border-amber-500/30">
                   <div className="border-b border-amber-500/20 px-2 py-1.5 text-xs font-medium text-amber-300">Unassigned ({unassigned.length})</div>
                   <div className="divide-y divide-zinc-900">
-                    {unassigned.map((a) => <AssignmentRow key={a.id} a={a} techs={techs} onUpdate={updateAssignment} onComplete={completeJob} />)}
+                    {unassigned.map((a) => <AssignmentRow key={a.id} a={a} techs={techs} onUpdate={updateAssignment} onComplete={completeJob} onDelete={deleteAssignment} />)}
                   </div>
                 </div>
               )}
@@ -720,24 +792,33 @@ export function FieldServiceConsole() {
             <button className={`${btnCls} mt-2`} onClick={addPriceItem} disabled={busy}><Plus className="h-3.5 w-3.5" /> Add Item</button>
           </div>
           <div className={cardCls}>
+            {markupErr && <p className="mb-2 text-xs text-rose-400">{markupErr}</p>}
             <table className="w-full text-xs">
               <thead><tr className="text-left text-zinc-400"><th className="py-1">Item</th><th>Kind</th><th>Cost</th><th>Markup</th><th>Price</th><th /></tr></thead>
               <tbody>
-                {priceItems.map((i) => (
+                {priceItems.map((i) => {
+                  const draft = markupDraft[i.id] ?? String(i.markupPct);
+                  const preview = previewPrice(i.cost, draft);
+                  const shown = preview ?? i.price;
+                  return (
                   <tr key={i.id} className="border-t border-zinc-900 text-white">
                     <td className="py-1.5">{i.name} <span className="text-zinc-600">{i.sku}</span></td>
                     <td className="text-zinc-400">{i.kind}/{i.unit}</td>
                     <td>${i.cost.toFixed(2)}</td>
                     <td>
-                      <input type="number" className={`${inputCls} w-16`} defaultValue={i.markupPct}
-                        onBlur={(e) => { const v = Number(e.target.value); if (v !== i.markupPct) updateMarkup(i.id, v); }} />
+                      <input type="number" min={0} max={500} className={`${inputCls} w-16`} value={draft}
+                        aria-label={`Markup for ${i.name}`}
+                        onChange={(e) => setMarkupDraft((d) => ({ ...d, [i.id]: e.target.value }))}
+                        onBlur={() => persistMarkup(i.id, draft, i.markupPct)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.currentTarget.blur(); } }} />
                     </td>
-                    <td className="font-medium text-emerald-300">${i.price.toFixed(2)}</td>
+                    <td className="font-medium text-emerald-300">${shown.toFixed(2)}{preview != null && preview !== i.price ? ' preview' : ''}</td>
                     <td>{confirmRemovePb === i.id
                       ? <button onClick={() => removePriceItem(i.id)} className="rounded bg-rose-600 px-1.5 py-0.5 text-[10px] font-medium text-white hover:bg-rose-500">Confirm remove?</button>
                       : <button onClick={() => setConfirmRemovePb(i.id)} aria-label="Remove item" className="text-zinc-600 hover:text-rose-400"><Trash2 className="h-3.5 w-3.5" /></button>}</td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
             {priceItems.length === 0 && <p className="text-xs text-zinc-400">No price book items yet.</p>}
@@ -788,13 +869,40 @@ export function FieldServiceConsole() {
                     <div className="mt-1 text-zinc-400">{inv.lines.length} lines · subtotal ${inv.subtotal} · tax ${inv.tax} · <span className="text-white">total ${inv.total}</span></div>
                     <div className="mt-1.5 flex items-center justify-between">
                       <span className="text-zinc-400">Paid ${inv.amountPaid} · Balance <span className="text-amber-300">${balance}</span></span>
-                      {balance > 0 && <button onClick={() => recordPayment(inv.id, balance)} className={btnCls}><Check className="h-3.5 w-3.5" /> Record Payment</button>}
+                      <span className="flex items-center gap-2">
+                        {balance > 0 && <button onClick={() => recordPayment(inv.id, balance)} className={btnCls}><Check className="h-3.5 w-3.5" /> Record Payment</button>}
+                        <RowDelete label={`invoice ${inv.number}`} onConfirm={() => deleteInvoice(inv.id)} />
+                      </span>
                     </div>
                   </div>
                 );
               })}
               {invoices.length === 0 && <p className="text-xs text-zinc-400">No invoices yet.</p>}
             </div>
+          </div>
+          <div className={`${cardCls} lg:col-span-2`}>
+            <h4 className="mb-2 text-xs font-semibold text-white">Clients ({clients.length})</h4>
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <input
+                className={inputCls}
+                value={clientName}
+                onChange={(e) => setClientName(e.target.value)}
+                placeholder="Client name"
+                aria-label="New client name"
+              />
+              <button type="button" className={btnCls} onClick={() => void addClient()} disabled={busy || !clientName.trim()}>
+                <Plus className="h-3.5 w-3.5" /> Add client
+              </button>
+            </div>
+            {clients.length === 0 && <p className="text-xs text-zinc-400">No clients yet.</p>}
+            <ul className="space-y-1">
+              {clients.map((c) => (
+                <li key={c.id} className="flex items-center justify-between rounded border border-zinc-800 px-2 py-1.5 text-xs">
+                  <span className="text-zinc-200">{c.name}</span>
+                  <RowDelete label={`client “${c.name}”`} onConfirm={() => deleteClient(c.id)} />
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       )}
@@ -887,7 +995,10 @@ export function FieldServiceConsole() {
                     <span className="font-medium text-white">{p.client} · {p.title}</span>
                     <div className="text-zinc-400">{p.cadence} · ${p.fee} · next {p.nextVisit} · {p.visitsCompleted} visits done</div>
                   </div>
-                  <button onClick={() => logVisit(p.id)} className={btnCls}><Check className="h-3.5 w-3.5" /> Log Visit</button>
+                  <span className="flex items-center gap-2">
+                    <button onClick={() => logVisit(p.id)} className={btnCls}><Check className="h-3.5 w-3.5" /> Log Visit</button>
+                    <RowDelete label={`plan “${p.title}”`} onConfirm={() => deletePlan(p.id)} />
+                  </span>
                 </div>
               ))}
               {plans.length === 0 && <p className="text-xs text-zinc-400">No service plans yet.</p>}
@@ -1045,7 +1156,10 @@ export function FieldServiceConsole() {
                       </div>
                     </div>
                   ) : (
-                    <button className="mt-1.5 rounded border border-zinc-800 px-2 py-1 text-[11px] text-zinc-400 hover:text-white" onClick={() => openResult(i)}>Record Result</button>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                      <button className="rounded border border-zinc-800 px-2 py-1 text-[11px] text-zinc-400 hover:text-white" onClick={() => openResult(i)}>Record Result</button>
+                      <RowDelete label={`inspection ${i.number}`} onConfirm={() => deleteInspection(i.id)} />
+                    </div>
                   )}
                 </div>
               ))}
@@ -1068,13 +1182,29 @@ function Stat({ label, value, tone }: { label: string; value: string | number; t
   );
 }
 
+function RowDelete({ label, onConfirm }: { label: string; onConfirm: () => void }) {
+  const [armed, setArmed] = useState(false);
+  return (
+    <StickyDeleteConfirm
+      armed={armed}
+      onArm={() => setArmed(true)}
+      onCancel={() => setArmed(false)}
+      onConfirm={() => { setArmed(false); onConfirm(); }}
+      armLabel="Delete"
+      confirmLabel={`Delete ${label}?`}
+      className="text-[11px] text-zinc-400 underline"
+    />
+  );
+}
+
 function AssignmentRow({
-  a, techs, onUpdate, onComplete,
+  a, techs, onUpdate, onComplete, onDelete,
 }: {
   a: Assignment;
   techs?: Tech[];
   onUpdate: (id: string, patch: Record<string, unknown>) => void;
   onComplete: (id: string) => void;
+  onDelete: (id: string) => void;
 }) {
   return (
     <div className="flex items-center justify-between gap-2 px-2 py-1.5 text-xs">
@@ -1104,6 +1234,7 @@ function AssignmentRow({
         {a.status !== 'completed' && a.status !== 'cancelled' && (
           <button onClick={() => onComplete(a.id)} className="rounded bg-emerald-600 px-2 py-1 text-[11px] font-medium text-white hover:bg-emerald-500">Complete</button>
         )}
+        <RowDelete label={`job “${a.jobTitle}”`} onConfirm={() => onDelete(a.id)} />
       </div>
     </div>
   );

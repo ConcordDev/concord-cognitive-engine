@@ -120,6 +120,11 @@ export default function registerGameActions(registerLensAction) {
         refId: meta?.refId || null,
         xpDelta: xp,
         goldDelta: gold || 0,
+        // FIX-game-006: when a caller awards with a computed breakdown
+        // (base award x streak bonus), the log keeps it so the activity
+        // feed can EXPLAIN an award that differs from the base value
+        // instead of looking inconsistent.
+        ...(meta?.baseXp != null ? { baseXp: meta.baseXp, streakBonus: meta.streakBonus ?? null } : {}),
         xpAfter: p.xp,
         levelAfter: p.level,
         at: new Date().toISOString(),
@@ -193,7 +198,7 @@ export default function registerGameActions(registerLensAction) {
       const today = dayKey();
       const xpByDiff = { trivial: 5, easy: 10, medium: 20, hard: 35 };
       const baseXp = xpByDiff[task.difficulty] || 10;
-      let xpDelta = 0, goldDelta = 0;
+      let xpDelta = 0, goldDelta = 0, reward = null;
       if (direction === "down") {
         // Negative habit / penalty.
         xpDelta = -Math.round(baseXp * 0.6);
@@ -211,14 +216,15 @@ export default function registerGameActions(registerLensAction) {
         const streakBonus = Math.min(2, 1 + task.streak * 0.05);
         xpDelta = Math.round(baseXp * streakBonus);
         goldDelta = Math.round(baseXp * 0.4 * streakBonus);
+        reward = { baseXp, difficulty: task.difficulty || "easy", streak: task.streak, streakBonus, xpDelta };
       }
-      const prog = awardXp(s, userId, xpDelta, goldDelta, { source: "task", label: task.title, refId: task.id });
+      const prog = awardXp(s, userId, xpDelta, goldDelta, { source: "task", label: task.title, refId: task.id, ...(reward ? { baseXp: reward.baseXp, streakBonus: reward.streakBonus } : {}) });
       if (direction === "up") bumpStreak(s, userId);
       const lvl = levelForXp(prog.xp);
       return {
         ok: true,
         result: {
-          task, xpDelta, goldDelta,
+          task, xpDelta, goldDelta, reward,
           progress: { ...prog, ...lvl },
         },
       };

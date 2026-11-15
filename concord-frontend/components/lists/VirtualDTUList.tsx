@@ -20,6 +20,7 @@ import {
 import { cn } from '@/lib/utils';
 import { formatRelativeTime } from '@/lib/utils';
 import { TierBadge } from '@/components/dtu/TierBadge';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface DTU {
   id: string;
@@ -355,7 +356,7 @@ export function VirtualDTUList({
           <>
             <div
               className="fixed inset-0 z-40"
-              onClick={closeContextMenu} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
+              onClick={closeContextMenu} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace} />
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}

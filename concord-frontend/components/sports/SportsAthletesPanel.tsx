@@ -108,7 +108,7 @@ export function SportsAthletesPanel({ onChange }: { onChange: () => void }) {
           <button
             type="button"
             onClick={() => removeAthlete(selected.id)}
-            className="text-zinc-500 hover:text-rose-400"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center text-zinc-400 hover:text-rose-400"
             aria-label={`Remove ${selected.name}`}
           >
             <Trash2 className="w-4 h-4" />
@@ -195,7 +195,7 @@ export function SportsAthletesPanel({ onChange }: { onChange: () => void }) {
               <button
                 type="button"
                 onClick={() => removeAthlete(a.id)}
-                className="text-zinc-500 hover:text-rose-400"
+                className="inline-flex min-h-11 min-w-11 items-center justify-center text-zinc-400 hover:text-rose-400"
                 aria-label={`Remove ${a.name}`}
               >
                 <Trash2 className="w-4 h-4" />

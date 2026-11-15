@@ -6,6 +6,7 @@
  * mint/DM/publish/agent.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useEffect, useState } from 'react';
 import { Mic, Users, Smile, Search, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -14,7 +15,7 @@ import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
-interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
+interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string; message?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
   const r = await apiHelpers.lens.runDomain('voice', action, { input });
   const data = (r as { data?: { ok: boolean; result?: T } }).data;
@@ -97,10 +98,18 @@ export function VoiceActionPanel() {
 
   async function actAnalyze() {
     if (!transcript.trim()) { err('Transcript required.'); return; }
+    let durationMinutes: number | null = null;
+    if (duration.trim()) {
+      durationMinutes = Number(duration);
+      if (!Number.isFinite(durationMinutes) || durationMinutes < 0) {
+        err('Duration must be a number of minutes that is 0 or greater.');
+        return;
+      }
+    }
     setBusy('analyze'); setFeedback(null);
     try {
-      const r = await callMacro<AnalyzeResult>('transcriptAnalyze', { artifact: { data: { transcript, durationMinutes: parseFloat(duration) || null } } });
-      if (r.ok && r.result) { setAnalyzeResult(r.result); pipe.publish('voice.analyze', r.result, { label: `${r.result.wordCount}w · ${r.result.complexityRating}` }); ok(`${r.result.wordCount}w · ${r.result.fillerRate} fillers.`); } else err(r.error ?? 'analyze failed');
+      const r = await callMacro<AnalyzeResult>('transcriptAnalyze', { artifact: { data: { transcript, durationMinutes } } });
+      if (r.ok && r.result) { setAnalyzeResult(r.result); pipe.publish('voice.analyze', r.result, { label: `${r.result.wordCount}w · ${r.result.complexityRating}` }); ok(`${r.result.wordCount}w · ${r.result.fillerRate} fillers.`); } else err(r.message || r.error || 'analyze failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDiarize() {
@@ -191,7 +200,7 @@ export function VoiceActionPanel() {
       const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Coaching ready.'); }
       else {
-        // F4/D6 — never the bare "Agent returned empty.": when the agent
+        // F4/D6 — never a bare empty-agent message: when the agent
         // returns nothing, the bench coaches DETERMINISTICALLY from its own
         // computed results, labelled as computed; with nothing computed yet
         // the refusal says what to run first.

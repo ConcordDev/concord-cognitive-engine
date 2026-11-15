@@ -99,7 +99,7 @@ export function PostMediaCard({ mediaType, mediaUrl, listing, className }: PostM
           }}
           onNavigateToListing={(listingId) => router.push(`/lenses/marketplace/music/${encodeURIComponent(listingId)}`)}
         />
-        <p className="mt-1 text-[11px] text-zinc-500">
+        <p className="mt-1 text-[11px] text-zinc-400">
           {typeof listing.transferRate === 'number' ? `transfer fee ${(listing.transferRate * 100).toFixed(2)}%` : null}
           {typeof listing.transferRate === 'number' && typeof listing.marketplaceRate === 'number' ? ' · ' : null}
           {typeof listing.marketplaceRate === 'number' ? `marketplace fee ${(listing.marketplaceRate * 100).toFixed(2)}%` : null}

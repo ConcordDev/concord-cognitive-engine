@@ -95,7 +95,7 @@ function TourneyPane({ desk }: { desk: ReturnType<typeof useTournamentDesk> }) {
     return <TournamentDetailPanel t={desk.detail} busy={desk.busy} run={desk.run} onRefresh={desk.onRefreshDetail} />;
   }
   if (desk.active === 'create') {
-    return <TournamentCreatePanel busy={desk.busy} run={desk.run} onCreated={desk.onCreated} />;
+    return <TournamentCreatePanel busy={desk.busy} run={desk.run} onCreated={desk.onCreated} actionError={desk.actionError} />;
   }
   return null;
 }

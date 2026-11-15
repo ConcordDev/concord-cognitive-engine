@@ -92,25 +92,25 @@ export function ShippingLabelsPanel() {
       <div className="p-3 border-b border-white/10 space-y-2">
         <p className="text-[10px] uppercase text-gray-400">Buy a carrier label</p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-          <select value={buyForm.orderId} onChange={e => setBuyForm({ ...buyForm, orderId: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+          <select id="retail-orderid-2" name="orderid-2" value={buyForm.orderId} onChange={e => setBuyForm({ ...buyForm, orderId: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
             <option value="">Select order…</option>
             {orders.map(o => <option key={o.id} value={o.id}>{o.number}{o.trackingNumber ? ' (labeled)' : ''}</option>)}
           </select>
-          <select value={buyForm.carrier} onChange={e => setBuyForm({ ...buyForm, carrier: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+          <select id="retail-carrier" name="carrier" value={buyForm.carrier} onChange={e => setBuyForm({ ...buyForm, carrier: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
             {CARRIERS.map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}
           </select>
-          <select value={buyForm.service} onChange={e => setBuyForm({ ...buyForm, service: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+          <select id="retail-service" name="service" value={buyForm.service} onChange={e => setBuyForm({ ...buyForm, service: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
             {SERVICES.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
         <div className="grid grid-cols-2 gap-2">
-          <input value={buyForm.toName} onChange={e => setBuyForm({ ...buyForm, toName: e.target.value })} placeholder="Recipient name" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <input value={buyForm.toStreet} onChange={e => setBuyForm({ ...buyForm, toStreet: e.target.value })} placeholder="Street" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input id="retail-recipient-name" name="recipient-name" aria-label="Recipient name" value={buyForm.toName} onChange={e => setBuyForm({ ...buyForm, toName: e.target.value })} placeholder="Recipient name" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input id="retail-street" name="street" aria-label="Street" value={buyForm.toStreet} onChange={e => setBuyForm({ ...buyForm, toStreet: e.target.value })} placeholder="Street" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-          <input value={buyForm.toCity} onChange={e => setBuyForm({ ...buyForm, toCity: e.target.value })} placeholder="City" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <input value={buyForm.toState} onChange={e => setBuyForm({ ...buyForm, toState: e.target.value })} placeholder="State" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <input value={buyForm.toZip} onChange={e => setBuyForm({ ...buyForm, toZip: e.target.value })} placeholder="ZIP" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input id="retail-city-2" name="city-2" aria-label="City" value={buyForm.toCity} onChange={e => setBuyForm({ ...buyForm, toCity: e.target.value })} placeholder="City" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input id="retail-state-2" name="state-2" aria-label="State" value={buyForm.toState} onChange={e => setBuyForm({ ...buyForm, toState: e.target.value })} placeholder="State" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input id="retail-zip" name="zip" aria-label="ZIP" value={buyForm.toZip} onChange={e => setBuyForm({ ...buyForm, toZip: e.target.value })} placeholder="ZIP" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         </div>
         <button onClick={buyLabel} disabled={busy} className="px-3 py-1.5 text-xs rounded bg-blue-500 text-white font-bold hover:bg-blue-400 disabled:opacity-40 inline-flex items-center gap-1">
           <Printer className="w-3 h-3" /> Buy label
@@ -121,8 +121,8 @@ export function ShippingLabelsPanel() {
       <div className="p-3 border-b border-white/10 space-y-2">
         <p className="text-[10px] uppercase text-gray-400">Track a shipment</p>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-          <input value={trackForm.trackingNumber} onChange={e => setTrackForm({ ...trackForm, trackingNumber: e.target.value })} placeholder="Tracking number" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
-          <select value={trackForm.carrier} onChange={e => setTrackForm({ ...trackForm, carrier: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+          <input id="retail-tracking-number" name="tracking-number" aria-label="Tracking number" value={trackForm.trackingNumber} onChange={e => setTrackForm({ ...trackForm, trackingNumber: e.target.value })} placeholder="Tracking number" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+          <select id="retail-carrier-2" name="carrier-2" value={trackForm.carrier} onChange={e => setTrackForm({ ...trackForm, carrier: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
             <option value="">Any carrier</option>
             {CARRIERS.map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}
           </select>

@@ -92,7 +92,7 @@ export function ReturnsPanel({ onChange }: { onChange?: () => void }) {
         <input aria-label="Note" placeholder="Note (optional)" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} className={sel} />
         <button type="button" onClick={() => void open()} disabled={busy === 'new'} className="px-3 py-1.5 text-xs rounded bg-amber-500 text-black font-bold transition-colors hover:bg-amber-400 disabled:opacity-50">Open RMA</button>
         <label className="col-span-2 sm:col-span-5 inline-flex items-center gap-1.5 text-[11px] text-gray-300">
-          <input type="checkbox" checked={form.restock} onChange={(e) => setForm({ ...form, restock: e.target.checked })} className="accent-emerald-500" />
+          <input id="retail-field-4" name="field-4" type="checkbox" checked={form.restock} onChange={(e) => setForm({ ...form, restock: e.target.checked })} className="accent-emerald-500" />
           Restock when received
         </label>
         {error && <p role="alert" className="col-span-2 sm:col-span-5 text-[11px] text-rose-400">{error}</p>}

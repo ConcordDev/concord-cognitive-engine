@@ -30,6 +30,7 @@ const PAGE_TABS: { id: PageTab; label: string; icon: typeof TreePine; hint: stri
 
 export default function LandscapingLensPage() {
   const [tab, setTab] = useState<PageTab>('studio');
+  const [designRequest, setDesignRequest] = useState(0);
 
   useLensCommand(
     [
@@ -57,9 +58,9 @@ export default function LandscapingLensPage() {
         tabs={PAGE_TABS.map((t) => ({ id: t.id, label: t.label, icon: t.icon, keys: t.hint }))}
         activeTab={tab}
         onTab={(id) => setTab(id as PageTab)}
-        cta={{ label: 'New design', icon: Sprout, onClick: () => setTab('studio'), title: 'Start a new design' }}
+        cta={{ label: 'New design', icon: Sprout, onClick: () => { setTab('studio'); setDesignRequest((n) => n + 1); }, title: 'Start a new design' }}
       >
-        {tab === 'studio' && <section className={card}><GardenStudio /></section>}
+        {tab === 'studio' && <section className={card}><GardenStudio designRequest={designRequest} /></section>}
         {tab === 'beds' && <section className={card}><GardenBeds /></section>}
         {tab === 'finder' && (
           <div className="space-y-5">

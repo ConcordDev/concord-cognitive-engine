@@ -172,6 +172,7 @@ export function CollectionPanel({ onOpenPoem, onNewPoem, searchInputRef }: Colle
                     <span>{poem.form || 'free-verse'}</span>
                     <span>{poem.lineCount || 0} lines</span>
                     <span className="capitalize">{poem.status}</span>
+                    <span>{poem.sharedToWorkshop ? 'Shared to workshop' : 'Private'}</span>
                   </div>
                 </div>
                 <div className="flex gap-1">

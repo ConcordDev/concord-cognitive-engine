@@ -458,6 +458,28 @@ export default function registerSportsActions(registerLensAction) {
     return { ok: true, result: { game: { ...game, winner: gameWinner(game) } } };
   });
 
+  // Edit the fixture itself (teams / league / date). Scores stay with
+  // game-update-score — this verb never touches them.
+  registerLensAction("sports", "game-update", (ctx, _a, params = {}) => {
+    const s = getSportsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const game = findGame(s, spAid(ctx), params.id);
+    if (!game) return { ok: false, error: "game not found" };
+    if (params.homeTeam != null) {
+      const homeTeam = spClean(params.homeTeam, 80);
+      if (!homeTeam) return { ok: false, error: "homeTeam and awayTeam required" };
+      game.homeTeam = homeTeam;
+    }
+    if (params.awayTeam != null) {
+      const awayTeam = spClean(params.awayTeam, 80);
+      if (!awayTeam) return { ok: false, error: "homeTeam and awayTeam required" };
+      game.awayTeam = awayTeam;
+    }
+    if (params.league != null) game.league = spClean(params.league, 40).toLowerCase() || "general";
+    if (params.date != null) { const d = spDay(params.date); if (d) game.date = d; }
+    saveSportsState();
+    return { ok: true, result: { game: { ...game, winner: gameWinner(game) } } };
+  });
+
   registerLensAction("sports", "game-detail", (ctx, _a, params = {}) => {
     const s = getSportsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = spAid(ctx);

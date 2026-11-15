@@ -8,6 +8,7 @@ import {
   Coins, Trophy, X,
 } from 'lucide-react';
 import { QuestBoard } from './QuestBoard';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface Guild {
   id: string;
@@ -256,9 +257,9 @@ export function GuildsPanel({ onChanged }: { onChanged?: () => void }) {
 
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-          onClick={() => setShowCreate(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          onClick={() => setShowCreate(false)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <div className="w-full max-w-sm rounded-xl border border-zinc-800 bg-zinc-900 p-5"
-            onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-white">Create Guild</h3>
               <button onClick={() => setShowCreate(false)} aria-label="Close">

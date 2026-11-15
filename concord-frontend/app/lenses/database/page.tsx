@@ -124,7 +124,7 @@ export default function DatabaseLensPage() {
                 onClick={() => go(tab.id)}
                 aria-current={on ? 'page' : undefined}
                 className={cn(
-                  'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
+                  'inline-flex min-h-[40px] items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
                   on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
                 )}
               >

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Calendar, Plus, Loader2, Anchor, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { calendarDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 
@@ -16,6 +17,16 @@ export function DockAppointmentsPanel() {
   const [date, setDate] = useState(() => calendarDateKey());
   const [dockForm, setDockForm] = useState({ name: '', facility: '', kind: 'loading' });
   const [aptForm, setAptForm] = useState({ dockId: '', startTime: '09:00', durationMin: '60', truckNumber: '', kind: 'delivery' as 'pickup' | 'delivery' });
+  // FIX-logistics-009: find controls for the day's appointment list.
+  const [query, setQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'default' | 'time' | 'dock'>('default');
+  const visibleAppts = appts
+    .filter(a => {
+      const q = query.trim().toLowerCase();
+      if (!q) return true;
+      return [a.dockName, a.truckNumber, a.kind, a.status].some(x => (x || '').toLowerCase().includes(q));
+    })
+    .sort((a, b) => sortBy === 'time' ? a.startTime.localeCompare(b.startTime) : sortBy === 'dock' ? a.dockName.localeCompare(b.dockName) : 0);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -53,11 +64,18 @@ export function DockAppointmentsPanel() {
     } catch (e) { console.error('[Docks] book', e); }
   }
 
-  async function cancel(id: string) {
+  async function removeDock(id: string) {
     try {
-      await lensRun({ domain: 'logistics', action: 'dock-appointments-cancel', input: { id } });
+      await lensRun({ domain: 'logistics', action: 'docks-delete', input: { id } });
       await refresh();
-    } catch (e) { console.error('[Docks] cancel', e); }
+    } catch (e) { console.error('[Docks] delete', e); }
+  }
+
+  async function removeAppt(id: string) {
+    try {
+      await lensRun({ domain: 'logistics', action: 'dock-appointments-delete', input: { id } });
+      await refresh();
+    } catch (e) { console.error('[Docks] appointment delete', e); }
   }
 
   return (
@@ -73,6 +91,18 @@ export function DockAppointmentsPanel() {
         <input value={dockForm.name} onChange={e => setDockForm({ ...dockForm, name: e.target.value })} placeholder="Dock name" className="px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
         <input value={dockForm.facility} onChange={e => setDockForm({ ...dockForm, facility: e.target.value })} placeholder="Facility" className="px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
         <button onClick={addDock} className="px-3 py-1 rounded bg-amber-500/30 text-amber-300 hover:bg-amber-500/50 inline-flex items-center justify-center gap-1"><Anchor className="w-3 h-3" />Add dock</button>
+        {docks.map(d => (
+          <div key={d.id} className="col-span-2 sm:col-span-4 flex items-center gap-2 text-[11px] text-gray-300">
+            <input defaultValue={d.name} aria-label={`Rename dock ${d.name}`} onBlur={async (e) => {
+              const name = e.target.value.trim();
+              if (!name || name === d.name) return;
+              await lensRun({ domain: 'logistics', action: 'docks-update', input: { id: d.id, name } });
+              await refresh();
+            }} className="bg-transparent text-[11px] text-gray-100 border-b border-transparent focus:border-amber-500/40 outline-none w-28" />
+            <span className="truncate">{d.facility}</span>
+            <StickyDeleteConfirm onConfirm={() => removeDock(d.id)} armLabel="Delete" armAriaLabel={`Delete dock ${d.name}`} confirmLabel="Delete dock?" className="text-rose-300" />
+          </div>
+        ))}
       </div>
 
       <div className="p-3 border-b border-white/10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 text-xs">
@@ -89,14 +119,27 @@ export function DockAppointmentsPanel() {
         <button onClick={book} disabled={!aptForm.dockId} className="col-span-2 px-3 py-1 rounded bg-amber-500 text-black font-bold hover:bg-amber-400 disabled:opacity-40 inline-flex items-center justify-center gap-1"><Plus className="w-3 h-3" />Book</button>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2 px-3 py-2 border-b border-white/10">
+        <input aria-label="Search appointments" value={query} onChange={e => setQuery(e.target.value)} placeholder="Search dock, truck, kind…"
+          className="flex-1 min-w-[160px] px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <select aria-label="Sort appointments" value={sortBy} onChange={e => setSortBy(e.target.value as typeof sortBy)}
+          className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+          <option value="default">Delivered order</option>
+          <option value="time">Start time</option>
+          <option value="dock">Dock</option>
+        </select>
+      </div>
+
       <div className="max-h-80 overflow-y-auto">
         {loading ? (
           <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : appts.length === 0 ? (
           <div className="px-3 py-10 text-center text-xs text-gray-400"><Calendar className="w-6 h-6 mx-auto mb-2 opacity-30" />No appointments on {date}.</div>
+        ) : visibleAppts.length === 0 ? (
+          <div className="px-3 py-10 text-center text-xs text-gray-400">No appointments match the current search.</div>
         ) : (
           <ul className="divide-y divide-white/5">
-            {appts.map(a => (
+            {visibleAppts.map(a => (
               <li key={a.id} className={cn('px-3 py-2 hover:bg-white/[0.03] group flex items-center gap-3', a.status === 'cancelled' && 'opacity-50')}>
                 <div className="w-14 h-10 rounded bg-amber-500/15 flex flex-col items-center justify-center text-[10px] text-amber-300 font-mono">
                   <span className="font-bold">{a.startTime}</span>
@@ -109,7 +152,7 @@ export function DockAppointmentsPanel() {
                   </div>
                   <div className="text-[10px] text-gray-400">{a.truckNumber || '—'}</div>
                 </div>
-                {a.status === 'scheduled' && <button aria-label="Close" onClick={() => cancel(a.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400 hover:text-rose-300"><X className="w-3 h-3" /></button>}
+                <StickyDeleteConfirm onConfirm={() => removeAppt(a.id)} armLabel={<X className="w-3 h-3" />} armAriaLabel="Delete appointment" confirmLabel="Delete appointment?" className="p-1 text-rose-400 hover:text-rose-300" />
               </li>
             ))}
           </ul>

@@ -155,7 +155,7 @@ describe('ml flows', () => {
     expect(sent()).toContain('dataset-register');
     await press(/Cancel/);
     await press(/^Delete$/);
-    await press(/Click again to confirm/);
+    await press(/Delete ".+"\?/);
     expect(sent()).toContain('dataset-delete');
   });
 

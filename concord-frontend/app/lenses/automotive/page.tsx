@@ -79,6 +79,10 @@ export default function AutomotiveLensPage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [upcomingRenewals, setUpcomingRenewals] = useState<UpcomingRenewal[] | null>(null);
   const [view, setView] = useState<AutoView>('garage');
+  // The summary strip and renewals widget sit above GarageSection, whose
+  // mutations they must reflect without a reload — GarageSection bumps this
+  // epoch after every successful mutation and both fetches re-run.
+  const [garageEpoch, setGarageEpoch] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -87,7 +91,7 @@ export default function AutomotiveLensPage() {
       if (!cancelled && r.data?.ok) setSummary(r.data.result as DashboardSummary);
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [garageEpoch]);
 
   useEffect(() => {
     let cancelled = false;
@@ -101,7 +105,7 @@ export default function AutomotiveLensPage() {
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [garageEpoch]);
 
   return (
     <LensShell lensId="automotive" asMain={false}>
@@ -193,7 +197,7 @@ export default function AutomotiveLensPage() {
           </section>
         )}
 
-        <GarageSection />
+        <GarageSection onDataChanged={() => setGarageEpoch(e => e + 1)} />
         </>)}
 
         {view === 'service' && (

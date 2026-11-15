@@ -22,6 +22,7 @@ import {
   ListChecks, FileQuestion, Plus, Trash2, Check, Loader2, AlertTriangle,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { quizAttemptFromSubmit } from '@/components/classroom/quiz-attempt';
 import { ChartKit, TimelineView } from '@/components/viz';
 
@@ -169,6 +170,13 @@ function StreamTab({ cohortId, flash }: TabProps) {
     else flash('err', 'Announcement failed');
   };
 
+  // FIX-classroom-007: announcements gain a delete (stream-delete).
+  const delEntry = async (entryId: string) => {
+    const r = await run('stream-delete', { entryId });
+    if (r) { flash('ok', 'Announcement deleted'); void refresh(); }
+    else flash('err', 'Delete failed');
+  };
+
   const events = stream.map((e) => ({
     id: e.id, label: e.text, time: e.createdAt,
     tone: (e.kind === 'grade' ? 'good' : e.kind === 'assignment' ? 'info'
@@ -180,7 +188,7 @@ function StreamTab({ cohortId, flash }: TabProps) {
     <div className="space-y-3">
       <div className={cardCls}>
         <h4 className="text-xs font-bold text-cyan-300 uppercase tracking-wider mb-2">Announce</h4>
-        <textarea value={text} onChange={(e) => setText(e.target.value)} rows={2}
+        <textarea id="classroom-announce-text" name="announceText" value={text} onChange={(e) => setText(e.target.value)} rows={2}
           placeholder="Share something with the class…" className={inputCls} />
         <div className="mt-2">
           <button onClick={post} disabled={busy || !text.trim()} className={btnCls}>
@@ -202,8 +210,21 @@ function StreamTab({ cohortId, flash }: TabProps) {
             <li key={e.id} className="bg-zinc-900/60 border border-zinc-800 rounded p-2 text-xs">
               <div className="flex justify-between gap-2">
                 <span className="text-zinc-200">{e.text}</span>
-                <span className="text-[10px] text-zinc-400 whitespace-nowrap">
-                  {new Date(e.createdAt).toLocaleString()}
+                <span className="flex items-center gap-1.5 whitespace-nowrap">
+                  <span className="text-[10px] text-zinc-400">
+                    {new Date(e.createdAt).toLocaleString()}
+                  </span>
+                  {e.kind === 'announcement' && (
+                    <StickyDeleteConfirm
+                      onConfirm={() => void delEntry(e.id)}
+                      armLabel={<Trash2 className="w-3 h-3" />}
+                      armAriaLabel="Delete announcement"
+                      confirmLabel="Delete?"
+                      confirmAriaLabel="Confirm delete announcement"
+                      cancelAriaLabel="Cancel delete announcement"
+                      className="text-zinc-400 hover:text-red-400"
+                    />
+                  )}
                 </span>
               </div>
               <span className="text-[10px] font-mono text-cyan-500/80">{e.kind}</span>
@@ -218,6 +239,8 @@ function StreamTab({ cohortId, flash }: TabProps) {
 /* ── Assignments (create + list + submit + grade) ───────────────────── */
 function AssignmentsTab({ cohortId, flash }: TabProps) {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [other, setOther] = useState<Assignment[]>([]);
+  const [armedId, setArmedId] = useState<string | null>(null);
   const [form, setForm] = useState({ title: '', instructions: '', dueAt: '', points: '100', topic: '' });
   const [busy, setBusy] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -226,19 +249,35 @@ function AssignmentsTab({ cohortId, flash }: TabProps) {
   const [gradeForm, setGradeForm] = useState<{ subId: string; score: string; feedback: string } | null>(null);
 
   const refresh = useCallback(async () => {
-    const r = await run<{ assignments: Assignment[] }>('assignment-list',
+    const r = await run<{ assignments: Assignment[]; other?: Assignment[] }>('assignment-list',
       cohortId != null ? { cohortId } : {});
     setAssignments(r?.assignments ?? []);
+    setOther(r?.other ?? []);
   }, [cohortId]);
 
   useEffect(() => { void refresh(); }, [refresh]);
 
   const create = async () => {
-    if (!form.title.trim() || cohortId == null) { flash('err', 'Title + cohort required'); return; }
+    if (!form.title.trim() || cohortId == null) { flash('err', 'Assignment title is required.'); return; }
+    const points = form.points.trim() === '' ? undefined : Number(form.points);
+    if (points !== undefined && (!Number.isFinite(points) || points < 0 || points > 1000)) {
+      flash('err', 'Points must be a number from 0 to 1000.');
+      return;
+    }
+    const dueRaw = form.dueAt.trim();
+    let dueAt: string | undefined;
+    if (dueRaw) {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dueRaw)) dueAt = `${dueRaw}T23:59`;
+      else if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(dueRaw) && !Number.isNaN(Date.parse(dueRaw))) dueAt = dueRaw;
+      else {
+        flash('err', 'Due date needs a day and a time, like 2026-11-10T15:00.');
+        return;
+      }
+    }
     setBusy(true);
     const r = await run('assignment-create', {
       cohortId, title: form.title.trim(), instructions: form.instructions,
-      dueAt: form.dueAt || undefined, points: Number(form.points) || 100,
+      dueAt, points,
       topic: form.topic || undefined,
     });
     setBusy(false);
@@ -253,6 +292,17 @@ function AssignmentsTab({ cohortId, flash }: TabProps) {
     const r = await run('assignment-delete', { assignmentId: id });
     if (r) { flash('ok', 'Deleted'); void refresh(); if (openId === id) setOpenId(null); }
     else flash('err', 'Delete failed');
+  };
+
+  // FIX-classroom-007: submissions gain a delete (grade cascades server-side).
+  const delSubmission = async (submissionId: string, assignmentId: string) => {
+    const r = await run('submission-delete', { submissionId });
+    if (r) {
+      flash('ok', 'Submission deleted');
+      const sr = await run<{ submissions: Submission[] }>('submission-list', { assignmentId });
+      setSubmissions(sr?.submissions ?? []);
+      void refresh();
+    } else flash('err', 'Delete failed');
   };
 
   const openSubmissions = async (id: string) => {
@@ -297,15 +347,19 @@ function AssignmentsTab({ cohortId, flash }: TabProps) {
       <div className={cardCls}>
         <h4 className="text-xs font-bold text-cyan-300 uppercase tracking-wider mb-2">New assignment</h4>
         <div className="grid sm:grid-cols-2 gap-2">
-          <input className={inputCls} placeholder="Title" value={form.title}
+          <input id="classroom-assignment-title" name="title" className={inputCls} placeholder="Title" value={form.title}
             onChange={(e) => setForm({ ...form, title: e.target.value })} />
-          <input className={inputCls} placeholder="Topic (optional)" value={form.topic}
+          <input id="classroom-assignment-topic" name="topic" className={inputCls} placeholder="Topic (optional)" value={form.topic}
             onChange={(e) => setForm({ ...form, topic: e.target.value })} />
-          <input className={inputCls} type="datetime-local" value={form.dueAt}
-            onChange={(e) => setForm({ ...form, dueAt: e.target.value })} />
-          <input className={inputCls} type="number" min={0} max={1000} placeholder="Points" value={form.points}
+          <label className="block text-[10px] text-zinc-400">
+            Due
+            <input id="classroom-assignment-due" name="dueAt" className={inputCls} type="datetime-local" value={form.dueAt}
+              onChange={(e) => setForm({ ...form, dueAt: e.target.value })} />
+            <span className="mt-0.5 block">Leave blank for no due date. A day with no time is due at 11:59pm.</span>
+          </label>
+          <input id="classroom-assignment-points" name="points" className={inputCls} type="number" min={0} max={1000} placeholder="Points" value={form.points}
             onChange={(e) => setForm({ ...form, points: e.target.value })} />
-          <textarea className={`${inputCls} sm:col-span-2`} rows={2} placeholder="Instructions"
+          <textarea id="classroom-assignment-instructions" name="instructions" className={`${inputCls} sm:col-span-2`} rows={2} placeholder="Instructions"
             value={form.instructions}
             onChange={(e) => setForm({ ...form, instructions: e.target.value })} />
         </div>
@@ -317,7 +371,7 @@ function AssignmentsTab({ cohortId, flash }: TabProps) {
       </div>
 
       {assignments.length === 0 ? (
-        <p className="text-zinc-400 italic text-xs">No assignments yet.</p>
+        <p className="text-zinc-400 italic text-xs">No assignments in this cohort.</p>
       ) : assignments.map((a) => (
         <div key={a.id} className={cardCls}>
           <div className="flex justify-between gap-2 items-start">
@@ -336,10 +390,16 @@ function AssignmentsTab({ cohortId, flash }: TabProps) {
                 className="text-[10px] px-2 py-1 rounded bg-zinc-800 text-zinc-300 hover:bg-zinc-700">
                 {openId === a.id ? 'Hide' : 'Open'}
               </button>
-              <button aria-label="Delete" onClick={() => remove(a.id)}
-                className="text-[10px] px-1.5 py-1 rounded bg-rose-900/40 text-rose-300 hover:bg-rose-900/60">
-                <Trash2 className="w-3 h-3" />
-              </button>
+              <StickyDeleteConfirm
+                armed={armedId === a.id}
+                onArm={() => setArmedId(a.id)}
+                onCancel={() => setArmedId(null)}
+                onConfirm={() => void remove(a.id)}
+                armLabel={<Trash2 className="w-3 h-3" />}
+                confirmLabel={`Delete “${a.title}”?`}
+                armAriaLabel="Delete"
+                className="text-[10px] px-1.5 py-1 rounded bg-rose-900/40 text-rose-300 hover:bg-rose-900/60"
+              />
             </div>
           </div>
 
@@ -347,13 +407,13 @@ function AssignmentsTab({ cohortId, flash }: TabProps) {
             <div className="mt-3 border-t border-zinc-800 pt-3 space-y-2">
               <div className="bg-zinc-950/60 rounded p-2 space-y-1">
                 <div className="text-[10px] font-bold text-zinc-400 uppercase">Add submission</div>
-                <textarea className={inputCls} rows={2} placeholder="Submission content"
+                <textarea id="classroom-submission-content" name="content" className={inputCls} rows={2} placeholder="Submission content"
                   value={subForm.content}
                   onChange={(e) => setSubForm({ ...subForm, content: e.target.value })} />
                 <div className="grid grid-cols-2 gap-1">
-                  <input className={inputCls} placeholder="Student id (optional)" value={subForm.studentId}
+                  <input id="classroom-submission-student" name="studentId" className={inputCls} placeholder="Student id (optional)" value={subForm.studentId}
                     onChange={(e) => setSubForm({ ...subForm, studentId: e.target.value })} />
-                  <input className={inputCls} placeholder="DTU id (optional)" value={subForm.dtuId}
+                  <input id="classroom-submission-dtu" name="dtuId" className={inputCls} placeholder="DTU id (optional)" value={subForm.dtuId}
                     onChange={(e) => setSubForm({ ...subForm, dtuId: e.target.value })} />
                 </div>
                 <button onClick={() => submit(a.id)} className={btnCls}>Submit work</button>
@@ -365,10 +425,21 @@ function AssignmentsTab({ cohortId, flash }: TabProps) {
                 <div key={s.id} className="bg-zinc-950/60 rounded p-2 text-xs">
                   <div className="flex justify-between gap-2">
                     <span className="font-mono text-[10px] text-zinc-400">{s.studentId}</span>
+                    <span className="flex items-center gap-1.5">
+                    <StickyDeleteConfirm
+                      onConfirm={() => void delSubmission(s.id, a.id)}
+                      armLabel={<Trash2 className="w-3 h-3" />}
+                      armAriaLabel={`Delete submission by ${s.studentId}`}
+                      confirmLabel="Delete?"
+                      confirmAriaLabel="Confirm delete submission"
+                      cancelAriaLabel="Cancel delete submission"
+                      className="text-zinc-400 hover:text-red-400"
+                    />
                     <span className={`text-[10px] px-1.5 rounded ${
                       s.status === 'returned' ? 'bg-emerald-900/50 text-emerald-300'
                         : s.status === 'graded' ? 'bg-amber-900/50 text-amber-300'
                         : 'bg-zinc-800 text-zinc-400'}`}>{s.status}</span>
+                    </span>
                   </div>
                   <div className="text-zinc-300 mt-0.5">{s.content}</div>
                   {s.grade ? (
@@ -378,10 +449,10 @@ function AssignmentsTab({ cohortId, flash }: TabProps) {
                     </div>
                   ) : gradeForm?.subId === s.id ? (
                     <div className="mt-1.5 flex gap-1 items-center flex-wrap">
-                      <input className={`${inputCls} w-20`} type="number" placeholder="Score"
+                      <input id="classroom-grade-score" name="score" className={`${inputCls} w-20`} type="number" placeholder="Score"
                         value={gradeForm.score}
                         onChange={(e) => setGradeForm({ ...gradeForm, score: e.target.value })} />
-                      <input className={`${inputCls} flex-1 min-w-[8rem]`} placeholder="Feedback"
+                      <input id="classroom-grade-feedback" name="feedback" className={`${inputCls} flex-1 min-w-[8rem]`} placeholder="Feedback"
                         value={gradeForm.feedback}
                         onChange={(e) => setGradeForm({ ...gradeForm, feedback: e.target.value })} />
                       <button onClick={() => grade(a.id)} className={btnCls}>Return</button>
@@ -398,6 +469,30 @@ function AssignmentsTab({ cohortId, flash }: TabProps) {
           )}
         </div>
       ))}
+      {other.length > 0 && (
+        <div className="mt-3">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-1.5">From other or archived cohorts</h4>
+          {other.map((a) => (
+            <div key={a.id} className={cardCls}>
+              <div className="flex justify-between gap-2 items-start">
+                <div>
+                  <div className="text-sm font-semibold text-zinc-100">{a.title}</div>
+                  <div className="text-[10px] text-zinc-400">cohort #{a.cohortId}</div>
+                </div>
+                <StickyDeleteConfirm
+                  armed={armedId === a.id}
+                  onArm={() => setArmedId(a.id)}
+                  onCancel={() => setArmedId(null)}
+                  onConfirm={() => void remove(a.id)}
+                  armLabel="Delete"
+                  confirmLabel={`Delete “${a.title}”?`}
+                  className="text-[11px] text-rose-300 underline"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -481,13 +576,15 @@ function GradebookTab({ cohortId, flash }: TabProps) {
 /* ── Materials ──────────────────────────────────────────────────────── */
 function MaterialsTab({ cohortId, flash }: TabProps) {
   const [byTopic, setByTopic] = useState<Record<string, Material[]>>({});
+  const [other, setOther] = useState<Material[]>([]);
   const [form, setForm] = useState({ title: '', kind: 'link', url: '', topic: '', notes: '' });
   const [busy, setBusy] = useState(false);
 
   const refresh = useCallback(async () => {
-    const r = await run<{ byTopic: Record<string, Material[]> }>('material-list',
+    const r = await run<{ byTopic: Record<string, Material[]>; other?: Material[] }>('material-list',
       cohortId != null ? { cohortId } : {});
     setByTopic(r?.byTopic ?? {});
+    setOther(r?.other ?? []);
   }, [cohortId]);
 
   useEffect(() => { void refresh(); }, [refresh]);
@@ -520,9 +617,9 @@ function MaterialsTab({ cohortId, flash }: TabProps) {
       <div className={cardCls}>
         <h4 className="text-xs font-bold text-cyan-300 uppercase tracking-wider mb-2">Add material</h4>
         <div className="grid sm:grid-cols-2 gap-2">
-          <input className={inputCls} placeholder="Title" value={form.title}
+          <input id="classroom-material-title" name="title" className={inputCls} placeholder="Title" value={form.title}
             onChange={(e) => setForm({ ...form, title: e.target.value })} />
-          <select className={inputCls} value={form.kind}
+          <select id="classroom-material-kind" name="kind" className={inputCls} value={form.kind}
             onChange={(e) => setForm({ ...form, kind: e.target.value })}>
             <option value="link">Link</option>
             <option value="book">Book</option>
@@ -530,11 +627,11 @@ function MaterialsTab({ cohortId, flash }: TabProps) {
             <option value="file">File</option>
             <option value="note">Note</option>
           </select>
-          <input className={inputCls} placeholder="URL (optional)" value={form.url}
+          <input id="classroom-material-url" name="url" className={inputCls} placeholder="URL (optional)" value={form.url}
             onChange={(e) => setForm({ ...form, url: e.target.value })} />
-          <input className={inputCls} placeholder="Topic (optional)" value={form.topic}
+          <input id="classroom-material-topic" name="topic" className={inputCls} placeholder="Topic (optional)" value={form.topic}
             onChange={(e) => setForm({ ...form, topic: e.target.value })} />
-          <textarea className={`${inputCls} sm:col-span-2`} rows={2} placeholder="Notes" value={form.notes}
+          <textarea id="classroom-material-notes" name="notes" className={`${inputCls} sm:col-span-2`} rows={2} placeholder="Notes" value={form.notes}
             onChange={(e) => setForm({ ...form, notes: e.target.value })} />
         </div>
         <div className="mt-2">
@@ -559,15 +656,25 @@ function MaterialsTab({ cohortId, flash }: TabProps) {
                   ) : <span className="text-zinc-200">{m.title}</span>}
                   {m.notes && <div className="text-[10px] text-zinc-400 mt-0.5">{m.notes}</div>}
                 </div>
-                <button aria-label="Delete" onClick={() => remove(m.id)}
-                  className="text-[10px] px-1.5 py-0.5 rounded bg-rose-900/40 text-rose-300 hover:bg-rose-900/60">
-                  <Trash2 className="w-3 h-3" />
-                </button>
+                <StickyDeleteConfirm onConfirm={() => void remove(m.id)} armAriaLabel={`Delete ${m.title}`} confirmAriaLabel={`Confirm delete ${m.title}`} className="text-[10px] px-1.5 py-0.5 rounded bg-rose-900/40 text-rose-300 hover:bg-rose-900/60" armLabel={<Trash2 className="w-3 h-3" />} />
               </li>
             ))}
           </ul>
         </div>
       ))}
+      {other.length > 0 && (
+        <div className={cardCls}>
+          <h4 className="text-xs font-bold text-zinc-300 uppercase tracking-wider mb-1.5">From other or archived cohorts</h4>
+          <ul className="space-y-1">
+            {other.map((m) => (
+              <li key={m.id} className="flex justify-between items-start gap-2 text-xs">
+                <span className="text-zinc-200">{m.title} <span className="text-zinc-500">cohort #{m.cohortId}</span></span>
+                <StickyDeleteConfirm onConfirm={() => void remove(m.id)} armLabel="Delete" confirmLabel={`Delete “${m.title}”?`} armAriaLabel={`Delete ${m.title}`} confirmAriaLabel={`Confirm delete ${m.title}`} className="text-[10px] text-rose-300" />
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
@@ -579,6 +686,7 @@ function TodoTab({ cohortId }: { cohortId: number | null }) {
     counts: { upcoming: number; missing: number; done: number };
   } | null>(null);
   const [studentId, setStudentId] = useState('');
+  const [armedId, setArmedId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const r = await run<{
@@ -602,9 +710,24 @@ function TodoTab({ cohortId }: { cohortId: number | null }) {
           {items.map((i) => (
             <li key={i.assignmentId} className="bg-zinc-950/60 rounded p-2 text-xs flex justify-between gap-2">
               <span className="text-zinc-200">{i.title}</span>
-              <span className="text-[10px] text-zinc-400 whitespace-nowrap">
-                {i.score != null ? `${i.score} pts`
-                  : i.dueAt ? `due ${new Date(i.dueAt).toLocaleDateString()}` : `${i.points} pts`}
+              <span className="flex items-center gap-2">
+                <span className="text-[10px] text-zinc-400 whitespace-nowrap">
+                  {i.score != null ? `${i.score} pts`
+                    : i.dueAt ? `due ${new Date(i.dueAt).toLocaleDateString()}` : `${i.points} pts`}
+                </span>
+                <StickyDeleteConfirm
+                  armed={armedId === i.assignmentId}
+                  onArm={() => setArmedId(i.assignmentId)}
+                  onCancel={() => setArmedId(null)}
+                  onConfirm={async () => {
+                    await run('assignment-delete', { assignmentId: i.assignmentId });
+                    setArmedId(null);
+                    void refresh();
+                  }}
+                  armLabel="Delete"
+                  confirmLabel={`Delete “${i.title}”?`}
+                  className="text-[11px] text-rose-300 underline"
+                />
               </span>
             </li>
           ))}
@@ -616,7 +739,7 @@ function TodoTab({ cohortId }: { cohortId: number | null }) {
   return (
     <div className="space-y-3">
       <div className={`${cardCls} flex gap-2 items-center`}>
-        <input className={inputCls} placeholder="View as student id (blank = me)"
+        <input id="classroom-viewas-student" name="studentId" className={inputCls} placeholder="View as student id (blank = me)"
           value={studentId} onChange={(e) => setStudentId(e.target.value)} />
         <button onClick={() => void refresh()} className={btnCls}>View</button>
       </div>
@@ -675,6 +798,12 @@ function QuizzesTab({ cohortId, flash }: TabProps) {
     } else flash('err', 'Quiz create failed — check question prompts/options');
   };
 
+  const delQuiz = async (quizId: string) => {
+    const r = await run('quiz-delete', { quizId });
+    if (r) { flash('ok', 'Quiz deleted'); void refresh(); }
+    else flash('err', 'Delete failed');
+  };
+
   const take = async (q: Quiz) => {
     const r = await run<{ quiz: Quiz }>('quiz-get', { quizId: q.id });
     if (r?.quiz) { setTaking(r.quiz); setAnswers({}); setResult(null); }
@@ -699,19 +828,19 @@ function QuizzesTab({ cohortId, flash }: TabProps) {
     <div className="space-y-3">
       <div className={cardCls}>
         <h4 className="text-xs font-bold text-cyan-300 uppercase tracking-wider mb-2">Quiz builder</h4>
-        <input className={inputCls} placeholder="Quiz title" value={title}
+        <input id="classroom-quiz-title" name="title" className={inputCls} placeholder="Quiz title" value={title}
           onChange={(e) => setTitle(e.target.value)} />
         <div className="mt-2 space-y-2">
           {questions.map((q, i) => (
             <div key={i} className="bg-zinc-950/60 rounded p-2 space-y-1">
               <div className="flex gap-1">
-                <select className={`${inputCls} w-36`} value={q.kind}
+                <select id={`classroom-quiz-q${i}-kind`} name={`q${i}Kind`} className={`${inputCls} w-36`} value={q.kind}
                   onChange={(e) => setQ(i, { kind: e.target.value })}>
                   <option value="multiple_choice">Multiple choice</option>
                   <option value="true_false">True / false</option>
                   <option value="short_answer">Short answer</option>
                 </select>
-                <input className={`${inputCls} w-20`} type="number" min={1} placeholder="Points"
+                <input id={`classroom-quiz-q${i}-points`} name={`q${i}Points`} className={`${inputCls} w-20`} type="number" min={1} placeholder="Points"
                   value={q.points} onChange={(e) => setQ(i, { points: e.target.value })} />
                 {questions.length > 1 && (
                   <button aria-label="Delete" onClick={() => setQuestions((qs) => qs.filter((_, idx) => idx !== i))}
@@ -720,12 +849,12 @@ function QuizzesTab({ cohortId, flash }: TabProps) {
                   </button>
                 )}
               </div>
-              <input className={inputCls} placeholder={`Question ${i + 1} prompt`} value={q.prompt}
+              <input id={`classroom-quiz-q${i}-prompt`} name={`q${i}Prompt`} className={inputCls} placeholder={`Question ${i + 1} prompt`} value={q.prompt}
                 onChange={(e) => setQ(i, { prompt: e.target.value })} />
               {q.kind === 'multiple_choice' && (
                 <div className="grid grid-cols-2 gap-1">
                   {q.options.map((opt, oi) => (
-                    <input key={oi} className={inputCls} placeholder={`Option ${oi + 1}`} value={opt}
+                    <input key={oi} id={`classroom-quiz-q${i}-option-${oi}`} name={`q${i}Option${oi}`} className={inputCls} placeholder={`Option ${oi + 1}`} value={opt}
                       onChange={(e) => setQ(i, {
                         options: q.options.map((o, idx) => (idx === oi ? e.target.value : o)),
                       })} />
@@ -734,7 +863,7 @@ function QuizzesTab({ cohortId, flash }: TabProps) {
                     className="text-[10px] text-cyan-400 hover:underline text-left">+ option</button>
                 </div>
               )}
-              <input className={inputCls}
+              <input id={`classroom-quiz-q${i}-answer`} name={`q${i}CorrectAnswer`} className={inputCls}
                 placeholder={q.kind === 'true_false' ? 'Correct answer (True / False)' : 'Correct answer'}
                 value={q.correctAnswer}
                 onChange={(e) => setQ(i, { correctAnswer: e.target.value })} />
@@ -764,7 +893,19 @@ function QuizzesTab({ cohortId, flash }: TabProps) {
                 {q.questionCount ?? q.questions?.length ?? 0} questions · {q.totalPoints} pts · {q.attemptCount ?? 0} attempts
               </div>
             </div>
-            <button onClick={() => take(q)} className={btnCls}>Take</button>
+            <span className="flex items-center gap-1.5">
+              <button onClick={() => take(q)} className={btnCls}>Take</button>
+              {/* FIX-classroom-007: quizzes gain a delete (attempts cascade server-side). */}
+              <StickyDeleteConfirm
+                onConfirm={() => void delQuiz(q.id)}
+                armLabel={<Trash2 className="w-3 h-3" />}
+                armAriaLabel={`Delete quiz ${q.title}`}
+                confirmLabel="Delete quiz?"
+                confirmAriaLabel="Confirm delete quiz"
+                cancelAriaLabel="Cancel delete quiz"
+                className="text-[10px] px-1.5 py-0.5 rounded bg-rose-900/40 text-rose-300 hover:bg-rose-900/60"
+              />
+            </span>
           </div>
         </div>
       ))}
@@ -777,14 +918,14 @@ function QuizzesTab({ cohortId, flash }: TabProps) {
               <div key={q.id} className="bg-zinc-950/60 rounded p-2">
                 <div className="text-xs text-zinc-200 mb-1">{i + 1}. {q.prompt} <span className="text-zinc-400">({q.points} pt)</span></div>
                 {q.kind === 'short_answer' ? (
-                  <input className={inputCls} placeholder="Your answer"
+                  <input id={`classroom-quiz-take-${q.id}-answer`} name="answer" className={inputCls} placeholder="Your answer"
                     value={answers[q.id] ?? ''}
                     onChange={(e) => setAnswers({ ...answers, [q.id]: e.target.value })} />
                 ) : (
                   <div className="flex flex-col gap-0.5">
-                    {(q.options ?? []).map((opt) => (
+                    {(q.options ?? []).map((opt, oi) => (
                       <label key={opt} className="flex items-center gap-1.5 text-xs text-zinc-300 cursor-pointer">
-                        <input type="radio" name={q.id} checked={answers[q.id] === opt}
+                        <input id={`classroom-quiz-take-${q.id}-${oi}`} type="radio" name={q.id} checked={answers[q.id] === opt}
                           onChange={() => setAnswers({ ...answers, [q.id]: opt })} />
                         {opt}
                       </label>

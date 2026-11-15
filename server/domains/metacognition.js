@@ -938,6 +938,23 @@ export default function registerMetacognitionActions(registerLensAction) {
         : [];
       const note = mcClean(params.note, 2000);
       if (answers.length === 0 && !note) return { ok: false, error: "reflection requires at least one answer or a note" };
+      // FIX-metacognition-001 (edit leg): saving with an id updates the
+      // caller's OWN reflection in place — previously reflections were
+      // permanent: no edit and no delete existed anywhere. An update
+      // keeps createdAt and does not touch the streak (it is not a new
+      // reflection day) or the decision link.
+      const editId = mcClean(params.id, 80);
+      if (editId) {
+        const mine = mcReflections(m, userId);
+        const existing = mine.find((r) => r.id === editId);
+        if (!existing) return { ok: false, error: "reflection not found" };
+        existing.title = mcClean(params.title, 200) || existing.title;
+        existing.answers = answers;
+        existing.note = note;
+        existing.editedAt = new Date().toISOString();
+        saveMeta();
+        return { ok: true, result: { reflection: existing, updated: true } };
+      }
       const reflection = {
         id: mcId("ref"),
         decisionId: mcClean(params.decisionId, 80) || null,
@@ -976,6 +993,30 @@ export default function registerMetacognitionActions(registerLensAction) {
       const m = getMetaState(); if (!m) return { ok: false, error: "STATE unavailable" };
       const list = mcReflections(m, mcActor(ctx)).slice().sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1));
       return { ok: true, result: { reflections: list, total: list.length } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  /**
+   * reflectionDelete — remove one of the caller's OWN reflections
+   * (FIX-metacognition-001, delete leg). Scoped to the caller's list:
+   * an id belonging to another user reads as not found. A decision
+   * whose reflection link pointed at the removed record is unlinked.
+   */
+  registerLensAction("metacognition", "reflectionDelete", (ctx, _a, params = {}) => {
+    try {
+      const m = getMetaState(); if (!m) return { ok: false, error: "STATE unavailable" };
+      const userId = mcActor(ctx);
+      const id = mcClean(params.id, 80);
+      if (!id) return { ok: false, error: "reflection id required" };
+      const list = mcReflections(m, userId);
+      const idx = list.findIndex((r) => r.id === id);
+      if (idx < 0) return { ok: false, error: "reflection not found" };
+      list.splice(idx, 1);
+      for (const d of mcDecisions(m, userId)) {
+        if (d.reflection === id) d.reflection = null;
+      }
+      saveMeta();
+      return { ok: true, result: { removed: id, remaining: list.length } };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
 

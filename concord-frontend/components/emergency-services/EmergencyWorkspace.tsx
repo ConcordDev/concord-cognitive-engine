@@ -8,6 +8,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useLensStatePersistence } from '@/lib/lens-state-persistence';
 import { cn } from '@/lib/utils';
+import { onRovingTabsKeyDown, rovingTabIndex } from '@/lib/a11y/roving-tabs';
 import { LimitationNotice } from '@/components/lens/LimitationNotice';
 import { AgencyMutualAidPanel } from './AgencyMutualAidPanel';
 import { CADConsole } from './CADConsole';
@@ -97,7 +98,7 @@ export function EmergencyWorkspace() {
       <header>
         <h1 className="font-vault mt-1 text-4xl leading-tight text-zinc-100 sm:text-5xl">Emergency Services</h1>
         {boardOpened && dashboard && (
-          <p className="mt-2 text-sm text-zinc-500">
+          <p className="mt-2 text-sm text-zinc-400">
             {dashboard.openIncidents} open · {dashboard.availableUnits} available · {dashboard.units} rostered
           </p>
         )}
@@ -109,7 +110,7 @@ export function EmergencyWorkspace() {
       <LimitationNotice register="emergency" className="mt-4" />
 
       {loading ? (
-        <div role="status" aria-live="polite" className="flex min-h-[60vh] items-center justify-center gap-2 text-sm text-zinc-500">
+        <div role="status" aria-live="polite" className="flex min-h-[60vh] items-center justify-center gap-2 text-sm text-zinc-400">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading the call board...
         </div>
       ) : loadError ? (
@@ -123,8 +124,8 @@ export function EmergencyWorkspace() {
         <EmptyCallBoard onOpen={openBoard} />
       ) : (
         <div className="mt-8 grid gap-6 lg:grid-cols-[9rem_minmax(0,1fr)]">
-          <nav aria-label="Call board tools" className="flex gap-1 overflow-x-auto border-b border-white/10 pb-2 lg:flex-col lg:border-b-0 lg:border-r lg:pb-0 lg:pr-4">
-            {TOOLS.map((item) => {
+          <nav aria-label="Call board tools" onKeyDown={onRovingTabsKeyDown} className="flex gap-1 overflow-x-auto border-b border-white/10 pb-2 lg:flex-col lg:border-b-0 lg:border-r lg:pb-0 lg:pr-4">
+            {TOOLS.map((item, index) => {
               const Icon = item.icon;
               const active = item.id === tool;
               return (
@@ -133,9 +134,10 @@ export function EmergencyWorkspace() {
                   type="button"
                   onClick={() => selectTool(item.id)}
                   aria-current={active ? 'page' : undefined}
+                  tabIndex={rovingTabIndex(active, index, true)}
                   className={cn(
                     'flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors',
-                    active ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-200',
+                    active ? 'bg-white/10 text-zinc-50' : 'text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-200',
                   )}
                 >
                   <Icon className="h-4 w-4" />

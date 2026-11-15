@@ -47,6 +47,8 @@ const ERROR_COPY: Record<string, string> = {
   auth_required: 'Sign in to instantiate a fork preview.',
   missing_input: 'Enter at least one DTU id to fork.',
   fork_not_found: 'No fork object found for that id.',
+  dtu_not_found: 'One or more of those DTU ids do not exist — check the ids and try again.',
+  unknown_error: 'The fork preview failed — try again.',
   forbidden: "You can only preview forks you own.",
   fork_bound_exceeded: 'Too many DTUs — a fork is a bounded, hand-picked slice, not a full corpus mirror.',
   fork_create_failed: 'Could not create the fork object.',

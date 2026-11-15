@@ -4,6 +4,7 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { assessPublicUrl, fetchPublicUrl, PUBLIC_URL_BLOCKED } from "../lib/public-fetch.js";
+import { APPMAKER_PREVIEW_RUNTIME, APPMAKER_RUNTIME_VERSION } from "../lib/appmaker-preview-runtime.js";
 
 export default function registerAppmakerActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -611,6 +612,19 @@ export default function registerAppmakerActions(registerLensAction) {
         w: Number.isFinite(+el.w) ? +el.w : 120,
         h: Number.isFinite(+el.h) ? +el.h : 40,
         props: typeof el.props === "object" && el.props ? el.props : {},
+        // FIX-app-maker-001: the save mapping used to rebuild each element
+        // from geometry+props only, silently stripping its data binding —
+        // a saved canvas came back with every binding gone. Preserve a
+        // sanitized binding.
+        ...(el.binding && typeof el.binding === "object" && (el.binding.kind === "table" || el.binding.kind === "connector")
+          ? { binding: {
+              kind: el.binding.kind,
+              refId: amClean(el.binding.refId || "", 80),
+              label: amClean(el.binding.label || "", 120),
+              ...(typeof el.binding.query === "string" ? { query: el.binding.query.slice(0, 500) } : {}),
+              ...(typeof el.binding.boundAt === "string" ? { boundAt: el.binding.boundAt } : {}),
+            } }
+          : {}),
       }));
       if (typeof params?.name === "string") page.name = amClean(params.name, 60);
       proj.updatedAt = amNow();
@@ -891,20 +905,194 @@ export default function registerAppmakerActions(registerLensAction) {
         }
       }
 
-      const body = (page.elements || []).map(renderEl).join("\n");
-      const html = `<!doctype html><html><head><meta charset="utf-8"><title>${esc(proj.name)} — ${esc(page.name)}</title></head>` +
+      // FIX-app-maker-001 (S1, display leg): surface each element's data
+      // binding as a caption under its box. Bindings resolve LIVE from the
+      // project (a renamed table shows its new name; a removed source names
+      // itself removed instead of posing as live). Tables are schema-only
+      // in this domain — the caption carries the table's field names, not
+      // invented rows. Unbound elements get no caption and render exactly
+      // as before.
+      function boundCaption(el) {
+        const b = el.binding;
+        if (!b || typeof b !== "object" || !b.refId) return "";
+        let text = null;
+        if (b.kind === "table") {
+          const tbl = (proj.dataModel?.tables || []).find((t) => t.id === b.refId);
+          if (tbl) {
+            const fields = (tbl.fields || []).map((f) => f?.name).filter(Boolean).slice(0, 12);
+            text = `Data: ${tbl.name}${fields.length ? ` — ${fields.join(", ")}` : ""}`;
+          }
+        } else if (b.kind === "connector") {
+          const conn = (proj.connectors || []).find((c) => c.id === b.refId);
+          if (conn) text = `Data: ${conn.name} — ${conn.kind} · ${conn.method}`;
+        }
+        if (text === null) text = `Data: ${b.label || "source"} — source removed`;
+        const top = (Number.isFinite(+el.y) ? +el.y : 0) + (Number.isFinite(+el.h) ? +el.h : 40) + 2;
+        const left = Number.isFinite(+el.x) ? +el.x : 0;
+        const width = Number.isFinite(+el.w) ? +el.w : 120;
+        return `\n<div data-binding-caption="1" data-caption-for="${esc(el.id)}" style="position:absolute;left:${left}px;top:${top}px;width:${width}px;font:10px system-ui;color:#67e8f9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(text)}</div>`;
+      }
+
+      // FIX-app-maker-001 (S2): every element root carries its id so the
+      // preview runtime can attach behaviour; every page renders into its
+      // own container (only the requested page visible without JS — the
+      // runtime toggles containers for in-preview navigation).
+      const renderTagged = (el) => renderEl(el).replace(/^<(\w+)/, `<$1 data-el-id="${esc(el.id)}"`);
+      const pageBlock = (p) => {
+        const inner = (p.elements || []).map((el) => renderTagged(el) + boundCaption(el)).join("\n");
+        const hidden = p.id === page.id ? "" : "display:none;";
+        return `<div data-am-page="${esc(p.id)}" style="position:relative;width:100%;min-height:100vh;${hidden}">${inner || '<p style="color:#64748b;padding:40px;font:14px system-ui;">Empty page — drag elements onto the canvas.</p>'}</div>`;
+      };
+      const body = proj.pages.map(pageBlock).join("\n");
+
+      // The bootstrap: the project's own declarative content as DATA (the
+      // runtime interprets it; user content is never emitted as code).
+      // Connectors are reduced to id/name/kind/method — endpoints and
+      // credential material never enter the preview document.
+      const bootstrap = {
+        v: 1,
+        runtime: APPMAKER_RUNTIME_VERSION,
+        projectId: proj.id,
+        pageId: page.id,
+        pages: proj.pages.map((p) => ({
+          id: p.id, name: p.name, route: p.route,
+          elements: (p.elements || []).map((el) => ({
+            id: el.id, type: el.type, props: el.props || {},
+            ...(el.binding ? { binding: el.binding } : {}),
+          })),
+        })),
+        workflows: (proj.workflows || []).filter((w) => w.enabled !== false).map((w) => ({
+          id: w.id, name: w.name, trigger: w.trigger,
+          steps: (w.steps || []).map((s) => ({ action: s.action, target: s.target || "", config: s.config || {} })),
+        })),
+        tables: (proj.dataModel?.tables || []).map((t) => ({
+          id: t.id, name: t.name,
+          fields: (t.fields || []).map((f) => ({ name: f.name, type: f.type })),
+        })),
+        connectors: (proj.connectors || []).map((c) => ({ id: c.id, name: c.name, kind: c.kind, method: c.method })),
+      };
+      const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, "\\u003c");
+      const csp = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src https: data:; connect-src 'none'; form-action 'none'";
+      const html = `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${csp}"><title>${esc(proj.name)} — ${esc(page.name)}</title></head>` +
         `<body style="margin:0;background:#020617;font-family:system-ui;min-height:100vh;">` +
-        `<div style="position:relative;width:100%;min-height:100vh;">${body || '<p style="color:#64748b;padding:40px;font:14px system-ui;">Empty page — drag elements onto the canvas.</p>'}</div>` +
+        `<div style="position:relative;width:100%;min-height:100vh;">${body}</div>` +
+        `<script type="application/json" id="am-bootstrap">${bootstrapJson}</script>` +
+        `<script>${APPMAKER_PREVIEW_RUNTIME}</script>` +
         `</body></html>`;
 
       return {
         ok: true,
         result: {
           html,
+          runtime: bootstrap,
           page: { id: page.id, name: page.name, route: page.route, elementCount: (page.elements || []).length },
           pages: proj.pages.map((p) => ({ id: p.id, name: p.name, route: p.route })),
         },
       };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // ─── Preview data store (FIX-app-maker-001 S4) ────────────────────
+  // The F1 data copy, concretely: app-maker tables are schema-only (the
+  // domain holds no row records), so the preview copy is a SESSION-SCOPED
+  // EPHEMERAL store. Rows exist only inside a preview session, are created
+  // only by the preview's own table actions, and live in a module-level
+  // Map — never in the persisted app state, never touching project data.
+  const previewSessions = new Map(); // `${userId}:${projectId}:${sessionId}` -> { tables: Map<name, rows[]>, touchedAt }
+  const PREVIEW_ROW_CAP = 500;
+  const PREVIEW_SESSIONS_PER_USER = 50;
+  const PREVIEW_SESSION_IDLE_MS = 30 * 60 * 1000;
+
+  function previewSessionFor(userId, projectId, sessionId, create) {
+    const now = Date.now();
+    for (const [key, sess] of previewSessions) {
+      if (now - sess.touchedAt > PREVIEW_SESSION_IDLE_MS) previewSessions.delete(key);
+    }
+    const key = `${userId}:${projectId}:${sessionId}`;
+    let sess = previewSessions.get(key);
+    if (!sess && create) {
+      const mine = [...previewSessions.keys()].filter((k) => k.startsWith(`${userId}:`));
+      if (mine.length >= PREVIEW_SESSIONS_PER_USER) previewSessions.delete(mine[0]);
+      sess = { tables: new Map(), touchedAt: now };
+      previewSessions.set(key, sess);
+    }
+    if (sess) sess.touchedAt = now;
+    return sess || null;
+  }
+
+  function cleanPreviewRow(tbl, values) {
+    const fields = new Map((tbl.fields || []).map((f) => [f.name, f]));
+    const row = {};
+    for (const [k, v] of Object.entries(values || {})) {
+      if (k === "id" || k === "createdAt" || k === "updatedAt") continue;
+      if (!fields.has(k)) return { error: `unknown field '${k}' for table '${tbl.name}'` };
+      if (typeof v === "string" && v.length > 5000) return { error: `field '${k}' is too long (5000 characters max)` };
+      if (v !== null && !["string", "number", "boolean"].includes(typeof v)) return { error: `field '${k}' must be a string, number or boolean` };
+      row[k] = v;
+    }
+    if (JSON.stringify(row).length > 16384) return { error: "row is too large (16 KB max)" };
+    return { row };
+  }
+
+  /**
+   * preview.bridge — one table action from the preview frame, relayed by
+   * the Studio parent under the owner's session (S3). Re-validates
+   * everything here: the frame's payload is untrusted by construction.
+   * Returns the table's full row set so the runtime can re-render.
+   */
+  registerLensAction("app-maker", "previewBridge", (ctx, artifact, params) => {
+    try {
+      const s = getAppState();
+      const userId = amActor(ctx);
+      const proj = findProject(s, userId, params?.projectId);
+      if (!proj) return { ok: false, error: "project_not_found" };
+      const sessionId = String(params?.sessionId || "");
+      if (!sessionId || sessionId.length > 64 || !/^[A-Za-z0-9_-]+$/.test(sessionId)) {
+        return { ok: false, error: "a valid preview session id is required" };
+      }
+      const action = String(params?.action || "");
+      if (!["create_row", "update_row", "delete_row"].includes(action)) {
+        return { ok: false, error: `'${action}' is not a preview table action` };
+      }
+      const tableName = String(params?.table || "");
+      const tbl = (proj.dataModel?.tables || []).find((t) => t.name === tableName || t.id === tableName);
+      if (!tbl) return { ok: false, error: `no table named '${tableName}' in this app` };
+      const config = params?.config && typeof params.config === "object" && !Array.isArray(params.config) ? params.config : {};
+      const sess = previewSessionFor(userId, proj.id, sessionId, true);
+      if (!sess.tables.has(tbl.name)) sess.tables.set(tbl.name, []);
+      const rows = sess.tables.get(tbl.name);
+
+      if (action === "create_row") {
+        if (rows.length >= PREVIEW_ROW_CAP) return { ok: false, error: `preview table '${tbl.name}' is full (${PREVIEW_ROW_CAP} rows)` };
+        const values = config.values && typeof config.values === "object" && !Array.isArray(config.values) ? config.values : config;
+        const { row, error } = cleanPreviewRow(tbl, values);
+        if (error) return { ok: false, error };
+        const stored = { id: amId("row"), ...row, createdAt: amNow() };
+        rows.push(stored);
+        return { ok: true, result: { table: tbl.name, row: stored, rows: [...rows] } };
+      }
+      const rowId = String(config.id || "");
+      const idx = rows.findIndex((r) => r.id === rowId);
+      if (!rowId || idx === -1) return { ok: false, error: `no row '${rowId || "(missing id)"}' in preview table '${tbl.name}'` };
+      if (action === "update_row") {
+        const values = config.values && typeof config.values === "object" && !Array.isArray(config.values) ? config.values : config;
+        const { row, error } = cleanPreviewRow(tbl, values);
+        if (error) return { ok: false, error };
+        rows[idx] = { ...rows[idx], ...row, updatedAt: amNow() };
+        return { ok: true, result: { table: tbl.name, row: rows[idx], rows: [...rows] } };
+      }
+      const [removed] = rows.splice(idx, 1);
+      return { ok: true, result: { table: tbl.name, row: removed, rows: [...rows] } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /** preview.sessionClose — drop a preview session's ephemeral rows. */
+  registerLensAction("app-maker", "previewSessionClose", (ctx, artifact, params) => {
+    try {
+      const userId = amActor(ctx);
+      const key = `${userId}:${String(params?.projectId || "")}:${String(params?.sessionId || "")}`;
+      const closed = previewSessions.delete(key);
+      return { ok: true, result: { closed } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 

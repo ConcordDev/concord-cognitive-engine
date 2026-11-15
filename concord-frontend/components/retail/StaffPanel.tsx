@@ -107,9 +107,9 @@ export function StaffPanel() {
 
       {/* Invite */}
       <div className="p-3 border-b border-white/10 grid grid-cols-4 gap-2">
-        <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Name" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-        <input value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="Email" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-        <select value={form.role} onChange={e => setForm({ ...form, role: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+        <input id="retail-name-2" name="name-2" aria-label="Name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Name" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <input id="retail-email-2" name="email-2" aria-label="Email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="Email" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <select id="retail-role" name="role" value={form.role} onChange={e => setForm({ ...form, role: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
           {roles.map(r => <option key={r} value={r}>{r}</option>)}
         </select>
         <button onClick={invite} disabled={busy} className="px-3 py-1.5 text-xs rounded bg-indigo-500 text-white font-bold hover:bg-indigo-400 disabled:opacity-40 inline-flex items-center justify-center gap-1">
@@ -132,7 +132,7 @@ export function StaffPanel() {
                     <p className="text-sm text-white font-medium truncate">{m.name}</p>
                     <p className="text-[10px] text-gray-400">{m.email}</p>
                   </div>
-                  <select value={m.role} onChange={e => changeRole(m.id, e.target.value)} disabled={busy} className="px-1.5 py-0.5 text-[10px] bg-lattice-deep border border-lattice-border rounded text-white">
+                  <select id="retail-role-2" name="role-2" value={m.role} onChange={e => changeRole(m.id, e.target.value)} disabled={busy} className="px-1.5 py-0.5 text-[10px] bg-lattice-deep border border-lattice-border rounded text-white">
                     {roles.map(r => <option key={r} value={r}>{r}</option>)}
                   </select>
                   <span className={cn('px-1.5 py-0.5 text-[9px] uppercase rounded', STATUS_COLORS[m.status] || 'bg-gray-500/15 text-gray-300')}>{m.status}</span>
@@ -152,7 +152,7 @@ export function StaffPanel() {
                 {checkingId === m.id && (
                   <div className="mt-1.5 flex items-center gap-1.5 rounded border border-indigo-500/20 bg-indigo-500/5 px-2 py-1.5">
                     <span className="text-[10px] text-gray-400">Can this staff member access:</span>
-                    <select value={checkPermission} onChange={e => { setCheckPermission(e.target.value); setCheckResult(null); }} className="px-1.5 py-0.5 text-[10px] bg-lattice-deep border border-lattice-border rounded text-white">
+                    <select id="retail-checkpermission" name="checkpermission" value={checkPermission} onChange={e => { setCheckPermission(e.target.value); setCheckResult(null); }} className="px-1.5 py-0.5 text-[10px] bg-lattice-deep border border-lattice-border rounded text-white">
                       {PERMISSION_CATALOG.map(p => <option key={p} value={p}>{p}</option>)}
                     </select>
                     <button onClick={() => runPermissionCheck(m.id)} className="px-2 py-0.5 text-[10px] rounded bg-indigo-500/20 text-indigo-200 hover:bg-indigo-500/30">Check</button>

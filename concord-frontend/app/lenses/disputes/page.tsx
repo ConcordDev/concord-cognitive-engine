@@ -40,6 +40,7 @@ export default function DisputesPage() {
   useLensIdentity('disputes');
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<DisputesView>('cases');
+  const [fileRequest, setFileRequest] = useState(0);
 
   useLensCommand(
     VIEWS.map((v) => ({
@@ -77,11 +78,11 @@ export default function DisputesPage() {
         activeTab={active}
         onTab={(id) => setActive(id as DisputesView)}
         tabsLabel="Disputes views"
-        cta={{ label: 'File a case', icon: Briefcase, onClick: () => setActive('cases'), title: 'Open your cases and file a dispute (1)' }}
+        cta={{ label: 'File a case', icon: Briefcase, onClick: () => { setActive('cases'); setFileRequest((n) => n + 1); }, title: 'Open the filing form' }}
       >
         <AnimatePresence mode="wait">
           <motion.div key={active} {...motionProps}>
-            <Panel />
+            {active === 'cases' ? <CasesPanel fileRequest={fileRequest} /> : <Panel />}
           </motion.div>
         </AnimatePresence>
       </NorthStarFrame>

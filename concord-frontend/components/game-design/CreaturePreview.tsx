@@ -15,7 +15,7 @@
  *    creature.
  *  - WebGL unavailable (headless test environments, some browsers) ->
  *    explicit fallback text, never a silently blank canvas.
- *  - Auto-rotation and the gait tick are driven by THREE.Clock (elapsed
+ *  - Auto-rotation and the gait tick are driven by THREE.Timer (elapsed
  *    wall time), never Math.random() — there is no randomness anywhere in
  *    this render path. (The mesh builder's own internal Math.cos/sin gait
  *    is a deterministic function of elapsed time, not RNG.)
@@ -110,10 +110,11 @@ export function CreaturePreview({ topology, coatColor, variant, className }: Cre
         camera.position.set(center.x + radius * 1.4, center.y + radius * 0.9, center.z + radius * 1.6);
         camera.lookAt(center);
 
-        const clock = new THREE.Clock();
-        const tick = () => {
+        const timer = new THREE.Timer();
+        const tick = (now?: number) => {
           if (disposed || !renderer || !creatureMesh) return;
-          const dt = clock.getDelta();
+          timer.update(now);
+          const dt = timer.getDelta();
           // Drive the mesh's own gait tick (deterministic, time-based) and
           // a slow auto-orbit — never Math.random().
           creatureMesh.tick(dt);

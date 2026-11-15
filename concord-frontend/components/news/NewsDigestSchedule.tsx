@@ -139,6 +139,7 @@ export function NewsDigestSchedule() {
               </label>
               <input
                 type="range"
+                aria-label="Delivery hour"
                 min={0}
                 max={23}
                 step={1}

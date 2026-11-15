@@ -14,6 +14,10 @@ import {
   contributeContestStrength,
   resolveContest,
   joinKingdom,
+  updateKingdom,
+  leaveKingdom,
+  abdicateKingdom,
+  deleteKingdom,
   listResidents,
   pointInKingdom,
   presentKingdom,
@@ -61,8 +65,16 @@ export default function createKingdomsRouter({ requireAuth, db, state, realtimeE
       const k = getKingdom(db, req.params.id);
       if (!k) return res.status(404).json({ ok: false, error: "kingdom_not_found" });
       const decrees  = listDecrees(db, req.params.id, { activeOnly: false });
-      const residents = listResidents(db, req.params.id).map((r) => presentResident(db, r));
-      res.json({ ok: true, kingdom: presentKingdom(db, k), decrees, residents });
+      const rawResidents = listResidents(db, req.params.id);
+      const mine = rawResidents.find((r) => r.user_id === req.user.id);
+      const residents = rawResidents.map((r) => presentResident(db, r));
+      res.json({
+        ok: true,
+        kingdom: presentKingdom(db, k),
+        decrees,
+        residents,
+        viewer: { resident: !!mine, role: mine?.role || null },
+      });
     } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
   });
 
@@ -124,6 +136,56 @@ export default function createKingdomsRouter({ requireAuth, db, state, realtimeE
       if (result.ok && realtimeEmit) {
         try { realtimeEmit("kingdom:fallen", { contestId: req.params.contestId, outcome: result.outcome }); }
         catch { /* ok */ }
+      }
+      res.json(result);
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  });
+
+  // PATCH /api/kingdoms/:id — ruler renames their kingdom (FIX-kingdoms-001)
+  router.patch("/:id", requireAuth, (req, res) => {
+    try {
+      const result = updateKingdom(db, req.params.id, req.user.id, { name: req.body?.name });
+      if (!result.ok && result.error === "kingdom_not_found") return res.status(404).json(result);
+      if (!result.ok && result.error === "not_ruler") return res.status(403).json(result);
+      if (!result.ok) return res.status(400).json(result);
+      res.json({ ok: true, kingdom: presentKingdom(db, result.kingdom) });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  });
+
+  // POST /api/kingdoms/:id/leave — a resident leaves (FIX-kingdoms-001)
+  router.post("/:id/leave", requireAuth, (req, res) => {
+    try {
+      const result = leaveKingdom(db, req.params.id, req.user.id);
+      if (!result.ok && result.error === "kingdom_not_found") return res.status(404).json(result);
+      if (!result.ok) return res.status(400).json(result);
+      res.json(result);
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  });
+
+  // POST /api/kingdoms/:id/abdicate — the ruler hands the crown over,
+  // or dissolves the kingdom when no heir remains (FIX-kingdoms-001)
+  router.post("/:id/abdicate", requireAuth, (req, res) => {
+    try {
+      const result = abdicateKingdom(db, req.params.id, req.user.id);
+      if (!result.ok && result.error === "kingdom_not_found") return res.status(404).json(result);
+      if (!result.ok && result.error === "not_ruler") return res.status(403).json(result);
+      if (!result.ok) return res.status(400).json(result);
+      if (result.ok && realtimeEmit) {
+        try { realtimeEmit("kingdom:abdicated", { kingdomId: req.params.id, outcome: result.outcome }); } catch { /* ok */ }
+      }
+      res.json(result);
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  });
+
+  // DELETE /api/kingdoms/:id — the ruler dissolves the kingdom (FIX-kingdoms-001)
+  router.delete("/:id", requireAuth, (req, res) => {
+    try {
+      const result = deleteKingdom(db, req.params.id, req.user.id);
+      if (!result.ok && result.error === "kingdom_not_found") return res.status(404).json(result);
+      if (!result.ok && result.error === "not_ruler") return res.status(403).json(result);
+      if (!result.ok) return res.status(400).json(result);
+      if (result.ok && realtimeEmit) {
+        try { realtimeEmit("kingdom:dissolved", { kingdomId: req.params.id }); } catch { /* ok */ }
       }
       res.json(result);
     } catch (e) { res.status(500).json({ ok: false, error: e.message }); }

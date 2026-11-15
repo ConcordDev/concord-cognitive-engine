@@ -28,6 +28,21 @@ interface ConnectionItem {
   similarity: number;
   /** Optional snippet / excerpt for context. */
   excerpt?: string;
+  /**
+   * FIX-strategic-adds-016: where the item came from. 'corpus' items
+   * are public content from the shared Concord corpus (any account,
+   * including platform samples) found by semantic search / the graph;
+   * 'registered' items are this lens's OWN saved work. The panel
+   * labels both instead of presenting one unmarked list.
+   */
+  origin: 'corpus' | 'registered';
+  /**
+   * FIX-inference-008: whose record this is, as the semantic endpoint
+   * classifies it — the viewer's own, another member's, or a platform /
+   * ownerless record. Corpus cards show titles and snippets, so the
+   * ownership rides as a label beside them.
+   */
+  ownership?: 'mine' | 'member' | 'platform';
 }
 
 /** The shape returned by graph.force after normalisation. */
@@ -69,6 +84,7 @@ function normaliseGraphNodes(nodes: GraphNode[], currentDomain: string): Connect
       title: n.title || n.label || n.name || 'Untitled',
       sourceDomain: n.domain || n.group || n.scope || 'unknown',
       similarity: n.score ?? n.weight ?? n.similarity ?? 0,
+      origin: 'corpus' as const,
     }))
     .sort((a, b) => b.similarity - a.similarity);
 }
@@ -146,15 +162,32 @@ function CrossDomainConnections({ domain, domainLabel }: CrossDomainConnectionsP
                 tags?: string[];
                 score?: number;
                 summary?: string;
+                ownership?: 'mine' | 'member' | 'platform';
               }) => ({
                 id: r.id,
                 title: r.title || 'Untitled',
                 sourceDomain: r.tags?.[0] || 'unknown',
                 similarity: r.score ?? 0,
                 excerpt: r.summary,
+                origin: 'corpus' as const,
+                ownership: r.ownership,
               })
             );
-          return { items, source: 'semantic' as const };
+          // FIX-privacy-011 / FIX-suffering-011: every search hit used to be
+          // presented as a "connection", including zero- and un-scored hits —
+          // the panels filled with unrelated items (28 on Privacy, 18 on
+          // Suffering at walk time). A corpus item is a connection only when
+          // the search actually measured similarity: keep positive scores,
+          // strongest first, capped at the 20 strongest. If the floor empties
+          // the list, fall through to the graph neighbours below rather than
+          // presenting noise as connections.
+          const relevant = items
+            .filter((i) => i.similarity > 0)
+            .sort((a, b) => b.similarity - a.similarity)
+            .slice(0, 20);
+          if (relevant.length > 0) {
+            return { items: relevant, source: 'semantic' as const };
+          }
         }
       } catch {
         // Fall through to graph.force
@@ -214,6 +247,7 @@ function CrossDomainConnections({ domain, domainLabel }: CrossDomainConnectionsP
         sourceDomain: n.domain,
         similarity: 0,
         excerpt: n.summary || undefined,
+        origin: 'registered' as const,
       }));
     return [...base, ...registered];
   }, [connectionData, registeredData]);
@@ -296,6 +330,8 @@ function CrossDomainConnections({ domain, domainLabel }: CrossDomainConnectionsP
                     <RefreshCw className={cn('w-4 h-4', isLoading && 'animate-spin')} />
                   </button>
                   <button
+                    type="button"
+                    data-overlay-close=""
                     onClick={() => setOpen(false)}
                     className="p-2 rounded-lg hover:bg-lattice-bg text-gray-400 hover:text-white transition-colors"
                     aria-label="Close panel"
@@ -359,6 +395,17 @@ function CrossDomainConnections({ domain, domainLabel }: CrossDomainConnectionsP
                       {connections.length !== 1 ? 's' : ''} across {domainKeys.length} domain
                       {domainKeys.length !== 1 ? 's' : ''}
                     </p>
+                    {/* FIX-strategic-adds-016: say where these come
+                        from — corpus items are public content from
+                        every account (platform samples included), not
+                        the viewer's own work; only Registered items
+                        are this lens's own saved work. */}
+                    <p role="note" className="text-[11px] text-gray-500 -mt-3">
+                      Found across the shared Concord corpus — public items from all
+                      accounts and lenses, not just yours. Items marked
+                      {' '}<span className="text-gray-300">Registered</span> are this
+                      lens&rsquo;s own saved work.
+                    </p>
 
                     {domainKeys.map((domKey) => (
                       <div key={domKey}>
@@ -397,6 +444,22 @@ function CrossDomainConnections({ domain, domainLabel }: CrossDomainConnectionsP
                                 )}
                               </div>
                               <div className="flex items-center gap-2 flex-shrink-0">
+                                {item.origin === 'registered' && (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-neon-purple/15 text-purple-200">
+                                    Registered
+                                  </span>
+                                )}
+                                {item.origin === 'corpus' && item.ownership && (
+                                  <span
+                                    className={
+                                      item.ownership === 'mine'
+                                        ? 'inline-flex items-center px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-emerald-500/15 text-emerald-200'
+                                        : 'inline-flex items-center px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-zinc-500/15 text-zinc-300'
+                                    }
+                                  >
+                                    {item.ownership === 'mine' ? 'Yours' : item.ownership === 'member' ? 'Another member' : 'Platform'}
+                                  </span>
+                                )}
                                 <span className="text-[10px] font-mono text-gray-400 tabular-nums">
                                   {formatScore(item.similarity)}
                                 </span>

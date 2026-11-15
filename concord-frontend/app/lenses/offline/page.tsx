@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
@@ -29,6 +29,7 @@ export default function OfflineLensPage() {
   useLensNav('offline');
   const [conflicts, setConflicts] = useState<Conflict[]>([]);
   const [replicationKey, setReplicationKey] = useState(0);
+  const replicationApi = useRef<{ syncBoth: () => Promise<void> } | null>(null);
 
   // Conflicts surfaced by a push are held until the user resolves them.
   const handleConflicts = useCallback((c: Conflict[]) => {
@@ -48,10 +49,10 @@ export default function OfflineLensPage() {
     setReplicationKey((k) => k + 1);
   }, []);
 
-  // A connectivity restore / backoff window remounts the replication panel so
-  // it re-reads the local store and re-syncs.
+  // Coming back online drains the local queue. Remounting only re-read
+  // the list and left the writes pending until Push.
   const handleRetryDue = useCallback(() => {
-    setReplicationKey((k) => k + 1);
+    void replicationApi.current?.syncBoth();
   }, []);
 
   const jumpReplication = useCallback(() => {
@@ -113,7 +114,7 @@ export default function OfflineLensPage() {
             <ReplicationPanel
               key={replicationKey}
               onConflicts={handleConflicts}
-              onStateChange={handleRetryDue}
+              onReady={(api) => { replicationApi.current = api; }}
             />
           </section>
 

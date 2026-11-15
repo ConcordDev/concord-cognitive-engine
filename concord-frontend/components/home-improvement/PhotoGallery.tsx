@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { Camera, Plus, Trash2, Loader2 } from 'lucide-react';
 
 interface GalleryEntry {
@@ -95,6 +96,7 @@ export function PhotoGallery() {
           <button onClick={add} disabled={busy || (!form.beforeImage && !form.afterImage)} className="btn-neon green w-full text-sm disabled:opacity-50">
             {busy ? 'Saving...' : 'Save Gallery Entry'}
           </button>
+          {(!form.beforeImage && !form.afterImage) && <span role="note" className="text-xs text-gray-400">Add a before or after photo first.</span>}
         </div>
       )}
 
@@ -128,7 +130,7 @@ export function PhotoGallery() {
                         {mode === 'before' ? 'See after' : 'See before'}
                       </button>
                     )}
-                    <button aria-label="Delete" onClick={() => remove(e.id)} disabled={busy} className="text-gray-400 hover:text-red-400 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <StickyDeleteConfirm onConfirm={() => remove(e.id)} armAriaLabel="Delete" confirmAriaLabel="Confirm delete" className="text-gray-400 hover:text-red-400 p-1" armLabel={<Trash2 className="w-3.5 h-3.5" />} disabled={busy} />
                   </div>
                 </div>
               </div>

@@ -145,3 +145,26 @@ export async function fetchSessionMessages(sessionId: string, signal?: AbortSign
   const json = (await res.json()) as { ok?: boolean; messages?: SavedChatMessage[] };
   return json?.ok && Array.isArray(json.messages) ? json.messages : null;
 }
+
+/**
+ * FIX-chat-001 — merge a late hydration snapshot into the open thread
+ * instead of replacing it. The thread-load fetch starts from an empty
+ * local cache; a send that completes while it is in flight appends the
+ * user + assistant pair to the live thread, and the snapshot (taken
+ * before the turn) must not drop them. `baseIds` are the message ids
+ * the thread held when the fetch started (the previous selection's
+ * leftovers) — those are never carried into the newly opened thread.
+ * Messages the live thread gained since (ids in neither the base nor
+ * the snapshot) survive, appended after the snapshot in their own
+ * order.
+ */
+export function mergeHydratedThread<T extends { id: string }>(
+  hydrated: T[],
+  current: T[],
+  baseIds: ReadonlySet<string>,
+): T[] {
+  if (!current.length) return hydrated;
+  const snapIds = new Set(hydrated.map((m) => m.id));
+  const fresh = current.filter((m) => !baseIds.has(m.id) && !snapIds.has(m.id));
+  return fresh.length ? [...hydrated, ...fresh] : hydrated;
+}

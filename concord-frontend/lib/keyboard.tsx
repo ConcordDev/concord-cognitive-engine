@@ -3,6 +3,8 @@
 import { useEffect, useCallback, createContext, useContext, useState, ReactNode } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
 
+import { shouldIgnoreLensHotkey } from '@/lib/a11y/editable-target';
+
 // Shortcut definition
 export interface Shortcut {
   id: string;
@@ -171,12 +173,14 @@ export function useShortcut(
   }, [id, keys, action, description, category, enabled, global, registerShortcut, unregisterShortcut]);
 
   useHotkeys(keys, (e) => {
+    if (!global && shouldIgnoreLensHotkey(e)) return;
     if (isShortcutEnabled(id)) {
       e.preventDefault();
       action();
     }
   }, {
-    enableOnFormTags: options.global ? ['INPUT', 'TEXTAREA', 'SELECT'] : [],
+    enableOnFormTags: options.global ? ['INPUT', 'TEXTAREA', 'SELECT'] : false,
+    ignoreEventWhen: (e) => !global && shouldIgnoreLensHotkey(e),
     enabled: options.enabled ?? true
   });
 }
@@ -192,8 +196,12 @@ export function useGlobalShortcuts(handlers: Record<string, () => void>) {
     setShowHelp(true);
   });
   useHotkeys('shift+/', (e) => {
+    if (shouldIgnoreLensHotkey(e)) return;
     e.preventDefault();
     setShowHelp(true);
+  }, {
+    enableOnFormTags: false,
+    ignoreEventWhen: (e) => shouldIgnoreLensHotkey(e),
   });
 
   // Escape to close
@@ -206,6 +214,9 @@ export function useGlobalShortcuts(handlers: Record<string, () => void>) {
 
   // Navigation
   useHotkeys('mod+k', (e) => {
+    // A search or label field keeps Ctrl/Cmd+K. The palette stays on the
+    // same shortcut everywhere else.
+    if (shouldIgnoreLensHotkey(e)) return;
     e.preventDefault();
     handlers['command-palette']?.();
   });

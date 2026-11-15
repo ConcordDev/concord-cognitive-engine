@@ -261,7 +261,7 @@ export function SentinelTriage({ onChanged }: { onChanged?: () => void }) {
             <div>
               <p className="mb-1.5 text-[10px] uppercase tracking-wider text-blue-700">Assignee</p>
               <div className="flex gap-2">
-                <input
+                <input id="sentinel-sentineltriage-assignee" name="assignee"
                   value={assignee}
                   onChange={(e) => setAssignee(e.target.value)}
                   placeholder={detail.assignee || 'analyst handle…'}
@@ -283,7 +283,7 @@ export function SentinelTriage({ onChanged }: { onChanged?: () => void }) {
                 Notes ({detail.notes.length})
               </p>
               <div className="flex gap-2">
-                <input
+                <input id="sentinel-sentineltriage-case-note" name="case-note"
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                   placeholder="Add investigation note…"
@@ -315,14 +315,14 @@ export function SentinelTriage({ onChanged }: { onChanged?: () => void }) {
                 Correlated intel ({detail.correlatedIntel.length})
               </p>
               <div className="flex gap-2">
-                <input
+                <input id="sentinel-sentineltriage-intel-domain" name="intel-domain"
                   value={intelDomain}
                   onChange={(e) => setIntelDomain(e.target.value)}
                   placeholder="domain"
                   className="w-28 rounded border border-blue-900/40 bg-black/40 px-2 py-1 text-xs text-blue-100 focus:border-blue-500 focus:outline-none"
                   aria-label="Intel domain"
                 />
-                <input
+                <input id="sentinel-sentineltriage-intel-summary" name="intel-summary"
                   value={intelSummary}
                   onChange={(e) => setIntelSummary(e.target.value)}
                   placeholder="finding summary…"

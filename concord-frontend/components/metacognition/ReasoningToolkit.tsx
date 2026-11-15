@@ -239,7 +239,7 @@ export function ReasoningToolkit() {
                   <p className="text-lg font-bold font-mono text-gray-300">
                     {(confResult.original * 100).toFixed(0)}%
                   </p>
-                  <p className="text-[10px] text-gray-500">Original</p>
+                  <p className="text-[10px] text-gray-400">Original</p>
                 </div>
                 {direction === 'boosted' && <ArrowUp className="w-4 h-4 text-green-400" aria-label="boosted" />}
                 {direction === 'reduced' && <ArrowDown className="w-4 h-4 text-red-400" aria-label="reduced" />}
@@ -256,13 +256,13 @@ export function ReasoningToolkit() {
                   >
                     {(confResult.adjusted * 100).toFixed(0)}%
                   </p>
-                  <p className="text-[10px] text-gray-500">Adjusted</p>
+                  <p className="text-[10px] text-gray-400">Adjusted</p>
                 </div>
                 <span className="text-xs text-gray-400 font-mono ml-auto">×{confResult.factor.toFixed(2)}</span>
               </div>
               <p className="text-xs text-gray-400">{confResult.explanation}</p>
               {typeof confResult.resolvedCount === 'number' && confResult.resolvedCount > 0 && (
-                <p className="text-[11px] text-gray-500">
+                <p className="text-[11px] text-gray-400">
                   Based on {confResult.resolvedCount} resolved prediction{confResult.resolvedCount === 1 ? '' : 's'} in this domain
                   {typeof confResult.accuracy === 'number' ? ` — accuracy ${(confResult.accuracy * 100).toFixed(0)}%` : ''}
                   {typeof confResult.meanConfidence === 'number' ? ` vs mean stated confidence ${(confResult.meanConfidence * 100).toFixed(0)}%` : ''}.

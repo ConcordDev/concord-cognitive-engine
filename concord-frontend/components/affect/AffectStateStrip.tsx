@@ -19,6 +19,7 @@ export function AffectStateStrip() {
     overallScore,
     warnings,
     resetAffect,
+    canControlSession,
     isLoading,
     isError,
   } = useAffectAts();
@@ -30,7 +31,9 @@ export function AffectStateStrip() {
   const [draft, setDraft] = useState<string | null>(null);
   const commitDraft = () => {
     if (draft == null) return;
-    setSessionId(draft.trim() || 'default');
+    // FIX-affect-001: clearing the field returns to the caller's own
+    // session (''), never to the shared 'default' bucket.
+    setSessionId(draft.trim());
     setDraft(null);
   };
 
@@ -82,24 +85,32 @@ export function AffectStateStrip() {
           placeholder="Session ID"
           aria-label="Affect session id"
         />
-        <button
-          type="button"
-          onClick={() => resetAffect.mutate(undefined)}
-          disabled={resetAffect.isPending}
-          className="btn-neon flex items-center gap-1 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <RefreshCw className={`w-3 h-3 ${resetAffect.isPending ? 'animate-spin' : ''}`} />
-          {resetAffect.isPending ? 'Resetting...' : 'Reset'}
-        </button>
-        <button
-          type="button"
-          onClick={() => resetAffect.mutate('cooldown')}
-          disabled={resetAffect.isPending}
-          className="btn-neon flex items-center gap-1 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-          title="Council-mandated cooldown"
-        >
-          <Shield className="w-3 h-3" /> Cooldown
-        </button>
+        {canControlSession ? (
+          <>
+            <button
+              type="button"
+              onClick={() => resetAffect.mutate(undefined)}
+              disabled={resetAffect.isPending}
+              className="btn-neon flex items-center gap-1 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <RefreshCw className={`w-3 h-3 ${resetAffect.isPending ? 'animate-spin' : ''}`} />
+              {resetAffect.isPending ? 'Resetting...' : 'Reset'}
+            </button>
+            <button
+              type="button"
+              onClick={() => resetAffect.mutate('cooldown')}
+              disabled={resetAffect.isPending}
+              className="btn-neon flex items-center gap-1 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Council-mandated cooldown"
+            >
+              <Shield className="w-3 h-3" /> Cooldown
+            </button>
+          </>
+        ) : (
+          <p className="text-xs text-gray-500">
+            Reset and cooldown act on the session&apos;s owner — or an operator.
+          </p>
+        )}
       </div>
 
       {/* F11: the reset's effect is invisible at baseline — say so. */}

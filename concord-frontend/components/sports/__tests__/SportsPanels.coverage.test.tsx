@@ -174,6 +174,7 @@ describe('sports flows', () => {
     fireEvent.change(screen.getByPlaceholderText('Opponent score'), { target: { value: '2' } });
     await press(/^\s*(Save|Create|Add match|Log match)/i);
     await press(/Delete match/i);
+    await press(/Confirm delete match/i);
     for (const b of screen.queryAllByRole('button').filter((x) => /score|edit|record/i.test(x.textContent || x.getAttribute('aria-label') || ''))) await act(async () => { fireEvent.click(b); await new Promise((r) => setTimeout(r, 0)); });
     await exercise({ passes: 2, text: '3', skip: /delete|remove|trash|discard|cancel|close|dismiss|reset|clear|^back|^×$/i });
     expect(createFn.mock.calls.length + updateFn.mock.calls.length + removeFn.mock.calls.length).toBeGreaterThan(0);

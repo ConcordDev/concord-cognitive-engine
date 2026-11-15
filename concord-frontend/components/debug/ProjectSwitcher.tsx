@@ -107,6 +107,7 @@ export function ProjectSwitcher() {
           <FolderGit2 className="h-4 w-4" />
           <span className="hidden sm:inline">Project</span>
           <select
+            name="projectId"
             aria-label="Debug project"
             value={project?.id || ''}
             disabled={loading || projects.length === 0}
@@ -151,6 +152,7 @@ export function ProjectSwitcher() {
       {mode === 'create' && (
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5">
           <input
+            name="createName"
             value={createForm.name}
             onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
             placeholder="Project name (e.g. API service)"
@@ -158,6 +160,7 @@ export function ProjectSwitcher() {
             className="rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm text-zinc-200 placeholder:text-zinc-600"
           />
           <input
+            name="createDescription"
             value={createForm.description}
             onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))}
             placeholder="Description (optional)"
@@ -186,6 +189,7 @@ export function ProjectSwitcher() {
         <div className="flex flex-col gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5">
           <div className="flex flex-wrap items-center gap-2">
             <input
+              name="rename"
               value={rename}
               onChange={(e) => setRename(e.target.value)}
               aria-label="Project name"

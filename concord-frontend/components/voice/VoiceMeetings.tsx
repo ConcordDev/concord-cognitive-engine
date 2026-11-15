@@ -185,11 +185,11 @@ export function VoiceMeetings({ onRecorded }: { onRecorded?: () => void }) {
                 {m.botStatus === 'scheduled' && (
                   <>
                     <button onClick={() => startBot(m)} disabled={busy || !!activeBot}
-                      className="px-2 py-1 text-[11px] rounded bg-violet-600 hover:bg-violet-500 text-white inline-flex items-center gap-1 disabled:opacity-40">
+                      className="inline-flex min-h-11 items-center gap-1 rounded bg-violet-600 px-3 text-[11px] text-white hover:bg-violet-500 disabled:opacity-40">
                       {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Bot className="w-3 h-3" />}Bot join
                     </button>
-                    <button onClick={() => cancel(m.id)} className="p-1 text-rose-400 hover:text-rose-300" aria-label="Cancel meeting">
-                      <Trash2 className="w-3 h-3" />
+                    <button onClick={() => cancel(m.id)} className="inline-flex min-h-11 min-w-11 items-center justify-center text-rose-400 hover:text-rose-300" aria-label="Cancel meeting">
+                      <Trash2 className="h-4 w-4" />
                     </button>
                   </>
                 )}

@@ -22,6 +22,7 @@ import {
   Table2, Columns, FileSpreadsheet, FileJson, GitBranch, Move, Loader2, Pencil, KeyRound,
 } from 'lucide-react';
 import { connectionTestMessage, isRemotePostgresConnection, type ConnectionTestResultShape } from './db-utils';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -676,12 +677,12 @@ export function LiveDbClient() {
         {/* ── Connection manager sidebar ─────────────────────────────── */}
         <div className="lg:col-span-1 panel p-3 space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold flex items-center gap-2 text-neon-cyan">
+            <h2 className="text-sm font-semibold flex items-center gap-2 text-neon-cyan">
               <Database className="w-4 h-4" /> Connections
-            </h3>
+            </h2>
             <button
               onClick={() => setShowConnForm((v) => !v)}
-              className="p-1 rounded hover:bg-lattice-surface text-neon-green"
+              className="inline-flex min-h-[40px] min-w-[40px] items-center justify-center rounded p-1 hover:bg-lattice-surface text-neon-green"
               aria-label="New connection"
             >
               <Plus className="w-4 h-4" />
@@ -694,8 +695,10 @@ export function LiveDbClient() {
                 value={connForm.name}
                 onChange={(e) => setConnForm((f) => ({ ...f, name: e.target.value }))}
                 placeholder="Connection name"
+                maxLength={80}
                 className="input-lattice w-full text-xs"
               />
+              {connForm.name.length > 60 && <span className="text-[10px] text-zinc-500">{connForm.name.length}/80</span>}
               <select
                 value={connForm.engine}
                 onChange={(e) => setConnForm((f) => ({ ...f, engine: e.target.value }))}
@@ -772,7 +775,7 @@ export function LiveDbClient() {
                 className={`rounded border p-2 cursor-pointer transition-colors ${activeConnId === c.id
                   ? 'border-neon-cyan/40 bg-neon-cyan/5'
                   : 'border-lattice-border hover:bg-lattice-surface'}`}
-                onClick={() => setActiveConnId(c.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                onClick={() => setActiveConnId(c.id)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-1.5 text-xs font-medium text-gray-200">
                     <span className="w-2 h-2 rounded-full" style={{ background: c.color }} />
@@ -870,9 +873,9 @@ export function LiveDbClient() {
           {activeConn && (
             <div className="pt-2 border-t border-lattice-border space-y-2">
               <div className="flex items-center justify-between">
-                <h4 className="text-xs font-semibold text-neon-purple flex items-center gap-1.5">
+                <h3 className="text-xs font-semibold text-neon-purple flex items-center gap-1.5">
                   <Table2 className="w-3.5 h-3.5" /> Datasets
-                </h4>
+                </h3>
                 <button
                   onClick={() => setShowDsForm((v) => !v)}
                   className="p-0.5 rounded hover:bg-lattice-surface text-neon-green"
@@ -1155,9 +1158,9 @@ export function LiveDbClient() {
                   {explain && (
                     <div className="panel p-3 space-y-2">
                       <div className="flex items-center justify-between">
-                        <h4 className="text-xs font-semibold text-neon-yellow flex items-center gap-1.5">
+                        <h3 className="text-xs font-semibold text-neon-yellow flex items-center gap-1.5">
                           <GitBranch className="w-3.5 h-3.5" /> Query Plan — total cost {explain.totalCost}, est. {explain.estimatedRows} rows
-                        </h4>
+                        </h3>
                         <button onClick={() => setExplain(null)} className="text-gray-400 hover:text-gray-300" aria-label="Close plan">
                           <X className="w-3.5 h-3.5" />
                         </button>
@@ -1175,10 +1178,10 @@ export function LiveDbClient() {
                   {result && result.success && result.op === 'SELECT' && (
                     <div className="panel p-3 space-y-2">
                       <div className="flex items-center justify-between">
-                        <h4 className="text-xs font-semibold text-neon-green flex items-center gap-1.5">
+                        <h3 className="text-xs font-semibold text-neon-green flex items-center gap-1.5">
                           <Table2 className="w-3.5 h-3.5" /> Result — {result.rowCount} row(s)
                           {canEditGrid && <span className="text-[10px] text-gray-400">· editable</span>}
-                        </h4>
+                        </h3>
                         <div className="flex gap-1.5">
                           <button
                             onClick={() => exportResult('csv')}
@@ -1339,9 +1342,9 @@ export function LiveDbClient() {
           {/* ── ER DIAGRAM ───────────────────────────────────────────── */}
           {view === 'er' && (
             <div className="panel p-3 space-y-2">
-              <h4 className="text-xs font-semibold text-neon-cyan flex items-center gap-1.5">
+              <h3 className="text-xs font-semibold text-neon-cyan flex items-center gap-1.5">
                 <Move className="w-3.5 h-3.5" /> ER Diagram — drag tables to reposition
-              </h4>
+              </h3>
               {!activeConn && <p className="text-xs text-gray-400">Select a connection.</p>}
               {activeConn && datasets.length === 0 && (
                 <p className="text-xs text-gray-400">No datasets — create one to see the diagram.</p>
@@ -1470,7 +1473,7 @@ export function LiveDbClient() {
           {view === 'history' && (
             <div className="panel p-3 space-y-2">
               <div className="flex items-center justify-between">
-                <h4 className="text-xs font-semibold text-neon-orange">Live Query History ({history.length})</h4>
+                <h3 className="text-xs font-semibold text-neon-orange">Live Query History ({history.length})</h3>
                 <div className="flex gap-2">
                   <button onClick={loadHistory} className="text-gray-400 hover:text-gray-300" aria-label="Refresh history">
                     <RefreshCw className="w-3.5 h-3.5" />

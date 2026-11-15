@@ -14,10 +14,16 @@
 
 import { useState, useEffect } from 'react';
 import { FIRST_RUN_ADVANCE, cookieAnswered, onboardingDoneLocally } from '@/lib/first-run';
+import { useGuest } from '@/lib/guest';
 
 export function useOnboarding() {
   const [isOpen, setIsOpen] = useState(false);
   const [hasCompleted, setHasCompleted] = useState(false);
+  // GB-1536: a guest is not a new member — the welcome tour is a
+  // signed-in first-run surface. Without this, a guest on /hub (whose
+  // wizard-status fetch 401s into the "treat as new" branch below)
+  // would get the member tour popped over their read-only browse.
+  const guest = useGuest();
 
   // Phase 17 polish-to-ten: server-confirmed wizard completion.
   // We do NOT optimistically open the modal — that caused it to FLASH on every
@@ -31,6 +37,8 @@ export function useOnboarding() {
   useEffect(() => {
     let cancelled = false;
 
+    if (guest) return;
+
     if (onboardingDoneLocally()) {
       setHasCompleted(true);
       return;
@@ -39,8 +47,6 @@ export function useOnboarding() {
     const path = typeof window !== 'undefined' ? window.location.pathname : '';
     const guestPublic =
       path === '/' ||
-      path === '/explore' ||
-      path.startsWith('/explore/') ||
       path === '/login' ||
       path === '/register' ||
       path === '/signup' ||
@@ -80,7 +86,7 @@ export function useOnboarding() {
       cancelled = true;
       window.removeEventListener(FIRST_RUN_ADVANCE, openIfNewAndCookieAnswered);
     };
-  }, []);
+  }, [guest]);
 
   const complete = () => {
     localStorage.setItem('concord-onboarding-completed', 'true');

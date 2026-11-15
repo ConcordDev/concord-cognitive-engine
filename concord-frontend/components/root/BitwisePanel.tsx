@@ -84,15 +84,15 @@ export const BitwisePanel = forwardRef<BitwiseHandle, { onSaved?: () => void }>(
       <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-center mb-3">
         <input
           className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:border-violet-500 text-sm"
-          placeholder="a" value={a} onChange={(e) => setA(e.target.value)} />
+          placeholder="a" aria-label="Operand a" value={a} onChange={(e) => setA(e.target.value)} />
         <select
           className="bg-gray-800 border border-gray-700 rounded-lg px-2 py-2 text-gray-100 focus:outline-none text-sm"
-          value={op} onChange={(e) => setOp(e.target.value)}>
+          aria-label="Bitwise operator" value={op} onChange={(e) => setOp(e.target.value)}>
           {OPS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
         </select>
         <input
           className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:border-violet-500 text-sm disabled:opacity-40"
-          placeholder={isUnary ? '— (unary)' : 'b'} value={b}
+          placeholder={isUnary ? '— (unary)' : 'b'} aria-label="Operand b" value={b}
           disabled={isUnary}
           onChange={(e) => setB(e.target.value)} />
       </div>

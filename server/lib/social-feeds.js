@@ -265,11 +265,35 @@ export function searchSocial(STATE, userId, query) {
   const needle = q.toLowerCase();
   const social = canonicalSocial(STATE);
   const people = [];
+  const seenPeople = new Set();
   for (const row of social.profiles.values()) {
     if (row.isPublic === false && row.userId !== userId) continue;
     if (isBlocked(STATE, userId, row.userId)) continue;
     const handle = `${row.username || ""} ${row.displayName || ""}`.toLowerCase();
-    if (handle.includes(needle)) people.push({ id: row.userId, username: row.username || row.displayName || row.userId, displayName: row.displayName || row.userId });
+    if (handle.includes(needle)) {
+      people.push({ id: row.userId, username: row.username || row.displayName || row.userId, displayName: row.displayName || row.userId });
+      seenPeople.add(row.userId);
+    }
+  }
+  // FIX-social-019: Explore's Find people (GET /users/search) matches the
+  // account registry as well as social profiles — a person with an
+  // account but no social profile yet was findable there and invisible
+  // here, so the sidebar search "found none" for the same name. Same
+  // union here: active accounts whose username matches, deduped against
+  // the profile hits (the profile's display name wins), blocked accounts
+  // still filtered. Without a db the profiles-only result stands.
+  if (STATE?.db && typeof STATE.db.prepare === "function") {
+    try {
+      const rows = STATE.db.prepare(
+        "SELECT id, username FROM users WHERE is_active = 1 AND username LIKE ? LIMIT 20",
+      ).all(`%${q.slice(0, 50)}%`);
+      for (const r of rows) {
+        if (!r?.id || seenPeople.has(r.id)) continue;
+        if (isBlocked(STATE, userId, r.id)) continue;
+        people.push({ id: r.id, username: r.username || r.id, displayName: r.username || r.id });
+        seenPeople.add(r.id);
+      }
+    } catch { /* account leg unavailable — profiles-only result stands */ }
   }
   const posts = [...social.posts.values()].filter((post) => visiblePost(STATE, post, userId));
   let engine = "scan";

@@ -94,6 +94,13 @@ export function RefreshSchedule() {
   const [abBrain, setAbBrain] = useState<string>('conscious');
   const [candidate, setCandidate] = useState('');
   const [traffic, setTraffic] = useState(10);
+  // The candidate tag used to enable Start with anything non-empty —
+  // '!!bad' or 300 chars included. A model tag is a bounded slug (the
+  // placeholder's own shape): validate charset + length before Start.
+  const candidateTrimmed = candidate.trim();
+  const candidateValid = candidateTrimmed.length > 0
+    && candidateTrimmed.length <= 64
+    && /^[A-Za-z0-9][A-Za-z0-9._:\/-]*$/.test(candidateTrimmed);
 
   const schedule = useQuery({
     queryKey: ['lattice-schedule'],
@@ -174,7 +181,10 @@ export function RefreshSchedule() {
           />
         ) : (
           <div className="overflow-x-auto rounded border border-fuchsia-900/40">
-            <table className="w-full font-mono text-xs">
+            {/* FIX-lattice-008: a min-width lets the wrapper's scroll
+                engage — as a bare w-full table the columns squeezed until
+                the last one (Enabled) clipped at 390px. */}
+            <table className="w-full min-w-[560px] font-mono text-xs">
               <thead className="bg-fuchsia-950/40 text-fuchsia-400">
                 <tr>
                   <th className="px-3 py-2 text-left">Brain</th>
@@ -274,10 +284,20 @@ export function RefreshSchedule() {
             Candidate model tag
             <input
               value={candidate}
+              maxLength={64}
               onChange={(e) => setCandidate(e.target.value)}
               placeholder="e.g. concord-conscious:v7"
               className="w-56 rounded border border-fuchsia-900/50 bg-black px-2 py-1 text-xs text-fuchsia-200 placeholder:text-fuchsia-800 focus:outline-none focus:ring-2 focus:ring-fuchsia-400"
             />
+            {candidateTrimmed.length > 0 && !candidateValid ? (
+              <span role="alert" className="text-[10px] normal-case tracking-normal text-rose-400">
+                Tags are 1–64 characters: letters, numbers, and . _ - : / — e.g. concord-conscious:v7.
+              </span>
+            ) : (
+              <span className="text-[10px] normal-case tracking-normal text-fuchsia-800">
+                Up to 64 characters. {candidate.length}/64
+              </span>
+            )}
           </label>
           <label className="flex flex-col gap-1 text-[10px] uppercase tracking-wider text-fuchsia-700">
             Traffic % ({traffic})
@@ -293,7 +313,7 @@ export function RefreshSchedule() {
           </label>
           <button
             onClick={() => startAB.mutate()}
-            disabled={startAB.isPending || candidate.trim().length === 0}
+            disabled={startAB.isPending || !candidateValid}
             className="inline-flex items-center gap-1 rounded bg-fuchsia-700/50 px-3 py-1.5 text-xs text-fuchsia-100 hover:bg-fuchsia-600/60 disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-fuchsia-400"
           >
             {startAB.isPending ? (

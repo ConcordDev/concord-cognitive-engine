@@ -27,10 +27,18 @@ import {
   VEHICLE_CONSTANTS,
 } from "../lib/world-vehicles.js";
 import { up as up177 } from "../migrations/177_world_vehicles.js";
+import { up as up505 } from "../migrations/505_world_vehicle_name_spec.js";
+import { up as up513 } from "../migrations/513_vehicle_fare_log.js";
 
+// The fixture must apply every migration world-vehicles.js depends on:
+// 177 (world_vehicles + vehicle_occupants), 505 (name/spec columns that
+// spawnVehicle now writes — without them every spawn is insert_failed),
+// and 513 (the canal-taxi fare ledger).
 function setupDb() {
   const db = new Database(":memory:");
   up177(db);
+  up505(db);
+  up513(db);
   return db;
 }
 
@@ -120,11 +128,43 @@ describe("Phase 6 / world-vehicles — mount / dismount", () => {
     const db = setupDb();
     const v = spawnVehicle(db, { worldId: "concordia-hub", kind: "cart" });
     mount(db, v.vehicleId, "player", "u1");
-    // table either doesn't exist or has no row — both ok
-    try {
-      const row = db.prepare(`SELECT COUNT(*) AS n FROM vehicle_fare_log WHERE vehicle_id = ?`).get(v.vehicleId);
-      assert.equal(row.n, 0);
-    } catch { /* table optional */ }
+    assert.equal(v.ok, true);
+    // 513 guarantees the ledger exists, so "no row" is asserted strictly.
+    const row = db.prepare(`SELECT COUNT(*) AS n FROM vehicle_fare_log WHERE vehicle_id = ?`).get(v.vehicleId);
+    assert.equal(row.n, 0);
+  });
+
+  it("npc canal_taxi mount does NOT write fare log (players pay, NPCs ride free)", () => {
+    const db = setupDb();
+    const v = spawnVehicle(db, { worldId: "concordia-hub", kind: "canal_taxi", route_id: "rt_a" });
+    assert.equal(mount(db, v.vehicleId, "npc", "npc_1").action, "mounted");
+    const row = db.prepare(`SELECT COUNT(*) AS n FROM vehicle_fare_log`).get();
+    assert.equal(row.n, 0);
+  });
+});
+
+describe("Phase 6 / world-vehicles — migrations", () => {
+  it("513 is idempotent over a DB where mount() already lazily created the table", () => {
+    const db = new Database(":memory:");
+    up177(db);
+    up505(db);
+    const v = spawnVehicle(db, { worldId: "concordia-hub", kind: "canal_taxi", route_id: "rt_a" });
+    mount(db, v.vehicleId, "player", "u1"); // lazy DDL path
+    up513(db);
+    up513(db);
+    const n = db.prepare(`SELECT COUNT(*) AS n FROM vehicle_fare_log`).get().n;
+    assert.equal(n, 1, "existing fare rows survive the migration");
+    const idx = db.prepare(`SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='vehicle_fare_log'`).all().map((r) => r.name);
+    assert.ok(idx.includes("idx_vehicle_fare_log_vehicle"));
+    assert.ok(idx.includes("idx_vehicle_fare_log_user"));
+  });
+
+  it("without 505 a spawn fails honestly (insert_failed), never a phantom vehicle", () => {
+    const db = new Database(":memory:");
+    up177(db);
+    const r = spawnVehicle(db, { worldId: "concordia-hub", kind: "cart" });
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "insert_failed");
   });
 });
 

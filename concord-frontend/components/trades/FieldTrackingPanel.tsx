@@ -109,7 +109,7 @@ export function FieldTrackingPanel() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="rounded border border-cyan-500/20 bg-cyan-500/[0.04] p-2.5 space-y-2">
               <div className="text-[10px] uppercase tracking-wider text-cyan-400">Push GPS fix</div>
-              <select value={locDraft.techId} onChange={e => setLocDraft(d => ({ ...d, techId: e.target.value }))} className="w-full px-2 py-1 text-xs bg-black/40 border border-white/10 rounded text-gray-100">
+              <select aria-label="Technician" value={locDraft.techId} onChange={e => setLocDraft(d => ({ ...d, techId: e.target.value }))} className="w-full px-2 py-1 text-xs bg-black/40 border border-white/10 rounded text-gray-100">
                 <option value="">— select technician —</option>
                 {technicians.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
@@ -125,11 +125,11 @@ export function FieldTrackingPanel() {
 
             <div className="rounded border border-amber-500/20 bg-amber-500/[0.04] p-2.5 space-y-2">
               <div className="text-[10px] uppercase tracking-wider text-amber-400">Field status update</div>
-              <select value={fieldDraft.jobId} onChange={e => setFieldDraft(d => ({ ...d, jobId: e.target.value }))} className="w-full px-2 py-1 text-xs bg-black/40 border border-white/10 rounded text-gray-100">
+              <select aria-label="Job" value={fieldDraft.jobId} onChange={e => setFieldDraft(d => ({ ...d, jobId: e.target.value }))} className="w-full px-2 py-1 text-xs bg-black/40 border border-white/10 rounded text-gray-100">
                 <option value="">— select job —</option>
                 {activeJobs.map(j => <option key={j.id} value={j.id}>{j.number} · {j.customerName}</option>)}
               </select>
-              <select value={fieldDraft.status} onChange={e => setFieldDraft(d => ({ ...d, status: e.target.value as typeof FIELD_STATUSES[number] }))} className="w-full px-2 py-1 text-xs bg-black/40 border border-white/10 rounded text-gray-100">
+              <select aria-label="Job status" value={fieldDraft.status} onChange={e => setFieldDraft(d => ({ ...d, status: e.target.value as typeof FIELD_STATUSES[number] }))} className="w-full px-2 py-1 text-xs bg-black/40 border border-white/10 rounded text-gray-100">
                 {FIELD_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
               <input value={fieldDraft.note} onChange={e => setFieldDraft(d => ({ ...d, note: e.target.value }))} placeholder="Field note (optional)" className="w-full px-2 py-1 text-xs bg-black/40 border border-white/10 rounded text-gray-100" />

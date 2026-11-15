@@ -21,6 +21,19 @@ export function FleetVehiclesPanel() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ number: '', kind: 'box_truck', make: '', model: '', year: '', capacityLbs: '' });
+  // FIX-logistics-009: find controls for the fleet list.
+  const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [sortBy, setSortBy] = useState<'default' | 'number' | 'mileage'>('default');
+  const visibleVehicles = vehicles
+    .filter(v => !statusFilter || v.status === statusFilter)
+    .filter(v => {
+      const q = query.trim().toLowerCase();
+      if (!q) return true;
+      return [v.number, v.make, v.model, v.kind, v.status].some(x => x.toLowerCase().includes(q));
+    })
+    .sort((a, b) => sortBy === 'number' ? a.number.localeCompare(b.number) : sortBy === 'mileage' ? b.mileage - a.mileage : 0);
+  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => { refresh(); }, []);
 
@@ -34,15 +47,24 @@ export function FleetVehiclesPanel() {
   }
 
   async function add() {
-    if (!form.number.trim()) return;
+    if (!form.number.trim()) { setFormError('Truck number is required.'); return; }
+    if (form.number.trim().length > 40) { setFormError('Truck number must be 40 characters or fewer.'); return; }
+    if (form.capacityLbs.trim() && !(Number(form.capacityLbs) >= 0)) { setFormError('Capacity must be a number from 0 up.'); return; }
+    if (form.year.trim()) {
+      const year = Number(form.year);
+      const maxYear = new Date().getFullYear() + 1;
+      if (!Number.isInteger(year) || year < 1900 || year > maxYear) { setFormError(`Year must be a whole year from 1900 to ${maxYear}.`); return; }
+    }
+    setFormError(null);
     try {
-      await lensRun({
+      const res = await lensRun({
         domain: 'logistics', action: 'fleet-vehicles-add',
-        input: { ...form, year: Number(form.year) || undefined, capacityLbs: Number(form.capacityLbs) || 0 },
+        input: { ...form, year: form.year.trim() ? Number(form.year) : undefined, capacityLbs: form.capacityLbs.trim() ? Number(form.capacityLbs) : 0 },
       });
+      if (res.data?.ok === false) { setFormError(res.data?.message || res.data?.error || 'Could not add that vehicle.'); return; }
       setForm({ number: '', kind: 'box_truck', make: '', model: '', year: '', capacityLbs: '' });
       await refresh();
-    } catch (e) { console.error('[Fleet] add', e); }
+    } catch (e) { setFormError(e instanceof Error ? e.message : 'Could not add that vehicle.'); }
   }
 
   async function setStatus(id: string, status: Vehicle['status']) {
@@ -76,7 +98,24 @@ export function FleetVehiclesPanel() {
         <input value={form.model} onChange={e => setForm({ ...form, model: e.target.value })} placeholder="Model" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <input type="number" value={form.year} onChange={e => setForm({ ...form, year: e.target.value })} placeholder="Year" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <input type="number" value={form.capacityLbs} onChange={e => setForm({ ...form, capacityLbs: e.target.value })} placeholder="Capacity lbs" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        {formError && <p role="alert" className="col-span-full text-xs text-rose-300">{formError}</p>}
         <button onClick={add} className="col-span-full px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 inline-flex items-center justify-center gap-1"><Plus className="w-3 h-3" />Add vehicle</button>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 px-3 py-2 border-b border-white/10">
+        <input aria-label="Search vehicles" value={query} onChange={e => setQuery(e.target.value)} placeholder="Search number, make, model, kind…"
+          className="flex-1 min-w-[160px] px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <select aria-label="Filter vehicles by status" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+          className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+          <option value="">All statuses</option>
+          {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
+        <select aria-label="Sort vehicles" value={sortBy} onChange={e => setSortBy(e.target.value as typeof sortBy)}
+          className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+          <option value="default">Delivered order</option>
+          <option value="number">Truck number</option>
+          <option value="mileage">Mileage (high first)</option>
+        </select>
       </div>
 
       <div className="max-h-80 overflow-y-auto">
@@ -84,13 +123,15 @@ export function FleetVehiclesPanel() {
           <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : vehicles.length === 0 ? (
           <div className="px-3 py-10 text-center text-xs text-gray-400"><Truck className="w-6 h-6 mx-auto mb-2 opacity-30" />No vehicles yet.</div>
+        ) : visibleVehicles.length === 0 ? (
+          <div className="px-3 py-10 text-center text-xs text-gray-400">No vehicles match the current search or filter.</div>
         ) : (
           <table className="w-full text-xs">
             <thead className="text-[10px] uppercase text-gray-400 border-b border-white/5">
               <tr><th className="text-left px-3 py-1.5">Truck</th><th className="text-left">Kind</th><th className="text-left">Make/Model</th><th className="text-right">Mileage</th><th>Status</th><th /></tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {vehicles.map(v => (
+              {visibleVehicles.map(v => (
                 <tr key={v.id} className="hover:bg-white/[0.03] group">
                   <td className="px-3 py-2 font-mono text-cyan-300">{v.number}</td>
                   <td className="text-gray-300">{v.kind.replace('_', ' ')}</td>

@@ -56,8 +56,13 @@ export default function registerGroundingActions(registerLensAction) {
    */
   registerLensAction("grounding", "factCheck", (ctx, artifact, _params) => {
   try {
-    const claim = artifact.data?.claim || {};
-    const evidence = artifact.data?.evidence || [];
+    // FIX-grounding-008/009: the verification panel sends claim/evidence
+    // as action params; these handlers read only artifact.data, so a call
+    // without an attached DTU starved them (no claim, 0 evidence ->
+    // 'unverifiable', or a crash on a null artifact). Params are the
+    // fallback; an attached artifact still wins.
+    const claim = artifact?.data?.claim || _params.claim || {};
+    const evidence = artifact?.data?.evidence || _params.evidence || [];
     const claimText = (claim.text || "").toLowerCase();
 
     if (!claimText) {
@@ -220,7 +225,7 @@ export default function registerGroundingActions(registerLensAction) {
    */
   registerLensAction("grounding", "sourceCredibility", (ctx, artifact, _params) => {
   try {
-    const sources = artifact.data?.sources || [];
+    const sources = artifact?.data?.sources || _params.sources || [];
     if (sources.length === 0) {
       return { ok: true, result: { message: "No sources provided." } };
     }
@@ -396,8 +401,8 @@ export default function registerGroundingActions(registerLensAction) {
    */
   registerLensAction("grounding", "claimDecomposition", (ctx, artifact, _params) => {
   try {
-    const claim = artifact.data?.claim || {};
-    const evidence = artifact.data?.evidence || [];
+    const claim = artifact?.data?.claim || _params.claim || {};
+    const evidence = artifact?.data?.evidence || _params.evidence || [];
     const text = claim.text || "";
 
     if (!text) {
@@ -1053,6 +1058,48 @@ export default function registerGroundingActions(registerLensAction) {
   });
 
   /**
+   * recordActivity
+   * Append a non-check workbench activity to the audit trail
+   * (FIX-grounding-012). recordCheck covers fact checks; Source tier,
+   * Decompose, and the verification-DTU mint ran without leaving any
+   * trail entry, so the Audit trail tab could not reconstruct them.
+   * The panel reports each completed activity here, best-effort, the
+   * same courtesy pattern as recordCheck.
+   * params: { kind: "source-tier" | "decompose" | "mint", claim?, summary?, dtuId? }
+   */
+  registerLensAction("grounding", "recordActivity", (ctx, _a, params = {}) => {
+    try {
+      const g = getGroundingState();
+      if (!g) return { ok: false, error: "STATE unavailable" };
+      const userId = gActor(ctx);
+      const LABELS = {
+        "source-tier": "source tier scored",
+        "decompose": "claim decomposed",
+        "mint": "verification DTU minted",
+      };
+      const label = LABELS[params.kind];
+      if (!label) return { ok: false, error: "kind must be one of: source-tier, decompose, mint" };
+      const dtuId = gClean(params.dtuId, 80);
+      if (params.kind === "mint" && !dtuId) return { ok: false, error: "dtuId required for a mint record" };
+      const entry = {
+        id: gId("audit"),
+        action: label,
+        claim: gClean(params.claim, 1000).slice(0, 160),
+        verdict: params.kind === "mint" ? dtuId : (gClean(params.summary, 160) || label),
+        ...(dtuId ? { dtuId } : {}),
+        at: new Date().toISOString(),
+      };
+      gList(g.trail, userId).unshift(entry);
+      const trail = g.trail.get(userId);
+      if (trail.length > 400) trail.length = 400;
+      saveGrounding();
+      return { ok: true, result: { recorded: entry } };
+    } catch (e) {
+      return { ok: false, error: String(e && e.message || e) };
+    }
+  });
+
+  /**
    * auditTrail
    * Return the per-user claim verification history + audit log.
    * params: { limit? }
@@ -1126,27 +1173,48 @@ export default function registerGroundingActions(registerLensAction) {
         : [];
       const news = Array.isArray(json && json.news) ? json.news : [];
 
+      // FIX-grounding-011: item-level citations. The featured payload
+      // carries each article's page URL (content_urls.desktop.page);
+      // fall back to the canonical wiki URL built from the article's
+      // own title — never to an invented source.
+      const pageUrl = (art) => {
+        const cu = art && art.content_urls && art.content_urls.desktop && art.content_urls.desktop.page;
+        if (typeof cu === "string" && cu) return cu;
+        const raw = gClean(art && art.title, 200) || gClean(art && art.titles && art.titles.normalized, 200);
+        return raw ? `https://en.wikipedia.org/wiki/${encodeURIComponent(raw.replace(/\s+/g, "_"))}` : null;
+      };
+
       const items = [];
       for (const n of news.slice(0, limit)) {
         const story = gClean(n && n.story, 400).replace(/<[^>]+>/g, "");
         if (story) {
+          const firstLink = Array.isArray(n.links) ? n.links[0] : null;
           items.push({
             kind: "news",
             headline: story,
             suggestedClaim: story.split(/[.;]/)[0].trim().slice(0, 240),
             checkability: "high",
+            sourceUrl: pageUrl(firstLink),
+            sourceName: "Wikipedia — In the news",
           });
         }
       }
       for (const a of articles.slice(0, limit)) {
         const title = gClean(a && a.titles && a.titles.normalized, 200) || gClean(a && a.title, 200);
         if (title && !title.startsWith("Special:") && !title.startsWith("Main Page")) {
+          // FIX-grounding-011: a most-read entry supports NO truth claim
+          // — the API reports readership, not reporting. The item used
+          // to mint `Recent reporting about "<title>" is accurate.` for
+          // every topic, a claim the source does not make, in the lens
+          // whose whole job is checking claims. Topics now carry their
+          // citation and an honest note instead of a fabricated claim.
           items.push({
             kind: "topic",
             headline: title,
-            suggestedClaim: `Recent reporting about "${title}" is accurate.`,
             views: Math.round(Number(a && a.views) || 0),
-            checkability: "medium",
+            sourceUrl: pageUrl(a),
+            sourceName: "Wikipedia — Most read",
+            note: "Trending by readership — this source reports views, not a claim. Open the article and pick a statement to check.",
           });
         }
       }

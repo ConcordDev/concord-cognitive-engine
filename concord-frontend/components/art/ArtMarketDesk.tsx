@@ -12,6 +12,7 @@ import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, apiHelpers } from '@/lib/api/client';
+import { rawArtUploadQuery, describeArtUploadError } from '@/lib/art/upload';
 import { ArtGenerateFromText } from '@/components/art/ArtGenerateFromText';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUIStore } from '@/store/ui';
@@ -50,6 +51,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
 import type { DTU } from '@/lib/api/generated-types';
 import { LensContextPanel } from '@/components/lens/LensContextPanel';
@@ -481,23 +483,31 @@ export function ArtMarketDesk({ mode }: { mode: 'gallery' | 'canvas' | 'marketpl
   const handleCanvasSave = useCallback(async () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    // Upload as media with actual image data
+    // FIX-art-003: the canvas PNG used to ride the JSON /api/media/upload
+    // route as a base64 `data` field, but the global sanitizer cuts every
+    // JSON string at 10,000 chars (~7,500 bytes) — so any real drawing
+    // arrived truncated and the endpoint refused it 413 upload_truncated,
+    // while the artist only saw a generic failure toast. The platform's
+    // raw transport (the music/photography pattern) takes the file as the
+    // request body with metadata on the query string: no base64, no cap.
+    let blob: Blob | null = null;
     try {
-      const dataUrl = canvas.toDataURL('image/png');
-      const base64Data = dataUrl.split(',')[1];
-      await api.post('/api/media/upload', {
-        title: canvasTitle || 'Untitled',
-        mediaType: 'image',
-        mimeType: 'image/png',
-        fileSize: Math.ceil(base64Data.length * 0.75),
-        originalFilename: `${canvasTitle.replace(/\s+/g, '-').toLowerCase()}.png`,
-        tags: ['art', 'canvas'],
-        data: base64Data,
-      });
+      blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+      if (!blob) throw new Error('Canvas produced no image data.');
+      const title = canvasTitle || 'Untitled';
+      await api.post(
+        `/api/media/upload-raw?${rawArtUploadQuery({
+          title,
+          filename: `${(canvasTitle || 'untitled').replace(/\s+/g, '-').toLowerCase()}.png`,
+          tags: ['art', 'canvas'],
+        })}`,
+        blob,
+        { headers: { 'Content-Type': 'image/png' }, timeout: 0, maxBodyLength: Infinity },
+      );
       useUIStore.getState().addToast({ type: 'success', message: 'Artwork saved!' });
     } catch (err) {
       console.error('Save failed:', err);
-      useUIStore.getState().addToast({ type: 'error', message: 'Failed to save artwork' });
+      useUIStore.getState().addToast({ type: 'error', message: describeArtUploadError(err, blob ?? undefined) });
     }
   }, [canvasTitle]);
 
@@ -896,14 +906,13 @@ export function ArtMarketDesk({ mode }: { mode: 'gallery' | 'canvas' | 'marketpl
             <div className="absolute inset-0 bg-gradient-to-br from-purple-600/20 to-pink-600/20 flex items-center justify-center p-2">
               <span className="text-sm font-medium text-center">{artDtuTitle(piece)}</span>
             </div>
-            <button
-              type="button"
-              aria-label={`Delete ${artDtuTitle(piece)}`}
-              onClick={() => void deleteMyArtPiece(String(piece.id))}
+            <StickyDeleteConfirm
+              onConfirm={() => void deleteMyArtPiece(String(piece.id))}
+              armLabel="Delete"
+              armAriaLabel={`Delete ${artDtuTitle(piece)}`}
+              confirmAriaLabel={`Confirm delete ${artDtuTitle(piece)}`}
               className="absolute bottom-2 right-2 px-2 py-1 text-[11px] rounded bg-black/60 text-rose-300 hover:bg-black/80"
-            >
-              Delete
-            </button>
+            />
           </div>
         ))}
         {(artAssets as ArtAsset[]).filter((a: ArtAsset) => a.type === 'artwork').map((art: ArtAsset) => (

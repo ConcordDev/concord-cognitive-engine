@@ -24,6 +24,7 @@
  * for guides).
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import {
   X, Send, Wand2, Globe, BookMarked, Link as LinkIcon,
@@ -130,13 +131,11 @@ export function PlaceShareSheet({ place, onClose }: PlaceShareSheetProps) {
         name: 'do',
         input: { task, maxTurns: 5 },
       });
-      const reply = r.data?.result?.reply
-        ?? r.data?.result?.summary
-        ?? r.data?.result?.output;
-      if (reply) {
-        setAgentFindings(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2));
+      const reply = readAgentReply(r.data);
+      if (reply.ok) {
+        setAgentFindings(reply.text);
         ok('Agent finished.');
-      } else err('Agent returned empty.');
+      } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }

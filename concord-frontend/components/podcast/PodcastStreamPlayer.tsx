@@ -20,6 +20,7 @@ import {
   resolveSilenceAutoSkip,
   type SilenceRange,
 } from '@/lib/podcast/silence-detect';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface Chapter { startSec: number; title: string }
 interface StreamDescriptor {
@@ -292,7 +293,7 @@ export function PodcastStreamPlayer({
             const rect = e.currentTarget.getBoundingClientRect();
             const frac = (e.clientX - rect.left) / rect.width;
             seekTo(frac * (duration || descriptor.durationSec));
-          }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <div
             className="absolute inset-y-0 left-0 rounded-full bg-violet-500"
             style={{ width: `${duration > 0 ? (position / duration) * 100 : 0}%` }}

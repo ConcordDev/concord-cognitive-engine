@@ -36,6 +36,18 @@ interface Message {
   read?: boolean;
 }
 
+export const MESSAGE_COMPOSE_EVENT = 'message:compose';
+let messageComposePending = false;
+
+/** Open the composer, even when the inbox panel is not mounted yet —
+ *  the page's 'New message' button switches views first, and a bare
+ *  event dispatched before this panel mounts is lost (FIX-message-001).
+ *  Same pending-flag shape as feed's requestFeedCompose. */
+export function requestMessageCompose() {
+  messageComposePending = true;
+  window.dispatchEvent(new CustomEvent(MESSAGE_COMPOSE_EVENT));
+}
+
 export function InboxPanel() {
   const [activeLabelId, setActiveLabelId] = useState('inbox');
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -170,10 +182,10 @@ export function InboxPanel() {
       key={m.id}
       className="border border-lattice-border rounded-lg p-3 sm:p-5 bg-lattice-surface mb-2"
     >
-      <div className="text-xs font-mono text-gray-500 mb-1">{m.fromUserId}</div>
+      <div className="text-xs font-mono text-gray-400 mb-1">{m.fromUserId}</div>
       <div className="text-sm text-gray-200 whitespace-pre-wrap">{m.content}</div>
       {m.createdAt && (
-        <div className="text-[10px] font-mono tabular-nums text-gray-500 mt-1">
+        <div className="text-[10px] font-mono tabular-nums text-gray-400 mt-1">
           {typeof m.createdAt === 'number'
             ? new Date(m.createdAt).toLocaleString()
             : new Date(m.createdAt).toLocaleString()}
@@ -196,9 +208,10 @@ export function InboxPanel() {
   }, []);
 
   useEffect(() => {
-    const open = () => setComposing(true);
-    window.addEventListener('message:compose', open);
-    return () => window.removeEventListener('message:compose', open);
+    const open = () => { messageComposePending = false; setComposing(true); };
+    if (messageComposePending) open();
+    window.addEventListener(MESSAGE_COMPOSE_EVENT, open);
+    return () => window.removeEventListener(MESSAGE_COMPOSE_EVENT, open);
   }, []);
 
   useLensCommand(
@@ -256,12 +269,14 @@ export function InboxPanel() {
         onSelectThread={(t) => setActiveConversationId(t.id)}
         onReply={focusReply}
         onForward={forwardThread}
+        showChildrenWithoutThread={composing}
       >
         {composing ? (
           <article className="space-y-3">
             <h1 className="text-xl font-semibold text-white">New message</h1>
             <RecipientSearchInput value={composeTo} onChange={setComposeTo} />
             <textarea
+              aria-label="Message body"
               value={composeBody}
               onChange={(e) => setComposeBody(e.target.value)}
               rows={6}
@@ -300,7 +315,7 @@ export function InboxPanel() {
               <div className="text-sm text-gray-400 mt-1">
                 From <span className="text-gray-300">{activeThread.from}</span>
                 {' · '}
-                <span className="font-mono tabular-nums text-gray-500">{new Date(activeThread.timestamp).toLocaleString()}</span>
+                <span className="font-mono tabular-nums text-gray-400">{new Date(activeThread.timestamp).toLocaleString()}</span>
               </div>
               <ThreadLabelBar threadId={activeThread.id} className="mt-2" />
             </header>
@@ -327,6 +342,7 @@ export function InboxPanel() {
               </div>
               <textarea
                 id="msg-reply-textarea"
+                aria-label="Reply body"
                 value={replyBody}
                 onChange={(e) => setReplyBody(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); sendReply(); } }}

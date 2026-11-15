@@ -69,13 +69,81 @@ function evictOldestIfNeeded() {
 
 const REFUSAL_RE = /^(as an ai|i (can't|cannot) (help|assist)|i'm sorry,? but)/i;
 
+// ── IDLE-03 (GB-1540): real near-duplicate detection ─────────────────────────
+// The exact-hash check below only catches byte-identical repeats. The
+// novelty gate compares word 3-shingle sets (Jaccard) against recent
+// creations recorded in emergent_quality_history — the citizen's own and
+// a fleet window — so paraphrases and cross-citizen copies are caught.
+// Each assessment stores its own shingle signature in stages_json; rows
+// written before this gate have none and are skipped (the check
+// strengthens as new rows accumulate). Deterministic — no model call:
+// the gate must not spend what IDLE-01 budgets.
+export const NEAR_DUP_THRESHOLD = 0.8;
+
+export function shingleSet(text) {
+  const words = normalize(text).split(" ").filter(Boolean);
+  const out = new Set();
+  if (words.length < 3) {
+    if (words.length) out.add(words.join(" "));
+    return out;
+  }
+  for (let i = 0; i + 3 <= words.length; i++) out.add(words.slice(i, i + 3).join(" "));
+  return out;
+}
+
+export function jaccardSimilarity(a, b) {
+  if (!a.size || !b.size) return 0;
+  let inter = 0;
+  for (const s of a) if (b.has(s)) inter++;
+  return inter / (a.size + b.size - inter);
+}
+
+function shingleSignature(shingles) {
+  return [...shingles]
+    .map((s) => crypto.createHash("sha256").update(s).digest("hex").slice(0, 12))
+    .sort()
+    .join(",");
+}
+
+function maxRecentSimilarity(db, emergentId, shingles, now) {
+  if (!db || !shingles.size) return 0;
+  try {
+    const rows = db.prepare(`
+      SELECT stages_json FROM emergent_quality_history
+      WHERE created_at > ?
+      ORDER BY created_at DESC
+      LIMIT 300
+    `).all(now - 24 * 3600 * 1000);
+    let max = 0;
+    const mine = new Set(shingleSignature(shingles).split(","));
+    for (const row of rows) {
+      try {
+        const sig = JSON.parse(row.stages_json || "{}")?.shingleSig;
+        if (!sig) continue;
+        const prior = new Set(sig.split(","));
+        // Signatures store shingle HASHES; compare in hash space.
+        const sim = jaccardSimilarity(mine, prior);
+        if (sim > max) max = sim;
+        if (max >= 1) break;
+      } catch { /* skip malformed rows */ }
+    }
+    return max;
+  } catch { return 0; }
+}
+
 // ── Main assessment ─────────────────────────────────────────────────────────
 
 /**
  * Assess a single background creation.
- * @returns {{ status: "accepted"|"rejected", reasons: string[], score: number, gates: object[], historyId: string|null }}
+ * IDLE-03 (GB-1540): substrate-derived kinds pass requireDtuLink with
+ * their source DTU ids in artifactIds — the link is recorded in
+ * artifact_id, and without it the creation is rejected before
+ * persistence. `promotable` is a positive proof (accepted AND carrying
+ * a DTU link), not the old 1.0-by-default: the score stays a violation
+ * counter, but approval alone no longer promotes.
+ * @returns {{ status: "accepted"|"rejected", reasons: string[], score: number, gates: object[], historyId: string|null, promotable: boolean }}
  */
-export function assessCreation({ kind, text, emergentId, taskId = null, db = null, title = null }) {
+export function assessCreation({ kind, text, emergentId, taskId = null, db = null, title = null, artifactIds = null, requireDtuLink = false }) {
   const body = String(text || "").trim();
   const len = body.length;
   const taskType = kindToTaskType(kind);
@@ -126,12 +194,29 @@ export function assessCreation({ kind, text, emergentId, taskId = null, db = nul
     }
   }
 
+  // IDLE-03: similarity near-duplicate against recent recorded creations
+  // (own + fleet window). The exact hash above is only the cheap first
+  // pass; a paraphrase or a cross-citizen copy is caught here.
+  const shingles = body ? shingleSet(body) : new Set();
+  if (body && db && !reasons.includes("near_duplicate")) {
+    const sim = maxRecentSimilarity(db, emergentId, shingles, Date.now());
+    if (sim >= NEAR_DUP_THRESHOLD) reasons.push("near_duplicate");
+  }
+
+  // IDLE-03: a substrate-derived creation must carry its DTU link.
+  const linkIds = Array.isArray(artifactIds) ? artifactIds.filter(Boolean) : [];
+  if (requireDtuLink && linkIds.length === 0) reasons.push("missing_dtu_link");
+
   if (REFUSAL_RE.test(body) || body.includes("[no response generated]")) {
     reasons.push("refusal_or_meta");
   }
 
   const status = reasons.length > 0 ? "rejected" : "accepted";
   const score = 1 - Math.min(1, reasons.length * 0.25);
+  // IDLE-03: promotion is a positive proof — accepted AND DTU-linked.
+  // Kinds with no substrate link by design (dreams, messages) persist on
+  // acceptance but are never promotable.
+  const promotable = status === "accepted" && linkIds.length > 0;
 
   // Update counters.
   counters.assessed++;
@@ -147,17 +232,20 @@ export function assessCreation({ kind, text, emergentId, taskId = null, db = nul
     reasons,
     gates,
     len,
+    artifactIds: linkIds,
+    promotable,
+    shingleSig: shingleSignature(shingles),
   };
   const historyId = recordQualityOutcome({
     emergentId,
     taskId,
-    artifactId: null,
+    artifactId: linkIds[0] || null,
     decision: status === "accepted" ? "approve" : "reject",
     stages,
     qualityScore: score,
   }, db);
 
-  return { status, reasons, score, gates, historyId };
+  return { status, reasons, score, gates, historyId, promotable };
 }
 
 // ── Optional lightweight critique ───────────────────────────────────────────

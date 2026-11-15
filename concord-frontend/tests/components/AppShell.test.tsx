@@ -280,4 +280,20 @@ describe('AppShell', () => {
     rerender(<AppShell><div>Body</div></AppShell>);
     expect(main.style.paddingBottom).toBe('');
   });
+
+  it('skip link precedes the sidebar in DOM order and moves focus into main on activation (FIX-mining-012 · FIX-eco-010 · FIX-dx-platform-008 · FIX-schema-013)', () => {
+    const { container } = render(<AppShell><div>Body</div></AppShell>);
+    const skip = container.querySelector('a[href="#main-content"]') as HTMLElement;
+    expect(skip).not.toBeNull();
+    // First tabbable of the shell chrome: nothing focusable may sit before
+    // it in document order outside <main> itself.
+    const tabbables = Array.from(
+      container.querySelectorAll<HTMLElement>('a[href], button, input, select, textarea, [tabindex]')
+    ).filter((el) => !el.hasAttribute('disabled') && (el.getAttribute('tabindex') ?? '0') !== '-1');
+    expect(tabbables[0]).toBe(skip);
+    // Activation moves sequential focus into main, not just the scroll.
+    const main = container.querySelector('main#main-content') as HTMLElement;
+    fireEvent.click(skip);
+    expect(document.activeElement).toBe(main);
+  });
 });

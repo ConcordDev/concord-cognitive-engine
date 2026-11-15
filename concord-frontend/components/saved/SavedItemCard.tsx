@@ -87,7 +87,13 @@ export function SavedItemCard({ item, folders, onRemove, onUpdate }: SavedItemCa
         <Icon className="w-4 h-4 mt-0.5 text-amber-300 shrink-0" />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-medium text-zinc-100 break-words">{item.title}</span>
+            {item.url ? (
+              <a href={item.url} target="_blank" rel="noreferrer noopener" className="text-sm font-medium text-zinc-100 break-words hover:text-amber-200 hover:underline">
+                {item.title}
+              </a>
+            ) : (
+              <span className="text-sm font-medium text-zinc-100 break-words">{item.title}</span>
+            )}
             <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-900 text-zinc-400 border border-zinc-800 uppercase">
               {item.kind}
             </span>

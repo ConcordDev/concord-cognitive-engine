@@ -73,6 +73,17 @@ export function useQueueActions() {
   const handleProcess = (id: string) => runAction('process', { jobId: id }, 'Job marked processed (no worker ran it)', id);
   const handleProcessNext = () => runAction('process', queueFilter ? { queue: queueFilter } : {}, 'Next job marked processed (no worker ran it)');
   const handleRetry = (id: string) => runAction('retry', { jobId: id }, 'Job requeued', id);
+  const handleUpdate = async (id: string, fields: Record<string, unknown>) => {
+    const r = await runAction('update', { jobId: id, ...fields }, 'Job updated', id);
+    if (r && detail?.job.id === id) {
+      // Refresh the open drawer so it shows the edited job, not the stale copy.
+      const res = await lensRun('queue', 'job-detail', { jobId: id });
+      if (res.data.ok && res.data.result) {
+        const d = res.data.result as { job: QueueJob; history: QueueEvent[] };
+        setDetail({ job: d.job, history: d.history });
+      }
+    }
+  };
   const handleRemove = async (id: string) => {
     await runAction('remove', { jobId: id }, 'Job removed', id);
     if (detail?.job.id === id) setDetail(null);
@@ -101,7 +112,7 @@ export function useQueueActions() {
 
   return {
     busyId, detail, setDetail, queueFilter, setQueueFilter,
-    handleEnqueue, handleProcess, handleProcessNext, handleRetry, handleRemove,
+    handleEnqueue, handleProcess, handleProcessNext, handleRetry, handleRemove, handleUpdate,
     handleControl, handleConcurrency, handleDeadBulk, handleClearCompleted,
     handleRegisterWorker, handleStopWorker, openDetail,
   };

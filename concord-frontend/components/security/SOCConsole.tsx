@@ -9,10 +9,11 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import Image from 'next/image';
 import {
   Activity, Bell, ClipboardList, Link2, KeyRound, Camera, Radar,
-  Loader2, Plus, Trash2, Play, Power, CheckCircle2, AlertTriangle,
+  Loader2, Plus, Trash2, Play, Power, CheckCircle2, AlertTriangle, Pencil,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -100,6 +101,7 @@ export function SOCConsole() {
   /* Rules */
   const [rules, setRules] = useState<Rule[]>([]);
   const [ruleForm, setRuleForm] = useState({ name: '', pattern: '', field: 'message', minSeverity: 'info', threshold: '1', windowMin: '60', incidentSeverity: 'P3' });
+  const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
   const [ruleResult, setRuleResult] = useState<string | null>(null);
 
   /* Incidents */
@@ -191,6 +193,35 @@ export function SOCConsole() {
     setBusy(false);
     if (r.data?.ok) {
       setRuleForm({ name: '', pattern: '', field: 'message', minSeverity: 'info', threshold: '1', windowMin: '60', incidentSeverity: 'P3' });
+      await loadRules();
+    }
+  };
+  const resetRuleForm = () => {
+    setEditingRuleId(null);
+    setRuleForm({ name: '', pattern: '', field: 'message', minSeverity: 'info', threshold: '1', windowMin: '60', incidentSeverity: 'P3' });
+  };
+  // FIX-security-010: rules were toggle/delete-only — a name or pattern
+  // typo meant delete-and-recreate. Edit loads the rule into the form and
+  // saves through rule-update.
+  const startEditRule = (r: Rule) => {
+    setEditingRuleId(r.id);
+    setRuleForm({
+      name: r.name, pattern: r.pattern, field: r.field, minSeverity: r.minSeverity,
+      threshold: String(r.threshold), windowMin: String(r.windowMin), incidentSeverity: r.incidentSeverity,
+    });
+  };
+  const saveRule = async () => {
+    if (!editingRuleId || !ruleForm.name.trim() || !ruleForm.pattern.trim()) return;
+    setBusy(true);
+    const r = await lensRun('security', 'rule-update', {
+      id: editingRuleId,
+      ...ruleForm,
+      threshold: Number(ruleForm.threshold) || 1,
+      windowMin: Number(ruleForm.windowMin) || 60,
+    });
+    setBusy(false);
+    if (r.data?.ok) {
+      resetRuleForm();
       await loadRules();
     }
   };
@@ -348,15 +379,15 @@ export function SOCConsole() {
           <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-3">
             <h3 className="mb-2 text-sm font-semibold text-zinc-200">Ingest Event</h3>
             <div className="grid gap-2 sm:grid-cols-2">
-              <input className={cn(inp, 'sm:col-span-2')} placeholder="Event message / log line" value={evForm.message} onChange={(e) => setEvForm({ ...evForm, message: e.target.value })} />
-              <select className={inp} value={evForm.severity} onChange={(e) => setEvForm({ ...evForm, severity: e.target.value })}>
+              <input aria-label="Event message / log line" className={cn(inp, 'sm:col-span-2')} placeholder="Event message / log line" value={evForm.message} onChange={(e) => setEvForm({ ...evForm, message: e.target.value })} />
+              <select className={inp} value={evForm.severity} aria-label="Event severity" onChange={(e) => setEvForm({ ...evForm, severity: e.target.value })}>
                 {EVENT_SEVERITIES.map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
-              <input className={inp} placeholder="Source (e.g. firewall)" value={evForm.source} onChange={(e) => setEvForm({ ...evForm, source: e.target.value })} />
-              <input className={inp} placeholder="Source IP" value={evForm.srcIp} onChange={(e) => setEvForm({ ...evForm, srcIp: e.target.value })} />
-              <input className={inp} placeholder="User" value={evForm.user} onChange={(e) => setEvForm({ ...evForm, user: e.target.value })} />
-              <input className={inp} placeholder="Host" value={evForm.host} onChange={(e) => setEvForm({ ...evForm, host: e.target.value })} />
-              <input className={inp} placeholder="Category" value={evForm.category} onChange={(e) => setEvForm({ ...evForm, category: e.target.value })} />
+              <input aria-label="Source (e.g. firewall)" className={inp} placeholder="Source (e.g. firewall)" value={evForm.source} onChange={(e) => setEvForm({ ...evForm, source: e.target.value })} />
+              <input aria-label="Source IP" className={inp} placeholder="Source IP" value={evForm.srcIp} onChange={(e) => setEvForm({ ...evForm, srcIp: e.target.value })} />
+              <input aria-label="User" className={inp} placeholder="User" value={evForm.user} onChange={(e) => setEvForm({ ...evForm, user: e.target.value })} />
+              <input aria-label="Host" className={inp} placeholder="Host" value={evForm.host} onChange={(e) => setEvForm({ ...evForm, host: e.target.value })} />
+              <input aria-label="Category" className={inp} placeholder="Category" value={evForm.category} onChange={(e) => setEvForm({ ...evForm, category: e.target.value })} />
             </div>
             <div className="mt-2 flex gap-2">
               <button className={cn(btn, 'bg-rose-600 text-white hover:bg-rose-500')} onClick={ingestEvent} disabled={busy || !evForm.message.trim()}>
@@ -388,7 +419,7 @@ export function SOCConsole() {
           <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-3">
             <div className="mb-2 flex items-center gap-2">
               <h3 className="text-sm font-semibold text-zinc-200">Event Stream</h3>
-              <input className={cn(inp, 'ml-auto max-w-[200px]')} placeholder="Search…" value={evQuery} onChange={(e) => setEvQuery(e.target.value)} />
+              <input aria-label="Search" className={cn(inp, 'ml-auto max-w-[200px]')} placeholder="Search…" value={evQuery} onChange={(e) => setEvQuery(e.target.value)} />
             </div>
             {events.length === 0 ? (
               <p className="py-6 text-center text-sm text-zinc-400">No events ingested yet.</p>
@@ -416,26 +447,37 @@ export function SOCConsole() {
       {tab === 'rules' && (
         <div className="space-y-4">
           <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-3">
-            <h3 className="mb-2 text-sm font-semibold text-zinc-200">New Detection Rule</h3>
+            <h3 className="mb-2 text-sm font-semibold text-zinc-200">{editingRuleId ? 'Edit Detection Rule' : 'New Detection Rule'}</h3>
             <div className="grid gap-2 sm:grid-cols-2">
-              <input className={inp} placeholder="Rule name" value={ruleForm.name} onChange={(e) => setRuleForm({ ...ruleForm, name: e.target.value })} />
-              <input className={inp} placeholder="Match pattern (substring)" value={ruleForm.pattern} onChange={(e) => setRuleForm({ ...ruleForm, pattern: e.target.value })} />
-              <select className={inp} value={ruleForm.field} onChange={(e) => setRuleForm({ ...ruleForm, field: e.target.value })}>
+              <input aria-label="Rule name" className={inp} placeholder="Rule name" value={ruleForm.name} onChange={(e) => setRuleForm({ ...ruleForm, name: e.target.value })} />
+              <input aria-label="Match pattern (substring)" className={inp} placeholder="Match pattern (substring)" value={ruleForm.pattern} onChange={(e) => setRuleForm({ ...ruleForm, pattern: e.target.value })} />
+              <select className={inp} value={ruleForm.field} aria-label="Rule field" onChange={(e) => setRuleForm({ ...ruleForm, field: e.target.value })}>
                 {EVENT_FIELDS.map((f) => <option key={f} value={f}>field: {f}</option>)}
               </select>
-              <select className={inp} value={ruleForm.minSeverity} onChange={(e) => setRuleForm({ ...ruleForm, minSeverity: e.target.value })}>
+              <select className={inp} value={ruleForm.minSeverity} aria-label="Rule minimum severity" onChange={(e) => setRuleForm({ ...ruleForm, minSeverity: e.target.value })}>
                 {EVENT_SEVERITIES.map((s) => <option key={s} value={s}>min severity: {s}</option>)}
               </select>
-              <input className={inp} type="number" min={1} placeholder="Threshold" value={ruleForm.threshold} onChange={(e) => setRuleForm({ ...ruleForm, threshold: e.target.value })} />
-              <input className={inp} type="number" min={1} placeholder="Window (minutes)" value={ruleForm.windowMin} onChange={(e) => setRuleForm({ ...ruleForm, windowMin: e.target.value })} />
-              <select className={inp} value={ruleForm.incidentSeverity} onChange={(e) => setRuleForm({ ...ruleForm, incidentSeverity: e.target.value })}>
+              <input aria-label="Threshold" className={inp} type="number" min={1} placeholder="Threshold" value={ruleForm.threshold} onChange={(e) => setRuleForm({ ...ruleForm, threshold: e.target.value })} />
+              <input aria-label="Window (minutes)" className={inp} type="number" min={1} placeholder="Window (minutes)" value={ruleForm.windowMin} onChange={(e) => setRuleForm({ ...ruleForm, windowMin: e.target.value })} />
+              <select className={inp} value={ruleForm.incidentSeverity} aria-label="Rule incident severity" onChange={(e) => setRuleForm({ ...ruleForm, incidentSeverity: e.target.value })}>
                 {INCIDENT_SEVERITIES.map((s) => <option key={s} value={s}>incident: {s}</option>)}
               </select>
             </div>
             <div className="mt-2 flex gap-2">
-              <button className={cn(btn, 'bg-rose-600 text-white hover:bg-rose-500')} onClick={addRule} disabled={busy || !ruleForm.name.trim() || !ruleForm.pattern.trim()}>
-                <Plus className="h-3.5 w-3.5" /> Add Rule
-              </button>
+              {editingRuleId ? (
+                <>
+                  <button className={cn(btn, 'bg-rose-600 text-white hover:bg-rose-500')} onClick={saveRule} disabled={busy || !ruleForm.name.trim() || !ruleForm.pattern.trim()}>
+                    <Pencil className="h-3.5 w-3.5" /> Save changes
+                  </button>
+                  <button className={cn(btn, 'bg-zinc-700 text-white hover:bg-zinc-600')} onClick={resetRuleForm} disabled={busy}>
+                    Cancel edit
+                  </button>
+                </>
+              ) : (
+                <button className={cn(btn, 'bg-rose-600 text-white hover:bg-rose-500')} onClick={addRule} disabled={busy || !ruleForm.name.trim() || !ruleForm.pattern.trim()}>
+                  <Plus className="h-3.5 w-3.5" /> Add Rule
+                </button>
+              )}
               <button className={cn(btn, 'bg-emerald-600 text-white hover:bg-emerald-500')} onClick={evaluateRules} disabled={busy}>
                 {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />} Evaluate All
               </button>
@@ -456,12 +498,13 @@ export function SOCConsole() {
                       {r.field} ⊃ &quot;{r.pattern}&quot; · ≥{r.threshold} in {r.windowMin}m → {r.incidentSeverity} · fired {r.fireCount}×
                     </p>
                   </div>
+                  <button className="rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200" onClick={() => startEditRule(r)} title="Edit" aria-label={`Edit rule ${r.name || r.id}`}>
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
                   <button className="rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200" onClick={() => toggleRule(r.id)} title="Toggle">
                     <Power className="h-3.5 w-3.5" />
                   </button>
-                  <button className="rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-rose-400" onClick={() => deleteRule(r.id)} title="Delete">
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                  <StickyDeleteConfirm onConfirm={() => deleteRule(r.id)} armAriaLabel={`Delete rule ${r.name || r.id}`} confirmAriaLabel={`Confirm delete rule ${r.name || r.id}`} className="rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-rose-400" armLabel={<Trash2 className="h-3.5 w-3.5" />} />
                 </li>
               ))}
             </ul>
@@ -475,11 +518,11 @@ export function SOCConsole() {
           <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-3">
             <h3 className="mb-2 text-sm font-semibold text-zinc-200">Open Incident</h3>
             <div className="grid gap-2 sm:grid-cols-3">
-              <input className={cn(inp, 'sm:col-span-2')} placeholder="Incident title" value={incForm.title} onChange={(e) => setIncForm({ ...incForm, title: e.target.value })} />
-              <select className={inp} value={incForm.severity} onChange={(e) => setIncForm({ ...incForm, severity: e.target.value })}>
+              <input aria-label="Incident title" className={cn(inp, 'sm:col-span-2')} placeholder="Incident title" value={incForm.title} onChange={(e) => setIncForm({ ...incForm, title: e.target.value })} />
+              <select className={inp} value={incForm.severity} aria-label="Incident severity" onChange={(e) => setIncForm({ ...incForm, severity: e.target.value })}>
                 {INCIDENT_SEVERITIES.map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
-              <input className={cn(inp, 'sm:col-span-3')} placeholder="Assignee (optional)" value={incForm.assignee} onChange={(e) => setIncForm({ ...incForm, assignee: e.target.value })} />
+              <input aria-label="Assignee (optional)" className={cn(inp, 'sm:col-span-3')} placeholder="Assignee (optional)" value={incForm.assignee} onChange={(e) => setIncForm({ ...incForm, assignee: e.target.value })} />
             </div>
             <button className={cn(btn, 'mt-2 bg-rose-600 text-white hover:bg-rose-500')} onClick={openIncident} disabled={busy || !incForm.title.trim()}>
               <Plus className="h-3.5 w-3.5" /> Open Incident
@@ -562,7 +605,7 @@ export function SOCConsole() {
 
               {/* Add note */}
               <div className="mb-3 flex gap-2">
-                <input className={inp} placeholder="Investigation note…" value={advNote} onChange={(e) => setAdvNote(e.target.value)} />
+                <input aria-label="Investigation note" className={inp} placeholder="Investigation note…" value={advNote} onChange={(e) => setAdvNote(e.target.value)} />
                 <button className={cn(btn, 'bg-zinc-800 text-zinc-200 hover:bg-zinc-700')} onClick={() => addIncidentNote(selectedIncident.id)} disabled={!advNote.trim()}>
                   Log
                 </button>
@@ -626,11 +669,11 @@ export function SOCConsole() {
           <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-3">
             <h3 className="mb-2 text-sm font-semibold text-zinc-200">Record Badge Access</h3>
             <div className="grid gap-2 sm:grid-cols-2">
-              <input className={inp} placeholder="Badge ID" value={badgeForm.badgeId} onChange={(e) => setBadgeForm({ ...badgeForm, badgeId: e.target.value })} />
-              <input className={inp} placeholder="Holder (optional)" value={badgeForm.holder} onChange={(e) => setBadgeForm({ ...badgeForm, holder: e.target.value })} />
-              <input className={inp} placeholder="Zone" value={badgeForm.zone} onChange={(e) => setBadgeForm({ ...badgeForm, zone: e.target.value })} />
-              <input className={inp} placeholder="Door (optional)" value={badgeForm.door} onChange={(e) => setBadgeForm({ ...badgeForm, door: e.target.value })} />
-              <select className={inp} value={badgeForm.result} onChange={(e) => setBadgeForm({ ...badgeForm, result: e.target.value })}>
+              <input aria-label="Badge ID" className={inp} placeholder="Badge ID" value={badgeForm.badgeId} onChange={(e) => setBadgeForm({ ...badgeForm, badgeId: e.target.value })} />
+              <input aria-label="Holder (optional)" className={inp} placeholder="Holder (optional)" value={badgeForm.holder} onChange={(e) => setBadgeForm({ ...badgeForm, holder: e.target.value })} />
+              <input aria-label="Zone" className={inp} placeholder="Zone" value={badgeForm.zone} onChange={(e) => setBadgeForm({ ...badgeForm, zone: e.target.value })} />
+              <input aria-label="Door (optional)" className={inp} placeholder="Door (optional)" value={badgeForm.door} onChange={(e) => setBadgeForm({ ...badgeForm, door: e.target.value })} />
+              <select className={inp} value={badgeForm.result} aria-label="Badge check result" onChange={(e) => setBadgeForm({ ...badgeForm, result: e.target.value })}>
                 <option value="granted">granted</option>
                 <option value="denied">denied</option>
               </select>
@@ -674,10 +717,10 @@ export function SOCConsole() {
           <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-3">
             <h3 className="mb-2 text-sm font-semibold text-zinc-200">Register Camera</h3>
             <div className="grid gap-2 sm:grid-cols-2">
-              <input className={inp} placeholder="Camera name" value={camForm.name} onChange={(e) => setCamForm({ ...camForm, name: e.target.value })} />
-              <input className={inp} placeholder="Zone" value={camForm.zone} onChange={(e) => setCamForm({ ...camForm, zone: e.target.value })} />
-              <input className={cn(inp, 'sm:col-span-2')} placeholder="Stream URL (your own MJPEG/snapshot endpoint, optional)" value={camForm.streamUrl} onChange={(e) => setCamForm({ ...camForm, streamUrl: e.target.value })} />
-              <select className={inp} value={camForm.kind} onChange={(e) => setCamForm({ ...camForm, kind: e.target.value })}>
+              <input aria-label="Camera name" className={inp} placeholder="Camera name" value={camForm.name} onChange={(e) => setCamForm({ ...camForm, name: e.target.value })} />
+              <input aria-label="Zone" className={inp} placeholder="Zone" value={camForm.zone} onChange={(e) => setCamForm({ ...camForm, zone: e.target.value })} />
+              <input aria-label="Stream URL (your own MJPEG/snapshot endpoint, optional)" className={cn(inp, 'sm:col-span-2')} placeholder="Stream URL (your own MJPEG/snapshot endpoint, optional)" value={camForm.streamUrl} onChange={(e) => setCamForm({ ...camForm, streamUrl: e.target.value })} />
+              <select className={inp} value={camForm.kind} aria-label="Camera kind" onChange={(e) => setCamForm({ ...camForm, kind: e.target.value })}>
                 <option value="indoor">indoor</option>
                 <option value="outdoor">outdoor</option>
                 <option value="ptz">ptz</option>
@@ -723,6 +766,7 @@ export function SOCConsole() {
                     <p className="text-[11px] text-zinc-400">{c.zone} · {c.kind}</p>
                     <div className="mt-1.5 flex gap-1">
                       <select
+                        aria-label={`Status for camera ${c.name}`}
                         className="flex-1 rounded border border-zinc-700 bg-zinc-900 px-1.5 py-1 text-[11px] text-zinc-300"
                         value={c.status}
                         onChange={(e) => setCameraStatus(c.id, e.target.value)}
@@ -731,9 +775,7 @@ export function SOCConsole() {
                         <option value="offline">offline</option>
                         <option value="maintenance">maintenance</option>
                       </select>
-                      <button className="rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-rose-400" onClick={() => deleteCamera(c.id)} title="Delete">
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                      <StickyDeleteConfirm onConfirm={() => deleteCamera(c.id)} armAriaLabel={`Delete camera ${c.name || c.id}`} confirmAriaLabel={`Confirm delete camera ${c.name || c.id}`} className="rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-rose-400" armLabel={<Trash2 className="h-3.5 w-3.5" />} />
                     </div>
                   </div>
                 </div>
@@ -752,8 +794,8 @@ export function SOCConsole() {
               EPSS exploit-probability from FIRST.org · IOC reputation derived from your SIEM event stream.
             </p>
             <div className="grid gap-2 sm:grid-cols-2">
-              <input className={inp} placeholder="CVE id (e.g. CVE-2021-44228)" value={intelForm.cveId} onChange={(e) => setIntelForm({ ...intelForm, cveId: e.target.value })} />
-              <input className={inp} placeholder="IOC (IP / host / token)" value={intelForm.ioc} onChange={(e) => setIntelForm({ ...intelForm, ioc: e.target.value })} />
+              <input aria-label="CVE id (e.g. CVE-2021-44228)" className={inp} placeholder="CVE id (e.g. CVE-2021-44228)" value={intelForm.cveId} onChange={(e) => setIntelForm({ ...intelForm, cveId: e.target.value })} />
+              <input aria-label="IOC (IP / host / token)" className={inp} placeholder="IOC (IP / host / token)" value={intelForm.ioc} onChange={(e) => setIntelForm({ ...intelForm, ioc: e.target.value })} />
             </div>
             <button className={cn(btn, 'mt-2 bg-rose-600 text-white hover:bg-rose-500')} onClick={runEnrichment} disabled={busy || (!intelForm.cveId.trim() && !intelForm.ioc.trim())}>
               {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Radar className="h-3.5 w-3.5" />} Enrich

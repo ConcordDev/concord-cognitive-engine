@@ -62,23 +62,23 @@ export function ActivityRings() {
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
         <label>
           <span className="block text-[10px] uppercase text-gray-400 mb-0.5">Date</span>
-          <input type="date" value={logDate} onChange={e => setLogDate(e.target.value)} className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input id="fitness-logdate" name="logdate" type="date" value={logDate} onChange={e => setLogDate(e.target.value)} className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
         </label>
         <label>
           <span className="block text-[10px] uppercase text-gray-400 mb-0.5">Exercise (min)</span>
-          <input type="number" min="0" value={logExercise} onChange={e => setLogExercise(e.target.value)} placeholder="45" className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input id="fitness-45" name="45" aria-label="45" type="number" min="0" value={logExercise} onChange={e => setLogExercise(e.target.value)} placeholder="45" className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
         </label>
         <label>
           <span className="block text-[10px] uppercase text-gray-400 mb-0.5">Active kcal</span>
-          <input type="number" min="0" value={logCalories} onChange={e => setLogCalories(e.target.value)} placeholder="400" className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input id="fitness-400" name="400" aria-label="400" type="number" min="0" value={logCalories} onChange={e => setLogCalories(e.target.value)} placeholder="400" className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
         </label>
         <label>
           <span className="block text-[10px] uppercase text-gray-400 mb-0.5">Steps</span>
-          <input type="number" min="0" value={logSteps} onChange={e => setLogSteps(e.target.value)} placeholder="8000" className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input id="fitness-8000" name="8000" aria-label="8000" type="number" min="0" value={logSteps} onChange={e => setLogSteps(e.target.value)} placeholder="8000" className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
         </label>
         <label>
           <span className="block text-[10px] uppercase text-gray-400 mb-0.5">Stand (hrs)</span>
-          <input type="number" min="0" step="0.5" value={logStand} onChange={e => setLogStand(e.target.value)} placeholder="10" className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input id="fitness-10" name="10" aria-label="10" type="number" min="0" step="0.5" value={logStand} onChange={e => setLogStand(e.target.value)} placeholder="10" className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
         </label>
       </div>
       <div className="flex items-center gap-2 mt-2">

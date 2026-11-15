@@ -29,9 +29,42 @@ import {
   moveVehicle,
   occupantCount,
   despawnVehicle,
+  updateVehicle,
 } from "../lib/world-vehicles.js";
 import { actorId as authzActorId, isAdmin } from "../lib/lens-authz.js";
 import { resolveUserDisplay } from "../lib/friend-presence.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
+
+function garageExportRows(ctx) {
+  const db = ctx?.db;
+  const userId = actorId(ctx);
+  if (!db || !userId) return [];
+  try {
+    const vehicles = db.prepare(`
+      SELECT id, world_id, kind, owner_kind, owner_id, capacity, fare_cc, condition_pct, created_at
+      FROM world_vehicles
+      WHERE owner_kind = 'player' AND owner_id = ?
+      ORDER BY created_at DESC LIMIT 500
+    `).all(userId);
+    return vehicles.map((row) => ({
+      id: row.id,
+      type: "vehicle",
+      title: row.kind || "Vehicle",
+      createdAt: row.created_at || null,
+      updatedAt: row.created_at || null,
+      data: {
+        id: row.id,
+        worldId: row.world_id,
+        kind: row.kind,
+        capacity: row.capacity,
+        fareCc: row.fare_cc,
+        conditionPct: row.condition_pct,
+      },
+    }));
+  } catch {
+    return [];
+  }
+}
 
 function actorId(ctx) {
   return authzActorId(ctx);
@@ -63,6 +96,7 @@ function clampStr(v, n, fallback) {
 }
 
 export default function registerGarageMacros(register) {
+  registerLensExportProvider("garage", garageExportRows);
   // ── reads (headless-safe) ──────────────────────────────────────────────
 
   /**
@@ -190,6 +224,8 @@ export default function registerGarageMacros(register) {
       fare_cc: input.fare_cc != null ? Number(input.fare_cc) : null,
       route_id: input.route_id != null ? clampStr(input.route_id, 64, null) : null,
       position: input.position && typeof input.position === "object" ? input.position : null,
+      name: clampStr(input.name, 80, ""),
+      spec: clampStr(input.spec, 280, ""),
     });
   }
 
@@ -251,6 +287,24 @@ export default function registerGarageMacros(register) {
     if (!input.vehicleId) return { ok: false, reason: "no_vehicle_id" };
     return despawnVehicle(db, String(input.vehicleId), "player", userId);
   }, { note: "despawn a vehicle the calling player owns" });
+
+  /**
+   * garage.update — FIX-garage-001: the owner edits their vehicle's
+   * name / spec / capacity (the inspector's edit form). Owner-only,
+   * enforced in the lib. input: { vehicleId, name?, spec?, capacity? }
+   */
+  register("garage", "update", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const userId = actorId(ctx);
+    if (!userId) return { ok: false, reason: "no_user" };
+    if (!input.vehicleId) return { ok: false, reason: "no_vehicle_id" };
+    return updateVehicle(db, String(input.vehicleId), "player", userId, {
+      name: input.name !== undefined ? clampStr(input.name, 80, "") : undefined,
+      spec: input.spec !== undefined ? clampStr(input.spec, 280, "") : undefined,
+      capacity: input.capacity != null ? Number(input.capacity) : undefined,
+    });
+  }, { note: "edit a vehicle the calling player owns (name / spec / capacity)" });
 
   register("garage", "move", async (ctx, input = {}) => {
     const db = ctx?.db;

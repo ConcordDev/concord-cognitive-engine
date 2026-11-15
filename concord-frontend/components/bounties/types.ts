@@ -14,6 +14,8 @@ export interface Submission {
   id: string;
   bountyId: string;
   claimantId: string;
+  /** Display name resolved server-side at read time; null when unknown. */
+  claimantName?: string | null;
   summary: string;
   link: string;
   notes: string;
@@ -28,11 +30,13 @@ export interface Submission {
 export interface Dispute {
   id: string;
   openedBy: string;
+  openedByName?: string | null;
   reason: string;
   status: 'open' | 'resolved';
   ruling: 'uphold' | 'overturn' | 'split' | null;
   rulingNote: string | null;
   arbiterId?: string;
+  arbiterName?: string | null;
   resolvedAt: string | null;
   openedAt: string;
 }
@@ -42,13 +46,15 @@ export interface PlatformBounty {
   title: string;
   description: string;
   ownerId: string;
+  /** Display name resolved server-side at read time; null when unknown. */
+  ownerName?: string | null;
   category: string;
   tags: string[];
   difficulty: string;
   rewardCc: number;
   poolCc: number;
   paidCc: number;
-  status: 'open' | 'claimed' | 'in_review' | 'paid' | 'disputed';
+  status: 'open' | 'claimed' | 'in_review' | 'paid' | 'disputed' | 'cancelled';
   createdAt: string;
   updatedAt: string;
   deadline: string | null;
@@ -62,8 +68,17 @@ export interface PlatformBounty {
 export interface LeaderRow {
   rank: number;
   userId: string;
+  /** Display name resolved server-side at read time; null when unknown. */
+  name?: string | null;
   earnedCc: number;
   resolved: number;
+}
+
+/** Board-wide totals from the list verb — one meaning under any filter. */
+export interface BoardTotals {
+  openPoolCc: number;
+  paidOutCc: number;
+  bountyCount: number;
 }
 
 export const STATUS_STYLE: Record<string, string> = {
@@ -72,6 +87,7 @@ export const STATUS_STYLE: Record<string, string> = {
   in_review: 'bg-amber-500/15 text-amber-300 ring-amber-500/40',
   paid: 'bg-zinc-500/15 text-zinc-300 ring-zinc-500/40',
   disputed: 'bg-red-500/15 text-red-300 ring-red-500/40',
+  cancelled: 'bg-zinc-600/15 text-zinc-400 ring-zinc-500/40',
 };
 
 export const DIFFICULTY_STYLE: Record<string, string> = {

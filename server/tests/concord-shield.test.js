@@ -32,6 +32,7 @@ import {
   detectShieldIntent,
   performSweep,
   processUserReport,
+  retractUserReport,
   getThreatFeed,
   getFirewallRules,
   getPredictions,
@@ -758,7 +759,7 @@ describe("Concord Shield — User Reports", () => {
     }, "user123", STATE);
 
     assert.equal(result.ok, true);
-    assert.equal(result.status, "new_threat");
+    assert.equal(result.status, "pending_review");
     assert.ok(result.threatDtu);
     assert.equal(result.threatDtu.subtype, "phishing");
   });
@@ -783,6 +784,17 @@ describe("Concord Shield — User Reports", () => {
 
     assert.ok(result.threatDtu.source.includes("reporter_456"));
     assert.ok(result.threatDtu.tags.includes("user_reported"));
+    assert.equal(result.threatDtu.verified, false);
+  });
+
+  it("an unverified report does not change the score, and the reporter can retract it", () => {
+    const before = computeSecurityScore("user123", STATE).score;
+    const result = processUserReport({ subtype: "exploit", severity: 1, description: "qa" }, "user123", STATE);
+    assert.equal(computeSecurityScore("user123", STATE).score, before);
+    const gone = retractUserReport(result.threatDtu.id, "user123", STATE);
+    assert.equal(gone.ok, true);
+    assert.equal(STATE.dtus.has(result.threatDtu.id), false);
+    assert.equal(retractUserReport(result.threatDtu.id, "someone_else", STATE).ok, false);
   });
 });
 

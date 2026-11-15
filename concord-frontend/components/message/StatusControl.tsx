@@ -67,9 +67,9 @@ export function StatusControl() {
         <div className="absolute left-full bottom-0 ml-1 z-30 w-64 bg-[#0a0c10] border border-white/10 rounded shadow-lg p-3 space-y-2">
           <div className="text-[10px] uppercase tracking-wider text-violet-300">Set a status</div>
           <div className="flex items-center gap-1">
-            <input value={emoji} onChange={e => setEmoji(e.target.value.slice(0, 4))}
+            <input aria-label="Status emoji" value={emoji} onChange={e => setEmoji(e.target.value.slice(0, 4))}
               className="w-10 px-1 py-1 text-center bg-black/40 border border-white/15 rounded text-white" />
-            <input value={text} onChange={e => setText(e.target.value)} placeholder="What's your status?"
+            <input aria-label="Status text" value={text} onChange={e => setText(e.target.value)} placeholder="What's your status?"
               className="flex-1 px-2 py-1 text-xs bg-black/40 border border-white/15 rounded text-white" />
           </div>
           <div className="flex flex-wrap gap-1">
@@ -92,7 +92,7 @@ export function StatusControl() {
               ))}
             </div>
           </div>
-          <select value={durationMin} onChange={e => setDurationMin(Number(e.target.value))}
+          <select aria-label="Clear status after" value={durationMin} onChange={e => setDurationMin(Number(e.target.value))}
             className="w-full px-2 py-1 text-xs bg-black/40 border border-white/15 rounded text-white">
             {DURATIONS.map(d => <option key={d.min} value={d.min}>Clear after: {d.label}</option>)}
           </select>

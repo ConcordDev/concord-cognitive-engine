@@ -423,6 +423,7 @@ export default function registerDIYActions(registerLensAction) {
       tags: Array.isArray(params.tags) ? params.tags.map((t) => diyClean(t, 40)).filter(Boolean).slice(0, 12) : [],
       steps: [],
       bom: [],
+      cutList: null,
       status: "planning",
       forkedFrom: null,
       createdAt: new Date().toISOString(),
@@ -452,6 +453,29 @@ export default function registerDIYActions(registerLensAction) {
     const p = findProject(s, diyActor(ctx), params.projectId);
     if (!p) return { ok: false, error: "project not found" };
     return { ok: true, result: { project: projectSummary(p) } };
+  });
+
+  // cutlist-save — persist the workshop Cut List tab's working inputs on the
+  // project (FIX-diy-003: the panel kept stock + cuts in component state, so
+  // the cut list and its estimate vanished on reload). The optimizer itself
+  // stays a pure compute macro; what persists is the user's work product.
+  registerLensAction("diy", "cutlist-save", (ctx, _a, params = {}) => {
+    const s = getDIYState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const p = findProject(s, diyActor(ctx), params.projectId);
+    if (!p) return { ok: false, error: "project not found" };
+    const cutsIn = Array.isArray(params.cuts) ? params.cuts.slice(0, 200) : [];
+    const cuts = cutsIn.map((c, i) => ({
+      label: diyClean(c?.label, 80) || `Cut ${i + 1}`,
+      length: Math.max(0, diyNum(c?.length)),
+      quantity: Math.max(1, Math.min(999, Math.round(diyNum(c?.quantity)) || 1)),
+    })).filter((c) => c.length > 0);
+    p.cutList = {
+      stockLength: Math.max(0, diyNum(params.stockLength)) || 96,
+      cuts,
+      updatedAt: new Date().toISOString(),
+    };
+    saveDIY();
+    return { ok: true, result: { cutList: p.cutList } };
   });
 
   // project-delete

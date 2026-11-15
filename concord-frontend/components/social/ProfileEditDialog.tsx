@@ -130,7 +130,7 @@ export function ProfileEditDialog({ userId, initial, onClose }: ProfileEditDialo
           }}
         />
       </label>
-      {avatar ? <p className="truncate text-[11px] text-zinc-500">Avatar: {avatar}</p> : null}
+      {avatar ? <p className="truncate text-[11px] text-zinc-400">Avatar: {avatar}</p> : null}
       <fieldset className="block text-xs text-zinc-400">
         <legend>Accent colour</legend>
         <div className="mt-1 flex items-center gap-2">
@@ -159,7 +159,7 @@ export function ProfileEditDialog({ userId, initial, onClose }: ProfileEditDialo
             </button>
           ) : null}
         </div>
-        <p className="mt-1 text-[11px] text-zinc-500">
+        <p className="mt-1 text-[11px] text-zinc-400">
           Colours the ring around your avatar and one tone of your Aura. Needs at least{' '}
           {ACCENT_MIN_CONTRAST}:1 contrast against the dark profile surface.
           {accentCheck.contrast !== null

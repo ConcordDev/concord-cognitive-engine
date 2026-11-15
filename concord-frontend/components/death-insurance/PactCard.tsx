@@ -6,9 +6,10 @@
  * status and revoke. All actions hit real `insurance` macros.
  */
 
-import { useState } from 'react';
-import { RefreshCw, Wallet, Users, Ban, Repeat } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { RefreshCw, Wallet, Users, Ban, Repeat, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import type { Pact } from './types';
 
 interface PactCardProps {
@@ -29,10 +30,13 @@ function fmtDate(unixSec: number): string {
 
 export function PactCard({ pact, onChanged }: PactCardProps) {
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
   const [renewDays, setRenewDays] = useState(pact.durationDays);
   const [note, setNote] = useState<string | null>(null);
 
   const run = async (action: string, params: Record<string, unknown>, ok: string) => {
+    if (busyRef.current) return;
+    busyRef.current = true;
     setBusy(true);
     const r = await lensRun('insurance', action, params);
     if (r.data?.ok) {
@@ -41,6 +45,7 @@ export function PactCard({ pact, onChanged }: PactCardProps) {
     } else {
       setNote(r.data?.error || 'action failed');
     }
+    busyRef.current = false;
     setBusy(false);
     window.setTimeout(() => setNote(null), 5000);
   };
@@ -153,15 +158,41 @@ export function PactCard({ pact, onChanged }: PactCardProps) {
             </button>
           )}
           {pact.status === 'active' && (
-            <button
-              type="button"
+            <StickyDeleteConfirm
               disabled={busy}
-              onClick={() => run('pact-revoke', { pactId: pact.id }, 'Pact revoked.')}
+              onConfirm={() => run('pact-revoke', { pactId: pact.id }, 'Pact revoked.')}
+              armLabel={
+                <span className="flex items-center gap-1">
+                  <Ban className="h-3 w-3" /> Revoke
+                </span>
+              }
+              confirmLabel="Revoke pact?"
+              armAriaLabel="Revoke pact"
+              confirmAriaLabel="Confirm revoke"
+              cancelAriaLabel="Cancel revoke"
               className="flex items-center gap-1 rounded bg-rose-900 px-2 py-1 text-[11px] text-rose-200 hover:bg-rose-800 disabled:opacity-50"
-            >
-              <Ban className="h-3 w-3" /> Revoke
-            </button>
+            />
           )}
+        </div>
+      )}
+
+      {pact.status === 'revoked' && (
+        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-white/5 pt-2">
+          <span className="text-[11px] text-zinc-500">This pact is revoked and closed.</span>
+          <StickyDeleteConfirm
+            disabled={busy}
+            onConfirm={() => run('pact-remove', { pactId: pact.id }, 'Pact removed.')}
+            armLabel={
+              <span className="flex items-center gap-1">
+                <Trash2 className="h-3 w-3" /> Remove
+              </span>
+            }
+            confirmLabel="Remove pact?"
+            armAriaLabel="Remove pact"
+            confirmAriaLabel="Confirm remove"
+            cancelAriaLabel="Cancel remove"
+            className="flex items-center gap-1 rounded bg-zinc-800 px-2 py-1 text-[11px] text-zinc-200 hover:bg-zinc-700 disabled:opacity-50"
+          />
         </div>
       )}
     </li>

@@ -26,6 +26,7 @@ export function priceFeedLabel(status: PriceFeedStatus): string {
 interface PriceFeedValue {
   ticks: PriceTick[];
   status: PriceFeedStatus;
+  reload: () => void;
 }
 
 const PriceFeedContext = createContext<PriceFeedValue | null>(null);
@@ -43,6 +44,7 @@ export function usePriceFeedPoll(active = true): PriceFeedValue {
   const [ticks, setTicks] = useState<PriceTick[]>([]);
   const [stale, setStale] = useState(false);
   const [everLoaded, setEverLoaded] = useState(false);
+  const [nonce, setNonce] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -72,9 +74,9 @@ export function usePriceFeedPoll(active = true): PriceFeedValue {
       cancelled = true;
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [active]);
+  }, [active, nonce]);
 
-  return { ticks, status: statusOf(everLoaded, stale) };
+  return { ticks, status: statusOf(everLoaded, stale), reload: () => setNonce((n) => n + 1) };
 }
 
 export function PriceFeedProvider({ children }: { children: ReactNode }) {

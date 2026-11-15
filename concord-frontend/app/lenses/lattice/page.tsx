@@ -126,10 +126,14 @@ export default function LatticeLensPage() {
     <LensShell lensId="lattice" asMain={false}>
 
       <DepthBadge lensId="lattice" size="sm" className="ml-2" />
-      <div data-lens-theme="lattice" className="relative min-h-full px-8 pb-28 pt-6">
+      <div data-lens-theme="lattice" className="relative min-h-full overflow-x-clip px-4 pb-28 pt-6 sm:px-8">
         <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Lattice</h1>
 
-        <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Lattice sections">
+        {/* FIX-lattice-008: below sm the strip wraps so every section —
+            Training, Schedule and Repos included — is visible with its
+            active state, instead of trailing off the scroll edge where
+            the highlight could not be seen to track the open panel. */}
+        <nav className="mb-6 flex max-w-full flex-wrap items-center gap-1 rounded-3xl border border-white/10 bg-white/[0.03] p-1 sm:inline-flex sm:flex-nowrap sm:overflow-x-auto sm:rounded-full" aria-label="Lattice sections">
           {VIEWS.map(({ id, label, keys, hint, icon: Icon }) => {
             const on = active === id;
             return (

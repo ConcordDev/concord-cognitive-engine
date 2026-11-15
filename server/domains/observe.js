@@ -17,6 +17,7 @@
 // by userId. Every handler returns { ok, result?, error? } and never throws.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { badNumber } from "../lib/finite-input.js";
 import { assessPublicUrl, fetchPublicUrl, PUBLIC_URL_BLOCKED } from "../lib/public-fetch.js";
 
 export default function registerObserveActions(registerLensAction) {
@@ -212,6 +213,22 @@ export default function registerObserveActions(registerLensAction) {
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
+  /** metricDelete — remove one of the caller's own metric series entirely. */
+  registerLensAction("observe", "metricDelete", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getObserveState();
+      if (!s) return { ok: false, error: "state unavailable" };
+      const name = clean(params.metric, 80);
+      if (!name) return { ok: false, error: "metric name required" };
+      const userMetrics = s.metrics.get(actor(ctx));
+      if (!userMetrics || !userMetrics.has(name)) return { ok: false, error: "metric not found" };
+      const points = userMetrics.get(name).length;
+      userMetrics.delete(name);
+      save();
+      return { ok: true, result: { deleted: name, points, metrics: userMetrics.size } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
   /** metricQuery — time-series query with windowing + aggregation rollup. */
   registerLensAction("observe", "metricQuery", (ctx, _artifact, params = {}) => {
     try {
@@ -272,7 +289,9 @@ export default function registerObserveActions(registerLensAction) {
       if (!s) return { ok: false, error: "state unavailable" };
       const uid = actor(ctx);
       const list = listFor(s.dashboards, uid);
-      const title = clean(params.title || "Untitled dashboard", 120);
+      const title = String(params.title ?? "").trim();
+      if (!title) return { ok: false, error: "title required", message: "Dashboard title is required." };
+      if (title.length > 120) return badNumber("title", "must be 120 characters or fewer");
       const widgets = Array.isArray(params.widgets) ? params.widgets.slice(0, 40).map((w) => ({
         id: clean(w.id || oId("wg"), 40),
         kind: ["timeseries", "query_value", "toplist", "slo", "alert_count", "log_stream", "trace_map", "note"]
@@ -550,11 +569,15 @@ export default function registerObserveActions(registerLensAction) {
       const op = [">", ">=", "<", "<=", "=="].includes(params.op) ? params.op : ">";
       const type = ["threshold", "anomaly"].includes(params.type) ? params.type : "threshold";
       const agg = ["avg", "sum", "min", "max", "count", "last"].includes(params.agg) ? params.agg : "avg";
+      if (params.threshold != null && params.threshold !== "" && !Number.isFinite(Number(params.threshold))) {
+        return { ok: false, error: "invalid_input", message: "Threshold must be a number." };
+      }
+      const threshold = params.threshold == null || params.threshold === "" ? 0 : Number(params.threshold);
       let mon = params.id ? list.find((m) => m.id === params.id) : null;
       const fields = {
-        name: clean(params.name || `${metric} ${op} ${params.threshold}`, 120),
+        name: clean(params.name || `${metric} ${op} ${threshold}`, 120),
         type, metric, op, agg,
-        threshold: num(params.threshold, 0),
+        threshold,
         windowMinutes: num(params.windowMinutes, 15),
         sigma: num(params.sigma, 3),            // anomaly band width
         severity: ["sev1", "sev2", "sev3", "sev4"].includes(params.severity) ? params.severity : "sev3",

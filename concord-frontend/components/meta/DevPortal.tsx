@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { useSmartPolling } from '@/hooks/useSmartPolling';
 import { ChartKit, TimelineView, TreeDiagram } from '@/components/viz';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import type { TimelineEvent, TreeNode } from '@/components/viz';
 import {
   Server,
@@ -484,12 +485,13 @@ function ServiceCatalogPanel() {
                       </p>
                     </div>
                   </div>
-                  <button aria-label="Delete"
-                    onClick={() => remove(svc.id)}
+                  <StickyDeleteConfirm
+                    onConfirm={() => remove(svc.id)}
+                    armAriaLabel={`Delete ${svc.name}`}
+                    confirmAriaLabel={`Confirm delete ${svc.name}`}
                     className="shrink-0 rounded p-1.5 text-zinc-600 hover:bg-rose-500/10 hover:text-rose-400"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                    armLabel={<Trash2 className="h-3.5 w-3.5" />}
+                  />
                 </div>
               ))}
             </div>

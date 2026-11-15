@@ -15,10 +15,12 @@ import {
   Send, ShieldAlert, Star, Tag, Trash2, Undo2, X, Gamepad2, AlertTriangle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useLensStatePersistence } from '@/lib/lens-state-persistence';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useUIStore } from '@/store/ui';
 import { MailFolderPanel } from '@/components/mail/MailFolderPanel';
 import { ComposeMailPanel } from '@/components/mail/ComposeMailPanel';
+import type { ComposeSeed } from '@/components/mail/types';
 import {
   NOT_CONNECTED, SYSTEM_FOLDERS, fmtListDate, forwardDraft, gmail, gmailErrorText, replyDraft, senderName,
   type Draft, type FullMessage, type GmailLabel, type Outgoing, type ThreadSummary,
@@ -48,10 +50,31 @@ function Panel({ children, className }: { children: ReactNode; className?: strin
 }
 
 export function MailClient({ composeSignal = 0 }: { composeSignal?: number }) {
-  const [connected, setConnected] = useState<boolean | null>(null);
+  const [connected, setConnectedState] = useState<boolean | null>(null);
+  // FIX-mail-003: ref mirror of the not-connected fact, readable inside
+  // effects without re-firing them. Once Gmail is known unconnected, the
+  // load effects stop firing doomed calls behind the connect wall — a
+  // page load used to cost five failing requests (list + profile +
+  // labels, then profile + labels again when `connected` flipped to
+  // false) and every folder click added another. A successful list load
+  // clears the ref, so a manual Retry after connecting elsewhere still
+  // recovers in-session.
+  const notConnectedRef = useRef(false);
+  const setConnected = useCallback((v: boolean) => {
+    notConnectedRef.current = !v;
+    setConnectedState(v);
+  }, []);
   const [me, setMe] = useState('');
   const [labels, setLabels] = useState<GmailLabel[]>([]);
-  const [folder, setFolder] = useState('INBOX');
+  // FIX-mail-002: the open mailbox survives a reload — a player-mail
+  // user no longer lands back on the Gmail view (and its connect wall)
+  // after F5.
+  const { restore: restoreMailView, persist: persistMailView } = useLensStatePersistence('mail');
+  const [folder, setFolder] = useState(() => {
+    const f = restoreMailView()?.folder;
+    return typeof f === 'string' && f ? f : 'INBOX';
+  });
+  useEffect(() => { persistMailView({ folder }); }, [folder, persistMailView]);
   const [query, setQuery] = useState('');
   const [searchDraft, setSearchDraft] = useState('');
   const [threads, setThreads] = useState<ThreadSummary[]>([]);
@@ -107,9 +130,13 @@ export function MailClient({ composeSignal = 0 }: { composeSignal?: number }) {
     setEstimate(r.data.resultSizeEstimate);
   }, [folder, query, pages, pageIdx, isConcord, isDrafts, handleFail]);
 
-  useEffect(() => { void Promise.resolve().then(loadList); }, [loadList]);
+  useEffect(() => {
+    if (notConnectedRef.current) return;
+    void Promise.resolve().then(loadList);
+  }, [loadList]);
 
   useEffect(() => {
+    if (notConnectedRef.current) return;
     void Promise.resolve().then(async () => {
       const [p, l] = await Promise.all([gmail.profile(), gmail.labels()]);
       if (p.ok) setMe(p.data.profile.emailAddress);
@@ -210,14 +237,39 @@ export function MailClient({ composeSignal = 0 }: { composeSignal?: number }) {
     if (timerRef.current) clearTimeout(timerRef.current);
     if (noticeTimer.current) clearTimeout(noticeTimer.current);
   }, []);
+  // FIX-mail-004: with Gmail not connected, Compose used to open a
+  // Gmail composer onto the connect wall — a sheet that could never
+  // send, over a wall that says to connect first (and on the reported
+  // build, no visible effect at all). Compose now routes to the
+  // player-mail composer instead: switch mailboxes, then signal its
+  // compose tab once it has mounted.
+  const [routeToPlayerCompose, setRouteToPlayerCompose] = useState(false);
+  const composeNew = useCallback(() => {
+    if (isConcord) { setConcordCompose((n) => n + 1); return; }
+    if (connected === false) {
+      openFolder('CONCORD');
+      setRouteToPlayerCompose(true);
+      return;
+    }
+    openComposer({ mode: 'new', draft: emptyDraft() });
+  }, [isConcord, connected, openComposer]); // eslint-disable-line react-hooks/exhaustive-deps
+  // The compose signal to the player mailbox fires only after it has
+  // mounted (a same-commit bump would be its initial value, not a
+  // signal, and its compose tab would never open).
+  useEffect(() => {
+    if (isConcord && routeToPlayerCompose) {
+      setRouteToPlayerCompose(false);
+      setConcordCompose((n) => n + 1);
+    }
+  }, [isConcord, routeToPlayerCompose]);
+
   const lastSignal = useRef(composeSignal);
   useEffect(() => {
     if (composeSignal !== lastSignal.current) {
       lastSignal.current = composeSignal;
-      if (isConcord) setConcordCompose((n) => n + 1);
-      else queueMicrotask(() => openComposer({ mode: 'new', draft: emptyDraft() }));
+      queueMicrotask(() => composeNew());
     }
-  }, [composeSignal, isConcord, openComposer]);
+  }, [composeSignal, composeNew]);
 
   const openDraft = (d: Draft) => {
     const msg = d.message;
@@ -227,7 +279,7 @@ export function MailClient({ composeSignal = 0 }: { composeSignal?: number }) {
   const current = threads[Math.min(cursor, Math.max(0, threads.length - 1))];
   const openThreadObj = useMemo(() => threads.find((t) => t.id === openId), [threads, openId]);
   useLensCommand([
-    { id: 'mail-compose', keys: 'c', description: 'Compose', category: 'actions', action: () => { if (isConcord) setConcordCompose((n) => n + 1); else openComposer({ mode: 'new', draft: emptyDraft() }); } },
+    { id: 'mail-compose', keys: 'c', description: 'Compose', category: 'actions', action: () => composeNew() },
     { id: 'mail-search', keys: '/', description: 'Search mail', category: 'navigation', action: () => searchRef.current?.focus() },
     { id: 'mail-next', keys: 'j', description: 'Next conversation', category: 'navigation', action: () => { const i = Math.min(cursor + 1, threads.length - 1); setCursor(i); if (openId && threads[i]) openThread(threads[i]); } },
     { id: 'mail-prev', keys: 'k', description: 'Previous conversation', category: 'navigation', action: () => { const i = Math.max(cursor - 1, 0); setCursor(i); if (openId && threads[i]) openThread(threads[i]); } },
@@ -420,8 +472,8 @@ export function MailClient({ composeSignal = 0 }: { composeSignal?: number }) {
       )}
       <div className="grid min-h-[34rem] gap-3 md:grid-cols-[13rem_minmax(0,1fr)]" style={{ height: 'calc(100vh - 17rem)' }}>
         <Panel className="hidden overflow-y-auto md:block">{sidebar}</Panel>
-        <div className="flex min-h-0 flex-col gap-2">
-          <div className="flex gap-1 overflow-x-auto md:hidden">
+        <div className="flex min-h-0 min-w-0 flex-col gap-2">
+          <div className="no-scrollbar flex gap-1 overflow-x-auto md:hidden">
             {[...SYSTEM_FOLDERS.slice(0, 5), { id: 'CONCORD', label: 'Player mail' }].map((f) => (
               <button key={f.id} type="button" onClick={() => openFolder(f.id)} className={cn('shrink-0 rounded-full px-3 py-1 text-[12px]', folder === f.id ? 'bg-white/10 text-zinc-50' : 'text-zinc-500')}>{f.label}</button>
             ))}
@@ -453,11 +505,23 @@ const CONCORD_TABS = [
 ] as const;
 
 export function ConcordMailbox({ composeSignal = 0 }: { composeSignal?: number }) {
-  const [tab, setTab] = useState<'inbox' | 'sent' | 'compose'>('inbox');
+  const { restore: restoreConcordTab, persist: persistConcordTab } = useLensStatePersistence('mail-concord');
+  const lastFolderRef = useRef<'inbox' | 'sent'>('inbox');
+  const [tab, setTab] = useState<'inbox' | 'sent' | 'compose'>(() => {
+    const t = restoreConcordTab()?.tab;
+    return t === 'sent' || t === 'compose' ? t : 'inbox';
+  });
+  useEffect(() => { persistConcordTab({ tab }); }, [tab, persistConcordTab]);
+  if (tab !== 'compose') lastFolderRef.current = tab;
+  // FIX-mail-016: a reply/forward hands the composer a seed (recipient,
+  // quoted body, thread parent). Any other route into Compose — the tab
+  // button, the floating compose signal — starts from a blank seed.
+  const [composeSeed, setComposeSeed] = useState<ComposeSeed | null>(null);
   const lastCompose = useRef(composeSignal);
   useEffect(() => {
     if (composeSignal !== lastCompose.current) {
       lastCompose.current = composeSignal;
+      setComposeSeed(null);
       setTab('compose');
     }
   }, [composeSignal]);
@@ -466,14 +530,20 @@ export function ConcordMailbox({ composeSignal = 0 }: { composeSignal?: number }
       <div className="flex shrink-0 flex-wrap items-center gap-1 border-b border-white/5 px-3 py-2">
         <div role="tablist" aria-label="Mail folders" className="flex gap-1">
           {CONCORD_TABS.map((t) => (
-            <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)}
+            <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} onClick={() => { if (t.id === 'compose') setComposeSeed(null); setTab(t.id); }}
               className={cn('rounded-full px-3 py-1 text-[12px] transition-colors', tab === t.id ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200')}>{t.label}</button>
           ))}
         </div>
         <span className="ml-auto text-[11px] text-zinc-500">Player-to-player mail with items, CC and cash on delivery</span>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {tab === 'compose' ? <ComposeMailPanel onSent={() => setTab('sent')} /> : <MailFolderPanel folder={tab} onCompose={() => setTab('compose')} />}
+        {tab === 'compose' && <ComposeMailPanel onSent={() => setTab('sent')} seed={composeSeed} />}
+        {/* FIX-mail-019: the folder panel stays mounted (hidden) while
+            composing, so its filter/search/selection survive the round trip
+            instead of resetting on remount. */}
+        <div className={tab === 'compose' ? 'hidden' : undefined}>
+          <MailFolderPanel folder={tab === 'compose' ? lastFolderRef.current : tab} onCompose={(seed) => { setComposeSeed(seed ?? null); setTab('compose'); }} />
+        </div>
       </div>
     </Panel>
   );

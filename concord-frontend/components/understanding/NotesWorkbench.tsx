@@ -31,6 +31,8 @@ export interface Note {
   id: string;
   title: string;
   body: string;
+  /** Audience state (FIX-understanding-004): 'private' unless the member chose 'public'. */
+  visibility: string;
   tags: string[];
   createdAt: string;
   updatedAt: string;
@@ -501,6 +503,26 @@ function NoteEditor({
     }
   }
 
+  // Visibility is a real macro call (understanding.edit visibility),
+  // same optimistic pattern as toggleReview.
+  async function setVisibility(next: string) {
+    if (!note) return;
+    const prev = note.visibility;
+    setNote((n) => (n ? { ...n, visibility: next } : n));
+    try {
+      const r = await lensRun<{ note: Note }>('understanding', 'edit', { id: noteId, visibility: next });
+      if (!r.data?.ok) {
+        setNote((n) => (n ? { ...n, visibility: prev } : n));
+        setError(r.data?.error || 'visibility change failed');
+      } else if (r.data.result) {
+        setNote(r.data.result.note);
+      }
+    } catch (e) {
+      setNote((n) => (n ? { ...n, visibility: prev } : n));
+      setError(e instanceof Error ? e.message : 'visibility change failed');
+    }
+  }
+
   const [armDelete, setArmDelete] = useState(false);
   async function remove() {
     // Two-step in-page confirm — the retired form gated this wired
@@ -662,7 +684,7 @@ function NoteEditor({
           )}
         </div>
         <p className="text-[11px] text-white/40 mt-2">
-          {note.wordCount} words · {note.revisionCount} revision{note.revisionCount === 1 ? '' : 's'}
+          {note.wordCount} words · {note.revisionCount} revision{note.revisionCount === 1 ? '' : 's'} · {note.visibility === 'public' ? 'Public' : 'Private — only you'}
           {dirty && <span className="text-amber-300 ml-2">unsaved changes</span>}
           {savedAt && !dirty && <span className="text-emerald-300 ml-2">saved {savedAt}</span>}
         </p>
@@ -678,6 +700,18 @@ function NoteEditor({
               className="accent-amber-500"
             />
             <Clock className="w-3.5 h-3.5 text-amber-300" /> In review queue
+          </label>
+          <label className="inline-flex items-center gap-2 text-xs text-white/70">
+            Visibility
+            <select
+              aria-label="Note visibility"
+              value={note.visibility === 'public' ? 'public' : 'private'}
+              onChange={(e) => { void setVisibility(e.target.value); }}
+              className="bg-zinc-900 border border-white/10 rounded px-1.5 py-1 text-[11px] text-zinc-100"
+            >
+              <option value="private">Private — only you</option>
+              <option value="public">Public</option>
+            </select>
           </label>
           {note.srs.enabled && (
             <span className="text-[11px] text-white/40">

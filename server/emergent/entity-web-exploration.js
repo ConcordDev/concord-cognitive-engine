@@ -1,5 +1,6 @@
 // @env-config-ok: external sites the agent explores — by design
 import { LruMap, LruSet } from "../lib/lru-map.js";
+import { fetchPublicUrl } from "../lib/public-fetch.js";
 import { TASK_PROMPTS } from "../lib/prompt-registry.js";
 /**
  * Entity Web Exploration Engine — Fully Legal Public Web Browsing
@@ -244,7 +245,11 @@ export async function scheduledFetch(url, init = {}) {
     try {
       await _acquireDomainSlot(origin);
       try {
-        const res = await fetch(url, init);
+        // SB-07: the scheduler's fetch — robots.txt included — goes
+        // through the SB-01 SSRF guard. A refusal throws SSRF_BLOCKED
+        // into the catch below and is counted as a failure, like any
+        // other refused fetch. Caps, dedupe and the breaker are unchanged.
+        const res = await fetchPublicUrl(url, init);
         if (res.ok) { _noteSuccess(origin); SCHED.stats.ok++; }
         else { _noteFailure(origin); SCHED.stats.errors++; }
         return res;

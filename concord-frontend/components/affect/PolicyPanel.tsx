@@ -77,7 +77,7 @@ export function PolicyPanel() {
                                       {key.replace(/_/g, ' ')}
                                     </span>
                                     {typeof derivationsFor[key] === 'string' && (
-                                      <span className="text-xs text-gray-500 font-mono">
+                                      <span className="text-xs text-gray-400 font-mono">
                                         = {derivationsFor[key]}
                                       </span>
                                     )}

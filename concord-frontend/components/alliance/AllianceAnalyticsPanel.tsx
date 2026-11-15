@@ -28,13 +28,14 @@
  * in the capability map as a deliberately out-of-scope customization.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   HeartHandshake, Network, ShieldAlert, Loader2, Play, Plus, X, AlertTriangle,
 } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ds } from '@/lib/design-system';
+import { dependencyPctError, parseCsvList } from '@/lib/form-guards';
 import { DataTable } from '@/components/ui';
 import type { DataTableColumn } from '@/components/ui';
 
@@ -62,7 +63,7 @@ async function runAllianceMacro<T>(action: string, data: Record<string, unknown>
 }
 
 function csv(v: string): string[] {
-  return v.split(',').map((s) => s.trim()).filter(Boolean);
+  return parseCsvList(v);
 }
 
 function ScoreGauge({ value, max = 100, label }: { value: number; max?: number; label: string }) {
@@ -151,10 +152,18 @@ function CompatibilityTool() {
 
       {error && <p className="text-xs text-red-400 flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5" /> {error}</p>}
 
-      <button type="button" onClick={run} disabled={busy} className={cn(ds.btnPrimary, 'text-sm inline-flex items-center gap-2')}>
-        {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-        Score compatibility
-      </button>
+      {/* FIX-alliance-006: the button sat enabled on blank names and
+          only spoke after a click. It now disables while a name is
+          missing, with the reason beside it. */}
+      <div className="flex items-center gap-3">
+        <button type="button" onClick={run} disabled={busy || !a.name.trim() || !b.name.trim()} className={cn(ds.btnPrimary, 'text-sm inline-flex items-center gap-2')}>
+          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+          Score compatibility
+        </button>
+        {(!a.name.trim() || !b.name.trim()) && (
+          <span role="note" className="text-[11px] text-zinc-400">Name both partners to score their compatibility.</span>
+        )}
+      </div>
 
       {result && (
         <div className="space-y-3">
@@ -355,8 +364,25 @@ const RISK_COLOR: Record<string, string> = {
   critical: 'text-rose-300 bg-rose-500/10 border-rose-500/30',
 };
 
+const RISK_ROWS_KEY = 'concord.alliance.risk-rows';
+
+function loadRiskRows(): AllianceRow[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.localStorage.getItem(RISK_ROWS_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((row) => row && typeof row.partnerName === 'string' && dependencyPctError(String(row.dependencyPct || '')) === null);
+  } catch {
+    return [];
+  }
+}
+
 function RiskTool() {
-  const [rows, setRows] = useState<AllianceRow[]>([]);
+  const [rows, setRows] = useState<AllianceRow[]>(loadRiskRows);
+  useEffect(() => {
+    try { window.localStorage.setItem(RISK_ROWS_KEY, JSON.stringify(rows)); } catch { /* this device refused the write */ }
+  }, [rows]);
   const [draft, setDraft] = useState<AllianceRow>({ partnerId: '', partnerName: '', dependencyPct: '', categories: '', revenue: '', critical: false });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -364,6 +390,8 @@ function RiskTool() {
 
   const addRow = () => {
     if (!draft.partnerName.trim() || !draft.dependencyPct.trim()) { setError('Partner name and dependency % are required.'); return; }
+    const pctProblem = dependencyPctError(draft.dependencyPct);
+    if (pctProblem) { setError(pctProblem); return; }
     setRows((p) => [...p, { ...draft, partnerId: draft.partnerId || `partner_${p.length + 1}` }]);
     setDraft({ partnerId: '', partnerName: '', dependencyPct: '', categories: '', revenue: '', critical: false });
     setError(null);

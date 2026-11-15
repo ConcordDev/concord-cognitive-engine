@@ -178,6 +178,7 @@ describe('FashionMoodboardPanel', () => {
     await screen.findByTestId('board-mb_1');
 
     fireEvent.click(screen.getByLabelText('Delete Autumn capsule'));
+    fireEvent.click(screen.getByLabelText('Confirm delete Autumn capsule'));
 
     await waitFor(() => expect(lensRun).toHaveBeenCalledWith('fashion', 'moodboard-delete', { id: 'mb_1' }));
     await waitFor(() => expect(screen.getByText(/No moodboards yet/)).toBeInTheDocument());

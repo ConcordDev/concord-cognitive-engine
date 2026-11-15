@@ -16,7 +16,7 @@
 // filesystem path, never rendered).
 
 import { useEffect, useState } from 'react';
-import { Camera, Globe2, Lock, Sparkles } from 'lucide-react';
+import { Camera, ChevronLeft, ChevronRight, Globe2, Lock, Sparkles } from 'lucide-react';
 import { Modal } from '@/components/common/Modal';
 import { ErrorState, Skeleton } from '@/components/ui';
 import { cn } from '@/lib/utils';
@@ -36,12 +36,17 @@ export interface PhotoDetail {
   height: number | null;
   size_bytes: number | null;
   original_filename: string | null;
+  /** FIX-photos-008: the blob's real format, sniffed server-side from its bytes. */
+  format?: string | null;
 }
 
 interface PhotoLightboxModalProps {
   /** The photo to show detail for, or null when the lightbox is closed. */
   photoId: string | null;
+  /** Gallery order, so ArrowLeft / ArrowRight and the buttons move through it. */
+  photoIds?: string[];
   onClose: () => void;
+  onSelect?: (id: string) => void;
 }
 
 function formatTakenAt(ts: number): string {
@@ -59,10 +64,28 @@ function formatBytes(n: number | null): string {
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function PhotoLightboxModal({ photoId, onClose }: PhotoLightboxModalProps) {
+export function PhotoLightboxModal({ photoId, photoIds = [], onClose, onSelect }: PhotoLightboxModalProps) {
   const [photo, setPhoto] = useState<PhotoDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const index = photoId ? photoIds.indexOf(photoId) : -1;
+  const prevId = index > 0 ? photoIds[index - 1] : null;
+  const nextId = index >= 0 && index < photoIds.length - 1 ? photoIds[index + 1] : null;
+
+  useEffect(() => {
+    if (!photoId || !onSelect) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft' && prevId) {
+        e.preventDefault();
+        onSelect(prevId);
+      } else if (e.key === 'ArrowRight' && nextId) {
+        e.preventDefault();
+        onSelect(nextId);
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [photoId, prevId, nextId, onSelect]);
 
   useEffect(() => {
     if (!photoId) { setPhoto(null); setError(null); return; }
@@ -102,6 +125,29 @@ export function PhotoLightboxModal({ photoId, onClose }: PhotoLightboxModalProps
 
       {!loading && !error && photo && (
         <div data-testid="photo-lightbox-detail" className="space-y-4">
+          {(prevId || nextId) && onSelect && (
+            <div className="flex items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => prevId && onSelect(prevId)}
+                disabled={!prevId}
+                aria-label="Previous photo"
+                className="inline-flex items-center gap-1 rounded border border-white/10 px-2 py-1 text-xs text-zinc-200 disabled:opacity-40"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" /> Previous
+              </button>
+              <span className="text-[11px] text-zinc-500">{index + 1} / {photoIds.length}</span>
+              <button
+                type="button"
+                onClick={() => nextId && onSelect(nextId)}
+                disabled={!nextId}
+                aria-label="Next photo"
+                className="inline-flex items-center gap-1 rounded border border-white/10 px-2 py-1 text-xs text-zinc-200 disabled:opacity-40"
+              >
+                Next <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+            </div>
+          )}
           <div className="overflow-hidden rounded-lg border border-sky-500/20 bg-slate-900/70">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -147,7 +193,7 @@ export function PhotoLightboxModal({ photoId, onClose }: PhotoLightboxModalProps
             </div>
             <div>
               <dt className={ds.textMuted}>File</dt>
-              <dd className="text-gray-200">PNG &middot; {formatBytes(photo.size_bytes)}</dd>
+              <dd className="text-gray-200">{photo.format || 'Unknown format'} &middot; {formatBytes(photo.size_bytes)}</dd>
             </div>
             {photo.original_filename ? (
               <div className="col-span-2">

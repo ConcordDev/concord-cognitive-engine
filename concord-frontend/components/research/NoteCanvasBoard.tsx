@@ -613,6 +613,7 @@ export function NoteCanvasBoard() {
                 })()}
               {(c.kind === 'text' || c.kind === 'link') && (
                 <textarea
+                  aria-label="Card text"
                   value={c.text}
                   onChange={(e) => updateCard(c.id, { text: e.target.value })}
                   className="flex-1 w-full bg-transparent text-[11px] text-gray-100 resize-none outline-none"
@@ -638,6 +639,7 @@ export function NoteCanvasBoard() {
       <div className="flex gap-2">
         <input
           type="text"
+          aria-label="New board name"
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => {

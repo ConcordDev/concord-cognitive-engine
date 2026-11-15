@@ -272,7 +272,7 @@ function StandingsPanel() {
       <div className="space-y-4">
         {groups.map((g, gi) => (
           <div key={gi}>
-            <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-400">{g.name}</h4>
+            <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-400">{g.name}</h3>
             <div className="overflow-hidden rounded-lg border border-zinc-800">
               <table className="w-full text-xs">
                 <thead className="bg-zinc-900 text-zinc-400">
@@ -723,10 +723,10 @@ function RemindersPanel() {
           onChange={(e) => setForm((p) => ({ ...p, kickoff: e.target.value }))}
           className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-200"
         />
-        <select
+        <select aria-label="Sport"
           value={form.sport}
           onChange={(e) => setForm((p) => ({ ...p, sport: e.target.value }))}
-          className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-200"
+          className="min-h-11 rounded border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-200"
         >
           {SPORTS.map((s) => <option key={s} value={s}>{s.toUpperCase()}</option>)}
         </select>
@@ -897,7 +897,7 @@ function BracketPanel() {
                                   ? 'bg-emerald-500/20 font-semibold text-emerald-200'
                                   : team && team !== 'BYE' && !decided
                                     ? 'text-zinc-300 hover:bg-zinc-800'
-                                    : 'text-zinc-600',
+                                    : 'text-zinc-400',
                               )}
                             >
                               <span className="truncate">{team || 'TBD'}</span>

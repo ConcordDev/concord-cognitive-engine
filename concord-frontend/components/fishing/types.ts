@@ -41,6 +41,8 @@ export interface CatchRow {
 export interface ParsedCatchMeta {
   qualityScore?: number;
   sessionId?: string;
+  /** The angler's own annotation (fishing.catch-annotate). */
+  note?: string;
   buffOnCook?: Record<string, number | string> | null;
   /** Capped (last 10) per-catch quality history for a stacked row. */
   history?: Array<{ qualityScore?: number; sessionId?: string; at?: number }>;

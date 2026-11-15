@@ -16,6 +16,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { foundryReasonWords } from './reasonWords';
 import dynamic from 'next/dynamic';
 import { previewWorld, endPreview } from '@/lib/foundry/api';
 import { worldToScene } from '@/lib/world-lens/coord-frame';
@@ -62,7 +63,7 @@ export function FoundryPreview({ foundryWorldId, worldName, onClose }: FoundryPr
         if (!r.ok || !r.previewWorldId) {
           setError(r.reason === 'no_systems'
             ? 'Add at least one system before previewing.'
-            : `Preview failed: ${r.reason ?? 'unknown'}`);
+            : `Preview failed: ${foundryReasonWords(r.reason)}`);
           return;
         }
         setPreviewWorldId(r.previewWorldId);

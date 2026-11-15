@@ -36,16 +36,31 @@ export function ModelPanel() {
   const deleteBtn = (key: string, label: string, onDelete: () =>
     void) =>
     armedDelete === key ? (
-      <button
-        onClick={() => {
-          setArmedDelete(null);
-          onDelete();
+      <span
+        className="inline-flex items-center gap-1 whitespace-nowrap"
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') setArmedDelete(null);
         }}
-        className="px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 text-[10px] whitespace-nowrap"
-        aria-label={`Confirm delete ${label}`}
       >
-        Delete {label}?
-      </button>
+        <button
+          autoFocus
+          onClick={() => {
+            setArmedDelete(null);
+            onDelete();
+          }}
+          className="px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 text-[10px] whitespace-nowrap"
+          aria-label={`Confirm delete ${label}`}
+        >
+          Delete {label}?
+        </button>
+        <button
+          onClick={() => setArmedDelete(null)}
+          className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 text-[10px] whitespace-nowrap hover:bg-zinc-700"
+          aria-label={`Cancel delete ${label}`}
+        >
+          Cancel
+        </button>
+      </span>
     ) : (
       <button
         onClick={() => setArmedDelete(key)}
@@ -106,6 +121,7 @@ export function ModelPanel() {
                   <td className="py-1 px-2">
                     <input
                       className="w-16 bg-black/30 border border-white/10 rounded px-1 font-mono"
+                      aria-label="Node id"
                       value={n.id}
                       onChange={(e) => updateNode(i, 'id', e.target.value)}
                     />
@@ -166,6 +182,7 @@ export function ModelPanel() {
                   <td className="py-1 px-2">
                     <select
                       className="bg-black/30 border border-white/10 rounded px-1"
+                      aria-label="Member start node"
                       value={m.nodeI}
                       onChange={(e) => updateMember(i, 'nodeI', e.target.value)}
                     >
@@ -177,6 +194,7 @@ export function ModelPanel() {
                   <td className="py-1 px-2">
                     <select
                       className="bg-black/30 border border-white/10 rounded px-1"
+                      aria-label="Member end node"
                       value={m.nodeJ}
                       onChange={(e) => updateMember(i, 'nodeJ', e.target.value)}
                     >
@@ -204,6 +222,7 @@ export function ModelPanel() {
                   <td className="py-1 px-2">
                     <select
                       className="bg-black/30 border border-white/10 rounded px-1 text-xs"
+                      aria-label="Member material"
                       value={m.material || 'A36 Steel'}
                       onChange={(e) => updateMember(i, 'material', e.target.value)}
                     >
@@ -224,7 +243,7 @@ export function ModelPanel() {
 
       <div className="panel p-4 space-y-2">
         <h3 className="font-semibold text-sm">Supports</h3>
-        <p className="text-[11px] text-gray-500">
+        <p className="text-[11px] text-gray-400">
           Select a node to cycle its support: Free → Fixed → Pinned → Roller. Pinned restrains translation
           (x/y/z); a roller restrains the vertical (y) only — a simply supported beam is a pinned node plus a
           roller node.

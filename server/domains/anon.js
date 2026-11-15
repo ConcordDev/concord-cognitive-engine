@@ -324,7 +324,13 @@ export default function registerAnonActions(registerLensAction) {
     const records = artifact.data?.records || [];
     if (records.length === 0) return { ok: true, result: { message: "No records to anonymize." } };
 
-    const k = params.k || 3;
+    // FIX-anon-002: k was silently defaulted (params.k || 3) with no
+    // surface control and no validation. Refuse a k that cannot mean
+    // anything, in words.
+    const k = Number(params.k ?? 3);
+    if (!Number.isInteger(k) || k < 2 || k > records.length) {
+      return { ok: false, error: `k must be a whole number between 2 and ${records.length} (the record count) — got ${JSON.stringify(params.k ?? null)}` };
+    }
 
     // Auto-detect quasi-identifiers if not specified
     const qids = artifact.data?.quasiIdentifiers || [];
@@ -349,11 +355,15 @@ export default function registerAnonActions(registerLensAction) {
       if (value == null) return "*";
       const str = String(value);
 
-      // Numeric generalization: widen range
-      const num = parseFloat(str);
-      if (!isNaN(num)) {
+      // FIX-anon-002: generalize by the value's TYPE. Only real numbers
+      // are quantities and take widening ranges. A numeric STRING is a
+      // code (a ZIP "94110" is not ninety-four thousand of anything) and
+      // takes prefix truncation like every other string — parseFloat
+      // used to bucket ZIPs into nonsense ranges ("94100-94199", and
+      // "0-9999999999" at the level cap).
+      if (typeof value === "number" && Number.isFinite(value)) {
         const bucketSize = Math.pow(10, level);
-        const lower = Math.floor(num / bucketSize) * bucketSize;
+        const lower = Math.floor(value / bucketSize) * bucketSize;
         return `${lower}-${lower + bucketSize - 1}`;
       }
 
@@ -653,6 +663,33 @@ export default function registerAnonActions(registerLensAction) {
       return { ok: true, result: { message: "No values or queries to process." } };
     }
 
+    // Refuse before recording when this call would push the caller past
+    // the configured ceiling. An exact fill still succeeds; the next
+    // query does not, and the ledger stays where it was.
+    const s = getAnonState();
+    const userId = anUid(ctx);
+    const totalBudget = anResolveTotalBudget(params);
+    const priorBucket = s.budgets.get(userId);
+    const previouslyUsed = priorBucket ? priorBucket.totalSpent : 0;
+    if (previouslyUsed + totalEpsilonUsed > totalBudget + 1e-9) {
+      const remaining = Math.max(0, Math.round((totalBudget - previouslyUsed) * 10000) / 10000);
+      return {
+        ok: false,
+        error: "privacy_budget_exhausted",
+        message: `This query needs ${totalEpsilonUsed} epsilon and ${remaining} of ${totalBudget} is left. Reset the privacy budget to run it.`,
+        budgetTracking: {
+          refused: true,
+          thisInvocation: 0,
+          cumulative: Math.round(previouslyUsed * 10000) / 10000,
+          previouslyUsed: Math.round(previouslyUsed * 10000) / 10000,
+          totalBudget,
+          remaining,
+          callCount: priorBucket ? priorBucket.totalCalls : 0,
+          exhausted: previouslyUsed + 1e-9 >= totalBudget,
+        },
+      };
+    }
+
     // Budget tracking — REAL cross-session accumulation. Prior code here
     // only read/wrote artifact.data.epsilonBudgetUsed, which is an
     // ephemeral field on a throwaway virtual artifact (`/api/lens/run`'s
@@ -662,12 +699,9 @@ export default function registerAnonActions(registerLensAction) {
     // `getAnonState().budgets` (see recordBudgetSpend above), the same
     // persistent-state idiom every other stateful macro in this file
     // uses (identities/conversations/userConvs).
-    const s = getAnonState();
-    const userId = anUid(ctx);
     const purpose = params?.purpose ? anClean(params.purpose, 120) : "differentialPrivacy";
     const bucket = recordBudgetSpend(s, userId, totalEpsilonUsed, purpose);
     saveAnonState();
-    const totalBudget = anResolveTotalBudget(params);
     const cumulativeBudget = bucket.totalSpent;
 
     // Privacy guarantee assessment

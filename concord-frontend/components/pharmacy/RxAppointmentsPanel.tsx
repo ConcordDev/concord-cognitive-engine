@@ -14,6 +14,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Trash2, CalendarClock, CheckCircle2, XCircle, AlarmClockOff, Pencil, Stethoscope } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { datetimeLocalValue } from '@/lib/datetime-local';
 
 type ApptStatus = 'scheduled' | 'completed' | 'cancelled' | 'missed';
 
@@ -139,8 +140,11 @@ export function RxAppointmentsPanel({ onChange }: { onChange: () => void }) {
             <input placeholder="Provider type (primary_care, specialist…)" value={form.providerType}
               onChange={(e) => setForm({ ...form, providerType: e.target.value })}
               className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-            <input type="datetime-local" aria-label="Date and time" value={form.dateTime}
-              onChange={(e) => setForm({ ...form, dateTime: e.target.value })}
+            <input type="datetime-local" aria-label="Date and time" value={datetimeLocalValue(form.dateTime) || ''}
+              onChange={(e) => {
+                const next = datetimeLocalValue(e.target.value);
+                if (next) setForm({ ...form, dateTime: next });
+              }}
               className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
             <select aria-label="Related medication" value={form.relatedMedId}
               onChange={(e) => setForm({ ...form, relatedMedId: e.target.value })}

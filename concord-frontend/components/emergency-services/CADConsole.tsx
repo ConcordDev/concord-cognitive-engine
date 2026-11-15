@@ -19,6 +19,7 @@ import {
   Loader2, Check, Crosshair, Plus, RefreshCw, Activity, ArrowRight,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { BOUNDS } from '@/lib/bounds';
 import { LimitationNotice } from '@/components/lens/LimitationNotice';
 import { MapView, TimelineView } from '@/components/viz';
 import type { MapMarker, TimelineEvent } from '@/components/viz';
@@ -160,7 +161,7 @@ export function CADConsole() {
   const [rollup, setRollup] = useState<Rollup | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [timeline, setTimeline] = useState<TimelineEv[]>([]);
-  const [nearest, setNearest] = useState<{ recommended: NearestUnit | null; ranked: NearestUnit[] } | null>(null);
+  const [nearest, setNearest] = useState<{ recommended: NearestUnit | null; ranked: NearestUnit[]; noPosition?: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
@@ -188,6 +189,7 @@ export function CADConsole() {
   const [eLat, setELat] = useState('');
   const [eLng, setELng] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [confirmIncidentDeleteId, setConfirmIncidentDeleteId] = useState<string | null>(null);
 
   const flash = (kind: 'ok' | 'err', text: string) => {
     setMsg({ kind, text });
@@ -227,10 +229,10 @@ export function CADConsole() {
     setSelectedId(incidentId);
     const [tl, nr] = await Promise.all([
       call<{ events: TimelineEv[] }>('incident-timeline', { incidentId }),
-      call<{ recommended: NearestUnit | null; ranked: NearestUnit[] }>('nearest-unit', { incidentId }),
+      call<{ recommended: NearestUnit | null; ranked: NearestUnit[]; noPosition?: boolean }>('nearest-unit', { incidentId }),
     ]);
     setTimeline(tl?.events || []);
-    setNearest(nr ? { recommended: nr.recommended, ranked: nr.ranked || [] } : null);
+    setNearest(nr ? { recommended: nr.recommended, ranked: nr.ranked || [], noPosition: nr.noPosition } : null);
   }, []);
 
   async function createIncident() {
@@ -321,6 +323,32 @@ export function CADConsole() {
     await refreshAll();
   }
 
+  async function closeIncident(incident: Incident) {
+    setBusy(true);
+    const res = await callRaw('incident-status', { id: incident.id, status: 'resolved' });
+    setBusy(false);
+    if (!res.ok) { flash('err', `Close failed (${res.error}).`); return; }
+    flash('ok', `Incident closed — ${incident.summary}.`);
+    setSelectedId(null);
+    await refreshAll();
+  }
+
+  async function deleteIncident(incident: Incident) {
+    setBusy(true);
+    const res = await callRaw('incident-delete', { id: incident.id });
+    setBusy(false);
+    setConfirmIncidentDeleteId(null);
+    if (!res.ok) {
+      flash('err', res.error === 'incident_has_active_unit'
+        ? `A unit is still working this incident — stand it down before deleting the record.`
+        : `Delete failed (${res.error}).`);
+      return;
+    }
+    flash('ok', `Incident deleted — ${incident.summary}.`);
+    setSelectedId(null);
+    await refreshAll();
+  }
+
   async function deleteUnit(u: Unit) {
     setBusy(true);
     const res = await callRaw('unit-delete', { id: u.id });
@@ -373,7 +401,7 @@ export function CADConsole() {
   // old subset stranded — is used only if a payload ever lacks it.
   const NEXT_STATUS: Record<string, string[]> = {
     available: ['dispatched', 'out_of_service'],
-    dispatched: ['en_route', 'available'],
+    dispatched: ['en_route', 'available', 'out_of_service'],
     en_route: ['on_scene', 'available'],
     on_scene: ['clear', 'transporting'],
     transporting: ['clear'],
@@ -492,7 +520,7 @@ export function CADConsole() {
           </p>
           <input
             value={iSummary} onChange={(e) => setISummary(e.target.value)}
-            placeholder="Incident summary"
+            placeholder="Incident summary" maxLength={BOUNDS.TITLE}
             className="w-full rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white"
           />
           <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
@@ -580,11 +608,52 @@ export function CADConsole() {
             <Crosshair className="h-3.5 w-3.5" /> Incident Detail — {selectedIncident.summary}
           </p>
 
+          {/* Lifecycle exits — close the incident, or delete the record
+              behind the same two-step confirm the roster uses. */}
+          <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+            {selectedIncident.status !== 'resolved' && selectedIncident.status !== 'cancelled' && confirmIncidentDeleteId !== selectedIncident.id && (
+              <button
+                onClick={() => void closeIncident(selectedIncident)}
+                disabled={busy}
+                className="rounded border border-zinc-700 bg-zinc-800 px-2 py-1 text-zinc-200 hover:bg-zinc-700 disabled:opacity-40"
+              >
+                Close incident
+              </button>
+            )}
+            {confirmIncidentDeleteId !== selectedIncident.id ? (
+              <button
+                onClick={() => setConfirmIncidentDeleteId(selectedIncident.id)}
+                disabled={busy}
+                className="rounded border border-rose-500/30 bg-rose-500/10 px-2 py-1 text-rose-200 hover:bg-rose-500/20 disabled:opacity-40"
+              >
+                Delete
+              </button>
+            ) : (
+              <>
+                <span className="text-rose-200">Delete this incident record?</span>
+                <button
+                  onClick={() => void deleteIncident(selectedIncident)}
+                  disabled={busy}
+                  className="rounded bg-rose-600 px-2 py-1 font-medium text-white hover:bg-rose-500 disabled:opacity-40"
+                >
+                  Confirm delete
+                </button>
+                <button
+                  onClick={() => setConfirmIncidentDeleteId(null)}
+                  disabled={busy}
+                  className="rounded border border-zinc-700 bg-zinc-800 px-2 py-1 text-zinc-300 hover:bg-zinc-700 disabled:opacity-40"
+                >
+                  Cancel
+                </button>
+              </>
+            )}
+          </div>
+
           {/* Nearest-unit recommendation */}
           <div>
             <p className="mb-1.5 text-[10px] uppercase tracking-wide text-zinc-400">Nearest available units</p>
-            {!nearest && <p className="text-[11px] text-zinc-400">No map position on incident — add lat/lng to enable dispatch routing.</p>}
-            {nearest && nearest.ranked.length === 0 && <p className="text-[11px] text-zinc-400">No available geo-located units.</p>}
+            {(!nearest || nearest.noPosition) && <p className="text-[11px] text-zinc-400">No map position on incident — add lat/lng to enable dispatch routing.</p>}
+            {nearest && !nearest.noPosition && nearest.ranked.length === 0 && <p className="text-[11px] text-zinc-400">No available geo-located units.</p>}
             <div className="space-y-1">
               {nearest?.ranked.slice(0, 4).map((u, i) => (
                 <div key={u.id} className={cn(
@@ -637,7 +706,7 @@ export function CADConsole() {
                   </span>
                 </div>
                 {(u.station || u.lat != null) && (
-                  <p className="mt-0.5 text-[10px] text-zinc-500">
+                  <p className="mt-0.5 text-[10px] text-zinc-400">
                     {u.station}
                     {u.lat != null && u.lng != null ? `${u.station ? ' · ' : ''}${u.lat}, ${u.lng}` : ''}
                   </p>

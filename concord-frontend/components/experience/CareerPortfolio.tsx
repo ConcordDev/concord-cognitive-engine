@@ -48,6 +48,7 @@ import {
   Globe, Lock, Users,
 } from 'lucide-react';
 import { Icon as SvgIcon } from '@/components/icons/Icon';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 const inputCls = 'w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-xs text-white focus:border-neon-cyan focus:outline-none';
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -69,7 +70,7 @@ interface PortfolioData {
 const EMPTY_PORTFOLIO: PortfolioData = { skills: [], experience: [], education: [], endorsements: [], snapshots: [] };
 
 export function CareerPortfolio() {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const { items, isLoading, create, update, remove } = useLensData<PortfolioData>('experience', 'portfolio', { noSeed: true, limit: 50 });
   // Directory: a second, higher-limit fetch of the SAME domain/type. The
   // backend's non-social-domain visibility rule (server.js `lens.list`,
@@ -89,7 +90,9 @@ export function CareerPortfolio() {
   const [editExp, setEditExp] = useState<number | null>(null);
   const [editEdu, setEditEdu] = useState<number | null>(null);
 
-  // Skill draft
+  // Skill draft. FIX-experience-004: skills gain the edit the
+  // experience/education rows already had.
+  const [editSkill, setEditSkill] = useState<string | null>(null);
   const [skillName, setSkillName] = useState('');
   const [skillCategory, setSkillCategory] = useState('technical');
   const [skillLevel, setSkillLevel] = useState('intermediate');
@@ -116,7 +119,11 @@ export function CareerPortfolio() {
 
   const doCreate = async () => {
     setCreating(true);
-    await create({ title: 'My Portfolio', data: EMPTY_PORTFOLIO });
+    // FIX-experience-005: title the portfolio for its OWNER. The old
+    // constant 'My Portfolio' is a first-person label — correct on the
+    // owner's own tab, wrong on every peer's Directory, where the
+    // entry then appeared to be the viewer's own unnamed portfolio.
+    await create({ title: user?.username ? `${user.username}'s Portfolio` : 'My Portfolio', data: EMPTY_PORTFOLIO });
     setCreating(false);
   };
 
@@ -125,16 +132,32 @@ export function CareerPortfolio() {
     await update(portfolio.id, { data: { ...data, ...patch } });
   };
 
+  const clearSkillDraft = () => {
+    setEditSkill(null);
+    setSkillName(''); setSkillCategory('technical'); setSkillLevel('intermediate');
+    setSkillYears('1'); setSkillEvidence('');
+  };
+  const startEditSkill = (s: Skill) => {
+    setEditSkill(s.id);
+    setSkillName(s.name); setSkillCategory(s.category); setSkillLevel(s.level);
+    setSkillYears(String(s.yearsExperience));
+    setSkillEvidence(s.evidence.join('\n'));
+  };
   const addSkill = async () => {
     if (!skillName.trim()) return;
     const skill: Skill = {
-      id: skillName.trim().toLowerCase().replace(/\s+/g, '-'),
+      // An edit keeps the skill's id — endorsements key on it.
+      id: editSkill ?? skillName.trim().toLowerCase().replace(/\s+/g, '-'),
       name: skillName.trim(), category: skillCategory, level: skillLevel,
       yearsExperience: Number(skillYears) || 0,
       evidence: skillEvidence.split('\n').map(s => s.trim()).filter(Boolean),
     };
-    await saveData({ skills: [...data.skills.filter(s => s.id !== skill.id), skill] });
-    setSkillName(''); setSkillEvidence(''); setSkillYears('1');
+    if (editSkill) {
+      await saveData({ skills: data.skills.map(s => (s.id === editSkill ? skill : s)) });
+    } else {
+      await saveData({ skills: [...data.skills.filter(s => s.id !== skill.id), skill] });
+    }
+    clearSkillDraft();
   };
   const removeSkill = async (id: string) => saveData({ skills: data.skills.filter(s => s.id !== id) });
 
@@ -233,6 +256,12 @@ export function CareerPortfolio() {
   // Other users' published portfolios only — the backend already excludes
   // private ones (see the header comment above), this just drops our own
   // entry from the list we endorse *others* from.
+  // FIX-experience-005: while auth is still resolving, user.id is
+  // unknown and this filter counts the viewer's OWN portfolio as a
+  // peer (ownerId !== '') — the Directory tab flashed (2) during load
+  // and settled to (1) once /api/auth/me landed. The count (and the
+  // directory's loading state) therefore wait for auth + fetch to
+  // settle; the filter itself is unchanged.
   const otherPortfolios = useMemo(
     () => directoryItems.filter(p => p.ownerId !== (user?.id || '') && p.id !== portfolio?.id),
     [directoryItems, user, portfolio]
@@ -274,7 +303,7 @@ export function CareerPortfolio() {
         </button>
         <button role="tab" aria-selected={view === 'directory'} onClick={() => setView('directory')}
           className={`px-3 py-2 text-xs font-medium flex items-center gap-1.5 border-b-2 -mb-px transition-colors ${view === 'directory' ? 'text-white border-neon-cyan' : 'text-gray-400 border-transparent hover:text-gray-200'}`}>
-          <Users className="w-3.5 h-3.5" /> Directory{otherPortfolios.length > 0 ? ` (${otherPortfolios.length})` : ''}
+          <Users className="w-3.5 h-3.5" /> Directory{!authLoading && !directoryLoading && otherPortfolios.length > 0 ? ` (${otherPortfolios.length})` : ''}
         </button>
       </div>
 
@@ -296,7 +325,7 @@ export function CareerPortfolio() {
               server's existing published/public visibility rule. */}
           <div className="flex items-center justify-between gap-2 bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2">
             <div className="flex items-center gap-2 text-xs">
-              {isPublished ? <Globe className="w-3.5 h-3.5 text-neon-green" /> : <Lock className="w-3.5 h-3.5 text-gray-500" />}
+              {isPublished ? <Globe className="w-3.5 h-3.5 text-neon-green" /> : <Lock className="w-3.5 h-3.5 text-gray-400" />}
               <span className={isPublished ? 'text-neon-green' : 'text-gray-400'}>
                 {isPublished ? 'Published — visible to peers in the Directory' : 'Private — only you can see this'}
               </span>
@@ -340,13 +369,13 @@ export function CareerPortfolio() {
               </>
             )}
           </div>
-          {data.snapshots.length === 0 && <p className="text-[10px] text-gray-500">Compare needs at least one saved snapshot — save one before making further changes to see a real diff.</p>}
+          {data.snapshots.length === 0 && <p className="text-[10px] text-gray-400">Compare needs at least one saved snapshot — save one before making further changes to see a real diff.</p>}
 
           {result && <ActionResult kind={result.kind} data={result.data} />}
 
           {/* Skills */}
           <section className="space-y-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-400 flex items-center gap-1.5"><Award className="w-3.5 h-3.5" /> Skills</h3>
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400 flex items-center gap-1.5"><Award className="w-3.5 h-3.5" /> Skills</h2>
             <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-3 grid grid-cols-1 sm:grid-cols-5 gap-2">
               <Field label="Skill"><input className={inputCls} value={skillName} onChange={e => setSkillName(e.target.value)} placeholder="Mixing" /></Field>
               <Field label="Category">
@@ -362,7 +391,10 @@ export function CareerPortfolio() {
               <Field label="Years"><input type="number" min={0} className={inputCls} value={skillYears} onChange={e => setSkillYears(e.target.value)} /></Field>
               <Field label="Evidence links (one per line)"><input className={inputCls} value={skillEvidence} onChange={e => setSkillEvidence(e.target.value)} placeholder="https://..." /></Field>
             </div>
-            <button onClick={addSkill} disabled={!skillName.trim()} className="btn-neon cyan text-xs flex items-center gap-1 disabled:opacity-40"><Plus className="w-3 h-3" /> Add skill</button>
+            <div className="flex items-center gap-2">
+              <button onClick={addSkill} disabled={!skillName.trim()} className="btn-neon cyan text-xs flex items-center gap-1 disabled:opacity-40"><Plus className="w-3 h-3" /> {editSkill ? 'Save changes' : 'Add skill'}</button>
+              {editSkill && <button onClick={clearSkillDraft} className="btn-neon text-xs">Cancel edit</button>}
+            </div>
 
             <div className="space-y-1.5">
               {data.skills.map(s => {
@@ -373,7 +405,18 @@ export function CareerPortfolio() {
                       <p className="text-xs text-white">{s.name} <span className="text-[10px] text-gray-400">· {s.category} · {s.level} · {s.yearsExperience}y</span></p>
                       <p className="text-[10px] text-gray-400">{s.evidence.length} evidence link{s.evidence.length === 1 ? '' : 's'} · {endorseCount} endorsement{endorseCount === 1 ? '' : 's'} <span className="text-gray-600">(peer-only — publish above so others can endorse you)</span></p>
                     </div>
-                    <button onClick={() => removeSkill(s.id)} className="text-gray-500 hover:text-red-400 shrink-0" aria-label="remove skill"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <span className="flex items-center gap-2 shrink-0">
+                      <button onClick={() => startEditSkill(s)} className="text-gray-400 hover:text-white" aria-label={`edit skill ${s.name}`}>Edit</button>
+                      <StickyDeleteConfirm
+                        onConfirm={() => removeSkill(s.id)}
+                        armLabel={<Trash2 className="w-3.5 h-3.5" />}
+                        confirmLabel="Remove skill?"
+                        armAriaLabel="remove skill"
+                        confirmAriaLabel={`Confirm remove skill ${s.name}`}
+                        cancelAriaLabel="Cancel remove skill"
+                        className="text-gray-400 hover:text-red-400"
+                      />
+                    </span>
                   </div>
                 );
               })}
@@ -384,7 +427,7 @@ export function CareerPortfolio() {
           {/* Experience + Education side by side */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <section className="space-y-2">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-400 flex items-center gap-1.5"><Briefcase className="w-3.5 h-3.5" /> Experience</h3>
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400 flex items-center gap-1.5"><Briefcase className="w-3.5 h-3.5" /> Experience</h2>
               <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-3 space-y-2">
                 <div className="grid grid-cols-2 gap-2">
                   <Field label="Role"><input className={inputCls} value={role} onChange={e => setRole(e.target.value)} /></Field>
@@ -401,7 +444,7 @@ export function CareerPortfolio() {
                     <span>{e.role} · {e.company} <span className="text-[10px] text-gray-400">({e.startDate || '?'} – {e.endDate || 'present'})</span></span>
                     <span className="flex items-center gap-2 shrink-0">
                       <button onClick={() => startEditExperience(i)} className="text-gray-400 hover:text-white" aria-label={`edit experience ${e.role}`}>Edit</button>
-                      <button onClick={() => removeExperience(i)} className="text-gray-500 hover:text-red-400" aria-label={`delete experience ${e.role}`}><Trash2 className="w-3.5 h-3.5" /></button>
+                      <button onClick={() => removeExperience(i)} className="text-gray-400 hover:text-red-400" aria-label={`delete experience ${e.role}`}><Trash2 className="w-3.5 h-3.5" /></button>
                     </span>
                   </div>
                 ))}
@@ -410,7 +453,7 @@ export function CareerPortfolio() {
             </section>
 
             <section className="space-y-2">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-400 flex items-center gap-1.5"><GraduationCap className="w-3.5 h-3.5" /> Education</h3>
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400 flex items-center gap-1.5"><GraduationCap className="w-3.5 h-3.5" /> Education</h2>
               <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-3 space-y-2">
                 <div className="grid grid-cols-2 gap-2">
                   <Field label="Institution"><input className={inputCls} value={institution} onChange={e => setInstitution(e.target.value)} /></Field>
@@ -427,7 +470,7 @@ export function CareerPortfolio() {
                     <span>{e.degree} {e.field ? `in ${e.field}` : ''} · {e.institution} <span className="text-[10px] text-gray-400">{e.year}</span></span>
                     <span className="flex items-center gap-2 shrink-0">
                       <button onClick={() => startEditEducation(i)} className="text-gray-400 hover:text-white" aria-label={`edit education ${e.institution}`}>Edit</button>
-                      <button onClick={() => removeEducation(i)} className="text-gray-500 hover:text-red-400" aria-label={`delete education ${e.institution}`}><Trash2 className="w-3.5 h-3.5" /></button>
+                      <button onClick={() => removeEducation(i)} className="text-gray-400 hover:text-red-400" aria-label={`delete education ${e.institution}`}><Trash2 className="w-3.5 h-3.5" /></button>
                     </span>
                   </div>
                 ))}
@@ -441,7 +484,7 @@ export function CareerPortfolio() {
       {view === 'directory' && (
         <PeerDirectory
           items={otherPortfolios}
-          isLoading={directoryLoading}
+          isLoading={directoryLoading || authLoading}
           busy={busy}
           peerStatus={peerStatus}
           onEndorse={endorsePeerSkill}
@@ -464,7 +507,7 @@ function PeerDirectory({ items, isLoading, busy, peerStatus, onEndorse }: {
   if (items.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-zinc-700 bg-zinc-900/40 p-6 text-center space-y-1">
-        <Users className="w-6 h-6 mx-auto text-gray-500" />
+        <Users className="w-6 h-6 mx-auto text-gray-400" />
         <p className="text-sm text-white">No published portfolios yet</p>
         <p className="text-xs text-gray-400 max-w-sm mx-auto">When another user publishes their portfolio, it shows up here — real endorsements only happen peer to peer.</p>
       </div>
@@ -477,7 +520,12 @@ function PeerDirectory({ items, isLoading, busy, peerStatus, onEndorse }: {
         const endorsements = p.data?.endorsements || [];
         return (
           <div key={p.id} className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-3 space-y-2">
-            <p className="text-xs font-semibold text-white flex items-center gap-1.5"><Briefcase className="w-3.5 h-3.5 text-gray-400" /> {p.title}</p>
+            {/* FIX-experience-005: a legacy portfolio still titled with
+                the generic creation default names nobody — and reads as
+                the VIEWER's own portfolio. Say whose it is honestly:
+                a peer's. (New portfolios are titled for their owner at
+                creation, so their real title renders above.) */}
+            <p className="text-xs font-semibold text-white flex items-center gap-1.5"><Briefcase className="w-3.5 h-3.5 text-gray-400" /> {p.title && p.title !== 'My Portfolio' ? p.title : "A peer's portfolio"}</p>
             <div className="space-y-1">
               {skills.map(s => {
                 const key = `${p.id}:${s.id}`;
@@ -485,7 +533,7 @@ function PeerDirectory({ items, isLoading, busy, peerStatus, onEndorse }: {
                 const status = peerStatus[key];
                 return (
                   <div key={s.id} className="flex items-center justify-between gap-2 text-xs">
-                    <span className="text-gray-300">{s.name} <span className="text-[10px] text-gray-500">· {s.category} · {s.level} · {endorseCount} endorsement{endorseCount === 1 ? '' : 's'}</span></span>
+                    <span className="text-gray-300">{s.name} <span className="text-[10px] text-gray-400">· {s.category} · {s.level} · {endorseCount} endorsement{endorseCount === 1 ? '' : 's'}</span></span>
                     <div className="flex items-center gap-1.5 shrink-0">
                       {status === 'ok' && <CheckCircle2 className="w-3.5 h-3.5 text-neon-green" aria-label="endorsed" />}
                       {status === 'error' && <span className="text-[10px] text-red-400">already endorsed</span>}
@@ -500,7 +548,7 @@ function PeerDirectory({ items, isLoading, busy, peerStatus, onEndorse }: {
                   </div>
                 );
               })}
-              {skills.length === 0 && <p className="text-[11px] text-gray-500">No skills listed yet.</p>}
+              {skills.length === 0 && <p className="text-[11px] text-gray-400">No skills listed yet.</p>}
             </div>
           </div>
         );

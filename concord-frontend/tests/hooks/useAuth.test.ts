@@ -13,6 +13,7 @@ vi.mock('@/lib/api/client', () => ({
 
 import { useAuth } from '@/hooks/useAuth';
 import { api } from '@/lib/api/client';
+import { setGuestMode } from '@/lib/guest-bridge';
 
 const mockedApi = api as unknown as {
   get: ReturnType<typeof vi.fn>;
@@ -33,8 +34,26 @@ describe('useAuth', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
+    setGuestMode(false);
     vi.restoreAllMocks();
   });
+
+  // FIX-civic-bonds-008: a failed or ok:false /me retries at 3s/6s/9s
+  // before believing "signed out" (a single transient failure used to
+  // strand a signed-in user as signed-out). These helpers walk those
+  // retries with fake timers; isAuthenticated must stay false throughout.
+  async function flushRetries(result: { current: ReturnType<typeof useAuth> }) {
+    for (const ms of [0, 3000, 6000, 9000]) {
+      await act(async () => {
+        vi.advanceTimersByTime(ms);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(result.current.isAuthenticated).toBe(false);
+      expect(result.current.user).toBeNull();
+    }
+  }
 
   it('returns user when authenticated', async () => {
     mockedApi.get.mockResolvedValue({ data: { ok: true, user: mockUser } });
@@ -52,7 +71,8 @@ describe('useAuth', () => {
     expect(result.current.isAuthenticated).toBe(true);
   });
 
-  it('returns null when not authenticated', async () => {
+  it('returns null when not authenticated (guest: 401 settles immediately)', async () => {
+    setGuestMode(true);
     mockedApi.get.mockRejectedValue(Object.assign(new Error('Unauthorized'), {
       response: { status: 401 },
     }));
@@ -65,19 +85,48 @@ describe('useAuth', () => {
 
     expect(result.current.user).toBeNull();
     expect(result.current.isAuthenticated).toBe(false);
+    expect(mockedApi.get).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns null when not authenticated (non-guest 401: retries, never reports signed-in)', async () => {
+    vi.useFakeTimers();
+    mockedApi.get.mockRejectedValue(Object.assign(new Error('Unauthorized'), {
+      response: { status: 401 },
+    }));
+
+    const { result } = renderHook(() => useAuth());
+    expect(result.current.isLoading).toBe(true);
+    await flushRetries(result);
+
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.user).toBeNull();
+    expect(result.current.isAuthenticated).toBe(false);
+    expect(mockedApi.get).toHaveBeenCalledTimes(4);
   });
 
   it('returns null when API returns ok:false', async () => {
+    vi.useFakeTimers();
     mockedApi.get.mockResolvedValue({ data: { ok: false } });
 
     const { result } = renderHook(() => useAuth());
+    await flushRetries(result);
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
-
+    expect(result.current.isLoading).toBe(false);
     expect(result.current.user).toBeNull();
     expect(result.current.isAuthenticated).toBe(false);
+  });
+
+  it('does not let a guest 500 skip the retries (only 401/403 is definitive)', async () => {
+    vi.useFakeTimers();
+    setGuestMode(true);
+    mockedApi.get.mockRejectedValue(Object.assign(new Error('Server'), { response: { status: 500 } }));
+
+    const { result } = renderHook(() => useAuth());
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+    expect(result.current.isLoading).toBe(true);
+    await flushRetries(result);
+    expect(result.current.isLoading).toBe(false);
+    expect(mockedApi.get).toHaveBeenCalledTimes(4);
   });
 
   it('isLoading is true during initial check', () => {
@@ -112,14 +161,13 @@ describe('useAuth', () => {
   });
 
   it('handles network error during auth check', async () => {
+    vi.useFakeTimers();
     mockedApi.get.mockRejectedValue(new Error('Network error'));
 
     const { result } = renderHook(() => useAuth());
+    await flushRetries(result);
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
-
+    expect(result.current.isLoading).toBe(false);
     expect(result.current.user).toBeNull();
     expect(result.current.isAuthenticated).toBe(false);
   });

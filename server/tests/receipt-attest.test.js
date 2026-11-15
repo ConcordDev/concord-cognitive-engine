@@ -21,6 +21,8 @@ import { checkRateLimit, LIMITS } from "../rateLimit.js";
 import createReceiptRouter from "../routes/receipts.js";
 import createConkayDemoRouter from "../routes/conkay-demo.js";
 import { buildAnalysisReceipt } from "../lib/conkay/beam-study.js";
+import { buildCalcReceipt } from "../lib/receipts/calc-receipt.js";
+import { solveBeamStudy } from "../domains/engineering.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SERVER_JS = path.join(__dirname, "../server.js");
@@ -103,7 +105,10 @@ describe("attest and verify", () => {
     assert.equal(signed.signature.reason, null);
     const again = JSON.parse(JSON.stringify(signed));
     const verdict = verifyAttestation(again);
-    assert.deepEqual(verdict, { valid: true, reason: null, keyId: signed.signature.keyId, digest: signed.signature.digest });
+    assert.deepEqual(verdict, {
+      valid: true, reason: null, keyId: signed.signature.keyId, digest: signed.signature.digest,
+      schema: "v1", outputsSigned: false, note: "v1 receipt — outputs are NOT covered by the signature",
+    });
   });
 
   it("a changed field, a changed digest, or a wrong keyId fails", () => {
@@ -138,7 +143,10 @@ describe("attest and verify", () => {
     assert.equal(signed.signature.keyId, null);
     assert.equal(signed.signature.reason, "no_signing_key");
     assert.match(signed.signature.digest, /^[0-9a-f]{64}$/);
-    assert.deepEqual(verifyAttestation(signed), { valid: false, reason: "no_signing_key" });
+    assert.deepEqual(verifyAttestation(signed), {
+      valid: false, reason: "no_signing_key",
+      schema: "v1", outputsSigned: false, note: "v1 receipt — outputs are NOT covered by the signature",
+    });
   });
 
   it("loads the key from a file path and does not sign with a broken key", async () => {
@@ -254,6 +262,87 @@ describe("HTTP verify and well-known", () => {
     const allow = src.match(/const WRITE_AUTH_PUBLIC_PATHS = \[([^\]]*)\]/);
     assert.ok(allow);
     assert.equal(allow[1].includes("/api/receipts"), false);
+  });
+});
+
+describe("calc receipt schema reporting (GB-1534)", () => {
+  function v2Receipt() {
+    return buildCalcReceipt({
+      solver: { id: "fea-solver", version: "5.0.0" },
+      inputs: { loadN: 200000 },
+      designBasis: { code: "none — yield check only", loadFactors: "unfactored", requiredSF: 1, checksPerformed: [], checksNotPerformed: ["Shear"] },
+      results: { maxStressMPa: { value: 286.4, unit: "MPa" } },
+      verdict: { status: "PASS", text: "PASS vs yield at SF 1.0 — not a design-code check" },
+    });
+  }
+
+  it("verify reports v2 outputs as signed and v1 outputs as NOT signed", async () => {
+    const { pem } = freshKey();
+    useKey(pem);
+    const app = express();
+    app.use(express.json({ limit: "2mb" }));
+    app.use(createReceiptRouter({ readLimit: (_req, _res, next) => next(), verifyLimit: (_req, _res, next) => next() }));
+    const srv = await listen(app);
+    try {
+      const v2 = await postJson(srv.port, "/api/receipts/verify", { receipt: v2Receipt() });
+      assert.equal(v2.status, 200);
+      assert.equal(v2.body.valid, true);
+      assert.equal(v2.body.schema, "concord-calc-receipt/2");
+      assert.equal(v2.body.outputsSigned, true);
+      assert.equal(v2.body.note, undefined);
+
+      const solved = solveBeamStudy({
+        dims: { length: 1200, height: 200, flangeWidth: 100, flangeThickness: 10, webThickness: 6 },
+        loadN: 200000, support: "simply-supported", material: "steel-a992",
+      });
+      assert.equal(solved.ok, true);
+      const v1 = buildAnalysisReceipt(
+        {
+          dims: solved.study.dims, support: solved.study.support, loadN: solved.study.loadN,
+          material: { E: solved.study.material.E, yield: solved.study.material.yield },
+        },
+        solved.summary,
+      );
+      const v1Verdict = await postJson(srv.port, "/api/receipts/verify", { receipt: v1 });
+      assert.equal(v1Verdict.body.valid, true);
+      assert.equal(v1Verdict.body.schema, "v1");
+      assert.equal(v1Verdict.body.outputsSigned, false);
+      assert.equal(v1Verdict.body.note, "v1 receipt — outputs are NOT covered by the signature");
+    } finally {
+      await srv.close();
+    }
+  });
+
+  it("POST /api/receipts/sheet renders the calc sheet and flags a tampered receipt INVALID", async () => {
+    const { pem } = freshKey();
+    useKey(pem);
+    const app = express();
+    app.use(express.json({ limit: "2mb" }));
+    app.use(createReceiptRouter({ readLimit: (_req, _res, next) => next(), verifyLimit: (_req, _res, next) => next() }));
+    const srv = await listen(app);
+    try {
+      const receipt = v2Receipt();
+      const ok = await postJson(srv.port, "/api/receipts/sheet", { receipt });
+      assert.equal(ok.status, 200);
+      assert.match(ok.text, /Calculation sheet/);
+      assert.match(ok.text, /Signature check:/);
+      assert.match(ok.text, /VALID/);
+      assert.ok(ok.text.includes(`https://concord-os.org/verify?d=${receipt.signature.digest}`));
+
+      const tampered = JSON.parse(JSON.stringify(receipt));
+      tampered.results.maxStressMPa.value = 12.3;
+      const bad = await postJson(srv.port, "/api/receipts/sheet", { receipt: tampered });
+      assert.equal(bad.status, 200);
+      assert.match(bad.text, /INVALID/);
+      assert.match(bad.text, /digest_mismatch/);
+
+      const junk = await postJson(srv.port, "/api/receipts/sheet", { receipt: { nope: true } });
+      assert.equal(junk.status, 200);
+      assert.match(junk.text, /INVALID/);
+      assert.match(junk.text, /malformed/);
+    } finally {
+      await srv.close();
+    }
   });
 });
 

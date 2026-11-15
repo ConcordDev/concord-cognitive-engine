@@ -91,7 +91,7 @@ export function CountyDataPanel() {
         <div className="flex items-center gap-2">
           <Building2 className="h-5 w-5 text-cyan-400" />
           <h2 className="text-sm font-semibold text-white">County Data</h2>
-          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">census acs 5-yr · hud income limits</span>
+          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-300">census acs 5-yr · hud income limits</span>
         </div>
       </header>
 
@@ -100,7 +100,7 @@ export function CountyDataPanel() {
       </p>
 
       <div className="flex flex-wrap items-center gap-2">
-        <select value={`${preset.stateFips}-${preset.countyFips}`} onChange={(e) => { const p = PRESETS.find((x) => `${x.stateFips}-${x.countyFips}` === e.target.value); if (p) setPreset(p); }} className="flex-1 min-w-[200px] rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white">
+        <select aria-label="County preset" value={`${preset.stateFips}-${preset.countyFips}`} onChange={(e) => { const p = PRESETS.find((x) => `${x.stateFips}-${x.countyFips}` === e.target.value); if (p) setPreset(p); }} className="flex-1 min-w-[200px] rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white">
           {PRESETS.map((p) => <option key={`${p.stateFips}-${p.countyFips}`} value={`${p.stateFips}-${p.countyFips}`}>{p.label}</option>)}
         </select>
         <button onClick={() => load.mutate()} disabled={load.isPending} className="inline-flex items-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-50">
@@ -135,7 +135,7 @@ export function CountyDataPanel() {
                 <Cell label="Owner-occupied" value={census.ownerOccupiedPct != null ? `${census.ownerOccupiedPct}%` : '—'} icon={Home} />
                 <Cell label="60+ min commute" value={census.longCommutePct != null ? `${census.longCommutePct}%` : '—'} />
               </div>
-              <p className="mt-2 text-[10px] text-zinc-400">FIPS {census.stateFips}/{census.countyFips} · {census.source}</p>
+              <p className="mt-2 text-[10px] text-zinc-300">FIPS {census.stateFips}/{census.countyFips} · {census.source}</p>
             </>
           ) : (
             <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">Click pull to load.</div>
@@ -155,7 +155,7 @@ export function CountyDataPanel() {
                   if (rows.length === 0) return null;
                   return (
                     <div key={k}>
-                      <div className="mb-0.5 text-[10px] uppercase tracking-wider text-zinc-400">{label}</div>
+                      <div className="mb-0.5 text-[10px] uppercase tracking-wider text-zinc-300">{label}</div>
                       <div className="flex flex-wrap gap-1">
                         {rows.map((r) => (
                           <span key={r.householdSize} className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] text-cyan-300">{familySize(r.householdSize)} {fmtCurrency(r.limit)}</span>
@@ -180,7 +180,7 @@ export function CountyDataPanel() {
 function Cell({ label, value, icon: Icon }: { label: string; value: string; icon?: React.ComponentType<{ className?: string }> }) {
   return (
     <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-      <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400">{Icon && <Icon className="h-3 w-3" />}{label}</div>
+      <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-300">{Icon && <Icon className="h-3 w-3" />}{label}</div>
       <div className="mt-0.5 font-mono text-sm text-cyan-300">{value}</div>
     </div>
   );

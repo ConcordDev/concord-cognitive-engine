@@ -303,8 +303,10 @@ export default function registerTemporalActions(registerLensAction) {
       for (let lag = 2; lag <= maxLag; lag++) acfCurve.push({ lag, acf: tpRound(acf(lag)) });
 
       if (!candidates) {
-        // Local-maximum peaks above a significance band.
-        const sig = 2 / Math.sqrt(n);
+        // Local-maximum peaks. Bartlett's 2/sqrt(n) is stricter than 0.2 on
+        // short series, so a period Decompose already accepts (acf > 0.2)
+        // used to come back as zero periods and a blank seasonal share.
+        const sig = Math.min(0.2, 2 / Math.sqrt(n));
         const peaks = [];
         for (let i = 1; i < acfCurve.length - 1; i++) {
           const c = acfCurve[i];
@@ -318,7 +320,13 @@ export default function registerTemporalActions(registerLensAction) {
       if (candidates.length === 0) {
         return {
           ok: true,
-          result: { n, seasonalities: [], dominant: null, note: "No significant seasonality detected." },
+          result: {
+            n,
+            seasonalities: [],
+            dominant: null,
+            totalSeasonalShare: 0,
+            note: "No significant seasonality detected.",
+          },
         };
       }
 
@@ -820,15 +828,22 @@ export default function registerTemporalActions(registerLensAction) {
     const windowSize = params.windowSize || Math.max(5, Math.floor(n / 10));
     const r = (v) => Math.round(v * 1e6) / 1e6;
 
-    // --- Method 1: Z-score with sliding window ---
+    // --- Method 1: Z-score with a leave-one-out window ---
+    // The point under test stays out of the mean and std. Including it
+    // let a single spike inflate the local std until its own z-score
+    // fell under the threshold and consensus stayed at 0.
     const zScoreAnomalies = [];
     for (let i = 0; i < n; i++) {
       const start = Math.max(0, i - Math.floor(windowSize / 2));
       const end = Math.min(n, i + Math.ceil(windowSize / 2));
-      const window = values.slice(start, end);
+      const window = [];
+      for (let j = start; j < end; j++) if (j !== i) window.push(values[j]);
+      if (window.length < 4) continue;
       const wMean = window.reduce((s, v) => s + v, 0) / window.length;
-      const wStd = Math.sqrt(window.reduce((s, v) => s + (v - wMean) ** 2, 0) / window.length);
-      const zScore = wStd > 0 ? Math.abs(values[i] - wMean) / wStd : 0;
+      const wVar = window.reduce((s, v) => s + (v - wMean) ** 2, 0) / window.length;
+      const wStd = Math.sqrt(wVar);
+      const delta = Math.abs(values[i] - wMean);
+      const zScore = wStd > 1e-9 ? delta / wStd : (delta > 1e-9 ? threshold + 1 : 0);
       if (zScore > threshold) {
         zScoreAnomalies.push({
           index: i,

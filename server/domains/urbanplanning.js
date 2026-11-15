@@ -429,7 +429,7 @@ export default function registerUrbanplanningActions(registerLensAction) {
     if (!STATE) return null;
     if (!STATE.urbanPlanningLens) STATE.urbanPlanningLens = {};
     const s = STATE.urbanPlanningLens;
-    for (const k of ["scenarios", "parcels", "comments", "projects"]) {
+    for (const k of ["scenarios", "parcels", "comments", "projects", "stops"]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
     return s;
@@ -555,6 +555,33 @@ export default function registerUrbanplanningActions(registerLensAction) {
     }
   });
 
+  // FIX-urban-planning-003: parcels could be added and removed but
+  // never edited — a typo meant delete + recreate.
+  registerLensAction("urban-planning", "parcel-update", (ctx, _a, params = {}) => {
+    try {
+      const s = getUpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const parcel = upList(s.parcels, upAid(ctx)).find((p) => p.id === String(params.id || ""));
+      if (!parcel) return { ok: false, error: "not_found" };
+      if (params.apn != null) {
+        const apn = upClean(params.apn, 40);
+        if (!apn) return { ok: false, error: "parcel apn/parcelId required" };
+        parcel.apn = apn;
+      }
+      if (params.address != null) parcel.address = upClean(params.address, 160);
+      if (params.zoneType != null) {
+        const zone = String(params.zoneType).toLowerCase();
+        parcel.zoneType = ZONE_SPECS[zone] ? zone : parcel.zoneType;
+      }
+      if (params.lotSizeSqFt != null) parcel.lotSizeSqFt = Math.max(0, upNum(params.lotSizeSqFt, parcel.lotSizeSqFt));
+      if (params.owner != null) parcel.owner = upClean(params.owner, 120);
+      if (params.district != null) parcel.district = upClean(params.district, 80);
+      saveUpState();
+      return { ok: true, result: { parcel } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
   registerLensAction("urban-planning", "parcel-remove", (ctx, _a, params = {}) => {
     try {
       const s = getUpState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -563,6 +590,56 @@ export default function registerUrbanplanningActions(registerLensAction) {
       const next = arr.filter((p) => p.id !== id);
       if (!id || next.length === arr.length) return { ok: false, error: "not_found" };
       s.parcels.set(upAid(ctx), next);
+      saveUpState();
+      return { ok: true, result: { removed: 1 } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // ── Transit stops — persisted per user, like parcels ───────────────
+  // FIX-urban-planning-002: stops lived only in the panel's useState, so
+  // a reload dropped every stop while parcels (same workspace) survived.
+  // The stop store mirrors the parcel trio above exactly.
+  registerLensAction("urban-planning", "stop-add", (ctx, _a, params = {}) => {
+    try {
+      const s = getUpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const lat = Number(params.lat); const lng = Number(params.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return { ok: false, error: "stop latitude + longitude are required" };
+      if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return { ok: false, error: "stop coordinates out of range" };
+      const mode = ["bus", "brt", "rail", "ferry"].includes(String(params.mode || "").toLowerCase()) ? String(params.mode).toLowerCase() : "bus";
+      const stop = {
+        id: upId("stop"),
+        name: upClean(params.name, 120) || `${mode} stop`,
+        mode,
+        lat, lng,
+        createdAt: upNow(),
+      };
+      upList(s.stops, upAid(ctx)).push(stop);
+      saveUpState();
+      return { ok: true, result: { stop } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  registerLensAction("urban-planning", "stop-list", (ctx, _a, _params = {}) => {
+    try {
+      const s = getUpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      return { ok: true, result: { stops: upList(s.stops, upAid(ctx)) } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  registerLensAction("urban-planning", "stop-remove", (ctx, _a, params = {}) => {
+    try {
+      const s = getUpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const arr = upList(s.stops, upAid(ctx));
+      const id = String(params.id || "");
+      const next = arr.filter((x) => x.id !== id);
+      if (!id || next.length === arr.length) return { ok: false, error: "not_found" };
+      s.stops.set(upAid(ctx), next);
       saveUpState();
       return { ok: true, result: { removed: 1 } };
     } catch (e) {
@@ -738,6 +815,40 @@ export default function registerUrbanplanningActions(registerLensAction) {
           { efficiency: sc.efficiency, useMix: sc.useMix }),
       }));
       return { ok: true, result: { scenarios } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // FIX-urban-planning-003: scenarios gain the same edit path.
+  registerLensAction("urban-planning", "scenario-update", (ctx, _a, params = {}) => {
+    try {
+      const s = getUpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const uid = upAid(ctx);
+      const scenario = upList(s.scenarios, uid).find((sc) => sc.id === String(params.id || ""));
+      if (!scenario) return { ok: false, error: "not_found" };
+      if (params.name != null) {
+        const name = upClean(params.name, 120);
+        if (!name) return { ok: false, error: "scenario name required" };
+        scenario.name = name;
+      }
+      if (params.description != null) scenario.description = upClean(params.description, 280);
+      if (params.zoneType != null) {
+        const zone = String(params.zoneType).toLowerCase();
+        scenario.zoneType = ZONE_SPECS[zone] ? zone : scenario.zoneType;
+      }
+      if (params.lotSizeSqFt != null) scenario.lotSizeSqFt = Math.max(0, upNum(params.lotSizeSqFt, scenario.lotSizeSqFt));
+      if (params.useMix != null) scenario.useMix = String(params.useMix).toLowerCase();
+      if (params.efficiency != null) scenario.efficiency = Math.min(1, Math.max(0.4, upNum(params.efficiency, scenario.efficiency)));
+      if (params.parcelId !== undefined) {
+        const parcelId = upClean(params.parcelId, 40) || null;
+        if (parcelId && !upList(s.parcels, uid).some((p) => p.id === parcelId)) {
+          return { ok: false, error: "parcel not found" };
+        }
+        scenario.parcelId = parcelId;
+      }
+      saveUpState();
+      return { ok: true, result: { scenario } };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }

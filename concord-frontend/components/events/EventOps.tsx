@@ -11,6 +11,7 @@ import { lensRun } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { EMAIL_REQUIRED, REGISTRATION_STATUS } from './registration-copy';
+import { countsAsPast, utcToday } from './event-when';
 import { ChartKit, TimelineView } from '@/components/viz';
 import {
   Ticket, Users, Armchair, DollarSign, ListChecks, ScanLine, Mail,
@@ -621,7 +622,7 @@ export function EventOps() {
       {creating && (
         <div className={cn(ds.panel, 'space-y-2')}>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <input className={ds.input} placeholder="Event name" value={newEvtName}
+            <input className={ds.input} placeholder="Event name" value={newEvtName} maxLength={200}
               onChange={(e) => setNewEvtName(e.target.value)} />
             <select className={ds.select} value={newEvtType} onChange={(e) => setNewEvtType(e.target.value)}>
               {['conference', 'wedding', 'concert', 'festival', 'corporate', 'social'].map((t) => (
@@ -654,7 +655,7 @@ export function EventOps() {
                     ? 'bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/40'
                     : 'bg-lattice-elevated text-gray-400 hover:text-white'
                 )}>
-                {e.name} <span className="opacity-60">· {e.type}</span>
+                {e.name} <span className="opacity-60">· {e.type}{countsAsPast(e.date, utcToday()) ? ' · Past' : ''}</span>
               </button>
             ))}
           </div>

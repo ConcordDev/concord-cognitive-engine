@@ -152,7 +152,7 @@ export function VocabularyBuilder({ refreshKey = 0, onChange }: { refreshKey?: n
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
       <div className="flex items-center gap-2 mb-3">
         <BookA className="w-4 h-4 text-indigo-400" />
-        <h3 className="text-sm font-bold text-zinc-100">Vocabulary Builder</h3>
+        <h2 className="text-sm font-bold text-zinc-100">Vocabulary Builder</h2>
         <button onClick={startReview} disabled={!dash?.dueNow}
           className="ml-auto px-2.5 py-1 text-xs rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-40 inline-flex items-center gap-1">
           <GraduationCap className="w-3 h-3" />Review ({dash?.dueNow || 0})

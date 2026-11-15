@@ -190,6 +190,12 @@ describe('AppShell mobile viewport (INC-129)', () => {
     const css = readFileSync(resolve(__dirname, '../../app/globals.css'), 'utf8');
     expect(css).toMatch(/\.app-viewport-h\s*\{[^}]*100dvh/s);
     expect(css).toMatch(/\.mobile-nav-pad\s*\{[^}]*env\(\s*safe-area-inset-bottom/s);
+    expect(css).toMatch(/@media \(max-width: 767px\)[\s\S]*\.fixed\.bottom-8[\s\S]*safe-area-inset-bottom[\s\S]*z-index:\s*60/);
+    expect(css).toMatch(/@media \(max-width: 767px\)[\s\S]*\[role="tablist"\][\s\S]*overflow-x:\s*auto/);
+    expect(css).toMatch(/@media \(max-width: 767px\)[\s\S]*div:has\(> table\)[\s\S]*overflow-x:\s*auto/);
+    expect(css).toMatch(/@media \(max-width: 767px\) and \(pointer: coarse\)[\s\S]*button,[\s\S]*min-height:\s*44px/);
+    const desktop = css.split('@media (max-width: 767px) and (pointer: coarse)')[0];
+    expect(desktop).not.toMatch(/button,\s*\n\s*\[role="tab"\],\s*\n\s*\[role="button"\]\s*\{\s*min-height:\s*44px/);
   });
 
   it('layout.tsx viewport sets interactiveWidget to resizes-content', () => {

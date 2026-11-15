@@ -89,6 +89,23 @@ export function UniverseSettings() {
     },
   });
 
+  // GB-1536: the starter pack, on demand (see the button below).
+  const starterMutation = useMutation({
+    mutationFn: async () => {
+      const res = await api.post('/api/universe/initialize', { mode: 'starter' });
+      return res.data;
+    },
+    onSuccess: () => {
+      addToast({ type: 'success', message: 'Starter pack added to your universe.' });
+    },
+    onError: (err: unknown) => {
+      addToast({
+        type: 'error',
+        message: err instanceof Error ? err.message : 'Failed to add the starter pack',
+      });
+    },
+  });
+
   const hasChanges =
     (regional.trim() || null) !== (me?.user.declaredRegional || null) ||
     (national.trim() || null) !== (me?.user.declaredNational || null) ||
@@ -172,6 +189,27 @@ export function UniverseSettings() {
               National posts you make are visible country-wide.
             </p>
           </div>
+        </div>
+
+        {/* GB-1536: new accounts start with an EMPTY universe (the
+            picker screen is gone). The starter pack is opt-in here —
+            the same POST /api/universe/initialize the picker used,
+            mode 'starter'. */}
+        <div className="flex items-center justify-between gap-4 pt-3 border-t border-lattice-border">
+          <div>
+            <p className="text-sm text-gray-200">Starter pack</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              New accounts start empty. Add the starter pack to copy the sample DTUs into your universe.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => starterMutation.mutate()}
+            disabled={starterMutation.isPending}
+            className="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-lattice-deep border border-lattice-border text-gray-200 transition-all hover:border-neon-cyan/40 disabled:opacity-50"
+          >
+            {starterMutation.isPending ? 'Adding…' : 'Add the starter pack'}
+          </button>
         </div>
 
         {/* Actions */}

@@ -160,6 +160,15 @@ export default function registerVeterinaryActions(registerLensAction) {
     return s;
   }
   function saveVet() {
+    // FIX-veterinary-012: route through the platform's critical save so a
+    // vet mutation (a delete above all) is durable with its read-your-
+    // write floor stamped on return, instead of riding the debounced
+    // coalesce window (up to STATE_SAVE_COALESCE_MS), inside which a
+    // snapshot-served reload could resurrect a deleted record. Falls
+    // back to the debounced save where the critical path is absent.
+    if (typeof globalThis._concordSaveStateCritical === "function") {
+      try { globalThis._concordSaveStateCritical(); return; } catch (_e) { /* fall through */ }
+    }
     if (typeof globalThis._concordSaveStateDebounced === "function") {
       try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
     }
@@ -223,7 +232,17 @@ export default function registerVeterinaryActions(registerLensAction) {
     const arr = vtPatients(s, vtActor(ctx));
     const i = arr.findIndex((p) => p.id === params.id);
     if (i < 0) return { ok: false, error: "patient not found" };
-    arr.splice(i, 1);
+    const removed = arr.splice(i, 1)[0];
+    const userId = vtActor(ctx);
+    const dropNamed = (bucket, name) => {
+      const list = vtList(vtCollection(s, bucket), userId);
+      for (let n = list.length - 1; n >= 0; n -= 1) {
+        const row = list[n];
+        if (row.patientId === removed.id || (row.patientName && row.patientName === removed.name)) list.splice(n, 1);
+      }
+    };
+    dropNamed("invoices", removed.name);
+    dropNamed("prescriptions", removed.name);
     saveVet();
     return { ok: true, result: { deleted: params.id } };
   });
@@ -602,6 +621,26 @@ export default function registerVeterinaryActions(registerLensAction) {
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
 
+  registerLensAction("veterinary", "invoice-void", (ctx, _a, params = {}) => {
+    try {
+      const s = getVetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const arr = vtList(vtCollection(s, "invoices"), vtActor(ctx));
+      const i = arr.findIndex((iv) => iv.id === params.id);
+      if (i < 0) return { ok: false, error: "invoice not found" };
+      const inv = arr[i];
+      if ((inv.amountPaid || 0) > 0 || inv.status === "paid" || inv.status === "partial") {
+        inv.status = "void";
+        inv.balanceDue = 0;
+        inv.voidedAt = new Date().toISOString();
+        saveVet();
+        return { ok: true, result: { invoice: inv, voided: true } };
+      }
+      arr.splice(i, 1);
+      saveVet();
+      return { ok: true, result: { deleted: params.id } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
   // ─── Vaccine-due reminders / overdue alerts ────────────────────────
   registerLensAction("veterinary", "vaccine-reminders", (ctx, _a, params = {}) => {
     try {
@@ -623,6 +662,27 @@ export default function registerVeterinaryActions(registerLensAction) {
           if (due < now) overdue.push(entry);
           else if (due <= horizon) dueSoon.push(entry);
         }
+      }
+      // FIX-veterinary-010: reminders only ever looked at vaccination
+      // nextDue dates, so a booked appointment inside the window was
+      // invisible here — the panel answered "Nothing due in the next
+      // 30 days" with an appointment sitting in it. Scheduled
+      // appointments are reminders too: past-dated ones still marked
+      // scheduled read as overdue (missed), upcoming ones as due soon.
+      const apptCol = vtCollection(s, "appointments");
+      for (const a of vtList(apptCol, vtActor(ctx))) {
+        if (a.status !== "scheduled" || !a.date) continue;
+        const due = new Date(`${a.date}T${a.time || "09:00"}`);
+        if (Number.isNaN(due.getTime())) continue;
+        const daysOut = Math.round((due.getTime() - now.getTime()) / 86400000);
+        const entry = {
+          kind: "appointment",
+          patientId: a.patientId || "", patientName: a.patientName, owner: a.owner || "",
+          vaccine: `Appointment — ${a.type}${a.reason ? `: ${a.reason}` : ""}`,
+          nextDue: a.date, time: a.time || "", daysOut,
+        };
+        if (due < now) overdue.push(entry);
+        else if (due <= horizon) dueSoon.push(entry);
       }
       overdue.sort((a, b) => a.daysOut - b.daysOut);
       dueSoon.sort((a, b) => a.daysOut - b.daysOut);
@@ -720,6 +780,19 @@ export default function registerVeterinaryActions(registerLensAction) {
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
 
+  registerLensAction("veterinary", "prescription-discontinue", (ctx, _a, params = {}) => {
+    try {
+      const s = getVetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const arr = vtList(vtCollection(s, "prescriptions"), vtActor(ctx));
+      const rx = arr.find((row) => row.id === params.id);
+      if (!rx) return { ok: false, error: "prescription not found" };
+      rx.status = "discontinued";
+      rx.discontinuedAt = new Date().toISOString();
+      saveVet();
+      return { ok: true, result: { prescription: rx } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
   registerLensAction("veterinary", "prescription-list", (ctx, _a, params = {}) => {
     try {
       const s = getVetState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -757,9 +830,30 @@ export default function registerVeterinaryActions(registerLensAction) {
       const owner = vtClean(params.owner, 120);
       if (!owner) return { ok: false, error: "owner name required" };
       const userId = vtActor(ctx);
-      const ownerLc = owner.toLowerCase();
-      const pets = vtPatients(s, userId)
-        .filter((p) => (p.owner || "").toLowerCase() === ownerLc)
+      const queryLc = owner.toLowerCase();
+      const allPatients = vtPatients(s, userId);
+      // FIX-veterinary-011: the portal matched OWNER names only, so
+      // searching the patient's name — the natural front-desk lookup,
+      // and what the ticket's expected state allows ("Patient/owner
+      // match") — found nothing and even echoed the pet's name back
+      // as the portal's owner. Resolve the query as an owner first;
+      // if no owner matches, resolve it as a patient name and open
+      // that patient's owner's portal. The returned `owner` is the
+      // STORED owner name, never the raw query.
+      let matchedOwner = null;
+      let ownerPets = allPatients.filter((p) => (p.owner || "").toLowerCase() === queryLc);
+      if (ownerPets.length > 0) {
+        matchedOwner = ownerPets[0].owner;
+      } else {
+        const byPet = allPatients.filter((p) => (p.name || "").toLowerCase() === queryLc);
+        if (byPet.length > 0) {
+          matchedOwner = byPet[0].owner;
+          const moLc = (matchedOwner || "").toLowerCase();
+          ownerPets = allPatients.filter((p) => (p.owner || "").toLowerCase() === moLc);
+        }
+      }
+      const ownerLc = (matchedOwner || owner).toLowerCase();
+      const pets = ownerPets
         .map((p) => ({
           id: p.id, name: p.name, species: p.species, breed: p.breed,
           ageYears: p.ageYears, weightLbs: p.weightLbs,
@@ -776,7 +870,7 @@ export default function registerVeterinaryActions(registerLensAction) {
       return {
         ok: true,
         result: {
-          owner, pets, appointments: appts, invoices, prescriptions: rxs,
+          owner: matchedOwner || owner, pets, appointments: appts, invoices, prescriptions: rxs,
           petCount: pets.length,
           balanceDue: Math.round(balanceDue * 100) / 100,
         },

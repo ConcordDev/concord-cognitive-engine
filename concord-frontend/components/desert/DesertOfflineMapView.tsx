@@ -325,7 +325,7 @@ export default function DesertOfflineMapView({
         </button>
       </div>
       {caching.capped && !caching.active && (
-        <p className="text-[10px] text-zinc-500">
+        <p className="text-[10px] text-zinc-400">
           Capped at {MAX_PRECACHE_TILES} tiles for this click — pan/zoom and cache again to cover more ground.
         </p>
       )}

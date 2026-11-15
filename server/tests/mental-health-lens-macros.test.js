@@ -359,6 +359,17 @@ describe("mental-health — breathing / sleep / gratitude", () => {
     assert.equal(l.result.count, 1);
     assert.deepEqual(l.result.entries[0].items, ["sunshine", "coffee"]);
   });
+
+  it("an object gratitude line prints its text, not [object Object]", () => {
+    assert.equal(call("gratitude-add", ctxA, { entries: [{ unused: true }] }).ok, false);
+    const added = call("gratitude-add", ctxA, { entries: [{ text: "sunshine" }, { note: "  quiet morning  " }] });
+    assert.equal(added.ok, true);
+    assert.deepEqual(added.result.entry.items, ["sunshine", "quiet morning"]);
+    const bag = globalThis._concordSTATE.mentalHealthLens.gratitude.get("user_a");
+    bag[0].items = [{ text: "sunshine" }, "[object Object]"];
+    const listed = call("gratitude-list", ctxA, {});
+    assert.deepEqual(listed.result.entries[0].items, ["sunshine", "[object Object]"]);
+  });
 });
 
 // ───────────────────────────────────────────────────────────────────────────

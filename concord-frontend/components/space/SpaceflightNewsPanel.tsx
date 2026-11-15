@@ -109,6 +109,24 @@ export function SpaceflightNewsPanel({ domain, className }: SpaceflightNewsPanel
         </div>
       )}
 
+      {/* FIX-astronomy-007: initial load rendered a blank body — only the
+          header refresh icon spun. A labelled skeleton stands in until the
+          first payload (or error) lands. */}
+      {!error && loading && articles.length === 0 && (
+        <div role="status" aria-label="Loading spaceflight news" className="px-3 py-3 space-y-3">
+          <p className="text-xs text-zinc-400">Loading spaceflight news…</p>
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="flex items-start gap-3 animate-pulse" aria-hidden="true">
+              <div className="w-16 h-16 rounded bg-zinc-800 shrink-0" />
+              <div className="flex-1 space-y-2">
+                <div className="h-3 rounded bg-zinc-800 w-3/4" />
+                <div className="h-2 rounded bg-zinc-800/70 w-1/2" />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {!error && !loading && articles.length === 0 && (
         <div className="px-3 py-6 text-xs text-zinc-400 italic text-center">No articles match.</div>
       )}

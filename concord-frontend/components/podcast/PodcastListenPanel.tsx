@@ -115,6 +115,15 @@ export function PodcastListenPanel({ onChange }: { onChange: () => void }) {
 
   useEffect(() => { void refresh(); }, [refresh]);
 
+  useEffect(() => {
+    let cancelled = false;
+    void lensRun<{ playbackSpeed?: number }>('podcast', 'playback-prefs-get', {}).then((r) => {
+      const speed = r.data?.result?.playbackSpeed;
+      if (!cancelled && typeof speed === 'number' && speed > 0) setSpeed(speed);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
   const changeSpeed = async (v: number) => {
     setSpeed(v);
     await lensRun('podcast', 'playback-speed-set', { speed: v });

@@ -400,7 +400,7 @@ function ReaderTab({ papers, busy, setBusy, setErr, onChanged }:
                         <p className="text-[11px] text-zinc-200">{a.quote}</p>
                         {a.comment && <p className="text-[10px] text-zinc-400 mt-0.5 italic">— {a.comment}</p>}
                       </div>
-                      <button aria-label="Delete" onClick={() => delAnnotation(a.id)} className="opacity-0 group-hover:opacity-100 text-rose-400 shrink-0">
+                      <button aria-label="Delete" onClick={() => delAnnotation(a.id)} className="inline-flex min-h-11 min-w-11 items-center justify-center opacity-0 group-hover:opacity-100 text-rose-400 shrink-0">
                         <Trash2 className="w-3 h-3" />
                       </button>
                     </div>
@@ -675,8 +675,8 @@ function GroupsTab({ papers, busy, setBusy, setErr }:
             {openId === g.id && (
               <div className="px-3 pb-2.5 border-t border-zinc-800 pt-2 space-y-1.5">
                 <div className="flex gap-1.5">
-                  <select value={addId} onChange={e => setAddId(e.target.value)}
-                    className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-[11px] text-zinc-200">
+                  <select aria-label="Paper to add" value={addId} onChange={e => setAddId(e.target.value)}
+                    className="min-h-11 flex-1 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-[11px] text-zinc-200">
                     <option value="">Add a paper from your library…</option>
                     {papers.map(p => <option key={p.id} value={p.id}>{p.title.slice(0, 60)}</option>)}
                   </select>
@@ -689,7 +689,7 @@ function GroupsTab({ papers, busy, setBusy, setErr }:
                   <div key={p.id} className="group flex items-center gap-2 text-[11px] text-zinc-300">
                     <span className="w-1 h-1 rounded-full bg-zinc-600 shrink-0" />
                     <span className="truncate min-w-0 flex-1">{p.title}{p.year ? ` (${p.year})` : ''}</span>
-                    <button aria-label="Delete" onClick={() => removePaper(g.id, p.id)} className="opacity-0 group-hover:opacity-100 text-rose-400">
+                    <button aria-label="Delete" onClick={() => removePaper(g.id, p.id)} className="inline-flex min-h-11 min-w-11 items-center justify-center opacity-0 group-hover:opacity-100 text-rose-400">
                       <Trash2 className="w-3 h-3" />
                     </button>
                   </div>
@@ -751,7 +751,7 @@ function AlertsTab({ busy, setBusy, setErr }: TabProps) {
         </p>
         <div className="flex items-center gap-1.5">
           {unread > 0 && (
-            <button onClick={markAll} className="text-[10px] text-zinc-400 hover:text-zinc-200">Mark all read</button>
+            <button onClick={markAll} className="inline-flex min-h-11 items-center text-[10px] text-zinc-400 hover:text-zinc-200">Mark all read</button>
           )}
           <button onClick={check} disabled={busy === 'check'}
             className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 disabled:opacity-40">
@@ -774,7 +774,7 @@ function AlertsTab({ busy, setBusy, setErr }: TabProps) {
                 <p className="text-[9px] text-zinc-400 mt-0.5">{new Date(a.createdAt).toLocaleString()}</p>
               </div>
               {!a.read && (
-                <button aria-label="Confirm" onClick={() => markRead(a.id)} className="shrink-0 text-[10px] text-violet-400 hover:text-violet-300">
+                <button aria-label="Confirm" onClick={() => markRead(a.id)} className="inline-flex min-h-11 items-center shrink-0 text-[10px] text-violet-400 hover:text-violet-300">
                   <Check className="w-3 h-3" />
                 </button>
               )}

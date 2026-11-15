@@ -157,11 +157,24 @@ export function fromAxiosError(error: unknown): ConcordError {
     message?: string;
     reason?: string;
     violations?: string[];
+    errors?: unknown;
   } | undefined;
   if (status === 503 && (body?.reason === 'shutting_down' || body?.code === 'shutting_down')) {
     return new ServerError('Server restarting, try again.', 503);
   }
-  const msg = data?.error || data?.message || axiosErr.message || 'Unknown error';
+  // validateArtifact failures are HTTP 422 with error "validation_failed"
+  // and a sentence in errors[0] / message ("Invalid status …"). The code
+  // alone is what the toast used to show, so a filled-in form looked like
+  // a nameless failure.
+  const errorSentences = Array.isArray(body?.errors)
+    ? body.errors.filter((e): e is string => typeof e === 'string' && e.trim().length > 0)
+    : [];
+  const namedRefusal = errorSentences[0]
+    || (typeof body?.message === 'string' && body.message && body.message !== body.error ? body.message : '');
+  const bare = data?.error || data?.message || axiosErr.message || 'Unknown error';
+  const msg = namedRefusal && (body?.error === 'validation_failed' || body?.error === 'invalid_transition')
+    ? namedRefusal
+    : bare;
   const violations = Array.isArray(body?.violations) ? body.violations : undefined;
 
   switch (status) {

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Calendar, Plus, Trash2, Check, AlertTriangle, Loader2, Zap } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface Bill {
   id: string;
@@ -156,7 +157,7 @@ export function BillsCalendar({ startBalance = 2000 }: { startBalance?: number }
                 </div>
                 <span className="font-mono text-sm text-white tabular-nums">${b.amount.toFixed(0)}</span>
                 <button onClick={() => pay(b.id)} className="p-1.5 rounded hover:bg-emerald-500/20 text-emerald-300" title="Mark paid"><Check className="w-3.5 h-3.5" /></button>
-                <button onClick={() => remove(b.id)} className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-rose-500/20 text-rose-300" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                <StickyDeleteConfirm onConfirm={() => remove(b.id)} armLabel={<Trash2 className="w-3.5 h-3.5" />} armAriaLabel={`Delete bill ${b.name}`} confirmAriaLabel={`Confirm delete bill ${b.name}`} className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-rose-500/20 text-rose-300" />
               </li>
             ))}
             {bills.filter(b => b.paidThisCycle).map(b => (

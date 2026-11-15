@@ -72,3 +72,22 @@ describe("cognition log lifecycle (S-COG-1/2/3)", () => {
     assert.match(r.result.label, /registrations, not activity/);
   });
 });
+
+describe("cognition log — DTU link (FIX-cognition-002)", () => {
+  it("linkExportDtu records the DTU on the entry and listExports surfaces it", () => {
+    const first = openTrace("A linked question", "What links persist?");
+    const id = first.result.exportId;
+    const linked = call("linkExportDtu", ctxA, { exportId: id, dtuId: "dtu_abc123XYZ" });
+    assert.equal(linked.ok, true, JSON.stringify(linked));
+    assert.equal(linked.result.dtuId, "dtu_abc123XYZ");
+    const list = call("listExports", ctxA, {});
+    const row = list.result.exports.find((e) => e.id === id);
+    assert.equal(row.dtuId, "dtu_abc123XYZ");
+    const detail = call("getExport", ctxA, { exportId: id });
+    assert.equal(detail.result.export.trace.dtuId, "dtu_abc123XYZ");
+    // A malformed id is refused; clearing works with an empty string.
+    assert.equal(call("linkExportDtu", ctxA, { exportId: id, dtuId: "not-a-dtu" }).ok, false);
+    assert.equal(call("linkExportDtu", ctxA, { exportId: id, dtuId: "" }).result.dtuId, null);
+    assert.equal(call("listExports", ctxA, {}).result.exports.find((e) => e.id === id).dtuId, null);
+  });
+});

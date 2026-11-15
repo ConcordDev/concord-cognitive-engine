@@ -22,6 +22,10 @@ function fmtDate(unixSec: number): string {
 
 export function BeneficiaryPactCard({ pact, onChanged }: BeneficiaryPactCardProps) {
   const [busy, setBusy] = useState(false);
+  // FIX-death-insurance-011: the handshake response is a consequential
+  // choice, so Accept / Decline (and reversing either) arm a confirm
+  // step that shows the terms first; nothing is sent until confirmed.
+  const [confirming, setConfirming] = useState<boolean | null>(null);
   const mine = pact.myShare;
   const myPayout = mine ? Math.round((mine.sharePct / 100) * pact.payoutSparks) : 0;
 
@@ -30,6 +34,7 @@ export function BeneficiaryPactCard({ pact, onChanged }: BeneficiaryPactCardProp
     const r = await lensRun('insurance', 'pact-respond', { pactId: pact.id, accept });
     if (r.data?.ok) onChanged();
     setBusy(false);
+    setConfirming(null);
   };
 
   const needsResponse =
@@ -63,13 +68,13 @@ export function BeneficiaryPactCard({ pact, onChanged }: BeneficiaryPactCardProp
         )}
       </div>
 
-      {needsResponse && (
+      {needsResponse && confirming === null && (
         <div className="mt-3 flex items-center gap-2 border-t border-white/5 pt-2">
           <span className="text-[11px] text-zinc-400">Accept this inheritance pact?</span>
           <button
             type="button"
             disabled={busy}
-            onClick={() => respond(true)}
+            onClick={() => setConfirming(true)}
             className="flex items-center gap-1 rounded bg-emerald-800 px-2 py-1 text-[11px] text-white hover:bg-emerald-700 disabled:opacity-50"
           >
             <Check className="h-3 w-3" /> Accept
@@ -77,7 +82,7 @@ export function BeneficiaryPactCard({ pact, onChanged }: BeneficiaryPactCardProp
           <button
             type="button"
             disabled={busy}
-            onClick={() => respond(false)}
+            onClick={() => setConfirming(false)}
             className="flex items-center gap-1 rounded bg-rose-900 px-2 py-1 text-[11px] text-rose-200 hover:bg-rose-800 disabled:opacity-50"
           >
             <X className="h-3 w-3" /> Decline
@@ -85,15 +90,55 @@ export function BeneficiaryPactCard({ pact, onChanged }: BeneficiaryPactCardProp
         </div>
       )}
 
-      {!needsResponse && pact.requireHandshake && mine?.respondedAt != null && pact.status === 'active' && (
+      {!needsResponse && pact.requireHandshake && mine?.respondedAt != null && pact.status === 'active' && confirming === null && (
         <button
           type="button"
           disabled={busy}
-          onClick={() => respond(!mine.accepted)}
+          onClick={() => setConfirming(!mine.accepted)}
           className="mt-2 text-[11px] text-cyan-400 hover:text-cyan-300"
         >
           {mine.accepted ? 'Withdraw acceptance' : 'Accept after all'}
         </button>
+      )}
+
+      {confirming !== null && mine && (
+        <div className="mt-3 border-t border-white/5 pt-2" role="group" aria-label={confirming ? 'Confirm acceptance' : 'Confirm decline'}>
+          <p className="text-[11px] font-medium text-zinc-200">
+            {confirming ? 'Accept your share of this pact?' : 'Decline your share of this pact?'}
+          </p>
+          <p className="mt-1 text-[11px] text-zinc-400">
+            Your share: {mine.sharePct}% of {pact.payoutSparks} ⚡ = {myPayout} ⚡ · insured{' '}
+            {pact.insuredUserId.slice(0, 16)} · expires {fmtDate(pact.expiresAt)}
+          </p>
+          <p className="mt-1 text-[11px] text-zinc-400">
+            {confirming
+              ? 'Accepting records your acceptance of these terms. You can withdraw while the pact stays active.'
+              : 'Declining gives up your share for now. You can accept after all while the pact stays active.'}
+          </p>
+          <div className="mt-2 flex items-center gap-2">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => respond(confirming)}
+              className={`flex items-center gap-1 rounded px-2 py-1 text-[11px] disabled:opacity-50 ${
+                confirming
+                  ? 'bg-emerald-800 text-white hover:bg-emerald-700'
+                  : 'bg-rose-900 text-rose-200 hover:bg-rose-800'
+              }`}
+            >
+              {confirming ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
+              {confirming ? 'Confirm accept' : 'Confirm decline'}
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setConfirming(null)}
+              className="rounded px-2 py-1 text-[11px] text-zinc-400 hover:text-zinc-200"
+            >
+              Keep deciding
+            </button>
+          </div>
+        </div>
       )}
     </li>
   );

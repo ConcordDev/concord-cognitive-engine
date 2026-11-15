@@ -144,16 +144,16 @@ export function LeagueStandings({
             placeholder="League name"
             className="w-full rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-xs text-zinc-100"
           />
-          <select
+          <select aria-label="Sport kind"
             value={newSportKind}
             onChange={(e) => setNewSportKind(e.target.value)}
-            className="w-full rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-xs text-zinc-100"
+            className="min-h-11 w-full rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-xs text-zinc-100"
           >
             {LEAGUE_SPORTS.map((sport) => (
               <option key={sport} value={sport}>{sport.charAt(0).toUpperCase() + sport.slice(1)}</option>
             ))}
           </select>
-          <p className="text-[10px] text-zinc-500">
+          <p className="text-[10px] text-zinc-400">
             Stored on the hub world. This form has no world picker.
           </p>
           {error && <p role="alert" className="text-xs text-red-300">{error}</p>}
@@ -191,14 +191,14 @@ export function LeagueStandings({
 
       <div className="mb-3 space-y-1">
         {error && <p role="alert" className="text-xs text-red-300">{error}</p>}
-        {teams.length === 0 && <p className="text-center text-xs text-zinc-500">No teams yet.</p>}
+        {teams.length === 0 && <p className="text-center text-xs text-zinc-400">No teams yet.</p>}
         {teams
           .slice()
           .sort((a, b) => (b.wins ?? 0) - (a.wins ?? 0) || b.power_score - a.power_score)
           .map((t, i) => (
             <div key={t.id} className="flex items-center justify-between rounded bg-zinc-950/50 px-2 py-1 text-xs">
               <div className="flex items-center gap-2">
-                <span className="w-4 font-mono text-zinc-500">{i + 1}.</span>
+                <span className="w-4 font-mono text-zinc-400">{i + 1}.</span>
                 <span className="text-zinc-100">{t.name}</span>
               </div>
               <div className="flex items-center gap-2 font-mono text-[10px]">

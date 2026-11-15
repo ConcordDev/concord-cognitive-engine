@@ -40,6 +40,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { lensRun } from '@/lib/api/client';
+import { RunCard } from '@/components/cockpit/RunCard';
 import {
   Bot, Send, X, Loader2, ExternalLink, Mic, MicOff, Cpu,
   Search, Calculator, Globe, Layers, FileText, Sparkles,
@@ -98,6 +99,7 @@ interface AgentResponse {
   provider?: string;
   model?: string;
   error?: string;
+  cockpitRunId?: string;
 }
 
 interface Turn {
@@ -269,7 +271,7 @@ export default function LensAgentPanel({ lensId, lensPrompt, open, onClose, posi
         if (reader) {
           const decoder = new TextDecoder();
           let buf = '';
-          const liveAnswer: { text: string; toolCalls: ToolCall[]; artifacts: Artifact[]; provider?: string; model?: string } = {
+          const liveAnswer: { text: string; toolCalls: ToolCall[]; artifacts: Artifact[]; provider?: string; model?: string; cockpitRunId?: string } = {
             text: '', toolCalls: [], artifacts: [],
           };
           while (true) {
@@ -287,9 +289,11 @@ export default function LensAgentPanel({ lensId, lensPrompt, open, onClose, posi
                   if (event === 'token') liveAnswer.text += data.chunk || '';
                   else if (event === 'tool_call') liveAnswer.toolCalls.push(data);
                   else if (event === 'artifact') liveAnswer.artifacts.push(data);
+                  else if (event.startsWith('cockpit:')) { if (data.runId && !liveAnswer.cockpitRunId) liveAnswer.cockpitRunId = data.runId; }
                   else if (event === 'done') {
                     liveAnswer.provider = data.provider;
                     liveAnswer.model = data.model;
+                    if (data.cockpitRunId) liveAnswer.cockpitRunId = data.cockpitRunId;
                   }
                 } catch { /* malformed SSE chunk */ }
                 setConversation(c => {
@@ -299,7 +303,7 @@ export default function LensAgentPanel({ lensId, lensPrompt, open, onClose, posi
                       ok: true, answer: liveAnswer.text,
                       toolCalls: liveAnswer.toolCalls.slice(),
                       artifacts: liveAnswer.artifacts.slice(),
-                      provider: liveAnswer.provider, model: liveAnswer.model,
+                      provider: liveAnswer.provider, model: liveAnswer.model, cockpitRunId: liveAnswer.cockpitRunId,
                     },
                   };
                   return next;
@@ -335,7 +339,7 @@ export default function LensAgentPanel({ lensId, lensPrompt, open, onClose, posi
     : 'fixed inset-y-0 right-0 z-40 w-[480px] max-w-[100vw] bg-zinc-950/97 backdrop-blur-md border-l border-zinc-800 shadow-2xl flex flex-col';
 
   return (
-    <div className={panelClass}>
+    <div className={panelClass} data-overlay-open="true" role="region" aria-label={`Agent mode for ${lensId}`}>
       <header className="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
         <div className="flex items-center gap-2.5">
           <Bot className="w-5 h-5 text-amber-400" />
@@ -344,7 +348,7 @@ export default function LensAgentPanel({ lensId, lensPrompt, open, onClose, posi
             <p className="text-[11px] text-zinc-400">Lens-aware assistant — 200+ apps, web, compute, citations</p>
           </div>
         </div>
-        <button onClick={onClose} className="p-1.5 rounded-md text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800" aria-label="Close">
+        <button onClick={onClose} data-overlay-close="" className="p-1.5 rounded-md text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800" aria-label="Close">
           <X className="w-4 h-4" />
         </button>
       </header>
@@ -396,6 +400,7 @@ export default function LensAgentPanel({ lensId, lensPrompt, open, onClose, posi
                   {turn.agent.toolCalls!.map((c, ci) => <ToolCallCard key={ci} call={c} />)}
                 </div>
               )}
+              {turn.agent.cockpitRunId && <RunCard runId={turn.agent.cockpitRunId} />}
               {turn.agent.answer && (
                 <div className="text-sm text-zinc-100 leading-relaxed whitespace-pre-wrap px-1">{turn.agent.answer}</div>
               )}

@@ -19,6 +19,7 @@
 //     (CONKAY_EVIDENCE_DIR, or an in-memory store).
 
 import { createHash } from "node:crypto";
+import { fetchPublicUrl } from "../../../public-fetch.js";
 import fsp from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -64,20 +65,55 @@ const today = () => new Date().toISOString().slice(0, 10);
 const BUSY = /PUGVIEW\.ServerBusy|"Code"\s*:\s*"ServerBusy"|Too many requests/i;
 const NOT_FOUND = /PUGVIEW\.NotFound|"Code"\s*:\s*"PUGREST\.NotFound"|No data found/i;
 
+/** The host of a URL string, lower-cased; null when unparseable. Parsing is not a DNS lookup. */
+export function hostOf(url) {
+  try { return new URL(String(url)).hostname.toLowerCase() || null; } catch { return null; }
+}
+
+/**
+ * SB-06: bind a getter to a connector's host allowlist. An off-list host
+ * is refused BEFORE any fetch and before DNS, as a permanent refusal in
+ * the getter's own document shape (never retried, never a value).
+ */
+export function withHostAllowlist(get, hosts) {
+  const allowed = new Set((hosts || []).map((h) => String(h).toLowerCase()));
+  return async function allowlistedGet(url) {
+    const host = hostOf(url);
+    if (!host || !allowed.has(host)) {
+      return { ok: false, url, error: `host ${host || "(unparseable url)"} is not on this connector's allowlist`, attempts: 0 };
+    }
+    return get(url);
+  };
+}
+
 /** A getter over a real fetch. */
-export function liveGetter({ fetch = globalThis.fetch, sleep = (ms) => new Promise((r) => { setTimeout(r, ms); }), maxAttempts = 6, retryDelayMs = 5000, minIntervalMs = 250, store = null, userAgent = "ConKay-knowledge-connector/1.0 (concord-os.org)", now = today } = {}) {
-  if (typeof fetch !== "function") throw new Error("liveGetter needs a fetch function");
+export function liveGetter({ fetch = null, allowHosts = null, sleep = (ms) => new Promise((r) => { setTimeout(r, ms); }), maxAttempts = 6, retryDelayMs = 5000, minIntervalMs = 250, store = null, userAgent = "ConKay-knowledge-connector/1.0 (concord-os.org)", now = today } = {}) {
+  // SB-06: the DEFAULT transport is the SB-01 SSRF guard (fetchPublicUrl),
+  // never the raw global fetch. A caller-supplied fetch stays the caller's
+  // own transport — the guard module's test-seam convention.
+  const transport = typeof fetch === "function" ? fetch : (u, init) => fetchPublicUrl(u, init);
+  if (typeof transport !== "function") throw new Error("liveGetter needs a fetch function");
   let last = 0;
   return async function get(url) {
+    // SB-06: a connector allowlist refuses off-list hosts before any
+    // fetch call and before DNS — permanent, not retried.
+    if (allowHosts) {
+      const host = hostOf(url);
+      if (!host || !allowHosts.map((h) => String(h).toLowerCase()).includes(host)) {
+        return { ok: false, url, error: `host ${host || "(unparseable url)"} is not on this connector's allowlist`, attempts: 0 };
+      }
+    }
     for (let attempt = 1; ; attempt++) {
       const wait = last + minIntervalMs - Date.now();
       if (wait > 0) await sleep(wait);
       last = Date.now();
       let res, body;
       try {
-        res = await fetch(url, { headers: { "user-agent": userAgent, accept: "application/json, text/plain, text/html" } });
+        res = await transport(url, { headers: { "user-agent": userAgent, accept: "application/json, text/plain, text/html" } });
         body = await res.text();
       } catch (e) {
+        // An SSRF refusal is permanent — never retried as a network error.
+        if (e && e.code === "SSRF_BLOCKED") return { ok: false, url, error: `refused: ${e.message}`, attempts: attempt };
         if (attempt >= maxAttempts) return { ok: false, url, error: `network error: ${e.message}`, attempts: attempt };
         await sleep(retryDelayMs * attempt);
         continue;

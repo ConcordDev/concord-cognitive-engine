@@ -742,10 +742,12 @@ export default function GameApp() {
   });
   const profileData = profileResp?.profile || null;
 
-  // Fetch leaderboard from /api/game/leaderboard
+  // Fetch leaderboard from /api/game/leaderboard — FIX-game-004: the
+  // selected period rides the query, so Weekly/Monthly return the
+  // server's windowed board instead of re-slicing the lifetime rows.
   const { data: leaderboardResp, isError: isError4, error: error4, refetch: refetch4 } = useQuery({
-    queryKey: ['game', 'leaderboard'],
-    queryFn: () => api.get('/api/game/leaderboard').then(r => r.data),
+    queryKey: ['game', 'leaderboard', lbPeriod],
+    queryFn: () => api.get('/api/game/leaderboard', { params: { period: lbPeriod } }).then(r => r.data),
   });
   const leaderboardData = (leaderboardResp?.leaderboard || INITIAL_LEADERBOARD) as Record<string, unknown>[];
 
@@ -1073,7 +1075,8 @@ export default function GameApp() {
       {/* ================================================================= */}
       {activeTab === 'habits' && (
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-          <HabitHub onXpChange={(xp) => setPlayerXp((prev) => (xp > prev ? xp : prev))} />
+          {/* HabitHub keeps its own habit-ledger XP in its own panel. It used to max-merge that total into the header's profile XP (onXpChange), so the header flipped between two different economies depending on load order (FIX-game-001). The header shows profile XP only. */}
+          <HabitHub />
         </motion.div>
       )}
 

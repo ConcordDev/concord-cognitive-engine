@@ -204,7 +204,7 @@ export function LivePosTerminal() {
                     </span>
                   ) : (
                     <>
-                      <input
+                      <input id="retail-discount-code-2" name="discount-code-2" aria-label="Discount code"
                         type="text"
                         value={discountCode}
                         onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}

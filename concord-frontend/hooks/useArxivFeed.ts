@@ -84,6 +84,10 @@ export function useArxivFeed({
       return (r.data.result?.papers || []).map(toPaper);
     },
     enabled,
+    // FIX-resonance-003: react-query's default 3 retries with backoff
+    // kept a dead arXiv behind "Pulling…" for the better part of a
+    // minute. One retry, then the error state speaks.
+    retry: 1,
     staleTime: 30 * 60 * 1000,
   });
 }

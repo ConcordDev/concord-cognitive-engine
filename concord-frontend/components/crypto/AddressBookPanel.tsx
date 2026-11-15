@@ -7,7 +7,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { BookUser, Plus, Trash2, Loader2, AlertTriangle, Copy } from 'lucide-react';
+import { BookUser, Plus, Trash2, Loader2, AlertTriangle, Copy, Pencil } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -29,6 +29,10 @@ export function AddressBookPanel({ className }: { className?: string }) {
   const [address, setAddress] = useState('');
   const [chain, setChain] = useState(CHAINS[0]);
   const [error, setError] = useState<string | null>(null);
+  // FIX-crypto-008: edit-in-place state (entries were create-only).
+  const [editingId, setEditingId] = useState<string | null>(null);
+  // FIX-crypto-009: deletes confirm first — one click never removes.
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
@@ -47,18 +51,33 @@ export function AddressBookPanel({ className }: { className?: string }) {
     if (!label.trim() || !address.trim()) return;
     setSaving(true); setError(null);
     try {
-      const r = await lensRun('crypto', 'address-book-save', { label: label.trim(), address: address.trim(), chain });
+      // Editing routes to address-book-update; the server re-validates
+      // the address against the chain either way (FIX-crypto-008).
+      const r = editingId
+        ? await lensRun('crypto', 'address-book-update', { id: editingId, label: label.trim(), address: address.trim(), chain })
+        : await lensRun('crypto', 'address-book-save', { label: label.trim(), address: address.trim(), chain });
       if (r?.data?.error) setError(String(r.data.error));
-      else { setLabel(''); setAddress(''); await load(); }
+      else { setLabel(''); setAddress(''); setEditingId(null); await load(); }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save address');
     } finally { setSaving(false); }
-  }, [label, address, chain, load]);
+  }, [label, address, chain, load, editingId]);
+
+  const startEdit = useCallback((e: Entry) => {
+    setEditingId(e.id);
+    setLabel(e.label);
+    setAddress(e.address);
+    setChain(e.chain && CHAINS.includes(e.chain) ? e.chain : CHAINS[0]);
+    setError(null);
+  }, []);
 
   const remove = useCallback(async (id: string) => {
+    // FIX-crypto-009: first click arms the confirmation, second deletes.
+    if (confirmDeleteId !== id) { setConfirmDeleteId(id); return; }
+    setConfirmDeleteId(null);
     setEntries((prev) => prev.filter((e) => e.id !== id)); // optimistic
     try { await lensRun('crypto', 'address-book-delete', { id }); } catch { void load(); }
-  }, [load]);
+  }, [load, confirmDeleteId]);
 
   return (
     <div className={cn('rounded-xl border border-lattice-border bg-lattice-void p-4', className)}>
@@ -91,10 +110,16 @@ export function AddressBookPanel({ className }: { className?: string }) {
             ><Copy className="w-3 h-3" /></button>
             <button
               type="button"
+              onClick={() => startEdit(e)}
+              className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-gray-200"
+              aria-label={`Edit ${e.label}`}
+            ><Pencil className="w-3 h-3" /></button>
+            <button
+              type="button"
               onClick={() => void remove(e.id)}
-              className="opacity-0 group-hover:opacity-100 p-1 text-rose-300 hover:bg-rose-500/20 rounded"
-              aria-label="Delete"
-            ><Trash2 className="w-3 h-3" /></button>
+              className={`p-1 rounded ${confirmDeleteId === e.id ? 'text-rose-200 bg-rose-500/30 opacity-100' : 'opacity-0 group-hover:opacity-100 text-rose-300 hover:bg-rose-500/20'}`}
+              aria-label={confirmDeleteId === e.id ? `Confirm delete ${e.label}` : `Delete ${e.label}`}
+            >{confirmDeleteId === e.id ? <span className="text-[10px] font-semibold px-0.5">Sure?</span> : <Trash2 className="w-3 h-3" />}</button>
           </div>
         ))}
       </div>
@@ -110,8 +135,14 @@ export function AddressBookPanel({ className }: { className?: string }) {
         </select>
         <button type="submit" disabled={saving || !label.trim() || !address.trim()}
           className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded bg-neon-cyan/20 border border-neon-cyan/40 text-neon-cyan text-xs font-medium hover:bg-neon-cyan/30 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-neon-cyan/50">
-          {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />} Save
+          {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />} {editingId ? 'Save changes' : 'Save'}
         </button>
+        {editingId && (
+          <button type="button" onClick={() => { setEditingId(null); setLabel(''); setAddress(''); }}
+            className="px-2 py-1.5 text-xs text-gray-400 hover:text-gray-200">
+            Cancel edit
+          </button>
+        )}
       </form>
     </div>
   );

@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Library, Plus, Trash2, Loader2, Star } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 import { PaperVersionHistory } from '@/components/paper/PaperVersionHistory';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -86,6 +87,12 @@ export function PaperLibrary() {
 
   async function save() {
     if (!form.title.trim() || saving) return;
+    // FIX-paper-003: refuse a non-year at the field instead of sending
+    // it to be silently stored as 'Unknown' (or as 99999).
+    if (form.year.trim() && !/^\d{1,4}$/.test(form.year.trim())) {
+      setSaveError('Year must be a whole calendar year (e.g. 2024).');
+      return;
+    }
     setSaving(true);
     setSaveError(null);
     const res = await lensRun<{ paper?: Paper }>('paper', 'paper-add', {
@@ -120,6 +127,12 @@ export function PaperLibrary() {
     setNewCollection('');
     await refresh();
   }
+  const [armedCollection, setArmedCollection] = useState<string | null>(null);
+  async function deleteCollection(id: string) {
+    await lensRun('paper', 'collection-delete', { id });
+    setArmedCollection(null);
+    await refresh();
+  }
   async function toggleCollection(paperId: string, collectionId: string, remove: boolean) {
     const r = await lensRun('paper', 'collection-assign', { paperId, collectionId, remove });
     if (r.data?.ok && active?.id === paperId) {
@@ -139,7 +152,7 @@ export function PaperLibrary() {
 
       {dash && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
-          {([['Papers', filter ? dash.totalPapers : papers.length], ['To read', dash.toRead], ['Reading', dash.reading], ['Read', dash.read]] as const).map(([l, v]) => (
+          {([['Papers', papers.length], ['To read', dash.toRead], ['Reading', dash.reading], ['Read', dash.read]] as const).map(([l, v]) => (
             <div key={l} className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-2 py-1.5 text-center">
               <p className="text-sm font-bold text-zinc-100">{v}</p>
               <p className="text-[9px] text-zinc-400 uppercase tracking-wide">{l}</p>
@@ -154,7 +167,7 @@ export function PaperLibrary() {
           className="flex-1 min-w-[160px] bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
         <input value={form.authors} onChange={e => setForm({ ...form, authors: e.target.value })} placeholder="authors (comma sep)"
           className="w-36 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
-        <input value={form.year} onChange={e => setForm({ ...form, year: e.target.value })} placeholder="year"
+        <input value={form.year} onChange={e => setForm({ ...form, year: e.target.value })} placeholder="year" aria-label="Year" inputMode="numeric"
           className="w-16 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
         <button type="button" onClick={save} disabled={!form.title.trim() || saving}
           className="px-2.5 py-1 text-xs rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold disabled:opacity-40 inline-flex items-center gap-1">
@@ -165,14 +178,14 @@ export function PaperLibrary() {
 
       {/* Status filter */}
       <div className="flex gap-1 mb-2">
-        <button onClick={() => setFilter('')} className={cn('px-2 py-0.5 text-[11px] rounded', !filter ? 'bg-cyan-600 text-white' : 'text-zinc-400')}>All</button>
+        <button onClick={() => setFilter('')} className={cn('min-h-11 px-2 py-0.5 text-[11px] rounded', !filter ? 'bg-cyan-600 text-white' : 'text-zinc-400')}>All</button>
         {STATUS.map(s => (
-          <button key={s.id} onClick={() => setFilter(s.id)} className={cn('px-2 py-0.5 text-[11px] rounded', filter === s.id ? 'bg-cyan-600 text-white' : 'text-zinc-400')}>{s.label}</button>
+          <button key={s.id} onClick={() => setFilter(s.id)} className={cn('min-h-11 px-2 py-0.5 text-[11px] rounded', filter === s.id ? 'bg-cyan-600 text-white' : 'text-zinc-400')}>{s.label}</button>
         ))}
         <div className="ml-auto flex gap-1">
           <input value={newCollection} onChange={e => setNewCollection(e.target.value)} placeholder="+ collection"
             className="w-28 bg-zinc-950 border border-zinc-800 rounded px-2 py-0.5 text-[11px] text-zinc-200" />
-          <button aria-label="Add" onClick={addCollection} className="text-zinc-400 hover:text-cyan-300"><Plus className="w-3.5 h-3.5" /></button>
+          <button aria-label="Add" onClick={addCollection} className="inline-flex min-h-11 min-w-11 items-center justify-center text-zinc-400 hover:text-cyan-300"><Plus className="w-3.5 h-3.5" /></button>
         </div>
       </div>
 
@@ -185,18 +198,18 @@ export function PaperLibrary() {
                 <p className="text-xs font-semibold text-zinc-100 truncate">{p.title}</p>
                 <p className="text-[10px] text-zinc-400 truncate">{(p.authors || []).join(', ') || 'Unknown'}{p.year ? ` · ${p.year}` : ''}{p.venue ? ` · ${p.venue}` : ''}</p>
               </button>
-              <select value={p.status} onChange={e => update(p.id, { status: e.target.value })}
-                className={cn('text-[10px] rounded px-1.5 py-0.5 border-0', STATUS.find(s => s.id === p.status)?.cls)}>
+              <select aria-label={`Status for ${p.title}`} value={p.status} onChange={e => update(p.id, { status: e.target.value })}
+                className={cn('min-h-11 text-[10px] rounded px-1.5 py-0.5 border-0', STATUS.find(s => s.id === p.status)?.cls)}>
                 {STATUS.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
               </select>
               <div className="flex">
                 {[1, 2, 3, 4, 5].map(n => (
-                  <button key={n} onClick={() => update(p.id, { rating: n })}>
+                  <button key={n} aria-label={`Rate ${n} of 5`} className="inline-flex min-h-11 min-w-11 items-center justify-center" onClick={() => update(p.id, { rating: n })}>
                     <Star className={cn('w-3 h-3', (p.rating || 0) >= n ? 'text-amber-400' : 'text-zinc-700')} fill={(p.rating || 0) >= n ? 'currentColor' : 'none'} />
                   </button>
                 ))}
               </div>
-              <button aria-label="Delete" onClick={() => del(p.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+              <button aria-label="Delete" onClick={() => del(p.id)} className="inline-flex min-h-11 min-w-11 items-center justify-center opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
             </div>
             {active?.id === p.id && (
               <PaperDetail
@@ -211,7 +224,21 @@ export function PaperLibrary() {
         ))}
       </ul>
       {collections.length > 0 && (
-        <p className="text-[10px] text-zinc-400 mt-2">{collections.length} collection{collections.length === 1 ? '' : 's'}: {collections.map(c => `${c.name} (${c.paperCount})`).join(' · ')}</p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {collections.map((c) => (
+            <StickyDeleteConfirm
+              key={c.id}
+              armed={armedCollection === c.id}
+              onArm={() => setArmedCollection(c.id)}
+              onCancel={() => setArmedCollection(null)}
+              onConfirm={() => void deleteCollection(c.id)}
+              armLabel={`${c.name} (${c.paperCount})`}
+              confirmLabel={`Delete collection “${c.name}”?`}
+              armAriaLabel={`Delete collection ${c.name}`}
+              className="text-[10px] text-zinc-400 underline"
+            />
+          ))}
+        </div>
       )}
     </div>
   );
@@ -271,7 +298,7 @@ function PaperDetail({ paper, collections, onSaveNotes, onToggleCollection, onUp
         {(paper.tags || []).map(t => (
           <span key={t} className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border border-zinc-700 text-zinc-300">
             {t}
-            <button aria-label={`Remove tag ${t}`} onClick={() => onUpdateTags((paper.tags || []).filter(x => x !== t))} className="text-zinc-500 hover:text-rose-300">×</button>
+            <button aria-label={`Remove tag ${t}`} onClick={() => onUpdateTags((paper.tags || []).filter(x => x !== t))} className="inline-flex min-h-11 min-w-11 items-center justify-center text-zinc-400 hover:text-rose-300">×</button>
           </span>
         ))}
         <input
@@ -292,10 +319,10 @@ function PaperDetail({ paper, collections, onSaveNotes, onToggleCollection, onUp
       {/* S1 bridges: the three stores connect here. */}
       <div className="flex flex-wrap items-center gap-1.5 pt-1">
         <span className="text-[9px] text-zinc-400 uppercase tracking-wide mr-1">Open in</span>
-        <button onClick={openInManuscript} className="text-[10px] px-2 py-0.5 rounded-full border border-zinc-700 text-zinc-300 hover:text-white">
+        <button onClick={openInManuscript} className="inline-flex min-h-11 items-center text-[10px] px-2 py-0.5 rounded-full border border-zinc-700 text-zinc-300 hover:text-white">
           Manuscript →
         </button>
-        <button onClick={() => void addToBibliography()} disabled={bibAdded} className="text-[10px] px-2 py-0.5 rounded-full border border-zinc-700 text-zinc-300 hover:text-white disabled:opacity-60">
+        <button onClick={() => void addToBibliography()} disabled={bibAdded} className="inline-flex min-h-11 items-center text-[10px] px-2 py-0.5 rounded-full border border-zinc-700 text-zinc-300 hover:text-white disabled:opacity-60">
           {bibAdded ? 'In Bibliography ✓' : 'Add to Bibliography'}
         </button>
       </div>
@@ -307,7 +334,7 @@ function PaperDetail({ paper, collections, onSaveNotes, onToggleCollection, onUp
             const inColl = (paper.collectionIds || []).includes(c.id);
             return (
               <button key={c.id} onClick={() => onToggleCollection(c.id, inColl)}
-                className={cn('text-[10px] px-2 py-0.5 rounded-full border transition-colors',
+                className={cn('inline-flex min-h-11 items-center text-[10px] px-2 py-0.5 rounded-full border transition-colors',
                   inColl ? 'bg-cyan-600/20 border-cyan-600/50 text-cyan-300' : 'border-zinc-700 text-zinc-400 hover:text-zinc-200')}>
                 {c.name}
               </button>

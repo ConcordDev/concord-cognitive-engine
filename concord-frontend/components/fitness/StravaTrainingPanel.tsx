@@ -15,6 +15,8 @@ import {
   Loader2, Activity, Battery, HeartPulse, Gauge, Timer, TrendingUp, TrendingDown, Minus, Flame,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { cn } from '@/lib/utils';
 
 interface LoadDay { date: string; load: number; ctl: number; atl: number; tsb: number }
@@ -26,7 +28,7 @@ interface Freshness {
 }
 interface Readiness { score: number; label: string; recommendation: string; factors: { factor: string; contribution: number }[] }
 interface BodyBattery { battery: number; state: string; todayDrain: number }
-interface HrvStatus { status: string; recent7Avg?: number; baselineAvg?: number; samples: number; notes?: string }
+interface HrvStatus { status: string; recent7Avg?: number; baselineAvg?: number; samples: number; notes?: string; recent?: Array<{ id: string; date: string; rmssd: number }> }
 interface RacePrediction { distance: string; time: string; pace: string }
 
 const STATUS_COLOR: Record<string, string> = {
@@ -41,7 +43,9 @@ export function StravaTrainingPanel() {
   const [battery, setBattery] = useState<BodyBattery | null>(null);
   const [hrv, setHrv] = useState<HrvStatus | null>(null);
   const [vo2, setVo2] = useState<number | null>(null);
+  const [vo2Reason, setVo2Reason] = useState<string | null>(null);
   const [predictions, setPredictions] = useState<RacePrediction[]>([]);
+  const [raceReason, setRaceReason] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [sleepHours, setSleepHours] = useState('7.5');
   const [rmssd, setRmssd] = useState('');
@@ -64,8 +68,10 @@ export function StravaTrainingPanel() {
     setReadiness(rd.data?.result as Readiness | null);
     setBattery(bb.data?.result as BodyBattery | null);
     setHrv(h.data?.result as HrvStatus | null);
-    setVo2(v.data?.ok === false ? null : (v.data?.result?.vo2max ?? null));
-    setPredictions(rp.data?.ok === false ? [] : (rp.data?.result?.predictions || []));
+    setVo2(v.data?.result?.empty ? null : (v.data?.result?.vo2max ?? null));
+    setVo2Reason(v.data?.result?.empty ? (v.data?.result?.reason || 'Log a run of at least 1.5 km to estimate VO2max.') : null);
+    setPredictions(rp.data?.result?.empty ? [] : (rp.data?.result?.predictions || []));
+    setRaceReason(rp.data?.result?.empty ? (rp.data?.result?.reason || 'Log a run of at least 1.5 km for finish-time predictions.') : null);
     setLoading(false);
   }, [sleepHours]);
 
@@ -96,7 +102,7 @@ export function StravaTrainingPanel() {
         <Tile icon={Battery} label="Body Battery" value={battery ? String(battery.battery) : '—'}
           accent={battery && battery.battery >= 50 ? 'text-emerald-400' : 'text-amber-400'}
           sub={battery?.state} />
-        <Tile icon={Gauge} label="VO₂max" value={vo2 != null ? String(vo2) : '—'} accent="text-orange-400" />
+        <Tile icon={Gauge} label="VO₂max" value={vo2 != null ? String(vo2) : '—'} accent="text-orange-400" sub={vo2Reason || undefined} />
       </div>
 
       {/* Training load chart */}
@@ -191,7 +197,7 @@ export function StravaTrainingPanel() {
       {/* Sleep input drives readiness + battery */}
       <div className="flex items-center gap-2 text-xs text-zinc-400">
         <span>Last night&apos;s sleep</span>
-        <input
+        <input id="fitness-sleephours" name="sleephours"
           inputMode="decimal" value={sleepHours} onChange={(e) => setSleepHours(e.target.value)}
           className="w-16 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-zinc-100"
         />
@@ -215,13 +221,28 @@ export function StravaTrainingPanel() {
             <p className="text-[11px] text-zinc-400 italic">{hrv?.notes || 'Log nightly HRV to see a status.'}</p>
           )}
           <div className="flex gap-1 mt-2">
-            <input
+            <input id="fitness-rmssd-ms" name="rmssd-ms" aria-label="RMSSD (ms)"
               placeholder="RMSSD (ms)" inputMode="decimal" value={rmssd} onChange={(e) => setRmssd(e.target.value)}
               className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-xs text-zinc-100"
             />
             <button type="button" onClick={logHrv}
               className="px-2.5 py-1 text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg">Log</button>
           </div>
+          {(hrv?.recent || []).length > 0 && (
+            <ul className="mt-2 space-y-1">
+              {(hrv?.recent || []).map((row) => (
+                <li key={row.id} className="flex items-center justify-between text-[11px] text-zinc-300">
+                  <span>{row.date} · {row.rmssd} ms</span>
+                  <StickyDeleteConfirm
+                    armLabel="Delete"
+                    confirmLabel="Delete this HRV reading?"
+                    className="text-rose-300"
+                    onConfirm={async () => { await lensRun('fitness', 'hrv-delete', { id: row.id }); await refresh(); }}
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
@@ -238,7 +259,7 @@ export function StravaTrainingPanel() {
               ))}
             </ul>
           ) : (
-            <p className="text-[11px] text-zinc-400 italic">Log a run of 1.5 km or more for finish-time predictions.</p>
+            <EmptyState compact title="No race prediction yet" description={raceReason || 'Log a run of at least 1.5 km for finish-time predictions.'} />
           )}
         </div>
       </div>

@@ -5,7 +5,7 @@
 // are source-pinned.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -52,6 +52,26 @@ test('the tier stands declared and the badge mounted', () => {
 
 test('the Hub copy names the written walk it is', () => {
   const registry = read('lib/lens-registry.ts');
-  assert.match(registry, /read as shot direction/);
+  assert.match(registry, /A written walk through the turning points of Concordia/);
+  assert.doesNotMatch(registry, /read as shot direction/);
   assert.doesNotMatch(registry, /Firewatch-style film/);
+});
+
+test('every authored beat carries user-facing prose, free of production copy', () => {
+  const dir = join(root, 'content/cinematics');
+  const files = readdirSync(dir).filter((f) => f.endsWith('.json'));
+  assert.equal(files.length, 11);
+  // Internal authoring markers that must never reach the walker as
+  // story prose (the FIX-creative-writing-011 leak class).
+  const INTERNAL = /Phase W|Concordia Phase|Sprint|CLAUDE\.md|refusal_field|attrites|≥|invariant/;
+  for (const f of files) {
+    const seq = JSON.parse(read(join('content/cinematics', f)));
+    assert.equal(typeof seq.summary, 'string', `${f}: summary missing`);
+    assert.ok(seq.summary.trim().length > 0, `${f}: summary empty`);
+    assert.doesNotMatch(seq.summary, INTERNAL, `${f}: summary carries production copy`);
+  }
+  // And the page renders the summary, never the internal comment.
+  const page = read('app/lenses/narrative-walk/page.tsx');
+  assert.match(page, /\{open\.summary\}/);
+  assert.doesNotMatch(page, /\{open\.comment\}/);
 });

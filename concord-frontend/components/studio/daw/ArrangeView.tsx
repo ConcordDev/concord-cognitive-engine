@@ -94,10 +94,10 @@ function TrackHeader({ t, selected, recording, takesOpen, onToggleTakes, onSelec
           )}
         </div>
         <div className="flex items-center gap-1">
-          <button onClick={(e) => { e.stopPropagation(); onChange({ mute: !t.mute }); }} className={cn('h-5 w-5 rounded text-[10px] font-bold', t.mute ? 'bg-amber-500 text-black' : 'bg-white/5 text-zinc-400')} title="Mute">M</button>
-          <button onClick={(e) => { e.stopPropagation(); onChange({ solo: !t.solo }); }} className={cn('h-5 w-5 rounded text-[10px] font-bold', t.solo ? 'bg-sky-400 text-black' : 'bg-white/5 text-zinc-400')} title="Solo">S</button>
+          <button onClick={(e) => { e.stopPropagation(); onChange({ mute: !t.mute }); }} className={cn('h-5 w-5 rounded text-[10px] font-bold', t.mute ? 'bg-amber-500 text-black' : 'bg-white/5 text-zinc-400')} title="Mute" aria-label={`${t.name} mute`}>M</button>
+          <button onClick={(e) => { e.stopPropagation(); onChange({ solo: !t.solo }); }} className={cn('h-5 w-5 rounded text-[10px] font-bold', t.solo ? 'bg-sky-400 text-black' : 'bg-white/5 text-zinc-400')} title="Solo" aria-label={`${t.name} solo`}>S</button>
           {t.type === 'audio' && (
-            <button onClick={(e) => { e.stopPropagation(); onChange({ armed: !t.armed }); }} className={cn('flex h-5 w-5 items-center justify-center rounded', t.armed ? 'bg-red-500 text-white' : 'bg-white/5 text-red-400', recording && 'animate-pulse')} title="Arm for recording" data-testid="studio-arm">
+            <button onClick={(e) => { e.stopPropagation(); onChange({ armed: !t.armed }); }} className={cn('flex h-5 w-5 items-center justify-center rounded', t.armed ? 'bg-red-500 text-white' : 'bg-white/5 text-red-400', recording && 'animate-pulse')} title="Arm for recording" aria-label={`${t.name} arm for recording`} data-testid="studio-arm">
               <span className="h-2 w-2 rounded-full bg-current" />
             </button>
           )}

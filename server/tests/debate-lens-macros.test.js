@@ -247,7 +247,8 @@ describe("debate.scoreDebate — DebateActionPanel + page.tsx", () => {
     assert.equal(typeof s0.side, "string");
     assert.ok(Number.isFinite(s0.arguments) && Number.isFinite(s0.evidencePoints) && Number.isFinite(s0.rebuttals) && Number.isFinite(s0.score));
     assert.ok(Array.isArray(s0.highlights));
-    assert.ok(["Pro", "Con"].includes(out.winner));
+    if (out.margin === 0) assert.equal(out.winner, null);
+    else assert.ok(["Pro", "Con"].includes(out.winner));
     assert.ok(Number.isFinite(out.margin));
     assert.equal(typeof out.close, "boolean");
   });

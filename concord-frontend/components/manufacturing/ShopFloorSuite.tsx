@@ -17,7 +17,7 @@ import { requestDelete } from './delete-safety-store';
 import { notifyManufacturingMutated } from './mfg-events';
 import {
   ClipboardCheck, Cpu, CalendarRange, GitBranch, Siren, AlertOctagon,
-  Wrench, Boxes, Plus, RefreshCw, CheckCircle2, X, ChevronRight,
+  Wrench, Boxes, Plus, RefreshCw, CheckCircle2, X, ChevronRight, Pencil,
 } from 'lucide-react';
 
 type SuiteTab =
@@ -48,7 +48,7 @@ function Field({ name, value, onChange, type = 'text', placeholder }: {
   return (
     <div>
       <label className={label}>{name}</label>
-      <input
+      <input id="manufacturing-value-2" name="value-2"
         className={input}
         type={type}
         value={value}
@@ -142,7 +142,7 @@ function WorkInstructionsTab() {
           <div className="mt-3">
             <label className={label}>Add step</label>
             <div className="flex gap-2">
-              <input
+              <input id="manufacturing-torque-bolts-to-40-nm" name="torque-bolts-to-40-nm" aria-label="Torque bolts to 40 Nm"
                 className={input}
                 value={stepText}
                 placeholder="Torque bolts to 40 Nm"
@@ -235,7 +235,8 @@ function IoTTab() {
   const [machineId, setMachineId] = useState('CNC-01');
   const [state, setState] = useState<any>(null);
   const [err, setErr] = useState('');
-  const [ingest, setIngest] = useState({ machineState: 'running', cycleCount: '', spindleLoad: '', temperature: '', downtimeReason: '' });
+  const [confirmDelReading, setConfirmDelReading] = useState<number | null>(null);
+  const [ingest, setIngest] = useState({ machineState: 'running', cycleCount: '', spindleLoad: '', temperature: '', downtimeReason: '', runTimeMinutes: '', goodCount: '', defectCount: '' });
 
   const fetchState = useCallback(async (id: string) => {
     setErr('');
@@ -248,6 +249,12 @@ function IoTTab() {
 
   const doIngest = async () => {
     setErr('');
+    // Run time and the good/defect counts are what the OEE board derives
+    // Performance and Quality from — both counts go together or neither.
+    if ((ingest.goodCount === '') !== (ingest.defectCount === '')) {
+      setErr('Good parts and Defects go together — enter both, or leave both blank.');
+      return;
+    }
     const d = await run('iot-reading-ingest', {
       machineId,
       machineState: ingest.machineState,
@@ -255,9 +262,12 @@ function IoTTab() {
       spindleLoad: ingest.spindleLoad ? Number(ingest.spindleLoad) : null,
       temperature: ingest.temperature ? Number(ingest.temperature) : null,
       downtimeReason: ingest.downtimeReason || null,
+      runTimeMinutes: ingest.runTimeMinutes ? Number(ingest.runTimeMinutes) : null,
+      goodCount: ingest.goodCount ? Number(ingest.goodCount) : null,
+      defectCount: ingest.defectCount ? Number(ingest.defectCount) : null,
     });
     if (!d.ok) { setErr(d.error || 'failed'); return; }
-    setIngest({ ...ingest, cycleCount: '', downtimeReason: '' });
+    setIngest({ ...ingest, cycleCount: '', downtimeReason: '', runTimeMinutes: '', goodCount: '', defectCount: '' });
     fetchState(machineId);
   };
 
@@ -280,7 +290,7 @@ function IoTTab() {
         <div className="grid gap-3 sm:grid-cols-3">
           <div>
             <label className={label}>Machine state</label>
-            <select className={input} value={ingest.machineState} onChange={(e) => setIngest({ ...ingest, machineState: e.target.value })}>
+            <select id="manufacturing-machinestate" name="machinestate" className={input} value={ingest.machineState} onChange={(e) => setIngest({ ...ingest, machineState: e.target.value })}>
               <option value="running">running</option>
               <option value="idle">idle</option>
               <option value="down">down</option>
@@ -291,10 +301,14 @@ function IoTTab() {
           <Field name="Spindle load %" type="number" value={ingest.spindleLoad} onChange={(v) => setIngest({ ...ingest, spindleLoad: v })} />
           <Field name="Temperature °C" type="number" value={ingest.temperature} onChange={(v) => setIngest({ ...ingest, temperature: v })} />
           <Field name="Downtime reason" value={ingest.downtimeReason} onChange={(v) => setIngest({ ...ingest, downtimeReason: v })} placeholder="tool change" />
+          <Field name="Run time (min)" type="number" value={ingest.runTimeMinutes} onChange={(v) => setIngest({ ...ingest, runTimeMinutes: v })} placeholder="feeds Performance" />
+          <Field name="Good parts" type="number" value={ingest.goodCount} onChange={(v) => setIngest({ ...ingest, goodCount: v })} placeholder="feeds Quality" />
+          <Field name="Defects" type="number" value={ingest.defectCount} onChange={(v) => setIngest({ ...ingest, defectCount: v })} placeholder="with Good parts" />
           <div className="flex items-end">
             <button className={btnPrimary} onClick={doIngest}><Plus className="h-4 w-4" /> Ingest reading</button>
           </div>
         </div>
+        <p className="mt-2 text-[11px] text-zinc-500">Run time and part counts are optional — without them the board shows Performance / Quality as — rather than inventing a number.</p>
       </div>
 
       {err && <p className="text-xs text-rose-400">{err}</p>}
@@ -336,6 +350,27 @@ function IoTTab() {
               />
             </div>
           )}
+          {/* FIX-manufacturing-009: readings gain a list with a delete. */}
+          {(state.readings || []).length > 0 && (
+            <div className={card}>
+              <p className="mb-2 text-xs font-medium text-zinc-400">Readings (latest last)</p>
+              <ul className="space-y-1">
+                {(state.readings as any[]).map((r, i) => (
+                  <li key={`${r.at}-${i}`} className="flex items-center justify-between gap-2 text-xs text-zinc-300">
+                    <span className="font-mono">#{i + 1} · {r.machineState} · {r.cycleCount} cycles · {new Date(r.at).toLocaleString()}</span>
+                    {confirmDelReading === i ? (
+                      <span className="flex items-center gap-1.5">
+                        <button className="rounded bg-rose-600 px-2 py-0.5 font-semibold text-white" onClick={async () => { setConfirmDelReading(null); const d = await run('iot-reading-delete', { machineId, index: i }); if (!d.ok) { setErr(d.error || 'failed'); return; } fetchState(machineId); }}>Delete reading?</button>
+                        <button className="text-zinc-400 underline" onClick={() => setConfirmDelReading(null)}>Keep</button>
+                      </span>
+                    ) : (
+                      <button className="text-zinc-500 underline hover:text-rose-300" aria-label={`Delete reading ${i + 1}`} onClick={() => setConfirmDelReading(i)}>Delete</button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </>
       )}
     </div>
@@ -347,11 +382,17 @@ function SchedulingTab() {
   const [gantt, setGantt] = useState<any>(null);
   const [err, setErr] = useState('');
   const [form, setForm] = useState({ name: '', resource: 'Line A', durationHours: '', priority: '3', dueDate: '' });
+  // FIX-manufacturing-011: schedule-gantt anchors unpinned jobs at the
+  // horizon start, which defaults to the wall clock — so every reload
+  // re-placed the same jobs at a new start time and the Gantt drifted.
+  // The horizon is pinned once for this tab's lifetime and sent with
+  // every load, so a job keeps the start time it was first shown with.
+  const [horizonStart] = useState(() => new Date().toISOString());
 
   const load = useCallback(async () => {
-    const d = await run('schedule-gantt');
+    const d = await run('schedule-gantt', { horizonStart });
     if (d.ok) setGantt(d.result);
-  }, []);
+  }, [horizonStart]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, []);
 
@@ -399,14 +440,14 @@ function SchedulingTab() {
           <Field name="Job / product" value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="WO-0301 Pump body" />
           <div>
             <label className={label}>Resource</label>
-            <select className={input} value={form.resource} onChange={(e) => setForm({ ...form, resource: e.target.value })}>
+            <select id="manufacturing-resource" name="resource" className={input} value={form.resource} onChange={(e) => setForm({ ...form, resource: e.target.value })}>
               {['Line A', 'Line B', 'Line C', 'CNC Cell', 'Weld Bay'].map((r) => <option key={r}>{r}</option>)}
             </select>
           </div>
           <Field name="Duration (hours)" type="number" value={form.durationHours} onChange={(v) => setForm({ ...form, durationHours: v })} />
           <div>
             <label className={label}>Priority (1=high)</label>
-            <select className={input} value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })}>
+            <select id="manufacturing-priority" name="priority" className={input} value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })}>
               {[1, 2, 3, 4, 5].map((p) => <option key={p}>{p}</option>)}
             </select>
           </div>
@@ -476,7 +517,7 @@ function SchedulingTab() {
                         : <span className="text-emerald-400">on time</span>}
                     </td>
                     <td className="py-1.5">
-                      <select
+                      <select id="manufacturing-resource-2" name="resource-2"
                         className="rounded border border-zinc-700 bg-zinc-900 px-1.5 py-0.5 text-xs text-zinc-200"
                         value={j.resource}
                         onChange={(e) => reschedule(j.id, e.target.value)}
@@ -537,17 +578,32 @@ function TraceabilityTab() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, []);
 
+  // FIX-manufacturing-006: lots gain an edit — the form doubles as the
+  // editor (lot number is the identity and stays fixed while editing).
+  const [editingLot, setEditingLot] = useState<any>(null);
   const register = async () => {
     setErr('');
-    const d = await run('lot-register', {
-      lotNumber: form.lotNumber, material: form.material, kind: form.kind,
+    const payload = {
+      material: form.material, kind: form.kind,
       quantity: form.quantity ? Number(form.quantity) : 0,
       supplier: form.supplier || null,
       parentLots: form.parentLots ? form.parentLots.split(',').map((x) => x.trim()).filter(Boolean) : [],
-    });
+    };
+    const d = editingLot
+      ? await run('lot-update', { id: editingLot.id, ...payload })
+      : await run('lot-register', { lotNumber: form.lotNumber, ...payload });
     if (!d.ok) { setErr(d.error || 'failed'); return; }
+    setEditingLot(null);
     setForm({ lotNumber: '', material: '', kind: 'raw_material', quantity: '', supplier: '', parentLots: '' });
     load();
+  };
+  const beginEditLot = (l: any) => {
+    setEditingLot(l);
+    setForm({
+      lotNumber: l.lotNumber, material: l.material || '', kind: l.kind || 'raw_material',
+      quantity: String(l.quantity ?? ''), supplier: l.supplier || '',
+      parentLots: (l.parentLots || []).join(', '),
+    });
   };
 
   const trace = async (lotNumber: string) => {
@@ -572,13 +628,13 @@ function TraceabilityTab() {
   return (
     <div className="space-y-4">
       <div className={card}>
-        <p className="mb-2 text-xs font-medium text-zinc-400">Register lot (raw material → WIP → finished good)</p>
+        <p className="mb-2 text-xs font-medium text-zinc-400">{editingLot ? `Editing lot ${editingLot.lotNumber} (number is fixed)` : 'Register lot (raw material → WIP → finished good)'}</p>
         <div className="grid gap-3 sm:grid-cols-3">
           <Field name="Lot number" value={form.lotNumber} onChange={(v) => setForm({ ...form, lotNumber: v })} placeholder="LOT-A1024" />
           <Field name="Material" value={form.material} onChange={(v) => setForm({ ...form, material: v })} placeholder="6061-T6 Aluminium" />
           <div>
             <label className={label}>Kind</label>
-            <select className={input} value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })}>
+            <select id="manufacturing-kind" name="kind" className={input} value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })}>
               <option value="raw_material">raw_material</option>
               <option value="wip">wip</option>
               <option value="finished_good">finished_good</option>
@@ -589,9 +645,16 @@ function TraceabilityTab() {
           <Field name="Parent lots (comma-sep)" value={form.parentLots} onChange={(v) => setForm({ ...form, parentLots: v })} placeholder="LOT-R001, LOT-R002" />
         </div>
         {err && <p className="mt-2 text-xs text-rose-400">{err}</p>}
-        <button className={`${btnPrimary} mt-3`} disabled={!form.lotNumber.trim() || !form.material.trim()} onClick={register}>
-          <Plus className="h-4 w-4" /> Register lot
-        </button>
+        <span className="mt-3 flex items-center gap-2">
+          <button className={btnPrimary} disabled={!form.lotNumber.trim() || !form.material.trim()} onClick={register}>
+            <Plus className="h-4 w-4" /> {editingLot ? 'Save lot changes' : 'Register lot'}
+          </button>
+          {editingLot && (
+            <button className={btnGhost} onClick={() => { setEditingLot(null); setForm({ lotNumber: '', material: '', kind: 'raw_material', quantity: '', supplier: '', parentLots: '' }); }}>
+              Cancel edit
+            </button>
+          )}
+        </span>
       </div>
 
       <div className={card}>
@@ -603,7 +666,7 @@ function TraceabilityTab() {
             <thead>
               <tr className="border-b border-zinc-800 text-left text-xs text-zinc-400">
                 <th className="pb-2">Lot</th><th className="pb-2">Material</th><th className="pb-2">Kind</th>
-                <th className="pb-2">Qty</th><th className="pb-2">Trace</th><th className="pb-2">Delete</th>
+                <th className="pb-2">Qty</th><th className="pb-2">Trace</th><th className="pb-2">Edit</th><th className="pb-2">Delete</th>
               </tr>
             </thead>
             <tbody>
@@ -616,6 +679,11 @@ function TraceabilityTab() {
                   <td className="py-1.5">
                     <button className={btnGhost} onClick={() => trace(l.lotNumber)}>
                       <GitBranch className="h-3.5 w-3.5" /> Genealogy
+                    </button>
+                  </td>
+                  <td className="py-1.5">
+                    <button className={btnGhost} onClick={() => beginEditLot(l)} aria-label={`Edit lot ${l.lotNumber}`}>
+                      <Pencil className="h-3.5 w-3.5" /> Edit
                     </button>
                   </td>
                   <td className="py-1.5">
@@ -709,13 +777,13 @@ function AndonTab() {
           <Field name="Reason" value={form.reason} onChange={(v) => setForm({ ...form, reason: v })} placeholder="Coolant low" />
           <div>
             <label className={label}>Category</label>
-            <select className={input} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
+            <select id="manufacturing-category" name="category" className={input} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
               {['downtime', 'quality', 'material', 'safety'].map((c) => <option key={c}>{c}</option>)}
             </select>
           </div>
           <div>
             <label className={label}>Severity</label>
-            <select className={input} value={form.severity} onChange={(e) => setForm({ ...form, severity: e.target.value })}>
+            <select id="manufacturing-severity" name="severity" className={input} value={form.severity} onChange={(e) => setForm({ ...form, severity: e.target.value })}>
               {['low', 'medium', 'high', 'critical'].map((c) => <option key={c}>{c}</option>)}
             </select>
           </div>
@@ -824,7 +892,7 @@ function NCRTab() {
           <Field name="Defect type" value={form.defectType} onChange={(v) => setForm({ ...form, defectType: v })} placeholder="cosmetic" />
           <div>
             <label className={label}>Severity</label>
-            <select className={input} value={form.severity} onChange={(e) => setForm({ ...form, severity: e.target.value })}>
+            <select id="manufacturing-severity-2" name="severity-2" className={input} value={form.severity} onChange={(e) => setForm({ ...form, severity: e.target.value })}>
               {['minor', 'major', 'critical'].map((c) => <option key={c}>{c}</option>)}
             </select>
           </div>
@@ -866,11 +934,11 @@ function NCRTab() {
               </div>
               {n.stage !== 'closed' && (
                 <div className="mt-2 space-y-2">
-                  <textarea className={input} rows={2} placeholder="Root cause"
+                  <textarea id="manufacturing-root-cause" name="root-cause" aria-label="Root cause" className={input} rows={2} placeholder="Root cause"
                     value={c.rootCause} onChange={(e) => setCapa({ ...capa, [n.id]: { ...c, rootCause: e.target.value } })} />
-                  <textarea className={input} rows={2} placeholder="Corrective action"
+                  <textarea id="manufacturing-corrective-action" name="corrective-action" aria-label="Corrective action" className={input} rows={2} placeholder="Corrective action"
                     value={c.correctiveAction} onChange={(e) => setCapa({ ...capa, [n.id]: { ...c, correctiveAction: e.target.value } })} />
-                  <textarea className={input} rows={2} placeholder="Preventive action"
+                  <textarea id="manufacturing-preventive-action" name="preventive-action" aria-label="Preventive action" className={input} rows={2} placeholder="Preventive action"
                     value={c.preventiveAction} onChange={(e) => setCapa({ ...capa, [n.id]: { ...c, preventiveAction: e.target.value } })} />
                   <button className={btnPrimary} onClick={() => advance(n.id, c)}>
                     <ChevronRight className="h-4 w-4" /> Save &amp; advance to next stage
@@ -889,6 +957,7 @@ function NCRTab() {
 function MaintenanceTab() {
   const [sched, setSched] = useState<any>(null);
   const [err, setErr] = useState('');
+  const [doneNote, setDoneNote] = useState('');
   const [form, setForm] = useState({ machineId: '', task: '', intervalDays: '', assignedTo: '' });
 
   const load = useCallback(async () => {
@@ -912,10 +981,15 @@ function MaintenanceTab() {
   const complete = async (planId: string) => {
     // S5: this leg used to swallow every failure — no error, no reload —
     // so any refusal read as a dead button. Surface it like create does.
+    // FIX-manufacturing-011: success was silent too — the only sign was
+    // the row's dates quietly changing on reload. Name it.
     setErr('');
+    setDoneNote('');
     try {
       const d = await run('maintenance-complete', { planId });
       if (!d.ok) { setErr(d.error || 'Could not mark done.'); return; }
+      const plan = (sched?.plans || []).find((p: any) => p.id === planId);
+      setDoneNote(`Marked “${plan?.task || 'maintenance plan'}” done — its next due date has been rescheduled below.`);
       load();
     } catch (e) {
       setErr(String((e as Error)?.message || e));
@@ -963,6 +1037,8 @@ function MaintenanceTab() {
           <div className={card}><p className="text-xs text-zinc-400">Due soon</p><p className={`text-lg font-bold ${sched.dueSoonCount > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>{sched.dueSoonCount}</p></div>
         </div>
       )}
+
+      {doneNote && <p role="status" className="rounded border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">{doneNote}</p>}
 
       {plans.length === 0 ? (
         <p className="text-sm text-zinc-400">No maintenance plans.</p>
@@ -1067,7 +1143,7 @@ function InventoryTab() {
           <Field name="Name" value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
           <div>
             <label className={label}>Kind</label>
-            <select className={input} value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })}>
+            <select id="manufacturing-kind-2" name="kind-2" className={input} value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })}>
               <option value="raw_material">raw_material</option>
               <option value="wip">wip</option>
               <option value="finished_good">finished_good</option>

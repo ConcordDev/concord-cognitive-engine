@@ -2,23 +2,41 @@
 
 import { useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { useUIStore } from '@/store/ui';
 import {
   Coins, Tag, ChevronDown, ChevronUp, Send, CheckCircle2, XCircle,
   Gavel, Milestone as MilestoneIcon, Loader2, ExternalLink, Clock,
+  Pencil, Ban, Trash2,
 } from 'lucide-react';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import type { PlatformBounty, Submission } from './types';
 import { STATUS_STYLE, DIFFICULTY_STYLE } from './types';
+
+const CATEGORIES = ['security', 'feature', 'bug', 'design', 'docs', 'research', 'infra', 'other'];
+const DIFFICULTIES = ['beginner', 'intermediate', 'advanced', 'expert'];
 
 interface Props {
   bounty: PlatformBounty;
   currentUserId: string;
+  currentUserRole?: string;
   onChanged: (b: PlatformBounty) => void;
+  onRemoved?: (id: string) => void;
 }
 
-export function BountyCard({ bounty, currentUserId, onChanged }: Props) {
+export function BountyCard({ bounty, currentUserId, currentUserRole, onChanged, onRemoved }: Props) {
   const [expanded, setExpanded] = useState(false);
+  const addToast = useUIStore((state) => state.addToast);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  // owner edit draft (FIX-bounties-001)
+  const [showEdit, setShowEdit] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editCategory, setEditCategory] = useState('other');
+  const [editDifficulty, setEditDifficulty] = useState('intermediate');
+  const [editTags, setEditTags] = useState('');
+  const [editDeadline, setEditDeadline] = useState('');
 
   // submission draft
   const [showSubmit, setShowSubmit] = useState(false);
@@ -30,10 +48,16 @@ export function BountyCard({ bounty, currentUserId, onChanged }: Props) {
   // dispute draft
   const [showDispute, setShowDispute] = useState(false);
   const [disputeReason, setDisputeReason] = useState('');
+  const [rulingNote, setRulingNote] = useState('');
 
   const isOwner = bounty.ownerId === currentUserId;
   const hasSubmitted = bounty.submissions.some((s) => s.claimantId === currentUserId);
   const involved = isOwner || hasSubmitted;
+  // S1: arbitration belongs to a platform admin/moderator who is NOT a party
+  // to the dispute — the same rule the server enforces. Everyone else sees
+  // who rules and what to expect, never enabled-looking controls.
+  const role = (currentUserRole || '').toLowerCase();
+  const canArbitrate = (role === 'admin' || role === 'moderator') && !involved;
 
   const submitWork = async () => {
     setBusy(true); setErr(null);
@@ -88,14 +112,64 @@ export function BountyCard({ bounty, currentUserId, onChanged }: Props) {
     }
   };
 
+  // ── Owner lifecycle (FIX-bounties-001) ─────────────────────────────
+  const startEdit = () => {
+    setEditTitle(bounty.title);
+    setEditDescription(bounty.description);
+    setEditCategory(bounty.category);
+    setEditDifficulty(bounty.difficulty);
+    setEditTags(bounty.tags.join(', '));
+    setEditDeadline(bounty.deadline || '');
+    setShowEdit(true);
+  };
+
+  const saveEdit = async () => {
+    setBusy(true); setErr(null);
+    const r = await lensRun<{ bounty: PlatformBounty }>('bounties', 'update', {
+      bountyId: bounty.id,
+      title: editTitle,
+      description: editDescription,
+      category: editCategory,
+      difficulty: editDifficulty,
+      tags: editTags,
+      deadline: editDeadline,
+    });
+    setBusy(false);
+    if (r.data?.ok && r.data.result) {
+      onChanged(r.data.result.bounty);
+      setShowEdit(false);
+    } else {
+      setErr(r.data?.error || 'Edit failed');
+    }
+  };
+
+  const cancelBounty = async () => {
+    setBusy(true); setErr(null);
+    const r = await lensRun<{ bounty: PlatformBounty }>('bounties', 'cancel', { bountyId: bounty.id });
+    setBusy(false);
+    if (r.data?.ok && r.data.result) onChanged(r.data.result.bounty);
+    else setErr(r.data?.error || 'Cancel failed');
+  };
+
+  const deleteBounty = async () => {
+    setBusy(true); setErr(null);
+    const r = await lensRun<{ deleted: boolean }>('bounties', 'delete', { bountyId: bounty.id });
+    setBusy(false);
+    if (r.data?.ok) onRemoved?.(bounty.id);
+    else setErr(r.data?.error || 'Delete failed');
+  };
+
   const resolveDispute = async (ruling: 'uphold' | 'overturn' | 'split') => {
     setBusy(true); setErr(null);
     const r = await lensRun<{ bounty: PlatformBounty }>('bounties', 'dispute-resolve', {
-      bountyId: bounty.id, ruling, rulingNote: `Arbiter ruling: ${ruling}`,
+      bountyId: bounty.id, ruling, rulingNote: rulingNote.trim() || undefined,
     });
     setBusy(false);
-    if (r.data?.ok && r.data.result) onChanged(r.data.result.bounty);
-    else setErr(r.data?.error || 'Could not resolve dispute');
+    if (r.data?.ok && r.data.result) {
+      onChanged(r.data.result.bounty);
+      addToast({ type: 'success', message: `Dispute ruled: ${ruling}.` });
+      setRulingNote('');
+    } else setErr(r.data?.error || 'Could not resolve dispute');
   };
 
   const milestonesPaid = bounty.milestones.filter((m) => m.status === 'paid').length;
@@ -120,6 +194,9 @@ export function BountyCard({ bounty, currentUserId, onChanged }: Props) {
                 </span>
               )}
             </div>
+            <p className="mt-1 text-[10px] text-zinc-500">
+              Posted by <span className="text-zinc-300">{bounty.ownerName || bounty.ownerId}</span>
+            </p>
           </div>
           <div className="text-right shrink-0">
             <div className="text-amber-300 font-bold flex items-center gap-1 justify-end">
@@ -159,7 +236,7 @@ export function BountyCard({ bounty, currentUserId, onChanged }: Props) {
 
       {expanded && (
         <div className="border-t border-zinc-800 bg-zinc-950/40 p-4 space-y-3">
-          <p className="text-xs text-zinc-300 whitespace-pre-wrap leading-relaxed">{bounty.description}</p>
+          <p className="text-xs text-zinc-300 whitespace-pre-wrap leading-relaxed min-w-0 break-words [overflow-wrap:anywhere]">{bounty.description}</p>
 
           {/* Milestones */}
           {bounty.milestones.length > 0 && (
@@ -194,7 +271,14 @@ export function BountyCard({ bounty, currentUserId, onChanged }: Props) {
                       {sub.status}
                     </span>
                   </div>
-                  <p className="text-[10px] text-zinc-400 mt-0.5">by {sub.claimantId}</p>
+                  <p className="text-[10px] text-zinc-400 mt-0.5">
+                    by {sub.claimantName || sub.claimantId}
+                    {sub.milestoneId && (
+                      <span className="text-amber-300/80">
+                        {' · '}Milestone: {bounty.milestones.find((m) => m.id === sub.milestoneId)?.title || 'scoped'}
+                      </span>
+                    )}
+                  </p>
                   {sub.link && (
                     <a href={sub.link} target="_blank" rel="noreferrer"
                       className="text-[10px] text-cyan-400 hover:underline flex items-center gap-0.5 mt-0.5">
@@ -233,18 +317,34 @@ export function BountyCard({ bounty, currentUserId, onChanged }: Props) {
                 <Gavel className="w-3 h-3" /> Dispute — {bounty.dispute.status}
               </h4>
               <p className="text-[10px] text-red-200/80 mt-0.5">{bounty.dispute.reason}</p>
-              <p className="text-[10px] text-zinc-400">opened by {bounty.dispute.openedBy}</p>
-              {bounty.dispute.ruling && (
-                <p className="text-[10px] text-amber-300 mt-0.5">Ruling: {bounty.dispute.ruling}{bounty.dispute.rulingNote ? ` — ${bounty.dispute.rulingNote}` : ''}</p>
-              )}
+              <p className="text-[10px] text-zinc-400">opened by {bounty.dispute.openedByName || bounty.dispute.openedBy}</p>
               {bounty.dispute.status === 'open' && (
-                <div className="flex gap-1.5 mt-1.5">
-                  <button onClick={() => resolveDispute('uphold')} disabled={busy}
-                    className="text-[10px] bg-zinc-700 hover:bg-zinc-600 text-white px-2 py-0.5 rounded disabled:opacity-50">Uphold</button>
-                  <button onClick={() => resolveDispute('overturn')} disabled={busy}
-                    className="text-[10px] bg-amber-700 hover:bg-amber-600 text-white px-2 py-0.5 rounded disabled:opacity-50">Overturn</button>
-                  <button onClick={() => resolveDispute('split')} disabled={busy}
-                    className="text-[10px] bg-cyan-700 hover:bg-cyan-600 text-white px-2 py-0.5 rounded disabled:opacity-50">Split</button>
+                <p className="text-[10px] text-zinc-300 mt-1 leading-relaxed">
+                  A platform admin or moderator who is not a party to this dispute rules on it.
+                  The {bounty.poolCc} CC stays in the pool, held, until the ruling lands — neither
+                  party can rule on their own case.
+                </p>
+              )}
+              {bounty.dispute.ruling && (
+                <p className="text-[10px] text-amber-300 mt-0.5">
+                  Ruling: {bounty.dispute.ruling}
+                  {bounty.dispute.arbiterId ? ` — by ${bounty.dispute.arbiterName || bounty.dispute.arbiterId} (arbiter)` : ''}
+                  {bounty.dispute.rulingNote ? ` — ${bounty.dispute.rulingNote}` : ''}
+                </p>
+              )}
+              {bounty.dispute.status === 'open' && canArbitrate && (
+                <div className="mt-1.5 space-y-1.5">
+                  <input value={rulingNote} onChange={(e) => setRulingNote(e.target.value)}
+                    placeholder="Ruling note (optional)"
+                    className="w-full bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-[10px] text-zinc-100 focus:ring-2 focus:ring-red-500 focus:outline-none" />
+                  <div className="flex gap-1.5">
+                    <button onClick={() => resolveDispute('uphold')} disabled={busy}
+                      className="text-[10px] bg-zinc-700 hover:bg-zinc-600 text-white px-2 py-0.5 rounded disabled:opacity-50">Uphold</button>
+                    <button onClick={() => resolveDispute('overturn')} disabled={busy}
+                      className="text-[10px] bg-amber-700 hover:bg-amber-600 text-white px-2 py-0.5 rounded disabled:opacity-50">Overturn</button>
+                    <button onClick={() => resolveDispute('split')} disabled={busy}
+                      className="text-[10px] bg-cyan-700 hover:bg-cyan-600 text-white px-2 py-0.5 rounded disabled:opacity-50">Split</button>
+                  </div>
                 </div>
               )}
             </div>
@@ -252,19 +352,63 @@ export function BountyCard({ bounty, currentUserId, onChanged }: Props) {
 
           {/* Actions */}
           <div className="flex flex-wrap gap-2 pt-1">
-            {!isOwner && bounty.status !== 'paid' && (
+            {!isOwner && bounty.status !== 'paid' && bounty.status !== 'cancelled' && (
               <button onClick={() => setShowSubmit((v) => !v)}
                 className="flex items-center gap-1 text-xs bg-cyan-700 hover:bg-cyan-600 text-white px-3 py-1.5 rounded focus:ring-2 focus:ring-cyan-400 focus:outline-none">
                 <Send className="w-3.5 h-3.5" /> Submit work
               </button>
             )}
-            {involved && (!bounty.dispute || bounty.dispute.status === 'resolved') && (
+            {involved && bounty.status !== 'cancelled' && (!bounty.dispute || bounty.dispute.status === 'resolved') && (
               <button onClick={() => setShowDispute((v) => !v)}
                 className="flex items-center gap-1 text-xs bg-red-900 hover:bg-red-800 text-red-100 px-3 py-1.5 rounded focus:ring-2 focus:ring-red-500 focus:outline-none">
                 <Gavel className="w-3.5 h-3.5" /> Open dispute
               </button>
             )}
+            {isOwner && bounty.status === 'open' && bounty.submissions.length === 0 && (
+              <button onClick={startEdit} disabled={busy}
+                className="flex items-center gap-1 text-xs bg-zinc-700 hover:bg-zinc-600 text-white px-3 py-1.5 rounded disabled:opacity-50 focus:ring-2 focus:ring-zinc-400 focus:outline-none">
+                <Pencil className="w-3.5 h-3.5" /> Edit bounty
+              </button>
+            )}
+            {isOwner && (bounty.status === 'open' || bounty.status === 'claimed') && (
+              <StickyDeleteConfirm
+                disabled={busy}
+                onConfirm={cancelBounty}
+                armLabel={
+                  <span className="flex items-center gap-1">
+                    <Ban className="w-3.5 h-3.5" /> Cancel bounty
+                  </span>
+                }
+                confirmLabel="Cancel this bounty?"
+                armAriaLabel="Cancel bounty"
+                confirmAriaLabel="Confirm cancel bounty"
+                cancelAriaLabel="Keep bounty"
+                className="flex items-center gap-1 rounded bg-zinc-800 px-3 py-1.5 text-xs text-zinc-200 hover:bg-zinc-700 disabled:opacity-50"
+              />
+            )}
+            {isOwner && bounty.status === 'cancelled' && (
+              <StickyDeleteConfirm
+                disabled={busy}
+                onConfirm={deleteBounty}
+                armLabel={
+                  <span className="flex items-center gap-1">
+                    <Trash2 className="w-3.5 h-3.5" /> Delete
+                  </span>
+                }
+                confirmLabel="Delete bounty?"
+                armAriaLabel="Delete bounty"
+                confirmAriaLabel="Confirm delete bounty"
+                cancelAriaLabel="Cancel delete"
+                className="flex items-center gap-1 rounded bg-rose-900 px-3 py-1.5 text-xs text-rose-200 hover:bg-rose-800 disabled:opacity-50"
+              />
+            )}
           </div>
+          {isOwner && (bounty.status === 'open' || bounty.status === 'claimed') && (
+            <p role="note" className="text-[10px] leading-relaxed text-zinc-500">
+              Cancelling closes the bounty to new submissions. No CC was taken when you posted it,
+              so there is nothing to refund — the posted reward was never escrowed.
+            </p>
+          )}
 
           {/* Submission form */}
           {showSubmit && (
@@ -306,6 +450,49 @@ export function BountyCard({ bounty, currentUserId, onChanged }: Props) {
                 {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Gavel className="w-3.5 h-3.5" />}
                 Open dispute
               </button>
+            </div>
+          )}
+
+          {/* Edit form (owner, pre-submission) */}
+          {showEdit && (
+            <div className="rounded-lg border border-zinc-700/60 bg-zinc-900 p-3 space-y-2">
+              <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)}
+                aria-label="Edit bounty title" maxLength={160}
+                className="w-full bg-zinc-950 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-100 focus:ring-2 focus:ring-amber-500 focus:outline-none" />
+              <textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)}
+                aria-label="Edit bounty description" rows={3}
+                className="w-full bg-zinc-950 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-100 focus:ring-2 focus:ring-amber-500 focus:outline-none resize-none" />
+              <div className="flex flex-wrap gap-2">
+                <select value={editCategory} onChange={(e) => setEditCategory(e.target.value)}
+                  aria-label="Edit bounty category"
+                  className="bg-zinc-950 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-100 focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                  {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+                <select value={editDifficulty} onChange={(e) => setEditDifficulty(e.target.value)}
+                  aria-label="Edit bounty difficulty"
+                  className="bg-zinc-950 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-100 focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                  {DIFFICULTIES.map((d) => <option key={d} value={d}>{d}</option>)}
+                </select>
+                <input type="date" value={editDeadline} onChange={(e) => setEditDeadline(e.target.value)}
+                  aria-label="Edit bounty deadline"
+                  className="bg-zinc-950 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-100 focus:ring-2 focus:ring-amber-500 focus:outline-none" />
+              </div>
+              <input value={editTags} onChange={(e) => setEditTags(e.target.value)}
+                aria-label="Edit bounty tags" placeholder="Tags, comma separated"
+                className="w-full bg-zinc-950 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-100 focus:ring-2 focus:ring-amber-500 focus:outline-none" />
+              <p role="note" className="text-[10px] leading-relaxed text-zinc-500">
+                The reward and milestones are the posted terms — cancel and repost to change them.
+              </p>
+              <div className="flex gap-2">
+                <button onClick={saveEdit} disabled={busy}
+                  className="flex-1 text-xs bg-amber-600 hover:bg-amber-500 text-white py-1.5 rounded disabled:opacity-50">
+                  Save changes
+                </button>
+                <button onClick={() => setShowEdit(false)} disabled={busy}
+                  className="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-3 py-1.5 rounded disabled:opacity-50">
+                  Cancel edit
+                </button>
+              </div>
             </div>
           )}
 

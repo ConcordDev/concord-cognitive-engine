@@ -21,6 +21,7 @@ interface SyncConflictResult {
   conflicts: { key: string; severity: number; severityLevel: string; resolution: string }[];
   strategy: string;
   summary: ConflictSummary;
+  message?: string;
 }
 
 interface CacheStrategyResult {
@@ -70,31 +71,46 @@ export function SyncAnalysisPanel() {
         setErr('Write some local documents first — the analysis runs on real data.');
         return;
       }
-      // Build two replicas from the real local docs: one as-stored, one with a
-      // simulated concurrent edit per doc so the LWW/CRDT math has work to do.
-      const replicaA: Record<string, any> = {};
-      const replicaB: Record<string, any> = {};
-      docs.forEach((d, i) => {
-        const ts = Date.parse(d.updatedAt) || Date.now();
-        replicaA[d.id] = { value: d.body, timestamp: ts, vectorClock: { a: i + 1, b: i } };
-        replicaB[d.id] = {
-          value: { ...d.body, _rev: d.rev },
-          timestamp: ts + 1000,
-          vectorClock: { a: i, b: i + 1 },
-        };
+      // Analyze the local store as it actually is: ONE replica — this
+      // device's documents, as stored, at their real timestamps
+      // (FIX-offline-003). This panel used to fabricate a second replica
+      // holding a "simulated concurrent edit" of every doc (an altered
+      // body at a later timestamp), which made the LWW math report a
+      // conflict on every key — a 100% conflict rate, "replica B wins",
+      // on a store that holds exactly one copy of each document and so
+      // has nothing divergent to conflict with. A conflict needs a
+      // second, divergent copy; with the one real replica the macro
+      // says so, and the panel presents that outcome with the store's
+      // real key count and a zero conflict count.
+      const replica: Record<string, any> = {};
+      docs.forEach((d) => {
+        replica[d.id] = { value: d.body, timestamp: Date.parse(d.updatedAt) || Date.now() };
       });
       const r = await lensRun<SyncConflictResult>('offline', 'syncConflict', {
-        replicas: [
-          { replicaId: 'a', state: replicaA },
-          { replicaId: 'b', state: replicaB },
-        ],
+        replicas: [{ replicaId: 'local', state: replica }],
         strategy: 'lww',
       });
       if (!r.data.ok || !r.data.result) {
         setErr(r.data.error || 'syncConflict failed');
         return;
       }
-      setConflict(r.data.result);
+      const result = r.data.result;
+      if (!result.summary) {
+        setConflict({
+          ...result,
+          conflicts: [],
+          summary: {
+            totalKeys: docs.length,
+            conflictCount: 0,
+            conflictRate: 0,
+            replicaCount: 1,
+            highSeverityConflicts: 0,
+            avgSeverity: 0,
+          },
+        });
+        return;
+      }
+      setConflict(result);
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'conflict error');
     } finally {
@@ -232,6 +248,12 @@ export function SyncAnalysisPanel() {
 
       {tab === 'conflict' && conflict && (
         <div className="space-y-3">
+          {conflict.message && (
+            <p className="rounded border border-zinc-800 bg-zinc-950 px-3 py-2 text-[11px] text-zinc-300">
+              {conflict.message} This device holds one copy of each document in the local
+              store, so there is no divergent second copy to conflict with.
+            </p>
+          )}
           <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
             {[
               { l: 'Keys', v: conflict.summary.totalKeys },

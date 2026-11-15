@@ -278,7 +278,7 @@ export function MusicRadioPanel({ onChange }: { onChange: () => void }) {
               {['low', 'normal', 'high', 'lossless'].map((q) => <option key={q} value={q}>{q}</option>)}
             </select>
           </label>
-          <p className="text-[10px] text-zinc-500 mb-2">Stored preference — applied when your source supports it; Concord itself doesn&rsquo;t decode or stream at a fixed fidelity.</p>
+          <p className="text-[10px] text-zinc-400 mb-2">Stored preference — applied when your source supports it; Concord itself doesn&rsquo;t decode or stream at a fixed fidelity.</p>
           {([
             ['gapless', 'Gapless playback'],
             ['normalize', 'Normalize volume'],

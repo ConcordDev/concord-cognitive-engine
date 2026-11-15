@@ -96,7 +96,7 @@ export function TerrainOverlay() {
       <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 space-y-3">
         <div className="flex items-center gap-2">
           <Layers className="h-4 w-4 text-amber-400" />
-          <h3 className="text-sm font-semibold text-white">Terrain dataset overlay</h3>
+          <h2 className="text-sm font-semibold text-white">Terrain dataset overlay</h2>
         </div>
         <div className="space-y-2">
           <div className="grid grid-cols-7 gap-1.5 text-[10px] uppercase tracking-wider text-zinc-400">
@@ -120,10 +120,10 @@ export function TerrainOverlay() {
                 onChange={(e) => update(i, { lng: e.target.value })}
                 className="rounded bg-zinc-950 border border-zinc-800 px-1.5 py-1 text-xs text-white"
               />
-              <select
+              <select aria-label="Soil type"
                 value={s.soil}
                 onChange={(e) => update(i, { soil: e.target.value })}
-                className="rounded bg-zinc-950 border border-zinc-800 px-1 py-1 text-xs text-white"
+                className="min-h-11 rounded bg-zinc-950 border border-zinc-800 px-1 py-1 text-xs text-white"
               >
                 {SOILS.map((so) => (
                   <option key={so} value={so}>

@@ -92,8 +92,26 @@ export async function composeAndRecord(db, STATE, worldId) {
   let driftKind = null;
 
   try {
-    const w = STATE?.worlds?.get?.(worldId);
-    ecosystemScore = w?.ecosystem_score ?? w?.ecosystemScore ?? 0;
+    // FIX-goddess-002: the ecosystem signal was read from
+    // STATE.worlds — which in the real server is the sub-worlds store
+    // (userId -> Array<world>), so .get(worldId) never yields a world
+    // object and the score was ALWAYS 0: every dispatch composed
+    // neutral with the canned fallback line, ecosystem 0.00, forever.
+    // The canonical score lives in player_world_metrics (score-engine:
+    // "Concordia (goddess) reads ecosystem_score"); read the world
+    // mean from the DB via the sanctioned reader and map its 0..100
+    // percent onto the tone scale (-1..1). No sample is not a score —
+    // only then fall back to an in-memory world object that genuinely
+    // carries a numeric score, else 0.
+    const se = await import("./ecosystem/score-engine.js");
+    const { envScore } = se.worldEcosystemPercent(db, worldId);
+    if (typeof envScore === "number" && Number.isFinite(envScore)) {
+      ecosystemScore = (envScore - 50) / 50;
+    } else {
+      const w = STATE?.worlds?.get?.(worldId);
+      const s = w?.ecosystem_score ?? w?.ecosystemScore;
+      if (typeof s === "number" && Number.isFinite(s)) ecosystemScore = s;
+    }
   } catch { /* default */ }
   try {
     const rf = await import("./refusal-field.js");

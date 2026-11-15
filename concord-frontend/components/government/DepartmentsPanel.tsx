@@ -46,11 +46,11 @@ export function DepartmentsPanel() {
         <span className="ml-auto text-[10px] text-gray-400">{depts.length}</span>
       </header>
       <div className="p-3 border-b border-white/10 grid grid-cols-5 gap-2">
-        <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Department name" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-        <input value={form.shortCode} onChange={e => setForm({ ...form, shortCode: e.target.value.toUpperCase() })} placeholder="DPW" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
-        <input value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="Email" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-        <input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="Phone" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-        <input value={form.head} onChange={e => setForm({ ...form, head: e.target.value })} placeholder="Department head" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <input aria-label="Department name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Department name" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <input aria-label="DPW" value={form.shortCode} onChange={e => setForm({ ...form, shortCode: e.target.value.toUpperCase() })} placeholder="DPW" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+        <input aria-label="Email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="Email" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <input aria-label="Phone" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="Phone" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <input aria-label="Department head" value={form.head} onChange={e => setForm({ ...form, head: e.target.value })} placeholder="Department head" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <button onClick={add} className="px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 inline-flex items-center justify-center gap-1"><Plus className="w-3 h-3" />Add</button>
       </div>
       <div className="max-h-80 overflow-y-auto">

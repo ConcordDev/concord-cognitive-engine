@@ -101,11 +101,11 @@ function JourneyMapTool() {
         {stages.map((s, i) => (
           <div key={i} className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-3 space-y-2">
             <div className="flex items-center gap-2">
-              <input className={`${inputCls} flex-1`} value={s.name} onChange={e => update(i, { name: e.target.value })} placeholder={`Stage ${i + 1} name`} />
-              <select className={`${inputCls} max-w-[130px]`} value={s.emotion} onChange={e => update(i, { emotion: e.target.value })}>
+              <input className={`${inputCls} flex-1`} aria-label={`Stage ${i + 1} name`} value={s.name} onChange={e => update(i, { name: e.target.value })} placeholder={`Stage ${i + 1} name`} />
+              <select className={`${inputCls} max-w-[130px]`} aria-label={`Stage ${i + 1} emotion`} value={s.emotion} onChange={e => update(i, { emotion: e.target.value })}>
                 {EMOTIONS.map(em => <option key={em} value={em}>{em}</option>)}
               </select>
-              <button onClick={() => removeStage(i)} className="text-gray-500 hover:text-red-400" aria-label="remove stage"><Trash2 className="w-3.5 h-3.5" /></button>
+              <button onClick={() => removeStage(i)} className="text-gray-400 hover:text-red-400" aria-label="remove stage"><Trash2 className="w-3.5 h-3.5" /></button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <Field label="Touchpoints (comma-separated)"><input className={inputCls} value={s.touchpoints} onChange={e => update(i, { touchpoints: e.target.value })} placeholder="app, email, support chat" /></Field>
@@ -181,16 +181,35 @@ function UsabilityScoreTool() {
   const [satisfactionScore, setSatisfactionScore] = useState('75');
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const submit = async () => {
+    // FIX-experience-003: a cleared field used to coerce to 0 and compute,
+    // leaving the stale result on screen with no validation. Empty fields
+    // are named inline and the old result is cleared; the server enforces
+    // the same rule for other callers.
+    const fields: Array<[string, string]> = [
+      ['Task success rate', taskSuccessRate],
+      ['Avg time on task', avgTimeSeconds],
+      ['Error count', errorCount],
+      ['Satisfaction', satisfactionScore],
+    ];
+    const empty = fields.filter(([, v]) => v.trim() === '').map(([label]) => label);
+    if (empty.length > 0) {
+      setResult(null);
+      setError(`${empty.join(', ')} required — fill every field to compute a score.`);
+      return;
+    }
     setBusy(true);
+    setError(null);
     const r = await run('usabilityScore', {
-      taskSuccessRate: Number(taskSuccessRate) || 0,
-      avgTimeSeconds: Number(avgTimeSeconds) || 0,
-      errorCount: Number(errorCount) || 0,
-      satisfactionScore: Number(satisfactionScore) || 0,
+      taskSuccessRate: Number(taskSuccessRate),
+      avgTimeSeconds: Number(avgTimeSeconds),
+      errorCount: Number(errorCount),
+      satisfactionScore: Number(satisfactionScore),
     });
     setResult(r);
+    if (!r) setError('Could not compute a score from those values — check the fields and try again.');
     setBusy(false);
   };
 
@@ -206,6 +225,7 @@ function UsabilityScoreTool() {
       <button onClick={submit} disabled={busy} className="btn-neon cyan text-xs flex items-center gap-1 disabled:opacity-40">
         {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Gauge className="w-3 h-3" />} Compute SUS score
       </button>
+      {error && <p role="alert" className="text-[11px] text-red-400">{error}</p>}
       {result && <UsabilityScoreResult result={result} />}
     </div>
   );
@@ -252,6 +272,20 @@ function UsabilityScoreResult({ result }: { result: Record<string, unknown> }) {
           </div>
         ))}
       </div>
+      {typeof result.formula === 'string' && (
+        <div className="text-[10px] text-gray-400 space-y-0.5">
+          <p>{result.formula as string}</p>
+          {result.components != null && (
+            <p>
+              Contributions: task success {(result.components as Record<string, number>).taskSuccess}
+              {' + '}time {(result.components as Record<string, number>).time}
+              {' + '}errors {(result.components as Record<string, number>).errors}
+              {' + '}satisfaction {(result.components as Record<string, number>).satisfaction}
+              {' = '}{susScore}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -293,7 +327,7 @@ function HeuristicEvalTool() {
         {NIELSEN_HEURISTICS.map((h, i) => (
           <div key={h} className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5">
             <button onClick={() => setOpen(open === i ? null : i)} className="w-full flex items-center justify-between text-left">
-              <span className="text-xs text-white flex items-center gap-2"><span className="text-gray-500 font-mono w-4">{i + 1}</span>{h}</span>
+              <span className="text-xs text-white flex items-center gap-2"><span className="text-gray-400 font-mono w-4">{i + 1}</span>{h}</span>
               <span className="flex items-center gap-2 text-[11px] text-gray-400">
                 score {evals[i].score}/10{Number(evals[i].severity) > 0 && <span className="text-red-400">sev {evals[i].severity}</span>}
               </span>

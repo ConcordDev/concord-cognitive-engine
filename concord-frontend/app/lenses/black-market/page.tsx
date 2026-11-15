@@ -3,10 +3,13 @@
 /**
  * Black Market lens — Sael's stall.
  *
- * Players browse intercepted Concord Link messages surfaced by the walker
- * journey tick. Sender + receiver are redacted; encryption level drives the
- * price tier. Purchasing reveals the original payload and bumps reputation
- * with the fence; failed purchases (insufficient sparks) hurt reputation.
+ * Players browse FICTIONAL NPC intercepts — invented messages from
+ * generated characters, surfaced by the walker journey tick and labelled
+ * as fiction. A real user's Concord Link message is never surfaced or
+ * sold here (founder ruling, FIX-black-market-010). Sender + receiver are
+ * redacted; encryption level drives the price tier. Purchasing reveals
+ * the fictional payload and bumps reputation with the fence; failed
+ * purchases (insufficient sparks) hurt reputation.
  *
  * Currency is sparks only. There is no real-money codepath.
  */
@@ -65,7 +68,7 @@ const fmtTime = (epochSec: number) => {
 type BlackMarketView = 'market' | 'stall' | 'exchange';
 
 const VIEWS: { id: BlackMarketView; label: string; keys: string; hint: string; icon: typeof Store }[] = [
-  { id: 'market', label: 'Market', keys: 'm', hint: 'Intercepted Concord Link messages', icon: ShoppingBag },
+  { id: 'market', label: 'Market', keys: 'm', hint: 'Fictional NPC intercepts — invented messages, labelled as fiction', icon: ShoppingBag },
   { id: 'stall', label: "Sael's stall", keys: 'l', hint: 'Browse the fence stall', icon: Store },
   { id: 'exchange', label: 'Exchange', keys: 'x', hint: 'Underground exchange', icon: Repeat },
 ];
@@ -193,7 +196,7 @@ export default function BlackMarketPage() {
       <NorthStarFrame
         lensId="black-market"
         crumb="Black Market"
-        subtitle="Sael's stall. Intercepted Concord Link messages, sender and receiver redacted, payload revealed on purchase. Sparks only."
+        subtitle="Sael's stall. Fictional NPC intercepts — invented messages from generated characters, labelled as fiction; no real user's messages are sold here. Payload revealed on purchase. Sparks only."
         tabs={VIEWS.map((v) => ({ id: v.id, label: v.id === 'market' && listings.length ? `${v.label} ${listings.length}` : v.label, icon: v.icon, keys: v.keys, hint: v.hint }))}
         activeTab={view}
         onTab={(id) => setView(id as BlackMarketView)}
@@ -252,7 +255,7 @@ export default function BlackMarketPage() {
             aria-live="polite"
             className="mb-4 rounded border border-slate-800 bg-slate-900/40 px-3 py-2 text-sm text-slate-400"
           >
-            Loading intercepted messages…
+            Loading fictional intercepts…
           </div>
         )}
 
@@ -266,6 +269,7 @@ export default function BlackMarketPage() {
           >
             <div className="mb-2 flex items-baseline justify-between gap-2">
               <h2 className="text-sm font-semibold text-emerald-200">Revealed</h2>
+              <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-emerald-300">Fiction — NPC message</span>
               <button onClick={() => setRevealed(null)} className="text-xs text-slate-400 hover:text-slate-200" aria-label="Dismiss">
                 dismiss
               </button>

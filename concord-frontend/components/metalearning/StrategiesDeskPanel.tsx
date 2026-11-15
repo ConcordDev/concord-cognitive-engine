@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { apiHelpers } from '@/lib/api/client';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { ErrorState } from '@/components/common/EmptyState';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import {
@@ -115,6 +116,23 @@ export function StrategiesDeskPanel() {
     onError: (err) => console.error('runCurriculum failed:', err instanceof Error ? err.message : err),
   });
 
+  const deleteCurriculumMut = useMutation({
+    mutationFn: (curriculumId: string) => apiHelpers.metalearning.deleteCurriculum(curriculumId),
+    onSuccess: (res, curriculumId) => {
+      const data = res.data as { ok?: boolean; error?: string } | undefined;
+      if (data?.ok === false) {
+        setResults({ error: data.error || 'That curriculum could not be deleted.' });
+        return;
+      }
+      // The row vanishing from Saved curricula is the receipt; if the
+      // deleted curriculum is the one on display, clear the display.
+      setResults((prev: unknown) => ((prev as { id?: string } | null)?.id === curriculumId ? null : prev));
+      queryClient.invalidateQueries({ queryKey: ['metalearning-curricula'] });
+      queryClient.invalidateQueries({ queryKey: ['metalearning-status'] });
+    },
+    onError: (err) => setResults({ error: err instanceof Error ? err.message : 'That curriculum could not be deleted.' }),
+  });
+
   const recordOutcome = useMutation({
     mutationFn: ({ strategyId, success }: { strategyId: string; success: boolean }) =>
       apiHelpers.metalearning.recordOutcome(strategyId, { success }),
@@ -142,14 +160,23 @@ export function StrategiesDeskPanel() {
 
   const deleteStrategyMut = useMutation({
     mutationFn: (strategyId: string) => apiHelpers.metalearning.deleteStrategy(strategyId),
-    onSuccess: () => {
+    onSuccess: (res) => {
+      // The route answers 200 with the macro's body, so a refusal
+      // (not yours / ownerless corpus) resolves here with ok:false —
+      // surface it in the Results panel like the curriculum leg does,
+      // and keep the confirm armed; only a real delete closes it.
+      const data = res.data as { ok?: boolean; error?: string } | undefined;
+      if (data?.ok === false) {
+        setResults({ error: data.error || 'That strategy could not be deleted.' });
+        return;
+      }
       setConfirmDeleteId(null);
       queryClient.invalidateQueries({ queryKey: ['metalearning-strategies'] });
       queryClient.invalidateQueries({ queryKey: ['metalearning-status'] });
       queryClient.invalidateQueries({ queryKey: ['metalearning-best'] });
       queryClient.invalidateQueries({ queryKey: ['metalearning-adaptations'] });
     },
-    onError: (err) => console.error('deleteStrategy failed:', err instanceof Error ? err.message : err),
+    onError: (err) => setResults({ error: err instanceof Error ? err.message : 'That strategy could not be deleted.' }),
   });
 
   const { data: adaptationsData } = useQuery({
@@ -374,10 +401,10 @@ export function StrategiesDeskPanel() {
                     </p>
                   </div>
                 ) : (
-                  <p className="text-xs text-gray-500 mt-2">No outcomes yet — record a success or failure and this card will show its success rate.</p>
+                  <p className="text-xs text-gray-400 mt-2">No outcomes yet — record a success or failure and this card will show its success rate.</p>
                 )}
                 {s.parameters && (
-                  <p className="text-[11px] text-gray-500 mt-1">
+                  <p className="text-[11px] text-gray-400 mt-1">
                     Learning rate {s.parameters.learningRate.toFixed(2)} · Exploration {s.parameters.explorationRate.toFixed(2)} · Batch {s.parameters.batchSize}
                   </p>
                 )}
@@ -418,7 +445,7 @@ export function StrategiesDeskPanel() {
                   ) : (
                     <button
                       onClick={() => setConfirmDeleteId(s.id)}
-                      className="p-1 rounded text-gray-500 hover:text-red-400 transition-colors"
+                      className="p-1 rounded text-gray-400 hover:text-red-400 transition-colors"
                       title="Delete strategy"
                       aria-label={`Delete strategy ${s.name}`}
                     >
@@ -461,13 +488,13 @@ export function StrategiesDeskPanel() {
                         <li key={step.order} className="text-xs text-gray-300">
                           <span className="text-neon-cyan font-mono mr-1.5">{step.order}.</span>
                           <span className="text-gray-100">{step.title}</span>
-                          <span className="text-gray-500"> — {step.rationale}</span>
+                          <span className="text-gray-400"> — {step.rationale}</span>
                         </li>
                       ))}
                     </ol>
                   )}
                   {typeof c.estimatedEffort === 'number' && c.steps.length > 0 && (
-                    <p className="text-[11px] text-gray-500">Estimated effort: {c.estimatedEffort.toFixed(1)}h across {c.steps.length} steps</p>
+                    <p className="text-[11px] text-gray-400">Estimated effort: {c.estimatedEffort.toFixed(1)}h across {c.steps.length} steps</p>
                   )}
                 </div>
               );
@@ -497,16 +524,26 @@ export function StrategiesDeskPanel() {
           })()}
           {savedCurricula.length > 0 && (
             <div className="mt-4 border-t border-white/5 pt-3">
-              <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Saved curricula</p>
+              <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Saved curricula</p>
               <div className="space-y-1">
                 {savedCurricula.map((c) => (
-                  <button
-                    key={c.id}
-                    onClick={() => setResults(c)}
-                    className="w-full text-left text-xs text-gray-300 hover:text-white px-2 py-1 rounded hover:bg-white/5 transition-colors"
-                  >
-                    {c.topic} <span className="text-gray-500">· {c.steps.length} steps{c.createdAt ? ` · ${new Date(c.createdAt).toLocaleDateString()}` : ''}</span>
-                  </button>
+                  <div key={c.id} className="flex items-center gap-1">
+                    <button
+                      onClick={() => setResults(c)}
+                      className="flex-1 text-left text-xs text-gray-300 hover:text-white px-2 py-1 rounded hover:bg-white/5 transition-colors"
+                    >
+                      {c.topic} <span className="text-gray-400">· {c.steps.length} steps{c.createdAt ? ` · ${new Date(c.createdAt).toLocaleDateString()}` : ''}</span>
+                    </button>
+                    <StickyDeleteConfirm
+                      onConfirm={() => deleteCurriculumMut.mutate(c.id)}
+                      disabled={deleteCurriculumMut.isPending}
+                      className="text-rose-400 px-1"
+                      armLabel={<Trash2 className="w-3 h-3" />}
+                      confirmLabel={`Delete “${c.topic}”?`}
+                      armAriaLabel={`Delete curriculum ${c.topic}`}
+                      confirmAriaLabel={`Confirm delete curriculum ${c.topic}`}
+                    />
+                  </div>
                 ))}
               </div>
             </div>

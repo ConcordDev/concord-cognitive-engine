@@ -8,8 +8,14 @@ import { wouldAdmitCreation } from "../lib/background-governor.js";
 import { assessCreation, maybeCritique } from "../lib/emergents/quality/creation-gate.js";
 import { emitFeedEvent } from "./feed.js";
 import { TASK_PROMPTS } from "../lib/prompt-registry.js";
+import { recordIdleOutcome, trySpendIdleModelCall, lastIdleSampleSig, setIdleSampleSig } from "../lib/idle-budget.js";
 
 const IDLE_ACTIONS = ["browse_lens", "observe_substrate", "dream", "communicate"];
+
+// IDLE-01 (GB-1540): the deterministic-first default weights — 27 of 30
+// idle actions are the free browse, so ≥90% of idle life is deterministic
+// by construction. Exported for the pin.
+export const IDLE_WEIGHT_DEFAULTS = { browse_lens: 27, observe_substrate: 1, dream: 1, communicate: 1 };
 
 /**
  * Choose an idle action weighted by the emergent's characteristics.
@@ -17,10 +23,13 @@ const IDLE_ACTIONS = ["browse_lens", "observe_substrate", "dream", "communicate"
 function chooseIdleAction(emergentIdentity) {
   // Weights are env-overridable (CONCORD_IDLE_WEIGHTS="browse_lens:8,observe_substrate:1,dream:1,communicate:1")
   // so ops can dial brain-call density down without redeploying.
-  // Default: heavily favor browse_lens (no brain cost) so 812 emergents × 60s tick
-  // doesn't starve the conscious brain used for user-facing chat.
-  // 8:1:1:1 → 8/11 = 73% browse_lens (free), 27% brain call (3 actions).
-  let weights = { browse_lens: 8, observe_substrate: 1, dream: 1, communicate: 1 };
+  // Default (IDLE-01, GB-1540): deterministic-first — 27:1:1:1 → 27/30 = 90%
+  // of idle actions are browse_lens (no brain cost), so the background brain
+  // is reserved for rare meaningful moments by construction. The per-citizen
+  // daily budget in lib/idle-budget.js is the hard guarantee behind the
+  // weights; the earlier 8:1:1:1 shape drew brain actions at 27% of ticks
+  // and produced ~135 model calls/min across the fleet.
+  let weights = { ...IDLE_WEIGHT_DEFAULTS };
   const envW = process.env.CONCORD_IDLE_WEIGHTS;
   if (envW) {
     try {
@@ -54,6 +63,23 @@ function _markBrainCall(emergentId) {
   _lastBrainCall.set(emergentId, Date.now());
 }
 
+// IDLE-01 (GB-1540): the one admission gate every brain action passes —
+// the soft per-emergent cooldown AND the hard per-citizen daily budget
+// (lib/idle-budget.js, DB-counted so it survives restarts). Admission
+// spends the call and marks the cooldown together, as late as the action
+// allows, so a refusal never spends and a spend is always a real call.
+// A refusal is counted by class, keeping the 90/10 split measurable.
+// Returns "ok" | "cooldown" | "budget".
+function _admitBrainCall(emergentId, db) {
+  if (!_canCallBrain(emergentId)) {
+    recordIdleOutcome(db, emergentId, "cooldown");
+    return "cooldown";
+  }
+  if (!trySpendIdleModelCall(db, emergentId)) return "budget";
+  _markBrainCall(emergentId);
+  return "ok";
+}
+
 /**
  * Fetch a sample of substrate for the emergent to observe.
  */
@@ -82,6 +108,32 @@ export function sampleSubstrate(lens, db, limit = 5, rand = Math.random) {
     }
     return out;
   } catch { return []; }
+}
+
+/**
+ * IDLE-02 (GB-1540): the degeneracy test for an observe sample. The
+ * observation prompt is built from the sample's TITLES only, so a sample
+ * is degenerate when its titles carry nothing a specific observation
+ * could attach to. Returns the skip class or null:
+ *   "thin"        — fewer than 2 items (a pattern over ≤1 title is invention)
+ *   "monoculture" — the titles collapse to one distinct title
+ *                   (the "Wood, Wood, Wood" shape)
+ *   "repeat"      — the title multiset equals this citizen's last
+ *                   observed sample (the same encounter twice)
+ */
+export function sampleSignature(items) {
+  return (items || [])
+    .map((i) => String(i?.title || "").trim().toLowerCase())
+    .sort()
+    .join("|");
+}
+
+export function assessSampleDegeneracy(items, lastSig) {
+  if (!items || items.length < 2) return "thin";
+  const titles = items.map((i) => String(i?.title || "").trim().toLowerCase()).filter(Boolean);
+  if (new Set(titles).size < 2) return "monoculture";
+  if (lastSig && sampleSignature(items) === lastSig) return "repeat";
+  return null;
 }
 
 /**
@@ -139,15 +191,25 @@ export async function runIdleBehavior(emergentIdentity, db, realtimeEmit) {
       // and changes nothing, so it is NOT recorded as activity. Logging it
       // was ~73% of all "emergent activity" — 10M template rows in two weeks
       // ("Browsed lens substrate: Wood, Wood, Wood"), stored twice.
+      // IDLE-01 counts it in the aggregate daily outcome counters only
+      // (one row per citizen per day) — the 90/10 measurement, not activity.
+      recordIdleOutcome(db, emergentIdentity.id, "deterministic");
       return { action };
     }
 
     case "observe_substrate": {
-      if (!_canCallBrain(emergentIdentity.id)) return { action: "throttled" };
       const items = sampleSubstrate(null, db, 5);
       if (items.length === 0) return { action };
+      // IDLE-02: a degenerate sample skips the model call entirely —
+      // before admission, so no budget is spent; the reason is counted.
+      const degeneracy = assessSampleDegeneracy(items, lastIdleSampleSig(db, emergentIdentity.id));
+      if (degeneracy) {
+        recordIdleOutcome(db, emergentIdentity.id, "degenerate");
+        return { action, skipped: `degenerate:${degeneracy}` };
+      }
+      const admit = _admitBrainCall(emergentIdentity.id, db);
+      if (admit !== "ok") return { action: "throttled", throttledBy: admit };
       try {
-        _markBrainCall(emergentIdentity.id);
         const result = await infer({
           role: "subconscious",
           intent: TASK_PROMPTS.emergentObservation({ name: emergentIdentity.given_name, items }),
@@ -158,12 +220,28 @@ export async function runIdleBehavior(emergentIdentity, db, realtimeEmit) {
         // an observation (no canned fallback text).
         const observation = result?.finalText?.trim()?.slice(0, 200);
         if (!observation) return { action, skipped: result?.error ? "brain_error" : "empty_output" };
+        // IDLE-03: observations pass the novelty gate before they
+        // persist, carrying their sampled source DTUs as the link.
+        const assessment = assessCreation({
+          kind: "observation",
+          text: observation,
+          emergentId: emergentIdentity.id,
+          db,
+          artifactIds: items.map((i) => i.id).filter(Boolean),
+          requireDtuLink: true,
+        });
+        if (assessment.status === "rejected") {
+          return { action, skipped: "quality:" + assessment.reasons.join(",") };
+        }
         emitFeedEvent({
           type: "observation",
           emergentId: emergentIdentity.id,
           emergent: emergentIdentity,
           data: { observation },
         }, db, realtimeEmit);
+        // IDLE-02: remember the sample this citizen actually observed
+        // from — the next identical sample is a repeat, not a new call.
+        setIdleSampleSig(db, emergentIdentity.id, sampleSignature(items));
         return { action, observation };
       } catch {
         return { action };
@@ -171,9 +249,9 @@ export async function runIdleBehavior(emergentIdentity, db, realtimeEmit) {
     }
 
     case "dream": {
-      if (!_canCallBrain(emergentIdentity.id)) return { action: "throttled" };
+      const admit = _admitBrainCall(emergentIdentity.id, db);
+      if (admit !== "ok") return { action: "throttled", throttledBy: admit };
       try {
-        _markBrainCall(emergentIdentity.id);
         const result = await infer({
           role: "subconscious",
           intent: TASK_PROMPTS.emergentDream({ name: emergentIdentity.given_name }),
@@ -182,6 +260,18 @@ export async function runIdleBehavior(emergentIdentity, db, realtimeEmit) {
         }, db);
         const dreamText = result?.finalText?.trim()?.slice(0, 250);
         if (!dreamText) return { action, skipped: result?.error ? "brain_error" : "empty_output" };
+        // IDLE-03: dreams pass the novelty gate too. They carry no DTU
+        // link by design — an accepted dream persists to the feed but
+        // is never promotable.
+        const assessment = assessCreation({
+          kind: "dream",
+          text: dreamText,
+          emergentId: emergentIdentity.id,
+          db,
+        });
+        if (assessment.status === "rejected") {
+          return { action, skipped: "quality:" + assessment.reasons.join(",") };
+        }
         emitFeedEvent({
           type: "dream",
           emergentId: emergentIdentity.id,
@@ -197,9 +287,9 @@ export async function runIdleBehavior(emergentIdentity, db, realtimeEmit) {
     case "communicate": {
       // Don't communicate too often
       if (recentCommunicationCount(emergentIdentity.id, 60 * 60 * 1000, db) >= 3) {
+        recordIdleOutcome(db, emergentIdentity.id, "deterministic");
         return { action: "browse_lens" }; // fall back
       }
-      if (!_canCallBrain(emergentIdentity.id)) return { action: "throttled" };
 
       const candidates = findOverlappingEmergents(emergentIdentity, db, 5);
       if (candidates.length === 0) return { action };
@@ -214,8 +304,12 @@ export async function runIdleBehavior(emergentIdentity, db, realtimeEmit) {
       const pre = wouldAdmitCreation({ kind: "communication", fromId: emergentIdentity.id, toId: targetIdentity.id });
       if (!pre.allow) return { action, skipped: `governor:${pre.reason}` };
 
+      // IDLE-01: admission (cooldown + daily budget) is spent only here,
+      // once the call is certain to be attempted.
+      const admit = _admitBrainCall(emergentIdentity.id, db);
+      if (admit !== "ok") return { action: "throttled", throttledBy: admit };
+
       try {
-        _markBrainCall(emergentIdentity.id);
         const result = await infer({
           role: "subconscious",
           intent: TASK_PROMPTS.emergentIdleMessage({ fromName: emergentIdentity.given_name, toName: targetIdentity.given_name }),

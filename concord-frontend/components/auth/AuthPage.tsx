@@ -15,13 +15,20 @@ interface AuthPageProps {
   redirectTo?: string;
   /** Optional callback on successful auth */
   onAuthSuccess?: (user: { id: string; username: string; email: string }) => void;
+  /**
+   * GB-1536: embedded mode renders just the form card (no full-page
+   * chrome) for the GuestAuthModal, which supplies the dialog frame,
+   * and starts in the given mode.
+   */
+  embedded?: boolean;
+  initialMode?: AuthMode;
 }
 
-export function AuthPage({ redirectTo: rawRedirectTo = '/', onAuthSuccess }: AuthPageProps) {
+export function AuthPage({ redirectTo: rawRedirectTo = '/', onAuthSuccess, embedded = false, initialMode = 'signin' }: AuthPageProps) {
   // Validate redirect is a safe relative path to prevent open redirect attacks
   const redirectTo = rawRedirectTo.startsWith('/') && !rawRedirectTo.startsWith('//') ? rawRedirectTo : '/';
   const { user, isLoading: isCheckingAuth, isAuthenticated } = useAuth();
-  const [mode, setMode] = useState<AuthMode>('signin');
+  const [mode, setMode] = useState<AuthMode>(initialMode);
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -88,34 +95,25 @@ export function AuthPage({ redirectTo: rawRedirectTo = '/', onAuthSuccess }: Aut
         return;
       }
 
-      // Success. If this is a signup (register endpoint), or the user
-      // hasn't completed onboarding (no region/nation/primary lens),
-      // route them through the onboarding flow before anything else.
-      // Sign-in users who already have all three just go to the
-      // requested destination. New signups hit the brain-mode choice
-      // (Private vs High Power) FIRST, before universe-seeding, since
-      // it governs whether anything after it can ever touch a cloud
-      // LLM provider.
-      if (mode === 'signup') {
-        window.location.href = '/onboarding/brain-mode';
+      // FIX-settings-005: sign-in with two-factor on returns a
+      // challenge instead of a session. Hand off to the second-factor
+      // step, carrying this surface's destination.
+      if (mode === 'signin' && data.twoFactorRequired && data.challengeId) {
+        window.location.href = `/login/2fa?challenge=${encodeURIComponent(data.challengeId)}&from=${encodeURIComponent(redirectTo)}`;
         return;
       }
-      try {
-        // Probe /me to find out whether they need onboarding. If the
-        // endpoint is unavailable for any reason we fall through to
-        // the normal redirect so a broken /me doesn't block sign-in.
-        const meResp = await fetch(`${BASE_URL}/api/auth/me`, { credentials: 'include' });
-        if (meResp.ok) {
-          const me = await meResp.json();
-          if (me?.user?.needsOnboarding) {
-            window.location.href = '/onboarding';
-            return;
-          }
-        }
-      } catch {
-        /* non-fatal — fall through */
-      }
-      if (onAuthSuccess && data.user) {
+
+      // Success. GB-1536 as amended by founder ruling (2026-11-14):
+      // the universe picker and region screen are gone and NO frontend
+      // code routes on /api/auth/me's needsOnboarding flag anymore —
+      // but a NEW account routes once through the kept brain-mode
+      // screen carrying the return-to, and hard-lands on the return-to
+      // after the choice. LOGIN never routes through it: an existing
+      // account goes straight to the requested destination. Region and
+      // primary lens stay Settings concerns with safe defaults.
+      if (mode === 'signup') {
+        window.location.href = `/onboarding/brain-mode?from=${encodeURIComponent(redirectTo)}`;
+      } else if (onAuthSuccess && data.user) {
         onAuthSuccess(data.user);
       } else {
         window.location.href = redirectTo;
@@ -136,7 +134,7 @@ export function AuthPage({ redirectTo: rawRedirectTo = '/', onAuthSuccess }: Aut
   // Show loading while checking existing auth
   if (isCheckingAuth) {
     return (
-      <div className="min-h-screen bg-lattice-void flex items-center justify-center">
+      <div className={`${embedded ? 'py-16' : 'min-h-screen'} bg-lattice-void flex items-center justify-center`}>
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-8 h-8 text-neon-cyan animate-spin" />
           <p className="text-sm text-gray-400">Checking authentication...</p>
@@ -146,11 +144,11 @@ export function AuthPage({ redirectTo: rawRedirectTo = '/', onAuthSuccess }: Aut
   }
 
   return (
-    <div className="min-h-screen bg-lattice-void flex items-center justify-center px-4">
+    <div className={embedded ? 'px-4 py-6' : 'min-h-screen bg-lattice-void flex items-center justify-center px-4'}>
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-white mb-2">
+          <h1 id={embedded ? 'guest-auth-title' : undefined} className="text-2xl font-bold text-white mb-2">
             {mode === 'signin' ? 'Sign in to Concord' : 'Create your account'}
           </h1>
           <p className="text-sm text-gray-400">
@@ -183,6 +181,7 @@ export function AuthPage({ redirectTo: rawRedirectTo = '/', onAuthSuccess }: Aut
             labelPrefix={mode === 'signin' ? 'Sign in with' : 'Sign up with'}
             onError={handleOAuthError}
             className="mb-6"
+            returnTo={redirectTo}
           />
 
           {/* Divider */}

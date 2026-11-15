@@ -13,5 +13,6 @@ This directory contains Architecture Decision Records (ADRs) for the Concord Cog
 | [005](005-redis-optional-infrastructure.md) | Redis as Optional Infrastructure | Accepted | 2026-02-17 |
 | [006](006-modelcontextprotocolsdk.md) | Adopt @modelcontextprotocol/sdk for MCP Bridge | Accepted | 2026-03 |
 | [007](007-bundle-size-budget-via-size-limitpreset-app.md) | Bundle Size Budget Enforcement via size-limit | Accepted | 2026-03 |
+| [013](013-postprocessing.md) | `postprocessing` as a direct frontend dependency | Accepted | 2026-11-14 |
 
 > Note: `001-monolith-architecture.md` and `002-error-handling-strategy.md` are superseded duplicates of 001/002 above, kept for history.

@@ -14,8 +14,11 @@ import {
   BarChart3,
   MapPin,
   Flag,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 import { FreshnessIndicator } from '@/components/common/FreshnessIndicator';
+import { useAuth } from '@/hooks/useAuth';
 
 // Federation-tier scope filter. Matches server-side federation_tier
 // values plus a "marketplace" branch and "all" for unfiltered views.
@@ -64,6 +67,7 @@ function computeTimeFreshness(dateStr: string): number {
 
 function DTUCard({
   dtu,
+  currentUserId,
 }: {
   dtu: {
     id: string;
@@ -71,23 +75,51 @@ function DTUCard({
     scope?: string;
     tier?: string;
     tags?: string[];
+    creatorId?: string;
     createdAt?: string;
     updatedAt?: string;
   };
+  currentUserId?: string | null;
 }) {
   const queryClient = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editTags, setEditTags] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ['scope-dtus'] });
+    queryClient.invalidateQueries({ queryKey: ['scope-metrics'] });
+  };
 
   const promoteMutation = useMutation({
     mutationFn: (data: { dtuId: string; targetScope: string; reason?: string }) =>
       apiHelpers.scope.promote(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['scope-dtus'] });
-      queryClient.invalidateQueries({ queryKey: ['scope-metrics'] });
-    },
+    onSuccess: invalidate,
+  });
+
+  // Edit + delete (FIX-platform-001). Ownership is enforced by the
+  // server on PATCH/DELETE; the controls are hidden only when the row
+  // positively belongs to someone else, and a server refusal is shown
+  // inline rather than swallowed.
+  const errText = (e: unknown) =>
+    (e as { response?: { data?: { error?: string } } })?.response?.data?.error
+    || (e instanceof Error ? e.message : 'Action failed');
+  const updateMutation = useMutation({
+    mutationFn: (patch: { title: string; tags: string[] }) => apiHelpers.dtus.update(dtu.id, patch),
+    onSuccess: () => { setEditing(false); setActionError(null); invalidate(); },
+    onError: (e) => setActionError(errText(e)),
+  });
+  const deleteMutation = useMutation({
+    mutationFn: () => apiHelpers.dtus.delete(dtu.id),
+    onSuccess: invalidate,
+    onError: (e) => { setConfirmDelete(false); setActionError(errText(e)); },
   });
 
   const scope = dtu.scope || 'local';
   const canPromote = scope === 'local';
+  const canManage = !dtu.creatorId || (!!currentUserId && dtu.creatorId === currentUserId);
 
   return (
     <div className="bg-lattice-elevated border border-lattice-border rounded-lg p-4 hover:border-neon-blue/30 transition-colors">
@@ -125,28 +157,109 @@ function DTUCard({
             </div>
           )}
         </div>
-        {canPromote && (
-          <button
-            onClick={() =>
-              promoteMutation.mutate({
-                dtuId: dtu.id,
-                targetScope: 'marketplace',
-                reason: 'Manual promotion from scope controls',
-              })
-            }
-            disabled={promoteMutation.isPending}
-            className="p-1.5 rounded hover:bg-neon-purple/10 text-gray-400 hover:text-neon-purple transition-colors"
-            title="Promote to Marketplace"
-          >
-            <ArrowUpCircle className="w-4 h-4" />
-          </button>
-        )}
+        <div className="flex shrink-0 items-start gap-1">
+          {canPromote && (
+            <button
+              onClick={() =>
+                promoteMutation.mutate({
+                  dtuId: dtu.id,
+                  targetScope: 'marketplace',
+                  reason: 'Manual promotion from scope controls',
+                })
+              }
+              disabled={promoteMutation.isPending}
+              className="p-1.5 rounded hover:bg-neon-purple/10 text-gray-400 hover:text-neon-purple transition-colors"
+              title="Promote to Marketplace"
+            >
+              <ArrowUpCircle className="w-4 h-4" />
+            </button>
+          )}
+          {canManage && !editing && (
+            <button
+              onClick={() => { setEditTitle(dtu.title); setEditTags((dtu.tags || []).join(', ')); setActionError(null); setEditing(true); }}
+              className="p-1.5 rounded hover:bg-cyan-500/10 text-gray-400 hover:text-cyan-300 transition-colors"
+              title="Edit DTU"
+              aria-label={`Edit ${dtu.title}`}
+            >
+              <Pencil className="w-4 h-4" />
+            </button>
+          )}
+          {canManage && !confirmDelete && (
+            <button
+              onClick={() => { setConfirmDelete(true); setActionError(null); }}
+              className="p-1.5 rounded hover:bg-rose-500/10 text-gray-400 hover:text-rose-300 transition-colors"
+              title="Delete DTU"
+              aria-label={`Delete ${dtu.title}`}
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+          {canManage && confirmDelete && (
+            <span className="flex items-center gap-1">
+              <button
+                onClick={() => deleteMutation.mutate()}
+                disabled={deleteMutation.isPending}
+                className="px-2 py-1 rounded bg-rose-500/15 text-rose-300 text-xs disabled:opacity-50"
+              >
+                Confirm delete
+              </button>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                className="px-2 py-1 rounded bg-zinc-800 text-zinc-300 text-xs"
+              >
+                Cancel
+              </button>
+            </span>
+          )}
+        </div>
       </div>
+      {editing && (
+        <div className="mt-3 space-y-2">
+          <input
+            aria-label="DTU title"
+            value={editTitle}
+            onChange={(e) => setEditTitle(e.target.value)}
+            className="w-full rounded border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-white"
+          />
+          <input
+            aria-label="DTU tags"
+            value={editTags}
+            onChange={(e) => setEditTags(e.target.value)}
+            placeholder="Tags, comma-separated"
+            className="w-full rounded border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-white"
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                if (!editTitle.trim()) { setActionError('Title cannot be empty.'); return; }
+                updateMutation.mutate({
+                  title: editTitle.trim(),
+                  tags: editTags.split(',').map((t) => t.trim()).filter(Boolean),
+                });
+              }}
+              disabled={updateMutation.isPending}
+              className="px-3 py-1 rounded bg-cyan-500/15 text-cyan-300 text-xs disabled:opacity-50"
+            >
+              Save changes
+            </button>
+            <button
+              onClick={() => setEditing(false)}
+              className="px-3 py-1 rounded bg-zinc-800 text-zinc-300 text-xs"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+      {actionError && (
+        <p role="alert" className="mt-2 text-xs text-rose-300">{actionError}</p>
+      )}
     </div>
   );
 }
 
 function ScopeControls() {
+  const { user } = useAuth();
   const [activeScope, setActiveScope] = useState<ScopeFilter>('all');
   const [page, setPage] = useState(0);
   const selectScope = (scope: ScopeFilter) => {
@@ -179,6 +292,7 @@ function ScopeControls() {
     scope?: string;
     tier?: string;
     tags?: string[];
+    creatorId?: string;
     createdAt?: string;
   }> = Array.isArray(listBody?.dtus) ? listBody.dtus : Array.isArray(listBody) ? listBody : [];
   const reportedTotal = Number(listBody?.total);
@@ -314,7 +428,7 @@ function ScopeControls() {
             ))}
           </div>
         ) : Array.isArray(dtus) && dtus.length > 0 ? (
-          dtus.map((dtu) => <DTUCard key={dtu.id} dtu={dtu} />)
+          dtus.map((dtu) => <DTUCard key={dtu.id} dtu={dtu} currentUserId={user?.id} />)
         ) : (
           <div className="text-center py-12 text-gray-400 text-sm">
             No DTUs in {activeScope === 'all' ? 'the lattice' : `${activeScope} scope`}

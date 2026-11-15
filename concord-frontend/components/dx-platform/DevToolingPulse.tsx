@@ -1,5 +1,6 @@
 'use client';
 
+import { dxErrorWords } from './errorWords';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { lensRun } from '@/lib/api/client';
@@ -35,7 +36,7 @@ export function DevToolingPulse() {
     queryKey: ['gh-dx-tooling', topic],
     queryFn: async () => {
       const res = await lensRun('repos', 'github-topic-search', { topic, perPage: 25 });
-      if (!res.data?.ok) throw new Error(res.data?.reason || res.data?.error || 'github_unavailable');
+      if (!res.data?.ok) throw new Error(dxErrorWords(res.data?.reason || res.data?.error) || 'GitHub is unavailable right now — try again in a moment.');
       const out = res.data.result as { items?: Repo[]; stale?: boolean; fetchedAt?: number } | null;
       return { items: out?.items || [], stale: !!out?.stale, fetchedAt: out?.fetchedAt ?? null };
     },

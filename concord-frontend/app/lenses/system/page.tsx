@@ -16,6 +16,12 @@ import {
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { AdminRequiredState } from '@/components/common/EmptyState';
+import { useAuth } from '@/hooks/useAuth';
+import {
+  canViewPlatformInternalLens,
+  PLATFORM_INTERNAL_LENS_ROLES,
+} from '@/components/lens/platform-internal-access';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
@@ -47,7 +53,41 @@ type SysView =
   | 'trend' | 'heartbeats' | 'gaps' | 'coverage' | 'drift' | 'analytics' | 'plugins'
   | 'substrate' | 'health';
 
+/**
+ * The system domain is an operator surface
+ * (server/lib/platform-internal-lens-gate.js): every system.* action
+ * 403s for a non-operator, so a signed-in member used to get sixteen
+ * tabs that each failed with "Insufficient permissions". Gate the lens
+ * on the viewer's role before the inner page — and its cartograph /
+ * telemetry hooks — mounts at all, the way the Admin lens gates on its
+ * own role set. The inner page is a separate component so none of its
+ * data hooks run for a gated viewer.
+ */
 export default function SystemLensPage() {
+  const { user, isLoading: authLoading } = useAuth();
+
+  if (authLoading) {
+    return (
+      <LensShell lensId="system" asMain={false}>
+        <div className="flex items-center justify-center h-full p-8">
+          <p role="status" className="text-sm text-zinc-400">Checking access…</p>
+        </div>
+      </LensShell>
+    );
+  }
+
+  if (!canViewPlatformInternalLens(user)) {
+    return (
+      <LensShell lensId="system" asMain={false}>
+        <AdminRequiredState roles={[...PLATFORM_INTERNAL_LENS_ROLES]} />
+      </LensShell>
+    );
+  }
+
+  return <SystemLensInner />;
+}
+
+function SystemLensInner() {
   useLensNav('system');
   useLensIdentity('system');
   const [active, setActive] = useState<SysView>('overview');

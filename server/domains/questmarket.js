@@ -472,6 +472,12 @@ export default function registerQuestmarketActions(registerLensAction) {
     }
     if (title.length > 140) return { ok: false, error: "title too long" };
     const kind = params.kind === "bounty" ? "bounty" : "quest";
+    if (params.reward !== undefined && params.reward !== null && String(params.reward).trim() !== "") {
+      const typed = Number(params.reward);
+      if (!Number.isFinite(typed) || typed < 0) {
+        return { ok: false, error: "reward must be a number that is 0 or more" };
+      }
+    }
     const reward = Math.max(0, Math.round(Number(params.reward) || 0));
     const difficulty = ["easy", "medium", "hard", "legendary"].includes(params.difficulty)
       ? params.difficulty : "medium";
@@ -531,6 +537,25 @@ export default function registerQuestmarketActions(registerLensAction) {
     }
     qmSave();
     return { ok: true, result: { quest } };
+  });
+
+  // Title and description only. Reward and escrow stay with the original post.
+  registerLensAction("questmarket", "updateQuest", (ctx, _artifact, params = {}) => {
+    const s = qmState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = qmActor(ctx);
+    const quest = s.quests.get(String(params.questId || ""));
+    if (!quest) return { ok: false, error: "quest not found" };
+    if (quest.poster !== userId) return { ok: false, error: "only the poster can edit" };
+    if (quest.status === "resolved" || quest.status === "cancelled") return { ok: false, error: "quest is closed" };
+    if (params.title != null) {
+      const title = String(params.title).trim().slice(0, 160);
+      if (!title) return { ok: false, error: "title required" };
+      quest.title = title;
+    }
+    if (params.description != null) quest.description = String(params.description).slice(0, 2000);
+    qmSave();
+    return { ok: true, result: { questId: quest.id, title: quest.title, description: quest.description, reward: quest.reward } };
   });
 
   // ── Discovery + filtering ──

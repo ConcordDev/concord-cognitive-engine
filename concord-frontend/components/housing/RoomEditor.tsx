@@ -13,7 +13,30 @@ interface RoomEditorProps {
 }
 
 export function RoomEditor({ room, onLockChange, onPlace, onRemove, busyKey }: RoomEditorProps) {
-  const [newItem, setNewItem] = useState({ itemId: '', x: 0, y: 0, z: 0, rot: 0 });
+  // The coordinate fields hold what was TYPED (strings), parsed only at
+  // submit. Binding them to Number state coerced every keystroke —
+  // typing '-5' ate the minus and stored 5, and a fast Place could send
+  // the coerced 0,0 instead of the values on screen.
+  const [newItem, setNewItem] = useState({ itemId: '', x: '0', y: '0', z: '0', rot: '0' });
+  const [placeError, setPlaceError] = useState('');
+
+  const handlePlace = () => {
+    const x = Number(newItem.x);
+    const z = Number(newItem.z);
+    const rot = Number(newItem.rot);
+    if (newItem.x.trim() === '' || newItem.z.trim() === '' || newItem.rot.trim() === '' ||
+      !Number.isFinite(x) || !Number.isFinite(z) || !Number.isFinite(rot)) {
+      setPlaceError('Coordinates need to be numbers — check x, z and rotation.');
+      return;
+    }
+    if (x < 0 || z < 0 || rot < 0) {
+      setPlaceError('Coordinates can\'t be negative — use 0 or more.');
+      return;
+    }
+    setPlaceError('');
+    onPlace({ itemId: newItem.itemId, x, y: 0, z, rot });
+    setNewItem({ itemId: '', x: '0', y: '0', z: '0', rot: '0' });
+  };
 
   return (
     <div className="rounded border border-emerald-500/20 bg-zinc-900/50 p-2">
@@ -44,20 +67,23 @@ export function RoomEditor({ room, onLockChange, onPlace, onRemove, busyKey }: R
       </div>
 
       <form
-        onSubmit={(e) => { e.preventDefault(); if (newItem.itemId) { onPlace(newItem); setNewItem({ itemId: '', x: 0, y: 0, z: 0, rot: 0 }); } }}
+        onSubmit={(e) => { e.preventDefault(); if (newItem.itemId) handlePlace(); }}
         className="mt-2 grid grid-cols-6 gap-1 text-[10px]">
         <input placeholder="itemId" value={newItem.itemId} onChange={(e) => setNewItem({ ...newItem, itemId: e.target.value })}
           className="col-span-2 rounded border border-slate-700 bg-slate-900/60 px-1 py-0.5 text-slate-100" />
-        <input type="number" step="0.5" placeholder="x" value={newItem.x} onChange={(e) => setNewItem({ ...newItem, x: Number(e.target.value) })}
+        <input type="number" step="0.5" min={0} placeholder="x" value={newItem.x} onChange={(e) => setNewItem({ ...newItem, x: e.target.value })}
           className="rounded border border-slate-700 bg-slate-900/60 px-1 py-0.5 text-slate-100" />
-        <input type="number" step="0.5" placeholder="z" value={newItem.z} onChange={(e) => setNewItem({ ...newItem, z: Number(e.target.value) })}
+        <input type="number" step="0.5" min={0} placeholder="z" value={newItem.z} onChange={(e) => setNewItem({ ...newItem, z: e.target.value })}
           className="rounded border border-slate-700 bg-slate-900/60 px-1 py-0.5 text-slate-100" />
-        <input type="number" placeholder="rot" value={newItem.rot} onChange={(e) => setNewItem({ ...newItem, rot: Number(e.target.value) })}
+        <input type="number" min={0} placeholder="rot" value={newItem.rot} onChange={(e) => setNewItem({ ...newItem, rot: e.target.value })}
           className="rounded border border-slate-700 bg-slate-900/60 px-1 py-0.5 text-slate-100" />
         <button type="submit" className="rounded bg-emerald-500/20 px-1 py-0.5 text-emerald-100 hover:bg-emerald-500/30">
           <Plus className="inline h-3 w-3" /> place
         </button>
       </form>
+      {placeError && (
+        <p role="alert" className="mt-1 text-[10px] text-rose-300">{placeError}</p>
+      )}
     </div>
   );
 }

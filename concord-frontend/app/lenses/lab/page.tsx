@@ -21,6 +21,7 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 export default function LabLensPage() {
   useLensNav('lab');
@@ -191,6 +192,15 @@ export default function LabLensPage() {
               Clear
             </button>
           </div>
+          {/* FIX-lab-004: Run gave no compute disclosure. The truth for
+              this sandbox: Run only RECORDS the experiment (code +
+              organ) to the user's lab data — no code executes, so the
+              label says exactly that instead of implying a compute
+              backend. */}
+          <p className="text-[11px] text-gray-500" data-testid="lab-compute-disclosure">
+            Compute: none. Run records this experiment (code + selected organ) to your lab
+            notebook — code is not executed, no GPU or paid compute is used, and there is no cost.
+          </p>
         </div>
 
         {/* Organ Status */}
@@ -206,7 +216,7 @@ export default function LabLensPage() {
                 className={`lens-card cursor-pointer ${
                   selectedOrgan === (organ.name as string) ? 'border-neon-purple' : ''
                 }`}
-                onClick={() => setSelectedOrgan(organ.name as string)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                onClick={() => setSelectedOrgan(organ.name as string)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-sm">{String(organ.name)}</span>
                   <span
@@ -362,9 +372,25 @@ function RealityExplorerSection({ handleAction, isRunning, experimentItems, acti
     setLoading(true);
     const constraintObj: Record<string, { min: number; max: number }> = {};
     for (const c of constraints) {
-      if (c.key.trim() && c.min && c.max) {
-        constraintObj[c.key.trim()] = { min: parseFloat(c.min), max: parseFloat(c.max) };
+      if (!c.key.trim()) continue;
+      // FIX-lab-003: a named constraint was silently dropped when one
+      // bound was blank, and any numbers at all were sent — NaN
+      // poisoned the range and min >= max made the explorer report
+      // 'adjacent realities' for a range that cannot vary. Refuse in
+      // words, naming the parameter.
+      const key = c.key.trim();
+      const min = parseFloat(c.min), max = parseFloat(c.max);
+      if (c.min.trim() === '' || c.max.trim() === '' || !Number.isFinite(min) || !Number.isFinite(max)) {
+        useUIStore.getState().addToast({ type: 'error', message: `Constraint "${key}" needs a numeric min and max.` });
+        setLoading(false);
+        return;
       }
+      if (min >= max) {
+        useUIStore.getState().addToast({ type: 'error', message: `Constraint "${key}": min must be less than max.` });
+        setLoading(false);
+        return;
+      }
+      constraintObj[key] = { min, max };
     }
     try {
       const resp = await apiHelpers.explore.run(domain, constraintObj);

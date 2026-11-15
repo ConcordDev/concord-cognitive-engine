@@ -239,29 +239,29 @@ export function ProductCatalogPanel() {
             </button>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <input type="text" value={draft.sku} disabled={Boolean(editingSku)}
+            <input id="retail-sku-3" name="sku-3" aria-label="SKU" type="text" value={draft.sku} disabled={Boolean(editingSku)}
               onChange={(e) => setDraft({ ...draft, sku: e.target.value })}
               placeholder="SKU" maxLength={32}
               className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono disabled:opacity-50" />
-            <input type="text" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+            <input id="retail-product-name" name="product-name" aria-label="Product name" type="text" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })}
               placeholder="Product name"
               className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100" />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-            <input type="number" value={draft.price} step="0.01" onChange={(e) => setDraft({ ...draft, price: e.target.value })}
+            <input id="retail-price" name="price" aria-label="Price" type="number" value={draft.price} step="0.01" onChange={(e) => setDraft({ ...draft, price: e.target.value })}
               placeholder="Price" className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono" />
-            <input type="number" value={draft.stock} onChange={(e) => setDraft({ ...draft, stock: e.target.value })}
+            <input id="retail-stock" name="stock" aria-label="Stock" type="number" value={draft.stock} onChange={(e) => setDraft({ ...draft, stock: e.target.value })}
               placeholder="Stock" className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono" />
-            <input type="text" value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value })}
+            <input id="retail-category" name="category" aria-label="Category" type="text" value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value })}
               placeholder="Category" className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100" />
           </div>
           <p className="text-[10px] uppercase text-gray-500 pt-1">Sourcing &amp; forecasting</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-            <input type="text" value={draft.supplier} onChange={(e) => setDraft({ ...draft, supplier: e.target.value })}
+            <input id="retail-supplier" name="supplier" aria-label="Supplier" type="text" value={draft.supplier} onChange={(e) => setDraft({ ...draft, supplier: e.target.value })}
               placeholder="Supplier" className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100" />
-            <input type="number" value={draft.leadTimeDays} onChange={(e) => setDraft({ ...draft, leadTimeDays: e.target.value })}
+            <input id="retail-lead-time-days" name="lead-time-days" aria-label="Lead time (days)" type="number" value={draft.leadTimeDays} onChange={(e) => setDraft({ ...draft, leadTimeDays: e.target.value })}
               placeholder="Lead time (days)" className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono" />
-            <input type="number" value={draft.dailySalesRate} step="0.01" onChange={(e) => setDraft({ ...draft, dailySalesRate: e.target.value })}
+            <input id="retail-daily-sales-rate" name="daily-sales-rate" aria-label="Daily sales rate" type="number" value={draft.dailySalesRate} step="0.01" onChange={(e) => setDraft({ ...draft, dailySalesRate: e.target.value })}
               placeholder="Daily sales rate" className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono" />
           </div>
           {saveError && <p role="alert" className="text-[11px] text-rose-400">{saveError}</p>}
@@ -362,15 +362,15 @@ export function ProductCatalogPanel() {
                       </ul>
                     )}
                     <div className="grid grid-cols-6 gap-1">
-                      <input type="text" value={variantDraft.sku} onChange={(e) => setVariantDraft({ ...variantDraft, sku: e.target.value })}
+                      <input id="retail-variant-sku" name="variant-sku" aria-label="Variant SKU" type="text" value={variantDraft.sku} onChange={(e) => setVariantDraft({ ...variantDraft, sku: e.target.value })}
                         placeholder="Variant SKU" className="col-span-2 px-1.5 py-1 text-[10px] bg-black/40 border border-white/10 rounded text-gray-100 font-mono" />
-                      <input type="text" value={variantDraft.size} onChange={(e) => setVariantDraft({ ...variantDraft, size: e.target.value })}
+                      <input id="retail-size" name="size" aria-label="Size" type="text" value={variantDraft.size} onChange={(e) => setVariantDraft({ ...variantDraft, size: e.target.value })}
                         placeholder="Size" className="px-1.5 py-1 text-[10px] bg-black/40 border border-white/10 rounded text-gray-100" />
-                      <input type="text" value={variantDraft.color} onChange={(e) => setVariantDraft({ ...variantDraft, color: e.target.value })}
+                      <input id="retail-color" name="color" aria-label="Color" type="text" value={variantDraft.color} onChange={(e) => setVariantDraft({ ...variantDraft, color: e.target.value })}
                         placeholder="Color" className="px-1.5 py-1 text-[10px] bg-black/40 border border-white/10 rounded text-gray-100" />
-                      <input type="number" value={variantDraft.stock} onChange={(e) => setVariantDraft({ ...variantDraft, stock: e.target.value })}
+                      <input id="retail-stock-2" name="stock-2" aria-label="Stock" type="number" value={variantDraft.stock} onChange={(e) => setVariantDraft({ ...variantDraft, stock: e.target.value })}
                         placeholder="Stock" className="px-1.5 py-1 text-[10px] bg-black/40 border border-white/10 rounded text-gray-100 font-mono" />
-                      <input type="number" value={variantDraft.priceDelta} onChange={(e) => setVariantDraft({ ...variantDraft, priceDelta: e.target.value })}
+                      <input id="retail-price-2" name="price-2" aria-label="Δ price" type="number" value={variantDraft.priceDelta} onChange={(e) => setVariantDraft({ ...variantDraft, priceDelta: e.target.value })}
                         placeholder="Δ price" className="px-1.5 py-1 text-[10px] bg-black/40 border border-white/10 rounded text-gray-100 font-mono" />
                     </div>
                     {variantError && <p role="alert" className="text-[11px] text-rose-400 mt-1">{variantError}</p>}

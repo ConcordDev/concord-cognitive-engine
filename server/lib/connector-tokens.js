@@ -106,7 +106,10 @@ function tokenKey() {
   return crypto.createHash("sha256").update(String(raw)).digest(); // 32 bytes
 }
 
-function encryptSecret(plain) {
+// Exported for server/lib/connector-api-keys.js (FIX-integrations-003):
+// ONE encryption scheme platform-wide — API keys at rest use the same
+// AES-256-GCM enc:v1 format and key derivation as OAuth tokens.
+export function encryptSecret(plain) {
   if (plain == null) return null;
   const key = tokenKey();
   if (!key) {
@@ -123,7 +126,7 @@ function encryptSecret(plain) {
   return `${ENC_PREFIX}${iv.toString("hex")}:${tag.toString("hex")}:${ct.toString("hex")}`;
 }
 
-function decryptSecret(stored) {
+export function decryptSecret(stored) {
   if (stored == null) return null;
   const s = String(stored);
   if (!s.startsWith(ENC_PREFIX)) return s; // back-compat: legacy plaintext row

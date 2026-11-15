@@ -69,7 +69,7 @@ export function TargetsTracker() {
           <input type="number" value={form.targetYear} onChange={e => setForm({ ...form, targetYear: e.target.value })} placeholder="Target year" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <input type="number" value={form.baseCo2eTonnes} onChange={e => setForm({ ...form, baseCo2eTonnes: e.target.value })} placeholder="Base tCO₂e" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <input type="number" value={form.reductionPct} onChange={e => setForm({ ...form, reductionPct: e.target.value })} placeholder="% reduction" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <select value={form.framework} onChange={e => setForm({ ...form, framework: e.target.value })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+          <select aria-label="Framework" value={form.framework} onChange={e => setForm({ ...form, framework: e.target.value })} className="min-h-11 col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
             <option value="sbti_1.5c">SBTi 1.5°C aligned</option>
             <option value="sbti_well_below_2c">SBTi well-below 2°C</option>
             <option value="net_zero_2050">Net zero by 2050</option>

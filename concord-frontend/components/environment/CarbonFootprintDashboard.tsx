@@ -91,10 +91,10 @@ export function CarbonFootprintDashboard() {
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">
           Carbon footprint dashboard
         </span>
-        <select
+        <select aria-label="Year"
           value={year}
           onChange={(e) => setYear(e.target.value)}
-          className="ml-auto text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white"
+          className="min-h-11 ml-auto text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white"
         >
           {yearOptions.map((y) => (
             <option key={y} value={y}>

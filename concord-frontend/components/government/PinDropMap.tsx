@@ -51,8 +51,11 @@ export function PinDropMap({ existing, pin, onPick }: PinDropMapProps) {
     });
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
     map.on('click', (e) => onPickRef.current(e.lngLat.lat, e.lngLat.lng));
+    map.on('load', () => map.resize());
+    const observer = new ResizeObserver(() => map.resize());
+    observer.observe(containerRef.current);
     mapRef.current = map;
-    return () => { map.remove(); mapRef.current = null; };
+    return () => { observer.disconnect(); map.remove(); mapRef.current = null; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -94,8 +97,16 @@ export function PinDropMap({ existing, pin, onPick }: PinDropMapProps) {
   }, [pin]);
 
   return (
-    <div className="rounded-lg overflow-hidden border border-white/10" style={{ height: 320 }}>
-      <div ref={containerRef} style={{ height: '100%', width: '100%' }} className="z-0" />
+    <div className="gov-pin-map rounded-lg overflow-hidden border border-white/10" style={{ height: 320, minHeight: 240 }}>
+      <style>{`
+        @media (max-width: 767px) and (pointer: coarse) {
+          .gov-pin-map .maplibregl-ctrl-group button {
+            width: 44px;
+            height: 44px;
+          }
+        }
+      `}</style>
+      <div ref={containerRef} style={{ height: '100%', width: '100%', minHeight: 240 }} className="z-0" />
     </div>
   );
 }

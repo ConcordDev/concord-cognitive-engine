@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { Heart, Plus, Trash2, Loader2, Stethoscope, Syringe, ChevronRight } from 'lucide-react';
 import {
   VetPatient,
@@ -14,6 +15,7 @@ import {
 
 export function PatientsPanel({ onChanged }: { onChanged?: () => void }) {
   const [patients, setPatients] = useState<VetPatient[]>([]);
+  const [patientQuery, setPatientQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -89,6 +91,11 @@ export function PatientsPanel({ onChanged }: { onChanged?: () => void }) {
     onChanged?.();
   };
 
+  const patientNeedle = patientQuery.trim().toLowerCase();
+  const visiblePatients = patients.filter((p) =>
+    !patientNeedle
+    || `${p.name} ${p.breed} ${p.species} ${p.owner}`.toLowerCase().includes(patientNeedle));
+
   return (
     <div className="space-y-4">
       <form
@@ -157,6 +164,17 @@ export function PatientsPanel({ onChanged }: { onChanged?: () => void }) {
         </div>
       )}
 
+      {!loading && patients.length > 0 && (
+        <input
+          type="text"
+          value={patientQuery}
+          onChange={(e) => setPatientQuery(e.target.value)}
+          placeholder="Search patients by name, breed, species, or owner…"
+          aria-label="Search patients"
+          className="w-full min-h-[40px] rounded border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs text-zinc-100"
+        />
+      )}
+
       {loading ? (
         <div className="flex items-center gap-2 text-xs text-zinc-400">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading patients…
@@ -166,9 +184,13 @@ export function PatientsPanel({ onChanged }: { onChanged?: () => void }) {
           <Heart className="mx-auto mb-2 h-8 w-8 opacity-30" />
           No patients registered yet.
         </div>
+      ) : visiblePatients.length === 0 ? (
+        <div className="rounded border border-dashed border-zinc-800 py-8 text-center text-sm text-zinc-400">
+          No patients match your search.
+        </div>
       ) : (
         <div className="space-y-2">
-          {patients.map((p) => (
+          {visiblePatients.map((p) => (
             <div key={p.id} className="rounded-lg border border-zinc-800 bg-zinc-900">
               <div className="flex items-center justify-between p-3">
                 <button
@@ -193,13 +215,12 @@ export function PatientsPanel({ onChanged }: { onChanged?: () => void }) {
                   <span className="flex items-center gap-1 text-xs text-zinc-400">
                     <Syringe className="h-3.5 w-3.5" /> {p.vaccinationCount ?? p.vaccinations.length}
                   </span>
-                  <button
-                    onClick={() => removePatient(p.id)}
-                    aria-label="Delete patient"
+                  <StickyDeleteConfirm
+                    onConfirm={() => removePatient(p.id)}
+                    armLabel={<Trash2 className="h-4 w-4" />}
+                    armAriaLabel="Delete patient"
                     className="rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-red-400"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                  />
                 </div>
               </div>
               {expanded === p.id && (

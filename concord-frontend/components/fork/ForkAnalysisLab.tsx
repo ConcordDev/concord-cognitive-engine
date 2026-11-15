@@ -161,6 +161,9 @@ export function ForkAnalysisLab() {
             </div>
             <span className="text-xs font-semibold text-zinc-200">{divergence.divergence.score}% · {divergence.divergence.level}</span>
           </div>
+          <p className="text-[11px] text-zinc-400">
+            Divergence is how much of the pasted file changed. A short file rewritten end to end reads 100% severe even when the merge is small.
+          </p>
         </div>
       )}
 
@@ -174,6 +177,7 @@ export function ForkAnalysisLab() {
                 <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2 text-center">
                   <p className="text-lg font-bold text-cyan-300">{merge.complexity?.score}/100</p>
                   <p className="text-[9px] uppercase tracking-wide text-zinc-400">complexity</p>
+                  <p className="mt-1 text-[10px] text-zinc-500">Overlapping edits, not the same scale as divergence %.</p>
                 </div>
                 <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2 text-center">
                   <p className="text-lg font-bold capitalize text-amber-300">{merge.complexity?.level}</p>

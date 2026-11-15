@@ -80,6 +80,9 @@ const SQL_INTERP = /db\.(prepare|exec)\(`[^`]*\$\{/g;
 // Every entry below was individually read and found to interpolate only
 // identifiers from literals, constants, allowlists or regex-guarded input.
 const REVIEWED = {
+  // lib/cockpit/run-store.js (2) — updateRun/updateStep interpolate `sets.join(", ")`, fragments built only from the
+  // fixed RUN_COLS/STEP_COLS column maps and literals; every value is bound '?'.
+  "lib/cockpit/run-store.js": 2,
   // embeddings.js (4) — the only identifier is the embedding table name:
   // PRIMARY_TABLE, or PRIMARY_TABLE + "__" + a model slug reduced to
   // [a-z0-9_] by tableForModel(), or a name read from sqlite_master filtered to

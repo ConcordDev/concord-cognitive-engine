@@ -40,6 +40,7 @@ export function LeaderboardPanel({ currentUserId, onClose }: LeaderboardPanelPro
   }, [category]);
 
   const formatScore = (score: number, cat: LeaderboardCategory) => {
+    if (score == null || !Number.isFinite(score)) return '—';
     if (cat === 'sparks') return `${score.toLocaleString()} ⚡`;
     if (cat === 'skills') return `Lvl ${score.toFixed(1)}`;
     return score.toLocaleString();

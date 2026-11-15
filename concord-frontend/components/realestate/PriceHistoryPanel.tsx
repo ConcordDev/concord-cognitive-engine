@@ -26,6 +26,16 @@ interface HistoryResult {
 
 const KIND_OPTIONS = ['price_change', 'listed', 'relisted', 'pending', 'sold', 'estimate'] as const;
 
+function fmtMoney(v: number): string {
+  if (!Number.isFinite(v)) return '—';
+  const sign = v < 0 ? '-' : '';
+  const abs = Math.abs(v);
+  if (abs >= 1_000_000_000) return `${sign}$${(abs / 1_000_000_000).toFixed(2)}B`;
+  if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(2)}M`;
+  if (abs >= 1_000) return `${sign}$${(abs / 1_000).toFixed(0)}K`;
+  return `${sign}$${Math.round(abs)}`;
+}
+
 export function PriceHistoryPanel({ listingId }: { listingId?: string }) {
   const [result, setResult] = useState<HistoryResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -120,7 +130,7 @@ export function PriceHistoryPanel({ listingId }: { listingId?: string }) {
             </div>
             <div className="rounded-md border border-white/10 bg-white/[0.03] p-2">
               <div className="text-[10px] uppercase tracking-wider text-gray-400">Low / High</div>
-              <div className="text-sm font-mono tabular-nums text-white">${(result.lowestPrice / 1000).toFixed(0)}K–${(result.highestPrice / 1000).toFixed(0)}K</div>
+              <div className="text-sm font-mono tabular-nums text-white">{fmtMoney(result.lowestPrice)}–{fmtMoney(result.highestPrice)}</div>
             </div>
             <div className="rounded-md border border-white/10 bg-white/[0.03] p-2">
               <div className="text-[10px] uppercase tracking-wider text-gray-400">$/sqft</div>

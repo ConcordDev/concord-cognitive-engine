@@ -190,11 +190,16 @@ describe('browse panel flows', () => {
 });
 
 describe('create episode flows', () => {
-  it('keeps Create disabled while untitled, then creates a titled one and resets the form', async () => {
+  it('FIX-podcast-001: Create stays enabled while untitled and explains itself on click, then creates a titled one', async () => {
     const onCreated = vi.fn();
     render(<CreateEpisodePanel onCreated={onCreated} />);
     await settle();
-    expect((byText(/Create Episode/) as HTMLButtonElement).disabled).toBe(true);
+    // Was: disabled while untitled with no message (the ticketed defect).
+    // Now the click reaches the handler's own guard and it speaks.
+    expect((byText(/Create Episode/) as HTMLButtonElement).disabled).toBe(false);
+    await click(byText(/Create Episode/));
+    expect(screen.getAllByText(/Episode title is required/).length).toBeGreaterThan(0);
+    expect(sent()).not.toContain('episode-add');
     fireEvent.change(screen.getByPlaceholderText('Episode title'), { target: { value: 'Ep Three' } });
     fireEvent.change(screen.getByPlaceholderText('Episode description...'), { target: { value: 'About things' } });
     fireEvent.change(screen.getByLabelText('Episode Number'), { target: { value: '7' } });

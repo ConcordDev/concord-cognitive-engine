@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
+import { signedLedgerAmount } from '@/lib/economy/signed-ledger';
 import { ArrowUpRight, ArrowDownRight, Repeat, Coins } from 'lucide-react';
 
 interface Transaction {
@@ -11,6 +12,8 @@ interface Transaction {
   description?: string;
   from?: string;
   to?: string;
+  from_user_id?: string | null;
+  to_user_id?: string | null;
   status?: string;
   timestamp?: string;
   created_at?: string;
@@ -24,14 +27,17 @@ function TransactionHistory({ userId, limit = 20 }: { userId?: string; limit?: n
     retry: false,
   });
 
-  const transactions: Transaction[] =
-    (data as { transactions?: Transaction[]; items?: Transaction[]; history?: Transaction[] })
-      ?.transactions ||
-    (data as { transactions?: Transaction[]; items?: Transaction[]; history?: Transaction[] })
-      ?.items ||
-    (data as { transactions?: Transaction[]; items?: Transaction[]; history?: Transaction[] })
-      ?.history ||
-    [];
+  const page = data as {
+    userId?: string;
+    transactions?: Transaction[];
+    items?: Transaction[];
+    history?: Transaction[];
+  } | undefined;
+  const viewerId = page?.userId || userId;
+  const transactions: Transaction[] = (page?.transactions || page?.items || page?.history || []).map((tx) => ({
+    ...tx,
+    amount: signedLedgerAmount(tx, viewerId),
+  }));
 
   function getIcon(type?: string) {
     switch (type) {

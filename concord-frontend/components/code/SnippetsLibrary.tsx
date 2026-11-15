@@ -111,7 +111,6 @@ export function SnippetsLibrary({ onInsert, currentLanguage, currentSelection }:
   function handleDeleteClick(id: string) {
     if (confirmingId === id) { void deleteSnippet(id); return; }
     setConfirmingId(id);
-    setTimeout(() => setConfirmingId(cur => (cur === id ? null : cur)), 4000);
   }
 
   const filtered = useMemo(() => {
@@ -255,14 +254,24 @@ export function SnippetsLibrary({ onInsert, currentLanguage, currentSelection }:
                         <Copy className="w-3 h-3" />
                       </button>
                       {confirmingId === s.id ? (
-                        <button
-                          onClick={() => handleDeleteClick(s.id)}
-                          title="Confirm delete"
-                          aria-label={`Confirm delete ${s.title}`}
-                          className="p-1 px-1.5 rounded bg-rose-500/20 text-rose-200 text-[10px] font-bold hover:bg-rose-500/30"
-                        >
-                          Delete?
-                        </button>
+                        <>
+                          <button
+                            onClick={() => handleDeleteClick(s.id)}
+                            title="Confirm delete"
+                            aria-label={`Confirm delete ${s.title}`}
+                            className="p-1 px-1.5 rounded bg-rose-500/20 text-rose-200 text-[10px] font-bold hover:bg-rose-500/30"
+                          >
+                            Delete?
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmingId(null)}
+                            aria-label={`Cancel delete ${s.title}`}
+                            className="p-1 px-1 text-[10px] text-gray-300 hover:text-white"
+                          >
+                            Cancel
+                          </button>
+                        </>
                       ) : (
                         <button
                           onClick={() => handleDeleteClick(s.id)}

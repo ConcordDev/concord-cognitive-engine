@@ -103,6 +103,7 @@ export function DirectoryPanel() {
       <div className="flex items-center gap-1.5">
         <Search className="w-3.5 h-3.5 text-gray-400" />
         <input
+          aria-label="Search members"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search members…"

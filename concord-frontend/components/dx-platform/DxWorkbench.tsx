@@ -12,6 +12,8 @@ import {
   ShieldCheck, FileJson, TrendingUp,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { dxErrorWords } from './errorWords';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { ChartKit } from '@/components/viz/ChartKit';
 import { downloadFile } from '@/lib/utils';
 
@@ -79,7 +81,7 @@ export function DxWorkbench() {
         setCodebases(list);
         setActiveCb((prev) => prev || list[0]?.id || '');
       } else {
-        setCbError(r.data?.error || 'Could not load your codebases.');
+        setCbError(dxErrorWords(r.data?.error) || 'Could not load your codebases.');
       }
     } catch {
       setCbError('Network error loading codebases.');
@@ -138,9 +140,11 @@ export function DxWorkbench() {
               key={t.id}
               type="button"
               role="tab"
+              id={`dx-tab-${t.id}`}
               aria-selected={active}
+              aria-controls={`dx-panel-${t.id}`}
               onClick={() => setTab(t.id)}
-              className={`flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium transition ${
+              className={`flex min-h-[40px] items-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium transition ${
                 active
                   ? 'bg-amber-500 text-zinc-950'
                   : 'border border-zinc-800 text-zinc-400 hover:border-zinc-700'
@@ -154,20 +158,46 @@ export function DxWorkbench() {
       </div>
 
       {tab === 'codebases' && (
-        <CodebasesTab
-          codebases={codebases}
-          loading={loadingCb}
-          activeCb={activeCb}
-          setActiveCb={setActiveCb}
-          onIndexed={refreshCodebases}
-        />
+        <div role="tabpanel" id="dx-panel-codebases" aria-labelledby="dx-tab-codebases">
+          <CodebasesTab
+            codebases={codebases}
+            loading={loadingCb}
+            activeCb={activeCb}
+            setActiveCb={setActiveCb}
+            onIndexed={refreshCodebases}
+          />
+        </div>
       )}
-      {tab === 'review' && <ReviewTab codebases={codebases} />}
-      {tab === 'search' && <SearchTab codebases={codebases} activeCb={activeCb} setActiveCb={setActiveCb} />}
-      {tab === 'team' && <TeamTab codebases={codebases} onChanged={refreshCodebases} />}
-      {tab === 'detectors' && <DetectorsTab codebases={codebases} activeCb={activeCb} setActiveCb={setActiveCb} />}
-      {tab === 'analytics' && <AnalyticsTab />}
-      {tab === 'ci' && <CiTab codebases={codebases} activeCb={activeCb} setActiveCb={setActiveCb} />}
+      {tab === 'review' && (
+        <div role="tabpanel" id="dx-panel-review" aria-labelledby="dx-tab-review">
+          <ReviewTab codebases={codebases} />
+        </div>
+      )}
+      {tab === 'search' && (
+        <div role="tabpanel" id="dx-panel-search" aria-labelledby="dx-tab-search">
+          <SearchTab codebases={codebases} activeCb={activeCb} setActiveCb={setActiveCb} />
+        </div>
+      )}
+      {tab === 'team' && (
+        <div role="tabpanel" id="dx-panel-team" aria-labelledby="dx-tab-team">
+          <TeamTab codebases={codebases} onChanged={refreshCodebases} />
+        </div>
+      )}
+      {tab === 'detectors' && (
+        <div role="tabpanel" id="dx-panel-detectors" aria-labelledby="dx-tab-detectors">
+          <DetectorsTab codebases={codebases} activeCb={activeCb} setActiveCb={setActiveCb} />
+        </div>
+      )}
+      {tab === 'analytics' && (
+        <div role="tabpanel" id="dx-panel-analytics" aria-labelledby="dx-tab-analytics">
+          <AnalyticsTab />
+        </div>
+      )}
+      {tab === 'ci' && (
+        <div role="tabpanel" id="dx-panel-ci" aria-labelledby="dx-tab-ci">
+          <CiTab codebases={codebases} activeCb={activeCb} setActiveCb={setActiveCb} />
+        </div>
+      )}
     </div>
   );
 }
@@ -206,6 +236,7 @@ function CodebasesTab({
   const [indexErr, setIndexErr] = useState<string | null>(null);
 
   const [question, setQuestion] = useState('');
+  const [renameName, setRenameName] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const [answer, setAnswer] = useState<{ answer: string; grounded: boolean; citations: Citation[]; totalMatches: number } | null>(null);
 
@@ -224,7 +255,7 @@ function CodebasesTab({
         setFiles([]); setName('');
         onIndexed();
       } else {
-        setIndexErr(r.data?.error || 'Index failed.');
+        setIndexErr(dxErrorWords(r.data?.error) || 'Index failed.');
       }
     } finally {
       setIndexing(false);
@@ -290,6 +321,9 @@ function CodebasesTab({
             {indexing ? 'Indexing…' : `Index ${files.length || ''} file(s)`}
           </button>
         </div>
+        {files.length === 0 && (name.trim() || path.trim() || content.trim()) && (
+          <p className="text-[11px] text-amber-200">Add file first. Index stays off until a file is on the list.</p>
+        )}
         {files.length > 0 && (
           <ul className="space-y-1 text-[11px] text-zinc-400">
             {files.map((f, i) => (
@@ -309,7 +343,24 @@ function CodebasesTab({
           <Empty>No codebases indexed yet. Index one to ask questions about it.</Empty>
         ) : (
           <>
-            <CodebasePicker codebases={codebases} value={activeCb} onChange={setActiveCb} />
+            <div className="flex flex-wrap items-center gap-2">
+              <CodebasePicker codebases={codebases} value={activeCb} onChange={setActiveCb} />
+              <input value={renameName} onChange={(e) => setRenameName(e.target.value)} placeholder="New name" className="w-32 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] text-white" />
+              <button type="button" onClick={() => {
+                const next = renameName.trim();
+                if (!next) { setIndexErr('Enter a new name.'); return; }
+                void lensRun('dx-platform', 'renameCodebase', { codebaseId: activeCb, name: next }).then((r) => {
+                  if (r.data?.ok === false) setIndexErr(r.data?.message || dxErrorWords(r.data?.error) || 'Could not rename that codebase.');
+                  else { setRenameName(''); setIndexErr(null); onIndexed(); }
+                });
+              }} className="rounded border border-zinc-700 px-2 py-1 text-[11px] text-zinc-200">Rename</button>
+              <StickyDeleteConfirm onConfirm={() => {
+                void lensRun('dx-platform', 'deleteCodebase', { codebaseId: activeCb }).then(() => {
+                  setActiveCb('');
+                  onIndexed();
+                });
+              }} armLabel="Delete" armAriaLabel="Delete codebase" confirmLabel="Delete codebase?" className="text-[11px] text-rose-300" />
+            </div>
             <div className="flex gap-2">
               <input
                 value={question}
@@ -385,13 +436,23 @@ function ReviewTab({ codebases }: { codebases: CodebaseRow[] }) {
   const [gateLoading, setGateLoading] = useState(false);
   const [sarifLoading, setSarifLoading] = useState(false);
   const [sarifError, setSarifError] = useState<string | null>(null);
+  const [reviewError, setReviewError] = useState<string | null>(null);
   const [sarifExported, setSarifExported] = useState(false);
   const [trend, setTrend] = useState<TrendResult | null>(null);
   const [trendLoading, setTrendLoading] = useState(false);
 
+  const NOT_A_DIFF_MSG = "Not a unified diff — no file headers (+++ b/…) found. Paste a diff from git diff or a pull request.";
   const run = async () => {
     if (!diff.trim()) return;
-    setLoading(true); setResult(null); setDecisions({}); setGate(null); setTrend(null);
+    // FIX-dx-platform-017: non-diff text used to come back as a 'clean'
+    // 0-file review. The parser's own test — a '+++ ' file header —
+    // runs before the call, and a server refusal now surfaces instead
+    // of leaving the previous (or no) result unexplained.
+    if (!diff.split('\n').some((l) => l.startsWith('+++ '))) {
+      setReviewError(NOT_A_DIFF_MSG);
+      return;
+    }
+    setLoading(true); setResult(null); setDecisions({}); setGate(null); setTrend(null); setReviewError(null);
     try {
       const sha = commitSha.trim();
       const r = await lensRun('dx-platform', 'reviewDiff', {
@@ -400,6 +461,7 @@ function ReviewTab({ codebases }: { codebases: CodebaseRow[] }) {
       if (r.data?.ok && r.data.result) {
         const rr = r.data.result as ReviewResult;
         setResult(rr);
+        setReviewError(null);
         // Best-effort telemetry: log one detector-fire count per detector
         // that produced findings here, so the Analytics tab (which reads
         // dx-platform.usageAnalytics) reflects real review activity instead
@@ -425,6 +487,9 @@ function ReviewTab({ codebases }: { codebases: CodebaseRow[] }) {
             setTrendLoading(false);
           }
         }
+      } else {
+        const err = (r.data as { error?: string } | undefined)?.error;
+        setReviewError(err === 'not_a_diff' ? NOT_A_DIFF_MSG : err === 'no_diff' ? 'Paste a diff to review.' : `Review failed: ${err || 'unknown error'}`);
       }
     } finally {
       setLoading(false);
@@ -467,7 +532,7 @@ function ReviewTab({ codebases }: { codebases: CodebaseRow[] }) {
         downloadFile(JSON.stringify(sarif, null, 2), 'concord-dx-findings.sarif', 'application/sarif+json');
         setSarifExported(true);
       } else {
-        setSarifError(r.data?.error || 'SARIF export failed.');
+        setSarifError(dxErrorWords(r.data?.error) || 'SARIF export failed.');
       }
     } catch {
       setSarifError('Network error exporting SARIF.');
@@ -495,7 +560,15 @@ function ReviewTab({ codebases }: { codebases: CodebaseRow[] }) {
       />
       <textarea
         value={diff}
-        onChange={(e) => setDiff(e.target.value)}
+        onChange={(e) => {
+          setDiff(e.target.value);
+          // FIX-dx-platform-017: emptying the input clears the previous
+          // review — stale findings no longer outlive the diff they
+          // were computed from.
+          if (!e.target.value.trim()) {
+            setResult(null); setDecisions({}); setGate(null); setTrend(null); setReviewError(null);
+          }
+        }}
         placeholder="--- a/file.js&#10;+++ b/file.js&#10;@@ -1 +1,2 @@&#10;+new line"
         rows={8}
         className="w-full rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 font-mono text-xs text-white"
@@ -508,6 +581,9 @@ function ReviewTab({ codebases }: { codebases: CodebaseRow[] }) {
       >
         {loading ? 'Reviewing…' : 'Review diff'}
       </button>
+      {reviewError && (
+        <p role="alert" className="rounded border border-red-500/30 bg-red-500/10 px-2 py-1.5 text-xs text-red-300">{reviewError}</p>
+      )}
       {result && (
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-3 text-xs">
@@ -695,7 +771,7 @@ function SearchTab({
       if (r.data?.ok && r.data.result) {
         setResult(r.data.result as { results: SearchHit[]; matchCount: number; fileCount: number; truncated: boolean });
       } else {
-        setErr(r.data?.error || 'Search failed.');
+        setErr(dxErrorWords(r.data?.error) || 'Search failed.');
       }
     } finally {
       setLoading(false);
@@ -783,10 +859,17 @@ function TeamTab({ codebases, onChanged }: { codebases: CodebaseRow[]; onChanged
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [lastInvite, setLastInvite] = useState<string | null>(null);
+  const [inviteHidden, setInviteHidden] = useState(true);
+  const [teams, setTeams] = useState<Array<{ teamId: string; name: string; ownerId?: string }>>([]);
+  const [teamRename, setTeamRename] = useState('');
 
   const create = async () => {
-    if (!teamName.trim()) return;
-    const r = await lensRun('dx-platform', 'createTeam', { name: teamName.trim() });
+    const name = teamName.trim();
+    if (name.length < 2 || name.length > 80) {
+      setMsg('A team name must be 2 to 80 characters.');
+      return;
+    }
+    const r = await lensRun('dx-platform', 'createTeam', { name });
     if (r.data?.ok && r.data.result) {
       const result = r.data.result as { teamId: string; inviteCode?: string };
       setTeamId(result.teamId);
@@ -794,7 +877,9 @@ function TeamTab({ codebases, onChanged }: { codebases: CodebaseRow[]; onChanged
       if (result.inviteCode) {
         setLastInvite(result.inviteCode);
         setInviteCode(result.inviteCode);
-        setMsg(`Team created — share invite code ${result.inviteCode} (team ${result.teamId})`);
+        setInviteHidden(false);
+        setMsg('Team created. The invite code is shown once below. Hide it after you copy it.');
+        void loadTeams();
       } else {
         setMsg(`Team created — share ID ${result.teamId}`);
       }
@@ -807,12 +892,19 @@ function TeamTab({ codebases, onChanged }: { codebases: CodebaseRow[]; onChanged
     try {
       const r = await lensRun('dx-platform', 'teamDashboard', { teamId: id });
       if (r.data?.ok && r.data.result) setDash(r.data.result as TeamDash);
-      else setMsg(r.data?.error || 'Dashboard unavailable.');
+      else setMsg(dxErrorWords(r.data?.error) || 'Dashboard unavailable.');
     } finally {
       setLoading(false);
     }
   }, []);
 
+  const loadTeams = useCallback(async () => {
+    const r = await lensRun('dx-platform', 'listMyTeams', {});
+    const rows = (r.data?.result as { teams?: Array<{ teamId?: string; id?: string; name?: string }> } | undefined)?.teams || [];
+    setTeams(rows.map((t) => ({ teamId: String(t.teamId || t.id || ''), name: String(t.name || 'Team') })));
+  }, []);
+
+  useEffect(() => { void loadTeams(); }, [loadTeams]);
   useEffect(() => { if (teamId) void loadDash(teamId); }, [teamId, loadDash]);
 
   const mintInvite = async () => {
@@ -822,9 +914,10 @@ function TeamTab({ codebases, onChanged }: { codebases: CodebaseRow[]; onChanged
       const code = (r.data.result as { inviteCode: string }).inviteCode;
       setLastInvite(code);
       setInviteCode(code);
-      setMsg(`Invite code ${code} — share with the person joining.`);
+      setInviteHidden(false);
+      setMsg('A new invite code is shown once below.');
     } else {
-      setMsg(r.data?.error || 'Invite failed.');
+      setMsg(dxErrorWords(r.data?.error) || 'Invite failed.');
     }
   };
 
@@ -843,8 +936,8 @@ function TeamTab({ codebases, onChanged }: { codebases: CodebaseRow[]; onChanged
       // F2: teamId may already equal id (owner attach) — force a dashboard reload.
       void loadDash(id);
     } else {
-      const err = r.data?.error || 'Join failed.';
-      setMsg(err === 'not_invited' ? 'not_invited — ask a member for an invite code.' : err);
+      const err = dxErrorWords(r.data?.error) || 'Join failed.';
+      setMsg(err);
     }
   };
 
@@ -858,13 +951,15 @@ function TeamTab({ codebases, onChanged }: { codebases: CodebaseRow[]; onChanged
               value={teamName}
               onChange={(e) => setTeamName(e.target.value)}
               placeholder="Team name"
+              maxLength={80}
               className="flex-1 rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white"
             />
-            <button type="button" onClick={create} disabled={!teamName.trim()}
+            <button type="button" onClick={create} disabled={teamName.trim().length < 2 || teamName.trim().length > 80}
               className="rounded bg-amber-500 px-3 py-1.5 text-xs font-medium text-zinc-950 disabled:opacity-40">
               Create
             </button>
           </div>
+          {teamName.trim().length === 1 && <p className="text-[11px] text-amber-200">A team name must be 2 to 80 characters.</p>}
           {teamId && (
             <button type="button" onClick={mintInvite}
               className="rounded border border-zinc-700 px-3 py-1.5 text-xs text-zinc-200 hover:border-amber-500/50">
@@ -872,7 +967,33 @@ function TeamTab({ codebases, onChanged }: { codebases: CodebaseRow[]; onChanged
             </button>
           )}
           {lastInvite && (
-            <p className="font-mono text-[11px] text-amber-200/90">Invite: {lastInvite}</p>
+            <div className="flex items-center gap-2">
+              <input readOnly type={inviteHidden ? 'password' : 'text'} value={lastInvite} aria-label="Invite code" className="flex-1 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 font-mono text-[11px] text-amber-200" />
+              <button type="button" onClick={() => { void navigator.clipboard?.writeText(lastInvite); setMsg('Invite code copied.'); }} className="text-[11px] text-zinc-300">Copy</button>
+              <button type="button" onClick={() => setInviteHidden(true)} className="text-[11px] text-zinc-400">Hide</button>
+            </div>
+          )}
+          {teams.length > 0 && (
+            <ul className="space-y-1">
+              {teams.map((t) => (
+                <li key={t.teamId} className="flex flex-wrap items-center gap-2 text-[11px] text-zinc-300">
+                  <button type="button" onClick={() => { setTeamId(t.teamId); setJoinId(t.teamId); }} className="text-left text-zinc-100">{t.name}</button>
+                  <input value={teamId === t.teamId ? teamRename : ''} onChange={(e) => { setTeamId(t.teamId); setTeamRename(e.target.value); }} placeholder="Rename" className="w-24 rounded border border-zinc-800 bg-zinc-900 px-1 py-0.5 text-[11px] text-white" />
+                  <button type="button" onClick={() => {
+                    void lensRun('dx-platform', 'renameTeam', { teamId: t.teamId, name: teamRename.trim() }).then((r) => {
+                      if (r.data?.ok === false) setMsg(r.data?.message || dxErrorWords(r.data?.error) || 'Could not rename that team.');
+                      else { setTeamRename(''); void loadTeams(); }
+                    });
+                  }} className="text-zinc-400">Save</button>
+                  <StickyDeleteConfirm onConfirm={() => {
+                    void lensRun('dx-platform', 'deleteTeam', { teamId: t.teamId }).then(() => {
+                      if (teamId === t.teamId) setTeamId('');
+                      void loadTeams();
+                    });
+                  }} armLabel="Delete" armAriaLabel={`Delete team ${t.name}`} confirmLabel="Delete team?" className="text-rose-300" />
+                </li>
+              ))}
+            </ul>
           )}
         </section>
         <section className="rounded-lg border border-zinc-800 bg-zinc-950 p-4 space-y-2">

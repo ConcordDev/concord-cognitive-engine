@@ -971,6 +971,27 @@ export default function registerGraphActions(registerLensAction) {
       if (clean.error) return { ok: false, error: clean.error };
       node.props = clean.props;
     }
+    // A DTU-linked node's edits are the substrate's edits (FIX-graph-008):
+    // propagate label/notes to the linked DTU in this same write, so the
+    // DTU's Summary / Full Content never keep a stale title behind the
+    // separate manual sync-to-dtu step. Same duck-typed store access as
+    // sync-to-dtu; an unreadable store or a vanished DTU degrades to a
+    // graph-only edit — it never fabricates a sync that did not happen.
+    if (node.dtuId) {
+      const STATE = globalThis._concordSTATE;
+      if (STATE && typeof STATE.dtus?.get === "function") {
+        const dtu = STATE.dtus.get(node.dtuId);
+        if (dtu) {
+          dtu.title = node.label;
+          if (node.notes) {
+            dtu.content = node.notes;
+            if (dtu.human && typeof dtu.human === "object") dtu.human.summary = node.notes;
+          }
+          dtu.updatedAt = new Date().toISOString();
+          node.syncedAt = dtu.updatedAt;
+        }
+      }
+    }
     convergeMaps(ctx);
     saveGraph();
     return { ok: true, result: { node } };

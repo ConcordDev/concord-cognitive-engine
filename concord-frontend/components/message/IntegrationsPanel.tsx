@@ -104,6 +104,7 @@ export function IntegrationsPanel({ channelId, channelName }: { channelId: strin
         <div className="text-xs font-semibold text-gray-300 flex items-center gap-1"><Terminal className="w-3 h-3" /> Run a slash command</div>
         <div className="flex items-center gap-2">
           <input
+            aria-label="Slash command to run"
             value={runText}
             onChange={(e) => setRunText(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') void runCommand(); }}
@@ -125,10 +126,10 @@ export function IntegrationsPanel({ channelId, channelName }: { channelId: strin
         </div>
         {showNew && (
           <div className="rounded border border-cyan-500/20 bg-cyan-500/[0.04] p-2 space-y-1.5 mb-2">
-            <input value={draftName} onChange={(e) => setDraftName(e.target.value)} placeholder="/command-name" className="w-full px-2 py-1 text-[11px] bg-black/40 border border-white/10 rounded text-white font-mono" />
-            <input value={draftDesc} onChange={(e) => setDraftDesc(e.target.value)} placeholder="Description" className="w-full px-2 py-1 text-[11px] bg-black/40 border border-white/10 rounded text-white" />
-            <input value={draftApp} onChange={(e) => setDraftApp(e.target.value)} placeholder="App name (optional)" className="w-full px-2 py-1 text-[11px] bg-black/40 border border-white/10 rounded text-white" />
-            <input value={draftTemplate} onChange={(e) => setDraftTemplate(e.target.value)} placeholder="Response template — use {args}" className="w-full px-2 py-1 text-[11px] bg-black/40 border border-white/10 rounded text-white" />
+            <input aria-label="Command name" value={draftName} onChange={(e) => setDraftName(e.target.value)} placeholder="/command-name" className="w-full px-2 py-1 text-[11px] bg-black/40 border border-white/10 rounded text-white font-mono" />
+            <input aria-label="Command description" value={draftDesc} onChange={(e) => setDraftDesc(e.target.value)} placeholder="Description" className="w-full px-2 py-1 text-[11px] bg-black/40 border border-white/10 rounded text-white" />
+            <input aria-label="Command app name" value={draftApp} onChange={(e) => setDraftApp(e.target.value)} placeholder="App name (optional)" className="w-full px-2 py-1 text-[11px] bg-black/40 border border-white/10 rounded text-white" />
+            <input aria-label="Response template" value={draftTemplate} onChange={(e) => setDraftTemplate(e.target.value)} placeholder="Response template — use {args}" className="w-full px-2 py-1 text-[11px] bg-black/40 border border-white/10 rounded text-white" />
             <button onClick={registerCommand} className="px-2 py-1 text-[10px] rounded bg-cyan-600 hover:bg-cyan-500 text-white font-bold">Register</button>
           </div>
         )}

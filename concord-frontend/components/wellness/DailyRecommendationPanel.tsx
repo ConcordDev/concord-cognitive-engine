@@ -11,6 +11,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Compass, Loader2, RefreshCw } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { WELLNESS_CHANGED } from '@/lib/wellness/refresh';
 
 interface Recommendation { priority: number; area: string; text: string }
 interface Signals {
@@ -46,6 +47,11 @@ export function DailyRecommendationPanel() {
   }, []);
 
   useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => {
+    const onChange = () => { void refresh(); };
+    window.addEventListener(WELLNESS_CHANGED, onChange);
+    return () => window.removeEventListener(WELLNESS_CHANGED, onChange);
+  }, [refresh]);
 
   const colour = rec ? BAND_COLOUR[rec.band] : '#71717a';
 
@@ -53,7 +59,7 @@ export function DailyRecommendationPanel() {
     <div className="rounded-lg border border-emerald-500/20 bg-zinc-950/60 p-3 space-y-3">
       <header className="flex items-center gap-2 border-b border-emerald-500/10 pb-2">
         <Compass className="h-4 w-4 text-emerald-400" />
-        <h3 className="text-sm font-semibold text-white">Today&apos;s recommendation</h3>
+        <h2 className="text-sm font-semibold text-white">Today&apos;s recommendation</h2>
         {loading && <Loader2 className="w-3 h-3 animate-spin text-zinc-400" />}
         <button type="button" onClick={refresh} disabled={loading}
           className="ml-auto p-1 text-zinc-400 hover:text-white disabled:opacity-40" title="Recompute">

@@ -234,15 +234,15 @@ export function DisplaysPanel() {
 
       {creating && (
         <div className="p-3 border-b border-white/10 grid grid-cols-2 sm:grid-cols-3 gap-2">
-          <input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="Location (e.g. front endcap, aisle 3)" className="col-span-2 sm:col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input id="retail-location-eg-front-endcap-aisle-3" name="location-eg-front-endcap-aisle-3" aria-label="Location (e.g. front endcap, aisle 3)" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="Location (e.g. front endcap, aisle 3)" className="col-span-2 sm:col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <select value={form.displayType} onChange={(e) => setForm({ ...form, displayType: e.target.value as DisplayType })} aria-label="Display type" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
             {DISPLAY_TYPES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
           </select>
-          <input value={form.budget} onChange={(e) => setForm({ ...form, budget: e.target.value })} placeholder="Budget ($)" type="number" min="0" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input id="retail-budget" name="budget" aria-label="Budget ($)" value={form.budget} onChange={(e) => setForm({ ...form, budget: e.target.value })} placeholder="Budget ($)" type="number" min="0" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <input value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} type="date" aria-label="Start date" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <input value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} type="date" aria-label="End date" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <input value={form.productSkus} onChange={(e) => setForm({ ...form, productSkus: e.target.value })} placeholder="SKUs promoted, comma-separated" className="col-span-2 sm:col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Notes" rows={2} className="col-span-2 sm:col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input id="retail-skus-promoted-commaseparated" name="skus-promoted-commaseparated" aria-label="SKUs promoted, comma-separated" value={form.productSkus} onChange={(e) => setForm({ ...form, productSkus: e.target.value })} placeholder="SKUs promoted, comma-separated" className="col-span-2 sm:col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <textarea id="retail-notes" name="notes" aria-label="Notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Notes" rows={2} className="col-span-2 sm:col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <button type="button" onClick={create} disabled={!form.location.trim()} className="px-3 py-1.5 text-xs rounded bg-emerald-500 text-black font-bold hover:bg-emerald-400 disabled:opacity-40">Add display</button>
         </div>
       )}
@@ -390,7 +390,7 @@ export function DisplaysPanel() {
                   <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Log impressions (manual count)</div>
                   <p className="text-[9px] text-gray-600 mb-1.5">Staff-observed foot-traffic count — Concord has no automated in-store sensor.</p>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
-                    <input
+                    <input id="retail-count" name="count" aria-label="Count"
                       value={impressionDraft.count}
                       onChange={(e) => setImpressionDraft({ ...impressionDraft, count: e.target.value })}
                       placeholder="Count"
@@ -398,7 +398,7 @@ export function DisplaysPanel() {
                       min="1"
                       className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white"
                     />
-                    <input
+                    <input id="retail-note-optional" name="note-optional" aria-label="Note (optional)"
                       value={impressionDraft.note}
                       onChange={(e) => setImpressionDraft({ ...impressionDraft, note: e.target.value })}
                       placeholder="Note (optional)"
@@ -434,7 +434,7 @@ export function DisplaysPanel() {
                         <option key={o.id} value={o.id}>{o.number} — {money(o.total)}</option>
                       ))}
                     </select>
-                    <input
+                    <input id="retail-or-paste-an-order-id" name="or-paste-an-order-id" aria-label="…or paste an order id"
                       value={convertManualId}
                       onChange={(e) => setConvertManualId(e.target.value)}
                       placeholder="…or paste an order id"

@@ -18,10 +18,27 @@ import {
   useWalletWithdrawals,
 } from './useWalletQueries';
 import { TRANSACTION_TABS, type TxFilterId, type WalletPanelProps, type WalletTransaction } from './wallet-model';
+import { useLensStatePersistence } from '@/lib/lens-state-persistence';
 
 export function WalletActivityPanel(_props: WalletPanelProps) {
-  const [filter, setFilter] = useState<TxFilterId>('all');
-  const [txQuery, setTxQuery] = useState('');
+  // FIX-wallet-008: the search query (and filter) persist through the
+  // shared lens UI-state store — the panel unmounts on every view
+  // switch, so a bare useState lost the query each time the user
+  // stepped away and back.
+  const { restore, persist } = useLensStatePersistence('wallet');
+  const [initialUi] = useState(() => restore() ?? {});
+  const [filter, setFilterState] = useState<TxFilterId>(
+    TRANSACTION_TABS.some((t) => t.id === initialUi.activityFilter) ? (initialUi.activityFilter as TxFilterId) : 'all',
+  );
+  const [txQuery, setTxQueryState] = useState(typeof initialUi.activityQuery === 'string' ? initialUi.activityQuery : '');
+  const setFilter = (f: TxFilterId) => {
+    setFilterState(f);
+    persist({ ...(restore() ?? {}), activityFilter: f });
+  };
+  const setTxQuery = (q: string) => {
+    setTxQueryState(q);
+    persist({ ...(restore() ?? {}), activityQuery: q });
+  };
   const [activeTx, setActiveTx] = useState<WalletTransaction | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const { data: balanceData } = useWalletBalance();

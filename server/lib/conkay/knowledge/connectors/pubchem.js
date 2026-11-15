@@ -20,7 +20,12 @@
 // contributor, whose own terms apply (recorded per claim).
 
 import { makeClaim } from "../claims.js";
-import { documentEvidence } from "./fetcher.js";
+import { documentEvidence, withHostAllowlist } from "./fetcher.js";
+
+/** SB-06: this connector only ever talks to PubChem's own host. */
+export const PUBCHEM_HOSTS = Object.freeze(["pubchem.ncbi.nlm.nih.gov"]);
+/** Bind any getter to this connector's host allowlist (refused before DNS). */
+export const pubchemGetter = (get) => withHostAllowlist(get, PUBCHEM_HOSTS);
 import { parseDensityValue, parseTemperatureValue } from "./parse-values.js";
 
 export const PUBCHEM_VERSION = "1.0.0";
@@ -44,6 +49,7 @@ function* informations(section, path = []) {
 
 /** Name -> CID. Returns { ok, cid } | { ok:false, notFound } | { ok:false, ambiguous: cids, review }. */
 export async function resolveName(name, get) {
+  get = pubchemGetter(get);
   const doc = await get(pubchemUrls.name(name));
   if (!doc.ok) return { ok: false, error: doc.error, doc };
   if (doc.notFound) return { ok: false, notFound: true, doc, review: { kind: "identity_not_found", subject: name, reason: `PubChem has no compound named "${name}"` } };
@@ -54,6 +60,7 @@ export async function resolveName(name, get) {
 
 /** Identity block + CAS consensus (contributors that list a different CAS go to review). */
 export async function identify(name, get) {
+  get = pubchemGetter(get);
   const r = await resolveName(name, get);
   if (!r.ok) return { ok: false, reason: r.error || r.review?.reason, reviews: r.review ? [r.review] : [] };
   const { cid } = r;
@@ -103,6 +110,7 @@ const TEMP_HEADINGS = { "Boiling Point": "normal_boiling_point", "Melting Point"
  * Supported headings: Density, Boiling Point, Melting Point, Flash Point.
  */
 export async function experimental(cid, heading, subject, get) {
+  get = pubchemGetter(get);
   const doc = await get(pubchemUrls.heading(cid, heading));
   if (!doc.ok) return { ok: false, error: doc.error, claims: [], reviews: [] };
   if (doc.notFound) return { ok: true, notFound: true, claims: [], reviews: [], note: `PubChem has no "${heading}" section for CID ${cid}` };

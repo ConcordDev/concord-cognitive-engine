@@ -130,6 +130,10 @@ export default function AgentsLensPage() {
         <SessionRail lensId="agents" hideWhenEmpty className="mt-4" />
         <CrossLensRecentsPanel lensId="agents" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
 
+        {/* Mobile (FIX-agents-007): bottom-8 put this button's lower edge
+            under the phone bottom bar (h-14 + safe-area). Sit above the bar
+            on phones — the platform's fixed-CTA clearance — desktop keeps
+            bottom-8. */}
         <button
           type="button"
           onClick={() => {
@@ -137,7 +141,7 @@ export default function AgentsLensPage() {
             requestAnimationFrame(() => window.dispatchEvent(new CustomEvent('agents:new')));
           }}
           title="New agent (N)"
-          className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+          className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] right-4 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 md:bottom-8 md:right-8"
         >
           <Plus className="h-4 w-4" />
           New agent

@@ -55,16 +55,16 @@ export function InspectionsPanel() {
         <span className="ml-auto text-[10px] text-gray-400">{inspections.filter(i => i.status === 'scheduled').length} scheduled</span>
       </header>
       <div className="p-3 border-b border-white/10 grid grid-cols-5 gap-2">
-        <select value={form.permitId} onChange={e => setForm({ ...form, permitId: e.target.value })} className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+        <select aria-label="Permit" value={form.permitId} onChange={e => setForm({ ...form, permitId: e.target.value })} className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
           <option value="">Permit…</option>
           {permits.map(p => <option key={p.id} value={p.id}>{p.recordNumber} · {p.kind}</option>)}
         </select>
-        <input value={form.kind} onChange={e => setForm({ ...form, kind: e.target.value })} placeholder="Inspection kind" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-        <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-        <select value={form.timeSlot} onChange={e => setForm({ ...form, timeSlot: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+        <input aria-label="Inspection kind" value={form.kind} onChange={e => setForm({ ...form, kind: e.target.value })} placeholder="Inspection kind" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <input aria-label="Inspection date" type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <select aria-label="Time slot" value={form.timeSlot} onChange={e => setForm({ ...form, timeSlot: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
           <option value="morning">Morning</option><option value="afternoon">Afternoon</option><option value="all_day">All day</option>
         </select>
-        <input value={form.inspectorName} onChange={e => setForm({ ...form, inspectorName: e.target.value })} placeholder="Inspector name" className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <input aria-label="Inspector name" value={form.inspectorName} onChange={e => setForm({ ...form, inspectorName: e.target.value })} placeholder="Inspector name" className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <button onClick={schedule} className="px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 inline-flex items-center justify-center gap-1"><Plus className="w-3 h-3" />Schedule</button>
       </div>
       <div className="max-h-80 overflow-y-auto">
@@ -90,6 +90,16 @@ export function InspectionsPanel() {
                       <button onClick={() => complete(i.id, 'fail')} className="p-1 text-rose-400 hover:text-rose-300" title="Fail"><X className="w-3 h-3" /></button>
                     </>
                   )}
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await lensRun({ domain: 'government', action: 'inspections-delete', input: { id: i.id } });
+                      await refresh();
+                    }}
+                    className="text-[10px] text-rose-300"
+                  >
+                    Remove
+                  </button>
                 </li>
               );
             })}

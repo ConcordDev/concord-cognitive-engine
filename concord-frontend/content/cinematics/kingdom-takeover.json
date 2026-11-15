@@ -1,6 +1,7 @@
 {
   "id": "kingdom_takeover",
   "name": "Kingdom Takeover",
+  "summary": "The realm changes hands. The old banners come down and new colours rise over the decree table — the kingdom is another's now, and every subject feels the ground shift.",
   "trigger": "kingdom_takeover",
   "comment": "Phase W — overhead realm sweep + new ruler portrait dwell + decree-table pan.",
   "shots": [

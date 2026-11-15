@@ -271,14 +271,16 @@ describe('classroom lens — create/submit flows read fields off the unwrapped r
     const { getByText, getAllByRole, queryByText } = render(<ClassroomPage />);
     await waitFor(() => expect(getByText('Algebra I')).toBeInTheDocument());
 
-    await act(async () => { fireEvent.click(getAllByRole('button', { name: 'Archive' })[0]); });
+    await act(async () => { fireEvent.click(getAllByRole('button', { name: 'Archive Algebra I' })[0]); });
+    await act(async () => { fireEvent.click(getByText('Archive this cohort?')); });
     await waitFor(() => expect(getByText(/Failed: Only the teacher can do that\./)).toBeInTheDocument());
     expect(queryByText(/not_teacher/)).toBeNull();
     expect(getByText('Algebra I')).toBeInTheDocument();
     expect(queryByText(/Cohort archived/)).toBeNull();
 
     // first studying row is Intro Biology (cohort 34)
-    await act(async () => { fireEvent.click(getAllByRole('button', { name: 'Leave' })[0]); });
+    await act(async () => { fireEvent.click(getAllByRole('button', { name: 'Leave Intro Biology' })[0]); });
+    await act(async () => { fireEvent.click(getByText('Leave this cohort?')); });
     await waitFor(() => expect(getByText(/Failed: You are not enrolled in that cohort\./)).toBeInTheDocument());
     expect(queryByText(/not_enroled/)).toBeNull();
     expect(getByText('Intro Biology')).toBeInTheDocument();

@@ -108,6 +108,11 @@ export default function registerEventsActions(registerLensAction) {
       budget: Math.max(0, evNum(params.budget)),
       guestCount: Math.max(0, Math.round(evNum(params.guestCount))),
       status: "planning",
+      // FIX-events-003 — an event records its intended visibility from
+      // creation. Events are the owner's planning workspace, so the
+      // default is private; publishing a public page requires the
+      // event to be public first (see publish-page).
+      visibility: ["public", "private"].includes(params.visibility) ? params.visibility : "private",
       tasks: [],
       vendors: [],
       tiers: [],
@@ -134,6 +139,8 @@ export default function registerEventsActions(registerLensAction) {
     const out = events.map((e) => ({
       id: e.id, name: e.name, type: e.type, date: e.date, venue: e.venue,
       budget: e.budget, guestCount: e.guestCount, status: e.status,
+      visibility: e.visibility || "private",
+      published: !!(e.publicPage && e.publicPage.published),
       taskCount: e.tasks.length, doneTaskCount: e.tasks.filter((t) => t.done).length,
       vendorCost: e.vendors.reduce((n, v) => n + v.cost, 0),
     }));
@@ -161,6 +168,7 @@ export default function registerEventsActions(registerLensAction) {
     if (params.budget != null) event.budget = Math.max(0, evNum(params.budget));
     if (params.guestCount != null) event.guestCount = Math.max(0, Math.round(evNum(params.guestCount)));
     if (params.status != null && ["planning", "confirmed", "complete", "cancelled"].includes(params.status)) event.status = params.status;
+    if (params.visibility != null && ["public", "private"].includes(params.visibility)) event.visibility = params.visibility;
     saveEvents();
     return { ok: true, result: { event } };
   });
@@ -262,19 +270,60 @@ export default function registerEventsActions(registerLensAction) {
     };
   }
 
+  // Discover's four host figures. Ticket price is bookkeeping until a payment
+  // exists, so it is not revenue. Attendance is checked-in registrations
+  // over registrations, the same ratio as check-in-status. RSVP is registered
+  // quantity over tier capacity, not the expected-guest field.
+  function operationsDiscover(events) {
+    let registered = 0;
+    let capacity = 0;
+    let checkedIn = 0;
+    let registrationCount = 0;
+    let totalSpent = 0;
+    let revenue = 0;
+    for (const event of events) {
+      const tiers = Array.isArray(event.tiers) ? event.tiers : [];
+      const regs = Array.isArray(event.registrations) ? event.registrations : [];
+      const lines = Array.isArray(event.budgetLines) ? event.budgetLines : [];
+      capacity += tiers.reduce((n, t) => n + Math.max(0, Number(t.quantity) || 0), 0);
+      registered += regs.reduce((n, r) => n + Math.max(0, Number(r.quantity) || 0), 0);
+      registrationCount += regs.length;
+      checkedIn += regs.filter((r) => r.checkedIn).length;
+      for (const line of lines) {
+        const actual = Math.max(0, Number(line.actual) || 0);
+        if (line.kind === "revenue") revenue += actual;
+        else totalSpent += actual;
+      }
+    }
+    return {
+      rsvpRate: capacity > 0 ? Math.round((registered / capacity) * 100) : 0,
+      avgAttendance: registrationCount > 0 ? Math.round((checkedIn / registrationCount) * 100) : 0,
+      totalSpent,
+      netPosition: revenue - totalSpent,
+    };
+  }
+
+
   registerLensAction("events", "events-dashboard", (ctx, _a, _params = {}) => {
   try {
     const s = getEventsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const events = evList(s, evActor(ctx));
     const now = new Date().toISOString().slice(0, 10);
+    const dayOf = (date) => (typeof date === "string" && /^\d{4}-\d{2}-\d{2}/.test(date) ? date.slice(0, 10) : "");
+    const figures = operationsDiscover(events);
     return {
       ok: true,
       result: {
         totalEvents: events.length,
-        upcoming: events.filter((e) => e.date && e.date >= now && e.status !== "cancelled").length,
+        upcoming: events.filter((e) => { const day = dayOf(e.date); return day && day >= now && e.status !== "cancelled"; }).length,
+        past: events.filter((e) => { const day = dayOf(e.date); return day && day < now; }).length,
         planning: events.filter((e) => e.status === "planning").length,
         totalBudget: events.reduce((n, e) => n + e.budget, 0),
         openTasks: events.reduce((n, e) => n + e.tasks.filter((t) => !t.done).length, 0),
+        rsvpRate: figures.rsvpRate,
+        avgAttendance: figures.avgAttendance,
+        totalSpent: figures.totalSpent,
+        netPosition: figures.netPosition,
         ...statedBudgetRollup(events),
       },
     };
@@ -465,6 +514,11 @@ export default function registerEventsActions(registerLensAction) {
     const s = getEventsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const event = findEvent(s, ctx, params.eventId);
     if (!event) return { ok: false, error: "event not found" };
+    // FIX-events-003 — a private event's page cannot be published.
+    // Unpublishing is always allowed.
+    if (params.published !== false && (event.visibility || "private") === "private") {
+      return { ok: false, error: "This event is private — set its visibility to Public before publishing its page." };
+    }
     ensureEventCollections(event);
     if (!event.publicPage) {
       event.publicPage = { slug: null, published: false, headline: "", blurb: "", views: 0 };

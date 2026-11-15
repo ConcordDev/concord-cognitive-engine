@@ -15,6 +15,7 @@ import {
 import { lensRun } from '@/lib/api/client';
 import { calendarDateKey, shiftDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 type Tab = 'recipes' | 'plan' | 'shopping' | 'pantry' | 'collections';
 
@@ -38,6 +39,23 @@ function weekDates(start: Date): string[] {
   return Array.from({ length: 7 }, (_, i) => shiftDateKey(startKey, i));
 }
 
+/**
+ * FIX-cooking-005: a recipe whose photoUrl points at a dead or bogus
+ * image rendered the browser's broken-image glyph in the tile corner.
+ * A photo that fails to load now falls back to the same ChefHat tile a
+ * recipe with no photo gets.
+ */
+export function RecipePhoto({ url, title }: { url?: string; title: string }) {
+  const [failed, setFailed] = useState(false);
+  if (!url || failed) {
+    return <div className="w-full h-full flex items-center justify-center"><ChefHat className="w-8 h-8 text-gray-700" /></div>;
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- recipe photos come from arbitrary external cooking sites
+    <img src={url} alt={title} onError={() => setFailed(true)} className="w-full h-full object-cover" />
+  );
+}
+
 export function RecipeBoxSection() {
   const [tab, setTab] = useState<Tab>('recipes');
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -48,6 +66,8 @@ export function RecipeBoxSection() {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(true);
   const [weekStart] = useState(() => { const d = new Date(); d.setDate(d.getDate() - d.getDay()); return d; });
+  const [recipeQuery, setRecipeQuery] = useState('');
+  const [recipeSort, setRecipeSort] = useState<'default' | 'title-az' | 'title-za' | 'quickest'>('default');
   const [editRecipe, setEditRecipe] = useState<Partial<Recipe> & { _new?: boolean } | null>(null);
   const [scaleFor, setScaleFor] = useState<{ recipe: Recipe; target: number; scaled: Ingredient[] } | null>(null);
   const [aiBusy, setAiBusy] = useState(false);
@@ -100,7 +120,7 @@ export function RecipeBoxSection() {
     setEditRecipe({ _new: true, title: '', servings: 4, prepMin: 0, cookMin: 0, ingredients: [{ name: '', qty: null, unit: '' }], steps: [''], tags: [], cuisine: '', notes: '' });
   }
   async function saveRecipe() {
-    if (!editRecipe?.title?.trim()) return;
+    if (!editRecipe?.title?.trim()) { setNotice('Recipe title is required.'); return; }
     const input = {
       title: editRecipe.title, servings: editRecipe.servings, prepMin: editRecipe.prepMin, cookMin: editRecipe.cookMin,
       ingredients: (editRecipe.ingredients || []).filter(i => i.name.trim()),
@@ -260,6 +280,19 @@ export function RecipeBoxSection() {
     return m;
   }, [shopping]);
 
+  const visibleRecipes = useMemo(() => {
+    const q = recipeQuery.trim().toLowerCase();
+    const filtered = q
+      ? recipes.filter(r => r.title.toLowerCase().includes(q) || r.cuisine.toLowerCase().includes(q) || r.tags.some(t => t.toLowerCase().includes(q)))
+      : recipes;
+    if (recipeSort === 'default') return filtered;
+    const copy = [...filtered];
+    if (recipeSort === 'title-az') copy.sort((a, b) => a.title.localeCompare(b.title));
+    if (recipeSort === 'title-za') copy.sort((a, b) => b.title.localeCompare(a.title));
+    if (recipeSort === 'quickest') copy.sort((a, b) => (a.prepMin + a.cookMin) - (b.prepMin + b.cookMin));
+    return copy;
+  }, [recipes, recipeQuery, recipeSort]);
+
   return (
     <div className="bg-[#0d1117] border border-orange-500/15 rounded-lg overflow-hidden">
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
@@ -298,17 +331,30 @@ export function RecipeBoxSection() {
                 <Plus className="w-3 h-3" />New recipe
               </button>
             </div>
+            {recipes.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <input value={recipeQuery} onChange={e => setRecipeQuery(e.target.value)}
+                  placeholder="Search recipes by title, cuisine, or tag" aria-label="Search recipes"
+                  className="flex-1 min-w-[180px] px-2.5 py-1.5 text-xs rounded border border-white/10 bg-black/30 text-white placeholder:text-gray-500" />
+                <select value={recipeSort} onChange={e => setRecipeSort(e.target.value as typeof recipeSort)} aria-label="Sort recipes"
+                  className="px-2 py-1.5 text-xs rounded border border-white/10 bg-black/30 text-gray-200">
+                  <option value="default">Saved order</option>
+                  <option value="title-az">Title A–Z</option>
+                  <option value="title-za">Title Z–A</option>
+                  <option value="quickest">Quickest first</option>
+                </select>
+              </div>
+            )}
             {recipes.length === 0 ? (
               <div className="py-10 text-center text-xs text-gray-400"><ChefHat className="w-6 h-6 mx-auto mb-2 opacity-30" />No recipes yet.</div>
+            ) : visibleRecipes.length === 0 ? (
+              <div className="py-10 text-center text-xs text-gray-400">No recipes match &ldquo;{recipeQuery}&rdquo;.</div>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-                {recipes.map(r => (
+                {visibleRecipes.map(r => (
                   <div key={r.id} className="rounded border border-white/10 bg-black/30 overflow-hidden group">
                     <div className="aspect-video bg-black/40">
-                      {r.photoUrl
-                        // eslint-disable-next-line @next/next/no-img-element -- recipe photos come from arbitrary external cooking sites
-                        ? <img src={r.photoUrl} alt="" className="w-full h-full object-cover" />
-                        : <div className="w-full h-full flex items-center justify-center"><ChefHat className="w-8 h-8 text-gray-700" /></div>}
+                      <RecipePhoto url={r.photoUrl} title={r.title} />
                     </div>
                     <div className="p-2.5">
                       <div className="text-sm text-white font-medium truncate">{r.title}</div>
@@ -560,8 +606,8 @@ export function RecipeBoxSection() {
 
       {/* Recipe editor modal */}
       {editRecipe && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setEditRecipe(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-          <div onClick={e => e.stopPropagation()} className="bg-[#0d1117] border border-orange-500/30 rounded-lg w-full max-w-lg max-h-[85vh] overflow-y-auto" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setEditRecipe(null)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
+          <div onClick={e => e.stopPropagation()} className="bg-[#0d1117] border border-orange-500/30 rounded-lg w-full max-w-lg max-h-[85vh] overflow-y-auto" role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <header className="px-4 py-3 border-b border-white/10 flex items-center gap-2 sticky top-0 bg-[#0d1117]">
               <ChefHat className="w-4 h-4 text-orange-400" />
               <span className="text-sm font-semibold text-gray-200 flex-1">{editRecipe._new ? 'New recipe' : 'Edit recipe'}</span>
@@ -605,8 +651,8 @@ export function RecipeBoxSection() {
 
       {/* Scale modal */}
       {scaleFor && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setScaleFor(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-          <div onClick={e => e.stopPropagation()} className="bg-[#0d1117] border border-orange-500/30 rounded-lg w-full max-w-sm" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setScaleFor(null)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
+          <div onClick={e => e.stopPropagation()} className="bg-[#0d1117] border border-orange-500/30 rounded-lg w-full max-w-sm" role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <header className="px-4 py-3 border-b border-white/10 flex items-center gap-2">
               <Scaling className="w-4 h-4 text-orange-400" />
               <span className="text-sm font-semibold text-gray-200 flex-1">Scale: {scaleFor.recipe.title}</span>

@@ -15,6 +15,25 @@ export function snippetFromFilesRead(result: unknown): string | null {
   return content;
 }
 
+/**
+ * Newest saved script whose title is this tab, when the live file read
+ * came back empty. lens.list is newest-first, so the first match is the
+ * last Save. Without this, a reload before the debounced workspace write
+ * shows a blank scratch pad even though Save stored the source.
+ */
+export function scratchContentFromScripts(
+  scripts: Array<{ title?: string; data?: { content?: unknown } | null }> | null | undefined,
+  tabName: string,
+): string | null {
+  if (!tabName || !Array.isArray(scripts)) return null;
+  for (const script of scripts) {
+    if (!script || script.title !== tabName) continue;
+    const content = script.data && typeof script.data === 'object' ? script.data.content : undefined;
+    if (typeof content === 'string' && content.length > 0) return content;
+  }
+  return null;
+}
+
 /** Apply a read-back only onto the still-empty primary tab. */
 export function tabAfterSnippetRead<T extends { id: string; content: string }>(
   tabs: T[],

@@ -123,7 +123,7 @@ export function StandPolygonPanel() {
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold text-zinc-100 truncate">{p.name}</p>
               <p className="text-[10px] text-zinc-400">
-                {p.acres.toLocaleString()} ac · {(p.perimeterM / 1000).toFixed(2)} km · {p.vertices.length} vertices
+                {p.acres.toLocaleString()} ac · {(p.acres * 0.00404686).toFixed(5)} km² · {(p.perimeterM / 1000).toFixed(2)} km perimeter · {p.vertices.length} vertices
                 {p.standId ? ` · stand ${p.standId}` : ''}
               </p>
             </div>

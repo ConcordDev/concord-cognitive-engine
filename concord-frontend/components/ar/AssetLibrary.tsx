@@ -34,13 +34,14 @@
  */
 
 import { useState } from 'react';
-import { Box, Plus, Trash2, Eye, Search, Loader2 } from 'lucide-react';
+import { Box, Plus, Trash2, Eye, Search, Loader2, Pencil } from 'lucide-react';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { EmptyState, ErrorState } from '@/components/ui';
 import { SketchfabModels } from '@/components/ar/SketchfabModels';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 const MODEL_FORMATS = ['GLTF', 'GLB', 'USDZ', 'OBJ', 'FBX', 'STL'];
 
@@ -66,25 +67,54 @@ export interface ArRenderPlan {
 }
 
 export function AssetLibrary({ onPreview }: { onPreview: (plan: ArRenderPlan, title: string) => void }) {
-  const { items, isLoading, isError, error, refetch, create, remove } = useLensData<ModelAsset>('ar', 'Model3D', { seed: [] });
+  const { items, isLoading, isError, error, refetch, create, update, remove } = useLensData<ModelAsset>('ar', 'Model3D', { seed: [] });
   const runAction = useRunArtifact('ar');
   const [previewingId, setPreviewingId] = useState<string | null>(null);
 
   const [formOpen, setFormOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [format, setFormat] = useState(MODEL_FORMATS[0]);
   const [polyCount, setPolyCount] = useState('');
   const [fileSize, setFileSize] = useState('');
   const [sourceUrl, setSourceUrl] = useState('');
   const [description, setDescription] = useState('');
+  const [formError, setFormError] = useState<string | null>(null);
 
   const resetForm = () => {
     setName(''); setFormat(MODEL_FORMATS[0]); setPolyCount(''); setFileSize(''); setSourceUrl(''); setDescription('');
+    setEditingId(null);
+  };
+
+  // Edit (FIX-ar-007): open the same form prefilled from the model.
+  const openEdit = (item: LensItem<ModelAsset>) => {
+    setEditingId(item.id);
+    setName(item.data.name || item.title || '');
+    setFormat(item.data.format || MODEL_FORMATS[0]);
+    setPolyCount(item.data.polyCount != null ? String(item.data.polyCount) : '');
+    setFileSize(item.data.fileSize || '');
+    setSourceUrl(item.data.sourceUrl || '');
+    setDescription(item.data.description || '');
+    setFormError(null);
+    setFormOpen(true);
   };
 
   const handleCreate = async () => {
-    if (!name.trim()) return;
-    await create({
+    if (!name.trim()) { setFormError('A model needs a name.'); return; }
+    if (polyCount.trim()) {
+      const polys = Number(polyCount);
+      if (!Number.isInteger(polys) || polys < 0) { setFormError('Poly count must be a whole number that is 0 or greater.'); return; }
+    }
+    if (fileSize.trim() && !/^\d+(\.\d+)?\s*(b|kb|mb|gb)?$/i.test(fileSize.trim())) {
+      setFormError('File size must be a number, optionally with B, KB, MB, or GB.');
+      return;
+    }
+    if (sourceUrl.trim() && !/^https?:\/\/\S+$/i.test(sourceUrl.trim())) {
+      setFormError('Source URL must start with http:// or https://.');
+      return;
+    }
+    setFormError(null);
+    const payload = {
       title: name,
       data: {
         name, format, description,
@@ -95,7 +125,9 @@ export function AssetLibrary({ onPreview }: { onPreview: (plan: ArRenderPlan, ti
         position: '0, 0, 0', rotation: '0, 0, 0', scale: 1,
       },
       meta: { tags: ['ar', 'model'], status: 'active', visibility: 'private' },
-    });
+    };
+    if (editingId) await update(editingId, payload);
+    else await create(payload);
     resetForm();
     setFormOpen(false);
   };
@@ -123,7 +155,7 @@ export function AssetLibrary({ onPreview }: { onPreview: (plan: ArRenderPlan, ti
             <h3 className={ds.heading3}>My Models</h3>
             <p className={ds.textMuted}>Reference catalog of 3D assets you plan to place in a scene — format, poly count, and source, self-reported.</p>
           </div>
-          <button onClick={() => setFormOpen((v) => !v)} className={ds.btnPrimary}>
+          <button onClick={() => { if (formOpen) { setFormOpen(false); resetForm(); } else { resetForm(); setFormOpen(true); } }} className={ds.btnPrimary}>
             <Plus className="w-4 h-4" /> Add model
           </button>
         </div>
@@ -138,11 +170,12 @@ export function AssetLibrary({ onPreview }: { onPreview: (plan: ArRenderPlan, ti
               <div><label className={ds.label}>Poly count</label><input type="number" className={ds.input} value={polyCount} onChange={(e) => setPolyCount(e.target.value)} /></div>
               <div><label className={ds.label}>File size</label><input className={ds.input} value={fileSize} onChange={(e) => setFileSize(e.target.value)} placeholder="e.g. 4.2 MB" /></div>
               <div><label className={ds.label}>Source URL</label><input className={ds.input} value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} placeholder="https://sketchfab.com/…" /></div>
+              {formError && <p className="col-span-full text-xs text-rose-300" role="alert">{formError}</p>}
             </div>
             <div><label className={ds.label}>Notes</label><textarea className={ds.textarea} rows={2} value={description} onChange={(e) => setDescription(e.target.value)} /></div>
             <div className="flex justify-end gap-2">
               <button onClick={() => { setFormOpen(false); resetForm(); }} className={ds.btnSecondary}>Cancel</button>
-              <button onClick={handleCreate} className={ds.btnPrimary} disabled={!name.trim()}>Save</button>
+              <button onClick={handleCreate} className={ds.btnPrimary} disabled={!name.trim()}>{editingId ? 'Save changes' : 'Save'}</button>
             </div>
           </div>
         )}
@@ -176,12 +209,13 @@ export function AssetLibrary({ onPreview }: { onPreview: (plan: ArRenderPlan, ti
                       <Search className="w-4 h-4" />
                     </a>
                   )}
+                  <button onClick={() => openEdit(item)} className={ds.btnGhost} aria-label={`Edit ${item.data.name}`}>
+                    <Pencil className="w-4 h-4" />
+                  </button>
                   <button onClick={() => handlePreview(item)} className={ds.btnGhost} aria-label={`Preview ${item.data.name} in AR`} disabled={previewingId === item.id}>
                     {previewingId === item.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4 text-neon-cyan" />}
                   </button>
-                  <button onClick={() => remove(item.id)} className={ds.btnGhost} aria-label={`Delete ${item.data.name}`}>
-                    <Trash2 className="w-4 h-4 text-red-400" />
-                  </button>
+                  <StickyDeleteConfirm onConfirm={() => { void remove(item.id); }} className={ds.btnGhost} armAriaLabel={`Delete ${item.data.name}`} confirmLabel={`Delete “${item.data.name}”?`} confirmAriaLabel={`Confirm delete ${item.data.name}`} armLabel={<Trash2 className="w-4 h-4 text-red-400" />} />
                 </div>
               </div>
             ))}

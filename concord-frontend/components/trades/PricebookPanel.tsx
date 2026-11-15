@@ -123,8 +123,8 @@ export function PricebookPanel() {
                   <td className="px-2 py-1.5 text-right font-mono text-violet-300">${it.price.toFixed(2)}</td>
                   <td className={cn('px-2 py-1.5 text-right font-mono', it.marginPct >= 30 ? 'text-emerald-300' : it.marginPct >= 0 ? 'text-amber-300' : 'text-rose-300')}>{it.marginPct.toFixed(1)}%</td>
                   <td className="px-2 py-1.5 text-right">
-                    <button onClick={() => editItem(it)} className="p-1 text-gray-600 hover:text-violet-300 opacity-0 group-hover:opacity-100" aria-label="Edit"><Pencil className="w-3 h-3" /></button>
-                    <button onClick={() => remove(it.id)} className="p-1 text-gray-600 hover:text-rose-300 opacity-0 group-hover:opacity-100" aria-label="Delete"><Trash2 className="w-3 h-3" /></button>
+                    <button onClick={() => editItem(it)} className="p-1 text-gray-400 hover:text-violet-300 opacity-0 group-hover:opacity-100" aria-label="Edit"><Pencil className="w-3 h-3" /></button>
+                    <button onClick={() => remove(it.id)} className="p-1 text-gray-400 hover:text-rose-300 opacity-0 group-hover:opacity-100" aria-label="Delete"><Trash2 className="w-3 h-3" /></button>
                   </td>
                 </tr>
               ))}

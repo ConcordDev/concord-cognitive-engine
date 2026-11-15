@@ -20,6 +20,7 @@ import {
   CalendarRange, Plus, Trash2, RefreshCw, Loader2, Play, Pause, Save,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { useLensStatePersistence } from '@/lib/lens-state-persistence';
 import { ChartKit } from '@/components/viz';
 import { cn } from '@/lib/utils';
@@ -152,6 +153,7 @@ interface LoadedWidget extends Widget { data?: WidgetData }
 
 function ReportBuilder({ eventNames }: { eventNames: string[] }) {
   const [dashboards, setDashboards] = useState<DashboardSummary[]>([]);
+  const [dashSort, setDashSort] = useState<'updated' | 'name-asc' | 'name-desc' | 'widgets'>('updated');
   // Draft persistence (A23 successor, Review 4 Addenda 5 + 8): the
   // dashboard-name draft rides the lens state store under a
   // dashboardDraft key — restored once on mount, re-persisted on
@@ -166,6 +168,7 @@ function ReportBuilder({ eventNames }: { eventNames: string[] }) {
     return d && typeof d === 'object' ? (d as Record<string, unknown>) : {};
   });
   const [name, setName] = useState(() => String(savedDashboardDraft.name ?? ''));
+  const [saveError, setSaveError] = useState<string | null>(null);
   useEffect(() => {
     persist({ ...(restore() ?? {}), dashboardDraft: { name } });
   }, [name, persist, restore]);
@@ -195,7 +198,12 @@ function ReportBuilder({ eventNames }: { eventNames: string[] }) {
 
   async function save() {
     if (!name.trim()) return;
+    if (name.trim().length > 100) {
+      setSaveError('Dashboard name must be at most 100 characters.');
+      return;
+    }
     setBusy(true);
+    setSaveError(null);
     const r = await lensRun('analytics', 'dashboard-save', {
       id: editingId || undefined,
       name: name.trim(),
@@ -207,6 +215,8 @@ function ReportBuilder({ eventNames }: { eventNames: string[] }) {
       setWidgets([]);
       setEditingId(null);
       await refresh();
+    } else {
+      setSaveError(r.data?.error || 'Could not save the dashboard.');
     }
   }
   async function open(id: string) {
@@ -233,18 +243,37 @@ function ReportBuilder({ eventNames }: { eventNames: string[] }) {
 
       {/* Saved dashboards */}
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5">
-        <p className="text-[10px] uppercase tracking-wide text-zinc-400 mb-1.5">Saved dashboards</p>
+        <div className="flex items-center gap-2 mb-1.5">
+          <p className="text-[10px] uppercase tracking-wide text-zinc-400">Saved dashboards</p>
+          {dashboards.length > 0 && (
+            <select
+              value={dashSort}
+              onChange={(e) => setDashSort(e.target.value as typeof dashSort)}
+              aria-label="Sort saved dashboards"
+              className={cn(INPUT, 'ml-auto w-auto min-h-[40px] text-xs')}
+            >
+              <option value="updated">Recently updated</option>
+              <option value="name-asc">Name A–Z</option>
+              <option value="name-desc">Name Z–A</option>
+              <option value="widgets">Most widgets</option>
+            </select>
+          )}
+        </div>
         {dashboards.length === 0 && <Empty text="No saved dashboards yet." />}
         <div className="space-y-1">
-          {dashboards.map((d) => (
+          {[...dashboards]
+            .sort((a, b) =>
+              dashSort === 'name-asc' ? a.name.localeCompare(b.name)
+              : dashSort === 'name-desc' ? b.name.localeCompare(a.name)
+              : dashSort === 'widgets' ? b.widgetCount - a.widgetCount
+              : String(b.updatedAt ?? '').localeCompare(String(a.updatedAt ?? '')))
+            .map((d) => (
             <div key={d.id} className="flex items-center gap-2 text-xs">
               <button onClick={() => open(d.id)} className="flex-1 text-left text-zinc-200 hover:text-amber-300 truncate">
                 {d.name}
               </button>
               <span className="text-[10px] text-zinc-400">{d.widgetCount} widgets</span>
-              <button onClick={() => remove(d.id)} aria-label={`Delete ${d.name}`} className="text-zinc-600 hover:text-red-400">
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              <StickyDeleteConfirm onConfirm={() => remove(d.id)} armAriaLabel={`Delete ${d.name}`} confirmAriaLabel={`Confirm delete ${d.name}`} className="text-zinc-600 hover:text-red-400" armLabel={<Trash2 className="w-3.5 h-3.5" />} />
             </div>
           ))}
         </div>
@@ -260,6 +289,7 @@ function ReportBuilder({ eventNames }: { eventNames: string[] }) {
             {editingId ? 'Update' : 'Save'}
           </button>
         </div>
+        {saveError && <p className="mb-2 text-xs text-red-400">{saveError}</p>}
         <div className="flex flex-wrap gap-1 mb-2">
           {(['metric', 'trend', 'topEvents', 'segment', 'funnel'] as WidgetKind[]).map((k) => (
             <button key={k} onClick={() => addWidget(k)} className={BTN_GHOST}>
@@ -586,6 +616,7 @@ interface StreamEvent {
 function LiveStream({ eventNames }: { eventNames: string[] }) {
   const [events, setEvents] = useState<StreamEvent[]>([]);
   const [nameFilter, setNameFilter] = useState('');
+  const [eventOrder, setEventOrder] = useState<'newest' | 'oldest'>('newest');
   const [live, setLive] = useState(false);
   const [matched, setMatched] = useState(0);
   const [deleteError, setDeleteError] = useState('');
@@ -648,7 +679,16 @@ function LiveStream({ eventNames }: { eventNames: string[] }) {
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5">
         <div className="flex flex-wrap gap-1.5 items-center">
           <input list="ls-events" value={nameFilter} onChange={(e) => setNameFilter(e.target.value)}
-            placeholder="filter by event name" className={cn(INPUT, 'flex-1 min-w-[140px]')} />
+            placeholder="filter by event name" aria-label="Filter events by name" className={cn(INPUT, 'flex-1 min-w-[140px]')} />
+          <select
+            value={eventOrder}
+            onChange={(e) => setEventOrder(e.target.value as typeof eventOrder)}
+            aria-label="Event order"
+            className={cn(INPUT, 'w-auto min-h-[40px] text-xs')}
+          >
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+          </select>
           <button onClick={() => { cursorRef.current = null; void poll(true); }} className={BTN_GHOST}>
             <RefreshCw className="w-3 h-3" />Refresh
           </button>
@@ -666,14 +706,13 @@ function LiveStream({ eventNames }: { eventNames: string[] }) {
       {events.length === 0 && <Empty text="No events yet — track events to populate the stream." />}
       {events.length > 0 && (
         <div className="bg-zinc-950 border border-zinc-800 rounded-lg max-h-72 overflow-y-auto divide-y divide-zinc-900">
-          {events.map((e) => (
+          {(eventOrder === 'oldest' ? [...events].reverse() : events).map((e) => (
             <div key={e.id} className="group px-2.5 py-1.5 text-[11px] font-mono">
               <div className="flex items-center gap-2">
                 <span className="text-amber-300 font-semibold">{e.name}</span>
                 <span className="text-zinc-400">{e.distinctId}</span>
                 <span className="text-zinc-600 ml-auto">{new Date(e.at).toLocaleTimeString()}</span>
-                <button type="button" onClick={() => void remove(e.id)} aria-label="Delete event"
-                  className="opacity-0 group-hover:opacity-100 p-0.5 text-rose-300 hover:bg-rose-500/20 rounded"><Trash2 className="w-3 h-3" /></button>
+                <StickyDeleteConfirm onConfirm={() => void remove(e.id)} armAriaLabel={`Delete event ${e.name}`} confirmAriaLabel={`Confirm delete event ${e.name}`} className="p-0.5 text-rose-300 hover:bg-rose-500/20 rounded" armLabel={<Trash2 className="w-3 h-3" />} />
               </div>
               {Object.keys(e.properties || {}).length > 0 && (
                 <div className="text-zinc-400 mt-0.5 truncate">

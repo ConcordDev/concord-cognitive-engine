@@ -60,9 +60,9 @@ export function StatsPanel() {
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData} layout="vertical" margin={{ top: 4, right: 8, left: 4, bottom: 0 }}>
                     <CartesianGrid stroke="#ffffff10" strokeDasharray="2 4" horizontal={false} />
-                    <XAxis type="number" tick={{ fontSize: 9, fill: '#94a3b8' }} tickFormatter={(v) => `$${v}`} />
+                    <XAxis type="number" tick={{ fontSize: 9, fill: '#94a3b8' }} tickFormatter={(v) => `${v} CC`} />
                     <YAxis type="category" dataKey="name" tick={{ fontSize: 9, fill: '#cbd5e1' }} width={100} />
-                    <Tooltip contentStyle={{ background: '#0d0d14', border: '1px solid #ffffff20', fontSize: 11 }} formatter={(v, k) => k === 'revenue' ? [`$${Number(v).toFixed(0)}`, 'Revenue'] : [String(v), 'Orders']} />
+                    <Tooltip contentStyle={{ background: '#0d0d14', border: '1px solid #ffffff20', fontSize: 11 }} formatter={(v, k) => k === 'revenue' ? [`${Number(v).toFixed(0)} CC`, 'Revenue'] : [String(v), 'Orders']} />
                     <Bar dataKey="revenue" fill="#f97316" radius={[0, 3, 3, 0]} />
                   </BarChart>
                 </ResponsiveContainer>

@@ -114,7 +114,15 @@ export default function registerRoboticsActions(registerLensAction) {
         robot.status = params.status;
         if (params.status === "error") robot.errorCount = (robot.errorCount || 0) + 1;
       }
+      if (params.name != null) {
+        const n = rclean(params.name, 80);
+        if (!n) return { ok: false, error: "Robot name required." };
+        robot.name = n;
+      }
+      if (params.type && ["arm", "mobile", "drone", "humanoid", "swarm", "custom"].includes(params.type)) robot.type = params.type;
       if (params.battery != null) robot.battery = rclamp(rnum(params.battery, robot.battery), 0, 100);
+      if (params.batteryCapacityWh != null) robot.batteryCapacityWh = rclamp(rnum(params.batteryCapacityWh, robot.batteryCapacityWh), 1, 5000);
+      if (params.powerDrawW != null) robot.powerDrawW = rclamp(rnum(params.powerDrawW, robot.powerDrawW), 1, 5000);
       if (params.firmware) robot.firmware = rclean(params.firmware, 24);
       if (params.lastCommand) robot.lastCommand = rclean(params.lastCommand, 120);
       robot.updatedAt = rnow();

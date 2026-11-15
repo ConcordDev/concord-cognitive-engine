@@ -61,8 +61,10 @@ export function PriorityMatrix({ refreshKey }: { refreshKey: number }) {
       )}
       {data && data.points.length > 0 && (
         <>
-          {/* Scatter plot */}
-          <div className="relative w-full h-64 rounded-lg border border-white/10 bg-white/[0.02] mb-4">
+          {/* Scatter plot — FIX-suffering-009: overflow-hidden keeps the
+              hover labels (absolute, whitespace-nowrap) from widening the
+              page into a horizontal scrollbar at 390px. */}
+          <div className="relative w-full h-64 overflow-hidden rounded-lg border border-white/10 bg-white/[0.02] mb-4">
             <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 pointer-events-none">
               <div className="border-r border-b border-dashed border-white/10" />
               <div className="border-b border-dashed border-white/10" />
@@ -88,7 +90,7 @@ export function PriorityMatrix({ refreshKey }: { refreshKey: number }) {
                     className="w-3 h-3 rounded-full ring-2 ring-black/40"
                     style={{ backgroundColor: tone }}
                   />
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 whitespace-nowrap text-[10px] text-gray-300 bg-black/80 px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                  <span className={`absolute top-1/2 -translate-y-1/2 whitespace-nowrap text-[10px] text-gray-300 bg-black/80 px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity z-10 ${x > 62 ? 'right-4' : 'left-4'}`}>
                     {p.title} (I{p.impact}/E{p.effort})
                   </span>
                 </div>

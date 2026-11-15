@@ -84,6 +84,14 @@ describe("mesh direct / group messaging", () => {
     assert.equal(call("markRead", ctx, { with: nodeId }).ok, true);
   });
 
+  it("sendMessage refuses a junk priority by name (FIX-mesh-005)", () => {
+    const r = call("sendMessage", freshCtx(), { to: "broadcast", body: "hi", priority: "not-a-number" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /priority must be one of/);
+    const ok = call("sendMessage", freshCtx(), { to: "broadcast", body: "hi", priority: "threat" });
+    assert.equal(ok.ok, true);
+  });
+
   it("sendMessage rejects an empty body", () => {
     assert.equal(call("sendMessage", freshCtx(), { to: "broadcast", body: "" }).ok, false);
   });

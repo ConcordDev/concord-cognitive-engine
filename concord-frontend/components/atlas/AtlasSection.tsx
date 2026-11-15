@@ -319,6 +319,7 @@ function ExplorePanel({ onSaved, onShowOnMap }: { onSaved: () => void; onShowOnM
 function PlacesPanel({ places, onChanged, onShowOnMap, keepPlace, onPlaceCreated }: { places: Place[]; onChanged: () => void; onShowOnMap: (m: MapMarker[]) => void; keepPlace: AtlasPlace | null; onPlaceCreated: (p: AtlasPlace | null) => void }) {
   const [creating, setCreating] = useState(false);
   const [draft, setDraft] = useState({ name: '', lat: '', lng: '', category: 'other', address: '', notes: '' });
+  const [formError, setFormError] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState({ name: '', category: 'other', address: '', notes: '', rating: '' });
   const [saving, setSaving] = useState(false);
@@ -326,10 +327,20 @@ function PlacesPanel({ places, onChanged, onShowOnMap, keepPlace, onPlaceCreated
   const [deleteError, setDeleteError] = useState('');
 
   async function create() {
-    if (!draft.name.trim() || !draft.lat || !draft.lng) return;
+    // FIX-atlas-006: a blank submit used to do nothing at all, and bad
+    // coordinates reached the server and came back as a raw 'invalid_input'
+    // alert. Both refuse at the form, in words.
+    if (!draft.name.trim() || !draft.lat.trim() || !draft.lng.trim()) {
+      setFormError('A place needs a name, a latitude and a longitude — one or more is still empty.');
+      return;
+    }
+    const lat = Number(draft.lat); const lng = Number(draft.lng);
+    if (!Number.isFinite(lat) || lat < -90 || lat > 90) { setFormError('Latitude must be a number between -90 and 90.'); return; }
+    if (!Number.isFinite(lng) || lng < -180 || lng > 180) { setFormError('Longitude must be a number between -180 and 180.'); return; }
+    setFormError('');
     try {
-      const r = await lensRun({ domain: 'atlas', action: 'places-save', input: { ...draft, lat: Number(draft.lat), lng: Number(draft.lng) } });
-      if (r.data?.ok === false) { alert(r.data?.error); return; }
+      const r = await lensRun({ domain: 'atlas', action: 'places-save', input: { ...draft, lat, lng } });
+      if (r.data?.ok === false) { setFormError(r.data?.error === 'invalid_input' ? 'The server could not use those details — check the name and coordinates.' : (r.data?.error || 'That place could not be saved.')); return; }
       const place = (r.data as { result?: { place?: AtlasPlace } })?.result?.place;
       if (place) onPlaceCreated(place);
       setDraft({ name: '', lat: '', lng: '', category: 'other', address: '', notes: '' });
@@ -389,6 +400,7 @@ function PlacesPanel({ places, onChanged, onShowOnMap, keepPlace, onPlaceCreated
             {CATEGORIES.map(c => <option key={c} value={c}>{CAT_EMOJI[c]} {c}</option>)}
           </select>
           <input value={draft.notes} onChange={e => setDraft({ ...draft, notes: e.target.value })} placeholder="Notes" className="w-full px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          {formError && <p role="alert" className="text-[11px] text-rose-300">{formError}</p>}
           <button onClick={create} className="w-full px-2 py-1 text-xs rounded bg-teal-500 text-black font-bold hover:bg-teal-400">Save place</button>
         </div>
       )}

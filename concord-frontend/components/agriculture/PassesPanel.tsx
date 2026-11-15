@@ -43,13 +43,18 @@ export function PassesPanel() {
     } catch (e) { console.error('[Passes] planting', e); }
   }
 
+  const [harvestError, setHarvestError] = useState<string | null>(null);
   async function logHarvest() {
-    if (!hForm.fieldId.trim() || !hForm.crop.trim() || !hForm.acresHarvested) return;
+    if (!hForm.fieldId.trim() || !hForm.crop.trim()) { setHarvestError('Field and crop are required.'); return; }
+    if (!(Number(hForm.acresHarvested) > 0)) { setHarvestError('Acres harvested must be a number greater than 0.'); return; }
+    if (hForm.yieldBushels.trim() && !(Number(hForm.yieldBushels) >= 0)) { setHarvestError('Yield must be a number that is 0 or greater.'); return; }
+    setHarvestError(null);
     try {
-      await lensRun({
+      const res = await lensRun({
         domain: 'agriculture', action: 'harvest-log',
         input: { ...hForm, acresHarvested: Number(hForm.acresHarvested), yieldBushels: Number(hForm.yieldBushels), moisturePct: Number(hForm.moisturePct) || undefined },
       });
+      if (res.data?.ok === false) { setHarvestError(res.data?.message || res.data?.error || 'Could not log that harvest.'); return; }
       setHForm({ fieldId: '', crop: '', acresHarvested: '', yieldBushels: '', moisturePct: '' });
       await refresh();
     } catch (e) { console.error('[Passes] harvest', e); }
@@ -111,6 +116,7 @@ export function PassesPanel() {
             <input type="number" value={hForm.acresHarvested} onChange={e => setHForm({ ...hForm, acresHarvested: e.target.value })} placeholder="Acres" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
             <input type="number" value={hForm.yieldBushels} onChange={e => setHForm({ ...hForm, yieldBushels: e.target.value })} placeholder="Bushels" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
             <input type="number" step="0.1" value={hForm.moisturePct} onChange={e => setHForm({ ...hForm, moisturePct: e.target.value })} placeholder="Moisture %" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+            {harvestError && <p role="alert" className="col-span-5 text-xs text-rose-300">{harvestError}</p>}
             <button onClick={logHarvest} className="col-span-5 px-3 py-1.5 text-xs rounded bg-amber-500 text-black font-bold hover:bg-amber-400 inline-flex items-center justify-center gap-1"><Plus className="w-3 h-3" />Log harvest pass</button>
           </div>
           <div className="max-h-72 overflow-y-auto">

@@ -134,11 +134,11 @@ export function TravelExplorePanel() {
             </div>
             <div className="flex items-center">
               <button aria-label="Save" type="button" onClick={() => save(selected)}
-                className={cn('p-1.5 rounded-lg', selected.saved ? 'text-sky-400' : 'text-zinc-600 hover:text-sky-400')}>
+                className={cn('inline-flex min-h-11 min-w-11 items-center justify-center p-1.5 rounded-lg', selected.saved ? 'text-sky-400' : 'text-zinc-400 hover:text-sky-400')}>
                 <Bookmark className={cn('w-4 h-4', selected.saved && 'fill-sky-400')} />
               </button>
               <button aria-label="Remove place" type="button" onClick={() => setConfirmingDelete(true)}
-                className="p-1.5 rounded-lg text-zinc-600 hover:text-rose-400">
+                className="inline-flex min-h-11 min-w-11 items-center justify-center p-1.5 rounded-lg text-zinc-400 hover:text-rose-400">
                 <Trash2 className="w-4 h-4" />
               </button>
             </div>
@@ -220,14 +220,14 @@ export function TravelExplorePanel() {
         <div className="grid grid-cols-2 gap-2 bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
           <input placeholder="Place name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-          <select value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })}
-            className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
+          <select aria-label="Place kind" value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })}
+            className="min-h-11 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
             {KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
           </select>
           <input placeholder="Destination" value={form.destination} onChange={(e) => setForm({ ...form, destination: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-          <select value={form.priceLevel} onChange={(e) => setForm({ ...form, priceLevel: e.target.value })}
-            className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
+          <select aria-label="Price level" value={form.priceLevel} onChange={(e) => setForm({ ...form, priceLevel: e.target.value })}
+            className="min-h-11 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
             {[0, 1, 2, 3, 4].map((n) => <option key={n} value={n}>{n === 0 ? 'No price' : '$'.repeat(n)}</option>)}
           </select>
           <button type="button" onClick={addPlace}
@@ -255,7 +255,7 @@ export function TravelExplorePanel() {
                 </div>
               </button>
               <button aria-label="Save" type="button" onClick={() => save(p)}
-                className={cn('p-1.5 rounded-lg', p.saved ? 'text-sky-400' : 'text-zinc-600 hover:text-sky-400')}>
+                className={cn('inline-flex min-h-11 min-w-11 items-center justify-center p-1.5 rounded-lg', p.saved ? 'text-sky-400' : 'text-zinc-400 hover:text-sky-400')}>
                 <Bookmark className={cn('w-4 h-4', p.saved && 'fill-sky-400')} />
               </button>
             </li>

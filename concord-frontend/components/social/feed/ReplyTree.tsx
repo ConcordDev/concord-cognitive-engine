@@ -8,7 +8,7 @@
  */
 
 import { useCallback, useState } from 'react';
-import { CornerDownRight, Loader2, Send, MessageSquare } from 'lucide-react';
+import { CornerDownRight, Loader2, Send, MessageSquare, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import type { SocialReply } from './types';
 import { authorLabel } from './authorLabel';
@@ -25,14 +25,26 @@ interface ReplyNodeProps {
   reply: SocialReply;
   postId: string;
   username: string;
+  currentUserId?: string | null;
   depth: number;
   onChanged: () => void;
 }
 
-function ReplyNode({ reply, postId, username, depth, onChanged }: ReplyNodeProps) {
+function ReplyNode({ reply, postId, username, currentUserId, depth, onChanged }: ReplyNodeProps) {
   const [open, setOpen] = useState(false);
   const [body, setBody] = useState('');
   const [busy, setBusy] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const mine = !!currentUserId && reply.userId === currentUserId;
+
+  const del = useCallback(async () => {
+    if (!confirmDelete) { setConfirmDelete(true); return; }
+    setBusy(true);
+    const r = await lensRun('social', 'deleteReply', { postId, replyId: reply.id });
+    setBusy(false);
+    setConfirmDelete(false);
+    if (r.data?.ok) onChanged();
+  }, [confirmDelete, postId, reply.id, onChanged]);
 
   const submit = useCallback(async () => {
     const trimmed = body.trim();
@@ -57,13 +69,25 @@ function ReplyNode({ reply, postId, username, depth, onChanged }: ReplyNodeProps
           <span className="text-[10px] text-zinc-400">{relTime(reply.createdAt)}</span>
         </div>
         <p className="text-xs text-zinc-300 leading-snug">{reply.body}</p>
-        <button
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          className="mt-0.5 flex items-center gap-1 text-[10px] text-zinc-400 hover:text-indigo-300"
-        >
-          <CornerDownRight className="w-3 h-3" /> Reply
-        </button>
+        <div className="mt-0.5 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            className="flex items-center gap-1 text-[10px] text-zinc-400 hover:text-indigo-300"
+          >
+            <CornerDownRight className="w-3 h-3" /> Reply
+          </button>
+          {mine && (
+            <button
+              type="button"
+              onClick={() => void del()}
+              disabled={busy}
+              className="flex items-center gap-1 text-[10px] text-zinc-400 hover:text-rose-300 disabled:opacity-40"
+            >
+              <Trash2 className="w-3 h-3" /> {confirmDelete ? 'Confirm delete' : 'Delete'}
+            </button>
+          )}
+        </div>
         {open && (
           <div className="mt-1 flex items-center gap-1.5">
             <input
@@ -91,6 +115,7 @@ function ReplyNode({ reply, postId, username, depth, onChanged }: ReplyNodeProps
           reply={child}
           postId={postId}
           username={username}
+          currentUserId={currentUserId}
           depth={depth + 1}
           onChanged={onChanged}
         />
@@ -102,9 +127,10 @@ function ReplyNode({ reply, postId, username, depth, onChanged }: ReplyNodeProps
 interface ReplyTreeProps {
   postId: string;
   username: string;
+  currentUserId?: string | null;
 }
 
-export function ReplyTree({ postId, username }: ReplyTreeProps) {
+export function ReplyTree({ postId, username, currentUserId }: ReplyTreeProps) {
   const [tree, setTree] = useState<SocialReply[]>([]);
   const [total, setTotal] = useState(0);
   const [loaded, setLoaded] = useState(false);
@@ -170,7 +196,7 @@ export function ReplyTree({ postId, username }: ReplyTreeProps) {
       ) : (
         <div>
           {tree.map((node) => (
-            <ReplyNode key={node.id} reply={node} postId={postId} username={username} depth={0} onChanged={load} />
+            <ReplyNode key={node.id} reply={node} postId={postId} username={username} currentUserId={currentUserId} depth={0} onChanged={load} />
           ))}
         </div>
       )}

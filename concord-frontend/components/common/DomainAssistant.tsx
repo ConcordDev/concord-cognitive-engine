@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { Send, X, Bot, User, AlertCircle, Loader2 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useLensTool } from '@/lib/lens-dock';
+import { shouldIgnoreLensHotkey } from '@/lib/a11y/editable-target';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -43,6 +44,8 @@ export default function DomainAssistant({ domain, domainLabel }: DomainAssistant
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === '/') {
+        // A field keeps Ctrl/Cmd+/ while the user is typing (FIX-commonsense-004).
+        if (shouldIgnoreLensHotkey(e)) return;
         e.preventDefault();
         setOpen((prev) => !prev);
       }
@@ -191,6 +194,8 @@ export default function DomainAssistant({ domain, domainLabel }: DomainAssistant
                   </div>
                 </div>
                 <button
+                  type="button"
+                  data-overlay-close=""
                   onClick={() => setOpen(false)}
                   className="p-2 rounded-lg hover:bg-lattice-bg text-gray-400 hover:text-white transition-colors"
                   aria-label="Close assistant"

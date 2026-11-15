@@ -72,13 +72,23 @@ export function WeatherRadar({ lat, lng, locationLabel }: WeatherRadarProps) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!coords && typeof navigator !== 'undefined' && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        pos => setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        () => setCoords({ lat: 37.7749, lng: -122.4194, label: 'San Francisco (default)' }),
-        { maximumAge: 5 * 60 * 1000, timeout: 5000 }
-      );
+    if (coords) return;
+    // FIX-graph-010: same locating guarantee as useAqiData — geolocation
+    // unavailable, or a browser that never answers, used to leave this
+    // panel on 'Locating you…' forever. Resolve to the default location
+    // on a hard deadline, exactly as the denied callback does.
+    const fallback = { lat: 37.7749, lng: -122.4194, label: 'San Francisco (default)' };
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      setCoords(fallback);
+      return;
     }
+    const watchdog = setTimeout(() => setCoords(fallback), 6000);
+    navigator.geolocation.getCurrentPosition(
+      pos => setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => setCoords(fallback),
+      { maximumAge: 5 * 60 * 1000, timeout: 5000 }
+    );
+    return () => clearTimeout(watchdog);
   }, [coords]);
 
   useEffect(() => {

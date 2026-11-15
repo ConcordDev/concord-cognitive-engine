@@ -102,7 +102,11 @@ export function OrganizationESGPanel() {
       const raw = values[def.key];
       if (raw === undefined || raw === '') continue;
       const n = Number(raw);
-      if (Number.isFinite(n)) indicators[def.pillar][def.key] = n;
+      if (!Number.isFinite(n) || n < 0 || n > 100) {
+        setError(`${def.label} must be a number from 0 to 100.`);
+        return;
+      }
+      indicators[def.pillar][def.key] = n;
     }
     setComputing(true);
     setError(null);
@@ -229,6 +233,23 @@ export function OrganizationESGPanel() {
               </div>
             </div>
 
+            {result.overallScore != null && (
+              <p className="text-[10px] text-gray-500">
+                {/* FIX-eco-004: the score said "weighted" but showed no
+                    weights, so 38.46 could not be hand-checked. The
+                    derivation is printed from the weights the server
+                    returns: overall = Σ(pillar score × pillar weight)
+                    over the pillars that reported, ÷ their weight sum. */}
+                Overall = weighted mean of the reporting pillars:{' '}
+                {PILLARS.filter((pl) => result.pillars[pl.id]?.score != null)
+                  .map((pl) => `${pl.label} ${result.pillars[pl.id].score} × ${result.pillars[pl.id].weight}`)
+                  .join(' + ')}
+                {' '}÷ {PILLARS.filter((pl) => result.pillars[pl.id]?.score != null)
+                  .reduce((s, pl) => Math.round((s + result.pillars[pl.id].weight) * 100) / 100, 0)}
+                {' '}= {result.overallScore}
+              </p>
+            )}
+
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {PILLARS.map((pillar) => {
                 const p = result.pillars[pillar.id];
@@ -242,7 +263,17 @@ export function OrganizationESGPanel() {
                       </span>
                     </div>
                     <p className={`text-[10px] capitalize ${RATING_TONE[p.rating] || 'text-gray-400'}`}>{p.rating}</p>
-                    <p className="text-[9px] text-gray-500">{p.dataCompleteness}% reported</p>
+                    <p className="text-[9px] text-gray-500">{p.dataCompleteness}% reported · weight {p.weight}</p>
+                    {p.subIndicators.filter((s) => s.score != null).length > 0 && (
+                      <ul className="text-[9px] text-gray-500 space-y-0.5 pt-0.5">
+                        {p.subIndicators.filter((s) => s.score != null).map((s) => (
+                          <li key={s.indicator} className="flex items-center justify-between gap-1">
+                            <span className="truncate">{s.label}</span>
+                            <span className="shrink-0">{s.score} × {s.weight}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 );
               })}

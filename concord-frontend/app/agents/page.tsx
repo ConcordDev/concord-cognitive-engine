@@ -28,6 +28,7 @@ import {
   RefreshCw,
   Layers,
 } from 'lucide-react';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -639,9 +640,9 @@ export default function AgentMonitorPage() {
       {/* Create Agent Modal                                                 */}
       {/* ================================================================== */}
       {showCreateModal && (
-        <div className={ds.modalBackdrop} onClick={() => setShowCreateModal(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className={ds.modalBackdrop} onClick={() => setShowCreateModal(false)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <div className={ds.modalContainer}>
-            <div className={cn(ds.modalPanel, 'max-w-lg')} onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            <div className={cn(ds.modalPanel, 'max-w-lg')} onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
               {/* Modal header */}
               <div className="flex items-center justify-between px-6 py-4 border-b border-lattice-border">
                 <h2 className={cn(ds.heading3, 'flex items-center gap-2')}>

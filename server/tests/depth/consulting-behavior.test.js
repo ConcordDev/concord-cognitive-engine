@@ -64,6 +64,21 @@ describe("consulting — engagement + timer CRUD", () => {
     assert.equal(stop.ok, true);
   });
 
+  it("timer-status and timer-stop cap a forgotten timer at 12 hours", async () => {
+    const created = await lensRun("consulting", "engagement-create", { params: { name: "Forgotten", rate: 100, budgetHours: 8 } }, ctx);
+    const engId = created.result.engagement?.id ?? created.result.id;
+    const start = await lensRun("consulting", "timer-start", { params: { engagementId: engId } }, ctx);
+    assert.equal(start.ok, true);
+    const timer = globalThis._concordSTATE.consultingLens.timers.get(ctx.actor.userId);
+    timer.startedAt = Date.now() - 400 * 3600000;
+    const status = await lensRun("consulting", "timer-status", {}, ctx);
+    assert.equal(status.result.elapsedHours, 12);
+    assert.equal(status.result.capped, true);
+    const stop = await lensRun("consulting", "timer-stop", {}, ctx);
+    assert.equal(stop.ok, true);
+    assert.equal(stop.result.entry.hours, 12);
+  });
+
   it("validation: engagement-create without a name is rejected", async () => {
     const bad = await lensRun("consulting", "engagement-create", { params: { client: "X" } }, ctx);
     assert.equal(bad.result.ok, false);

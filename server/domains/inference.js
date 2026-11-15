@@ -3,6 +3,7 @@
 // (goal-directed reasoning), and unification algorithm.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
 import {
   getInferenceLensState,
   saveInferenceLens,
@@ -366,8 +367,11 @@ export default function registerInferenceActions(registerLensAction) {
    */
   registerLensAction("inference", "unify", (ctx, artifact, _params) => {
   try {
-    const term1 = artifact.data?.term1;
-    const term2 = artifact.data?.term2;
+    // FIX-inference-001: the desk panel sends the terms as action params;
+    // reading only artifact.data starved the tool (and a null artifact
+    // crashed it). Params are the fallback; an attached artifact wins.
+    const term1 = artifact?.data?.term1 || _params.term1;
+    const term2 = artifact?.data?.term2 || _params.term2;
     if (!term1 || !term2) return { ok: false, error: "Both term1 and term2 are required." };
 
     function isVar(t) {
@@ -1231,5 +1235,34 @@ export default function registerInferenceActions(registerLensAction) {
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
+  });
+
+  // FIX-inference-003: the knowledge base lives at
+  // STATE.inferenceLens.kb as a Map of userId -> { facts, rules } —
+  // the exporter's state leg can enumerate per-user buckets of
+  // records, but a { facts, rules } object is not a record bucket, so
+  // the header export said "nothing to export" over a populated KB.
+  // The provider emits the caller's facts and rules, one row each.
+  registerLensExportProvider("inference", (ctx) => {
+    const kb = userInferenceKb(infActor(ctx));
+    if (!kb) return [];
+    const rows = [];
+    for (const f of kb.facts || []) {
+      rows.push({
+        id: f.id, type: "fact",
+        title: factKeyT(f),
+        createdAt: f.addedAt || null, updatedAt: f.addedAt || null,
+        data: f,
+      });
+    }
+    for (const r of kb.rules || []) {
+      rows.push({
+        id: r.id, type: "rule",
+        title: r.name || r.text || r.id,
+        createdAt: r.addedAt || null, updatedAt: r.addedAt || null,
+        data: r,
+      });
+    }
+    return rows;
   });
 }

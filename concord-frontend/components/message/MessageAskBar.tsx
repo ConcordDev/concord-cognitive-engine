@@ -27,6 +27,7 @@ export function MessageAskBar({ onOpenChannel }: { onOpenChannel: (channelId: st
         <div className="flex items-center gap-2 flex-1 bg-black/40 border border-white/10 rounded-md px-2.5 py-1.5 focus-within:border-violet-500/40">
           <Sparkles className="w-3.5 h-3.5 text-violet-400 flex-shrink-0" />
           <input
+            aria-label="Search channels and DMs"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search across channels + DMs…"

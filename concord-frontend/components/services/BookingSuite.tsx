@@ -537,9 +537,11 @@ function Reminders() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           <input className={ds.input} placeholder="Client" value={form.client} onChange={e => setForm({ ...form, client: e.target.value })} />
           <select className={ds.select} value={form.channel} onChange={e => setForm({ ...form, channel: e.target.value })}>
-            <option value="sms">SMS</option><option value="email">Email</option>
+            <option value="sms">SMS</option><option value="email">Email</option><option value="none">Just for me — don&apos;t send</option>
           </select>
-          <input className={ds.input} placeholder={form.channel === 'sms' ? 'Phone' : 'Email'} value={form.target} onChange={e => setForm({ ...form, target: e.target.value })} />
+          {form.channel === 'none'
+            ? <span className="text-xs text-gray-400 self-center">Stays in your list only — nothing is sent.</span>
+            : <input className={ds.input} placeholder={form.channel === 'sms' ? 'Phone' : 'Email'} value={form.target} onChange={e => setForm({ ...form, target: e.target.value })} />}
           <input type="datetime-local" className={ds.input} value={form.sendAt} onChange={e => setForm({ ...form, sendAt: e.target.value })} />
         </div>
         <input className={ds.input} placeholder="Message" value={form.body} onChange={e => setForm({ ...form, body: e.target.value })} />
@@ -554,11 +556,13 @@ function Reminders() {
       <div className="space-y-1.5">
         {reminders.map(r => (
           <div key={r.id} className="flex items-center gap-3 p-2.5 rounded bg-lattice-elevated/40 text-sm">
-            <span className={ds.badge(r.channel === 'sms' ? 'cyan-400' : 'purple-400')}>{r.channel}</span>
+            <span className={ds.badge(r.channel === 'sms' ? 'cyan-400' : r.channel === 'none' ? 'gray-400' : 'purple-400')}>{r.channel === 'none' ? 'just me' : r.channel}</span>
             <span className="flex-1 truncate">{r.client} — {r.body}</span>
-            {r.target
-              ? <span className="text-xs text-gray-400 truncate">→ {r.target}</span>
-              : <span className="text-xs text-red-400">no contact on file</span>}
+            {r.channel === 'none'
+              ? <span className="text-xs text-gray-400">not sent</span>
+              : r.target
+                ? <span className="text-xs text-gray-400 truncate">→ {r.target}</span>
+                : <span className="text-xs text-red-400">no contact on file</span>}
             <span className={cn(ds.textMuted, 'text-xs')}>{r.sendAt.replace('T', ' ')}</span>
             <span className={ds.badge(r.status === 'queued' ? 'green-400' : r.status === 'failed' ? 'red-400' : 'blue-400')}>{r.status}</span>
             <button aria-label="Delete reminder" onClick={async () => { const { error } = await svc<unknown>('reminderDelete', { id: r.id }); if (error) setErr(error); else load(); }} className="text-red-400 hover:text-red-300"><Trash2 className="w-3.5 h-3.5" /></button>

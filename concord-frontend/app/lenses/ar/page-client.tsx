@@ -78,6 +78,7 @@ import { DensityToggle, StatTile, StatTileGrid } from '@/components/ui';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
+import { useQuery } from '@tanstack/react-query';
 import { lensRun } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
@@ -113,17 +114,30 @@ export default function ARLensPage() {
   // extra network round-trip beyond what the Asset Library tab already
   // fetches when mounted.
   const { items: models } = useLensData('ar', 'Model3D', { seed: [] });
-  const [sceneCount, setSceneCount] = useState<number | null>(null);
-  const [targetCount, setTargetCount] = useState<number | null>(null);
-  const refreshCounts = useCallback(() => {
-    lensRun('ar', 'sceneList', {}).then((r) => {
-      if (r.data?.ok) setSceneCount((r.data.result as { count?: number } | null)?.count ?? 0);
-    }).catch((e) => console.warn('[ar] scene list load failed:', e));
-    lensRun('ar', 'imageTargetList', {}).then((r) => {
-      if (r.data?.ok) setTargetCount((r.data.result as { count?: number } | null)?.count ?? 0);
-    }).catch((e) => console.warn('[ar] target list load failed:', e));
-  }, []);
-  useEffect(() => { refreshCounts(); }, [refreshCounts]);
+  // Header counts ride a react-query read of the SAME list calls the
+  // Scene Studio renders (sceneList / imageTargetList return
+  // count = list length). SceneStudio reports every list reload
+  // through onCountsStale → refreshCounts, so the header can no longer
+  // sit at a stale mount-time snapshot while the list beside it has
+  // already moved (FIX-ar-003 / FIX-ar-010).
+  const countsQuery = useQuery({
+    queryKey: ['ar', 'counts'],
+    queryFn: async () => {
+      const [s, t] = await Promise.all([
+        lensRun('ar', 'sceneList', {}),
+        lensRun('ar', 'imageTargetList', {}),
+      ]);
+      return {
+        scenes: (s.data?.result as { count?: number } | null)?.count ?? 0,
+        targets: (t.data?.result as { count?: number } | null)?.count ?? 0,
+      };
+    },
+  });
+  const sceneCount = countsQuery.data?.scenes ?? null;
+  const targetCount = countsQuery.data?.targets ?? null;
+  const countsRefetchRef = useRef(countsQuery.refetch);
+  countsRefetchRef.current = countsQuery.refetch;
+  const refreshCounts = useCallback(() => { void countsRefetchRef.current(); }, []);
 
   const switchTab = useCallback((next: Tab) => {
     setTab((prev) => {
@@ -141,6 +155,12 @@ export default function ARLensPage() {
   const [arSupported, setArSupported] = useState(false);
   const renderPlanRef = useRef<ArRenderPlan | null>(null);
   renderPlanRef.current = renderPlan;
+  // Generation of the live viewport init. initThree is async (dynamic
+  // three import); a re-run while an earlier init is still in flight
+  // must orphan that init, or the two race to own the container and the
+  // stale one can win — the saved scene never renders, or a previous
+  // scene stays up (FIX-ar-004).
+  const initGenRef = useRef(0);
 
   // Feature-detect immersive-ar once (WebXR needs a secure context; defaults to `self`).
   useEffect(() => {
@@ -154,12 +174,13 @@ export default function ARLensPage() {
 
     const container = viewportRef.current;
     let disposed = false;
+    const gen = ++initGenRef.current;
 
     interface RenderDrawItem { id?: string; kind?: string; model?: string | null; transform?: { position?: { x: number; y: number; z: number }; rotation?: { x: number; y: number; z: number }; scale?: number }; opacity?: number; color?: string }
 
     const initThree = async () => {
       const THREE = await import('three');
-      if (disposed || !container) return;
+      if (disposed || gen !== initGenRef.current || !container) return;
 
       const width = container.clientWidth;
       const height = container.clientHeight;
@@ -278,6 +299,7 @@ export default function ARLensPage() {
 
     initThree();
     return () => {
+      disposed = true;
       const cleanup = (container as unknown as Record<string, unknown>).__threeCleanup as (() => void) | undefined;
       if (cleanup) cleanup();
     };
@@ -409,7 +431,7 @@ export default function ARLensPage() {
         <div role="tabpanel" aria-label={TABS.find((t) => t.id === tab)?.label}>
           {tab === 'studio' && (
             <section className="rounded-xl border border-lattice-border bg-zinc-950/40 p-4">
-              <SceneStudio />
+              <SceneStudio onCountsStale={refreshCounts} />
             </section>
           )}
           {tab === 'diagnostics' && (

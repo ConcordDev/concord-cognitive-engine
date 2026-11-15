@@ -108,9 +108,9 @@ export function FOIATracker() {
               </button>
             ))}
           </div>
-          <input value={draftAgency} onChange={e => setDraftAgency(e.target.value)} placeholder="Agency (e.g. FBI, GSA, Local PD)" className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <input value={draftSubject} onChange={e => setDraftSubject(e.target.value)} placeholder="Subject" className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <textarea value={draftBody} onChange={e => setDraftBody(e.target.value)} rows={8} placeholder="Request body..." className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono resize-y" />
+          <input aria-label="Agency (e.g. FBI, GSA, Local PD)" value={draftAgency} onChange={e => setDraftAgency(e.target.value)} placeholder="Agency (e.g. FBI, GSA, Local PD)" className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input aria-label="Subject" value={draftSubject} onChange={e => setDraftSubject(e.target.value)} placeholder="Subject" className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <textarea aria-label="Request body..." value={draftBody} onChange={e => setDraftBody(e.target.value)} rows={8} placeholder="Request body..." className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono resize-y" />
           <LocalRecordNotice channelLabel="FOIA.gov" channelHref="https://www.foia.gov">
             Draft only — Concord saves this draft in your workspace and does not submit FOIA requests to any agency. There is deliberately no Submit here.
           </LocalRecordNotice>
@@ -133,6 +133,7 @@ export function FOIATracker() {
                 <div className="flex items-center gap-2">
                   {STATUS_ICON[r.status]}
                   <span className="text-sm text-white font-medium">{r.subject}</span>
+                  <button type="button" className="text-[10px] text-rose-300" onClick={async () => { await lensRun({ domain: 'government', action: 'foia-delete', input: { id: r.id } }); await refresh(); }}>Remove</button>
                   <span className={cn('ml-auto text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded font-bold',
                     r.status === 'fulfilled' ? 'bg-green-500/20 text-green-300' :
                     r.status === 'denied' ? 'bg-red-500/20 text-red-300' :

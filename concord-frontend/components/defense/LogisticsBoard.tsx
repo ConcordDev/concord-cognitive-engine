@@ -3,13 +3,13 @@
 /**
  * LogisticsBoard — supply-chain tracking. Resupply requests advance
  * through requested → approved → in_transit → delivered.
- * Backed by defense.supply-request / supply-advance / supply-delete /
- * supply-board macros.
+ * Backed by defense.supply-request / supply-advance / supply-update /
+ * supply-delete / supply-board macros.
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { lensRun } from '@/lib/api/client';
-import { Plus, Loader2, Truck, ChevronRight, X } from 'lucide-react';
+import { Plus, Loader2, Truck, ChevronRight, X, Pencil } from 'lucide-react';
 import { ConfirmDeleteButton } from './ConfirmDeleteButton';
 
 interface SupplyRequest {
@@ -124,6 +124,26 @@ export function LogisticsBoard() {
     setBusy(false);
   }, [refresh]);
 
+  // FIX-defense-003: supply requests gain an in-place edit.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ item: '', quantity: '', priority: 'routine', destination: '' });
+  const saveEdit = useCallback(async (request: { id: string }) => {
+    if (!editForm.item.trim()) return;
+    setBusy(true);
+    setError(null);
+    const r = await lensRun('defense', 'supply-update', {
+      id: request.id, item: editForm.item.trim(), quantity: Number(editForm.quantity),
+      priority: editForm.priority, destination: editForm.destination,
+    });
+    if (r.data?.ok) {
+      setEditingId(null);
+      await refresh();
+    } else {
+      setError(r.data?.error || 'Failed to update request');
+    }
+    setBusy(false);
+  }, [editForm, refresh]);
+
   const remove = useCallback(async (request: { id: string; item: string }) => {
     setBusy(true);
     setNotice(null);
@@ -216,6 +236,17 @@ export function LogisticsBoard() {
                       </button>
                     </>
                   )}
+                  <button
+                    onClick={() => {
+                      setEditingId(editingId === r.id ? null : r.id);
+                      setEditForm({ item: r.item, quantity: String(r.quantity), priority: r.priority, destination: r.destination || '' });
+                    }}
+                    disabled={busy}
+                    aria-label={`Edit request ${r.item}`}
+                    className="p-1 text-zinc-400 hover:text-zinc-100 disabled:opacity-50"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
                   <ConfirmDeleteButton
                     ariaLabel="Delete request"
                     itemLabel={`request "${r.item}"`}
@@ -224,6 +255,27 @@ export function LogisticsBoard() {
                   />
                 </div>
               </div>
+              {editingId === r.id && (
+                <div className="flex flex-wrap gap-2 mt-2 border-t border-zinc-800 pt-2">
+                  <input value={editForm.item} onChange={(e) => setEditForm((f) => ({ ...f, item: e.target.value }))}
+                    aria-label="Edit request item" placeholder="Item"
+                    className="flex-1 min-w-32 rounded bg-zinc-900 border border-zinc-700 px-2 py-1 text-xs text-white" />
+                  <input type="number" value={editForm.quantity} onChange={(e) => setEditForm((f) => ({ ...f, quantity: e.target.value }))}
+                    aria-label="Edit request quantity" placeholder="Qty"
+                    className="w-20 rounded bg-zinc-900 border border-zinc-700 px-2 py-1 text-xs text-white" />
+                  <select value={editForm.priority} onChange={(e) => setEditForm((f) => ({ ...f, priority: e.target.value }))}
+                    aria-label="Edit request priority"
+                    className="rounded bg-zinc-900 border border-zinc-700 px-2 py-1 text-xs text-white">
+                    {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                  <input value={editForm.destination} onChange={(e) => setEditForm((f) => ({ ...f, destination: e.target.value }))}
+                    aria-label="Edit request destination" placeholder="Destination"
+                    className="flex-1 min-w-28 rounded bg-zinc-900 border border-zinc-700 px-2 py-1 text-xs text-white" />
+                  <button onClick={() => saveEdit(r)} disabled={!editForm.item.trim() || busy}
+                    className="rounded bg-orange-600 hover:bg-orange-500 px-2.5 py-1 text-xs font-medium text-white disabled:opacity-50">Save</button>
+                  <button onClick={() => setEditingId(null)} className="text-xs text-zinc-400 px-1.5">Cancel</button>
+                </div>
+              )}
               {r.requestedBy && (
                 <p className="text-[10px] text-zinc-400 mt-0.5">requested by {r.requestedBy}</p>
               )}

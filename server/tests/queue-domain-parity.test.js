@@ -128,11 +128,13 @@ describe("queue.retry", () => {
     assert.equal(r.ok, true);
     assert.equal(r.result.job.status, "pending");
   });
-  it("rejects retry of a completed job", () => {
+  it("requeues a completed job (contract changed by FIX-queue-004)", () => {
     const e = call("enqueue", ctxA, { name: "done" });
     call("process", ctxA, { jobId: e.result.job.id });
     const r = call("retry", ctxA, { jobId: e.result.job.id });
-    assert.equal(r.ok, false);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.job.status, "pending");
+    assert.equal(r.result.job.result, null);
   });
 });
 

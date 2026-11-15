@@ -40,6 +40,7 @@ import { TokenSearch, loadWatchlist, saveWatchlist } from '@/components/crypto/T
 import { QRCodeReceive } from '@/components/crypto/QRCodeReceive';
 import { SwapPanel, type SwappableToken } from '@/components/crypto/SwapPanel';
 import { PriceAlerts } from '@/components/crypto/PriceAlerts';
+import { COINGECKO_QUOTE_TOKENS } from '@/lib/crypto/quote-tokens';
 import { ApprovalsManager } from '@/components/crypto/ApprovalsManager';
 import { PortfolioWorkbench } from '@/components/crypto/PortfolioWorkbench';
 
@@ -68,6 +69,24 @@ interface WalletData {
   address: string;
   chainId: string;
   isDefault: boolean;
+}
+
+// FIX-crypto-011: a stored timestamp that does not parse must never
+// render as the literal words "Invalid Date", and must not poison
+// the sort with NaN — undated rows say so and sort as oldest.
+function txTimeMs(ts: unknown): number {
+  const t = new Date(ts as string).getTime();
+  return Number.isNaN(t) ? 0 : t;
+}
+function fmtTxTime(ts: unknown): string {
+  const t = txTimeMs(ts);
+  return t === 0 ? 'date not recorded' : new Date(t).toLocaleString();
+}
+
+function looksLikeChainAddress(address: string, chainId: string): boolean {
+  const value = String(address || '').trim();
+  if (chainId === 'bitcoin') return /^(bc1|[13])[a-zA-HJ-NP-Z0-9]{25,62}$/.test(value);
+  return /^0x[a-fA-F0-9]{40}$/.test(value);
 }
 
 interface Allocation {
@@ -166,7 +185,12 @@ export function CryptoWalletWorkspace() {
   const [chartTokenId, setChartTokenId] = useState<string>('bitcoin');
   const [chartCandles, setChartCandles] = useState<Array<{ time: number; open: number; high: number; low: number; close: number; volume?: number }>>([]);
   const [chartLoading, setChartLoading] = useState(false);
+  // FIX-crypto-007: a failed candle fetch speaks instead of leaving an
+  // unexplained empty chart (the failure used to go only to console).
+  const [chartError, setChartError] = useState<string | null>(null);
   const [chartDays, setChartDays] = useState<number>(30);
+  // FIX-crypto-009: wallet removal confirms first.
+  const [confirmDeleteWalletId, setConfirmDeleteWalletId] = useState<string | null>(null);
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const [showReceive, setShowReceive] = useState(false);
   const [receiveAddress, setReceiveAddress] = useState<string>('');
@@ -227,6 +251,7 @@ export function CryptoWalletWorkspace() {
     let cancelled = false;
     if (activeTab !== 'chart') return;
     setChartLoading(true);
+    setChartError(null);
     (async () => {
       try {
         const res = await api.post('/api/lens/run', {
@@ -236,7 +261,7 @@ export function CryptoWalletWorkspace() {
         if (!cancelled) setChartCandles(res?.data?.result?.candles || []);
       } catch (e) {
         console.error('[Crypto] candles failed', e);
-        if (!cancelled) setChartCandles([]);
+        if (!cancelled) { setChartCandles([]); setChartError('Price history is unavailable right now (the market source did not respond). Your holdings and cost basis are unaffected.'); }
       } finally {
         if (!cancelled) setChartLoading(false);
       }
@@ -433,7 +458,7 @@ export function CryptoWalletWorkspace() {
 
   const filteredTransactions = transactions
     .filter(tx => txFilter === 'all' || tx.type === txFilter)
-    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    .sort((a, b) => txTimeMs(b.timestamp) - txTimeMs(a.timestamp));
 
   const isLoading = chainsLoading || txLoading || walletsLoading;
 
@@ -454,7 +479,7 @@ export function CryptoWalletWorkspace() {
   for (const chain of chains) {
     chainSparklines[chain.symbol] = transactions
       .filter(tx => tx.symbol === chain.symbol)
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .sort((a, b) => txTimeMs(b.timestamp) - txTimeMs(a.timestamp))
       .slice(0, 5);
   }
 
@@ -566,6 +591,10 @@ export function CryptoWalletWorkspace() {
 
   const handleAddWallet = useCallback(async () => {
     if (!walletName || !walletAddress) return;
+    if (!looksLikeChainAddress(walletAddress, walletChainId || 'concord')) {
+      useUIStore.getState().addToast({ type: 'error', message: 'That address does not match the selected chain' });
+      return;
+    }
     try {
       await createWallet({
         title: walletName,
@@ -618,13 +647,16 @@ export function CryptoWalletWorkspace() {
   }, []);
 
   const handleDeleteWallet = useCallback(async (id: string) => {
+    // FIX-crypto-009: first click arms, second click removes.
+    if (confirmDeleteWalletId !== id) { setConfirmDeleteWalletId(id); return; }
+    setConfirmDeleteWalletId(null);
     try {
       await removeWallet(id);
     } catch (e) {
       console.error('Delete wallet failed:', e);
       useUIStore.getState().addToast({ type: 'error', message: 'Failed to delete wallet' });
     }
-  }, [removeWallet]);
+  }, [removeWallet, confirmDeleteWalletId]);
 
   // ── Error / Loading ───────────────────────────────────────────────────────
 
@@ -1033,7 +1065,7 @@ export function CryptoWalletWorkspace() {
                           <div>
                             <p className="text-sm font-medium">{tx.description}</p>
                             <div className="flex items-center gap-2 text-xs text-gray-400">
-                              <span>{new Date(tx.timestamp).toLocaleString()}</span>
+                              <span>{fmtTxTime(tx.timestamp)}</span>
                               {tx.to && <span>To: {tx.to}</span>}
                             </div>
                           </div>
@@ -1085,9 +1117,11 @@ export function CryptoWalletWorkspace() {
                 <div className="space-y-3">
                   {wallets.map((wallet, widx) => {
                     const chainColor = ALLOC_COLORS[widx % ALLOC_COLORS.length];
-                    const shortAddr = wallet.address.length > 12
-                      ? `${wallet.address.slice(0, 6)}…${wallet.address.slice(-4)}`
-                      : wallet.address;
+                    const address = wallet.address || '';
+                    const shortAddr = address.length > 12
+                      ? `${address.slice(0, 6)}…${address.slice(-4)}`
+                      : address;
+                    const addressOk = looksLikeChainAddress(address, wallet.chainId || '');
                     return (
                       <div key={wallet.id} className="panel p-4 flex items-center justify-between group">
                         <div className="flex items-center gap-4">
@@ -1098,7 +1132,7 @@ export function CryptoWalletWorkspace() {
                           <div>
                             <div className="flex items-center gap-2 flex-wrap">
                               <h3 className="font-semibold">{wallet.name}</h3>
-                              {wallet.isDefault && (
+                              {wallet.isDefault && addressOk && (
                                 <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-neon-green/15 text-neon-green border border-neon-green/30">
                                   <ShieldCheck className="w-3 h-3" />
                                   Verified
@@ -1111,6 +1145,8 @@ export function CryptoWalletWorkspace() {
                             {/* Address with copy-on-hover effect */}
                             <button
                               onClick={() => handleCopyAddress(wallet.address)}
+                              type="button"
+                              aria-label={`Copy address ${shortAddr}`}
                               className="flex items-center gap-1.5 mt-0.5 group/addr"
                               title="Click to copy full address"
                             >
@@ -1133,6 +1169,8 @@ export function CryptoWalletWorkspace() {
                           <button
                             onClick={() => { setReceiveAddress(wallet.address); setShowReceive(true); }}
                             className="p-2 text-gray-400 hover:text-cyan-300 transition-colors rounded-lg hover:bg-cyan-500/10"
+                            type="button"
+                            aria-label="Receive to this wallet (QR code)"
                             title="Receive (QR)"
                           >
                             <ArrowDownLeft className="w-4 h-4" />
@@ -1140,16 +1178,20 @@ export function CryptoWalletWorkspace() {
                           <button
                             onClick={() => handleCopyAddress(wallet.address)}
                             className="p-2 text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-white/5"
+                            type="button"
+                            aria-label="Copy wallet address"
                             title="Copy address"
                           >
                             {copiedAddress === wallet.address ? <Check className="w-4 h-4 text-neon-green" /> : <Copy className="w-4 h-4" />}
                           </button>
                           <button
                             onClick={() => handleDeleteWallet(wallet.id)}
-                            className="p-2 text-gray-400 hover:text-neon-pink transition-colors rounded-lg hover:bg-neon-pink/10"
-                            title="Remove wallet"
+                            className={`p-2 transition-colors rounded-lg ${confirmDeleteWalletId === wallet.id ? 'text-rose-200 bg-rose-500/25' : 'text-gray-400 hover:text-neon-pink hover:bg-neon-pink/10'}`}
+                            type="button"
+                            aria-label={confirmDeleteWalletId === wallet.id ? 'Confirm remove wallet' : 'Remove wallet'}
+                            title={confirmDeleteWalletId === wallet.id ? 'Click again to confirm removal' : 'Remove wallet'}
                           >
-                            <X className="w-4 h-4" />
+                            {confirmDeleteWalletId === wallet.id ? <span className="text-[10px] font-semibold px-0.5">Sure?</span> : <X className="w-4 h-4" />}
                           </button>
                         </div>
                       </div>
@@ -1170,8 +1212,8 @@ export function CryptoWalletWorkspace() {
                     onChange={(e) => setChartTokenId(e.target.value)}
                     className="px-3 py-1.5 bg-lattice-deep border border-lattice-border rounded text-sm text-white"
                   >
-                    {['bitcoin','ethereum','solana','binancecoin','cardano','ripple','dogecoin','polkadot','usd-coin','tether']
-                      .concat(watchlist.filter(w => !['bitcoin','ethereum','solana','binancecoin','cardano','ripple','dogecoin','polkadot','usd-coin','tether'].includes(w)))
+                    {COINGECKO_QUOTE_TOKENS.map((t) => t.id)
+                      .concat(watchlist.filter((w) => !COINGECKO_QUOTE_TOKENS.some((t) => t.id === w)))
                       .map(id => <option key={id} value={id}>{id.toUpperCase()}</option>)}
                   </select>
                   <div className="flex items-center gap-1">
@@ -1187,6 +1229,9 @@ export function CryptoWalletWorkspace() {
                   </div>
                   <span className="ml-auto text-[10px] text-gray-400">Powered by TradingView Lightweight Charts · <DataAttribution provider="coingecko" /></span>
                 </div>
+                {chartError && !chartLoading && (
+                  <div role="alert" className="rounded border border-amber-500/30 bg-amber-500/[0.04] px-3 py-2 text-[11px] text-amber-300">{chartError}</div>
+                )}
                 <CandleChart
                   candles={chartCandles}
                   loading={chartLoading}
@@ -1211,15 +1256,19 @@ export function CryptoWalletWorkspace() {
           {activeTab === 'swap' && (
             <div className="flex flex-col lg:flex-row items-start gap-6">
               {(() => {
-                const swappableTokens: SwappableToken[] = chains.map(c => ({
+                const fromWallet: SwappableToken[] = chains.map(c => ({
                   id: c.id, symbol: c.symbol, name: c.name,
                   priceUsd: c.price, balance: c.balance, iconUrl: undefined,
                 }));
+                const swappableTokens: SwappableToken[] = fromWallet.length
+                  ? fromWallet
+                  : COINGECKO_QUOTE_TOKENS.map((t) => ({ id: t.id, symbol: t.symbol, name: t.name, priceUsd: 0 }));
                 return (
                   <SwapPanel
+                    key={fromWallet.length ? 'wallet' : 'catalog'}
                     tokens={swappableTokens}
-                    defaultFromSymbol={chains[0]?.symbol || 'CC'}
-                    defaultToSymbol={chains[1]?.symbol || 'USDC'}
+                    defaultFromSymbol={fromWallet[0]?.symbol || 'BTC'}
+                    defaultToSymbol={fromWallet[1]?.symbol || 'ETH'}
                   />
                 );
               })()}
@@ -1241,7 +1290,9 @@ export function CryptoWalletWorkspace() {
           {activeTab === 'alerts' && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <PriceAlerts
-                tokenOptions={chains.map(c => ({ id: c.id, symbol: c.symbol, priceUsd: c.price }))}
+                tokenOptions={chains.length
+                  ? chains.map(c => ({ id: c.id, symbol: c.symbol, priceUsd: c.price }))
+                  : COINGECKO_QUOTE_TOKENS.map((t) => ({ id: t.id, symbol: t.symbol }))}
               />
               <div className="lens-card space-y-2 text-xs text-gray-400">
                 <h3 className="text-sm font-bold text-gray-200">How alerts work</h3>

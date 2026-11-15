@@ -16,6 +16,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { lensRun } from '@/lib/api/client';
 import { useCurrentUser } from '@/hooks/use-current-user';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { ChartKit } from '@/components/viz';
 import {
   Plus, X, Vote, ListChecks, Users, ShieldCheck, Network, Layers,
@@ -282,6 +283,14 @@ export function GovernanceWorkbench() {
 
 function PollDetail({ poll, onChanged }: { poll: Poll; onChanged: () => void }) {
   const [tab, setTab] = useState<'vote' | 'results' | 'delegate' | 'audit'>('vote');
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const { data: meData } = useCurrentUser();
+  const mine = !!meData?.user?.id && meData.user.id === poll.owner;
+  const removePoll = async () => {
+    const r = await lensRun('vote', 'poll-delete', { pollId: poll.id });
+    if (!r.data?.ok) { setDeleteError(r.data?.message || r.data?.error || 'Could not delete that poll.'); return; }
+    onChanged();
+  };
 
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
@@ -299,7 +308,11 @@ function PollDetail({ poll, onChanged }: { poll: Poll; onChanged: () => void }) 
           </div>
         </div>
         <span className={`shrink-0 rounded border px-2 py-0.5 text-[11px] uppercase ${STATUS_TONE[poll.status]}`}>{poll.status}</span>
+        {mine && (
+          <StickyDeleteConfirm onConfirm={() => void removePoll()} armAriaLabel={`Delete poll ${poll.title}`} confirmAriaLabel={`Confirm delete poll ${poll.title}`} className="shrink-0 text-rose-300" />
+        )}
       </div>
+      {deleteError && <p role="alert" className="mt-2 text-xs text-rose-300">{deleteError}</p>}
 
       <div className="mt-4 flex gap-1 border-b border-zinc-800">
         {([
@@ -1065,6 +1078,18 @@ function CreatePollModal({ onClose, onCreated }: { onClose: () => void; onCreate
     const opts = options.map((o) => o.trim()).filter(Boolean);
     if (!title.trim()) { setErr('Title required.'); return; }
     if (opts.length < 2) { setErr('At least 2 options required.'); return; }
+    // FIX-vote-003: refuse duplicate options at the form, naming the
+    // duplicate, instead of creating a ballot with identical choices.
+    const seenOpts = new Map<string, string>();
+    for (const o of opts) {
+      const k = o.toLowerCase();
+      if (seenOpts.has(k)) { setErr(`Options must be unique \u2014 "${seenOpts.get(k)}" appears more than once.`); return; }
+      seenOpts.set(k, o);
+    }
+    const days = Number(durationDays);
+    if (!Number.isInteger(days) || days < 1 || days > 365) { setErr('Duration must be a whole number of days from 1 to 365.'); return; }
+    const quorumN = Number(quorum);
+    if (quorum.trim() && (!Number.isFinite(quorumN) || quorumN < 0)) { setErr('Quorum must be a number that is 0 or greater.'); return; }
     setBusy(true);
 
     const input: Record<string, unknown> = {
@@ -1072,8 +1097,8 @@ function CreatePollModal({ onClose, onCreated }: { onClose: () => void; onCreate
       description: description.trim() || undefined,
       method,
       options: opts,
-      durationDays: Number(durationDays) || 0,
-      quorum: Number(quorum) || 0,
+      durationDays: days,
+      quorum: quorum.trim() ? quorumN : 0,
     };
     if (useThreshold) input.passThreshold = (Number(passThreshold) || 50) / 100;
     if (restricted) {
@@ -1098,7 +1123,7 @@ function CreatePollModal({ onClose, onCreated }: { onClose: () => void; onCreate
     const { data } = await lensRun('vote', 'poll-create', input);
     setBusy(false);
     if (data.ok) onCreated();
-    else setErr(data.error || 'Failed to create poll.');
+    else setErr(data.message || data.error || 'Failed to create poll.');
   };
 
   return (
@@ -1125,8 +1150,9 @@ function CreatePollModal({ onClose, onCreated }: { onClose: () => void; onCreate
 
         <div>
           <label className="mb-1 block text-xs text-zinc-400">Description</label>
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2}
+          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} maxLength={2000}
             className="w-full resize-none rounded border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-white" placeholder="Optional context" />
+          <p className="mt-0.5 text-right text-[10px] text-zinc-500">{description.length}/2,000</p>
         </div>
 
         <div className="grid grid-cols-2 gap-3">

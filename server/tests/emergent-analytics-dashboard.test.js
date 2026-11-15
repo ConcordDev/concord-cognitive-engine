@@ -106,16 +106,16 @@ describe("takeSnapshot", () => {
     assert.equal(STATE._analytics.metrics.snapshotsTaken, 1);
   });
 
-  it("caps snapshots at 288", () => {
+  it("caps snapshots at 2016", () => {
     const STATE = makeSTATE();
     // First call initializes STATE._analytics
     takeSnapshot(STATE);
     // Force many snapshots by resetting lastSnapshotAt
-    for (let i = 0; i < 300; i++) {
+    for (let i = 0; i < 2100; i++) {
       STATE._analytics.lastSnapshotAt = 0;
       takeSnapshot(STATE);
     }
-    assert.ok(STATE._analytics.snapshots.length <= 288);
+    assert.ok(STATE._analytics.snapshots.length <= 2016);
   });
 
   it("handles atlas state gracefully when not initialized", () => {

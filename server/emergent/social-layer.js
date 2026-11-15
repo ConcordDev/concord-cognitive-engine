@@ -6,7 +6,7 @@
  */
 
 import { lookupUserIdentity } from "../lib/user-identity.js";
-import { ensureSocialHydrated, scheduleSocialFlush } from "../lib/social-persist.js";
+import { ensureSocialHydrated, loadPersistedProfile, scheduleSocialFlush } from "../lib/social-persist.js";
 import { assertSocialRate, duplicatePost, linkHeavyNewAccount } from "../lib/social-safety.js";
 
 
@@ -227,10 +227,27 @@ export function profileForViewer(profile, viewerId = null) {
   return view;
 }
 
+function profileByHandle(social, userId) {
+  const key = String(userId || "");
+  const direct = social.profiles.get(key);
+  if (direct) return direct;
+  const needle = key.trim().toLowerCase();
+  if (needle.length < 2) return null;
+  for (const profile of social.profiles.values()) {
+    const handle = String(profile.username || profile.displayName || "").toLowerCase();
+    if (handle && handle === needle) return profile;
+  }
+  return null;
+}
+
 export function getProfile(STATE, userId, viewerId = null) {
   const social = getSocialState(STATE);
-  const profile = social.profiles.get(userId);
-  if (!profile) return { ok: false, error: "Profile not found" };
+  let profile = profileByHandle(social, userId);
+  if (!profile) {
+    try { profile = loadPersistedProfile(STATE, userId); } catch { profile = null; }
+  }
+  if (!profile) return { ok: false, status: 404, error: "Profile not found" };
+  userId = profile.userId || userId;
 
   // Recompute stats
   profile.stats.followerCount = (social.followers.get(userId) || new Set()).size;
@@ -318,7 +335,21 @@ export function followUser(STATE, followerId, followedId) {
   social.follows.get(followerId).add(followedId);
   social.followers.get(followedId).add(followerId);
 
-  if (!alreadyFollowing) social.metrics.totalFollows++;
+  if (!alreadyFollowing) {
+    social.metrics.totalFollows++;
+    // FIX-social-015: a new follow notifies the followed user. Every
+    // sibling action already did (like, comment, mention, share, pack
+    // join); follow was the silent one, so "followed you" never
+    // appeared in anyone's notifications. The content is the verb
+    // phrase the notification UI renders after the actor's name.
+    // A repeat follow (alreadyFollowing) notifies nothing.
+    createNotification(STATE, {
+      userId: followedId,
+      type: "follow",
+      fromUserId: followerId,
+      content: "started following you",
+    });
+  }
 
   // Invalidate feed cache for follower
   social.feedCache.delete(followerId);
@@ -1018,11 +1049,17 @@ export function deletePost(STATE, { userId, postId }) {
   return { ok: true, postId: id };
 }
 
-export function getUserPosts(STATE, userId, { limit = 30, offset = 0, viewerId = null } = {}) {
+export function getUserPosts(STATE, userId, { limit = 30, offset = 0, viewerId = null, mediaOnly = false } = {}) {
   const social = getSocialState(STATE);
   const posts = [];
   for (const post of social.posts.values()) {
-    if (post.userId === userId && canViewPost(viewerId, post, STATE)) posts.push(post);
+    if (post.userId === userId && canViewPost(viewerId, post, STATE)) {
+      // FIX-metalearning-012: the profile Media tabs pass mediaOnly —
+      // honour it here (media = a mediaUrl / media list, per mediaList)
+      // instead of returning every post to a tab labelled "media".
+      if (mediaOnly && mediaList(post).length === 0) continue;
+      posts.push(post);
+    }
   }
   posts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   return { ok: true, posts: posts.slice(offset, offset + limit).map(serializePost), total: posts.length };
@@ -1355,6 +1392,7 @@ function dmDenied(error = "not found") {
 export function sendMessage(STATE, { fromUserId, toUserId, content, mediaUrl }) {
   const social = getSocialState(STATE);
   if (!fromUserId || !toUserId) return { ok: false, error: "fromUserId and toUserId required" };
+  if (fromUserId === toUserId) return { ok: false, error: "cannot message yourself", message: "A message to yourself is not delivered. Pick someone else." };
   if (!content && !mediaUrl) return { ok: false, error: "content or mediaUrl required" };
   if (isBlocked(STATE, fromUserId, toUserId)) return blockedResult();
   const dmLimit = assertSocialRate(social.profiles.get(fromUserId), fromUserId, "dm");
@@ -1547,7 +1585,15 @@ export function markAllNotificationsRead(STATE, userId) {
 
 export function getUnreadCount(STATE, userId) {
   const social = getSocialState(STATE);
-  const notifs = social.notifications.get(userId) || [];
+  let notifs = social.notifications.get(userId) || [];
+  // FIX-social-003: the count must measure the same set the list
+  // shows. getNotifications hides notification types the user muted
+  // (notificationTypes); the count skipped that filter, so the badge
+  // and the panel could disagree by exactly the muted unread.
+  const typePrefs = social.profiles.get(userId)?.notificationTypes;
+  if (typePrefs && typeof typePrefs === "object") {
+    notifs = notifs.filter((n) => typePrefs[n.type] !== false);
+  }
   const count = notifs.filter(n => !n.read).length;
   return { ok: true, userId, unreadCount: count };
 }
@@ -2091,6 +2137,63 @@ export function processScheduledPosts(STATE) {
   }
 
   return { ok: true, published, count: published.length };
+}
+
+// ── Scheduled Posts — the SQL queue (the live store) ─────────────────────
+// The frontend schedules through routes/social-groups.js into the
+// `social_scheduled_posts` SQL table — a SEPARATE queue from the in-memory
+// Map above, and for its whole life nothing read it ("No cron job yet —
+// the rows sit in the table until the frontend retrieves them"). This is
+// the consumer for that queue, drained by the same "scheduled-posts"
+// heartbeat as processScheduledPosts: one tick, both queues, one publish
+// path. Due 'pending' rows publish — plain rows through createPost (the
+// feed's real post path), group rows into social_group_posts with the
+// groups router's own INSERT shape — and flip to 'published'; a row whose
+// publish is refused (e.g. the duplicate-post guard) flips to 'failed',
+// terminal, instead of retrying every tick forever. The table itself
+// stays the record: GET /social/scheduled lists 'pending' only, so a
+// flipped row leaves the queue view without being deleted.
+export function processScheduledSqlPosts(db, STATE) {
+  if (!db || typeof db.prepare !== "function") return { ok: false, reason: "no_db", published: [], failed: [], count: 0 };
+  let hasTable = null;
+  try {
+    hasTable = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'social_scheduled_posts'").get();
+  } catch (_e) { /* fall through to the no_table skip */ }
+  if (!hasTable) return { ok: true, skipped: "no_table", published: [], failed: [], count: 0 };
+
+  const social = getSocialState(STATE);
+  const nowIso = new Date().toISOString();
+  let rows = [];
+  try {
+    rows = db.prepare(
+      "SELECT id, user_id, content, group_id, scheduled_at FROM social_scheduled_posts WHERE status = 'pending' AND scheduled_at <= ? ORDER BY scheduled_at ASC"
+    ).all(nowIso);
+  } catch (_e) {
+    return { ok: false, reason: "query_failed", published: [], failed: [], count: 0 };
+  }
+
+  const published = [];
+  const failed = [];
+  const markPublished = db.prepare("UPDATE social_scheduled_posts SET status = 'published' WHERE id = ?");
+  const markFailed = db.prepare("UPDATE social_scheduled_posts SET status = 'failed' WHERE id = ?");
+  for (const row of rows) {
+    let ok = false;
+    try {
+      if (row.group_id) {
+        const authorName = social.profiles.get(row.user_id)?.displayName || "Anonymous";
+        db.prepare(
+          "INSERT INTO social_group_posts (post_id, group_id, author_id, author_name, content, media_type, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))"
+        ).run(nextId("post"), row.group_id, row.user_id, authorName, row.content, null);
+        ok = true;
+      } else {
+        const result = createPost(STATE, { userId: row.user_id, content: row.content });
+        ok = !!result?.ok;
+      }
+    } catch (_e) { ok = false; }
+    if (ok) { markPublished.run(row.id); published.push(row.id); }
+    else { markFailed.run(row.id); failed.push(row.id); }
+  }
+  return { ok: true, published, failed, count: published.length };
 }
 
 // ── Trending Engine (velocity-based) ────────────────────────────────────

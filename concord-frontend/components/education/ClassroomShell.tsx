@@ -127,7 +127,7 @@ export function ClassroomShell({
                     <div className="text-sm text-white truncate">{c.title}</div>
                     <div className="text-[10px] text-gray-400 truncate">{c.instructor || c.category}</div>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-gray-600" />
+                  <ChevronRight className="w-4 h-4 text-gray-400" />
                 </button>
               </li>
             ))}

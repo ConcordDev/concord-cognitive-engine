@@ -8,7 +8,29 @@
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { peelRedundantArtifactWrapper } from "../lib/lens-input-normalize.js";
+import { lensRunParams, peelRedundantArtifactWrapper } from "../lib/lens-input-normalize.js";
+
+describe("lensRunParams — name is a payload field when action is set", () => {
+  it("keeps name beside action (mesh addNode / createChannel via runDomain)", () => {
+    const out = lensRunParams({ domain: "mesh", action: "addNode", name: "Repeater-Hill", transports: ["lora"] });
+    assert.equal(out.domain, "mesh");
+    assert.equal(out.action, "addNode");
+    assert.equal(out.rest.name, "Repeater-Hill");
+    assert.deepEqual(out.rest.transports, ["lora"]);
+  });
+
+  it("still treats name as the action when action is absent and input is the payload", () => {
+    const out = lensRunParams({ domain: "mesh", name: "addNode", input: { name: "Repeater-Hill" } });
+    assert.equal(out.action, "addNode");
+    assert.equal(out.rest.name, "Repeater-Hill");
+  });
+
+  it("does not keep a bare name as both the action and a field", () => {
+    const out = lensRunParams({ domain: "mesh", name: "listNodes" });
+    assert.equal(out.action, "listNodes");
+    assert.equal(out.rest.name, undefined);
+  });
+});
 
 describe("peelRedundantArtifactWrapper — peels the redundant wrapper", () => {
   it("peels a sole-key { artifact: { data: {...} } } one layer", () => {

@@ -67,6 +67,12 @@ export interface InboxShellProps {
   onArchive?: (thread: InboxThread) => void;
   /** Reading pane content for the selected thread. */
   children: React.ReactNode;
+  /** Render the reading-pane children even with no thread selected —
+   *  the compose surface lives in the children and must be reachable
+   *  from a fresh inbox (FIX-message-001: with no thread selected the
+   *  children never mounted, so 'New message' flipped state that had
+   *  no visual effect). */
+  showChildrenWithoutThread?: boolean;
   className?: string;
 }
 
@@ -91,6 +97,7 @@ export function InboxShell({
   onForward,
   onArchive,
   children,
+  showChildrenWithoutThread,
   className,
 }: InboxShellProps) {
   const activeThread = threads.find((t) => t.id === activeThreadId);
@@ -121,8 +128,8 @@ export function InboxShell({
               {t.from}
             </span>
             {t.starred && <Star className="w-3 h-3 text-amber-400 fill-current shrink-0" />}
-            {t.hasAttachment && <Paperclip className="w-3 h-3 text-gray-500 shrink-0" />}
-            <span className="text-[11px] text-gray-500 font-mono tabular-nums whitespace-nowrap">
+            {t.hasAttachment && <Paperclip className="w-3 h-3 text-gray-400 shrink-0" />}
+            <span className="text-[11px] text-gray-400 font-mono tabular-nums whitespace-nowrap">
               {new Date(t.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
             </span>
           </div>
@@ -132,7 +139,7 @@ export function InboxShell({
           )}>
             {t.subject}
           </div>
-          <div className="truncate text-xs text-gray-500 mt-0.5">{t.snippet}</div>
+          <div className="truncate text-xs text-gray-400 mt-0.5">{t.snippet}</div>
           {t.labels && t.labels.length > 0 && (
             <div className="mt-1 flex gap-1 flex-wrap">
               {t.labels.slice(0, 3).map((l) => (
@@ -176,7 +183,7 @@ export function InboxShell({
                   {label.count !== undefined && (
                     <span className={cn(
                       'text-[11px] font-mono tabular-nums',
-                      active ? 'text-neon-blue' : 'text-gray-500'
+                      active ? 'text-neon-blue' : 'text-gray-400'
                     )}>{label.count}</span>
                   )}
                 </button>
@@ -198,9 +205,9 @@ export function InboxShell({
 
       {/* Reading pane */}
       <main className="flex-1 overflow-y-auto bg-lattice-void">
-        {activeThreadId ? (
+        {activeThreadId || showChildrenWithoutThread ? (
           <div className="max-w-4xl mx-auto px-8 py-6">
-            {(onReply || onForward || onArchive) && (
+            {(activeThreadId && (onReply || onForward || onArchive)) && (
               <div className="flex items-center gap-2 mb-6 border-b border-lattice-border pb-3">
                 {onReply && (
                   <button
@@ -237,7 +244,7 @@ export function InboxShell({
             {children}
           </div>
         ) : (
-          <div className="h-full flex items-center justify-center text-sm text-gray-500 italic">
+          <div className="h-full flex items-center justify-center text-sm text-gray-400 italic">
             Select a thread to read.
           </div>
         )}

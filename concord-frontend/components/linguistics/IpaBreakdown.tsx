@@ -79,11 +79,11 @@ export function IpaBreakdown({ ipa }: { ipa: string }) {
 
   return (
     <div className="space-y-1.5">
-      {delimiter && <p className="text-[10px] text-gray-500">{delimiter}</p>}
+      {delimiter && <p className="text-[10px] text-gray-400">{delimiter}</p>}
       <div className="flex flex-wrap items-center gap-1" role="list" aria-label="IPA phoneme breakdown">
         {segments.map((s, i) =>
           s.kind === 'boundary' ? (
-            <span key={i} className="text-gray-600 text-sm px-0.5" aria-hidden="true">
+            <span key={i} className="text-gray-400 text-sm px-0.5" aria-hidden="true">
               {s.text === '.' ? '·' : s.text}
             </span>
           ) : (
@@ -102,7 +102,7 @@ export function IpaBreakdown({ ipa }: { ipa: string }) {
           ),
         )}
       </div>
-      <p className="text-[10px] text-gray-500">
+      <p className="text-[10px] text-gray-400">
         {phonemeCount} phoneme{phonemeCount === 1 ? '' : 's'} ·{' '}
         <span className="text-rose-300">vowel</span> / <span className="text-cyan-300">consonant</span>
       </p>

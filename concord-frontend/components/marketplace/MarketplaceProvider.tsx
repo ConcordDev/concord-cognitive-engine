@@ -154,6 +154,16 @@ export function MarketplaceProvider({ children }: { children: ReactNode }) {
 
   const [tab, setTab] = useState<MarketplaceTabId>('browse');
   const [search, setSearch] = useState('');
+  // FIX-marketplace-003: the browse query keyed on the raw search
+  // string, so every keystroke fired two backend requests. The query
+  // reads a 300 ms-debounced copy; the client-side filter below keeps
+  // using the raw string, so visible filtering stays instant while
+  // the network waits for a pause.
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
   const [category, setCategory] = useState<CategoryFilter>('all');
   const [genreFilter, setGenreFilter] = useState('All Categories');
   const [sortBy, setSortBy] = useState<SortOption>('popular');
@@ -222,20 +232,50 @@ export function MarketplaceProvider({ children }: { children: ReactNode }) {
     error: error5,
     refetch: refetch5,
   } = useQuery({
-    queryKey: ['marketplace-browse', category, search],
+    queryKey: ['marketplace-browse', category, debouncedSearch],
     queryFn: async () => {
-      try {
-        const res = await api.get('/api/marketplace/browse', {
+      // Published seller listings live in the storefront catalog. The
+      // plugin browse route is a different store, so a listing that
+      // just published never appeared here.
+      // FIX-marketplace-005: these two reads used to run back to
+      // back, so the listings skeleton lasted their combined time.
+      // They are independent — run them together.
+      const [res, plugins] = await Promise.all([
+        lensRun<{ listings?: Array<Record<string, unknown>> }>('marketplace', 'storefront-browse', {
+          search: debouncedSearch || undefined,
+        }),
+        api.get('/api/marketplace/browse', {
           params: {
             category: category !== 'all' ? category : undefined,
-            search: search || undefined,
+            search: debouncedSearch || undefined,
           },
-        });
-        return res.data;
-      } catch (e) {
-        console.warn('Marketplace browse API unavailable, falling back to lens data:', e);
-        return { ok: true, items: listingItems || [] };
+        }).then((r) => (r.data ?? {}) as { items?: unknown[]; results?: unknown[] }).catch(() => ({ items: [] }) as { items?: unknown[]; results?: unknown[] }),
+      ]);
+      const body = res.data;
+      if (!body || body.ok === false) {
+        throw new Error(body?.error || 'Browse failed');
       }
+      const listings = body.result?.listings || [];
+      const pluginItems = (Array.isArray(plugins.items) ? plugins.items : Array.isArray(plugins.results) ? plugins.results : []) as Record<string, unknown>[];
+      return {
+        ok: true,
+        items: [
+          ...listings.map((l) => ({
+            id: String(l.listingId || ''),
+            name: l.title,
+            description: l.description || '',
+            author: l.shopName || l.sellerId,
+            price: typeof l.priceUsd === 'number' ? l.priceUsd : 0,
+            category: l.kind || 'listing',
+            submittedAt: l.publishedAt,
+            downloads: typeof l.salesCount === 'number' ? l.salesCount : 0,
+            rating: typeof l.avgRating === 'number' ? l.avgRating : 0,
+            storefrontSellerId: l.sellerId,
+            listing: true,
+          })),
+          ...pluginItems,
+        ],
+      };
     },
   });
 
@@ -318,7 +358,7 @@ export function MarketplaceProvider({ children }: { children: ReactNode }) {
   const userBalance = balanceData?.balance ?? 0;
 
   const allItems = useMemo(() => {
-    const browseItems = normalizePlugins(browseData?.items ?? browseData?.results ?? []);
+    const browseItems = normalizePlugins((browseData?.items ?? []) as Record<string, unknown>[]);
     const artItems = [
       ...normalizeItems(templatesData?.beats ?? []),
       ...normalizeComponents(componentsData?.stems ?? []),
@@ -447,11 +487,12 @@ export function MarketplaceProvider({ children }: { children: ReactNode }) {
       }
       setShowNewListing(false);
       setNewListingForm(EMPTY_LISTING_FORM);
+      queryClient.invalidateQueries({ queryKey: ['marketplace-browse'] });
       useUIStore.getState().addToast({
         type: 'success',
-        message: 'Listing published — find it under Sell.',
+        message: 'Listing published. It is on Browse.',
       });
-      setTab('sell');
+      setTab('browse');
     } catch (err) {
       setListingError(err instanceof Error ? err.message : 'Failed to publish listing');
     } finally {
@@ -473,6 +514,30 @@ export function MarketplaceProvider({ children }: { children: ReactNode }) {
 
     for (const ci of cart) {
       try {
+        if (ci.item.storefrontSellerId) {
+          const added = await lensRun('marketplace', 'cart-add', {
+            sellerId: ci.item.storefrontSellerId,
+            listingId: ci.item.id,
+            qty: 1,
+          });
+          if (added.data?.ok === false) {
+            errors.push(`${ci.item.title}: ${added.data.error || 'Could not add the listing'}`);
+            continue;
+          }
+          const placed = await lensRun('marketplace', 'checkout-create', {});
+          if (placed.data?.ok === false || !placed.data?.result) {
+            errors.push(`${ci.item.title}: ${placed.data?.error || 'Checkout did not place an order'}`);
+            continue;
+          }
+          completed.push({
+            id: `listing-${ci.item.id}-${Date.now()}`,
+            item: ci.item,
+            license: 'basic',
+            price: ci.price,
+            purchasedAt: new Date().toISOString(),
+          });
+          continue;
+        }
         if (ci.item.type === 'plugin') {
           const isFree = ci.item.prices.basic <= 0;
           const r = isFree

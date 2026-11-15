@@ -38,7 +38,7 @@ export function ThreadFeed() {
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-cyan-500/15 pb-3">
         <div className="flex items-center gap-2"><MessageSquare className="h-5 w-5 text-orange-400" /><h2 className="text-sm font-semibold text-white">Real-world threads</h2><span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">Hacker News · via Concord server · {tag}</span></div>
         <div className="flex items-center gap-2">
-          <select value={tag} onChange={(e) => setTag(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">{TAGS.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}</select>
+          <select value={tag} onChange={(e) => setTag(e.target.value)} aria-label="Filter by tag" className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">{TAGS.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}</select>
           {list.length > 0 && <SaveAsDtuButton compact apiSource="hn-thread" apiUrl="https://news.ycombinator.com/" title={`HN ${tag} threads (${list.length})`} content={list.slice(0, 20).map((h, i) => `${i + 1}. [${h.points || 0}↑ · ${h.num_comments || 0}💬] ${h.title || h.story_title}\n   ${h.url || h.story_url || `https://news.ycombinator.com/item?id=${h.objectID}`}`).join('\n\n')} extraTags={['thread', 'hn', tag]} rawData={{ tag, hits: list }} />}
         </div>
       </header>

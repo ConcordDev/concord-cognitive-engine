@@ -4,6 +4,7 @@ import { showToast } from '@/components/common/Toasts';
 import { useEffect, useState } from 'react';
 import { Briefcase, Loader2, Plus, X, Archive, ChevronRight, Pencil, Sparkles } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 import { EmptyStateCTA } from '@/components/lens/EmptyStateCTA';
 import { LegalMatterMenu } from './LegalMatterMenu';
@@ -41,6 +42,7 @@ export function MattersPanel() {
   const [draft, setDraft] = useState({ name: '', clientName: '', matterType: 'litigation', hourlyRate: '', jurisdiction: '', court: '', caseNumber: '', billingType: 'hourly', description: '', partyIds: [] as string[] });
   const [activeId, setActiveId] = useState<string | null>(null);
   const [confirmingCloseId, setConfirmingCloseId] = useState<string | null>(null);
+  const [armedDeleteId, setArmedDeleteId] = useState<string | null>(null);
   const [detail, setDetail] = useState<Detail | null>(null);
   const [editing, setEditing] = useState(false);
   const [editDraft, setEditDraft] = useState({ name: '', clientName: '', jurisdiction: '', court: '', caseNumber: '', hourlyRate: '', description: '', matterType: 'litigation', billingType: 'hourly', status: 'open' });
@@ -232,6 +234,22 @@ export function MattersPanel() {
                         <Archive className="w-3.5 h-3.5" />
                       </button>
                     ))}
+                    <span onClick={(e) => e.stopPropagation()}>
+                      <StickyDeleteConfirm
+                        armed={armedDeleteId === m.id}
+                        onArm={() => setArmedDeleteId(m.id)}
+                        onCancel={() => setArmedDeleteId(null)}
+                        onConfirm={async () => {
+                          await lensRun({ domain: 'legal', action: 'matters-delete', input: { id: m.id } });
+                          setArmedDeleteId(null);
+                          if (activeId === m.id) { setActiveId(null); setDetail(null); }
+                          await refresh();
+                        }}
+                        armLabel="Delete"
+                        confirmLabel={`Delete “${m.name}”?`}
+                        className="text-[11px] text-rose-300 underline"
+                      />
+                    </span>
                     <ChevronRight className="w-3 h-3 text-gray-400" />
                   </li>
                 ))}

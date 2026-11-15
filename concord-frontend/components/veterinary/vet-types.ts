@@ -153,6 +153,9 @@ export interface VetReminderEntry {
   vaccine: string;
   nextDue: string;
   daysOut: number;
+  /** FIX-veterinary-010: booked appointments ride the same lists. */
+  kind?: string;
+  time?: string;
 }
 
 export const SPECIES_OPTIONS = ['dog', 'cat', 'bird', 'rabbit', 'reptile', 'horse', 'other'];

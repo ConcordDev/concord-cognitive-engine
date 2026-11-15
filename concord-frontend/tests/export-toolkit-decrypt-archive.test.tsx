@@ -40,47 +40,35 @@ describe('export lens — DecryptedArchive panel (Wave 4 gap-closure)', () => {
     lensRun.mockReset();
   });
 
-  it('calls the real export.decrypt-archive macro with password/salt/ciphertextBase64/expectedChecksum', async () => {
-    lensRun.mockResolvedValueOnce({
-      data: { ok: true, result: { verified: true, checksum: 'chk', byteLength: 42, plaintext: '{"dtus":[]}' } },
-    });
+  it('decrypts the downloaded envelope in the browser and refuses the wrong password', async () => {
+    const { encryptEncEnvelope, packEncEnvelope } = await import('@/lib/export/xor-fnv-archive');
+    const payload = JSON.stringify({ dtus: [{ id: 'dtu_1', title: 'qa' }] });
+    const packed = JSON.parse(packEncEnvelope(encryptEncEnvelope('qatest1234', payload, 'salt_qa_roundtrip')));
     render(<DecryptedArchive />);
-
-    const envelope = { algorithm: 'aes-256-gcm', salt: 'saltvalue', plainChecksum: 'plainchk123', ciphertextBase64: 'Y2lwaGVy' };
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
-    fireEvent.change(fileInput, { target: { files: [envelopeFile(envelope)] } });
+    fireEvent.change(fileInput, { target: { files: [envelopeFile(packed)] } });
     await waitFor(() => expect(screen.getByText(/Loaded: archive\.enc/)).toBeTruthy());
 
-    fireEvent.change(screen.getByPlaceholderText('archive password'), { target: { value: 'hunter2' } });
+    fireEvent.change(screen.getByPlaceholderText('archive password'), { target: { value: 'wrong-pass' } });
     fireEvent.click(screen.getByText('Decrypt + download'));
+    await waitFor(() => expect(screen.getByText('Wrong password — checksum did not match.')).toBeTruthy());
 
-    // Real call, driven by a real file upload + click — not a
-    // re-implementation of the handler, the handler itself.
-    await waitFor(() =>
-      expect(lensRun).toHaveBeenCalledWith('export', 'decrypt-archive', {
-        password: 'hunter2',
-        salt: 'saltvalue',
-        ciphertextBase64: 'Y2lwaGVy',
-        expectedChecksum: 'plainchk123',
-      }),
-    );
+    fireEvent.change(screen.getByPlaceholderText('archive password'), { target: { value: 'qatest1234' } });
+    fireEvent.click(screen.getByText('Decrypt + download'));
+    await waitFor(() => expect(screen.getByText(/checksum verified/)).toBeTruthy());
+    expect(lensRun).not.toHaveBeenCalled();
   });
 
   it('reads the same self-describing envelope shape EncryptedArchive writes on encrypt (round-trips through this lens)', () => {
-    // EncryptedArchive's download envelope:
-    expect(src).toMatch(/algorithm: res\.algorithm, salt: res\.salt, plainChecksum: res\.plainChecksum, ciphertextBase64: res\.ciphertextBase64/);
-    // DecryptedArchive's upload parse expects the same two required fields:
-    const onFileMatch = src.match(/const onFile = async \(file: File\) => \{[\s\S]*?\n {2}\};/);
-    expect(onFileMatch).toBeTruthy();
-    expect(onFileMatch![0]).toMatch(/if \(!parsed\.salt \|\| !parsed\.ciphertextBase64\)/);
+    expect(src).toMatch(/packEncEnvelope\(\{ algorithm: res\.algorithm, salt: res\.salt, plainChecksum: res\.plainChecksum, ciphertextBase64: res\.ciphertextBase64 \}\)/);
+    expect(src).toMatch(/readEncEnvelope\(text\)/);
+    expect(src).toMatch(/decryptEncEnvelope\(password,/);
   });
 
   it('rejects a wrong password (checksum mismatch) honestly instead of downloading garbage plaintext', () => {
     const fnMatch = src.match(/const decrypt = async \(\) => \{[\s\S]*?\n {2}\};/);
     const fn = fnMatch![0];
-    expect(fn).toMatch(/if \(res\.verified === false\) \{ setInfo\('Wrong password — checksum did not match\.'\); return; \}/);
-    // The download call must appear AFTER the verified===false early return,
-    // i.e. the file only downloads on the success path.
+    expect(fn).toMatch(/if \(!res\.verified\) \{ setInfo\('Wrong password — checksum did not match\.'\); return; \}/);
     const guardIdx = fn.indexOf("setInfo('Wrong password");
     const dlIdx = fn.indexOf('dl(`');
     expect(guardIdx).toBeGreaterThan(-1);

@@ -16,6 +16,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { useDebugProject } from './ProjectContext';
 import { IngestPanel } from './IngestPanel';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { ChartKit } from '@/components/viz';
 import {
   AlertTriangle,
@@ -97,6 +98,7 @@ export function IssueInbox() {
   const [summary, setSummary] = useState<IssueSummary | null>(null);
   const [statusFilter, setStatusFilter] = useState<'' | 'open' | 'resolved' | 'ignored'>('open');
   const [query, setQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'last' | 'first' | 'count'>('last');
   const [loading, setLoading] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Issue | null>(null);
@@ -121,7 +123,7 @@ export function IssueInbox() {
       projectId,
       status: statusFilter || undefined,
       query: query || undefined,
-      sort: 'last',
+      sort: sortBy,
     });
     if (r.data?.ok && r.data.result) {
       setIssues(r.data.result.issues || []);
@@ -137,7 +139,7 @@ export function IssueInbox() {
       setReleaseNames((rel.data.result.releases || []).map((x: { version: string }) => x.version));
     }
     setLoading(false);
-  }, [statusFilter, query, projectId]);
+  }, [statusFilter, query, sortBy, projectId]);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => void load());
@@ -252,15 +254,19 @@ export function IssueInbox() {
         </div>
         <div className="grid grid-cols-2 gap-2">
           <input
+            name="type"
+            aria-label="Error type"
             value={form.type}
             onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
             placeholder="Error type"
-            className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs font-mono"
+            className="min-w-0 w-full px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs font-mono"
           />
           <select
+            name="level"
+            aria-label="Exception level"
             value={form.level}
             onChange={(e) => setForm((f) => ({ ...f, level: e.target.value }))}
-            className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs"
+            className="min-w-0 w-full px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs"
           >
             <option value="error">error</option>
             <option value="fatal">fatal</option>
@@ -269,6 +275,8 @@ export function IssueInbox() {
           </select>
         </div>
         <input
+          name="message"
+          aria-label="Exception message"
           value={form.message}
           onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))}
           placeholder="Exception message"
@@ -276,17 +284,21 @@ export function IssueInbox() {
         />
         <div className="grid grid-cols-2 gap-2">
           <input
+            name="culprit"
+            aria-label="Culprit (file or function)"
             value={form.culprit}
             onChange={(e) => setForm((f) => ({ ...f, culprit: e.target.value }))}
             placeholder="Culprit (file/fn)"
-            className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs font-mono"
+            className="min-w-0 w-full px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs font-mono"
           />
           <input
+            name="release"
+            aria-label="Release"
             value={form.release}
             onChange={(e) => setForm((f) => ({ ...f, release: e.target.value }))}
             placeholder="Release (e.g. v1.2.0)"
             list="debug-release-names"
-            className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs font-mono"
+            className="min-w-0 w-full px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs font-mono"
           />
           <datalist id="debug-release-names">
             {releaseNames.map((v) => (
@@ -295,6 +307,8 @@ export function IssueInbox() {
           </datalist>
         </div>
         <textarea
+          name="stack"
+          aria-label="Stack trace (optional)"
           value={form.stack}
           onChange={(e) => setForm((f) => ({ ...f, stack: e.target.value }))}
           placeholder={'Stack trace (optional) — paste it as copied, e.g.\nTypeError: boom\n    at renderRows (QueryGrid.tsx:42:17)'}
@@ -313,6 +327,11 @@ export function IssueInbox() {
           )}
           Record Exception
         </button>
+        {!form.message.trim() && (
+          <p role="note" className="text-[11px] text-gray-400">
+            An exception message is required to record an exception.
+          </p>
+        )}
       </div>
 
       {/* External ingest (Q1): per-project keys + the Sentry-compatible endpoint */}
@@ -321,6 +340,8 @@ export function IssueInbox() {
       {/* Filters */}
       <div className="flex items-center gap-2">
         <select
+          name="statusFilter"
+          aria-label="Filter by status"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
           className="px-2 py-1 bg-lattice-surface border border-lattice-border rounded text-xs"
@@ -331,12 +352,26 @@ export function IssueInbox() {
           <option value="ignored">Ignored</option>
         </select>
         <input
+          name="query"
+          aria-label="Search issues"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && load()}
           placeholder="Search issues..."
           className="flex-1 px-2 py-1 bg-lattice-surface border border-lattice-border rounded text-xs"
         />
+        {/* FIX-debug-004: the server has always sorted (last/first/count)
+            but the panel hardcoded 'last' — surface the choice. */}
+        <select
+          aria-label="Sort issues"
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+          className="px-2 py-1 bg-lattice-surface border border-lattice-border rounded text-xs"
+        >
+          <option value="last">Last seen</option>
+          <option value="first">First seen</option>
+          <option value="count">Most frequent</option>
+        </select>
       </div>
 
       {error && <p className="text-xs text-red-400">{error}</p>}
@@ -426,14 +461,17 @@ export function IssueInbox() {
                   >
                     <EyeOff className="w-3.5 h-3.5" />
                   </button>
-                  <button
-                    onClick={() => deleteIssue(issue.id)}
+                  {/* FIX-debug-001: the trash deleted immediately — the
+                      platform two-step confirm now stands in its place. */}
+                  <StickyDeleteConfirm
+                    onConfirm={() => deleteIssue(issue.id)}
                     disabled={busyId === issue.id}
-                    title="Delete"
+                    armLabel={<Trash2 className="w-3.5 h-3.5" />}
+                    armAriaLabel="Delete"
+                    confirmAriaLabel="Confirm delete"
+                    cancelAriaLabel="Cancel delete"
                     className="p-1 rounded text-red-400 hover:bg-red-400/10 disabled:opacity-30"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  />
                 </div>
               </div>
             </div>
@@ -498,6 +536,8 @@ export function IssueInbox() {
             {/* Assignee */}
             <div className="flex items-center gap-2">
               <input
+                name="assignee"
+                aria-label="Assign issue to"
                 defaultValue={selected.assignee || ''}
                 placeholder="Assign to..."
                 onKeyDown={(e) => {

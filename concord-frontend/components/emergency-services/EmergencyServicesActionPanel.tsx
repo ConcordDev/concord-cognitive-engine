@@ -6,10 +6,12 @@
  * resourceReadiness + mint/DM/publish/agent.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import { Truck, Radio, Activity, ListChecks, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
+import { BOUNDS, numberInBounds } from '@/lib/bounds';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
@@ -84,6 +86,17 @@ export function EmergencyServicesActionPanel() {
     const distanceKm = parseFloat(dispatchDistance);
     if (!dispatchIncident.trim() || !dispatchUnit.trim() || !Number.isFinite(priority) || !Number.isFinite(distanceKm)) {
       err('Incident, priority, unit, and distance are required.');
+      return;
+    }
+    // GB-1539 (FIX-emergency-services-003): typed values past the
+    // inputs' min/max attributes submit anyway — the policy guard
+    // refuses them here with the limit named, mirroring the server.
+    if (priority < 1 || priority > 5) {
+      err('Priority must be between 1 and 5.');
+      return;
+    }
+    if (!numberInBounds(distanceKm, BOUNDS.QUANTITY_MAX)) {
+      err(`Distance must be between 0 and ${BOUNDS.QUANTITY_MAX} km.`);
       return;
     }
     try {
@@ -169,8 +182,8 @@ export function EmergencyServicesActionPanel() {
     try {
       const task = `EMS dispatch supervisor brief. ${dispResult ? `${dispResult.activeIncidents} active incidents, ${dispResult.available} units available${dispResult.coverageGap ? ' (coverage gap)' : ''}.` : ''} ${readyResult ? `Readiness ${readyResult.overallReadiness}% (${readyResult.status})${readyResult.shortages.length ? `, shortages: ${readyResult.shortages.join(', ')}` : ''}.` : ''} ${logResult ? `${logResult.total24h} runs in 24h, avg ${logResult.avgResponseMinutes}min response.` : ''} Identify single most urgent action this shift + one staffing recommendation. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Brief ready.'); } else err('Agent returned empty.');
+      const reply = readAgentReply(r.data);
+      if (reply.ok) { setAgentReply(reply.text); ok('Brief ready.'); } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 
@@ -225,7 +238,9 @@ export function EmergencyServicesActionPanel() {
           <input type="text" value={dispatchIncident} onChange={(e) => setDispatchIncident(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white" placeholder="Incident description" />
           <div className="grid grid-cols-2 gap-1">
             <input type="number" min="1" max="5" value={dispatchPriority} onChange={(e) => setDispatchPriority(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white" placeholder="Priority 1-5" />
+            {dispatchPriority !== '' && (Number(dispatchPriority) < 1 || Number(dispatchPriority) > 5) && <span role="note" className="col-span-full text-xs text-rose-300">Priority must be 1–5.</span>}
             <input type="number" min="0" step="0.1" value={dispatchDistance} onChange={(e) => setDispatchDistance(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white" placeholder="Distance km" />
+            {dispatchDistance !== '' && Number(dispatchDistance) < 0 && <span role="note" className="col-span-full text-xs text-rose-300">Distance can&apos;t be negative.</span>}
           </div>
           <input type="text" value={dispatchUnit} onChange={(e) => setDispatchUnit(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white" placeholder="Available unit" />
         </div>

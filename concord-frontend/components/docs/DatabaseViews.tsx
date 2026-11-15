@@ -13,6 +13,7 @@ import {
   Table2, Loader2, Plus, LayoutGrid, Rows3,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { BOUNDS, numberInBounds } from '@/lib/bounds';
 import { cn } from '@/lib/utils';
 import { requestDelete } from './delete-safety-store';
 import { ConfirmDeleteButton, useDeleteSafety } from './DeleteSafety';
@@ -220,8 +221,18 @@ function DbCell({ col, value, onChange }: {
   // cannot lose characters.
   const [draft, setDraft] = useState(String(value ?? ''));
   const [editing, setEditing] = useState(false);
+  const [cellError, setCellError] = useState('');
   useEffect(() => { if (!editing) setDraft(String(value ?? '')); }, [value, editing]);
   const commitDraft = () => {
+    // GB-1539 (FIX-docs-007): a number cell outside the NUMBER class
+    // (non-numeric, negative, over 1,000,000) does NOT commit — the
+    // old path sent it and the server silently stored 0. The refusal
+    // shows inline and the draft stays editable.
+    if (col.type === 'number' && draft.trim() !== '' && !numberInBounds(Number(draft), BOUNDS.NUMBER_MAX)) {
+      setCellError(`${col.name} must be a number between 0 and ${BOUNDS.NUMBER_MAX}.`);
+      return;
+    }
+    setCellError('');
     setEditing(false);
     if (draft !== String(value ?? '')) onChange(col.type === 'number' ? Number(draft) : draft);
   };
@@ -238,14 +249,20 @@ function DbCell({ col, value, onChange }: {
     );
   }
   return (
-    <input
-      type={col.type === 'number' ? 'number' : col.type === 'date' ? 'date' : 'text'}
-      value={draft}
-      onFocus={() => setEditing(true)}
-      onChange={e => setDraft(e.target.value)}
-      onBlur={commitDraft}
-      onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-      className="w-full bg-transparent text-xs text-zinc-200 focus:outline-none focus:bg-zinc-800/50 rounded px-1" />
+    <span className="block">
+      <input
+        type={col.type === 'number' ? 'number' : col.type === 'date' ? 'date' : 'text'}
+        value={draft}
+        min={col.type === 'number' ? 0 : undefined}
+        max={col.type === 'number' ? BOUNDS.NUMBER_MAX : undefined}
+        onFocus={() => setEditing(true)}
+        onChange={e => setDraft(e.target.value)}
+        onBlur={commitDraft}
+        onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+        aria-invalid={cellError ? true : undefined}
+        className={`w-full bg-transparent text-xs text-zinc-200 focus:outline-none focus:bg-zinc-800/50 rounded px-1 ${cellError ? 'ring-1 ring-rose-500/60' : ''}`} />
+      {cellError && <span role="alert" className="block text-[10px] text-rose-400 mt-0.5">{cellError}</span>}
+    </span>
   );
 }
 

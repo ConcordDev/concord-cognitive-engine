@@ -66,10 +66,10 @@ export function OffsetsLedger() {
       <div className="p-3 border-b border-white/10 grid grid-cols-6 gap-2">
         <input type="number" value={form.tonnes} onChange={e => setForm({ ...form, tonnes: e.target.value })} placeholder="Tonnes" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <input value={form.project} onChange={e => setForm({ ...form, project: e.target.value })} placeholder="Project name" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-        <select value={form.kind} onChange={e => setForm({ ...form, kind: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+        <select aria-label="Offset kind" value={form.kind} onChange={e => setForm({ ...form, kind: e.target.value })} className="min-h-11 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
           {Object.entries(KIND_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
-        <select value={form.registry} onChange={e => setForm({ ...form, registry: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+        <select aria-label="Registry" value={form.registry} onChange={e => setForm({ ...form, registry: e.target.value })} className="min-h-11 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
           <option value="Verra_VCS">Verra VCS</option>
           <option value="Gold_Standard">Gold Standard</option>
           <option value="Climate_Action_Reserve">CAR</option>

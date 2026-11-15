@@ -17,6 +17,7 @@
 // fabricated rows.
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Layers, Loader2, AlertTriangle } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
@@ -111,15 +112,11 @@ export function ShadowsPanel() {
         </div>
       ) : codebases.length === 0 ? (
         <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-xs text-zinc-400" data-testid="dx-shadows-empty-no-codebase">
-          No shadows yet — enable the concord-vscode plugin. Install the{' '}
-          <a href="https://marketplace.visualstudio.com/items?itemName=concord-os.concord-dx" target="_blank" rel="noreferrer" className="underline">
-            VS Code
-          </a>{' '}
-          or{' '}
-          <a href="https://plugins.jetbrains.com/plugin/concord-dx" target="_blank" rel="noreferrer" className="underline">
-            JetBrains
-          </a>{' '}
-          extension and open a workspace to register a codebase.
+          No shadows yet. The VS Code and JetBrains extensions are not published
+          yet (their marketplace pages do not exist), so an editor cannot register
+          a codebase today — run a pass from the{' '}
+          <Link href="/lenses/dx-platform/web-editor" className="underline">web editor</Link>{' '}
+          to register one.
         </div>
       ) : (
         <>
@@ -138,9 +135,9 @@ export function ShadowsPanel() {
             <div className="flex items-center gap-2 text-xs text-zinc-400"><Spinner /> Loading shadows…</div>
           ) : shadows.length === 0 ? (
             <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-xs text-zinc-400" data-testid="dx-shadows-empty">
-              No shadows yet — enable the concord-vscode plugin. Open a file
-              in this codebase in your editor; the plugin writes one shadow
-              DTU per file it indexes.
+              No shadows yet. When the editor extension is published and
+              enabled, opening a file in this codebase writes one shadow
+              DTU per file it indexes; the extension is not published yet.
             </div>
           ) : (
             <ul className="space-y-1" data-testid="dx-shadows-list">

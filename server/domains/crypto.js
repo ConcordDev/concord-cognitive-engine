@@ -497,10 +497,13 @@ export default function registerCryptoActions(registerLensAction) {
   registerLensAction("crypto", "swap-quote", async (_ctx, _artifact, params = {}) => {
     const fromId = String(params.fromId || "");
     const toId = String(params.toId || "");
-    const amountIn = Number(params.amountIn) || 0;
+    const amountIn = Number(params.amountIn);
     const slippagePercent = Math.max(0.01, Math.min(50, Number(params.slippagePercent) || 0.5));
-    if (!fromId || !toId || amountIn <= 0) {
+    if (!fromId || !toId) {
       return { ok: false, error: "fromId, toId, positive amountIn required" };
+    }
+    if (!Number.isFinite(amountIn) || amountIn <= 0 || amountIn > 1e12) {
+      return { ok: false, error: "amountIn must be a positive number up to 1e12" };
     }
     if (fromId === toId) return { ok: false, error: "from and to must differ" };
 
@@ -799,6 +802,24 @@ export default function registerCryptoActions(registerLensAction) {
     return { ok: true, result: { entries } };
   });
 
+  // FIX-crypto-008: an address-book entry must carry an address that
+  // matches its chain's shape — the book accepted any string ("fake
+  // address accepted"), which makes a contacts list a typo hazard for
+  // real sends. Same convention the wallet-add path already enforces.
+  const EVM_CHAINS = ["ethereum", "polygon", "arbitrum", "optimism", "base"];
+  function addressShapeError(address, chain) {
+    if (EVM_CHAINS.includes(chain)) {
+      return /^0x[0-9a-fA-F]{40}$/.test(address) ? null : `${chain} addresses look like 0x followed by 40 hex characters`;
+    }
+    if (chain === "bitcoin") {
+      return /^(1|3|bc1)[a-zA-Z0-9]{25,42}$/.test(address) ? null : "bitcoin addresses start with 1, 3 or bc1 and run 26-45 characters";
+    }
+    if (chain === "solana") {
+      return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address) ? null : "solana addresses are 32-44 base58 characters";
+    }
+    return address.length >= 20 ? null : "address looks too short for any supported chain";
+  }
+
   registerLensAction("crypto", "address-book-save", (ctx, _artifact, params = {}) => {
     const state = getCryptoState();
     if (!state) return { ok: false, error: "STATE unavailable" };
@@ -807,6 +828,8 @@ export default function registerCryptoActions(registerLensAction) {
     const address = String(params.address || "").trim();
     const chain = String(params.chain || "ethereum");
     if (!label || !address) return { ok: false, error: "label and address required" };
+    const shapeErr = addressShapeError(address, chain);
+    if (shapeErr) return { ok: false, error: `address does not match its chain: ${shapeErr}` };
     const entries = state.addressBook.get(userId) || [];
     const id = `addr_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     entries.push({ id, label, address, chain, createdAt: new Date().toISOString() });
@@ -815,6 +838,32 @@ export default function registerCryptoActions(registerLensAction) {
       try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
     }
     return { ok: true, result: { id } };
+  });
+
+  // FIX-crypto-008: entries can be edited — before, a typo meant
+  // delete-and-recreate (which also lost the entry's place/createdAt).
+  registerLensAction("crypto", "address-book-update", (ctx, _artifact, params = {}) => {
+    const state = getCryptoState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const entries = state.addressBook.get(userId) || [];
+    const entry = entries.find(e => e.id === String(params.id || ""));
+    if (!entry) return { ok: false, error: "entry not found" };
+    const label = params.label != null ? String(params.label).trim() : entry.label;
+    const address = params.address != null ? String(params.address).trim() : entry.address;
+    const chain = params.chain != null ? String(params.chain) : entry.chain;
+    if (!label || !address) return { ok: false, error: "label and address required" };
+    const shapeErr = addressShapeError(address, chain);
+    if (shapeErr) return { ok: false, error: `address does not match its chain: ${shapeErr}` };
+    entry.label = label;
+    entry.address = address;
+    entry.chain = chain;
+    entry.updatedAt = new Date().toISOString();
+    state.addressBook.set(userId, entries);
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+    return { ok: true, result: { entry } };
   });
 
   registerLensAction("crypto", "address-book-delete", (ctx, _artifact, params = {}) => {
@@ -1027,27 +1076,39 @@ export default function registerCryptoActions(registerLensAction) {
       .filter(l => !walletFilter || l.walletId === walletFilter);
     const symbols = Array.from(new Set(lots.map(l => l.symbol)));
     const prices = await fetchLivePrices(symbols);
-    let totalCost = 0, totalValue = 0;
+    // FIX-crypto-007: an unpriced lot is NOT a lot worth $0. The summary
+    // used to value unpriced holdings at 0, so a price outage rendered
+    // as "total value $0, unrealized PnL -100%" against a real cost
+    // basis. Mirror holdings-list's honesty instead: totals are null
+    // when nothing is priced, and PnL is computed only over the priced
+    // lots' own cost (apples to apples) when some are.
+    let totalCost = 0, totalValue = 0, pricedCost = 0, pricedLots = 0;
+    const unpricedSymbols = new Set();
     const byChain = new Map();
     for (const lot of lots) {
-      const value = (prices[lot.symbol] || 0) * lot.qtyRemaining;
-      totalCost += lot.unitCostUsd * lot.qtyRemaining;
-      totalValue += value;
+      const cost = lot.unitCostUsd * lot.qtyRemaining;
+      totalCost += cost;
+      const price = prices[lot.symbol];
+      const value = price != null ? price * lot.qtyRemaining : 0;
+      if (price != null) { totalValue += value; pricedCost += cost; pricedLots += 1; }
+      else unpricedSymbols.add(lot.symbol);
       const c = byChain.get(lot.chain) || { chain: lot.chain, valueUsd: 0, qtyLots: 0 };
       c.valueUsd += value;
       c.qtyLots += 1;
       byChain.set(lot.chain, c);
     }
+    const anyPriced = pricedLots > 0;
     const txns = listCr(s.transactions, userId);
     const realizedYtd = txns.filter(t => t.kind === 'sell' && (t.at || '') >= `${new Date().getFullYear()}-01-01`).reduce((sum, t) => sum + (t.realizedPnlUsd || 0), 0);
     const stakingRewardsYtd = txns.filter(t => t.kind === 'reward' && (t.at || '') >= `${new Date().getFullYear()}-01-01`).reduce((sum, t) => sum + (t.totalUsd || 0), 0);
     return {
       ok: true,
       result: {
-        totalValueUsd: Math.round(totalValue * 100) / 100,
+        totalValueUsd: anyPriced ? Math.round(totalValue * 100) / 100 : null,
         totalCostUsd: Math.round(totalCost * 100) / 100,
-        unrealizedPnlUsd: Math.round((totalValue - totalCost) * 100) / 100,
-        unrealizedPnlPct: totalCost > 0 ? Math.round(((totalValue - totalCost) / totalCost) * 10000) / 100 : 0,
+        unrealizedPnlUsd: anyPriced ? Math.round((totalValue - pricedCost) * 100) / 100 : null,
+        unrealizedPnlPct: anyPriced && pricedCost > 0 ? Math.round(((totalValue - pricedCost) / pricedCost) * 10000) / 100 : null,
+        unpricedSymbols: Array.from(unpricedSymbols),
         realizedPnlYtdUsd: Math.round(realizedYtd * 100) / 100,
         stakingRewardsYtdUsd: Math.round(stakingRewardsYtd * 100) / 100,
         lotCount: lots.length,

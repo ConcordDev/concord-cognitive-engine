@@ -35,7 +35,7 @@ export function RunwayForecast() {
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <Calendar className="w-4 h-4 text-emerald-400" />
         <span className="text-sm font-semibold text-gray-200">Runway forecast</span>
-        <select value={months} onChange={e => setMonths(Number(e.target.value))} className="ml-auto text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white">
+        <select aria-label="Forecast horizon" value={months} onChange={e => setMonths(Number(e.target.value))} className="ml-auto text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white">
           <option value={6}>Next 6 mo</option>
           <option value={12}>Next 12 mo</option>
           <option value={18}>Next 18 mo</option>

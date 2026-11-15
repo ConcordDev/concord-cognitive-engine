@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { Loader2, Plus, HeartPulse, NotebookPen } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
 
@@ -170,7 +171,14 @@ export function RxHealthLogPanel() {
               <li key={j.id} className="bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-zinc-200">{j.note}</span>
-                  <span className="text-[10px] text-zinc-400">{j.date}</span>
+                  <span className="flex items-center gap-2">
+                    <span className="text-[10px] text-zinc-400">{j.date}</span>
+                    <StickyDeleteConfirm
+                      onConfirm={async () => { await lensRun('pharmacy', 'journal-delete', { id: j.id }); await refresh(); }}
+                      armLabel="Delete"
+                      className="text-[10px] text-rose-300"
+                    />
+                  </span>
                 </div>
                 {(j.mood || j.symptoms.length > 0) && (
                   <p className="text-[10px] text-zinc-400 mt-0.5">

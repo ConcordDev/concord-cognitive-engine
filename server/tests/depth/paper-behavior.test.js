@@ -101,7 +101,7 @@ describe("paper — calc contracts (exact computed values)", () => {
     assert.ok(r.result.addedPreview.includes("line four"));
   });
 
-  it("export_pdf: formats artifact metadata into a downloadable .txt", async () => {
+  it("export_pdf: formats artifact metadata into a one-page PDF", async () => {
     const r = await lensRun("paper", "export_pdf", {
       data: {
         title: "On Recursive Self-Improvement",
@@ -113,8 +113,9 @@ describe("paper — calc contracts (exact computed values)", () => {
       },
     });
     assert.equal(r.ok, true);
-    assert.equal(r.result.format, "text");
-    assert.equal(r.result.filename, "on-recursive-self-improvement.txt");
+    assert.equal(r.result.format, "pdf");
+    assert.equal(r.result.filename, "on-recursive-self-improvement.pdf");
+    assert.ok(r.result.content.startsWith("%PDF-1.4"));
     assert.ok(r.result.content.includes("Authors: A. Author, B. Coauthor"));
     assert.ok(r.result.content.includes("Year: 2025"));
     assert.equal(r.result.byteLength, r.result.content.length);

@@ -283,7 +283,7 @@ describe("creative production calendar", () => {
 describe("creative proof links", () => {
   it("creates a proof link, resolves it publicly and captures an external comment", () => {
     const asset = call("review-asset-create", ctxA, { name: "Final", kind: "video", durationSec: 90 }).result.asset;
-    const lk = call("prooflink-create", ctxA, { assetId: asset.id, label: "Client review" });
+    const lk = call("prooflink-create", ctxA, { assetId: asset.id, label: "Client review", allowComments: true });
     assert.equal(lk.ok, true);
     const token = lk.result.link.token;
     assert.ok(lk.result.shareUrl.includes(token));

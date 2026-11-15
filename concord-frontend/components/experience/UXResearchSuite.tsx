@@ -17,6 +17,7 @@ import {
   Users, Film, MonitorPlay, CheckCircle2, XCircle, AlertTriangle,
   Target, Share2, ChevronRight, GitBranch, Trash2, ArrowRight,
 } from 'lucide-react';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 type SuiteTab = 'tests' | 'heatmap' | 'cardsort' | 'survey' | 'panel' | 'clips' | 'prototype';
 
@@ -47,7 +48,7 @@ function DeleteButton({ label, scope, onDelete }: { label: string; scope: string
   const [armed, setArmed] = useState(false);
   if (!armed) {
     return (
-      <button onClick={() => setArmed(true)} className="text-gray-500 hover:text-red-400 shrink-0" aria-label={label} title={label}>
+      <button onClick={() => setArmed(true)} className="text-gray-400 hover:text-red-400 shrink-0" aria-label={label} title={label}>
         <Trash2 className="w-3.5 h-3.5" />
       </button>
     );
@@ -228,7 +229,7 @@ function TestsPanel() {
                   ))}
                 </div>
                 <div className="flex items-center gap-2">
-                  <input className={`${inputCls} max-w-[160px]`} value={participant} onChange={e => setParticipant(e.target.value)} placeholder="Participant name" />
+                  <input className={`${inputCls} max-w-[160px]`} value={participant} onChange={e => setParticipant(e.target.value)} placeholder="Participant name" aria-label="Participant name" />
                   <button onClick={() => recordObserved(t)} disabled={busy} className="btn-neon purple text-xs flex items-center gap-1 disabled:opacity-40">
                     <Play className="w-3 h-3" /> Record run
                   </button>
@@ -329,7 +330,7 @@ function HeatmapPanel() {
           </div>
           <div
             onClick={onCanvasClick}
-            className="relative w-full aspect-video bg-zinc-800/50 border border-dashed border-zinc-600 rounded cursor-crosshair select-none flex items-center justify-center" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            className="relative w-full aspect-video bg-zinc-800/50 border border-dashed border-zinc-600 rounded cursor-crosshair select-none flex items-center justify-center" role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <span className="text-[11px] text-gray-400">Click anywhere — green box = success target</span>
             {study.target && (
               <div
@@ -445,8 +446,8 @@ function CardSortPanel() {
             <DeleteButton label="Delete this card sort study" scope="this study and its submissions" onDelete={async () => { if (await runDelete('deleteCardSort', { studyId })) { setStudyId(null); setCardsForStudy([]); setGroups([]); setResults(null); } }} />
           </div>
           <div className="flex items-center gap-2">
-            <input className={`${inputCls} max-w-[160px]`} value={participant} onChange={e => setParticipant(e.target.value)} placeholder="Participant" />
-            <input className={`${inputCls} max-w-[160px]`} value={catName} onChange={e => setCatName(e.target.value)} placeholder="New category" />
+            <input className={`${inputCls} max-w-[160px]`} value={participant} onChange={e => setParticipant(e.target.value)} placeholder="Participant" aria-label="Card sort participant" />
+            <input className={`${inputCls} max-w-[160px]`} value={catName} onChange={e => setCatName(e.target.value)} placeholder="New category" aria-label="New category name" />
             <button onClick={addCategory} className="btn-neon text-xs flex items-center gap-1"><Plus className="w-3 h-3" /> Category</button>
           </div>
           <div>
@@ -686,8 +687,8 @@ function SurveyPanel() {
               return (
                 <div key={q.localId} className="bg-zinc-900 border border-zinc-800 rounded p-2 space-y-1.5">
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-gray-500 w-4">{qi + 1}.</span>
-                    <select className={`${inputCls} w-32`} value={q.kind} onChange={e => patchCustomQ(q.localId, { kind: e.target.value as SurveyQKind })}>
+                    <span className="text-[10px] text-gray-400 w-4">{qi + 1}.</span>
+                    <select className={`${inputCls} w-32`} aria-label={`Question ${qi + 1} type`} value={q.kind} onChange={e => patchCustomQ(q.localId, { kind: e.target.value as SurveyQKind })}>
                       <option value="single">Single choice</option>
                       <option value="multi">Multi choice</option>
                       <option value="rating">Rating scale</option>
@@ -695,24 +696,24 @@ function SurveyPanel() {
                       <option value="csat">CSAT (1-5)</option>
                       <option value="text">Free text</option>
                     </select>
-                    <input className={inputCls} value={q.prompt} onChange={e => patchCustomQ(q.localId, { prompt: e.target.value })} placeholder="Question prompt" />
+                    <input className={inputCls} aria-label={`Question ${qi + 1} prompt`} value={q.prompt} onChange={e => patchCustomQ(q.localId, { prompt: e.target.value })} placeholder="Question prompt" />
                     {customQs.length > 1 && (
-                      <button onClick={() => removeCustomQ(q.localId)} className="text-gray-500 hover:text-red-400 shrink-0" aria-label={`Remove question ${qi + 1}`}><Trash2 className="w-3.5 h-3.5" aria-hidden="true" /></button>
+                      <button onClick={() => removeCustomQ(q.localId)} className="text-gray-400 hover:text-red-400 shrink-0" aria-label={`Remove question ${qi + 1}`}><Trash2 className="w-3.5 h-3.5" aria-hidden="true" /></button>
                     )}
                   </div>
                   {['single', 'multi', 'rating'].includes(q.kind) && (
-                    <input className={inputCls} value={q.optionsText} onChange={e => patchCustomQ(q.localId, { optionsText: e.target.value })} placeholder="Options, comma-separated" />
+                    <input className={inputCls} aria-label={`Question ${qi + 1} options`} value={q.optionsText} onChange={e => patchCustomQ(q.localId, { optionsText: e.target.value })} placeholder="Options, comma-separated" />
                   )}
                   {(q.kind === 'single' || q.kind === 'rating') && branchOptions.length > 0 && customQs.length > 1 && (
                     <div className="pl-4 space-y-1 border-l border-zinc-800">
-                      <p className="text-[10px] text-gray-500 flex items-center gap-1"><GitBranch className="w-3 h-3" /> Branch on answer (optional — default is next question in order)</p>
+                      <p className="text-[10px] text-gray-400 flex items-center gap-1"><GitBranch className="w-3 h-3" /> Branch on answer (optional — default is next question in order)</p>
                       {branchOptions.map((o, oi) => {
                         const answerKey = q.kind === 'rating' ? String(oi + 1) : o;
                         return (
                           <div key={answerKey} className="flex items-center gap-1.5 text-[11px]">
                             <span className="text-gray-400 w-24 truncate">&ldquo;{o}&rdquo;</span>
                             <ArrowRight className="w-3 h-3 text-gray-600 shrink-0" />
-                            <select className={`${inputCls} py-1`} value={q.branch[answerKey] || ''} onChange={e => setBranchTarget(q.localId, answerKey, e.target.value)}>
+                            <select className={`${inputCls} py-1`} aria-label={`Branch target for answer ${o}`} value={q.branch[answerKey] || ''} onChange={e => setBranchTarget(q.localId, answerKey, e.target.value)}>
                               <option value="">Next question</option>
                               {customQs.filter(other => other.localId !== q.localId).map(other => (
                                 <option key={other.localId} value={other.localId}>{other.prompt.trim() || `Question ${customQs.indexOf(other) + 1}`}</option>
@@ -754,7 +755,7 @@ function SurveyPanel() {
 
           {!completed && current && (
             <div className="space-y-2">
-              <input className={`${inputCls} max-w-[200px]`} value={respondent} onChange={e => setRespondent(e.target.value)} placeholder="Respondent name" disabled={answeredCount > 0} />
+              <input className={`${inputCls} max-w-[200px]`} value={respondent} onChange={e => setRespondent(e.target.value)} placeholder="Respondent name" aria-label="Respondent name" disabled={answeredCount > 0} />
               <p className="text-sm text-gray-200">{current.prompt}</p>
 
               {current.kind === 'nps' && (
@@ -806,7 +807,7 @@ function SurveyPanel() {
               )}
               {(current.kind === 'text' || (current.options.length === 0 && (current.kind === 'single' || current.kind === 'multi' || current.kind === 'rating'))) && (
                 <div className="flex gap-1.5">
-                  <input className={inputCls} value={freeText} onChange={e => setFreeText(e.target.value)}
+                  <input className={inputCls} aria-label="Free text answer" value={freeText} onChange={e => setFreeText(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter' && freeText.trim()) advance(freeText.trim()); }}
                     placeholder="Your answer" />
                   <button onClick={() => advance(freeText.trim())} disabled={advancing || !freeText.trim()}
@@ -1229,7 +1230,7 @@ function PrototypePanel() {
                 className={`text-[11px] px-2 py-1 rounded ${activeFrame === f.id ? 'bg-neon-cyan text-black font-medium' : 'bg-zinc-800 text-gray-400'}`}>{f.name}</button>
             ))}
           </div>
-          <div onClick={onFrameClick} className="relative w-full aspect-video bg-zinc-800/50 border border-dashed border-zinc-600 rounded cursor-crosshair flex items-center justify-center" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          <div onClick={onFrameClick} className="relative w-full aspect-video bg-zinc-800/50 border border-dashed border-zinc-600 rounded cursor-crosshair flex items-center justify-center" role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <span className="text-[11px] text-gray-400 text-center px-4">Click the frame to record an interaction — outer edge counts as a misclick</span>
             {frameHot && (
               <div className="absolute inset-0 grid" style={{ gridTemplateColumns: 'repeat(6, 1fr)', gridTemplateRows: 'repeat(6, 1fr)' }}>

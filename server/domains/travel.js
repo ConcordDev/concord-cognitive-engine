@@ -401,11 +401,20 @@ export default function registerTravelActions(registerLensAction) {
     // 1-day trip (the Math.max(1, …) below used to store end-before-
     // start silently, and trip-list then mislabelled its status).
     if (startDate && endDate && endDate < startDate) {
-      return { ok: false, error: "endDate must be on or after startDate" };
+      return { ok: false, error: "The end date must be on or after the start date" };
+    }
+    // FIX-travel-003: travelers was silently clamped (Math.max(1, …)),
+    // so -1 became 1 with no word. A provided value must be a whole
+    // number of at least 1; absent still defaults to 1.
+    if (params.travelers != null && params.travelers !== "") {
+      const nTrav = Number(params.travelers);
+      if (!Number.isFinite(nTrav) || Math.floor(nTrav) !== nTrav || nTrav < 1) {
+        return { ok: false, error: "Travelers must be a whole number of at least 1" };
+      }
     }
     const trip = {
       id: tvid("trip"), name, destination, startDate: startDate || null, endDate: endDate || null,
-      travelers: Math.max(1, Math.round(tvnum(params.travelers, 1))),
+      travelers: params.travelers != null && params.travelers !== "" ? Math.round(Number(params.travelers)) : 1,
       durationDays: (startDate && endDate)
         ? Math.max(1, Math.round((new Date(endDate) - new Date(startDate)) / TV_DAY) + 1) : null,
       notes: tvclean(params.notes, 500) || null,
@@ -437,13 +446,19 @@ export default function registerTravelActions(registerLensAction) {
     const nextStart = params.startDate != null ? (tvday(params.startDate) || null) : trip.startDate;
     const nextEnd = params.endDate != null ? (tvday(params.endDate) || null) : trip.endDate;
     if (nextStart && nextEnd && nextEnd < nextStart) {
-      return { ok: false, error: "endDate must be on or after startDate" };
+      return { ok: false, error: "The end date must be on or after the start date" };
+    }
+    if (params.travelers != null && params.travelers !== "") {
+      const nTrav = Number(params.travelers);
+      if (!Number.isFinite(nTrav) || Math.floor(nTrav) !== nTrav || nTrav < 1) {
+        return { ok: false, error: "Travelers must be a whole number of at least 1" };
+      }
     }
     if (params.name != null) { const n = tvclean(params.name, 120); if (n) trip.name = n; }
     if (params.destination != null) { const d = tvclean(params.destination, 120); if (d) trip.destination = d; }
     if (params.startDate != null) trip.startDate = tvday(params.startDate) || null;
     if (params.endDate != null) trip.endDate = tvday(params.endDate) || null;
-    if (params.travelers != null) trip.travelers = Math.max(1, Math.round(tvnum(params.travelers, 1)));
+    if (params.travelers != null && params.travelers !== "") trip.travelers = Math.round(Number(params.travelers));
     if (params.notes != null) trip.notes = tvclean(params.notes, 500) || null;
     if (trip.startDate && trip.endDate) {
       trip.durationDays = Math.max(1, Math.round((new Date(trip.endDate) - new Date(trip.startDate)) / TV_DAY) + 1);

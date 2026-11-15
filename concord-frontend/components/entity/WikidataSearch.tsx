@@ -92,7 +92,7 @@ export function WikidataSearch() {
       >
         <div className="relative flex-1">
           <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
-          <input
+          <input id="entity-wikidatasearch-search-wikidata-entity-name-concept-pers" name="search-wikidata-entity-name-concept-pers"
             type="text"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}

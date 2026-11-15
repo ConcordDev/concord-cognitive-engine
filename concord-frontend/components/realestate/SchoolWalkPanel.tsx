@@ -153,7 +153,7 @@ export function SchoolWalkPanel({ initialAddress }: { initialAddress?: string })
           <Unavailable label="Walk, transit, and bike scores" reason="walkscore_unavailable" />
         )}
         {walkLive && walk?.source && (
-          <div className="text-[10px] text-gray-500">Source: {walk.source}</div>
+          <div className="text-[10px] text-gray-400">Source: {walk.source}</div>
         )}
         {fetched && schools && !schoolsLive && (
           <Unavailable label="Schools" reason={schools.reason} />
@@ -167,7 +167,7 @@ export function SchoolWalkPanel({ initialAddress }: { initialAddress?: string })
                 <span className="ml-auto text-[10px] font-mono text-gray-400">Avg <span className="text-emerald-300">{schools.averageRating.toFixed(1)}</span>/10</span>
               )}
             </div>
-            {schools?.source && <div className="mb-2 text-[10px] text-gray-500">Source: {schools.source}</div>}
+            {schools?.source && <div className="mb-2 text-[10px] text-gray-400">Source: {schools.source}</div>}
             {(schools?.schools || []).length === 0 ? (
               <div className="text-xs text-gray-400">No schools returned for this address.</div>
             ) : (
@@ -194,7 +194,7 @@ export function SchoolWalkPanel({ initialAddress }: { initialAddress?: string })
             <div className="flex items-center gap-2 mb-1.5">
               <Car className="w-4 h-4 text-cyan-300" />
               <span className="text-xs text-gray-300">Commute{commute?.mode ? ` · ${commute.mode}` : ''}</span>
-              {commute?.source && <span className="ml-auto text-[10px] text-gray-500">{commute.source}</span>}
+              {commute?.source && <span className="ml-auto text-[10px] text-gray-400">{commute.source}</span>}
             </div>
             <div className="grid grid-cols-3 gap-3 text-center">
               {isFiniteScore(commute?.minutes) && (
@@ -219,7 +219,7 @@ function Unavailable({ label, reason }: { label: string; reason?: string }) {
     <div role="status" className="rounded-md border border-white/10 bg-white/[0.03] px-3 py-3 text-xs text-gray-300">
       <div className="text-gray-200">{label}</div>
       <div className="mt-1 text-amber-200/90">Not connected / unavailable</div>
-      {reason ? <div className="mt-1 font-mono text-[10px] text-gray-500">{reason}</div> : null}
+      {reason ? <div className="mt-1 font-mono text-[10px] text-gray-400">{reason}</div> : null}
     </div>
   );
 }

@@ -91,7 +91,7 @@ describe("welding lens — registration of the driven macros", () => {
       // WeldingOperations field-service ops
       "job-schedule", "job-update", "calendar",
       "estimate-create", "estimate-list", "estimate-send", "estimate-to-job",
-      "invoice-from-job", "invoice-list", "invoice-payment",
+      "invoice-from-job", "invoice-list", "invoice-payment", "invoice-update",
       "wps-create", "wps-list", "wps-approve",
       "cert-add", "cert-status", "cert-renew",
       "photo-attach", "photo-list", "photo-remove",

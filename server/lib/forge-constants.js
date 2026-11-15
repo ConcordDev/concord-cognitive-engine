@@ -300,6 +300,7 @@ export const FORGE_TEMPLATES = Object.freeze({
   blank: {
     id: "blank",
     label: "Blank App",
+    category: "Starter",
     description: "Empty template with all 13 sections — you fill in the business logic",
     price: 0,
     sections: ["dependencies", "config", "database", "auth", "payments", "api", "frontend", "websocket", "jobs", "threads", "testing", "deployment", "repair"],
@@ -307,6 +308,7 @@ export const FORGE_TEMPLATES = Object.freeze({
   saas: {
     id: "saas",
     label: "SaaS Starter",
+    category: "SaaS",
     description: "Multi-tenant SaaS with auth, billing, teams, and admin dashboard",
     price: 20,
     sections: ["dependencies", "config", "database", "auth", "payments", "api", "frontend", "websocket", "jobs", "threads", "testing", "deployment", "repair"],
@@ -315,6 +317,7 @@ export const FORGE_TEMPLATES = Object.freeze({
   ecommerce: {
     id: "ecommerce",
     label: "E-Commerce",
+    category: "E-Commerce",
     description: "Product catalog, cart, checkout, inventory, order management",
     price: 20,
     sections: ["dependencies", "config", "database", "auth", "payments", "api", "frontend", "websocket", "jobs", "threads", "testing", "deployment", "repair"],
@@ -323,6 +326,7 @@ export const FORGE_TEMPLATES = Object.freeze({
   social: {
     id: "social",
     label: "Social Platform",
+    category: "Social",
     description: "User profiles, posts, comments, likes, follow system, notifications, feed",
     price: 20,
     sections: ["dependencies", "config", "database", "auth", "payments", "api", "frontend", "websocket", "jobs", "threads", "testing", "deployment", "repair"],
@@ -331,6 +335,7 @@ export const FORGE_TEMPLATES = Object.freeze({
   api_only: {
     id: "api_only",
     label: "API-Only Service",
+    category: "API",
     description: "Headless API with auth, rate limiting, and documentation",
     price: 0,
     sections: ["dependencies", "config", "database", "auth", "api", "threads", "testing", "deployment", "repair"],
@@ -338,6 +343,7 @@ export const FORGE_TEMPLATES = Object.freeze({
   realtime: {
     id: "realtime",
     label: "Realtime App",
+    category: "Realtime",
     description: "Chat, collaboration, or live dashboard with WebSocket-first architecture",
     price: 15,
     sections: ["dependencies", "config", "database", "auth", "api", "frontend", "websocket", "threads", "testing", "deployment", "repair"],
@@ -353,6 +359,7 @@ export const FORGE_TEMPLATES = Object.freeze({
   concord_substrate: {
     id: "concord_substrate",
     label: "Concord Substrate (mini)",
+    category: "Platform",
     description: "A single-file Concord-shaped substrate: macro registry, DTU envelope, royalty cascade stub, 3-gate auth. Federate back via AP or dtu_portability.import.",
     price: 50,
     sections: ["dependencies", "config", "database", "auth", "api", "frontend", "websocket", "jobs", "testing", "deployment", "repair"],

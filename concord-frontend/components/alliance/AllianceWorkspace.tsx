@@ -568,7 +568,8 @@ export function AllianceWorkspace() {
               </div>
               {showCreateAlliance && (
                 <div className="space-y-2 p-2 bg-lattice-deep rounded">
-                  <input value={newAllianceName} onChange={(e) => setNewAllianceName(e.target.value)} placeholder="Alliance name" className="input-lattice w-full text-sm" />
+                  <input value={newAllianceName} onChange={(e) => setNewAllianceName(e.target.value)} placeholder="Alliance name" maxLength={200} className="input-lattice w-full text-sm" />
+                  {newAllianceName.length > 160 && <span className="text-[10px] text-zinc-500">{newAllianceName.length}/200</span>}
                   <input value={newAllianceDesc} onChange={(e) => setNewAllianceDesc(e.target.value)} placeholder="Description" className="input-lattice w-full text-sm" />
                   <label className="block">
                     <span className="text-[10px] uppercase tracking-wider text-gray-400">Alliance type</span>

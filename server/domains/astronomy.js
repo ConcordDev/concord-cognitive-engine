@@ -714,6 +714,16 @@ export default function registerAstronomyActions(registerLensAction) {
     return { ok: true, result: { sessions, count: sessions.length } };
   });
 
+  registerLensAction("astronomy", "session-delete", (ctx, _a, params = {}) => {
+    const s = getAstroState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = asListB(s.sessions, asAid(ctx));
+    const i = arr.findIndex((ses) => ses.id === params.id);
+    if (i < 0) return { ok: false, error: "session not found" };
+    arr.splice(i, 1);
+    saveAstroState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
   registerLensAction("astronomy", "session-detail", (ctx, _a, params = {}) => {
     const s = getAstroState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = asAid(ctx);

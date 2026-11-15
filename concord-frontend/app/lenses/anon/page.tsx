@@ -67,6 +67,9 @@ export default function AnonLensPage() {
   const [records, setRecords] = useState<PrivacyRecord[]>([]);
   const [newRecord, setNewRecord] = useState({ age: '', zipcode: '', condition: '' });
   const [epsilon, setEpsilon] = useState(1.0);
+  // FIX-anon-002: the anonymize macro always accepted params.k but the
+  // lab offered no control — every run silently used the default k=3.
+  const [kTarget, setKTarget] = useState(3);
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
   const [isRunning, setIsRunning] = useState<string | null>(null);
   // Bumped after every differentialPrivacy call so PrivacyBudgetPanel
@@ -115,7 +118,7 @@ export default function AnonLensPage() {
       const input = action === 'differentialPrivacy'
         ? { values: records.map((r) => r.age) }
         : { records, quasiIdentifiers: ['age', 'zipcode'], sensitiveFields: ['condition'] };
-      const params = action === 'differentialPrivacy' ? { epsilon } : {};
+      const params = action === 'differentialPrivacy' ? { epsilon } : action === 'anonymize' ? { k: kTarget } : {};
       const res = await lensRun('anon', action, { ...input, ...params });
       if (res.data.ok === false) {
         setActionResult({ message: `Action failed: ${res.data.error || 'Unknown error'}` });
@@ -243,6 +246,11 @@ export default function AnonLensPage() {
               <input type="number" min={0.01} max={10} step={0.1} value={epsilon} onChange={(e) => setEpsilon(Math.max(0.01, Math.min(10, Number(e.target.value) || 1)))} className="input-lattice w-20 text-xs" />
               <span className="text-gray-500">lower = stronger privacy, more noise</span>
             </label>
+            <label className="flex items-center gap-2 text-[11px] text-gray-400">
+              <span>K-anonymity target (k)</span>
+              <input type="number" min={2} max={50} step={1} value={kTarget} onChange={(e) => setKTarget(Math.max(2, Math.min(50, Math.floor(Number(e.target.value) || 3))))} className="input-lattice w-20 text-xs" aria-label="K-anonymity target (k)" />
+              <span className="text-gray-500">every equivalence class needs at least k records — higher = stronger privacy, more generalization</span>
+            </label>
           </div>
 
           {/* Real cross-session epsilon-budget tracking — every differentialPrivacy
@@ -358,6 +366,22 @@ export default function AnonLensPage() {
                       </span>
                     )}
                   </div>
+                  {/* FIX-anon-002: these stats describe the GENERALIZED
+                      output, not the records as entered — say so, and
+                      show the output so the cost of k is visible. */}
+                  <p className="text-[11px] text-gray-500">
+                    Classes, loss and level describe the generalized output below — not your
+                    records as entered. (Privacy Risk, by contrast, measures the records as entered.)
+                  </p>
+                  {Array.isArray(actionResult.anonymizedSample) && (actionResult.anonymizedSample as PrivacyRecord[]).length > 0 && (
+                    <div className="space-y-1">
+                      {(actionResult.anonymizedSample as Array<Record<string, unknown>>).map((r, i) => (
+                        <div key={i} className="rounded bg-lattice-surface px-2 py-1 text-[11px] text-gray-300">
+                          age {String(r.age)} · zip {String(r.zipcode)} · {String(r.condition)}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -365,6 +389,13 @@ export default function AnonLensPage() {
               {actionResult.overallRiskLevel !== undefined &&
                 actionResult.attackModels !== undefined && (
                   <div className="space-y-3">
+                    {/* FIX-anon-002: risk is measured on the records AS
+                        ENTERED — name that scope so it stops reading as
+                        a contradiction of the anonymize result. */}
+                    <p className="text-[11px] text-gray-500">
+                      Measured on your records as entered, before any anonymization — this is the
+                      exposure the Anonymize step is meant to reduce.
+                    </p>
                     <div className="flex items-center gap-3">
                       <div
                         className={`text-3xl font-bold ${

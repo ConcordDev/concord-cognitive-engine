@@ -27,9 +27,9 @@ export function ProjectsPanel() {
 
   return (
     <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 space-y-4">
-      <h3 className="text-sm font-semibold flex items-center gap-2">
+      <h2 className="text-sm font-semibold flex items-center gap-2">
         <FolderGit2 className="w-4 h-4 text-neon-cyan" /> Your Projects
-      </h3>
+      </h2>
       {conns.length === 0 ? (
         <p className="text-xs text-gray-400">
           No projects yet. A project is a workspace connection and the datasets inside it — create one in the Live Client and it will appear here.

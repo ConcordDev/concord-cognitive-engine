@@ -123,7 +123,8 @@ export default function HomeImprovementLensPage() {
         actions={
           <>
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-            <DTUExportButton domain="home-improvement" data={realtimeData || {}} compact />
+            {/* FIX-home-improvement-013: the .dtu export carries the caller’s own lens records — with an empty payload the button loads them itself. The realtime feed is not the user’s data. */}
+            <DTUExportButton domain="home-improvement" data={{}} compact />
           </>
         }
         tabs={navTabs}

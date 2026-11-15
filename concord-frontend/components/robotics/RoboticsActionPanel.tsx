@@ -6,6 +6,7 @@
  * mint/DM/publish/agent.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import { Bot, GitBranch, Cpu, BatteryFull, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -148,8 +149,8 @@ export function RoboticsActionPanel() {
     try {
       const task = `Robot spec review. ${kinResult ? `${kinResult.degreesOfFreedom}-DOF ${kinResult.type}, reach ${kinResult.maxReach}.` : ''} ${pathResult ? `Planned path: ${pathResult.totalDistance} mm over ${pathResult.waypoints} waypoints, est ${pathResult.estimatedTime}.` : ''} ${fuseResult ? `Sensor fusion across ${fuseResult.sensorCount} sources at ${fuseResult.fusedConfidence}% confidence.` : ''} ${batResult ? `Power: ${batResult.totalPowerDraw} → ${batResult.estimatedRuntime}. ${batResult.recommendation}.` : ''} Identify the most likely deployment context + one structural risk. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Review ready.'); } else err('Agent returned empty.');
+      const reply = readAgentReply(r.data);
+      if (reply.ok) { setAgentReply(reply.text); ok('Review ready.'); } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 

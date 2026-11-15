@@ -27,6 +27,7 @@ import {
   validateWorldspec,
 } from "../lib/foundry/worldspec.js";
 import { compileWorldspec, buildConcordLinkAnchor } from "../lib/foundry/compiler.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
 import {
   buildPromotedContent, validatePromotedContent, writePromotedContent,
 } from "../lib/foundry/promote.js";
@@ -85,7 +86,45 @@ function rowToWorld(row) {
   };
 }
 
+/**
+ * FIX-foundry-011: the lens-export provider. Foundry worlds live in the
+ * foundry_worlds SQL table, not the generic artifact store, and no
+ * provider was registered — so the full DTU bundle / SaveAsDtu export
+ * could not see them and exported nothing for this lens. Rows are the
+ * caller's own worlds only (creator_id = caller), worldspec included.
+ */
+function foundryExportRows(ctx) {
+  const db = ctx?.db;
+  if (!db) return [];
+  const creatorId = ctx?.actor?.userId || ctx?.actor?.id;
+  if (!creatorId) return [];
+  try {
+    const rows = db.prepare(`
+      SELECT * FROM foundry_worlds WHERE creator_id = ?
+      ORDER BY updated_at DESC LIMIT 1000
+    `).all(creatorId);
+    return rows.map((row) => {
+      const w = rowToWorld(row);
+      return {
+        id: w.id,
+        type: "world",
+        title: w.name,
+        createdAt: row.created_at ?? null,
+        updatedAt: row.updated_at ?? null,
+        data: {
+          name: w.name,
+          description: w.description,
+          status: w.status,
+          publishedWorldId: w.publishedWorldId,
+          worldspec: w.worldspec,
+        },
+      };
+    });
+  } catch { return []; }
+}
+
 export default function registerFoundryMacros(register) {
+  registerLensExportProvider("foundry", foundryExportRows);
   // ===== Phase 1 — System Registry read surface ==============================
 
   /**
@@ -954,8 +993,10 @@ export default function registerFoundryMacros(register) {
 
   /**
    * foundry.asset_import — register a 3D model / sprite / audio / texture
-   * by URL into a world's asset library.
-   * input: { id, kind, name, url, tags? }
+   * into a world's asset library, by URL or by file upload.
+   * input: { id, kind, name, url?, dataUrl?, tags? } — a file upload
+   * rides as a base64 dataUrl (FIX-foundry-011; capped, see
+   * validateAsset) and is stored as source:"upload" with no url.
    */
   register("foundry", "asset_import", (ctx, input = {}) => {
     try {
@@ -963,10 +1004,14 @@ export default function registerFoundryMacros(register) {
       if (r.error) return r.error;
       const v = validateAsset(input);
       if (!v.ok) return { ok: false, reason: "invalid_asset", errors: v.errors };
+      const dataUrl = typeof input.dataUrl === "string" && input.dataUrl.trim() ? input.dataUrl.trim() : null;
       const assetId = `fa_${randomUUID().replace(/-/g, "").slice(0, 18)}`;
       const asset = {
         id: assetId, foundryWorldId: r.row.id, kind: String(input.kind),
-        name: String(input.name).trim().slice(0, 160), url: String(input.url).trim(),
+        name: String(input.name).trim().slice(0, 160),
+        url: dataUrl ? "" : String(input.url).trim(),
+        source: dataUrl ? "upload" : "url",
+        ...(dataUrl ? { dataUrl } : {}),
         tags: Array.isArray(input.tags) ? input.tags.map((t) => String(t).slice(0, 40)).slice(0, 12) : [],
         importedBy: r.userId, importedAt: Date.now(),
       };

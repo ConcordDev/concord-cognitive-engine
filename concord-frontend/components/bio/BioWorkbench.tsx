@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import {
-  X, Loader2, Dna, FileText, Scissors, GitMerge, Save, Trash2, Plus,
+  X, Loader2, Dna, FileText, Scissors, GitMerge, Save, Trash2, Plus, Pencil,
 } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -111,7 +111,7 @@ function AnalyzerTab() {
   return (
     <div className="p-3 space-y-3">
       <div className="flex gap-2">
-        <select value={kind} onChange={(e) => setKind(e.target.value as typeof kind)}
+        <select aria-label="Sequence type" value={kind} onChange={(e) => setKind(e.target.value as typeof kind)}
           className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100">
           <option value="dna">DNA</option>
           <option value="rna">RNA</option>
@@ -124,7 +124,7 @@ function AnalyzerTab() {
       </div>
 
       <textarea value={seq} onChange={(e) => setSeq(e.target.value)} rows={4}
-        placeholder="Paste sequence here (DNA/RNA/protein)"
+        aria-label="Sequence to analyze" placeholder="Paste sequence here (DNA/RNA/protein)"
         className="w-full px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono resize-none" />
 
       {result && (
@@ -179,7 +179,7 @@ function PrimerTab() {
   return (
     <div className="p-3 space-y-3">
       <div className="flex gap-2">
-        <input type="number" value={length} min="18" max="28"
+        <input type="number" aria-label="Primer length" value={length} min="18" max="28"
           onChange={(e) => setLength(Number(e.target.value))}
           className="w-24 px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono" />
         <button type="button" onClick={design}
@@ -189,7 +189,7 @@ function PrimerTab() {
       </div>
 
       <textarea value={seq} onChange={(e) => setSeq(e.target.value)} rows={4}
-        placeholder="Paste a DNA / RNA / protein sequence"
+        aria-label="Primer template sequence" placeholder="Paste a DNA / RNA / protein sequence"
         className="w-full px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono resize-none" />
 
       {primers && (
@@ -240,9 +240,9 @@ function AlignTab() {
   return (
     <div className="p-3 space-y-3">
       <div className="grid grid-cols-2 gap-2">
-        <textarea value={a} onChange={(e) => setA(e.target.value)} placeholder="Sequence A" rows={3}
+        <textarea value={a} onChange={(e) => setA(e.target.value)} placeholder="Sequence A" aria-label="Sequence A" rows={3}
           className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono resize-none" />
-        <textarea value={b} onChange={(e) => setB(e.target.value)} placeholder="Sequence B" rows={3}
+        <textarea value={b} onChange={(e) => setB(e.target.value)} placeholder="Sequence B" aria-label="Sequence B" rows={3}
           className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono resize-none" />
       </div>
       <button type="button" onClick={align}
@@ -290,7 +290,7 @@ function RestrictionTab() {
       </button>
 
       <textarea value={seq} onChange={(e) => setSeq(e.target.value)} rows={4}
-        placeholder="Paste a DNA / RNA / protein sequence"
+        aria-label="Restriction sequence" placeholder="Paste a DNA / RNA / protein sequence"
         className="w-full px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono resize-none" />
 
       {sites.length > 0 ? (
@@ -353,6 +353,23 @@ function LibraryTab() {
     } catch (e) { console.error(e); }
   };
 
+  // FIX-bio-003: saved sequences gain an in-place edit.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState<{ name: string; sequence: string; kind: 'dna' | 'rna' | 'protein'; description: string }>({
+    name: '', sequence: '', kind: 'dna', description: '',
+  });
+  const [editError, setEditError] = useState<string | null>(null);
+  const saveEdit = async (id: string) => {
+    try {
+      const r = await api.post('/api/lens/run', { domain: 'bio', action: 'sequence-update', input: { id, ...editDraft } });
+      const data = r.data as { ok?: boolean; error?: string };
+      if (data?.ok === false) { setEditError(data.error || 'Could not save the sequence.'); return; }
+      setEditError(null);
+      setEditingId(null);
+      await refresh();
+    } catch (e) { setEditError(e instanceof Error ? e.message : 'Could not save the sequence.'); }
+  };
+
   return (
     <div className="p-3 space-y-2">
       <button type="button" onClick={() => setCreating((v) => !v)}
@@ -362,23 +379,30 @@ function LibraryTab() {
 
       {creating && (
         <div className="rounded border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-2">
-          <input type="text" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+          <input type="text" aria-label="Sequence name" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })}
             placeholder="Name" maxLength={80}
             className="w-full px-2 py-1.5 text-sm bg-black/40 border border-white/10 rounded text-gray-100" />
-          <select value={draft.kind} onChange={(e) => setDraft({ ...draft, kind: e.target.value as typeof draft.kind })}
+          <select aria-label="Sequence kind" value={draft.kind} onChange={(e) => setDraft({ ...draft, kind: e.target.value as typeof draft.kind })}
             className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100">
             <option value="dna">DNA</option><option value="rna">RNA</option><option value="protein">Protein</option>
           </select>
-          <textarea value={draft.sequence} onChange={(e) => setDraft({ ...draft, sequence: e.target.value })}
+          <textarea aria-label="Sequence" value={draft.sequence} onChange={(e) => setDraft({ ...draft, sequence: e.target.value })}
             placeholder="Sequence" rows={3}
             className="w-full px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono resize-none" />
-          <input type="text" value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })}
+          <input type="text" aria-label="Sequence description" value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })}
             placeholder="Description (optional)" maxLength={200}
             className="w-full px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100" />
           <button type="button" onClick={save} disabled={!draft.name.trim() || !draft.sequence.trim()}
             className="inline-flex items-center gap-1 px-3 py-1 rounded-md border border-emerald-500/40 bg-emerald-500/15 text-xs text-emerald-100 disabled:opacity-40">
             <Save className="w-3 h-3" /> Save
           </button>
+          {(!draft.name.trim() || !draft.sequence.trim()) && (
+            <p role="note" className="text-[11px] text-gray-400">
+              {!draft.name.trim() && !draft.sequence.trim()
+                ? 'Name and sequence are required.'
+                : !draft.name.trim() ? 'Name is required.' : 'Sequence is required.'}
+            </p>
+          )}
         </div>
       )}
 
@@ -398,11 +422,47 @@ function LibraryTab() {
                 {s.description && <p className="text-[11px] text-gray-400 mt-1">{s.description}</p>}
                 <p className="text-[10px] font-mono text-gray-400 mt-1 truncate">{s.sequence.slice(0, 80)}{s.sequence.length > 80 ? '…' : ''}</p>
               </div>
-              <button aria-label="Delete" type="button" onClick={() => remove(s.id)}
-                className="p-1 text-gray-600 hover:text-rose-300 opacity-0 group-hover:opacity-100">
-                <Trash2 className="w-3 h-3" />
-              </button>
+              <span className="flex items-start gap-1">
+                <button aria-label={`Edit sequence ${s.name}`} type="button"
+                  onClick={() => {
+                    setEditingId(editingId === s.id ? null : s.id);
+                    setEditDraft({ name: s.name, sequence: s.sequence, kind: s.kind, description: s.description || '' });
+                    setEditError(null);
+                  }}
+                  className="p-1 text-gray-600 hover:text-gray-200 opacity-0 group-hover:opacity-100">
+                  <Pencil className="w-3 h-3" />
+                </button>
+                <button aria-label="Delete" type="button" onClick={() => remove(s.id)}
+                  className="p-1 text-gray-600 hover:text-rose-300 opacity-0 group-hover:opacity-100">
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </span>
             </div>
+            {editingId === s.id && (
+              <div className="mt-2 space-y-2 border-t border-white/10 pt-2">
+                {editError && <p role="alert" className="text-[11px] text-rose-300">{editError}</p>}
+                <input type="text" aria-label="Edit sequence name" value={editDraft.name} onChange={(e) => setEditDraft({ ...editDraft, name: e.target.value })}
+                  placeholder="Name" maxLength={80}
+                  className="w-full px-2 py-1.5 text-sm bg-black/40 border border-white/10 rounded text-gray-100" />
+                <select aria-label="Edit sequence kind" value={editDraft.kind} onChange={(e) => setEditDraft({ ...editDraft, kind: e.target.value as typeof editDraft.kind })}
+                  className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100">
+                  <option value="dna">DNA</option><option value="rna">RNA</option><option value="protein">Protein</option>
+                </select>
+                <textarea aria-label="Edit sequence bases" value={editDraft.sequence} onChange={(e) => setEditDraft({ ...editDraft, sequence: e.target.value })}
+                  placeholder="Sequence" rows={3}
+                  className="w-full px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono resize-none" />
+                <input type="text" aria-label="Edit sequence description" value={editDraft.description} onChange={(e) => setEditDraft({ ...editDraft, description: e.target.value })}
+                  placeholder="Description (optional)" maxLength={200}
+                  className="w-full px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100" />
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => saveEdit(s.id)} disabled={!editDraft.name.trim() || !editDraft.sequence.trim()}
+                    className="inline-flex items-center gap-1 px-3 py-1 rounded-md border border-emerald-500/40 bg-emerald-500/15 text-xs text-emerald-100 disabled:opacity-40">
+                    <Save className="w-3 h-3" /> Save
+                  </button>
+                  <button type="button" onClick={() => setEditingId(null)} className="text-xs text-gray-400 px-2">Cancel</button>
+                </div>
+              </div>
+            )}
           </div>
         ))
       )}

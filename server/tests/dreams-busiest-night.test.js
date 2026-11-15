@@ -186,3 +186,17 @@ describe("dreams.busiest-night — ranking correctness (hand-computed)", () => {
     for (const n of r.nights) assert.ok(n.activityIntensity <= 9);
   });
 });
+
+describe("dreams.busiest-night — caller local day", () => {
+  it("puts 02:22 UTC on the previous local day when the offset is US Central", async () => {
+    // 2026-10-28 02:22 UTC is 2026-10-27 21:22 in CDT (offset 300).
+    const late = Date.UTC(2026, 9, 28, 2, 22, 0) / 1000;
+    const earlier = Date.UTC(2026, 9, 26, 18, 0, 0) / 1000;
+    insertDreamAt("drm_late", "user_a", late, 4);
+    insertDreamAt("drm_earlier", "user_a", earlier, 1);
+    const utc = await call("busiest-night", ctxA(), {});
+    assert.equal(utc.nights.find((n) => n.dreamIds.includes("drm_late")).day, "2026-10-28");
+    const local = await call("busiest-night", ctxA(), { tzOffsetMin: 300 });
+    assert.equal(local.nights.find((n) => n.dreamIds.includes("drm_late")).day, "2026-10-27");
+  });
+});

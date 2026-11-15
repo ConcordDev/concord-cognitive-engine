@@ -17,6 +17,13 @@ export interface HeadlessProbe {
   macro: string;
   /** Optional input payload sent with the runDomain call. */
   input?: Record<string, unknown>;
+  /**
+   * True when the macro is an operator action rather than a read
+   * (its probe input is a dry run of a mutating verb). Action probes
+   * are listed but never auto-fired by a probe card: the card renders
+   * a gated state instead of calling the macro on mount.
+   */
+  operatorAction?: boolean;
   title: string;
   description: string;
   /** Lucide icon name as exported from lucide-react (e.g. 'Database'). */
@@ -74,22 +81,22 @@ export const HEADLESS_PROBES: HeadlessProbe[] = [
   { domain: 'cache', macro: 'stats', title: 'Cache', description: 'Layer hit-rate + eviction telemetry.', icon: 'Database', accent: 'cyan', group: 'substrate', summarise: summariseStatus() },
   { domain: 'governor', macro: 'check', title: 'Governor', description: 'Budget gates + admission decisions.', icon: 'Gauge', accent: 'amber', group: 'substrate', summarise: summariseStatus() },
   { domain: 'shard', macro: 'stats', title: 'Shard', description: 'Sharding map + per-shard load.', icon: 'Boxes', accent: 'sky', group: 'substrate', summarise: summariseStatus() },
-  { domain: 'harness', macro: 'run', input: { dryRun: true }, title: 'Harness', description: 'Boot + smoke harness state.', icon: 'CircuitBoard', accent: 'violet', group: 'substrate', summarise: summariseStatus() },
-  { domain: 'scope', macro: 'promote', input: { dryRun: true }, title: 'Scope', description: 'Personal → public scope promotion.', icon: 'Shield', accent: 'emerald', group: 'substrate', summarise: summariseStatus() },
-  { domain: 'sync', macro: 'force', input: { dryRun: true }, title: 'Sync', description: 'Forced reconciliation passes.', icon: 'RefreshCcw', accent: 'sky', group: 'substrate', summarise: summariseStatus() },
+  { domain: 'harness', macro: 'run', input: { dryRun: true }, operatorAction: true, title: 'Harness', description: 'Boot + smoke harness state.', icon: 'CircuitBoard', accent: 'violet', group: 'substrate', summarise: summariseStatus() },
+  { domain: 'scope', macro: 'promote', input: { dryRun: true }, operatorAction: true, title: 'Scope', description: 'Personal → public scope promotion.', icon: 'Shield', accent: 'emerald', group: 'substrate', summarise: summariseStatus() },
+  { domain: 'sync', macro: 'force', input: { dryRun: true }, operatorAction: true, title: 'Sync', description: 'Forced reconciliation passes.', icon: 'RefreshCcw', accent: 'sky', group: 'substrate', summarise: summariseStatus() },
   { domain: 'log', macro: 'list', title: 'Log', description: 'Structured event tail.', icon: 'ScrollText', accent: 'orange', group: 'substrate', summarise: summariseList('entries') },
   { domain: 'verify', macro: 'feasibility', input: { target: 'self' }, title: 'Verify', description: 'Feasibility / preflight checks.', icon: 'CheckCircle', accent: 'lime', group: 'substrate', summarise: summariseStatus() },
   { domain: 'layer', macro: 'list', title: 'Layer', description: 'Cognitive layer registry.', icon: 'Layers', accent: 'indigo', group: 'substrate', summarise: summariseList('layers') },
   { domain: 'wrapper', macro: 'list', title: 'Wrapper', description: 'Active wrapper bindings.', icon: 'Wrap', accent: 'teal', group: 'substrate', summarise: summariseList('wrappers') },
-  { domain: 'heartbeat', macro: 'tick', input: { dryRun: true }, title: 'Heartbeat', description: 'Tick cadence + skip counter.', icon: 'Activity', accent: 'rose', group: 'substrate', summarise: summariseStatus() },
-  { domain: 'evolution', macro: 'dedupe', input: { dryRun: true }, title: 'Evolution', description: 'Substrate-evolution dedupe pass.', icon: 'Dna', accent: 'fuchsia', group: 'substrate', summarise: summariseStatus() },
+  { domain: 'heartbeat', macro: 'tick', input: { dryRun: true }, operatorAction: true, title: 'Heartbeat', description: 'Tick cadence + skip counter.', icon: 'Activity', accent: 'rose', group: 'substrate', summarise: summariseStatus() },
+  { domain: 'evolution', macro: 'dedupe', input: { dryRun: true }, operatorAction: true, title: 'Evolution', description: 'Substrate-evolution dedupe pass.', icon: 'Dna', accent: 'fuchsia', group: 'substrate', summarise: summariseStatus() },
   { domain: 'experiment', macro: 'log', input: { name: 'inspector' }, title: 'Experiment', description: 'Active experiment ledger.', icon: 'FlaskConical', accent: 'pink', group: 'substrate', summarise: summariseStatus() },
   { domain: 'interface', macro: 'tabs', title: 'Interface', description: 'Surface tab registry.', icon: 'PanelTopOpen', accent: 'cyan', group: 'substrate', summarise: summariseList('tabs') },
   { domain: 'cortex', macro: 'metrics', title: 'Cortex', description: 'Repair-cortex live metrics.', icon: 'Brain', accent: 'violet', group: 'substrate', summarise: summariseStatus() },
   { domain: 'automation', macro: 'list', title: 'Automation', description: 'Scheduled + reactive automations.', icon: 'Bot', accent: 'amber', group: 'substrate', summarise: summariseList('automations') },
   { domain: 'plugin', macro: 'list', title: 'Plugin', description: 'Installed plugin gallery.', icon: 'Puzzle', accent: 'emerald', group: 'substrate', summarise: summariseList('plugins') },
   { domain: 'foundation', macro: 'status', title: 'Foundation', description: 'Foundation invariants snapshot.', icon: 'Anvil', accent: 'sky', group: 'substrate', summarise: summariseStatus() },
-  { domain: 'swarm', macro: 'run', input: { dryRun: true }, title: 'Swarm', description: 'Worker swarm status.', icon: 'Bug', accent: 'lime', group: 'substrate', summarise: summariseStatus() },
+  { domain: 'swarm', macro: 'run', input: { dryRun: true }, operatorAction: true, title: 'Swarm', description: 'Worker swarm status.', icon: 'Bug', accent: 'lime', group: 'substrate', summarise: summariseStatus() },
   { domain: 'agent', macro: 'list', title: 'Agent', description: 'Registered agents.', icon: 'Users', accent: 'rose', group: 'substrate', summarise: summariseList('agents') },
   { domain: 'intent', macro: 'rhythmic_intent', title: 'Intent', description: 'Rhythmic intent detector.', icon: 'Compass', accent: 'fuchsia', group: 'substrate', summarise: summariseStatus() },
   { domain: 'search', macro: 'query', input: { q: '*', limit: 1 }, title: 'Search', description: 'Hybrid search backend.', icon: 'Search', accent: 'pink', group: 'substrate', summarise: summariseStatus() },

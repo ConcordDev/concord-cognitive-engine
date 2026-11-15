@@ -1,12 +1,22 @@
 /**
- * Black Market for Intercepted Messages
+ * Black Market for Intercepted Messages — FICTIONAL NPC TRAFFIC ONLY.
  *
- * When a Link Walker journey ends in interception (see concord-link-walkers
- * advanceJourneyTick), the message status is set to 'intercepted'. Some
- * fraction of those (60% by default) get surfaced as listings under a fence
- * NPC. Players can browse listings (sender/receiver redacted, payload kept
- * server-side until purchase), buy with sparks, and decrypt the original
- * message at higher prices for higher encryption tiers.
+ * Founder ruling (FIX-black-market-010, 2026-11-13): every intercept in
+ * this market is fictional NPC traffic — generated characters' invented
+ * messages, labelled as fiction on the surface. A real user's Concord
+ * Link message is NEVER surfaced as a listing and NEVER revealed to a
+ * buyer. The gate is sender_kind: only 'npc' and 'emergent' messages
+ * (generated characters) may surface; 'user' and 'system' messages are
+ * refused at surfacing and again at purchase-reveal, so no code path
+ * from a real user's private message leads here.
+ *
+ * When a Link Walker journey carrying fictional traffic ends in
+ * interception (see concord-link-walkers advanceJourneyTick), the
+ * message status is set to 'intercepted'. Some fraction of those (60%
+ * by default) get surfaced as listings under a fence NPC. Players can
+ * browse listings (sender/receiver redacted, payload kept server-side
+ * until purchase), buy with sparks, and decrypt the fictional message
+ * at higher prices for higher encryption tiers.
  *
  * The fence operator is broker_sael by default — their authored backstory
  * already names them as the holder of intercepted-archive material. Other
@@ -25,6 +35,13 @@ const BASE_PRICE = Object.freeze({
   high:   180,
   shadow: 500,
 });
+
+// Fictional traffic only (FIX-black-market-010): generated characters'
+// messages may become intercepts; real users' and system messages never do.
+const FICTIONAL_SENDER_KINDS = new Set(["npc", "emergent"]);
+function isFictionalTraffic(msg) {
+  return !!msg && FICTIONAL_SENDER_KINDS.has(String(msg.sender_kind || ""));
+}
 
 const SURFACE_PROBABILITY = 0.6;
 const REP_DELTA_PURCHASE  = 2;   // each clean purchase
@@ -52,10 +69,15 @@ export function surfaceInterceptedMessage(db, messageId, { fenceNpcId = "broker_
   }
 
   const msg = db.prepare(`
-    SELECT id, payload, encryption_level, source_world, dest_world, sent_at
+    SELECT id, payload, encryption_level, source_world, dest_world, sent_at, sender_kind
       FROM concord_link_messages WHERE id = ? AND status = 'intercepted'
   `).get(messageId);
   if (!msg) return { ok: false, reason: "message_not_found_or_not_intercepted" };
+  // Founder ruling: real-user (and system) traffic never becomes a
+  // listing — a quiet no-surface, like the probability loss above.
+  if (!isFictionalTraffic(msg)) {
+    return { ok: true, surfaced: false, listing: null, reason: "not_fictional_traffic" };
+  }
 
   const price = BASE_PRICE[msg.encryption_level] ?? BASE_PRICE.basic;
   const preview = redactPayload(msg.payload || "", msg.encryption_level);
@@ -70,6 +92,7 @@ export function surfaceInterceptedMessage(db, messageId, { fenceNpcId = "broker_
 
 
   const listing = db.prepare(`SELECT * FROM black_market_listings WHERE id = ?`).get(id);
+  if (listing) listing.fictional = true;
   return { ok: true, surfaced: true, listing };
 }
 
@@ -91,6 +114,9 @@ function redactPayload(payload, encryption) {
  * List active listings, optionally scoped to a single fence. Most-recent first.
  */
 export function browseListings(db, { fenceNpcId = null, limit = 50 } = {}) {
+  // Every listing is fictional NPC traffic by construction (the surfacing
+  // gate); rows carry the marker so surfaces label them as fiction from
+  // data, not from copy alone.
   const rows = fenceNpcId
     ? db.prepare(`
         SELECT id, message_id, fence_npc_id, price_sparks, encryption_level,
@@ -106,7 +132,7 @@ export function browseListings(db, { fenceNpcId = null, limit = 50 } = {}) {
          WHERE status = 'active' AND expires_at > unixepoch()
          ORDER BY created_at DESC LIMIT ?
       `).all(limit);
-  return rows;
+  return rows.map((r) => ({ ...r, fictional: true }));
 }
 
 /**
@@ -126,6 +152,15 @@ export function purchaseListing(db, { listingId, buyerId }) {
   if (listing.expires_at <= Math.floor(Date.now() / 1000)) {
     db.prepare(`UPDATE black_market_listings SET status='expired' WHERE id=?`).run(listingId);
     return { ok: false, reason: "listing_expired" };
+  }
+
+  // Founder ruling, second gate: even a listing row that somehow points
+  // at a real user's (or a system) message never reveals it. Refuse the
+  // purchase before any debit and retire the listing.
+  const srcMsg = db.prepare(`SELECT id, sender_kind FROM concord_link_messages WHERE id = ?`).get(listing.message_id);
+  if (!isFictionalTraffic(srcMsg)) {
+    db.prepare(`UPDATE black_market_listings SET status='expired' WHERE id=?`).run(listingId);
+    return { ok: false, reason: "not_fictional_traffic" };
   }
 
   const price = effectivePrice(db, buyerId, listing);
@@ -184,14 +219,13 @@ function projectSoldListing(row) {
   };
 }
 
-// The decrypted message the buyer paid for. Sender and receiver stay
-// anonymous: a player sender is shown only as a traveller from their world.
+// The fictional message the buyer paid for. Only generated characters'
+// traffic can reach this projection (both gates refuse anything else),
+// and the reveal carries the fiction marker so the surface labels it.
 function projectRevealedMessage(msg) {
   if (!msg) return null;
   const kind = String(msg.sender_kind || "");
-  const senderLabel = kind === "user"
-    ? `a traveller from ${msg.source_world || "an unknown world"}`
-    : `${kind === "npc" ? "a local" : kind === "emergent" ? "an emergent" : "a system"} voice from ${msg.source_world || "an unknown world"}`;
+  const senderLabel = `${kind === "emergent" ? "an emergent" : "a local"} voice from ${msg.source_world || "an unknown world"} (fictional NPC)`;
   return {
     id: msg.id,
     payload: msg.payload,
@@ -201,6 +235,7 @@ function projectRevealedMessage(msg) {
     dest_world: msg.dest_world,
     sent_at: msg.sent_at,
     senderLabel,
+    fictional: true,
   };
 }
 

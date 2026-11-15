@@ -54,10 +54,10 @@ export function RoutingRulesPanel() {
         <span className="ml-auto text-[10px] text-gray-400">{rules.length}</span>
       </header>
       <div className="p-3 border-b border-white/10 grid grid-cols-3 gap-2">
-        <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+        <select aria-label="Rule category" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
           {CATEGORIES.map(c => <option key={c} value={c}>{c.replace(/_/g, ' ')}</option>)}
         </select>
-        <select value={form.departmentId} onChange={e => setForm({ ...form, departmentId: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+        <select aria-label="Department" value={form.departmentId} onChange={e => setForm({ ...form, departmentId: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
           <option value="">Select department…</option>
           {depts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
         </select>

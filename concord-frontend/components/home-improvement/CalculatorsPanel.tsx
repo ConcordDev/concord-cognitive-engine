@@ -86,7 +86,7 @@ export function CalculatorsPanel() {
               <input value={row.cost} onChange={e => setRoiRows(rows => rows.map((r, j) => j === i ? { ...r, cost: e.target.value } : r))} type="number" placeholder="Cost" className="input-lattice text-xs w-16" />
               <input value={row.valueAdded} onChange={e => setRoiRows(rows => rows.map((r, j) => j === i ? { ...r, valueAdded: e.target.value } : r))} type="number" placeholder="Value+" className="input-lattice text-xs w-16" />
               {roiRows.length > 1 && (
-                <button onClick={() => setRoiRows(rows => rows.filter((_, j) => j !== i))} className="text-gray-500 hover:text-red-400" aria-label={`Remove ROI row${row.name.trim() ? ` "${row.name.trim()}"` : ''}`}><X className="w-3.5 h-3.5" aria-hidden="true" /></button>
+                <button onClick={() => setRoiRows(rows => rows.filter((_, j) => j !== i))} className="text-gray-400 hover:text-red-400" aria-label={`Remove ROI row${row.name.trim() ? ` "${row.name.trim()}"` : ''}`}><X className="w-3.5 h-3.5" aria-hidden="true" /></button>
               )}
             </div>
           ))}
@@ -194,7 +194,7 @@ export function CalculatorsPanel() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="lens-card">
                     <p className="text-xs text-gray-400">Estimated Cost</p>
-                    <p className="text-lg font-bold text-neon-cyan">${(d.estimatedCost || 0).toLocaleString()}</p>
+                    <p className="text-lg font-bold text-neon-cyan">{typeof d.estimatedCost === 'string' ? d.estimatedCost : `$${(d.estimatedCost || 0).toLocaleString()}`}</p>
                   </div>
                   <div className="lens-card">
                     <p className="text-xs text-gray-400">Processing Time</p>

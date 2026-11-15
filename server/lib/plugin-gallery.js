@@ -21,6 +21,7 @@ import { verifyPluginPackage, computePluginHash } from "./plugin-signing.js";
 import { LruMap, LruSet } from "./lru-map.js";
 import { listBadges } from "./reputation-badges.js";
 import { actorId, requireActor, requireOwner } from "./lens-authz.js";
+import { registerLensExportProvider } from "./lens-export.js";
 import {
   loadPluginFromSource,
   getPlugin as getLoadedPlugin,
@@ -31,6 +32,50 @@ import {
 const _gallery = new LruMap(); // pluginId -> entry
 const _installs = new LruMap(); // pluginId -> Set<userId>
 const _votes = new LruMap(); // pluginId -> Map<userId, "up"|"down">
+
+
+// ── lens export provider (FIX-plugins-005) ─────────────────────────────
+// The Plugins export downloaded nothing over a gallery the caller had
+// installed and rated in: the catalogue is shared platform content, and
+// the caller's own records — installs (_installs) and ratings (_votes) —
+// are module-private maps no export leg can see, behind no domain module
+// that could register a provider. Register here, where the records live:
+// the caller's installs and ratings, joined with the gallery entries.
+// The stores keep no timestamps, so rows carry none rather than invent
+// one. Caller-scoped; anonymous callers export nothing.
+export function listUserPluginRecords(userId) {
+  if (!userId) return [];
+  const rows = [];
+  for (const [pluginId, set] of _installs.entries()) {
+    if (!set || typeof set.has !== "function" || !set.has(userId)) continue;
+    const e = _gallery.get(pluginId);
+    rows.push({
+      id: pluginId,
+      type: "plugin-install",
+      title: e?.name || pluginId,
+      createdAt: null,
+      updatedAt: null,
+      data: { pluginId, version: e?.version || null, authorId: e?.authorId || null },
+    });
+  }
+  for (const [pluginId, map] of _votes.entries()) {
+    if (!map || typeof map.get !== "function") continue;
+    const vote = map.get(userId);
+    if (!vote) continue;
+    const e = _gallery.get(pluginId);
+    rows.push({
+      id: `${pluginId}:rating`,
+      type: "plugin-rating",
+      title: e?.name || pluginId,
+      createdAt: null,
+      updatedAt: null,
+      data: { pluginId, vote },
+    });
+  }
+  return rows;
+}
+
+registerLensExportProvider("plugins", (ctx) => listUserPluginRecords(actorId(ctx)));
 
 /** Test-only reset hook so hermetic tests can clear in-memory LRU state. */
 export function __resetGalleryForTests() {

@@ -7,6 +7,7 @@
  * as a session controls strip.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState, useEffect, useRef } from 'react';
 import {
   Palette, Vote, FileSymlink, Share2, Save, FolderOpen,
@@ -378,9 +379,9 @@ export function WhiteboardActionPanel() {
         'Write a 3-sentence retro: what was decided, what was deferred, what to revisit next session. Plain text.',
       ].filter(Boolean).join(' ');
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Retro ready.'); }
-      else err('Agent returned empty.');
+      const reply = readAgentReply(r.data);
+      if (reply.ok) { setAgentReply(reply.text); ok('Retro ready.'); }
+      else err(reply.reason);
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }

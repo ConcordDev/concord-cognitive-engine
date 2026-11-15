@@ -40,10 +40,14 @@ export function RecurringInvoicesPanel() {
     finally { setLoading(false); }
   }
 
+  const [formError, setFormError] = useState<string | null>(null);
   async function create() {
-    if (!draft.customerName.trim() || !draft.total) return;
+    if (!draft.customerName.trim()) { setFormError('Customer name is required.'); return; }
+    if (!(Number(draft.total) > 0)) { setFormError('Total must be a number greater than 0.'); return; }
+    setFormError(null);
     try {
-      await lensRun({ domain: 'accounting', action: 'recurring-invoices-create', input: { ...draft, total: Number(draft.total) } });
+      const res = await lensRun({ domain: 'accounting', action: 'recurring-invoices-create', input: { ...draft, total: Number(draft.total) } });
+      if (res.data?.ok === false) { setFormError(res.data?.message || res.data?.error || 'Could not save that invoice.'); return; }
       setDraft({ customerName: '', total: '', cadence: 'monthly', startAt: '', memo: '' });
       setCreating(false);
       await refresh();
@@ -86,11 +90,12 @@ export function RecurringInvoicesPanel() {
         <div className="px-4 py-3 border-b border-white/10 grid grid-cols-12 gap-2">
           <input value={draft.customerName} onChange={e => setDraft({ ...draft, customerName: e.target.value })} placeholder="Customer *" className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <input type="number" step="0.01" value={draft.total} onChange={e => setDraft({ ...draft, total: e.target.value })} placeholder="Amount *" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono tabular-nums" />
-          <select value={draft.cadence} onChange={e => setDraft({ ...draft, cadence: e.target.value as Recurring['cadence'] })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+          <select aria-label="Cadence" value={draft.cadence} onChange={e => setDraft({ ...draft, cadence: e.target.value as Recurring['cadence'] })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
             {CADENCES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
           </select>
           <input type="date" value={draft.startAt} onChange={e => setDraft({ ...draft, startAt: e.target.value })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono tabular-nums" />
           <input value={draft.memo} onChange={e => setDraft({ ...draft, memo: e.target.value })} placeholder="Memo" className="col-span-9 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          {formError && <p role="alert" className="col-span-3 text-xs text-rose-300">{formError}</p>}
           <button onClick={create} className="col-span-3 px-2 py-1.5 text-xs rounded bg-emerald-500 text-black font-bold hover:bg-emerald-400">Save</button>
         </div>
       )}

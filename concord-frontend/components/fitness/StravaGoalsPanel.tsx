@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Target, Trash2, Award, Footprints } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 
 interface Goal {
@@ -51,25 +52,39 @@ export function StravaGoalsPanel() {
 
   useEffect(() => { void refresh(); }, [refresh]);
 
+  const [addingGoal, setAddingGoal] = useState(false);
   const addGoal = async () => {
+    if (addingGoal) return;
     const target = Number(goalForm.target);
     if (!target || target <= 0) { setError('Goal target must be greater than zero.'); return; }
-    const r = await lensRun('fitness', 'goal-create', { metric: goalForm.metric, target, period: goalForm.period });
-    if (r.data?.ok === false) { setError(r.data?.error || 'Could not create goal'); return; }
-    setGoalForm({ metric: 'distance', target: '', period: 'week' });
-    await refresh();
+    setAddingGoal(true);
+    try {
+      const r = await lensRun('fitness', 'goal-create', { metric: goalForm.metric, target, period: goalForm.period });
+      if (r.data?.ok === false) { setError(r.data?.error || 'Could not create goal'); return; }
+      setGoalForm({ metric: 'distance', target: '', period: 'week' });
+      await refresh();
+    } finally { setAddingGoal(false); }
   };
   const delGoal = async (id: string) => { await lensRun('fitness', 'goal-delete', { id }); await refresh(); };
 
+  const [addingGear, setAddingGear] = useState(false);
   const addGear = async () => {
+    // In-flight guard: without it a double fire (double-click, harness
+    // re-click) posts gear-add twice and mints duplicate rows — the
+    // form only clears after the request returns, so the second click
+    // sees the same valid form.
+    if (addingGear) return;
     if (!gearForm.name.trim()) { setError('Gear name is required.'); return; }
-    const r = await lensRun('fitness', 'gear-add', {
-      name: gearForm.name.trim(), kind: gearForm.kind,
-      retireAtKm: Number(gearForm.retireAtKm) || 0,
-    });
-    if (r.data?.ok === false) { setError(r.data?.error || 'Could not add gear'); return; }
-    setGearForm({ name: '', kind: 'shoes', retireAtKm: '' });
-    await refresh();
+    setAddingGear(true);
+    try {
+      const r = await lensRun('fitness', 'gear-add', {
+        name: gearForm.name.trim(), kind: gearForm.kind,
+        retireAtKm: Number(gearForm.retireAtKm) || 0,
+      });
+      if (r.data?.ok === false) { setError(r.data?.error || 'Could not add gear'); return; }
+      setGearForm({ name: '', kind: 'shoes', retireAtKm: '' });
+      await refresh();
+    } finally { setAddingGear(false); }
   };
   const toggleRetire = async (g: Gear) => {
     await lensRun('fitness', 'gear-retire', { id: g.id, unretire: g.retired });
@@ -90,19 +105,19 @@ export function StravaGoalsPanel() {
           <Target className="w-3.5 h-3.5 text-orange-400" /> Goals
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
-          <select value={goalForm.metric} onChange={(e) => setGoalForm({ ...goalForm, metric: e.target.value })}
+          <select id="fitness-metric-2" name="metric-2" value={goalForm.metric} onChange={(e) => setGoalForm({ ...goalForm, metric: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
             {METRICS.map((m) => <option key={m} value={m}>{m.replace(/_/g, ' ')}</option>)}
           </select>
-          <input placeholder="Target" inputMode="decimal" value={goalForm.target}
+          <input id="fitness-target-4" name="target-4" aria-label="Target" placeholder="Target" inputMode="decimal" value={goalForm.target}
             onChange={(e) => setGoalForm({ ...goalForm, target: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-          <select value={goalForm.period} onChange={(e) => setGoalForm({ ...goalForm, period: e.target.value })}
+          <select id="fitness-period" name="period" value={goalForm.period} onChange={(e) => setGoalForm({ ...goalForm, period: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
             {['week', 'month', 'year'].map((p) => <option key={p} value={p}>{p}</option>)}
           </select>
-          <button type="button" onClick={addGoal}
-            className="flex items-center justify-center gap-1 bg-orange-600 hover:bg-orange-500 text-white text-xs font-medium rounded-lg">
+          <button type="button" onClick={addGoal} disabled={addingGoal}
+            className="flex items-center justify-center gap-1 bg-orange-600 hover:bg-orange-500 text-white text-xs font-medium rounded-lg disabled:opacity-50">
             <Plus className="w-3.5 h-3.5" /> Add
           </button>
         </div>
@@ -160,17 +175,17 @@ export function StravaGoalsPanel() {
           <Footprints className="w-3.5 h-3.5 text-orange-400" /> Gear
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
-          <input placeholder="Name" value={gearForm.name} onChange={(e) => setGearForm({ ...gearForm, name: e.target.value })}
+          <input id="fitness-name-7" name="name-7" aria-label="Name" placeholder="Name" value={gearForm.name} onChange={(e) => setGearForm({ ...gearForm, name: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-          <select value={gearForm.kind} onChange={(e) => setGearForm({ ...gearForm, kind: e.target.value })}
+          <select id="fitness-kind" name="kind" value={gearForm.kind} onChange={(e) => setGearForm({ ...gearForm, kind: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
             {['shoes', 'bike', 'other'].map((k) => <option key={k} value={k}>{k}</option>)}
           </select>
-          <input placeholder="Retire at km" inputMode="numeric" value={gearForm.retireAtKm}
+          <input id="fitness-retire-at-km" name="retire-at-km" aria-label="Retire at km" placeholder="Retire at km" inputMode="numeric" value={gearForm.retireAtKm}
             onChange={(e) => setGearForm({ ...gearForm, retireAtKm: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-          <button type="button" onClick={addGear}
-            className="flex items-center justify-center gap-1 bg-orange-600 hover:bg-orange-500 text-white text-xs font-medium rounded-lg">
+          <button type="button" onClick={addGear} disabled={addingGear}
+            className="flex items-center justify-center gap-1 bg-orange-600 hover:bg-orange-500 text-white text-xs font-medium rounded-lg disabled:opacity-50">
             <Plus className="w-3.5 h-3.5" /> Add
           </button>
         </div>
@@ -185,10 +200,20 @@ export function StravaGoalsPanel() {
                   <span className={cn('text-xs', g.retired ? 'text-zinc-400 line-through' : 'text-zinc-200')}>
                     {g.name} <span className="text-zinc-600 capitalize">· {g.kind}</span>
                   </span>
-                  <button type="button" onClick={() => toggleRetire(g)}
-                    className="text-[10px] text-zinc-400 hover:text-zinc-300">
-                    {g.retired ? 'Reactivate' : 'Retire'}
-                  </button>
+                  {g.retired ? (
+                    <button type="button" onClick={() => toggleRetire(g)}
+                      className="text-[10px] text-zinc-400 hover:text-zinc-300">
+                      Reactivate
+                    </button>
+                  ) : (
+                    <StickyDeleteConfirm
+                      armLabel="Retire"
+                      confirmLabel="Retire this gear?"
+                      armAriaLabel="Retire gear"
+                      className="text-[10px] text-zinc-400 hover:text-zinc-300"
+                      onConfirm={() => toggleRetire(g)}
+                    />
+                  )}
                 </div>
                 <div className="mt-1.5 h-2 rounded-full bg-zinc-800 overflow-hidden">
                   <div className={cn('h-full rounded-full',

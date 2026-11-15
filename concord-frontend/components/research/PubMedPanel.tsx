@@ -112,6 +112,7 @@ export function PubMedPanel({ domain, macro = 'live_pubmed', title, initialQuery
         <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" aria-hidden="true" />
         <input
           type="search"
+          aria-label="Search PubMed"
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
           placeholder="Search PubMed (free text)…"

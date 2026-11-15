@@ -163,6 +163,7 @@ export default function QueueLensPage() {
         onProcess={actions.handleProcess}
         onRetry={actions.handleRetry}
         onRemove={actions.handleRemove}
+        onUpdate={actions.handleUpdate}
       />
     </LensShell>
   );

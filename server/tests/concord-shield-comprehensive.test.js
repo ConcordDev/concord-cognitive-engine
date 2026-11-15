@@ -801,7 +801,7 @@ describe("Shield Comprehensive — User Reports Edge Cases", () => {
   it("processes report with no fileHash as new threat", () => {
     const result = processUserReport({ subtype: "virus", severity: 3 }, "u1", STATE);
     assert.equal(result.ok, true);
-    assert.equal(result.status, "new_threat");
+    assert.equal(result.status, "pending_review");
   });
 
   it("defaults subtype to exploit when missing", () => {
@@ -814,10 +814,13 @@ describe("Shield Comprehensive — User Reports Edge Cases", () => {
     assert.equal(result.threatDtu.severity, 5);
   });
 
-  it("propagates user-reported threat to lattice", () => {
+  it("keeps an unverified user report private and out of the lattice", () => {
     const result = processUserReport({ subtype: "phishing" }, "u1", STATE);
     assert.ok(STATE.dtus.has(result.threatDtu.id));
-    assert.equal(result.threatDtu.meta.propagated, true);
+    assert.equal(result.status, "pending_review");
+    assert.equal(result.threatDtu.verified, false);
+    assert.equal(result.threatDtu.visibility, "private");
+    assert.notEqual(result.threatDtu.meta?.propagated, true);
   });
 
   it("returns known_threat for matching clean hash (not a threat though)", () => {

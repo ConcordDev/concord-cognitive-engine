@@ -14,7 +14,7 @@
  * users open it via the new "Session" tab or the lens-scoped 's' key.
  */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Play, Square, Circle, Repeat, Music2, Disc, Mic, Volume2, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -126,6 +126,25 @@ export function SessionView({
   const [loop, setLoop] = useState(false);
   const [metronome, setMetronome] = useState(false);
   const [tempoLocal, setTempoLocal] = useState(tempo);
+  // FIX-music-005: the tempo field declared min 20 / max 400 but enforced
+  // neither, and mounts that pass no onTempoChange left typed values to
+  // revert in silence. The field now holds text, commits on blur/Enter,
+  // and an out-of-range entry reverts WITH the bound named.
+  const [tempoText, setTempoText] = useState(String(tempo));
+  const [tempoNote, setTempoNote] = useState('');
+  useEffect(() => { setTempoText(String(tempo)); }, [tempo]);
+  function commitTempo() {
+    const v = Number(tempoText);
+    if (Number.isFinite(v) && v >= 20 && v <= 400) {
+      setTempoNote('');
+      setTempoLocal(v);
+      setTempoText(String(v));
+      onTempoChange?.(v);
+    } else {
+      setTempoText(String(tempo));
+      setTempoNote('Tempo must be 20–400 BPM.');
+    }
+  }
   const [editingTrackId, setEditingTrackId] = useState<string | null>(null);
   const [editingSceneId, setEditingSceneId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -226,14 +245,14 @@ export function SessionView({
             type="number"
             min={20}
             max={400}
-            value={tempoLocal}
-            onChange={(e) => {
-              const v = Number(e.target.value) || tempoLocal;
-              setTempoLocal(v);
-              onTempoChange?.(v);
-            }}
+            value={tempoText}
+            onChange={(e) => setTempoText(e.target.value)}
+            onBlur={commitTempo}
+            onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+            aria-label="Tempo in BPM, 20 to 400"
             className="w-16 bg-black/40 border border-white/10 rounded px-1.5 py-0.5 text-center text-amber-200 font-mono"
           />
+          {tempoNote && <span role="note" className="text-[10px] text-amber-300">{tempoNote}</span>}
         </div>
         <div className="ml-auto inline-flex items-center gap-2 text-[11px] text-white/50">
           <Disc className="w-3 h-3" /> session view

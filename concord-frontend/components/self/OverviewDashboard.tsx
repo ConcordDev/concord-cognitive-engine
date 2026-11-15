@@ -24,6 +24,10 @@ export function OverviewDashboard({ refreshKey, onChanged }: { refreshKey: numbe
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<string[]>([]);
   const [saveErr, setSaveErr] = useState<string | null>(null);
+  // Metrics present in the ledger but not pinned as tiles (FIX-self-004):
+  // logging Water used to leave it invisible on Overview except in the
+  // total count. Derived from the readings feed, not from totals.
+  const [unshown, setUnshown] = useState<string[]>([]);
 
   const load = useCallback(async () => {
     setBusy(true);
@@ -39,6 +43,13 @@ export function OverviewDashboard({ refreshKey, onChanged }: { refreshKey: numbe
         throw new Error(ov.data.error || 'Could not load your overview.');
       }
       if (ov.data?.ok && ov.data.result) setOverview(ov.data.result);
+      try {
+        const rd = await lensRun<{ readings: Array<{ metric: string }> }>('self', 'readings', { limit: 500 });
+        const rows = rd.data?.result?.readings || [];
+        const tilesNow = ov.data?.result?.tiles || [];
+        const present = [...new Set(rows.map((r) => r.metric))].filter((m) => !tilesNow.includes(m));
+        setUnshown(present);
+      } catch { /* the hint is additive; the overview stands without it */ }
       if (ly.data?.ok && ly.data.result) {
         setLayout(ly.data.result);
         setDraft(ly.data.result.tiles);
@@ -56,6 +67,15 @@ export function OverviewDashboard({ refreshKey, onChanged }: { refreshKey: numbe
       if (d.length >= 8) return d;
       return [...d, key];
     });
+  };
+
+  const resetLayout = async () => {
+    setSaveErr(null);
+    try {
+      const r = await lensRun('self', 'resetLayout', {});
+      if (r.data?.ok) { setEditing(false); void load(); onChanged(); }
+      else setSaveErr(r.data?.error ?? 'Reset failed.');
+    } catch { setSaveErr('Network error.'); }
   };
 
   const saveLayout = async () => {
@@ -84,7 +104,7 @@ export function OverviewDashboard({ refreshKey, onChanged }: { refreshKey: numbe
 
       {editing && layout && (
         <div className="rounded-lg border border-rose-900/40 bg-rose-950/10 p-3">
-          <p className="mb-2 text-xs text-rose-700">Pick up to 8 tiles for your overview.</p>
+          <p className="mb-2 text-xs text-rose-400">Pick up to 8 tiles for your overview.</p>
           <div className="flex flex-wrap gap-1.5">
             {layout.available.map((t) => {
               const on = draft.includes(t.key);
@@ -110,7 +130,13 @@ export function OverviewDashboard({ refreshKey, onChanged }: { refreshKey: numbe
             >
               Save layout
             </button>
-            <span className="text-[10px] text-rose-700">{draft.length}/8 selected</span>
+            <button
+              onClick={() => void resetLayout()}
+              className="rounded border border-rose-900/40 px-3 py-1.5 text-xs text-rose-300 hover:text-rose-100"
+            >
+              Reset to default
+            </button>
+            <span className="text-[10px] text-rose-400">{draft.length}/8 selected</span>
           </div>
           {saveErr && <p className="mt-2 text-xs text-red-400">{saveErr}</p>}
         </div>
@@ -136,20 +162,27 @@ export function OverviewDashboard({ refreshKey, onChanged }: { refreshKey: numbe
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             {overview.cards.map((c) => (
               <div key={c.metric} className="rounded-lg border border-rose-900/40 bg-rose-950/10 p-3">
-                <div className="text-[10px] uppercase tracking-wider text-rose-700">{c.label}</div>
+                <div className="text-[10px] uppercase tracking-wider text-rose-400">{c.label}</div>
                 <div className="mt-1 font-mono text-xl font-semibold text-rose-200">
                   {c.value == null ? '—' : `${c.value}${c.unit}`}
                 </div>
-                <div className="mt-0.5 text-[10px] text-rose-800">
+                <div className="mt-0.5 text-[10px] text-rose-400">
                   {c.readings} reading{c.readings === 1 ? '' : 's'} this week
                 </div>
               </div>
             ))}
           </div>
-          <p className="text-[11px] text-rose-800">
+          <p className="text-[11px] text-rose-400">
             {overview.totalReadings} total reading{overview.totalReadings === 1 ? '' : 's'} in your ledger
             {layout?.isDefault ? ' · default layout' : ' · custom layout'}.
           </p>
+          {unshown.length > 0 && (
+            <p className="text-[11px] text-rose-300">
+              Also in your ledger:{' '}
+              {unshown.map((m) => layout?.available.find((t) => t.key === m)?.label || m).join(', ')}
+              {' '}— use Customize to pin {unshown.length === 1 ? 'it' : 'them'} here.
+            </p>
+          )}
         </>
       ) : (
         <p className="rounded border border-rose-900/30 bg-rose-950/10 px-4 py-8 text-center text-xs text-rose-600">

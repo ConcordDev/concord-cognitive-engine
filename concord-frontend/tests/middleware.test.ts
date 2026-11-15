@@ -20,20 +20,20 @@ const mockRedirect = vi.fn().mockImplementation((url: URL, status?: number) => (
   headers: makeMockHeaders(),
 }));
 
-const mockNext = vi.fn().mockImplementation(() => ({ type: 'next', headers: makeMockHeaders() }));
+const mockNext = vi.fn().mockImplementation((_opts?: { request?: { headers?: Headers } }) => ({ type: 'next', headers: makeMockHeaders() }));
 
 vi.mock('next/server', () => ({
   NextResponse: {
     redirect: (url: URL, status?: number) => mockRedirect(url, status),
-    next: () => mockNext(),
+    next: (opts?: { request?: { headers?: Headers } }) => mockNext(opts),
   },
 }));
 
-function makeRequest(pathname: string, cookies: Record<string, string> = {}) {
+function makeRequest(pathname: string, cookies: Record<string, string> = {}, headers: Record<string, string> = {}) {
   return {
     nextUrl: { pathname },
     url: `http://localhost:3000${pathname}`,
-    headers: new Headers(),
+    headers: new Headers(headers),
     cookies: {
       has: (name: string) => name in cookies,
       get: (name: string) => cookies[name] ? { value: cookies[name] } : undefined,
@@ -174,36 +174,84 @@ describe('Auth Middleware', () => {
     });
   });
 
+  // GB-1536 "Enter means Enter" (founder, 2026-11-14): a signed-out visitor
+  // guest-passes to /hub and every non-desk lens READ-ONLY in the normal
+  // shell, flagged by an x-concord-guest request header that only this
+  // middleware may set. Desk-only lenses and every other app route keep the
+  // /login redirect. Writes stay gated server-side regardless of this flag.
+  const forwarded = (callIdx = 0): Headers | undefined =>
+    (mockNext.mock.calls[callIdx]?.[0] as { request?: { headers?: Headers } } | undefined)?.request?.headers;
+
   describe('protected routes', () => {
-    it('redirects to /login when no session cookie', () => {
+    it('guest-passes a signed-out /hub visit with the guest flag, not a redirect', () => {
       middleware(makeRequest('/hub'));
-      expect(mockRedirect).toHaveBeenCalled();
+      expect(mockRedirect).not.toHaveBeenCalled();
+      expect(mockNext).toHaveBeenCalledTimes(1);
+      expect(forwarded()?.get('x-concord-guest')).toBe('1');
+    });
+
+    it('guest-passes a signed-out /lenses/chat visit with the guest flag', () => {
+      middleware(makeRequest('/lenses/chat'));
+      expect(mockRedirect).not.toHaveBeenCalled();
+      expect(forwarded()?.get('x-concord-guest')).toBe('1');
+    });
+
+    it('keeps the anon-browse flag for signed-out Music/Market only', () => {
+      middleware(makeRequest('/lenses/music'));
+      expect(forwarded(0)?.get('x-concord-anon-browse')).toBe('1');
+      expect(forwarded(0)?.get('x-concord-guest')).toBe('1');
+      middleware(makeRequest('/lenses/chat'));
+      expect(forwarded(1)?.get('x-concord-anon-browse')).toBeNull();
+    });
+
+    it('redirects a signed-out non-lens app route to /login with from param', () => {
+      middleware(makeRequest('/messages'));
+      expect(mockRedirect).toHaveBeenCalledTimes(1);
       const url = mockRedirect.mock.calls[0][0];
       expect(url.pathname).toBe('/login');
-      expect(url.searchParams.get('from')).toBe('/hub');
+      expect(url.searchParams.get('from')).toBe('/messages');
+      expect(mockNext).not.toHaveBeenCalled();
     });
 
-    it('redirects /lenses/chat to /login with from param', () => {
-      middleware(makeRequest('/lenses/chat'));
-      expect(mockRedirect).toHaveBeenCalled();
-      const url = mockRedirect.mock.calls[0][0];
-      expect(url.searchParams.get('from')).toBe('/lenses/chat');
+    it.each(['/lenses/admin', '/lenses/admin/users', '/lenses/security', '/lenses/vault', '/lenses/byo-keys'])(
+      'never opens desk-only %s to a guest — /login instead',
+      (path) => {
+        middleware(makeRequest(path));
+        expect(mockNext).not.toHaveBeenCalled();
+        const url = mockRedirect.mock.calls[0][0];
+        expect(url.pathname).toBe('/login');
+        expect(url.searchParams.get('from')).toBe(path);
+      },
+    );
+
+    it('strips a client-supplied guest / anon-browse header (only middleware may mint them)', () => {
+      middleware(makeRequest('/hub', { concord_auth: 'jwt-token' }, { 'x-concord-guest': '1', 'x-concord-anon-browse': '1' }));
+      expect(mockNext).toHaveBeenCalledTimes(1);
+      expect(forwarded()?.get('x-concord-guest')).toBeNull();
+      expect(forwarded()?.get('x-concord-anon-browse')).toBeNull();
     });
 
-    it('allows through with concord_auth cookie', () => {
+    it('allows through with concord_auth cookie, without the guest flag', () => {
       middleware(makeRequest('/hub', { concord_auth: 'jwt-token' }));
       expect(mockNext).toHaveBeenCalled();
       expect(mockRedirect).not.toHaveBeenCalled();
+      expect(forwarded()?.get('x-concord-guest')).toBeNull();
     });
 
     it('allows through with concord_refresh cookie', () => {
       middleware(makeRequest('/lenses/graph', { concord_refresh: 'refresh-token' }));
       expect(mockNext).toHaveBeenCalled();
+      expect(forwarded()?.get('x-concord-guest')).toBeNull();
     });
 
     it('rejects legacy cookie names that are no longer recognised', () => {
+      // A legacy cookie is treated as signed-out: desk-only lens → /login,
+      // ordinary lens → guest (read-only) pass, never a member pass.
+      middleware(makeRequest('/lenses/admin', { 'connect.sid': 'session-id' }));
+      expect(mockRedirect).toHaveBeenCalledTimes(1);
+      expect(mockRedirect.mock.calls[0][0].pathname).toBe('/login');
       middleware(makeRequest('/lenses/code', { 'connect.sid': 'session-id' }));
-      expect(mockRedirect).toHaveBeenCalled();
+      expect(forwarded()?.get('x-concord-guest')).toBe('1');
     });
   });
 
@@ -226,10 +274,10 @@ describe('Auth Middleware', () => {
       expect(mockRedirect).toHaveBeenCalled();
     });
 
-    it('sends a logged-out /lenses/conkay visit to the demo, not to /login', () => {
+    it('renders a logged-out /lenses/conkay visit in guest mode (GB-1536), not the demo bounce or /login', () => {
       middleware(makeRequest('/lenses/conkay'));
-      expect(mockRedirect).toHaveBeenCalledTimes(1);
-      expect(mockRedirect.mock.calls[0][0].toString()).toBe('http://localhost:3000/conkay/demo');
+      expect(mockRedirect).not.toHaveBeenCalled();
+      expect(forwarded()?.get('x-concord-guest')).toBe('1');
     });
 
     it('lets a signed-in /lenses/conkay visit through to the full workspace', () => {
@@ -238,9 +286,9 @@ describe('Auth Middleware', () => {
       expect(mockRedirect).not.toHaveBeenCalled();
     });
 
-    it('other lenses still go to /login when logged out', () => {
-      middleware(makeRequest('/lenses/conkay-extra'));
-      expect(mockRedirect.mock.calls[0][0].toString()).toContain('/login?from=%2Flenses%2Fconkay-extra');
+    it('other non-lens app routes still go to /login when logged out', () => {
+      middleware(makeRequest('/conkay-extra'));
+      expect(mockRedirect.mock.calls[0][0].toString()).toContain('/login?from=%2Fconkay-extra');
     });
   });
 

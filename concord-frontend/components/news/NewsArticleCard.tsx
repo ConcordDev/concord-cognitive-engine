@@ -9,6 +9,7 @@ import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { Bookmark, BookOpen, ThumbsUp, ThumbsDown, ExternalLink } from 'lucide-react';
 import { useArticleDetail } from './ArticleDetailContext';
+import { formatArticleDate } from './article-date';
 
 export interface NewsArticle {
   id: string;
@@ -52,7 +53,7 @@ export function NewsArticleCard({ article, onChange }: { article: NewsArticle; o
             {article.title}
           </button>
           <p className="text-[10px] text-zinc-400">
-            {article.source} · <span className="capitalize">{article.topic}</span> · {String(article.publishedAt).slice(0, 10)}
+            {article.source} · <span className="capitalize">{article.topic}</span> · {formatArticleDate(article.publishedAt)}
           </p>
         </div>
         <button aria-label="Save" type="button" onClick={save}

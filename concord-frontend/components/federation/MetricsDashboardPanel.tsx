@@ -89,7 +89,9 @@ export function MetricsDashboardPanel() {
         <BarChart3 className="w-4 h-4" /> Activity metrics
       </h2>
       <p className="text-xs text-gray-400 mb-3">
-        Federation in/out volume over time. Record samples after each sync pass.
+        Your own recorded federation in/out samples over time — a personal
+        log you keep after each sync pass, not the instance&apos;s measured
+        traffic.
       </p>
 
       {/* Record sample */}

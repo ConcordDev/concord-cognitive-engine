@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Users, Loader2, Play, LogIn, LogOut } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { useSmartPolling } from '@/hooks/useSmartPolling';
 
 interface Collaborator {
@@ -116,7 +117,7 @@ export function CollabPanel({ projectId }: { projectId?: string }) {
                 <button onClick={startSession} className="px-3 py-1.5 text-xs rounded bg-violet-500 text-white font-bold inline-flex items-center justify-center gap-1"><Play className="w-3 h-3" />Start session</button>
                 <button onClick={joinSession} disabled={!session} className="px-3 py-1.5 text-xs rounded bg-white/[0.06] disabled:opacity-40 text-gray-200 inline-flex items-center justify-center gap-1"><LogIn className="w-3 h-3" />Join session</button>
               </div>
-              {!session && <div className="text-[10px] text-gray-400">No active session — start one to invite collaborators.</div>}
+              {!session && <EmptyState compact title="No active session" description="Start one to invite collaborators. Checking for a session does not report an error when none is open." />}
             </div>
           )}
 

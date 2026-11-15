@@ -2,8 +2,10 @@
 // Domain actions for attention/focus management: focus scoring, priority matrix, attention budgeting.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { checkTitle, checkDuration } from "../lib/bounds.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
 import { requireList } from "../lib/lens-inputs.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
 export default function registerAttentionActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -654,8 +656,22 @@ export default function registerAttentionActions(registerLensAction) {
     try {
       const s = getFocusState();
       const userId = fActor(ctx);
-      const name = fClean(params?.name, 160);
+      // GB-1539 bounds: a name over the title limit refuses with a clear
+      // invalid_input — fClean's silent truncation to 160 hid the breach.
+      const badName = checkTitle("name", params?.name);
+      if (badName) return badName;
+      const name = fClean(params?.name, 200);
       if (!name) return { ok: false, error: "name_required" };
+      // Minutes: negatives and over-policy durations refuse; the planner's
+      // own 720-minute cap refuses in the same shape (never a silent clamp).
+      const badDur = checkDuration("durationMinutes", params?.durationMinutes, "minutes");
+      if (badDur) return badDur;
+      if (params?.durationMinutes != null && Number(params.durationMinutes) > 720) {
+        return { ok: false, error: "invalid_input", reason: "bounds_duration", field: "durationMinutes", message: "durationMinutes must be at most 720 (12 hours) for a planner task." };
+      }
+      if (params?.startMinute != null && (!Number.isFinite(Number(params.startMinute)) || Number(params.startMinute) < 0 || Number(params.startMinute) > 1439)) {
+        return { ok: false, error: "invalid_input", reason: "bounds_quantity", field: "startMinute", message: "startMinute must be between 0 and 1439." };
+      }
       const date = fDateKey(params?.date);
       if (!s.plannerDays.has(userId)) s.plannerDays.set(userId, {});
       const days = s.plannerDays.get(userId);
@@ -746,6 +762,51 @@ export default function registerAttentionActions(registerLensAction) {
       if (s.distractions.get(userId).length > 2000) s.distractions.get(userId).length = 2000;
       persistFocusState();
       return { ok: true, result: { entry } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /**
+   * distractionUpdate — edit a logged distraction entry.
+   * FIX-attention-003 / FIX-strategic-adds-006: entries could be
+   * logged but never edited or deleted.
+   * params: { id, source?, kind?, durationMinutes?, note? }
+   */
+  registerLensAction("attention", "distractionUpdate", (ctx, _artifact, params) => {
+    try {
+      const s = getFocusState();
+      const userId = fActor(ctx);
+      const entry = (s.distractions.get(userId) || []).find((e) => e.id === params?.id);
+      if (!entry) return { ok: false, error: "entry_not_found" };
+      if (params?.source != null) {
+        const source = fClean(params.source, 120);
+        if (!source) return { ok: false, error: "source_required" };
+        entry.source = source;
+      }
+      const kinds = ["notification", "person", "self", "meeting", "other"];
+      if (params?.kind != null && kinds.includes(params.kind)) entry.kind = params.kind;
+      if (params?.durationMinutes != null) {
+        entry.durationMinutes = Math.max(0, Math.min(480, fNum(params.durationMinutes, entry.durationMinutes)));
+      }
+      if (params?.note != null) entry.note = params.note ? fClean(params.note, 300) : null;
+      persistFocusState();
+      return { ok: true, result: { entry } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /**
+   * distractionDelete — remove a logged distraction entry.
+   * params: { id }
+   */
+  registerLensAction("attention", "distractionDelete", (ctx, _artifact, params) => {
+    try {
+      const s = getFocusState();
+      const userId = fActor(ctx);
+      const list = s.distractions.get(userId) || [];
+      const next = list.filter((e) => e.id !== params?.id);
+      if (next.length === list.length) return { ok: false, error: "entry_not_found" };
+      s.distractions.set(userId, next);
+      persistFocusState();
+      return { ok: true, result: { deleted: params?.id } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
@@ -965,6 +1026,42 @@ export default function registerAttentionActions(registerLensAction) {
   });
 
   /**
+   * calendarUpdate — edit a reserved focus block (title / date / start
+   * / duration), with calendarReserve's conflict detection applied
+   * against the OTHER blocks. FIX-strategic-adds-006: blocks could be
+   * reserved and released but never edited.
+   * params: { blockId, title?, date?, startMinute?, durationMinutes? }
+   */
+  registerLensAction("attention", "calendarUpdate", (ctx, _artifact, params) => {
+    try {
+      const s = getFocusState();
+      const userId = fActor(ctx);
+      const blocks = s.calendarBlocks.get(userId) || [];
+      const block = blocks.find((b) => b.id === params?.blockId);
+      if (!block) return { ok: false, error: "block_not_found" };
+      const date = params?.date != null ? fDateKey(params.date) : block.date;
+      const startMinute = params?.startMinute != null
+        ? Math.max(0, Math.min(1439, fNum(params.startMinute, block.startMinute)))
+        : block.startMinute;
+      const durationMinutes = params?.durationMinutes != null
+        ? Math.max(15, Math.min(480, fNum(params.durationMinutes, block.durationMinutes)))
+        : block.durationMinutes;
+      const endMinute = Math.min(1440, startMinute + durationMinutes);
+      const conflict = blocks.find((b) => b.id !== block.id &&
+        b.date === date && startMinute < (b.startMinute + b.durationMinutes) && endMinute > b.startMinute);
+      if (conflict) return { ok: false, error: "time_conflict", result: { conflict } };
+      block.date = date;
+      block.startMinute = startMinute;
+      block.durationMinutes = durationMinutes;
+      block.endMinute = endMinute;
+      if (params?.title != null) block.title = fClean(params.title, 120) || block.title;
+      blocks.sort((a, b) => (a.date.localeCompare(b.date)) || (a.startMinute - b.startMinute));
+      persistFocusState();
+      return { ok: true, result: { block } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /**
    * calendarRelease — release a reserved focus block.
    * params: { blockId }
    */
@@ -1057,5 +1154,60 @@ export default function registerAttentionActions(registerLensAction) {
         },
       };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // FIX-attention-004: the planner, reserved blocks, focus sessions and
+  // the distraction log live in STATE.attentionLens (per-user Maps) —
+  // no export leg enumerates that bag, so the Export menu reported
+  // "Nothing to export yet" while the panels held records, and its
+  // buttons stayed disabled. The provider emits the caller's own
+  // records: one row per planner day plus one per planner task, per
+  // reserved block, per focus session, per distraction entry.
+  registerLensExportProvider("attention", (ctx) => {
+    const s = getFocusState();
+    if (!s) return [];
+    const userId = fActor(ctx);
+    const rows = [];
+    const days = s.plannerDays.get(userId) || {};
+    for (const day of Object.values(days)) {
+      if (!day || typeof day !== "object") continue;
+      rows.push({
+        id: `planner:${day.date}`, type: "planner-day",
+        title: `Planner — ${day.date}`,
+        createdAt: null, updatedAt: null,
+        data: day,
+      });
+      (Array.isArray(day.tasks) ? day.tasks : []).forEach((t, i) => {
+        if (!t || typeof t !== "object") return;
+        rows.push({
+          id: t.id || `planner:${day.date}:task:${i}`, type: "planner-task",
+          title: t.name || `Task ${i + 1} — ${day.date}`,
+          createdAt: null, updatedAt: null,
+          data: { ...t, date: day.date },
+        });
+      });
+    }
+    for (const b of s.calendarBlocks.get(userId) || []) {
+      rows.push({
+        id: b.id, type: "calendar-block", title: b.title || "Focus Block",
+        createdAt: b.createdAt || null, updatedAt: b.createdAt || null,
+        data: b,
+      });
+    }
+    for (const sess of s.focusSessions.get(userId) || []) {
+      rows.push({
+        id: sess.id, type: "focus-session", title: sess.taskName || "Focus session",
+        createdAt: sess.startedAt || null, updatedAt: sess.endedAt || sess.startedAt || null,
+        data: sess,
+      });
+    }
+    for (const d of s.distractions.get(userId) || []) {
+      rows.push({
+        id: d.id, type: "distraction", title: d.source || "Distraction",
+        createdAt: d.loggedAt || null, updatedAt: d.loggedAt || null,
+        data: d,
+      });
+    }
+    return rows;
   });
 }

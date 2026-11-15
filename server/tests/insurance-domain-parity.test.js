@@ -251,7 +251,7 @@ describe("insurance.id-card + summaries", () => {
 // ─── Inheritance-pact (death-insurance lens) parity backlog ────────────
 
 describe("insurance.pact-write — multi-beneficiary split", () => {
-  it("writes a pact and rebalances shares to 100", () => {
+  it("refuses a split that does not add to 100 instead of rewriting it", () => {
     const r = call("pact-write", ctxA, {
       beneficiaries: [
         { userId: "user_b", sharePct: 30 },
@@ -261,10 +261,8 @@ describe("insurance.pact-write — multi-beneficiary split", () => {
       premiumSparks: 50,
       durationDays: 30,
     });
-    assert.equal(r.ok, true);
-    assert.equal(r.result.pact.beneficiaries.length, 2);
-    const total = r.result.pact.beneficiaries.reduce((a, b) => a + b.sharePct, 0);
-    assert.equal(total, 100);
+    assert.equal(r.ok, false);
+    assert.match(r.message, /add up to 100/);
   });
 
   it("blocks self-pact (insured cannot be a beneficiary)", () => {

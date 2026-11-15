@@ -15,8 +15,11 @@ interface Holding {
   lotCount: number;
 }
 interface Summary {
-  totalValueUsd: number; totalCostUsd: number;
-  unrealizedPnlUsd: number; unrealizedPnlPct: number;
+  // FIX-crypto-007: totals are null when prices are unavailable —
+  // an unpriced portfolio is unknown, not $0 / -100%.
+  totalValueUsd: number | null; totalCostUsd: number;
+  unrealizedPnlUsd: number | null; unrealizedPnlPct: number | null;
+  unpricedSymbols?: string[];
   realizedPnlYtdUsd: number; stakingRewardsYtdUsd: number;
   lotCount: number; symbolCount: number;
   byChain: Array<{ chain: string; valueUsd: number; qtyLots: number }>;
@@ -94,9 +97,9 @@ export function PortfolioPanel() {
       {/* Top KPI tiles */}
       {summary && (
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-          <Tile label="Total value" value={`$${summary.totalValueUsd.toLocaleString()}`} bold />
+          <Tile label="Total value" value={summary.totalValueUsd != null ? `$${summary.totalValueUsd.toLocaleString()}` : '—'} bold />
           <Tile label="Cost basis" value={`$${summary.totalCostUsd.toLocaleString()}`} tone="neutral" />
-          <Tile label="Unrealized" value={`${summary.unrealizedPnlUsd >= 0 ? '+' : ''}$${summary.unrealizedPnlUsd.toLocaleString()}`} sub={`${summary.unrealizedPnlPct >= 0 ? '+' : ''}${summary.unrealizedPnlPct.toFixed(2)}%`} tone={summary.unrealizedPnlUsd >= 0 ? 'positive' : 'negative'} />
+          <Tile label="Unrealized" value={summary.unrealizedPnlUsd != null ? `${summary.unrealizedPnlUsd >= 0 ? '+' : ''}$${summary.unrealizedPnlUsd.toLocaleString()}` : '—'} sub={summary.unrealizedPnlPct != null ? `${summary.unrealizedPnlPct >= 0 ? '+' : ''}${summary.unrealizedPnlPct.toFixed(2)}%` : 'prices unavailable'} tone={summary.unrealizedPnlUsd == null ? 'neutral' : summary.unrealizedPnlUsd >= 0 ? 'positive' : 'negative'} />
           <Tile label="Realized YTD" value={`${summary.realizedPnlYtdUsd >= 0 ? '+' : ''}$${summary.realizedPnlYtdUsd.toLocaleString()}`} tone={summary.realizedPnlYtdUsd >= 0 ? 'positive' : 'negative'} />
           <Tile label="Staking YTD" value={`$${summary.stakingRewardsYtdUsd.toLocaleString()}`} tone="amber" />
         </div>
@@ -104,7 +107,12 @@ export function PortfolioPanel() {
 
       {summary && summary.priceSource === 'unavailable' && (
         <div className="text-[11px] text-amber-300 px-3 py-1.5 rounded border border-amber-500/30 bg-amber-500/[0.04]">
-          ⚠ Live prices unavailable (CoinGecko didn't respond). Market values shown as null. Holdings list still reflects your real cost basis.
+          ⚠ Live prices unavailable (CoinGecko didn't respond), so total value and unrealized PnL can't be computed right now — they show as —, never as $0 or -100%. Your cost basis is real and unaffected.
+        </div>
+      )}
+      {summary && summary.priceSource !== 'unavailable' && (summary.unpricedSymbols?.length ?? 0) > 0 && (
+        <div className="text-[11px] text-amber-300 px-3 py-1.5 rounded border border-amber-500/30 bg-amber-500/[0.04]">
+          ⚠ No live price for {summary.unpricedSymbols!.join(', ')} — totals cover the priced holdings only, against those holdings' own cost.
         </div>
       )}
 

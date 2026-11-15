@@ -67,10 +67,15 @@ export default function ForumLensPage() {
           type="button"
           onClick={startDiscussion}
           title="Start a discussion (N)"
-          className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] right-[4.75rem] z-30 min-h-[44px] md:bottom-8 lg:right-8 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+          aria-label="Start a discussion"
+          className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] right-[4.75rem] z-30 min-h-[44px] md:bottom-8 lg:right-8 inline-flex items-center gap-2 rounded-full bg-teal-400 px-4 py-2.5 sm:px-6 sm:py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
         >
-          <Plus className="h-4 w-4" />
-          Start a discussion
+          <Plus className="h-4 w-4 shrink-0" />
+          {/* Phone width (FIX-forum-005): the frame CTA's ruled shape — below
+              sm the button collapses to its icon so the wide labelled pill
+              cannot cover the last card; the label stays as the accessible
+              name (aria-label above) and the title tooltip. */}
+          <span className="hidden sm:inline">Start a discussion</span>
         </button>
       </div>
     </LensShell>

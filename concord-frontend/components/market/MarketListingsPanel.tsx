@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { MarketEmpireListing } from '@/components/market/MarketEmpireListing';
@@ -77,7 +77,7 @@ function MediaListenCard({ listing }: { listing: MarketListingItem }) {
       {listing.description && <p className="text-xs text-gray-400">{listing.description}</p>}
       <PreviewAwareMedia src={listing.streamUrl as string} kind={isVideo ? 'video' : 'audio'} className={isVideo ? 'w-full rounded' : 'w-full'} />
       {listing.tags && listing.tags.length > 0 && (
-        <p className="text-[10px] text-gray-500">{listing.tags.map((t) => `#${t}`).join(' ')}</p>
+        <p className="text-[10px] text-gray-400">{listing.tags.map((t) => `#${t}`).join(' ')}</p>
       )}
     </div>
   );
@@ -96,6 +96,7 @@ export function MarketListingsPanel() {
   const [newTitle, setNewTitle] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [newPrice, setNewPrice] = useState('');
+  const [priceError, setPriceError] = useState<string | null>(null);
   const [newType, setNewType] = useState('beat');
   const [newTags, setNewTags] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -114,9 +115,40 @@ export function MarketListingsPanel() {
     queryFn: () => apiHelpers.economy.balance().then((r) => r.data),
   });
 
+  // FIX-market-002: 'Your Library' read listings.library, but the
+  // listings route is an alias for the browse macro, whose payload
+  // has never carried a library field — the stat was 0 for everyone.
+  // The caller's library is their own DTUs: the same /api/dtus/mine
+  // total the Analytics 'Total DTUs' card grounds on.
+  const { data: mine } = useQuery({
+    queryKey: ['market-my-dtus'],
+    queryFn: () => apiHelpers.dtus.myDtus({ limit: 1 }).then((r) => r.data),
+  });
+
+  // FIX-market-005: the frame CTA / 'n' hotkey ask for the form via
+  // this event (the panel owns showCreate).
+  useEffect(() => {
+    const open = () => setShowCreate(true);
+    window.addEventListener('market:open-new-listing', open);
+    return () => window.removeEventListener('market:open-new-listing', open);
+  }, []);
+
+  const [ownedDtus, setOwnedDtus] = useState<Array<{ id: string; title?: string }>>([]);
+  const [dtuId, setDtuId] = useState('');
+  useEffect(() => {
+    if (!showCreate) return;
+    void fetch('/api/dtus/mine', { credentials: 'include' })
+      .then((res) => res.json())
+      .then((body) => {
+        const rows = body?.dtus || body?.items || body?.results || [];
+        if (Array.isArray(rows)) setOwnedDtus(rows.map((d: { id?: string; title?: string }) => ({ id: String(d.id || ''), title: d.title })).filter((d) => d.id));
+      })
+      .catch(() => setOwnedDtus([]));
+  }, [showCreate]);
+
   const createMutation = useMutation({
-    mutationFn: (payload: { title: string; description: string; price: number; type: string }) =>
-      apiHelpers.marketplace.submit(payload as unknown as { name: string; githubUrl: string; description?: string; category?: string }),
+    mutationFn: (payload: { dtuId: string; price: number }) =>
+      apiHelpers.marketplaceSubmit.submit(payload.dtuId, payload.price),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['marketplace-listings'] });
       setShowCreate(false);
@@ -166,7 +198,10 @@ export function MarketListingsPanel() {
   const totalVolume = listings?.volume ?? 0;
   const totalTransactions = listings?.transactions ?? 0;
   const totalListings = catalog.length;
-  const libraryCount = listings?.library?.length ?? 0;
+  const libraryCount = listings?.library?.length
+    ?? (typeof (mine as { total?: number })?.total === 'number'
+      ? (mine as { total: number }).total
+      : ((mine as { dtus?: unknown[] })?.dtus?.length ?? 0));
 
   if (isLoading) {
     return (
@@ -211,12 +246,16 @@ export function MarketListingsPanel() {
       )}
 
       {showCreate && (
-        <div className="panel p-4 space-y-3 border border-neon-purple/20">
+        <div data-market-create-form className="panel p-4 space-y-3 border border-neon-purple/20">
           <h2 className="font-semibold flex items-center gap-2">
             <Store className="w-4 h-4 text-neon-purple" />
             New Listing
           </h2>
-          <input className="w-full px-3 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm focus:border-neon-purple outline-none" placeholder="Title" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} />
+          <select className="w-full px-3 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm" value={dtuId} onChange={(e) => setDtuId(e.target.value)}>
+            <option value="">{ownedDtus.length ? 'Pick one of your items' : 'No owned items loaded'}</option>
+            {ownedDtus.map((d) => <option key={d.id} value={d.id}>{d.title || d.id}</option>)}
+          </select>
+          <input className="w-full px-3 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm focus:border-neon-purple outline-none" placeholder="Or paste a DTU id" value={dtuId} onChange={(e) => setDtuId(e.target.value)} />
           <textarea className="w-full px-3 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm focus:border-neon-purple outline-none resize-none" placeholder="Description" rows={3} value={newDescription} onChange={(e) => setNewDescription(e.target.value)} />
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <input className="px-3 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm focus:border-neon-purple outline-none" placeholder="Price (CC)" type="number" min="0" value={newPrice} onChange={(e) => setNewPrice(e.target.value)} />
@@ -228,6 +267,7 @@ export function MarketListingsPanel() {
             </select>
             <input className="px-3 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm focus:border-neon-purple outline-none" placeholder="Tags (comma-separated)" value={newTags} onChange={(e) => setNewTags(e.target.value)} />
           </div>
+          {priceError && <p role="alert" className="text-xs text-red-400">{priceError}</p>}
           {createMutation.isError && (
             <p className="text-xs text-red-400">{createMutation.error instanceof Error ? createMutation.error.message : 'Failed to create listing'}</p>
           )}
@@ -235,8 +275,16 @@ export function MarketListingsPanel() {
             <button className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors" onClick={() => setShowCreate(false)}>Cancel</button>
             <button
               className="btn-neon purple text-sm"
-              disabled={!newTitle.trim() || createMutation.isPending}
-              onClick={() => createMutation.mutate({ title: newTitle.trim(), description: newDescription.trim(), price: Number(newPrice) || 0, type: newType })}
+              disabled={!dtuId.trim() || createMutation.isPending}
+              onClick={() => {
+                const price = Number(newPrice);
+                if (!newPrice.trim() || !Number.isFinite(price) || price <= 0 || price > 1e12) {
+                  setPriceError('Price must be a number greater than 0 and at most 1,000,000,000,000.');
+                  return;
+                }
+                setPriceError(null);
+                createMutation.mutate({ dtuId: dtuId.trim(), price });
+              }}
             >
               {createMutation.isPending ? 'Creating...' : 'Submit Listing'}
             </button>

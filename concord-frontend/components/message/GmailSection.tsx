@@ -154,7 +154,7 @@ export function GmailSection() {
       >
         <Mail className="w-4 h-4 text-rose-400" />
         <span className="font-medium">Gmail</span>
-        <span className="text-xs text-gray-500">— real inbox (connect to load)</span>
+        <span className="text-xs text-gray-400">— real inbox (connect to load)</span>
       </button>
     );
   }
@@ -167,8 +167,9 @@ export function GmailSection() {
         <span className="text-sm font-semibold text-white">Gmail</span>
         {connected && (
           <div className="ml-2 flex-1 flex items-center gap-1 bg-white/5 rounded px-2 py-1">
-            <Search className="w-3 h-3 text-gray-500" />
+            <Search className="w-3 h-3 text-gray-400" />
             <input
+              aria-label="Search mail"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') void loadInbox(); }}
@@ -195,7 +196,7 @@ export function GmailSection() {
         <div className="p-6 text-center space-y-3">
           <Mail className="w-8 h-8 text-rose-400/60 mx-auto" />
           <p className="text-sm text-gray-300">Connect your Gmail to read and send mail here.</p>
-          <p className="text-xs text-gray-500">Concord requests read + send access; tokens are encrypted at rest and used only for your inbox.</p>
+          <p className="text-xs text-gray-400">Concord requests read + send access; tokens are encrypted at rest and used only for your inbox.</p>
           <button onClick={() => void connect()} className="px-4 py-2 rounded bg-rose-500/30 text-rose-200 text-sm hover:bg-rose-500/40">
             Connect Gmail
           </button>
@@ -222,13 +223,13 @@ export function GmailSection() {
             {/* Inbox list */}
             <ul className={cn('overflow-y-auto border-r border-white/10', selected ? 'w-2/5' : 'w-full')}>
               {loading && (
-                <li className="flex items-center justify-center py-8 text-gray-500"><Loader2 className="w-4 h-4 animate-spin" /></li>
+                <li className="flex items-center justify-center py-8 text-gray-400"><Loader2 className="w-4 h-4 animate-spin" /></li>
               )}
               {!loading && error && (
                 <li className="flex items-center gap-2 px-4 py-6 text-amber-300 text-xs"><AlertCircle className="w-4 h-4" /> {error}</li>
               )}
               {!loading && !error && messages.length === 0 && (
-                <li className="flex flex-col items-center justify-center py-10 text-gray-500 text-xs gap-2"><Inbox className="w-6 h-6" /> No messages</li>
+                <li className="flex flex-col items-center justify-center py-10 text-gray-400 text-xs gap-2"><Inbox className="w-6 h-6" /> No messages</li>
               )}
               {messages.map((m) => (
                 <li
@@ -242,10 +243,10 @@ export function GmailSection() {
                       <Star className={cn('w-3.5 h-3.5', m.starred ? 'fill-amber-400 text-amber-400' : 'text-gray-600 hover:text-gray-400')} />
                     </button>
                     <span className={cn('flex-1 truncate text-xs', m.unread ? 'font-semibold text-white' : 'text-gray-300')}>{senderName(m.from)}</span>
-                    <span className="text-[10px] text-gray-500 shrink-0">{fmtDate(m.date)}</span>
+                    <span className="text-[10px] text-gray-400 shrink-0">{fmtDate(m.date)}</span>
                   </div>
                   <div className={cn('truncate text-xs mt-0.5', m.unread ? 'text-gray-100' : 'text-gray-400')}>{m.subject}</div>
-                  <div className="truncate text-[11px] text-gray-500 mt-0.5 flex items-center gap-1">
+                  <div className="truncate text-[11px] text-gray-400 mt-0.5 flex items-center gap-1">
                     <span className="flex-1 truncate">{m.snippet}</span>
                     <span className="opacity-0 group-hover:opacity-100 flex items-center gap-1">
                       <button aria-label="Archive" onClick={(e) => void act(m, 'archive', e)} className="p-0.5 hover:text-gray-200"><Archive className="w-3 h-3" /></button>
@@ -264,9 +265,9 @@ export function GmailSection() {
                 </button>
                 <h2 className="text-base font-semibold text-white">{selected.subject}</h2>
                 <div className="mt-1 text-xs text-gray-400">
-                  <div><span className="text-gray-500">From:</span> {selected.from}</div>
-                  {selected.to && <div><span className="text-gray-500">To:</span> {selected.to}</div>}
-                  <div className="text-gray-500">{fmtDate(selected.date)}</div>
+                  <div><span className="text-gray-400">From:</span> {selected.from}</div>
+                  {selected.to && <div><span className="text-gray-400">To:</span> {selected.to}</div>}
+                  <div className="text-gray-400">{fmtDate(selected.date)}</div>
                 </div>
                 <div className="mt-3 border-t border-white/10 pt-3">
                   {selected.html ? (
@@ -317,9 +318,9 @@ function ComposeModal({ onClose, onSent }: { onClose: () => void; onSent: () => 
           <h3 className="text-sm font-semibold text-white">New message</h3>
           <button aria-label="Close" onClick={onClose} className="p-1 rounded hover:bg-white/10 text-gray-400"><X className="w-4 h-4" /></button>
         </div>
-        <input value={to} onChange={(e) => setTo(e.target.value)} placeholder="To" className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-sm text-gray-200" />
-        <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Subject" className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-sm text-gray-200" />
-        <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Write your message…" rows={8} className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-sm text-gray-200 resize-none" />
+        <input aria-label="Recipient" value={to} onChange={(e) => setTo(e.target.value)} placeholder="To" className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-sm text-gray-200" />
+        <input aria-label="Subject" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Subject" className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-sm text-gray-200" />
+        <textarea aria-label="Message body" value={body} onChange={(e) => setBody(e.target.value)} placeholder="Write your message…" rows={8} className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-sm text-gray-200 resize-none" />
         {err && <p className="text-xs text-amber-300">{err}</p>}
         <div className="flex justify-end">
           <button onClick={() => void send()} disabled={sending} className="flex items-center gap-1.5 px-4 py-2 rounded bg-rose-500/30 text-rose-200 text-sm hover:bg-rose-500/40 disabled:opacity-50">

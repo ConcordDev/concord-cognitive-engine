@@ -501,13 +501,28 @@ describe("classroom — poisoned-numeric inputs stay FINITE (no fail-open)", () 
     }
   });
 
-  it("assignment-create with poisoned points clamps to [0,1000], stays finite", () => {
+  it("assignment-create refuses poisoned points instead of storing them", () => {
     const ctx = { actor: { userId: "t_pts" }, userId: "t_pts" };
-    for (const [poison, expected] of [["1e999", 1000], ["Infinity", 1000], ["NaN", 100], [-7, 0], [5000, 1000]]) {
+    for (const poison of ["1e999", "Infinity", "NaN", Infinity, -Infinity, NaN, -7, 5000]) {
       const a = call("assignment-create", ctx, { cohortId: 1, title: "X", points: poison });
-      assert.ok(Number.isFinite(a.result.assignment.points));
-      assert.equal(a.result.assignment.points, expected, `points for ${String(poison)}`);
+      assert.equal(a.ok, false, `refused ${String(poison)}`);
+      assert.equal(a.error, "invalid_input");
+      assert.equal(a.result, undefined);
     }
+    const ok = call("assignment-create", ctx, { cohortId: 1, title: "X", points: 40 });
+    assert.equal(ok.result.assignment.points, 40);
+  });
+
+  it("assignment-create keeps a date-only due as 23:59 and refuses a broken one", () => {
+    const ctx = { actor: { userId: "t_due" }, userId: "t_due" };
+    const day = call("assignment-create", ctx, { cohortId: 1, title: "Day", dueAt: "2026-11-10" });
+    assert.equal(day.ok, true);
+    assert.equal(day.result.assignment.dueAt, "2026-11-10T23:59");
+    const blank = call("assignment-create", ctx, { cohortId: 1, title: "None", dueAt: "" });
+    assert.equal(blank.result.assignment.dueAt, null);
+    const bad = call("assignment-create", ctx, { cohortId: 1, title: "Bad", dueAt: "2026-11-10T" });
+    assert.equal(bad.ok, false);
+    assert.match(bad.message, /day and a time/);
   });
 
   it("quiz-create with poisoned per-question points clamps to [1,100]; totalPoints stays finite", () => {

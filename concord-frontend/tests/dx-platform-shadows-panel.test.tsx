@@ -58,14 +58,14 @@ beforeEach(() => {
 });
 
 describe('ShadowsPanel — honest empty states', () => {
-  it('renders the "enable the concord-vscode plugin" empty state when zero codebases are registered', async () => {
+  it('renders the honest empty state when zero codebases are registered', async () => {
     lensRunMock.mockImplementation(baseImpl({
       list_codebases: () => ({ data: { ok: true, result: { ok: true, codebases: [] }, error: null } }),
     }));
 
     await act(async () => { render(<ShadowsPanel />); });
     await waitFor(() => expect(screen.getByTestId('dx-shadows-empty-no-codebase')).toBeInTheDocument());
-    expect(screen.getByTestId('dx-shadows-empty-no-codebase').textContent).toMatch(/No shadows yet — enable the concord-vscode plugin/);
+    expect(screen.getByTestId('dx-shadows-empty-no-codebase').textContent).toMatch(/not published\s+yet/);
     // No seeded/fake rows.
     expect(screen.queryByTestId('dx-shadows-list')).not.toBeInTheDocument();
   });
@@ -75,7 +75,7 @@ describe('ShadowsPanel — honest empty states', () => {
 
     await act(async () => { render(<ShadowsPanel />); });
     await waitFor(() => expect(screen.getByTestId('dx-shadows-empty')).toBeInTheDocument());
-    expect(screen.getByTestId('dx-shadows-empty').textContent).toMatch(/No shadows yet — enable the concord-vscode plugin/);
+    expect(screen.getByTestId('dx-shadows-empty').textContent).toMatch(/not published yet/);
     expect(screen.queryByTestId('dx-shadows-list')).not.toBeInTheDocument();
 
     // The macro was called scoped to the real selected codebase id — no

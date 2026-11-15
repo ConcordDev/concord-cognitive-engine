@@ -122,7 +122,7 @@ export default function UxSuiteLensPage() {
               return (
                 <div key={g.id} className="mb-6">
                   <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">{g.label}</h2>
-                  <p className="text-[11px] text-slate-500 italic">Nothing here yet — no components assigned to this group.</p>
+                  <p className="text-[11px] text-slate-400 italic">Nothing here yet — no components assigned to this group.</p>
                 </div>
               );
             }

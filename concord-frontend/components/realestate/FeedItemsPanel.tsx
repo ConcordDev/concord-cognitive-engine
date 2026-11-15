@@ -50,7 +50,7 @@ export function FeedItemsPanel() {
       ) : items === null ? (
         <div className="mt-2 h-5 animate-pulse rounded bg-slate-800/60" />
       ) : items.length === 0 ? (
-        <p className="mt-2 text-[11px] text-gray-500">Nothing ingested yet — pull the feed above and the values will stand here.</p>
+        <p className="mt-2 text-[11px] text-gray-400">Nothing ingested yet — pull the feed above and the values will stand here.</p>
       ) : (
         <ul className="mt-2 grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3" data-testid="re-feed-items-list">
           {items.map((it) => (
@@ -58,7 +58,7 @@ export function FeedItemsPanel() {
               <span className="text-gray-300">{it.state || it.title}</span>
               <span className="font-mono text-cyan-300">
                 {it.medianValue != null ? `$${it.medianValue.toLocaleString()}` : '—'}
-                <span className="ml-1 text-gray-500">{it.year}</span>
+                <span className="ml-1 text-gray-400">{it.year}</span>
               </span>
             </li>
           ))}

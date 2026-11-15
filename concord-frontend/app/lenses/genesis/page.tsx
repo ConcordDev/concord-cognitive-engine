@@ -159,7 +159,7 @@ export default function GenesisLens() {
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <h1 className="mb-2 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Genesis</h1>
-            <p className="mb-6 max-w-2xl text-[14px] text-zinc-500">Emergent-AI observatory — identities, lineage, and live activity across the substrate</p>
+            <p className="mb-6 max-w-2xl text-[14px] text-zinc-400">Emergent-AI observatory — identities, lineage, and live activity across the substrate</p>
           </div>
           {isLive && (
             <span className="mt-3 shrink-0 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-300">

@@ -20,6 +20,12 @@ export default function registerAllianceActions(registerLensAction) {
   try {
     const a = artifact.data.partnerA || {};
     const b = artifact.data.partnerB || {};
+    // FIX-alliance-006: the only name validation lived in the client,
+    // so the API scored blank-named partners and labelled them with
+    // defaults. Both partner names are required at the owning layer.
+    if (!String(a.name || "").trim() || !String(b.name || "").trim()) {
+      return { ok: false, error: "both partner names are required" };
+    }
 
     const weights = {
       capabilities: 0.3,

@@ -16,6 +16,7 @@
  *                           {use case}? trade-offs vs alternatives?"
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import { calendarDateKey, shiftDateKey } from '@/lib/calendar-date';
 import {
@@ -204,11 +205,11 @@ export function MaterialActionMenu({ material, onClose }: { material: MaterialLi
         domain: 'chat_agent', name: 'do',
         input: { task, maxTurns: 5 },
       });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
-      if (reply) {
-        setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2));
+      const reply = readAgentReply(r.data);
+      if (reply.ok) {
+        setAgentReply(reply.text);
         ok('Engineering brief ready.');
-      } else err('Agent returned empty.');
+      } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }

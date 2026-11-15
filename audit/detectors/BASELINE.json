@@ -1,15 +1,15 @@
 {
   "version": 1,
-  "generatedAt": "2026-10-26T14:48:25.087Z",
+  "generatedAt": "2026-11-14T20:55:30.907Z",
   "totals": {
     "critical": 0,
-    "high": 71,
+    "high": 449,
     "medium": 122,
     "low": 54,
     "info": 292,
-    "total": 539
+    "total": 917
   },
-  "detectorCount": 52,
+  "detectorCount": 53,
   "fingerprints": {
     "bd0133b83977cd6e": {
       "detector": "stale-code",
@@ -4234,6 +4234,3030 @@
       "kind": "static",
       "location": null,
       "message": "Checked 27 \"fixed/closed\"-adjacent file reference(s) across 1 doc file(s); 0 no longer resolve"
+    },
+    "ded1b7675adccbad": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/accounting.js:1407",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "4e6cb520f9aa9541": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/accounting.js:3540",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "1ba9ebd5505a5671": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/agriculture.js:2284",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "aa505fabf7f59b4a": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/agriculture.js:2285",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "c374a84d948869b7": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/anon.js:830",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "864d0e764db6383c": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/answers.js:532",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "7562431641563c8e": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/art.js:527",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "aa3efabd0a7a9a07": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/art.js:551",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "fea23a6f1f2ec90a": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/art.js:591",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "6b84edcc5d865f3a": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/astronomy-live.js:29",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "46ffc312424f69c2": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/astronomy.js:411",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "51558aba4c89eef9": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/astronomy.js:439",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "9ac1f5c6b9bac0e9": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/astronomy.js:481",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "fb24addef3ee7bec": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/astronomy.js:1180",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "f92a548c986c1627": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/atlas.js:1470",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "5c3b5a391385baa7": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/atlas.js:1546",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "7055203f757f91cd": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/attention.js:623",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "0801536188af9f34": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/automotive.js:132",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "3d028aaa2b73f52a": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/automotive.js:207",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "9718adca859ab114": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/automotive.js:1753",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "8b1131df9bd610a5": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/aviation.js:601",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "af1bd49ee07f53c0": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/aviation.js:649",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "90f15835cfe69437": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/aviation.js:666",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "c4f898a5a4c623ce": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/aviation.js:684",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "6f6612b67bb99976": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/aviation.js:728",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "158b7de10b9fe592": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/aviation.js:756",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "760116ff885f7f14": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/aviation.js:784",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "c484f08aa33004ab": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/aviation.js:929",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "45b8c3094e8069fa": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/aviation.js:1289",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "42cacccc08fe4c54": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/aviation.js:1330",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "9e86f1f4a7462114": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/aviation.js:1623",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "e6b2e088e6b38e22": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/aviation.js:1845",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "90f1f198aeebed40": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/board-live.js:18",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "a1f1995b43ad3911": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/calendar.js:1700",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "88ff35398ef4529a": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/calendar.js:2139",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "aea9bcd5acd72433": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/civic-data-apis.js:27",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "fa45ae112eac3bc0": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/classroom.js:33",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "eebd0549c9d0db6c": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/classroom.js:72",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "a841b881fde79c3a": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/classroom.js:109",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "efeb4e1ca629ac10": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/classroom.js:146",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "a856aed96407b460": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/code.js:3463",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "a58ae157cbc604bf": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/code.js:3500",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "b73c31f214afd8d5": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/commonsense.js:677",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "b239e78d92ce8ba8": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/commonsense.js:718",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "b56b04bd29a9673c": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/cooking.js:971",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "082de9bc8f110319": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/cooking.js:975",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "c5e26c7f2bed246a": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/crypto-live.js:23",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "764c58ed4c81598a": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/crypto.js:622",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "55b345f6b2bb7d2a": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/crypto.js:1954",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "9efa46ba528e810d": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/curated-free-apis.js:32",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "71e25d4000aa0152": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/curated-free-apis.js:109",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "a283b2f3d04bab26": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/curated-free-apis.js:121",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "28bc4eaadba7451c": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/curated-free-apis.js:392",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "e98c81b45e8e4854": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/defense.js:105",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "2717c7a7abd5c5aa": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/eco.js:1404",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "766f55335ef701f5": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/eco.js:1405",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "db7cec2d76ece75b": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/education.js:2458",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "e068b80846ea5bdf": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/energy.js:190",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "d6b5c6b95208bc3c": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/energy.js:239",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "1d9d9b31fe961291": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/environment.js:73",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "b03119911868a9f3": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/environment.js:122",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "bf0871b37c567bab": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/environment.js:584",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "acdf227bed9fad38": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/environment.js:614",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "bef4f965476910fb": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/fashion.js:1565",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "1b77df59893269ef": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/fashion.js:1573",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "a0b4467200b9a023": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/fitness.js:2521",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "165a3b58cd157ea8": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/fitness.js:2599",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "897446e5d3ccee9d": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/food.js:1071",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "18f1273e0a291ab5": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/forestry.js:235",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "cb257fbe7bdd0734": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/forestry.js:267",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "1e5951cb8009db56": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/forestry.js:318",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "312a3491768139e9": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/forestry.js:1052",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "e2e7179560bd2072": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/fork.js:495",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "c91919738647675e": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/fork.js:545",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "491be53f59d33159": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/fork.js:643",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "6ec098345a0ad15a": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/fork.js:674",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "b59269e4a55fe72b": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/fork.js:1071",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "42bdd92b003cc656": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/free-api-live.js:25",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "d29c8ad5dd8dafb2": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/gallery.js:34",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "379e1aa0c6f0fc2e": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/gallery.js:76",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "1d767b97837eae68": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/gallery.js:128",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "08b8713be8efc019": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/gallery.js:503",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "aa138e19a4082dc3": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/gallery.js:573",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "83ff7c5a2eb27819": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/gallery.js:752",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "6a6c3d0099d74a1d": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/gallery.js:813",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "a4b27c38e5269921": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/gallery.js:835",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "1369eebd4d4e964d": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/gallery.js:894",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "5734919019657c32": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/gallery.js:1052",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "14886ad74138274a": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/geology.js:187",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "bfdae967093cf7f5": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/geology.js:262",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "1f4d21eda5c7dd34": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/geology.js:454",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "5d881a189150cfab": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/geology.js:485",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "d6baaf9d102332f9": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/geology.js:499",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "2845bf4814bfb76b": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/government.js:283",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "37db4da378033d50": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/government.js:367",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "d2caf261986152e0": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/government.js:521",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "8ad553d500228825": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/government.js:538",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "e90c8341b581d22c": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/government.js:2087",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "2ebdea1d2cd8bf99": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/government.js:2088",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "69475ff33f5d6636": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/healthcare.js:604",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "4190aa7ee6fb9229": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/healthcare.js:738",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "7bda11f65236443b": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/healthcare.js:988",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "b44da15cd4c43704": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/history.js:17",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "2106c5737f069a2a": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/history.js:997",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "16af7821c1e54286": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/hr.js:196",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "75aa493c30c64cfe": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/key-required-live.js:43",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "1de02cec6e6263d7": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/landscaping.js:132",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "109d2754b065d902": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/landscaping.js:173",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "a816a62f56967fc7": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/landscaping.js:330",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "7f9a712445a6b8f8": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/law.js:47",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "32b6f56c48dee35d": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/law.js:659",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "217500a9399e0788": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/linguistics.js:119",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "38afedb52f0b2780": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/linguistics.js:177",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "d60a312b79cf33a1": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/linguistics.js:238",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "8c771327baf5afde": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/linguistics.js:531",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "4987c768fb7c9991": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/linguistics.js:562",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "09225321d4a94599": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/linguistics.js:586",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "258bf72dbe4cbf21": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/linguistics.js:685",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "c41354f70c9862e1": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/logistics.js:589",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "3ca72d76f898c2e4": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/logistics.js:617",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "931f904733496997": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/logistics.js:696",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "92b8178ae75a9ee2": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/market.js:659",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "3ef13d2a38b45f94": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/market.js:886",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "fec12a0db8d2a08b": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/materials.js:710",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "b9c54ec9902e7c2e": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/materials.js:765",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "62b7d9e8e4b589fb": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/mentalhealth.js:89",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "c24509727287134b": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/mining.js:36",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "c0592f3f1bc9c3a9": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/mining.js:78",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "e69d3dec55abfae4": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/more-free-apis.js:27",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "c9c554dd3d0b724f": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/more-free-apis.js:39",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "173250ae14419dc5": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/music.js:102",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "a04cbe7ade1b0fd0": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/music.js:1832",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "ee185354ffd75c60": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/news.js:30",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "3e8acce801601436": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/nonprofit.js:108",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "8172e5a16f16312e": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/nonprofit.js:163",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "d2e0f61d50259fb6": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/ocean.js:95",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "abc0bb237ba53a51": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/ocean.js:141",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "137b422127cae3dc": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/ocean.js:174",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "ffba8422025c7bdb": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/ocean.js:526",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "eb2520773eed0663": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/paper.js:164",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "cec9938cdc9b68e8": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/paper.js:1048",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "a4fa49431206944a": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/pets.js:474",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "15f00dc3c13477b8": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/pets.js:514",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "a94bb7711f053f4c": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/pets.js:1615",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "d4095035b24a0713": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/pets.js:1776",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "55c225bf5269d1b6": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/pharmacy-live.js:26",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "b656f2a3b4cb00d3": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/pharmacy.js:25",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "9c5ab9e5362e7606": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/pharmacy.js:157",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "3b61487a67aedc60": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/pharmacy.js:221",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "b2a6992995021c42": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/pharmacy.js:1386",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "08455ebf06473690": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/pharmacy.js:1400",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "d1d9cc67c4de507a": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/pharmacy.js:1473",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "6470530c257f63d7": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/pharmacy.js:1610",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "d1e02f2a40035398": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/pharmacy.js:1631",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "c423ae82af24ec16": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/pharmacy.js:1833",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "111667c68b05c595": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/photography.js:42",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "49f674c40af4a5ab": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/photography.js:1395",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "16dc8773f1900e8e": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/podcast.js:36",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "79a954bc1d41e8d4": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/podcast.js:71",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "0503dde3f304fe4a": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/podcast.js:801",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "2552bbcb5bac13a6": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/poetry.js:90",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "89da78b964dd484f": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/poetry.js:117",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "bc9267dd74de74a5": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/poetry.js:452",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "9284288cc8ab1581": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/productivity.js:1229",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "881eebe3aa36b1a0": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/productivity.js:1234",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "b4aaa9239429aafc": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/realestate.js:361",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "70706d9e25bdc454": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/realestate.js:380",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "610b5d04860252cc": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/realestate.js:846",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "56e379c311fe40ae": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/realestate.js:865",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "be7f70357fbadf36": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/realestate.js:909",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "509dfc337d5ad934": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/realestate.js:943",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "452729f96bc6d87e": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/realestate.js:1665",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "f3138e54bb1cb6bf": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/repos.js:769",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "f0a7094ae8d4bf01": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/repos.js:811",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "666f458f3fda1a8e": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/repos.js:2392",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "46c5bf89de0e6497": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/research-live.js:16",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "bf9afa9980addb32": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/research.js:1830",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "e4168353db69c0ee": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/research.js:2039",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "740c55d6f5b3c406": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/retail.js:1195",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "230c9a8d435bd370": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/retail.js:1212",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "6ab956f69d2045ed": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/retail.js:2073",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "6f487e7fc2719dac": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/retail.js:2398",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "74c7a3a6d855f224": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/scholarly-apis.js:23",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "d7ba9a2ea0219e39": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/services.js:648",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "d922f28d594b7193": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/services.js:666",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "0f96e6e8440a39b2": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/space.js:65",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "040c515813710041": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/space.js:102",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "102e04140183dadd": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/space.js:259",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "a920c68e10b1d3b5": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/space.js:513",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "94efa6205d802a53": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/space.js:550",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "9d6f5847f3abb2d4": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/space.js:599",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "6309d2fc2f16b122": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/space.js:721",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "3245a91d43ec8b32": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/space.js:749",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "1a3301ed835acec7": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/space.js:836",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "65cd385ecaadb85a": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/space.js:860",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "9172851044e93127": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/space.js:864",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "877350892bca9293": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/space.js:1048",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "37b1416c865f46c4": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/space.js:1115",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "4ad8ae85930dece2": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/sports.js:203",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "b96f06f665dc9d46": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/sports.js:242",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "96874a134809cc96": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/sports.js:288",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "effd74477012befb": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/sports.js:793",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "733306a4eadd261b": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/transfer.js:697",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "c573d6a5bca2601b": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/travel.js:198",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "9aa927d2daf53951": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/travel.js:263",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "f8d2fc6b2c9dd0c9": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/travel.js:1766",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "6b8a83c3f748772d": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/urbanplanning.js:48",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "636c489a411cc42f": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/urbanplanning.js:323",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "0506ad78305d1dec": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/veterinary.js:1019",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "d39620107175808e": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/domains/wikipedia-search.js:28",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "793be56dcba5c08f": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/embeddings.js:326",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "2b0e3b596c3e6c52": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/embeddings.js:335",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "e6ddad084930c064": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/embeddings.js:846",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "351d53cd0e6f8a41": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/emergent/conscious-web-search.js:328",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "f007e8ee501a2a36": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/emergent/conscious-web-search.js:357",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "400ed1a50b484d40": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/emergent/conscious-web-search.js:384",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "ad0c9f8098d1d972": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/emergent/conscious-web-search.js:478",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "a250cddbd8fe0308": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/emergent/conscious-web-search.js:584",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "3bf93a2fc3de41f9": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/emergent/conscious-web-search.js:689",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "ba3e0adb9bb4cb66": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/emergent/conscious-web-search.js:702",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "70f8f2b7696b3649": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/emergent/conscious-web-search.js:822",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "f124fccd48f74d17": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/emergent/conscious-web-search.js:895",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "55bda433533d18bc": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/emergent/conscious-web-search.js:981",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "31b0a95d402b17ca": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/emergent/conscious-web-search.js:1012",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "3469c653ba63d9ab": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/emergent/conscious-web-search.js:1081",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "04e71a0618cfdb5f": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/emergent/conscious-web-search.js:1101",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "2f909139a68aac17": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/emergent/conscious-web-search.js:1132",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "fd682b3452578817": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/emergent/corpus-ingest.js:77",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "913c60c2d44a63cb": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/emergent/developer-sdk.js:590",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "286fe20b4b8116d1": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/emergent/developer-sdk.js:595",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "d02ea686ffccc795": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/emergent/entity-web-exploration.js:109",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "8b5f00d815de3c6c": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/emergent/entity-web-exploration.js:117",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "336b08f2a85b3aec": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/emergent/entity-web-exploration.js:125",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "f312ddcf882f4600": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/emergent/forge-template-engine.js:815",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "92f1fc464f8264a9": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/emergent/public-api.js:235",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "4685f153252264d7": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/emergent/repair-cortex.js:2929",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "d15c8878ee155484": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/emergent/repair-cortex.js:2972",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "df71e8b3bf36e75e": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/emergent/repair-cortex.js:3096",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "b28250240604609e": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/emergent/repair-cortex.js:3254",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "034c8894816fc6e9": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/emergent/repair-cortex.js:4139",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "31dc11a5f29060f7": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/emergent/repair-cortex.js:5059",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "ba3b482739c7877f": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/emergent/repair-cortex.js:5109",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "b9ec0e81f4c86966": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/emergent/repair-network.js:142",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "b4264b7260e9e115": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/emergent/repair-network.js:165",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "b2c52b3ccee4491a": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/emergent/repair-network.js:248",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "cb25dcd8a39a8ee1": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/emergent/social-npc-bridge.js:176",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "0553f348a73fbff8": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/ap-signature.js:90",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "e603649c19582585": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/asset-gen/organic/providers.js:81",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "ae34eba222ddc26f": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/asset-gen/organic/providers.js:90",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "090248a94835baef": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/auto-source.js:175",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "918d335dc752a1fe": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/auto-source.js:194",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "bca0d17d0bb37440": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/auto-source.js:208",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "f0cd932de3c1bfd0": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/auto-source.js:223",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "e2e088397711fdfe": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/auto-source.js:240",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "3580587f979abbb5": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/auto-source.js:266",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "4087106585ab6106": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/auto-source.js:279",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "fadee434069f1933": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/auto-source.js:351",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "8f4658c7197d8e3b": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/auto-source.js:388",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "ee17484907019905": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/autofix/fetch-timeout.js:4",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "4b161a72b3a4c1a7": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/autofix/fetch-timeout.js:6",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "5664d5233fe182b7": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/autofix/fetch-timeout.js:7",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "32fe59f4aae3efc0": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/background-governor.js:216",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "151740412bfa6fe9": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/brain-router.js:48",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "513cfe26e5453e90": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/brain-router.js:62",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "8d9c34b319657e47": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/brain-router.js:91",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "237c15539142cf78": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/byo-providers.js:211",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "4965a4cf251066f8": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/byo-providers.js:272",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "8c2eb18d551e1f15": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/chat-parallel-brains.js:65",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "a92585e2073195fd": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/chat-parallel-brains.js:154",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "ac8a229b5cbe3b68": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/cloudflare-ai-provider.js:82",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "fec95575c7c82f5e": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/cloudflare-turn.js:58",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "a289b7f426b940de": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/concordia-two-b.js:160",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "fb85033107993ab4": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/conkay/verticals/studio.js:87",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "b4dd07b78f371c6a": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/content-safety/providers.js:74",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "661b4ed5f925d56a": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/conversation-memory.js:149",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "802719ccead830c6": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/conversation-summarizer.js:94",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "e1c1767735d15870": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/error-alerting.js:78",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "6bac83689325b4ef": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/evo-asset/source-loaders.js:42",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "b4380cfa744ce57f": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/external-fetch.js:20",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "e9605ded1f5795c2": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/federation-outbox.js:141",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "424cbedfccb8bb12": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/federation-peering-transport.js:28",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "2f5e99c643a4c0cd": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/federation.js:1602",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "949ba8dffaac6519": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/horizontal-scaling.js:179",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "0da644af270b2d73": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/ics-fetch.js:4",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "968bd13e5ee18431": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/inference/index.js:3",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "eadeb0b7e67e862d": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/inference/index.js:250",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "a83a4405ddd5b374": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/inference/ollama-client.js:82",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "fa68ce3b288d1403": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/inference/ollama-client.js:126",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "e33cd1e7c6812d2a": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/inference/otel-exporter.js:122",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "b62e2b8aaa7538d2": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/jwks-verifier.js:39",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "3e1822fbe0c4b57d": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/lens-templates/basic-crud.js:199",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "d6db181ecaa17cc0": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/lens-templates/marketplace.js:352",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "21d9239795f746e9": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/lens-templates/visualization.js:337",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "ebeb4af70b2045d4": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/mcp-client.js:374",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "6f190cce1d1b97ac": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/messaging/adapters/discord.js:79",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "5637f7fe5f39a4e0": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/messaging/adapters/discord.js:105",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "23cfbad3dd49826b": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/messaging/adapters/imessage.js:58",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "3e2aa22c3b54acca": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/messaging/adapters/signal.js:48",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "05c576bba313df18": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/messaging/adapters/signal.js:76",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "a51ea6146e826aaf": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/messaging/adapters/slack.js:73",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "54d57545ef435401": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/messaging/adapters/telegram.js:60",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "f63913a50dbe3160": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/messaging/adapters/telegram.js:90",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "2952c639bee41501": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/messaging/adapters/whatsapp.js:68",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "9f12778b757949f4": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/oauth-providers.js:6",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "fb12c2c74b6458ec": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/oauth-providers.js:127",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "d383a92f6e868947": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/oauth-providers.js:174",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "0595149e6bb42544": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/oauth-providers.js:265",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "e65164475b7a38e0": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/oracle-brain.js:48",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "8e165ec26c37cc85": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/pollinations-image.js:142",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "6981170cf6f79406": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/pollinations-image.js:172",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "e26fd1573dd699a8": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/pollinations-image.js:236",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "80989174c4720b08": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/pyodide-packages.js:130",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "b6fb0a27be33f485": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/qdrant-client.js:42",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "5fbbe77200c7c81b": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/repair-brain.js:28",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "3fc3e9fc0ddef160": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/repair-brain.js:33",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "1bbf3a1dd8eef4ba": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/runtime/dhtp-rs-ollama-provider.js:26",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "b3664592a165413f": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/runtime/dhtp-rs-ollama-provider.js:76",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "9aabfe574d1e0051": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/social-publish-youtube.js:151",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "87c8a235a20c8e8e": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/social-publish-youtube.js:256",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "8de0902e7be3c206": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/social-publish-youtube.js:277",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "1f9c38d97c6b6df9": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/social-publish-youtube.js:313",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "238c4e61d5bd12f9": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/sourced-inputs.js:12",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "eb357e036279dc30": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/stripe.js:87",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "1aa35bd3fed20165": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/video-gen.js:77",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "d18484c0ff16c948": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/video-gen.js:100",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "5d28774a821010da": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/video-gen.js:128",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "35d885e189b159f3": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/video-gen.js:175",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "c53521e5159bf8cf": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/vision-inference.js:127",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "cddf992368d515ae": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/voice-synthesis.js:74",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "4f62dfc47c8db757": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/lib/weather-feed-sources.js:252",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "d5480c44e421b65d": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/middleware/csrf.js:75",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "77768c3ca78e0eaa": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/routes/api-docs.js:2",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "d8ccb9e743b26473": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/routes/api-docs.js:960",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "9ffc8e9c67cfe789": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/routes/emergent-visibility.js:23",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "e657406c4fdc6f19": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/routes/world-narrative.js:24",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "4187753ee599239a": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/scripts/backfill-embeddings.js:72",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "88594bfe571cca92": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/scripts/backfill-embeddings.js:132",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "02876400cf59e817": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/scripts/fetch-pyodide-packages.mjs:52",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "6541c7910727c7c7": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/scripts/restricted-dtus-summary-only.mjs:92",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "3ba419fcc27c7fb5": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/scripts/restricted-dtus-summary-only.mjs:110",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "f09a5c56b6a3ce19": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/scripts/smoke-wave6.mjs:66",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "4f17ab7e2a2a3eb0": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/scripts/verify-brain-wiring.mjs:23",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "18bb459d3602b904": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/server.js:2039",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "5f170476c809ffff": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/server.js:16900",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "d8eccb02553aff98": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/server.js:17063",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "d2431f89a53ed8d5": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/server.js:19373",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "49776c063c57d79b": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/server.js:19392",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "731bcb171a0d6296": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/server.js:20674",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "c8895176cacee9a8": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/server.js:20762",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "411c399656cc55d6": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/server.js:21417",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "681a195bcf8c4958": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/server.js:21468",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "d4dccbd0bfb5119b": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/server.js:21867",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "55e214a76caa4e68": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/server.js:21881",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "505d0b7266aa526a": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/server.js:21986",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "0da6272142ba4e32": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/server.js:23436",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "3856be1a5079441f": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/server.js:23746",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "1a1c3a6a1a873a5b": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/server.js:25108",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "010275fea220b54e": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/server.js:31313",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "8a07d9d0f1c1020b": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/server.js:31384",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "df7df5e582cba872": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/server.js:31552",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "77c7d30c017ef14c": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/server.js:31612",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "2ec20c9c02cc4106": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/server.js:31663",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "21c133805172d99f": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/server.js:31727",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "891aaa6f251312c1": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/server.js:31769",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "7252d0aa265ac29f": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/server.js:33461",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "9aebe8045c1299f9": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/server.js:38538",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "a8c33a04f2482f30": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/server.js:46800",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "6747f2fbc2fe69ba": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/server.js:46821",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "a2e5cce733e72238": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/server.js:47862",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "a3542f8a89113703": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/server.js:59751",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "9832dee978eca257": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/server.js:61892",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "a92c407957c7ea14": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/server.js:61963",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "408802184831850a": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/server.js:63954",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "210175670e59dae6": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/server.js:64058",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "0dd5d21fae752d71": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/server.js:64593",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "fe62fd59c64cf687": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/server.js:72629",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "17fa39d8696804ec": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/server.js:73003",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
+    },
+    "f17e25468a1f01f7": {
+      "detector": "raw-fetch-egress",
+      "id": "raw_fetch_dynamic_url",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/workers/cognitive-worker.js:67",
+      "message": "Raw fetch on a non-literal URL outside the SSRF guard — route through fetchPublicUrl (server/lib/public-fetch.js) or the connector guard"
     }
   }
 }

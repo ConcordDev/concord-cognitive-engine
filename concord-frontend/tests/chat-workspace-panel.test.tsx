@@ -1059,7 +1059,14 @@ describe('ChatWorkspacePanel — conversation drawer', () => {
     apiDelete.mockRejectedValue(new Error('404'));
     renderPanel();
     expect(await screen.findByText('alpha message body')).toBeInTheDocument();
+    // FIX-chat-008/FIX-analytics-011: the first click only ARMS a sticky
+    // confirm naming the conversation — nothing is deleted yet. (Re-pinned:
+    // this test previously asserted the one-click instant delete.)
     fireEvent.click(screen.getByLabelText('Delete conversation: Alpha plans'));
+    expect(await screen.findByLabelText('Confirm delete conversation: Alpha plans')).toBeInTheDocument();
+    expect(apiDelete).not.toHaveBeenCalled();
+    expect(screen.getByText('Alpha plans')).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Confirm delete conversation: Alpha plans'));
     await waitFor(() => expect(screen.queryByText('Alpha plans')).not.toBeInTheDocument());
     expect(apiDelete).toHaveBeenCalledWith('/api/chat/sessions/conv-a');
     expect(window.localStorage.getItem(MSGS_PREFIX + 'conv-a')).toBeNull();
@@ -1252,6 +1259,20 @@ describe('ChatWorkspacePanel — message actions', () => {
     );
     fireEvent.click(screen.getByLabelText('Thumbs down'));
     await waitFor(() => expect(feedbackFn).toHaveBeenCalledWith(expect.objectContaining({ rating: 'down' })));
+  });
+
+  it('FIX-chat-009: a thumbs click is acknowledged, not just recoloured', async () => {
+    renderPanel();
+    await screen.findByText('It is four.');
+    const up = screen.getByLabelText('Thumbs up');
+    expect(up.getAttribute('aria-pressed')).toBe('false');
+    expect(screen.queryByText('Thanks — feedback recorded')).not.toBeInTheDocument();
+    fireEvent.click(up);
+    await waitFor(() =>
+      expect(feedbackFn).toHaveBeenCalledWith({ sessionId: 'conv-a', rating: 'up', messageIndex: 1 }),
+    );
+    expect(await screen.findByText('Thanks — feedback recorded')).toBeInTheDocument();
+    expect(screen.getByLabelText('Thumbs up').getAttribute('aria-pressed')).toBe('true');
   });
 
   it('a failed feedback call raises an error toast', async () => {
@@ -1682,7 +1703,12 @@ describe('ChatWorkspacePanel — chat options menu (export / transcript / handof
     renderPanel();
     await screen.findByText('exported answer');
     openOptions();
+    // FIX-chat-008: the menu delete arms a sticky confirm first — the
+    // first click deletes nothing. (Re-pinned from the instant delete.)
     fireEvent.click(screen.getByRole('button', { name: /Delete Conversation/ }));
+    expect(apiDelete).not.toHaveBeenCalled();
+    expect(screen.getByText('exported answer')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm delete conversation' }));
     await waitFor(() => expect(screen.queryByText('exported answer')).not.toBeInTheDocument());
     expect(apiDelete).toHaveBeenCalledWith('/api/chat/sessions/conv-a');
 

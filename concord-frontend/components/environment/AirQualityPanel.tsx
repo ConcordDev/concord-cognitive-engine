@@ -125,7 +125,7 @@ export function AirQualityPanel({ className }: AirQualityPanelProps) {
     >
       <header className="flex items-center gap-2 px-3 py-2 border-b border-zinc-800/80 bg-zinc-900/40">
         <Wind className="w-4 h-4 text-sky-300" aria-hidden="true" />
-        <h3 className="text-sm font-medium text-zinc-100 flex-1">Air quality · ZIP {zip}</h3>
+        <h2 className="text-sm font-medium text-zinc-100 flex-1">Air quality · ZIP {zip}</h2>
         <span className="text-[10px] text-emerald-400 font-mono">Open-Meteo</span>
         <button
           type="button"
@@ -205,7 +205,7 @@ export function AirQualityPanel({ className }: AirQualityPanelProps) {
               const value = aqiRow[key];
               return (
                 <li key={key} className="rounded border border-zinc-800 bg-zinc-900/60 px-1.5 py-1 text-center">
-                  <div className="text-[9px] uppercase tracking-wider text-zinc-500">{label}</div>
+                  <div className="text-[9px] uppercase tracking-wider text-zinc-400">{label}</div>
                   <div className="font-mono text-[11px] text-zinc-200">
                     {typeof value === 'number' ? value : '—'}
                   </div>

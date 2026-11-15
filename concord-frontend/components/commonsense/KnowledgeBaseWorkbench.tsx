@@ -23,6 +23,7 @@ import {
 import { lensRun } from '@/lib/api/client';
 import { TreeDiagram, ChartKit } from '@/components/viz';
 import type { TreeNode } from '@/components/viz';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 // ---------------------------------------------------------------------------
 // Shared types — every shape mirrors the commonsense.js macro result.
@@ -740,7 +741,7 @@ export function KnowledgeBaseWorkbench() {
                     className={`group flex items-center gap-1.5 rounded px-2 py-1.5 text-[11px] cursor-pointer ${
                       provFactId === f.id ? 'bg-amber-500/10 border border-amber-500/30' : 'hover:bg-zinc-900'
                     }`}
-                    onClick={() => runProv(f.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                    onClick={() => runProv(f.id)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                     <span className="flex-1 truncate">
                       <span className="font-mono text-cyan-300">{f.subject}</span>{' '}
                       <span className="text-zinc-400">{f.relation.replace(/_/g, ' ')}</span>{' '}

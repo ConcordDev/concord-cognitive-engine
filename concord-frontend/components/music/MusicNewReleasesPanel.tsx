@@ -88,7 +88,7 @@ export function MusicNewReleasesPanel() {
                 </div>
                 {d.meta?.url && (
                   <a href={d.meta.url} target="_blank" rel="noopener noreferrer" aria-label={`Open ${name} on Apple Music`}
-                    className="text-zinc-500 hover:text-emerald-300 shrink-0"><ExternalLink className="w-3.5 h-3.5" /></a>
+                    className="text-zinc-400 hover:text-emerald-300 shrink-0"><ExternalLink className="w-3.5 h-3.5" /></a>
                 )}
               </li>
             );

@@ -808,7 +808,8 @@ export default function registerBioActions(registerLensAction) {
   // 90 nt suits whole-sequence analysis; the plasmid map passes a
   // construct-scale floor and STATES it in its result — a silent floor is
   // how the map's "auto-annotates ORFs" note came to be half-kept.
-  function findOrfs(seq, minOrfNt = 90) {
+  const ORF_MIN_NT_DEFAULT = 90;
+  function findOrfs(seq, minOrfNt = ORF_MIN_NT_DEFAULT) {
     const upper = seq.toUpperCase();
     const orfs = [];
     // Forward frames only (simplified)
@@ -841,6 +842,21 @@ export default function registerBioActions(registerLensAction) {
     if (seq.length > 100_000) return { ok: false, error: "sequence too long (max 100000)" };
     const kind = String(params.kind || "dna");
     if (!["dna", "rna", "protein"].includes(kind)) return { ok: false, error: "kind must be dna/rna/protein" };
+    // Alphabet validation (FIX-bio-001): GC%/Tm were computed over any
+    // characters at all — 'ATGXYZ' reported GC 16.7% / Tm 8.0 °C as DNA
+    // with no word that X/Y/Z are not nucleotides. IUPAC ambiguity codes
+    // (N, R, Y, …) stay valid; anything outside the kind's alphabet is
+    // refused BY NAME so the user sees exactly which characters fail.
+    const ALPHABETS = {
+      dna: new Set("ACGTRYSWKMBDHVN"),
+      rna: new Set("ACGURYSWKMBDHVN"),
+      protein: new Set("ACDEFGHIKLMNPQRSTVWYBJOUXZ"),
+    };
+    const invalidChars = [...new Set([...seq].filter((c) => !ALPHABETS[kind].has(c)))];
+    if (invalidChars.length > 0) {
+      const noun = kind === "protein" ? "amino-acid codes" : "nucleotides";
+      return { ok: false, error: `${invalidChars.join(", ")} ${invalidChars.length === 1 ? "is" : "are"} not valid ${noun} for a ${kind.toUpperCase()} sequence` };
+    }
     const result = {
       length: seq.length,
       kind,
@@ -853,13 +869,17 @@ export default function registerBioActions(registerLensAction) {
       // Unlabelled, two surfaces quoting different rules for similar
       // sequences read as two models disagreeing.
       result.tmModel = seq.length < 14 ? "Wallace rule (2·AT + 4·GC), sequences < 14 nt" : "Basic formula 64.9 + 41·(GC − 16.4)/N, sequences ≥ 14 nt";
-      if (kind === "dna") result.orfs = findOrfs(seq);
+      if (kind === "dna") { result.orfs = findOrfs(seq); result.orfMinNt = ORF_MIN_NT_DEFAULT; }
     } else {
       // Protein composition
       const composition = {};
       for (const c of seq) composition[c] = (composition[c] || 0) + 1;
       result.composition = composition;
-      result.molecularWeight = Math.round(seq.length * 110); // average aa MW
+      // Protein MW from average residue masses + one water (FIX-bio-004):
+      // the flat 110 Da/residue estimate read 770 Da for MAIVMGR, whose
+      // residue-sum MW is 777.0 Da.
+      const AA_MASS = { A: 71.08, R: 156.19, N: 114.10, D: 115.09, C: 103.14, E: 129.11, Q: 128.13, G: 57.05, H: 137.14, I: 113.16, L: 113.16, K: 128.17, M: 131.19, F: 147.18, P: 97.12, S: 87.08, T: 101.11, W: 186.21, Y: 163.18, V: 99.13 };
+      result.molecularWeight = Math.round(([...seq].reduce((sum, c) => sum + (AA_MASS[c] || 0), 0) + 18.02) * 10) / 10;
     }
     return { ok: true, result };
     } catch (e) { return handlerFailure(e); }
@@ -1082,6 +1102,34 @@ export default function registerBioActions(registerLensAction) {
     };
     if (!s.sequences.has(userId)) s.sequences.set(userId, new Map());
     s.sequences.get(userId).set(seq.id, seq);
+    saveBioState();
+    return { ok: true, result: { sequence: seq } };
+  });
+
+  // FIX-bio-003: saved sequences gain an in-place edit.
+  registerLensAction("bio", "sequence-update", (ctx, _artifact, params = {}) => {
+    const s = getBioState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = bioActor(ctx);
+    const id = String(params.id || "");
+    const map = s.sequences.get(userId);
+    if (!map || !map.has(id)) return { ok: false, error: "sequence not found" };
+    const seq = map.get(id);
+    if (params.name !== undefined) {
+      const name = String(params.name || "").trim();
+      if (!name) return { ok: false, error: "name required" };
+      if (name.length > 80) return { ok: false, error: "name too long (max 80)" };
+      seq.name = name;
+    }
+    if (params.sequence !== undefined) {
+      const sequence = String(params.sequence || "").replace(/\s/g, "").toUpperCase();
+      if (!sequence) return { ok: false, error: "sequence required" };
+      if (sequence.length > 100_000) return { ok: false, error: "sequence too long (max 100000)" };
+      seq.sequence = sequence;
+      seq.length = sequence.length;
+    }
+    if (["dna", "rna", "protein"].includes(params.kind)) seq.kind = params.kind;
+    if (typeof params.description === "string") seq.description = params.description.slice(0, 200);
+    seq.updatedAt = nowIsoBio();
     saveBioState();
     return { ok: true, result: { sequence: seq } };
   });

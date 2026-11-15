@@ -56,6 +56,7 @@ export function AppsPanel() {
   const [selectedTemplate, setSelectedTemplate] = useState('crm');
   const [appSearch, setAppSearch] = useState('');
   const [appStatusFilter, setAppStatusFilter] = useState<string>('all');
+  const [appSort, setAppSort] = useState<'default' | 'newest' | 'oldest' | 'name-asc' | 'name-desc'>('default');
   // F8: this field used to live in plain useState and vanished silently when
   // the lens switched views (this panel unmounts). Route it through the
   // standing lens-draft substrate instead — the same idiom other lenses use
@@ -262,13 +263,26 @@ export function AppsPanel() {
               <select
                 value={appStatusFilter}
                 onChange={(e) => setAppStatusFilter(e.target.value)}
-                className="bg-lattice-deep border border-lattice-edge rounded px-2 py-1"
+                aria-label="Filter apps by status"
+                className="bg-lattice-deep border border-lattice-edge rounded px-2 py-1 min-h-[40px]"
               >
                 <option value="all">All</option>
                 <option value="draft">Draft</option>
                 <option value="published">Published</option>
                 <option value="marketplace">Marketplace</option>
                 <option value="global">Global</option>
+              </select>
+              <select
+                value={appSort}
+                onChange={(e) => setAppSort(e.target.value as typeof appSort)}
+                aria-label="Sort apps"
+                className="bg-lattice-deep border border-lattice-edge rounded px-2 py-1 min-h-[40px]"
+              >
+                <option value="default">Default order</option>
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
+                <option value="name-asc">Name A–Z</option>
+                <option value="name-desc">Name Z–A</option>
               </select>
               <button onClick={loadApps} className="text-neon-cyan hover:underline">Refresh</button>
             </div>
@@ -299,7 +313,12 @@ export function AppsPanel() {
             if (q && !((a.name || '').toLowerCase().includes(q) || (a.id || '').toLowerCase().includes(q))) return false;
             if (appStatusFilter !== 'all' && a.status !== appStatusFilter) return false;
             return true;
-          });
+          }).sort((a, b) =>
+            appSort === 'default' ? 0
+            : appSort === 'name-asc' ? (a.name || '').localeCompare(b.name || '')
+            : appSort === 'name-desc' ? (b.name || '').localeCompare(a.name || '')
+            : appSort === 'oldest' ? String(a.createdAt ?? '').localeCompare(String(b.createdAt ?? ''))
+            : String(b.createdAt ?? '').localeCompare(String(a.createdAt ?? '')));
           if (visible.length === 0) {
             return <p className="text-sm text-gray-400">No apps match the current filters.</p>;
           }

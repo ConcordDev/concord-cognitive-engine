@@ -129,6 +129,7 @@ export function BomPanel() {
                   <td className="py-1 px-2">
                     <input
                       className="w-24 bg-black/30 border border-white/10 rounded px-1 font-mono"
+                      aria-label="Part number"
                       value={it.partNumber}
                       onChange={(e) => setField(i, 'partNumber', e.target.value)}
                     />
@@ -136,6 +137,7 @@ export function BomPanel() {
                   <td className="py-1 px-2">
                     <input
                       className="w-40 bg-black/30 border border-white/10 rounded px-1"
+                      aria-label="Description"
                       value={it.description}
                       onChange={(e) => setField(i, 'description', e.target.value)}
                     />
@@ -143,6 +145,7 @@ export function BomPanel() {
                   <td className="py-1 px-2 text-right">
                     <input
                       className="w-14 bg-black/30 border border-white/10 rounded px-1 text-right font-mono"
+                      aria-label="Quantity"
                       value={it.quantity}
                       onChange={(e) => setField(i, 'quantity', e.target.value)}
                     />
@@ -150,6 +153,7 @@ export function BomPanel() {
                   <td className="py-1 px-2 text-right">
                     <input
                       className="w-16 bg-black/30 border border-white/10 rounded px-1 text-right font-mono"
+                      aria-label="Unit cost"
                       value={it.unitCost}
                       onChange={(e) => setField(i, 'unitCost', e.target.value)}
                     />
@@ -157,6 +161,7 @@ export function BomPanel() {
                   <td className="py-1 px-2">
                     <input
                       className="w-24 bg-black/30 border border-white/10 rounded px-1"
+                      aria-label="Supplier"
                       value={it.supplier}
                       onChange={(e) => setField(i, 'supplier', e.target.value)}
                     />
@@ -164,6 +169,7 @@ export function BomPanel() {
                   <td className="py-1 px-2 text-right">
                     <input
                       className="w-12 bg-black/30 border border-white/10 rounded px-1 text-right font-mono"
+                      aria-label="Lead time in days"
                       value={it.leadTimeDays}
                       onChange={(e) => setField(i, 'leadTimeDays', e.target.value)}
                     />
@@ -188,6 +194,7 @@ export function BomPanel() {
             <input
               type="number"
               min={1}
+              aria-label="Build quantity"
               value={buildQty}
               onChange={(e) => setBuildQty(parseInt(e.target.value) || 1)}
               className="w-20 bg-black/30 border border-white/10 rounded px-2 py-1 text-sm font-mono block mt-1"
@@ -198,6 +205,7 @@ export function BomPanel() {
             <input
               type="number"
               step="0.01"
+              aria-label="Overhead rate"
               value={overheadRate}
               onChange={(e) => setOverheadRate(parseFloat(e.target.value) || 0)}
               className="w-24 bg-black/30 border border-white/10 rounded px-2 py-1 text-sm font-mono block mt-1"

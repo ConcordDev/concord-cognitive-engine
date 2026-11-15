@@ -192,7 +192,7 @@ export function mountChatAgentStream({ app, auth, runMacro, lensActions, retriev
         lensActions,
         // Style note last (newest), so the history caps never drop it.
         history: [...(Array.isArray(history) ? history : []), ...(personaNote ? [personaNote] : []), ...(dtuNote ? [dtuNote] : [])],
-        opts: { maxTurns: resolveAgentMaxTurns({ requested: maxTurns }), slot, extraSystemBlock, surface, ...(plan?.fallbackCall ? { fallbackCall: plan.fallbackCall } : {}) },
+        opts: { maxTurns: resolveAgentMaxTurns({ requested: maxTurns }), slot: isConKay ? "conkay" : slot, extraSystemBlock, surface, ...(plan?.fallbackCall ? { fallbackCall: plan.fallbackCall } : {}) },
         // Real-time bridge — fires as each turn/tool call actually
         // completes inside the loop, not after the whole thing finishes.
         onEvent: (type, payload) => {

@@ -25,6 +25,7 @@ import { detectNewDesign, type NewDesignIntent } from '@/lib/conkay/new-design-i
 import { DesignPane, StartScreen, type BriefClaim, type TrussAnswer, type WorkspaceDesign } from './DesignPane';
 import { CONKAY_PERSONA_PROMPT } from '@/components/conkay/conkay-persona';
 import { agentFailure, artifactKey, streamConKayAgent, stripToolCallLeak } from '@/lib/conkay/agent-stream';
+import { RunCard } from '@/components/cockpit/RunCard';
 import LowConfidenceTag from '@/components/chat/LowConfidenceTag';
 import { ChatArtifacts, type ChatArtifact } from '@/components/chat/ChatArtifacts';
 import MessageRenderer from '@/components/chat/MessageRenderer';
@@ -77,6 +78,7 @@ interface WsMessage {
   error?: boolean;
   chips?: Chip[];
   tools?: Array<{ name: string; ok: boolean }>;
+  cockpitRunId?: string;
   sweep?: SweepResult;
   /** Songs, images, audio previews and 3D models the agent's tools returned. */
   artifacts?: ChatArtifact[];
@@ -342,6 +344,7 @@ export function ConKayWorkspace() {
           }
         },
         onArtifact: addArtifact,
+        onCockpit: (e) => { if (e.runId) patch(id, { cockpitRunId: e.runId }); },
       });
       const clean = stripToolCallLeak(live);
       if (!done.ok && !clean.text) reply(id, agentFailure(done.error), { error: true, tools, artifacts });
@@ -655,6 +658,7 @@ export function ConKayWorkspace() {
               <span className="font-medium text-slate-200">{m.role === 'user' ? 'You' : 'ConKay'}</span>
               <span className="text-slate-500">{clock(m.at)}</span>
             </div>
+            {m.cockpitRunId && <RunCard runId={m.cockpitRunId} />}
             {m.tools && m.tools.length > 0 && (
               <ul className="mb-1.5 flex flex-wrap gap-1">
                 {m.tools.map((t, i) => (

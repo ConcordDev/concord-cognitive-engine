@@ -53,6 +53,9 @@ export function VisionAnalyzeButton({ domain, prompt, onResult, className, viaMa
         {isAnalyzing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <SvgIcon name="eye" size={14} />}
         {isAnalyzing ? 'Analyzing...' : 'Analyze with Vision'}
       </button>
+      {preview && (
+        <img src={preview} alt="Image sent for vision analysis" className="mt-2 max-h-32 rounded border border-purple-500/20" />
+      )}
       {preview && result && (
         <div className="mt-2 p-2 rounded bg-purple-500/10 border border-purple-500/20 text-xs">
           <div className="flex justify-between items-start">

@@ -55,7 +55,7 @@ export function DesignSystemAtlas() {
           <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">github · topic:{topic}</span>
         </div>
         <div className="flex items-center gap-2">
-          <select value={topic} onChange={(e) => setTopic(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">
+          <select aria-label="Topic" value={topic} onChange={(e) => setTopic(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">
             {TOPICS.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
           </select>
           {list.length > 0 && (

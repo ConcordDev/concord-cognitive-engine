@@ -9,7 +9,84 @@ import { optNum, notComputed, requireList } from "../lib/lens-inputs.js";
 
 import { openMeteoDailyForecast } from "../lib/sourced-inputs.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
+
+// ── lens export provider (FIX-agriculture-005) ────────────────────────
+// The Workbench records — fields and scouting pins — live in
+// STATE.agricultureLens as nested per-user Maps, which the export's
+// state leg cannot enumerate, so the export carried only artifacts
+// and DTUs and the CSV had none of the field data (no acreage, no
+// crop). This provider emits the caller's fields and pins (and any
+// rotation seasons the store holds), scoped by the store's own
+// per-user buckets.
+function agricultureExportRows(ctx) {
+  const state = globalThis._concordSTATE;
+  const uid = ctx?.actor?.userId || ctx?.userId || null;
+  if (!state || !uid || uid === "anon") return [];
+  const bag = state.agricultureLens;
+  if (!bag) return [];
+  const rows = [];
+  const fields = bag.fields instanceof Map ? bag.fields.get(uid) : null;
+  if (fields instanceof Map) {
+    for (const f of fields.values()) {
+      rows.push({
+        id: f.id,
+        type: "field",
+        title: f.name || f.id,
+        createdAt: f.createdAt ?? null,
+        updatedAt: f.updatedAt ?? f.createdAt ?? null,
+        data: {
+          name: f.name || "",
+          acreage: f.acreage ?? null,
+          lat: f.lat ?? null,
+          lng: f.lng ?? null,
+          soilType: f.soilType || null,
+          currentCrop: f.currentCrop || null,
+        },
+      });
+    }
+  }
+  const pins = bag.scouts instanceof Map ? bag.scouts.get(uid) : null;
+  if (Array.isArray(pins)) {
+    for (const pin of pins) {
+      rows.push({
+        id: pin.id,
+        type: "scouting-pin",
+        title: pin.note ? String(pin.note).slice(0, 80) : pin.id,
+        createdAt: pin.createdAt ?? null,
+        updatedAt: pin.createdAt ?? null,
+        data: {
+          fieldId: pin.fieldId,
+          note: pin.note || "",
+          category: pin.category || "other",
+          severity: pin.severity || "low",
+          lat: pin.lat ?? null,
+          lng: pin.lng ?? null,
+        },
+      });
+    }
+  }
+  const rotations = bag.rotations instanceof Map ? bag.rotations.get(uid) : null;
+  if (rotations instanceof Map) {
+    for (const [fieldId, seasons] of rotations.entries()) {
+      if (!Array.isArray(seasons)) continue;
+      seasons.forEach((season, i) => {
+        rows.push({
+          id: `rotation:${fieldId}:${i}`,
+          type: "rotation",
+          title: fieldId,
+          createdAt: null,
+          updatedAt: null,
+          data: { fieldId, ...(season && typeof season === "object" ? season : { season }) },
+        });
+      });
+    }
+  }
+  return rows;
+}
+
 export default function registerAgricultureActions(registerLensAction) {
+  registerLensExportProvider("agriculture", agricultureExportRows);
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * rotationPlan
@@ -836,8 +913,18 @@ export default function registerAgricultureActions(registerLensAction) {
     const map = s.fields.get(userId);
     if (!map || !map.has(id)) return { ok: false, error: "not found" };
     map.delete(id);
+    // FIX-agriculture-006 (scout leg): a deleted field's scouting pins
+    // must not outlive it — orphaned pins stay in the caller's store and
+    // still surface on an unfiltered scout-list. Cascade to the pins.
+    const pins = s.scouts.get(userId);
+    let scoutPinsRemoved = 0;
+    if (Array.isArray(pins)) {
+      const kept = pins.filter((p) => p.fieldId !== id);
+      scoutPinsRemoved = pins.length - kept.length;
+      if (scoutPinsRemoved > 0) s.scouts.set(userId, kept);
+    }
     saveAgriState();
-    return { ok: true, result: { deleted: id } };
+    return { ok: true, result: { deleted: id, scoutPinsRemoved } };
   });
 
   // ── Weather / soil for field (Open-Meteo — free, no key) ──
@@ -1191,10 +1278,11 @@ export default function registerAgricultureActions(registerLensAction) {
     const parentRefusal = agriParentRefusal(s, userId, params); if (parentRefusal) return parentRefusal;
     const fieldId = String(params.fieldId || "");
     const crop = String(params.crop || "").trim();
-    const acresHarvested = Math.max(0, Number(params.acresHarvested) || 0);
-    const yieldBushels = Math.max(0, Number(params.yieldBushels) || 0);
+    const acresHarvested = Number(params.acresHarvested);
+    const yieldBushels = Number(params.yieldBushels);
     if (!fieldId || !crop) return { ok: false, error: "fieldId and crop required" };
-    if (acresHarvested <= 0) return { ok: false, error: "acresHarvested must be > 0" };
+    if (!Number.isFinite(acresHarvested) || acresHarvested <= 0) return { ok: false, error: "acresHarvested must be > 0", message: "Acres harvested must be a number greater than 0." };
+    if (!Number.isFinite(yieldBushels) || yieldBushels < 0) return { ok: false, error: "invalid_input", message: "Yield must be a number that is 0 or greater." };
     const yieldPerAcre = yieldBushels / acresHarvested;
     const pass = {
       id: uidAg("harv"), fieldId, crop,
@@ -2074,7 +2162,18 @@ export default function registerAgricultureActions(registerLensAction) {
     const minLat = Number(bounds.minLat), maxLat = Number(bounds.maxLat);
     const minLng = Number(bounds.minLng), maxLng = Number(bounds.maxLng);
     if (![minLat, maxLat, minLng, maxLng].every(Number.isFinite)) return { ok: false, error: "invalid bounds" };
-    const acresPerSample = Math.max(0.5, Math.min(40, Number(params.acresPerSample) || 2.5));
+    // FIX-agriculture-012: acresPerSample was silently clamped into
+    // range — a typed -1 generated a grid at the floor value with no
+    // word. A provided value must sit inside the range the clamp
+    // itself defined (0.5–40) and is refused by name outside it;
+    // absent still defaults to 2.5.
+    if (params.acresPerSample != null) {
+      const aps = Number(params.acresPerSample);
+      if (!Number.isFinite(aps) || aps < 0.5 || aps > 40) {
+        return { ok: false, error: "acresPerSample must be between 0.5 and 40" };
+      }
+    }
+    const acresPerSample = params.acresPerSample == null ? 2.5 : Number(params.acresPerSample);
     // Field size: declared acreage, else the area of the bounds (no assumed 40 ac).
     const _fa = optNum(field?.acreage ?? params.acreage);
     const fieldAcres = Math.max(1, _fa !== null && _fa > 0 ? _fa : Math.abs((maxLat - minLat) * 111320 * (maxLng - minLng) * 111320 * Math.cos(((minLat + maxLat) / 2) * Math.PI / 180)) / 4046.86);
@@ -2118,6 +2217,22 @@ export default function registerAgricultureActions(registerLensAction) {
     const grids = (fieldId ? all.filter(g => g.fieldId === fieldId) : all)
       .slice().sort((a, b) => new Date(b.generatedAt).getTime() - new Date(a.generatedAt).getTime());
     return { ok: true, result: { grids } };
+  });
+
+  // FIX-agriculture-013: stored soil grids had no delete at all — a
+  // generated or imported grid could never be removed. Owner-scoped,
+  // mirroring scout-delete.
+  registerLensAction("agriculture", "soil-grid-delete", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const id = String(params.id || "");
+    if (!id) return { ok: false, error: "id required" };
+    const bucket = ensureAgBucket(s, "soilGrids", userId);
+    const idx = bucket.findIndex((g) => g.id === id);
+    if (idx < 0) return { ok: false, error: "grid not found" };
+    bucket.splice(idx, 1);
+    saveAgriState();
+    return { ok: true, result: { deleted: id } };
   });
 
   registerLensAction("agriculture", "soil-grid-import-results", (ctx, _a, params = {}) => {

@@ -24,9 +24,13 @@ describe("BRAIN_CONFIG", () => {
     assert.ok(Object.isFrozen(BRAIN_CONFIG));
   });
 
-  it("defines all five brains (4 cognitive + 1 multimodal/vision)", () => {
+  it("defines all six brains (5 cognitive + 1 multimodal/vision)", () => {
+    // GB-1541 / BR-02 (2026-11-14): ConKay gained its own slot ("conkay"),
+    // raising the count from five to six — this expectation is updated in
+    // the landing commit itself, per the A11 reconciliation form.
     const brains = Object.keys(BRAIN_CONFIG);
-    assert.equal(brains.length, 5);
+    assert.equal(brains.length, 6);
+    assert.ok(brains.includes("conkay"));
     assert.ok(brains.includes("conscious"));
     assert.ok(brains.includes("subconscious"));
     assert.ok(brains.includes("utility"));

@@ -17,6 +17,8 @@ import { LensShell } from '@/components/lens/LensShell';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
 import { lensRun } from '@/lib/api/client';
+import { BOUNDS } from '@/lib/bounds';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { CrossWorldFeed } from '@/components/concord-link-frontier/CrossWorldFeed';
 
 interface LinkRow {
@@ -27,7 +29,7 @@ interface LinkRow {
 }
 
 type Phase = 'loading' | 'ready' | 'error';
-type Mode = 'view' | 'open' | 'bearing' | 'mark';
+type Mode = 'view' | 'open' | 'bearing' | 'mark' | 'rename';
 
 function isWarming(message: string): boolean {
   return /service_overloaded|event_loop_lag|status code 503/i.test(message);
@@ -92,7 +94,9 @@ export default function ConcordLinkFrontierPage() {
   const [name, setName] = useState('');
   const [bearing, setBearing] = useState('');
   const [mark, setMark] = useState('');
+  const [rename, setRename] = useState('');
   const [busy, setBusy] = useState(false);
+  const [linkQuery, setLinkQuery] = useState('');
 
   const applyBoard = useCallback((rows: LinkRow[], preferId?: string) => {
     setLinks(rows);
@@ -234,6 +238,56 @@ export default function ConcordLinkFrontierPage() {
     }
   }, [applyBoard, busy, links, mark, mode, phase, selectedId]);
 
+  // FIX-concord-link-frontier-003: a link could be opened, borne, marked
+  // and deleted, but never renamed — a mistyped fixture name was
+  // permanent. Rename rides the same mode pattern as bearing/mark.
+  const saveRename = useCallback(async () => {
+    if (busy || phase !== 'ready' || !selectedId) return;
+    if (mode !== 'rename') {
+      const current = links.find((item) => item.id === selectedId);
+      setRename(current?.name || '');
+      setMode('rename');
+      setActionError('');
+      return;
+    }
+    const next = rename.trim();
+    if (!next) {
+      setActionError('A name is required.');
+      return;
+    }
+    setBusy(true);
+    setActionError('');
+    try {
+      await runLink('link-rename', { id: selectedId, name: next }, 'Could not rename that link.');
+      const rows = await readBoard();
+      const row = rows.find((item) => item.id === selectedId);
+      if (!row || row.name !== next) throw new Error('Saved, but the board did not read the name back.');
+      applyBoard(rows, selectedId);
+      setRename('');
+      setMode('view');
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not rename that link.');
+    } finally {
+      setBusy(false);
+    }
+  }, [applyBoard, busy, links, mode, phase, rename, selectedId]);
+
+  const deleteLink = useCallback(async (id: string) => {
+    if (busy || phase !== 'ready') return;
+    setBusy(true);
+    setActionError('');
+    try {
+      await runLink('link-delete', { id }, 'Could not delete that link.');
+      const rows = await readBoard();
+      applyBoard(rows);
+      setMode('view');
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not delete that link.');
+    } finally {
+      setBusy(false);
+    }
+  }, [applyBoard, busy, phase]);
+
   const openRow = useCallback(async (id: string) => {
     if (busy || phase !== 'ready') return;
     setBusy(true);
@@ -268,6 +322,10 @@ export default function ConcordLinkFrontierPage() {
   );
 
   const selected = links.find((item) => item.id === selectedId) || null;
+  const lq = linkQuery.trim().toLowerCase();
+  const visibleLinks = lq
+    ? links.filter((item) => item.name.toLowerCase().includes(lq) || (item.bearing || '').toLowerCase().includes(lq) || (item.mark || '').toLowerCase().includes(lq))
+    : links;
   const empty = phase === 'ready' && mode === 'view' && links.length === 0;
 
   return (
@@ -301,10 +359,22 @@ export default function ConcordLinkFrontierPage() {
               {selected.mark ? <p data-testid="clf-mark" className="mt-3 text-[15px] text-zinc-300">{selected.mark}</p> : null}
             </div>
           )}
+          {phase === 'ready' && mode === 'view' && links.length > 1 && (
+            <input
+              value={linkQuery}
+              onChange={(event) => setLinkQuery(event.target.value)}
+              placeholder="Search links…"
+              aria-label="Search links"
+              className="mb-3 w-full border-b border-white/15 bg-transparent pb-2 text-[15px] text-zinc-100 outline-none"
+            />
+          )}
+          {phase === 'ready' && mode === 'view' && links.length > 0 && visibleLinks.length === 0 && (
+            <p className="border-t border-white/10 pt-4 text-[15px] text-zinc-400">No links match &ldquo;{linkQuery.trim()}&rdquo;.</p>
+          )}
           {phase === 'ready' && mode === 'view' && links.length > 0 && (
             <ul data-testid="clf-board" className="space-y-2 border-t border-white/10 pt-4">
-              {links.map((item) => (
-                <li key={item.id}>
+              {visibleLinks.map((item) => (
+                <li key={item.id} className="flex items-center gap-3">
                   <button
                     type="button"
                     onClick={() => { void openRow(item.id); }}
@@ -312,6 +382,13 @@ export default function ConcordLinkFrontierPage() {
                   >
                     {item.name}
                   </button>
+                  <StickyDeleteConfirm
+                    onConfirm={() => { void deleteLink(item.id); }}
+                    armLabel="Delete"
+                    confirmLabel={`Delete "${item.name}"?`}
+                    armAriaLabel={`Delete link ${item.name}`}
+                    confirmAriaLabel={`Confirm delete link ${item.name}`}
+                  />
                 </li>
               ))}
             </ul>
@@ -322,8 +399,22 @@ export default function ConcordLinkFrontierPage() {
               <input
                 data-testid="clf-name"
                 value={name}
+                maxLength={BOUNDS.TITLE}
                 onChange={(event) => setName(event.target.value)}
                 className="mt-1 w-full border-b border-white/15 bg-transparent pb-2 font-vault text-[1.25rem] text-zinc-100 outline-none"
+                autoFocus
+              />
+            </label>
+          )}
+          {phase === 'ready' && mode === 'rename' && (
+            <label className="block text-[14px] text-zinc-400">
+              Name
+              <input
+                data-testid="clf-rename-input"
+                value={rename}
+                maxLength={BOUNDS.TITLE}
+                onChange={(event) => setRename(event.target.value)}
+                className="mt-1 w-full border-b border-white/15 bg-transparent pb-2 text-[15px] text-zinc-100 outline-none"
                 autoFocus
               />
             </label>
@@ -354,6 +445,9 @@ export default function ConcordLinkFrontierPage() {
           )}
           {phase === 'ready' && mode === 'view' && selected && (
             <div className="mt-6 flex flex-wrap gap-4">
+              <button type="button" onClick={() => { void saveRename(); }} className="text-[14px] text-zinc-100 underline">
+                Rename the link
+              </button>
               <button type="button" onClick={() => { void saveBearing(); }} className="text-[14px] text-zinc-100 underline">
                 {selected.bearing ? 'Edit the bearing' : 'Set the bearing'}
               </button>
@@ -363,6 +457,11 @@ export default function ConcordLinkFrontierPage() {
                 </button>
               ) : null}
             </div>
+          )}
+          {phase === 'ready' && mode === 'rename' && (
+            <button type="button" onClick={() => { void saveRename(); }} disabled={busy} className="mt-6 text-[14px] text-zinc-100 underline disabled:opacity-60">
+              Save the name
+            </button>
           )}
           {phase === 'ready' && mode === 'bearing' && (
             <button type="button" onClick={() => { void saveBearing(); }} disabled={busy} className="mt-6 text-[14px] text-zinc-100 underline disabled:opacity-60">

@@ -28,6 +28,7 @@
 // { ok: boolean, result?, error? }.
 
 import { randomUUID } from "crypto";
+import { registerLensExportProvider } from "../lib/lens-export.js";
 import { getBalance } from "../economy/balances.js";
 import { recordTransaction } from "../economy/ledger.js";
 import { PLATFORM_ACCOUNT_ID } from "../economy/fees.js";
@@ -42,9 +43,13 @@ const STAKING_ESCROW_ID = "staking_escrow";
 
 // ── Staking pools (products) ──────────────────────────────────────────────
 const POOLS = [
-  { id: "flex", name: "Flex Pool", risk: "low", baseBps: 60, perMonth: 8, capBps: 400, minStake: 10, earlyPenaltyPct: 0.10, description: "Conservative pool. Lower yield, smallest early-exit penalty." },
-  { id: "core", name: "Core Pool", risk: "medium", baseBps: 100, perMonth: 20, capBps: 1200, minStake: 25, earlyPenaltyPct: 0.25, description: "Balanced pool. The classic lock-earn-redeem product." },
-  { id: "growth", name: "Growth Pool", risk: "high", baseBps: 160, perMonth: 32, capBps: 2000, minStake: 100, earlyPenaltyPct: 0.45, description: "Aggressive pool. Highest yield, steepest early-exit penalty." },
+  // FIX-staking-014: descriptions lead with the pool's own name — the old
+  // leads ("Conservative pool", "Balanced pool", "Aggressive pool") read as
+  // a second, competing name for the same product (the Flex card was read
+  // as a "Conservative" pool while APR history called it Flex).
+  { id: "flex", name: "Flex Pool", risk: "low", baseBps: 60, perMonth: 8, capBps: 400, minStake: 10, earlyPenaltyPct: 0.10, description: "Flex pool — the conservative tier. Lower yield, smallest early-exit penalty." },
+  { id: "core", name: "Core Pool", risk: "medium", baseBps: 100, perMonth: 20, capBps: 1200, minStake: 25, earlyPenaltyPct: 0.25, description: "Core pool — the balanced tier. The classic lock-earn-redeem product." },
+  { id: "growth", name: "Growth Pool", risk: "high", baseBps: 160, perMonth: 32, capBps: 2000, minStake: 100, earlyPenaltyPct: 0.45, description: "Growth pool — the aggressive tier. Highest yield, steepest early-exit penalty." },
 ];
 
 function poolById(id) {
@@ -145,7 +150,70 @@ function publicPositionRow(row, now) {
   };
 }
 
+export function stakingExportRows(ctx) {
+  const db = ctx?.db;
+  const userId = ctx?.actor?.userId || ctx?.userId || ctx?.actor?.id || null;
+  if (!db || !userId || !hasStakingTables(db)) return [];
+  const now = Math.floor(Date.now() / 1000);
+  const rows = [];
+  let positions = [];
+  try {
+    positions = db.prepare("SELECT * FROM staking_positions WHERE user_id=? ORDER BY locked_at DESC").all(userId);
+  } catch {
+    return [];
+  }
+  for (const r of positions) {
+    const pub = publicPositionRow(r, now);
+    rows.push({
+      id: pub.id,
+      type: "staking-position",
+      title: `${pub.poolName || "Stake"} · ${pub.principalCc} CC`,
+      createdAt: pub.lockedAt,
+      updatedAt: pub.unlocksAt,
+      data: pub,
+    });
+    if (r.status === "redeemed" && Number(r.final_yield_cc) > 0) {
+      rows.push({
+        id: `earn_${r.id}`,
+        type: "staking-earning",
+        title: `Yield ${r.final_yield_cc} CC`,
+        createdAt: r.redeemed_at || r.locked_at,
+        updatedAt: r.redeemed_at || r.locked_at,
+        data: { stakeId: r.id, poolId: r.pool_id, yieldCc: r.final_yield_cc, kind: "stake_redeemed" },
+      });
+    }
+    if (r.status === "early_exited") {
+      rows.push({
+        id: `earn_${r.id}`,
+        type: "staking-earning",
+        title: `Early exit penalty ${r.penalty_cc || 0} CC`,
+        createdAt: r.exited_at || r.locked_at,
+        updatedAt: r.exited_at || r.locked_at,
+        data: { stakeId: r.id, poolId: r.pool_id, penaltyCc: r.penalty_cc || 0, kind: "early_unstake" },
+      });
+    }
+  }
+  try {
+    const receipts = db.prepare("SELECT * FROM staking_receipts WHERE user_id=? ORDER BY minted_at DESC").all(userId);
+    for (const r of receipts) {
+      rows.push({
+        id: r.id,
+        type: "staking-receipt",
+        title: r.symbol || "Receipt",
+        createdAt: r.minted_at,
+        updatedAt: r.unlocks_at,
+        data: {
+          id: r.id, stakeId: r.stake_id, symbol: r.symbol, faceValueCc: r.face_value_cc,
+          mintedAt: r.minted_at, unlocksAt: r.unlocks_at, status: r.status,
+        },
+      });
+    }
+  } catch { /* receipts table is optional on a partial db */ }
+  return rows;
+}
+
 export default function registerStakingActions(registerLensAction) {
+  registerLensExportProvider("staking", stakingExportRows);
   // ── list_pools ──────────────────────────────────────────────────────────
   registerLensAction("staking", "list_pools", (ctx, artifact, params = {}) => {
     try {
@@ -170,11 +238,11 @@ export default function registerStakingActions(registerLensAction) {
   registerLensAction("staking", "estimate_rewards", (ctx, artifact, params = {}) => {
     try {
       const bad = badNumericField(params, ["principalCc", "months"]);
-      if (bad) return { ok: false, error: `invalid_${bad}` };
+      if (bad) return { ok: false, error: `invalid_${bad}`, message: `${bad === "principalCc" ? "Principal" : "Months"} must be a finite number from 0 to 1,000,000,000.` };
       const poolId = String(params.poolId || "core");
       const pool = poolById(poolId);
       if (!pool) return { ok: false, error: "unknown_pool" };
-      const principal = Math.max(0, Math.floor(Number(params.principalCc) || 0));
+      const principal = Math.floor(Number(params.principalCc) || 0);
       const months = Math.max(1, Math.min(60, Math.floor(Number(params.months) || 12)));
       if (principal < pool.minStake) return { ok: false, error: `min_stake_${pool.minStake}_cc` };
       const bps = aprBpsFor(pool, months);
@@ -216,7 +284,7 @@ export default function registerStakingActions(registerLensAction) {
       const userId = ctx?.actor?.userId || ctx?.userId;
       if (!userId) return { ok: false, error: "no_actor" };
       const bad = badNumericField(params, ["principalCc", "months"]);
-      if (bad) return { ok: false, error: `invalid_${bad}` };
+      if (bad) return { ok: false, error: `invalid_${bad}`, message: `${bad === "principalCc" ? "Principal" : "Months"} must be a finite number from 0 to 1,000,000,000.` };
       const poolId = String(params.poolId || "core");
       const pool = poolById(poolId);
       if (!pool) return { ok: false, error: "unknown_pool" };

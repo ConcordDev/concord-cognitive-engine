@@ -138,16 +138,22 @@ export default function TimelineLensPage() {
   const visiblePosts = posts;
   const filtering = audience !== 'all' || debouncedSearch.length > 0;
 
-  // Timeline-view events derived from real feed posts.
+  // Timeline-view events derived from real feed posts. The axis label is
+  // the post itself (its opening text), never the author's raw id —
+  // surfaces show a resolved display name or a neutral label (S-TL-4);
+  // the author rides in the detail line under that same rule.
   const timelineEvents: TimelineEvent[] = useMemo(
     () =>
-      posts.map((p) => ({
-        id: p.id,
-        time: p.createdAt,
-        label: p.authorId,
-        detail: p.content.slice(0, 80) || '(media post)',
-        tone: PRIVACY_TONE[p.privacy] ?? 'info',
-      })),
+      posts.map((p) => {
+        const text = (p.content || '').trim();
+        return {
+          id: p.id,
+          time: p.createdAt,
+          label: text.slice(0, 40) || '(media post)',
+          detail: `${p.authorDisplayName || 'Member'}: ${text.slice(0, 80) || '(media post)'}`,
+          tone: PRIVACY_TONE[p.privacy] ?? 'info',
+        };
+      }),
     [posts],
   );
 

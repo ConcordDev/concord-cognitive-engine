@@ -105,11 +105,11 @@ export function ChannelsPanel() {
 
       {/* Connect */}
       <div className="p-3 border-b border-white/10 grid grid-cols-3 gap-2">
-        <select value={form.channel} onChange={e => setForm({ ...form, channel: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+        <select id="retail-channel-2" name="channel-2" value={form.channel} onChange={e => setForm({ ...form, channel: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
           <option value="">Pick a marketplace…</option>
           {available.filter(a => !connectedSet.has(a)).map(a => <option key={a} value={a}>{a.replace(/_/g, ' ')}</option>)}
         </select>
-        <input value={form.storeName} onChange={e => setForm({ ...form, storeName: e.target.value })} placeholder="Store name on channel" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <input id="retail-store-name-on-channel" name="store-name-on-channel" aria-label="Store name on channel" value={form.storeName} onChange={e => setForm({ ...form, storeName: e.target.value })} placeholder="Store name on channel" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <button onClick={connect} disabled={busy || !form.channel} className="px-3 py-1.5 text-xs rounded bg-orange-500 text-white font-bold hover:bg-orange-400 disabled:opacity-40 inline-flex items-center justify-center gap-1">
           <Plug className="w-3 h-3" /> Connect
         </button>
@@ -137,7 +137,7 @@ export function ChannelsPanel() {
                   {c.listedSkus.map(sku => (
                     <span key={sku} className="px-1.5 py-0.5 text-[10px] font-mono rounded bg-cyan-500/15 text-cyan-300">{sku}</span>
                   ))}
-                  <select value={skuPick[c.id] || ''} onChange={e => setSkuPick({ ...skuPick, [c.id]: e.target.value })} className="px-1 py-0.5 text-[10px] bg-lattice-deep border border-lattice-border rounded text-white">
+                  <select id="retail-field-2" name="field-2" value={skuPick[c.id] || ''} onChange={e => setSkuPick({ ...skuPick, [c.id]: e.target.value })} className="px-1 py-0.5 text-[10px] bg-lattice-deep border border-lattice-border rounded text-white">
                     <option value="">+ list SKU…</option>
                     {products.filter(p => !c.listedSkus.includes(p.sku)).map(p => <option key={p.sku} value={p.sku}>{p.sku} — {p.name}</option>)}
                   </select>

@@ -176,7 +176,7 @@ export function IndicatorCorrelations() {
           )}
 
           {result.unexpectedRelationships.length === 0 && result.significantCorrelations.length === 0 && (
-            <p className="text-xs italic text-zinc-500">No statistically significant correlations among these indicators in this country set.</p>
+            <p className="text-xs italic text-zinc-400">No statistically significant correlations among these indicators in this country set.</p>
           )}
 
           <div>

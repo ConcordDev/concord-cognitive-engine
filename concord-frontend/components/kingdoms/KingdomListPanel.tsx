@@ -68,7 +68,7 @@ export function KingdomListPanel({ onPick }: { onPick: (id: string) => void }) {
           >
             <div className="flex-1">
               <div className="flex items-baseline gap-3">
-                <h3 className="font-semibold text-amber-100">{k.name}</h3>
+                <h2 className="font-semibold text-amber-100">{k.name}</h2>
                 <span className="text-xs text-slate-400">{k.world_id}</span>
               </div>
               <div className="mt-1 flex items-center gap-3 text-xs text-slate-400">

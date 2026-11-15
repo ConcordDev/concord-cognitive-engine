@@ -14,6 +14,7 @@ import { guardAnonWrites } from "../lib/lens-authz.js";
 import { DTC_DATABASE } from "../lib/automotive-dtc.js";
 import { nominatimSearch, geocoderUnavailable } from "../lib/geo-feed-sources.js";
 import { needNums, notComputed } from "../lib/lens-inputs.js";
+import { badNumber, modelYearOrNull, readingOrNull, calendarDateOrNull } from "../lib/finite-input.js";
 
 const NHTSA_API_BASE = "https://vpic.nhtsa.dot.gov/api/vehicles";
 const NHTSA_RECALLS_BASE = "https://api.nhtsa.gov/recalls/recallsByVehicle";
@@ -118,7 +119,7 @@ export default function registerAutomotiveActions(registerLensAction) {
    * into make/model/year/trim/engine/transmission/safety features.
    * Free, no API key.
    */
-  registerLensAction("automotive", "vin-decode", async (_ctx, _artifact, params = {}) => {
+  registerLensAction("automotive", "vin-decode", async (ctx, _artifact, params = {}) => {
     const vin = String(params.vin || "").toUpperCase().trim();
     if (!vin) return { ok: false, error: "vin required (17 characters)" };
     if (vin.length !== 17) return { ok: false, error: `vin must be 17 characters (got ${vin.length})` };
@@ -135,9 +136,7 @@ export default function registerAutomotiveActions(registerLensAction) {
       if (!row) return { ok: false, error: "vpic returned no decoded data" };
       // Strip the dozens of empty fields vPIC always includes; keep
       // the ~25 most-useful ones to make the payload friendly.
-      return {
-        ok: true,
-        result: {
+      const decoded = {
           vin,
           make: row.Make || null,
           model: row.Model || null,
@@ -169,11 +168,27 @@ export default function registerAutomotiveActions(registerLensAction) {
           errorCode: row.ErrorCode || null,
           errorText: row.ErrorText || null,
           source: "nhtsa-vpic",
-        },
       };
+      const s = getAutoState();
+      const userId = aidAu(ctx);
+      if (s && userId && userId !== "anon") {
+        if (!s.vinReports) s.vinReports = new Map();
+        const reports = listAu(s.vinReports, userId);
+        reports.unshift({ id: uidAu("vin"), ...decoded, savedAt: isoAu() });
+        if (reports.length > 20) reports.length = 20;
+        saveAuto();
+      }
+      return { ok: true, result: decoded };
     } catch (e) {
       return { ok: false, error: `nhtsa vpic unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
+  });
+
+  registerLensAction("automotive", "vin-report-list", (ctx, _a, _params = {}) => {
+    const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!s.vinReports) s.vinReports = new Map();
+    const reports = listAu(s.vinReports, aidAu(ctx));
+    return { ok: true, result: { reports } };
   });
 
   /**
@@ -412,6 +427,11 @@ export default function registerAutomotiveActions(registerLensAction) {
     const userId = aidAu(ctx);
     const name = String(params.name || "").trim();
     if (!name) return { ok: false, error: "name required" };
+    const yearGiven = params.year !== undefined && params.year !== null && params.year !== "";
+    const year = yearGiven ? modelYearOrNull(params.year) : null;
+    if (yearGiven && year === null) return badNumber("year", "must be a whole model year from 1886 through next year");
+    const odometer = readingOrNull(params.odometer);
+    if (odometer === null) return badNumber("odometer", "must be a number from 0 to 10000000");
     const seq = ensureSeqAu(s, userId);
     const vehicle = {
       id: uidAu('veh'),
@@ -419,14 +439,10 @@ export default function registerAutomotiveActions(registerLensAction) {
       name,
       make: String(params.make || ''),
       model: String(params.model || ''),
-      // CLAMP-AND-COMPUTE: poisoned year (NaN/Infinity) sanitizes to null
-      // (a real model year is finite), never leaks into the output.
-      year: Number.isFinite(Number(params.year)) ? Number(params.year) : null,
+      year,
       vin: String(params.vin || ''),
       licensePlate: String(params.licensePlate || ''),
-      // CLAMP-AND-COMPUTE: poisoned odometer (NaN/Infinity) sanitizes to a
-      // finite value, never leaks into the stored/returned vehicle record.
-      odometer: Math.max(0, finNumAu(params.odometer, 0)),
+      odometer,
       odometerUnit: ['mi', 'km'].includes(params.odometerUnit) ? params.odometerUnit : 'mi',
       fuelUnit: ['gal', 'L'].includes(params.fuelUnit) ? params.fuelUnit : 'gal',
       color: String(params.color || ''),
@@ -444,8 +460,16 @@ export default function registerAutomotiveActions(registerLensAction) {
     const v = listAu(s.vehicles, aidAu(ctx)).find(x => x.id === String(params.id || ""));
     if (!v) return { ok: false, error: "vehicle not found" };
     for (const k of ['name', 'make', 'model', 'vin', 'licensePlate', 'color']) if (typeof params[k] === 'string') v[k] = params[k];
-    if (Number.isFinite(Number(params.year))) v.year = Number(params.year);
-    if (Number.isFinite(Number(params.odometer))) v.odometer = Math.max(0, Number(params.odometer));
+    if (params.year !== undefined && params.year !== null && params.year !== "") {
+      const year = modelYearOrNull(params.year);
+      if (year === null) return badNumber("year", "must be a whole model year from 1886 through next year");
+      v.year = year;
+    }
+    if (params.odometer !== undefined && params.odometer !== null && params.odometer !== "") {
+      const odometer = readingOrNull(params.odometer, { fallback: null });
+      if (odometer === null) return badNumber("odometer", "must be a number from 0 to 10000000");
+      v.odometer = odometer;
+    }
     saveAuto();
     return { ok: true, result: { vehicle: v } };
   });
@@ -461,6 +485,17 @@ export default function registerAutomotiveActions(registerLensAction) {
     // cascade-delete the vehicle's records
     for (const bucket of ['fuel', 'service', 'schedule', 'expenses', 'trips', 'documents']) {
       const arr = listAu(s[bucket], userId);
+      for (let j = arr.length - 1; j >= 0; j--) if (arr[j].vehicleId === id) arr.splice(j, 1);
+    }
+    // The parity-backlog buckets are keyed by vehicleId too — leaving them
+    // behind orphaned OBD readings, attachments, appointments and renewals
+    // under a vehicle that no longer exists (renewals-upcoming kept
+    // surfacing the deleted vehicle's renewals). They live in lazily
+    // initialised Maps (see getAutoExtra), so guard on the Map existing.
+    for (const bucket of ['obd', 'attachments', 'appointments', 'renewals']) {
+      const map = s[bucket];
+      if (!(map instanceof Map)) continue;
+      const arr = listAu(map, userId);
       for (let j = arr.length - 1; j >= 0; j--) if (arr[j].vehicleId === id) arr.splice(j, 1);
     }
     saveAuto();
@@ -542,6 +577,32 @@ export default function registerAutomotiveActions(registerLensAction) {
     return { ok: true, result: { fuel: list.slice().sort((a, b) => b.date.localeCompare(a.date) || b.odometer - a.odometer) } };
   });
 
+  registerLensAction("automotive", "fuel-update", (ctx, _a, params = {}) => {
+    const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const row = listAu(s.fuel, aidAu(ctx)).find(f => f.id === String(params.id || ""));
+    if (!row) return { ok: false, error: "fuel entry not found" };
+    if (params.volume != null) {
+      const volume = Number(params.volume);
+      if (!(volume > 0)) return { ok: false, error: "invalid_input", message: "Volume must be a number greater than 0." };
+      row.volume = volume;
+    }
+    if (params.totalCost != null) {
+      const totalCost = Number(params.totalCost);
+      if (!(totalCost >= 0)) return { ok: false, error: "invalid_input", message: "Cost must be a number that is 0 or greater." };
+      row.totalCost = totalCost;
+      if (row.volume > 0) row.pricePerUnit = Math.round((totalCost / row.volume) * 1000) / 1000;
+    }
+    if (params.odometer != null) {
+      const odometer = Number(params.odometer);
+      if (!Number.isFinite(odometer) || odometer < 0) return { ok: false, error: "invalid_input", message: "Odometer must be a number that is 0 or greater." };
+      row.odometer = odometer;
+    }
+    if (params.station != null) row.station = String(params.station);
+    if (params.date != null && String(params.date).trim()) row.date = String(params.date);
+    saveAuto();
+    return { ok: true, result: { entry: row } };
+  });
+
   registerLensAction("automotive", "fuel-delete", (ctx, _a, params = {}) => {
     const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidAu(ctx);
@@ -604,6 +665,32 @@ export default function registerAutomotiveActions(registerLensAction) {
     let list = listAu(s.service, aidAu(ctx));
     if (vehicleId) list = list.filter(x => x.vehicleId === vehicleId);
     return { ok: true, result: { service: list.slice().sort((a, b) => b.date.localeCompare(a.date)) } };
+  });
+
+  registerLensAction("automotive", "service-update", (ctx, _a, params = {}) => {
+    const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const row = listAu(s.service, aidAu(ctx)).find(x => x.id === String(params.id || ""));
+    if (!row) return { ok: false, error: "service entry not found" };
+    if (params.serviceType != null) {
+      const serviceType = String(params.serviceType).trim();
+      if (!serviceType) return { ok: false, error: "invalid_input", message: "Service type is required." };
+      row.serviceType = serviceType;
+    }
+    if (params.cost != null) {
+      const cost = Number(params.cost);
+      if (!(cost >= 0)) return { ok: false, error: "invalid_input", message: "Cost must be a number that is 0 or greater." };
+      row.cost = cost;
+    }
+    if (params.odometer != null && params.odometer !== "") {
+      const odometer = Number(params.odometer);
+      if (!Number.isFinite(odometer) || odometer < 0) return { ok: false, error: "invalid_input", message: "Odometer must be a number that is 0 or greater." };
+      row.odometer = odometer;
+    }
+    if (params.shop != null) row.shop = String(params.shop);
+    if (params.notes != null) row.notes = String(params.notes);
+    if (params.date != null && String(params.date).trim()) row.date = String(params.date);
+    saveAuto();
+    return { ok: true, result: { entry: row } };
   });
 
   registerLensAction("automotive", "service-delete", (ctx, _a, params = {}) => {
@@ -777,6 +864,22 @@ export default function registerAutomotiveActions(registerLensAction) {
     };
   });
 
+  registerLensAction("automotive", "expenses-update", (ctx, _a, params = {}) => {
+    const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const row = listAu(s.expenses, aidAu(ctx)).find(x => x.id === String(params.id || ""));
+    if (!row) return { ok: false, error: "expense not found" };
+    if (params.amount != null) {
+      const amount = Number(params.amount);
+      if (!(amount >= 0)) return { ok: false, error: "invalid_input", message: "Amount must be a number that is 0 or greater." };
+      row.amount = amount;
+    }
+    if (params.note != null) row.note = String(params.note);
+    if (params.category != null && String(params.category).trim()) row.category = String(params.category);
+    if (params.date != null && String(params.date).trim()) row.date = String(params.date);
+    saveAuto();
+    return { ok: true, result: { entry: row } };
+  });
+
   registerLensAction("automotive", "expenses-delete", (ctx, _a, params = {}) => {
     const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const list = listAu(s.expenses, aidAu(ctx));
@@ -834,6 +937,24 @@ export default function registerAutomotiveActions(registerLensAction) {
     };
   });
 
+  registerLensAction("automotive", "trips-update", (ctx, _a, params = {}) => {
+    const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const row = listAu(s.trips, aidAu(ctx)).find(x => x.id === String(params.id || ""));
+    if (!row) return { ok: false, error: "trip not found" };
+    if (params.distance != null) {
+      const distance = Number(params.distance);
+      if (!(distance > 0)) return { ok: false, error: "invalid_input", message: "Distance must be a number greater than 0." };
+      row.distance = distance;
+    }
+    if (params.purpose != null && ['business', 'personal', 'commute', 'other'].includes(params.purpose)) row.purpose = params.purpose;
+    if (params.from != null) row.from = String(params.from);
+    if (params.to != null) row.to = String(params.to);
+    if (params.note != null) row.note = String(params.note);
+    if (params.date != null && String(params.date).trim()) row.date = String(params.date);
+    saveAuto();
+    return { ok: true, result: { trip: row } };
+  });
+
   registerLensAction("automotive", "trips-delete", (ctx, _a, params = {}) => {
     const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const list = listAu(s.trips, aidAu(ctx));
@@ -865,6 +986,11 @@ export default function registerAutomotiveActions(registerLensAction) {
     const vehicleId = String(params.vehicleId || "");
     if (!listAu(s.vehicles, userId).find(v => v.id === vehicleId)) return { ok: false, error: "vehicle not found" };
     const kind = ['insurance', 'registration', 'inspection', 'warranty', 'title', 'other'].includes(params.kind) ? params.kind : 'other';
+    let expiryDate = null;
+    if (params.expiryDate !== undefined && params.expiryDate !== null && String(params.expiryDate).trim() !== "") {
+      expiryDate = calendarDateOrNull(params.expiryDate);
+      if (!expiryDate) return { ok: false, error: "expiryDate must be a real date as YYYY-MM-DD" };
+    }
     const seq = ensureSeqAu(s, userId);
     const doc = {
       id: uidAu('doc'),
@@ -873,7 +999,7 @@ export default function registerAutomotiveActions(registerLensAction) {
       title: String(params.title || kind),
       provider: String(params.provider || ''),
       policyNumber: String(params.policyNumber || ''),
-      expiryDate: params.expiryDate ? String(params.expiryDate) : null,
+      expiryDate,
       fileUrl: String(params.fileUrl || ''),
       note: String(params.note || ''),
       createdAt: isoAu(),
@@ -882,6 +1008,26 @@ export default function registerAutomotiveActions(registerLensAction) {
     listAu(s.documents, userId).push(doc);
     saveAuto();
     return { ok: true, result: { document: doc } };
+  });
+
+  registerLensAction("automotive", "documents-update", (ctx, _a, params = {}) => {
+    const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const row = listAu(s.documents, aidAu(ctx)).find(x => x.id === String(params.id || ""));
+    if (!row) return { ok: false, error: "document not found" };
+    if (params.title != null) {
+      const title = String(params.title).trim();
+      if (!title) return { ok: false, error: "invalid_input", message: "Title is required." };
+      row.title = title;
+    }
+    if (params.provider != null) row.provider = String(params.provider);
+    if (params.note != null) row.note = String(params.note);
+    if (params.expiryDate != null && String(params.expiryDate).trim() !== "") {
+      const expiryDate = calendarDateOrNull(params.expiryDate);
+      if (!expiryDate) return { ok: false, error: "invalid_input", message: "Expiry must be a real date as YYYY-MM-DD." };
+      row.expiryDate = expiryDate;
+    }
+    saveAuto();
+    return { ok: true, result: { document: row } };
   });
 
   registerLensAction("automotive", "documents-delete", (ctx, _a, params = {}) => {
@@ -1094,7 +1240,11 @@ export default function registerAutomotiveActions(registerLensAction) {
     const service = listAu(s.service, userId).filter(x => x.vehicleId === vehicleId);
     // miles tracked across logged odometer points
     const odoPts = [...fuel.map(f => f.odometer), ...service.map(x => x.odometer)].filter(Number.isFinite);
+    if (Number.isFinite(Number(vehicle.odometer))) odoPts.push(Number(vehicle.odometer));
     const milesTracked = odoPts.length >= 2 ? Math.max(...odoPts) - Math.min(...odoPts) : 0;
+    const milesNote = milesTracked === 0 && Number(vehicle.odometer) > 0
+      ? `Odometer reads ${Number(vehicle.odometer)}. Miles driven need a second reading.`
+      : null;
     // expense breakdown by category
     const byCategory = {};
     for (const e of expenses) byCategory[e.category] = (byCategory[e.category] || 0) + e.amount;
@@ -1125,7 +1275,7 @@ export default function registerAutomotiveActions(registerLensAction) {
         operatingCostPerMile: milesTracked > 0 ? round3(operatingTotal / milesTracked) : null,
         costPerMonth: round2(totalCostOfOwnership / ownedMonths),
         byCategory: Object.fromEntries(Object.entries(byCategory).map(([k, v]) => [k, round2(v)])),
-        note: purchasePrice === 0 ? "Supply purchasePrice for a full TCO including depreciation." : null,
+        note: [purchasePrice === 0 ? "Supply purchasePrice for a full TCO including depreciation." : null, milesNote].filter(Boolean).join(" ") || null,
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -1488,15 +1638,17 @@ export default function registerAutomotiveActions(registerLensAction) {
     const vehicleId = String(params.vehicleId || "");
     if (!listAu(s.vehicles, userId).find(v => v.id === vehicleId)) return { ok: false, error: "vehicle not found" };
     const kind = RENEWAL_KINDS.includes(params.kind) ? params.kind : 'other';
-    const renewalDate = String(params.renewalDate || params.expiryDate || "").trim();
-    if (!renewalDate) return { ok: false, error: "renewalDate required (YYYY-MM-DD)" };
+    const title = String(params.title || "").trim();
+    if (!title) return { ok: false, error: "title required" };
+    const renewalDate = calendarDateOrNull(params.renewalDate || params.expiryDate);
+    if (!renewalDate) return { ok: false, error: "renewalDate must be a real date as YYYY-MM-DD" };
     const seq = ensureSeqX(s, userId);
     const renewal = {
       id: uidAu('ren'),
       number: `RN-${String(seq.ren).padStart(4, '0')}`,
       vehicleId,
       kind,
-      title: String(params.title || kind),
+      title,
       provider: String(params.provider || ''),
       policyNumber: String(params.policyNumber || ''),
       renewalDate,

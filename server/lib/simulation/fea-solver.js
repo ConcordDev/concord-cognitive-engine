@@ -295,8 +295,18 @@ export function computeStresses(memberForces, members) {
     const m = members[i];
     const A = m.area || 1;
     const I = m.momentI || 1;
-    // Distance from neutral axis to extreme fiber (assume square-ish section)
-    const c = m.depthIn ? m.depthIn / 2 : Math.sqrt(A) / 2;
+    // Distance from neutral axis to extreme fiber. An explicit member depth
+    // governs when given. Otherwise c must stay consistent with the stated
+    // section inertia: for a rectangle I = A·d²/12 exactly, so the implied
+    // depth is d = sqrt(12I/A) and c = sqrt(3I/A). The old sqrt(A)/2 assumed
+    // a solid square — for a section whose I exceeds a same-area square's
+    // (the audit case: A = 8.25 in² with I = 82.8 in⁴, a square of that area
+    // has I = 5.67 in⁴) it understated c ~3.8× and under-reported bending
+    // stress and utilization with it (FIX-engineering-010). For a true
+    // square (I = A²/12) the identity reduces to sqrt(A)/2 exactly, so
+    // square sections are unchanged.
+    const c = m.depthIn ? m.depthIn / 2 : Math.sqrt(3 * I / A);
+    const cBasis = m.depthIn ? 'member depth' : 'rectangular identity from A and I';
 
     const axialStress   = mf.axialForce / A;                    // P/A
     const bendingStress = (mf.maxMoment * c) / I;               // Mc/I
@@ -307,6 +317,8 @@ export function computeStresses(memberForces, members) {
       axialStress,
       bendingStress,
       combinedStress,
+      cIn: c,
+      cBasis,
     };
   });
 }

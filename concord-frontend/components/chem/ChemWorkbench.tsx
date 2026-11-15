@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { X, Loader2, Beaker, Atom, Calculator, Activity, FlaskConical } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -104,23 +104,31 @@ function MWTab() {
   const [formula, setFormula] = useState('C6H12O6');
   const [result, setResult] = useState<MWResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // FIX-chem-004: the mount calculation (default formula) and a user's
+  // Calc click race — under a slow backend the earlier request can
+  // resolve AFTER the newer one and paint the previous compound's
+  // result over the current one ("first click shows the old result,
+  // second click updates"). Only the latest issued request may paint.
+  const calcSeq = useRef(0);
   const calc = async () => {
+    const seq = ++calcSeq.current;
     setError(null);
     try {
       const r = await api.post('/api/lens/run', {
         domain: 'chem', action: 'molecular-weight', input: { formula },
       });
+      if (seq !== calcSeq.current) return; // a newer Calc superseded this response
       const data = r.data as { ok?: boolean; error?: string; result?: MWResult };
       if (data.ok) setResult(data.result || null);
       else { setError(data.error || 'Failed'); setResult(null); }
-    } catch (e) { setError((e as Error).message); }
+    } catch (e) { if (seq === calcSeq.current) setError((e as Error).message); }
   };
   useEffect(() => { calc(); }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="p-3 space-y-3">
       <div className="flex gap-2">
-        <input type="text" value={formula} onChange={(e) => setFormula(e.target.value)}
+        <input type="text" aria-label="Formula" value={formula} onChange={(e) => setFormula(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') calc(); }}
           placeholder="C6H12O6 / NaCl / Ca(OH)2"
           className="flex-1 px-2 py-1.5 text-sm bg-black/40 border border-white/10 rounded text-gray-100 font-mono" />
@@ -275,11 +283,11 @@ function PhTab() {
   return (
     <div className="p-3 space-y-3">
       <div className="flex gap-2">
-        <input type="number" value={concentration}
+        <input type="number" aria-label="Concentration in mol/L" value={concentration}
           onChange={(e) => setConcentration(e.target.value)}
           step="0.0001"
           className="flex-1 px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono" />
-        <select value={kind} onChange={(e) => setKind(e.target.value as typeof kind)}
+        <select aria-label="Acid or base" value={kind} onChange={(e) => setKind(e.target.value as typeof kind)}
           className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100">
           <option value="acid">Acid (H+)</option>
           <option value="base">Base (OH-)</option>

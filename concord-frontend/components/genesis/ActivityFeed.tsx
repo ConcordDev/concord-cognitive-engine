@@ -183,7 +183,7 @@ export function ActivityFeed({
                 }`}
               >
                 {(EVENT_ICONS[t] || '·')} {t.replace(/_/g, ' ')}
-                {typeBreakdown[t] != null && <span className="ml-1 text-zinc-600">{typeBreakdown[t]}</span>}
+                {typeBreakdown[t] != null && <span className="ml-1 text-zinc-400">{typeBreakdown[t]}</span>}
               </button>
             );
           })}

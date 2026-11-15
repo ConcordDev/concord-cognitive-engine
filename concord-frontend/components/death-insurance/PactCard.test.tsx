@@ -113,11 +113,14 @@ describe('PactCard', () => {
     expect(screen.queryAllByRole('button', { name: /Pay .* premium/i }).length).toBe(1); // only the first render's button
   });
 
-  it('revokes an active pact via pact-revoke', async () => {
+  it('revokes an active pact via pact-revoke — behind a two-step confirm (FIX-death-insurance-007)', async () => {
     lensRunMock.mockResolvedValue({ data: { ok: true } });
     render(<PactCard pact={BASE_PACT} onChanged={onChanged} />);
 
-    fireEvent.click(screen.getByRole('button', { name: /Revoke/i }));
+    // The arm click alone must fire nothing; the confirm fires the macro.
+    fireEvent.click(screen.getByRole('button', { name: 'Revoke pact' }));
+    expect(lensRunMock).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm revoke' }));
     await waitFor(() =>
       expect(lensRunMock).toHaveBeenCalledWith('insurance', 'pact-revoke', { pactId: 'pct_abc123' }),
     );
@@ -128,14 +131,21 @@ describe('PactCard', () => {
     lensRunMock.mockResolvedValue({ data: { ok: false, error: 'not the insured party' } });
     render(<PactCard pact={BASE_PACT} onChanged={onChanged} />);
 
-    fireEvent.click(screen.getByRole('button', { name: /Revoke/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Revoke pact' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm revoke' }));
     await waitFor(() => expect(screen.getByText('not the insured party')).toBeInTheDocument());
     expect(onChanged).not.toHaveBeenCalled();
   });
 
-  it('revoked/fired pacts show no action row (only active/expired do)', () => {
-    render(<PactCard pact={{ ...BASE_PACT, status: 'revoked' }} onChanged={onChanged} />);
+  it('revoked pacts offer Remove only (no Renew/Revoke); fired pacts show no actions (FIX-death-insurance-007)', () => {
+    const { unmount } = render(<PactCard pact={{ ...BASE_PACT, status: 'revoked' }} onChanged={onChanged} />);
     expect(screen.queryByRole('button', { name: /^Renew$/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Revoke/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Revoke pact' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Remove pact' })).toBeInTheDocument();
+    unmount();
+    render(<PactCard pact={{ ...BASE_PACT, status: 'fired' }} onChanged={onChanged} />);
+    expect(screen.queryByRole('button', { name: /^Renew$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Revoke pact' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Remove pact' })).not.toBeInTheDocument();
   });
 });

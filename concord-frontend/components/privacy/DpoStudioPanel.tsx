@@ -17,7 +17,7 @@
  * is honest to render results as soon as the backend returns.
  */
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ds } from '@/lib/design-system';
@@ -106,7 +106,7 @@ function RiskBadge({ level }: { level?: string }) {
 }
 
 const inputCls =
-  'bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-neon-blue/50';
+  'bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white placeholder:text-gray-400 focus:outline-none focus:border-neon-blue/50';
 const runBtnCls =
   'px-3 py-1.5 text-xs bg-neon-blue/15 border border-neon-blue/30 rounded-lg hover:bg-neon-blue/25 disabled:opacity-50 flex items-center gap-1.5 text-neon-blue transition-colors';
 
@@ -115,23 +115,39 @@ const runBtnCls =
 interface DataItemRow { category: string; sensitive: boolean }
 
 function InventoryTool() {
-  const [rows, setRows] = useState<DataItemRow[]>([
-    { category: 'email', sensitive: false },
-    { category: 'health_record', sensitive: true },
-  ]);
+  // FIX-privacy-001/010: the working set is the caller's own, persisted
+  // server-side (privacy.dpoSet) and loaded on mount — it used to live
+  // only in component state seeded with demo rows, so a create showed
+  // instantly and then vanished on tab switch and reload, silently.
+  const [rows, setRows] = useState<DataItemRow[]>([]);
   const [cat, setCat] = useState('');
   const [sensitive, setSensitive] = useState(false);
   const [res, setRes] = useState<InventoryResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    let live = true;
+    void (async () => {
+      const r = await lensRun<{ inventory: DataItemRow[] }>('privacy', 'dpoGet', {});
+      if (live && r.data.ok && r.data.result) setRows(Array.isArray(r.data.result.inventory) ? r.data.result.inventory : []);
+    })();
+    return () => { live = false; };
+  }, []);
+
+  const persist = useCallback(async (next: DataItemRow[]) => {
+    setRows(next);
+    const r = await lensRun('privacy', 'dpoSet', { which: 'inventory', items: next });
+    if (!r.data.ok) setError(r.data.error || 'could not save — this change is not stored');
+  }, []);
+
   const add = useCallback(() => {
     const c = cat.trim();
     if (!c) return;
-    setRows((r) => [...r, { category: c, sensitive }]);
+    void persist([...rows, { category: c, sensitive }]);
     setCat('');
     setSensitive(false);
-  }, [cat, sensitive]);
+  }, [cat, sensitive, rows, persist]);
 
   const run = useCallback(async () => {
     setBusy(true);
@@ -155,6 +171,7 @@ function InventoryTool() {
           onChange={(e) => setCat(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') add(); }}
           placeholder="Data category (e.g. ip_address)…"
+          maxLength={64}
           className={cn(inputCls, 'flex-1 min-w-[180px]')}
         />
         <label className="flex items-center gap-1.5 text-xs text-gray-300 cursor-pointer">
@@ -164,7 +181,7 @@ function InventoryTool() {
         <button onClick={add} className={runBtnCls}><Plus className="w-3 h-3" /> Add</button>
       </div>
       <div className="flex flex-wrap gap-1.5">
-        {rows.length === 0 && <span className="text-xs text-gray-500">No data items — add categories above.</span>}
+        {rows.length === 0 && <span className="text-xs text-gray-400">No data items — add categories above.</span>}
         {rows.map((r, i) => (
           <span
             key={`${r.category}-${i}`}
@@ -174,7 +191,7 @@ function InventoryTool() {
             )}
           >
             {r.category}
-            <button onClick={() => setRows((rr) => rr.filter((_, j) => j !== i))} className="opacity-60 hover:opacity-100" aria-label={`Remove data item "${r.category}"`}>
+            <button onClick={() => void persist(rows.filter((_, j) => j !== i))} className="opacity-60 hover:opacity-100" aria-label={`Remove data item "${r.category}"`}>
               <X className="w-2.5 h-2.5" aria-hidden="true" />
             </button>
           </span>
@@ -217,10 +234,10 @@ function InventoryTool() {
 interface ConsentRow { subject: string; status: string; expiry: string }
 
 function ConsentTool() {
-  const [rows, setRows] = useState<ConsentRow[]>([
-    { subject: 'user_1042', status: 'active', expiry: '' },
-    { subject: 'user_2071', status: 'active', expiry: '2024-01-01' },
-  ]);
+  // FIX-privacy-001/010: persisted per-user working set (privacy.dpoSet),
+  // loaded on mount — no seeded demo subjects, and a create survives tab
+  // switches and reloads (or the save error shows, in words).
+  const [rows, setRows] = useState<ConsentRow[]>([]);
   const [subject, setSubject] = useState('');
   const [status, setStatus] = useState('active');
   const [expiry, setExpiry] = useState('');
@@ -228,12 +245,27 @@ function ConsentTool() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    let live = true;
+    void (async () => {
+      const r = await lensRun<{ consents: ConsentRow[] }>('privacy', 'dpoGet', {});
+      if (live && r.data.ok && r.data.result) setRows(Array.isArray(r.data.result.consents) ? r.data.result.consents : []);
+    })();
+    return () => { live = false; };
+  }, []);
+
+  const persist = useCallback(async (next: ConsentRow[]) => {
+    setRows(next);
+    const r = await lensRun('privacy', 'dpoSet', { which: 'consents', items: next });
+    if (!r.data.ok) setError(r.data.error || 'could not save — this change is not stored');
+  }, []);
+
   const add = useCallback(() => {
     if (!subject.trim()) return;
-    setRows((r) => [...r, { subject: subject.trim(), status, expiry }]);
+    void persist([...rows, { subject: subject.trim(), status, expiry }]);
     setSubject('');
     setExpiry('');
-  }, [subject, status, expiry]);
+  }, [subject, status, expiry, rows, persist]);
 
   const run = useCallback(async () => {
     setBusy(true);
@@ -252,7 +284,7 @@ function ConsentTool() {
         Audit your consent register — active vs. expired vs. withdrawn — and get a compliance rate with re-consent flags.
       </p>
       <div className="flex flex-wrap items-center gap-2">
-        <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Data subject id…" className={cn(inputCls, 'flex-1 min-w-[140px]')} />
+        <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Data subject id…" maxLength={64} className={cn(inputCls, 'flex-1 min-w-[140px]')} />
         <select value={status} onChange={(e) => setStatus(e.target.value)} className={inputCls}>
           <option value="active">active</option>
           <option value="withdrawn">withdrawn</option>
@@ -262,11 +294,11 @@ function ConsentTool() {
         <button onClick={add} className={runBtnCls}><Plus className="w-3 h-3" /> Add</button>
       </div>
       <div className="space-y-1">
-        {rows.length === 0 && <span className="text-xs text-gray-500">No consent records.</span>}
+        {rows.length === 0 && <span className="text-xs text-gray-400">No consent records.</span>}
         {rows.map((r, i) => (
           <div key={`${r.subject}-${i}`} className="flex items-center justify-between rounded-lg border border-white/5 bg-black/30 px-2.5 py-1.5">
-            <span className="text-[11px] text-gray-200">{r.subject} · <span className="text-gray-400">{r.status}</span>{r.expiry ? <span className="text-gray-500"> · exp {r.expiry}</span> : null}</span>
-            <button onClick={() => setRows((rr) => rr.filter((_, j) => j !== i))} className="text-gray-500 hover:text-rose-400" aria-label={`Remove consent record for ${r.subject}`}><Trash2 className="w-3 h-3" aria-hidden="true" /></button>
+            <span className="text-[11px] text-gray-200">{r.subject} · <span className="text-gray-400">{r.status}</span>{r.expiry ? <span className="text-gray-400"> · exp {r.expiry}</span> : null}</span>
+            <button onClick={() => void persist(rows.filter((_, j) => j !== i))} className="text-gray-400 hover:text-rose-400" aria-label={`Remove consent record for ${r.subject}`}><Trash2 className="w-3 h-3" aria-hidden="true" /></button>
           </div>
         ))}
       </div>
@@ -303,9 +335,9 @@ function ConsentTool() {
 // ── DPIA tool ──────────────────────────────────────────────────────────────
 
 function DpiaTool() {
-  const [dataTypes, setDataTypes] = useState<string[]>(['health', 'location']);
+  const [dataTypes, setDataTypes] = useState<string[]>([]); // FIX-privacy-010: no sample inputs
   const [dt, setDt] = useState('');
-  const [purposes, setPurposes] = useState<string[]>(['service_delivery']);
+  const [purposes, setPurposes] = useState<string[]>([]); // FIX-privacy-010: no sample inputs
   const [pp, setPp] = useState('');
   const [involvesMinors, setInvolvesMinors] = useState(false);
   const [crossBorder, setCrossBorder] = useState(false);
@@ -336,7 +368,7 @@ function DpiaTool() {
     placeholder: string,
   ) => (
     <div className="space-y-1.5">
-      <p className="text-[11px] uppercase tracking-wider text-gray-500">{label}</p>
+      <p className="text-[11px] uppercase tracking-wider text-gray-400">{label}</p>
       <div className="flex flex-wrap items-center gap-2">
         <input
           value={draft}
@@ -417,9 +449,11 @@ const TIMELINE_LABELS: Record<string, string> = {
 };
 
 function BreachTool() {
-  const [severity, setSeverity] = useState('high');
-  const [affected, setAffected] = useState('1500');
-  const [types, setTypes] = useState<string[]>(['email', 'password_hash']);
+  // FIX-privacy-010: no sample breach inputs — the form starts on the
+  // caller's own facts, with the macro's own default severity.
+  const [severity, setSeverity] = useState('medium');
+  const [affected, setAffected] = useState('');
+  const [types, setTypes] = useState<string[]>([]);
   const [dt, setDt] = useState('');
   const [res, setRes] = useState<BreachResult | null>(null);
   const [busy, setBusy] = useState(false);
@@ -531,7 +565,7 @@ export function DpoStudioPanel() {
             >
               <t.icon className="w-3.5 h-3.5" />
               <span>{t.label}</span>
-              <span className="hidden sm:inline text-[10px] text-gray-500">· {t.hint}</span>
+              <span className="hidden sm:inline text-[10px] text-gray-400">· {t.hint}</span>
             </button>
           );
         })}

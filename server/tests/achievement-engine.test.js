@@ -13,6 +13,7 @@ import {
   initAchievementCatalog,
   evaluateAchievement,
   evaluateStatThreshold,
+  syncDtuCreationAchievements,
   unlockAchievement,
   listEarned,
   listCatalog,
@@ -178,6 +179,18 @@ describe("Phase U2 — achievement engine", () => {
     evaluateStatThreshold(db, "u1", "duels_won", 25);
     // duel_champion has rewardTitle: "the Duelist"
     assert.ok(db._t.titles.some(t => t.userId === "u1" && t.title === "the Duelist"));
+  });
+
+  it("a DTU count of 1 unlocks First DTU and 25 unlocks Creator", () => {
+    initAchievementCatalog(db);
+    const one = syncDtuCreationAchievements(db, "u-sync", 1);
+    assert.equal(one.ok, true);
+    assert.ok(one.unlocked.some((u) => u.id === "first_dtu"));
+    assert.ok(!one.unlocked.some((u) => u.id === "creator"));
+    const again = syncDtuCreationAchievements(db, "u-sync", 1);
+    assert.ok(!again.unlocked.some((u) => u.id === "first_dtu"), "First DTU is not awarded twice");
+    const many = syncDtuCreationAchievements(db, "u-sync", 25);
+    assert.ok(many.unlocked.some((u) => u.id === "creator"));
   });
 
   it("worldIdPrefix condition matches by string prefix", () => {

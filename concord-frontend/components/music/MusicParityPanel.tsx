@@ -661,7 +661,7 @@ function SocialTab({ onChange }: { onChange: () => void }) {
             <p className="text-[11px] text-zinc-400">{jam.participants.length} participant{jam.participants.length !== 1 ? 's' : ''}</p>
             <p className="text-[11px] text-emerald-300">
               ● Synced {jam.currentTrackId ? `· ${jam.playbackState ?? 'paused'} @ ${Math.round(jam.positionSec ?? 0)}s` : '· waiting for the host to play'}
-              <span className="text-zinc-500"> · updates every 6s</span>
+              <span className="text-zinc-400"> · updates every 6s</span>
             </p>
             <button type="button" onClick={leaveJam}
               className="px-2.5 py-1 text-[11px] rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200">Leave jam</button>

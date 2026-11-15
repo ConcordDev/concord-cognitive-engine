@@ -314,3 +314,21 @@ describe("carpentry — portal link safety", () => {
     assert.equal(call("portalPublicView", {}, { token: old.token }).ok, true);
   });
 });
+
+describe("carpentry photo log — FIX-carpentry-002 investigation pin", () => {
+  it("a photo log entry survives the platform snapshot round-trip (serialize -> hydrate)", async () => {
+    const { serializeLensState, hydrateLensState } = await import("../lib/lens-state-persistence.js");
+    const ctx = { actor: { userId: "photo_user" }, userId: "photo_user" };
+    const added = call("photoLogAdd", ctx, { jobId: "job1", jobName: "Deck", imageUrl: "https://x/y.jpg", phase: "before" });
+    assert.equal(added.ok, true);
+    assert.equal(call("photoLogList", ctx, {}).result.count, 1);
+    const snap = JSON.parse(JSON.stringify(serializeLensState(globalThis._concordSTATE)));
+    const keep = globalThis._concordSTATE;
+    globalThis._concordSTATE = {};
+    hydrateLensState(globalThis._concordSTATE, snap);
+    const after = call("photoLogList", ctx, {});
+    assert.equal(after.result.count, 1);
+    assert.equal(after.result.entries[0].id, added.result.entry.id);
+    globalThis._concordSTATE = keep;
+  });
+});

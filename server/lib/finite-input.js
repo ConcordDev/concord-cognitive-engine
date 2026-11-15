@@ -113,3 +113,48 @@ export function moneyOrNull(v, fallback = 0) {
 export function badNumber(field, message = "must be a finite number in range") {
   return { ok: false, error: "invalid_input", field, reason: "out_of_range", message: `${field} ${message}` };
 }
+
+const ISO_DAY = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/** YYYY-MM-DD that is a real calendar day, or null. Blank is null. */
+export function calendarDateOrNull(v) {
+  if (v === null || v === undefined || v === "") return null;
+  const s = String(v).trim();
+  const m = ISO_DAY.exec(s);
+  if (!m) return null;
+  const year = Number(m[1]);
+  const month = Number(m[2]);
+  const day = Number(m[3]);
+  const dt = new Date(Date.UTC(year, month - 1, day));
+  if (dt.getUTCFullYear() !== year || dt.getUTCMonth() !== month - 1 || dt.getUTCDate() !== day) return null;
+  return s;
+}
+
+/** Model year 1886 through next calendar year, or null when missing or out of range. */
+export function modelYearOrNull(v) {
+  if (v === null || v === undefined || v === "") return null;
+  const n = finiteOrNull(v);
+  const max = new Date().getUTCFullYear() + 1;
+  if (n === null || n !== Math.trunc(n) || n < 1886 || n > max) return null;
+  return n;
+}
+
+/**
+ * A reading such as miles. Missing stays the fallback. A present value that
+ * is not a finite number in [min, max] is null so the caller can refuse it
+ * instead of storing 0.
+ */
+export function readingOrNull(v, { min = 0, max = 10_000_000, fallback = 0 } = {}) {
+  if (v === null || v === undefined || v === "") return fallback;
+  const n = finiteOrNull(v);
+  if (n === null || n < min || n > max) return null;
+  return n;
+}
+
+/** A length. Missing is null. Present must be finite and inside [min, max]. */
+export function lengthOrNull(v, { min = 0, max = 1000 } = {}) {
+  if (v === null || v === undefined || v === "") return null;
+  const n = finiteOrNull(v);
+  if (n === null || n < min || n > max) return null;
+  return n;
+}

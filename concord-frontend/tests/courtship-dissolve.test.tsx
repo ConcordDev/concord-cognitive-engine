@@ -191,7 +191,7 @@ describe('courtship lens — End Marriage (courtship.dissolve)', () => {
       fireEvent.click(view!.getByLabelText('End marriage to npc_kel_999'));
     });
     await act(async () => {
-      fireEvent.click(view!.getByLabelText('Confirm end marriage to npc:npc_kel_999'));
+      fireEvent.click(view!.getByLabelText('Confirm end marriage to npc_kel_999'));
     });
 
     await waitFor(() => {
@@ -210,7 +210,7 @@ describe('courtship lens — End Marriage (courtship.dissolve)', () => {
     // fabricated).
     await act(async () => { goToPast(view!); });
     await waitFor(() => expect(view!.getByTestId('past-marriage-list')).toBeInTheDocument());
-    expect(view!.getByText(/npc:npc_kel_999/)).toBeInTheDocument();
+    expect(view!.getByText('npc_kel_999')).toBeInTheDocument(); // FIX-courtship-003: name form, no raw kind:id
   });
 
   it('a rejected dissolve (not a party) surfaces an error and keeps the marriage active', async () => {
@@ -253,7 +253,7 @@ describe('courtship lens — End Marriage (courtship.dissolve)', () => {
     await waitFor(() => expect(view!.getByTestId('marriage-list')).toBeInTheDocument());
 
     await act(async () => { fireEvent.click(view!.getByLabelText('End marriage to npc_kel_999')); });
-    await act(async () => { fireEvent.click(view!.getByLabelText('Confirm end marriage to npc:npc_kel_999')); });
+    await act(async () => { fireEvent.click(view!.getByLabelText('Confirm end marriage to npc_kel_999')); });
 
     await waitFor(() =>
       expect(addToastMock).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' })),

@@ -24,6 +24,7 @@
  * plus mint/DM/publish/agent.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import {
   Heart, Users, FileText, Target, Search, Sparkles, Send, Globe, Wand2,
@@ -224,8 +225,8 @@ export function NonprofitActionPanel() {
     try {
       const task = `NPO: ${orgName || 'unnamed'}. ${retentionResult ? `Retention ${retentionResult.retentionRate}%.` : ''} ${campaignResult ? `Campaign ${campaignResult.percentComplete}% raised.` : ''} Suggest the single highest-ROI donor-engagement move for next month. Plain text.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Move ready.'); } else err('Agent returned empty.');
+      const reply = readAgentReply(r.data);
+      if (reply.ok) { setAgentReply(reply.text); ok('Move ready.'); } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 
@@ -292,7 +293,7 @@ export function NonprofitActionPanel() {
                 <select value={d.status} onChange={(e) => setDeliverables((arr) => arr.map((x, j) => j === i ? { ...x, status: e.target.value } : x))} className={inp}>
                   {['completed', 'in_progress', 'pending'].map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
-                <button onClick={() => setDeliverables((arr) => arr.filter((_, j) => j !== i))} className="text-zinc-500 hover:text-red-400" aria-label="Remove deliverable"><Trash2 className="w-3 h-3" /></button>
+                <button onClick={() => setDeliverables((arr) => arr.filter((_, j) => j !== i))} className="text-zinc-400 hover:text-red-400" aria-label="Remove deliverable"><Trash2 className="w-3 h-3" /></button>
               </div>
             ))}
           </div>
@@ -303,7 +304,7 @@ export function NonprofitActionPanel() {
                 <input value={m.name} onChange={(e) => setMetrics((arr) => arr.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} className={cn(inp, 'flex-1')} placeholder="metric" />
                 <input value={m.target} onChange={(e) => setMetrics((arr) => arr.map((x, j) => j === i ? { ...x, target: e.target.value } : x))} className={cn(inp, 'w-16')} placeholder="target" />
                 <input value={m.actual} onChange={(e) => setMetrics((arr) => arr.map((x, j) => j === i ? { ...x, actual: e.target.value } : x))} className={cn(inp, 'w-16')} placeholder="actual" />
-                <button onClick={() => setMetrics((arr) => arr.filter((_, j) => j !== i))} className="text-zinc-500 hover:text-red-400" aria-label="Remove metric"><Trash2 className="w-3 h-3" /></button>
+                <button onClick={() => setMetrics((arr) => arr.filter((_, j) => j !== i))} className="text-zinc-400 hover:text-red-400" aria-label="Remove metric"><Trash2 className="w-3 h-3" /></button>
               </div>
             ))}
           </div>

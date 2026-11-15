@@ -4,11 +4,21 @@ import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useAffectSession } from '@/components/affect/AffectSessionContext';
+import { useAuth } from '@/hooks/useAuth';
 import { useUIStore } from '@/store/ui';
 import { clamp, DIMS } from '@/components/affect/affect-model';
 
 export function useAffectAts() {
   const { sessionId, setSessionId } = useAffectSession();
+  const { user } = useAuth();
+  // FIX-affect-002: Reset / Cooldown / Emit act on whichever session is
+  // in view, and the lens opens on the shared 'default' session — so a
+  // member was offered controls over shared state. The server derives
+  // each caller's own session (user_<id>) and refuses writes to any
+  // other session except from an operator; mirror that here so the
+  // controls only render when a write would actually be honoured.
+  const isOperator = user?.role === 'admin' || user?.role === 'sovereign';
+  const canControlSession = isOperator || (user != null && sessionId === `user_${user.id}`);
   const queryClient = useQueryClient();
   const addToast = useUIStore((s) => s.addToast);
 
@@ -191,6 +201,8 @@ export function useAffectAts() {
   return {
     sessionId,
     setSessionId,
+    canControlSession,
+    isOperator,
     affectState,
     policyData,
     policyDerivations,

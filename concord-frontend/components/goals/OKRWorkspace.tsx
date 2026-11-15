@@ -19,7 +19,7 @@ import { ChartKit } from '@/components/viz/ChartKit';
 import { localDayKey, formatLocalDate, formatLocalDateTime } from '@/components/goals/goals-model';
 import {
   GitBranch, CalendarCheck, Users, LayoutTemplate, BarChart3,
-  Bell, Link2, Loader2, Plus, Trash2, RefreshCw, Repeat, AlertTriangle,
+  Bell, Link2, Loader2, Plus, Trash2, RefreshCw, Repeat, AlertTriangle, Pencil,
 } from 'lucide-react';
 
 // --------------- Types ---------------
@@ -206,6 +206,7 @@ function AlignmentTab() {
   const [team, setTeam] = useState('');
   const [level, setLevel] = useState('company');
   const [krText, setKrText] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [undo, setUndo] = useState<{ trashId: string; label: string } | null>(null);
 
@@ -223,7 +224,7 @@ function AlignmentTab() {
     if (!title.trim()) return;
     setBusy(true);
     const r = await lensRun('goals', 'alignmentTree', {
-      op: 'upsert', title: title.trim(), parentId: parentId || undefined,
+      op: 'upsert', ...(editingId ? { id: editingId } : {}), title: title.trim(), parentId: parentId || undefined,
       team: team.trim() || undefined, level,
       keyResults: krText.split('\n').map((s) => s.trim()).filter(Boolean),
     });
@@ -232,8 +233,24 @@ function AlignmentTab() {
       setFlat(r.data.result.flat || []);
       setTree(r.data.result.tree || []);
       setStats(r.data.result.stats || null);
-      setTitle(''); setKrText(''); setTeam('');
+      setTitle(''); setKrText(''); setTeam(''); setParentId(''); setEditingId(null);
     }
+  };
+
+  // Edit (FIX-goals-010): load the objective into the form; the same
+  // upsert with its id updates it in place.
+  const startEdit = (node: AlignObjective) => {
+    setEditingId(node.id);
+    setTitle(node.title);
+    setParentId(node.parentId || '');
+    setTeam(node.team || '');
+    setLevel(node.level || 'company');
+    setKrText((node.keyResults || []).join('\n'));
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setTitle(''); setKrText(''); setTeam(''); setParentId(''); setLevel('company');
   };
 
   const remove = async (node: AlignObjective) => {
@@ -291,9 +308,14 @@ function AlignmentTab() {
         {confirmId === node.id ? (
           <ConfirmDelete onConfirm={() => remove(node)} onCancel={() => setConfirmId(null)} />
         ) : (
-          <button aria-label="Delete" onClick={() => setConfirmId(node.id)} className="text-zinc-600 hover:text-red-400">
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
+          <span className="flex items-center gap-1.5">
+            <button aria-label={`Edit objective ${node.title}`} onClick={() => startEdit(node)} className="text-zinc-600 hover:text-cyan-300">
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+            <button aria-label="Delete" onClick={() => setConfirmId(node.id)} className="text-zinc-600 hover:text-red-400">
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </span>
         )}
       </div>
       {(node.children || []).map((c) => renderNode(c, depth + 1))}
@@ -320,8 +342,13 @@ function AlignmentTab() {
         />
         <button onClick={add} disabled={busy || !title.trim()} className={`${btnCls} justify-center`}>
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-          Add Objective
+          {editingId ? 'Save Objective' : 'Add Objective'}
         </button>
+        {editingId && (
+          <button onClick={cancelEdit} className={`${btnCls} justify-center`}>
+            Cancel edit
+          </button>
+        )}
       </div>
 
       {stats && stats.objectiveCount > 0 && (

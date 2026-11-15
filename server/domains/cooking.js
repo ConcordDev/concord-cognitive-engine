@@ -7,6 +7,7 @@
 // (falls back to DEMO_KEY rate-limited 1000/hr per IP).
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { dtuListedOwner } from "../lib/dtu-list-source.js";
 import { getMealDbLetter, getUsdaSearch, getUsdaFood } from "../lib/food-feed-sources.js";
 import { fetchPublicUrl } from "../lib/public-fetch.js";
 import { callVision, callVisionUrl } from "../lib/vision-inference.js";
@@ -306,6 +307,62 @@ export default function registerCookingActions(registerLensAction) {
 
   // ── Recipes ────────────────────────────────────────────────────
 
+  // FIX-005: CookingActionPanel's Mint posts the recipe as a DTU
+  // (source 'cooking:recipe:mint', meta.cook.recipe) — a different store
+  // from this lens's recipe list, so a minted recipe never appeared in
+  // Recipes ("No recipes found" after reload). One canonical store per
+  // kind: the DTU stays the record and the recipe library reads it as a
+  // view, owner-scoped by the canonical chain (lib/dtu-list-source.js).
+  function mintedRecipeDtus(userId) {
+    const dtus = globalThis._concordSTATE?.dtus;
+    if (!dtus || typeof dtus.values !== "function") return [];
+    const out = [];
+    for (const d of dtus.values()) {
+      const rec = d?.meta?.cook?.recipe;
+      if (!rec || typeof rec !== "object") continue;
+      const tagged = Array.isArray(d.tags) && d.tags.includes("cooking") && d.tags.includes("recipe");
+      if (d.source !== "cooking:recipe:mint" && !tagged) continue;
+      if (dtuListedOwner(d) !== userId) continue;
+      out.push(d);
+    }
+    return out;
+  }
+  function mintedRecipeView(d) {
+    const rec = d.meta.cook.recipe;
+    const title = String(rec.name || "").trim()
+      || String(d.title || "").replace(/^Recipe\s+—\s+/, "")
+      || "Minted recipe";
+    return {
+      id: d.id,
+      number: d.id,
+      title,
+      servings: Math.max(1, Number(rec.servings) || 4),
+      targetServings: Number(rec.targetServings) || Number(rec.servings) || 4,
+      prepMin: 0,
+      cookMin: 0,
+      ingredients: normalizeIngredients(rec.ingredients),
+      steps: [],
+      tags: Array.isArray(d.tags) ? d.tags.map(String) : [],
+      cuisine: "",
+      photoUrl: "",
+      sourceUrl: "",
+      notes: "",
+      ratings: [],
+      madeLog: [],
+      nutrition: null,
+      createdAt: d.createdAt || "",
+      mintedDtu: true,
+    };
+  }
+  // Store recipe, else the caller's minted-DTU view of the same id.
+  function findRecipeCk(s, ctx, id) {
+    const r = listCk(s.recipes, aidCk(ctx)).find(x => x.id === id);
+    if (r) return r;
+    const minted = mintedRecipeDtus(aidCk(ctx)).find(d => d.id === id);
+    return minted ? mintedRecipeView(minted) : null;
+  }
+  const MINTED_READONLY = "Minted recipe DTUs are read-only in the recipe library — the DTU is the record; edit it from the DTU library.";
+
   registerLensAction("cooking", "recipes-list", (ctx, _a, params = {}) => {
     const s = getCookState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const q = String(params.q || "").trim().toLowerCase();
@@ -316,13 +373,23 @@ export default function registerCookingActions(registerLensAction) {
       const col = listCk(s.collections, aidCk(ctx)).find(c => c.id === collectionId);
       const ids = new Set(col?.recipeIds || []);
       list = list.filter(r => ids.has(r.id));
+    } else {
+      // FIX-005: minted recipe DTUs are recipes too — union them in as
+      // views (collections hold store recipes only). Never mutate the
+      // live store array while doing it.
+      const seen = new Set(list.map(r => r.id));
+      for (const v of mintedRecipeDtus(aidCk(ctx)).map(mintedRecipeView)) {
+        if (seen.has(v.id)) continue;
+        if (q && !`${v.title} ${(v.tags || []).join(' ')}`.toLowerCase().includes(q)) continue;
+        list = [...list, v];
+      }
     }
     return { ok: true, result: { recipes: list.slice().sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')) } };
   });
 
   registerLensAction("cooking", "recipes-get", (ctx, _a, params = {}) => {
     const s = getCookState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const r = listCk(s.recipes, aidCk(ctx)).find(x => x.id === String(params.id || ""));
+    const r = findRecipeCk(s, ctx, String(params.id || ""));
     if (!r) return { ok: false, error: "recipe not found" };
     return { ok: true, result: { recipe: r } };
   });
@@ -375,7 +442,12 @@ export default function registerCookingActions(registerLensAction) {
   registerLensAction("cooking", "recipes-update", (ctx, _a, params = {}) => {
     const s = getCookState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const r = listCk(s.recipes, aidCk(ctx)).find(x => x.id === String(params.id || ""));
-    if (!r) return { ok: false, error: "recipe not found" };
+    if (!r) {
+      // FIX-005: a minted DTU id is a real recipe — name why it refuses
+      // here instead of a bare "not found".
+      if (mintedRecipeDtus(aidCk(ctx)).some(d => d.id === String(params.id || ""))) return { ok: false, error: MINTED_READONLY };
+      return { ok: false, error: "recipe not found" };
+    }
     for (const k of ['title', 'cuisine', 'photoUrl', 'sourceUrl', 'notes']) if (typeof params[k] === 'string') r[k] = params[k];
     if (Number.isFinite(Number(params.servings))) r.servings = Math.max(1, Number(params.servings));
     if (Number.isFinite(Number(params.prepMin))) r.prepMin = Math.max(0, Number(params.prepMin));
@@ -393,7 +465,11 @@ export default function registerCookingActions(registerLensAction) {
     const id = String(params.id || "");
     const list = listCk(s.recipes, userId);
     const i = list.findIndex(r => r.id === id);
-    if (i < 0) return { ok: false, error: "recipe not found" };
+    if (i < 0) {
+      // FIX-005: same named refusal as recipes-update for minted DTU ids.
+      if (mintedRecipeDtus(userId).some(d => d.id === id)) return { ok: false, error: MINTED_READONLY };
+      return { ok: false, error: "recipe not found" };
+    }
     list.splice(i, 1);
     // remove from collections + meal plan
     for (const c of listCk(s.collections, userId)) c.recipeIds = (c.recipeIds || []).filter(rid => rid !== id);
@@ -406,7 +482,7 @@ export default function registerCookingActions(registerLensAction) {
   // Recipe scaling — returns scaled ingredient quantities for a target serving count.
   registerLensAction("cooking", "recipes-scale", (ctx, _a, params = {}) => {
     const s = getCookState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const r = listCk(s.recipes, aidCk(ctx)).find(x => x.id === String(params.id || ""));
+    const r = findRecipeCk(s, ctx, String(params.id || ""));
     if (!r) return { ok: false, error: "recipe not found" };
     const reqTarget = Number(params.targetServings);
     // Fail-CLOSED on poisoned numerics: a non-finite or absurd targetServings

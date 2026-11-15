@@ -50,7 +50,9 @@ describe('MarketListingsPanel empty state', () => {
     expect(screen.queryByRole('button', { name: 'Purchase' })).not.toBeInTheDocument();
 
     fireEvent.click(ctas[0]);
-    expect(await screen.findByPlaceholderText('Title')).toBeInTheDocument();
+    // The form now picks an existing DTU (no free-text Title field).
+    expect(await screen.findByText('New Listing')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Or paste a DTU id')).toBeInTheDocument();
   });
 
   it('treats a payload of only system listings as empty, not as Anonymous items for sale', async () => {

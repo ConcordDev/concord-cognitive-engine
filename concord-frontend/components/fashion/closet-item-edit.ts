@@ -14,6 +14,11 @@ export type ClosetEditResult =
   | { ok: false; error: string }
   | { ok: true; input: { id: string; name: string; brand: string; color: string; category: string; cost?: number } };
 
+// FIX-fashion-006: the wardrobe cost ceiling, mirroring the server's
+// MAX_ITEM_COST in server/domains/fashion.js — the edit refuses above it
+// before the value is ever sent, in the same words the panel shows.
+export const CLOSET_COST_MAX = 10_000_000;
+
 export function closetItemEditInput(id: string, form: ClosetEditForm): ClosetEditResult {
   const name = form.name.trim();
   if (!name) return { ok: false, error: 'Item name is required.' };
@@ -32,6 +37,7 @@ export function closetItemEditInput(id: string, form: ClosetEditForm): ClosetEdi
     const cost = Number(costText);
     if (!Number.isFinite(cost)) return { ok: false, error: 'Cost must be a number.' };
     if (cost < 0) return { ok: false, error: 'Cost cannot be negative.' };
+    if (cost > CLOSET_COST_MAX) return { ok: false, error: 'Cost must be $10,000,000 or less.' };
     input.input.cost = cost;
   }
   return input;

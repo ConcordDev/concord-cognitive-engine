@@ -182,7 +182,7 @@ export function MentorshipSessionsPanel() {
         {error && <p className="text-xs text-red-400">{error}</p>}
         <div className="panel p-4 space-y-2">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">{selected.title}</h3>
+            <h2 className="text-lg font-semibold">{selected.title}</h2>
             <span className={cn('text-xs px-2 py-0.5 rounded', STATUS_STYLE[selected.status])}>{selected.status}</span>
           </div>
           <div className="grid grid-cols-2 gap-2 text-xs text-zinc-400">
@@ -211,7 +211,7 @@ export function MentorshipSessionsPanel() {
 
         {/* Notes */}
         <div className="panel p-4 space-y-2">
-          <h4 className="font-semibold text-sm">Session notes</h4>
+          <h3 className="font-semibold text-sm">Session notes</h3>
           <textarea
             value={noteDraft || selected.notes}
             onChange={(e) => setNoteDraft(e.target.value)}
@@ -226,10 +226,10 @@ export function MentorshipSessionsPanel() {
 
         {/* Action items */}
         <div className="panel p-4 space-y-2">
-          <h4 className="font-semibold text-sm flex items-center gap-2">
+          <h3 className="font-semibold text-sm flex items-center gap-2">
             <CheckSquare className="w-4 h-4 text-neon-blue" /> Action items
             <span className="text-[10px] text-zinc-400">{openItems} open</span>
-          </h4>
+          </h3>
           {selected.actionItems.length === 0 ? (
             <p className="text-xs text-zinc-400">No action items yet.</p>
           ) : selected.actionItems.map((it) => (
@@ -251,7 +251,7 @@ export function MentorshipSessionsPanel() {
     <div className="space-y-4">
       {modeToggle}
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold flex items-center gap-2"><CalendarPlus className="w-4 h-4 text-neon-cyan" /> Sessions</h3>
+        <h2 className="font-semibold flex items-center gap-2"><CalendarPlus className="w-4 h-4 text-neon-cyan" /> Sessions</h2>
         <button onClick={() => setShowBook(!showBook)} className="btn-neon text-sm">
           {showBook ? <X className="w-4 h-4 inline" /> : <CalendarPlus className="w-4 h-4 inline" />} {showBook ? 'Cancel' : 'Book session'}
         </button>
@@ -272,7 +272,7 @@ export function MentorshipSessionsPanel() {
 
       {showBook && (
         <div className="panel p-4 space-y-2">
-          <h4 className="font-semibold text-sm">Schedule a session</h4>
+          <h3 className="font-semibold text-sm">Schedule a session</h3>
           <div className="grid grid-cols-2 gap-2">
             <input value={bookForm.partnerId} onChange={(e) => setBookForm((p) => ({ ...p, partnerId: e.target.value }))} placeholder="Partner user ID *" className="input-lattice" />
             <input value={bookForm.partnerName} onChange={(e) => setBookForm((p) => ({ ...p, partnerName: e.target.value }))} placeholder="Partner name" className="input-lattice" />
@@ -322,7 +322,7 @@ export function MentorshipSessionsPanel() {
             ))}
           </div>
           <div className="panel p-4">
-            <h4 className="font-semibold text-sm mb-2">Session timeline</h4>
+            <h3 className="font-semibold text-sm mb-2">Session timeline</h3>
             <TimelineView events={timeline} onSelect={(e) => {
               const s = sessions.find((x) => x.id === e.id);
               if (s) { setSelected(s); setNoteDraft(''); }

@@ -25,6 +25,25 @@ export default function registerPhysicsActions(registerLensAction) {
   const kinematicsSimHandler = (ctx, artifact, params) => {
     const bodies = artifact.data?.bodies || [];
     if (bodies.length === 0) return { ok: false, error: "No bodies defined." };
+    // FIX-physics-003: a negative mass silently flipped the drag
+    // direction (drag acceleration divides by mass), inflating the
+    // range. Mass must be a positive finite number, named per body;
+    // position/velocity components must be finite.
+    for (const b of bodies) {
+      const bName = b.name || "body";
+      const m = Number(b.mass ?? 1);
+      if (!Number.isFinite(m) || m <= 0) {
+        return { ok: false, error: `body "${bName}": mass must be > 0 (got ${b.mass}) — a negative mass is non-physical and flips the drag direction` };
+      }
+      for (const vec of ["position", "velocity"]) {
+        for (const axis of ["x", "y", "z"]) {
+          const v = b[vec]?.[axis];
+          if (v != null && !Number.isFinite(Number(v))) {
+            return { ok: false, error: `body "${bName}": ${vec}.${axis} must be a finite number` };
+          }
+        }
+      }
+    }
 
     const dt = params.dt || 0.01;
     const steps = Math.min(params.steps || 1000, 10000);
@@ -498,6 +517,16 @@ export default function registerPhysicsActions(registerLensAction) {
     const a  = params.a  != null ? Number(params.a)  : null;
     const t  = params.t  != null ? Number(params.t)  : null;
     const x  = params.x  != null ? Number(params.x)  : null;
+    // FIX-physics-003: a 300-digit input used to sail through and come
+    // back as v = 1e+300 m/s. Inputs (and anything solved from them)
+    // are capped at a generous physical scale — 1e12 (m, m/s, m/s², s)
+    // is ~6.7 AU / ~3000× light-speed — and refused BY NAME beyond it.
+    const KIN_LIMIT = 1e12;
+    for (const [k, val] of Object.entries({ v0, v, a, t, x })) {
+      if (val != null && (!Number.isFinite(val) || Math.abs(val) > KIN_LIMIT)) {
+        return { ok: false, error: `${k} is out of range — this solver accepts magnitudes up to 1e12 (got ${val})` };
+      }
+    }
     const provided = [v0, v, a, t, x].filter((n) => n != null && Number.isFinite(n)).length;
     if (provided < 3) return { ok: false, error: "provide at least 3 of: v0, v, a, t, x" };
     const out = { v0, v, a, t, x };
@@ -512,6 +541,13 @@ export default function registerPhysicsActions(registerLensAction) {
       if (vsq >= 0) out.v = Math.sqrt(vsq);
     }
     if (out.v0 == null && out.v != null && out.a != null && out.t != null) out.v0 = out.v - out.a * out.t;
+    // Solved values get the same range check (products of in-range
+    // inputs can still overflow the physical scale).
+    for (const k of Object.keys(out)) {
+      if (out[k] != null && (!Number.isFinite(out[k]) || Math.abs(out[k]) > KIN_LIMIT)) {
+        return { ok: false, error: `solved ${k} is out of range (over 1e12) — the inputs combine to a non-physical result` };
+      }
+    }
     // Round
     for (const k of Object.keys(out)) {
       if (out[k] != null && Number.isFinite(out[k])) out[k] = Math.round(out[k] * 10000) / 10000;
@@ -807,6 +843,25 @@ export default function registerPhysicsActions(registerLensAction) {
     };
   });
 
+  // FIX-physics-007: sharing minted a code with no way to take it back.
+  // scene-unshare revokes the calling owner's code: the shares entry is
+  // deleted (the code stops loading for everyone) and the scene's
+  // shareCode is cleared. Owner-scoped like scene-share itself.
+  registerLensAction("physics", "scene-unshare", (ctx, _artifact, params = {}) => {
+    const s = getPhysState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const map = s.scenes.get(physActor(ctx));
+    const scene = map?.get(String(params.id));
+    if (!scene) return { ok: false, error: "scene not found" };
+    if (!scene.shareCode) return { ok: true, result: { revoked: false, shareCode: null } };
+    const code = scene.shareCode;
+    s.shares.delete(code);
+    scene.shareCode = null;
+    scene.updatedAt = nowIsoPhys();
+    savePhysState();
+    return { ok: true, result: { revoked: true, shareCode: code } };
+  });
+
   registerLensAction("physics", "scene-load-shared", (ctx, _artifact, params = {}) => {
     const s = getPhysState();
     if (!s) return { ok: false, error: "STATE unavailable" };
@@ -855,6 +910,17 @@ export default function registerPhysicsActions(registerLensAction) {
     const series = new Map(bodies.map(b => [b.id, []]));
     const energyTrace = [];
     const collisionEvents = [];
+    // Energy accounting (FIX-physics-004): restitution impacts are physical
+    // dissipation, not integrator error — but wall bounces used to be
+    // invisible (the collision count covered body-body hits only), so a body
+    // that fell to the floor and bounced read as "0 collisions, −4,765 J
+    // drift" and the simulator looked broken. Track the joules each impact
+    // actually dissipates and count real wall impacts as collisions, so the
+    // reported drift separates into dissipated (physical) + residual
+    // (integrator). Sub-0.5 m/s contacts are resting jitter, not impacts.
+    let energyDissipated = 0;
+    const IMPACT_MIN = 0.5;
+    const keOf = (b) => 0.5 * b.mass * (b.vx * b.vx + b.vy * b.vy);
 
     function pointInFluid(b) {
       for (const f of fluids) {
@@ -977,8 +1043,10 @@ export default function registerPhysicsActions(registerLensAction) {
               ? clamp01(settings.restitutionGlobal)
               : Math.min(a.restitution, b.restitution);
             const imp = -(1 + e) * rvn / wsum;
+            const keBefore = keOf(a) + keOf(b);
             if (invA) { a.vx -= imp * nx * invA; a.vy -= imp * ny * invA; }
             if (invB) { b.vx += imp * nx * invB; b.vy += imp * ny * invB; }
+            energyDissipated += Math.max(0, keBefore - (keOf(a) + keOf(b)));
             collisionEvents.push({ step, a: a.id, b: b.id, impulse: rnd(Math.abs(imp)) });
           }
         }
@@ -994,21 +1062,33 @@ export default function registerPhysicsActions(registerLensAction) {
               b.x += nx * pen; b.y += ny * pen;
               const vn = b.vx * nx + b.vy * ny;
               if (vn < 0) {
+                const keB = keOf(b);
                 b.vx -= (1 + b.restitution) * vn * nx;
                 b.vy -= (1 + b.restitution) * vn * ny;
+                energyDissipated += Math.max(0, keB - keOf(b));
               }
             }
           }
         }
-        // Walls
+        // Walls — a reflection at real impact speed is a collision like any
+        // other: it counts, and its restitution loss joins the dissipation
+        // ledger. Sub-threshold flips are resting contact, left uncounted.
         if (settings.wallBounce) {
           for (const b of bodies) {
             if (b.isStatic) continue;
             const r = b.radius;
-            if (b.x - r < 0) { b.x = r; b.vx = -b.vx * b.restitution; }
-            if (b.x + r > bounds.w) { b.x = bounds.w - r; b.vx = -b.vx * b.restitution; }
-            if (b.y - r < 0) { b.y = r; b.vy = -b.vy * b.restitution; }
-            if (b.y + r > bounds.h) { b.y = bounds.h - r; b.vy = -b.vy * b.restitution; }
+            const flip = (comp) => {
+              const v = b[comp];
+              if (Math.abs(v) >= IMPACT_MIN) {
+                energyDissipated += 0.5 * b.mass * v * v * (1 - b.restitution * b.restitution);
+                collisionEvents.push({ step, a: b.id, b: "wall", impulse: rnd(Math.abs(v) * b.mass) });
+              }
+              b[comp] = -v * b.restitution;
+            };
+            if (b.x - r < 0) { b.x = r; flip("vx"); }
+            if (b.x + r > bounds.w) { b.x = bounds.w - r; flip("vx"); }
+            if (b.y - r < 0) { b.y = r; flip("vy"); }
+            if (b.y + r > bounds.h) { b.y = bounds.h - r; flip("vy"); }
           }
         }
       }
@@ -1046,6 +1126,9 @@ export default function registerPhysicsActions(registerLensAction) {
       energyDrift: energyTrace.length > 1
         ? rnd(energyTrace[energyTrace.length - 1].total - energyTrace[0].total)
         : 0,
+      // Joules the run's impacts physically dissipated (restitution). The
+      // integrator's own error is energyDrift + energyDissipated.
+      energyDissipated: rnd(energyDissipated),
     };
   }
 

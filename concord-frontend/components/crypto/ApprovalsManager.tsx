@@ -25,12 +25,12 @@ interface ApprovalsManagerProps {
 
 export function ApprovalsManager({ walletAddress }: ApprovalsManagerProps) {
   const [allowances, setAllowances] = useState<TokenAllowance[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(Boolean(walletAddress));
   const [revoking, setRevoking] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'risky' | 'unlimited'>('all');
 
   // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh is a stable closure; only walletAddress should retrigger
-  useEffect(() => { if (walletAddress) refresh(); }, [walletAddress]);
+  useEffect(() => { if (walletAddress) refresh(); else setLoading(false); }, [walletAddress]);
 
   async function refresh() {
     setLoading(true);
@@ -106,7 +106,7 @@ export function ApprovalsManager({ walletAddress }: ApprovalsManagerProps) {
           <SkeletonTableRows rows={5} columns={3} className="py-1" />
         ) : visible.length === 0 ? (
           <div className="px-3 py-10 text-xs text-gray-400 text-center">
-            {allowances.length === 0 ? 'No approvals on record.' : `No approvals match "${filter}".`}
+            {!walletAddress ? 'Select a wallet to see its token approvals.' : allowances.length === 0 ? 'No approvals on record.' : `No approvals match "${filter}".`}
           </div>
         ) : (
           <ul className="text-xs divide-y divide-white/5">

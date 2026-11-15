@@ -111,6 +111,9 @@ export function MarketingSEOPanel() {
       </h3>
 
       {/* Audit input form */}
+      <p role="note" className="text-[11px] text-zinc-500">
+        This audit scores the content you paste below — it does not fetch or crawl the URL.
+      </p>
       <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-2">
         <div className="grid grid-cols-2 gap-2">
           <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Page URL"

@@ -229,7 +229,7 @@ function POSTab() {
           </div>
         )}
         <div className="mt-2 flex gap-2">
-          <input type="number" value={tenderAmount} onChange={(e) => setTenderAmount(e.target.value)}
+          <input id="retail-tender" name="tender" aria-label="Tender" type="number" value={tenderAmount} onChange={(e) => setTenderAmount(e.target.value)}
             placeholder="Tender" className="flex-1 px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono" />
           <button type="button" onClick={tender} disabled={!tenderAmount}
             className="px-3 py-1 rounded-md border border-rose-500/40 bg-rose-500/15 text-xs text-rose-100 disabled:opacity-40">

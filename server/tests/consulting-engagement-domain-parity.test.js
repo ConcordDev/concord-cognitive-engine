@@ -54,7 +54,11 @@ describe("consulting.engagement management", () => {
     assert.equal(d.result.active, 0);
     assert.equal(d.result.loggedHours, 2);
     assert.equal(d.result.billed, 300);
-    call("engagement-delete", ctxA, { id: e.id });
+    const blocked = call("engagement-delete", ctxA, { id: e.id });
+    assert.equal(blocked.ok, false);
+    assert.equal(blocked.error, "engagement_has_time");
+    assert.equal(call("engagement-list", ctxA, {}).result.count, 1);
+    call("engagement-delete", ctxA, { id: e.id, confirmDeleteTime: true });
     assert.equal(call("engagement-list", ctxA, {}).result.count, 0);
   });
 });

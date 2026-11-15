@@ -28,6 +28,15 @@ export interface ForumPost {
 
 const EMPTY_DRAFT: RichDraft = { body: '', format: 'plain', images: [] };
 
+function timeAgo(iso?: string) {
+  if (!iso) return '';
+  const diff = Date.now() - new Date(iso).getTime();
+  const h = Math.floor(diff / 3600000);
+  if (h < 1) return 'just now';
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
 export function FmCommentTree({
   nodes, locked, savedIds, viewerId = null,
   onVote, onReply, onAward, onSave, onEdit, onDelete,
@@ -121,7 +130,8 @@ function CommentNode({
               {collapsed ? <Plus className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
             </button>
             <span className="text-[10px] font-medium text-orange-300">{node.author}</span>
-            {node.editedAt && <span className="text-[10px] text-zinc-500">edited</span>}
+            {node.createdAt && <span className="text-[10px] text-zinc-400">{timeAgo(node.createdAt)}</span>}
+            {node.editedAt && <span className="text-[10px] text-zinc-400">edited</span>}
             {kids.length > 0 && (
               <span className="text-[10px] text-zinc-400">
                 {countDescendants(node)} repl{countDescendants(node) === 1 ? 'y' : 'ies'}

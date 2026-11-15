@@ -1,6 +1,7 @@
 // Behaviour coverage for the telecom NOC bench: capacity / signal / coverage / unit economics,
 // mint, DM, publish with recall and the action agent, with validation and failure paths.
 
+import { readAgentReply } from '@/lib/agent-reply';
 import React from 'react';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
@@ -99,7 +100,7 @@ describe('TelecommunicationsActionPanel', () => {
     expect(v.container.textContent).toMatch(/Action ready/);
     h.post.mockImplementation(async () => ({ data: {} }));
     await click(/^Action/);
-    expect(v.container.textContent).toMatch(/Agent returned empty/);
+    expect(v.container.textContent).toMatch(/finished without writing anything/);
     await click(/^Mint|Saved/);
     expect(v.container.textContent).toMatch(/No DTU id/);
   });

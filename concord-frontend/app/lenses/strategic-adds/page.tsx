@@ -13,7 +13,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 
 function PanelSkeleton() {
   return (
-    <div role="status" aria-busy="true" aria-live="polite" className="h-40 animate-pulse rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-zinc-500">
+    <div role="status" aria-busy="true" aria-live="polite" className="h-40 animate-pulse rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-zinc-400">
       Loading panel…
     </div>
   );
@@ -30,6 +30,7 @@ const BlsWageForecast = dynamic(() => import('@/components/hr/BlsWageForecast').
 const ClaimVerificationPanel = dynamic(() => import('@/components/grounding/ClaimVerificationPanel').then((m) => m.ClaimVerificationPanel), { ssr: false, loading: PanelSkeleton });
 const FactGroundingWorkbench = dynamic(() => import('@/components/grounding/FactGroundingWorkbench').then((m) => m.FactGroundingWorkbench), { ssr: false, loading: PanelSkeleton });
 const DevToolingPulse = dynamic(() => import('@/components/dx-platform/DevToolingPulse').then((m) => m.DevToolingPulse), { ssr: false, loading: PanelSkeleton });
+const ContactPreferenceGraph = dynamic(() => import('@/components/strategic-adds/ContactPreferenceGraph').then((m) => m.ContactPreferenceGraph), { ssr: false, loading: PanelSkeleton });
 
 type AddTab = 'api' | 'burnout' | 'learning' | 'hazard' | 'labor' | 'misinfo' | 'contacts' | 'golive';
 
@@ -132,16 +133,13 @@ export default function StrategicAddsPage() {
         )}
 
         {tab === 'contacts' && (
-          <section role="status" aria-label="Contact network status" className="rounded-xl border border-amber-700/30 bg-amber-600/10 p-4 sm:p-5">
-            {/* No contact graph exists yet: honest empty state */}
-            <h2 className="text-sm font-semibold text-amber-200">Honest status: foundational packaging only</h2>
-            <p className="mt-2 text-sm text-amber-100/90">
-              A dedicated contact+preference graph is not yet built. Use existing controls while the purpose-built network lands.
-            </p>
-            <div className="mt-3 flex flex-wrap gap-3 text-sm">
-              <Link className="underline text-amber-100" href="/lenses/privacy">Open Privacy preferences</Link>
-              <Link className="underline text-amber-100" href="/lenses/social">Open Social network controls</Link>
-            </div>
+          <section className="space-y-4">
+            <p className="text-sm text-zinc-300">Your contact + preference network, drawn from your Social connections.</p>
+            {/* FIX-strategic-adds-002: the graph is built — it renders the
+                caller's follow network (mutual / following / follower)
+                from the social substrate; its empty state explains how
+                the graph fills in. */}
+            <ContactPreferenceGraph />
           </section>
         )}
 

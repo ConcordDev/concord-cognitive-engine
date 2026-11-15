@@ -182,9 +182,11 @@ export default function ManufacturingLensPage() {
         activeTab={mode}
         onTab={(id) => setMode(id as ModeTab)}
         tabsLabel="Manufacturing views"
-        cta={{ label: 'Open work orders', icon: ClipboardList, onClick: () => setMode('woBoard'), title: 'Jump to the work-order board (W)' }}
+        // FIX-manufacturing-004: on the work-order board itself the CTA
+        // is a self-switch, so it renders only from the other views.
+        cta={mode === 'woBoard' ? undefined : { label: 'Open work orders', icon: ClipboardList, onClick: () => setMode('woBoard'), title: 'Jump to the work-order board (W)' }}
       >
-        <div className="space-y-5">
+        <div className="flex flex-col gap-5">
           {isError && (
             <div role="alert" className="flex items-center justify-between gap-3 rounded-2xl border border-rose-500/40 bg-rose-500/5 p-4 text-sm text-rose-200">
               <span>{(error as Error | null)?.message || 'Could not load manufacturing KPIs.'}</span>
@@ -192,17 +194,24 @@ export default function ManufacturingLensPage() {
             </div>
           )}
 
-          {/* Industry Wire — BLS PPI + Federal Reserve G.17 live feed */}
-          <LiveFeed
-            articles={(realtimeData as { articles?: Array<Record<string, unknown>> } | null)?.articles as React.ComponentProps<typeof LiveFeed>['articles']}
-            domain="manufacturing"
-            isLive={isLive}
-            lastUpdated={lastUpdated}
-            limit={10}
-          />
+          {/* Industry Wire — BLS PPI + Federal Reserve G.17 live feed.
+              FIX-manufacturing-004: on mobile the selected view leads
+              (order-1 below) and the feed + KPI cards follow — the four
+              stacked stat cards previously pushed the OEE Board ~400px
+              below the fold instead of the tab switch replacing the
+              view. Desktop order is unchanged. */}
+          <div className="order-2 sm:order-1">
+            <LiveFeed
+              articles={(realtimeData as { articles?: Array<Record<string, unknown>> } | null)?.articles as React.ComponentProps<typeof LiveFeed>['articles']}
+              domain="manufacturing"
+              isLive={isLive}
+              lastUpdated={lastUpdated}
+              limit={10}
+            />
+          </div>
 
           {/* Dashboard KPIs — real manufacturing.* macros, aggregated client-side */}
-          <div className={ds.grid4} aria-busy={isLoading}>
+          <div className={cn(ds.grid4, 'order-3 sm:order-2')} aria-busy={isLoading}>
             <StatCard icon={Gauge} label="Machines" value={isLoading ? '…' : k.machineCount} sub={`${k.runningCount} running`} />
             <StatCard icon={ClipboardList} label="Work Orders" value={isLoading ? '…' : k.workOrderCount} color="text-neon-blue" />
             <StatCard
@@ -220,7 +229,7 @@ export default function ManufacturingLensPage() {
             />
           </div>
 
-          <div id="manufacturing-skip" className="pt-1">
+          <div id="manufacturing-skip" className="order-1 pt-1 sm:order-3">
             {mode === 'oeeBoard' && <OEEDashboard />}
             {mode === 'woBoard' && <WorkOrderBoard />}
             {mode === 'spc' && <QualitySPC />}

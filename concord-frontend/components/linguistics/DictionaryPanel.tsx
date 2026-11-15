@@ -9,7 +9,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { Book, RefreshCw, AlertTriangle, Search, Volume2 } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { dictionaryFailureCopy } from '@/components/linguistics/dictionary-copy';
 
@@ -33,15 +33,6 @@ interface DictionaryEntry {
   meanings: Meaning[];
 }
 
-async function runMacro<T>(domain: string, name: string, input: Record<string, unknown>): Promise<T | null> {
-  try {
-    const r = await api.post('/api/lens/run', { domain, name, input });
-    return r?.data as T;
-  } catch {
-    return null;
-  }
-}
-
 export interface DictionaryPanelProps {
   domain: 'linguistics' | 'education';
   className?: string;
@@ -60,11 +51,12 @@ export function DictionaryPanel({ domain, className }: DictionaryPanelProps) {
     }
     setLoading(true);
     setError(null);
-    const r = await runMacro<{ ok: boolean; entries?: DictionaryEntry[]; reason?: string }>(
-      domain, 'live_dictionary', { word: w },
+    const r = await lensRun<{ entries?: DictionaryEntry[]; reason?: string }>(
+      domain, 'live_dictionary', { word: w.trim() },
     );
-    if (r?.ok) setEntries(r.entries || []);
-    else setError(r?.reason || 'fetch_failed');
+    const entries = r.data?.result?.entries;
+    if (r.data?.ok && Array.isArray(entries)) setEntries(entries);
+    else setError(r.data?.message || r.data?.result?.reason || r.data?.error || 'No definition came back.');
     setLoading(false);
   }, [domain]);
 
@@ -78,7 +70,7 @@ export function DictionaryPanel({ domain, className }: DictionaryPanelProps) {
     <section className={cn('rounded-lg border border-zinc-800 bg-zinc-950/80 overflow-hidden', className)}>
       <header className="flex items-center gap-2 px-3 py-2 border-b border-zinc-800/80 bg-zinc-900/40">
         <Book className="w-4 h-4 text-sky-300" aria-hidden="true" />
-        <h3 className="text-sm font-medium text-zinc-100 flex-1">Dictionary · definitions</h3>
+        <h2 className="text-sm font-medium text-zinc-100 flex-1">Dictionary · definitions</h2>
         <span className="text-[10px] text-emerald-400 font-mono">REAL data</span>
         <button
           type="button"

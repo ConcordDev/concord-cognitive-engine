@@ -24,6 +24,7 @@ import { TrendView } from '@/components/suffering/TrendView';
 import { RootCausePanel } from '@/components/suffering/RootCausePanel';
 import { ReportExport } from '@/components/suffering/ReportExport';
 import { FeedbackAnalysis } from '@/components/suffering/FeedbackAnalysis';
+import { CrisisResources } from '@/components/suffering/CrisisResources';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -134,6 +135,8 @@ export default function SufferingLensPage() {
             For personal health concerns, consult a qualified healthcare provider.
           </p>
         </div>
+
+        <CrisisResources />
 
         {loadErr && (
           <ErrorState

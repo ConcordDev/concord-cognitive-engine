@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 import { CwBinderPanel } from './CwBinderPanel';
 import { CwCorkboardPanel } from './CwCorkboardPanel';
@@ -55,6 +56,7 @@ export function CreativeWritingSection() {
   const [tab, setTab] = useState<TabId>('binder');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [armedId, setArmedId] = useState<string | null>(null);
   const [form, setForm] = useState({ title: '', genre: 'fiction', targetWords: '' });
   const [editingSettings, setEditingSettings] = useState(false);
   const [settingsForm, setSettingsForm] = useState({ title: '', genre: '', targetWords: '' });
@@ -146,7 +148,16 @@ export function CreativeWritingSection() {
                   )}
                   {activeProject !== p.id && <span className="absolute inset-0 bg-zinc-800 rounded-lg -z-10" aria-hidden="true" />}
                   <button type="button" onClick={() => setActiveProject(p.id)}>{p.title}</button>
-                  <button type="button" onClick={() => delProject(p.id)} className="text-zinc-300/70 hover:text-rose-200">×</button>
+                  <StickyDeleteConfirm
+                    armed={armedId === p.id}
+                    onArm={() => setArmedId(p.id)}
+                    onCancel={() => setArmedId(null)}
+                    onConfirm={() => { setArmedId(null); void delProject(p.id); }}
+                    armLabel="×"
+                    confirmLabel={`Delete “${p.title}”?`}
+                    armAriaLabel={`Delete ${p.title}`}
+                    className="text-zinc-300/70 hover:text-rose-200"
+                  />
                 </span>
               ))}
             </div>

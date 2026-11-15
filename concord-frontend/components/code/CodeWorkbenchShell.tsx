@@ -12,6 +12,7 @@
 import React from 'react';
 import { Files, GitBranch, Sparkles, Search, Settings, Bug, Terminal, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 export type CodeNav = 'files' | 'search' | 'git' | 'agent' | 'debug' | 'settings';
 
@@ -130,7 +131,7 @@ export function EditorTabs({ tabs, activePath, onSelect, onClose }: EditorTabsPr
             className={cn(
               'group flex items-center gap-1.5 px-3 py-1.5 cursor-pointer text-xs border-r border-white/5 max-w-[200px]',
               active ? 'bg-[#0d1117] text-white border-t-2 border-t-blue-400' : 'text-gray-400 hover:text-white hover:bg-white/[0.04]',
-            )} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            )} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <span className="truncate">{t.path.split('/').pop()}</span>
             {t.modified && <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />}
             <button aria-label="Close tab"

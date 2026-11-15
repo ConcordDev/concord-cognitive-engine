@@ -89,7 +89,7 @@ export function ReviewsPanel() {
               <li key={r.id} className="px-3 py-2 hover:bg-white/[0.03]">
                 <div className="flex items-center gap-2 mb-1">
                   <div className="flex">
-                    {[1, 2, 3, 4, 5].map(n => <Star key={n} className={cn('w-3 h-3', n <= r.rating ? 'text-amber-400 fill-amber-400' : 'text-gray-600')} />)}
+                    {[1, 2, 3, 4, 5].map(n => <Star key={n} className={cn('w-3 h-3', n <= r.rating ? 'text-amber-400 fill-amber-400' : 'text-gray-400')} />)}
                   </div>
                   <span className="text-xs text-white">{r.customerName}</span>
                   {r.nps != null && <span className={cn('text-[10px] font-mono', r.nps >= 9 ? 'text-emerald-300' : r.nps >= 7 ? 'text-amber-300' : 'text-rose-300')}>NPS {r.nps}</span>}

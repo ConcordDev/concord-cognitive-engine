@@ -119,7 +119,7 @@ export function daysUntil(dateStr: string): number {
   const target = parseDay(dateStr);
   if (isNaN(target.getTime())) return 0;
   const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  return Math.max(0, Math.round((startOfDay(target) - startOfDay(new Date())) / 86400000));
+  return Math.round((startOfDay(target) - startOfDay(new Date())) / 86400000);
 }
 
 export function formatLocalDate(iso: string): string {

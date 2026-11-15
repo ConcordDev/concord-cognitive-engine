@@ -6,6 +6,7 @@
  * stakeholderImpact) plus mint/DM/publish/agent.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import {
   AlertTriangle, Clock, Users, Siren, Sparkles, Send, Globe, Wand2,
@@ -13,13 +14,18 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
+import { BOUNDS } from '@/lib/bounds';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string; reason?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
-  const r = await apiHelpers.lens.runDomain('cri', action, { input });
+  // FIX-cri-004: the payload used to be double-wrapped ({ input }) — the
+  // dispatch sets artifact.data = body.input, so the handlers saw
+  // { input: {...} } and every artifact.data.* read came back empty
+  // (Timeline 0 phases, Impact 0 groups). Send the payload as the input.
+  const r = await apiHelpers.lens.runDomain('cri', action, input);
   const data = (r as { data?: { ok: boolean; result?: T } }).data;
   if (!data) return { ok: false, error: 'empty response' };
   if (data.ok && data.result && typeof data.result === 'object' && 'ok' in data.result) {
@@ -36,7 +42,7 @@ function pickMessage(e: unknown): string {
   return ax?.response?.data?.error ?? ax?.message ?? 'request failed';
 }
 
-interface SeverityResult { severity?: string; score?: number; factors?: string[]; recommendation?: string }
+interface SeverityResult { severity?: string; severityLevel?: string; score?: number; severityScore?: number; factors?: string[]; recommendation?: string; responseProtocol?: string }
 interface TimelineResult { phases?: Array<{ phase: string; window: string; actions: string[] }>; totalDurationHours?: number }
 interface ImpactResult { stakeholders?: Array<{ group: string; impact: string; priority?: string }>; totalAffected?: number }
 
@@ -71,11 +77,14 @@ export function CrisisActionPanel() {
     if (!ready) { err('Crisis name required.'); return; }
     if (!eventType.trim()) { err('Event type required.'); return; }
     const a = parseInt(affectedCount, 10), d = parseFloat(duration);
-    if (!Number.isFinite(a) || !Number.isFinite(d)) { err('Affected count + duration hours required.'); return; }
+    // FIX-cri-003: name the field that is actually missing — the combined
+    // message blamed both when only one was empty.
+    if (!Number.isFinite(a)) { err('Affected count required.'); return; }
+    if (!Number.isFinite(d)) { err('Duration hours required.'); return; }
     setBusy('severity'); setFeedback(null);
     try {
       const r = await callMacro<SeverityResult>('severityAssessment', { name: crisisName.trim(), eventType, scope, affectedCount: a, durationHours: d });
-      if (r.ok && r.result) { setSeverityResult(r.result); pipe.publish('cri.severity', r.result, { label: `Severity ${r.result.severity}` }); ok(`Severity: ${r.result.severity ?? '—'}.`); }
+      if (r.ok && r.result) { const norm = { ...r.result, severity: r.result.severityLevel ?? r.result.severity, score: r.result.severityScore ?? r.result.score, recommendation: r.result.responseProtocol ?? r.result.recommendation }; setSeverityResult(norm); pipe.publish('cri.severity', norm, { label: `Severity ${norm.severity}` }); ok(`Severity: ${norm.severity ?? '—'}.`); }
       else err(r.reason ?? r.error ?? 'severity failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -187,9 +196,9 @@ export function CrisisActionPanel() {
         'Plain text. Concrete. No corporate softening.',
       ].filter(Boolean).join(' ');
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 4 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Commander brief ready.'); }
-      else err('Agent returned empty.');
+      const reply = readAgentReply(r.data);
+      if (reply.ok) { setAgentReply(reply.text); ok('Commander brief ready.'); }
+      else err(reply.reason);
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -217,16 +226,27 @@ export function CrisisActionPanel() {
         <RecallSlot ctl={publishRecall} />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-        <input type="text" value={crisisName} onChange={(e) => setCrisisName(e.target.value)} className="md:col-span-2 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white focus:outline-none focus:ring-2 focus:ring-rose-400/40" placeholder="Crisis name (e.g. east-region power outage)" />
+        <input type="text" value={crisisName} onChange={(e) => setCrisisName(e.target.value)} className="md:col-span-2 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white focus:outline-none focus:ring-2 focus:ring-rose-400/40" placeholder="Crisis name (e.g. east-region power outage)" maxLength={BOUNDS.TITLE} />
         <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="IC user id (for DM)" />
-        <select value={eventType} onChange={(e) => setEventType(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white">
+        {/* FIX-cri-003: the select is controlled with state '' — without a
+            placeholder option the browser displayed the first option
+            ('outage') while the state stayed empty, so Severity answered
+            'Event type required.' against a visibly selected type. */}
+        <select value={eventType} onChange={(e) => setEventType(e.target.value)} aria-label="Event type" className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white">
+          <option value="">Select event type…</option>
           {['outage', 'breach', 'natural-disaster', 'pandemic', 'recall', 'cyberattack', 'reputational'].map(e => <option key={e} value={e}>{e}</option>)}
         </select>
         <select value={scope} onChange={(e) => setScope(e.target.value as typeof scope)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white">
           {(['local', 'regional', 'global'] as const).map(s => <option key={s} value={s}>{s}</option>)}
         </select>
-        <input type="text" value={affectedCount} onChange={(e) => setAffectedCount(e.target.value.replace(/\D/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono" placeholder="affected count" />
-        <input type="text" value={duration} onChange={(e) => setDuration(e.target.value.replace(/[^\d.]/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono" placeholder="duration hours" />
+        <label className="block">
+          <span className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Affected count</span>
+          <input type="text" value={affectedCount} maxLength={5} onChange={(e) => setAffectedCount(e.target.value.replace(/\D/g, ''))} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono" placeholder="affected count" />
+        </label>
+        <label className="block">
+          <span className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Duration hours</span>
+          <input type="text" value={duration} maxLength={6} onChange={(e) => setDuration(e.target.value.replace(/[^\d.]/g, ''))} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono" placeholder="duration hours" />
+        </label>
       </div>
 
       <div>

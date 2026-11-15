@@ -29,6 +29,8 @@ export interface WalletTransaction {
   net?: number;
   from?: string;
   to?: string;
+  from_user_id?: string | null;
+  to_user_id?: string | null;
   description?: string;
   status?: string;
   created_at: string;
@@ -37,6 +39,7 @@ export interface WalletTransaction {
 }
 
 export interface TransactionPage {
+  userId?: string;
   transactions?: WalletTransaction[];
   items?: WalletTransaction[];
   history?: WalletTransaction[];

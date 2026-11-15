@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, AlertTriangle, Plus, Building2, RefreshCw, MapPin, Search } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { ErrorState } from '@/components/ui';
 
 interface DueRow { medId: string; name: string; quantity: number; daysOfSupply: number; refillsRemaining: number; urgency: string }
@@ -81,6 +82,12 @@ export function RxRefillsPanel({ onChange }: { onChange: () => void }) {
     const r = await lensRun('pharmacy', 'refill-request', { medId, pharmacy: pharmacies[0]?.name });
     if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
     setError(null);
+    await refresh(); onChange();
+  };
+  const [cancelId, setCancelId] = useState<string | null>(null);
+  const cancel = async (rf: Refill) => {
+    await lensRun('pharmacy', 'refill-update', { id: rf.id, status: 'cancelled' });
+    setCancelId(null);
     await refresh(); onChange();
   };
   const advance = async (rf: Refill) => {
@@ -170,11 +177,11 @@ export function RxRefillsPanel({ onChange }: { onChange: () => void }) {
       {/* Refill requests */}
       <section>
         <h3 className="text-xs font-semibold text-zinc-300 mb-2">Refill requests</h3>
-        {refills.length === 0 ? (
+        {refills.filter((rf) => rf.status !== 'cancelled').length === 0 ? (
           <p className="text-[11px] text-zinc-400 italic">No refill requests.</p>
         ) : (
           <ul className="space-y-1">
-            {refills.map((rf) => (
+            {refills.filter((rf) => rf.status !== 'cancelled').map((rf) => (
               <li key={rf.id} className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
                 <div>
                   <p className="text-xs text-zinc-200">{rf.medName}</p>
@@ -187,6 +194,18 @@ export function RxRefillsPanel({ onChange }: { onChange: () => void }) {
                       className="text-[10px] px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg capitalize">
                       → {STATUS_FLOW[rf.status].replace(/_/g, ' ')}
                     </button>
+                  )}
+                  {rf.status !== 'picked_up' && rf.status !== 'cancelled' && (
+                    <StickyDeleteConfirm
+                      armed={cancelId === rf.id}
+                      onArm={() => setCancelId(rf.id)}
+                      onCancel={() => setCancelId(null)}
+                      onConfirm={() => void cancel(rf)}
+                      armLabel="Cancel"
+                      confirmLabel={`Cancel refill for ${rf.medName}?`}
+                      armAriaLabel={`Cancel refill for ${rf.medName}`}
+                      className="text-[10px] text-zinc-400 underline"
+                    />
                   )}
                 </div>
               </li>

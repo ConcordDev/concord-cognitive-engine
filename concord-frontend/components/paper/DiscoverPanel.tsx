@@ -58,7 +58,7 @@ export function DiscoverPanel() {
             >
               <Icon className="w-4 h-4" />
               {s.label}
-              <span className="text-[10px] uppercase tracking-wider text-gray-500">{s.hint}</span>
+              <span className="text-[10px] uppercase tracking-wider text-gray-400">{s.hint}</span>
             </button>
           );
         })}

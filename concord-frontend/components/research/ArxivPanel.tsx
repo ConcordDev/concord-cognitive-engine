@@ -99,7 +99,7 @@ export function ArxivPanel({ domain, title, limit = 15, className }: ArxivPanelP
         ) : papers.length > 0 ? (
           <span className="text-[10px] text-emerald-400 font-mono">REAL data</span>
         ) : (
-          <span className="text-[10px] text-zinc-500 font-mono">{loading ? 'loading…' : 'no papers'}</span>
+          <span className="text-[10px] text-zinc-400 font-mono">{loading ? 'loading…' : 'no papers'}</span>
         )}
         <button
           type="button"
@@ -116,6 +116,7 @@ export function ArxivPanel({ domain, title, limit = 15, className }: ArxivPanelP
         <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" aria-hidden="true" />
         <input
           type="search"
+          aria-label="Filter within category"
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
           placeholder="Filter within category (free text)…"

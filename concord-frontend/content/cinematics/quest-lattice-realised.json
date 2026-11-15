@@ -1,6 +1,7 @@
 {
   "id": "quest_lattice_realised",
   "name": "Lattice Quest Realised",
+  "summary": "A quest woven through the lattice is realised at last. Light moves along the threads from node to node until it rests on the one at its heart — the pattern holds, and the story it carried is complete.",
   "trigger": "quest_lattice_realised",
   "comment": "Phase W — fires when a lattice-born quest is realised. Slow zoom on quest's anchor NPC, three lattice-node light pulses, dwell.",
   "shots": [

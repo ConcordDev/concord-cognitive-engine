@@ -11,6 +11,7 @@
  * publish/import for cross-panel hand-off.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import { MapPin, Locate, Coffee, Route, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle, Crosshair } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -203,12 +204,12 @@ export function AtlasActionPanel() {
     try {
       const task = `Atlas/geo brief. ${geoResult?.places[0] ? `Location: ${geoResult.places[0].displayName}.` : ''} ${poiResult ? `Found ${poiResult.elements?.length} ${amenity} in bbox.` : ''} ${distResult ? `${distResult.pairs.length} distance pairs.` : ''} Suggest one geospatial insight + one related query worth running. Plain text, 3 sentences max.`;
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
-      if (reply) {
-        const text = typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2);
+      const reply = readAgentReply(r.data);
+      if (reply.ok) {
+        const text = reply.text;
         setAgentReply(text); pipe.publish('atlas.agentReply', text, { label: 'Geo insight' });
         ok('Insight ready.');
-      } else err('Agent returned empty.');
+      } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 

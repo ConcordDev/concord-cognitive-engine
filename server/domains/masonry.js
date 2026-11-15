@@ -1,5 +1,6 @@
 // server/domains/masonry.js
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { lengthOrNull, badNumber } from "../lib/finite-input.js";
 import { assertPayable, assertTransition } from "../lib/money-guards.js";
 
 const CHANGE_ORDER_STATUS = {
@@ -109,8 +110,9 @@ export default function registerMasonryActions(registerLensAction) {
     let grossArea = 0;
     let linearFeet = 0;
     const segOut = (segments || []).map((sg) => {
-      const len = mnum(sg.lengthFeet);
-      const ht = mnum(sg.heightFeet);
+      const len = lengthOrNull(sg.lengthFeet, { min: 0, max: 1000 });
+      const ht = lengthOrNull(sg.heightFeet, { min: 0, max: 1000 });
+      if (len === null || ht === null) return null;
       const area = Math.round(len * ht * 100) / 100;
       grossArea += area;
       linearFeet += len;
@@ -118,12 +120,14 @@ export default function registerMasonryActions(registerLensAction) {
     });
     let openArea = 0;
     const openOut = (openings || []).map((op) => {
-      const w = mnum(op.widthFeet);
-      const h = mnum(op.heightFeet);
+      const w = lengthOrNull(op.widthFeet, { min: 0, max: 1000 });
+      const h = lengthOrNull(op.heightFeet, { min: 0, max: 1000 });
+      if (w === null || h === null) return null;
       const a = Math.round(w * h * 100) / 100;
       openArea += a;
       return { id: op.id || mid("op"), label: mclean(op.label || "Opening", 60), widthFeet: w, heightFeet: h, areaSqFt: a };
     });
+    if (segOut.includes(null) || openOut.includes(null)) return null;
     const netArea = Math.max(0, Math.round((grossArea - openArea) * 100) / 100);
     const wasteFactor = 1 + (mnum(waste, 5) / 100);
     const units = Math.ceil(netArea * rate.unitsPerSqFt * wasteFactor);
@@ -143,7 +147,9 @@ export default function registerMasonryActions(registerLensAction) {
     try {
       const s = getMasonState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const userId = maid(ctx);
-      const name = mclean(params.name, 120) || "Untitled takeoff";
+      const name = String(params.name || "").trim();
+      if (!name) return { ok: false, error: "name required" };
+      if (name.length > 120) return badNumber("name", "must be at most 120 characters");
       const material = MATERIAL_RATES[params.material] ? params.material : "brick";
       if (params.segments != null && !Array.isArray(params.segments)) {
         return { ok: false, error: "invalid_input", field: "segments", reason: "expected_array" };
@@ -152,6 +158,7 @@ export default function registerMasonryActions(registerLensAction) {
         return { ok: false, error: "invalid_input", field: "openings", reason: "expected_array" };
       }
       const calc = computeTakeoff(params.segments, material, params.wastePct, params.openings);
+      if (!calc) return badNumber("dimensions", "each length and height must be a number from 0 to 1000 feet");
       const list = mlist(s.takeoffs, userId);
       const existing = params.id ? list.find((t) => t.id === params.id) : null;
       if (existing) {
@@ -206,7 +213,8 @@ export default function registerMasonryActions(registerLensAction) {
       if (!s.priceBook.has(userId)) {
         s.priceBook.set(userId, DEFAULT_PRICE_BOOK.map((p) => ({ id: mid("pb"), ...p, updatedAt: mnow() })));
       }
-      return { ok: true, result: { items: s.priceBook.get(userId) } };
+      const items = s.priceBook.get(userId);
+      return { ok: true, result: { items, count: items.length, note: items.length ? null : "This caller's price book has no rows." } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
@@ -343,6 +351,18 @@ export default function registerMasonryActions(registerLensAction) {
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
+  registerLensAction("masonry", "proposal-delete", (ctx, _a, params = {}) => {
+    try {
+      const s = getMasonState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const list = mlist(s.proposals, maid(ctx));
+      const idx = list.findIndex((x) => x.id === params.id);
+      if (idx < 0) return { ok: false, error: "Proposal not found" };
+      const removed = list.splice(idx, 1)[0];
+      saveMasonState();
+      return { ok: true, result: { deleted: removed.id, number: removed.number } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
   registerLensAction("masonry", "proposal-render", (ctx, _a, params = {}) => {
     try {
       const s = getMasonState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -439,8 +459,13 @@ export default function registerMasonryActions(registerLensAction) {
       const idx = list.findIndex((j) => j.id === params.id);
       if (idx < 0) return { ok: false, error: "Job not found" };
       list.splice(idx, 1);
+      const inspections = mlist(s.inspections, maid(ctx));
+      let removedInspections = 0;
+      for (let i = inspections.length - 1; i >= 0; i--) {
+        if (inspections[i].jobId === params.id) { inspections.splice(i, 1); removedInspections += 1; }
+      }
       saveMasonState();
-      return { ok: true, result: { deleted: params.id } };
+      return { ok: true, result: { deleted: params.id, removedInspections } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
@@ -525,6 +550,18 @@ export default function registerMasonryActions(registerLensAction) {
       const approvedTotal = list.filter((c) => c.status === "approved").reduce((sm, c) => sm + c.amount, 0);
       const pendingTotal = list.filter((c) => c.status === "pending").reduce((sm, c) => sm + c.amount, 0);
       return { ok: true, result: { changeOrders: list, approvedTotal: Math.round(approvedTotal * 100) / 100, pendingTotal: Math.round(pendingTotal * 100) / 100 } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("masonry", "change-order-delete", (ctx, _a, params = {}) => {
+    try {
+      const s = getMasonState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const list = mlist(s.changeOrders, maid(ctx));
+      const idx = list.findIndex((c) => c.id === params.id);
+      if (idx < 0) return { ok: false, error: "Change order not found" };
+      const removed = list.splice(idx, 1)[0];
+      saveMasonState();
+      return { ok: true, result: { deleted: removed.id, number: removed.number } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
@@ -753,8 +790,8 @@ export default function registerMasonryActions(registerLensAction) {
   // the schedule record's own `id` (not free text) so the frontend can
   // offer a real job picker sourced from schedule-list instead of a
   // typed field; jobTitle/jobFound are looked up live, never fabricated —
-  // an inspection against a since-deleted job still displays honestly
-  // (jobFound:false) instead of silently losing its link.
+  // schedule-delete removes inspections for that job. A list of an
+  // inspection whose job is already gone still says jobFound:false.
   // ─────────────────────────────────────────────────────────────────────
   const INSPECTION_TYPES = [
     "footing_foundation", "reinforcement_placement", "grout_mortar_qa",
@@ -842,6 +879,18 @@ export default function registerMasonryActions(registerLensAction) {
       insp.completedAt = result === "pending" ? null : mnow();
       saveMasonState();
       return { ok: true, result: insp };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("masonry", "inspection-delete", (ctx, _a, params = {}) => {
+    try {
+      const s = getMasonState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const list = mlist(s.inspections, maid(ctx));
+      const idx = list.findIndex((i) => i.id === params.id);
+      if (idx < 0) return { ok: false, error: "Inspection not found" };
+      const removed = list.splice(idx, 1)[0];
+      saveMasonState();
+      return { ok: true, result: { deleted: removed.id, number: removed.number } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 

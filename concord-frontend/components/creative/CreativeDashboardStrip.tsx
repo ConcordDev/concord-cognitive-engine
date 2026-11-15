@@ -114,7 +114,7 @@ export function CreativeDashboardStrip() {
           <t.icon className={`w-4 h-4 mb-1.5 ${t.accent}`} />
           <p className="text-xl font-bold text-zinc-100 leading-none">{t.value}</p>
           <p className="text-[10px] text-zinc-500 mt-1 leading-tight">{t.label}</p>
-          <p className="text-[10px] text-zinc-600 leading-tight">{t.sub}</p>
+          <p className="text-[10px] text-zinc-200 leading-tight">{t.sub}</p>
         </div>
       ))}
     </div>

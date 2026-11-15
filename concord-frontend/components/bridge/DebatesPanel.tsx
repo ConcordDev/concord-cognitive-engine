@@ -23,7 +23,7 @@ export function DebatesPanel({ debates, status, onDtuClick }: { debates: Debate[
             <div className="flex-1">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium capitalize">{debate.challengerRole}</span>
-                <span className="text-zinc-600">challenged</span>
+                <span className="text-zinc-400">challenged</span>
                 <button onClick={(e) => { e.stopPropagation(); onDtuClick?.(debate.dtuId); }} className="text-xs text-neon-cyan hover:underline cursor-pointer">{debate.dtuId.slice(0, 12)}...</button>
               </div>
               <div className="text-xs text-zinc-400 mt-0.5">{debate.challenge.slice(0, 100)}</div>

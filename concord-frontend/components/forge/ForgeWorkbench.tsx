@@ -16,8 +16,9 @@
  *   - Domain table editor
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { lensRun } from '@/lib/api/client';
 import {
   Hammer, Download, Check, X, ChevronDown, ChevronRight,
   Cpu, Database, Lock, CreditCard, Globe, Wifi, Clock,
@@ -103,6 +104,7 @@ export function ForgeWorkbench() {
   const [concordNode, setConcordNode] = useState(false);
   const [domainTables, setDomainTables] = useState<string[]>([]);
   const [newTableName, setNewTableName] = useState('');
+  const [tableNote, setTableNote] = useState('');
   const [enabledSections, setEnabledSections] = useState<string[] | null>(null);
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
   const [generationManifest, setGenerationManifest] = useState<Record<string, unknown> | null>(null);
@@ -112,6 +114,52 @@ export function ForgeWorkbench() {
   const [jwtSecret, setJwtSecret] = useState('');
   const [stripeKey, setStripeKey] = useState('');
   const [publishOpen, setPublishOpen] = useState(false);
+
+  // FIX-forge-003: the config is the workbench's working project — load
+  // the saved config on open and save edits (debounced) so a reload no
+  // longer resets the name/port/tables to the defaults. Secrets are
+  // never saved.
+  const configHydrated = useRef(false);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await lensRun<{ config: {
+          templateId: string; appName: string; port: number;
+          dbDriver: 'sqlite' | 'postgres'; concordNode: boolean;
+          domainTables: string[]; enabledSections: string[] | null;
+        } | null }>('forge', 'workbench-config-get', {});
+        const cfg = r.data?.ok ? r.data.result?.config : null;
+        if (!cancelled && cfg) {
+          setSelectedTemplate(cfg.templateId || 'blank');
+          setAppName(cfg.appName);
+          setPort(cfg.port);
+          setDbDriver(cfg.dbDriver === 'postgres' ? 'postgres' : 'sqlite');
+          setConcordNode(!!cfg.concordNode);
+          setDomainTables(Array.isArray(cfg.domainTables) ? cfg.domainTables : []);
+          setEnabledSections(Array.isArray(cfg.enabledSections) ? cfg.enabledSections : null);
+        }
+      } catch { /* no saved config — the defaults stand */ }
+      if (!cancelled) configHydrated.current = true;
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (!configHydrated.current) return;
+    const t = setTimeout(() => {
+      lensRun('forge', 'workbench-config-save', {
+        templateId: selectedTemplate,
+        appName,
+        port,
+        dbDriver,
+        concordNode,
+        domainTables,
+        enabledSections,
+      }).catch(() => { /* best effort — editing continues offline */ });
+    }, 600);
+    return () => clearTimeout(t);
+  }, [selectedTemplate, appName, port, dbDriver, concordNode, domainTables, enabledSections]);
 
   // ── Queries ─────────────────────────────────────────────────────────
   const { data: templatesData } = useQuery({
@@ -175,6 +223,13 @@ export function ForgeWorkbench() {
 
   const validateMutation = useMutation({
     mutationFn: async () => {
+      const localErrors: string[] = [];
+      const name = appName.trim();
+      if (name.length > 64) localErrors.push('appName must be 64 characters or fewer');
+      if (!Number.isInteger(port) || port < 1 || port > 65535) {
+        localErrors.push('port must be an integer from 1 to 65535');
+      }
+      if (localErrors.length) return { ok: true, valid: false, errors: localErrors };
       const res = await fetch('/api/forge/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -195,10 +250,14 @@ export function ForgeWorkbench() {
 
   // ── Handlers ────────────────────────────────────────────────────────
   const handleAddTable = useCallback(() => {
-    const name = newTableName.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+    const raw = newTableName.trim();
+    const name = raw.toLowerCase().replace(/[^a-z0-9_]/g, '_');
     if (name && !domainTables.includes(name)) {
       setDomainTables(prev => [...prev, name]);
       setNewTableName('');
+      // FIX-forge-005: the sanitiser used to rewrite the typed name in
+      // silence ('bad table!@#' became 'bad_table___'). Name the rewrite.
+      setTableNote(name !== raw ? `Table names use lowercase letters, numbers and underscores — added as "${name}".` : '');
     }
   }, [newTableName, domainTables]);
 
@@ -295,6 +354,17 @@ export function ForgeWorkbench() {
           )}
         </div>
       </div>
+
+      {/* FIX-forge-001: a failed validate/generate call used to settle
+          silently — the spinner stopped and nothing appeared, because
+          the mutations' error state was never read. Failures now speak,
+          and the buttons above are the retry. */}
+      {validateMutation.isError && (
+        <p className="mx-4 mt-2 text-xs text-red-300">Validation could not reach the server — check your connection and try Validate again.</p>
+      )}
+      {generateMutation.isError && (
+        <p className="mx-4 mt-2 text-xs text-red-300">Generation could not reach the server — check your connection and try Generate App again.</p>
+      )}
 
       {/* Validation result banner */}
       <AnimatePresence>
@@ -396,8 +466,8 @@ export function ForgeWorkbench() {
                 <label className="block text-xs font-medium text-gray-400 mb-1">Port</label>
                 <input
                   type="number"
-                  value={port}
-                  onChange={e => setPort(parseInt(e.target.value) || 3000)}
+                  value={Number.isFinite(port) ? port : ''}
+                  onChange={e => setPort(e.target.value === '' ? Number.NaN : Number(e.target.value))}
                   className="w-full px-3 py-2 bg-lattice-deep border border-lattice-border rounded-lg text-sm text-white focus:outline-none focus:border-orange-500/50"
                 />
               </div>
@@ -462,6 +532,7 @@ export function ForgeWorkbench() {
                   <Plus className="w-4 h-4" />
                 </button>
               </div>
+              {tableNote && <p role="note" className="text-[11px] text-amber-300 mb-2">{tableNote}</p>}
               {domainTables.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   {domainTables.map(t => (

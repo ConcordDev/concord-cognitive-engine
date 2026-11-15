@@ -17,7 +17,8 @@
  *  - S3: the Dashboard aggregates every desk type, not just Jobs, and its
  *    Outstanding tile sums unpaid invoices; a recent-activity list is
  *    drawn from the records' own timestamps and labelled as such.
- *  - F4: row delete is a two-step confirm. Every save/delete toasts.
+ *  - F4: row delete is a two-step confirm that stays up until Confirm or
+ *    Cancel. It must not auto-dismiss. Every save/delete toasts.
  */
 
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
@@ -28,6 +29,7 @@ import { useUIStore } from '@/store/ui';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import {
   Thermometer, Wrench, ClipboardList, DollarSign, Users, Plus, Search, X, Trash2,
   BarChart3, CheckCircle2, FileText, Award, Calculator, Receipt, Fan, Gauge,
@@ -278,6 +280,8 @@ export function HvacDeskPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const [formName, setFormName] = useState('');
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'name'>('newest');
+  const NAME_MAX = 120;
   const [formDescription, setFormDescription] = useState('');
   const [formStatus, setFormStatus] = useState<Status>('scheduled');
   const [formNotes, setFormNotes] = useState('');
@@ -326,8 +330,14 @@ export function HvacDeskPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
     }
     if (filterStatus !== 'all')
       result = result.filter((i) => (i.data as unknown as TradeArtifact).status === filterStatus);
-    return result;
-  }, [items, searchQuery, filterStatus]);
+    const sorted = [...result].sort((a, b) => {
+      if (sortBy === 'name') return (a.title || '').localeCompare(b.title || '');
+      const ta = String(a.updatedAt || '');
+      const tb = String(b.updatedAt || '');
+      return sortBy === 'oldest' ? ta.localeCompare(tb) : tb.localeCompare(ta);
+    });
+    return sorted;
+  }, [items, searchQuery, filterStatus, sortBy]);
 
   const resetForm = () => {
     setFormName('');
@@ -408,6 +418,20 @@ export function HvacDeskPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
   };
 
   const handleSave = async () => {
+    if (formLaborHours.trim()) {
+      const hours = Number(formLaborHours);
+      if (!Number.isFinite(hours) || hours < 0 || hours > 1000) {
+        addToast({ type: 'error', message: 'Labor hours must be a number from 0 to 1000.' });
+        return;
+      }
+    }
+    if (formMaterialCost.trim()) {
+      const cost = Number(formMaterialCost);
+      if (!Number.isFinite(cost) || cost < 0 || cost > 1e12) {
+        addToast({ type: 'error', message: 'Material cost must be a number from 0 to 1000000000000.' });
+        return;
+      }
+    }
     const laborH = formLaborHours ? parseFloat(formLaborHours) : undefined;
     const laborR = formLaborRate ? parseFloat(formLaborRate) : undefined;
     const matC = formMaterialCost ? parseFloat(formMaterialCost) : undefined;
@@ -469,7 +493,6 @@ export function HvacDeskPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
   const handleDelete = async (item: LensItem<TradeArtifact>) => {
     if (confirmDeleteId !== item.id) {
       setConfirmDeleteId(item.id);
-      window.setTimeout(() => setConfirmDeleteId((cur) => (cur === item.id ? null : cur)), 4000);
       return;
     }
     setConfirmDeleteId(null);
@@ -517,7 +540,8 @@ export function HvacDeskPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
           <div className="space-y-3">
             <div>
               <label className={ds.label}>Name</label>
-              <input className={ds.input} value={formName} onChange={(e) => setFormName(e.target.value)} />
+              <input className={ds.input} value={formName} maxLength={NAME_MAX} onChange={(e) => setFormName(e.target.value.slice(0, NAME_MAX))} aria-describedby="hvac-name-limit" />
+              <p id="hvac-name-limit" className={formName.length >= NAME_MAX ? 'text-[11px] text-amber-300' : 'text-[11px] text-gray-500'}>{formName.length}/{NAME_MAX} characters. Longer names are cut off.</p>
             </div>
             <div>
               <label className={ds.label}>Description</label>
@@ -754,6 +778,11 @@ export function HvacDeskPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
             <option key={k} value={k}>{statusLabel(activeArtifactType, k)}</option>
           ))}
         </select>
+        <select className={cn(ds.select, 'w-auto')} value={sortBy} onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest' | 'name')} aria-label="Sort records">
+          <option value="newest">Newest</option>
+          <option value="oldest">Oldest</option>
+          <option value="name">Name</option>
+        </select>
         <button onClick={openCreate} className={ds.btnPrimary}>
           <Plus className="w-4 h-4" /> New
         </button>
@@ -807,23 +836,14 @@ export function HvacDeskPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                   <span className={`text-xs px-2 py-0.5 rounded-full bg-${sc.color}/20 text-${sc.color}`}>
                     {statusLabel(activeArtifactType, d.status)}
                   </span>
-                  {confirmDeleteId === item.id ? (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); void handleDelete(item); }}
-                      className="text-xs px-2 py-1 rounded bg-red-500/20 text-red-300"
-                      aria-label="Confirm delete"
-                    >
-                      Confirm delete?
-                    </button>
-                  ) : (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); void handleDelete(item); }}
-                      className={ds.btnGhost}
-                      aria-label="Delete"
-                    >
-                      <Trash2 className="w-4 h-4 text-red-400" />
-                    </button>
-                  )}
+                  <StickyDeleteConfirm
+                    armed={confirmDeleteId === item.id}
+                    onArm={() => setConfirmDeleteId(item.id)}
+                    onConfirm={() => { void handleDelete(item); }}
+                    onCancel={() => setConfirmDeleteId(null)}
+                    armLabel={<Trash2 className="w-4 h-4 text-red-400" />}
+                    className={ds.btnGhost}
+                  />
                 </div>
               </div>
             </motion.div>

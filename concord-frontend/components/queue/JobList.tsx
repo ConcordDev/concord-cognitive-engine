@@ -1,7 +1,9 @@
 'use client';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { useState } from 'react';
 import { Play, RotateCcw, Trash2, Loader2, ChevronRight } from 'lucide-react';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 export interface QueueJob {
   id: string;
@@ -46,6 +48,7 @@ export function JobList({
   onRetry,
   onRemove,
   onSelect,
+  emptyHint,
 }: {
   jobs: QueueJob[];
   busyId: string | null;
@@ -53,17 +56,42 @@ export function JobList({
   onRetry: (id: string) => void;
   onRemove: (id: string) => void;
   onSelect: (job: QueueJob) => void;
+  /** Overrides the empty-state line (the Scheduled tab has no enqueue form of its own). */
+  emptyHint?: string;
 }) {
+  // FIX-queue-006: the list had no in-lens find control (the header
+  // Search button is the global DTU search). Search filters the held
+  // jobs on a render copy; the delivered order is never mutated.
+  const [jobQuery, setJobQuery] = useState('');
   if (jobs.length === 0) {
     return (
       <p className="rounded-lg border border-dashed border-zinc-800 py-8 text-center text-sm text-zinc-400">
-        No jobs. Enqueue one above to get started.
+        {emptyHint ?? 'No jobs. Enqueue one above to get started.'}
       </p>
     );
   }
+  const q = jobQuery.trim().toLowerCase();
+  const visibleJobs = q
+    ? jobs.filter((j) => [j.name, j.queue, j.status].some((f) => f.toLowerCase().includes(q)))
+    : jobs;
   return (
     <div className="space-y-2">
-      {jobs.map((j) => {
+      {jobs.length > 1 && (
+        <input
+          type="search"
+          value={jobQuery}
+          onChange={(e) => setJobQuery(e.target.value)}
+          placeholder="Search jobs by name, queue, or status…"
+          aria-label="Search jobs"
+          className="w-full rounded-lg border border-zinc-800 bg-black/30 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500"
+        />
+      )}
+      {visibleJobs.length === 0 && (
+        <p className="rounded-lg border border-dashed border-zinc-800 py-6 text-center text-sm text-zinc-400">
+          No jobs match &ldquo;{jobQuery}&rdquo;.
+        </p>
+      )}
+      {visibleJobs.map((j) => {
         const runnable = ['pending', 'delayed', 'failed'].includes(j.status);
         const retryable = ['failed', 'dead'].includes(j.status);
         const busy = busyId === j.id;
@@ -96,6 +124,11 @@ export function JobList({
                   <span className={`rounded px-1.5 py-0.5 text-[10px] ${STATUS_STYLE[j.status] || 'bg-zinc-700 text-zinc-300'}`}>
                     {j.status}
                   </span>
+                  {j.status === 'completed' && j.result?.manual === true && (
+                    <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] text-amber-300">
+                      manual · no worker ran this
+                    </span>
+                  )}
                   <span className={`rounded px-1.5 py-0.5 text-[10px] ${PRIORITY_STYLE[j.priority]}`}>
                     {j.priority}
                   </span>
@@ -137,14 +170,15 @@ export function JobList({
                   <RotateCcw className="h-4 w-4" />
                 </button>
               )}
-              <button
-                onClick={() => onRemove(j.id)}
+              <StickyDeleteConfirm
+                onConfirm={() => onRemove(j.id)}
                 disabled={busy}
-                title="Remove"
                 className="rounded-lg bg-rose-500/20 p-2 text-rose-300 hover:bg-rose-500/30 disabled:opacity-50"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
+                armLabel={<Trash2 className="h-4 w-4" />}
+                armAriaLabel={`Remove job ${j.name}`}
+                confirmLabel={`Remove "${j.name}"?`}
+                confirmAriaLabel={`Confirm remove job ${j.name}`}
+              />
               <ChevronRight className="h-4 w-4 text-zinc-600" />
             </div>
           </div>

@@ -12,6 +12,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { Camera, Video, Square, Trash2, RefreshCw, Eye, X } from 'lucide-react';
@@ -261,9 +262,7 @@ export function ARCaptureGallery({ canvasRef, sceneId, disabled, onNotify }: Pro
               <div key={c.id} className="rounded-md border border-lattice-border p-2 text-xs space-y-1">
                 <div className="flex items-center justify-between gap-1">
                   <span className="text-white truncate">{c.label || c.mimeType}</span>
-                  <button onClick={() => deleteCapture(c.id)} className={ds.btnGhost} aria-label={`Delete capture ${c.id}`}>
-                    <Trash2 className="w-3.5 h-3.5 text-red-400" />
-                  </button>
+                  <StickyDeleteConfirm onConfirm={() => { void deleteCapture(c.id); }} className={ds.btnGhost} armAriaLabel={`Delete capture ${c.label || c.mimeType}`} confirmLabel={`Delete “${c.label || c.mimeType}”?`} confirmAriaLabel={`Confirm delete capture ${c.label || c.mimeType}`} armLabel={<Trash2 className="w-3.5 h-3.5 text-red-400" />} />
                 </div>
                 <p className="text-gray-400">{fmtBytes(c.byteSize)} &middot; {c.mimeType}</p>
                 {c.durationMs != null && <p className="text-gray-400">{(c.durationMs / 1000).toFixed(1)}s</p>}

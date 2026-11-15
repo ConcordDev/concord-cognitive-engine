@@ -45,7 +45,7 @@ export function DTUExportButton({
           const res = await api.get(`/api/lens/${domain}/export`, { params: { limit: 1000 } });
           const rows = Array.isArray(res.data?.artifacts) ? res.data.artifacts : [];
           if (rows.length === 0) {
-            addToast({ type: 'error', message: 'Nothing to export yet — this lens has no saved data.' });
+            addToast({ type: 'error', message: 'Nothing to export yet — this lens has no saved data. Create or save something in this lens first, then export.' });
             return;
           }
           payload = { source: 'lens-export', domain, exportedAt: new Date().toISOString(), items: rows };
@@ -99,12 +99,19 @@ export function DTUExportButton({
       const blob = new Blob([received], { type: 'application/octet-stream' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
+      const filename = `${domain}-${Date.now()}.dtu`;
       a.href = url;
-      a.download = `${domain}-${Date.now()}.dtu`;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+
+      // FIX-paper-012: every failure path already toasted, but success
+      // was silent apart from the button's brief checkmark — the file
+      // simply appeared in Downloads with no in-app word. Confirm in
+      // words, naming the file that was saved.
+      addToast({ type: 'success', message: `Exported ${filename} — check your downloads.` });
 
       setExported(true);
       setTimeout(() => setExported(false), 2000);
@@ -130,6 +137,7 @@ export function DTUExportButton({
         disabled={exporting}
         className={`text-xs px-2 py-1 rounded bg-zinc-700 hover:bg-zinc-600 transition-colors disabled:opacity-50 ${className}`}
         title="Export as .dtu"
+        aria-label={`Export ${domain} data as .dtu`}
       >
         {exported ? '✓' : exporting ? '...' : '↓ .dtu'}
       </button>

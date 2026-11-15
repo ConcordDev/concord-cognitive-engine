@@ -78,10 +78,10 @@ describe("inheritance — beneficiary share math", () => {
     assert.equal(l.result.balanced, false);
     assert.equal(l.result.remainderPct, 25);
 
-    // A share above 100 is clamped to 100, never stored raw.
+    // A share above 100 is refused, never stored.
     const big = call("add_beneficiary", ctxA, { name: "Greedy", sharePct: 9999 });
-    assert.equal(big.ok, true);
-    assert.equal(big.result.beneficiary.sharePct, 100);
+    assert.equal(big.ok, false);
+    assert.match(big.message, /0 to 100/);
   });
 
   it("update_beneficiary reprices an existing share; balanced flips at exactly 100", () => {

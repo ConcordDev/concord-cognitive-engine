@@ -110,7 +110,9 @@ describe('time tracking breadth', () => {
     await waitFor(() => expect(called('timeEntryAdd')).toBe(true));
     fireEvent.click(screen.getByRole('button', { name: /Start timer/i }));
     await waitFor(() => expect(called('timerStart')).toBe(true));
-    fireEvent.click(screen.getByRole('button', { name: 'Delete entry' }));
+    // Two-step sticky confirm (CB-0430 carpentry-007 swap): arm, then confirm.
+    fireEvent.click(screen.getByRole('button', { name: 'Delete entry for Deck build' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Confirm delete entry for Deck build' }));
     await waitFor(() => expect(called('timeEntryDelete')).toBe(true));
   });
 });

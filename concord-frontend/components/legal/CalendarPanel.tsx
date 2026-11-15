@@ -4,6 +4,7 @@ import { showToast } from '@/components/common/Toasts';
 import { useEffect, useState } from 'react';
 import { Calendar, Loader2, Plus, AlertCircle, Gavel, Users, FileText, ScanText, Check, Milestone } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { calendarDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 
@@ -395,13 +396,13 @@ export function CalendarPanel() {
               {upcoming.length > 0 && (
                 <>
                   <div className="px-4 py-1 bg-amber-500/[0.04] text-[10px] uppercase tracking-wider text-amber-300 font-semibold">Upcoming</div>
-                  <EventList events={upcoming} />
+                  <EventList events={upcoming} onDeleted={() => void refresh()} />
                 </>
               )}
               {past.length > 0 && (
                 <>
                   <div className="px-4 py-1 bg-white/[0.02] text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Past</div>
-                  <EventList events={past.slice(-15).reverse()} muted />
+                  <EventList events={past.slice(-15).reverse()} muted onDeleted={() => void refresh()} />
                 </>
               )}
             </>
@@ -412,7 +413,8 @@ export function CalendarPanel() {
   );
 }
 
-function EventList({ events, muted }: { events: CalEvent[]; muted?: boolean }) {
+function EventList({ events, muted, onDeleted }: { events: CalEvent[]; muted?: boolean; onDeleted?: () => void }) {
+  const [armedId, setArmedId] = useState<string | null>(null);
   return (
     <ul className="divide-y divide-white/5">
       {events.map(e => {
@@ -428,6 +430,19 @@ function EventList({ events, muted }: { events: CalEvent[]; muted?: boolean }) {
               {e.sourceRule && <div className="text-[9px] text-amber-300 font-mono">{e.sourceRule}</div>}
             </div>
             <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-white/5 text-gray-400">{e.kind}</span>
+            <StickyDeleteConfirm
+              armed={armedId === e.id}
+              onArm={() => setArmedId(e.id)}
+              onCancel={() => setArmedId(null)}
+              onConfirm={async () => {
+                await lensRun({ domain: 'legal', action: 'calendar-delete', input: { id: e.id } });
+                setArmedId(null);
+                onDeleted?.();
+              }}
+              armLabel="Delete"
+              confirmLabel={`Delete “${e.title}”?`}
+              className="text-[11px] text-rose-300 underline"
+            />
           </li>
         );
       })}

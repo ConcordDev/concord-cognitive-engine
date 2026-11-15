@@ -1,6 +1,7 @@
 {
   "id": "town_captured",
   "name": "Town Captured",
+  "summary": "The town's banner comes down and another rises in its place. The crowd murmurs, the gates change hands, and by nightfall the town answers to a new name.",
   "trigger": "town_captured",
   "comment": "Phase W — slow push-in on captured town anchor + banner flip animation + crowd murmur SFX cue.",
   "shots": [

@@ -620,6 +620,21 @@ export default function registerForkActions(registerLensAction) {
     arr.splice(i, 1); saveFork();
     return { ok: true, result: { deleted: params.id } };
   });
+  registerLensAction("fork", "watch-update", (ctx, _a, params = {}) => {
+    const s = getForkState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = fkRepos(s, fkActor(ctx));
+    const repo = arr.find((r) => r.id === params.id);
+    if (!repo) return { ok: false, error: "repo not found" };
+    if (params.reason != null) {
+      if (!["upstream", "fork", "competitor", "reference", "dependency"].includes(params.reason)) {
+        return { ok: false, error: "invalid reason" };
+      }
+      repo.reason = params.reason;
+    }
+    if (params.note != null) repo.note = fkClean(params.note, 300);
+    saveFork();
+    return { ok: true, result: { repo } };
+  });
   registerLensAction("fork", "watch-refresh", async (ctx, _a, params = {}) => {
     const s = getForkState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const repo = fkRepos(s, fkActor(ctx)).find((r) => r.id === params.id);
@@ -1080,6 +1095,35 @@ export default function registerForkActions(registerLensAction) {
       saveFork();
       return { ok: true, result: { ingested, skipped, source: `github-events (${fullName})`, dtuIds } };
     } catch (e) { return { ok: false, error: `github unreachable: ${e instanceof Error ? e.message : String(e)}` }; }
+  });
+
+  // ─── Feed history: what the pull above actually ingested ───────────
+  // The feed verb mints DTUs into the caller's vault but the lens kept no
+  // list of them, so an ingested event could neither be viewed nor even
+  // counted from here (FIX-fork-011, view leg). Following the agriculture
+  // feed-list precedent, the lens lists its own ingest through the
+  // sanctioned dtu.list read, pinned to this handler's mint (source
+  // "github-events-feed"). The REMOVE leg is deliberately not built here:
+  // no lens-level DTU delete exists — the only removal path of record is
+  // the publish-recall route — so deleting an ingested DTU is a platform
+  // decision, named for the desk in the ticket's record row.
+  registerLensAction("fork", "feed-list", async (ctx, _a, params = {}) => {
+    const limit = Math.max(1, Math.min(100, Math.round(Number(params.limit) || 50)));
+    const res = await ctx.macro.run("dtu", "list", { tags: "feed", limit: 100 });
+    const rows = Array.isArray(res?.dtus) ? res.dtus : [];
+    const items = rows
+      .filter((d) => d && d.source === "github-events-feed")
+      .map((d) => ({
+        id: d.id,
+        title: d.title,
+        repo: d.meta?.repo || null,
+        type: d.meta?.type || null,
+        actor: d.meta?.actor || null,
+        publishedAt: d.meta?.createdAt || d.createdAt || null,
+      }))
+      .sort((a, b) => new Date(b.publishedAt || 0).getTime() - new Date(a.publishedAt || 0).getTime())
+      .slice(0, limit);
+    return { ok: true, result: { items, count: items.length } };
   });
 
   // ─── P-D: lattice-fork "forked self" — PREVIEW ONLY ──────────────────

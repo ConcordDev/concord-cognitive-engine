@@ -91,7 +91,12 @@ export function UsgsQuakePanel({ className, minMagnitude = 2.5 }: { className?: 
       <header className="flex items-center gap-2 px-3 py-2 border-b border-zinc-800/80 bg-zinc-900/40">
         <Activity className="w-4 h-4 text-amber-400" aria-hidden="true" />
         <h3 className="text-sm font-medium text-zinc-100 flex-1">USGS · Earthquakes (24h)</h3>
-        <span className="text-[10px] text-emerald-400 font-mono">REAL data</span>
+        {/* The provenance badge follows the fetch state: a failed feed is
+            labelled unavailable, never REAL — the walk found 'REAL data'
+            sitting over a 'USGS unreachable' panel with zero events. */}
+        {error
+          ? <span className="text-[10px] text-rose-400 font-mono">FEED UNAVAILABLE</span>
+          : <span className="text-[10px] text-emerald-400 font-mono">REAL data</span>}
         <label className="text-[10px] text-zinc-400 flex items-center gap-1">
           ≥M
           <select

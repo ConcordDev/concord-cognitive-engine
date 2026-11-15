@@ -24,6 +24,7 @@ import {
   BRIDGE_RISK,
 } from "./mcp-hermes-identity.js";
 import { formatIrErrors, CONKAY_IR_MINI_EXAMPLE, CONKAY_IR_HINTS } from "./conkay/compiler/soften-ir.js";
+import { calcReceiptForEnvelope } from "./receipts/calc-receipt.js";
 import { compileDesignBrief } from "./conkay/compiler/design-brief.js";
 
 const PREFERRED_LENS_ACTIONS = [
@@ -427,6 +428,12 @@ export async function conkaySolveMcp(db, args = {}, STATE = null, callCtx = null
   if (!opened.ok) {
     return { ok: false, reason: "ir_invalid", error: "design did not compile", ...formatIrErrors(opened.errors, opened.warnings) };
   }
+  // GB-1534: settle BEFORE reading results — kernel solvers (Cantera chem,
+  // CAD) queue their runs at open and report NOT_COMPUTED "kernel run
+  // pending" until settle() runs them off the request path and reruns the
+  // solvers (the conkay_design "open" pattern). Reading results() first
+  // handed callers pending envelopes as if they were answers.
+  await opened.session.settle();
 
   const targetFilter = clean.target != null ? String(clean.target) : null;
   const envelopes = opened.session.results().filter((e) => {
@@ -451,20 +458,29 @@ export async function conkaySolveMcp(db, args = {}, STATE = null, callCtx = null
     };
   }
 
-  const results = envelopes.map((env) => ({
-    runId: env.runId,
-    status: env.status,
-    target: env.target,
-    inputs: env.inputs,
-    outputs: env.outputs,
-    margins: env.margins,
-    failures: env.failures || [],
-    warnings: env.warnings || [],
-    assumptions: env.assumptions || [],
-    solver: env.solver,
-    provenance: provenanceFromEnvelope(env),
-    runtimeMs: env.runtimeMs,
-  }));
+  const results = envelopes.map((env) => {
+    // GB-1534: every returned result carries a signed v2 calc receipt of
+    // its own inputs + outputs (also under `receipt`, the slot callers
+    // already read), so a chat/MCP solve is as tamper-evident as a demo
+    // solve. An envelope that did not compute signs a NOT_COMPUTED verdict.
+    const calcReceipt = calcReceiptForEnvelope(env);
+    return {
+      runId: env.runId,
+      status: env.status,
+      target: env.target,
+      inputs: env.inputs,
+      outputs: env.outputs,
+      margins: env.margins,
+      failures: env.failures || [],
+      warnings: env.warnings || [],
+      assumptions: env.assumptions || [],
+      solver: env.solver,
+      provenance: provenanceFromEnvelope(env),
+      runtimeMs: env.runtimeMs,
+      calcReceipt,
+      receipt: calcReceipt,
+    };
+  });
 
   const worst = results.some((r) => r.status === "FAIL" || r.status === "ERROR")
     ? "FAIL"

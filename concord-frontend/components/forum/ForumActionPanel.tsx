@@ -6,6 +6,7 @@
  * mint/DM/publish/agent.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import { MessageCircle, Shield, Activity, Hash, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -139,8 +140,8 @@ export function ForumActionPanel() {
     try {
       const task = `Community manager brief. ${healthResult ? `${healthResult.activityRate}% activity rate (${healthResult.health}), growth ${healthResult.growthRate}%.` : ''} ${modResult ? `${modResult.pending} pending reports (${modResult.urgency} urgency).` : ''} ${topicResult ? `Top topic: ${topicResult.topTopic}.` : ''} Identify single highest-impact community action this week + one engagement experiment. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Brief ready.'); } else err('Agent returned empty.');
+      const reply = readAgentReply(r.data);
+      if (reply.ok) { setAgentReply(reply.text); ok('Brief ready.'); } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 
@@ -169,22 +170,22 @@ export function ForumActionPanel() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <div>
           <label className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold">Thread posts JSON</label>
-          <textarea value={threadText} onChange={(e) => setThreadText(e.target.value)} rows={6} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
+          <textarea aria-label="Thread posts JSON" value={threadText} onChange={(e) => setThreadText(e.target.value)} rows={6} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
         </div>
         <div>
           <label className="text-[10px] uppercase tracking-wider text-red-400 font-semibold">Reports JSON</label>
-          <textarea value={reportsText} onChange={(e) => setReportsText(e.target.value)} rows={6} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
+          <textarea aria-label="Reports JSON" value={reportsText} onChange={(e) => setReportsText(e.target.value)} rows={6} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
         </div>
         <div className="space-y-1.5">
           <div className="text-[10px] uppercase tracking-wider text-green-400 font-semibold">Community metrics</div>
           <div className="grid grid-cols-2 gap-1">
-            <input type="text" value={activeUsers} onChange={(e) => setActiveUsers(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Active" />
-            <input type="text" value={totalUsers} onChange={(e) => setTotalUsers(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Total" />
-            <input type="text" value={postsThisWeek} onChange={(e) => setPostsThisWeek(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Posts/wk" />
-            <input type="text" value={postsLastWeek} onChange={(e) => setPostsLastWeek(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Posts last" />
+            <input type="text" aria-label="Active users" value={activeUsers} onChange={(e) => setActiveUsers(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Active" />
+            <input type="text" aria-label="Total users" value={totalUsers} onChange={(e) => setTotalUsers(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Total" />
+            <input type="text" aria-label="Posts this week" value={postsThisWeek} onChange={(e) => setPostsThisWeek(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Posts/wk" />
+            <input type="text" aria-label="Posts last week" value={postsLastWeek} onChange={(e) => setPostsLastWeek(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Posts last" />
           </div>
-          <textarea value={threadsText} onChange={(e) => setThreadsText(e.target.value)} rows={3} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono" placeholder="Threads JSON" />
-          <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white" placeholder="DM recipient" />
+          <textarea aria-label="Threads JSON" value={threadsText} onChange={(e) => setThreadsText(e.target.value)} rows={3} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono" placeholder="Threads JSON" />
+          <input type="text" aria-label="DM recipient" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white" placeholder="DM recipient" />
           <div className="flex items-center gap-2 flex-wrap">
             <RecallSlot ctl={dmRecall} />
             <RecallSlot ctl={publishRecall} />

@@ -23,6 +23,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useUIStore } from '@/store/ui';
 import { apiHelpers, isForbidden } from '@/lib/api/client';
 import { AdminRequiredState } from '@/components/common/EmptyState';
+import { useAuth } from '@/hooks/useAuth';
+import {
+  canViewPlatformInternalLens,
+  PLATFORM_INTERNAL_LENS_ROLES,
+} from '@/components/lens/platform-internal-access';
 import { useState } from 'react';
 import {
   Cpu, Database, Wrench, Eye, Compass, Hammer,
@@ -55,10 +60,21 @@ export default function OpsLensPage() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabKey>('incidents');
 
+  // The ops domain and its substrate domains are operator surfaces
+  // (server/lib/platform-internal-lens-gate.js): every call 403s for a
+  // non-operator. Mirror that gate up front — before any query fires or
+  // the console mounts — the way the Admin lens gates on its own role
+  // set, instead of rendering the full chrome and letting each action
+  // fail. The `forbidden` check further down stays as the backstop for
+  // the reverse disagreement (server refuses a viewer admitted here).
+  const { user, isLoading: authLoading } = useAuth();
+  const canView = !authLoading && canViewPlatformInternalLens(user);
+
   const attention = useQuery({
     queryKey: ['ops-attention'],
     queryFn: () => runGatedDomain<{ allocations?: Record<string, number>; budget?: number }>('attention_alloc', 'status', {}),
-    refetchInterval: 30_000,
+    enabled: canView,
+    refetchInterval: canView ? 30_000 : false,
   });
   const runAttention = useMutation({
     mutationFn: async () => (await apiHelpers.lens.runDomain('attention_alloc', 'run', {})).data?.result,
@@ -72,7 +88,8 @@ export default function OpsLensPage() {
   const repairNet = useQuery({
     queryKey: ['ops-repair-network'],
     queryFn: () => runGatedDomain<{ connected?: boolean; pendingFixes?: number; lastSync?: string }>('repair_network', 'status', {}),
-    refetchInterval: 60_000,
+    enabled: canView,
+    refetchInterval: canView ? 60_000 : false,
   });
   const pushRepair = useMutation({
     mutationFn: async () => (await apiHelpers.lens.runDomain('repair_network', 'push', {})).data?.result,
@@ -90,11 +107,13 @@ export default function OpsLensPage() {
       const types = await runGatedDomain<{ types?: string[] }>('physical', 'types', {});
       return { metrics, types };
     },
+    enabled: canView,
   });
 
   const explore = useQuery({
     queryKey: ['ops-explore'],
     queryFn: () => runGatedDomain<{ explorations?: Array<{ id: string; domain?: string; createdAt?: string }> }>('explore', 'history', { limit: 20 }),
+    enabled: canView,
   });
 
  const tabs: {key: TabKey; label: string; keys: string; hint: string; icon: LucideIcon; count?: number }[] = [
@@ -117,15 +136,33 @@ export default function OpsLensPage() {
         category: 'navigation' as const,
         action: () => setActiveTab(t.key),
       })),
-      { id: 'ops-run-attention', keys: 'c', description: 'Run attention cycle', category: 'actions' as const, action: () => runAttention.mutate() },
+      { id: 'ops-run-attention', keys: 'c', description: 'Run attention cycle', category: 'actions' as const, action: () => { if (canView) runAttention.mutate(); } },
     ],
     { lensId: 'ops' },
   );
 
+  if (authLoading) {
+    return (
+      <LensShell lensId="ops" asMain={false}>
+        <div className="flex items-center justify-center h-full p-8">
+          <p role="status" className="text-sm text-zinc-400">Checking access…</p>
+        </div>
+      </LensShell>
+    );
+  }
+
+  if (!canView) {
+    return (
+      <LensShell lensId="ops" asMain={false}>
+        <AdminRequiredState roles={[...PLATFORM_INTERNAL_LENS_ROLES]} />
+      </LensShell>
+    );
+  }
+
   const forbidden = [attention, repairNet, physical, explore].some(q => isForbidden(q.error));
   if (forbidden) return (
     <LensShell lensId="ops" asMain={false}>
-      <AdminRequiredState roles={['admin', 'operator']} />
+      <AdminRequiredState roles={[...PLATFORM_INTERNAL_LENS_ROLES]} />
     </LensShell>
   );
 

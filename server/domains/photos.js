@@ -133,8 +133,8 @@ export default function registerPhotosMacros(register) {
     return fn(db, userId, input || {});
   };
   register("photos", "update", withUser((db, userId, input) =>
-    updatePhoto(db, userId, String(input.photoId || input.id || ""), { caption: input.caption, favorite: input.favorite })),
-  { note: "edit an owned photo's caption and/or favorite flag" });
+    updatePhoto(db, userId, String(input.photoId || input.id || ""), { caption: input.caption, favorite: input.favorite, altText: input.altText, tags: input.tags })),
+  { note: "edit an owned photo's caption, alt text, tags and/or favorite flag" });
   register("photos", "albums", withUser((db, userId) => {
     const albums = listAlbums(db, userId);
     return { ok: true, albums, count: albums.length };

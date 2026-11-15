@@ -485,7 +485,7 @@ export function DatabaseTable({
             <div className="flex gap-4 min-w-max">
               {Object.entries(groups).map(([group, groupRows]) => (
                 <div key={group} className="w-64 shrink-0 bg-lattice-surface border border-lattice-border rounded-lg p-3">
-                  <h4 className="text-sm font-semibold text-white mb-3">{group} <span className="text-gray-400">({groupRows.length})</span></h4>
+                  <h3 className="text-sm font-semibold text-white mb-3">{group} <span className="text-gray-400">({groupRows.length})</span></h3>
                   <div className="space-y-2">
                     {groupRows.length === 0 ? (
                       <p className="text-xs text-gray-400 text-center py-4">No items</p>

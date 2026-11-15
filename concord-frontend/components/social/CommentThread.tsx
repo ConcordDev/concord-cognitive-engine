@@ -191,7 +191,7 @@ export function CommentThread({
                   type="text"
                   placeholder="Reply… type @ to mention"
                   autoFocus
-                  className="w-full text-xs bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/40"
+                  className="w-full text-xs bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-indigo-500/40"
                 />
               )}
             />
@@ -297,7 +297,7 @@ export function CommentThread({
                 ref={props.ref as React.Ref<HTMLInputElement>}
                 type="text"
                 placeholder="Write a comment… type @ to mention"
-                className="w-full text-xs bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/40"
+                className="w-full text-xs bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-indigo-500/40"
               />
             )}
           />

@@ -54,6 +54,49 @@ describe("sub_worlds.discover", () => {
     assert.equal(call("discover", ctxB, { query: "ocean" }).result.worlds.length, 1);
     assert.equal(call("discover", ctxB, { kind: "research_zone" }).result.worlds.length, 1);
   });
+
+  it("sorts most favorited by favorite count and recent by spawn time", () => {
+    const older = spawn(ctxA, { name: "Older Realm", privacy: "public" });
+    const newer = spawn(ctxA, { name: "Newer Realm", privacy: "public" });
+    const s = globalThis._concordSTATE.subWorldsLens;
+    const list = s.worlds.get("user_a");
+    const o = list.find((w) => w.world_id === older.world_id);
+    const n = list.find((w) => w.world_id === newer.world_id);
+    o.spawned_at = Date.now() - 20 * 86_400_000;
+    o.updated_at = o.spawned_at;
+    o.favoriteCount = 12;
+    n.spawned_at = Date.now();
+    n.favoriteCount = 6;
+    for (let i = 0; i < 12; i++) s.favorites.set(`fav${i}`, new Set([o.world_id]));
+    for (let i = 0; i < 6; i++) s.favorites.get(`fav${i}`).add(n.world_id);
+    const fav = call("discover", ctxB, { sort: "most_favorited" }).result.worlds;
+    assert.ok(fav.findIndex((w) => w.name === "Older Realm") < fav.findIndex((w) => w.name === "Newer Realm"));
+    assert.equal(fav.find((w) => w.name === "Older Realm").favorites, 12);
+    assert.equal(fav.find((w) => w.name === "Newer Realm").favorites, 6);
+    const recent = call("discover", ctxB, { sort: "recent" }).result.worlds.map((w) => w.name);
+    const popular = call("discover", ctxB, { sort: "popular" }).result.worlds.map((w) => w.name);
+    assert.ok(recent.indexOf("Newer Realm") < recent.indexOf("Older Realm"));
+    assert.notDeepEqual(recent, popular);
+  });
+
+  it("sorts table worlds with ISO created_at as recent, not as epoch 0", () => {
+    const db = {
+      prepare() {
+        return {
+          all() {
+            return [
+              { id: "iso-old", name: "Iso Old", universe_type: "concordia-hub", description: "", created_by: "z", created_at: "2020-01-01T00:00:00.000Z" },
+              { id: "iso-new", name: "Iso New", universe_type: "concordia-hub", description: "", created_by: "z", created_at: "2026-11-01T00:00:00.000Z" },
+            ];
+          },
+          get() { return null; },
+        };
+      },
+    };
+    const recent = call("discover", { ...ctxB, db }, { sort: "recent" }).result.worlds.map((w) => w.name);
+    assert.ok(recent.indexOf("Iso New") < recent.indexOf("Iso Old"));
+    assert.ok(recent.findIndex((n) => n === "Iso New") >= 0);
+  });
 });
 
 describe("sub_worlds.update_settings + set_status", () => {

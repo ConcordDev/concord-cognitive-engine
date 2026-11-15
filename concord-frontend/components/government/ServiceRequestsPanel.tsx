@@ -7,7 +7,7 @@ import { lensRun } from '@/lib/api/client';
 import { LocalRecordNotice } from './LocalRecordNotice';
 import { cn } from '@/lib/utils';
 
-const ServiceRequestsMap = dynamic(() => import('./ServiceRequestsMap').then(m => m.ServiceRequestsMap), { ssr: false });
+const PinDropMap = dynamic(() => import('./PinDropMap').then(m => m.PinDropMap), { ssr: false });
 
 interface Request {
   id: string; referenceNumber: string; category: string; description: string;
@@ -34,6 +34,7 @@ export function ServiceRequestsPanel() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
   const [form, setForm] = useState({ category: 'pothole', description: '', lat: '', lng: '', address: '', reporterName: '', reporterEmail: '', priority: 'medium' as Request['priority'] });
+  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => { refresh(); }, []);
 
@@ -51,10 +52,17 @@ export function ServiceRequestsPanel() {
   }
 
   async function create() {
-    if (!form.description.trim() || !form.lat || !form.lng) return;
+    if (!form.description.trim()) { setFormError('Describe the issue.'); return; }
+    const lat = Number(form.lat);
+    const lng = Number(form.lng);
+    if (!form.lat.trim() || !form.lng.trim() || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+      setFormError('Drop a pin on the map, or type a latitude and longitude.');
+      return;
+    }
+    setFormError(null);
     try {
-      const res = await lensRun({ domain: 'government', action: 'service-requests-create', input: { ...form, lat: Number(form.lat), lng: Number(form.lng) } });
-      if (res.data?.ok === false) alert(res.data?.error);
+      const res = await lensRun({ domain: 'government', action: 'service-requests-create', input: { ...form, lat, lng } });
+      if (res.data?.ok === false) { setFormError(res.data?.message || res.data?.error || 'Could not file that request.'); return; }
       setForm({ ...form, description: '', address: '', reporterName: '', reporterEmail: '' });
       await refresh();
     } catch (e) { console.error('[SR] create', e); }
@@ -83,14 +91,21 @@ export function ServiceRequestsPanel() {
         <Megaphone className="w-4 h-4 text-amber-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">311 service requests</span>
         <span className="ml-auto text-[10px] text-gray-400">{requests.length}</span>
-        <select value={filter} onChange={e => setFilter(e.target.value)} className="text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white">
+        <select aria-label="Filter requests" value={filter} onChange={e => setFilter(e.target.value)} className="text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white">
           <option value="">All statuses</option>
           {STATUSES.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
         </select>
       </header>
 
-      <div className="border-b border-white/10">
-        <ServiceRequestsMap requests={filter ? requests.filter(r => r.status === filter) : requests} className="h-64 w-full" />
+      <div className="border-b border-white/10 p-3">
+        <p className="mb-1.5 text-[10px] text-gray-400">Click the map to fill latitude and longitude. The map stays on screen even when no requests are mapped yet.</p>
+        <PinDropMap
+          existing={(filter ? requests.filter(r => r.status === filter) : requests)
+            .filter(r => Number.isFinite(r.lat) && Number.isFinite(r.lng))
+            .map(r => ({ lat: r.lat, lng: r.lng, label: r.referenceNumber, category: r.category, status: r.status }))}
+          pin={form.lat && form.lng && Number.isFinite(Number(form.lat)) && Number.isFinite(Number(form.lng)) ? { lat: Number(form.lat), lng: Number(form.lng) } : null}
+          onPick={(lat, lng) => { setFormError(null); setForm((f) => ({ ...f, lat: lat.toFixed(5), lng: lng.toFixed(5) })); }}
+        />
       </div>
 
       <div className="p-3 border-b border-white/10 grid grid-cols-6 gap-2">
@@ -99,18 +114,19 @@ export function ServiceRequestsPanel() {
             Local record only — this is not a filing with your city or county 311. The request is saved only in your Concord workspace; no agency is notified or dispatched.
           </LocalRecordNotice>
         </div>
-        <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+        <select aria-label="Request category" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
           {CATEGORIES.map(c => <option key={c} value={c}>{c.replace(/_/g, ' ')}</option>)}
         </select>
-        <select value={form.priority} onChange={e => setForm({ ...form, priority: e.target.value as Request['priority'] })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+        <select aria-label="Priority" value={form.priority} onChange={e => setForm({ ...form, priority: e.target.value as Request['priority'] })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
           <option value="urgent">Urgent</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option>
         </select>
-        <input type="number" step="0.0001" value={form.lat} onChange={e => setForm({ ...form, lat: e.target.value })} placeholder="Lat" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
-        <input type="number" step="0.0001" value={form.lng} onChange={e => setForm({ ...form, lng: e.target.value })} placeholder="Lng" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
-        <input value={form.reporterName} onChange={e => setForm({ ...form, reporterName: e.target.value })} placeholder="Reporter name" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-        <input value={form.reporterEmail} onChange={e => setForm({ ...form, reporterEmail: e.target.value })} placeholder="Reporter email" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-        <input value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} placeholder="Address" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-        <input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Issue description" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <input aria-label="Lat" type="number" step="0.0001" value={form.lat} onChange={e => setForm({ ...form, lat: e.target.value })} placeholder="Lat" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+        <input aria-label="Lng" type="number" step="0.0001" value={form.lng} onChange={e => setForm({ ...form, lng: e.target.value })} placeholder="Lng" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+        <input aria-label="Reporter name" value={form.reporterName} onChange={e => setForm({ ...form, reporterName: e.target.value })} placeholder="Reporter name" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <input aria-label="Reporter email" value={form.reporterEmail} onChange={e => setForm({ ...form, reporterEmail: e.target.value })} placeholder="Reporter email" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <input aria-label="Address" value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} placeholder="Address" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <input aria-label="Issue description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Issue description" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        {formError && <p role="alert" className="col-span-6 text-xs text-rose-300">{formError}</p>}
         <button onClick={create} className="col-span-6 px-3 py-1.5 text-xs rounded bg-amber-500 text-black font-bold hover:bg-amber-400 inline-flex items-center justify-center gap-1"><Plus className="w-3 h-3" />File service request</button>
       </div>
 
@@ -129,14 +145,15 @@ export function ServiceRequestsPanel() {
                   <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded', PRIORITY_COLOUR[r.priority])}>{r.priority}</span>
                   <span className="text-sm text-white truncate">{r.category.replace(/_/g, ' ')}</span>
                   <span className="ml-auto text-[10px] text-gray-400">{r.address || `${r.lat.toFixed(3)},${r.lng.toFixed(3)}`}</span>
+                  <button type="button" className="text-[10px] text-rose-300" onClick={async () => { await lensRun({ domain: 'government', action: 'service-requests-delete', input: { id: r.id } }); await refresh(); }}>Remove</button>
                 </div>
                 <div className="text-xs text-gray-300">{r.description}</div>
                 <div className="mt-1 flex items-center gap-2">
-                  <select value={r.assignedDepartmentId || ''} onChange={e => assign(r.id, e.target.value)} className="text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white">
+                  <select aria-label="Assign department" value={r.assignedDepartmentId || ''} onChange={e => assign(r.id, e.target.value)} className="text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white">
                     <option value="">Unassigned</option>
                     {depts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                   </select>
-                  <select value={r.status} onChange={e => setStatus(r.id, e.target.value)} className="text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white">
+                  <select aria-label="Set request status" value={r.status} onChange={e => setStatus(r.id, e.target.value)} className="text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white">
                     {STATUSES.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
                   </select>
                   {r.status.startsWith('closed_') && <CheckCircle className="w-3 h-3 text-emerald-300" />}

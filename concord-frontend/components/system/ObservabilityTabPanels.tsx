@@ -153,9 +153,10 @@ export function SubstrateTabPanel() {
         Substrate operations
       </h2>
       <p className="mb-4 text-xs text-cyan-700">
-        Live diagnostics for each substrate-class macro domain. Each card calls
+        Live diagnostics for each substrate-class macro domain. Each read card calls
         its primary macro on mount and renders the result with a domain-specific
-        accent. Errors here surface as dormant or misconfigured backends.
+        accent. Operator actions are listed but never run from this grid.
+        Errors here surface as dormant or misconfigured backends.
       </p>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {probesByGroup('substrate').map((p) => (

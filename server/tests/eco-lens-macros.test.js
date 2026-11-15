@@ -231,16 +231,12 @@ describe("eco.sustainabilityScore — ESG pillar weighting the panel renders", (
     assertNoNonFinite(r.result);
   });
 
-  it("fail-CLOSED: poisoned Infinity/1e999 indicator clamps into 0..100", () => {
+  it("fail-CLOSED: an indicator outside 0 to 100 is refused", () => {
     const r = call("sustainabilityScore", ctxA, { indicators: {
       environmental: { emissions: Infinity, energyEfficiency: "1e999", wasteReduction: -50 },
     } });
-    assert.equal(r.ok, true);
-    // Infinity/1e999 clamp to 100, -50 clamps to 0; all sub-scores 0..100.
-    for (const sub of r.result.pillars.environmental.subIndicators) {
-      if (sub.score !== null) assert.ok(sub.score >= 0 && sub.score <= 100, `score ${sub.score}`);
-    }
-    assertNoNonFinite(r.result);
+    assert.equal(r.ok, false);
+    assert.match(r.message, /0 to 100/);
   });
 });
 

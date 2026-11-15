@@ -13,6 +13,7 @@ import {
   Send, Image as ImageIcon, BarChart3, X, Loader2, AlertTriangle, Quote,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { BOUNDS } from '@/lib/bounds';
 import { cn } from '@/lib/utils';
 import type { MediaAttachment, SocialPost } from './types';
 
@@ -23,7 +24,9 @@ interface FeedComposerProps {
   onPosted: () => void;
 }
 
-const MAX_LEN = 2000;
+// GB-1539 (FIX-feed-008): the composer ceiling is the bounds policy's
+// POST class (5,000) — it mirrored the server's old silent 2,000 clip.
+const MAX_LEN = BOUNDS.POST;
 
 export function FeedComposer({ username, quotePost, onClearQuote, onPosted }: FeedComposerProps) {
   const [body, setBody] = useState('');

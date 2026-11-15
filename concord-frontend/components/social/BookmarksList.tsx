@@ -26,7 +26,17 @@ import { UserLink } from './UserLink';
 import { ShareButton } from './ShareButton';
 
 interface BookmarkRow { postId: string; createdAt: string; }
-interface BookmarksResponse { ok: boolean; bookmarks?: BookmarkRow[] }
+interface BookmarksResponse {
+  ok: boolean;
+  // The endpoint's actual envelope (server.js /api/social/bookmarks →
+  // emergent getUserBookmarks): full serialized posts under `posts`,
+  // plus a total. `bookmarks` is accepted defensively for any older
+  // row-shaped payload, but no current server sends it — reading only
+  // `bookmarks` left this list permanently empty (FIX-saved-002).
+  posts?: { id: string; createdAt?: string }[];
+  total?: number;
+  bookmarks?: BookmarkRow[];
+}
 interface PostResponse {
   ok: boolean;
   post?: {
@@ -60,7 +70,10 @@ export function BookmarksList({ className, showHeader = true }: BookmarksListPro
     staleTime: 30_000,
   });
 
-  const bookmarks = useMemo(() => data?.bookmarks ?? [], [data]);
+  const bookmarks = useMemo<BookmarkRow[]>(() => {
+    if (data?.bookmarks && data.bookmarks.length > 0) return data.bookmarks;
+    return (data?.posts ?? []).map((p) => ({ postId: p.id, createdAt: p.createdAt || '' }));
+  }, [data]);
 
   // Parallel post fetches via useQueries.
   const postQueries = useQueries({

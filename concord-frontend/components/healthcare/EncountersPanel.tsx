@@ -5,6 +5,7 @@ import { ClipboardList, Loader2, Plus, Sparkles, CheckCircle, Save, FileText, X,
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { SkeletonTableRows } from '@/components/ui';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface Patient { id: string; firstName: string; lastName: string; mrn: string }
 interface Encounter {
@@ -272,9 +273,9 @@ export function EncountersPanel({ patientId }: { patientId: string }) {
       </div>
 
       {avsText !== null && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-6" onClick={() => setAvsText(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-6" onClick={() => setAvsText(null)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <div className="bg-lattice-deep border border-cyan-500/20 rounded-lg w-full max-w-xl max-h-[80%] flex flex-col overflow-hidden"
-            onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <div className="px-3 py-2 border-b border-white/10 flex items-center gap-2">
               <FileText className="w-3.5 h-3.5 text-cyan-400" />
               <span className="text-xs font-semibold text-gray-200 flex-1">After-visit summary</span>
@@ -286,9 +287,9 @@ export function EncountersPanel({ patientId }: { patientId: string }) {
       )}
 
       {exportJson !== null && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-6" onClick={() => setExportJson(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-6" onClick={() => setExportJson(null)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <div className="bg-lattice-deep border border-cyan-500/20 rounded-lg w-full max-w-xl max-h-[80%] flex flex-col overflow-hidden"
-            onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <div className="px-3 py-2 border-b border-white/10 flex items-center gap-2">
               <Download className="w-3.5 h-3.5 text-cyan-400" />
               <span className="text-xs font-semibold text-gray-200 flex-1">Structured encounter export</span>

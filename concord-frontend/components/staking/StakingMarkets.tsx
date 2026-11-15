@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Coins, Loader2, ExternalLink } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
@@ -22,21 +23,32 @@ export function StakingMarkets() {
 
   const list = coins.data?.items || [];
   const meta = coins.data;
+  const stale = !!meta?.stale;
+  const [showSnapshot, setShowSnapshot] = useState(false);
+  const showRows = !stale || showSnapshot;
   const totalMcap = list.reduce((a, c) => a + (c.market_cap || 0), 0);
 
   return (
     <div className="space-y-4">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-cyan-500/15 pb-3">
         <div className="flex items-center gap-2"><Coins className="h-5 w-5 text-emerald-400" /><h2 className="text-sm font-semibold text-white">Real-world proof-of-stake markets</h2><span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">CoinGecko · via Concord server</span></div>
-        {list.length > 0 && <SaveAsDtuButton compact apiSource="coingecko-staking" apiUrl="https://www.coingecko.com/" title={`PoS markets — top ${list.length}`} content={list.map((c, i) => `${i + 1}. ${c.symbol.toUpperCase()} ${c.name} — $${c.current_price.toLocaleString()} (${c.price_change_percentage_24h.toFixed(2)}% 24h)`).join('\n')} extraTags={['staking', 'coingecko', 'pos']} rawData={{ coins: list }} />}
+        {showRows && list.length > 0 && <SaveAsDtuButton compact apiSource="coingecko-staking" apiUrl="https://www.coingecko.com/" title={`PoS markets — top ${list.length}`} content={list.map((c, i) => `${i + 1}. ${c.symbol.toUpperCase()} ${c.name} — $${c.current_price.toLocaleString()} (${c.price_change_percentage_24h.toFixed(2)}% 24h)`).join('\n')} extraTags={['staking', 'coingecko', 'pos']} rawData={{ coins: list, stale }} />}
       </header>
-      {coins.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">CoinGecko is unavailable right now — nothing is being shown in its place.</div>}
-      {meta?.stale && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached CoinGecko data{meta.fetchedAt ? ` from ${new Date(meta.fetchedAt).toLocaleString()}` : ''} — live source unavailable.</div>}
-      <div className="grid grid-cols-2 gap-2">
+      {coins.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">CoinGecko is unavailable right now — nothing is being shown in its place. <button type="button" className="underline" onClick={() => coins.refetch()}>Retry</button></div>}
+      {stale && (
+        <div className="rounded border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-200" role="alert">
+          <p>Live CoinGecko is unavailable{meta?.fetchedAt ? ` (last snapshot ${new Date(meta.fetchedAt).toLocaleString()})` : ''}. {showSnapshot ? 'The rows below are that snapshot, not a live feed.' : 'The last snapshot stays hidden until you show it.'}</p>
+          <div className="mt-2 flex gap-2">
+            <button type="button" className="rounded bg-amber-400 px-2 py-1 text-[11px] font-semibold text-black" onClick={() => coins.refetch()}>Retry</button>
+            <button type="button" className="rounded border border-amber-400/40 px-2 py-1 text-[11px]" onClick={() => setShowSnapshot((v) => !v)}>{showSnapshot ? 'Hide snapshot' : 'Show last snapshot'}</button>
+          </div>
+        </div>
+      )}
+      {showRows && <div className="grid grid-cols-2 gap-2">
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">PoS coins</div><div className="mt-0.5 font-mono text-lg text-emerald-300">{list.length}</div></div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Combined mcap</div><div className="mt-0.5 font-mono text-lg text-emerald-300">${(totalMcap / 1e9).toFixed(1)}B</div></div>
-      </div>
-      <div className="space-y-1 max-h-[500px] overflow-y-auto">
+      </div>}
+      {showRows && <div className="space-y-1 max-h-[500px] overflow-y-auto">
         {list.map((c) => (
           <a key={c.id} href={`https://www.coingecko.com/en/coins/${c.id}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded border border-emerald-500/15 bg-emerald-500/5 p-2 text-[11px] hover:border-emerald-500/40">
             <span className="w-6 shrink-0 font-mono text-[10px] text-zinc-400">#{c.market_cap_rank}</span>
@@ -47,7 +59,7 @@ export function StakingMarkets() {
             <ExternalLink className="h-3 w-3 shrink-0 text-zinc-400" />
           </a>
         ))}
-      </div>
+      </div>}
       {coins.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Pulling…</div>}
       <DataAttribution provider="coingecko" />
     </div>

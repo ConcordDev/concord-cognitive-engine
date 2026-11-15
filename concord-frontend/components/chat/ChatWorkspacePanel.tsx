@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { buildLensFactsBlock } from '@/components/chat/lensAccountFacts';
 import { ChatDraftInThreadButton } from '@/components/chat/ChatDraftInThreadButton';
 import { getApiBase } from '@/lib/api/base';
@@ -61,12 +62,12 @@ import {
   Check,
   ExternalLink,
   Layers,
-  Mic,
   PauseCircle,
   GitBranch,
   Key,
   FolderOpen,
   Volume2,
+  Square,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 // ConKay is its own lens (/lenses/conkay); choosing it here routes there.
@@ -87,7 +88,7 @@ import { ChatHandoffMenu } from '@/components/chat/ChatHandoffMenu';
 import OracleResponse from '@/components/chat/OracleResponse';
 import { ToolCallCard } from '@/components/chat/ToolCallCard';
 import { ChatArtifacts, type ChatArtifact } from '@/components/chat/ChatArtifacts';
-import { isReadAloudRequest, speakText, canSpeak } from '@/lib/chat/read-aloud';
+import { isReadAloudRequest, speakText, stopSpeaking, useSpeakingId, canSpeak } from '@/lib/chat/read-aloud';
 import ComputeBadge from '@/components/chat/ComputeBadge';
 import LowConfidenceTag from '@/components/chat/LowConfidenceTag';
 import CitationChips from '@/components/chat/CitationChips';
@@ -139,6 +140,7 @@ import {
   loadConversations,
   loadMessagesForSession,
   loadSessionId,
+  resolveAskThread,
   saveConversations,
   saveMessagesForSession,
   saveSessionId,
@@ -160,7 +162,10 @@ import dynamicSprint11 from 'next/dynamic';
 const AgentModePanel = dynamicSprint11(() => import('@/components/chat/AgentModePanel'), { ssr: false });
 const InitiativeBell = dynamicSprint11(() => import('@/components/chat/InitiativeBell'), { ssr: false });
 import { useEvent } from '@/lib/realtime/event-bus';
-import { createSseParser, waitForSavedReply, fetchSessionMessages, type SavedChatMessage } from '@/lib/chat/reply-reconcile';
+import { createSseParser, waitForSavedReply, fetchSessionMessages, mergeHydratedThread, type SavedChatMessage } from '@/lib/chat/reply-reconcile';
+import { createStreamDeadline } from '@/lib/chat/stream-deadline';
+import { RunCard } from '@/components/cockpit/RunCard';
+import { isCockpitEvent, type PublicRun, type PublicStep } from '@/lib/cockpit/run-client';
 import {
   recommendLenses,
   createSessionContext,
@@ -169,6 +174,7 @@ import {
   type SessionContext,
   type SessionTelemetry,
 } from '@/lib/lenses/chat-lens-recommender';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 // ──────────────────────────────────────────────
 // Types
@@ -232,6 +238,8 @@ interface Message {
   artifacts?: ChatArtifact[];
   /** Brain was unreachable. Render as a notice, not an assistant answer. */
   aiUnavailable?: boolean;
+  /** A cockpit task this message belongs to; the run card draws it from server events. */
+  cockpitRunId?: string;
   retrieval?: {
     kind?: string;
     label?: string;
@@ -273,6 +281,7 @@ interface Conversation {
   lastMessage: string;
   updatedAt: string;
   messageCount: number;
+  lensContext?: string;
 }
 
 interface AIMode {
@@ -450,6 +459,8 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
     Record<string, { id: string; title: string; content: string }>
   >({});
   const [conversationSearch, setConversationSearch] = useState('');
+  // FIX-chat-010: which message is currently being read aloud (lib state).
+  const speakingId = useSpeakingId();
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [composerPlusOpen, setComposerPlusOpen] = useState(false);
   // The header ⋮, composer + and mode pill menus close on Escape or a click
@@ -508,7 +519,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
             const existing = localById.get(s.id);
             const remote: Conversation = {
               id: s.id,
-              title: s.title || existing?.title || 'New conversation',
+              title: existing?.title || s.title || 'New conversation',
               lastMessage: existing?.lastMessage || '',
               updatedAt: new Date(s.updated_at).toISOString(),
               messageCount: s.msg_count || existing?.messageCount || 0,
@@ -553,7 +564,10 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
   useEffect(() => {
     try {
       const ctx = new URLSearchParams(window.location.search).get('context');
-      if (ctx) setDomainContext(ctx);
+      if (!ctx) return;
+      setDomainContext(ctx);
+      const convs = loadConversations<Conversation>();
+      setSelectedConversation(resolveAskThread(convs, loadSessionId(), ctx));
     } catch { /* SSR / no window */ }
   }, []);
 
@@ -759,8 +773,12 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
   // that snapshot holds only the user turn and, if the reply landed before
   // the effect flushed, would silently drop the assistant's first answer.
   const locallyCreatedSessionRef = useRef<string | null>(null);
+  // FIX-chat-002: a selected thread whose messages are still hydrating
+  // from the server must read as loading — not as an empty thread and
+  // never as other content standing in for the transcript.
+  const [threadLoading, setThreadLoading] = useState(false);
   useEffect(() => {
-    if (!selectedConversation) return;
+    if (!selectedConversation) { setThreadLoading(false); return; }
     if (locallyCreatedSessionRef.current === selectedConversation) {
       locallyCreatedSessionRef.current = null;
       return;
@@ -768,9 +786,16 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
     const saved = loadMessagesForSession<Message>(selectedConversation);
     if (saved.length > 0) {
       setLocalMessages(saved);
+      setThreadLoading(false);
       return;
     }
+    // FIX-chat-001: the ids the thread holds as the fetch starts belong
+    // to the previous selection; a send completing mid-fetch appends to
+    // the live thread, and hydration must merge around those appends
+    // (see mergeHydratedThread), never replace them away.
+    const baseIds = new Set(localMessages.map((m) => m.id));
     let cancelled = false;
+    setThreadLoading(true);
     (async () => {
       try {
         const res = await fetch(
@@ -797,15 +822,17 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
             dtuRefs: Array.isArray(meta.dtuRefs) ? (meta.dtuRefs as Message['dtuRefs']) : undefined,
             sources: Array.isArray(meta.sources) ? (meta.sources as Message['sources']) : undefined,
             artifacts: Array.isArray(meta.artifacts) ? (meta.artifacts as ChatArtifact[]) : undefined,
+            cockpitRunId: typeof (meta.cockpit as { runId?: unknown } | undefined)?.runId === 'string' ? ((meta.cockpit as { runId: string }).runId) : undefined,
             webAugmented: !!meta.webAugmented,
             confidence: meta.answerConfidence === 'low' ? 'low' : undefined,
             confidenceReason: typeof meta.answerConfidenceReason === 'string' ? meta.answerConfidenceReason : undefined,
           };
         });
-        setLocalMessages(hydrated);
+        setLocalMessages((prev) => mergeHydratedThread(hydrated, prev, baseIds));
         // Backfill localStorage so the next open is hot-path again.
         try { saveMessagesForSession(selectedConversation, hydrated as ChatMessageLike[]); } catch { /* private mode */ }
       } catch { /* anon, offline, or 403 — leave empty */ }
+      finally { if (!cancelled) setThreadLoading(false); }
     })();
     return () => { cancelled = true; };
   }, [selectedConversation]);
@@ -1220,6 +1247,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
           lastMessage: content.slice(0, 100),
           updatedAt: new Date().toISOString(),
           messageCount: 1,
+          ...(domainContext ? { lensContext: domainContext } : {}),
         };
         setStoredConversations((prev) => {
           const next = [newConv, ...prev];
@@ -1242,6 +1270,9 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
         systemPrompt +=
           (systemPrompt ? '\n\n' : '') +
           `Current domain context: ${domainContext}. Use domain-specific knowledge and terminology.`;
+        if (domainContext === 'black-market') {
+          systemPrompt += ' Prices in this lens are Sparks only, never real money, dollars, or fiat.';
+        }
       }
 
       // Ground the analyst in the lens's live values (Review 4, Analytics
@@ -1278,7 +1309,13 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
       // the stream (flagged as a stall, NOT a user abort) so the catch below
       // falls through to the buffered POST instead of hanging. The nginx 15s
       // SSE heartbeat normally keeps bytes flowing; this is the client backstop.
+      // FIX-goddess-001: heartbeats are bytes too, so the idle watchdog alone
+      // cannot bound the turn — a stream that heartbeats but never answers
+      // re-arms it forever and the fallback/error paths never run. The stream
+      // leg also carries a TOTAL deadline (the proxy ceiling the buffered
+      // POST already lives under); expiry is treated exactly like a stall.
       const IDLE_STALL_MS = 45000;
+      const STREAM_TOTAL_MS = 120000;
       let idleStalled = false;
 
       // If delivery fails after the server already finished the turn (stream
@@ -1312,6 +1349,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
             artifacts: meta.artifacts,
             answerConfidence: meta.answerConfidence,
             answerConfidenceReason: meta.answerConfidenceReason,
+            ...(meta.cockpit ? { meta: { cockpit: meta.cockpit } } : {}),
             recovered: true,
           };
         } finally {
@@ -1366,6 +1404,14 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
               accumulated += data.chunk;
               setStreamingContent(accumulated);
             }
+            // Cockpit events ride the same progress channel. RunCard owns the run's state;
+            // here we only make sure a card exists in the open transcript.
+            if (isCockpitEvent(progress)) {
+              const runId = progress.runId;
+              setLocalMessages((prev) => (prev.some((m) => m.cockpitRunId === runId) ? prev : [...prev, {
+                id: `run-${runId}`, role: 'assistant', content: '', timestamp: new Date().toISOString(), cockpitRunId: runId,
+              }]));
+            }
             if (data.done) {
               gotDone = true;
               topDone = data as Record<string, unknown>;
@@ -1374,28 +1420,28 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
           });
 
           if (reader) {
-            let idleTimer: ReturnType<typeof setTimeout> | null = null;
-            const armIdle = () => {
-              if (idleTimer) clearTimeout(idleTimer);
-              idleTimer = setTimeout(() => {
+            const deadline = createStreamDeadline({
+              idleMs: IDLE_STALL_MS,
+              totalMs: STREAM_TOTAL_MS,
+              onExpire: () => {
                 idleStalled = true;
                 try { reader.cancel(); } catch { /* already closed */ }
                 try { abortController.abort(); } catch { /* already aborted */ }
-              }, IDLE_STALL_MS);
-            };
+              },
+            });
             try {
-              armIdle(); // start the clock before the first read
+              deadline.start(); // start the clocks before the first read
               while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
-                armIdle(); // bytes arrived — reset the stall clock
+                deadline.beat(); // bytes arrived — reset the stall clock (never the total)
                 // Lines can be split across reads; the parser keeps the tail.
                 sse.push(decoder.decode(value, { stream: true }));
               }
               sse.push(decoder.decode());
               sse.end();
             } finally {
-              if (idleTimer) clearTimeout(idleTimer);
+              deadline.stop();
             }
           }
 
@@ -1574,7 +1620,17 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
           || undefined,
       };
 
-      setLocalMessages((prev) => [...prev, assistantMsg]);
+      // A cockpit reply names its run. If the run card already exists (appended from the
+      // event stream), update that message's text instead of adding a second message.
+      const cockpitRunId = (data.meta as { cockpit?: { runId?: string | null } } | undefined)?.cockpit?.runId || undefined;
+      if (cockpitRunId) assistantMsg.cockpitRunId = cockpitRunId;
+      setLocalMessages((prev) => {
+        if (cockpitRunId) {
+          const at = prev.findIndex((m) => m.cockpitRunId === cockpitRunId);
+          if (at >= 0) return prev.map((m, i) => (i === at ? { ...m, content: assistantMsg.content } : m));
+        }
+        return [...prev, assistantMsg];
+      });
 
       // Update conversation registry metadata
       if (selectedConversation) {
@@ -1600,6 +1656,8 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
     onError: (err) => {
       setStreamActive(false);
       setStreamingContent('');
+      const aborted = err instanceof Error && (err.name === 'AbortError' || err.name === 'CanceledError' || /aborted/i.test(err.message));
+      if (aborted) return;
       const errorMsg: Message = {
         id: `err-${Date.now()}`,
         role: 'system',
@@ -1665,6 +1723,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
       queryClient.invalidateQueries({ queryKey: ['cognitive-status'] });
     },
     onError: (err) => {
+      if (err instanceof Error && (err.name === 'AbortError' || err.name === 'CanceledError' || /aborted/i.test(err.message))) return;
       const errorMsg: Message = {
         id: `err-${Date.now()}`,
         role: 'system',
@@ -1674,6 +1733,17 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
       setLocalMessages((prev) => [...prev, errorMsg]);
     },
   });
+
+  // FIX-chat-001: the finished reply reaches the open transcript from the run's own event
+  // stream, whether or not the original chat response is still open.
+  const handleRunFinished = useCallback((run: PublicRun, steps: PublicStep[]) => {
+    const last = [...steps].reverse().find((s) => s.status === 'done' && s.summary);
+    const text = run.status === 'done'
+      ? (last?.summary ?? 'Finished, but the last step returned no text.')
+      : steps.filter((s) => s.error).map((s) => `${s.label}: ${s.error}`).join('\n') || 'The task stopped.';
+    setLocalMessages((prev) => (prev.some((m) => m.id === `run-done-${run.id}`) ? prev
+      : [...prev, { id: `run-done-${run.id}`, role: 'assistant', content: text, timestamp: new Date().toISOString() }]));
+  }, []);
 
   const handleRegenerate = useCallback(() => {
     const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user');
@@ -1945,7 +2015,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
     // iOS Safari only allows speech from a user gesture and the server has no TTS.
     if (isReadAloudRequest(input)) {
       const last = [...localMessages].reverse().find((m) => m.role === 'assistant' && m.content);
-      const spoke = last ? speakText(last.content) : false;
+      const spoke = last ? speakText(last.content, last.id) : false;
       const note = !last
         ? 'There is no answer in this chat to read yet.'
         : spoke
@@ -2147,6 +2217,11 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
         setCopiedMessageId(messageId);
         setTimeout(() => setCopiedMessageId(null), 2000);
       }
+    }).catch(() => {
+      // FIX-chat-012: a rejected clipboard write (permissions, insecure
+      // context) used to fail in total silence — the copy simply never
+      // happened and nothing said so.
+      useUIStore.getState().addToast({ type: 'error', message: 'Copy failed — the browser refused clipboard access. Select the text and copy it manually.' });
     });
   }, []);
 
@@ -2242,7 +2317,12 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
 
   const threadItems = useMemo<ThreadItem[]>(() => {
     const items: ThreadItem[] = messages.map((m) => ({ ...m, __kind: 'message' as const }));
-    const initiatives = Array.isArray(initiativesData) ? initiativesData : [];
+    // FIX-chat-002: initiatives are account-wide "while you were away"
+    // notices, not turns of the open thread. Merging them into a selected
+    // thread made a still-loading (or cache-missed) thread present stale
+    // away content as its transcript after reload, with the thread's own
+    // messages and controls nowhere. They belong to the no-thread view.
+    const initiatives = !selectedConversation && Array.isArray(initiativesData) ? initiativesData : [];
     for (const init of initiatives) {
       const dup = items.some((it) => it.__kind === 'message' && it.id === init.id);
       if (!dup) items.push({ ...init, __kind: 'initiative' as const });
@@ -2268,7 +2348,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
       return av - bv;
     });
     return items;
-  }, [messages, initiativesData, toolTraces]);
+  }, [messages, initiativesData, toolTraces, selectedConversation]);
 
   // Count of unread initiatives — drives the "Concord wrote you while
   // you were away" banner that's surfaced on lens entry.
@@ -2467,6 +2547,8 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                     />
                   )}
 
+                {message.cockpitRunId && <RunCard runId={message.cockpitRunId} onFinished={handleRunFinished} />}
+
                 {/* Tool call results */}
                 {message.toolCalls && message.toolCalls.length > 0 && (
                   <div className="mt-3 pt-3 border-t border-lattice-border/50 space-y-1.5">
@@ -2551,16 +2633,31 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                 )}
               </button>
 
-              {/* Read aloud — assistant replies, browser speech */}
+              {/* Read aloud — assistant replies, browser speech. FIX-chat-010:
+                  while THIS message is speaking the button is a visible stop
+                  control; clicking it stops instead of restarting. */}
               {message.role === 'assistant' && canSpeak() && (
-                <button
-                  onClick={() => speakText(message.content)}
-                  className="hover:text-white transition-colors"
-                  title="Read aloud"
-                  aria-label="Read message aloud"
-                >
-                  <Volume2 className="w-3 h-3" />
-                </button>
+                speakingId === message.id ? (
+                  <button
+                    onClick={() => stopSpeaking()}
+                    className="text-neon-cyan transition-colors"
+                    title="Stop reading"
+                    aria-label="Stop reading aloud"
+                    aria-pressed="true"
+                  >
+                    <Square className="w-3 h-3 fill-current" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => speakText(message.content, message.id)}
+                    className="hover:text-white transition-colors"
+                    title="Read aloud"
+                    aria-label="Read message aloud"
+                    aria-pressed="false"
+                  >
+                    <Volume2 className="w-3 h-3" />
+                  </button>
+                )
               )}
 
               {/* Pin button — available on ALL messages */}
@@ -2627,6 +2724,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                     )}
                     title="Good response"
                     aria-label="Thumbs up"
+                    aria-pressed={feedbackState[message.id] === 'up'}
                   >
                     <ThumbsUp
                       className={cn(
@@ -2649,6 +2747,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                     )}
                     title="Bad response"
                     aria-label="Thumbs down"
+                    aria-pressed={feedbackState[message.id] === 'down'}
                   >
                     <ThumbsDown
                       className={cn(
@@ -2657,6 +2756,11 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                       )}
                     />
                   </button>
+                  {feedbackState[message.id] && (
+                    <span role="status" className="text-zinc-400">
+                      Thanks — feedback recorded
+                    </span>
+                  )}
                   <button
                     onClick={handleRegenerate}
                     disabled={regenerateMutation.isPending}
@@ -2911,7 +3015,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
         {chatSidebarOpen && (
           <div
             className={cn('absolute inset-0 bg-black/50 z-30', !cleanEmpty && 'lg:hidden')}
-            onClick={() => setChatSidebarOpen(false)} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
+            onClick={() => setChatSidebarOpen(false)} tabIndex={0} onKeyDown={activateOnEnterOrSpace} />
         )}
 
         {/* Sidebar — always a drawer under Claude-clean (never a second always-docked chat column) */}
@@ -3029,7 +3133,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                 onClick={() => {
                   setSelectedConversation(conv.id);
                   setChatSidebarOpen(false);
-                }} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                }} tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                 <div className="flex items-start gap-3">
                   <div
                     className={cn(
@@ -3097,18 +3201,15 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                   >
                     <Pencil className="w-3.5 h-3.5" />
                   </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteConversationMutation.mutate(conv.id);
-                    }}
+                  <StickyDeleteConfirm
+                    onConfirm={() => deleteConversationMutation.mutate(conv.id)}
                     disabled={deleteConversationMutation.isPending}
                     className="p-1.5 rounded-md hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition-colors"
-                    title="Delete conversation"
-                    aria-label={`Delete conversation: ${conv.title}`}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                    armAriaLabel={`Delete conversation: ${conv.title}`}
+                    confirmLabel={`Delete “${conv.title}”?`}
+                    confirmAriaLabel={`Confirm delete conversation: ${conv.title}`}
+                    armLabel={<Trash2 className="w-3.5 h-3.5" />}
+                  />
                 </div>
               </div>
             ))}
@@ -3522,19 +3623,18 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                       New Conversation
                     </button>
                     {selectedConversation && (
-                      <button
-                        onClick={() => {
+                      <StickyDeleteConfirm
+                        onConfirm={() => {
                           deleteConversationMutation.mutate(selectedConversation);
                           setMoreMenuOpen(false);
                         }}
                         disabled={deleteConversationMutation.isPending}
                         className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors border-t border-lattice-border disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        {deleteConversationMutation.isPending
-                          ? 'Deleting...'
-                          : 'Delete Conversation'}
-                      </button>
+                        armAriaLabel="Delete Conversation"
+                        confirmLabel={`Delete “${conversations.find((c) => c.id === selectedConversation)?.title || 'Conversation'}”?`}
+                        confirmAriaLabel="Confirm delete conversation"
+                        armLabel={<><Trash2 className="w-4 h-4" /> Delete Conversation</>}
+                      />
                     )}
                   </motion.div>
                 )}
@@ -3633,7 +3733,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
 
             {threadItems.length > 0 && (
               <>
-                {unreadInitiativesCount > 0 && (
+                {!selectedConversation && unreadInitiativesCount > 0 && (
                   <div className="mx-4 lg:mx-6 mb-2 inline-flex items-center gap-2 self-start rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs text-amber-200">
                     <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
                     Concord wrote you {unreadInitiativesCount} time{unreadInitiativesCount === 1 ? '' : 's'} while you were away.
@@ -3650,7 +3750,11 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                 />
               </>
             )}
-            {threadItems.length === 0 && threadFooter}
+            {threadItems.length === 0 && (threadLoading && selectedConversation ? (
+              <div className="flex-1 flex items-center justify-center text-sm text-zinc-500" role="status">
+                Loading conversation…
+              </div>
+            ) : threadFooter)}
 
           </div>
 
@@ -3796,7 +3900,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                         <button
                           type="button"
                           onClick={() => setComposerPlusOpen((v) => !v)}
-                          className="p-2 text-white/70 hover:text-white transition-colors"
+                          className="flex h-11 w-11 items-center justify-center text-white/70 hover:text-white transition-colors"
                           title="Attachments and tools"
                           aria-label="Attachments and tools"
                           aria-expanded={composerPlusOpen}
@@ -3848,7 +3952,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                         <button
                           type="button"
                           onClick={() => setModeSelectOpen((v) => !v)}
-                          className="mx-1 mb-1 inline-flex items-center gap-1 rounded-full border border-white/15 px-2.5 py-1 text-[11px] text-white/70 hover:text-white hover:border-white/30"
+                          className="mx-1 mb-1 inline-flex min-h-11 items-center gap-1 rounded-full border border-white/15 px-3 py-1 text-[11px] text-white/70 hover:text-white hover:border-white/30"
                           aria-label="Choose mode"
                           title={`Mode: ${aiMode.name}`}
                           aria-expanded={modeSelectOpen}
@@ -3891,11 +3995,11 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                           const kay = AI_MODES.find((m) => m.id === 'conkay');
                           if (kay) selectAiMode(kay);
                         }}
-                        className="p-2 text-white/50 hover:text-white transition-colors"
+                        className="px-2 py-1 text-xs text-white/70 hover:text-white transition-colors"
                         title="Open ConKay"
                         aria-label="Open ConKay"
                       >
-                        <Mic className="w-5 h-5" />
+                        ConKay
                       </button>
                     )}
                     {!cleanEmpty && (

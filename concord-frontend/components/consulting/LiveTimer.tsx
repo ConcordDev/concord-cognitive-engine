@@ -67,19 +67,24 @@ export function LiveTimer({ engagements, onLogged }: { engagements: EngagementOp
   if (isLoading) return <div className="flex justify-center py-6 text-zinc-400" role="status" aria-busy="true"><Loader2 className="w-4 h-4 animate-spin" /></div>;
   if (isError) return <div role="alert" className="text-sm text-rose-300">{loadError instanceof Error ? loadError.message : 'Could not load timer'}</div>;
 
-  const elapsedHours = timer ? (now - timer.startedAt) / 3600000 : 0;
+  const rawHours = timer ? (now - timer.startedAt) / 3600000 : 0;
+  const capped = rawHours > 12;
+  const elapsedHours = capped ? 12 : rawHours;
 
   return (
     <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4">
       <div className="flex items-center gap-2 mb-3">
         <TimerIcon className="w-4 h-4 text-indigo-400" />
-        <h3 className="text-sm font-bold text-zinc-100">Live Timer</h3>
+        <h2 className="text-sm font-bold text-zinc-100">Live Timer</h2>
       </div>
 
       {timer ? (
         <div className="text-center">
           <p className="text-[11px] text-zinc-400 mb-1">{timer.engagementName}{timer.note ? ` — ${timer.note}` : ''}</p>
           <p className="text-4xl font-mono font-bold text-emerald-400 tabular-nums mb-3">{fmt(elapsedHours)}</p>
+          {capped && (
+            <p className="text-[11px] text-amber-300 mb-3">Counting stopped at 12 hours. Stop and log those 12 hours, or discard the timer.</p>
+          )}
           <div className="flex justify-center gap-2">
             <button onClick={stop}
               className="px-4 py-2 text-sm rounded bg-emerald-600 hover:bg-emerald-500 text-white font-semibold inline-flex items-center gap-1.5">
@@ -93,8 +98,8 @@ export function LiveTimer({ engagements, onLogged }: { engagements: EngagementOp
         </div>
       ) : (
         <div className="space-y-2">
-          <select value={engId} onChange={e => setEngId(e.target.value)}
-            className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200">
+          <select aria-label="Engagement" onChange={e => setEngId(e.target.value)}
+            className="min-h-11 w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200">
             <option value="">Select engagement…</option>
             {engagements.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
           </select>

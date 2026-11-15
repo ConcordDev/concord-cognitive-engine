@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { Swords, Save, Trash2, Loader2 } from 'lucide-react';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface WeaponDef { id: string; label: string; baseLight: number; baseHeavy: number; reach: number; armorPierce: number; }
 interface SkillDef { id: string; label: string; element: string; tier: number; }
@@ -29,6 +30,9 @@ export function LoadoutPicker({ onApply }: { onApply: (l: ActiveLoadout) => void
   const [light, setLight] = useState(8);
   const [heavy, setHeavy] = useState(16);
   const [name, setName] = useState('');
+  // FIX-sandbox-006: the preset currently loaded in the editor. Save updates
+  // it in place; "Save as new" is the explicit path to a separate preset.
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [saved, setSaved] = useState<Loadout[]>([]);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -74,15 +78,20 @@ export function LoadoutPicker({ onApply }: { onApply: (l: ActiveLoadout) => void
     onApply({ weaponId, skillId, lightDamage: light, heavyDamage: heavy });
   }, [onApply, weaponId, skillId, light, heavy]);
 
-  const save = async () => {
+  const save = async (asNew = false) => {
     setBusy(true);
     setError(null);
     try {
       const r = await lensRun('sandbox', 'saveLoadout', {
         weaponId, skillId, lightDamage: light, heavyDamage: heavy, name: name.trim(),
+        ...(!asNew && selectedId ? { loadoutId: selectedId } : {}),
       });
-      if (r.data?.ok) { setName(''); await refresh(); }
-      else setError(r.data?.error || 'Save failed');
+      if (r.data?.ok) {
+        const entry = (r.data.result as { loadout?: Loadout } | undefined)?.loadout;
+        if (entry) { setSelectedId(entry.id); setName(entry.name); }
+        await refresh();
+      }
+      else setError((r.data as { message?: string } | undefined)?.message || r.data?.error || 'Save failed');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Save failed');
     } finally { setBusy(false); }
@@ -93,11 +102,16 @@ export function LoadoutPicker({ onApply }: { onApply: (l: ActiveLoadout) => void
     setSkillId(l.skillId);
     setLight(l.lightDamage);
     setHeavy(l.heavyDamage);
+    setSelectedId(l.id);
+    setName(l.name);
     onApply({ weaponId: l.weaponId, skillId: l.skillId, lightDamage: l.lightDamage, heavyDamage: l.heavyDamage });
   };
 
+  const startNew = () => { setSelectedId(null); setName(''); };
+
   const remove = async (id: string) => {
     await lensRun('sandbox', 'deleteLoadout', { loadoutId: id });
+    if (id === selectedId) startNew();
     await refresh();
   };
 
@@ -160,16 +174,38 @@ export function LoadoutPicker({ onApply }: { onApply: (l: ActiveLoadout) => void
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Preset name"
+          maxLength={60}
+          aria-label="Preset name"
           className="min-w-0 flex-1 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-slate-100 placeholder:text-slate-600"
         />
         <button
-          onClick={save}
+          onClick={() => { void save(); }}
           disabled={busy}
           className="flex items-center gap-1 rounded bg-slate-700 px-2 py-1 hover:bg-slate-600 disabled:opacity-40"
         >
-          {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />} Save
+          {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />} {selectedId ? 'Update' : 'Save'}
         </button>
+        {name.length > 45 && <span className="self-center text-[10px] text-slate-500">{name.length}/60</span>}
       </div>
+
+      {selectedId && (
+        <div className="mb-2 flex items-center gap-1.5 text-[10px] text-slate-400">
+          <span className="min-w-0 flex-1 truncate">Editing preset — Update overwrites it.</span>
+          <button
+            onClick={() => { void save(true); }}
+            disabled={busy}
+            className="rounded bg-slate-800 px-2 py-0.5 text-slate-200 hover:bg-slate-700 disabled:opacity-40"
+          >
+            Save as new
+          </button>
+          <button
+            onClick={startNew}
+            className="rounded bg-slate-800 px-2 py-0.5 text-slate-200 hover:bg-slate-700"
+          >
+            New preset
+          </button>
+        </div>
+      )}
 
       {error && (
         <div role="alert" className="mb-2 rounded border border-rose-700/60 bg-rose-950/40 px-2 py-1.5 text-[10px] text-rose-300">
@@ -188,14 +224,12 @@ export function LoadoutPicker({ onApply }: { onApply: (l: ActiveLoadout) => void
       ) : (
         <ul className="space-y-1">
           {saved.map((l) => (
-            <li key={l.id} className="flex items-center gap-1.5 rounded bg-slate-800/60 px-2 py-1">
+            <li key={l.id} className={`flex items-center gap-1.5 rounded px-2 py-1 ${l.id === selectedId ? 'bg-amber-900/30 ring-1 ring-amber-700/50' : 'bg-slate-800/60'}`}>
               <button onClick={() => loadSaved(l)} className="min-w-0 flex-1 text-left hover:text-amber-200">
-                <div className="truncate text-slate-200">{l.name}</div>
+                <div className={`truncate ${l.id === selectedId ? 'text-amber-200' : 'text-slate-200'}`}>{l.name}</div>
                 <div className="text-[9px] text-slate-400">{l.weaponId} · {l.skillId} · {l.lightDamage}/{l.heavyDamage}</div>
               </button>
-              <button onClick={() => remove(l.id)} aria-label="Delete loadout" className="text-slate-400 hover:text-rose-400">
-                <Trash2 className="h-3 w-3" />
-              </button>
+              <StickyDeleteConfirm onConfirm={() => { void remove(l.id); }} armLabel={<Trash2 className="h-3 w-3" />} armAriaLabel={`Delete loadout ${l.name}`} confirmAriaLabel={`Confirm delete loadout ${l.name}`} className="text-slate-400 hover:text-rose-400" />
             </li>
           ))}
         </ul>

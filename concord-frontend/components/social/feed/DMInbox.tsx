@@ -11,7 +11,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Mail, Loader2, Send, ArrowLeft, MessageCirclePlus } from 'lucide-react';
 import { api, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import type { DMThreadSummary, DMMessage } from './types';
+
+function personLabel(name: string | null | undefined, id: string): string {
+  const trimmed = (name || '').trim();
+  if (trimmed && trimmed !== id) return trimmed;
+  return id;
+}
 
 function relTime(iso: string): string {
   const d = Date.now() - new Date(iso).getTime();
@@ -30,9 +37,9 @@ export function DMInbox({ currentUserId }: DMInboxProps) {
   const [loadingInbox, setLoadingInbox] = useState(true);
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [activeWith, setActiveWith] = useState<string | null>(null);
+  const [activeWithName, setActiveWithName] = useState<string | null>(null);
   const [messages, setMessages] = useState<DMMessage[]>([]);
   const [loadingThread, setLoadingThread] = useState(false);
-  const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [query, setQuery] = useState('');
   const [matches, setMatches] = useState<Array<{ id: string; username: string; displayName: string }>>([]);
@@ -55,25 +62,34 @@ export function DMInbox({ currentUserId }: DMInboxProps) {
     }
   }, []);
 
-  const openThread = useCallback(async (key: string | null, withUser: string) => {
+  const openThread = useCallback(async (key: string | null, withUser: string, withName?: string | null) => {
     setActiveKey(key);
     setActiveWith(withUser);
+    setActiveWithName(withName ?? null);
     setComposing(false);
     setLoadingThread(true);
-    const r = await lensRun<{ messages: DMMessage[]; threadKey: string; with: string }>(
+    const r = await lensRun<{ messages: DMMessage[]; threadKey: string; with: string; withName?: string }>(
       'social', 'conversation', key ? { threadKey: key } : { with: withUser },
     );
     setLoadingThread(false);
     if (r.data?.ok && r.data.result) {
       setMessages(r.data.result.messages || []);
       if (r.data.result.threadKey) setActiveKey(r.data.result.threadKey);
+      if (r.data.result.withName) setActiveWithName(r.data.result.withName);
+      // FIX-social-017: opening the thread is what reads it — reload the
+      // inbox list so the unread badge and preview catch up immediately
+      // instead of staying stale until a send or a remount.
+      void loadInbox();
     }
-  }, []);
+  }, [loadInbox]);
 
-  const send = useCallback(async () => {
-    const trimmed = draft.trim();
+  // FIX-social-022: the composer owns its draft now (see DMComposer below);
+  // the inbox only sends. Keystrokes no longer re-render the thread list
+  // or the message history.
+  const send = useCallback(async (body: string) => {
+    const trimmed = body.trim();
     const to = activeWith;
-    if (!trimmed || !to) return;
+    if (!trimmed || !to) return false;
     setSending(true);
     setError(null);
     const r = await lensRun<{ message: DMMessage; threadKey: string }>('social', 'sendMessage', {
@@ -81,14 +97,14 @@ export function DMInbox({ currentUserId }: DMInboxProps) {
     });
     setSending(false);
     if (r.data?.ok && r.data.result) {
-      setDraft('');
       setMessages((m) => [...m, r.data!.result!.message]);
       setActiveKey(r.data.result.threadKey);
       void loadInbox();
-    } else {
-      setError(r.data?.error || 'Failed to send message.');
+      return true;
     }
-  }, [draft, activeWith, loadInbox]);
+    setError(r.data?.error || 'Failed to send message.');
+    return false;
+  }, [activeWith, loadInbox]);
 
   useEffect(() => {
     let cancel = false;
@@ -107,7 +123,7 @@ export function DMInbox({ currentUserId }: DMInboxProps) {
             <span className="text-sm font-medium text-zinc-200">Messages</span>
             <button
               type="button"
-              onClick={() => { setComposing(true); setActiveWith(null); setActiveKey(null); setMessages([]); }}
+              onClick={() => { setComposing(true); setActiveWith(null); setActiveWithName(null); setActiveKey(null); setMessages([]); }}
               className="ml-auto rounded p-1 text-zinc-400 hover:bg-zinc-900 hover:text-indigo-300"
               aria-label="New message"
             >
@@ -143,14 +159,14 @@ export function DMInbox({ currentUserId }: DMInboxProps) {
                 <li key={t.threadKey}>
                   <button
                     type="button"
-                    onClick={() => void openThread(t.threadKey, t.with)}
+                    onClick={() => void openThread(t.threadKey, t.with, t.withName)}
                     className={cn(
                       'flex w-full flex-col gap-0.5 border-b border-zinc-900 px-3 py-2 text-left hover:bg-zinc-900/60',
                       activeKey === t.threadKey && 'bg-zinc-900/80',
                     )}
                   >
                     <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-medium text-zinc-200">@{t.with}</span>
+                      <span className="text-xs font-medium text-zinc-200">{personLabel(t.withName, t.with)}</span>
                       {t.unread > 0 && (
                         <span className="rounded-full bg-indigo-500 px-1.5 text-[10px] font-bold text-white">{t.unread}</span>
                       )}
@@ -198,23 +214,23 @@ export function DMInbox({ currentUserId }: DMInboxProps) {
                 aria-label="Search people"
                 className="w-full rounded bg-zinc-900 px-2 py-1.5 text-xs text-zinc-100 placeholder-zinc-600 outline-none"
               />
-              {searching && <p className="text-[11px] text-zinc-500">Searching…</p>}
+              {searching && <p className="text-[11px] text-zinc-400">Searching…</p>}
               <ul className="space-y-1">
                 {matches.map((person) => (
                   <li key={person.id}>
                     <button
                       type="button"
-                      onClick={() => void openThread(null, person.id)}
+                      onClick={() => void openThread(null, person.id, person.displayName || person.username)}
                       className="w-full rounded px-2 py-1.5 text-left text-xs text-zinc-200 hover:bg-zinc-900"
                     >
                       {person.displayName || person.username}
-                      <span className="ml-1 text-zinc-500">@{person.username}</span>
+                      <span className="ml-1 text-zinc-400">@{person.username}</span>
                     </button>
                   </li>
                 ))}
               </ul>
               {query.trim().length >= 2 && !searching && matches.length === 0 && (
-                <p className="text-[11px] text-zinc-500">No matching people.</p>
+                <p className="text-[11px] text-zinc-400">No matching people.</p>
               )}
             </div>
           ) : (
@@ -222,13 +238,13 @@ export function DMInbox({ currentUserId }: DMInboxProps) {
               <div className="flex items-center gap-2 border-b border-zinc-800 px-3 py-2">
                 <button
                   type="button"
-                  onClick={() => { setActiveWith(null); setActiveKey(null); }}
+                  onClick={() => { setActiveWith(null); setActiveWithName(null); setActiveKey(null); }}
                   className="rounded p-0.5 text-zinc-400 hover:text-zinc-200 sm:hidden"
                   aria-label="Back to inbox"
                 >
                   <ArrowLeft className="w-4 h-4" />
                 </button>
-                <span className="text-sm font-medium text-zinc-200">@{activeWith}</span>
+                <span className="text-sm font-medium text-zinc-200">{personLabel(activeWithName, activeWith || '')}</span>
               </div>
               <div className="flex-1 space-y-2 overflow-y-auto p-3">
                 {loadingThread ? (
@@ -253,16 +269,30 @@ export function DMInbox({ currentUserId }: DMInboxProps) {
                           </p>
                           <span className="mt-1 flex gap-2">
                             {mine && !m.recalled && (
-                              <button type="button" className="underline" onClick={async () => {
-                                const res = await api.post('/api/social/dm/recall', { messageId: m.id });
-                                if (res.data?.ok === false) setError(res.data.error || 'Could not take this back.');
-                                else if (activeWith) void openThread(activeKey, activeWith);
-                              }}>Take back</button>
+                              <StickyDeleteConfirm
+                                onConfirm={async () => {
+                                  const res = await api.post('/api/social/dm/recall', { messageId: m.id });
+                                  if (res.data?.ok === false) setError(res.data.error || 'Could not take this back.');
+                                  else if (activeWith) void openThread(activeKey, activeWith);
+                                }}
+                                className="underline"
+                                armLabel="Take back"
+                                armAriaLabel="Take back message"
+                                confirmLabel="Take back?"
+                                confirmAriaLabel="Confirm take back message"
+                              />
                             )}
-                            <button type="button" className="underline" onClick={async () => {
-                              await api.post('/api/social/dm/hide', { messageId: m.id });
-                              if (activeWith) void openThread(activeKey, activeWith);
-                            }}>Remove for me</button>
+                            <StickyDeleteConfirm
+                              onConfirm={async () => {
+                                await api.post('/api/social/dm/hide', { messageId: m.id });
+                                if (activeWith) void openThread(activeKey, activeWith);
+                              }}
+                              className="underline"
+                              armLabel="Remove for me"
+                              armAriaLabel="Remove message for me"
+                              confirmLabel="Remove for you?"
+                              confirmAriaLabel="Confirm remove message for me"
+                            />
                           </span>
                         </div>
                       </div>
@@ -272,28 +302,41 @@ export function DMInbox({ currentUserId }: DMInboxProps) {
                 <div ref={endRef} />
               </div>
               {error && <p className="px-3 pb-1 text-[11px] text-rose-400">{error}</p>}
-              <div className="flex items-center gap-1.5 border-t border-zinc-800 p-2">
-                <input
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value.slice(0, 2000))}
-                  placeholder="Message…"
-                  className="flex-1 rounded bg-zinc-900 px-2 py-1.5 text-xs text-zinc-100 placeholder-zinc-600 outline-none"
-                  onKeyDown={(e) => { if (e.key === 'Enter') void send(); }}
-                />
-                <button
-                  type="button"
-                  onClick={() => void send()}
-                  disabled={sending}
-                  className="rounded bg-indigo-600 p-1.5 text-white hover:bg-indigo-500 disabled:opacity-50"
-                  aria-label="Send message"
-                >
-                  {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                </button>
-              </div>
+              <DMComposer onSend={send} sending={sending} />
             </>
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// The message composer keeps its draft in local state: typing re-renders
+// only this row, not the inbox list or the open thread above it
+// (FIX-social-022 — keystrokes used to re-render both and drop characters).
+function DMComposer({ onSend, sending }: { onSend: (body: string) => Promise<boolean>; sending: boolean }) {
+  const [draft, setDraft] = useState('');
+  const submit = async () => {
+    if (await onSend(draft)) setDraft('');
+  };
+  return (
+    <div className="flex items-center gap-1.5 border-t border-zinc-800 p-2">
+      <input
+        value={draft}
+        onChange={(e) => setDraft(e.target.value.slice(0, 2000))}
+        placeholder="Message…"
+        className="flex-1 rounded bg-zinc-900 px-2 py-1.5 text-xs text-zinc-100 placeholder-zinc-600 outline-none"
+        onKeyDown={(e) => { if (e.key === 'Enter') void submit(); }}
+      />
+      <button
+        type="button"
+        onClick={() => void submit()}
+        disabled={sending}
+        className="rounded bg-indigo-600 p-1.5 text-white hover:bg-indigo-500 disabled:opacity-50"
+        aria-label="Send message"
+      >
+        {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+      </button>
     </div>
   );
 }

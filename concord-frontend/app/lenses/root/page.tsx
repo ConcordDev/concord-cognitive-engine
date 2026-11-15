@@ -370,6 +370,7 @@ export default function RootLens() {
                       <input
                         className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-100 focus:border-teal-400/60 focus:outline-none"
                         placeholder="e.g. 47"
+                        aria-label="Decimal"
                         value={decInput}
                         onChange={e => setDecInput(e.target.value)}
                       />
@@ -390,6 +391,7 @@ export default function RootLens() {
                       <input
                         className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-100 focus:border-teal-400/60 focus:outline-none"
                         placeholder="e.g. ⟲⟲⟐⊚"
+                        aria-label="Glyph notation"
                         value={glyphInput}
                         onChange={e => setGlyphInput(e.target.value)}
                       />
@@ -402,7 +404,7 @@ export default function RootLens() {
                               {r.decimal} <span className="text-[11px] text-zinc-400">— read as {r.label}</span>
                             </div>
                           ))}
-                          <div className="text-[11px] text-zinc-500">This string reads more than one way; every reading is shown.</div>
+                          <div className="text-[11px] text-zinc-400">This string reads more than one way; every reading is shown.</div>
                         </div>
                       )}
                     </div>
@@ -448,13 +450,13 @@ export default function RootLens() {
                 </div>
                 <div className="mb-4 grid grid-cols-[1fr_auto_1fr_auto_auto] items-center gap-3">
                   <input className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-100 focus:border-teal-400/60 focus:outline-none"
-                    placeholder="a (decimal)" value={opA} onChange={e => { setOpA(e.target.value); setOpNotice(''); }} />
-                  <select className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-100 focus:outline-none"
+                    placeholder="a (decimal)" aria-label="Operand a (decimal)" value={opA} onChange={e => { setOpA(e.target.value); setOpNotice(''); }} />
+                  <select aria-label="Operation" className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-100 focus:outline-none"
                     value={op} onChange={e => { setOp(e.target.value); setOpNotice(''); }}>
                     {['+', '−', '×', '÷'].map(o => <option key={o} value={o}>{o}</option>)}
                   </select>
                   <input className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-100 focus:border-teal-400/60 focus:outline-none"
-                    placeholder="b (decimal)" value={opB} onChange={e => { setOpB(e.target.value); setOpNotice(''); }} />
+                    placeholder="b (decimal)" aria-label="Operand b (decimal)" value={opB} onChange={e => { setOpB(e.target.value); setOpNotice(''); }} />
                   <span className="text-sm text-zinc-400">=</span>
                   <div className="min-w-[4rem] text-xl text-teal-300">{opResult?.numerical ?? '–'}</div>
                 </div>

@@ -14,7 +14,9 @@ import { lensRun, depthCtx } from "./_harness.js";
 describe("ocean — calc contracts (exact computed values)", () => {
   it("waveAnalysis: wavelength/speed/energy/beaufort/seaState from height+period+wind", async () => {
     // height=2, period=10, wind=20kn. wavelength = 1.56*100 = 156m.
-    // deepWaterSpeed = 1.56*10 = 15.6 → "15.6 m/s". energy = 0.5*1025*9.81*4 = 20110.5 → round 20111.
+    // deepWaterSpeed = 1.56*10 = 15.6 → "15.6 m/s".
+    // Significant height H is crest-to-trough, so E = 1/8 ρ g H²
+    // = 0.125*1025*9.81*4 = 5027.625 → round 5028. (1/2 ρ g H² counted H as amplitude.)
     // beaufort: 20 < 22 → 5. seaState: 2 in [1.25,2.5) → "moderate". advisory: 2 <= 3 → "Safe for navigation".
     const r = await lensRun("ocean", "waveAnalysis", {
       data: { waveHeightMeters: 2, wavePeriodSeconds: 10, windSpeedKnots: 20 },
@@ -22,7 +24,7 @@ describe("ocean — calc contracts (exact computed values)", () => {
     assert.equal(r.ok, true);
     assert.equal(r.result.wavelength, "156m");
     assert.equal(r.result.speed, "15.6 m/s");
-    assert.equal(r.result.energyDensity, "20111 J/m²");
+    assert.equal(r.result.energyDensity, "5028 J/m²");
     assert.equal(r.result.beaufortScale, 5);
     assert.equal(r.result.seaState, "moderate");
     assert.equal(r.result.navigationAdvisory, "Safe for navigation");

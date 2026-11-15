@@ -11,6 +11,7 @@ import { Loader2, Plus, LayoutTemplate, Trash2, X, Inbox, Send } from 'lucide-re
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 type FieldType = 'text' | 'email' | 'phone' | 'select' | 'textarea' | 'checkbox';
 const FIELD_TYPES: FieldType[] = ['text', 'email', 'phone', 'select', 'textarea', 'checkbox'];
@@ -191,9 +192,9 @@ export function MarketingPagesPanel() {
 
       {/* Builder modal */}
       {creating && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setCreating(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setCreating(false)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <div className="w-full max-w-lg max-h-[85vh] overflow-y-auto bg-zinc-950 border border-zinc-800 rounded-xl p-4 space-y-3"
-            onClick={(ev) => ev.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            onClick={(ev) => ev.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-semibold text-white">{editing ? 'Edit' : 'New'} landing page</h4>
               <button type="button" onClick={() => setCreating(false)} aria-label="Close"><X className="w-4 h-4 text-zinc-400" /></button>
@@ -253,9 +254,9 @@ export function MarketingPagesPanel() {
 
       {/* Submit form modal */}
       {submitFor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setSubmitFor(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setSubmitFor(null)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <div className="w-full max-w-sm max-h-[85vh] overflow-y-auto bg-zinc-950 border border-zinc-800 rounded-xl p-4 space-y-3"
-            onClick={(ev) => ev.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            onClick={(ev) => ev.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <h4 className="text-sm font-semibold text-white">{submitFor.headline}</h4>
             {submitFor.subhead && <p className="text-[11px] text-zinc-400">{submitFor.subhead}</p>}
             {submitFor.fields.map((fl) => (
@@ -295,9 +296,9 @@ export function MarketingPagesPanel() {
 
       {/* Submissions inbox */}
       {subsFor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setSubsFor(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setSubsFor(null)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <div className="w-full max-w-md max-h-[85vh] overflow-y-auto bg-zinc-950 border border-zinc-800 rounded-xl p-4 space-y-3"
-            onClick={(ev) => ev.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            onClick={(ev) => ev.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-semibold text-white">Submissions ({subs.length})</h4>
               <button type="button" onClick={() => setSubsFor(null)} aria-label="Close"><X className="w-4 h-4 text-zinc-400" /></button>

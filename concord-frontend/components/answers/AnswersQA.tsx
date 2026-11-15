@@ -37,6 +37,7 @@ import { TagWatchPanel } from './TagWatchPanel';
 interface QSummary {
   id: string; title: string; tags: string[]; votes: number; views: number;
   answerCount: number; hasAccepted: boolean; bounty: number; excerpt: string; createdAt: string;
+  status?: string;
   subscribed?: boolean;
 }
 interface DupMatch {
@@ -51,6 +52,7 @@ interface QDetail {
   id: string; title: string; body: string; bodyFormat?: string; tags: string[];
   votes: number; views: number; answers: Answer[]; comments: Comment[];
   acceptedAnswerId: string | null; bounty: number; authorId: string;
+  status?: string;
   closed?: boolean; closeReason?: string | null; closeVotes?: unknown[];
   duplicateOf?: { id: string; title: string } | null; revisions?: unknown[];
 }
@@ -554,6 +556,12 @@ export function AnswersQA() {
             )}
           </div>
 
+          {detail.answers.length === 0 && !detail.closed && (
+            <div className="rounded-lg border border-sky-900/50 bg-sky-950/30 px-3 py-2.5 text-xs text-sky-200" role="status">
+              Awaiting answers — this question is live for the community. The author is notified as soon as the first answer lands.
+            </div>
+          )}
+
           {detail.answers.map((a) => (
             <div key={a.id} className={cn('flex gap-3 rounded-lg p-2', a.accepted && 'bg-emerald-950/30 border border-emerald-900/40')}>
               <div className="flex flex-col items-center gap-1">
@@ -789,6 +797,7 @@ export function AnswersQA() {
                     </span>
                   ))}
                   {q.bounty > 0 && <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-900/40 text-amber-300">+{q.bounty}</span>}
+                  {q.status === 'awaiting-first-answer' && <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-900/40 text-sky-300">Awaiting answers</span>}
                 </div>
               </button>
               <SubscribeButton key={`${q.id}:${q.subscribed ? 1 : 0}`} questionId={q.id} initialSubscribed={Boolean(q.subscribed)} onChanged={() => setNotifKey((k) => k + 1)} />

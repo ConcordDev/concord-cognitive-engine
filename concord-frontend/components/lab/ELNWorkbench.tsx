@@ -19,6 +19,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { ChartKit } from '@/components/viz';
 import {
   Notebook, Boxes, ListChecks, Grid3x3, FileSpreadsheet, Dna, LineChart as LineChartIcon,
@@ -274,8 +275,18 @@ function NotebookTab() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { refresh(); }, []);
 
+  const drop = async (id: string) => {
+    try {
+      await run('notebook-delete', { id });
+      if (sel === id) setSel(null);
+      await refresh();
+    } catch (e) { setErr(e instanceof Error ? e.message : 'Could not delete that entry.'); }
+  };
+
   const create = async () => {
     if (!title.trim()) { setErr('entry title required'); return; }
+    // FIX-lab-003: state the cap in words (the server refuses by name too).
+    if (title.trim().length > 200) { setErr('Entry title must be 200 characters or fewer.'); return; }
     setBusy(true);
     try {
       await run('notebook-create', { title, project, body });
@@ -302,7 +313,7 @@ function NotebookTab() {
   return (
     <div className="space-y-4">
       <div className="grid md:grid-cols-3 gap-2">
-        <Field label="Entry title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="PCR optimisation" />
+        <Field label="Entry title" value={title} maxLength={200} onChange={(e) => setTitle(e.target.value)} placeholder="PCR optimisation" />
         <Field label="Project" value={project} onChange={(e) => setProject(e.target.value)} placeholder="Unfiled" />
         <div className="flex items-end">
           <button onClick={create} disabled={busy} className="btn-neon cyan flex items-center gap-1 w-full justify-center">
@@ -319,6 +330,9 @@ function NotebookTab() {
           <div key={e.id} className="lens-card space-y-2">
             <div className="flex items-center justify-between">
               <span className="font-medium text-sm">{e.title}</span>
+              {e.status === 'draft' && (
+                <StickyDeleteConfirm onConfirm={() => void drop(e.id)} armAriaLabel={`Delete ${e.title}`} confirmAriaLabel={`Confirm delete ${e.title}`} className="text-rose-300" />
+              )}
               <span className={`text-xs px-2 py-0.5 rounded ${
                 e.status === 'signed' ? 'bg-neon-green/20 text-neon-green'
                   : e.status === 'witnessed' ? 'bg-yellow-500/20 text-yellow-400'

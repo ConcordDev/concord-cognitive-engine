@@ -74,7 +74,7 @@ export function ProductRecalls() {
       {lastPull && (
         <p className="text-[11px] text-rose-300">
           {lastPull.ingested > 0 ? `${lastPull.ingested} new recall${lastPull.ingested === 1 ? '' : 's'} found.` : 'No new recalls since last check.'}
-          {lastPull.skipped > 0 && <span className="text-zinc-500"> ({lastPull.skipped} already seen)</span>}
+          {lastPull.skipped > 0 && <span className="text-zinc-400"> ({lastPull.skipped} already seen)</span>}
         </p>
       )}
       {error && <p className="text-[11px] text-rose-400">{error}</p>}
@@ -94,7 +94,7 @@ export function ProductRecalls() {
                 <div className="min-w-0 flex-1">
                   <p className="text-[12px] text-zinc-100">{r.product}</p>
                   <p className="text-[10px] text-zinc-400">Hazard: {r.hazard}{r.remedy && r.remedy !== '?' ? ` · Remedy: ${r.remedy}` : ''}</p>
-                  {r.recallDate && <p className="text-[9px] text-zinc-500 font-mono mt-0.5">{r.recallDate}</p>}
+                  {r.recallDate && <p className="text-[9px] text-zinc-400 font-mono mt-0.5">{r.recallDate}</p>}
                 </div>
               </div>
             </li>

@@ -27,6 +27,10 @@ export function PermitsPanel() {
   const [permits, setPermits] = useState<Permit[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ applicantName: '', applicantEmail: '', applicantPhone: '', kind: 'building_residential', description: '', siteAddress: '', feeUsd: '0' });
+  const [denyId, setDenyId] = useState<string | null>(null);
+  const [denyReason, setDenyReason] = useState('');
+  const [denyError, setDenyError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => { refresh(); }, []);
 
@@ -40,16 +44,28 @@ export function PermitsPanel() {
   }
 
   async function apply() {
-    if (!form.applicantName.trim() || !form.applicantEmail.trim() || !form.kind.trim()) return;
+    if (!form.applicantName.trim() || !form.applicantEmail.trim() || !form.kind.trim()) {
+      setFormError('Applicant name, email, and kind are required.');
+      return;
+    }
+    const feeRaw = form.feeUsd.trim();
+    if (feeRaw && !/^\d+(\.\d{1,2})?$/.test(feeRaw)) {
+      setFormError('Fee must be a number that is 0 or more. Letters and negatives are not a fee.');
+      return;
+    }
+    setFormError(null);
     try {
-      await lensRun({ domain: 'government', action: 'permits-apply', input: { ...form, feeUsd: Number(form.feeUsd) || 0 } });
+      const res = await lensRun({ domain: 'government', action: 'permits-apply', input: { ...form, feeUsd: feeRaw === '' ? 0 : Number(feeRaw) } });
+      if (res.data?.ok === false) {
+        setFormError(res.data?.message || res.data?.error || 'Could not save the permit.');
+        return;
+      }
       setForm({ applicantName: '', applicantEmail: '', applicantPhone: '', kind: 'building_residential', description: '', siteAddress: '', feeUsd: '0' });
       await refresh();
-    } catch (e) { console.error('[Permits] apply', e); }
+    } catch (e) { setFormError(e instanceof Error ? e.message : 'Could not save the permit.'); }
   }
 
   async function action(id: string, act: 'pay-fee' | 'approve' | 'issue' | 'deny') {
-    const reason = act === 'deny' ? prompt('Denial reason?') : null;
     try {
       const input: Record<string, unknown> = { id };
       if (act === 'pay-fee') {
@@ -57,10 +73,21 @@ export function PermitsPanel() {
         if (!proceed) return;
         input.method = 'offline';
       }
-      if (act === 'deny' && reason) input.reason = reason;
+      if (act === 'deny') {
+        const reason = denyReason.trim();
+        if (!reason) { setDenyError('A denial reason is required.'); return; }
+        input.reason = reason;
+      }
       if (act === 'issue') input.validForDays = 365;
       const res = await lensRun({ domain: 'government', action: `permits-${act}`, input });
-      if (res.data?.ok === false) alert(res.data?.error);
+      if (res.data?.ok === false) {
+        if (act === 'deny') setDenyError(res.data?.error || 'Deny failed.');
+        else alert(res.data?.error);
+      } else if (act === 'deny') {
+        setDenyId(null);
+        setDenyReason('');
+        setDenyError(null);
+      }
       await refresh();
     } catch (e) { console.error('[Permits]', act, e); }
   }
@@ -78,12 +105,13 @@ export function PermitsPanel() {
             Local record only — this does not apply for a permit with any permitting office. The application is saved only in your Concord workspace; no fee is collected by an authority and no permit is issued.
           </LocalRecordNotice>
         </div>
-        <input value={form.applicantName} onChange={e => setForm({ ...form, applicantName: e.target.value })} placeholder="Applicant name" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-        <input value={form.applicantEmail} onChange={e => setForm({ ...form, applicantEmail: e.target.value })} placeholder="Email" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-        <input value={form.kind} onChange={e => setForm({ ...form, kind: e.target.value })} placeholder="Kind (building / fence / business_license / event)" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-        <input value={form.siteAddress} onChange={e => setForm({ ...form, siteAddress: e.target.value })} placeholder="Site address" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-        <input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Description" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-        <input type="number" value={form.feeUsd} onChange={e => setForm({ ...form, feeUsd: e.target.value })} placeholder="Fee $" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <input aria-label="Applicant name" value={form.applicantName} onChange={e => setForm({ ...form, applicantName: e.target.value })} placeholder="Applicant name" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <input aria-label="Email" value={form.applicantEmail} onChange={e => setForm({ ...form, applicantEmail: e.target.value })} placeholder="Email" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <input aria-label="Kind (building / fence / business_license / event)" value={form.kind} onChange={e => setForm({ ...form, kind: e.target.value })} placeholder="Kind (building / fence / business_license / event)" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <input aria-label="Site address" value={form.siteAddress} onChange={e => setForm({ ...form, siteAddress: e.target.value })} placeholder="Site address" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <input aria-label="Description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Description" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <input aria-label="Fee $" type="number" value={form.feeUsd} onChange={e => setForm({ ...form, feeUsd: e.target.value })} placeholder="Fee $" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        {formError && <p role="alert" className="col-span-4 text-[11px] text-rose-300">{formError}</p>}
         <button onClick={apply} className="col-span-4 px-3 py-1.5 text-xs rounded bg-violet-500 text-white font-bold hover:bg-violet-400 inline-flex items-center justify-center gap-1"><Plus className="w-3 h-3" />Apply for permit</button>
       </div>
       <div className="max-h-96 overflow-y-auto">
@@ -100,13 +128,33 @@ export function PermitsPanel() {
                   <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded', STATUS_COLOUR[p.status])}>{p.status.replace(/_/g, ' ')}</span>
                   <span className="text-sm text-white">{p.kind}</span>
                   <span className="ml-auto text-[10px] text-gray-400">{p.applicantName} · ${p.feeUsd} {p.paid ? 'paid' : 'unpaid'}</span>
+                  {p.status !== 'issued' && (
+                    <button type="button" className="text-[10px] text-rose-300" onClick={async () => { await lensRun({ domain: 'government', action: 'permits-cancel', input: { id: p.id } }); await refresh(); }}>Cancel</button>
+                  )}
                 </div>
                 {p.description && <div className="text-[11px] text-gray-400 mb-1">{p.description}</div>}
                 <div className="flex items-center gap-1">
                   {p.status === 'applied' && !p.paid && <button onClick={() => action(p.id, 'pay-fee')} title="Records cash, check, or money order already received. Does not charge a card." className="px-2 py-0.5 text-[10px] rounded bg-emerald-500/30 text-emerald-300 hover:bg-emerald-500/50">Record offline payment</button>}
                   {p.status === 'under_review' && <button onClick={() => action(p.id, 'approve')} className="px-2 py-0.5 text-[10px] rounded bg-cyan-500/30 text-cyan-300 hover:bg-cyan-500/50 inline-flex items-center gap-1"><Check className="w-2.5 h-2.5" />Approve</button>}
                   {p.status === 'approved' && <button onClick={() => action(p.id, 'issue')} className="px-2 py-0.5 text-[10px] rounded bg-emerald-500/30 text-emerald-300 hover:bg-emerald-500/50 inline-flex items-center gap-1"><Send className="w-2.5 h-2.5" />Issue</button>}
-                  {p.status !== 'issued' && p.status !== 'denied' && <button onClick={() => action(p.id, 'deny')} className="px-2 py-0.5 text-[10px] rounded bg-rose-500/30 text-rose-300 hover:bg-rose-500/50 inline-flex items-center gap-1"><X className="w-2.5 h-2.5" />Deny</button>}
+                  {p.status !== 'issued' && p.status !== 'denied' && (
+                    denyId === p.id ? (
+                      <span className="inline-flex flex-wrap items-center gap-1">
+                        <input
+                          aria-label={`Denial reason for ${p.recordNumber}`}
+                          value={denyReason}
+                          onChange={(e) => { setDenyReason(e.target.value); setDenyError(null); }}
+                          placeholder="Denial reason"
+                          className="bg-black/40 border border-white/10 rounded px-1.5 py-0.5 text-[10px] text-gray-200"
+                        />
+                        <button type="button" onClick={() => action(p.id, 'deny')} className="px-2 py-0.5 text-[10px] rounded bg-rose-500/30 text-rose-300">Deny permit</button>
+                        <button type="button" onClick={() => { setDenyId(null); setDenyError(null); }} className="px-2 py-0.5 text-[10px] rounded text-gray-400">Cancel</button>
+                        {denyError && <span role="alert" className="text-[10px] text-rose-300">{denyError}</span>}
+                      </span>
+                    ) : (
+                      <button type="button" onClick={() => { setDenyId(p.id); setDenyReason(''); setDenyError(null); }} className="px-2 py-0.5 text-[10px] rounded bg-rose-500/30 text-rose-300 hover:bg-rose-500/50 inline-flex items-center gap-1"><X className="w-2.5 h-2.5" />Deny</button>
+                    )
+                  )}
                   {p.expiresAt && <span className="ml-auto text-[10px] text-gray-400">Expires {p.expiresAt.slice(0, 10)}</span>}
                 </div>
                 {p.denialReason && <div className="mt-1 text-[10px] text-rose-300">Denial reason: {p.denialReason}</div>}

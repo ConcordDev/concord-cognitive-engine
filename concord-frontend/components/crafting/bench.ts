@@ -17,7 +17,95 @@ export type BenchRecipe = { id: string; title: string };
  * the shared Export reads (lens.list) and what publish acts on. A piece
  * without an artifactId predates D1 or its registration has not landed yet.
  */
-export type BenchPiece = BenchRecipe & { artifactId?: string; published?: boolean };
+export type BenchPiece = BenchRecipe & { artifactId?: string; published?: boolean; project?: PieceProject };
+
+/**
+ * FIX-crafting-004 — a piece is a project, not just a name (the Ravelry
+ * shape: a project record with materials, steps, status and a photo).
+ * The record lives in the recipe row's data.project, written by the
+ * widened PATCH /api/crafting/recipes/:id; the bench reads it back from
+ * the same recipes list it already pulls.
+ */
+export type PieceProjectStatus = 'planning' | 'in_progress' | 'paused' | 'finished';
+export type PieceMaterial = { name: string; quantity: number; unitCost: number };
+export type PieceStep = { label: string; done: boolean };
+export type PieceProject = {
+  status: PieceProjectStatus;
+  photoUrl: string;
+  notes: string;
+  materials: PieceMaterial[];
+  steps: PieceStep[];
+};
+
+export const PIECE_PROJECT_STATUSES: PieceProjectStatus[] = ['planning', 'in_progress', 'paused', 'finished'];
+
+export function emptyProject(): PieceProject {
+  return { status: 'planning', photoUrl: '', notes: '', materials: [], steps: [] };
+}
+
+function finiteNonNegative(v: unknown): number {
+  return typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : 0;
+}
+
+/** Defensive read of a stored project record — a malformed row degrades
+ *  to the empty project rather than breaking the bench. */
+export function projectFromUnknown(v: unknown): PieceProject {
+  const base = emptyProject();
+  if (!v || typeof v !== 'object') return base;
+  const p = v as Record<string, unknown>;
+  const status = PIECE_PROJECT_STATUSES.includes(p.status as PieceProjectStatus)
+    ? (p.status as PieceProjectStatus)
+    : base.status;
+  const materials: PieceMaterial[] = [];
+  if (Array.isArray(p.materials)) {
+    for (const m of p.materials) {
+      if (!m || typeof m !== 'object') continue;
+      const row = m as Record<string, unknown>;
+      if (typeof row.name !== 'string' || !row.name.trim()) continue;
+      materials.push({ name: row.name, quantity: finiteNonNegative(row.quantity), unitCost: finiteNonNegative(row.unitCost) });
+    }
+  }
+  const steps: PieceStep[] = [];
+  if (Array.isArray(p.steps)) {
+    for (const s of p.steps) {
+      if (!s || typeof s !== 'object') continue;
+      const row = s as Record<string, unknown>;
+      if (typeof row.label !== 'string' || !row.label.trim()) continue;
+      steps.push({ label: row.label, done: row.done === true });
+    }
+  }
+  return {
+    status,
+    photoUrl: typeof p.photoUrl === 'string' ? p.photoUrl : '',
+    notes: typeof p.notes === 'string' ? p.notes : '',
+    materials,
+    steps,
+  };
+}
+
+/** The project record each recipe row carries in its data, keyed by id. */
+export function projectsFromRecipesList(data: unknown): Map<string, PieceProject> {
+  const rows = (data as { recipes?: unknown } | null)?.recipes;
+  const out = new Map<string, PieceProject>();
+  if (!Array.isArray(rows)) return out;
+  for (const row of rows) {
+    if (!row || typeof row !== 'object') continue;
+    const id = (row as { id?: unknown }).id;
+    const project = (row as { data?: { project?: unknown } }).data?.project;
+    if (typeof id === 'string' && id && project && typeof project === 'object') {
+      out.set(id, projectFromUnknown(project));
+    }
+  }
+  return out;
+}
+
+/** The bench's basic estimators, computed from the record itself:
+ *  materials cost (Σ quantity × unitCost) and step progress. */
+export function projectEstimates(project: PieceProject): { materialsCost: number; stepsDone: number; stepsTotal: number } {
+  const materialsCost = project.materials.reduce((sum, m) => sum + m.quantity * m.unitCost, 0);
+  const stepsDone = project.steps.filter((s) => s.done).length;
+  return { materialsCost, stepsDone, stepsTotal: project.steps.length };
+}
 
 export type CanonicalArtifactRow = {
   id: string;
@@ -100,11 +188,20 @@ export function isDuplicateName(name: string, pieces: BenchRecipe[], excludeId?:
   return pieces.some((p) => p.id !== excludeId && p.title.trim().toLowerCase() === wanted);
 }
 
-export function joinPieces(recipes: BenchRecipe[], artifacts: CanonicalArtifactRow[]): BenchPiece[] {
+export function joinPieces(
+  recipes: BenchRecipe[],
+  artifacts: CanonicalArtifactRow[],
+  projects?: Map<string, PieceProject>,
+): BenchPiece[] {
   const byRecipe = new Map(artifacts.map((a) => [a.recipeId, a]));
   return recipes.map((r) => {
     const artifact = byRecipe.get(r.id);
-    return artifact ? { ...r, artifactId: artifact.id, published: artifact.published } : { ...r };
+    const project = projects?.get(r.id);
+    return {
+      ...r,
+      ...(artifact ? { artifactId: artifact.id, published: artifact.published } : {}),
+      ...(project ? { project } : {}),
+    };
   });
 }
 

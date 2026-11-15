@@ -181,7 +181,7 @@ export function CityMap({
           </g>
         ))}
       </svg>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-1 pt-2 text-[10px] text-zinc-400">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-1 pt-2 text-[10px] text-zinc-300">
         {Object.entries(ZONE_FILL).map(([z, col]) => (
           <span key={z} className="flex items-center gap-1">
             <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: col }} /> {z}

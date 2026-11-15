@@ -164,6 +164,7 @@ const RULE_EFFORT_MIN = {
   "trailing-whitespace": 2,
   "many-params": 25,
   "commented-code": 8,
+  "no-eval": 20,
 };
 
 function analyzeFile({ file, source, language }) {
@@ -236,6 +237,13 @@ function analyzeFile({ file, source, language }) {
 
     const code = masked[idx];
 
+    // eval / new Function — the Issues detector already names no-eval;
+    // the file analyzer has to emit the same finding or Analyze stays quiet.
+    if (/\beval\s*\(/.test(code) || /\bnew\s+Function\s*\(/.test(code)) {
+      findings.push(mkFinding("no-eval", "high", lineNo, raw,
+        "eval() or new Function() runs code from a string.",
+        "Remove it, or run that code through a reviewed interpreter."));
+    }
     // debug statements
     if (/\bconsole\.(log|debug|trace)\s*\(/.test(code) ||
         /\bprint\s*\(/.test(code) && lang === "python" ||
@@ -332,8 +340,12 @@ function analyzeFile({ file, source, language }) {
 
   // --- metrics ---------------------------------------------------------
   const totalLines = rawLines.length;
-  const fileComplexity = fns.reduce((s, f) => s + f.complexity, 1);
-  const avgComplexity = fns.length ? fileComplexity / fns.length : 1;
+  // FIX-code-quality-003: the sum started at 1 (a phantom base point),
+  // so a single function of complexity 4 reported AVG 5 > MAX 4. The
+  // average is the plain mean of the functions' complexities, and an
+  // empty file averages 0 like its max — avg ≤ max always holds.
+  const fileComplexity = fns.reduce((s, f) => s + f.complexity, 0);
+  const avgComplexity = fns.length ? fileComplexity / fns.length : 0;
   const dupLines = dupBlocks.reduce((s, b) => s + b.length * b.occurrences, 0);
   const duplicationPct = codeLines ? Math.round((dupLines / codeLines) * 1000) / 10 : 0;
   const commentDensity = codeLines ? Math.round((commentLines / (codeLines + commentLines)) * 100) : 0;
@@ -599,11 +611,15 @@ export default function registerCodeQualityActions(registerLensAction) {
       for (const f of files) {
         const content = String(f.content ?? f.source ?? "");
         if (!content) continue;
-        fileReports.push(analyzeFile({
-          file: f.path || f.file || "untitled",
+        fileReports.push({
+          ...analyzeFile({
+            file: f.path || f.file || "untitled",
+            source: content,
+            language: f.language,
+          }),
+          // Kept so a reload can put the same source back in the editor.
           source: content,
-          language: f.language,
-        }));
+        });
       }
       if (!fileReports.length) return { ok: false, error: "all_files_empty" };
 
@@ -734,7 +750,12 @@ export default function registerCodeQualityActions(registerLensAction) {
       }
       return {
         ok: true,
-        result: { points, scanCount: scans.length, delta },
+        result: {
+          points,
+          scanCount: scans.length,
+          delta,
+          latest: scans.length ? scans[scans.length - 1] : null,
+        },
       };
     } catch (e) {
       return { ok: false, error: `trend_failed: ${e.message}` };
@@ -890,12 +911,30 @@ export default function registerCodeQualityActions(registerLensAction) {
       // value — reject a poisoned NaN/Infinity/-1/1e308 instead of silently
       // skipping it (the prior `Number.isFinite` guard quietly ignored a bad
       // value, leaving the gate at its old setting and reporting ok:true).
-      const badNum = badNumericField(p, numKeys);
-      if (badNum) return { ok: false, error: `invalid_${badNum}` };
+      // FIX-code-quality-006: the refusal was a raw token
+      // ('invalid_maxCritical') and two thresholds with documented
+      // 0..100 ranges (maintainability index, duplication percent)
+      // accepted 999999. Each field now refuses in words naming its
+      // label and range; the counts/debt keep the guard's 1e6 ceiling.
+      const GATE_RANGES = {
+        maxCritical: { label: "Max critical", max: 1e6 },
+        maxHigh: { label: "Max high", max: 1e6 },
+        maxBlockerDebtHours: { label: "Max debt (h)", max: 1e6 },
+        minMaintainability: { label: "Min maintainability", max: 100 },
+        maxDuplicationPct: { label: "Max duplication %", max: 100 },
+      };
+      for (const k of numKeys) {
+        if (p[k] == null) continue;
+        const n = Number(p[k]);
+        const { label, max } = GATE_RANGES[k];
+        if (!Number.isFinite(n) || n < 0 || n > max) {
+          return { ok: false, error: `${label} must be a number between 0 and ${max.toLocaleString("en-US")}` };
+        }
+      }
       const gate = userGate(ctx);
       for (const k of numKeys) {
         if (p[k] != null) {
-          gate[k] = Math.max(0, Number(p[k]));
+          gate[k] = Number(p[k]);
         }
       }
       if (p.blockOnNewCritical != null) {
@@ -1149,7 +1188,7 @@ function aggregateMetrics(fileReports) {
     maxComplexity = Math.max(maxComplexity, m.maxComplexity);
     dupLines += (m.duplicationPct / 100) * m.codeLines;
   }
-  const avgComplexity = functionCount ? cxSum / functionCount : 1;
+  const avgComplexity = functionCount ? cxSum / functionCount : 0;
   const duplicationPct = codeLines
     ? Math.round((dupLines / codeLines) * 1000) / 10 : 0;
   const findingCount = fileReports.reduce((s, r) => s + r.findings.length, 0);

@@ -27,6 +27,7 @@
  * every TypeScript result interface to the macros' real output shape.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import {
   ShieldCheck, CheckCircle, FileBadge, ListTree,
@@ -34,7 +35,8 @@ import {
   Loader2, Check, AlertTriangle, Copy,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api, lensRun } from '@/lib/api/client';
+import { api, apiHelpers, lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
@@ -59,7 +61,7 @@ interface FactCheckResult {
 interface CredibilityResult {
   message?: string;
   sourceCount?: number; averageCredibility?: number; overallAssessment?: string;
-  sources?: Array<{ name: string; credibilityScore: number; credibilityLabel: string; type: string }>;
+  sources?: Array<{ name: string; credibilityScore: number; credibilityLabel: string; type: string; url?: string }>;
   recommendations?: string[];
 }
 interface DecomposeResult {
@@ -84,6 +86,9 @@ export function ClaimVerificationPanel() {
   const [credibilityResult, setCredibilityResult] = useState<CredibilityResult | null>(null);
   const [decomposeResult, setDecomposeResult] = useState<DecomposeResult | null>(null);
   const [mintedDtuId, setMintedDtuId] = useState<string | null>(null);
+  // FIX-grounding-010 (name leg): the mint auto-titled from the claim and
+  // offered no way to name the saved DTU.
+  const [mintName, setMintName] = useState('');
   const [publishedDtuId, setPublishedDtuId] = useState<string | null>(null);
   const [agentReply, setAgentReply] = useState<string | null>(null);
 
@@ -133,7 +138,16 @@ export function ClaimVerificationPanel() {
       const res = r.data.result;
       setCredibilityResult(res);
       const top = res?.sources?.[0];
-      if (top) ok(`${top.credibilityLabel} (${top.credibilityScore}/100).`);
+      if (top) {
+        ok(`${top.credibilityLabel} (${top.credibilityScore}/100).`);
+        // FIX-grounding-012: leave an audit-trail entry, best-effort
+        // like recordCheck — a record failure never fails the scoring.
+        void lensRun('grounding', 'recordActivity', {
+          kind: 'source-tier',
+          claim: top.name || top.url || srcName.trim() || srcUrl.trim(),
+          summary: `${top.credibilityLabel} (${top.credibilityScore}/100)`,
+        }).catch(() => { /* the audit copy is best-effort; the scoring stands */ });
+      }
       else ok(res?.message || 'No sources scored.');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -150,7 +164,16 @@ export function ClaimVerificationPanel() {
       if (!r.data.ok) { err(r.data.error ?? 'decompose failed'); return; }
       const res = r.data.result;
       setDecomposeResult(res);
-      ok(res?.atomicClaimCount ? `${res.atomicClaimCount} atomic claims (${res.logicalStructure}).` : (res?.message || 'No claims decomposed.'));
+      if (res?.atomicClaimCount) {
+        ok(`${res.atomicClaimCount} atomic claims (${res.logicalStructure}).`);
+        // FIX-grounding-012: audit-trail entry, best-effort.
+        void lensRun('grounding', 'recordActivity', {
+          kind: 'decompose',
+          claim: claim.trim(),
+          summary: `${res.atomicClaimCount} atomic claims (${res.logicalStructure})`,
+        }).catch(() => { /* the audit copy is best-effort; the decomposition stands */ });
+      }
+      else ok(res?.message || 'No claims decomposed.');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -162,7 +185,7 @@ export function ClaimVerificationPanel() {
       const r = await api.post('/api/lens/run', {
         domain: 'dtu', name: 'create',
         input: withContentLicense({
-          title: `Verification — ${claim.trim().slice(0, 60)}${claim.length > 60 ? '…' : ''}`,
+          title: mintName.trim() ? mintName.trim().slice(0, 120) : `Verification — ${claim.trim().slice(0, 60)}${claim.length > 60 ? '…' : ''}`,
           tags: ['grounding', 'verification', factResult?.verdict ?? 'unchecked'],
           source: 'grounding:verification:mint',
           meta: {
@@ -181,8 +204,33 @@ export function ClaimVerificationPanel() {
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
-      if (id) { setMintedDtuId(id); ok(`Verification DTU ${id}`); }
+      if (id) {
+        setMintedDtuId(id); ok(`Verification DTU ${id}`);
+        // FIX-grounding-012: audit-trail entry carrying the minted id,
+        // best-effort — a record failure never fails the mint.
+        void lensRun('grounding', 'recordActivity', {
+          kind: 'mint',
+          claim: claim.trim(),
+          dtuId: id,
+        }).catch(() => { /* the audit copy is best-effort; the mint stands */ });
+      }
       else err('No DTU id returned.');
+    } catch (e) { err(pickMessage(e)); }
+    finally { setBusy(null); }
+  }
+
+  // FIX-grounding-010 (delete leg): the minted verification DTU used to be
+  // undeletable from anywhere the user could reach. It rides the canonical
+  // verb — dtus.delete is owner-gated server-side — and clearing the id
+  // re-arms Mint.
+  async function actDeleteMinted() {
+    if (!mintedDtuId) return;
+    setBusy('mint'); setFeedback(null);
+    try {
+      const resp = await apiHelpers.dtus.delete(mintedDtuId) as { data?: { ok?: boolean; error?: string } };
+      if (resp.data?.ok === false) throw new Error(resp.data?.error ?? 'delete refused');
+      setMintedDtuId(null);
+      ok('Verification DTU deleted.');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -252,9 +300,9 @@ export function ClaimVerificationPanel() {
         `3) one likely cognitive bias that supports the original claim.`,
       ].filter(Boolean).join(' ');
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 5 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Counter-evidence ready.'); }
-      else err('Agent returned empty.');
+      const reply = readAgentReply(r.data);
+      if (reply.ok) { setAgentReply(reply.text); ok('Counter-evidence ready.'); }
+      else err(reply.reason);
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -282,6 +330,11 @@ export function ClaimVerificationPanel() {
       <div>
         <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block" htmlFor="cvp-claim">Claim</label>
         <textarea id="cvp-claim" value={claim} onChange={(e) => setClaim(e.target.value)} rows={2} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-400/40 resize-none" placeholder="e.g. The fastest land animal is the cheetah." />
+      </div>
+
+      <div>
+        <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block" htmlFor="cvp-mint-name">Saved DTU name (optional)</label>
+        <input id="cvp-mint-name" value={mintName} onChange={(e) => setMintName(e.target.value)} maxLength={120} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-400/40" placeholder="Name the verification DTU you Mint — blank keeps the claim title" />
       </div>
 
       {/* Evidence list — feeds factCheck + claimDecomposition */}
@@ -351,6 +404,7 @@ export function ClaimVerificationPanel() {
               <button type="button" onClick={() => { void navigator.clipboard?.writeText(mintedDtuId).catch(() => {}); }} className="flex items-center gap-1 rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-300 hover:bg-zinc-700">
                 <Copy className="h-3 w-3" /> Copy
               </button>
+              <StickyDeleteConfirm onConfirm={() => { void actDeleteMinted(); }} armLabel="Delete" confirmLabel="Confirm delete?" armAriaLabel="Delete verification DTU" className="text-[10px] text-rose-300/80 hover:text-rose-300" />
             </p>
           )}
           {publishedDtuId && (

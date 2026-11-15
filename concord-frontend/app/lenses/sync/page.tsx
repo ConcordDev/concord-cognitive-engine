@@ -41,7 +41,7 @@ export default function SyncPage() {
   const registerThisDevice = async () => {
     setRegistering(true);
     try {
-      const r = await lensRun('sync', 'register_device', { deviceLabel: defaultDeviceLabel(), autoSync: true });
+      const r = await lensRun('sync', 'register_device', { deviceLabel: defaultDeviceLabel(), autoSync: false });
       if (!r.data?.ok) throw new Error(r.data?.error || 'Could not register this device.');
       useUIStore.getState().addToast({ type: 'success', message: 'This device is registered for sync.' });
       setView('devices');

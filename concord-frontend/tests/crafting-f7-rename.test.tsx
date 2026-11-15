@@ -4,7 +4,7 @@
  * but not the artifact's embedded data.name / data.spec.name, so the
  * exported artifact disagreed with the bench about the piece's name.
  * The rename now converges every name copy, a lagged artifact heals on
- * load, and an empty name on "Save the name" is refused out loud
+ * load, and an empty name on "Save piece" is refused out loud
  * (the leg's UI half — it used to return silently).
  */
 
@@ -107,7 +107,7 @@ describe('F7 rename convergence', () => {
     await waitFor(() => expect(getByText('Bench hook')).toBeInTheDocument());
     await act(async () => { fireEvent.click(getByRole('button', { name: 'Edit' })); });
     fireEvent.change(getByLabelText('Piece name'), { target: { value: 'Bench hook II' } });
-    await act(async () => { fireEvent.click(getByRole('button', { name: 'Save the name' })); });
+    await act(async () => { fireEvent.click(getByRole('button', { name: 'Save piece' })); });
     await waitFor(() =>
       expect(apiPut).toHaveBeenCalledWith('/api/lens/crafting/a1', {
         title: 'Bench hook II',
@@ -131,7 +131,7 @@ describe('F7 rename convergence', () => {
     );
   });
 
-  it('an empty name on Save the name is refused out loud, and nothing is written', async () => {
+  it('an empty name on Save piece is refused out loud, and nothing is written', async () => {
     benchWith({
       id: 'a1', domain: 'crafting', type: 'recipe', title: 'Bench hook',
       data: { recipeId: 'r1', name: 'Bench hook', benchPiece: true, spec: SPEC },
@@ -141,7 +141,7 @@ describe('F7 rename convergence', () => {
     await waitFor(() => expect(getByText('Bench hook')).toBeInTheDocument());
     await act(async () => { fireEvent.click(getByRole('button', { name: 'Edit' })); });
     fireEvent.change(getByLabelText('Piece name'), { target: { value: '   ' } });
-    await act(async () => { fireEvent.click(getByRole('button', { name: 'Save the name' })); });
+    await act(async () => { fireEvent.click(getByRole('button', { name: 'Save piece' })); });
     await waitFor(() => expect(getByText('A piece needs a name.')).toBeInTheDocument());
     expect(apiPatch).not.toHaveBeenCalled();
     expect(apiPut).not.toHaveBeenCalled();

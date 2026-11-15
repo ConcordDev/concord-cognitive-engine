@@ -506,6 +506,25 @@ export default function registerExpertModeMacros(register) {
     return { ok: true, space };
   }, { note: "Create a Page/Space — a shareable collection of saved expert-mode answers." });
 
+  // FIX-expert-mode-002: spaces gain an edit (name + description).
+  register("expert_mode", "space_update", async (ctx, input = {}) => {
+    const userId = actorId(ctx);
+    if (!userId) return { ok: false, reason: "no_actor" };
+    const st = store();
+    const space = st.spaces.get(input?.spaceId);
+    if (!space || space.userId !== userId) return { ok: false, reason: "space_not_found" };
+    if (input?.name !== undefined) {
+      const name = String(input.name || "").trim();
+      if (!name) return { ok: false, reason: "missing_name" };
+      space.name = name.slice(0, 120);
+    }
+    if (input?.description !== undefined) {
+      space.description = String(input.description || "").slice(0, 400);
+    }
+    space.updatedAt = now();
+    return { ok: true, space: { id: space.id, name: space.name, description: space.description, answerCount: space.answers.length, shareToken: space.shareToken, createdAt: space.createdAt, updatedAt: space.updatedAt } };
+  }, { note: "Rename / re-describe one of the caller's Spaces." });
+
   register("expert_mode", "space_list", async (ctx) => {
     const userId = actorId(ctx);
     if (!userId) return { ok: false, reason: "no_actor" };
@@ -664,6 +683,19 @@ export default function registerExpertModeMacros(register) {
       .map((u) => ({ id: u.id, name: u.name, kind: u.kind, chars: u.chars, createdAt: u.createdAt }));
     return { ok: true, uploads, total: uploads.length };
   }, { note: "List the caller's uploaded query-source documents." });
+
+  // FIX-expert-mode-002: uploaded documents gain a rename.
+  register("expert_mode", "upload_update", async (ctx, input = {}) => {
+    const userId = actorId(ctx);
+    if (!userId) return { ok: false, reason: "no_actor" };
+    const st = store();
+    const upload = st.uploads.get(input?.uploadId);
+    if (!upload || upload.userId !== userId) return { ok: false, reason: "upload_not_found" };
+    const name = String(input?.name || "").trim();
+    if (!name) return { ok: false, reason: "missing_name" };
+    upload.name = name.slice(0, 200);
+    return { ok: true, upload: { id: upload.id, name: upload.name, kind: upload.kind, chars: upload.chars, createdAt: upload.createdAt } };
+  }, { note: "Rename one of the caller's uploaded documents." });
 
   register("expert_mode", "upload_delete", async (ctx, input = {}) => {
     const userId = actorId(ctx);

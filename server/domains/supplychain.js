@@ -15,7 +15,7 @@ export default function registerSupplychainActions(registerLensAction) {
   registerLensAction("supplychain", "leadTimeAnalysis", (ctx, artifact, _params) => { const orders = artifact.data?.orders || []; if (orders.length === 0) return { ok: true, result: { message: "Add orders with dates to analyze lead times." } }; const leadTimes = orders.map(o => { const ordered = new Date(o.orderDate || o.created); const received = o.receivedDate ? new Date(o.receivedDate) : null; const days = received ? Math.ceil((received.getTime() - ordered.getTime()) / 86400000) : null; return { order: o.id || o.name, supplier: o.supplier, leadTimeDays: days, status: received ? "delivered" : "pending" }; }).filter(o => o.leadTimeDays !== null); const avg = leadTimes.length > 0 ? Math.round(leadTimes.reduce((s,o) => s + o.leadTimeDays, 0) / leadTimes.length) : 0; return { ok: true, result: { ordersAnalyzed: leadTimes.length, avgLeadTimeDays: avg, minDays: Math.min(...leadTimes.map(o => o.leadTimeDays)), maxDays: Math.max(...leadTimes.map(o => o.leadTimeDays)), reliability: avg <= 7 ? "excellent" : avg <= 14 ? "good" : avg <= 30 ? "acceptable" : "poor" } }; });
   registerLensAction("supplychain", "inventoryOptimize", (ctx, artifact, _params) => { const items = artifact.data?.items || []; if (items.length === 0) return { ok: true, result: { message: "Add inventory items to optimize." } }; const analyzed = items.map(i => { const _r = needNums(i, ["dailyDemand>0", "leadTimeDays>=0", "currentStock>=0", "orderCost>0", "holdingCost>0"]); if (_r.missing.length) return { item: i?.name, status: "NOT_COMPUTED", missingInputs: _r.missing }; const demand = _r.values.dailyDemand; const leadTime = Math.trunc(_r.values.leadTimeDays); const current = Math.trunc(_r.values.currentStock); const safetyStock = Math.ceil(demand * leadTime * 0.5); const reorderPoint = Math.ceil(demand * leadTime + safetyStock); const eoq = Math.round(Math.sqrt(2 * demand * 365 * (parseFloat(i.orderCost) || 50) / (parseFloat(i.holdingCost) || 5))); return { item: i.name, currentStock: current, reorderPoint, safetyStock, eoq, daysOfStock: demand > 0 ? Math.round(current / demand) : 999, needsReorder: current <= reorderPoint }; }); return { ok: true, result: { items: analyzed, needsReorder: analyzed.filter(i => i.needsReorder).length, totalItems: analyzed.length, notComputed: analyzed.filter(i => i.status === "NOT_COMPUTED").length, method: "EOQ = √(2·D·S/H) (Harris 1913); safety stock = 0.5·d·L (rule of thumb, not service-level based)" } }; });
   registerLensAction("supplychain", "supplierScore", (ctx, artifact, _params) => { const suppliers = artifact.data?.suppliers || []; if (suppliers.length === 0) return { ok: true, result: { message: "Add suppliers to score." } }; const WEIGHTS = { qualityScore: 0.3, onTimePercent: 0.3, priceCompetitiveness: 0.2, responsiveness: 0.2 }; const scored = suppliers.map(s => { const present = {}; let wsum = 0; for (const [k, w] of Object.entries(WEIGHTS)) { const v = optNum(s?.[k]); if (v !== null) { present[k] = v; wsum += w; } } const missingInputs = Object.keys(WEIGHTS).filter(k => !(k in present)); if (wsum === 0) return { supplier: s?.name, status: "NOT_COMPUTED", missingInputs, scoredOn: [], totalScore: null, tier: null }; let acc = 0; for (const [k, v] of Object.entries(present)) acc += v * WEIGHTS[k]; const total = Math.round(acc / wsum); return { supplier: s.name, quality: present.qualityScore ?? null, delivery: present.onTimePercent ?? null, price: present.priceCompetitiveness ?? null, responsiveness: present.responsiveness ?? null, scoredOn: Object.keys(present), missingInputs, totalScore: total, tier: total >= 85 ? "preferred" : total >= 70 ? "approved" : total >= 50 ? "conditional" : "at-risk" }; }).sort((a,b) => (b.totalScore ?? -Infinity) - (a.totalScore ?? -Infinity)); return { ok: true, result: { suppliers: scored, topSupplier: scored.find(x => x.totalScore !== null)?.supplier ?? null, atRisk: scored.filter(s => s.tier === "at-risk").length, method: "Weighted score over the metrics supplied for each supplier (quality 30 · on-time 30 · price 20 · responsiveness 20); when a metric is absent the weights renormalize over the metrics present, and scoredOn names them." } }; });
-  registerLensAction("supplychain", "demandForecast", (ctx, artifact, params) => { const history = artifact.data?.history || []; if (history.length < 3) return { ok: true, result: { message: "Need 3+ data points to forecast." } }; const values = history.map(h => parseFloat(h.demand || h.value) || 0); const n = values.length; const avg = values.reduce((s,v)=>s+v,0)/n; const alpha = Math.min(0.95, Math.max(0.05, optNum(params?.alpha) ?? optNum(artifact.data?.alpha) ?? 0.3)); let level = values[0]; let errSum = 0, errCnt = 0; for (let i = 1; i < n; i++) { if (values[i] !== 0) { errSum += Math.abs((values[i] - level) / values[i]); errCnt++; } level = alpha * values[i] + (1 - alpha) * level; } const mape = errCnt > 0 ? Math.round((errSum / errCnt) * 1000) / 10 : 0; const trendSlope = (values[n-1] - values[0]) / n; const predicted = Math.max(0, Math.round(level)); const forecast = [1,2,3].map(p => ({ period: `+${p}`, predicted, confidence: p === 1 ? "high" : p === 2 ? "medium" : "low" })); return { ok: true, result: { historicalPeriods: n, avgDemand: Math.round(avg), trend: trendSlope > 0.5 ? "increasing" : trendSlope < -0.5 ? "decreasing" : "stable", method: "simple-exponential-smoothing", alpha, mapePct: mape, accuracy: mape <= 10 ? "excellent" : mape <= 20 ? "good" : mape <= 35 ? "fair" : "poor", forecast } }; });
+  registerLensAction("supplychain", "demandForecast", (ctx, artifact, params) => { const history = artifact.data?.history || []; if (history.length < 3) return { ok: true, result: { message: "Need 3+ data points to forecast." } }; const alphaRaw = params?.alpha ?? artifact.data?.alpha; if (alphaRaw !== undefined && alphaRaw !== null && alphaRaw !== "") { const aTry = Number(alphaRaw); if (!Number.isFinite(aTry) || aTry < 0.05) return { ok: true, result: { message: "Alpha must be a number from 0.05 to 0.95." } }; } const values = history.map(h => parseFloat(h.demand || h.value) || 0); const n = values.length; const avg = values.reduce((s,v)=>s+v,0)/n; const alpha = Math.min(0.95, Math.max(0.05, optNum(params?.alpha) ?? optNum(artifact.data?.alpha) ?? 0.3)); let level = values[0]; let errSum = 0, errCnt = 0; for (let i = 1; i < n; i++) { if (values[i] !== 0) { errSum += Math.abs((values[i] - level) / values[i]); errCnt++; } level = alpha * values[i] + (1 - alpha) * level; } const mape = errCnt > 0 ? Math.round((errSum / errCnt) * 1000) / 10 : 0; const trendSlope = (values[n-1] - values[0]) / n; const predicted = Math.max(0, Math.round(level)); const forecast = [1,2,3].map(p => ({ period: `+${p}`, predicted, confidence: p === 1 ? "high" : p === 2 ? "medium" : "low" })); return { ok: true, result: { historicalPeriods: n, avgDemand: Math.round(avg), trend: trendSlope > 0.5 ? "increasing" : trendSlope < -0.5 ? "decreasing" : "stable", method: "simple-exponential-smoothing", alpha, mapePct: mape, accuracy: mape <= 10 ? "excellent" : mape <= 20 ? "good" : mape <= 35 ? "fair" : "poor", forecast } }; });
 
   // ─── Supply-chain planning substrate (per-user, STATE-backed) ────────
   // Powers the SAP-IBP-parity workbench: live shipment tracking, supply
@@ -445,6 +445,24 @@ export default function registerSupplychainActions(registerLensAction) {
     try {
       const echelons = Array.isArray(params?.echelons) ? params.echelons : [];
       if (echelons.length === 0) return { ok: true, result: { message: "Add warehouse echelons (location, dailyDemand, leadTimeDays, currentStock) to optimize." } };
+      const zRaw = params?.serviceLevelZ;
+      if (zRaw !== undefined && zRaw !== null && zRaw !== "") {
+        const zTry = Number(zRaw);
+        if (!Number.isFinite(zTry) || zTry < 0 || zTry > 5) {
+          return { ok: true, result: { message: "Service level Z must be a number from 0 to 5." } };
+        }
+      }
+      for (const ec of echelons) {
+        const where = scClean(ec?.location) || "Echelon";
+        for (const [key, min] of [["dailyDemand", 0], ["leadTimeDays", 0], ["currentStock", 0], ["demandStdDev", 0]]) {
+          const raw = ec?.[key];
+          if (raw === undefined || raw === null || raw === "") continue;
+          const n = Number(raw);
+          if (!Number.isFinite(n) || n < min) {
+            return { ok: true, result: { message: `${where} ${key} must be a number of at least ${min}.` } };
+          }
+        }
+      }
       const Z = scNum(params?.serviceLevelZ, 1.65); // ~95% service level
       const analyzed = echelons.map(ec => {
         const demand = Math.max(0, scNum(ec?.dailyDemand, 1));
@@ -599,6 +617,12 @@ export default function registerSupplychainActions(registerLensAction) {
       const history = Array.isArray(params?.history) ? params.history : [];
       const values = history.map(h => (typeof h === "object" ? scNum(h?.demand ?? h?.value) : scNum(h)));
       if (values.length < 4) return { ok: true, result: { message: "Need 4+ data points for seasonal forecasting." } };
+      if (params?.seasonLength !== undefined && params?.seasonLength !== null && params?.seasonLength !== "") {
+        const sLen = Number(params.seasonLength);
+        if (!Number.isFinite(sLen) || sLen < 2) {
+          return { ok: true, result: { message: "Season length must be a number of at least 2." } };
+        }
+      }
       const n = values.length;
       const periods = Math.max(2, Math.min(scNum(params?.seasonLength, 4), Math.floor(n / 2)));
       const alpha = Math.min(0.95, Math.max(0.05, scNum(params?.alpha, 0.4)));   // level
@@ -864,6 +888,14 @@ export default function registerSupplychainActions(registerLensAction) {
       // Aggregate spend from supplied orders + STATE work orders.
       const rows = [];
       for (const o of (Array.isArray(params?.orders) ? params.orders : [])) {
+        for (const key of ["quantity", "unitCost"]) {
+          const raw = o?.[key];
+          if (raw === undefined || raw === null || raw === "") continue;
+          const n = Number(raw);
+          if (!Number.isFinite(n) || n < 0) {
+            return { ok: true, result: { message: `${key} must be a number that is 0 or more.`, totalSpend: 0, bySupplier: [], byCategory: [] } };
+          }
+        }
         const total = scNum(o?.totalCost, scNum(o?.quantity) * scNum(o?.unitCost));
         if (total > 0) rows.push({ supplier: scClean(o?.supplier) || "Unknown", category: scClean(o?.category) || "Uncategorized", amount: total });
       }

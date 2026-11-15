@@ -137,8 +137,8 @@ export function LoyaltyProgramsPanel() {
         <input placeholder="Account / member number" value={form.accountNumber}
           onChange={(e) => setForm({ ...form, accountNumber: e.target.value })}
           className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-        <select value={form.tier} onChange={(e) => setForm({ ...form, tier: e.target.value })}
-          className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100 capitalize">
+        <select aria-label="Tier" value={form.tier} onChange={(e) => setForm({ ...form, tier: e.target.value })}
+          className="min-h-11 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100 capitalize">
           {TIERS.map((t) => <option key={t} value={t}>{t}</option>)}
         </select>
         <input placeholder="Notes (optional)" value={form.notes}
@@ -175,7 +175,7 @@ export function LoyaltyProgramsPanel() {
                   <div className="flex items-center gap-3">
                     <div className="text-right">
                       <p className="text-sm font-bold text-amber-300">{a.balance.toLocaleString()}</p>
-                      <p className="text-[9px] text-zinc-500 uppercase tracking-wide">{a.entries} entr{a.entries === 1 ? 'y' : 'ies'}</p>
+                      <p className="text-[9px] text-zinc-400 uppercase tracking-wide">{a.entries} entr{a.entries === 1 ? 'y' : 'ies'}</p>
                     </div>
                     <button type="button" aria-label={expanded ? 'Hide ledger' : 'Show ledger'}
                       onClick={() => { void toggleExpand(a.id); }}
@@ -189,13 +189,13 @@ export function LoyaltyProgramsPanel() {
 
                 {expanded && (
                   <div className="pl-6 space-y-2 border-t border-zinc-800 pt-2">
-                    <div className="flex items-center gap-1 text-[10px] text-zinc-500 uppercase tracking-wide">
+                    <div className="flex items-center gap-1 text-[10px] text-zinc-400 uppercase tracking-wide">
                       <History className="w-3 h-3" /> Points ledger
                     </div>
                     {logLoading ? (
                       <div className="flex items-center justify-center py-3 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
                     ) : log.length === 0 ? (
-                      <p className="text-[11px] text-zinc-500 italic">No points logged yet.</p>
+                      <p className="text-[11px] text-zinc-400 italic">No points logged yet.</p>
                     ) : (
                       <ul className="space-y-1 max-h-48 overflow-y-auto">
                         {log.map((e) => (

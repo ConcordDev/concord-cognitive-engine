@@ -12,6 +12,7 @@ import {
   Flag, Users, Settings2, Briefcase, Radio, History, Inbox, ListTodo,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { useLensStatePersistence } from '@/lib/lens-state-persistence';
 import { cn } from '@/lib/utils';
 import { Skeleton, ErrorState } from '@/components/ui';
 import { PjBoardPanel } from './PjBoardPanel';
@@ -125,6 +126,10 @@ export function ProjectsSection() {
     return () => window.removeEventListener('projects:new', openComposer);
   }, [openComposer]);
 
+  // FIX-projects-005: last-selected-project persistence, through the shared
+  // lens UI-state store (the Linear/Asana restore-on-return behaviour).
+  const { restore, persist } = useLensStatePersistence('projects');
+
   const refreshProjects = useCallback(async () => {
     const r = await lensRun('projects', 'project-list', {});
     if (r.data?.ok === false) {
@@ -135,7 +140,13 @@ export function ProjectsSection() {
     setLoadError(null);
     const list: Project[] = r.data?.result?.projects || [];
     setProjects(list);
-    setActiveProject((prev) => (list.some((p) => p.id === prev) ? prev : list[0]?.id || ''));
+    setActiveProject((prev) => {
+      if (list.some((p) => p.id === prev)) return prev;
+      // FIX-projects-005: restore the last selected project (persisted
+      // below) when it still exists, instead of snapping to list[0].
+      const saved = restore()?.activeProject;
+      return typeof saved === 'string' && list.some((p) => p.id === saved) ? saved : list[0]?.id || '';
+    });
     setLoading(false);
     // D3 landing: exactly once per mount, if the caller has open work
     // assigned to them, My Work is the landing view (the morning
@@ -148,7 +159,7 @@ export function ProjectsSection() {
         if ((mine.data?.result?.count || 0) > 0) setTab('mywork');
       }
     }
-  }, []);
+  }, [restore]);
 
   const refreshDash = useCallback(async () => {
     if (!activeProject) { setDash(null); return; }
@@ -158,6 +169,13 @@ export function ProjectsSection() {
 
   useEffect(() => { void refreshProjects(); }, [refreshProjects]);
   useEffect(() => { void refreshDash(); }, [refreshDash]);
+
+  // Persist every selection change so a reload (or a later visit) restores
+  // the project the user was actually working in — merged into the lens's
+  // stored UI state rather than overwriting any other keys it may hold.
+  useEffect(() => {
+    if (activeProject) persist({ ...(restore() ?? {}), activeProject });
+  }, [activeProject, persist, restore]);
 
   // D2 (triage as the front door): when the open project has
   // un-triaged issues, the lens says so at the top — one click to

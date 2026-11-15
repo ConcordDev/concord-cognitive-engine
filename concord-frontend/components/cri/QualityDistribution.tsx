@@ -24,7 +24,9 @@ export function QualityDistribution() {
   });
 
   const list = dtus.data || [];
-  const withCreti = list.filter((d) => d.creti);
+  // FIX-cri-001: same agreement — only a creti score OBJECT counts as
+  // scored; the creti text string every DTU carries does not.
+  const withCreti = list.filter((d) => d.creti && typeof d.creti === 'object');
   const dims = ['coherence', 'relevance', 'evidence', 'truth', 'insight'] as const;
   const dimMeans: Record<string, number> = {};
   for (const d of dims) {

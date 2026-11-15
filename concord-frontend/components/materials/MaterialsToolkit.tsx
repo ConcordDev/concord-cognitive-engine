@@ -353,7 +353,7 @@ function CompareTab() {
 
 // ── Select by spec (materials.selectMaterial) ──────────────────────────
 interface SelectRanking { name: string; category: string; grade?: string; passes: number; fails: number; passDetails: string[]; failDetails: string[]; meetsAll: boolean; score: number }
-interface SelectResult { requirements: Record<string, unknown>; totalCandidates: number; qualifying: number; recommended: string; rankings: SelectRanking[]; application: string; message?: string }
+interface SelectResult { requirements: Record<string, unknown>; totalCandidates: number; qualifying: number; recommended: string | null; recommendationBasis?: 'meets-all' | 'closest-partial' | 'none'; recommendedMeets?: number; recommendedOf?: number; rankings: SelectRanking[]; application: string; message?: string }
 
 function SelectTab() {
   const [minTensile, setMinTensile] = useState('');
@@ -420,10 +420,31 @@ function SelectTab() {
       {result && result.message && <p className="text-xs italic text-zinc-400">{result.message}</p>}
       {result && !result.message && (
         <div className="space-y-2">
-          <p className="text-xs text-emerald-300">
-            <Trophy className="mr-1 inline h-3 w-3" />Recommended: <strong>{result.recommended}</strong>
-            <span className="ml-2 text-zinc-400">({result.qualifying}/{result.totalCandidates} meet all requirements)</span>
-          </p>
+          {/* FIX-materials-008: the recommendation line says what the
+              recommendation IS. A full match gets the trophy; a partial
+              passer is labelled a closest match with its meet count in
+              amber; and when no candidate meets ANY requirement there
+              is no recommendation — "No match" in words, with the
+              ranking below kept for reference only. */}
+          {result.recommendationBasis === 'none' || !result.recommended ? (
+            <p className="rounded border border-amber-500/30 bg-amber-500/5 px-2.5 py-1.5 text-xs text-amber-300">
+              No match — no candidate meets any of the stated requirements. The ranking below is for reference only; add materials or relax the spec.
+              <span className="ml-2 text-zinc-400">({result.qualifying}/{result.totalCandidates} meet all requirements)</span>
+            </p>
+          ) : result.recommendationBasis === 'closest-partial' ? (
+            <p className="text-xs text-amber-300">
+              Closest match (not a full match): <strong>{result.recommended.replace(/ \(closest match\)$/, '')}</strong>
+              {result.recommendedMeets != null && result.recommendedOf != null && (
+                <span className="ml-2">meets {result.recommendedMeets} of {result.recommendedOf} requirements</span>
+              )}
+              <span className="ml-2 text-zinc-400">({result.qualifying}/{result.totalCandidates} meet all requirements)</span>
+            </p>
+          ) : (
+            <p className="text-xs text-emerald-300">
+              <Trophy className="mr-1 inline h-3 w-3" />Recommended: <strong>{result.recommended}</strong>
+              <span className="ml-2 text-zinc-400">({result.qualifying}/{result.totalCandidates} meet all requirements)</span>
+            </p>
+          )}
           <ul className="space-y-1">
             {result.rankings.map((row) => (
               <li key={row.name} className="rounded border border-zinc-800 bg-zinc-900/50 px-2.5 py-1.5">

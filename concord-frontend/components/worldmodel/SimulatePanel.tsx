@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader2, Play, Plus, Trash2 } from 'lucide-react';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { ChartKit } from '@/components/viz';
 import {
   type WmEntity, type WmSim,
@@ -39,6 +40,14 @@ export function SimulatePanel() {
   const loadSim = useMutation({
     mutationFn: (id: string) => wmRun<WmSim>('get_sim', { id }),
     onSuccess: (sim) => setViewSim(sim),
+  });
+  const delSim = useMutation({
+    mutationFn: (id: string) => wmRun('delete_sim', { id }),
+    onSuccess: (_d, id) => {
+      if (viewSim?.id === id) setViewSim(null);
+      qc.invalidateQueries({ queryKey: WM_QUERY_KEYS.sims });
+      qc.invalidateQueries({ queryKey: WM_QUERY_KEYS.status });
+    },
   });
 
   const chart = useTrajectoryChart(viewSim);
@@ -102,6 +111,14 @@ export function SimulatePanel() {
                 <span className="font-mono text-emerald-600">total {s.total}</span>
                 {s.createdAt && <span className="text-[10px] text-emerald-800">{new Date(s.createdAt).toLocaleString()}</span>}
                 <button className={`${btnGhost} ml-auto`} onClick={() => loadSim.mutate(s.id)}>view chart</button>
+                <StickyDeleteConfirm
+                  onConfirm={() => delSim.mutate(s.id)}
+                  armLabel={<span className="inline-flex items-center gap-1"><Trash2 className="h-3 w-3" /> delete</span>}
+                  confirmLabel={`Delete "${s.name}"?`}
+                  armAriaLabel={`Delete simulation ${s.name}`}
+                  confirmAriaLabel={`Confirm delete simulation ${s.name}`}
+                  className={btnGhost}
+                />
               </li>
             ))}
           </ul>

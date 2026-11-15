@@ -350,6 +350,12 @@ function SitesTab({ towers, run, busy, refreshTowers, flash, onChanged }: {
   // form and saves it back under its id — a power change no longer means
   // delete-and-recreate.
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  // FIX-telecommunications-005: the Sites list had no search or sort.
+  // Both act on a render copy inside this tab only — the parent tower
+  // set feeding the map and the other tabs is never filtered.
+  const [siteQuery, setSiteQuery] = useState('');
+  const [siteSort, setSiteSort] = useState<'delivered' | 'name' | 'tallest'>('delivered');
 
   const startEdit = (t: Tower) => {
     setEditingId(t.id);
@@ -401,6 +407,12 @@ function SitesTab({ towers, run, busy, refreshTowers, flash, onChanged }: {
       flash(`Removed ${r.removed} site`);
     }
   };
+
+  const siteQ = siteQuery.trim().toLowerCase();
+  const visibleTowers = (siteQ
+    ? towers.filter((t) => [t.name, t.technology, t.terrain, t.status].some((f) => f.toLowerCase().includes(siteQ)))
+    : [...towers]
+  ).sort((a, b) => (siteSort === 'name' ? a.name.localeCompare(b.name) : siteSort === 'tallest' ? b.heightM - a.heightM : 0));
 
   const markers: MapMarker[] = towers.map((t) => ({
     id: t.id, lat: t.lat, lon: t.lon, label: `${t.name} · ${t.technology}`,
@@ -454,8 +466,28 @@ function SitesTab({ towers, run, busy, refreshTowers, flash, onChanged }: {
         <MapView markers={markers} height={260} />
       </div>
 
+      {towers.length > 1 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            type="search" value={siteQuery} onChange={(e) => setSiteQuery(e.target.value)}
+            placeholder="Search sites by name, technology, terrain, or status…"
+            aria-label="Search sites"
+            className="min-w-48 flex-1 rounded-md border border-zinc-800 bg-zinc-900/50 px-2.5 py-1.5 text-[12px] text-zinc-100 placeholder:text-zinc-500"
+          />
+          <select
+            value={siteSort} onChange={(e) => setSiteSort(e.target.value as typeof siteSort)}
+            aria-label="Sort sites"
+            className="rounded-md border border-zinc-800 bg-zinc-900/50 px-2 py-1.5 text-[12px] text-zinc-100"
+          >
+            <option value="delivered">Delivered order</option>
+            <option value="name">Name A–Z</option>
+            <option value="tallest">Tallest first</option>
+          </select>
+        </div>
+      )}
+
       <div className="space-y-1">
-        {towers.map((t) => (
+        {visibleTowers.map((t) => (
           <div key={t.id} className="flex items-center justify-between rounded-md border border-zinc-800 bg-zinc-900/50 px-3 py-2">
             <div className="text-[12px] text-zinc-200">
               <span className="font-semibold">{t.name}</span>
@@ -472,19 +504,30 @@ function SitesTab({ towers, run, busy, refreshTowers, flash, onChanged }: {
               >
                 <Pencil className="w-3.5 h-3.5" />
               </button>
-              <button
-                onClick={() => del(t.id)}
-                disabled={!!busy}
-                className="p-1 hover:bg-zinc-800 rounded text-zinc-400 hover:text-red-400"
-                aria-label="Delete site"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              {confirmId === t.id ? (
+                <>
+                  <button type="button" onClick={() => { setConfirmId(null); void del(t.id); }} className="min-h-11 rounded px-2 text-[11px] text-red-300">Confirm</button>
+                  <button type="button" onClick={() => setConfirmId(null)} className="min-h-11 rounded px-2 text-[11px] text-zinc-400">Cancel</button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setConfirmId(t.id)}
+                  disabled={!!busy}
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center hover:bg-zinc-800 rounded text-zinc-400 hover:text-red-400"
+                  aria-label="Delete site"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
             </span>
           </div>
         ))}
         {towers.length === 0 && (
           <p className="py-4 text-center text-[11px] text-zinc-400">No sites yet — add one above.</p>
+        )}
+        {towers.length > 0 && visibleTowers.length === 0 && (
+          <p className="py-4 text-center text-[11px] text-zinc-400">No sites match &ldquo;{siteQuery}&rdquo;.</p>
         )}
       </div>
     </div>
@@ -863,6 +906,7 @@ function SpectrumTab({ allocations, run, busy, refreshSpectrum, flash, onChanged
   onChanged?: () => void;
 }) {
   const [plan, setPlan] = useState<SpectrumPlan | null>(null);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
   const [f, setF] = useState({
     band: '', startMhz: '', widthMhz: '', technology: '5G',
     licenseType: 'licensed', region: 'national', guardBandMhz: '1',
@@ -934,14 +978,22 @@ function SpectrumTab({ allocations, run, busy, refreshSpectrum, flash, onChanged
             <span className="text-zinc-400 font-mono">
               {a.startMhz}–{a.endMhz} MHz · {a.widthMhz}MHz · {a.technology} · {a.licenseType} · guard {a.guardBandMhz}MHz
             </span>
-            <button
-              onClick={() => del(a.id)}
-              disabled={!!busy}
-              className="p-1 hover:bg-zinc-800 rounded text-zinc-400 hover:text-red-400"
-              aria-label="Delete allocation"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
+            {confirmId === a.id ? (
+              <>
+                <button type="button" onClick={() => { setConfirmId(null); void del(a.id); }} className="min-h-11 rounded px-2 text-[11px] text-red-300">Confirm</button>
+                <button type="button" onClick={() => setConfirmId(null)} className="min-h-11 rounded px-2 text-[11px] text-zinc-400">Cancel</button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmId(a.id)}
+                disabled={!!busy}
+                className="inline-flex min-h-11 min-w-11 items-center justify-center hover:bg-zinc-800 rounded text-zinc-400 hover:text-red-400"
+                aria-label="Delete allocation"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         ))}
         {allocations.length === 0 && (

@@ -34,15 +34,18 @@ describe("S1 — empty-state notes name real writes, never a feed that does not 
 });
 
 describe("S2 — work-order-update records production", () => {
-  it("quantityProduced-only update leaves status untouched; status-only behaves as before", () => {
+  it("quantityProduced-only update drives status (S2 remainder); status-only behaves as before", () => {
     const created = call("work-order-create", ctxA, { product: "Bracket-12", quantity: 25 });
     const id = created.result.order.id;
     assert.equal(created.result.order.quantityProduced, 0);
 
+    // S2 re-pass remainder (2026-11-05): a partially produced order is
+    // in_progress, not queued — the earlier pin ("leaves status
+    // untouched") asserted the behaviour the re-pass failed.
     const qtyOnly = call("work-order-update", ctxA, { id, quantityProduced: 7 });
     assert.equal(qtyOnly.ok, true);
     assert.equal(qtyOnly.result.order.quantityProduced, 7);
-    assert.equal(qtyOnly.result.order.status, "queued");
+    assert.equal(qtyOnly.result.order.status, "in_progress");
 
     const statusOnly = call("work-order-update", ctxA, { id, status: "in_progress" });
     assert.equal(statusOnly.ok, true);
@@ -100,6 +103,69 @@ describe("S3 — OEE derivation: performance is null until derivable, never a me
     assert.equal(board.result.machines[0].performance, 100);
     const st = call("iot-machine-state", ctxA, { machineId: "M1" });
     assert.equal(st.result.cyclesInWindow, 10);
+  });
+
+  it("S3 remainder: the re-pass case — a fresh machine derives PERF/QUAL/OEE from ONE reading carrying run time and counts", () => {
+    // Review 5 re-pass (2026-11-05), S3 graded case: fresh machine,
+    // ideal cycle 0.5 min, one running reading of 100 cycles — with the
+    // ingest inputs this remainder adds: 50 run minutes, 95 good, 5 bad.
+    call("machine-register", ctxA, { machineId: "M2", name: "Lathe", idealCycleTime: 0.5 });
+    const ing = call("iot-reading-ingest", ctxA, {
+      machineId: "M2", machineState: "running", cycleCount: 100,
+      runTimeMinutes: 50, goodCount: 95, defectCount: 5,
+      at: "2026-11-01T00:00:00.000Z",
+    });
+    assert.equal(ing.ok, true);
+    const row = call("oee-status", ctxA, {}).result.machines[0];
+    assert.equal(row.availability, 100);
+    assert.equal(row.performance, 100); // (0.5 × 100 cycles) / 50 run minutes
+    assert.equal(row.quality, 95); // 95 / (95 + 5)
+    assert.equal(row.oee, 95); // 1.00 × 1.00 × 0.95
+  });
+
+  it("S3 remainder: quality sums count-carrying readings; a reading without counts leaves quality null", () => {
+    call("machine-register", ctxA, { machineId: "M3", name: "Press", idealCycleTime: 1 });
+    call("iot-reading-ingest", ctxA, { machineId: "M3", machineState: "running", cycleCount: 40, at: "2026-11-01T00:00:00.000Z" });
+    let row = call("oee-status", ctxA, {}).result.machines[0];
+    assert.equal(row.quality, null);
+    assert.equal(row.oee, null);
+    call("iot-reading-ingest", ctxA, { machineId: "M3", machineState: "running", cycleCount: 90, goodCount: 45, defectCount: 5, at: "2026-11-01T00:50:00.000Z" });
+    row = call("oee-status", ctxA, {}).result.machines[0];
+    assert.equal(row.quality, 90); // 45 / (45 + 5)
+    assert.equal(row.performance, 100); // span path: (1 × 50 cycles) / 50 min
+    assert.equal(row.oee, 90);
+  });
+
+  it("S3 remainder: ingest refuses unpaired counts and negative run time; refused readings change nothing", () => {
+    call("machine-register", ctxA, { machineId: "M4", name: "Drill", idealCycleTime: 1 });
+    assert.equal(call("iot-reading-ingest", ctxA, { machineId: "M4", machineState: "running", cycleCount: 5, goodCount: 5 }).ok, false);
+    assert.equal(call("iot-reading-ingest", ctxA, { machineId: "M4", machineState: "running", cycleCount: 5, defectCount: 1 }).ok, false);
+    assert.equal(call("iot-reading-ingest", ctxA, { machineId: "M4", machineState: "running", cycleCount: 5, runTimeMinutes: -3 }).ok, false);
+    assert.equal(call("iot-reading-ingest", ctxA, { machineId: "M4", machineState: "running", cycleCount: 5, goodCount: -1, defectCount: 0 }).ok, false);
+    const st = call("iot-machine-state", ctxA, { machineId: "M4" });
+    assert.equal(st.result.source, "empty");
+  });
+});
+
+describe("S2 remainder — status follows production", () => {
+  it("full quantity completes; on_hold is never silently cleared; explicit status wins; zero leaves status", () => {
+    const a = call("work-order-create", ctxA, { product: "Valve", quantity: 10 }).result.order;
+    const full = call("work-order-update", ctxA, { id: a.id, quantityProduced: 10 });
+    assert.equal(full.result.order.status, "complete");
+
+    const b = call("work-order-create", ctxA, { product: "Pump", quantity: 10 }).result.order;
+    call("work-order-update", ctxA, { id: b.id, status: "on_hold" });
+    const held = call("work-order-update", ctxA, { id: b.id, quantityProduced: 4 });
+    assert.equal(held.result.order.quantityProduced, 4);
+    assert.equal(held.result.order.status, "on_hold");
+
+    const c = call("work-order-create", ctxA, { product: "Motor", quantity: 10 }).result.order;
+    const explicit = call("work-order-update", ctxA, { id: c.id, quantityProduced: 10, status: "on_hold" });
+    assert.equal(explicit.result.order.status, "on_hold");
+
+    const d = call("work-order-create", ctxA, { product: "Fan", quantity: 10 }).result.order;
+    const zero = call("work-order-update", ctxA, { id: d.id, quantityProduced: 0 });
+    assert.equal(zero.result.order.status, "queued");
   });
 });
 
@@ -229,5 +295,52 @@ describe("F7 — lot genealogy: upstream is the parents, never the lot itself", 
     assert.equal(gen.upstream.length, 1);
     assert.equal(gen.upstream[0].lotNumber, "CYC-B");
     assert.ok(!JSON.stringify(gen.upstream).includes("CYC-A"));
+  });
+});
+
+describe("F10 remainder — the routing traveler names the caller's work order", () => {
+  // Production dispatch shape (server.js, POST /api/lens/run): the
+  // handler's virtual artifact is minted { id: null, title: null,
+  // data: input } and params IS the input — so this suite's call()
+  // harness (data: {}) is NOT production shape for artifact-based
+  // macros. These cases invoke the handler in production shape.
+  function callTool(name, input) {
+    const fn = ACTIONS.get(`manufacturing.${name}`);
+    if (!fn) throw new Error(`manufacturing.${name} not registered`);
+    return fn(ctxA, { id: null, title: null, data: input, meta: {} }, input);
+  }
+
+  it("generateTraveler prints the supplied work order id, never the placeholder, and lists the supplied steps", () => {
+    const r = callTool("generateTraveler", { workOrderId: "WO-MW3XOTNGKG2EC", partNumber: "HA-400", quantity: 2, steps: ["Cut", "Turn"] });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.workOrder, "WO-MW3XOTNGKG2EC");
+    assert.match(r.result.content, /WO: WO-MW3XOTNGKG2EC/);
+    assert.doesNotMatch(r.result.content, /WO: work order/);
+    assert.equal(r.result.stepCount, 2);
+    assert.match(r.result.content, /01\. Cut/);
+    assert.match(r.result.content, /02\. Turn/);
+  });
+
+  it("generateTraveler reads a wrapped artifact payload too (data.workOrderId)", () => {
+    const fn = ACTIONS.get("manufacturing.generateTraveler");
+    const input = { partNumber: "HA-400", quantity: 1, steps: [] };
+    const r = fn(ctxA, { id: null, title: null, data: { workOrderId: "WO-WRAPPED-1" }, meta: {} }, input);
+    assert.equal(r.result.workOrder, "WO-WRAPPED-1");
+  });
+
+  it("advanceStep walks the supplied steps in production shape", () => {
+    const r = callTool("advanceStep", { steps: ["Cut", "Turn", "Drill"], currentStep: 0 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.totalSteps, 3);
+    assert.equal(r.result.currentStep, 1);
+    assert.equal(r.result.status, "in_progress");
+    assert.equal(r.result.percentComplete, 33);
+  });
+
+  it("an empty steps form says so about the form, not about a work-order record", () => {
+    const r = callTool("generateTraveler", { workOrderId: "WO-EMPTY-1", partNumber: "HA-400", quantity: 1, steps: [] });
+    assert.equal(r.result.stepCount, 0);
+    assert.match(r.result.content, /no routing steps supplied/);
+    assert.doesNotMatch(r.result.content, /defined on this work order/);
   });
 });

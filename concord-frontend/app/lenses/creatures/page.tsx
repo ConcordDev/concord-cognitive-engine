@@ -72,9 +72,19 @@ export default function CreaturesLensPage() {
         tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, keys: v.keys, hint: v.hint, icon: v.icon }))}
         activeTab={active}
         onTab={(id) => setActive(id as CreaturesView)}
-        cta={{ label: 'Open the pen', icon: Dna, onClick: () => setActive('populations'), title: 'Open the crossbreeding pen (N)' }}
+        cta={{
+          label: 'Open the pen',
+          icon: Dna,
+          title: 'Open the crossbreeding pen (N)',
+          onClick: () => {
+            setActive('populations');
+            requestAnimationFrame(() => {
+              document.getElementById('crossbreeding-pen')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+          },
+        }}
       >
-        <section key={active}>
+        <section key={active} className="pb-24 md:pb-0">
           <CreaturesPane active={active} worldId={worldId} />
         </section>
       </NorthStarFrame>

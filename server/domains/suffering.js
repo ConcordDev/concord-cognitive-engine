@@ -3,6 +3,7 @@
 // root cause analysis, and intervention design.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { checkMoney, checkQuantity, checkDuration, checkPercent, checkTitle, firstBoundsFailure } from "../lib/bounds.js";
 export default function registerSufferingActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -262,6 +263,18 @@ export default function registerSufferingActions(registerLensAction) {
     const interventions = artifact.data?.interventions || [];
     if (causes.length === 0) return { ok: false, error: "No causes provided." };
     if (interventions.length === 0) return { ok: false, error: "No interventions provided." };
+    // GB-1539 (FIX-suffering-010): a huge Days-to-implement (and the
+    // sibling cost/effort fields) used to flow straight into the ROI
+    // math. Out-of-policy candidate numbers refuse in the policy
+    // shape before any scoring happens.
+    for (const intv of interventions) {
+      const badIntv = firstBoundsFailure(
+        checkMoney("cost", intv?.cost),
+        checkQuantity("effort", intv?.effort),
+        checkDuration("timeToImplement", intv?.timeToImplement, "days"),
+      );
+      if (badIntv) return badIntv;
+    }
 
     const r = (v) => Math.round(v * 1000) / 1000;
 
@@ -613,6 +626,31 @@ export default function registerSufferingActions(registerLensAction) {
     }
   });
 
+  // FIX-suffering-004: themes could be created and deleted but never
+  // edited — a typo meant delete + recreate (losing the pain links'
+  // grouping context in the operator's head, if not the data).
+  registerLensAction("suffering", "theme-update", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getSufState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const uid = sufUid(ctx);
+      const list = s.themes.get(uid) || [];
+      const theme = list.find((t) => t.id === params.id);
+      if (!theme) return { ok: false, error: "theme not found" };
+      if (params.name != null) {
+        const name = String(params.name).trim();
+        if (!name) return { ok: false, error: "name required" };
+        theme.name = name;
+      }
+      if (params.description != null) theme.description = String(params.description).trim();
+      if (params.color != null) theme.color = String(params.color);
+      saveSufState();
+      return { ok: true, result: { theme } };
+    } catch (e) {
+      return { ok: false, error: e?.message || String(e) };
+    }
+  });
+
   registerLensAction("suffering", "theme-delete", (ctx, _artifact, params = {}) => {
     try {
       const s = getSufState();
@@ -759,6 +797,8 @@ export default function registerSufferingActions(registerLensAction) {
       const uid = sufUid(ctx);
       const title = String(params.title || "").trim();
       if (!title) return { ok: false, error: "title required" };
+      const badTitle = checkTitle("title", params.title);
+      if (badTitle) return badTitle;
       const intv = {
         id: sufId("intv"),
         title,
@@ -790,13 +830,28 @@ export default function registerSufferingActions(registerLensAction) {
       const intv = list.find((i) => i.id === params.id);
       if (!intv) return { ok: false, error: "intervention not found" };
       const statuses = ["proposed", "in_progress", "completed", "abandoned"];
+      // FIX-suffering-004: the title is editable too (status, progress,
+      // owner and description already were).
+      if (params.title != null) {
+        const title = String(params.title).trim();
+        if (!title) return { ok: false, error: "title required" };
+        const badTitle = checkTitle("title", params.title);
+        if (badTitle) return badTitle;
+        intv.title = title;
+      }
       let statusChanged = false;
       if (params.status != null && statuses.includes(params.status) && params.status !== intv.status) {
         intv.status = params.status;
         statusChanged = true;
         if (params.status === "completed") intv.progress = 100;
       }
-      if (params.progress != null) intv.progress = clampNum(params.progress, 0, 100, intv.progress);
+      // GB-1539: progress is percent-class — it refuses out of range
+      // in the policy shape instead of clamping silently.
+      if (params.progress != null) {
+        const badProgress = checkPercent("progress", params.progress);
+        if (badProgress) return badProgress;
+        intv.progress = Number(params.progress);
+      }
       if (params.owner != null) intv.owner = String(params.owner).trim();
       if (params.description != null) intv.description = String(params.description).trim();
       if (statusChanged || params.note) {

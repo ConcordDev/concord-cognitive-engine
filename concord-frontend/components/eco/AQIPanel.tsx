@@ -19,9 +19,12 @@ interface AQIPanelProps {
 }
 
 export function AQIPanel({ lat, lng }: AQIPanelProps) {
-  const { data, loading, error, refresh } = useAqiData({ lat, lng });
+  const { data, loading, locating, error, refresh, lastFetchedAt } = useAqiData({ lat, lng });
 
-  if (loading && !data) {
+  // FIX-graph-010: while the coordinates are still resolving the panel
+  // used to fall through to the failure branch ('AQI failed: no data')
+  // — the locating phase is a loading state, not a failure.
+  if ((loading || locating) && !data) {
     return (
       <div className="bg-[#0d1117] border border-lattice-border rounded-lg p-6 flex items-center justify-center text-gray-400">
         <Loader2 className="w-5 h-5 animate-spin mr-2" /> {data ? 'Refreshing…' : 'Locating…'}
@@ -76,6 +79,10 @@ export function AQIPanel({ lat, lng }: AQIPanelProps) {
       <footer className="px-4 py-1.5 border-t border-white/10 text-[10px] text-gray-400 flex items-center gap-2">
         <AlertCircle className="w-3 h-3" />
         Source: {data.source} · refresh every 5 min
+        {/* FIX-eco-007: the reading carried no updated-at, and a refresh
+            showed nothing but a spinning icon. The fetch time is named. */}
+        {lastFetchedAt && <span>· Updated {new Date(lastFetchedAt).toLocaleTimeString()}</span>}
+        {loading && <span aria-live="polite">· Refreshing…</span>}
       </footer>
     </div>
   );

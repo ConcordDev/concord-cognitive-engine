@@ -4,6 +4,7 @@
 
 import { TimelineView, ChartKit } from '@/components/viz';
 import { useEstate } from './EstateContext';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 export function AssetsPanel() {
   const {
@@ -130,7 +131,7 @@ export function AssetsPanel() {
                           <td className="text-zinc-400">{a.category}</td>
                           <td className="font-mono text-amber-300">{a.valueCc} CC</td>
                           <td className="text-zinc-400">{a.location || '—'}</td>
-                          <td><button type="button" className="text-rose-400 hover:text-rose-300" onClick={() => removeAsset(a.id)}>Remove</button></td>
+                          <td><StickyDeleteConfirm onConfirm={() => removeAsset(a.id)} className="text-rose-400 hover:text-rose-300" armLabel="Remove" armAriaLabel={`Remove asset ${a.label}`} confirmLabel={`Remove ${a.label}?`} confirmAriaLabel={`Confirm remove asset ${a.label}`} /></td>
                         </tr>
                       ))}
                     </tbody>

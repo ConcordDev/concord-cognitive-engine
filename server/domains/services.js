@@ -846,7 +846,10 @@ export default function registerServicesActions(registerLensAction) {
         id: svcId("rm"),
         bookingId: p.bookingId ? String(p.bookingId) : null,
         client: String(p.client || ""),
-        channel: ["sms", "email"].includes(p.channel) ? p.channel : "sms",
+        // "none" is the private destination (FIX-services-006): the
+        // reminder stays in the member's own list and is never queued
+        // for sending — for members who want the note, not the send.
+        channel: ["sms", "email", "none"].includes(p.channel) ? p.channel : "sms",
         target: String(p.target || ""),
         sendAt: String(p.sendAt || new Date().toISOString()),
         body: String(p.body || "Appointment reminder"),
@@ -865,7 +868,7 @@ export default function registerServicesActions(registerLensAction) {
       const p = params || {};
       const now = p.now ? new Date(p.now) : new Date();
       const list = svcList(s.reminders, userId);
-      const due = list.filter(r => r.status === "scheduled" && new Date(r.sendAt) <= now);
+      const due = list.filter(r => r.status === "scheduled" && r.channel !== "none" && new Date(r.sendAt) <= now);
       const delivered = [];
       const failed = [];
       for (const r of due) {

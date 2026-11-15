@@ -116,6 +116,20 @@ export function UpcomingLaunchesPanel({ domain, className }: UpcomingLaunchesPan
         </div>
       )}
 
+      {/* FIX-astronomy-007: labelled skeleton during the initial load —
+          the body was blank with only the header icon spinning. */}
+      {!error && loading && launches.length === 0 && (
+        <div role="status" aria-label="Loading upcoming launches" className="px-3 py-3 space-y-3">
+          <p className="text-xs text-zinc-400">Loading upcoming launches…</p>
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="space-y-2 animate-pulse" aria-hidden="true">
+              <div className="h-3 rounded bg-zinc-800 w-2/3" />
+              <div className="h-2 rounded bg-zinc-800/70 w-1/3" />
+            </div>
+          ))}
+        </div>
+      )}
+
       {!error && !loading && launches.length === 0 && (
         <div className="px-3 py-6 text-xs text-zinc-400 italic text-center">No upcoming launches.</div>
       )}

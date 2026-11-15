@@ -25,6 +25,7 @@ import {
   Loader2, Home, DollarSign, Wind,
 } from 'lucide-react';
 import { apiHelpers, lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { HvacKeepMenu } from '@/components/hvac/HvacKeepMenu';
 
 // Throws on failure so each widget shows the real error instead of quietly
@@ -86,6 +87,13 @@ function LoadCalculator() {
     return loads;
   }, []);
 
+  const dropLoad = useCallback(async (id: string) => {
+    const r = await lensRun('hvac', 'load-delete', { id });
+    if (!r.data?.ok) { setError(r.data?.message || r.data?.error || 'Could not delete that estimate.'); return; }
+    if (loadId === id) setLoadId('');
+    await refreshHistory();
+  }, [loadId, refreshHistory]);
+
   // Saved estimates live on the server, so the latest one is back after a
   // reload or a server restart.
   useEffect(() => {
@@ -97,18 +105,22 @@ function LoadCalculator() {
   }, [refreshHistory, restore]);
 
   const compute = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (save: boolean) => {
       setError('');
       const r = await lensRun<LoadResult & { loadId?: string }>('hvac', 'loadCalculation', {
-        squareFootage: sqft, stories, insulation, climate, save: true,
+        squareFootage: sqft, stories, insulation, climate, save,
       });
       if (!r.data?.ok || !r.data.result) {
         setError(`Not calculated. ${r.data?.error || 'The HVAC service returned no result.'}`);
         return null;
       }
       setResult(r.data.result);
-      setLoadId(r.data.result.loadId || '');
-      await refreshHistory();
+      if (save) {
+        setLoadId(r.data.result.loadId || '');
+        await refreshHistory();
+      } else {
+        setLoadId('');
+      }
       return r.data.result;
     },
   });
@@ -155,8 +167,11 @@ function LoadCalculator() {
               <option value="very-cold">Very cold (MN/MT/AK)</option>
             </select>
           </label>
-          <button type="button" onClick={() => compute.mutate()} disabled={compute.isPending || sqft <= 0} className="w-full rounded bg-blue-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-400 disabled:opacity-50">
+          <button type="button" onClick={() => compute.mutate(false)} disabled={compute.isPending || sqft <= 0} className="w-full rounded bg-blue-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-400 disabled:opacity-50">
             {compute.isPending ? <Loader2 className="mx-auto h-3.5 w-3.5 animate-spin" /> : 'Calculate load'}
+          </button>
+          <button type="button" onClick={() => compute.mutate(true)} disabled={compute.isPending || !result || sqft <= 0} className="w-full rounded border border-blue-500/40 px-3 py-1.5 text-xs font-semibold text-blue-100 hover:bg-blue-500/10 disabled:opacity-50">
+            Save estimate
           </button>
         </div>
 
@@ -196,14 +211,15 @@ function LoadCalculator() {
               <div className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400">Saved estimates</div>
               <ul className="space-y-1">
                 {history.slice(0, 8).map((l) => (
-                  <li key={l.id}>
+                  <li key={l.id} className="flex items-center gap-1">
                     <button
                       type="button"
                       onClick={() => restore(l)}
-                      className={`w-full rounded px-2 py-1 text-left font-mono text-[11px] hover:bg-zinc-800 ${l.id === loadId ? 'bg-zinc-800 text-white' : 'text-zinc-300'}`}
+                      className={`flex-1 rounded px-2 py-1 text-left font-mono text-[11px] hover:bg-zinc-800 ${l.id === loadId ? 'bg-zinc-800 text-white' : 'text-zinc-300'}`}
                     >
                       {l.inputs.squareFootage.toLocaleString()} sf {l.inputs.climate} · {l.result.coolingBTU?.toLocaleString()} BTU cool · {l.id}
                     </button>
+                    <StickyDeleteConfirm onConfirm={() => void dropLoad(l.id)} armAriaLabel={`Delete estimate ${l.id}`} confirmAriaLabel={`Confirm delete estimate ${l.id}`} className="text-rose-400" />
                   </li>
                 ))}
               </ul>

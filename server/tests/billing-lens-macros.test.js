@@ -118,13 +118,22 @@ describe("billing.invoiceCalculation — exact subtotal / discount / tax / total
   it("fail-CLOSED: Infinity / 1e999 quantity+unitPrice collapse to a finite total", () => {
     const r = call("invoiceCalculation", ctxA, {
       lineItems: [{ description: "Poison", quantity: "1e999", unitPrice: "Infinity", taxable: true }],
-      taxRate: "Infinity",
+      taxRate: 0,
     });
     assert.equal(r.ok, true);
     assert.ok(Number.isFinite(r.result.subtotal), "subtotal finite");
     assert.ok(Number.isFinite(r.result.tax.taxAmount), "tax finite");
     assert.ok(Number.isFinite(r.result.total), "total finite");
     assert.equal(r.result.total, 0);
+  });
+
+  it("refuses a tax rate that is not a decimal from 0 to 1", () => {
+    const r = call("invoiceCalculation", ctxA, {
+      lineItems: [{ description: "Widget", quantity: 1, unitPrice: 10 }],
+      taxRate: "Infinity",
+    });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /taxRate must be a decimal from 0 to 1/);
   });
 
   it("fail-CLOSED: a finite-but-absurd 1e308 unitPrice does NOT overflow to Infinity at the cents step", () => {
@@ -279,12 +288,16 @@ describe("billing.tax-calculate — per-jurisdiction rate + B2B reverse charge",
     assert.equal(r.ok, false);
   });
 
-  it("fail-CLOSED: poisoned amount keeps tax + gross finite", () => {
-    const r = call("tax-calculate", ctxA, { jurisdiction: "US-CA", amount: "Infinity" });
-    assert.equal(r.ok, true);
-    assert.ok(Number.isFinite(r.result.taxAmount));
-    assert.ok(Number.isFinite(r.result.grossAmount));
-    assert.equal(r.result.netAmount, 0);
+  it("refuses a non-finite or out-of-range tax amount", () => {
+    const inf = call("tax-calculate", ctxA, { jurisdiction: "US-CA", amount: "Infinity" });
+    assert.equal(inf.ok, false);
+    assert.match(inf.error, /amount must be a number from 0 to 1,000,000,000/);
+    const huge = call("plan-create", ctxA, { name: "Absurd", amount: 1e20 });
+    assert.equal(huge.ok, false);
+    assert.match(huge.error, /amount must be a number from 0 to 1,000,000,000/);
+    const blank = call("plan-create", ctxA, { name: "Free" });
+    assert.equal(blank.ok, true);
+    assert.equal(blank.result.plan.amount, 0);
   });
 });
 

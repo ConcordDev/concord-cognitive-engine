@@ -15,8 +15,13 @@ export default function registerImportActions(registerLensAction) {
    */
   registerLensAction("import", "validateImport", (ctx, artifact, _params) => {
   try {
-    const rows = artifact.data?.rows || [];
-    const schema = artifact.data?.schema || {};
+    const input = _params && typeof _params === "object" ? _params : {};
+    const fromArtifact = Array.isArray(artifact.data?.rows) ? artifact.data.rows : [];
+    const fromInput = Array.isArray(input.rows) ? input.rows : [];
+    const rows = fromArtifact.length ? fromArtifact : fromInput;
+    const artifactSchema = artifact.data?.schema && typeof artifact.data.schema === "object" ? artifact.data.schema : {};
+    const inputSchema = input.schema && typeof input.schema === "object" ? input.schema : {};
+    const schema = Object.keys(artifactSchema).length ? artifactSchema : inputSchema;
 
     if (rows.length === 0) {
       return { ok: true, result: { message: "No rows provided. Supply artifact.data.rows as an array of objects and artifact.data.schema as { fieldName: { type, required? } }.", valid: 0, invalid: 0, errors: [] } };
@@ -138,6 +143,19 @@ export default function registerImportActions(registerLensAction) {
     } catch (e) { return handlerFailure(e); }
 });
 
+  // FIX-import-005 leg (founder ruling, 2026-11-13): field names are
+  // capped at 120 characters — the standing field-name limit. The base
+  // fix named this leg as an unpriced product call (no limit existed
+  // anywhere and the names land as row keys); the ruling prices it.
+  const MAX_FIELD_NAME_LENGTH = 120;
+  function fieldNameTooLong(list) {
+    if (!Array.isArray(list)) return null;
+    return list.find((f) => typeof f === "string" && f.length > MAX_FIELD_NAME_LENGTH) || null;
+  }
+  function fieldNameLimitError(name) {
+    return { ok: false, error: `Field names are limited to ${MAX_FIELD_NAME_LENGTH} characters — one name here is ${String(name).length}. Shorten it and retry.` };
+  }
+
   /**
    * mapFields
    * Suggest source-to-target field mappings using name similarity.
@@ -150,6 +168,8 @@ export default function registerImportActions(registerLensAction) {
     if (!Array.isArray(sourceFields)) return sourceFields;
     const targetFields = requireList(artifact.data?.targetFields, "targetFields");
     if (!Array.isArray(targetFields)) return targetFields;
+    const tooLongField = fieldNameTooLong(sourceFields) || fieldNameTooLong(targetFields);
+    if (tooLongField) return fieldNameLimitError(tooLongField);
 
     if (sourceFields.length === 0 || targetFields.length === 0) {
       return { ok: true, result: { message: "Provide artifact.data.sourceFields and artifact.data.targetFields as arrays of field name strings.", mappings: [], unmapped: [] } };
@@ -306,6 +326,8 @@ export default function registerImportActions(registerLensAction) {
     const rows = artifact.data?.rows || [];
     const keyFields = artifact.data?.keyFields || [];
     const fuzzy = artifact.data?.fuzzy || false;
+    const tooLongKey = fieldNameTooLong(keyFields);
+    if (tooLongKey) return fieldNameLimitError(tooLongKey);
 
     if (rows.length === 0) {
       return { ok: true, result: { message: "No rows provided. Supply artifact.data.rows and artifact.data.keyFields (array of field names to check for uniqueness).", duplicates: [], uniqueCount: 0 } };
@@ -741,7 +763,7 @@ export default function registerImportActions(registerLensAction) {
     return { ok: true, result: { row, validation: validateSessionRows(session) } };
   });
 
-  registerLensAction("import", "commitCorrectionSession", (ctx, artifact, params) => {
+  registerLensAction("import", "commitCorrectionSession", async (ctx, artifact, params) => {
     const s = getImportState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const sessions = importList(s.sessions, importActId(ctx));
@@ -752,11 +774,61 @@ export default function registerImportActions(registerLensAction) {
     if (validation.invalidRows > 0 && !params.force) {
       return { ok: false, error: `${validation.invalidRows} rows still have errors — fix them or pass force:true` };
     }
+    // FIX-import-002: committing used to mark the session committed and
+    // mint NOTHING — a JSON array or CSV import produced zero items
+    // ("0 imported"; the array elsewhere became one raw artifact).
+    // Commit now mints ONE DTU per row, so every element/row lands as
+    // its own item, titled from the row and carrying the row's fields.
+    const runCreate = (typeof ctx?.macro?.run === "function")
+      ? (spec) => ctx.macro.run("dtu", "create", spec)
+      : null;
+    const dtuIds = [];
+    const importFailures = [];
+    if (runCreate) {
+      for (const r of session.rows) {
+        const row = r.current || {};
+        const title = String(row.title || row.name || `${session.name} — row ${r.rowIndex + 1}`).slice(0, 200);
+        const content = typeof row.content === "string" && row.content
+          ? row.content
+          : (typeof row.body === "string" && row.body ? row.body
+            : (typeof row.text === "string" && row.text ? row.text : JSON.stringify(row)));
+        try {
+          const created = await runCreate({
+            title,
+            content,
+            tags: ["imported", "import-row"],
+            source: "import-session",
+            declaredSourceType: "data",
+            meta: {
+              origin: "imported",
+              domain: "import",
+              kind: "imported-record",
+              importSessionId: session.id,
+              rowIndex: r.rowIndex,
+              row,
+            },
+          });
+          if (created && created.ok !== false && (created.id || created.dtu?.id)) {
+            dtuIds.push(created.id || created.dtu.id);
+          } else {
+            importFailures.push({ rowIndex: r.rowIndex, error: String(created?.error || "create returned no id") });
+          }
+        } catch (e) {
+          importFailures.push({ rowIndex: r.rowIndex, error: String(e?.message || e) });
+        }
+      }
+      // Every row refused: the commit did not import anything — say so
+      // instead of reporting a silent success, and leave the session
+      // uncommitted so it can be retried.
+      if (dtuIds.length === 0 && session.rows.length > 0) {
+        return { ok: false, error: `import failed: no rows could be imported (${importFailures[0]?.error || "unknown error"})`, result: { importFailures, validation } };
+      }
+    }
     session.committed = true;
     session.committedAt = importNowIso();
     session.updatedAt = importNowIso();
     importSave();
-    return { ok: true, result: { committedRows: session.rows.map((r) => r.current), correctedCount: session.rows.filter((r) => r.corrected).length, validation } };
+    return { ok: true, result: { committedRows: session.rows.map((r) => r.current), correctedCount: session.rows.filter((r) => r.corrected).length, validation, imported: dtuIds.length, dtuIds, importFailures, minting: runCreate ? "per-row" : "unavailable-no-macro-runner" } };
   });
 
   function summarizeSession(session) {

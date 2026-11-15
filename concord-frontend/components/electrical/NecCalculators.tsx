@@ -47,6 +47,7 @@ interface WireSizeResult {
   continuous?: boolean;
   designAmps?: number;
   ampacityRequiredWire?: string;
+  ampacityOfRequiredWire?: number;
   minBreaker?: string;
   recommendedWire?: string;
   recommendedAmpacity?: number;
@@ -255,7 +256,7 @@ function WireSizeCalc() {
               <div className="rounded border border-emerald-500/15 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-400">V-drop</div><div className="font-mono text-lg text-zinc-200">{result.voltageDropAtRecommended}</div></div>
             </div>
             <div className="rounded border border-zinc-800 bg-zinc-950/60 px-2 py-1 text-[10px] text-zinc-400">
-              Design load {result.designAmps}A · ampacity wire {result.ampacityRequiredWire} ({result.recommendedAmpacity}A)
+              Design load {result.designAmps}A · ampacity wire {result.ampacityRequiredWire} ({result.ampacityOfRequiredWire ?? result.recommendedAmpacity}A)
               {result.upsizedForVoltageDrop && <span className="text-amber-300"> · upsized for voltage drop</span>}
             </div>
             <div className="rounded border border-zinc-800 bg-zinc-950/60 px-2 py-1 font-mono text-[9px] text-zinc-400">{result.basis}</div>

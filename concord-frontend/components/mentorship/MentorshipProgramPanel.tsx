@@ -75,7 +75,7 @@ export function MentorshipProgramPanel() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold flex items-center gap-2"><BarChart3 className="w-4 h-4 text-neon-purple" /> Program Report</h3>
+        <h2 className="font-semibold flex items-center gap-2"><BarChart3 className="w-4 h-4 text-neon-purple" /> Program Report</h2>
         <button onClick={refresh} className="btn-secondary text-xs flex items-center gap-1">
           <RefreshCw className="w-3 h-3" /> Refresh
         </button>
@@ -91,7 +91,7 @@ export function MentorshipProgramPanel() {
       </div>
 
       <div className="panel p-4">
-        <h4 className="font-semibold text-sm mb-2">Request funnel</h4>
+        <h3 className="font-semibold text-sm mb-2">Request funnel</h3>
         <ChartKit
           kind="bar"
           xKey="stage"
@@ -106,9 +106,9 @@ export function MentorshipProgramPanel() {
       </div>
 
       <div className="panel p-4">
-        <h4 className="font-semibold text-sm flex items-center gap-2 mb-2">
+        <h3 className="font-semibold text-sm flex items-center gap-2 mb-2">
           <Users className="w-4 h-4 text-neon-cyan" /> Cohort ({report.cohort.length} mentors)
-        </h4>
+        </h3>
         {report.cohort.length === 0 ? (
           <p className="text-xs text-zinc-400">No mentors in the program yet.</p>
         ) : (

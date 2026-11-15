@@ -399,7 +399,16 @@ describe("events — tier update/delete + registration-cancel + public page (sha
     assert.match(bad.result.error, /tier not found/);
   });
 
+  it("publish-page: a private event's page is refused (FIX-events-003)", async () => {
+    const bad = await lensRun("events", "publish-page", { params: { eventId, headline: "Join us!" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /private/);
+  });
+
   it("publish-page → public-page: slug is generated, view counter increments on lookup", async () => {
+    // Events default to private; the page can only be published once Public.
+    const vis = await lensRun("events", "event-update", { params: { id: eventId, visibility: "public" } }, ctx);
+    assert.equal(vis.result.event.visibility, "public");
     const pub = await lensRun("events", "publish-page", { params: { eventId, headline: "Join us!", blurb: "The biggest expo." } }, ctx);
     assert.equal(pub.result.publicPage.published, true);
     assert.ok(pub.result.publicPage.slug, "slug generated");

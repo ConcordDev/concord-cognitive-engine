@@ -3,7 +3,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { lensRun } from '@/lib/api/client';
-import { Lightbulb, Plus, Trash2, Loader2, ImageIcon, Link2 } from 'lucide-react';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
+import { Lightbulb, Plus, Trash2, Loader2, ImageIcon, Link2, Pencil } from 'lucide-react';
 
 interface Idea {
   id: string;
@@ -35,6 +36,8 @@ export function IdeaBoards() {
   const [form, setForm] = useState({ name: '', room: 'whole_house', description: '' });
   const [openBoard, setOpenBoard] = useState<string | null>(null);
   const [ideaForm, setIdeaForm] = useState({ note: '', imageUrl: '', sourceUrl: '', tags: '' });
+  const [editingBoard, setEditingBoard] = useState<string | null>(null);
+  const [boardEdit, setBoardEdit] = useState({ name: '', room: 'whole_house', description: '' });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -60,6 +63,16 @@ export function IdeaBoards() {
     setBusy(true);
     const { data } = await lensRun(DOMAIN, 'board-delete', { id });
     if (data.ok) await load();
+    setBusy(false);
+  };
+
+  // FIX-home-improvement-011: boards gain an edit path (board-update).
+  const saveBoard = async (id: string) => {
+    if (!boardEdit.name.trim()) return;
+    setBusy(true); setError(null);
+    const { data } = await lensRun(DOMAIN, 'board-update', { id, ...boardEdit });
+    if (data.ok) { setEditingBoard(null); await load(); }
+    else setError(data.error || 'Failed to update board');
     setBusy(false);
   };
 
@@ -108,6 +121,7 @@ export function IdeaBoards() {
           <button onClick={addBoard} disabled={busy || !form.name.trim()} className="btn-neon green w-full text-sm disabled:opacity-50">
             {busy ? 'Saving...' : 'Create Board'}
           </button>
+          {!form.name.trim() && <span role="note" className="text-xs text-gray-400">Board name is required.</span>}
         </div>
       )}
 
@@ -124,8 +138,35 @@ export function IdeaBoards() {
                   <p className="text-sm font-medium text-white truncate">{b.name}</p>
                   <p className="text-xs text-gray-400">{b.room.replace(/_/g, ' ')} · {b.ideaCount} idea{b.ideaCount !== 1 ? 's' : ''}{b.description ? ` · ${b.description}` : ''}</p>
                 </button>
-                <button aria-label="Delete" onClick={() => removeBoard(b.id)} disabled={busy} className="text-gray-400 hover:text-red-400 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
+                <span className="flex items-center gap-1">
+                  <button type="button" aria-label={`Edit board ${b.name}`} disabled={busy}
+                    onClick={() => { setEditingBoard(editingBoard === b.id ? null : b.id); setBoardEdit({ name: b.name, room: b.room, description: b.description || '' }); setOpenBoard(b.id); }}
+                    className="text-gray-400 hover:text-gray-100 p-1">
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                  <StickyDeleteConfirm onConfirm={() => removeBoard(b.id)} armAriaLabel="Delete" confirmAriaLabel="Confirm delete" className="text-gray-400 hover:text-red-400 p-1" armLabel={<Trash2 className="w-3.5 h-3.5" />} disabled={busy} />
+                </span>
               </div>
+
+              {editingBoard === b.id && (
+                <div className="space-y-2 border-t border-lattice-border pt-2">
+                  <input value={boardEdit.name} onChange={(e) => setBoardEdit((f) => ({ ...f, name: e.target.value }))}
+                    aria-label="Edit board name" placeholder="Board name" className="input-lattice w-full" />
+                  <select value={boardEdit.room} onChange={(e) => setBoardEdit((f) => ({ ...f, room: e.target.value }))}
+                    aria-label="Edit board room" className="input-lattice w-full">
+                    {ROOMS.map((r) => <option key={r} value={r}>{r.replace(/_/g, ' ')}</option>)}
+                  </select>
+                  <input value={boardEdit.description} onChange={(e) => setBoardEdit((f) => ({ ...f, description: e.target.value }))}
+                    aria-label="Edit board description" placeholder="Description" className="input-lattice w-full" />
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => saveBoard(b.id)} disabled={busy || !boardEdit.name.trim()}
+                      className="btn-primary px-3 py-1.5 text-xs disabled:opacity-40">Save changes</button>
+                    <button type="button" onClick={() => setEditingBoard(null)}
+                      className="btn-secondary px-3 py-1.5 text-xs">Cancel</button>
+                    {!boardEdit.name.trim() && <span role="note" className="text-xs text-gray-400 self-center">Name is required.</span>}
+                  </div>
+                </div>
+              )}
 
               {openBoard === b.id && (
                 <div className="space-y-2 border-t border-lattice-border pt-2">
@@ -148,7 +189,7 @@ export function IdeaBoards() {
                           {idea.sourceUrl ? (
                             <a href={idea.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-neon-cyan flex items-center gap-0.5"><Link2 className="w-3 h-3" /> source</a>
                           ) : <span />}
-                          <button aria-label="Delete" onClick={() => removeIdea(b.id, idea.id)} disabled={busy} className="text-gray-400 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
+                          <StickyDeleteConfirm onConfirm={() => removeIdea(b.id, idea.id)} armAriaLabel="Delete" confirmAriaLabel="Confirm delete" className="text-gray-400 hover:text-red-400" armLabel={<Trash2 className="w-3 h-3" />} disabled={busy} />
                         </div>
                       </div>
                     ))}

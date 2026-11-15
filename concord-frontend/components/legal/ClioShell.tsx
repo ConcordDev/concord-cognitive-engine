@@ -66,19 +66,23 @@ export interface ClioShellProps {
 export function ClioShell({ activeNav, onNavChange, badges = {}, children, askBar }: ClioShellProps) {
   const groups: NavItem['group'][] = ['home', 'practice', 'financial', 'docs'];
   return (
-    <div className="flex h-[calc(100vh-180px)] min-h-[640px] bg-lattice-surface border border-amber-500/15 rounded-lg overflow-hidden">
-      <aside className="w-44 bg-[#0a0c10] border-r border-white/5 flex flex-col flex-shrink-0">
-        <header className="px-3 py-3 border-b border-white/5 flex items-center gap-2">
+    // FIX-legal-010: below sm the shell stacks — the rail becomes a
+    // full-width horizontal nav strip and the main pane takes the whole
+    // width. The fixed w-44 rail previously ate ~half of a 390px
+    // viewport and clipped the Matters pane (and its create form).
+    <div className="flex flex-col bg-lattice-surface border border-amber-500/15 rounded-lg overflow-hidden sm:flex-row sm:h-[calc(100vh-180px)] sm:min-h-[640px]">
+      <aside className="flex w-full flex-shrink-0 flex-row items-stretch border-b border-white/5 bg-[#0a0c10] sm:w-44 sm:flex-col sm:border-b-0 sm:border-r">
+        <header className="hidden px-3 py-3 border-b border-white/5 sm:flex items-center gap-2">
           <Scale className="w-4 h-4 text-amber-400" />
           <span className="text-xs font-semibold text-gray-200 tracking-wide">Practice</span>
         </header>
-        <nav className="flex-1 overflow-y-auto py-2">
+        <nav className="flex flex-1 gap-3 overflow-x-auto px-2 py-2 sm:block sm:overflow-y-auto sm:px-0">
           {groups.map(g => (
-            <div key={g} className="mb-3">
+            <div key={g} className="flex gap-1 sm:mb-3 sm:block">
               {GROUP_LABELS[g] && (
-                <div className="px-3 mb-1 text-[9px] uppercase tracking-wider text-gray-400 font-semibold">{GROUP_LABELS[g]}</div>
+                <div className="hidden px-3 mb-1 text-[9px] uppercase tracking-wider text-gray-400 font-semibold sm:block">{GROUP_LABELS[g]}</div>
               )}
-              <ul>
+              <ul className="flex sm:block">
                 {NAV.filter(n => n.group === g).map(n => {
                   const Icon = n.icon;
                   const active = activeNav === n.id;
@@ -89,7 +93,7 @@ export function ClioShell({ activeNav, onNavChange, badges = {}, children, askBa
                         type="button"
                         onClick={() => onNavChange(n.id)}
                         className={cn(
-                          'w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors',
+                          'flex w-auto items-center gap-2 whitespace-nowrap px-3 py-1.5 text-xs transition-colors sm:w-full',
                           active ? 'bg-amber-500/10 text-amber-200 border-l-2 border-amber-400' : 'text-gray-400 hover:text-white hover:bg-white/[0.04] border-l-2 border-transparent',
                         )}
                       >
@@ -107,13 +111,13 @@ export function ClioShell({ activeNav, onNavChange, badges = {}, children, askBa
           ))}
         </nav>
       </aside>
-      <main className="flex-1 flex flex-col overflow-hidden">
+      <main className="flex min-w-0 flex-1 flex-col sm:overflow-hidden">
         {askBar && (
           <header className="px-4 py-2 border-b border-white/5 bg-[#0a0c10]/60">
             {askBar}
           </header>
         )}
-        <div className="flex-1 overflow-y-auto p-4">{children}</div>
+        <div className="flex-1 p-4 sm:overflow-y-auto">{children}</div>
       </main>
     </div>
   );

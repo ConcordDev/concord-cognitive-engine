@@ -107,7 +107,7 @@ export function OpenDataExplorer() {
       </header>
       <form onSubmit={(e) => { e.preventDefault(); search(); }} className="p-3 border-b border-white/10 flex items-center gap-2">
         <Search className="w-4 h-4 text-gray-400" />
-        <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search 300,000+ federal datasets (e.g. 'crime', 'water quality', 'permits')" className="flex-1 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <input aria-label="Search 300,000+ federal datasets (e.g. 'crime', 'water quality', 'permits')" value={query} onChange={e => setQuery(e.target.value)} placeholder="Search 300,000+ federal datasets (e.g. 'crime', 'water quality', 'permits')" className="flex-1 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <button type="submit" disabled={loading} className="px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 disabled:opacity-40 inline-flex items-center gap-1">
           {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />} Search
         </button>

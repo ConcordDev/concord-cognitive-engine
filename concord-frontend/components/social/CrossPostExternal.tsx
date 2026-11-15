@@ -10,6 +10,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { cn, truncate } from '@/lib/utils';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -166,7 +167,7 @@ export function CrossPostExternal({
             {/* Backdrop */}
             <div
               className="fixed inset-0 z-40"
-              onClick={() => setExpanded(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
+              onClick={() => setExpanded(false)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace} />
 
             <motion.div
               initial={{ opacity: 0, y: -5, scale: 0.95 }}

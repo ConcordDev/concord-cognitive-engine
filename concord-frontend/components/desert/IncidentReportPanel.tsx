@@ -201,8 +201,8 @@ export function IncidentReportPanel() {
       <div className="rounded-lg border border-red-900/40 bg-zinc-900 p-4 space-y-3">
         <div className="flex items-center gap-2">
           <AlertOctagon className="h-4 w-4 text-red-400" />
-          <h3 className="text-sm font-semibold text-white">Infrastructure / hazard incident report</h3>
-          <span className="ml-auto text-[10px] text-zinc-500">{incidents.length} on file</span>
+          <h2 className="text-sm font-semibold text-white">Infrastructure / hazard incident report</h2>
+          <span className="ml-auto text-[10px] text-zinc-400">{incidents.length} on file</span>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -210,7 +210,7 @@ export function IncidentReportPanel() {
             value={category}
             onChange={(e) => setCategory(e.target.value as Category)}
             aria-label="Category"
-            className="rounded bg-zinc-950 border border-zinc-800 px-2 py-1.5 text-sm text-white"
+            className="min-h-11 rounded bg-zinc-950 border border-zinc-800 px-2 py-1.5 text-sm text-white"
           >
             {CATEGORIES.map((c) => (
               <option key={c} value={c}>
@@ -222,7 +222,7 @@ export function IncidentReportPanel() {
             value={severity}
             onChange={(e) => setSeverity(e.target.value as Severity)}
             aria-label="Severity"
-            className="rounded bg-zinc-950 border border-zinc-800 px-2 py-1.5 text-sm text-white"
+            className="min-h-11 rounded bg-zinc-950 border border-zinc-800 px-2 py-1.5 text-sm text-white"
           >
             {SEVERITIES.map((s) => (
               <option key={s} value={s}>
@@ -319,7 +319,7 @@ export function IncidentReportPanel() {
                 <div className={`mt-1 font-mono text-lg ${near.criticalCount > 0 ? 'text-red-300' : 'text-white'}`}>{near.criticalCount}</div>
               </div>
             </div>
-            {near.incidents.length === 0 && <p className="text-xs text-zinc-500">No incidents in range.</p>}
+            {near.incidents.length === 0 && <p className="text-xs text-zinc-400">No incidents in range.</p>}
             {near.incidents.map((i) => (
               <div key={i.id} className="flex items-center justify-between rounded bg-zinc-950 border border-zinc-800 px-3 py-1.5 text-xs">
                 <div className="flex items-center gap-1.5">
@@ -365,7 +365,7 @@ export function IncidentReportPanel() {
                     }}
                     aria-label={`Delete incident ${i.id}`}
                     disabled={busyId === i.id}
-                    className="p-1 text-zinc-500 hover:text-red-400 shrink-0"
+                    className="inline-flex min-h-11 min-w-11 items-center justify-center p-1 text-zinc-400 hover:text-red-400 shrink-0"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -373,7 +373,7 @@ export function IncidentReportPanel() {
                 <div className="mt-1 flex items-center gap-1.5 flex-wrap">
                   <span className={`text-[9px] uppercase px-1.5 py-0.5 rounded border ${SEVERITY_BADGE[i.severity]}`}>{i.severity}</span>
                   <span className={`text-[9px] uppercase px-1.5 py-0.5 rounded border ${STATUS_BADGE[i.status]}`}>{i.status}</span>
-                  <span className="text-[10px] text-zinc-500">{categoryLabel(i.category)}</span>
+                  <span className="text-[10px] text-zinc-400">{categoryLabel(i.category)}</span>
                 </div>
               </div>
             ))}
@@ -382,7 +382,7 @@ export function IncidentReportPanel() {
 
           <div className="md:w-1/2 rounded-lg border border-zinc-800 bg-zinc-900 p-3">
             {!selected ? (
-              <p className="text-xs text-zinc-500 italic text-center py-8">Select an incident to manage its status.</p>
+              <p className="text-xs text-zinc-400 italic text-center py-8">Select an incident to manage its status.</p>
             ) : (
               <div className="space-y-3">
                 <div>

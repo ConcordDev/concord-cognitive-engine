@@ -238,6 +238,33 @@ describe("export — encrypted / password-protected archive", () => {
     assert.equal(dec.result.plaintext, payload);
   });
 
+  it("the browser envelope (JSON file, then parse) still verifies with the password", () => {
+    const payload = JSON.stringify({ dtus: [{ id: "d1", title: "Secret note" }] });
+    const enc = call("encrypt-archive", ctxA, { password: "qatest1234", payload, salt: "salt_qa_roundtrip" });
+    const file = JSON.stringify({
+      algorithm: enc.result.algorithm,
+      salt: enc.result.salt,
+      plainChecksum: enc.result.plainChecksum,
+      ciphertextBase64: enc.result.ciphertextBase64,
+    });
+    const parsed = JSON.parse(file);
+    const dec = call("decrypt-archive", ctxA, {
+      password: "qatest1234",
+      salt: parsed.salt,
+      ciphertextBase64: parsed.ciphertextBase64,
+      expectedChecksum: parsed.plainChecksum,
+    });
+    assert.equal(dec.result.verified, true);
+    assert.equal(dec.result.plaintext, payload);
+    const wrong = call("decrypt-archive", ctxA, {
+      password: "qatest1235",
+      salt: parsed.salt,
+      ciphertextBase64: parsed.ciphertextBase64,
+      expectedChecksum: parsed.plainChecksum,
+    });
+    assert.equal(wrong.result.verified, false);
+  });
+
   it("decrypt-archive with the wrong password fails the checksum", () => {
     const enc = call("encrypt-archive", ctxA, { password: "correct", payload: "data" });
     const dec = call("decrypt-archive", ctxA, {

@@ -321,7 +321,7 @@ export const REGISTRY = Object.freeze({
   app_maker:     { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "real app-maker" },
   "app-maker":   { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "real app-maker" },
   art_2:         { tier: TIER.SIM_GRADE_A, groundedSchema: "art/concept" },
-  artistry:      { tier: TIER.SIM_GRADE_A, groundedSchema: "artistry/work" },
+  artistry:      { tier: TIER.REAL_WORKSPACE, liveFromSubstrate: true, groundedSchema: "artistry/work", note: "own projects/collections/images persist per-user (STATE.artistryLens + artistry_studies rows); the community feed is other users' published projects from the same store" },
   animation:     { tier: TIER.SIM_GRADE_A, groundedSchema: "anim/clip" },
   design:        { tier: TIER.SIM_GRADE_A, groundedSchema: "design/spec" },
   whiteboard:    { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "real whiteboard sessions" },

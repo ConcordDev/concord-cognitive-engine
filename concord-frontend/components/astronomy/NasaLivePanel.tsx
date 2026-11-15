@@ -149,8 +149,11 @@ export function NasaLivePanel({ className }: { className?: string }) {
 
       <div className="p-3 min-h-[200px]">
         {loading && !updatedAt && (
-          <div className="flex items-center justify-center py-12">
+          <div role="status" aria-label="Loading live NASA data" className="flex items-center justify-center gap-2 py-12">
             <Loader2 className="w-5 h-5 animate-spin text-zinc-400" aria-hidden="true" />
+            {/* FIX-astronomy-007: the bare spinner read as a faint, unlabelled
+                mark — the loading state now says what it is. */}
+            <span className="text-xs text-zinc-400">Loading live NASA data…</span>
           </div>
         )}
         {error && (

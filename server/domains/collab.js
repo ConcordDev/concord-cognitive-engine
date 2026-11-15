@@ -49,9 +49,16 @@ export default function registerCollabActions(registerLensAction) {
     // invitations" section below for why this is a SEPARATE store from both
     // `sessionRosters` (live join tracking) and the generic cross-user
     // STATE.lensArtifacts catalog (documents/session/chat/etc.).
-    for (const k of ["documents", "presence", "comments", "notifications", "sessionRosters", "invites"]) {
+    for (const k of ["documents", "presence", "comments", "notifications", "sessionRosters", "invites", "roomMembers"]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
+    // roomMembers: roomId -> Map(userId -> { id, roomId, userId, tier,
+    //   status:'pending'|'accepted'|'declined', invitedBy, createdAt,
+    //   respondedAt }) — FIX-collab-001 C2. The membership row IS the room
+    //   invite (the sessionInvite state machine, keyed to a room): pending
+    //   until the invitee responds; a declined invite grants nothing. The
+    //   collab_room_members SQL table is the restart read-back, exactly as
+    //   collab_rooms is for the rooms themselves.
     // rooms: userId -> Array<{ id, title, note, createdAt }>
     // The opened room is not on the shared snapshot key list. The sqlite
     // row is the restart read-back. Live rosters stay memory-only.
@@ -1073,14 +1080,14 @@ export default function registerCollabActions(registerLensAction) {
     if (!s.rooms.has(userId)) s.rooms.set(userId, []);
     return s.rooms.get(userId);
   }
-  function writeRoomRow(ctx, room) {
+  function writeRoomRow(ctx, room, ownerId = roomActor(ctx)) {
     const db = roomDb(ctx);
     if (!roomsReady(db)) return;
     db.prepare(`
       INSERT INTO collab_rooms (id, user_id, title, note, created_at)
       VALUES (?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET title = excluded.title, note = excluded.note
-    `).run(room.id, roomActor(ctx), room.title, room.note, room.createdAt);
+    `).run(room.id, ownerId, room.title, room.note, room.createdAt);
   }
   function readRoomRows(ctx) {
     const db = roomDb(ctx);
@@ -1090,11 +1097,190 @@ export default function registerCollabActions(registerLensAction) {
     ).all(roomActor(ctx));
   }
 
+  // ═══════════════════════════════════════════════════════════════════
+  //  Room membership (FIX-collab-001 C2) — a room gains a second person.
+  //
+  //  Rooms were single-user by schema: collab_rooms carries only its
+  //  owner's user_id, and every room verb scoped its reads to that owner.
+  //  Membership lives in collab_room_members (migration 508) with the
+  //  STATE map as its live home — the same dual-store discipline as the
+  //  rooms themselves (STATE first, SQL as the restart read-back; a read
+  //  that finds a SQL row adopts it into STATE).
+  //
+  //  The membership row IS the invite: status 'pending' until the
+  //  invitee responds, 'accepted' makes the membership effective, and a
+  //  'declined' invite grants nothing — the sessionInvite state machine
+  //  keyed to a room instead of a session artifact. Tiers are the
+  //  domain's own vocabulary (view < comment < edit, TIER_RANK above):
+  //  view reads, comment discusses, edit may also edit the room's note.
+  //  The owner always has edit and can never be a member row.
+  // ═══════════════════════════════════════════════════════════════════
+  function membersReady(db) {
+    if (!db || typeof db.prepare !== "function") return false;
+    try {
+      return !!db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='collab_room_members'").get();
+    } catch (_e) {
+      return false;
+    }
+  }
+  function memberMap(roomId) {
+    const s = getCollabState();
+    if (!s.roomMembers.has(roomId)) s.roomMembers.set(roomId, new Map());
+    return s.roomMembers.get(roomId);
+  }
+  function memberFromSql(row) {
+    if (!row) return null;
+    return {
+      id: row.invite_id || "",
+      roomId: row.room_id,
+      userId: row.user_id,
+      tier: row.tier || "view",
+      status: row.status || "pending",
+      invitedBy: row.invited_by || "",
+      createdAt: row.created_at || "",
+      respondedAt: row.responded_at || null,
+    };
+  }
+  function putMember(ctx, row) {
+    memberMap(row.roomId).set(row.userId, row);
+    const db = roomDb(ctx);
+    if (membersReady(db)) {
+      db.prepare(`
+        INSERT INTO collab_room_members (room_id, user_id, tier, status, invited_by, invite_id, created_at, responded_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(room_id, user_id) DO UPDATE SET
+          tier = excluded.tier, status = excluded.status,
+          invited_by = excluded.invited_by, invite_id = excluded.invite_id,
+          responded_at = excluded.responded_at
+      `).run(row.roomId, row.userId, row.tier, row.status, row.invitedBy, row.id, row.createdAt, row.respondedAt);
+    }
+  }
+  function deleteMember(ctx, roomId, userId) {
+    memberMap(roomId).delete(userId);
+    const db = roomDb(ctx);
+    if (membersReady(db)) {
+      db.prepare("DELETE FROM collab_room_members WHERE room_id = ? AND user_id = ?").run(roomId, userId);
+    }
+  }
+  function getMember(ctx, roomId, userId) {
+    const live = memberMap(roomId).get(userId);
+    if (live) return live;
+    const db = roomDb(ctx);
+    if (!membersReady(db)) return null;
+    const row = memberFromSql(db.prepare(
+      "SELECT * FROM collab_room_members WHERE room_id = ? AND user_id = ?",
+    ).get(roomId, userId));
+    if (row) memberMap(roomId).set(userId, row);
+    return row;
+  }
+  function listMembers(ctx, roomId) {
+    const map = memberMap(roomId);
+    const db = roomDb(ctx);
+    if (membersReady(db)) {
+      for (const raw of db.prepare("SELECT * FROM collab_room_members WHERE room_id = ?").all(roomId)) {
+        const row = memberFromSql(raw);
+        if (row && !map.has(row.userId)) map.set(row.userId, row);
+      }
+    }
+    return [...map.values()];
+  }
+  function memberRowsForUser(ctx, userId) {
+    const s = getCollabState();
+    const out = new Map();
+    for (const [roomId, map] of s.roomMembers.entries()) {
+      const row = map.get(userId);
+      if (row) out.set(`${roomId}:${userId}`, row);
+    }
+    const db = roomDb(ctx);
+    if (membersReady(db)) {
+      for (const raw of db.prepare("SELECT * FROM collab_room_members WHERE user_id = ?").all(userId)) {
+        const row = memberFromSql(raw);
+        if (row) out.set(`${row.roomId}:${userId}`, row);
+      }
+    }
+    return [...out.values()];
+  }
+  function invitesSentBy(ctx, userId) {
+    const s = getCollabState();
+    const out = new Map();
+    for (const map of s.roomMembers.values()) {
+      for (const row of map.values()) {
+        if (row.invitedBy === userId) out.set(row.id || `${row.roomId}:${row.userId}`, row);
+      }
+    }
+    const db = roomDb(ctx);
+    if (membersReady(db)) {
+      for (const raw of db.prepare("SELECT * FROM collab_room_members WHERE invited_by = ?").all(userId)) {
+        const row = memberFromSql(raw);
+        if (row) out.set(row.id || `${row.roomId}:${row.userId}`, row);
+      }
+    }
+    return [...out.values()];
+  }
+  // Resolve a room by id across owners (STATE first, then its SQL row) —
+  // the read a member's access check needs, since the room lives under
+  // its owner's list, not the caller's.
+  function findRoomAny(ctx, roomId) {
+    const s = getCollabState();
+    for (const [ownerId, arr] of s.rooms.entries()) {
+      const room = (arr || []).find((item) => item.id === roomId);
+      if (room) return { ownerId, room };
+    }
+    const db = roomDb(ctx);
+    if (roomsReady(db)) {
+      const row = db.prepare(
+        "SELECT id, user_id, title, note, created_at FROM collab_rooms WHERE id = ?",
+      ).get(roomId);
+      if (row && typeof row.title === "string" && row.title.trim()) {
+        return {
+          ownerId: row.user_id,
+          room: { id: row.id, title: row.title.trim(), note: typeof row.note === "string" ? row.note : "", createdAt: row.created_at || "" },
+        };
+      }
+    }
+    return null;
+  }
+  // The one access resolution every member-aware verb uses. A caller who
+  // is neither the owner nor an ACCEPTED member gets room_not_found —
+  // the same answer a stranger gets today, so membership never leaks a
+  // room's existence to a pending invitee or an outsider.
+  function roomAccess(ctx, roomId) {
+    const userId = roomActor(ctx);
+    if (!userId) return { error: "no_actor" };
+    const found = findRoomAny(ctx, roomId);
+    if (!found) return { error: "room_not_found" };
+    if (found.ownerId === userId) {
+      return { ...found, userId, isOwner: true, myTier: "edit", member: null };
+    }
+    const member = getMember(ctx, roomId, userId);
+    if (!member || member.status !== "accepted") return { error: "room_not_found" };
+    return { ...found, userId, isOwner: false, myTier: member.tier, member };
+  }
+  // Member presentation with the documents' privacy shape: a raw user id
+  // is shown only to the owner or to that member themself; everyone else
+  // sees a display name (getPermissions' presentOwnedId discipline).
+  function presentMember(ctx, viewerId, row, viewerIsOwner) {
+    if (viewerIsOwner || row.userId === viewerId) {
+      return {
+        userId: row.userId, tier: row.tier, status: row.status,
+        isMine: row.userId === viewerId,
+        displayName: publicActor(ctx, viewerId, row.userId, "Member").displayName,
+      };
+    }
+    return presentOwnedId(ctx, viewerId, { tier: row.tier, status: row.status, userId: row.userId }, "userId", { label: "Member" });
+  }
+  function emitToRoom(roomId, name, payload) {
+    const REALTIME = globalThis._concordREALTIME;
+    try {
+      REALTIME?.io?.to(`collab:room:${roomId}`).emit(name, { roomId, ...payload, ts: cbNow() });
+    } catch (_e) { /* best effort — clients fall back to poll */ }
+  }
+
   registerLensAction("collab", "room-open", (ctx, _artifact, params) => {
     try {
       const userId = roomActor(ctx);
       if (!userId) return { ok: false, error: "no_actor" };
-      const title = cbClean(params?.title, 160);
+      const title = cbClean(params?.title, 200);
       if (!title) return { ok: false, error: "room title required" };
       const note = cbClean(params?.note, 8000);
       if (!note) return { ok: false, error: "room note required" };
@@ -1129,11 +1315,26 @@ export default function registerCollabActions(registerLensAction) {
           createdAt: row.created_at || "",
         });
       }
+      const own = rooms.map((item) => ({ id: item.id, title: item.title }));
+      // Rooms the caller belongs to as an accepted member (C2) ride the
+      // same list, marked shared with the caller's tier — this is how a
+      // member's lens finds the room at all. Pending/declined invites
+      // list nothing: a declined invite grants nothing, not even a title.
+      const seenIds = new Set(own.map((item) => item.id));
+      const shared = [];
+      for (const row of memberRowsForUser(ctx, userId)) {
+        if (row.status !== "accepted" || seenIds.has(row.roomId)) continue;
+        const found = findRoomAny(ctx, row.roomId);
+        if (!found) continue;
+        seenIds.add(row.roomId);
+        shared.push({ id: found.room.id, title: found.room.title, shared: true, myTier: row.tier });
+      }
+      const all = [...own, ...shared];
       return {
         ok: true,
         result: {
-          rooms: rooms.map((item) => ({ id: item.id, title: item.title })),
-          count: rooms.length,
+          rooms: all,
+          count: all.length,
         },
       };
     } catch (e) { return { ok: false, error: e.message }; }
@@ -1148,13 +1349,27 @@ export default function registerCollabActions(registerLensAction) {
       const live = roomList(userId).find((item) => item.id === id);
       if (live) return { ok: true, result: { room: { id: live.id, title: live.title, note: live.note } } };
       const row = readRoomRows(ctx).find((item) => item.id === id);
-      if (!row || typeof row.title !== "string" || !row.title.trim()) {
-        return { ok: false, error: "room_not_found" };
+      if (row && typeof row.title === "string" && row.title.trim()) {
+        return {
+          ok: true,
+          result: { room: { id: row.id, title: row.title.trim(), note: typeof row.note === "string" ? row.note : "" } },
+        };
       }
-      return {
-        ok: true,
-        result: { room: { id: row.id, title: row.title.trim(), note: typeof row.note === "string" ? row.note : "" } },
-      };
+      // An accepted member reads the room through their membership (C2).
+      // Anyone else — stranger, pending or declined invitee — keeps the
+      // owner's answer above: room_not_found, existence never leaked.
+      const access = roomAccess(ctx, id);
+      if (!access.error && !access.isOwner) {
+        return {
+          ok: true,
+          result: {
+            room: { id: access.room.id, title: access.room.title, note: access.room.note },
+            shared: true,
+            myTier: access.myTier,
+          },
+        };
+      }
+      return { ok: false, error: "room_not_found" };
     } catch (e) { return { ok: false, error: e.message }; }
   });
 
@@ -1170,26 +1385,39 @@ export default function registerCollabActions(registerLensAction) {
       if (!userId) return { ok: false, error: "no_actor" };
       const id = cbClean(params?.id || params?.roomId, 80);
       if (!id) return { ok: false, error: "missing_room_id" };
-      const title = params?.title != null ? cbClean(params.title, 160) : null;
+      const title = params?.title != null ? cbClean(params.title, 200) : null;
       const note = params?.note != null ? cbClean(params.note, 8000) : null;
       if (title !== null && !title) return { ok: false, error: "room title required" };
       if (note !== null && !note) return { ok: false, error: "room note required" };
       if (title === null && note === null) return { ok: false, error: "nothing_to_update" };
       let room = roomList(userId).find((item) => item.id === id);
+      let memberEdit = null;
       if (!room) {
         const row = readRoomRows(ctx).find((item) => item.id === id);
-        if (!row || typeof row.title !== "string" || !row.title.trim()) {
-          return { ok: false, error: "room_not_found" };
+        if (row && typeof row.title === "string" && row.title.trim()) {
+          room = { id: row.id, title: row.title.trim(), note: typeof row.note === "string" ? row.note : "", createdAt: row.created_at || "" };
+          roomList(userId).unshift(room);
         }
-        room = { id: row.id, title: row.title.trim(), note: typeof row.note === "string" ? row.note : "", createdAt: row.created_at || "" };
-        roomList(userId).unshift(room);
+      }
+      if (!room) {
+        // An edit-tier member may edit the room's NOTE (the tier semantics
+        // C2 seats); the title stays the owner's alone. The object mutated
+        // is the owner's room, and the SQL write carries the owner's id.
+        const access = roomAccess(ctx, id);
+        if (access.error) return { ok: false, error: access.error };
+        if (access.myTier !== "edit") return { ok: false, error: "your tier cannot edit this room" };
+        if (title !== null) return { ok: false, error: "only the owner can rename the room" };
+        memberEdit = access;
+        room = access.room;
+        const ownerRooms = roomList(access.ownerId);
+        if (!ownerRooms.some((item) => item.id === room.id)) ownerRooms.unshift(room);
       }
       const prevTitle = room.title;
       const prevNote = room.note;
       if (title !== null) room.title = title;
       if (note !== null) room.note = note;
       try {
-        writeRoomRow(ctx, room);
+        writeRoomRow(ctx, room, memberEdit ? memberEdit.ownerId : roomActor(ctx));
       } catch (err) {
         // room-open's honesty, kept: a write that fails does not stand —
         // the STATE edit reverts rather than diverging from the SQL row.
@@ -1218,7 +1446,15 @@ export default function registerCollabActions(registerLensAction) {
       const idx = arr.findIndex((item) => item.id === id);
       const inState = idx >= 0;
       const row = readRoomRows(ctx).find((item) => item.id === id);
-      if (!inState && !row) return { ok: false, error: "room_not_found" };
+      if (!inState && !row) {
+        // An accepted member can see the room, so their refusal is named;
+        // everyone else keeps room_not_found (existence never leaked).
+        const access = roomAccess(ctx, id);
+        if (!access.error && !access.isOwner) {
+          return { ok: false, error: "only the owner can close the room" };
+        }
+        return { ok: false, error: "room_not_found" };
+      }
       const db = roomDb(ctx);
       if (roomsReady(db)) {
         try {
@@ -1228,8 +1464,336 @@ export default function registerCollabActions(registerLensAction) {
         }
       }
       if (inState) arr.splice(idx, 1);
+      // Membership dies with the room (C2): every member row goes in the
+      // same act, from both stores, so a closed room leaves no live
+      // membership pointing at nothing.
+      for (const member of listMembers(ctx, id)) deleteMember(ctx, id, member.userId);
+      getCollabState().roomMembers.delete(id);
       saveCollabState();
       return { ok: true, result: { closed: id } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  // ═══════════════════════════════════════════════════════════════════
+  //  Room invites + membership verbs (FIX-collab-001 C2)
+  // ═══════════════════════════════════════════════════════════════════
+
+  // Invite a specific user to the caller's own room, at a tier. Mirrors
+  // sessionInvite's shape (targeted 1:1, scoped to the two people it
+  // concerns) with the membership row as the invite itself.
+  registerLensAction("collab", "room-invite", (ctx, _artifact, params) => {
+    try {
+      const userId = roomActor(ctx);
+      if (!userId) return { ok: false, error: "no_actor" };
+      const id = cbClean(params?.id || params?.roomId, 80);
+      if (!id) return { ok: false, error: "missing_room_id" };
+      const inviteeId = cbClean(params?.inviteeId, 120);
+      if (!inviteeId) return { ok: false, error: "inviteeId is required" };
+      const tier = String(params?.tier || "view").toLowerCase();
+      if (!(tier in TIER_RANK)) return { ok: false, error: "tier must be view, comment, or edit" };
+      const found = findRoomAny(ctx, id);
+      if (!found) return { ok: false, error: "room_not_found" };
+      if (found.ownerId !== userId) {
+        // A member can see the room, so their refusal is named; a
+        // stranger's is room_not_found (existence never leaked).
+        const access = roomAccess(ctx, id);
+        if (!access.error) return { ok: false, error: "only the owner can invite members" };
+        return { ok: false, error: "room_not_found" };
+      }
+      if (inviteeId === userId) return { ok: false, error: "cannot invite yourself" };
+      const existing = getMember(ctx, id, inviteeId);
+      if (existing && existing.status === "accepted") {
+        return { ok: false, error: "already a member" };
+      }
+      if (existing && existing.status === "pending") {
+        // Idempotent: a second invite to the same person returns the
+        // standing invite rather than minting a duplicate.
+        return { ok: true, result: { invite: existing, duplicate: true } };
+      }
+      const invite = {
+        id: cbId("rinv"),
+        roomId: id,
+        userId: inviteeId,
+        tier,
+        status: "pending",
+        invitedBy: userId,
+        createdAt: new Date().toISOString(),
+        respondedAt: null,
+      };
+      // A declined invite re-opens as a fresh pending invite (new id,
+      // new tier) — declining once is not a lifetime ban.
+      putMember(ctx, invite);
+      saveCollabState();
+      emitToUser(inviteeId, "collab:room-invite", {
+        invite: { ...invite, roomTitle: found.room.title },
+      });
+      return { ok: true, result: { invite } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  // Accept or decline a pending room invite. Accepting makes the
+  // membership effective in the same act (the row's status is the
+  // membership); declining grants nothing. A second response to a
+  // resolved invite is refused outright (sessionInviteRespond's rule).
+  registerLensAction("collab", "room-invite-respond", (ctx, _artifact, params) => {
+    try {
+      const userId = roomActor(ctx);
+      if (!userId) return { ok: false, error: "no_actor" };
+      let invite = null;
+      const inviteId = cbClean(params?.inviteId, 80);
+      const roomId = cbClean(params?.id || params?.roomId, 80);
+      if (inviteId) {
+        for (const row of memberRowsForUser(ctx, userId)) {
+          if (row.id === inviteId) { invite = row; break; }
+        }
+        if (!invite) {
+          // The invite may sit only in SQL (post-restart): scan by id.
+          const db = roomDb(ctx);
+          if (membersReady(db)) {
+            const raw = db.prepare("SELECT * FROM collab_room_members WHERE invite_id = ?").get(inviteId);
+            const row = memberFromSql(raw);
+            if (row && row.userId === userId) invite = row;
+          }
+        }
+      } else if (roomId) {
+        invite = getMember(ctx, roomId, userId);
+      } else {
+        return { ok: false, error: "inviteId or room id is required" };
+      }
+      if (!invite) return { ok: false, error: "invitation not found" };
+      if (invite.userId !== userId) return { ok: false, error: "forbidden: not your invitation" };
+      if (invite.status !== "pending") {
+        return { ok: false, error: `invitation already ${invite.status}` };
+      }
+      const rawAccept = params?.accept;
+      if (rawAccept !== true && rawAccept !== false && rawAccept !== "true" && rawAccept !== "false") {
+        return { ok: false, error: "accept must be a boolean" };
+      }
+      const accept = rawAccept === true || rawAccept === "true";
+      invite.status = accept ? "accepted" : "declined";
+      invite.respondedAt = new Date().toISOString();
+      putMember(ctx, invite);
+      saveCollabState();
+      const found = findRoomAny(ctx, invite.roomId);
+      emitToUser(invite.invitedBy, accept ? "collab:room-invite-accepted" : "collab:room-invite-declined", {
+        inviteId: invite.id, roomId: invite.roomId, byId: userId, byName: cbName(ctx),
+      });
+      return {
+        ok: true,
+        result: {
+          invite,
+          room: found ? { id: found.room.id, title: found.room.title } : null,
+        },
+      };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  // The caller's room invitations — received (default) or sent.
+  registerLensAction("collab", "room-invite-list", (ctx, _artifact, params) => {
+    try {
+      const userId = roomActor(ctx);
+      if (!userId) return { ok: false, error: "no_actor" };
+      const scope = params?.scope === "sent" ? "sent" : "received";
+      const rows = scope === "sent" ? invitesSentBy(ctx, userId) : memberRowsForUser(ctx, userId);
+      const invitations = rows
+        .map((row) => {
+          const found = findRoomAny(ctx, row.roomId);
+          return { ...row, roomTitle: found ? found.room.title : null };
+        })
+        .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+      return { ok: true, result: { invitations, scope, total: invitations.length } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  // The room's roster: the owner plus every membership row. The owner
+  // sees all rows (pending and declined included); a member sees the
+  // owner and the accepted members — a member has no window into who
+  // else was invited and has not answered.
+  registerLensAction("collab", "room-members", (ctx, _artifact, params) => {
+    try {
+      const id = cbClean(params?.id || params?.roomId, 80);
+      if (!id) return { ok: false, error: "missing_room_id" };
+      const access = roomAccess(ctx, id);
+      if (access.error) return { ok: false, error: access.error };
+      const rows = listMembers(ctx, id);
+      const visible = access.isOwner ? rows : rows.filter((row) => row.status === "accepted");
+      const members = visible
+        .map((row) => presentMember(ctx, access.userId, row, access.isOwner))
+        .sort((a, b) => String(a.displayName).localeCompare(String(b.displayName)));
+      return {
+        ok: true,
+        result: {
+          roomId: id,
+          owner: presentDocOwner(ctx, access.userId, access.ownerId),
+          members,
+          myTier: access.myTier,
+          isOwner: access.isOwner,
+          memberCount: rows.filter((row) => row.status === "accepted").length,
+        },
+      };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  // Remove a member (owner) or leave the room (the member themself).
+  // Revoking a pending invite is the same act on a pending row.
+  registerLensAction("collab", "room-member-remove", (ctx, _artifact, params) => {
+    try {
+      const userId = roomActor(ctx);
+      if (!userId) return { ok: false, error: "no_actor" };
+      const id = cbClean(params?.id || params?.roomId, 80);
+      if (!id) return { ok: false, error: "missing_room_id" };
+      const target = cbClean(params?.userId, 120);
+      if (!target) return { ok: false, error: "userId is required" };
+      const found = findRoomAny(ctx, id);
+      if (!found) return { ok: false, error: "room_not_found" };
+      if (target === found.ownerId) return { ok: false, error: "the owner cannot be removed" };
+      const isOwner = found.ownerId === userId;
+      if (!isOwner && target !== userId) {
+        const access = roomAccess(ctx, id);
+        if (!access.error) return { ok: false, error: "only the owner can remove members" };
+        return { ok: false, error: "room_not_found" };
+      }
+      const row = getMember(ctx, id, target);
+      if (!row) return { ok: false, error: "not a member" };
+      deleteMember(ctx, id, target);
+      saveCollabState();
+      if (isOwner && target !== userId) {
+        emitToUser(target, "collab:room-member-removed", { roomId: id, roomTitle: found.room.title });
+      }
+      return { ok: true, result: { removed: target, roomId: id } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  // ═══════════════════════════════════════════════════════════════════
+  //  In-room discussion + presence (FIX-collab-001 C3)
+  //
+  //  Comments and presence existed only on documents. Rooms ride the
+  //  same machinery under a `room:<roomId>` key in the same stores:
+  //  the comments array shape, the mention extractor, the notification
+  //  pusher and the 45-second presence prune are the documents' own.
+  //  The difference is the gate: where a document falls back to a
+  //  default tier for any caller, a room admits only its owner and its
+  //  accepted members — a non-member's comment, read and heartbeat are
+  //  all refused, and a heartbeat from outside never lands in the
+  //  roster, so presence can only ever list members. @-mentions notify
+  //  only people who belong to the room (owner or accepted member):
+  //  a mention must not leak a room's existence to an outsider.
+  // ═══════════════════════════════════════════════════════════════════
+  const roomKey = (roomId) => `room:${roomId}`;
+
+  registerLensAction("collab", "room-comment-add", (ctx, _artifact, params) => {
+    try {
+      const id = cbClean(params?.id || params?.roomId, 80);
+      if (!id) return { ok: false, error: "missing_room_id" };
+      const access = roomAccess(ctx, id);
+      if (access.error) return { ok: false, error: access.error };
+      if (TIER_RANK[access.myTier] < TIER_RANK.comment) {
+        return { ok: false, error: "your tier cannot comment in this room" };
+      }
+      const text = cbClean(params?.text, 4000);
+      if (!text) return { ok: false, error: "comment text is required" };
+      const s = getCollabState();
+      const key = roomKey(id);
+      if (!s.comments.has(key)) s.comments.set(key, []);
+      const list = s.comments.get(key);
+      const parentId = params?.parentId ? cbClean(params.parentId, 80) : null;
+      let threadId = parentId;
+      if (parentId) {
+        const parent = list.find((c) => c.id === parentId);
+        if (!parent) return { ok: false, error: "parent comment not found" };
+        threadId = parent.threadId || parent.id;
+      }
+      const mentions = extractMentions(text);
+      const uid = access.userId;
+      const comment = {
+        id: cbId("cmt"), roomId: id,
+        threadId: threadId || null,
+        parentId: parentId || null,
+        elementId: null, anchor: null,
+        authorId: uid, authorName: cbName(ctx),
+        text, mentions, resolved: false, createdAt: cbNow(),
+      };
+      if (!comment.threadId) comment.threadId = comment.id;
+      list.push(comment);
+      // Notify @-mentioned users — room members and the owner only.
+      const memberIds = new Set(listMembers(ctx, id).filter((m) => m.status === "accepted").map((m) => m.userId));
+      memberIds.add(access.ownerId);
+      for (const handle of mentions) {
+        if (!memberIds.has(handle) || handle === uid) continue;
+        pushNotification(s, handle, {
+          kind: "mention", roomId: id, commentId: comment.id,
+          fromId: uid, fromName: cbName(ctx),
+          text: `${cbName(ctx)} mentioned you in "${access.room.title}": "${text.slice(0, 120)}"`,
+        });
+      }
+      if (parentId) {
+        const parent = list.find((c) => c.id === parentId);
+        if (parent && parent.authorId !== uid && !mentions.includes(parent.authorId)) {
+          pushNotification(s, parent.authorId, {
+            kind: "reply", roomId: id, commentId: comment.id,
+            fromId: uid, fromName: cbName(ctx),
+            text: `${cbName(ctx)} replied to your comment in "${access.room.title}"`,
+          });
+        }
+      }
+      saveCollabState();
+      emitToRoom(id, "collab:room-comment", { comment });
+      return { ok: true, result: { comment } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  // Read the room's discussion — owner and accepted members, any tier
+  // (view included: reading the discussion is what view means here).
+  registerLensAction("collab", "room-comment-list", (ctx, _artifact, params) => {
+    try {
+      const id = cbClean(params?.id || params?.roomId, 80);
+      if (!id) return { ok: false, error: "missing_room_id" };
+      const access = roomAccess(ctx, id);
+      if (access.error) return { ok: false, error: access.error };
+      const s = getCollabState();
+      const list = (s.comments.get(roomKey(id)) || []).slice().sort((a, b) => a.createdAt - b.createdAt);
+      return { ok: true, result: { comments: list, total: list.length } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  // Heartbeat the caller's presence in the room. Refused for anyone who
+  // is not the owner or an accepted member — and a refused heartbeat
+  // writes nothing, so the roster can only ever hold members.
+  registerLensAction("collab", "room-presence-update", (ctx, _artifact, params) => {
+    try {
+      const id = cbClean(params?.id || params?.roomId, 80);
+      if (!id) return { ok: false, error: "missing_room_id" };
+      const access = roomAccess(ctx, id);
+      if (access.error) return { ok: false, error: access.error };
+      const s = getCollabState();
+      const key = roomKey(id);
+      if (!s.presence.has(key)) s.presence.set(key, new Map());
+      const map = s.presence.get(key);
+      const uid = access.userId;
+      const row = {
+        userId: uid, name: cbName(ctx), color: colorFor(uid),
+        tier: access.myTier, isOwner: access.isOwner, updatedAt: cbNow(),
+      };
+      map.set(uid, row);
+      prunePresence(map);
+      emitToRoom(id, "collab:room-presence", { presence: row });
+      return { ok: true, result: { presence: [...map.values()] } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  // Who is in the room right now — owner and accepted members only,
+  // both as callers and as rows (see the heartbeat's gate above).
+  registerLensAction("collab", "room-presence-state", (ctx, _artifact, params) => {
+    try {
+      const id = cbClean(params?.id || params?.roomId, 80);
+      if (!id) return { ok: false, error: "missing_room_id" };
+      const access = roomAccess(ctx, id);
+      if (access.error) return { ok: false, error: access.error };
+      const s = getCollabState();
+      const map = s.presence.get(roomKey(id)) || new Map();
+      prunePresence(map);
+      const rows = [...map.values()];
+      return { ok: true, result: { presence: rows, online: rows.length } };
     } catch (e) { return { ok: false, error: e.message }; }
   });
 }

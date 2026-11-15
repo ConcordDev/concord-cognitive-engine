@@ -128,7 +128,7 @@ export function ShareToSocial() {
       {result?.post?.content && <p className="text-xs text-zinc-300">{result.post.content}</p>}
       {audioUrl && <audio controls src={audioUrl} className="mt-2 w-full" />}
       {result?.studio && !audioUrl && (
-        <p className="text-[11px] text-zinc-500">Shared without a public audio file. Studio playback stays on the owner-only audio route.</p>
+        <p className="text-[11px] text-zinc-400">Shared without a public audio file. Studio playback stays on the owner-only audio route.</p>
       )}
       {message && <p className="mt-2 text-[11px] text-zinc-400">{message}</p>}
     </section>

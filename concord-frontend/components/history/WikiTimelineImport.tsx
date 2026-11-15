@@ -14,7 +14,7 @@ import { lensRun } from '@/lib/api/client';
 interface BuiltResult {
   createdNewTimeline?: boolean;
   extraction?: { sentences: number; eventsExtracted: number };
-  timeline: { id: string; title: string; description: string; eventCount: number; sourceArticle: string };
+  timeline: { id: string; title: string; description: string; eventCount: number; sourceArticle: string; location?: { lat: number; lng: number; place: string } | null };
   extractedCount: number;
   usedCount: number;
 }
@@ -67,6 +67,9 @@ export function WikiTimelineImport({ onBuilt }: { onBuilt?: (timelineId: string)
         <p className="text-[10px] text-emerald-400">
           Built &quot;{result.timeline.title}&quot; — {result.usedCount} of {result.extractedCount} dated
           events extracted from the article &quot;{result.timeline.sourceArticle}&quot;.
+          {result.timeline.location && (
+            <> Its events are plotted in the Map view at {result.timeline.location.place}.</>
+          )}
         </p>
       )}
     </div>

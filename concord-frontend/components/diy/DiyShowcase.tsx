@@ -63,10 +63,10 @@ function DiyShowcaseLive() {
           <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">reddit.com · top {windowKey}</span><RedditCacheLabel cached={Boolean(posts.data?.cached)} stale={Boolean(posts.data?.stale)} />
         </div>
         <div className="flex items-center gap-2">
-          <select value={sub} onChange={(e) => setSub(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">
+          <select aria-label="Subreddit" value={sub} onChange={(e) => setSub(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">
             {SUBS.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
           </select>
-          <select value={windowKey} onChange={(e) => setWindowKey(e.target.value as typeof WINDOWS[number])} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">
+          <select aria-label="Time window" value={windowKey} onChange={(e) => setWindowKey(e.target.value as typeof WINDOWS[number])} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">
             {WINDOWS.map((w) => <option key={w} value={w}>{w}</option>)}
           </select>
           {list.length > 0 && (

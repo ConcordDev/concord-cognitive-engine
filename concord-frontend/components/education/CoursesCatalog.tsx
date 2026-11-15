@@ -6,6 +6,7 @@ import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { catalogMatchesQuery } from '@/components/education/catalog-search';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 export interface Lesson {
   id: string; title: string; videoUrl: string; durationMin: number;
@@ -164,7 +165,7 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
   }
 
   async function addLesson(courseId: string) {
-    if (!lessonForm.title.trim()) return;
+    if (!lessonForm.title.trim()) { setLessonErr('Lesson title is required.'); return; }
     setSavingLesson(true);
     try {
       await lensRun({
@@ -256,7 +257,7 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
                     <div className="w-16 h-12 bg-gradient-to-br from-cyan-900/40 to-violet-900/30 rounded flex items-center justify-center flex-shrink-0">
                       <BookOpen className="w-5 h-5 text-cyan-500/60" />
                     </div>
-                    <div className="flex-1 min-w-0 cursor-pointer" onClick={() => toggleDetail(c)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                    <div className="flex-1 min-w-0 cursor-pointer" onClick={() => toggleDetail(c)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                       <div className="flex items-center gap-2">
                         {expanded ? <ChevronDown className="w-3 h-3 text-gray-400 flex-shrink-0" /> : <ChevronRight className="w-3 h-3 text-gray-400 flex-shrink-0" />}
                         <span className="text-sm font-medium text-white truncate">{c.title}</span>
@@ -307,8 +308,8 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
                                   <li key={l.id} className="flex items-center gap-2 text-[11px] text-gray-300">
                                     <Icon className="w-3 h-3 text-cyan-400/70 flex-shrink-0" />
                                     <span className="truncate flex-1">{l.order}. {l.title}</span>
-                                    <span className="text-[10px] text-gray-500 inline-flex items-center gap-1"><Clock className="w-2.5 h-2.5" />{l.durationMin || '—'}m</span>
-                                    <span className="text-[9px] uppercase text-gray-500">{l.kind}</span>
+                                    <span className="text-[10px] text-gray-400 inline-flex items-center gap-1"><Clock className="w-2.5 h-2.5" />{l.durationMin || '—'}m</span>
+                                    <span className="text-[9px] uppercase text-gray-400">{l.kind}</span>
                                     {isOwner && (
                                       <span className="inline-flex items-center gap-0.5">
                                         <button aria-label="Move lesson up" disabled={l.order <= 1} onClick={() => lessonOp(c.id, 'lessons-move', l.id, { direction: 'up' })} className="p-0.5 text-gray-400 hover:text-white disabled:opacity-30"><ArrowUp className="w-3 h-3" /></button>
@@ -327,7 +328,7 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
                               <div className="mt-2 space-y-1.5 pb-2">
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-1.5">
                                   <input value={lessonForm.title} onChange={e => setLessonForm({ ...lessonForm, title: e.target.value })} placeholder="Lesson title" className="col-span-2 px-2 py-1 text-[11px] bg-lattice-deep border border-lattice-border rounded text-white" />
-                                  <select value={lessonForm.kind} onChange={e => setLessonForm({ ...lessonForm, kind: e.target.value as (typeof LESSON_KINDS)[number] })} className="px-1.5 py-1 text-[11px] bg-lattice-deep border border-lattice-border rounded text-white">
+                                  <select aria-label="Lesson type" value={lessonForm.kind} onChange={e => setLessonForm({ ...lessonForm, kind: e.target.value as (typeof LESSON_KINDS)[number] })} className="px-1.5 py-1 text-[11px] bg-lattice-deep border border-lattice-border rounded text-white">
                                     {LESSON_KINDS.map(k => <option key={k} value={k}>{k}</option>)}
                                   </select>
                                   <input type="number" value={lessonForm.durationMin} onChange={e => setLessonForm({ ...lessonForm, durationMin: e.target.value })} placeholder="Min" className="px-2 py-1 text-[11px] bg-lattice-deep border border-lattice-border rounded text-white" />
@@ -345,7 +346,7 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
                               <button onClick={() => setAddingLesson(true)} className="mt-1.5 mb-2 text-[11px] text-cyan-300 hover:text-cyan-200">+ Add lesson</button>
                             )
                           ) : (
-                            <div className="mt-1.5 mb-2 text-[10px] text-gray-500 inline-flex items-center gap-1"><Lock className="w-2.5 h-2.5" />Only {c.instructor || 'the author'} can add lessons</div>
+                            <div className="mt-1.5 mb-2 text-[10px] text-gray-400 inline-flex items-center gap-1"><Lock className="w-2.5 h-2.5" />Only {c.instructor || 'the author'} can add lessons</div>
                           )}
                         </>
                       )}

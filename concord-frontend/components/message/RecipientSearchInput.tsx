@@ -93,9 +93,10 @@ export function RecipientSearchInput({ value, onChange, placeholder = 'Recipient
   return (
     <div className="relative" ref={boxRef}>
       <div className="relative">
-        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" aria-hidden="true" />
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" aria-hidden="true" />
         <input
           id={inputId}
+          aria-label="Recipient search"
           value={value}
           onChange={(e) => { onChange(e.target.value); setOpen(true); }}
           onFocus={() => setOpen(true)}
@@ -107,7 +108,7 @@ export function RecipientSearchInput({ value, onChange, placeholder = 'Recipient
             className,
           )}
         />
-        {loading && <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500 animate-spin" aria-hidden="true" />}
+        {loading && <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 animate-spin" aria-hidden="true" />}
       </div>
 
       {open && value.trim().length >= 2 && (results.length > 0 || (!loading && errored)) && (
@@ -120,11 +121,11 @@ export function RecipientSearchInput({ value, onChange, placeholder = 'Recipient
               className="w-full text-left px-3 py-1.5 text-xs text-gray-200 hover:bg-white/10 flex items-center justify-between gap-2"
             >
               <span className="truncate">{u.displayName || u.username}</span>
-              <span className="text-[10px] text-gray-500 font-mono truncate">{u.id}</span>
+              <span className="text-[10px] text-gray-400 font-mono truncate">{u.id}</span>
             </button>
           ))}
           {!loading && errored && (
-            <p className="px-3 py-1.5 text-[11px] text-gray-500">Search unavailable — you can still paste an exact userId.</p>
+            <p className="px-3 py-1.5 text-[11px] text-gray-400">Search unavailable — you can still paste an exact userId.</p>
           )}
         </div>
       )}

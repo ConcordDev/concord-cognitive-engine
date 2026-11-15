@@ -145,7 +145,7 @@ export function ResourceNodeMap() {
       <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 space-y-3">
         <div className="flex items-center gap-2">
           <Droplets className="h-4 w-4 text-blue-400" />
-          <h3 className="text-sm font-semibold text-white">Resource node mapping</h3>
+          <h2 className="text-sm font-semibold text-white">Resource node mapping</h2>
         </div>
         <div className="flex flex-wrap gap-2">
           <input
@@ -154,10 +154,10 @@ export function ResourceNodeMap() {
             placeholder="Node name"
             className="flex-1 min-w-[140px] rounded bg-zinc-950 border border-zinc-800 px-2 py-1.5 text-sm text-white"
           />
-          <select
+          <select aria-label="Node kind"
             value={kind}
             onChange={(e) => setKind(e.target.value)}
-            className="rounded bg-zinc-950 border border-zinc-800 px-2 py-1.5 text-sm text-white"
+            className="min-h-11 rounded bg-zinc-950 border border-zinc-800 px-2 py-1.5 text-sm text-white"
           >
             {KINDS.map((k) => (
               <option key={k} value={k}>
@@ -179,10 +179,10 @@ export function ResourceNodeMap() {
           />
         </div>
         <div className="flex flex-wrap gap-2">
-          <select
+          <select aria-label="Reliability"
             value={reliability}
             onChange={(e) => setReliability(e.target.value)}
-            className="rounded bg-zinc-950 border border-zinc-800 px-2 py-1.5 text-sm text-white"
+            className="min-h-11 rounded bg-zinc-950 border border-zinc-800 px-2 py-1.5 text-sm text-white"
           >
             {RELIABILITY.map((r) => (
               <option key={r} value={r}>
@@ -190,10 +190,10 @@ export function ResourceNodeMap() {
               </option>
             ))}
           </select>
-          <select
+          <select aria-label="Severity"
             value={severity}
             onChange={(e) => setSeverity(e.target.value)}
-            className="rounded bg-zinc-950 border border-zinc-800 px-2 py-1.5 text-sm text-white"
+            className="min-h-11 rounded bg-zinc-950 border border-zinc-800 px-2 py-1.5 text-sm text-white"
           >
             {SEVERITY.map((s) => (
               <option key={s || 'none'} value={s}>
@@ -309,7 +309,7 @@ function NearCard({ title, node }: { title: string; node: Node | null }) {
           <div className="font-mono text-xs text-amber-300">{node.distanceKm} km</div>
         </div>
       ) : (
-        <div className="mt-1 text-sm text-zinc-600">none in range</div>
+        <div className="mt-1 text-sm text-zinc-400">none in range</div>
       )}
     </div>
   );

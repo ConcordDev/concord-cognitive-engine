@@ -11,6 +11,7 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { lookupUserIdentity } from "../lib/user-identity.js";
 import { presentOwnedId } from "../lib/public-actor.js";
+import { isHarnessFixtureName } from "../lib/harness-fixture.js";
 
 export default function registerMentorshipActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -101,10 +102,20 @@ export default function registerMentorshipActions(registerLensAction) {
 
   registerLensAction("mentorship", "developmentPlan", (ctx, artifact, _params) => {
     const data = artifact?.data || {};
+    // FIX-mentorship-007: the panel declares all three inputs required, but
+    // the action defaulted its way past empty or junk input and emitted a
+    // full 26-week plan from nothing (the walker's repro: '{bad' in every
+    // field). The server now enforces the panel's own contract — usable
+    // current skills, a target role, and usable skill gaps. A token that is
+    // empty or opens with a JSON brace/bracket is not usable text here.
+    const usable = (v) => { const s = String(v ?? "").trim(); return s.length > 0 && !/^[{[]/.test(s); };
     // explicit currentSkills (component) OR relation skills[]
-    const currentSkills = Array.isArray(data.currentSkills) ? data.currentSkills : (Array.isArray(data.skills) ? data.skills : []);
-    const targetRole = (data.targetRole != null && String(data.targetRole).trim()) ? String(data.targetRole) : "next level";
-    const gaps = Array.isArray(data.skillGaps) ? data.skillGaps : [];
+    const currentSkills = (Array.isArray(data.currentSkills) ? data.currentSkills : (Array.isArray(data.skills) ? data.skills : [])).filter(usable).map(String);
+    const gaps = (Array.isArray(data.skillGaps) ? data.skillGaps : []).filter(usable).map(String);
+    if (currentSkills.length === 0 || gaps.length === 0 || !usable(data.targetRole)) {
+      return { ok: false, error: "not enough info: add your current skills, a target role, and your skill gaps to generate a development plan" };
+    }
+    const targetRole = String(data.targetRole);
     return {
       ok: true,
       result: {
@@ -142,6 +153,14 @@ export default function registerMentorshipActions(registerLensAction) {
   const mNum = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
   const mList = (map, k) => { if (!map.has(k)) map.set(k, []); return map.get(k); };
   const mArr = (v) => Array.isArray(v) ? v : (v == null ? [] : [v]);
+  // A mentor profile registered by a QA harness account carries the
+  // harness's own self-labelling ("QA mentor …", "QA bio …"). Such a
+  // profile is a sample, not an active mentor: surfaces label it
+  // instead of presenting it as a real listing. The stored record is
+  // never rewritten — the flag is computed at presentation.
+  const isSampleMentor = (m) => !!m && (
+    isHarnessFixtureName(m.name) || isHarnessFixtureName(m.headline) || /^QA\s/i.test(String(m.name || ""))
+  );
 
   const REQUEST_STATUS = ["pending", "accepted", "declined", "withdrawn"];
   const SESSION_STATUS = ["scheduled", "completed", "cancelled"];
@@ -298,6 +317,7 @@ export default function registerMentorshipActions(registerLensAction) {
       ...ses,
       hostId: mPublicId(s, ses.hostId),
       hostName: ses.hostName || mDisplayName(ctx, ses.hostId, "Mentor") || "Mentor",
+      hostSample: isSampleMentor(s.mentors.get(ses.hostId)),
       attendees: (ses.attendees || []).map((uid) => presentAttendee(s, ctx, uid)),
       isHost: ses.hostId === viewerId,
       isAttending: (ses.attendees || []).includes(viewerId),
@@ -362,6 +382,8 @@ export default function registerMentorshipActions(registerLensAction) {
         // A listed profile whose id is not a user row is a dataset row.
         // A member who published a profile resolves here.
         hasAccount: Boolean(lookupUserIdentity(mDb(ctx), m.id).username),
+        // A profile a QA harness registered is labelled a sample.
+        sample: isSampleMentor(m),
       }));
       if (q) {mentors = mentors.filter((m) =>
         m.name.toLowerCase().includes(q) || m.headline.toLowerCase().includes(q) ||
@@ -392,6 +414,7 @@ export default function registerMentorshipActions(registerLensAction) {
           mentor: {
             ...mentor,
             hasAccount: Boolean(lookupUserIdentity(mDb(ctx), mentor.id).username),
+            sample: isSampleMentor(mentor),
           },
           reviews: reviews.slice(-20).reverse(),
           openSlots: Math.max(0, mentor.capacity - mentor.menteeCount),
@@ -852,6 +875,19 @@ export default function registerMentorshipActions(registerLensAction) {
           avgProgress,
         },
       };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  registerLensAction("mentorship", "goal-delete", (ctx, _a, params = {}) => {
+    try {
+      const s = getMentorshipState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = mAid(ctx);
+      const arr = mList(s.goals, userId);
+      const i = arr.findIndex((g) => g.id === mClean(params.id || params.goalId, 64));
+      if (i < 0) return { ok: false, error: "goal not found" };
+      const [removed] = arr.splice(i, 1);
+      saveState();
+      return { ok: true, result: { deleted: removed.id } };
     } catch (e) { return { ok: false, error: e.message }; }
   });
 

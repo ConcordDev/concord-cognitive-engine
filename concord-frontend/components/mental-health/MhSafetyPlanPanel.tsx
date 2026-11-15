@@ -105,7 +105,7 @@ export function MhSafetyPlanPanel() {
               <div className="space-y-1.5">
                 {(draft[s.key] || []).map((item, i) => (
                   <div key={i} className="flex gap-1">
-                    <input value={item} onChange={(e) => setItem(s.key, i, e.target.value)}
+                    <input aria-label={`${s.label} item`} value={item} onChange={(e) => setItem(s.key, i, e.target.value)}
                       placeholder="Add an item…"
                       className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
                     <button type="button" onClick={() => removeItem(s.key, i)}

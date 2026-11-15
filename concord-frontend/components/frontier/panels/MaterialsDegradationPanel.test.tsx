@@ -73,6 +73,22 @@ async function renderAndWaitForMaterials() {
 }
 
 describe('MaterialsDegradationPanel', () => {
+  it('FIX-frontier-002: cleared fields are refused inline before any request', async () => {
+    routeByAction({
+      degradationConstants: () => DEGRADATION_CONSTANTS_RESULT,
+      durabilityCheck: () => ({ ok: true }),
+    });
+    await renderAndWaitForMaterials();
+
+    // Clearing the span sends Number('') = 0 into state — below its 0.1 min.
+    fireEvent.change(screen.getByLabelText('Span (m)'), { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: /Run durability check/ }));
+
+    await waitFor(() => expect(screen.getByText(/Span \(m\) must be between 0\.1 and 5\./)).toBeInTheDocument());
+    const durabilityCall = post.mock.calls.find(([, body]) => body.action === 'durabilityCheck');
+    expect(durabilityCall).toBeUndefined();
+  });
+
   it('shows the idle Verify state and the persistent honest-boundary cell before any run', async () => {
     routeByAction({ degradationConstants: () => DEGRADATION_CONSTANTS_RESULT });
     await renderAndWaitForMaterials();

@@ -6,11 +6,11 @@ import { asyncHandler } from "../lib/async-handler.js";
 import logger from '../logger.js';
 import { startSSE } from "../lib/sse.js";
 import { buildWorkingContext } from '../lib/chat/working-context.js';
-import { needsWindowCompression, compressRollingWindow, WINDOW_THRESHOLD, COMPRESSION_BATCH } from '../lib/conversation-memory.js';
+import { needsWindowCompression, compressRollingWindow, getSessionMemoryStats, ACTIVE_WINDOW, WINDOW_THRESHOLD, COMPRESSION_BATCH } from '../lib/conversation-memory.js';
 import { attachConfidence } from '../lib/confidence-attacher.js';
 import { assertSessionAccessible } from '../lib/session-access.js';
 import { scrubChatFields } from '../lib/chat-governance-leak.js';
-import { visionImageGate } from '../lib/vision-inference.js';
+import { visionImageGate, callVision } from '../lib/vision-inference.js';
 
 function chatUserText(body) {
   const b = body || {};
@@ -55,6 +55,12 @@ export default function registerChatRoutes(app, {
       const visionGate = visionImageGate(req.body);
       if (!visionGate.ok) {
         return res.status(visionGate.status).json({ ok: false, error: visionGate.error });
+      }
+      if (String(req.body?.mode || "").trim().toLowerCase() === "vision") {
+        const img = (Array.isArray(req.body.images) && req.body.images[0]) || req.body.imageB64 || req.body.imageBase64;
+        const vision = await callVision(String(img || ""), String(req.body.message || req.body.prompt || ""));
+        if (!vision.ok) return res.status(200).json({ ok: false, error: vision.error || "vision failed" });
+        return res.json({ ok: true, reply: vision.content, content: vision.content });
       }
       req.body = enforceRequestInvariants(req, req.body || {});
       req._concordMode = req.body.mode || "chat";
@@ -442,6 +448,67 @@ export default function registerChatRoutes(app, {
         atOrOverThreshold,
         turnsUntilAuto,
       });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: String(e?.message || e) });
+    }
+  }));
+
+  // ── Conversation Memory (rolling window) ─────────────────────────────
+  // GET /api/chat/memory/:sessionId — memory stats for the caller's own
+  // session: counts and topics only, never message bodies (the
+  // context-budget route's discipline). The client hook
+  // (hooks/useConversationMemory.ts, mounted by PersistentChatRail on
+  // every lens page) fetches this on session change; until this route
+  // existed the fetch 404'd on ordinary lens loads (FIX-feed-002 /
+  // FIX-transfer-005). A session the server has never seen is not an
+  // error — it holds no server-side memory yet, so it reads as zeroed
+  // stats in the same shape getSessionMemoryStats returns; this surface
+  // never 404s during a normal load.
+  app.get("/api/chat/memory/:sessionId", auth, asyncHandler(async (req, res) => {
+    try {
+      const sessionId = String(req.params.sessionId || "");
+      if (!sessionId) return res.status(400).json({ ok: false, error: "sessionId required" });
+      const sess = STATE.sessions?.get?.(sessionId);
+      if (sess && !assertSessionAccessible(sess, req.user?.id)) {
+        return res.status(403).json({ ok: false, error: "session_forbidden" });
+      }
+      if (!sess) {
+        return res.json({
+          ok: true,
+          activeMessages: 0,
+          totalMessagesProcessed: 0,
+          compressionCycles: 0,
+          memoryDtuCount: 0,
+          megaCount: 0,
+          topics: [],
+          windowUtilization: `0/${ACTIVE_WINDOW}`,
+        });
+      }
+      return res.json(getSessionMemoryStats(STATE, sessionId));
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: String(e?.message || e) });
+    }
+  }));
+
+  // POST /api/chat/memory/:sessionId/compress — run rolling-window
+  // compression for the caller's own session now; the hook fires this
+  // at the window threshold and from the rail's stats chip. The result
+  // rides at 200 in the house macro style: below_threshold /
+  // owner_required are benign no-ops ({ ok:false, error }) — never a
+  // claimed success, and never an HTTP error status for a state that
+  // is not a failure (the hook reads only the status and would log it).
+  app.post("/api/chat/memory/:sessionId/compress", auth, chatRateLimit, asyncHandler(async (req, res) => {
+    try {
+      const sessionId = String(req.params.sessionId || "");
+      if (!sessionId) return res.status(400).json({ ok: false, error: "sessionId required" });
+      const sess = STATE.sessions?.get?.(sessionId);
+      if (!sess) return res.json({ ok: false, error: "session_not_found", sessionId });
+      if (!assertSessionAccessible(sess, req.user?.id)) {
+        return res.status(403).json({ ok: false, error: "session_forbidden" });
+      }
+      const out = await compressRollingWindow(STATE, sessionId, { userId: req.user?.id || null });
+      const stats = getSessionMemoryStats(STATE, sessionId);
+      return res.json({ ...out, sessionId, stats: stats.ok ? stats : null });
     } catch (e) {
       return res.status(500).json({ ok: false, error: String(e?.message || e) });
     }

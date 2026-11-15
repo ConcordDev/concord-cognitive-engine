@@ -92,8 +92,10 @@ function ActivityTimeline({ domain }: ActivityTimelineProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="border-t border-lattice-border">
+    <div className="border-t border-lattice-border" data-overlay-open="true" role="region" aria-label="Activity timeline">
       <button
+        type="button"
+        data-overlay-close=""
         onClick={() => setIsOpen(false)}
         className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-gray-400 hover:text-gray-300 transition-colors"
         aria-label="Close activity timeline"

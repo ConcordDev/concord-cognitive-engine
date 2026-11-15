@@ -198,7 +198,9 @@ function casSimplify(node) {
     }
   }
   if (op === "/") {
-    if (isNum(a, 0)) return N.num(0);
+    // 0/0 is indeterminate, not 0 — the numerator shortcut must not
+    // fire over a zero denominator (FIX-math-001).
+    if (isNum(a, 0) && !isNum(b, 0)) return N.num(0);
     if (isNum(b, 1)) return a;
     if (casEqual(a, b) && !isNum(b, 0)) return N.num(1);
   }
@@ -326,6 +328,27 @@ function casEqual(x, y) {
   if (x.k === "fn") return x.fn === y.fn && casEqual(x.arg, y.arg);
   if (x.k === "op") return x.op === y.op && casEqual(x.a, y.a) && casEqual(x.b, y.b);
   return false;
+}
+
+/* ── FIX-math-001: non-finite constant folds ──────────────────────
+ * casSimplify folds constants only when the result is finite, so 7/0
+ * and sqrt(-4) used to come back echoed unchanged with no message.
+ * These walkers let the simplify surface NAME them instead. */
+function casWalk(node, fn) {
+  if (!node) return;
+  fn(node);
+  if (node.k === "op") { casWalk(node.a, fn); casWalk(node.b, fn); }
+  else if (node.k === "fn") casWalk(node.arg, fn);
+}
+function casHasDivByZero(node) {
+  let found = false;
+  casWalk(node, (n) => { if (n.k === "op" && n.op === "/" && n.b && n.b.k === "num" && n.b.v === 0) found = true; });
+  return found;
+}
+function casHasNegativeSqrt(node) {
+  let found = false;
+  casWalk(node, (n) => { if (n.k === "fn" && n.fn === "sqrt" && n.arg && n.arg.k === "num" && n.arg.v < 0) found = true; });
+  return found;
 }
 
 /* ───────────────────────── CAS: pretty printer ──────────────────── */
@@ -1470,6 +1493,19 @@ export default function registerMathActions(registerLensAction) {
 
       if (op === "simplify") {
         const simplified = casSimplify(tree);
+        // FIX-math-001: name the non-finite cases instead of echoing
+        // the input (7/0 echoed as "7/0", sqrt(-4) as "sqrt(-4)").
+        if (casHasDivByZero(simplified)) {
+          return { ok: false, error: `Undefined: "${exprStr}" divides by zero — division by zero has no value.` };
+        }
+        if (simplified.k === "fn" && simplified.fn === "sqrt" && simplified.arg.k === "num" && simplified.arg.v < 0) {
+          const mag = Math.sqrt(-simplified.arg.v);
+          const magStr = Number.isInteger(mag) ? String(mag) : String(Math.round(mag * 1e8) / 1e8);
+          return { ok: true, result: { operation: "simplify", input: exprStr, output: `${magStr}i`, note: "No real root: the square root of a negative number is imaginary." } };
+        }
+        if (casHasNegativeSqrt(simplified)) {
+          return { ok: false, error: `No real value: "${exprStr}" takes the square root of a negative number.` };
+        }
         return { ok: true, result: { operation: "simplify", input: exprStr, output: casToString(simplified) } };
       }
 
@@ -1645,11 +1681,27 @@ export default function registerMathActions(registerLensAction) {
    * "convert 5 km to mi", "derivative of sin(x)", "solve x^2-4=0".
    * params: { query }
    */
+  function drainSlopeFromQuery(query) {
+    const q = String(query || "").toLowerCase();
+    if (!q.includes("drain") || !q.includes("slope")) return null;
+    const size = Number((q.match(/(\d+(?:\.\d+)?)\s*(?:inch|in\b|")/) || [])[1]);
+    if (!Number.isFinite(size) || size <= 0) return null;
+    const slopePerFoot = size <= 2 ? 0.25 : size <= 3 ? 0.1875 : 0.125;
+    return {
+      kind: "drain-slope",
+      answer: `${slopePerFoot} inches per foot`,
+      pipeSizeInches: size,
+      ipc: "IPC Table 704.1",
+    };
+  }
+
   registerLensAction("math", "naturalQuery", (ctx, artifact, params) => {
     try {
       const p = { ...(artifact && artifact.data), ...params };
       const query = String(p.query || "").trim();
       if (!query) return { ok: false, error: "No query provided." };
+      const drain = drainSlopeFromQuery(query);
+      if (drain) return { ok: true, result: drain };
       const plan = parseNaturalQuery(query);
       if (!plan) return { ok: false, error: "Could not interpret the query." };
 

@@ -25,6 +25,7 @@ import { WearableImportPanel } from '@/components/wellness/WearableImportPanel';
 import { DailyRecommendationPanel } from '@/components/wellness/DailyRecommendationPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { Activity, Brain, Heart, Moon, Users } from 'lucide-react';
+import { WELLNESS_CHANGED } from '@/lib/wellness/refresh';
 
 interface DashboardSummary {
   habitCount: number;
@@ -72,6 +73,12 @@ function WellnessOverview() {
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [reloadKey]);
+
+  useEffect(() => {
+    const onChange = () => setReloadKey((k) => k + 1);
+    window.addEventListener(WELLNESS_CHANGED, onChange);
+    return () => window.removeEventListener(WELLNESS_CHANGED, onChange);
+  }, []);
 
   if (loading) {
     return (

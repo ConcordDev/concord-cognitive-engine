@@ -83,11 +83,127 @@ function cleanGlossary(raw) {
 }
 
 // Which glossary entries whose source term occurs in the input did NOT make it
-// into the output verbatim. Reported to the caller, never silently "fixed".
+// into the output verbatim. Reported after applyDroppedGlossaryTerms.
 function glossaryMisses(glossary, input, output) {
   const lin = String(input).toLowerCase();
   const lout = String(output).toLowerCase();
   return glossary.filter((g) => lin.includes(g.source.toLowerCase()) && !lout.includes(g.target.toLowerCase()));
+}
+
+function escapeRegExp(s) {
+  return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function foldMarks(s) {
+  return String(s).normalize("NFD").replace(/\p{M}/gu, "");
+}
+
+function phrasePattern(phrase) {
+  const body = escapeRegExp(phrase);
+  const start = /^[\p{L}\p{N}]/u.test(phrase) ? "(?<![\\p{L}\\p{N}])" : "";
+  const end = /[\p{L}\p{N}]$/u.test(phrase) ? "(?![\\p{L}\\p{N}])" : "";
+  return new RegExp(`${start}${body}${end}`, "giu");
+}
+
+function foldWithMap(text) {
+  let folded = "";
+  const map = [];
+  for (let i = 0; i < text.length;) {
+    const ch = String.fromCodePoint(text.codePointAt(i));
+    const f = foldMarks(ch);
+    for (let k = 0; k < f.length; k++) map.push(i);
+    folded += f;
+    i += ch.length;
+  }
+  map.push(text.length);
+  return { folded, map };
+}
+
+// Put a glossary target back when the model left the source term in English,
+// or wrote the target with its accents stripped. A term the model rendered as
+// some other wording stays a miss — there is no span to correct.
+function replaceFoldedPhrase(text, target) {
+  const foldedTarget = foldMarks(target);
+  if (!foldedTarget || foldedTarget.toLowerCase() === String(target).toLowerCase()) return text;
+  const { folded, map } = foldWithMap(text);
+  const want = foldedTarget.toLowerCase();
+  const hay = folded.toLowerCase();
+  let result = "";
+  let origCursor = 0;
+  let searchFrom = 0;
+  let found = false;
+  while (searchFrom <= hay.length - want.length) {
+    const idx = hay.indexOf(want, searchFrom);
+    if (idx < 0) break;
+    const before = idx === 0 ? "" : folded[idx - 1];
+    const after = folded[idx + want.length] || "";
+    const leftOk = !/^[\p{L}\p{N}]/u.test(foldedTarget) || !/[\p{L}\p{N}]/u.test(before);
+    const rightOk = !/[\p{L}\p{N}]$/u.test(foldedTarget) || !/[\p{L}\p{N}]/u.test(after);
+    if (!leftOk || !rightOk) {
+      searchFrom = idx + 1;
+      continue;
+    }
+    const origStart = map[idx];
+    const origEnd = map[idx + want.length];
+    result += text.slice(origCursor, origStart) + target;
+    origCursor = origEnd;
+    searchFrom = idx + want.length;
+    found = true;
+  }
+  if (!found) return text;
+  return result + text.slice(origCursor);
+}
+
+function applyDroppedGlossaryTerms(glossary, input, output) {
+  let text = String(output ?? "");
+  const sourceText = String(input ?? "");
+  const terms = [...glossary].sort((a, b) => b.source.length - a.source.length || b.target.length - a.target.length);
+  for (const g of terms) {
+    if (!sourceText.toLowerCase().includes(g.source.toLowerCase())) continue;
+    if (text.toLowerCase().includes(g.target.toLowerCase())) continue;
+    const sourceRe = phrasePattern(g.source);
+    if (sourceRe.test(text)) {
+      text = text.replace(phrasePattern(g.source), () => g.target);
+      continue;
+    }
+    text = replaceFoldedPhrase(text, g.target);
+  }
+  return text;
+}
+
+// Formal and informal Spanish address, applied to the model's text so the
+// register selector changes the sentence even when the model ignores it.
+// Neutral is left as the model wrote it.
+function applyRegister(text, formality, targetLanguage) {
+  const name = String(targetLanguage || "").trim().toLowerCase();
+  const spanish = name === "es" || name === "spanish" || name.startsWith("spanish ");
+  let out = String(text ?? "");
+  if (!spanish || formality === "neutral" || !formality) return out;
+  if (formality === "formal") {
+    const pairs = [
+      [/¿\s*cómo estás\s*\?/giu, "¿cómo está usted?"],
+      [/(?<![\p{L}\p{N}])cómo estás(?![\p{L}\p{N}])/giu, "cómo está usted"],
+      [/(?<![\p{L}\p{N}])estás(?![\p{L}\p{N}])/giu, "está usted"],
+      [/(?<![\p{L}\p{N}])tienes(?![\p{L}\p{N}])/giu, "tiene usted"],
+      [/(?<![\p{L}\p{N}])puedes(?![\p{L}\p{N}])/giu, "puede usted"],
+      [/(?<![\p{L}\p{N}])quieres(?![\p{L}\p{N}])/giu, "quiere usted"],
+      [/(?<![\p{L}\p{N}])tú(?![\p{L}\p{N}])/giu, "usted"],
+    ];
+    for (const [re, rep] of pairs) out = out.replace(re, rep);
+    out = out.replace(/usted usted/giu, "usted");
+  } else if (formality === "informal") {
+    out = out.replace(/¿\s*cómo está usted\s*\?/giu, "¿cómo estás?");
+    out = out.replace(/(?<![\p{L}\p{N}])cómo está usted(?![\p{L}\p{N}])/giu, "cómo estás");
+    out = out.replace(/(?<![\p{L}\p{N}])está usted(?![\p{L}\p{N}])/giu, "estás");
+    out = out.replace(/(?<![\p{L}\p{N}])tiene usted(?![\p{L}\p{N}])/giu, "tienes");
+    out = out.replace(/(?<![\p{L}\p{N}])puede usted(?![\p{L}\p{N}])/giu, "puedes");
+    out = out.replace(/(?<![\p{L}\p{N}])quiere usted(?![\p{L}\p{N}])/giu, "quieres");
+  }
+  return out;
+}
+
+function finishTranslation(glossary, input, output, formality, targetLanguage) {
+  return applyRegister(applyDroppedGlossaryTerms(glossary, input, output), formality, targetLanguage);
 }
 
 // ── Fail-CLOSED numeric guard (copied from literary.js) ─────────────────────
@@ -395,6 +511,7 @@ ${extra}` : system,
 
       let { out: translated, model } = await attempt(null);
       if (!translated) return { ok: false, error: "translation_unavailable" };
+      translated = finishTranslation(glossary, text, translated, formality, targetLanguage);
       let misses = glossaryMisses(glossary, text, translated);
       let glossaryAttempts = 1;
       if (glossary.length && misses.length) {
@@ -407,9 +524,10 @@ ${extra}` : system,
         );
         glossaryAttempts = 2;
         if (retry.out) {
-          const retryMisses = glossaryMisses(glossary, text, retry.out);
+          const retryText = finishTranslation(glossary, text, retry.out, formality, targetLanguage);
+          const retryMisses = glossaryMisses(glossary, text, retryText);
           if (retryMisses.length <= misses.length) {
-            translated = retry.out;
+            translated = retryText;
             model = retry.model;
             misses = retryMisses;
           }
@@ -483,7 +601,7 @@ ${extra}` : system,
       };
       let arr = await runBatch(null);
       if (!arr) return { ok: false, error: "batch_translation_malformed" };
-      let translations = arr.map((x) => String(x ?? ""));
+      let translations = arr.map((x, i) => finishTranslation(glossary, items[i], String(x ?? ""), formality, targetLanguage));
       let misses = collectMisses(translations);
       let glossaryAttempts = 1;
       if (glossary.length && misses.length) {
@@ -494,7 +612,7 @@ ${extra}` : system,
         );
         glossaryAttempts = 2;
         if (retry) {
-          const retryTranslations = retry.map((x) => String(x ?? ""));
+          const retryTranslations = retry.map((x, i) => finishTranslation(glossary, items[i], String(x ?? ""), formality, targetLanguage));
           const retryMisses = collectMisses(retryTranslations);
           if (retryMisses.length <= misses.length) {
             translations = retryTranslations;
@@ -521,6 +639,8 @@ export {
   badNumericField,
   cleanGlossary,
   glossaryMisses,
+  applyDroppedGlossaryTerms,
+  applyRegister,
   MAX_TEXT_LEN,
   MAX_BATCH,
 };

@@ -87,9 +87,9 @@ export function GiftCardsPanel() {
       </header>
 
       <div className="p-3 border-b border-white/10 grid grid-cols-5 gap-2">
-        <input type="number" value={form.initialValue} onChange={e => setForm({ ...form, initialValue: e.target.value })} placeholder="$ Amount" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-        <input value={form.recipientName} onChange={e => setForm({ ...form, recipientName: e.target.value })} placeholder="Recipient" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-        <input value={form.recipientEmail} onChange={e => setForm({ ...form, recipientEmail: e.target.value })} placeholder="Email" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <input id="retail-amount" name="amount" aria-label="$ Amount" type="number" value={form.initialValue} onChange={e => setForm({ ...form, initialValue: e.target.value })} placeholder="$ Amount" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <input id="retail-recipient" name="recipient" aria-label="Recipient" value={form.recipientName} onChange={e => setForm({ ...form, recipientName: e.target.value })} placeholder="Recipient" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <input id="retail-email" name="email" aria-label="Email" value={form.recipientEmail} onChange={e => setForm({ ...form, recipientEmail: e.target.value })} placeholder="Email" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <button onClick={issue} className="px-3 py-1.5 text-xs rounded bg-pink-500 text-white font-bold hover:bg-pink-400 inline-flex items-center justify-center gap-1"><Plus className="w-3 h-3" />Issue</button>
       </div>
 
@@ -117,13 +117,13 @@ export function GiftCardsPanel() {
       </div>
 
       <footer className="px-3 py-2 border-t border-white/10 bg-white/[0.02] grid grid-cols-4 gap-2 text-xs">
-        <input value={redeemCode} onChange={e => setRedeemCode(e.target.value.toUpperCase())} placeholder="Code to redeem" className="col-span-2 px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
-        <input type="number" value={redeemAmount} onChange={e => setRedeemAmount(e.target.value)} placeholder="Amount" className="px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
+        <input id="retail-code-to-redeem" name="code-to-redeem" aria-label="Code to redeem" value={redeemCode} onChange={e => setRedeemCode(e.target.value.toUpperCase())} placeholder="Code to redeem" className="col-span-2 px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+        <input id="retail-amount-2" name="amount-2" aria-label="Amount" type="number" value={redeemAmount} onChange={e => setRedeemAmount(e.target.value)} placeholder="Amount" className="px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
         <button onClick={redeem} className="px-2 py-1 text-xs rounded bg-pink-500/20 text-pink-300 hover:bg-pink-500/30">Redeem</button>
         {redeemResult && <div className="col-span-4 text-[11px] text-emerald-300">{redeemResult}</div>}
       </footer>
       <footer className="px-3 py-2 border-t border-white/10 bg-white/[0.02] grid grid-cols-4 gap-2 text-xs">
-        <input value={balanceCode} onChange={e => setBalanceCode(e.target.value.toUpperCase())} placeholder="Code to check" className="col-span-2 px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+        <input id="retail-code-to-check" name="code-to-check" aria-label="Code to check" value={balanceCode} onChange={e => setBalanceCode(e.target.value.toUpperCase())} placeholder="Code to check" className="col-span-2 px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
         <button onClick={checkBalance} disabled={balanceBusy || !balanceCode.trim()} className="px-2 py-1 text-xs rounded bg-pink-500/10 text-pink-300 hover:bg-pink-500/20 disabled:opacity-40 col-span-2 inline-flex items-center justify-center gap-1">
           {balanceBusy ? <Loader2 className="w-3 h-3 animate-spin" /> : null} Check balance (no redeem)
         </button>

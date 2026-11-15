@@ -157,7 +157,16 @@ export function SeverityWeightsPanel() {
   }, [activeCb, loadWeights]);
 
   const lookupWeight = useCallback(async () => {
-    if (!activeCb || !lookupDetectorId.trim() || !lookupRuleId.trim()) return;
+    if (!lookupDetectorId.trim() || !lookupRuleId.trim()) {
+      setLookupResult(null);
+      setLookupErr('Enter a detector and a rule. An untouched pair uses 1.00×.');
+      return;
+    }
+    if (!activeCb) {
+      setLookupResult(null);
+      setLookupErr('Select a codebase first. An untouched pair uses 1.00×.');
+      return;
+    }
     setLookupBusy(true);
     setLookupErr(null);
     try {
@@ -170,7 +179,10 @@ export function SeverityWeightsPanel() {
       if (r.data.ok && body?.ok && typeof body.weight === 'number') {
         setLookupResult({ detectorId: lookupDetectorId.trim(), ruleId: lookupRuleId.trim(), weight: body.weight });
       } else {
-        setLookupErr(body?.reason || r.data.error || 'Lookup failed.');
+        const reason = body?.reason || r.data.error || '';
+        setLookupErr(reason === 'no_db'
+          ? 'Weights are not available in this session. An untouched pair uses 1.00×.'
+          : (reason || 'Lookup failed.'));
       }
     } catch {
       setLookupErr('Network error during lookup.');
@@ -238,15 +250,9 @@ export function SeverityWeightsPanel() {
         </div>
       ) : codebases.length === 0 ? (
         <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-xs text-zinc-400">
-          No codebase registered yet. Install the{' '}
-          <a href="https://marketplace.visualstudio.com/items?itemName=concord-os.concord-dx" target="_blank" rel="noreferrer" className="underline">
-            VS Code
-          </a>{' '}
-          or{' '}
-          <a href="https://plugins.jetbrains.com/plugin/concord-dx" target="_blank" rel="noreferrer" className="underline">
-            JetBrains
-          </a>{' '}
-          extension and open a workspace, or run a pass from the{' '}
+          No codebase registered yet. The VS Code and JetBrains extensions are not
+          published yet (their marketplace pages do not exist), so an editor cannot
+          register a codebase today — run a pass from the{' '}
           <Link href="/lenses/dx-platform/web-editor" className="underline">web editor</Link> demo, to
           register one.
         </div>
@@ -319,7 +325,7 @@ export function SeverityWeightsPanel() {
               />
               <button
                 onClick={() => void lookupWeight()}
-                disabled={lookupBusy || !lookupDetectorId.trim() || !lookupRuleId.trim()}
+                disabled={lookupBusy}
                 className="flex items-center gap-1 rounded border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-[11px] text-amber-300 disabled:opacity-40"
               >
                 {lookupBusy ? <Spinner /> : <Search className="h-3 w-3" aria-hidden />} Look up

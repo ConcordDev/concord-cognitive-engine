@@ -7,6 +7,7 @@ import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 import {
   HardHat,
@@ -34,6 +35,7 @@ import {
   type RegistryMode,
   type Status,
 } from './construction-types';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: false });
 
@@ -86,6 +88,8 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
   const [formInspectionType, setFormInspectionType] = useState('Foundation');
   const [formForeman, setFormForeman] = useState('');
   const [formCrewSize, setFormCrewSize] = useState('');
+  const [jobNotice, setJobNotice] = useState<{ itemId: string; title: string } | null>(null);
+  const [jobError, setJobError] = useState('');
 
   const activeArtifactType = modeToArtifact(mode);
   const { items, isLoading, isError, error, refetch, create, update, remove } =
@@ -131,14 +135,40 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
     async (item: LensItem<ConstructionArtifact>) => {
       const d = item.data as unknown as ConstructionArtifact;
       if (d.status !== 'planned') return;
-      await update(item.id, {
-        title: item.title,
-        data: { ...(d as unknown as Record<string, unknown>), status: 'in_progress' },
-        meta: { tags: [], status: 'in_progress', visibility: 'private' },
-      });
+      try {
+        await update(item.id, {
+          title: item.title,
+          data: { ...(d as unknown as Record<string, unknown>), status: 'in_progress' },
+          meta: { tags: [], status: 'in_progress', visibility: 'private' },
+        });
+        // The quick action says what it did, with a way back — a status
+        // change is never silent.
+        setJobError('');
+        setJobNotice({ itemId: item.id, title: item.title || d.name || 'Job' });
+      } catch {
+        setJobNotice(null);
+        setJobError('Couldn\'t start that job — try again.');
+      }
     },
     [update],
   );
+
+  const undoStartJob = useCallback(async () => {
+    if (!jobNotice) return;
+    const item = items.find((i) => i.id === jobNotice.itemId);
+    setJobNotice(null);
+    if (!item) return;
+    const d = item.data as unknown as ConstructionArtifact;
+    try {
+      await update(item.id, {
+        title: item.title,
+        data: { ...(d as unknown as Record<string, unknown>), status: 'planned' },
+        meta: { tags: [], status: 'planned', visibility: 'private' },
+      });
+    } catch {
+      setJobError('Couldn\'t undo the start — the job is still In Progress.');
+    }
+  }, [jobNotice, items, update]);
 
   const openCreate = () => {
     setEditingItem(null);
@@ -285,24 +315,14 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
         onClick={() => setEditorOpen(false)}
         role="button"
         tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            (e.currentTarget as HTMLElement).click();
-          }
-        }}
+        onKeyDown={activateOnEnterOrSpace}
       >
         <div
           className={cn(ds.panel, 'w-full max-w-lg max-h-[85vh] overflow-y-auto')}
           onClick={(e) => e.stopPropagation()}
           role="button"
           tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              (e.currentTarget as HTMLElement).click();
-            }
-          }}
+          onKeyDown={activateOnEnterOrSpace}
         >
           <div className="flex items-center justify-between mb-4">
             <h3 className={ds.heading3}>
@@ -314,12 +334,12 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
           </div>
           <div className="space-y-3">
             <div>
-              <label className={ds.label}>Name</label>
-              <input className={ds.input} value={formName} onChange={(e) => setFormName(e.target.value)} />
+              <label className={ds.label} htmlFor="construction-name">Name</label>
+              <input id="construction-name" className={ds.input} value={formName} onChange={(e) => setFormName(e.target.value)} />
             </div>
             <div>
-              <label className={ds.label}>Description</label>
-              <textarea
+              <label className={ds.label} htmlFor="construction-description">Description</label>
+              <textarea id="construction-description"
                 className={ds.textarea}
                 rows={2}
                 value={formDescription}
@@ -327,8 +347,8 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
               />
             </div>
             <div>
-              <label className={ds.label}>Status</label>
-              <select
+              <label className={ds.label} htmlFor="construction-status">Status</label>
+              <select id="construction-status"
                 className={ds.select}
                 value={formStatus}
                 onChange={(e) => setFormStatus(e.target.value as Status)}
@@ -343,16 +363,16 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
             {activeArtifactType === 'Job' && (
               <>
                 <div>
-                  <label className={ds.label}>Client</label>
-                  <input className={ds.input} value={formClient} onChange={(e) => setFormClient(e.target.value)} />
+                  <label className={ds.label} htmlFor="construction-client">Client</label>
+                  <input id="construction-client" className={ds.input} value={formClient} onChange={(e) => setFormClient(e.target.value)} />
                 </div>
                 <div>
-                  <label className={ds.label}>Address</label>
-                  <input className={ds.input} value={formAddress} onChange={(e) => setFormAddress(e.target.value)} />
+                  <label className={ds.label} htmlFor="construction-address">Address</label>
+                  <input id="construction-address" className={ds.input} value={formAddress} onChange={(e) => setFormAddress(e.target.value)} />
                 </div>
                 <div>
-                  <label className={ds.label}>Project Type</label>
-                  <select
+                  <label className={ds.label} htmlFor="construction-project-type">Project Type</label>
+                  <select id="construction-project-type"
                     className={ds.select}
                     value={formProjectType}
                     onChange={(e) => setFormProjectType(e.target.value)}
@@ -365,8 +385,8 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
                   </select>
                 </div>
                 <div>
-                  <label className={ds.label}>Contract Value</label>
-                  <input
+                  <label className={ds.label} htmlFor="construction-contract-value">Contract Value</label>
+                  <input id="construction-contract-value"
                     type="number"
                     className={ds.input}
                     value={formContractValue}
@@ -375,8 +395,8 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className={ds.label}>Start</label>
-                    <input
+                    <label className={ds.label} htmlFor="construction-start">Start</label>
+                    <input id="construction-start"
                       type="date"
                       className={ds.input}
                       value={formStartDate}
@@ -384,8 +404,8 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
                     />
                   </div>
                   <div>
-                    <label className={ds.label}>End</label>
-                    <input
+                    <label className={ds.label} htmlFor="construction-end">End</label>
+                    <input id="construction-end"
                       type="date"
                       className={ds.input}
                       value={formEndDate}
@@ -399,8 +419,8 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
               <>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className={ds.label}>Labor Cost</label>
-                  <input
+                  <label className={ds.label} htmlFor="construction-labor-cost">Labor Cost</label>
+                  <input id="construction-labor-cost"
                     type="number"
                     className={ds.input}
                     value={formLaborCost}
@@ -408,8 +428,8 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
                   />
                 </div>
                 <div>
-                  <label className={ds.label}>Material Cost</label>
-                  <input
+                  <label className={ds.label} htmlFor="construction-material-cost">Material Cost</label>
+                  <input id="construction-material-cost"
                     type="number"
                     className={ds.input}
                     value={formMaterialCost}
@@ -419,8 +439,8 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                 <div>
-                  <label className={ds.label}>Quantity</label>
-                  <input
+                  <label className={ds.label} htmlFor="construction-quantity">Quantity</label>
+                  <input id="construction-quantity"
                     type="number"
                     step="0.01"
                     className={ds.input}
@@ -429,16 +449,16 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
                   />
                 </div>
                 <div>
-                  <label className={ds.label}>Unit</label>
-                  <select className={ds.select} value={formUnit} onChange={(e) => setFormUnit(e.target.value)}>
+                  <label className={ds.label} htmlFor="construction-unit">Unit</label>
+                  <select id="construction-unit" className={ds.select} value={formUnit} onChange={(e) => setFormUnit(e.target.value)}>
                     {['each', 'lf', 'sf', 'cy', 'lb', 'bag'].map((u) => (
                       <option key={u} value={u}>{u}</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className={ds.label}>Unit Cost</label>
-                  <input
+                  <label className={ds.label} htmlFor="construction-unit-cost">Unit Cost</label>
+                  <input id="construction-unit-cost"
                     type="number"
                     step="0.01"
                     className={ds.input}
@@ -447,8 +467,8 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
                   />
                 </div>
                 <div>
-                  <label className={ds.label}>Waste %</label>
-                  <input
+                  <label className={ds.label} htmlFor="construction-waste">Waste %</label>
+                  <input id="construction-waste"
                     type="number"
                     className={ds.input}
                     value={formWastePercent}
@@ -466,8 +486,8 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
             )}
             {activeArtifactType === 'Inspection' && (
               <div>
-                <label className={ds.label}>Inspection Type</label>
-                <select
+                <label className={ds.label} htmlFor="construction-inspection-type">Inspection Type</label>
+                <select id="construction-inspection-type"
                   className={ds.select}
                   value={formInspectionType}
                   onChange={(e) => setFormInspectionType(e.target.value)}
@@ -483,8 +503,8 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
             {activeArtifactType === 'CrewAssignment' && (
               <>
                 <div>
-                  <label className={ds.label}>Trade</label>
-                  <select className={ds.select} value={formTrade} onChange={(e) => setFormTrade(e.target.value)}>
+                  <label className={ds.label} htmlFor="construction-trade">Trade</label>
+                  <select id="construction-trade" className={ds.select} value={formTrade} onChange={(e) => setFormTrade(e.target.value)}>
                     {TRADES.map((t) => (
                       <option key={t} value={t}>
                         {t}
@@ -493,12 +513,12 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
                   </select>
                 </div>
                 <div>
-                  <label className={ds.label}>Foreman</label>
-                  <input className={ds.input} value={formForeman} onChange={(e) => setFormForeman(e.target.value)} />
+                  <label className={ds.label} htmlFor="construction-foreman">Foreman</label>
+                  <input id="construction-foreman" className={ds.input} value={formForeman} onChange={(e) => setFormForeman(e.target.value)} />
                 </div>
                 <div>
-                  <label className={ds.label}>Crew Size</label>
-                  <input
+                  <label className={ds.label} htmlFor="construction-crew-size">Crew Size</label>
+                  <input id="construction-crew-size"
                     type="number"
                     className={ds.input}
                     value={formCrewSize}
@@ -508,8 +528,8 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
               </>
             )}
             <div>
-              <label className={ds.label}>Notes</label>
-              <textarea
+              <label className={ds.label} htmlFor="construction-notes">Notes</label>
+              <textarea id="construction-notes"
                 className={ds.textarea}
                 rows={2}
                 value={formNotes}
@@ -536,6 +556,7 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
+            aria-label="Search projects"
             ref={searchInputRef}
             className={cn(ds.input, 'pl-10')}
             placeholder="Search..."
@@ -544,6 +565,7 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
           />
         </div>
         <select
+          aria-label="Filter by status"
           className={cn(ds.select, 'w-auto')}
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
@@ -589,10 +611,9 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
                 <div className="flex items-center gap-3">
                   <HardHat className="w-5 h-5 text-neon-cyan" />
                   <div>
-                    <p className="text-white font-medium">{d.name || item.title}</p>
+                    <p className="text-white font-medium">{item.title || d.name || 'Untitled'}</p>
                     <p className={ds.textMuted}>
-                      {d.client || ''} {d.address ? `- ${d.address}` : ''}{' '}
-                      {d.trade ? `[${d.trade}]` : ''}
+                      {[d.client, d.address, d.trade && d.trade !== 'General' ? d.trade : ''].filter(Boolean).join(' · ')}
                     </p>
                   </div>
                 </div>
@@ -613,10 +634,11 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
                         void activateJob(item);
                       }}
                       className={ds.btnGhost}
-                      aria-label="Activate job"
-                      title="Activate job"
+                      aria-label="Start job"
+                      title="Start job"
                     >
                       <Zap className="w-4 h-4 text-neon-cyan" />
+                      <span className="text-xs">Start job</span>
                     </button>
                   ) : (
                     <button
@@ -630,16 +652,9 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
                       <Zap className="w-4 h-4 text-neon-cyan" />
                     </button>
                   )}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      remove(item.id);
-                    }}
-                    className={ds.btnGhost}
-                    aria-label="Delete"
-                  >
-                    <Trash2 className="w-4 h-4 text-red-400" />
-                  </button>
+                  <span onClick={(e) => e.stopPropagation()}>
+                    <StickyDeleteConfirm onConfirm={() => remove(item.id)} armLabel={<Trash2 className="w-4 h-4 text-red-400" />} className={ds.btnGhost} />
+                  </span>
                 </div>
               </div>
             </motion.div>
@@ -683,6 +698,19 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
     <div className="space-y-4">
       {runAction.isPending && (
         <span className="text-xs text-neon-cyan animate-pulse">AI processing...</span>
+      )}
+      {jobNotice && (
+        <div role="status" className="flex items-center justify-between gap-3 rounded border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
+          <span>&lsquo;{jobNotice.title}&rsquo; started — status is now In Progress.</span>
+          <button type="button" onClick={() => void undoStartJob()} className="shrink-0 rounded border border-emerald-400/40 px-2 py-0.5 text-emerald-100 hover:bg-emerald-500/20">
+            Undo
+          </button>
+        </div>
+      )}
+      {jobError && (
+        <div role="alert" className="rounded border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+          {jobError}
+        </div>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

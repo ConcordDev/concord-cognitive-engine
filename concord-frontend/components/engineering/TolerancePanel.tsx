@@ -139,6 +139,7 @@ export function TolerancePanel() {
                   <td className="py-1 px-2">
                     <input
                       className="w-40 bg-black/30 border border-white/10 rounded px-1"
+                      aria-label="Chain link name"
                       value={l.name}
                       onChange={(e) => setField(i, 'name', e.target.value)}
                     />
@@ -206,6 +207,7 @@ export function TolerancePanel() {
             <input
               type="number"
               step="0.001"
+              aria-label="Target gap (optional)"
               value={targetGap}
               placeholder="—"
               onChange={(e) =>

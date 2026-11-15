@@ -863,6 +863,21 @@ export default function registerProjectsActions(registerLensAction) {
     return { ok: true, result: { sprints, count: sprints.length } };
   });
 
+  registerLensAction("projects", "sprint-delete", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pjAid(ctx);
+    const arr = s.sprints.get(userId) || [];
+    const i = arr.findIndex((sp) => sp.id === params.id);
+    if (i < 0) return { ok: false, error: "sprint not found" };
+    const id = arr[i].id;
+    arr.splice(i, 1);
+    for (const task of s.tasks.get(userId) || []) {
+      if (task.sprintId === id) task.sprintId = null;
+    }
+    savePjState();
+    return { ok: true, result: { deleted: id } };
+  });
+
   registerLensAction("projects", "sprint-complete", (ctx, _a, params = {}) => {
     const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = pjAid(ctx);

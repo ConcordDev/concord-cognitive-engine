@@ -66,9 +66,13 @@ export default function BoardLensPage() {
     <LensShell lensId="board" asMain={false}>
       <DepthBadge lensId="board" size="sm" className="ml-2" />
       <div data-lens-theme="board" className="flex min-h-screen flex-col">
-        <div className="flex-shrink-0 px-8 pt-6">
+        <div className="flex-shrink-0 px-4 pt-6 sm:px-8">
           <h1 className="font-vault mb-5 mt-1 text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Board</h1>
-          <nav className="mb-2 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Board views">
+          {/* FIX-board-014: below sm the switcher wraps so every view —
+              Workspace and BGG included — is visible and tappable at
+              390px instead of sitting off the pill strip's scroll edge;
+              sm+ keeps the single-row scrollable pill strip. */}
+          <nav className="mb-2 flex max-w-full flex-wrap items-center gap-1 rounded-3xl border border-white/10 bg-white/[0.03] p-1 sm:inline-flex sm:flex-nowrap sm:overflow-x-auto sm:rounded-full" aria-label="Board views">
             {VIEWS.map((v) => {
               const Icon = v.icon;
               const on = active === v.id;

@@ -57,7 +57,7 @@ export function ConsultingFirmReference() {
       </header>
       <div className="flex flex-wrap gap-1 text-[10px]">
         {PRESETS.map((f) => (
-          <button key={f} onClick={() => load.mutate(f)} disabled={busy === f} className={`rounded px-1.5 py-0.5 font-mono ${results[f] ? 'bg-cyan-500/20 text-cyan-200' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}>{f}</button>
+          <button key={f} onClick={() => load.mutate(f)} disabled={busy === f} className={`inline-flex min-h-11 items-center rounded px-2 py-0.5 font-mono ${results[f] ? 'bg-cyan-500/20 text-cyan-200' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}>{f}</button>
         ))}
       </div>
       {error && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">{error}</div>}

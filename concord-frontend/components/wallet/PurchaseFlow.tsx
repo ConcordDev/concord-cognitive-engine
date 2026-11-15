@@ -26,6 +26,7 @@ import {
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ds } from '@/lib/design-system';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -60,6 +61,25 @@ export function PurchaseFlow({
   className,
 }: PurchaseFlowProps) {
   const searchParams = useSearchParams();
+  // FIX-sponsorship-006: real-money purchases are gated on the server's
+  // own word — GET /api/economic/config reports stripeEnabled. Until it
+  // says true, this surface renders a clearly gated state: no amounts,
+  // no Stripe copy, no buy path. Fail closed: a failed or malformed
+  // check leaves purchases closed, never open.
+  const [paymentsState, setPaymentsState] = useState<'checking' | 'open' | 'closed'>('checking');
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const res = await api.get('/api/economic/config');
+        const enabled = (res.data as { stripeEnabled?: unknown } | null)?.stripeEnabled === true;
+        if (alive) setPaymentsState(enabled ? 'open' : 'closed');
+      } catch {
+        if (alive) setPaymentsState('closed');
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
   const [selectedAmount, setSelectedAmount] = useState<number | null>(
     initialAmount ?? null
   );
@@ -242,6 +262,44 @@ export function PurchaseFlow({
     );
   }
 
+  // ── Render: Purchases gated (FIX-sponsorship-006) ─────────────────────────
+
+  if (paymentsState !== 'open' && flowState === 'select') {
+    return (
+      <Wrapper mode={mode} onClose={onClose} className={className}>
+        <div className="space-y-4 py-2">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-neon-blue/20">
+              <Coins className="w-5 h-5 text-neon-blue" />
+            </div>
+            <div>
+              <h3 className={ds.heading3}>Buy CC Tokens</h3>
+              <p className={ds.textMuted}>1 CC = $1.00 USD</p>
+            </div>
+          </div>
+          {paymentsState === 'checking' ? (
+            <p role="status" className="flex items-center gap-2 text-sm text-gray-400">
+              <Loader2 className="w-4 h-4 animate-spin" /> Checking purchase availability…
+            </p>
+          ) : (
+            <div role="note" className="rounded-lg border border-lattice-border bg-lattice-deep p-4 text-sm text-gray-300">
+              <p className="font-medium text-white">Purchases aren&apos;t open yet.</p>
+              <p className="mt-1 text-gray-400">
+                Concord Coin can&apos;t be bought with real money right now — CC is earned and
+                moves inside Concord. When purchases open, they&apos;ll appear here.
+              </p>
+            </div>
+          )}
+          {mode === 'modal' && onClose && (
+            <button onClick={onClose} className={cn(ds.btnSecondary, 'mt-2')}>
+              Close
+            </button>
+          )}
+        </div>
+      </Wrapper>
+    );
+  }
+
   // ── Render: Selection State ────────────────────────────────────────────────
 
   return (
@@ -409,7 +467,7 @@ function Wrapper({
         <div
           className="absolute inset-0 bg-black/70 backdrop-blur-sm"
           onClick={onClose}
-          aria-hidden="true" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
+          aria-hidden="true" role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace} />
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}

@@ -207,21 +207,21 @@ export function NeuroTrainPanel() {
         <div className="space-y-2">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[11px]">
             <div className="rounded border border-zinc-800 bg-zinc-900/60 px-2 py-1.5">
-              <div className="text-[9px] uppercase tracking-wider text-zinc-500">Mode</div>
+              <div className="text-[9px] uppercase tracking-wider text-zinc-400">Mode</div>
               <div className={result.mode === 'trained' ? 'text-emerald-300 font-semibold' : 'text-sky-300 font-semibold'}>
                 {result.mode === 'trained' ? 'Trained (real)' : 'Projection'}
               </div>
             </div>
             <div className="rounded border border-zinc-800 bg-zinc-900/60 px-2 py-1.5">
-              <div className="text-[9px] uppercase tracking-wider text-zinc-500">Final loss</div>
+              <div className="text-[9px] uppercase tracking-wider text-zinc-400">Final loss</div>
               <div className="font-mono text-white">{result.loss}</div>
             </div>
             <div className="rounded border border-zinc-800 bg-zinc-900/60 px-2 py-1.5">
-              <div className="text-[9px] uppercase tracking-wider text-zinc-500">Final accuracy</div>
+              <div className="text-[9px] uppercase tracking-wider text-zinc-400">Final accuracy</div>
               <div className="font-mono text-white">{(result.accuracy * 100).toFixed(1)}%</div>
             </div>
             <div className="rounded border border-zinc-800 bg-zinc-900/60 px-2 py-1.5">
-              <div className="text-[9px] uppercase tracking-wider text-zinc-500">
+              <div className="text-[9px] uppercase tracking-wider text-zinc-400">
                 {result.mode === 'trained' ? 'Samples' : 'Ceiling'}
               </div>
               <div className="font-mono text-white">

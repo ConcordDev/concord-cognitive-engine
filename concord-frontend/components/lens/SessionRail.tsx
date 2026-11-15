@@ -112,6 +112,14 @@ export function SessionRail({ lensId, status, limit = 12, hideWhenEmpty = true, 
 
   const combined = [...rows, ...pausedRows].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, limit);
 
+  // A hide-when-empty rail must stay hidden until its first read settles.
+  // Rendering the shell while loading made the "Open sessions" header
+  // flash on every reload, including lenses with no sessions at all
+  // (FIX-debate-008).
+  if (loading && combined.length === 0 && hideWhenEmpty) {
+    return null;
+  }
+
   if (combined.length === 0 && !loading && !error && hideWhenEmpty) {
     return null;
   }

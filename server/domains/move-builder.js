@@ -26,6 +26,7 @@ import {
   ELEMENT_EFFECT_BIAS,
 } from "../lib/move-descriptor.js";
 import crypto from "node:crypto";
+import { registerLensExportProvider } from "../lib/lens-export.js";
 
 // Reject a poisoned numeric input (NaN/Infinity/1e308/negative) before it can
 // silently clamp through the Math.min/max bounds or be persisted. A caller that
@@ -132,7 +133,61 @@ function dtuColumns(db) {
   catch { return new Set(); }
 }
 
+
+// ── lens export provider (FIX-move-builder-014) ────────────────────────
+// A minted move persists ONLY as a row in the legacy `dtus` table
+// (type='move_recipe', creator_id=caller, meta in `data`). The platform
+// DTU read model (dtu/list) reads the separate dtu-store corpus, so it
+// never returns minted moves at all — the header export honestly found
+// nothing. This provider reads the same table the domain's own list
+// macro reads, in the same two shapes (runtime type/creator_id/data;
+// minimal body_json/owner_user_id), and emits the caller's moves.
+function moveBuilderExportRows(ctx) {
+  const db = ctx?.db;
+  const userId = ctx?.actor?.userId || ctx?.userId || null;
+  if (!db || !userId) return [];
+  const cols = dtuColumns(db);
+  let rows = [];
+  try {
+    if (cols.has("type") && cols.has("creator_id") && cols.has("data")) {
+      rows = db.prepare(`
+        SELECT id, title, data AS body, created_at FROM dtus
+        WHERE type = 'move_recipe' AND creator_id = ?
+        ORDER BY rowid DESC LIMIT 1000
+      `).all(userId);
+    } else if (cols.has("body_json") && cols.has("owner_user_id")) {
+      rows = db.prepare(`
+        SELECT id, title, body_json AS body FROM dtus
+        WHERE owner_user_id = ? AND body_json LIKE '%"kind":"move_recipe"%'
+        ORDER BY rowid DESC LIMIT 1000
+      `).all(userId);
+    } else {
+      return [];
+    }
+  } catch { return []; }
+  return rows.map((r) => {
+    let meta = {};
+    try { meta = JSON.parse(r.body || "{}"); } catch { meta = {}; }
+    return {
+      id: r.id,
+      type: "move",
+      title: r.title || meta.name || "Untitled move",
+      createdAt: r.created_at ?? null,
+      updatedAt: r.created_at ?? null,
+      data: {
+        element: meta.element || null,
+        skillKind: meta.skill_kind || null,
+        tier: meta.tier ?? null,
+        allocation: meta.allocation || null,
+        motion: meta.motion || null,
+        balanced: meta.balanced ?? null,
+      },
+    };
+  });
+}
+
 export default function registerMoveBuilderMacros(register) {
+  registerLensExportProvider("move-builder", moveBuilderExportRows);
   /**
    * move-builder.compose — PURE preview. Given a skill kind + element + modifier
    * allocation, return the derived motion descriptor (what it animates as) and
@@ -160,12 +215,13 @@ export default function registerMoveBuilderMacros(register) {
    * input: { name, skillKind, element, allocation?, skillLevel?, worldId? }
    */
   register("move-builder", "mint", async (ctx, input = {}) => {
+    const name = String(input.name || "").trim();
+    if (!name) return { ok: false, reason: "missing_name" };
+    if (name.length > 120) return { ok: false, reason: "name_too_long", message: "Name must be at most 120 characters." };
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
     const userId = ctx?.actor?.userId;
     if (!userId) return { ok: false, reason: "no_user" };
-    const name = String(input.name || "").trim();
-    if (!name) return { ok: false, reason: "missing_name" };
     // Fail-closed on poisoned numerics BEFORE any DB write.
     const badNum = badNumericField(input, ["skillLevel"]);
     if (badNum) return { ok: false, reason: `invalid_${badNum}` };
@@ -268,6 +324,105 @@ export default function registerMoveBuilderMacros(register) {
     });
     return { ok: true, moves };
   }, { note: "list the caller's minted moves" });
+
+  register("move-builder", "delete", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const userId = ctx?.actor?.userId;
+    if (!userId) return { ok: false, reason: "no_user" };
+    const moveId = String(input.moveId || input.id || "");
+    if (!moveId) return { ok: false, reason: "missing_move" };
+    const cols = dtuColumns(db);
+    let changes = 0;
+    try {
+      if (cols.has("type") && cols.has("creator_id")) {
+        changes = db.prepare(`DELETE FROM dtus WHERE id = ? AND type = 'move_recipe' AND creator_id = ?`).run(moveId, userId).changes;
+      } else if (cols.has("owner_user_id")) {
+        changes = db.prepare(`DELETE FROM dtus WHERE id = ? AND owner_user_id = ?`).run(moveId, userId).changes;
+      } else {
+        return { ok: false, reason: "no_dtu_table" };
+      }
+    } catch (e) {
+      return { ok: false, reason: "delete_failed", detail: String(e?.message || e) };
+    }
+    if (!changes) return { ok: false, reason: "move_not_found" };
+    return { ok: true, deleted: moveId };
+  }, { note: "delete the caller's minted move" });
+
+  register("move-builder", "rename", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const userId = ctx?.actor?.userId;
+    if (!userId) return { ok: false, reason: "no_user" };
+    const moveId = String(input.moveId || input.id || "");
+    const name = String(input.name || "").trim().slice(0, 120);
+    if (!moveId) return { ok: false, reason: "missing_move" };
+    if (!name) return { ok: false, reason: "missing_name" };
+    const cols = dtuColumns(db);
+    try {
+      let row = null;
+      if (cols.has("type") && cols.has("creator_id") && cols.has("data")) {
+        row = db.prepare(`SELECT id, data AS body, creator_id AS owner FROM dtus WHERE id = ? AND type = 'move_recipe'`).get(moveId);
+      } else if (cols.has("body_json") && cols.has("owner_user_id")) {
+        row = db.prepare(`SELECT id, body_json AS body, owner_user_id AS owner FROM dtus WHERE id = ?`).get(moveId);
+      } else {
+        return { ok: false, reason: "no_dtu_table" };
+      }
+      if (!row || (row.owner && String(row.owner) !== String(userId))) return { ok: false, reason: "move_not_found" };
+      let meta = {};
+      try { meta = JSON.parse(row.body || "{}"); } catch { meta = {}; }
+      meta.name = name;
+      const body = JSON.stringify(meta);
+      const changes = cols.has("data")
+        ? db.prepare(`UPDATE dtus SET title = ?, data = ? WHERE id = ?`).run(name, body, moveId).changes
+        : db.prepare(`UPDATE dtus SET title = ?, body_json = ? WHERE id = ?`).run(name, body, moveId).changes;
+      if (!changes) return { ok: false, reason: "move_not_found" };
+      return { ok: true, moveId, name };
+    } catch (e) {
+      return { ok: false, reason: "rename_failed", detail: String(e?.message || e) };
+    }
+  }, { note: "rename the caller's minted move" });
+
+  register("move-builder", "duplicate", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const userId = ctx?.actor?.userId;
+    if (!userId) return { ok: false, reason: "no_user" };
+    const moveId = String(input.moveId || input.id || "");
+    if (!moveId) return { ok: false, reason: "missing_move" };
+    const cols = dtuColumns(db);
+    try {
+      let row = null;
+      if (cols.has("type") && cols.has("creator_id") && cols.has("data")) {
+        row = db.prepare(`SELECT * FROM dtus WHERE id = ? AND type = 'move_recipe'`).get(moveId);
+      } else if (cols.has("body_json") && cols.has("owner_user_id")) {
+        row = db.prepare(`SELECT * FROM dtus WHERE id = ?`).get(moveId);
+      } else {
+        return { ok: false, reason: "no_dtu_table" };
+      }
+      if (!row) return { ok: false, reason: "move_not_found" };
+      const owner = row.creator_id ?? row.owner_user_id;
+      if (owner && String(owner) !== String(userId)) return { ok: false, reason: "move_not_found" };
+      const bodyCol = cols.has("data") ? "data" : "body_json";
+      let meta = {};
+      try { meta = JSON.parse(row[bodyCol] || "{}"); } catch { meta = {}; }
+      if (cols.has("body_json") && meta.kind !== "move_recipe") return { ok: false, reason: "move_not_found" };
+      const copyName = `${String(row.title || meta.name || "Untitled move").slice(0, 110)} copy`.slice(0, 120);
+      meta.name = copyName;
+      if ("current_name" in meta) meta.current_name = copyName;
+      const newId = `move:${userId}:${crypto.randomUUID().slice(0, 8)}`;
+      const now = new Date().toISOString();
+      const clone = { ...row, id: newId, title: copyName, [bodyCol]: JSON.stringify(meta) };
+      if ("created_at" in clone) clone.created_at = now;
+      if ("updated_at" in clone) clone.updated_at = now;
+      const keys = Object.keys(clone);
+      db.prepare(`INSERT INTO dtus (${keys.join(", ")}) VALUES (${keys.map(() => "?").join(", ")})`)
+        .run(...keys.map((k) => clone[k]));
+      return { ok: true, moveId: newId, name: copyName, duplicatedFrom: moveId };
+    } catch (e) {
+      return { ok: false, reason: "duplicate_failed", detail: String(e?.message || e) };
+    }
+  }, { note: "duplicate the caller's minted move" });
 
   /**
    * move-builder.get — one minted move, round-tripping the stamped descriptor.

@@ -106,6 +106,14 @@ describe("electrical.wireSize", () => {
     assert.ok(r.result.minBreaker);
     assert.equal(r.result.designAmps, 50);
   });
+  it("prints the minimum wire's own ampacity, not the upsized wire", () => {
+    // 20A continuous → 25A design. 12 AWG is 25A; a long 120V run upsizes.
+    const r = call("wireSize", ctxA, { loadAmps: 20, continuous: true, distanceFeet: 50, voltage: 120 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.ampacityRequiredWire, "12 AWG");
+    assert.equal(r.result.ampacityOfRequiredWire, 25);
+    assert.notEqual(r.result.recommendedAmpacity, r.result.ampacityOfRequiredWire);
+  });
   it("returns guidance when load is zero", () => {
     const r = call("wireSize", ctxA, { loadAmps: 0 });
     assert.equal(r.ok, true);
@@ -291,5 +299,21 @@ describe("electrical.priceList* (material price list)", () => {
     const rm = call("priceListRemove", ctxA, { id: added.id });
     assert.equal(rm.ok, true);
     assert.equal(rm.result.removed, 1);
+  });
+});
+
+describe("electrical panel schedules — FIX-electrical-007 investigation pin", () => {
+  it("a panel survives the platform snapshot round-trip (serialize -> hydrate)", async () => {
+    const { serializeLensState, hydrateLensState } = await import("../lib/lens-state-persistence.js");
+    const created = call("panelCreate", ctxA, { name: "Main", mainBreaker: 200 });
+    assert.equal(created.ok, true);
+    assert.equal(call("panelList", ctxA, {}).result.panels.length, 1);
+    const snap = JSON.parse(JSON.stringify(serializeLensState(globalThis._concordSTATE)));
+    globalThis._concordSTATE = { dtus: new Map() };
+    hydrateLensState(globalThis._concordSTATE, snap);
+    const after = call("panelList", ctxA, {});
+    assert.equal(after.ok, true);
+    assert.equal(after.result.panels.length, 1);
+    assert.equal(after.result.panels[0].id, created.result.id);
   });
 });

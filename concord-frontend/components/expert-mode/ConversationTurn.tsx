@@ -295,7 +295,7 @@ export function ConversationTurn({
                 onClick={() => onAskRelated(q)}
                 className="text-left px-3 py-2 rounded-lg bg-zinc-950/60 ring-1 ring-zinc-800 hover:ring-amber-500/50 text-[13px] text-zinc-300 hover:text-zinc-100 flex items-center gap-2"
               >
-                <ListChecks className="w-3.5 h-3.5 text-zinc-600 shrink-0" />
+                <ListChecks className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                 {q}
               </button>
             ))}
@@ -307,7 +307,7 @@ export function ConversationTurn({
         <button
           type="button"
           onClick={copyMarkdown}
-          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-medium"
+          className="inline-flex min-h-11 items-center gap-1.5 px-2.5 py-1 rounded text-[11px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-medium"
         >
           {exporting === 'md' ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -321,7 +321,7 @@ export function ConversationTurn({
         <button
           type="button"
           onClick={makeShareLink}
-          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-medium"
+          className="inline-flex min-h-11 items-center gap-1.5 px-2.5 py-1 rounded text-[11px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-medium"
         >
           {exporting === 'share' ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin" />

@@ -127,7 +127,7 @@ export function MarketingContactsPanel() {
       {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" />
-        <input value={query} onChange={(e) => { setQuery(e.target.value); void refresh(e.target.value); }}
+        <input value={query} type="search" onKeyDown={(e) => e.stopPropagation()} onChange={(e) => { setQuery(e.target.value); void refresh(e.target.value); }}
           placeholder="Search contacts…" className="w-full bg-zinc-950 border border-zinc-700 rounded-lg pl-9 pr-3 py-1.5 text-xs text-zinc-100" />
       </div>
 

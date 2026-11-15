@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 interface FleetUnit {
   id: string; name: string; kind: string; status: string;
   engineHours: number; utilization: number; fuelLitres: number;
+  scheduledHours: number; nextServiceHours: number;
   hoursToService: number; serviceDue: boolean;
 }
 interface FleetDash {
@@ -93,6 +94,35 @@ export function FleetManager() {
     else setErr(r.data.error || 'add failed');
   }
 
+  const [editingUnit, setEditingUnit] = useState<FleetUnit | null>(null);
+
+  function startEditUnit(u: FleetUnit) {
+    setEditingUnit(u);
+    setEName(u.name); setEKind(u.kind); setEEngineHours(String(u.engineHours));
+    setEScheduled(String(u.scheduledHours)); setEFuel(String(u.fuelLitres));
+    setENextService(String(u.nextServiceHours));
+    setErr(null);
+  }
+
+  function cancelEditUnit() {
+    setEditingUnit(null);
+    setEName(''); setEKind('haul_truck'); setEEngineHours('0');
+    setEScheduled('200'); setEFuel('0'); setENextService('500');
+  }
+
+  async function saveEquipment() {
+    if (!editingUnit) return;
+    if (!eName.trim()) { setErr('Equipment name required.'); return; }
+    setBusy('save-eq'); setErr(null);
+    const r = await lensRun('mining', 'equipment-update', {
+      id: editingUnit.id, name: eName.trim(), kind: eKind, engineHours: num(eEngineHours),
+      scheduledHours: num(eScheduled), fuelLitres: num(eFuel), nextServiceHours: num(eNextService),
+    });
+    setBusy(null);
+    if (r.data.ok) { cancelEditUnit(); await loadDash(); }
+    else setErr(r.data.error || 'update failed');
+  }
+
   async function cycleStatus(unit: FleetUnit) {
     const next = EQUIP_STATUS[(EQUIP_STATUS.indexOf(unit.status) + 1) % EQUIP_STATUS.length];
     setBusy(`st-${unit.id}`); setErr(null);
@@ -162,10 +192,19 @@ export function FleetManager() {
         <input value={eNextService} onChange={(e) => setENextService(e.target.value.replace(/[^\d.]/g, ''))} placeholder="Service @ h"
           className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-[11px] text-white font-mono" />
       </div>
-      <button type="button" onClick={addEquipment} disabled={!!busy}
-        className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-700 hover:bg-sky-600 disabled:opacity-40 text-white rounded text-[12px]">
-        {busy === 'add-eq' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />} Add equipment
-      </button>
+      <div className="flex items-center gap-2">
+        <button type="button" onClick={editingUnit ? saveEquipment : addEquipment} disabled={!!busy}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-700 hover:bg-sky-600 disabled:opacity-40 text-white rounded text-[12px]">
+          {busy === 'add-eq' || busy === 'save-eq' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />} {editingUnit ? 'Save equipment' : 'Add equipment'}
+        </button>
+        {editingUnit && (
+          <button type="button" onClick={cancelEditUnit} disabled={!!busy}
+            className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded text-[12px]">
+            Cancel
+          </button>
+        )}
+        {editingUnit && <span className="text-[11px] text-sky-300">Editing {editingUnit.name} — Save updates it in place.</span>}
+      </div>
 
       {/* ── Fleet list ── */}
       <div className="space-y-1.5">
@@ -188,6 +227,10 @@ export function FleetManager() {
               </div>
             </div>
             {u.serviceDue && <Wrench className="w-3.5 h-3.5 text-red-400" />}
+            <button type="button" onClick={() => startEditUnit(u)} disabled={!!busy}
+              className="text-[11px] text-zinc-400 hover:text-sky-300" aria-label={`Edit ${u.name}`}>
+              Edit
+            </button>
             <button type="button" onClick={() => cycleStatus(u)} disabled={!!busy}
               className={cn('text-[10px] font-semibold uppercase tracking-wide px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700', STATUS_COLOR[u.status])}>
               {busy === `st-${u.id}` ? '…' : u.status}

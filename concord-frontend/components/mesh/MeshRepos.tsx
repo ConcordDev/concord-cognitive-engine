@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { lensRun } from '@/lib/api/client';
 import { Wifi, Loader2, ExternalLink, Star, GitBranch } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
@@ -29,6 +29,11 @@ export function MeshRepos() {
       return { items: out?.items || [], stale: !!out?.stale, fetchedAt: out?.fetchedAt ?? null };
     },
     staleTime: 30 * 60 * 1000,
+    // Keep the previous topic's real results on screen while the new
+    // topic loads — without this, data goes undefined on every topic
+    // switch and the Repos / Total stars stats flash a definitive 0
+    // for the whole fetch (FIX-mesh-011).
+    placeholderData: keepPreviousData,
   });
 
   const list = repos.data?.items || [];
@@ -40,14 +45,14 @@ export function MeshRepos() {
         <div className="flex items-center gap-2"><Wifi className="h-5 w-5 text-emerald-400" /><h2 className="text-sm font-semibold text-white">Real-world mesh networking</h2><span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">github · topic:{topic}</span></div>
         <div className="flex items-center gap-2">
           <select value={topic} onChange={(e) => setTopic(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">{TOPICS.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}</select>
-          {list.length > 0 && <SaveAsDtuButton compact apiSource="github-mesh" apiUrl={`https://github.com/topics/${topic}`} title={`GitHub mesh — topic:${topic} (${list.length})`} content={list.slice(0, 20).map((r, i) => `${i + 1}. ★${(r.stargazers_count ?? 0).toLocaleString()} · ${r.full_name}\n   ${r.description || ''}\n   ${r.html_url}`).join('\n\n')} extraTags={['mesh', 'github', topic]} rawData={{ topic, repos: list }} />}
+          {list.length > 0 && !repos.isPlaceholderData && <SaveAsDtuButton compact apiSource="github-mesh" apiUrl={`https://github.com/topics/${topic}`} title={`GitHub mesh — topic:${topic} (${list.length})`} content={list.slice(0, 20).map((r, i) => `${i + 1}. ★${(r.stargazers_count ?? 0).toLocaleString()} · ${r.full_name}\n   ${r.description || ''}\n   ${r.html_url}`).join('\n\n')} extraTags={['mesh', 'github', topic]} rawData={{ topic, repos: list }} />}
         </div>
       </header>
       {repos.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">GitHub results unavailable right now — nothing is being shown in their place.</div>}
       {repos.data?.stale && !repos.isError && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached GitHub results{repos.data.fetchedAt ? ` from ${new Date(repos.data.fetchedAt).toLocaleString()}` : ''} — live refresh is rate-limited.</div>}
       <div className="grid grid-cols-2 gap-2">
-        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Repos</div><div className="mt-0.5 font-mono text-lg text-emerald-300">{list.length}</div></div>
-        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Total stars</div><div className="mt-0.5 font-mono text-lg text-emerald-300">{totalStars.toLocaleString()}</div></div>
+        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Repos</div><div className="mt-0.5 font-mono text-lg text-emerald-300">{repos.isPending ? '—' : list.length}</div></div>
+        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Total stars</div><div className="mt-0.5 font-mono text-lg text-emerald-300">{repos.isPending ? '—' : totalStars.toLocaleString()}</div></div>
       </div>
       <div className="space-y-1.5 max-h-[500px] overflow-y-auto">
         {list.map((r) => (
@@ -64,7 +69,7 @@ export function MeshRepos() {
         ))}
         {list.length === 0 && !repos.isPending && !repos.isError && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No repos.</div>}
       </div>
-      {repos.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Pulling…</div>}
+      {(repos.isPending || repos.isPlaceholderData) && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Pulling…</div>}
     </div>
   );
 }

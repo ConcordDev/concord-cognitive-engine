@@ -6,6 +6,16 @@ import { getApiBase } from './base';
 import { isHandlerDefectRefusal, refusalToastMessage } from './lens-refusal';
 import { clearServerBusy, isServiceOverloadedPayload, noteServerBusy } from '@/lib/realtime/server-busy';
 import { createRestartWindow, isRestartFailure, type RestartWindow } from './restart-window';
+import {
+  GuestActionBlocked,
+  isGuestActionBlocked,
+  isGuestMode,
+  lensRunAllowedForGuest,
+  openGuestAuth,
+} from '@/lib/guest-bridge';
+import { currentReturnTo } from '@/lib/return-to';
+
+export { GuestActionBlocked, isGuestActionBlocked } from '@/lib/guest-bridge';
 import type {
   CreateDTURequest,
   UpdateDTURequest,
@@ -199,6 +209,59 @@ export async function attemptTokenRefresh(): Promise<unknown> {
 // ---- Retry with exponential backoff for transient server errors ----
 const MAX_RETRIES = 3;
 const RETRY_STATUS_CODES = new Set([502, 503, 504]);
+
+/** A failed request with no response. On a hosted origin this is not a local API. */
+export function unreachableApiMessage(hostname?: string): string {
+  const host = hostname ?? (typeof window !== 'undefined' ? window.location.hostname : '');
+  const local = host === 'localhost' || host === '127.0.0.1' || host === '[::1]' || host === '';
+  return local
+    ? 'Unable to reach the local Concord API. If you are on this machine, the backend may be down — this is not your internet.'
+    : 'Concord did not respond. This is not a local API. Check your connection and try again.';
+}
+
+const COUNCIL_REJECT_REASON: Record<string, string> = {
+  knowledge_insufficient_structure: 'This public note needs more structure, such as a claim or a definition, before it can be shared.',
+  media_missing_asset_or_title: 'This public media item needs a title or the file it points at.',
+  formula_missing_composition: 'This public formula needs its composition before it can be shared.',
+  dataset_insufficient_structure: 'This public dataset needs more structure before it can be shared.',
+  software_insufficient_structure: 'This public software note needs more structure before it can be shared.',
+  world_asset_missing_identity: 'This public world asset needs a name or an id before it can be shared.',
+  low_value: 'This public save does not have enough content to share yet.',
+};
+
+/** Plain words for a council refusal. The score line is included only when the server sent both numbers. */
+export function councilRejectSentence(
+  reason: string | undefined,
+  score?: number,
+  minScore?: number,
+): string | null {
+  if (!reason) return null;
+  const known = COUNCIL_REJECT_REASON[reason];
+  const bar = typeof score === 'number' && typeof minScore === 'number'
+    ? ` It scored ${score} and this save needs ${minScore}.`
+    : '';
+  if (known) return known + bar;
+  if (reason === 'Council rejected DTU') return null;
+  return reason.replace(/_/g, ' ') + bar;
+}
+
+/** Message for a rejected write. GETs stay quiet so a background poll does not toast. */
+export function rejectedWriteMessage(
+  status: number | undefined,
+  data: { error?: string; message?: string; reason?: string; score?: number; minScore?: number } | undefined,
+  method: string | undefined,
+): string | null {
+  if ((method || 'GET').toUpperCase() === 'GET') return null;
+  if (status !== 400) return null;
+  const msg = data?.message || data?.error;
+  if (!msg) return 'That request was rejected.';
+  const base = String(msg).replace(/_/g, ' ');
+  if (base === 'Council rejected DTU') {
+    const why = councilRejectSentence(data?.reason, data?.score, data?.minScore);
+    if (why) return `${base}. ${why}`;
+  }
+  return base;
+}
 const RETRY_BASE_DELAY_MS = 1000;
 
 // Lens-run refusals that are read-path noise, not a user action that just
@@ -379,6 +442,28 @@ api.interceptors.request.use(
       // the instance type, not its config.
       return Promise.reject(new axios.CanceledError('rate_limit_backoff'));
     }
+    // GB-1536 client backstop: a guest's non-GET is NEVER sent. The
+    // request is refused here with a typed GuestActionBlocked and the
+    // signup modal opens with the return-to — no silent failure, no
+    // fake success, no navigation. Sole exception: a /api/lens/run call
+    // whose (domain, action) is on the guest-read mirror list goes
+    // through, and the server's spec registry gives the real verdict.
+    if (typeof window !== 'undefined' && isGuestMode() && !isGet) {
+      const url = typeof config.url === 'string' ? config.url : '';
+      let allowed = false;
+      if (url.includes('/api/lens/run')) {
+        let body: unknown = config.data;
+        if (typeof body === 'string') {
+          try { body = JSON.parse(body); } catch { body = null; }
+        }
+        allowed = lensRunAllowedForGuest(body);
+      }
+      if (!allowed) {
+        const returnTo = currentReturnTo();
+        openGuestAuth(returnTo);
+        return Promise.reject(new GuestActionBlocked(returnTo));
+      }
+    }
     if (typeof window !== 'undefined') {
       // SECURITY: Add CSRF token for state-changing requests
       // Credentials are handled by httpOnly cookies (withCredentials: true)
@@ -540,6 +625,18 @@ api.interceptors.response.use(
           return Promise.reject(error);
         }
 
+        // GB-1536: a guest holds no session to refresh — a 401 is the
+        // read-only boundary answering, not an expired login. A guest
+        // ACTION that still reached the server (e.g. a fetch outside
+        // this client) opens the signup modal with the return-to; a
+        // guest read just rejects. Never a login-page bounce.
+        if (isGuestMode()) {
+          if (error.config?.method?.toUpperCase() !== 'GET') {
+            openGuestAuth(currentReturnTo());
+          }
+          return Promise.reject(error);
+        }
+
         // ── Auto-refresh on access-token expiry ──────────────────────────
         // The 7-day access cookie expires while the 30-day refresh cookie
         // is still valid. Try a single refresh; on success, replay the
@@ -589,9 +686,12 @@ api.interceptors.response.use(
           path === '/register' ||
           path === '/forgot-password';
         if (!isPublicPage) {
-          // Clear entered flag to prevent redirect loop on next visit
+          // Clear entered flag to prevent redirect loop on next visit.
+          // GB-1536: carry where the user was — /login?from=<here> —
+          // instead of the old bare /login that stranded them at '/'.
           try { localStorage.removeItem('concord_entered'); } catch {}
-          window.location.href = '/login';
+          const from = encodeURIComponent(window.location.pathname + window.location.search);
+          window.location.href = `/login?from=${from}`;
         }
       }
       // ---- Version Conflict Detection (Category 2: Concurrency) ----
@@ -712,8 +812,11 @@ api.interceptors.response.use(
           store.addToast({ type: 'warning', message: 'Too many requests. Please wait a moment.' });
         } else if (toastStatus && toastStatus >= 500 && !isBackgroundFetch && !isGeocoderUnavailableResponse(error)) {
           store.addToast({ type: 'error', message: 'Something went wrong on our end. Please try again.' });
+        } else if (toastStatus === 400 && !isBackgroundFetch) {
+          const rejected = rejectedWriteMessage(toastStatus, data, error.config?.method);
+          if (rejected) store.addToast({ type: 'error', message: rejected });
         } else if (!error.response && !isBackgroundFetch) {
-          store.addToast({ type: 'error', message: 'Unable to reach the local Concord API. If you are on this machine, the backend may be down — this is not your internet.' });
+          store.addToast({ type: 'error', message: unreachableApiMessage() });
         } else if (data?.ok === false && data?.error && !isBackgroundFetch) {
           store.addToast({ type: 'error', message: data.error.replace(/_/g, ' ') });
         }
@@ -723,6 +826,10 @@ api.interceptors.response.use(
     // lensRun read code / retryAfterS from error.response.data, which the
     // ConcordError conversion would drop.
     if (isGeocoderUnavailableResponse(error)) return Promise.reject(error);
+    // A guest-backstop rejection never reached the network and is not an
+    // axios error — keep the typed GuestActionBlocked so callers can
+    // branch on it instead of reading it as a network failure (GB-1536 §2a).
+    if (isGuestActionBlocked(error)) return Promise.reject(error);
     return Promise.reject(fromAxiosError(error));
   }
 );
@@ -1623,6 +1730,8 @@ export const apiHelpers = {
     curricula: () => api.get('/api/metalearning/curricula'),
     deleteStrategy: (strategyId: string) =>
       api.delete(`/api/metalearning/strategies/${strategyId}`),
+    deleteCurriculum: (curriculumId: string) =>
+      api.delete(`/api/metalearning/curricula/${curriculumId}`),
   },
 
   // Reasoning chains — field names match the real backend contract
@@ -1643,6 +1752,7 @@ export const apiHelpers = {
     validate: (stepId: string) =>
       api.post(`/api/reasoning/steps/${stepId}/validate`, {}),
     list: () => api.get('/api/reasoning/chains'),
+    remove: (chainId: string) => api.delete(`/api/reasoning/chains/${chainId}`),
     trace: (chainId: string) => api.get(`/api/reasoning/chains/${chainId}/trace`),
     status: () => api.get('/api/reasoning/status'),
   },
@@ -1712,6 +1822,7 @@ export const apiHelpers = {
   // Spaced repetition (SRS)
   srs: {
     due: () => api.get('/api/srs/due'),
+    scheduled: () => api.get('/api/srs/scheduled'),
     add: (dtuId: string) => api.post(`/api/srs/${dtuId}/add`, {}),
     review: (dtuId: string, data: { quality: number }) =>
       api.post(`/api/srs/${dtuId}/review`, data),
@@ -2341,7 +2452,7 @@ export const apiHelpers = {
     getPost: (postId: string) => api.get(`/api/social/post/${postId}`),
     deletePost: (postId: string) => api.delete(`/api/social/post/${postId}`),
     getUserPosts: (userId: string, params?: Record<string, unknown>) =>
-      api.get(`/api/social/posts/${userId}`, { params }),
+      api.get(`/api/social/posts/user/${userId}`, { params }),
     // Reactions, Comments, Shares
     react: (data: { postId: string; type?: string }) => api.post('/api/social/react', data),
     getReactions: (postId: string) => api.get(`/api/social/reactions/${postId}`),

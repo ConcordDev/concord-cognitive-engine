@@ -5,9 +5,11 @@ import { UserProfile } from '@/components/social/UserProfile';
 
 export function FeedProfilePanel({
   userId,
+  loading = false,
   onNavigateToUser,
 }: {
   userId?: string | null;
+  loading?: boolean;
   onNavigateToUser?: (uid: string) => void;
 }) {
   const id = userId || null;
@@ -19,6 +21,8 @@ export function FeedProfilePanel({
           currentUserId={id}
           onNavigateToUser={onNavigateToUser}
         />
+      ) : loading ? (
+        <p className="p-6 text-sm text-zinc-400">Loading your profile…</p>
       ) : (
         <p className="p-6 text-sm text-zinc-400">Sign in to see your profile.</p>
       )}

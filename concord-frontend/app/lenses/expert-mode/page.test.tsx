@@ -7,11 +7,12 @@
  * the page actually received (all HTTP 200).
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, cleanup } from '@testing-library/react';
+import { render, screen, waitFor, cleanup, fireEvent } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { api } from '@/lib/api/client';
 import ExpertModeLens from './page';
+import { getLensState } from '@/lib/lens-state-persistence';
 import { BrainPoolStatus } from '@/components/expert-mode/BrainPoolStatus';
 
 vi.mock('next/navigation', () => ({
@@ -200,5 +201,40 @@ describe('Expert Mode live response shapes', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Brain status returned an unexpected shape.');
     expect(screen.queryByTestId('brain-slot-conscious')).toBeNull();
+  });
+});
+
+describe('FIX-expert-mode-001 — focus + web prefs survive a reload', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    installApi(LIVE_BRAIN_STATUS);
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
+
+  it('choosing Math and unchecking Live web search persists both; a remount restores them', async () => {
+    const first = renderWithQuery(<ExpertModeLens />);
+    const math = await screen.findByRole('button', { name: 'Math' });
+    fireEvent.click(math);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Math' }).className).toContain('bg-amber-500');
+    });
+
+    const box = screen.getByLabelText(/Live web search/i) as HTMLInputElement;
+    expect(box.checked).toBe(true);
+    fireEvent.click(box);
+    expect(box.checked).toBe(false);
+
+    expect(getLensState('expert-mode')?.focus).toBe('math');
+    expect(getLensState('expert-mode')?.useWeb).toBe(false);
+
+    first.unmount();
+    renderWithQuery(<ExpertModeLens />);
+    const math2 = await screen.findByRole('button', { name: 'Math' });
+    await waitFor(() => expect(math2.className).toContain('bg-amber-500'));
+    expect((screen.getByLabelText(/Live web search/i) as HTMLInputElement).checked).toBe(false);
   });
 });

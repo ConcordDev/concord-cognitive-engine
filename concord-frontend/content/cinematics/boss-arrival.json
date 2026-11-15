@@ -1,6 +1,7 @@
 {
   "id": "boss_arrival",
   "name": "Boss Arrival",
+  "summary": "Something vast crosses the horizon, and the land itself seems to hold its breath. A silhouette resolves against the sky — the boss has arrived, and every road now leads toward it.",
   "trigger": "boss_arrival",
   "comment": "Phase W — wide environmental shot + boss silhouette emerge + name-card flash.",
   "shots": [

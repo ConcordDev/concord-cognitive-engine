@@ -137,7 +137,7 @@ export function PostDetail({ postId, username, currentUserId, onBack, backLabel 
           />
           <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
             <h3 className="mb-2 text-xs font-medium text-zinc-400">Replies</h3>
-            <ReplyTree postId={post.id} username={username} />
+            <ReplyTree postId={post.id} username={username} currentUserId={currentUserId} />
           </div>
         </>
       )}

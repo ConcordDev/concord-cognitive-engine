@@ -169,3 +169,13 @@ describe("pharmacy.pharmacy-dashboard", () => {
     assert.equal(d.result.refillsDue, 1);
   });
 });
+
+describe("pharmacy.appointment date", () => {
+  it("rejects a concatenated year and keeps a real ISO instant", () => {
+    const bad = call("appointment-add", ctxA, { providerName: "Dr. QA", dateTime: "52026-11-11T11:10" });
+    assert.equal(bad.ok, false);
+    const good = call("appointment-add", ctxA, { providerName: "Dr. QA", dateTime: "2026-11-11T11:10" });
+    assert.equal(good.ok, true);
+    assert.equal(good.result.appointment.dateTime, "2026-11-11T11:10");
+  });
+});

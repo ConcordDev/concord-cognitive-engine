@@ -181,16 +181,16 @@ export function BioActionPanel() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <div className="md:col-span-2">
           <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">Sequence A ({seqKind})</label>
-          <textarea value={sequence} onChange={(e) => setSequence(e.target.value)} rows={3} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono mt-1" />
+          <textarea aria-label="Sequence A" value={sequence} onChange={(e) => setSequence(e.target.value)} rows={3} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono mt-1" />
         </div>
         <div className="space-y-2">
-          <select value={seqKind} onChange={(e) => setSeqKind(e.target.value as typeof seqKind)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white">
+          <select aria-label="Sequence type" value={seqKind} onChange={(e) => setSeqKind(e.target.value as typeof seqKind)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white">
             <option value="dna">DNA</option>
             <option value="rna">RNA</option>
             <option value="protein">Protein</option>
           </select>
-          <input type="text" value={enzyme} onChange={(e) => setEnzyme(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Enzyme (EcoRI...)" />
-          <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
+          <input type="text" aria-label="Restriction enzyme" value={enzyme} onChange={(e) => setEnzyme(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Enzyme (EcoRI...)" />
+          <input type="text" aria-label="DM recipient" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
           <div className="flex items-center gap-2 flex-wrap">
             <RecallSlot ctl={dmRecall} />
             <RecallSlot ctl={publishRecall} />
@@ -198,7 +198,7 @@ export function BioActionPanel() {
         </div>
         <div className="md:col-span-3">
           <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">Sequence B (for alignment)</label>
-          <textarea value={seqB} onChange={(e) => setSeqB(e.target.value)} rows={2} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono mt-1" />
+          <textarea aria-label="Sequence B" value={seqB} onChange={(e) => setSeqB(e.target.value)} rows={2} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono mt-1" />
         </div>
       </div>
 
@@ -229,7 +229,7 @@ export function BioActionPanel() {
             <div className="text-[10px] uppercase tracking-wider text-green-300 font-semibold">{seqResult.kind.toUpperCase()} · {seqResult.length} {seqResult.kind === 'protein' ? 'aa' : 'bp'}</div>
             <div className="grid grid-cols-2 gap-x-3 gap-y-1 mt-1">
               {seqResult.gcPercent != null && <div className="text-[11px] text-zinc-300">GC <span className="text-green-200 font-mono">{seqResult.gcPercent}%</span></div>}
-              {seqResult.tm != null && <div className="text-[11px] text-zinc-300">Tm <span className="text-green-200 font-mono">{seqResult.tm}°C</span>{seqResult.tmModel && <span className="block text-[9px] text-zinc-500">{seqResult.tmModel}</span>}</div>}
+              {seqResult.tm != null && <div className="text-[11px] text-zinc-300">Tm <span className="text-green-200 font-mono">{seqResult.tm}°C</span>{seqResult.tmModel && <span className="block text-[9px] text-zinc-400">{seqResult.tmModel}</span>}</div>}
               {seqResult.orfs && <div className="text-[11px] text-zinc-300 col-span-2">ORFs <span className="text-green-200 font-mono">{seqResult.orfs.length}</span> {seqResult.orfs.slice(0, 3).map((o, i) => <span key={i} className="text-[10px] text-zinc-400 ml-1">{o.start}-{o.end} ({o.length})</span>)}</div>}
             </div>
           </div>

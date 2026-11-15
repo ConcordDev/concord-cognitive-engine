@@ -2,9 +2,11 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
+import { MAX_MONEY, moneyOutOfRange } from './hi-shared';
 import {
   Boxes, Plus, Trash2, Loader2, ShieldCheck, ShieldAlert,
-  ShieldX, FileText, Package,
+  ShieldX, FileText, Package, Pencil,
 } from 'lucide-react';
 
 interface Asset {
@@ -87,6 +89,23 @@ export function HomeInventory() {
     setBusy(false);
   };
 
+  // FIX-home-improvement-011: assets gain an edit path (inventory-update).
+  const [editingAsset, setEditingAsset] = useState<string | null>(null);
+  const [assetEdit, setAssetEdit] = useState({
+    name: '', category: 'appliance', room: 'kitchen', brand: '', model: '', serial: '',
+    purchaseDate: '', purchasePrice: '', warrantyExpires: '', manualUrl: '', notes: '',
+  });
+  const saveAsset = async (id: string) => {
+    if (!assetEdit.name.trim()) return;
+    setBusy(true); setError(null);
+    const { data } = await lensRun(DOMAIN, 'inventory-update', {
+      id, ...assetEdit, purchasePrice: Number(assetEdit.purchasePrice) || 0,
+    });
+    if (data.ok) { setEditingAsset(null); await load(); }
+    else setError(data.error || 'Failed to update asset');
+    setBusy(false);
+  };
+
   const assets = result?.assets || [];
 
   return (
@@ -140,16 +159,18 @@ export function HomeInventory() {
             <label className="text-xs text-gray-400">Purchase date
               <input value={form.purchaseDate} onChange={(e) => setForm((f) => ({ ...f, purchaseDate: e.target.value }))} type="date" className="input-lattice w-full" />
             </label>
-            <input value={form.purchasePrice} onChange={(e) => setForm((f) => ({ ...f, purchasePrice: e.target.value }))} type="number" placeholder="Purchase price $" className="input-lattice" />
+            <input value={form.purchasePrice} onChange={(e) => setForm((f) => ({ ...f, purchasePrice: e.target.value }))} type="number" min={0} placeholder="Purchase price $" className="input-lattice" />
+            {Number(form.purchasePrice) < 0 ? <span role="note" className="col-span-full text-xs text-rose-300">Price can&apos;t be negative.</span> : Number(form.purchasePrice) > MAX_MONEY && <span role="note" className="col-span-full text-xs text-rose-300">Price must be ${MAX_MONEY.toLocaleString()} or less.</span>}
             <label className="text-xs text-gray-400">Warranty expires
               <input value={form.warrantyExpires} onChange={(e) => setForm((f) => ({ ...f, warrantyExpires: e.target.value }))} type="date" className="input-lattice w-full" />
             </label>
           </div>
           <input value={form.manualUrl} onChange={(e) => setForm((f) => ({ ...f, manualUrl: e.target.value }))} placeholder="Manual URL (optional)" className="input-lattice w-full" />
           <input value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} placeholder="Notes" className="input-lattice w-full" />
-          <button onClick={add} disabled={busy || !form.name.trim()} className="btn-neon green w-full text-sm disabled:opacity-50">
+          <button onClick={add} disabled={busy || !form.name.trim() || moneyOutOfRange(form.purchasePrice)} className="btn-neon green w-full text-sm disabled:opacity-50">
             {busy ? 'Saving...' : 'Add Asset'}
           </button>
+          {!form.name.trim() && <span role="note" className="text-xs text-gray-400">Asset name is required.</span>}
         </div>
       )}
 
@@ -169,8 +190,52 @@ export function HomeInventory() {
                     <p className="text-sm font-medium text-white truncate">{a.name}</p>
                     <p className="text-xs text-gray-400">{a.category} · {a.room.replace(/_/g, ' ')}{a.brand ? ` · ${a.brand}` : ''}{a.model ? ` ${a.model}` : ''}</p>
                   </div>
-                  <button aria-label="Delete" onClick={() => remove(a.id)} disabled={busy} className="text-gray-400 hover:text-red-400 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
+                  <span className="flex items-center gap-1">
+                    <button type="button" aria-label={`Edit asset ${a.name}`} disabled={busy}
+                      onClick={() => {
+                        setEditingAsset(editingAsset === a.id ? null : a.id);
+                        setAssetEdit({
+                          name: a.name, category: a.category, room: a.room, brand: a.brand || '', model: a.model || '',
+                          serial: a.serial || '', purchaseDate: a.purchaseDate || '', purchasePrice: String(a.purchasePrice || ''),
+                          warrantyExpires: a.warrantyExpires || '', manualUrl: a.manualUrl || '', notes: a.notes || '',
+                        });
+                      }}
+                      className="text-gray-400 hover:text-gray-100 p-1">
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <StickyDeleteConfirm onConfirm={() => remove(a.id)} armAriaLabel="Delete" confirmAriaLabel="Confirm delete" className="text-gray-400 hover:text-red-400 p-1" armLabel={<Trash2 className="w-3.5 h-3.5" />} disabled={busy} />
+                  </span>
                 </div>
+                {editingAsset === a.id && (
+                  <div className="space-y-2 border-t border-lattice-border pt-2">
+                    <input value={assetEdit.name} onChange={(e) => setAssetEdit((f) => ({ ...f, name: e.target.value }))}
+                      aria-label="Edit asset name" placeholder="Asset name" className="input-lattice w-full" />
+                    <div className="grid grid-cols-2 gap-2">
+                      <input value={assetEdit.brand} onChange={(e) => setAssetEdit((f) => ({ ...f, brand: e.target.value }))}
+                        aria-label="Edit asset brand" placeholder="Brand" className="input-lattice" />
+                      <input value={assetEdit.model} onChange={(e) => setAssetEdit((f) => ({ ...f, model: e.target.value }))}
+                        aria-label="Edit asset model" placeholder="Model" className="input-lattice" />
+                      <input value={assetEdit.serial} onChange={(e) => setAssetEdit((f) => ({ ...f, serial: e.target.value }))}
+                        aria-label="Edit asset serial" placeholder="Serial" className="input-lattice" />
+                      <input value={assetEdit.purchasePrice} onChange={(e) => setAssetEdit((f) => ({ ...f, purchasePrice: e.target.value }))}
+                        aria-label="Edit asset purchase price" type="number" min={0} placeholder="Purchase price" className="input-lattice" />
+                      {moneyOutOfRange(assetEdit.purchasePrice) && <span role="note" className="col-span-full text-xs text-rose-300">Price must be between $0 and ${MAX_MONEY.toLocaleString()}.</span>}
+                      <input value={assetEdit.purchaseDate} onChange={(e) => setAssetEdit((f) => ({ ...f, purchaseDate: e.target.value }))}
+                        aria-label="Edit asset purchase date" type="date" className="input-lattice" />
+                      <input value={assetEdit.warrantyExpires} onChange={(e) => setAssetEdit((f) => ({ ...f, warrantyExpires: e.target.value }))}
+                        aria-label="Edit asset warranty expiry" type="date" className="input-lattice" />
+                    </div>
+                    <input value={assetEdit.notes} onChange={(e) => setAssetEdit((f) => ({ ...f, notes: e.target.value }))}
+                      aria-label="Edit asset notes" placeholder="Notes" className="input-lattice w-full" />
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => saveAsset(a.id)} disabled={busy || !assetEdit.name.trim() || moneyOutOfRange(assetEdit.purchasePrice)}
+                        className="btn-primary px-3 py-1.5 text-xs disabled:opacity-40">Save changes</button>
+                      <button type="button" onClick={() => setEditingAsset(null)}
+                        className="btn-secondary px-3 py-1.5 text-xs">Cancel</button>
+                      {!assetEdit.name.trim() && <span role="note" className="text-xs text-gray-400 self-center">Name is required.</span>}
+                    </div>
+                  </div>
+                )}
                 <div className="flex items-center gap-3 text-xs">
                   <span className={`flex items-center gap-1 ${w.cls}`}><WIcon className="w-3.5 h-3.5" />{w.label}</span>
                   {a.daysToExpiry != null && a.warrantyStatus !== 'expired' && (

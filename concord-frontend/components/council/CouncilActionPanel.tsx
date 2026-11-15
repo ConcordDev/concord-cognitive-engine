@@ -6,6 +6,7 @@
  * mint/DM/publish/agent.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import {
   Gavel, MessagesSquare, Vote, FileText, Scale,
@@ -13,7 +14,7 @@ import {
   Loader2, Check, AlertTriangle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, councilRejectSentence } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
@@ -33,8 +34,12 @@ type Feedback = { kind: 'ok' | 'err'; text: string } | null;
 type ActionId = 'deliberate' | 'vote' | 'minutes' | 'resolve' | 'mint' | 'dm' | 'publish' | 'agent';
 
 function pickMessage(e: unknown): string {
-  const ax = e as { response?: { data?: { error?: string } }; message?: string };
-  return ax?.response?.data?.error ?? ax?.message ?? 'request failed';
+  const ax = e as { response?: { data?: { error?: string; reason?: string; score?: number; minScore?: number } }; message?: string };
+  const data = ax?.response?.data;
+  const error = data?.error;
+  const why = councilRejectSentence(data?.reason, data?.score, data?.minScore);
+  if (error && why) return `${error}. ${why}`;
+  return error ?? ax?.message ?? 'request failed';
 }
 
 // Shapes mirror the REAL server/domains/council.js handler RETURNS (the canonical
@@ -153,11 +158,33 @@ export function CouncilActionPanel() {
   async function actPublish() {
     if (!minutesResult) { err('Generate minutes first.'); return; }
     setBusy('publish'); setFeedback(null);
+    const decisions = (minutesResult.decisions || []).map((d) => d.decision).filter(Boolean);
+    const actions = (minutesResult.actionItems || []).map((a) => [a.assignee, a.task].filter(Boolean).join(': ')).filter(Boolean);
+    const motion = motionText.trim();
+    const body = [
+      motion ? `Motion: ${motion}` : '',
+      decisions.length ? `Decisions: ${decisions.join('; ')}` : '',
+      actions.length ? `Action items: ${actions.join('; ')}` : '',
+    ].filter(Boolean).join('\n');
+    const claims = decisions.length ? decisions : (motion ? [motion] : []);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Public minutes — ${motionText.slice(0, 60)}`, tags: ['council', 'minutes', 'public'], source: 'council:minutes:publish', meta: { visibility: 'public', consent: { allowCitations: true }, minutes: { motion: motionText, decisions: minutesResult.decisions, actionItems: minutesResult.actionItems, voteOutcome: voteResult?.passed ? 'passed' : 'failed' } } }, 'knowledge', ['private', 'public_view', 'social_post']) });
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({
+          title: `Public minutes — ${motion.slice(0, 60) || 'meeting'}`,
+          content: body,
+          visibility: 'public',
+          human: { summary: body.slice(0, 320) },
+          core: { claims, nextActions: actions },
+          tags: ['council', 'minutes', 'public'],
+          source: 'council:minutes:publish',
+          meta: { visibility: 'public', consent: { allowCitations: true }, minutes: { motion, decisions: minutesResult.decisions, actionItems: minutesResult.actionItems, voteOutcome: voteResult?.passed ? 'passed' : 'failed' } },
+        }, 'knowledge', ['private', 'public_view', 'social_post']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-        if (!newId) throw new Error('No DTU id.');
+        if (!newId) {
+          const data = r.data as { error?: string; reason?: string; score?: number; minScore?: number } | undefined;
+          const why = councilRejectSentence(data?.reason, data?.score, data?.minScore);
+          throw new Error(data?.error && why ? `${data.error}. ${why}` : (data?.error || 'No DTU id.'));
+        }
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
         if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
         return newId as string;
@@ -171,8 +198,8 @@ export function CouncilActionPanel() {
     try {
       const task = `Council motion: "${motionText}". ${voteResult ? `Vote: ${voteResult.passed ? 'passed' : 'failed'} (${voteResult.tally?.for ?? 0}/${voteResult.tally?.against ?? 0}/${voteResult.tally?.abstain ?? 0}).` : ''} Draft a 2-sentence call-for-amendment that addresses the dissent without weakening the core proposal. Plain text.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Amendment draft ready.'); } else err('Agent returned empty.');
+      const reply = readAgentReply(r.data);
+      if (reply.ok) { setAgentReply(reply.text); ok('Amendment draft ready.'); } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 
@@ -195,16 +222,16 @@ export function CouncilActionPanel() {
         <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">DAO · IBIS</span>
       </header>
 
-      <input type="text" value={motionText} onChange={(e) => setMotionText(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Motion text" />
+      <input aria-label="Motion text" type="text" value={motionText} onChange={(e) => setMotionText(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Motion text" />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-        <div><label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Members (one per line)</label><textarea value={members} onChange={(e) => setMembers(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-amber-200 font-mono focus:outline-none focus:ring-2 focus:ring-amber-400/40 resize-none" /></div>
-        <div><label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Positions (name for/against/abstain)</label><textarea value={positions} onChange={(e) => setPositions(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-amber-200 font-mono focus:outline-none focus:ring-2 focus:ring-amber-400/40 resize-none" /></div>
-        <div><label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Conflict description (for resolve)</label><textarea value={conflict} onChange={(e) => setConflict(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-amber-200 font-mono focus:outline-none focus:ring-2 focus:ring-amber-400/40 resize-none" placeholder="What's the disagreement?" /></div>
+        <div><label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Members (one per line)</label><textarea aria-label="Members (one per line)" value={members} onChange={(e) => setMembers(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-amber-200 font-mono focus:outline-none focus:ring-2 focus:ring-amber-400/40 resize-none" /></div>
+        <div><label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Positions (name for/against/abstain)</label><textarea aria-label="Positions (name for/against/abstain)" value={positions} onChange={(e) => setPositions(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-amber-200 font-mono focus:outline-none focus:ring-2 focus:ring-amber-400/40 resize-none" /></div>
+        <div><label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Conflict description (for resolve)</label><textarea aria-label="Conflict description (for resolve)" value={conflict} onChange={(e) => setConflict(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-amber-200 font-mono focus:outline-none focus:ring-2 focus:ring-amber-400/40 resize-none" placeholder="What's the disagreement?" /></div>
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
-        <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient (chair / secretary)" />
+        <input aria-label="DM recipient (chair / secretary)" type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient (chair / secretary)" />
         <RecallSlot ctl={dmRecall} />
         <RecallSlot ctl={publishRecall} />
       </div>
@@ -233,7 +260,7 @@ export function CouncilActionPanel() {
               {deliberateResult.recommendation && <span className="text-[10px] font-semibold text-cyan-200">{deliberateResult.recommendation}{typeof deliberateResult.weightedScore === 'number' ? ` · ${deliberateResult.weightedScore}` : ''}</span>}
             </div>
             {deliberateResult.message && !deliberateResult.evaluations?.length && <p className="text-[11px] text-zinc-400 italic mt-1">{deliberateResult.message}</p>}
-            {deliberateResult.evaluations?.map((e, i) => <div key={i} className="text-[11px] text-zinc-300"><strong className="text-cyan-200">{e.voice}:</strong> <span className="capitalize">{e.position}</span> <span className="text-zinc-500">({e.score})</span>{e.reasoning && <span className="text-zinc-400"> — {e.reasoning}</span>}</div>)}
+            {deliberateResult.evaluations?.map((e, i) => <div key={i} className="text-[11px] text-zinc-300"><strong className="text-cyan-200">{e.voice}:</strong> <span className="capitalize">{e.position}</span> <span className="text-zinc-400">({e.score})</span>{e.reasoning && <span className="text-zinc-400"> — {e.reasoning}</span>}</div>)}
             {deliberateResult.consensus && <div className="text-[11px] text-cyan-300 italic mt-1">Consensus: {deliberateResult.consensus}</div>}
           </div>
         )}
@@ -250,16 +277,16 @@ export function CouncilActionPanel() {
         )}
         {minutesResult && (
           <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5 max-h-40 overflow-y-auto">
-            <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">{minutesResult.title || 'Minutes'}{minutesResult.date && <span className="text-zinc-500 normal-case font-normal"> · {minutesResult.date}</span>}</div>
+            <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">{minutesResult.title || 'Minutes'}{minutesResult.date && <span className="text-zinc-400 normal-case font-normal"> · {minutesResult.date}</span>}</div>
             {typeof minutesResult.attendees === 'number' && <p className="text-[11px] text-zinc-400 mt-1">{minutesResult.attendees} attendee{minutesResult.attendees !== 1 ? 's' : ''}</p>}
-            {minutesResult.decisions?.length ? <ul className="text-[11px] text-zinc-300 list-disc list-inside">{minutesResult.decisions.map((d, i) => <li key={i}>{d.decision} <span className="text-zinc-500">({d.passed ? 'passed' : 'failed'} · {d.votedBy})</span></li>)}</ul> : null}
+            {minutesResult.decisions?.length ? <ul className="text-[11px] text-zinc-300 list-disc list-inside">{minutesResult.decisions.map((d, i) => <li key={i}>{d.decision} <span className="text-zinc-400">({d.passed ? 'passed' : 'failed'} · {d.votedBy})</span></li>)}</ul> : null}
             {minutesResult.actionItems?.length ? <div className="mt-1 text-[10px] text-purple-300 font-semibold uppercase tracking-wider">Action items</div> : null}
             {minutesResult.actionItems?.map((a, i) => <div key={i} className="text-[11px] text-zinc-300"><strong className="text-purple-200">{a.assignee}:</strong> {a.task}{a.dueDate && <span className="text-zinc-400"> · {a.dueDate}</span>}</div>)}
           </div>
         )}
         {resolveResult && (
           <div className="rounded-md border border-orange-500/30 bg-orange-500/5 p-2.5">
-            <div className="text-[10px] uppercase tracking-wider text-orange-300 font-semibold">Resolution{resolveResult.commonGround && <span className="text-zinc-500 normal-case font-normal"> · {resolveResult.commonGround}</span>}</div>
+            <div className="text-[10px] uppercase tracking-wider text-orange-300 font-semibold">Resolution{resolveResult.commonGround && <span className="text-zinc-400 normal-case font-normal"> · {resolveResult.commonGround}</span>}</div>
             {resolveResult.suggestedApproach && <p className="text-[11px] text-zinc-300 mt-1">{resolveResult.suggestedApproach}</p>}
             {resolveResult.steps?.length ? <ol className="text-[11px] text-zinc-300 list-decimal list-inside mt-1">{resolveResult.steps.slice(0, 5).map((s, i) => <li key={i}>{s}</li>)}</ol> : null}
           </div>

@@ -11,6 +11,7 @@ import {
   History, RotateCcw, CheckCircle, Filter, AlertCircle, CalendarClock, AlarmClock,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { TimelineView } from '@/components/viz';
 import type { TimelineEvent } from '@/components/viz';
 import { WorkflowBuilder, type Zap as ZapType } from './WorkflowBuilder';
@@ -234,10 +235,7 @@ export function WorkflowsPanel() {
                   className="text-gray-400 hover:text-white disabled:opacity-40">
                   {zap.enabled ? <ToggleRight className="w-6 h-6 text-green-500" /> : <ToggleLeft className="w-6 h-6" />}
                 </button>
-                <button onClick={() => remove(zap.id)} disabled={busy === zap.id} aria-label="Delete workflow"
-                  className="text-gray-400 hover:text-red-400 disabled:opacity-40">
-                  <Trash2 className="w-5 h-5" />
-                </button>
+                <StickyDeleteConfirm onConfirm={() => remove(zap.id)} disabled={busy === zap.id} armAriaLabel={`Delete workflow ${zap.name || zap.id}`} confirmAriaLabel={`Confirm delete workflow ${zap.name || zap.id}`} className="text-gray-400 hover:text-red-400 disabled:opacity-40" armLabel={<Trash2 className="w-5 h-5" />} />
               </div>
             </div>
 

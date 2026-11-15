@@ -60,6 +60,12 @@ export function LabPanel() {
     });
     setBusy(false);
     if (r.data.ok) {
+      // Recording a result against an order completes it: the pending
+      // order row is replaced by the result (FIX-veterinary-009).
+      if (fulfillingOrderId) {
+        await lensRun('veterinary', 'lab-delete', { id: fulfillingOrderId });
+        setFulfillingOrderId(null);
+      }
       setPatientName('');
       setTitle('');
       setFindings('');
@@ -70,6 +76,36 @@ export function LabPanel() {
     } else {
       setError(r.data.error || 'failed to attach result');
     }
+  };
+
+  // FIX-veterinary-009: an order flow on the existing substrate — an
+  // order is a pending record carrying what was ordered (no findings
+  // yet); recording its result replaces it in the list below.
+  const [fulfillingOrderId, setFulfillingOrderId] = useState<string | null>(null);
+  const isOrder = (r: VetLabResult) => r.flag === 'pending' && !(r.findings || '').trim();
+  const orders = results.filter(isOrder);
+  const recordedResults = results.filter((r) => !isOrder(r));
+  const placeOrder = async () => {
+    if (!patientName.trim() || !title.trim()) { setError('An order needs the patient and the test or study name.'); return; }
+    setBusy(true);
+    const r = await lensRun('veterinary', 'lab-attach', {
+      patientName, kind, title, findings: '', attachmentUrl: '', flag: 'pending', date,
+    });
+    setBusy(false);
+    if (r.data.ok) {
+      setTitle('');
+      await load();
+    } else {
+      setError(r.data.error || 'failed to place order');
+    }
+  };
+  const beginFulfill = (o: VetLabResult) => {
+    setFulfillingOrderId(o.id);
+    setPatientName(o.patientName);
+    setKind(o.kind);
+    setTitle(o.title);
+    setFindings('');
+    setFlag('normal');
   };
 
   const del = async (id: string) => {
@@ -142,15 +178,45 @@ export function LabPanel() {
           rows={2}
           className="w-full rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-sm text-white"
         />
-        <button
-          onClick={attach}
-          disabled={busy || !patientName.trim()}
-          className="flex w-full items-center justify-center gap-2 rounded bg-cyan-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-cyan-500 disabled:opacity-50"
-        >
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-          Attach lab/imaging result
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={attach}
+            disabled={busy || !patientName.trim()}
+            className="flex flex-1 items-center justify-center gap-2 rounded bg-cyan-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-cyan-500 disabled:opacity-50"
+          >
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            {fulfillingOrderId ? 'Record result for this order' : 'Attach lab/imaging result'}
+          </button>
+          <button
+            onClick={placeOrder}
+            disabled={busy || !patientName.trim() || !title.trim()}
+            className="flex items-center justify-center gap-2 rounded border border-cyan-700/60 px-3 py-1.5 text-sm font-medium text-cyan-200 hover:bg-cyan-950/50 disabled:opacity-50"
+          >
+            Order test / study
+          </button>
+        </div>
+        {fulfillingOrderId && (
+          <p className="text-[11px] text-cyan-300">Recording the result for the order below — saving replaces the order with this result.</p>
+        )}
       </div>
+
+      {orders.length > 0 && (
+        <div className="space-y-2">
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Orders awaiting results ({orders.length})</h4>
+          {orders.map((o) => (
+            <div key={o.id} className="flex items-center justify-between rounded-lg border border-blue-500/30 bg-blue-500/5 p-3">
+              <div>
+                <p className="text-sm font-semibold text-white">{o.title} <span className="ml-1 rounded bg-blue-400/10 px-1.5 py-0.5 text-[10px] text-blue-300">ordered</span></p>
+                <p className="text-xs text-zinc-400">{o.patientName} · {o.kind}{o.date ? ` · ${o.date}` : ''}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={() => beginFulfill(o)} className="rounded bg-cyan-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-cyan-500">Record result</button>
+                <button onClick={() => void del(o.id)} aria-label={`Cancel order ${o.title}`} className="rounded border border-zinc-700 p-1.5 text-zinc-400 hover:text-rose-300"><Trash2 className="h-3.5 w-3.5" /></button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {error && (
         <div className="rounded border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
@@ -162,14 +228,14 @@ export function LabPanel() {
         <div className="flex items-center gap-2 text-xs text-zinc-400">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading results…
         </div>
-      ) : results.length === 0 ? (
+      ) : recordedResults.length === 0 && orders.length === 0 ? (
         <div className="rounded border border-dashed border-zinc-800 py-8 text-center text-sm text-zinc-400">
           <FlaskConical className="mx-auto mb-2 h-8 w-8 opacity-30" />
           No lab/imaging results attached.
         </div>
       ) : (
         <div className="space-y-2">
-          {results.map((r) => (
+          {recordedResults.map((r) => (
             <div key={r.id} className="rounded-lg border border-zinc-800 bg-zinc-900 p-3">
               <div className="flex items-center justify-between">
                 <div>

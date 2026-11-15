@@ -290,6 +290,21 @@ describe("art — custom brush presets", () => {
     const r = call("brush-presets", ctxA, {});
     assert.ok(r.result.brushes.some((b) => b.name === "My Inker" && b.custom));
   });
+
+  it("keeps harness fixture presets out of the list and refuses new ones at save", () => {
+    call("brush-preset-save", ctxA, { name: "My Inker", tool: "ink", size: 12, opacity: 0.8 });
+    // A fixture row written straight into STATE (the shape the QA
+    // harness left in the account) never reaches the list…
+    const bucket = globalThis._concordSTATE.artLens.brushPresets.get("user_a");
+    bucket.push({ id: "brush_fixture", name: "tz1026164702gi name harness value", tool: "ink", size: 8, opacity: 1, custom: true });
+    const r = call("brush-presets", ctxA, {});
+    assert.ok(!r.result.brushes.some((b) => b.id === "brush_fixture"));
+    assert.ok(r.result.brushes.some((b) => b.name === "My Inker"));
+    // …and the save path refuses the harness template at the door.
+    const refused = call("brush-preset-save", ctxA, { name: "tz99999999zz name harness value", tool: "ink" });
+    assert.equal(refused.ok, false);
+    assert.match(refused.error, /real name/);
+  });
 });
 
 // ─── Procreate / Krita parity backlog ───────────────────────────────

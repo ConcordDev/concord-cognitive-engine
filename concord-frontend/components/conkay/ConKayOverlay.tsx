@@ -1,6 +1,7 @@
 'use client';
 
 import { getApiBase } from '@/lib/api/base';
+import { shouldIgnoreLensHotkey } from '@/lib/a11y/editable-target';
 import { artifactKey, parseSseBuffer, stripToolCallLeak } from '@/lib/conkay/agent-stream';
 import { ChatArtifacts, type ChatArtifact } from '@/components/chat/ChatArtifacts';
 
@@ -254,7 +255,12 @@ export function ConKayOverlay() {
   // ── summon / dismiss ────────────────────────────────────────────────
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && (e.key === 'j' || e.key === 'J')) {
+      // Ctrl/Cmd+Shift+J is the browser's DevTools console — with Shift held
+      // the key reports 'J', so the shifted combo must never match here.
+      // And a field keeps Ctrl/Cmd+J while the user is typing, under the
+      // same guard as every other lens hotkey (FIX-linguistics-007).
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && (e.key === 'j' || e.key === 'J')) {
+        if (shouldIgnoreLensHotkey(e)) return;
         e.preventDefault();
         setOpen((o) => !o);
       } else if (e.key === 'Escape' && open) {
@@ -1553,7 +1559,10 @@ export function ConKayOverlay() {
         const parsed = parseSseBuffer(buf);
         buf = parsed.rest;
         for (const { event, data } of parsed.events) {
-          if (event === 'artifact') {
+          if (event.startsWith('cockpit:')) {
+            // GB-1500 CKPT-20 — a cockpit run the server started for this turn; the store keeps its id.
+            if (data?.runId) useConkayRunStore.getState().cockpitRunSeen(String(data.runId));
+          } else if (event === 'artifact') {
             addArtifact(data);
             syncMessage();
           } else if (event === 'tool_call') {

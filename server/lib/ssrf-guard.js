@@ -125,7 +125,50 @@ function isPrivateIPv6(ip) {
   // IPv4-mapped — check the embedded v4
   const mapped = isIPv4MappedIPv6(s);
   if (mapped && isPrivateIPv4(mapped)) return true;
+  // NAT64 translation prefixes carry an IPv4 in the last 32 bits —
+  // check the embedded v4 the same way. A public embedded address is
+  // the prefix's designed function and stays reachable.
+  const nat64 = nat64EmbeddedIPv4(s);
+  if (nat64 && isPrivateIPv4(nat64)) return true;
   return false;
+}
+
+// Expand an IPv6 address to its eight 16-bit groups, or null when the
+// text is not a well-formed IPv6 address. Handles "::" compression and
+// a dotted-quad tail.
+function ipv6Groups(ip) {
+  let s = ip;
+  const dotted = s.match(/(\d+\.\d+\.\d+\.\d+)$/);
+  if (dotted) {
+    const [a, b, c, d] = dotted[1].split(".").map(Number);
+    s = s.slice(0, s.length - dotted[1].length)
+      + ((a << 8) | b).toString(16) + ":" + ((c << 8) | d).toString(16);
+  }
+  const halves = s.split("::");
+  if (halves.length > 2) return null;
+  const head = halves[0] ? halves[0].split(":") : [];
+  const tail = halves.length === 2 && halves[1] ? halves[1].split(":") : [];
+  if (halves.length === 1 && head.length !== 8) return null;
+  const missing = 8 - head.length - tail.length;
+  if (missing < 0) return null;
+  const parts = [...head, ...new Array(halves.length === 2 ? missing : 0).fill("0"), ...tail];
+  if (parts.length !== 8) return null;
+  if (parts.some((g) => !/^[0-9a-f]{1,4}$/.test(g))) return null;
+  return parts.map((g) => parseInt(g, 16));
+}
+
+// NAT64 (RFC 6052 well-known prefix 64:ff9b::/96; RFC 8215 local-use
+// prefix 64:ff9b:1::/48): the last 32 bits are an embedded IPv4
+// address. Returns it dotted, or null when the address is not a NAT64
+// translation form.
+function nat64EmbeddedIPv4(ip) {
+  const g = ipv6Groups(ip);
+  if (!g) return null;
+  if (g[0] !== 0x64 || g[1] !== 0xff9b) return null;
+  const wellKnown = g[2] === 0 && g[3] === 0 && g[4] === 0 && g[5] === 0;
+  const localUse = g[2] === 1 && g[3] === 0 && g[4] === 0 && g[5] === 0;
+  if (!wellKnown && !localUse) return null;
+  return `${(g[6] >> 8) & 0xff}.${g[6] & 0xff}.${(g[7] >> 8) & 0xff}.${g[7] & 0xff}`;
 }
 
 // ── Cloud metadata hostnames (defense-in-depth beyond IP checks) ────────────
@@ -242,25 +285,17 @@ export async function validateSafeFetchUrl(urlString, opts = {}) {
 }
 
 /**
- * Fetch a URL using Node's global fetch, but with the resolved IP pinned
- * via a custom `dispatcher` (undici Agent). This eliminates DNS rebinding
- * because the TCP connection lands on the exact IP we validated — not a
- * second-resolve from the URL hostname.
- *
- * If undici isn't available at runtime (older Node?), we fall back to a
- * best-effort fetch with the original hostname and rely on the validation
- * above. That's not perfect, but it's strictly better than no validation.
- *
- * @param {Awaited<ReturnType<typeof validateSafeFetchUrl>> & { ok: true }} check
- * @param {RequestInit} [init]
+ * Construct the pinned dispatcher for one validated check. Any failure
+ * here — the transport module missing, the Agent constructor throwing —
+ * is fatal to the fetch (SB-02): the caller gets an SSRF_PIN_FAILED
+ * error, never a silent degradation to an unpinned fetch.
  */
-export async function fetchWithPinnedIp(check, init = {}) {
-  if (!check || !check.ok) throw new Error("validateSafeFetchUrl failed");
-
+async function buildPinnedDispatcher(check) {
   try {
-    // Lazy require so we don't explode if undici is unavailable.
-    const undici = await import("undici");
-    const { Agent } = undici;
+    if (_dispatcherFactory) return _dispatcherFactory(check);
+    // Lazy import so a missing transport is a construction failure
+    // handled below, not a module-load crash for every consumer.
+    const { Agent } = await import("undici");
 
     const family = check.family === 6 ? 6 : 4;
     const resolvedIp = check.resolvedIp;
@@ -271,15 +306,10 @@ export async function fetchWithPinnedIp(check, init = {}) {
     // `cb(null, resolvedIp, family)` — the older 3-arg dns.lookup
     // shape — which THIS undici/Node combination's connect.lookup does not
     // accept (confirmed directly: it throws "Invalid IP address: undefined"
-    // deep in Node's net internals). Every call silently fell into the
-    // catch-fallback below — the exact same effective bug as `undici` never
-    // being installed at all (a separate issue also fixed this same audit:
-    // undici was missing from package.json entirely, so the try block
-    // ALWAYS threw "Cannot find package 'undici'" regardless of this
-    // signature bug). The correct shape for this connect.lookup — verified
-    // by direct reproduction against a local test server before and after —
-    // is the `{all: true}` dns.lookup array form:
-    // `cb(err, [{ address, family }])`.
+    // deep in Node's net internals). The correct shape for this
+    // connect.lookup — verified by direct reproduction against a local
+    // test server before and after — is the `{all: true}` dns.lookup
+    // array form: `cb(err, [{ address, family }])`.
     const dispatcher = new Agent({
       connect: {
         lookup: (_hostname, _opts, cb) => cb(null, [{ address: resolvedIp, family }]),
@@ -289,47 +319,170 @@ export async function fetchWithPinnedIp(check, init = {}) {
     // no-egress preload can tell a pinned-to-loopback test server apart from a
     // real external call — it used to trust every dispatcher blindly.
     Object.defineProperty(dispatcher, "__concordPinnedIp", { value: resolvedIp });
-
-    // Route through globalThis.fetch (Node's built-in fetch — the same
-    // undici implementation, exposed globally) rather than a separately
-    // imported undici.fetch reference. Not cosmetic: it's the only way
-    // test-time guards apply. tests/preload/no-egress.mjs patches
-    // globalThis.fetch to reject every non-loopback URL under
-    // NODE_ENV=test (so a macro's fetch fails instantly instead of hanging
-    // on a real unreachable host), and individual tests that mock a live
-    // response (`globalThis.fetch = async () => canned`) depend on that
-    // exact global slot being what the code actually calls. Calling an
-    // isolated undici.fetch reference bypassed both: every fetch routed
-    // through this SSRF-guarded chokepoint made a REAL network connection
-    // during tests regardless of NODE_ENV, defeating no-egress's purpose
-    // and every such test's fetch mock (found 2026-07-31 chasing a cluster
-    // of ~40 failing tests across cooking/eco/agriculture/chem/custom/
-    // byo_keys — every domain that flows through fetchJsonWithTimeout ->
-    // fetchPublicUrl -> here). Passing `dispatcher` through globalThis.fetch
-    // pins the connection identically to an explicit undici.fetch call,
-    // since Node's built-in fetch IS undici's implementation.
-    return await globalThis.fetch(check.url, { ...init, dispatcher });
+    return dispatcher;
   } catch (e) {
-    // Fall back to an unpinned (but re-validated) fetch. This is the
-    // documented, honest degraded path for when undici genuinely isn't
-    // installed — but per the audit above, a SILENT catch-all here is what
-    // let both bugs hide for as long as they did: a real internal error
-    // (not just "package missing") looked identical to the expected
-    // degraded case. Distinguish them in the log so a future regression in
-    // this path is observable instead of silently eating the stronger
-    // defense again.
-    if (e?.code !== "ERR_MODULE_NOT_FOUND") {
-      logger.warn("ssrf-guard", "pinned-IP fetch failed for a reason other than a missing undici install — falling back to the weaker unpinned path", { error: e?.message, code: e?.code });
+    const err = new Error(`pinned dispatcher construction failed: ${e?.message || e}`);
+    err.code = "SSRF_PIN_FAILED";
+    logger.error("ssrf-guard", "pinned dispatcher construction failed — refusing the fetch rather than degrading to an unpinned one", { code: err.code, error: e?.message });
+    throw err;
+  }
+}
+
+// Test seam (mirrors public-fetch.js's __setPublicFetchTestTransport):
+// lets a pin force a dispatcher-construction failure to prove the
+// fail-closed behaviour above. Null in production; production code
+// never calls this.
+let _dispatcherFactory = null;
+export function __setPinnedDispatcherFactory(fn) {
+  _dispatcherFactory = typeof fn === "function" ? fn : null;
+}
+
+const SSRF_MAX_REDIRECT_HOPS = 5;
+const SSRF_DEFAULT_MAX_BYTES = 5 * 1024 * 1024;
+const SSRF_DEFAULT_TIMEOUT_MS = 15_000;
+const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
+const NULL_BODY_STATUSES = new Set([204, 205, 304]);
+
+function ssrfError(code, message) {
+  const err = new Error(`${code}: ${message}`);
+  err.code = code;
+  return err;
+}
+
+// Buffer a final response under the byte cap so an unbounded body
+// cannot stream into memory through the guarded path. Statuses that
+// forbid a body, and body-less responses, pass through unchanged.
+async function capResponseBody(res, maxBytes) {
+  if (!res || !res.body || NULL_BODY_STATUSES.has(res.status)) return res;
+  const len = Number(res.headers?.get?.("content-length"));
+  if (Number.isFinite(len) && len > maxBytes) {
+    try { await res.body.cancel(); } catch { /* already refused */ }
+    throw ssrfError("SSRF_BODY_TOO_LARGE", `response body exceeds the ${maxBytes}-byte cap`);
+  }
+  if (typeof res.body.getReader === "function") {
+    const reader = res.body.getReader();
+    const chunks = [];
+    let total = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        try { await reader.cancel(); } catch { /* already refused */ }
+        throw ssrfError("SSRF_BODY_TOO_LARGE", `response body exceeds the ${maxBytes}-byte cap`);
+      }
+      chunks.push(Buffer.from(value));
     }
-    // Re-validate the URL INLINE here so CodeQL's taint tracker sees
-    // the sanitizer adjacent to the fetch. The pinned-IP path above
-    // is the happy path; this fallback only runs if `undici` is not
-    // installed (older Node versions).
-    const reValidated = await validateSafeFetchUrl(check.url);
-    if (!reValidated.ok) {
-      throw new Error(`SSRF guard fallback rejected URL: ${reValidated.error}`);
+    return new Response(Buffer.concat(chunks), {
+      status: res.status,
+      statusText: res.statusText,
+      headers: res.headers,
+    });
+  }
+  const buf = Buffer.from(await res.arrayBuffer());
+  if (buf.byteLength > maxBytes) {
+    throw ssrfError("SSRF_BODY_TOO_LARGE", `response body exceeds the ${maxBytes}-byte cap`);
+  }
+  return new Response(buf, { status: res.status, statusText: res.statusText, headers: res.headers });
+}
+
+/**
+ * Fetch a validated URL with the resolved IP pinned via a custom
+ * `dispatcher` (undici Agent), eliminating DNS rebinding: the TCP
+ * connection lands on the exact IP that was validated.
+ *
+ * Redirects are followed MANUALLY (SB-01): whatever the caller passed,
+ * the transport is told `redirect: "manual"`, and every hop's Location
+ * is resolved against the current URL and re-validated through
+ * validateSafeFetchUrl, then fetched on a NEW dispatcher pinned to
+ * that hop's validated address. At most 5 hops; a refused hop throws
+ * SSRF_BLOCKED; a 6th redirect throws SSRF_TOO_MANY_REDIRECTS.
+ * Credentials (authorization / cookie) never cross an origin boundary.
+ * The final body is capped (default 5 MB) and the whole chain runs
+ * under one timeout (default 15 s); both are overridable per call via
+ * `init.maxBytes` / `init.timeoutMs` (consumed here, never forwarded).
+ * There is NO unpinned fallback (SB-02): if the pinned dispatcher
+ * cannot be constructed, the fetch fails closed with SSRF_PIN_FAILED.
+ *
+ * @param {Awaited<ReturnType<typeof validateSafeFetchUrl>> & { ok: true }} check
+ * @param {RequestInit & { maxBytes?: number, timeoutMs?: number }} [init]
+ */
+export async function fetchWithPinnedIp(check, init = {}) {
+  if (!check || !check.ok) throw new Error("validateSafeFetchUrl failed");
+
+  const maxBytes = Number.isFinite(init.maxBytes) && init.maxBytes > 0 ? init.maxBytes : SSRF_DEFAULT_MAX_BYTES;
+  const timeoutMs = Number.isFinite(init.timeoutMs) && init.timeoutMs > 0 ? init.timeoutMs : SSRF_DEFAULT_TIMEOUT_MS;
+
+  // One timeout for the whole chain, composed with the caller's own
+  // signal when they passed one.
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(new Error("guarded fetch timed out")), timeoutMs);
+  if (typeof timer.unref === "function") timer.unref();
+  const signal = init.signal && typeof AbortSignal.any === "function"
+    ? AbortSignal.any([init.signal, ctl.signal])
+    : (init.signal || ctl.signal);
+
+  let currentCheck = check;
+  let method = String(init.method || "GET").toUpperCase();
+  let body = init.body;
+  const headers = new Headers(init.headers || {});
+
+  try {
+    for (let hop = 0; ; hop++) {
+      const dispatcher = await buildPinnedDispatcher(currentCheck);
+      const hopInit = { ...init, method, headers, redirect: "manual", dispatcher, signal };
+      delete hopInit.maxBytes;
+      delete hopInit.timeoutMs;
+      if (body === undefined) delete hopInit.body; else hopInit.body = body;
+
+      // Route through globalThis.fetch (Node's built-in fetch — the same
+      // undici implementation, exposed globally) rather than a separately
+      // imported undici.fetch reference. Not cosmetic: it's the only way
+      // test-time guards apply. tests/preload/no-egress.mjs patches
+      // globalThis.fetch to reject every non-loopback URL under
+      // NODE_ENV=test, and individual tests that mock a live response
+      // (`globalThis.fetch = async () => canned`) depend on that exact
+      // global slot being what the code actually calls. Passing
+      // `dispatcher` through globalThis.fetch pins the connection
+      // identically to an explicit undici.fetch call, since Node's
+      // built-in fetch IS undici's implementation.
+      const res = await globalThis.fetch(currentCheck.url, hopInit);
+
+      const location = res.headers?.get?.("location");
+      if (!REDIRECT_STATUSES.has(res.status) || !location) {
+        return await capResponseBody(res, maxBytes);
+      }
+      if (hop >= SSRF_MAX_REDIRECT_HOPS) {
+        throw ssrfError("SSRF_TOO_MANY_REDIRECTS", `more than ${SSRF_MAX_REDIRECT_HOPS} redirect hops`);
+      }
+      let nextUrl;
+      try {
+        nextUrl = new URL(location, currentCheck.url);
+      } catch {
+        throw ssrfError("SSRF_BLOCKED", "redirect Location is not a valid URL");
+      }
+      const nextCheck = await validateSafeFetchUrl(nextUrl.toString());
+      if (!nextCheck.ok) {
+        throw ssrfError("SSRF_BLOCKED", `redirect hop ${hop + 2} refused: ${nextCheck.error}`);
+      }
+      // Credentials never cross an origin boundary.
+      if (nextUrl.origin !== new URL(currentCheck.url).origin) {
+        headers.delete("authorization");
+        headers.delete("cookie");
+      }
+      // Fetch-spec method rewriting: 303 turns anything but HEAD into
+      // a bodyless GET; 301/302 do the same for POST.
+      if ((res.status === 303 && method !== "HEAD") || ((res.status === 301 || res.status === 302) && method === "POST")) {
+        method = "GET";
+        body = undefined;
+        headers.delete("content-type");
+        headers.delete("content-length");
+      }
+      try { await res.body?.cancel(); } catch { /* hop body is not needed */ }
+      currentCheck = nextCheck;
     }
-    return fetch(reValidated.url, init);
+  } finally {
+    clearTimeout(timer);
   }
 }
 

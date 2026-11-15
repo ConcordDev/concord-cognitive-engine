@@ -23,14 +23,22 @@ out
 *.swo
 .DS_Store
 
-# Test files
+# Test files. .dockerignore patterns are anchored at the context root, with
+# no implicit "**/", so the nested forms are needed too. Otherwise
+# components/**/*.test.tsx files ship into the image, and next build's
+# type-check fails on their imports of the excluded tests/ helpers.
 test
 tests
 __tests__
+**/__tests__
 *.test.ts
 *.test.tsx
 *.spec.ts
 *.spec.tsx
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
 coverage
 cypress
 e2e

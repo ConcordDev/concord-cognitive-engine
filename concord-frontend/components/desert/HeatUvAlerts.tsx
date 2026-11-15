@@ -132,7 +132,7 @@ export function HeatUvAlerts() {
       <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 space-y-3">
         <div className="flex items-center gap-2">
           <AlertTriangle className="h-4 w-4 text-amber-400" />
-          <h3 className="text-sm font-semibold text-white">Live heat-index / UV alerts</h3>
+          <h2 className="text-sm font-semibold text-white">Live heat-index / UV alerts</h2>
         </div>
         <div className="flex flex-wrap gap-2">
           <input

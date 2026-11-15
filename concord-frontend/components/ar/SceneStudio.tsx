@@ -5,6 +5,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { Icon as SvgIcon } from '@/components/icons/Icon';
@@ -304,9 +305,10 @@ function Viewport({ scene, selectedId, onSelect, canvasRef, simRunning, meshRefs
 // ---------------------------------------------------------------------------
 // Main studio surface.
 // ---------------------------------------------------------------------------
-export function SceneStudio() {
+export function SceneStudio({ onCountsStale }: { onCountsStale?: () => void } = {}) {
   const [scenes, setScenes] = useState<SceneSummary[]>([]);
   const [scene, setScene] = useState<SceneModel | null>(null);
+  const [transformDraft, setTransformDraft] = useState<Record<string, string>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [panel, setPanel] = useState<'inspector' | 'behaviors' | 'animation' | 'targets' | 'publish' | 'capture'>('inspector');
   // The real react-three-fiber WebGL canvas the Viewport renders into —
@@ -319,6 +321,7 @@ export function SceneStudio() {
   const [validation, setValidation] = useState<any>(null);
   const [timeline, setTimeline] = useState<any>(null);
   const [targets, setTargets] = useState<ImageTarget[]>([]);
+  const [confirmDeleteTarget, setConfirmDeleteTarget] = useState<string | null>(null);
   const [publishRec, setPublishRec] = useState<PublishRecord | null>(null);
   const [webxr, setWebxr] = useState<WebXRPlan | null>(null);
 
@@ -429,11 +432,17 @@ export function SceneStudio() {
   const loadScenes = useCallback(async () => {
     const r = await lensRun('ar', 'sceneList', {});
     if (r.data?.ok) setScenes((r.data.result as any)?.scenes || []);
-  }, []);
+    // The page header's counts derive from this same list — tell the
+    // page to re-read them on every reload, so the header can never
+    // sit at a stale snapshot after a save/delete (FIX-ar-003).
+    onCountsStale?.();
+  }, [onCountsStale]);
   const loadTargets = useCallback(async () => {
     const r = await lensRun('ar', 'imageTargetList', {});
     if (r.data?.ok) setTargets((r.data.result as any)?.targets || []);
-  }, []);
+    // Same discipline for the image-target count (FIX-ar-010).
+    onCountsStale?.();
+  }, [onCountsStale]);
 
   useEffect(() => {
     loadScenes();
@@ -507,14 +516,17 @@ export function SceneStudio() {
 
   const saveScene = async () => {
     if (!scene) return;
+    const sceneName = String(scene.name || '').trim();
+    if (!sceneName) { flash('Scene name is required.'); return; }
+    if (sceneName.length > 200) { flash('Scene name must be 200 characters or fewer.'); return; }
     setBusy(true);
-    const r = await lensRun('ar', 'sceneSave', { scene });
+    const r = await lensRun('ar', 'sceneSave', { scene: { ...scene, name: sceneName } });
     setBusy(false);
     if (r.data?.ok) {
       setScene((r.data.result as any).scene);
       flash('Scene saved.');
       loadScenes();
-    } else { flash(r.data?.error || 'Save failed.'); }
+    } else { flash(r.data?.message || r.data?.error || 'Save failed.'); }
   };
 
   const deleteScene = async (id: string) => {
@@ -579,6 +591,18 @@ export function SceneStudio() {
     setBusy(false);
     if (r.data?.ok) { setTgName(''); loadTargets(); flash('Image target compiled.'); }
     else { flash(r.data?.error || 'Compile failed.'); }
+  };
+
+  // Two-step delete (FIX-ar-015): the first click arms the confirm on
+  // that card; the second removes the target server-side.
+  const deleteTarget = async (id: string) => {
+    if (confirmDeleteTarget !== id) { setConfirmDeleteTarget(id); return; }
+    setConfirmDeleteTarget(null);
+    setBusy(true);
+    const r = await lensRun('ar', 'imageTargetDelete', { targetId: id });
+    setBusy(false);
+    if (r.data?.ok) { loadTargets(); flash('Image target deleted.'); }
+    else { flash(r.data?.error || 'Delete failed.'); }
   };
 
   const addObject = () => {
@@ -646,10 +670,7 @@ export function SceneStudio() {
                     {s.anchor} anchor &middot; {s.objectCount} objects &middot; {s.behaviorCount} behaviors &middot; v{s.version}
                   </p>
                 </button>
-                <button onClick={() => deleteScene(s.id)} className={ds.btnGhost} aria-label="Delete scene">
-                  <Trash2 className="w-4 h-4 text-red-400" />
-                  <span>Delete scene</span>
-                </button>
+                <StickyDeleteConfirm onConfirm={() => { void deleteScene(s.id); }} className={ds.btnGhost} armAriaLabel={`Delete scene ${s.name}`} confirmLabel={`Delete “${s.name}”?`} confirmAriaLabel={`Confirm delete scene ${s.name}`} armLabel={<><Trash2 className="w-4 h-4 text-red-400" /><span>Delete scene</span></>} />
               </div>
             ))}
           </div>
@@ -677,9 +698,7 @@ export function SceneStudio() {
         <div className="flex items-center gap-2">
           {busy && <span className="text-xs text-neon-purple animate-pulse">working…</span>}
           {scene.id ? (
-            <button onClick={() => deleteScene(scene.id)} className={ds.btnGhost} disabled={busy} aria-label="Delete scene">
-              <Trash2 className="w-4 h-4 text-red-400" /> Delete scene
-            </button>
+            <StickyDeleteConfirm onConfirm={() => { void deleteScene(scene.id); }} className={ds.btnGhost} disabled={busy} armAriaLabel={`Delete scene ${scene.name || ''}`.trim()} confirmLabel={`Delete “${scene.name || 'scene'}”?`} confirmAriaLabel="Confirm delete scene" armLabel={<><Trash2 className="w-4 h-4 text-red-400" /> Delete scene</>} />
           ) : null}
           <button onClick={saveScene} className={ds.btnPrimary} disabled={busy}><Save className="w-4 h-4" /> Save</button>
         </div>
@@ -836,10 +855,25 @@ export function SceneStudio() {
                             type="number"
                             step={field === 'rotation' ? 0.1 : 0.1}
                             className={cn(ds.input, 'text-xs px-2 py-1')}
-                            value={selectedObject[field][axis]}
-                            onChange={(e) => patchObject(selectedObject.id, {
-                              [field]: { ...selectedObject[field], [axis]: parseFloat(e.target.value) || 0 },
-                            } as Partial<SceneObject>)}
+                            value={transformDraft[`${field}.${axis}`] ?? selectedObject[field][axis]}
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              const key = `${field}.${axis}`;
+                              if (raw === '' || raw === '-' || raw === '.' || raw === '-.' || raw.endsWith('.')) {
+                                setTransformDraft((d) => ({ ...d, [key]: raw }));
+                                return;
+                              }
+                              const n = Number(raw);
+                              if (!Number.isFinite(n)) return;
+                              setTransformDraft((d) => {
+                                const next = { ...d };
+                                delete next[key];
+                                return next;
+                              });
+                              patchObject(selectedObject.id, {
+                                [field]: { ...selectedObject[field], [axis]: n },
+                              } as Partial<SceneObject>);
+                            }}
                             aria-label={`${field} ${axis}`}
                           />
                         ))}
@@ -1039,12 +1073,19 @@ export function SceneStudio() {
               </button>
               {targets.map((t) => (
                 <div key={t.id} className="rounded-md border border-lattice-border p-2 text-xs">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <span className="text-white">{t.name}</span>
-                    <span className={cn(
-                      'px-1.5 py-0.5 rounded',
-                      t.rating === 'excellent' || t.rating === 'good' ? 'bg-green-500/20 text-green-300' : 'bg-amber-500/20 text-amber-300',
-                    )}>{t.rating} {(t.trackabilityScore * 100).toFixed(0)}%</span>
+                    <span className="flex items-center gap-1.5">
+                      <span className={cn(
+                        'px-1.5 py-0.5 rounded',
+                        t.rating === 'excellent' || t.rating === 'good' ? 'bg-green-500/20 text-green-300' : 'bg-amber-500/20 text-amber-300',
+                      )}>{t.rating} {(t.trackabilityScore * 100).toFixed(0)}%</span>
+                      {confirmDeleteTarget === t.id ? (
+                        <button type="button" aria-label={`Confirm delete target ${t.name}`} onClick={() => void deleteTarget(t.id)} disabled={busy} className="px-1 text-[11px] font-medium text-rose-300 hover:text-rose-200 disabled:opacity-40">Confirm</button>
+                      ) : (
+                        <button type="button" aria-label={`Delete target ${t.name}`} onClick={() => void deleteTarget(t.id)} className="p-0.5 text-gray-500 hover:text-rose-300"><Trash2 className="w-3.5 h-3.5" /></button>
+                      )}
+                    </span>
                   </div>
                   <p className="text-gray-400 mt-0.5">{t.physical.widthCm}×{t.physical.heightCm}cm</p>
                   {t.warnings.map((w, i) => <p key={i} className="text-amber-400 mt-0.5">{w}</p>)}

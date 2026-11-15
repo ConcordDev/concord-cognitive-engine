@@ -36,15 +36,15 @@ export function LivePanel({
           </span>
         </div>
       )}
-      <div className="px-6 py-3 flex items-center justify-between"
+      <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 sm:px-6"
         style={{ background: meta.glow.replace(')', ',0.05)') }}>
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-3">
           <Signal className="w-4 h-4" style={{ color: meta.color }} />
-          <span className="text-sm font-mono font-bold tracking-wider" style={{ color: meta.color }}>
+          <span className="whitespace-nowrap text-sm font-mono font-bold tracking-wider" style={{ color: meta.color }}>
             {meta.label}
           </span>
         </div>
-        <div className="flex items-center gap-4 text-xs font-mono text-gray-400">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-mono text-gray-400">
           <span>Signal: <span className="text-white">{(signal * 100).toFixed(1)}%</span></span>
           <span>Gradient: <span className="text-white">{((scan?.gradient ?? 0) * 100).toFixed(1)}%</span></span>
           <span>Pairs: <span className="text-white">{scan?.crossDomainAlignment?.pairsFound ?? 0}</span></span>

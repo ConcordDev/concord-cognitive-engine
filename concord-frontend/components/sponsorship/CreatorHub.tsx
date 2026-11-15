@@ -20,6 +20,7 @@ export function CreatorHub() {
   const [board, setBoard] = useState<SponsorRow[]>([]);
   const [form, setForm] = useState({ title: '', body: '', minTier: 'public', kind: 'post' });
   const [msg, setMsg] = useState<string | null>(null);
+  const [mine, setMine] = useState('');
 
   useEffect(() => {
     void (async () => {
@@ -46,18 +47,23 @@ export function CreatorHub() {
   const flash = (m: string) => { setMsg(m); window.setTimeout(() => setMsg(null), 3500); };
 
   const publish = async () => {
-    if (!creatorId || !form.title.trim()) return;
+    if (!form.title.trim()) return;
     const r = await lensRun('sponsorship', 'publish_post', {
-      creatorId,
+      asSelf: true,
       title: form.title.trim(),
       body: form.body,
       minTier: form.minTier,
       kind: form.kind,
     });
     if (r.data?.ok) {
-      flash('Published.');
+      const id = r.data.result?.post?.creatorId;
+      flash('Published to your hub.');
       setForm({ title: '', body: '', minTier: 'public', kind: 'post' });
-      await loadCreator(creatorId);
+      if (typeof id === 'string' && id) {
+        setMine(id);
+        setCreatorId(id);
+        await loadCreator(id);
+      }
     } else {
       const reason = r.data?.error || 'unknown';
       flash(reason === 'admin_only'
@@ -75,6 +81,7 @@ export function CreatorHub() {
           onChange={(e) => setCreatorId(e.target.value)}
           className="bg-zinc-950 border border-zinc-700 rounded px-2 py-1.5 text-sm text-zinc-100"
         >
+          {mine && <option value={mine}>My hub</option>}
           {creators.map((c) => <option key={c.creatorId} value={c.creatorId}>{c.name}</option>)}
         </select>
       </div>
@@ -85,7 +92,7 @@ export function CreatorHub() {
 
       <section className="bg-zinc-900/80 border border-emerald-800/50 rounded-xl p-3 space-y-2">
         <h3 className="text-xs font-bold text-emerald-300 uppercase tracking-wider">Publish sponsor-only content</h3>
-        <p className="text-[10px] text-zinc-400">Admin-only: NPC creators have no linked player account, so authoring their official dispatches is restricted to operators.</p>
+        <p className="text-[10px] text-zinc-400">Publish posts to your own hub. Official dispatches for a catalog creator stay operator-only.</p>
         <input
           type="text" placeholder="Post title"
           value={form.title}
@@ -123,6 +130,7 @@ export function CreatorHub() {
             disabled={!form.title.trim()}
             className="bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white text-[12px] px-3 py-1.5 rounded focus:outline-none focus:ring-2 focus:ring-amber-500"
           >Publish</button>
+          {!form.title.trim() && <p className="text-[10px] text-zinc-400">Add a title to publish.</p>}
         </div>
       </section>
 

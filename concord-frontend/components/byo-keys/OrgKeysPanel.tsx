@@ -13,7 +13,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { lensRun } from '@/lib/api/client';
 
-interface OrgMember { memberId: string; role: string }
+interface OrgMember { memberId: string; role: string; label?: string | null }
 interface OrgGroup {
   orgId: string;
   label: string;
@@ -75,6 +75,16 @@ export function OrgKeysPanel() {
     refresh();
   };
 
+  const deleteGroup = async (orgId: string) => {
+    await lensRun('byo_keys', 'org_key_delete', { orgId });
+    refresh();
+  };
+
+  const leaveGroup = async (orgId: string) => {
+    await lensRun('byo_keys', 'org_key_leave', { orgId });
+    refresh();
+  };
+
   const canManage = (org: OrgGroup) => org.myRole === 'owner' || org.myRole === 'admin';
 
   return (
@@ -97,12 +107,14 @@ export function OrgKeysPanel() {
         <div className="mb-4 rounded-lg bg-zinc-950 ring-1 ring-zinc-800 p-3 space-y-2">
           <input
             type="text"
+            aria-label="Group label"
             value={createForm.label}
             onChange={(e) => setCreateForm((f) => ({ ...f, label: e.target.value }))}
             placeholder="Group label (e.g. 'Eng team — Anthropic')"
             className="w-full px-2 py-1.5 rounded-md bg-zinc-900 text-zinc-100 text-xs ring-1 ring-zinc-700 focus:ring-amber-500 focus:outline-none"
           />
           <select
+            aria-label="Group provider"
             value={createForm.provider}
             onChange={(e) => setCreateForm((f) => ({ ...f, provider: e.target.value }))}
             className="w-full px-2 py-1.5 rounded-md bg-zinc-900 text-zinc-100 text-xs ring-1 ring-zinc-700 focus:ring-amber-500 focus:outline-none"
@@ -135,6 +147,22 @@ export function OrgKeysPanel() {
                   {org.provider} · {org.memberCount} member{org.memberCount === 1 ? '' : 's'} · you are {org.myRole}
                 </div>
               </div>
+              {org.myRole === 'owner' && (
+                <button
+                  onClick={() => void deleteGroup(org.orgId)}
+                  className="px-2 py-1 rounded-md text-[11px] bg-zinc-800 hover:bg-red-900/50 text-red-300 shrink-0"
+                >
+                  delete group
+                </button>
+              )}
+              {org.myRole !== 'owner' && (
+                <button
+                  onClick={() => void leaveGroup(org.orgId)}
+                  className="px-2 py-1 rounded-md text-[11px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 shrink-0"
+                >
+                  leave
+                </button>
+              )}
               {canManage(org) && (
                 <button
                   onClick={() => setMemberForm(
@@ -152,7 +180,11 @@ export function OrgKeysPanel() {
             <ul className="mt-2 space-y-1">
               {org.members.map((m) => (
                 <li key={m.memberId} className="flex items-center gap-2 text-[11px]">
-                  <span className="font-mono text-zinc-400 flex-1 truncate">{m.memberId}</span>
+                  {m.label ? (
+                    <span className="text-zinc-200 flex-1 truncate" title={m.memberId}>{m.label}</span>
+                  ) : (
+                    <span className="font-mono text-zinc-400 flex-1 truncate" title={m.memberId}>{m.memberId.slice(0, 8)}…</span>
+                  )}
                   <span className={`font-mono ${m.role === 'owner' ? 'text-amber-300' : 'text-zinc-400'}`}>
                     {m.role}
                   </span>
@@ -172,12 +204,14 @@ export function OrgKeysPanel() {
               <div className="mt-2 flex gap-2 border-t border-zinc-800 pt-2">
                 <input
                   type="text"
+                  aria-label="Member user ID"
                   value={memberForm.memberId}
                   onChange={(e) => setMemberForm((f) => f && { ...f, memberId: e.target.value })}
                   placeholder="member user id"
                   className="flex-1 px-2 py-1 rounded-md bg-zinc-900 text-zinc-100 text-[11px] ring-1 ring-zinc-700 focus:ring-amber-500 focus:outline-none"
                 />
                 <select
+                  aria-label="Member role"
                   value={memberForm.role}
                   onChange={(e) => setMemberForm((f) => f && { ...f, role: e.target.value })}
                   className="px-2 py-1 rounded-md bg-zinc-900 text-zinc-100 text-[11px] ring-1 ring-zinc-700 focus:outline-none"

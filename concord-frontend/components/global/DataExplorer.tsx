@@ -11,15 +11,17 @@
  *   - Scatter      → global.scatterExplorer
  *   - Catalog      → global.searchIndicators
  *   - Profile      → global.countryProfile
- * Plus saved/shareable views via global.saveView / listViews / deleteView.
+ * Plus saved/shareable views via global.saveView / listViews / renameView / deleteView.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Map as MapIcon, LineChart as LineIcon, Columns3, ScatterChart as ScatterIcon,
-  Search, Contact, Loader2, AlertTriangle, Bookmark, Trash2, Link2, Play, Copy,
+  Search, Contact, Loader2, AlertTriangle, Bookmark, Trash2, Link2, Play, Pause, Copy, Pencil,
 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { ChartKit } from '@/components/viz';
 import { cn } from '@/lib/utils';
 import { IndicatorPicker } from './IndicatorPicker';
@@ -98,6 +100,7 @@ function fmt(v: number | null | undefined, indicator?: string): string {
 const PALETTE = ['#06b6d4', '#22c55e', '#f59e0b', '#ec4899', '#a855f7', '#ef4444'];
 
 export function DataExplorer() {
+  const queryClient = useQueryClient();
   const [mode, setMode] = useState<Mode>('choropleth');
 
   // --- per-mode inputs ---
@@ -122,11 +125,26 @@ export function DataExplorer() {
   // --- year sliders ---
   const [tsYear, setTsYear] = useState<number | null>(null);
   const [scatterFrame, setScatterFrame] = useState(0);
+  // FIX-global-006: the mode is described as 'animated over time' but
+  // only had a manual slider. Play advances the frame on an interval.
+  const [scatterPlaying, setScatterPlaying] = useState(false);
+  useEffect(() => {
+    if (!scatterPlaying || !scatter || scatter.frames.length < 2) return;
+    const t = setInterval(() => {
+      setScatterFrame((f) => (f + 1) % scatter.frames.length);
+    }, 700);
+    return () => clearInterval(t);
+  }, [scatterPlaying, scatter]);
+  useEffect(() => { if (mode !== 'scatter') setScatterPlaying(false); }, [mode]);
 
   // --- saved views ---
   const [savedViews, setSavedViews] = useState<SavedView[]>([]);
   const [shareLink, setShareLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  // FIX-global-007: the saver names the view; saved views can be renamed.
+  const [viewName, setViewName] = useState('');
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = useState('');
 
   const refreshViews = useCallback(async () => {
     const r = await lensRun<{ views: SavedView[] }>('global', 'listViews', {});
@@ -159,7 +177,7 @@ export function DataExplorer() {
         const r = await lensRun<ScatterResult>('global', 'scatterExplorer', {
           indicatorX, indicatorY, indicatorSize: indicatorSize || undefined, yearsBack: 25,
         });
-        if (r.data.ok && r.data.result) { setScatter(r.data.result); setScatterFrame(r.data.result.frames.length - 1); }
+        if (r.data.ok && r.data.result) { setScatter(r.data.result); setScatterFrame(r.data.result.frames.length - 1); setScatterPlaying(false); }
         else { setScatter(null); setError(r.data.error || 'No data.'); }
       } else if (mode === 'catalog') {
         if (catalogQuery.trim().length < 2) { setError('Enter at least 2 characters.'); setLoading(false); return; }
@@ -192,30 +210,62 @@ export function DataExplorer() {
   }, [mode, indicator, country, tsYear, compareCodes, indicatorX, indicatorY, indicatorSize, catalogQuery]);
 
   const saveCurrentView = useCallback(async () => {
-    const label = `${MODES.find((m) => m.key === mode)?.label}: ${
+    const autoLabel = `${MODES.find((m) => m.key === mode)?.label}: ${
       mode === 'choropleth' || mode === 'compare' ? indicator
       : mode === 'scatter' ? `${indicatorX} × ${indicatorY}`
       : mode === 'catalog' ? catalogQuery
       : `${country} · ${indicator}`
     }`;
+    const label = viewName.trim() || autoLabel;
     const r = await lensRun<{ shareLink: string }>('global', 'saveView', {
       view: { mode, label, config: currentConfig },
     });
     if (r.data.ok && r.data.result) {
       setShareLink(r.data.result.shareLink);
+      setViewName('');
+      // A successful save supersedes an earlier failure's error
+      // (FIX-global-009): the banner outlived the failed Run it belonged
+      // to and sat beside the new share link, claiming the view had
+      // failed while the saved list showed it saved.
+      setError(null);
       void refreshViews();
+      // The page's Saved Views stat card reads its own query; refresh it
+      // too or the count lags the list until a reload (FIX-global-008).
+      void queryClient.invalidateQueries({ queryKey: ['global-saved-views-count'] });
     } else {
       setError(r.data.error || 'Could not save view.');
     }
-  }, [mode, indicator, indicatorX, indicatorY, catalogQuery, country, currentConfig, refreshViews]);
+  }, [mode, indicator, indicatorX, indicatorY, catalogQuery, country, currentConfig, refreshViews, queryClient, viewName]);
+
+  const renameView = useCallback(async (id: string) => {
+    const label = renameDraft.trim();
+    if (!label) return;
+    const r = await lensRun('global', 'renameView', { id, label });
+    if (r.data.ok) {
+      setError(null);
+      setRenamingId(null);
+      void refreshViews();
+    } else {
+      setError(r.data.error || 'Could not rename view.');
+    }
+  }, [renameDraft, refreshViews]);
 
   const deleteView = useCallback(async (id: string) => {
     const r = await lensRun('global', 'deleteView', { id });
-    if (r.data.ok) void refreshViews();
-  }, [refreshViews]);
+    if (r.data.ok) {
+      setError(null);
+      void refreshViews();
+      // Same stat-card refresh as the save path (FIX-global-008): the
+      // card kept showing the deleted view in its count until a reload.
+      void queryClient.invalidateQueries({ queryKey: ['global-saved-views-count'] });
+    }
+  }, [refreshViews, queryClient]);
 
   const applyView = useCallback((v: SavedView) => {
     const c = v.config || {};
+    // Applying a saved view replaces the screen's subject — an earlier
+    // failure's error no longer describes anything visible (FIX-global-009).
+    setError(null);
     setMode(v.mode as Mode);
     if (typeof c.indicator === 'string') setIndicator(c.indicator);
     if (typeof c.indicatorX === 'string') setIndicatorX(c.indicatorX);
@@ -244,6 +294,32 @@ export function DataExplorer() {
     return timeseries.points
       .filter((p) => p.value != null && (tsYear == null || p.year <= tsYear))
       .map((p) => ({ year: p.year, value: p.value }));
+  }, [timeseries, tsYear]);
+
+  // FIX-global-005: the stat cards must describe the VISIBLE window.
+  // They used to render the server result's full-range latest /
+  // pctChange verbatim, so moving the year cutoff shortened the chart
+  // but "Latest" still showed the newest year of the whole series.
+  // Derived here from the same valued points the chart draws, with
+  // the server's own formula (first/last valued point, pct rounded to
+  // 3dp) — at the default cutoff (maxYear) the numbers are identical
+  // to the server's; trimmed, they follow the slider.
+  const tsStats = useMemo(() => {
+    if (!timeseries) return null;
+    const visible = timeseries.points.filter(
+      (p) => p.value != null && (tsYear == null || p.year <= tsYear),
+    ) as { year: number; value: number }[];
+    if (visible.length === 0) return { latest: null, earliest: null, pctChange: null };
+    const first = visible[0];
+    const last = visible[visible.length - 1];
+    const pctChange = first.value !== 0
+      ? Math.round(((last.value - first.value) / Math.abs(first.value)) * 100 * 1000) / 1000
+      : null;
+    return {
+      latest: { year: last.year, value: last.value },
+      earliest: { year: first.year, value: first.value },
+      pctChange,
+    };
   }, [timeseries, tsYear]);
 
   const scatterChartData = useMemo(() => {
@@ -326,6 +402,14 @@ export function DataExplorer() {
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
             Run query
           </button>
+          <input
+            value={viewName}
+            onChange={(e) => setViewName(e.target.value)}
+            aria-label="View name"
+            placeholder="View name (optional)"
+            maxLength={120}
+            className="w-44 rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-200"
+          />
           <button
             type="button"
             onClick={() => void saveCurrentView()}
@@ -376,14 +460,14 @@ export function DataExplorer() {
           <div className="max-h-64 space-y-1 overflow-y-auto">
             {choropleth.countries.slice(0, 60).map((c, i) => (
               <div key={c.code} className="flex items-center gap-2 rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1 text-[11px]">
-                <span className="w-6 text-right font-mono text-zinc-600">{i + 1}</span>
+                <span className="w-6 text-right font-mono text-zinc-400">{i + 1}</span>
                 <span className="w-12 font-mono text-zinc-400">{c.code}</span>
                 <span className="flex-1 truncate text-zinc-200">{c.name}</span>
                 <div className="h-1.5 w-20 overflow-hidden rounded-full bg-zinc-800">
                   <div className="h-full rounded-full bg-neon-cyan" style={{ width: `${c.intensity * 100}%` }} />
                 </div>
                 <span className="w-20 text-right font-mono text-neon-cyan">{fmt(c.value, choropleth.indicator)}</span>
-                <span className="w-10 text-right font-mono text-zinc-600">{c.year}</span>
+                <span className="w-10 text-right font-mono text-zinc-400">{c.year}</span>
               </div>
             ))}
           </div>
@@ -401,17 +485,17 @@ export function DataExplorer() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1.5">
-              <div className="text-[10px] uppercase tracking-wider text-zinc-400">Latest ({timeseries.latest.year})</div>
-              <div className="mt-0.5 font-mono text-lg text-neon-cyan">{fmt(timeseries.latest.value, timeseries.indicator)}</div>
+              <div className="text-[10px] uppercase tracking-wider text-zinc-400">Latest{tsStats?.latest ? ` (${tsStats.latest.year})` : ''}</div>
+              <div className="mt-0.5 font-mono text-lg text-neon-cyan">{tsStats?.latest ? fmt(tsStats.latest.value, timeseries.indicator) : '—'}</div>
             </div>
             <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1.5">
-              <div className="text-[10px] uppercase tracking-wider text-zinc-400">Earliest ({timeseries.earliest.year})</div>
-              <div className="mt-0.5 font-mono text-lg text-zinc-300">{fmt(timeseries.earliest.value, timeseries.indicator)}</div>
+              <div className="text-[10px] uppercase tracking-wider text-zinc-400">Earliest{tsStats?.earliest ? ` (${tsStats.earliest.year})` : ''}</div>
+              <div className="mt-0.5 font-mono text-lg text-zinc-300">{tsStats?.earliest ? fmt(tsStats.earliest.value, timeseries.indicator) : '—'}</div>
             </div>
             <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1.5">
               <div className="text-[10px] uppercase tracking-wider text-zinc-400">Change</div>
-              <div className={cn('mt-0.5 font-mono text-lg', (timeseries.pctChange ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400')}>
-                {timeseries.pctChange == null ? '—' : `${timeseries.pctChange > 0 ? '+' : ''}${timeseries.pctChange}%`}
+              <div className={cn('mt-0.5 font-mono text-lg', (tsStats?.pctChange ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400')}>
+                {tsStats?.pctChange == null ? '—' : `${tsStats.pctChange > 0 ? '+' : ''}${tsStats.pctChange}%`}
               </div>
             </div>
           </div>
@@ -500,16 +584,29 @@ export function DataExplorer() {
             showLegend={false}
           />
           <div className="space-y-1">
-            <div className="flex justify-between text-[10px] text-zinc-400">
+            <div className="flex items-center justify-between text-[10px] text-zinc-400">
               <span>Year</span>
               <span className="font-mono text-neon-purple">{scatter.years[scatterFrame]}</span>
+              <button
+                type="button"
+                data-testid="scatter-play-toggle"
+                onClick={() => {
+                  if (!scatterPlaying && scatterFrame >= scatter.frames.length - 1) setScatterFrame(0);
+                  setScatterPlaying((v) => !v);
+                }}
+                className="flex items-center gap-1 rounded border border-zinc-700 px-2 py-0.5 text-[10px] text-zinc-200 hover:bg-zinc-800"
+                aria-label={scatterPlaying ? 'Pause year animation' : 'Play year animation'}
+              >
+                {scatterPlaying ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+                {scatterPlaying ? 'Pause' : 'Play'}
+              </button>
             </div>
             <input
               type="range"
               min={0}
               max={scatter.frames.length - 1}
               value={scatterFrame}
-              onChange={(e) => setScatterFrame(Number(e.target.value))}
+              onChange={(e) => { setScatterPlaying(false); setScatterFrame(Number(e.target.value)); }}
               className="w-full accent-purple-400"
             />
             <div className="flex justify-between text-[10px] font-mono text-zinc-400">
@@ -619,25 +716,42 @@ export function DataExplorer() {
           </h4>
           <div className="space-y-1">
             {savedViews.map((v) => (
-              <div key={v.id} className="flex items-center gap-2 rounded border border-zinc-800 bg-zinc-950/60 px-2 py-1.5">
-                <button
-                  type="button"
-                  onClick={() => applyView(v)}
-                  className="flex-1 truncate text-left text-[11px] text-zinc-200 hover:text-neon-cyan"
-                >
-                  {v.label}
-                </button>
-                <span className="font-mono text-[10px] text-zinc-400">
-                  {new Date(v.createdAt).toLocaleDateString()}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => void deleteView(v.id)}
-                  className="text-zinc-600 hover:text-rose-400"
-                  aria-label="Delete view"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+              <div key={v.id} className="rounded border border-zinc-800 bg-zinc-950/60 px-2 py-1.5">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => applyView(v)}
+                    className="flex-1 truncate text-left text-[11px] text-zinc-200 hover:text-neon-cyan"
+                  >
+                    {v.label}
+                  </button>
+                  <span className="font-mono text-[10px] text-zinc-400">
+                    {new Date(v.createdAt).toLocaleDateString()}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => { setRenamingId(renamingId === v.id ? null : v.id); setRenameDraft(v.label); }}
+                    aria-label={`Rename view ${v.label}`}
+                    className="text-zinc-400 hover:text-zinc-100"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                  <StickyDeleteConfirm onConfirm={() => { void deleteView(v.id); }} className="text-zinc-400 hover:text-rose-400" armAriaLabel={`Delete view ${v.label}`} confirmLabel={`Delete “${v.label}”?`} confirmAriaLabel={`Confirm delete view ${v.label}`} armLabel={<Trash2 className="h-3.5 w-3.5" />} />
+                </div>
+                {renamingId === v.id && (
+                  <div className="mt-2 flex gap-2">
+                    <input
+                      value={renameDraft}
+                      onChange={(e) => setRenameDraft(e.target.value)}
+                      aria-label="New view name"
+                      maxLength={120}
+                      className="flex-1 rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-[11px] text-zinc-200"
+                    />
+                    <button type="button" onClick={() => void renameView(v.id)} disabled={!renameDraft.trim()}
+                      className="rounded bg-neon-cyan/15 px-2.5 py-1 text-[11px] font-medium text-neon-cyan disabled:opacity-50">Save</button>
+                    <button type="button" onClick={() => setRenamingId(null)} className="text-[11px] text-zinc-400 px-1.5">Cancel</button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

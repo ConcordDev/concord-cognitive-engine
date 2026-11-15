@@ -50,6 +50,42 @@ export function ProductivityFocusPanel({ onChange }: { onChange: () => void }) {
     await refresh();
   };
 
+  // FIX-productivity-008: a real countdown timer, not only an instant
+  // log. Start runs the chosen duration down; reaching zero logs the
+  // session through the same focus-log action; Stop ends the run
+  // without logging (a cut-short session is not a completed one).
+  const [runEndsAt, setRunEndsAt] = useState<number | null>(null);
+  const [remainingSec, setRemainingSec] = useState<number | null>(null);
+  const [timerNote, setTimerNote] = useState('');
+  useEffect(() => {
+    if (runEndsAt === null) return;
+    const tick = () => {
+      const left = Math.max(0, Math.round((runEndsAt - Date.now()) / 1000));
+      setRemainingSec(left);
+      if (left <= 0) {
+        setRunEndsAt(null);
+        setTimerNote('Session complete — logged.');
+        void logFocus();
+      }
+    };
+    tick();
+    const iv = setInterval(tick, 500);
+    return () => clearInterval(iv);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runEndsAt]);
+  const startTimer = () => {
+    const mins = Number(duration) || 25;
+    setRunEndsAt(Date.now() + mins * 60_000);
+    setRemainingSec(mins * 60);
+    setTimerNote('');
+  };
+  const stopTimer = () => {
+    setRunEndsAt(null);
+    setRemainingSec(null);
+    setTimerNote('Timer stopped — nothing logged.');
+  };
+  const fmtClock = (sec: number) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
@@ -94,17 +130,32 @@ export function ProductivityFocusPanel({ onChange }: { onChange: () => void }) {
         )}
         <div className="flex gap-2">
           {['15', '25', '50'].map((d) => (
-            <button key={d} type="button" onClick={() => setDuration(d)}
-              className={cn('text-xs px-3 py-1.5 rounded-lg border',
+            <button key={d} type="button" onClick={() => setDuration(d)} disabled={runEndsAt !== null}
+              className={cn('text-xs px-3 py-1.5 rounded-lg border disabled:opacity-50',
                 duration === d ? 'border-red-700/50 bg-red-950/40 text-red-300' : 'border-zinc-700 text-zinc-400')}>
               {d} min
             </button>
           ))}
+          {runEndsAt === null ? (
+            <button type="button" onClick={startTimer}
+              className="flex-1 bg-red-600 hover:bg-red-500 text-white text-xs font-medium rounded-lg py-1.5">
+              Start {duration}-min timer
+            </button>
+          ) : (
+            <button type="button" onClick={stopTimer}
+              className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-medium rounded-lg py-1.5 border border-red-700/50">
+              Stop timer
+            </button>
+          )}
           <button type="button" onClick={logFocus}
-            className="flex-1 bg-red-600 hover:bg-red-500 text-white text-xs font-medium rounded-lg">
-            Log a {duration}-min focus session
+            className="text-xs px-3 py-1.5 rounded-lg border border-zinc-700 text-zinc-300 hover:bg-zinc-800">
+            Log without timer
           </button>
         </div>
+        {remainingSec !== null && (
+          <p className="mt-2 text-center font-mono text-3xl text-zinc-100" role="timer" aria-label={`Time remaining ${fmtClock(remainingSec)}`}>{fmtClock(remainingSec)}</p>
+        )}
+        {timerNote && <p className="mt-1 text-center text-[11px] text-zinc-400" role="status">{timerNote}</p>}
       </section>
 
       {/* Eisenhower matrix */}

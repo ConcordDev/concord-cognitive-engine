@@ -6,12 +6,14 @@
  * mint/DM/publish/agent.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState, useRef } from 'react';
 import { Trees, Ruler, Flame, Axe, Leaf, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { UserPicker, type PickedUser } from '@/components/social/UserPicker';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
@@ -27,7 +29,7 @@ type Feedback = { kind: 'ok' | 'err'; text: string } | null;
 type ActionId = 'volume' | 'risk' | 'harvest' | 'carbon' | 'mint' | 'dm' | 'publish' | 'agent';
 function pickMessage(e: unknown): string { const ax = e as { response?: { data?: { error?: string } }; message?: string }; return ax?.response?.data?.error ?? ax?.message ?? 'request failed'; }
 
-interface VolumeResult { boardFeet?: number; cubicFeet?: number; valuation?: number }
+interface VolumeResult { boardFeet?: number; cubicFeet?: number; valuation?: number; formula?: string; boardFeetPerTree?: number; boardFeetPerAcre?: number }
 interface RiskResult { riskLevel?: string; score?: number; factors?: string[] }
 interface HarvestResult { schedule?: Array<{ year: number; acres: number; volume: number }>; rotation?: number }
 interface CarbonResult { tonsPerYear?: number; lifetimeTons?: number; equivalentCars?: number }
@@ -41,7 +43,10 @@ export function ForestryActionPanel() {
   const [tempF, setTempF] = useState('');
   const [humidity, setHumidity] = useState('');
   const [windMph, setWindMph] = useState('');
-  const [recipient, setRecipient] = useState('');
+  // FIX-forestry-009: the recipient is a PICKED user, never free text —
+  // a typed handle is not a user id, so every typed DM failed with a
+  // bare 'recipient not found' (the society-011 defect class).
+  const [recipientUser, setRecipientUser] = useState<PickedUser | null>(null);
 
   // F6: validation reads state first and falls back to the live DOM value,
   // so a paste (or autofill) that fills an input without a React change
@@ -119,7 +124,7 @@ export function ForestryActionPanel() {
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
-    if (!recipient.trim()) { err('Recipient required.'); return; }
+    if (!recipientUser) { err('Pick a recipient from the search results first — a DM goes to another user, so you can\'t send one to yourself.'); return; }
     setBusy('dm'); setFeedback(null);
     const body = [`🌲 Stand: ${standName || species}`, '', `${acres} acres · age ${age}y`,
       volumeResult ? `Volume: ${volumeResult.boardFeet?.toLocaleString()} bf · $${volumeResult.valuation?.toLocaleString()}` : '',
@@ -129,11 +134,11 @@ export function ForestryActionPanel() {
     ].filter(Boolean).join('\n');
     try {
       const messageId = await dmRecall.run(async () => {
-        const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
+        const r = await api.post('/api/social/dm', { toUserId: recipientUser.userId, content: body });
         if (r.data?.ok === false) throw new Error(r.data?.error ?? 'send failed');
         return r.data?.message?.id as string;
       });
-      if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
+      if (messageId) { ok('Sent. 60s to recall.'); setRecipientUser(null); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPublish() {
@@ -156,8 +161,8 @@ export function ForestryActionPanel() {
     try {
       const task = `Forest stand: ${standName || species} (${acres}ac, age ${age}y). ${riskResult ? `Fire risk: ${riskResult.riskLevel}.` : ''} ${carbonResult ? `Sequestration: ${carbonResult.tonsPerYear} t/yr.` : ''} Suggest the single best stewardship move for this season (thinning, fuel reduction, replant, or hold). Plain text.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Stewardship move ready.'); } else err('Agent returned empty.');
+      const reply = readAgentReply(r.data);
+      if (reply.ok) { setAgentReply(reply.text); ok('Stewardship move ready.'); } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 
@@ -192,7 +197,7 @@ export function ForestryActionPanel() {
         <input ref={humidityRef} type="text" value={humidity} onChange={(e) => setHumidity(e.target.value.replace(/[^\d.]/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Humidity %" />
         <input ref={windMphRef} type="text" value={windMph} onChange={(e) => setWindMph(e.target.value.replace(/[^\d.]/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Wind mph" />
         <div className="md:col-span-2 flex items-center gap-2 flex-wrap">
-          <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
+          <UserPicker value={recipientUser} onPick={setRecipientUser} placeholder="DM recipient — search by name" ariaLabel="DM recipient" />
           <RecallSlot ctl={dmRecall} />
           <RecallSlot ctl={publishRecall} />
         </div>
@@ -215,11 +220,12 @@ export function ForestryActionPanel() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        {volumeResult && <Tile label="Volume" big={`${(volumeResult.boardFeet ?? 0).toLocaleString()}`} sub={`bf · $${volumeResult.valuation?.toLocaleString()}`} accent="#22c55e" />}
+        {volumeResult && <Tile label="Volume" big={`${(volumeResult.boardFeet ?? 0).toLocaleString()}`} sub={`bf · ${volumeResult.boardFeetPerTree ?? '—'} bf/tree · ${volumeResult.boardFeetPerAcre?.toLocaleString() ?? '—'} bf/ac · $${volumeResult.valuation?.toLocaleString()}`} accent="#22c55e" />}
         {riskResult && <Tile label="Fire risk" big={riskResult.riskLevel ?? '—'} sub={`score ${riskResult.score}`} accent={riskResult.riskLevel === 'high' || riskResult.riskLevel === 'extreme' ? '#ef4444' : riskResult.riskLevel === 'moderate' ? '#eab308' : '#22c55e'} />}
         {harvestResult && <Tile label="Harvest" big={`${harvestResult.schedule?.length}y`} sub={`rotation ${harvestResult.rotation}y`} accent="#f97316" />}
         {carbonResult && <Tile label="Carbon" big={`${carbonResult.tonsPerYear}t`} sub={`/yr · ${carbonResult.equivalentCars} cars equiv`} accent="#06b6d4" />}
       </div>
+      {volumeResult?.formula && <p className="text-[10px] text-zinc-400 leading-snug">{volumeResult.formula} This estimate uses site index 80.</p>}
 
       {agentReply && (<div className="rounded-md border border-yellow-500/30 bg-yellow-500/5 p-3 max-h-60 overflow-y-auto"><div className="flex items-center gap-1.5 text-yellow-400 font-semibold mb-1.5 uppercase tracking-wider text-[10px]"><Wand2 className="w-3 h-3" /> Stewardship</div><pre className="whitespace-pre-wrap font-sans text-[11px] text-zinc-200 leading-relaxed">{agentReply}</pre></div>)}
 

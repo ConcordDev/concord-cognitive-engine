@@ -259,13 +259,37 @@ export function attestReport(report) {
 }
 
 /**
+ * GB-1534: a receipt body carrying `receiptSchema: "concord-calc-receipt/2"`
+ * signs its inputs AND its reported outputs, so a verify verdict covers the
+ * numbers. A body with no receiptSchema is a v1 receipt: the signature
+ * covers only what the v1 body holds (solver identity, an input hash,
+ * assumptions) — the numbers a caller spread NEXT TO it were never signed.
+ */
+export const V1_RECEIPT_NOTE = "v1 receipt — outputs are NOT covered by the signature";
+
+function receiptSchemaOf(receipt) {
+  if (!receipt || typeof receipt !== "object" || Array.isArray(receipt)) return "v1";
+  const s = receipt.receiptSchema;
+  return typeof s === "string" && s ? s : "v1";
+}
+
+/**
  * Check a receipt against `keys` (keyId → base64 raw public key).
  * Defaults to the keys this process publishes.
  * @param {unknown} receipt
  * @param {Record<string, string> | null} [keys]
- * @returns {{ valid: boolean, reason: string | null, keyId?: string, digest?: string }}
+ * @returns {{ valid: boolean, reason: string | null, keyId?: string, digest?: string,
+ *             schema: string, outputsSigned: boolean, note?: string }}
  */
 export function verifyAttestation(receipt, keys = null) {
+  const verdict = verifySignature(receipt, keys);
+  const schema = receiptSchemaOf(receipt);
+  const out = { ...verdict, schema, outputsSigned: schema !== "v1" };
+  if (schema === "v1") out.note = V1_RECEIPT_NOTE;
+  return out;
+}
+
+function verifySignature(receipt, keys = null) {
   if (!receipt || typeof receipt !== "object" || Array.isArray(receipt)) {
     return { valid: false, reason: "malformed" };
   }

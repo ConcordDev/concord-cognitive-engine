@@ -30,7 +30,7 @@ export function MetalearningFeed() {
         </div>
       </header>
       {papers.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">arXiv unreachable.</div>}
-      <p className="text-[11px] text-zinc-500">
+      <p className="text-[11px] text-zinc-400">
         Showing arXiv papers matching all of: {activeQuery.label.split(' ').join(' · ')} — ranked by relevance. The list below is that search's result, nothing else.
       </p>
       <div className="grid grid-cols-2 gap-2">

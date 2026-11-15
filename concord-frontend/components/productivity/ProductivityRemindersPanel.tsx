@@ -139,12 +139,12 @@ export function ProductivityRemindersPanel({ onChange }: { onChange: () => void 
 
       {/* Add reminder */}
       <div className="grid grid-cols-2 gap-2 bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
-        <select value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value as 'time' | 'location' })}
+        <select aria-label="Reminder type" value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value as 'time' | 'location' })}
           className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
           <option value="time">Time-based</option>
           <option value="location">Location-based</option>
         </select>
-        <select value={form.taskId} onChange={(e) => setForm({ ...form, taskId: e.target.value })}
+        <select aria-label="Linked task" value={form.taskId} onChange={(e) => setForm({ ...form, taskId: e.target.value })}
           className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
           <option value="">No linked task</option>
           {tasks.map((t) => <option key={t.id} value={t.id}>{t.content}</option>)}
@@ -153,14 +153,14 @@ export function ProductivityRemindersPanel({ onChange }: { onChange: () => void 
           aria-label="Remind at"
           className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
         {form.kind === 'location' ? (
-          <input placeholder="Location (e.g. Office)" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })}
+          <input aria-label="Reminder location" placeholder="Location (e.g. Office)" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
         ) : (
-          <input placeholder="Note (optional)" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })}
+          <input aria-label="Reminder note" placeholder="Note (optional)" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
         )}
         {form.kind === 'location' && (
-          <input placeholder="Note (optional)" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })}
+          <input aria-label="Reminder note" placeholder="Note (optional)" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })}
             className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
         )}
         <button type="button" onClick={add}
@@ -170,7 +170,7 @@ export function ProductivityRemindersPanel({ onChange }: { onChange: () => void 
       </div>
 
       {/* Honest live-vs-manual delivery labeling */}
-      <div className="flex items-center gap-1.5 text-[10px] text-zinc-500">
+      <div className="flex items-center gap-1.5 text-[10px] text-zinc-400">
         <Radio className={cn('w-3 h-3', isConnected ? 'text-emerald-400' : 'text-zinc-600')} />
         <span>
           {isConnected
@@ -196,7 +196,7 @@ export function ProductivityRemindersPanel({ onChange }: { onChange: () => void 
         className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg">
         <BellRing className="w-3.5 h-3.5" /> Check what is due now
       </button>
-      <p className="text-[10px] text-zinc-500 -mt-2">
+      <p className="text-[10px] text-zinc-400 -mt-2">
         Fallback for reminders that fired while this tab was closed or disconnected.
       </p>
 

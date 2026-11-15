@@ -501,7 +501,32 @@ export function computeMetrics(db, params = {}) {
 // ── registration ─────────────────────────────────────────────────────────────
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
+
+// ── lens export provider (FIX-genesis-008) ─────────────────────────────
+// Saved searches live on STATE.genesisSavedSearches — a top-level state
+// key the shared export's state leg never reads (it reads STATE.<domain>Lens
+// bags only) — so without a provider the Genesis export told users with
+// saved searches they had nothing to export. Caller-scoped: only the
+// caller's own presets, and nothing for anonymous callers.
+function genesisExportRows(ctx) {
+  const uid = userId(ctx);
+  if (!uid || uid === "anon") return [];
+  const STATE = genesisState();
+  if (!STATE) return [];
+  const list = STATE.genesisSavedSearches.get(uid) || [];
+  return list.map((entry) => ({
+    id: entry.id,
+    type: "saved-search",
+    title: entry.label || entry.id,
+    createdAt: entry.createdAt || null,
+    updatedAt: entry.createdAt || null,
+    data: { filters: entry.filters || {} },
+  }));
+}
+
 export default function registerGenesisActions(registerLensAction) {
+  registerLensExportProvider("genesis", genesisExportRows);
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ── Identity detail — full timeline of an emergent's actions/decisions ──────
   registerLensAction("genesis", "identity-detail", (ctx, _artifact, params = {}) => {

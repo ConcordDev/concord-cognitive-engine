@@ -38,6 +38,12 @@ const ROCK_TYPE_COLOR: Record<string, string> = {
 export function RockMineralIdPanel() {
   const [rock, setRock] = useState<RockInput>({ name: '', mohsHardness: 5, luster: 'vitreous', color: '', texture: 'crystalline' });
   const [mineral, setMineral] = useState<MineralInput>({ name: '', hardness: 5, streak: '', cleavage: 'none', fracture: 'conchoidal', specificGravity: 2.7, color: '' });
+  // FIX-geology-009: the SG field is driven by its own text state. The old
+  // Number(v) || 0 coercion ate the '-' keystroke (NaN became 0), so typing
+  // -1 landed as '01' with no word.
+  const [sgText, setSgText] = useState('2.7');
+  const sgValue = sgText.trim() === '' ? NaN : Number(sgText);
+  const sgInvalid = !Number.isFinite(sgValue) || sgValue < 0 || sgValue > 25;
 
   return (
     <CalcPanel<RockResult, MineralResult>
@@ -83,7 +89,8 @@ export function RockMineralIdPanel() {
               <label className="block"><span className="block text-[9px] uppercase tracking-wider text-zinc-400">Hardness ({mineral.hardness})</span>
                 <input type="range" min={0} max={10} step={0.5} className="mt-1 w-full" value={mineral.hardness} onChange={(e) => setMineral({ ...mineral, hardness: Number(e.target.value) })} /></label>
               <label className="block"><span className="block text-[9px] uppercase tracking-wider text-zinc-400">Specific gravity</span>
-                <input type="number" step={0.1} min={0} max={25} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={mineral.specificGravity} onChange={(e) => setMineral({ ...mineral, specificGravity: Number(e.target.value) || 0 })} /></label>
+                <input type="number" step={0.1} min={0} max={25} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={sgText} onChange={(e) => { setSgText(e.target.value); const v = Number(e.target.value); if (Number.isFinite(v) && v >= 0 && v <= 25) setMineral({ ...mineral, specificGravity: v }); }} /></label>
+              {sgInvalid && <p role="note" className="text-[10px] text-amber-300">Specific gravity must be between 0 and 25 — that value is not sent to the classifier.</p>}
             </div>
             <div className="grid grid-cols-2 gap-2">
               <input className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white" placeholder="Streak color" value={mineral.streak} onChange={(e) => setMineral({ ...mineral, streak: e.target.value })} />

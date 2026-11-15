@@ -18,7 +18,12 @@
 // item says so).
 
 import { makeClaim } from "../claims.js";
-import { documentEvidence } from "./fetcher.js";
+import { documentEvidence, withHostAllowlist } from "./fetcher.js";
+
+/** SB-06: this connector only ever talks to the NIST WebBook host. */
+export const NIST_HOSTS = Object.freeze(["webbook.nist.gov"]);
+/** Bind any getter to this connector's host allowlist (refused before DNS). */
+export const nistGetter = (get) => withHostAllowlist(get, NIST_HOSTS);
 
 export const NIST_VERSION = "1.0.0";
 const BASE = "https://webbook.nist.gov/cgi/fluid.cgi";
@@ -74,6 +79,7 @@ export function pageText(html) {
  * Returns { ok, claims, reviews, rows, documents } or { ok:false, reason, reviews }.
  */
 export async function isobar(cas, subject, req, get) {
+  get = nistGetter(get);
   const fluid = NIST_FLUIDS[cas];
   if (!fluid) return { ok: false, reason: `the WebBook fluid service is not set up here for CAS ${cas}`, reviews: [{ kind: "source_does_not_cover", subject, reason: `NIST WebBook fluid data are not available here for CAS ${cas}` }], claims: [] };
   const doc = await get(nistUrls.isobar(fluid.id, req));

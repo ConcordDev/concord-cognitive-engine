@@ -5,6 +5,7 @@ import { Pencil, MousePointer2, Eraser, Scissors, BarChart3, ZoomIn, ZoomOut } f
 import { cn } from '@/lib/utils';
 import { midiToNoteName } from '@/lib/daw/engine';
 import type { MIDINote, DAWClip, SnapMode } from '@/lib/daw/types';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface PianoRollProps {
   clip: DAWClip | null;
@@ -234,7 +235,7 @@ export function PianoRoll({
             ref={canvasRef}
             className="relative"
             style={{ width: totalWidth, height: totalHeight, minWidth: '100%' }}
-            onClick={handleCanvasClick} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            onClick={handleCanvasClick} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             {/* Grid lines */}
             {Array.from({ length: TOTAL_NOTES }).map((_, i) => {
               const pitch = NOTE_RANGE.high - i;
@@ -285,7 +286,7 @@ export function PianoRoll({
                     backgroundColor: `hsl(${(note.velocity / 127) * 120}, 80%, ${40 + (note.velocity / 127) * 20}%)`,
                     opacity: 0.5 + (note.velocity / 127) * 0.5,
                   }}
-                  title={`${midiToNoteName(note.pitch)} vel:${note.velocity}`} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
+                  title={`${midiToNoteName(note.pitch)} vel:${note.velocity}`} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace} />
               );
             })}
 
@@ -319,7 +320,7 @@ export function PianoRoll({
                   const newVel = Math.min(127, Math.max(1, note.velocity === 127 ? 80 : note.velocity + 20));
                   onUpdateNote(note.id, { velocity: newVel });
                 }}
-                title={`Velocity: ${note.velocity}`} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
+                title={`Velocity: ${note.velocity}`} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace} />
             ))}
           </div>
         </div>

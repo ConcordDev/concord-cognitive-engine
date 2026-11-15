@@ -659,6 +659,21 @@ export default function registerDebugActions(registerLensAction) {
     }
   });
 
+  registerLensAction("debug", "trace-delete", (ctx, _a, params = {}) => {
+    const s = getDebugState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    try {
+      const arr = dbgList(s.traces, dbgActor(ctx));
+      const i = arr.findIndex((t) => t.id === params.id);
+      if (i < 0) return { ok: false, error: "trace not found" };
+      arr.splice(i, 1);
+      saveDebug();
+      return { ok: true, result: { deleted: params.id } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
   // ─── FEATURE: Time-series metric charts ─────────────────────────
   // Record a metric sample (CPU/memory/latency/etc).
   registerLensAction("debug", "metric-record", (ctx, _a, params = {}) => {
@@ -687,6 +702,33 @@ export default function registerDebugActions(registerLensAction) {
       // Evaluate alert rules on the freshly recorded value.
       const breaches = evaluateRules(s, userId, metric, value, resolved.project.id, resolved.defaultId);
       return { ok: true, result: { sample, breaches } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  // Clear the caller's recorded samples for one metric in one project.
+  // Samples carry no ids, so the clear is scoped by (project, metric) —
+  // exactly the series the Time-Series view is showing.
+  registerLensAction("debug", "metric-clear", (ctx, _a, params = {}) => {
+    const s = getDebugState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    try {
+      const metric = dbgClean(params.metric, 60);
+      if (!metric) return { ok: false, error: "metric required" };
+      const userId = dbgActor(ctx);
+      const resolved = dbgResolveProject(s, userId, params);
+      if (resolved.error) return { ok: false, error: resolved.error };
+      const arr = dbgList(s.metrics, userId);
+      let removed = 0;
+      for (let i = arr.length - 1; i >= 0; i--) {
+        if (arr[i].metric === metric && dbgRecordProject(arr[i], resolved.defaultId) === resolved.project.id) {
+          arr.splice(i, 1);
+          removed++;
+        }
+      }
+      saveDebug();
+      return { ok: true, result: { cleared: removed, metric, projectId: resolved.project.id } };
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }
@@ -1010,6 +1052,47 @@ export default function registerDebugActions(registerLensAction) {
           };
         });
       return { ok: true, result: { releases: annotated, count: annotated.length, projectId: resolved.project.id } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  // Edit a release (FIX-debug-006 — releases could be created and
+  // deleted but never edited). Issues tie to a release by its version
+  // string, so a rename reties the project's issues in the same write.
+  registerLensAction("debug", "release-update", (ctx, _a, params = {}) => {
+    const s = getDebugState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    try {
+      const userId = dbgActor(ctx);
+      const arr = dbgList(s.releases, userId);
+      const rel = arr.find((r) => r.id === params.id);
+      if (!rel) return { ok: false, error: "release not found" };
+      const resolved = dbgResolveProject(s, userId, params);
+      if (resolved.error) return { ok: false, error: resolved.error };
+      const relProject = dbgRecordProject(rel, resolved.defaultId);
+      if (params.version != null) {
+        const version = dbgClean(params.version, 60);
+        if (!version) return { ok: false, error: "version required" };
+        if (version !== rel.version) {
+          if (arr.some((r) => r.id !== rel.id && r.version === version
+            && dbgRecordProject(r, resolved.defaultId) === relProject)) {
+            return { ok: false, error: "release already tracked" };
+          }
+          const oldVersion = rel.version;
+          for (const issue of dbgList(s.issues, userId)) {
+            if (Array.isArray(issue.releases) && issue.releases.includes(oldVersion)
+              && dbgRecordProject(issue, resolved.defaultId) === relProject) {
+              issue.releases = issue.releases.map((v) => (v === oldVersion ? version : v));
+            }
+          }
+          rel.version = version;
+        }
+      }
+      if (params.environment != null) rel.environment = dbgClean(params.environment, 40) || rel.environment;
+      if (params.notes != null) rel.notes = dbgClean(params.notes, 1000);
+      saveDebug();
+      return { ok: true, result: { release: rel } };
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }

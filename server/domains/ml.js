@@ -737,11 +737,16 @@ export default function registerMlActions(registerLensAction) {
     const ratio = Math.round(samples / features);
     const exp = {
       id: mlId("exp"),
-      name: `AutoML · Tabular Classification · ${ds.name}`,
+      // FIX-ml-002: the run may be named; the record is a CONFIGURATION
+      // run and says so (kind) — it no longer stores the tree count as
+      // "epochs", which made the tracker read it as a training run
+      // that completed at Epoch 0/200 with no score.
+      name: mlClean(params.name || "", 160) || `AutoML · Tabular Classification · ${ds.name}`,
+      kind: "automl-config",
       modelId: "xgboost",
       datasetId: ds.id,
       status: "completed",
-      hyperparams: { learningRate: suggestion.learningRate, batchSize: 32, epochs: suggestion.nEstimators, optimizer: "xgboost" },
+      hyperparams: { learningRate: suggestion.learningRate, batchSize: 32, nEstimators: suggestion.nEstimators, maxDepth: suggestion.maxDepth, epochs: 0, optimizer: "xgboost" },
       metrics: [],
       tags: ["automl", "tabular-classification"],
       startedAt: new Date().toISOString(),
@@ -876,8 +881,26 @@ export default function registerMlActions(registerLensAction) {
     return { ok: false, error: "space not found" };
   });
 
-  registerLensAction("ml", "space-list", (ctx, _a, _params = {}) => {
+  registerLensAction("ml", "space-list", (ctx, _a, params = {}) => {
     const m = getMlState(); if (!m) return { ok: false, error: "STATE unavailable" };
+    // FIX-ml-012: 'public' had no visible effect — space-get honoured a
+    // public space for anyone with its URL, but nothing LISTED public
+    // spaces, so there was no way to discover one. scope:'public' is
+    // the discovery listing: every user's public spaces, newest first.
+    // Private spaces never appear, and the owner id stays server-side
+    // (rows carry isOwner, not the owner's id).
+    if (params.scope === "public") {
+      const me = mlActor(ctx);
+      const all = [];
+      for (const [owner, list] of m.spaces) {
+        for (const sp of (Array.isArray(list) ? list : [])) {
+          if (sp.visibility === "public") all.push({ ...sp, isOwner: owner === me });
+        }
+      }
+      all.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+      const spaces = all.slice(0, 50);
+      return { ok: true, result: { count: spaces.length, spaces } };
+    }
     const list = mlList(m.spaces, mlActor(ctx));
     return { ok: true, result: { count: list.length, spaces: list } };
   });

@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { DEFAULT_EFFECT_PRESETS } from '@/lib/daw/engine';
 import { emitEffectChainDTU } from '@/lib/daw/dtu-hooks';
 import type { EffectInstance, EffectType, DAWTrack } from '@/lib/daw/types';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface EffectsPanelProps {
   track: DAWTrack | null;
@@ -69,7 +70,7 @@ function EffectSlot({
       effect.enabled ? 'bg-white/5 border-neon-purple/20' : 'bg-black/20 border-white/5'
     )}>
       {/* Header */}
-      <div className="flex items-center gap-2 px-2 py-1.5 cursor-pointer" onClick={() => setExpanded(!expanded)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+      <div className="flex items-center gap-2 px-2 py-1.5 cursor-pointer" onClick={() => setExpanded(!expanded)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
         <GripVertical className="w-3 h-3 text-gray-600 cursor-grab" />
         <button
           onClick={e => { e.stopPropagation(); onToggle(); }}
@@ -165,6 +166,7 @@ function getParamStep(key: string): number {
 }
 
 function formatParamValue(key: string, value: number): string {
+  if (value == null || !Number.isFinite(value)) return '—';
   if (key.includes('freq') || key.includes('Freq')) {
     return value >= 1000 ? `${(value / 1000).toFixed(1)}k` : `${Math.round(value)}`;
   }

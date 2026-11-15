@@ -94,6 +94,18 @@ export default function registerHVACActions(registerLensAction) {
     const uid = ctx?.actor?.userId || ctx?.userId || "anon";
     return { ok: true, result: { loads: (s.loads.get(uid) || []).slice(0, 50) } };
   });
+  registerLensAction("hvac", "load-delete", (ctx, _a, params = {}) => {
+    const s = getHvacState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const uid = ctx?.actor?.userId || ctx?.userId || "anon";
+    if (!uid || uid === "anon") return { ok: false, error: "sign in required" };
+    const list = s.loads.get(uid) || [];
+    const i = list.findIndex((entry) => entry.id === params.id);
+    if (i < 0) return { ok: false, error: "load not found" };
+    list.splice(i, 1);
+    s.loads.set(uid, list);
+    saveHvacState();
+    return { ok: true, result: { deleted: params.id } };
+  });
   registerLensAction("hvac", "energyAudit", (ctx, artifact, _params) => {
   try {
     const data = artifact.data || {};

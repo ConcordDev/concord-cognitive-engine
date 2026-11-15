@@ -50,6 +50,7 @@ export function GlyphKeyboard({ onInsert }: { onInsert?: (glyphs: string) => voi
         <input
           className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:border-violet-500 text-sm"
           placeholder="Pivot Refusal Bridge"
+          aria-label="Glyph terms"
           value={terms}
           onChange={(e) => setTerms(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') void lookup(); }}

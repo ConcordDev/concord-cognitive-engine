@@ -99,7 +99,7 @@ export function QuizEngine({ onComplete }: { onComplete?: () => void }) {
       <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
         <div className="flex items-center gap-2 mb-3">
           <Brain className="w-4 h-4 text-fuchsia-400" />
-          <h3 className="text-sm font-bold text-zinc-100">Adaptive Quiz</h3>
+          <h2 className="text-sm font-bold text-zinc-100">Adaptive Quiz</h2>
         </div>
         {score.points > 0 && (
           <div className="mb-3 flex items-center gap-2 rounded-lg border border-emerald-700/40 bg-emerald-900/20 px-3 py-2">
@@ -118,7 +118,7 @@ export function QuizEngine({ onComplete }: { onComplete?: () => void }) {
             <select
               value={count}
               onChange={(e) => setCount(Number(e.target.value))}
-              className="ml-1.5 bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1 text-xs text-zinc-200"
+              className="min-h-11 ml-1.5 bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1 text-xs text-zinc-200"
             >
               {[5, 8, 10, 15, 20].map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
@@ -128,7 +128,7 @@ export function QuizEngine({ onComplete }: { onComplete?: () => void }) {
             <select
               value={mode}
               onChange={(e) => setMode(e.target.value as Mode)}
-              className="ml-1.5 bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1 text-xs text-zinc-200"
+              className="min-h-11 ml-1.5 bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1 text-xs text-zinc-200"
             >
               <option value="">Adaptive</option>
               <option value="multiple-choice">Multiple choice</option>

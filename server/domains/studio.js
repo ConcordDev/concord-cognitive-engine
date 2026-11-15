@@ -306,8 +306,12 @@ export default function registerStudioActions(registerLensAction) {
     const name = String(params.name || params.title || "").trim();
     if (!name) return { ok: false, error: "name required" };
     if (name.length > 80) return { ok: false, error: "name too long" };
-    const bpm = Number(params.bpm) || 120;
-    if (bpm < 30 || bpm > 300) return { ok: false, error: "bpm 30-300" };
+    const bpmMissing = params.bpm === undefined || params.bpm === null || params.bpm === "";
+    const bpmRaw = bpmMissing ? 120 : Number(params.bpm);
+    if (!Number.isFinite(bpmRaw) || bpmRaw < 30 || bpmRaw > 300) {
+      return { ok: false, error: "bpm 30-300", field: "bpm", message: "Tempo must be a number from 30 to 300." };
+    }
+    const bpm = bpmRaw;
     const daw = sanitizeDawSnapshot(params.daw);
     const now = nowIsoStudio();
     const project = {
@@ -712,13 +716,13 @@ export default function registerStudioActions(registerLensAction) {
     const project = resolved.project;
     if (params.name != null || params.title != null) {
       const name = String(params.name || params.title || "").trim();
-      if (!name) return { ok: false, error: "name required" };
-      if (name.length > 80) return { ok: false, error: "name too long" };
+      if (!name) return { ok: false, error: "name required", message: "Song title is required." };
+      if (name.length > 80) return { ok: false, error: "name too long", message: "Song title must be 80 characters or fewer." };
       project.name = name;
     }
     if (params.bpm != null) {
       const bpm = Number(params.bpm);
-      if (!Number.isFinite(bpm) || bpm < 30 || bpm > 300) return { ok: false, error: "bpm 30-300" };
+      if (!Number.isFinite(bpm) || bpm < 30 || bpm > 300) return { ok: false, error: "invalid_input", field: "bpm", message: "Tempo must be a number from 30 to 300." };
       project.bpm = bpm;
     }
     if (params.key != null) project.key = String(params.key).trim().slice(0, 8) || project.key;
@@ -2353,7 +2357,7 @@ export default function registerStudioActions(registerLensAction) {
     const projectId = String(params.projectId || "");
     if (!s.collab) s.collab = new Map();
     const session = s.collab.get(projectId);
-    if (!session) return { ok: false, error: "no active session" };
+    if (!session) return { ok: true, result: { collaborators: [], session: null } };
     const me = session.collaborators.find(c => c.userId === userId);
     if (!me) return { ok: false, error: "not a collaborator — join first" };
     me.lastSeen = Date.now();

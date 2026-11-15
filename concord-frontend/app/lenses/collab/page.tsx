@@ -1,18 +1,29 @@
 'use client';
 
 /**
- * Collab — one room.
+ * Collab — rooms, documents, sessions.
  *
- * room-list is the left pane. Open a room calls room-open, then shows
- * the title only after room-list contains that id and the same title,
- * and shows the note only after room-detail returns that same note.
- * A blank title is not sent. A blank note is not sent. Title and note
- * live in collab_rooms, so a server restart still lists them.
- * Participants are not rendered. The hub is a different surface.
+ * room-list is the left pane of the Rooms view. Open a room calls
+ * room-open, then shows the title only after room-list contains that
+ * id and the same title, and shows the note only after room-detail
+ * returns that same note. A blank title is not sent. A blank note is
+ * not sent. Title and note live in collab_rooms, so a server restart
+ * still lists them.
+ *
+ * FIX-collab-001 mounted the rest of the floor on this page: the
+ * Documents and Sessions views are the domain's own substrate
+ * components (CollabDocWorkspace, CollabHub), previously built and
+ * mounted nowhere; a room now carries members with tiers, an invite
+ * flow, a discussion thread and a presence roster
+ * (RoomSharingPanel), and rooms shared with the signed-in user ride
+ * room-list marked as shared.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { CollabDocWorkspace } from '@/components/collab/CollabDocWorkspace';
+import { CollabHub } from '@/components/collab/CollabHub';
+import { RoomSharingPanel } from '@/components/collab/RoomSharingPanel';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
 import { lensRun } from '@/lib/api/client';
@@ -21,20 +32,28 @@ interface RoomRow {
   id: string;
   title: string;
   note: string;
+  shared?: boolean;
+  myTier?: string;
 }
 
 type Phase = 'loading' | 'ready' | 'error';
 
-function rowsFrom(rows: unknown): { id: string; title: string }[] {
+function rowsFrom(rows: unknown): { id: string; title: string; shared?: boolean; myTier?: string }[] {
   if (!Array.isArray(rows)) return [];
-  const out: { id: string; title: string }[] = [];
+  const out: { id: string; title: string; shared?: boolean; myTier?: string }[] = [];
   for (const row of rows) {
     if (!row || typeof row !== 'object') continue;
     const id = (row as { id?: string }).id;
     const title = (row as { title?: string }).title;
     if (typeof id !== 'string' || !id) continue;
     if (typeof title !== 'string' || !title.trim()) continue;
-    out.push({ id, title: title.trim() });
+    const shared = (row as { shared?: unknown }).shared === true;
+    const myTier = (row as { myTier?: unknown }).myTier;
+    out.push({
+      id, title: title.trim(),
+      ...(shared ? { shared: true } : {}),
+      ...(typeof myTier === 'string' ? { myTier } : {}),
+    });
   }
   return out;
 }
@@ -47,6 +66,28 @@ function noteFrom(room: unknown): string {
 
 function isWarming(message: string): boolean {
   return /service_overloaded|event_loop_lag|status code 503/i.test(message);
+}
+
+/** Room titles cap at 200 — the same limit the input validator and
+ *  the room store enforce, so a title the form accepts always reads
+ *  back exactly as typed. */
+const TITLE_MAX = 200;
+
+/** Server wording never reaches the user raw: map the known cases to
+ *  a plain sentence (the audit found the validator's raw "Input too
+ *  long: input.title: 301 chars (max 200)" rendered as the error). */
+function friendlyRoomError(message: string, fallback: string): string {
+  if (/input too long/i.test(message)) {
+    return `That title is too long — keep it to ${TITLE_MAX} characters or fewer.`;
+  }
+  if (/room title required/i.test(message)) return 'A title is required.';
+  if (/room note required/i.test(message)) return 'A note is required.';
+  if (/service_overloaded|event_loop_lag|status code 503/i.test(message)) {
+    return 'Concord is warming up — give it a moment and try again.';
+  }
+  // Anything else the server said passes through — the floor build's
+  // states pin that surfacing; only the audited raw wordings are mapped.
+  return message || fallback;
 }
 
 async function runCollab<T>(name: string, input: Record<string, unknown>, fallback: string): Promise<T> {
@@ -67,10 +108,179 @@ async function readRooms(): Promise<RoomRow[]> {
   const out: RoomRow[] = [];
   for (const row of slim) {
     const detail = await runCollab<{ room?: unknown }>('room-detail', { id: row.id }, 'Could not read the room.');
-    out.push({ id: row.id, title: row.title, note: noteFrom(detail.room) });
+    out.push({
+      id: row.id, title: row.title, note: noteFrom(detail.room),
+      ...(row.shared ? { shared: true } : {}),
+      ...(row.myTier ? { myTier: row.myTier } : {}),
+    });
   }
   return out;
 }
+
+interface RoomInviteRow {
+  id: string;
+  roomId: string;
+  roomTitle: string | null;
+  tier: string;
+  status: string;
+}
+
+/**
+ * Pending room invitations addressed to the signed-in user, with
+ * accept/decline. Fails soft to nothing: a lens whose invite read
+ * fails simply shows no invitations section.
+ */
+function RoomInvites({ onAccepted }: { onAccepted: () => void }) {
+  const [invites, setInvites] = useState<RoomInviteRow[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState('');
+
+  const load = useCallback(async () => {
+    try {
+      const result = await runCollab<{ invitations?: RoomInviteRow[] }>(
+        'room-invite-list', {}, 'Could not read invitations.',
+      );
+      setInvites((result.invitations || []).filter((row) => row.status === 'pending'));
+    } catch {
+      setInvites([]);
+    }
+  }, []);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const respond = useCallback(async (invite: RoomInviteRow, accept: boolean) => {
+    setBusy(true);
+    setNote('');
+    try {
+      await runCollab('room-invite-respond', { inviteId: invite.id, accept }, 'Could not answer that invitation.');
+      setInvites((rows) => rows.filter((row) => row.id !== invite.id));
+      if (accept) onAccepted();
+    } catch (err) {
+      setNote(err instanceof Error ? err.message : 'Could not answer that invitation.');
+    } finally {
+      setBusy(false);
+    }
+  }, [onAccepted]);
+
+  if (invites.length === 0 && !note) return null;
+  return (
+    <section aria-label="Room invitations" data-testid="cb-room-invites" className="mb-5 rounded-2xl border border-white/10 bg-zinc-950 px-6 py-4">
+      <h2 className="text-[14px] font-medium text-zinc-200">Room invitations</h2>
+      <ul className="mt-2 space-y-2">
+        {invites.map((invite) => (
+          <li key={invite.id} className="flex flex-wrap items-center gap-3 text-[14px] text-zinc-300">
+            <span>
+              {invite.roomTitle || 'A room'} <span className="text-zinc-500">· {invite.tier} access</span>
+            </span>
+            <button type="button" disabled={busy} onClick={() => { void respond(invite, true); }} className="text-zinc-100 underline disabled:opacity-60">
+              Accept
+            </button>
+            <button type="button" disabled={busy} onClick={() => { void respond(invite, false); }} className="text-zinc-400 underline hover:text-zinc-200 disabled:opacity-60">
+              Decline
+            </button>
+          </li>
+        ))}
+      </ul>
+      {note && <p role="alert" className="mt-2 text-[13px] text-red-300">{note}</p>}
+    </section>
+  );
+}
+
+interface RoomComposerProps {
+  busy: boolean;
+  submitRef: React.MutableRefObject<(() => void) | null>;
+  onCreate: (title: string, note: string) => Promise<void>;
+}
+
+/**
+ * The create form owns its field state. Typing must never ride the
+ * page's render cycle — the page re-renders on room loads, receipts
+ * and shell state, and a form whose fields live at page root can lose
+ * the caret mid-word when the surrounding tree churns (the audit's
+ * focus-jump finding). Field errors sit under their field, tied by
+ * aria-describedby, and the title carries the same 200-character cap
+ * the validator and the room store enforce.
+ */
+const RoomComposer = memo(function RoomComposer({ busy, submitRef, onCreate }: RoomComposerProps) {
+  const [title, setTitle] = useState('');
+  const [note, setNote] = useState('');
+  const [titleError, setTitleError] = useState('');
+  const [noteError, setNoteError] = useState('');
+  const [formError, setFormError] = useState('');
+
+  const submit = useCallback(async () => {
+    const trimmed = title.trim();
+    const nextNote = note.trim();
+    setTitleError(trimmed ? '' : 'A title is required.');
+    setNoteError(nextNote ? '' : 'A note is required.');
+    if (!trimmed || !nextNote) return;
+    setFormError('');
+    try {
+      await onCreate(trimmed, nextNote);
+    } catch (err) {
+      setFormError(friendlyRoomError(err instanceof Error ? err.message : '', 'Could not open that room.'));
+    }
+  }, [note, onCreate, title]);
+
+  useEffect(() => {
+    submitRef.current = () => { void submit(); };
+    return () => { submitRef.current = null; };
+  }, [submit, submitRef]);
+
+  return (
+    <form
+      data-testid="cb-composer"
+      className="col-span-full space-y-4 px-6 py-5"
+      onSubmit={(event) => { event.preventDefault(); void submit(); }}
+    >
+      <div>
+        <label className="block text-[14px] text-zinc-400" htmlFor="cb-title-input">
+          Title
+          <input
+            id="cb-title-input"
+            data-testid="cb-title"
+            value={title}
+            maxLength={TITLE_MAX}
+            aria-invalid={titleError ? true : undefined}
+            aria-describedby={titleError ? 'cb-title-error cb-title-count' : 'cb-title-count'}
+            onChange={(event) => { setTitle(event.target.value); if (titleError) setTitleError(''); }}
+            className="mt-1 w-full border-b border-white/15 bg-transparent pb-2 font-vault text-[1.25rem] text-zinc-100 outline-none"
+            autoFocus
+          />
+        </label>
+        <div className="mt-1 flex items-baseline justify-between gap-4">
+          {titleError ? (
+            <p id="cb-title-error" role="alert" className="text-[13px] text-red-300">{titleError}</p>
+          ) : (
+            <span />
+          )}
+          <p id="cb-title-count" className="text-[12px] text-zinc-500">{title.length}/{TITLE_MAX}</p>
+        </div>
+      </div>
+      <div>
+        <label className="block text-[14px] text-zinc-400" htmlFor="cb-note-field">
+          Note
+          <input
+            id="cb-note-field"
+            data-testid="cb-note-input"
+            value={note}
+            aria-invalid={noteError ? true : undefined}
+            aria-describedby={noteError ? 'cb-note-error' : undefined}
+            onChange={(event) => { setNote(event.target.value); if (noteError) setNoteError(''); }}
+            className="mt-1 w-full border-b border-white/15 bg-transparent pb-2 text-[15px] text-zinc-100 outline-none"
+          />
+        </label>
+        {noteError && (
+          <p id="cb-note-error" role="alert" className="mt-1 text-[13px] text-red-300">{noteError}</p>
+        )}
+      </div>
+      {formError && (
+        <p role="alert" className="text-[14px] text-zinc-300">{formError}</p>
+      )}
+      <button type="submit" disabled={busy} className="sr-only">Open room</button>
+    </form>
+  );
+});
 
 export default function CollabLensPage() {
   useLensNav('collab');
@@ -79,15 +289,16 @@ export default function CollabLensPage() {
   const [loadError, setLoadError] = useState('');
   const [actionError, setActionError] = useState('');
   const [composing, setComposing] = useState(false);
-  const [title, setTitle] = useState('');
-  const [note, setNote] = useState('');
+  const composerSubmitRef = useRef<(() => void) | null>(null);
   const [busy, setBusy] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState('');
+  const [editTitleError, setEditTitleError] = useState('');
   const [editNote, setEditNote] = useState('');
   const [confirmClose, setConfirmClose] = useState(false);
   const [receipt, setReceipt] = useState('');
+  const [view, setView] = useState<'rooms' | 'documents' | 'sessions'>('rooms');
 
   const pull = useCallback(async () => readRooms(), []);
 
@@ -118,23 +329,7 @@ export default function CollabLensPage() {
     });
   }, [pull]);
 
-  const openRoom = useCallback(async () => {
-    if (busy || phase !== 'ready') return;
-    if (!composing) {
-      setComposing(true);
-      setActionError('');
-      return;
-    }
-    const trimmed = title.trim();
-    const selected = note.trim();
-    if (!trimmed) {
-      setActionError('A title is required.');
-      return;
-    }
-    if (!selected) {
-      setActionError('A note is required.');
-      return;
-    }
+  const createRoom = useCallback(async (trimmed: string, selected: string) => {
     setBusy(true);
     setActionError('');
     try {
@@ -151,15 +346,26 @@ export default function CollabLensPage() {
         throw new Error('Opened, but the room did not read it back.');
       }
       setRooms(rows);
-      setTitle('');
-      setNote('');
+      setSelectedId(id);
+      // The status line names the room just saved — a create used to
+      // leave whatever an earlier edit/close had printed standing.
+      setReceipt(`Saved “${trimmed}”.`);
       setComposing(false);
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Could not open that room.');
     } finally {
       setBusy(false);
     }
-  }, [busy, composing, note, phase, title]);
+  }, []);
+
+  const openRoom = useCallback(async () => {
+    if (busy || phase !== 'ready') return;
+    if (!composing) {
+      setComposing(true);
+      setActionError('');
+      setReceipt('');
+      return;
+    }
+    composerSubmitRef.current?.();
+  }, [busy, composing, phase]);
 
   useLensCommand(
     [{ id: 'collab-open', keys: 'n', description: 'Open a room', category: 'actions', action: () => { void openRoom(); } }],
@@ -184,28 +390,33 @@ export default function CollabLensPage() {
     if (!selected || busy) return;
     const trimmed = editTitle.trim();
     const nextNote = editNote.trim();
-    if (!trimmed) { setActionError('A title is required.'); return; }
+    setEditTitleError(trimmed ? '' : 'A title is required.');
+    if (!trimmed) { return; }
     if (!nextNote) { setActionError('A note is required.'); return; }
     setBusy(true);
     setActionError('');
     try {
+      // A shared room's edit-tier member edits the note only — the
+      // title is the owner's, and the server refuses a member rename
+      // by name, so the title is not sent at all on that path.
+      const sharedEdit = !!selected.shared;
       await runCollab<{ room?: unknown }>(
         'room-update',
-        { id: selected.id, title: trimmed, note: nextNote },
+        sharedEdit ? { id: selected.id, note: nextNote } : { id: selected.id, title: trimmed, note: nextNote },
         'Could not save that room.',
       );
       // The page's read-back discipline, kept: the edit shows only
       // after the list + detail read the new values back.
       const rows = await readRooms();
       const row = rows.find((item) => item.id === selected.id);
-      if (!row || row.title !== trimmed || row.note !== nextNote) {
+      if (!row || (!sharedEdit && row.title !== trimmed) || row.note !== nextNote) {
         throw new Error('Saved, but the room did not read it back.');
       }
       setRooms(rows);
       setEditing(false);
-      setReceipt(`Saved “${trimmed}”.`);
+      setReceipt(`Saved “${sharedEdit ? row.title : trimmed}”.`);
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Could not save that room.');
+      setActionError(friendlyRoomError(err instanceof Error ? err.message : '', 'Could not save that room.'));
     } finally {
       setBusy(false);
     }
@@ -228,7 +439,7 @@ export default function CollabLensPage() {
       setConfirmClose(false);
       setReceipt(`Closed “${selected.title}”.`);
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Could not close that room.');
+      setActionError(friendlyRoomError(err instanceof Error ? err.message : '', 'Could not close that room.'));
     } finally {
       setBusy(false);
     }
@@ -243,6 +454,31 @@ export default function CollabLensPage() {
         <p data-testid="cb-room-about" className="mb-5 max-w-xl text-[14px] text-zinc-400">
           A room is a title and a note, saved to your account and listed here when you return.
         </p>
+
+        <div role="group" aria-label="Collab views" className="mb-5 flex gap-2">
+          {(
+            [
+              ['rooms', 'Rooms'],
+              ['documents', 'Documents'],
+              ['sessions', 'Sessions'],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              data-testid={`cb-view-${value}`}
+              aria-pressed={view === value}
+              onClick={() => setView(value)}
+              className={`rounded-full border px-4 py-2 text-[14px] ${view === value ? 'border-teal-300/60 text-zinc-50' : 'border-white/10 text-zinc-400 hover:text-zinc-200'}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {view === 'rooms' && (
+        <>
+        {phase === 'ready' && <RoomInvites onAccepted={load} />}
 
         <section
           aria-label="Room"
@@ -279,6 +515,7 @@ export default function CollabLensPage() {
                       className={`text-left font-vault text-[1.35rem] leading-7 ${selected?.id === room.id ? 'text-zinc-100 underline' : 'text-zinc-400 hover:text-zinc-200'}`}
                     >
                       {room.title}
+                      {room.shared ? <span className="ml-2 align-middle font-sans text-[12px] not-italic text-teal-300">shared</span> : null}
                     </button>
                   </li>
                 ))}
@@ -291,39 +528,54 @@ export default function CollabLensPage() {
                 )}
                 {selected && (
                   <div className="mt-5 flex gap-4 text-[14px]">
-                    <button type="button" onClick={startEdit} disabled={busy} className="text-zinc-100 underline disabled:opacity-60">
-                      Edit room
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { void closeRoom(); }}
-                      disabled={busy}
-                      className={confirmClose ? 'font-medium text-red-300 underline' : 'text-zinc-400 underline hover:text-zinc-200'}
-                    >
-                      {confirmClose ? `Close “${selected.title}”? This deletes the room.` : 'Close room'}
-                    </button>
-                    {confirmClose && (
+                    {(!selected.shared || selected.myTier === 'edit') && (
+                      <button type="button" onClick={startEdit} disabled={busy} className="text-zinc-100 underline disabled:opacity-60">
+                        Edit room
+                      </button>
+                    )}
+                    {!selected.shared && (
+                      <button
+                        type="button"
+                        onClick={() => { void closeRoom(); }}
+                        disabled={busy}
+                        className={confirmClose ? 'font-medium text-red-300 underline' : 'text-zinc-400 underline hover:text-zinc-200'}
+                      >
+                        {confirmClose ? `Delete “${selected.title}”? This permanently deletes the room.` : 'Delete room'}
+                      </button>
+                    )}
+                    {confirmClose && !selected.shared && (
                       <button type="button" onClick={() => setConfirmClose(false)} className="text-zinc-400 underline hover:text-zinc-200">
                         Keep it
                       </button>
                     )}
                   </div>
                 )}
+                {selected && <RoomSharingPanel key={selected.id} roomId={selected.id} />}
               </div>
             </>
           )}
           {phase === 'ready' && editing && selected && (
             <div className="col-span-full space-y-4 px-6 py-5">
-              <label className="block text-[14px] text-zinc-400">
-                Title
-                <input
-                  data-testid="cb-edit-title"
-                  value={editTitle}
-                  onChange={(event) => setEditTitle(event.target.value)}
-                  className="mt-1 w-full border-b border-white/15 bg-transparent pb-2 font-vault text-[1.25rem] text-zinc-100 outline-none"
-                  autoFocus
-                />
-              </label>
+              <div>
+                <label className="block text-[14px] text-zinc-400" htmlFor="cb-edit-title-field">
+                  Title
+                  <input
+                    id="cb-edit-title-field"
+                    data-testid="cb-edit-title"
+                    disabled={!!selected.shared}
+                    value={editTitle}
+                    maxLength={TITLE_MAX}
+                    aria-invalid={editTitleError ? true : undefined}
+                    aria-describedby={editTitleError ? 'cb-edit-title-error' : undefined}
+                    onChange={(event) => { setEditTitle(event.target.value); if (editTitleError) setEditTitleError(''); }}
+                    className="mt-1 w-full border-b border-white/15 bg-transparent pb-2 font-vault text-[1.25rem] text-zinc-100 outline-none"
+                    autoFocus
+                  />
+                </label>
+                {editTitleError && (
+                  <p id="cb-edit-title-error" role="alert" className="mt-1 text-[13px] text-red-300">{editTitleError}</p>
+                )}
+              </div>
               <label className="block text-[14px] text-zinc-400">
                 Note
                 <input
@@ -347,30 +599,7 @@ export default function CollabLensPage() {
             </div>
           )}
           {phase === 'ready' && composing && (
-            <div className="col-span-full space-y-4 px-6 py-5">
-              <label className="block text-[14px] text-zinc-400">
-                Title
-                <input
-                  data-testid="cb-title"
-                  value={title}
-                  onChange={(event) => setTitle(event.target.value)}
-                  className="mt-1 w-full border-b border-white/15 bg-transparent pb-2 font-vault text-[1.25rem] text-zinc-100 outline-none"
-                  autoFocus
-                />
-              </label>
-              <label className="block text-[14px] text-zinc-400">
-                Note
-                <input
-                  data-testid="cb-note-input"
-                  value={note}
-                  onChange={(event) => setNote(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') { event.preventDefault(); void openRoom(); }
-                  }}
-                  className="mt-1 w-full border-b border-white/15 bg-transparent pb-2 text-[15px] text-zinc-100 outline-none"
-                />
-              </label>
-            </div>
+            <RoomComposer busy={busy} submitRef={composerSubmitRef} onCreate={createRoom} />
           )}
         </section>
 
@@ -390,6 +619,20 @@ export default function CollabLensPage() {
         >
           Open a room
         </button>
+        </>
+        )}
+
+        {view === 'documents' && (
+          <section aria-label="Documents" data-testid="cb-documents-view">
+            <CollabDocWorkspace />
+          </section>
+        )}
+
+        {view === 'sessions' && (
+          <section aria-label="Sessions" data-testid="cb-sessions-view">
+            <CollabHub />
+          </section>
+        )}
       </div>
     </LensShell>
   );

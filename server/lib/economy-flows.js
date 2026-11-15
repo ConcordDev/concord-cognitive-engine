@@ -62,7 +62,21 @@ export function factionEconomyState(db, worldId, factionId) {
     `SELECT creditor_id, amount, collateral_id FROM extraction_loans WHERE world_id = ? AND debtor_id = ? AND status = 'active'`,
     worldId, factionId
   );
-  return { ok: true, factionId, treasury: realm?.treasury ?? null, fundedBy, liensAgainst };
+  // FIX-ledger-001: the dossier is also opened from the parity/liens rows
+  // for FUNDERS and CREDITORS (e.g. the_tessera), who are not factions —
+  // the faction-only reads above returned 'unknown'/'none on record' for
+  // them, contradicting the very row the dossier was opened from. Read
+  // the entity's own side of those same tables: the factions it funds
+  // (the parity flow itself) and the liens it holds as creditor.
+  const funds = [...new Set(safeAll(db,
+    `SELECT war_faction_a, war_faction_b FROM faction_funding WHERE world_id = ? AND active = 1 AND funder_id = ?`,
+    worldId, factionId
+  ).flatMap((r) => [r.war_faction_a, r.war_faction_b]).filter(Boolean))];
+  const liensHeld = safeAll(db,
+    `SELECT debtor_id, amount, collateral_id FROM extraction_loans WHERE world_id = ? AND creditor_id = ? AND status = 'active'`,
+    worldId, factionId
+  );
+  return { ok: true, factionId, treasury: realm?.treasury ?? null, fundedBy, liensAgainst, funds, liensHeld };
 }
 
 /** Generic recent-flow rollup from the economy ledger (best-effort; the world has no per-row world_id). */

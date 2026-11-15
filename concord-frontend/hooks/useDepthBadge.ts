@@ -327,6 +327,15 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     caption: 'Your workspace store: connections and datasets live in Concord’s workspace, not on a remote database server.',
   },
   /**
+   * Bounties board data is live user data — bounties posted, worked and paid
+   * by Concord users — so the generic REAL_LIVE line ("polled live from an
+   * external source") is false for this lens in the same way as database's.
+   */
+  bounties: {
+    label: 'Live',
+    caption: 'Real bounties posted, worked and paid by Concord users — live user data, not a simulation or an external feed.',
+  },
+  /**
    * Construction's substrate is the user's own project record — jobs,
    * RFIs, submittals, logs and budgets persist server-side per account
    * (PROBE-LIVE in Review 5's full first pass) and the bench tools
@@ -704,6 +713,29 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
   mail: {
     label: 'Live',
     caption: 'Player mail is real: messages, items and Concord Coin move between accounts on this instance and persist on Concord’s backend. The Gmail side is your own Google account, connected by you and revocable; until you connect it, that side shows its connect wall and holds nothing.',
+  },
+  /**
+   * Household (FIX-household-001): the manifest tier is REAL_FREE for
+   * the lens's reference content (seasonal checklists, maintenance
+   * schedules), but the generic caption — "Real but static /
+   * open-access dataset" — hangs over the member's own household
+   * records (members, meal plans, chores, budgets), which are private
+   * per-account data. The override names both halves so nobody reads
+   * the badge as describing their own records.
+   */
+  household: {
+    label: 'Real',
+    caption: 'Reference content (seasonal checklists, maintenance schedules) is real, from open sources. Your household’s own records — members, meal plans, chores and budgets — are yours alone, saved privately on your account.',
+  },
+  /**
+   * Manufacturing is the user's own shop-floor workspace — machines, work
+   * orders, lots and readings they enter, persisted per account (Review 5
+   * re-pass 2026-11-05, S1 remainder) — so the generic REAL_FREE line
+   * ("static / open-access dataset") is false for this lens.
+   */
+  manufacturing: {
+    label: 'Real',
+    caption: 'Your shop-floor workspace: machines, work orders and readings you enter, saved to your account.',
   },
 };
 

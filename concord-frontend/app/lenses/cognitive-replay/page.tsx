@@ -257,7 +257,7 @@ export default function CognitiveReplayPage() {
           className="flex min-h-[22rem] items-center justify-center rounded-2xl border border-white/10 bg-zinc-950 px-6 py-5"
         >
           {phase === 'loading' && (
-            <p data-testid="cr-loading" role="status" aria-busy="true" className="text-[14px] text-zinc-500">
+            <p data-testid="cr-loading" role="status" aria-busy="true" className="text-[14px] text-zinc-400">
               Opening your moments.
             </p>
           )}
@@ -278,10 +278,10 @@ export default function CognitiveReplayPage() {
                 <li key={moment.id}>
                   <h2 className="font-vault text-[1.5rem] leading-8 text-zinc-100">{moment.title}</h2>
                   {formatMomentDate(moment.createdAt) ? (
-                    <p data-testid="cr-date" className="mt-1 text-[13px] text-zinc-500">{formatMomentDate(moment.createdAt)}</p>
+                    <p data-testid="cr-date" className="mt-1 text-[13px] text-zinc-400">{formatMomentDate(moment.createdAt)}</p>
                   ) : null}
                   {moment.line ? (
-                    <p data-testid="cr-line" className="mt-3 text-[15px] text-zinc-300">{moment.line}</p>
+                    <p data-testid="cr-line" className="mt-3 text-[15px] text-zinc-300 min-w-0 break-words [overflow-wrap:anywhere]">{moment.line}</p>
                   ) : null}
                   <div className="mt-2 flex gap-4 text-[13px]">
                     <button

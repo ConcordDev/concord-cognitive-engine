@@ -6,8 +6,9 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { Sprout, Loader2, Grid3x3, Upload } from 'lucide-react';
+import { Sprout, Loader2, Grid3x3, Upload, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import type { AgField } from './PrecisionAgPanel';
 
 const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: false });
@@ -122,6 +123,12 @@ export function SoilGridPanel({
 
   async function generate() {
     if (!fieldId) return;
+    // FIX-agriculture-012: state the range before sending (the server
+    // refuses outside it by name as well).
+    if (!Number.isFinite(acresPerSample) || acresPerSample < 0.5 || acresPerSample > 40) {
+      setError('Acres per sample must be between 0.5 and 40.');
+      return;
+    }
     setError(null);
     setInfo(null);
     setGenerating(true);
@@ -145,6 +152,25 @@ export function SoilGridPanel({
   }
 
   const latest = grids[0] || null;
+
+  // FIX-agriculture-013: stored grids could never be deleted. The
+  // server now has soil-grid-delete (owner-scoped); every stored grid
+  // for the field gets a confirm-guarded delete here.
+  async function deleteGrid(id: string) {
+    setError(null);
+    setInfo(null);
+    try {
+      const r = await lensRun('agriculture', 'soil-grid-delete', { id });
+      if (r.data?.ok) {
+        setInfo('Sampling grid deleted.');
+        await refresh();
+      } else {
+        setError(r.data?.error || 'Grid delete failed');
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
 
   async function importResults() {
     if (!latest) return;
@@ -219,6 +245,9 @@ export function SoilGridPanel({
         <input
           type="number"
           step="0.5"
+          min={0.5}
+          max={40}
+          aria-label="Acres per sample"
           value={acresPerSample}
           onChange={(e) => setAcresPerSample(Number(e.target.value))}
           placeholder="Acres / sample"
@@ -259,6 +288,39 @@ export function SoilGridPanel({
         </div>
       ) : (
         <div className="space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[11px] text-gray-400">
+              Latest grid · generated {new Date(latest.generatedAt).toLocaleString()}
+              {grids.length > 1 ? ` · ${grids.length} grids stored for this field` : ''}
+            </p>
+            <StickyDeleteConfirm
+              onConfirm={() => { void deleteGrid(latest.id); }}
+              armLabel={<span className="inline-flex items-center gap-1"><Trash2 className="w-3 h-3" /> Delete grid</span>}
+              armAriaLabel="Delete the latest sampling grid"
+              confirmLabel="Delete this grid?"
+              confirmAriaLabel="Confirm delete sampling grid"
+              className="px-2 py-1 text-[11px] text-gray-400 hover:text-rose-300"
+            />
+          </div>
+
+          {grids.length > 1 && (
+            <ul className="space-y-1">
+              {grids.slice(1).map((g) => (
+                <li key={g.id} className="flex items-center justify-between gap-2 rounded bg-lattice-deep px-2 py-1.5 text-[11px] text-gray-300">
+                  <span>{new Date(g.generatedAt).toLocaleString()} · {g.sampleCount} points · {g.dim}×{g.dim}</span>
+                  <StickyDeleteConfirm
+                    onConfirm={() => { void deleteGrid(g.id); }}
+                    armLabel={<Trash2 className="w-3 h-3" />}
+                    armAriaLabel={`Delete sampling grid from ${new Date(g.generatedAt).toLocaleString()}`}
+                    confirmLabel="Delete this grid?"
+                    confirmAriaLabel="Confirm delete sampling grid"
+                    className="p-1 text-gray-500 hover:text-rose-300"
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
+
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
             {[
               { k: 'Sample points', v: `${latest.sampleCount}` },

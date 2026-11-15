@@ -101,9 +101,9 @@ export function TaxRatesPanel({ className }: { className?: string }) {
       </div>
 
       <form onSubmit={(e) => { e.preventDefault(); void set(); }} className="flex flex-wrap items-center gap-2">
-        <input value={region} onChange={(e) => setRegion(e.target.value)} placeholder="Region (e.g. CA)" maxLength={40}
+        <input id="retail-region-eg-ca" name="region-eg-ca" aria-label="Region (e.g. CA)" value={region} onChange={(e) => setRegion(e.target.value)} placeholder="Region (e.g. CA)" maxLength={40}
           className="flex-1 min-w-[8rem] bg-lattice-surface border border-lattice-border rounded px-2 py-1.5 text-xs text-gray-100 focus:border-emerald-500 focus:outline-none" />
-        <input value={ratePct} onChange={(e) => setRatePct(e.target.value)} placeholder="rate %" type="number" min="0" max="100" step="0.01"
+        <input id="retail-rate" name="rate" aria-label="rate %" value={ratePct} onChange={(e) => setRatePct(e.target.value)} placeholder="rate %" type="number" min="0" max="100" step="0.01"
           className="w-20 bg-lattice-surface border border-lattice-border rounded px-2 py-1.5 text-xs text-gray-100 focus:outline-none" />
         <button type="submit" disabled={saving || !region.trim() || ratePct === ''}
           className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-medium hover:bg-emerald-500/30 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50">

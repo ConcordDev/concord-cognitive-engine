@@ -323,7 +323,7 @@ export function SensorGroundingPanel() {
             className="grid grid-cols-1 sm:grid-cols-3 gap-2"
           >
             <label className="sr-only" htmlFor="sensor-name">Sensor name</label>
-            <input id="sensor-name" value={sName} onChange={(e) => setSName(e.target.value)} placeholder="Sensor name" className="input-lattice sm:col-span-1" />
+            <input id="sensor-name" value={sName} onChange={(e) => setSName(e.target.value)} placeholder="Sensor name" maxLength={100} className="input-lattice sm:col-span-1" />
             <label className="sr-only" htmlFor="sensor-type">Sensor type</label>
             <select id="sensor-type" value={sType} onChange={(e) => setSType(e.target.value)} className="input-lattice sm:col-span-1">
               {SENSOR_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}

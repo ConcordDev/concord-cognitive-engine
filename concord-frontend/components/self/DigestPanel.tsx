@@ -82,7 +82,7 @@ export function DigestPanel({ refreshKey }: { refreshKey: number }) {
                       <span className="font-mono text-rose-100">{st.value}{st.unit}</span>
                       {st.deltaPct != null && (
                         <span className={`flex items-center gap-0.5 font-mono ${
-                          st.deltaPct > 0 ? 'text-emerald-400' : st.deltaPct < 0 ? 'text-amber-400' : 'text-rose-700'
+                          st.deltaPct > 0 ? 'text-emerald-400' : st.deltaPct < 0 ? 'text-amber-400' : 'text-rose-400'
                         }`}>
                           <D className="h-3 w-3" aria-hidden />
                           {Math.abs(st.deltaPct)}%
@@ -94,7 +94,7 @@ export function DigestPanel({ refreshKey }: { refreshKey: number }) {
               })}
             </ul>
           ) : null}
-          <p className="mt-3 text-[10px] text-rose-800">
+          <p className="mt-3 text-[10px] text-rose-400">
             Generated {new Date(data.generatedAt).toLocaleString()} · {data.readingCount} reading{data.readingCount === 1 ? '' : 's'}
           </p>
         </div>

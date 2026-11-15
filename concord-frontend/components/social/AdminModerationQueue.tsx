@@ -60,14 +60,14 @@ export function AdminModerationQueue() {
   return (
     <section className="rounded-2xl border border-white/10 bg-[#111] p-3 text-sm">
       <h2 className="mb-2 text-xs text-zinc-400">Moderation queue</h2>
-      {items === null && <p className="text-xs text-zinc-500">Loading the queue.</p>}
-      {items?.length === 0 && !message && <p className="text-xs text-zinc-500">The queue is empty.</p>}
+      {items === null && <p className="text-xs text-zinc-400">Loading the queue.</p>}
+      {items?.length === 0 && !message && <p className="text-xs text-zinc-400">The queue is empty.</p>}
       <ul className="space-y-2">
         {items?.map((item) => (
           <li key={item.id || item.reportId} className="flex items-center gap-2 text-xs text-zinc-300">
             <span>{item.category || 'report'}</span>
-            <span className="text-zinc-500">{item.severity}</span>
-            <span className="text-zinc-500">{item.status}</span>
+            <span className="text-zinc-400">{item.severity}</span>
+            <span className="text-zinc-400">{item.status}</span>
             {item.reportId && (
               <button type="button" onClick={() => void approve(item.reportId!)} className="ml-auto rounded bg-white/10 px-2 py-1">
                 Approve

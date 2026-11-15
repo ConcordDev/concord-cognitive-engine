@@ -959,6 +959,23 @@ DOMAIN_RULES.set("agriculture", {
 
 // ── Exported helpers ─────────────────────────────────────────────────────────
 
+/**
+ * The artifact's title rides at the artifact level, next to `data` —
+ * but requiredFields rules name "title" as a field of the record, so
+ * a create that supplies a perfectly good title still warned
+ * `Recommended field "title" is missing` for every title-ruled type
+ * (the science Equipment form was the audited instance). Fill the
+ * title into the validation view of the data — only when the data
+ * carries no title of its own — so validation judges the record the
+ * user actually made.
+ */
+function artifactDataWithTitle(data, title) {
+  const base = data && typeof data === "object" ? data : {};
+  if (base.title !== undefined && base.title !== null && base.title !== "") return base;
+  if (typeof title !== "string" || !title.trim()) return base;
+  return { ...base, title };
+}
+
 function validateArtifact(domain, type, data, meta) {
   const rule = DOMAIN_RULES.get(domain);
   const errors = [];
@@ -1028,4 +1045,4 @@ function getDomainSchema(domain) {
   };
 }
 
-export { DOMAIN_RULES, validateArtifact, computeFields, getValidTransitions, scoreArtifact, getDomainSchema };
+export { DOMAIN_RULES, validateArtifact, artifactDataWithTitle, computeFields, getValidTransitions, scoreArtifact, getDomainSchema };

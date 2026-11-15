@@ -43,7 +43,7 @@ export function RemindersPanel() {
           {e.patientName} <span className="text-xs font-normal text-zinc-400">— {e.vaccine}</span>
         </p>
         <p className="text-xs text-zinc-400">
-          {e.owner || 'no owner'} · due {e.nextDue}
+          {e.owner || 'no owner'} · due {e.nextDue}{e.kind === 'appointment' && e.time ? ` at ${e.time}` : ''}
         </p>
       </div>
       <span
@@ -86,7 +86,7 @@ export function RemindersPanel() {
               <AlertOctagon className="h-4 w-4" /> Overdue ({overdue.length})
             </p>
             {overdue.length === 0 ? (
-              <p className="text-xs text-zinc-400">No overdue vaccinations.</p>
+              <p className="text-xs text-zinc-400">No overdue vaccinations or missed appointments.</p>
             ) : (
               <div className="space-y-2">
                 {overdue.map((e, i) => (
@@ -100,7 +100,7 @@ export function RemindersPanel() {
               <BellRing className="h-4 w-4" /> Due soon ({dueSoon.length})
             </p>
             {dueSoon.length === 0 ? (
-              <p className="text-xs text-zinc-400">Nothing due in the next {horizon} days.</p>
+              <p className="text-xs text-zinc-400">No vaccinations or appointments due in the next {horizon} days.</p>
             ) : (
               <div className="space-y-2">
                 {dueSoon.map((e, i) => (

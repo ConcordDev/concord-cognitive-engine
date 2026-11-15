@@ -63,8 +63,11 @@ export function AnimationStudioSection() {
   const create = async () => {
     const preset = presets[form.preset];
     if (!preset) { setError('Presets still loading.'); return; }
+    // FIX-animation-002: a blank title silently became 'Untitled
+    // animation'. The title is required, and the form says so.
+    if (!form.title.trim()) { setError('Give the animation a title.'); return; }
     const r = await lensRun('animation', 'anim-create', {
-      title: form.title.trim() || 'Untitled animation',
+      title: form.title.trim(),
       width: preset.width, height: preset.height, fps: form.fps,
     });
     if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
@@ -112,8 +115,8 @@ export function AnimationStudioSection() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <input id="anim-new-title" placeholder="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
                   className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-                <select value={form.preset} onChange={(e) => setForm({ ...form, preset: Number(e.target.value) })}
-                  className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
+                <select aria-label="Canvas preset" onChange={(e) => setForm({ ...form, preset: Number(e.target.value) })}
+                  className="min-h-11 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
                   {presets.length === 0
                     ? <option value={0}>Loading presets…</option>
                     : presets.map((p, i) => (
@@ -180,7 +183,7 @@ export function AnimationStudioSection() {
                       {confirmDeleteId === a.id ? (
                         <button type="button" onClick={() => del(a.id)} className="text-[11px] font-semibold text-rose-300 shrink-0">Delete?</button>
                       ) : (
-                        <button aria-label={`Delete ${a.title}`} type="button" onClick={() => setConfirmDeleteId(a.id)} className="text-zinc-600 hover:text-rose-400 shrink-0">
+                        <button aria-label={`Delete ${a.title}`} type="button" onClick={() => setConfirmDeleteId(a.id)} className="inline-flex min-h-11 min-w-11 items-center justify-center text-zinc-500 hover:text-rose-400 shrink-0">
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       )}

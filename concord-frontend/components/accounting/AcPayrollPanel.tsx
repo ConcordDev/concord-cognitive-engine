@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Trash2, Users, Play, Pencil, Check, X, TrendingUp } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
-import { ErrorState } from '@/components/ui';
+import { ErrorState, EmptyState } from '@/components/ui';
 
 interface Employee { id: string; name: string; payType: string; rate: number; title: string | null; active: boolean }
 interface Stub { employeeName: string; hours: number | null; gross: number; withholding: number; net: number }
@@ -88,11 +88,11 @@ export function AcPayrollPanel() {
       )}
 
       <section className="bg-black/30 border border-white/10 rounded-lg p-3">
-        <h3 className="flex items-center gap-1 text-xs font-semibold text-gray-300 mb-2"><Users className="w-3.5 h-3.5" /> Employees</h3>
+        <h2 className="flex items-center gap-1 text-xs font-semibold text-gray-300 mb-2"><Users className="w-3.5 h-3.5" /> Employees</h2>
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-2">
           <input placeholder="Name" value={emp.name} onChange={(e) => setEmp({ ...emp, name: e.target.value })} className={inp} />
           <input placeholder="Title" value={emp.title} onChange={(e) => setEmp({ ...emp, title: e.target.value })} className={inp} />
-          <select value={emp.payType} onChange={(e) => setEmp({ ...emp, payType: e.target.value })} className={inp}>
+          <select aria-label="Pay type" value={emp.payType} onChange={(e) => setEmp({ ...emp, payType: e.target.value })} className={inp}>
             <option value="salary">Salary</option><option value="hourly">Hourly</option>
           </select>
           <input placeholder={emp.payType === 'hourly' ? 'Rate/hr' : 'Annual'} inputMode="decimal" value={emp.rate}
@@ -106,7 +106,7 @@ export function AcPayrollPanel() {
                 <li key={e.id} className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 bg-emerald-500/5 rounded px-2 py-1.5">
                   <input value={editDraft.name} onChange={(ev) => setEditDraft({ ...editDraft, name: ev.target.value })} placeholder="Name" className={inp} />
                   <input value={editDraft.title} onChange={(ev) => setEditDraft({ ...editDraft, title: ev.target.value })} placeholder="Title" className={inp} />
-                  <select value={editDraft.payType} onChange={(ev) => setEditDraft({ ...editDraft, payType: ev.target.value })} className={inp}>
+                  <select aria-label="Pay type" value={editDraft.payType} onChange={(ev) => setEditDraft({ ...editDraft, payType: ev.target.value })} className={inp}>
                     <option value="salary">Salary</option><option value="hourly">Hourly</option>
                   </select>
                   <input value={editDraft.rate} onChange={(ev) => setEditDraft({ ...editDraft, rate: ev.target.value })} inputMode="decimal" placeholder={editDraft.payType === 'hourly' ? 'Rate/hr' : 'Annual'} className={inp} />
@@ -136,7 +136,7 @@ export function AcPayrollPanel() {
       </section>
 
       <section className="bg-black/30 border border-white/10 rounded-lg p-3">
-        <h3 className="text-xs font-semibold text-gray-300 mb-2">Run payroll</h3>
+        <h2 className="text-xs font-semibold text-gray-300 mb-2">Run payroll</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <input type="date" value={run.periodStart} onChange={(e) => setRun({ ...run, periodStart: e.target.value })} className={inp} />
           <input type="date" value={run.periodEnd} onChange={(e) => setRun({ ...run, periodEnd: e.target.value })} className={inp} />
@@ -147,7 +147,7 @@ export function AcPayrollPanel() {
 
       {detail && (
         <section className="bg-black/30 border border-emerald-500/20 rounded-lg p-3">
-          <h3 className="text-xs font-semibold text-emerald-300 mb-1.5">Pay stubs</h3>
+          <h2 className="text-xs font-semibold text-emerald-300 mb-1.5">Pay stubs</h2>
           <ul className="space-y-0.5">
             {detail.stubs.map((st, i) => (
               <li key={i} className="flex items-center gap-2 text-[11px] text-gray-300">
@@ -162,7 +162,7 @@ export function AcPayrollPanel() {
       )}
 
       <section>
-        <h3 className="text-xs font-semibold text-gray-300 mb-2">Pay run history</h3>
+        <h2 className="text-xs font-semibold text-gray-300 mb-2">Pay run history</h2>
         {runs.length === 0 ? <Empty text="No pay runs yet." /> : (
           <ul className="space-y-1">
             {runs.map((r) => (
@@ -185,7 +185,9 @@ export function AcPayrollPanel() {
 const inp = 'bg-black/40 border border-white/10 rounded px-2 py-1.5 text-xs text-gray-100';
 const btn = 'flex items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded';
 function Spin() { return <div className="flex items-center justify-center py-10 text-gray-400"><Loader2 className="w-5 h-5 animate-spin" /></div>; }
-function Empty({ text }: { text: string }) { return <p className="text-[11px] text-gray-400 italic">{text}</p>; }
+function Empty({ text }: { text: string }) {
+  return <EmptyState compact title={text} description="This book has no saved rows yet. Add one above and it will show up here." />;
+}
 function SummaryStat({ label, value, accent }: { label: string; value: string; accent?: 'emerald' | 'amber' }) {
   const color = accent === 'emerald' ? 'text-emerald-300' : accent === 'amber' ? 'text-amber-300' : 'text-gray-100';
   return (

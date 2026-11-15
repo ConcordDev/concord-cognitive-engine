@@ -167,8 +167,8 @@ export function WildlifeSightingLog() {
       <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 space-y-3">
         <div className="flex items-center gap-2">
           <PawPrint className="h-4 w-4 text-amber-400" />
-          <h3 className="text-sm font-semibold text-white">Wildlife sighting log</h3>
-          <span className="ml-auto text-[10px] text-zinc-500">{sightings.length} logged</span>
+          <h2 className="text-sm font-semibold text-white">Wildlife sighting log</h2>
+          <span className="ml-auto text-[10px] text-zinc-400">{sightings.length} logged</span>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -218,7 +218,7 @@ export function WildlifeSightingLog() {
             value={confidence}
             onChange={(e) => setConfidence(e.target.value as Confidence)}
             aria-label="Confidence"
-            className="rounded bg-zinc-950 border border-zinc-800 px-2 py-1.5 text-sm text-white"
+            className="min-h-11 rounded bg-zinc-950 border border-zinc-800 px-2 py-1.5 text-sm text-white"
           >
             {CONFIDENCE_OPTIONS.map((c) => (
               <option key={c} value={c}>
@@ -244,7 +244,7 @@ export function WildlifeSightingLog() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Camera className="h-3.5 w-3.5 text-zinc-500" />
+          <Camera className="h-3.5 w-3.5 text-zinc-400" />
           <input
             value={photoUrl}
             onChange={(e) => setPhotoUrl(e.target.value)}
@@ -299,7 +299,7 @@ export function WildlifeSightingLog() {
         </div>
         {near && (
           <div className="space-y-1.5 pt-1">
-            {near.sightings.length === 0 && <p className="text-xs text-zinc-500">No sightings in range.</p>}
+            {near.sightings.length === 0 && <p className="text-xs text-zinc-400">No sightings in range.</p>}
             {near.sightings.map((s) => (
               <div key={s.id} className="flex items-center justify-between rounded bg-zinc-950 border border-zinc-800 px-3 py-1.5 text-xs">
                 <span className="text-white">{s.species}</span>
@@ -323,8 +323,8 @@ export function WildlifeSightingLog() {
                 <span className={`text-[10px] uppercase px-1.5 py-0.5 rounded border ${CONFIDENCE_BADGE[s.confidence]}`}>
                   {s.confidence}
                 </span>
-                <span className="text-xs text-zinc-500">{fmtDate(s.observedAt)}</span>
-                {s.behavior && <span className="text-xs text-zinc-500 italic">{s.behavior}</span>}
+                <span className="text-xs text-zinc-400">{fmtDate(s.observedAt)}</span>
+                {s.behavior && <span className="text-xs text-zinc-400 italic">{s.behavior}</span>}
               </div>
               <button onClick={() => remove(s.id)} className="p-1 text-zinc-400 hover:text-red-400" aria-label={`Delete ${s.species} sighting`}>
                 <Trash2 className="h-3.5 w-3.5" />

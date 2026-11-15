@@ -16,6 +16,7 @@ import {
   Star, History, Loader2, Plus, Trash2, X, Hammer, Sparkles,
   CheckCircle2, AlertTriangle, RefreshCw,
 } from 'lucide-react';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 // ── shared types ────────────────────────────────────────────────────
 
@@ -232,7 +233,7 @@ function AssemblyGridPanel() {
                   ? 'bg-amber-500/15 border-amber-500/40'
                   : 'bg-white/5 border-dashed border-white/15 hover:border-white/30'
               }`}
-              title={c ? 'Click to clear' : 'Click or drop to fill'} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+              title={c ? 'Click to clear' : 'Click or drop to fill'} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
               {c ? (
                 <>
                   <span className="text-[9px] leading-tight text-amber-200 break-words">{c.material}</span>

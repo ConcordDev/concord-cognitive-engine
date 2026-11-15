@@ -81,6 +81,7 @@ export function EntrantsManager({
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') submitAdd(); }}
               placeholder={isTeam ? 'Team name' : 'Player name'}
               aria-label="Entrant name"
               className="col-span-2 rounded bg-slate-800 px-2 py-1 text-sm"
@@ -99,6 +100,7 @@ export function EntrantsManager({
             <input
               value={roster}
               onChange={(e) => setRoster(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') submitAdd(); }}
               placeholder={`Roster (comma-separated, up to ${t.teamSize})`}
               aria-label="Team roster"
               className="w-full rounded bg-slate-800 px-2 py-1 text-sm"

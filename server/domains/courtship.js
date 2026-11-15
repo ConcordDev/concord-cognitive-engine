@@ -61,7 +61,7 @@ export default function registerCourtshipMacros(register) {
     const status = input?.status ? String(input.status) : null;
     return {
       ok: true,
-      courtships: listMyCourtships(db, userId, status).map((row) => presentCourtship(row, userId)),
+      courtships: listMyCourtships(db, userId, status).map((row) => presentCourtship(row, userId, db)),
     };
   }, { note: "list the player's courtships (acquainted → married)" });
 
@@ -77,7 +77,7 @@ export default function registerCourtshipMacros(register) {
     if (!input?.partnerId) return { ok: false, reason: "missing_inputs" };
     const c = getCourtship(db, userId, partnerKindOf(input), String(input.partnerId));
     if (!c) return { ok: false, reason: "no_courtship" };
-    return { ok: true, courtship: presentCourtship(c, userId) };
+    return { ok: true, courtship: presentCourtship(c, userId, db) };
   }, { note: "fetch one courtship by partner" });
 
   /**

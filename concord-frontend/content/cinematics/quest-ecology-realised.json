@@ -1,6 +1,7 @@
 {
   "id": "quest_ecology_realised",
   "name": "Ecology Quest Realised",
+  "summary": "A quest born of the living land comes to fruition. The region's creatures gather as the ecology itself acknowledges what was done — the wild keeps its own ledger, and today it balances in your favour.",
   "trigger": "quest_ecology_realised",
   "comment": "Phase W — fires when an ecology-born quest is realised. Overhead orbit on the affected ecology region + a fauna-gathering close-up.",
   "shots": [

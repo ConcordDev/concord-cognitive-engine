@@ -115,13 +115,32 @@ export default function MentalHealthLensPage() {
   useEffect(() => { if (view === 'analysis') void loadTracked(); }, [view]);
 
   const runWellness = async () => {
+    // FIX-mental-health-006: validate against the ranges the form
+    // itself declares before sending — out-of-range values computed a
+    // score with no word (mood 11 paid out more than its pillar's
+    // maximum), and a cleared field was silently sent as a real 0 via
+    // Number(x) || 0.
+    const fields: Array<{ raw: string; label: string; min: number; max: number; unit: string }> = [
+      { raw: sleepHours, label: 'Sleep', min: 0, max: 24, unit: ' hours' },
+      { raw: exerciseMinutes, label: 'Exercise', min: 0, max: 600, unit: ' minutes' },
+      { raw: socialInteractions, label: 'Social interactions', min: 0, max: 50, unit: '' },
+      { raw: moodScore, label: 'Mood', min: 1, max: 10, unit: '' },
+    ];
+    for (const f of fields) {
+      if (f.raw.trim() === '') { setWellnessError(`${f.label} is required.`); return; }
+      const n = Number(f.raw);
+      if (!Number.isFinite(n) || n < f.min || n > f.max) {
+        setWellnessError(`${f.label} must be between ${f.min} and ${f.max}${f.unit}.`);
+        return;
+      }
+    }
     setWellnessBusy(true); setWellnessError(null);
     try {
       const r = await lensRun<WellnessResult>('mental-health', 'wellnessScore', {
-        sleepHours: Number(sleepHours) || 0,
-        exerciseMinutes: Number(exerciseMinutes) || 0,
-        socialInteractions: Number(socialInteractions) || 0,
-        moodScore: Number(moodScore) || 0,
+        sleepHours: Number(sleepHours),
+        exerciseMinutes: Number(exerciseMinutes),
+        socialInteractions: Number(socialInteractions),
+        moodScore: Number(moodScore),
       });
       if (r.data?.ok === false || !r.data?.result) { setWellnessError(r.data?.error || 'Request failed.'); setWellnessResult(null); }
       else setWellnessResult(r.data.result);
@@ -150,9 +169,19 @@ export default function MentalHealthLensPage() {
         activeTab={view}
         onTab={(id) => setView(id as MhView)}
         tabsLabel="Mental health views"
-        cta={{ label: 'Find a coping strategy', icon: Sparkles, onClick: () => setView('analysis'), title: 'Pick what you are dealing with and get strategies' }}
+        // FIX-mental-health-009: on Analysis itself the CTA is a
+        // self-switch, so it shows only from the other views; and the
+        // content column below carries bottom padding so the last
+        // content (the practice tab's recent sessions) can scroll fully
+        // clear of the floating button instead of resting underneath it.
+        cta={view === 'analysis' ? undefined : { label: 'Find a coping strategy', icon: Sparkles, onClick: () => setView('analysis'), title: 'Pick what you are dealing with and get strategies' }}
       >
-        <div data-lens-theme="mental-health" className="space-y-5">
+        <div data-lens-theme="mental-health" className="space-y-5 pb-28">
+      {/* Privacy notice — FIX-mental-health-004: the lens never stated
+          that tracking records are private to the account. */}
+      <p role="note" className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs text-gray-300">
+        Private to you: your mood check-ins, journal entries, and other records in this lens are visible only to your account. Nothing on your tracking views is public. The only public action anywhere in this lens is publishing a CDC public-statistics card from the Toolkit — it contains public CDC data, never your records, and it asks for confirmation first.
+      </p>
       {/* Disclaimer */}
       <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl px-4 py-3 flex items-start gap-3">
         <AlertTriangle className="w-5 h-5 text-amber-400 mt-0.5 shrink-0" />

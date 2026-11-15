@@ -305,14 +305,15 @@ export function ProjectTracker({ onDataChanged }: { onDataChanged?: () => void }
   return (
     <div className="space-y-4">
       <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
-        <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
+        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
           <ClipboardList className="h-4 w-4 text-emerald-400" /> New Project
-        </h3>
+        </h2>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
           <input
             value={form.name}
             onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
             placeholder="Project name"
+            aria-label="New project name"
             className={inputCls}
           />
           <select
@@ -346,6 +347,7 @@ export function ProjectTracker({ onDataChanged }: { onDataChanged?: () => void }
           value={form.description}
           onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
           placeholder="Description (optional)"
+          aria-label="Project description"
           rows={2}
           className={cn(inputCls, 'mt-2')}
         />
@@ -355,12 +357,14 @@ export function ProjectTracker({ onDataChanged }: { onDataChanged?: () => void }
             onChange={(e) => setForm((f) => ({ ...f, budget: e.target.value }))}
             type="number"
             placeholder="Budget ($, optional)"
+            aria-label="Project budget"
             className={inputCls}
           />
           <input
             value={form.permitNumber}
             onChange={(e) => setForm((f) => ({ ...f, permitNumber: e.target.value }))}
             placeholder="Permit number (optional)"
+            aria-label="Permit number"
             className={inputCls}
           />
           <input
@@ -429,12 +433,12 @@ export function ProjectTracker({ onDataChanged }: { onDataChanged?: () => void }
                       <span className={cn('rounded px-1.5 py-0.5 text-[10px] font-medium', STATUS_BADGE[p.status])}>
                         {STATUS_LABEL[p.status]}
                       </span>
-                      <span className="rounded bg-zinc-800/80 px-1.5 py-0.5 text-[10px] text-zinc-400">
+                      <span className="rounded bg-zinc-800/80 px-1.5 py-0.5 text-[10px] text-zinc-300">
                         {PROJECT_TYPE_LABEL[p.projectType]}
                       </span>
                     </div>
                     {p.description && <p className="mt-0.5 text-xs text-zinc-400">{p.description}</p>}
-                    <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-zinc-500">
+                    <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-zinc-300">
                       {p.parcelId && (
                         <span>
                           Parcel: {p.parcelApn}
@@ -460,7 +464,7 @@ export function ProjectTracker({ onDataChanged }: { onDataChanged?: () => void }
                     <button
                       onClick={() => (editingId === p.id ? setEditingId(null) : startEdit(p))}
                       disabled={rowBusy}
-                      className="rounded p-1 text-zinc-600 hover:bg-zinc-800 hover:text-zinc-200"
+                      className="inline-flex min-h-[24px] min-w-[24px] items-center justify-center rounded p-1 text-zinc-600 hover:bg-zinc-800 hover:text-zinc-200"
                       aria-label={`Edit project ${p.name}`}
                     >
                       <Pencil className="h-3.5 w-3.5" />
@@ -468,7 +472,7 @@ export function ProjectTracker({ onDataChanged }: { onDataChanged?: () => void }
                     <button
                       onClick={() => remove(p.id)}
                       disabled={rowBusy}
-                      className="rounded p-1 text-zinc-600 hover:bg-zinc-800 hover:text-red-400"
+                      className="inline-flex min-h-[24px] min-w-[24px] items-center justify-center rounded p-1 text-zinc-600 hover:bg-zinc-800 hover:text-red-400"
                       aria-label={`Delete project ${p.name}`}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -534,14 +538,14 @@ export function ProjectTracker({ onDataChanged }: { onDataChanged?: () => void }
 
                 {nextOptions.length > 0 && (
                   <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                    <span className="text-[10px] text-zinc-500">Advance:</span>
+                    <span className="text-[10px] text-zinc-300">Advance:</span>
                     {nextOptions.map((st) => (
                       <button
                         key={st}
                         onClick={() => transition(p.id, st)}
                         disabled={rowBusy}
                         className={cn(
-                          'inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] hover:opacity-80 disabled:opacity-40',
+                          'inline-flex min-h-[24px] items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] hover:opacity-80 disabled:opacity-40',
                           st === 'denied' || st === 'cancelled'
                             ? 'border-red-500/30 bg-red-500/5 text-red-300'
                             : 'border-emerald-500/30 bg-emerald-500/5 text-emerald-200',
@@ -560,7 +564,7 @@ export function ProjectTracker({ onDataChanged }: { onDataChanged?: () => void }
 
                 <button
                   onClick={() => toggleHistory(p.id)}
-                  className="mt-2 inline-flex items-center gap-1 text-[10px] text-zinc-500 hover:text-zinc-300"
+                  className="mt-2 inline-flex items-center gap-1 text-[10px] text-zinc-300 hover:text-zinc-300"
                 >
                   <History className="h-3 w-3" />
                   {historyOpen ? 'Hide' : 'Show'} status history ({p.statusHistory.length})
@@ -568,7 +572,7 @@ export function ProjectTracker({ onDataChanged }: { onDataChanged?: () => void }
                 {historyOpen && (
                   <ol className="mt-1.5 space-y-1 border-l border-zinc-800 pl-3">
                     {p.statusHistory.map((h, i) => (
-                      <li key={i} className="text-[10px] text-zinc-400">
+                      <li key={i} className="text-[10px] text-zinc-300">
                         <span className={cn('mr-1.5 rounded px-1 py-0.5 font-medium', STATUS_BADGE[h.status])}>
                           {STATUS_LABEL[h.status]}
                         </span>

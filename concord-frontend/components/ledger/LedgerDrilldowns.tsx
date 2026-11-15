@@ -84,6 +84,22 @@ export function FactionDossier({
               ))}</ul>
             )}
           </div>
+          {/* FIX-ledger-001: the funder/creditor side, so a dossier opened
+              from a parity or lien row shows the flow that row lists. */}
+          {(dossier.funds?.length ?? 0) > 0 && (
+            <div>
+              <div className="text-zinc-500">Funds</div>
+              <ul>{dossier.funds!.map((f) => <li key={f} className="text-zinc-100">{f}</li>)}</ul>
+            </div>
+          )}
+          {(dossier.liensHeld?.length ?? 0) > 0 && (
+            <div>
+              <div className="text-zinc-500">Liens held</div>
+              <ul>{dossier.liensHeld!.map((l, i) => (
+                <li key={i} className="text-zinc-100">{l.debtor_id}{typeof l.amount === 'number' ? ` — ${l.amount}` : ''}</li>
+              ))}</ul>
+            </div>
+          )}
         </div>
       )}
     </section>

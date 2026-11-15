@@ -28,6 +28,7 @@ import {
   UserPlus, FileSignature,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { ChartKit } from '@/components/viz';
 import { TimelineView, type TimelineEvent } from '@/components/viz';
 
@@ -60,6 +61,13 @@ function CutListOptimizer() {
   const [result, setResult] = useState<CutResult | null>(null);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
+
+  // A result belongs to the exact inputs that produced it. Any edit to
+  // the cuts or the stock settings invalidates it — the old code left
+  // the previous layout on screen after a cut was removed, so the
+  // board count and waste described cuts that no longer existed
+  // (FIX-carpentry-011).
+  useEffect(() => { setResult(null); }, [cuts, stockLength, kerf, stockCost]);
 
   const optimize = async () => {
     setBusy(true); setErr('');
@@ -166,10 +174,27 @@ function MaterialTakeoff({ onEstimate }: { onEstimate: (e: TakeoffResult) => voi
   const [overheadPct, setOverheadPct] = useState('12');
   const [marginPct, setMarginPct] = useState('20');
   const [result, setResult] = useState<TakeoffResult | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const r = await run<{ estimates?: TakeoffResult[] }>('estimate-list', {});
+      const latest = r.result?.estimates?.[0];
+      if (!cancelled && latest) setResult(latest);
+    })();
+    return () => { cancelled = true; };
+  }, []);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
 
   const compute = async () => {
+    if (projectName.trim().length > 160) { setErr('Project name must be 160 characters or fewer.'); return; }
+    for (const it of items) {
+      if (!it.quantity.trim()) continue;
+      const qty = Number(it.quantity);
+      if (!Number.isFinite(qty) || qty <= 0) { setErr('Quantity must be a number greater than 0.'); return; }
+      if (it.name.trim().length > 120) { setErr('Item name must be 120 characters or fewer.'); return; }
+    }
     setBusy(true); setErr('');
     const r = await run<TakeoffResult>('materialTakeoff', {
       projectName,
@@ -182,7 +207,7 @@ function MaterialTakeoff({ onEstimate }: { onEstimate: (e: TakeoffResult) => voi
         name: it.name, quantity: parseFloat(it.quantity), unit: it.unit, unitCost: parseFloat(it.unitCost) || 0,
       })),
     });
-    if (r.ok) { setResult(r.result); if (r.result) onEstimate(r.result); } else { setErr(r.error || 'takeoff failed'); setResult(null); }
+    if (r.ok) { setResult(r.result); if (r.result) onEstimate(r.result); } else { setErr((r as { message?: string }).message || r.error || 'takeoff failed'); setResult(null); }
     setBusy(false);
   };
 
@@ -264,6 +289,7 @@ interface ScheduleEntry {
 function CrewSchedule() {
   const [crew, setCrew] = useState<CrewMember[]>([]);
   const [sched, setSched] = useState<ScheduleEntry[]>([]);
+  const [jobQuery, setJobQuery] = useState('');
   const [busy, setBusy] = useState(false);
   // crew form
   const [cName, setCName] = useState('');
@@ -329,6 +355,11 @@ function CrewSchedule() {
     detail: `${e.startTime}–${e.endTime}${e.crewNames.length ? ' · ' + e.crewNames.join(', ') : ''}`,
   }));
 
+  const jq = jobQuery.trim().toLowerCase();
+  const visibleSched = jq
+    ? sched.filter((e) => e.title.toLowerCase().includes(jq) || e.address.toLowerCase().includes(jq) || e.crewNames.some((n) => n.toLowerCase().includes(jq)))
+    : sched;
+
   return (
     <div className={card}>
       <header className={head}>
@@ -387,8 +418,14 @@ function CrewSchedule() {
             : (
               <>
                 <TimelineView events={timelineEvents} height={110} />
+                <input value={jobQuery} onChange={(e) => setJobQuery(e.target.value)}
+                  placeholder="Search scheduled jobs by title, address, or crew" aria-label="Search scheduled jobs"
+                  className={`${inp} w-full`} />
+                {visibleSched.length === 0 && (
+                  <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No scheduled jobs match &ldquo;{jobQuery}&rdquo;.</div>
+                )}
                 <div className="space-y-1.5">
-                  {sched.map((e) => (
+                  {visibleSched.map((e) => (
                     <div key={e.id} className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1.5">
                       <div className="flex items-center justify-between">
                         <div>
@@ -401,7 +438,7 @@ function CrewSchedule() {
                             {e.status}
                           </button>
                           <button onClick={() => startEdit(e)} className="rounded bg-zinc-800 px-2 py-0.5 text-[10px] text-zinc-300 hover:text-white">Edit</button>
-                          <button onClick={() => removeSchedule(e.id)} className="text-zinc-600 hover:text-rose-300" aria-label="Delete schedule"><Trash2 className="h-3.5 w-3.5" /></button>
+                          <StickyDeleteConfirm onConfirm={() => { void removeSchedule(e.id); }} className="text-zinc-600 hover:text-rose-300" armAriaLabel={`Delete schedule ${e.title || ''}`.trim()} confirmLabel={`Delete “${e.title || 'schedule'}”?`} confirmAriaLabel={`Confirm delete schedule ${e.title || ''}`.trim()} armLabel={<Trash2 className="h-3.5 w-3.5" />} />
                         </div>
                       </div>
                       {editingId === e.id && (
@@ -469,6 +506,16 @@ function TimeTracking() {
     await reload(); setBusy(false);
   };
   const removeEntry = async (id: string) => { setBusy(true); await run('timeEntryDelete', { id }); await reload(); setBusy(false); };
+  const [editEntryId, setEditEntryId] = useState<string | null>(null);
+  const [editHours, setEditHours] = useState('');
+  const [editRate, setEditRate] = useState('');
+  const startEditEntry = (e: TimeEntry) => { setEditEntryId(e.id); setEditHours(String(e.hours)); setEditRate(String(e.rate)); };
+  const saveEntry = async (id: string) => {
+    setBusy(true);
+    await run('timeEntryUpdate', { id, hours: parseFloat(editHours), rate: parseFloat(editRate) || 0 });
+    setEditEntryId(null);
+    await reload(); setBusy(false);
+  };
 
   return (
     <div className={card}>
@@ -522,10 +569,20 @@ function TimeTracking() {
             {data.entries.map((e) => (
               <div key={e.id} className="flex items-center justify-between rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1 text-[11px]">
                 <span className="text-zinc-300">{e.jobName} <span className="text-zinc-600">· {e.source}</span></span>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono"><span className="text-amber-200">{e.hours}h</span> <span className="text-emerald-300">${e.cost}</span></span>
-                  <button onClick={() => removeEntry(e.id)} className="text-zinc-600 hover:text-rose-300" aria-label="Delete entry"><Trash2 className="h-3 w-3" /></button>
-                </div>
+                {editEntryId === e.id ? (
+                  <div className="flex items-center gap-1.5">
+                    <input aria-label={`Hours for ${e.jobName}`} className={`${inp} w-16 font-mono`} type="number" step="0.25" value={editHours} onChange={(ev) => setEditHours(ev.target.value)} />
+                    <input aria-label={`Rate for ${e.jobName}`} className={`${inp} w-16 font-mono`} type="number" value={editRate} onChange={(ev) => setEditRate(ev.target.value)} />
+                    <button onClick={() => { void saveEntry(e.id); }} disabled={busy} className="rounded bg-amber-600 px-1.5 py-0.5 text-white hover:bg-amber-500 disabled:opacity-40">Save</button>
+                    <button onClick={() => setEditEntryId(null)} className="rounded bg-zinc-800 px-1.5 py-0.5 text-zinc-300">Cancel</button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono"><span className="text-amber-200">{e.hours}h</span> <span className="text-emerald-300">${e.cost}</span></span>
+                    <button onClick={() => startEditEntry(e)} aria-label={`Edit entry for ${e.jobName}`} className="text-zinc-500 underline hover:text-amber-300">Edit</button>
+                    <StickyDeleteConfirm onConfirm={() => { void removeEntry(e.id); }} className="text-zinc-600 hover:text-rose-300" armAriaLabel={`Delete entry for ${e.jobName}`} confirmLabel={`Delete ${e.hours}h entry for ${e.jobName}?`} confirmAriaLabel={`Confirm delete entry for ${e.jobName}`} armLabel={<Trash2 className="h-3 w-3" />} />
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -614,7 +671,7 @@ function PhotoJobLog() {
 
 /* ───────────────────────── 6. Invoicing + Client Portal ───────────────────────── */
 
-interface Invoice { id: string; invoiceNumber: string; estimateId: string; client: string; subtotal: number; tax: number; total: number; depositPct: number; depositDue: number; status: string; signature: { signedBy: string; decision: string } | null }
+interface Invoice { id: string; invoiceNumber: string; estimateId: string; client: string; subtotal: number; tax: number; taxPct?: number; total: number; depositPct: number; depositDue: number; status: string; signature: { signedBy: string; decision: string } | null }
 interface InvoiceListResult { invoices: Invoice[]; outstanding: number; collected: number }
 interface PortalShare { token: string; client: string; estimateId: string; estimateAmount: number; jobName: string; progressPct: number; status: string; expiresAt?: string; clientDecision: { decision: string; signedBy: string } | null; milestones: { label: string; done: boolean }[] }
 
@@ -672,6 +729,16 @@ function InvoicingPortal({ estimate }: { estimate: TakeoffResult | null }) {
     await reload(); setBusy(false);
   };
   const markPaid = async (id: string) => { setBusy(true); await run('invoiceMarkPaid', { id }); await reload(); setBusy(false); };
+  const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null);
+  const [editClient, setEditClient] = useState('');
+  const [editAmount, setEditAmount] = useState('');
+  const startEditInvoice = (iv: Invoice) => { setEditingInvoiceId(iv.id); setEditClient(iv.client); setEditAmount(String(iv.subtotal)); };
+  const saveInvoice = async (id: string) => {
+    setBusy(true);
+    await run('invoiceUpdate', { id, client: editClient.trim() || undefined, amount: parseFloat(editAmount) });
+    setEditingInvoiceId(null);
+    await reload(); setBusy(false);
+  };
   // F7: exit paths — invoices and portal entries can be removed, each
   // behind the family's two-step named confirm.
   const [confirmingInvoiceId, setConfirmingInvoiceId] = useState<string | null>(null);
@@ -732,11 +799,28 @@ function InvoicingPortal({ estimate }: { estimate: TakeoffResult | null }) {
                     <span className="text-[12px] text-white">{iv.invoiceNumber} · {iv.client}</span>
                     <span className="font-mono text-[12px] text-emerald-300">${iv.total.toLocaleString()}</span>
                   </div>
+                  {/* FIX-carpentry-009: the card showed only the total,
+                      though the invoice carries the full breakdown —
+                      render subtotal / tax / total lines like the
+                      estimate panel above does. */}
+                  <dl className="mt-1 space-y-0.5 text-[11px]">
+                    <div className="flex justify-between"><dt className="text-zinc-400">Subtotal</dt><dd className="font-mono text-zinc-200">${iv.subtotal.toFixed(2)}</dd></div>
+                    <div className="flex justify-between"><dt className="text-zinc-400">Tax{iv.taxPct != null ? ` (${iv.taxPct}%)` : ''}</dt><dd className="font-mono text-zinc-200">${iv.tax.toFixed(2)}</dd></div>
+                    <div className="flex justify-between border-t border-zinc-800 pt-0.5"><dt className="text-zinc-200">Total</dt><dd className="font-mono font-semibold text-emerald-200">${iv.total.toFixed(2)}</dd></div>
+                  </dl>
                   {/* F4: the deposit the conversion collected, applied as a line. */}
                   {iv.depositDue > 0 && (
                     <div className="mt-0.5 text-[10px] text-zinc-400">
                       Deposit ({iv.depositPct}%): <span className="font-mono text-zinc-200">${iv.depositDue.toFixed(2)}</span>
                       {' · '}Balance due: <span className="font-mono text-zinc-200">${(iv.total - iv.depositDue).toFixed(2)}</span>
+                    </div>
+                  )}
+                  {editingInvoiceId === iv.id && (
+                    <div className="mt-1 flex items-center gap-1.5">
+                      <input aria-label={`Client for ${iv.invoiceNumber}`} className={`${inp} flex-1`} value={editClient} onChange={(e) => setEditClient(e.target.value)} />
+                      <input aria-label={`Amount for ${iv.invoiceNumber}`} className={`${inp} w-24 font-mono`} type="number" value={editAmount} onChange={(e) => setEditAmount(e.target.value)} />
+                      <button onClick={() => { void saveInvoice(iv.id); }} disabled={busy} className="rounded bg-amber-600 px-1.5 py-0.5 text-[10px] text-white hover:bg-amber-500 disabled:opacity-40">Save</button>
+                      <button onClick={() => setEditingInvoiceId(null)} className="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-300">Cancel</button>
                     </div>
                   )}
                   <div className="mt-0.5 flex items-center justify-between text-[10px]">
@@ -750,7 +834,10 @@ function InvoicingPortal({ estimate }: { estimate: TakeoffResult | null }) {
                           <button onClick={() => setConfirmingInvoiceId(null)} className="rounded bg-zinc-800 px-1.5 py-0.5 text-zinc-300">Cancel</button>
                         </>
                       ) : (
-                        <button onClick={() => setConfirmingInvoiceId(iv.id)} className="text-zinc-500 underline hover:text-rose-300">Delete</button>
+                        <>
+                          <button onClick={() => startEditInvoice(iv)} aria-label={`Edit ${iv.invoiceNumber}`} className="text-zinc-500 underline hover:text-amber-300">Edit</button>
+                          <button onClick={() => setConfirmingInvoiceId(iv.id)} className="text-zinc-500 underline hover:text-rose-300">Delete</button>
+                        </>
                       )}
                       {iv.status === 'paid'
                         ? <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-emerald-200">paid</span>

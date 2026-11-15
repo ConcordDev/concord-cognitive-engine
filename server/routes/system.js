@@ -15,7 +15,7 @@ import { getShedLagMs } from "../lib/request-admission.js";
 import { noteAdmittingTransition } from "../lib/request-admission.js";
 import { getHostIdentity } from "../lib/host-profile.js";
 import { getMemorySnapshot } from "../lib/heap-limit.js";
-import { dtuMatchesQuery, shapePaginatedBody, dtuListedOwner } from "../lib/dtu-list-source.js";
+import { dtuMatchesQuery, shapePaginatedBody, dtuListedOwner, tagFilterTerms, dtuMatchesTagFilter } from "../lib/dtu-list-source.js";
 import { viewerIdFromCtx } from "../lib/dtu-read-access.js";
 import { filterVisibleSearchHits, searchCandidateLimit } from "../lib/dtu-search-hits.js";
 
@@ -715,7 +715,28 @@ export default function registerSystemRoutes(app, {
   });
 
   // ---- DTU Paginated ----
-  app.get("/api/dtus/paginated", (req, res) => {
+  // The caller's saved set: the ids of the DTUs this caller has saved
+  // into the shared library, read through the saved domain (the
+  // platform's caller-scoped saved-items substrate — domains/saved.js,
+  // kind "dtu", refId = DTU id). Paged at the macro's own 500 cap.
+  // Throws on a failed read so the caller can fail CLOSED.
+  async function callerSavedDtuIds(ctx) {
+    const ids = new Set();
+    let offset = 0;
+    for (;;) {
+      const out = await runMacro("saved", "list", { kind: "dtu", limit: 500, offset }, ctx);
+      if (!out || out.ok === false) throw new Error(out?.error || "saved_list_failed");
+      const result = out.result && Array.isArray(out.result.items) ? out.result : out;
+      const items = Array.isArray(result?.items) ? result.items : [];
+      for (const it of items) if (it?.refId) ids.add(String(it.refId));
+      const matched = Number(result?.matched ?? items.length);
+      offset += items.length;
+      if (!items.length || offset >= matched) break;
+    }
+    return ids;
+  }
+
+  app.get("/api/dtus/paginated", asyncHandler(async (req, res) => {
     // Accept both {page,pageSize} and the {offset,limit} the frontend client sends.
     const pageSize = clamp(Number(req.query.pageSize || req.query.limit || 20), 1, 100);
     const offset = Number(req.query.offset);
@@ -726,6 +747,7 @@ export default function registerSystemRoutes(app, {
     const tag = req.query.tag || null;
     const query = String(req.query.query || req.query.q || "").trim().toLowerCase();
     const scopeFilter = req.query.scope || null;
+    const visibilityFilter = String(req.query.visibility || "").trim().toLowerCase();
     // Cookie auth sets req.user. The actor middleware (when it has already
     // run) stamps userId and omits id. Either one is the signed-in owner.
     const userId = viewerIdFromCtx(req);
@@ -739,11 +761,54 @@ export default function registerSystemRoutes(app, {
     // feed-ingested + system DTUs a user never made). Opt into the library
     // with ?scope=global or ?scope=all.
     if (scopeFilter === "global") {
-      dtus = dtus.filter(d => d.scope === "global");
+      // Library-search layer (FIX-grounding-010 findability leg ·
+      // FIX-entity-009 second leg · FIX-ar-016 scoped leg): dtu.create stamps
+      // scope "local" on every ordinary create (Scope Separation), so a
+      // substrate-only filter made a user's own saved/minted DTUs
+      // unfindable in the Global Library — by exact ID, by title, and under
+      // the Private filter. Browsing stays substrate-only; when a signed-in
+      // viewer SEARCHES (q) or FILTERS BY VISIBILITY, their own DTUs join
+      // the candidate set. The corpus above already guarantees only DTUs
+      // this viewer may read are present, so the union can only ever add
+      // the viewer's own rows.
+      dtus = (userId && (query || visibilityFilter))
+        ? dtus.filter(d => d.scope === "global" || dtuListedOwner(d) === userId)
+        : dtus.filter(d => d.scope === "global");
     } else if (scopeFilter === "all") {
-      dtus = userId
-        ? dtus.filter(d => d.scope === "global" || !dtuListedOwner(d) || dtuListedOwner(d) === userId)
-        : dtus.filter(d => !d.scope || d.scope === "global");
+      // FIX-export-011 (owner-scoped export contract, 2026-11-14 ruling;
+      // saved-set leg built 2026-11-14 under the founder's word):
+      // scope=all is the Export Desk's "include the shared library" cut.
+      // It used to return the whole global substrate — system feed DTUs
+      // and other users' global DTUs rode a personal export (41
+      // non-owned rows in the ticket). The interim contract carried only
+      // the caller's own DTUs because no caller-scoped library
+      // membership ("saved into the shared library") concept was wired
+      // to this leg. That membership IS the saved domain's per-user
+      // saved set (domains/saved.js): this scope now carries exactly
+      // the DTUs the caller has saved — whoever made them — under the
+      // ruling's invariants: ownerless rows fall even when saved, and
+      // system rows are excluded under every stamp even when saved.
+      // A caller's own UNSAVED DTUs do not ride here (they ride
+      // scope=mine). Anonymous callers have no saved set and get
+      // nothing. A failed saved-set read fails CLOSED — the leg
+      // carries nothing rather than widening. The Global Library
+      // browse (scope=global above) is unchanged.
+      if (!userId) {
+        dtus = [];
+      } else {
+        let savedIds;
+        try {
+          savedIds = await callerSavedDtuIds(makeCtx(req));
+        } catch (err) {
+          console.error("[dtus/paginated] saved-set read failed; scope=all fails closed:", err?.message || err);
+          savedIds = new Set();
+        }
+        dtus = dtus.filter(d => {
+          if (!savedIds.has(String(d.id))) return false;
+          const owner = dtuListedOwner(d);
+          return !!owner && owner !== "system";
+        });
+      }
     } else if (userId) {
       // "mine" (default + explicit scope=local/mine): the viewer's own DTUs only.
       dtus = dtus.filter(d => dtuListedOwner(d) === userId);
@@ -752,8 +817,20 @@ export default function registerSystemRoutes(app, {
       dtus = dtus.filter(d => !d.scope || d.scope === "global");
     }
 
+    // Visibility filter — the Global Library's Private/Public select sends
+    // this and the route never read it. "public" also matches "published"
+    // (the platform's two open visibilities). Under the corpus rule a
+    // "private" result can only ever be the viewer's own row.
+    if (visibilityFilter) {
+      dtus = dtus.filter(d => {
+        const v = String(d.meta?.visibility || d.visibility || "").toLowerCase();
+        return v === visibilityFilter || (visibilityFilter === "public" && v === "published");
+      });
+    }
     if (tier) dtus = dtus.filter(d => d.tier === tier);
-    if (tag) dtus = dtus.filter(d => (d.tags || []).includes(tag));
+    // The explorer sends `tags` (comma-separated). `tag` is the older name.
+    const tagTerms = tagFilterTerms(req.query.tags || tag);
+    if (tagTerms.length) dtus = dtus.filter(d => dtuMatchesTagFilter(d, tagTerms));
     if (query) dtus = dtus.filter(d => dtuMatchesQuery(d, query));
     // Newest first so a DTU created seconds ago is on page 1 of My vault
     // (the DTUs lens asks for offset 0 / limit 20). The visibility cache
@@ -761,7 +838,7 @@ export default function registerSystemRoutes(app, {
     dtus.sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
     const result = paginateResults(dtus, { page, pageSize });
     return res.json(shapePaginatedBody(result));
-  });
+  }));
 
   // ---- Search (indexed, DSL, reindex, global) ----
   app.get("/api/search/indexed", (req, res) => {

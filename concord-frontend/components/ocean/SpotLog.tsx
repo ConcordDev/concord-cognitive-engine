@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Waves, Plus, Trash2, Loader2, Star } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 
 interface Spot { id: string; name: string; kind: string; notes: string; sessionCount: number; lat: number | null; lon: number | null }
@@ -24,6 +25,8 @@ export function SpotLog() {
   const [active, setActive] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [spotForm, setSpotForm] = useState({ name: '', kind: 'surf', lat: '', lon: '' });
+  const [editSpotId, setEditSpotId] = useState<string | null>(null);
+  const [editSpotForm, setEditSpotForm] = useState({ name: '', kind: 'surf', notes: '' });
   const [sesForm, setSesForm] = useState({ waveHeightM: '', waterTempC: '', conditions: '', rating: '4' });
 
   const refresh = useCallback(async () => {
@@ -39,15 +42,28 @@ export function SpotLog() {
   }, []);
   useEffect(() => { void refresh(); }, [refresh]);
 
+  const [spotError, setSpotError] = useState<string | null>(null);
   async function addSpot() {
-    if (!spotForm.name.trim()) return;
-    await lensRun('ocean', 'spot-add', {
+    if (!spotForm.name.trim()) { setSpotError('Spot name is required.'); return; }
+    if (spotForm.name.trim().length > 160) { setSpotError('Spot name must be 160 characters or fewer.'); return; }
+    setSpotError(null);
+    const res = await lensRun('ocean', 'spot-add', {
       name: spotForm.name.trim(),
       kind: spotForm.kind,
       lat: spotForm.lat.trim() ? Number(spotForm.lat) : undefined,
       lon: spotForm.lon.trim() ? Number(spotForm.lon) : undefined,
     });
+    if (res.data?.ok === false) { setSpotError(res.data?.message || res.data?.error || 'Could not save that spot.'); return; }
     setSpotForm({ name: '', kind: 'surf', lat: '', lon: '' });
+    await refresh();
+  }
+  async function saveSpotEdit(id: string) {
+    if (!editSpotForm.name.trim()) return;
+    const res = await lensRun('ocean', 'spot-update', {
+      id, name: editSpotForm.name.trim(), kind: editSpotForm.kind, notes: editSpotForm.notes.trim(),
+    });
+    if (res.data?.ok === false) return;
+    setEditSpotId(null);
     await refresh();
   }
   async function delSpot(id: string) {
@@ -94,6 +110,7 @@ export function SpotLog() {
           className="w-16 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
         <input value={spotForm.lon} onChange={e => setSpotForm({ ...spotForm, lon: e.target.value })} placeholder="lon"
           className="w-16 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
+        {spotError && <p role="alert" className="w-full text-xs text-rose-300">{spotError}</p>}
         <button onClick={addSpot} disabled={!spotForm.name.trim()}
           className="px-2.5 py-1 text-xs rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold disabled:opacity-40 inline-flex items-center gap-1">
           <Plus className="w-3 h-3" />Spot
@@ -109,15 +126,39 @@ export function SpotLog() {
             </button>
           </li>
           {spots.map(sp => (
-            <li key={sp.id} className="group flex items-center gap-1">
-              <button onClick={() => setActive(sp.id)}
-                className={cn('flex-1 text-left rounded-lg px-2.5 py-1.5 border', active === sp.id ? 'bg-cyan-600/15 border-cyan-700/50' : 'bg-zinc-900/60 border-zinc-800 hover:border-zinc-700')}>
-                <p className="text-xs font-semibold text-zinc-100 truncate">{sp.name}</p>
-                <p className="text-[10px] text-zinc-400 capitalize">
-                  {sp.kind} · {sp.sessionCount} sessions{sp.lat != null && sp.lon != null ? ' · geo' : ''}
-                </p>
-              </button>
-              <button aria-label="Delete" onClick={() => delSpot(sp.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+            <li key={sp.id} className="group">
+              <div className="flex items-center gap-1">
+                <button onClick={() => setActive(sp.id)}
+                  className={cn('flex-1 text-left rounded-lg px-2.5 py-1.5 border', active === sp.id ? 'bg-cyan-600/15 border-cyan-700/50' : 'bg-zinc-900/60 border-zinc-800 hover:border-zinc-700')}>
+                  <p className="text-xs font-semibold text-zinc-100 truncate">{sp.name}</p>
+                  <p className="text-[10px] text-zinc-400 capitalize">
+                    {sp.kind} · {sp.sessionCount} sessions{sp.lat != null && sp.lon != null ? ' · geo' : ''}
+                  </p>
+                </button>
+                <button type="button" aria-label={`Edit ${sp.name}`}
+                  onClick={() => { setEditSpotId(editSpotId === sp.id ? null : sp.id); setEditSpotForm({ name: sp.name, kind: sp.kind, notes: sp.notes || '' }); }}
+                  className="text-[10px] font-semibold text-zinc-400 hover:text-cyan-300">Edit</button>
+                <StickyDeleteConfirm onConfirm={() => delSpot(sp.id)} armAriaLabel={`Delete ${sp.name}`} confirmAriaLabel={`Confirm delete ${sp.name}`} className="text-rose-400" armLabel={<Trash2 className="w-3 h-3" />} />
+              </div>
+              {editSpotId === sp.id && (
+                <div className="mt-1 space-y-1 rounded-lg border border-cyan-800/50 bg-zinc-900/60 p-2">
+                  <input aria-label={`Spot name for ${sp.name}`} value={editSpotForm.name} onChange={e => setEditSpotForm({ ...editSpotForm, name: e.target.value })}
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
+                  <div className="flex gap-1.5">
+                    <select aria-label="Spot kind" value={editSpotForm.kind} onChange={e => setEditSpotForm({ ...editSpotForm, kind: e.target.value })}
+                      className="bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1 text-xs text-zinc-200 capitalize">
+                      {KINDS.map(k => <option key={k} value={k}>{k}</option>)}
+                    </select>
+                    <input aria-label="Spot notes" value={editSpotForm.notes} onChange={e => setEditSpotForm({ ...editSpotForm, notes: e.target.value })} placeholder="Notes"
+                      className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
+                  </div>
+                  <div className="flex gap-1.5">
+                    <button onClick={() => void saveSpotEdit(sp.id)} disabled={!editSpotForm.name.trim()}
+                      className="px-2.5 py-1 text-xs rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold disabled:opacity-40">Save</button>
+                    <button onClick={() => setEditSpotId(null)} className="px-2.5 py-1 text-xs rounded bg-zinc-800 text-zinc-300">Cancel</button>
+                  </div>
+                </div>
+              )}
             </li>
           ))}
         </ul>
@@ -151,7 +192,7 @@ export function SpotLog() {
                     {[1, 2, 3, 4, 5].map(n => <Star key={n} className={cn('w-2.5 h-2.5', se.rating! >= n ? 'text-amber-400' : 'text-zinc-700')} fill={se.rating! >= n ? 'currentColor' : 'none'} />)}
                   </span>
                 )}
-                <button aria-label="Delete" onClick={() => delSession(se.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <StickyDeleteConfirm onConfirm={() => delSession(se.id)} armAriaLabel={`Delete session ${se.date}`} confirmAriaLabel={`Confirm delete session ${se.date}`} className="text-rose-400" armLabel={<Trash2 className="w-3 h-3" />} />
               </li>
             ))}
           </ul>

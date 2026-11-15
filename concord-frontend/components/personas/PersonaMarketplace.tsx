@@ -78,10 +78,12 @@ export function PersonaMarketplace({ onOpen }: { onOpen: (personaId: string) => 
     <div className="space-y-3">
       <div className="flex gap-2">
         <input
+          id="persona-search" name="query"
           type="text" value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') void load(); }}
           placeholder="Search published personas…"
+          aria-label="Search published personas"
           className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100"
         />
         <button
@@ -92,6 +94,7 @@ export function PersonaMarketplace({ onOpen }: { onOpen: (personaId: string) => 
 
       <div className="flex flex-wrap gap-2 items-center">
         <select
+          id="persona-sort" name="sort" aria-label="Sort personas"
           value={sort} onChange={(e) => setSort(e.target.value as any)}
           className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-xs text-zinc-200"
         >
@@ -175,7 +178,10 @@ export function PersonaMarketplace({ onOpen }: { onOpen: (personaId: string) => 
                     </div>
                   </div>
                 </button>
-                {user?.id && p.authorUserId !== user.id && (
+                {/* FIX-personas-016: the author's own listing withheld
+                    Install here too, though the server accepts author
+                    installs — offer it to any signed-in viewer. */}
+                {user?.id && (
                   <button
                     type="button"
                     aria-label={`Install ${p.name}`}

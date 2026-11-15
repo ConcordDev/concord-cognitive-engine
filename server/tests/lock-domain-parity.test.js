@@ -229,6 +229,14 @@ describe("lock.deadlockDetect (wait-for graph)", () => {
     assert.equal(r.result.cycleCount, 1);
   });
 
+  it("reads locks from the call input when the artifact has none", () => {
+    const r = call("deadlockDetect", ctxA, { data: {} }, {
+      locks: [{ holder: "A", waiting: "B" }, { holder: "B", waiting: "A" }],
+    });
+    assert.equal(r.result.deadlocked, true);
+    assert.equal(r.result.message, undefined);
+  });
+
   it("reports no deadlock for an acyclic wait-for graph", () => {
     const r = call("deadlockDetect", ctxA, {
       data: { locks: [{ holder: "A", waiting: "B" }, { holder: "B", waiting: "C" }] },

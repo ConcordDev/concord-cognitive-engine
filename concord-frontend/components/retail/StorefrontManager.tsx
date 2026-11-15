@@ -127,9 +127,9 @@ export function StorefrontManager() {
         <div className="p-3 space-y-3">
           {/* Configure */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Store name" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-            <input value={form.tagline} onChange={e => setForm({ ...form, tagline: e.target.value })} placeholder="Tagline" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-            <select value={form.theme} onChange={e => setForm({ ...form, theme: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+            <input id="retail-store-name" name="store-name" aria-label="Store name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Store name" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+            <input id="retail-tagline" name="tagline" aria-label="Tagline" value={form.tagline} onChange={e => setForm({ ...form, tagline: e.target.value })} placeholder="Tagline" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+            <select id="retail-theme" name="theme" value={form.theme} onChange={e => setForm({ ...form, theme: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
               {THEMES.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
@@ -157,7 +157,7 @@ export function StorefrontManager() {
                 ))}
               </div>
             )}
-            <p className="text-[10px] text-gray-400 mt-1">No products selected = whole catalog is exposed.</p>
+            <p className="text-[10px] text-gray-400 mt-1">No products selected = your storefront shows no products. Tick a product to make it public.</p>
           </div>
 
           {/* Buyer preview */}
@@ -179,7 +179,7 @@ export function StorefrontManager() {
                           {p.avgRating != null && ` · ★ ${p.avgRating} (${p.reviewCount})`}
                         </p>
                       </div>
-                      <input type="number" min={0} max={p.stock} value={buyerCart[p.sku] || 0}
+                      <input id="retail-field-5" name="field-5" type="number" min={0} max={p.stock} value={buyerCart[p.sku] || 0}
                         onChange={e => setBuyerCart({ ...buyerCart, [p.sku]: Math.max(0, Math.min(p.stock, Number(e.target.value) || 0)) })}
                         disabled={!p.inStock}
                         className="w-14 px-1 py-0.5 text-xs bg-lattice-void border border-lattice-border rounded text-white disabled:opacity-30" />
@@ -187,8 +187,8 @@ export function StorefrontManager() {
                   ))}
                 </div>
                 <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <input value={buyer.name} onChange={e => setBuyer({ ...buyer, name: e.target.value })} placeholder="Buyer name" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-                  <input value={buyer.email} onChange={e => setBuyer({ ...buyer, email: e.target.value })} placeholder="Buyer email" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                  <input id="retail-buyer-name" name="buyer-name" aria-label="Buyer name" value={buyer.name} onChange={e => setBuyer({ ...buyer, name: e.target.value })} placeholder="Buyer name" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                  <input id="retail-buyer-email" name="buyer-email" aria-label="Buyer email" value={buyer.email} onChange={e => setBuyer({ ...buyer, email: e.target.value })} placeholder="Buyer email" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
                   <button onClick={placeBuyerOrder} disabled={busy || cartTotal <= 0} className="px-3 py-1.5 text-xs rounded bg-emerald-500 text-black font-bold hover:bg-emerald-400 disabled:opacity-40">
                     Place order · ${cartTotal.toFixed(2)}
                   </button>

@@ -10,18 +10,21 @@ module.exports = {
       colors: {
         // Lattice Empire Theme
         lattice: {
-          void: '#0a0a0f',
-          deep: '#0d0d14',
-          surface: '#12121a',
-          elevated: '#1a1a24',
-          border: '#2a2a3a',
+          // RGB channels in app/globals.css so light mode can flip the
+          // surface. A hardcoded hex here compiled into utilities that
+          // stayed dark while .light inverted text-white to near-black.
+          void: 'rgb(var(--lattice-void-rgb) / <alpha-value>)',
+          deep: 'rgb(var(--lattice-deep-rgb) / <alpha-value>)',
+          surface: 'rgb(var(--lattice-surface-rgb) / <alpha-value>)',
+          elevated: 'rgb(var(--lattice-elevated-rgb) / <alpha-value>)',
+          border: 'rgb(var(--lattice-border-rgb) / <alpha-value>)',
           // Aliases components already use (bg-lattice-bg, border-lattice-edge,
           // text-lattice-text, bg-lattice-base). Undefined, they rendered as
           // the browser default — white inputs and invisible typed text.
-          bg: '#0d0d14',
-          base: '#0a0a0f',
-          edge: '#2a2a3a',
-          text: '#e4e4e7',
+          bg: 'rgb(var(--lattice-bg-rgb) / <alpha-value>)',
+          base: 'rgb(var(--lattice-base-rgb) / <alpha-value>)',
+          edge: 'rgb(var(--lattice-edge-rgb) / <alpha-value>)',
+          text: 'rgb(var(--lattice-text-rgb) / <alpha-value>)',
         },
         neon: {
           blue: '#00d4ff',

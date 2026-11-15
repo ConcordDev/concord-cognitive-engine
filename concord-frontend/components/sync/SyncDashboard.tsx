@@ -15,6 +15,7 @@ import {
   WifiOff, Wifi, Loader2, Plus, FolderTree, Gauge, Clock, GitMerge, Download,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { downloadFile } from '@/lib/utils';
 import { TimelineView, type TimelineEvent } from '@/components/viz';
 import { useSmartPolling } from '@/hooks/useSmartPolling';
@@ -121,6 +122,31 @@ const STATE_BADGE: Record<string, { text: string; cls: string }> = {
   no_devices: { text: 'No devices', cls: 'bg-zinc-800 text-zinc-400 border-zinc-700' },
 };
 
+// ── Offline settings queue (FIX-sync-002) ─────────────────────────────
+// A quota / auto-sync change attempted while offline used to die as a
+// bare 'Failed: Network Error': never saved, never queued, and the
+// dashboard later showed the old value with no word that the change had
+// been lost. Network-class failures now queue the change locally; the
+// queue is stated in a banner and replayed on reconnect (and on mount).
+type PendingSetting =
+  | { kind: 'quota'; deviceId: string; quotaGb: number }
+  | { kind: 'autoSync'; deviceId: string; autoSync: boolean };
+const PENDING_KEY = 'concord-sync-pending-settings';
+function loadPendingSettings(): PendingSetting[] {
+  try {
+    const raw = localStorage.getItem(PENDING_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(arr)) return [];
+    return arr.filter(
+      (p): p is PendingSetting =>
+        !!p && (p.kind === 'quota' || p.kind === 'autoSync') && typeof p.deviceId === 'string',
+    );
+  } catch { return []; }
+}
+function isNetworkFailure(err?: string | null): boolean {
+  return /network|timeout|econn|failed to fetch/i.test(err || '');
+}
+
 export function SyncDashboard() {
   const [devices, setDevices] = useState<Device[]>([]);
   const [conflicts, setConflicts] = useState<Conflict[]>([]);
@@ -135,6 +161,15 @@ export function SyncDashboard() {
   const [quotaInput, setQuotaInput] = useState('50');
   const [conflictForm, setConflictForm] = useState({ dtuId: '', title: '', localDev: '', remoteDev: '' });
   const [showConflictForm, setShowConflictForm] = useState(false);
+  const [pending, setPending] = useState<PendingSetting[]>(loadPendingSettings);
+
+  useEffect(() => {
+    try { localStorage.setItem(PENDING_KEY, JSON.stringify(pending)); } catch { /* private mode */ }
+  }, [pending]);
+
+  const queuePending = useCallback((op: PendingSetting) => {
+    setPending((q) => [...q.filter((p) => !(p.kind === op.kind && p.deviceId === op.deviceId)), op]);
+  }, []);
 
   const flash = (m: string) => {
     setToast(m);
@@ -162,15 +197,46 @@ export function SyncDashboard() {
     })();
   }, [refresh]);
 
+  // Replay queued offline changes: on mount (a queue can outlive the
+  // session that made it) and whenever the browser reports reconnect.
+  const replayPending = useCallback(async () => {
+    const queue = loadPendingSettings();
+    if (queue.length === 0) return;
+    const remaining: PendingSetting[] = [];
+    let applied = 0;
+    for (const op of queue) {
+      const r = op.kind === 'quota'
+        ? await lensRun(DOMAIN, 'set_quota', { deviceId: op.deviceId, quotaGb: op.quotaGb })
+        : await lensRun(DOMAIN, 'set_auto_sync', { deviceId: op.deviceId, autoSync: op.autoSync });
+      if (r.data?.ok) applied++;
+      else if (isNetworkFailure(r.data?.error)) remaining.push(op);
+      else flash(`A queued change could not be applied: ${r.data?.error || 'unknown'}`);
+    }
+    setPending(remaining);
+    if (applied > 0) {
+      flash(applied === 1 ? 'Queued change applied' : `${applied} queued changes applied`);
+      await refresh();
+    }
+  }, [refresh]);
+
+  useEffect(() => { void replayPending(); }, [replayPending]);
+  useEffect(() => {
+    const onOnline = () => { void replayPending(); };
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
+  }, [replayPending]);
+
   // Presence: heartbeat all known devices and re-derive status every 30s
   // (visibility-paused + jittered via useSmartPolling).
   useSmartPolling(refresh, 30000, { immediate: false });
 
   const registerDevice = async () => {
     const label = newLabel.trim();
-    if (!label) return;
+    // FIX-sync-003: a blank label silently did nothing; say so.
+    if (!label) { flash('Enter a device label'); return; }
+    if (label.length > 200) { flash('Device label must be 200 characters or fewer'); return; }
     setBusy('register');
-    const r = await lensRun(DOMAIN, 'register_device', { deviceLabel: label, autoSync: true });
+    const r = await lensRun(DOMAIN, 'register_device', { deviceLabel: label, autoSync: false });
     setBusy(null);
     if (r.data?.ok) {
       setNewLabel('');
@@ -235,6 +301,10 @@ export function SyncDashboard() {
     const r = await lensRun(DOMAIN, 'set_auto_sync', { deviceId: id, autoSync: next });
     setBusy(null);
     if (r.data?.ok) await refresh();
+    else if (isNetworkFailure(r.data?.error)) {
+      queuePending({ kind: 'autoSync', deviceId: id, autoSync: next });
+      flash('You appear to be offline — the auto-sync change is queued and will apply on reconnect.');
+    }
     else flash(`Failed: ${r.data?.error || 'unknown'}`);
   };
 
@@ -250,10 +320,17 @@ export function SyncDashboard() {
   const applyQuota = async (id: string) => {
     const gb = Number(quotaInput);
     if (!Number.isFinite(gb) || gb <= 0) { flash('Enter a positive GB value'); return; }
+    // FIX-sync-003: the ceiling the server enforces, stated before sending.
+    if (gb > 1000000) { flash('Quota must be no more than 1,000,000 GB'); return; }
     setBusy(`quota:${id}`);
     const r = await lensRun(DOMAIN, 'set_quota', { deviceId: id, quotaGb: gb });
     setBusy(null);
     if (r.data?.ok) { flash(`Quota set to ${gb} GB`); setQuotaEditor(null); await refresh(); }
+    else if (isNetworkFailure(r.data?.error)) {
+      queuePending({ kind: 'quota', deviceId: id, quotaGb: gb });
+      setQuotaEditor(null);
+      flash('You appear to be offline — the quota change is queued and will apply on reconnect.');
+    }
     else flash(`Failed: ${r.data?.error || 'unknown'}`);
   };
 
@@ -308,6 +385,12 @@ export function SyncDashboard() {
       {toast && (
         <div className="fixed bottom-6 right-6 z-50 rounded-lg border border-emerald-700/50 bg-emerald-950/90 px-4 py-2 text-sm text-emerald-100 shadow-lg">
           {toast}
+        </div>
+      )}
+
+      {pending.length > 0 && (
+        <div role="status" className="rounded-lg border border-amber-700/50 bg-amber-950/40 px-4 py-2 text-sm text-amber-100">
+          {pending.length} change{pending.length !== 1 ? 's' : ''} queued — not saved yet. {pending.length !== 1 ? 'They' : 'It'} will apply when you reconnect.
         </div>
       )}
 
@@ -438,7 +521,7 @@ export function SyncDashboard() {
         </h2>
         <div className="flex gap-2">
           <input
-            type="text" value={newLabel}
+            type="text" value={newLabel} maxLength={200} aria-label="Device label"
             onChange={(e) => setNewLabel(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') void registerDevice(); }}
             placeholder="Device label (e.g. 'MacBook Pro')"
@@ -468,7 +551,7 @@ export function SyncDashboard() {
                   <div className="flex items-center gap-2">
                     {d.online
                       ? <Wifi className="h-5 w-5 text-emerald-400" aria-label="online" />
-                      : <WifiOff className="h-5 w-5 text-zinc-600" aria-label="offline" />}
+                      : <WifiOff className="h-5 w-5 text-zinc-400" aria-label="offline" />}
                     <div>
                       <p className="text-sm font-semibold text-zinc-100">{d.label}</p>
                       <p className="text-[11px] text-zinc-400">
@@ -508,13 +591,15 @@ export function SyncDashboard() {
                       />
                       Auto-sync
                     </label>
-                    <button
-                      type="button" onClick={() => revokeDevice(d.id, d.label)}
+                    <StickyDeleteConfirm
+                      onConfirm={() => revokeDevice(d.id, d.label)}
                       disabled={busy === `revoke:${d.id}`}
                       className="flex items-center gap-1 rounded-lg border border-rose-800/60 bg-rose-950/40 px-2.5 py-1.5 text-xs text-rose-300 hover:bg-rose-900/50 disabled:opacity-50"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" /> Revoke
-                    </button>
+                      armLabel={<><Trash2 className="h-3.5 w-3.5" /> Revoke</>}
+                      armAriaLabel={`Revoke device ${d.label}`}
+                      confirmLabel={`Revoke "${d.label}"?`}
+                      confirmAriaLabel={`Confirm revoke device ${d.label}`}
+                    />
                   </div>
                 </div>
 
@@ -544,7 +629,7 @@ export function SyncDashboard() {
                   {quotaEditor === d.id && (
                     <div className="mt-2 flex items-center gap-2">
                       <input
-                        type="number" min={1} value={quotaInput}
+                        type="number" min={1} max={1000000} value={quotaInput}
                         onChange={(e) => setQuotaInput(e.target.value)}
                         className="w-24 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-100"
                       />
@@ -606,7 +691,18 @@ export function SyncDashboard() {
 
       {/* Activity feed */}
       <section>
-        <h2 className="mb-2 text-xs font-bold uppercase tracking-wider text-zinc-400">Sync activity</h2>
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-400">Sync activity</h2>
+          {timeline.length > 0 && (
+            <StickyDeleteConfirm
+              onConfirm={async () => { await lensRun(DOMAIN, 'clear_history', {}); await refresh(); }}
+              armLabel="Clear history"
+              confirmLabel="Clear sync activity?"
+              armAriaLabel="Clear sync activity history"
+              confirmAriaLabel="Confirm clear sync activity history"
+            />
+          )}
+        </div>
         {timeline.length === 0 ? (
           <p className="rounded-lg border border-dashed border-zinc-800 p-4 text-center text-sm text-zinc-400">
             No sync activity yet.

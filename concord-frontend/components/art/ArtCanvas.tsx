@@ -138,6 +138,18 @@ function elBBox(el: El, w: number, h: number): [number, number, number, number] 
 
 export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: () => void }) {
   const [artwork, setArtwork] = useState<Artwork | null>(null);
+  // FIX-art-009: stroke commits are fire-and-forget async — a layer-clear
+  // issued while a commit was still in flight reached the server first,
+  // and the late commit resurrected a cleared stroke (the Studio card then
+  // showed a stroke the blank canvas disowned). Stroke mutations from this
+  // canvas now run through one queue so the server sees them in the order
+  // the user issued them.
+  const mutationQueue = useRef<Promise<unknown>>(Promise.resolve());
+  const enqueueMutation = useCallback(<T,>(fn: () => Promise<T>): Promise<T> => {
+    const run = mutationQueue.current.then(fn, fn);
+    mutationQueue.current = run.catch(() => undefined);
+    return run;
+  }, []);
   const [brushes, setBrushes] = useState<BrushPreset[]>([]);
   const [blendModes, setBlendModes] = useState<string[]>([]);
   const [swatches, setSwatches] = useState<string[]>([]);
@@ -165,6 +177,10 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
   const lastRef = useRef<number[] | null>(null);
   const startRef = useRef<number[] | null>(null);
   const marqueeRef = useRef<number[] | null>(null);
+  // FIX-art-008: an in-progress drag of the current selection (select
+  // tool, pointer down on a selected mark). dx/dy accumulate in canvas
+  // coordinates; the move commits through layer-transform on release.
+  const moveDragRef = useRef<{ startX: number; startY: number; dx: number; dy: number } | null>(null);
   const isPenRef = useRef(false);
   const [renaming, setRenaming] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
@@ -300,7 +316,7 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
     // go through the pressure-ribbon macro so the committed stroke actually
     // tapers; everything else (mouse/touch, constant 0.5) uses plain commit.
     const macro = el.pressure ? 'stroke-commit-pressure' : 'stroke-commit';
-    const r = await lensRun('art', macro, { artworkId: artwork.id, layerId: activeLayer, stroke: el });
+    const r = await enqueueMutation(() => lensRun('art', macro, { artworkId: artwork.id, layerId: activeLayer, stroke: el }));
     if (r.data?.ok === false) {
       // roll back on rejection (e.g. locked layer)
       setArtwork((prev) => prev && ({
@@ -319,7 +335,7 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
       const m = await lensRun('art', 'symmetry-mirror-stroke', { artworkId: artwork.id, layerId: activeLayer, strokeId });
       if (m.data?.ok) await reload();
     }
-  }, [artwork, activeLayer, guides, reload]);
+  }, [artwork, activeLayer, guides, reload, enqueueMutation]);
 
   const drawLivePreview = (kind: string, a: number[], b: number[]) => {
     render();
@@ -370,6 +386,20 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
       return;
     }
     drawingRef.current = true;
+    if (tool === 'select' && selectedIds.size) {
+      // Grabbing a selected mark starts a move drag, not a new marquee.
+      const cv = canvasRef.current;
+      const layer = artwork.layers.find((l) => l.id === activeLayer);
+      const onSelected = !!cv && !!layer && layer.strokes.some((el) => {
+        if (!el.id || !selectedIds.has(el.id)) return false;
+        const [bx, by, bw, bh] = elBBox(el, cv.width, cv.height);
+        return p[0] >= bx && p[0] <= bx + bw && p[1] >= by && p[1] <= by + bh;
+      });
+      if (onSelected) {
+        moveDragRef.current = { startX: p[0], startY: p[1], dx: 0, dy: 0 };
+        return;
+      }
+    }
     if (tool === 'rect' || tool === 'ellipse' || tool === 'line' || tool === 'select') {
       startRef.current = p;
       return;
@@ -381,6 +411,29 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
   const onPointerMove = (e: React.PointerEvent) => {
     if (!drawingRef.current) return;
     const p = toPoint(e);
+    if (tool === 'select' && moveDragRef.current) {
+      const md = moveDragRef.current;
+      md.dx = p[0] - md.startX;
+      md.dy = p[1] - md.startY;
+      // Ghost preview: repaint the artwork, then stroke the selection's
+      // boxes at the dragged offset (the real move commits on release).
+      render();
+      const cv = canvasRef.current;
+      const ctx = cv?.getContext('2d');
+      const layer = artwork?.layers.find((l) => l.id === activeLayer);
+      if (cv && ctx && layer) {
+        ctx.save();
+        ctx.setLineDash([5, 4]);
+        ctx.lineWidth = 1.5; ctx.strokeStyle = '#a78bfa'; ctx.globalAlpha = 0.9;
+        for (const el of layer.strokes) {
+          if (!el.id || !selectedIds.has(el.id)) continue;
+          const [bx, by, bw, bh] = elBBox(el, cv.width, cv.height);
+          ctx.strokeRect(bx + md.dx, by + md.dy, bw, bh);
+        }
+        ctx.restore();
+      }
+      return;
+    }
     if (tool === 'rect' || tool === 'ellipse' || tool === 'line' || tool === 'select') {
       if (startRef.current) drawLivePreview(tool, startRef.current, p);
       marqueeRef.current = p;
@@ -427,6 +480,18 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
     const end = toPoint(e);
     const start = startRef.current;
     startRef.current = null;
+    if (tool === 'select' && moveDragRef.current) {
+      const md = moveDragRef.current;
+      moveDragRef.current = null;
+      const dx = Math.round(md.dx); const dy = Math.round(md.dy);
+      if (Math.abs(dx) >= 1 || Math.abs(dy) >= 1) {
+        await lensRun('art', 'layer-transform', { artworkId: artwork.id, layerId: activeLayer, dx, dy, scale: 1, ids: [...selectedIds] });
+        await reload();
+      } else {
+        render(); // a plain click on a selected mark — keep the selection
+      }
+      return;
+    }
     if (tool === 'select') {
       if (start) {
         const x = Math.min(start[0], end[0]); const y = Math.min(start[1], end[1]);
@@ -482,11 +547,11 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
     setArtwork((prev) => prev && ({
       ...prev, layers: prev.layers.map((l) => (l.id === activeLayer ? { ...l, strokes: l.strokes.slice(0, -1) } : l)),
     }));
-    await lensRun('art', 'stroke-undo', { artworkId: artwork.id, layerId: activeLayer });
+    await enqueueMutation(() => lensRun('art', 'stroke-undo', { artworkId: artwork.id, layerId: activeLayer }));
   };
   const redo = async () => {
     if (!artwork) return;
-    await lensRun('art', 'stroke-redo', { artworkId: artwork.id, layerId: activeLayer });
+    await enqueueMutation(() => lensRun('art', 'stroke-redo', { artworkId: artwork.id, layerId: activeLayer }));
     await reload();
   };
 
@@ -602,7 +667,7 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
     setArtwork((prev) => prev && ({
       ...prev, layers: prev.layers.map((l) => (l.id === layerId ? { ...l, strokes: [] } : l)),
     }));
-    await lensRun('art', 'layer-clear', { artworkId: artwork.id, layerId });
+    await enqueueMutation(() => lensRun('art', 'layer-clear', { artworkId: artwork.id, layerId }));
   };
 
   // ── AI vision critique — snapshots the live canvas and asks the vision
@@ -682,6 +747,7 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
               autoFocus
               value={titleDraft}
               onChange={(e) => setTitleDraft(e.target.value)}
+              maxLength={200}
               onKeyDown={(e) => { if (e.key === 'Enter') void saveRename(); if (e.key === 'Escape') setRenaming(false); }}
               onBlur={saveRename}
               className="flex-1 bg-zinc-900 border border-violet-600 rounded px-2 py-1 text-sm text-zinc-100 min-w-0"
@@ -764,14 +830,14 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
             )}
           </span>
         ))}
-        <button type="button" onClick={() => void saveBrush()} title="Save current tool/size/opacity as a brush preset"
+        <button type="button" onClick={() => void saveBrush()} title="Save the current tool, size, and opacity as a brush preset. The artwork itself saves on its own."
           className={cn(toolBtn, off)}>
-          <Brush className="w-3 h-3" />+ Save
+          <Brush className="w-3 h-3" />Save brush
         </button>
         {TOOLS.map((t) => {
           const Icon = t.icon;
           return (
-            <button key={t.id} type="button" onClick={() => { setTool(t.id); if (t.id !== 'select' && t.id !== 'lasso') setSelectedIds(new Set()); }}
+            <button key={t.id} type="button" aria-label={t.label} onClick={() => { setTool(t.id); if (t.id !== 'select' && t.id !== 'lasso') setSelectedIds(new Set()); }}
               className={cn(toolBtn, tool === t.id ? on : off)}>
               <Icon className="w-3 h-3" />{t.label}
             </button>
@@ -781,13 +847,30 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
 
       {/* Selection toolbar */}
       {selectedIds.size > 0 && (
-        <div className="flex items-center gap-2 bg-violet-950/40 border border-violet-900/50 rounded-lg px-3 py-1.5">
+        <div className="flex flex-wrap items-center gap-2 bg-violet-950/40 border border-violet-900/50 rounded-lg px-3 py-1.5">
           <span className="text-[11px] text-violet-200">{selectedIds.size} selected</span>
+          {/* FIX-art-008: the selected marks are listed, not just counted —
+              each chip names the mark and can drop it from the selection. */}
+          <span className="flex flex-wrap items-center gap-1">
+            {(artwork.layers.find((l) => l.id === activeLayer)?.strokes || [])
+              .filter((el) => el.id && selectedIds.has(el.id))
+              .map((el) => {
+                const label = el.kind === 'text' ? `text “${(el.content || '').slice(0, 16)}”` : (el.tool || el.kind || 'mark');
+                return (
+                  <span key={el.id} className="flex items-center gap-1 rounded bg-violet-900/50 px-1.5 py-0.5 text-[10px] text-violet-100">
+                    {label}
+                    <button type="button" aria-label={`Remove ${label} from selection`}
+                      onClick={() => setSelectedIds((prev) => { const next = new Set(prev); next.delete(el.id!); return next; })}
+                      className="text-violet-300 hover:text-white">×</button>
+                  </span>
+                );
+              })}
+          </span>
           <button type="button" onClick={copySelection} className="flex items-center gap-1 text-[11px] px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded">
             <ClipboardCopy className="w-3 h-3" /> Copy
           </button>
           <button type="button" onClick={deleteSelection} className="text-[11px] px-2 py-0.5 bg-zinc-800 hover:bg-rose-900 text-zinc-200 rounded">Delete</button>
-          <span className="text-[10px] text-zinc-400">Transform panel applies to the selection.</span>
+          <span className="text-[10px] text-zinc-400">Drag selected marks on the canvas to move them. Transform panel applies to the selection.</span>
           <button type="button" onClick={() => setSelectedIds(new Set())} className="text-[11px] text-zinc-400 ml-auto">Clear</button>
         </div>
       )}
@@ -969,8 +1052,8 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
   );
 }
 
-const topBtn = 'flex items-center gap-1 px-2.5 py-1.5 text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg';
-const toolBtn = 'flex items-center gap-1 px-2 py-1 text-[11px] rounded-lg';
+const topBtn = 'flex min-h-11 items-center gap-1 rounded-lg bg-zinc-800 px-2.5 py-1.5 text-xs text-zinc-200 hover:bg-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300';
+const toolBtn = 'flex min-h-11 items-center gap-1 rounded-lg px-2 py-1 text-[11px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300';
 const miniBtn = 'flex items-center gap-1 px-2 py-0.5 text-[10px] bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded capitalize';
 const on = 'bg-violet-600 text-white';
 const off = 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700';

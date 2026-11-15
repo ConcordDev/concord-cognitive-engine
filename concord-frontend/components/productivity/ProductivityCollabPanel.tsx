@@ -104,7 +104,7 @@ export function ProductivityCollabPanel({ onChange }: { onChange: () => void }) 
           <p className="text-xs text-zinc-400 italic">No projects yet — create one in the Tasks tab.</p>
         ) : (
           <>
-            <select value={activeProject} onChange={(e) => setActiveProject(e.target.value)}
+            <select aria-label="Project" value={activeProject} onChange={(e) => setActiveProject(e.target.value)}
               className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-100">
               <option value="">Select project…</option>
               {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -112,10 +112,10 @@ export function ProductivityCollabPanel({ onChange }: { onChange: () => void }) 
             {activeProject && (
               <>
                 <div className="flex gap-2">
-                  <input placeholder="Collaborator — @username or profile name" value={shareForm.collaboratorId}
+                  <input aria-label="Collaborator" placeholder="Collaborator — @username or profile name" value={shareForm.collaboratorId}
                     onChange={(e) => setShareForm({ ...shareForm, collaboratorId: e.target.value })}
                     className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-100" />
-                  <select value={shareForm.role} onChange={(e) => setShareForm({ ...shareForm, role: e.target.value })}
+                  <select aria-label="Collaborator role" value={shareForm.role} onChange={(e) => setShareForm({ ...shareForm, role: e.target.value })}
                     className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
                     <option value="editor">Editor</option>
                     <option value="viewer">Viewer</option>
@@ -137,7 +137,7 @@ export function ProductivityCollabPanel({ onChange }: { onChange: () => void }) 
                         <span className="flex-1 text-xs text-zinc-200 truncate">
                           {c.collaboratorName || c.collaboratorId}
                           {c.collaboratorUsername && c.collaboratorName && (
-                            <span className="text-zinc-500"> @{c.collaboratorUsername}</span>
+                            <span className="text-zinc-400"> @{c.collaboratorUsername}</span>
                           )}
                         </span>
                         <span className="text-[10px] text-zinc-400 uppercase">{c.role}</span>

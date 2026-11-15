@@ -102,6 +102,13 @@ export interface LensManifest {
    *  share shape, unchanged. */
   minorData?: boolean;
 
+  /** This lens's content is the member's private records by default
+   *  (notes, journals). The shared Share & Publish dialog reads it:
+   *  the visibility starts at its non-public option instead of Public
+   *  (FIX-understanding-004). The member can still choose Public
+   *  explicitly. Absent means the generic share shape, unchanged. */
+  sharePrivateByDefault?: boolean;
+
   /** Socket event names this lens listens to for live tile updates. useTilePush key list. */
   realtimeEvents?: string[];
 
@@ -2516,7 +2523,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'creative',
-    dataTier: 'SIM_GRADE_A',
+    dataTier: 'REAL_WORKSPACE',
     emptyState: {
       headline: "Curate your art.",
       caption: "Artworks, galleries, exhibits, collections \u2014 analyze, generate, validate.",
@@ -3729,7 +3736,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'healthcare',
-    dataTier: 'REAL_LIVE',
+    dataTier: 'REAL_WORKSPACE',
     emptyState: {
       headline: 'No sessions logged.',
       caption: 'Log a session, run an assessment, draft a plan. NIH MedlinePlus powers the resource browser (free, real federal health info).',
@@ -4536,6 +4543,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['parse', 'compose', 'recompose', 'record_evidence', 'evaluate_promotion', 'apply_promotion', 'consolidate', 'lineage', 'evolution_tick', 'sweep'],
     category: 'knowledge',
     dataTier: 'REAL_LIVE',
+    sharePrivateByDefault: true,
     emptyState: {
       headline: "Understanding substrate.",
       caption: "Understandings, evidence, lineage, consolidation, compose-sessions \u2014 the substrate's reasoning layer.",
@@ -5411,7 +5419,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   { domain: 'cognitive-replay', label: 'Cognitive Replay', artifacts: ['timeline_event', 'replay_segment'], macros: { list: 'lens.cognitive-replay.list', get: 'lens.cognitive-replay.get', create: 'lens.cognitive-replay.create', update: 'lens.cognitive-replay.update', delete: 'lens.cognitive-replay.delete', run: 'lens.cognitive-replay.run', export: 'lens.cognitive-replay.export' }, exports: ['json'], actions: ['scrub', 'export'], category: 'knowledge', dataTier: 'REAL_LIVE' },
   { domain: 'classroom', label: 'Classroom', artifacts: ['homework_submission', 'peer_review', 'academic_transcript'], macros: { list: 'lens.classroom.list', get: 'lens.classroom.get', create: 'lens.classroom.create', update: 'lens.classroom.update', delete: 'lens.classroom.delete', run: 'lens.classroom.run', export: 'lens.classroom.export' }, exports: ['json', 'pdf'], actions: ['enrol', 'submit_homework', 'peer_review', 'transcript'], category: 'knowledge' },
   { domain: 'byo-keys', label: 'BYO API Keys', artifacts: ['api_key_grant'], macros: { list: 'lens.byo-keys.list', get: 'lens.byo-keys.get', create: 'lens.byo-keys.create', update: 'lens.byo-keys.update', delete: 'lens.byo-keys.delete', run: 'lens.byo-keys.run', export: 'lens.byo-keys.export' }, exports: ['json'], actions: ['add_key', 'remove_key', 'test_key'], category: 'system' },
-  { domain: 'bounties', label: 'Bounties', artifacts: ['bounty_stake', 'autofix_proposal'], macros: { list: 'lens.bounties.list', get: 'lens.bounties.get', create: 'lens.bounties.create', update: 'lens.bounties.update', delete: 'lens.bounties.delete', run: 'lens.bounties.run', export: 'lens.bounties.export' }, exports: ['json'], actions: ['stake', 'vote', 'resolve'], category: 'social' },
+  { domain: 'bounties', label: 'Bounties', artifacts: ['bounty_stake', 'autofix_proposal'], macros: { list: 'lens.bounties.list', get: 'lens.bounties.get', create: 'lens.bounties.create', update: 'lens.bounties.update', delete: 'lens.bounties.delete', run: 'lens.bounties.run', export: 'lens.bounties.export' }, exports: ['json'], actions: ['stake', 'vote', 'resolve'], category: 'social', dataTier: 'REAL_LIVE' },
   // The /lenses/death-insurance lens maps onto the real `insurance` domain
   // (lens-id ≠ domain, like codex→lore). Its backend lives in
   // server/domains/insurance.js (the sparks-only `pact-*` macros), now wired

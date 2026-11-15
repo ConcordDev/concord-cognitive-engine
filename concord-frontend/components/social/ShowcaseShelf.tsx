@@ -217,7 +217,7 @@ export function ShowcaseShelf({ userId, showcase, isOwner, onOpenPost, className
         <div className="flex items-baseline gap-2">
           <h2 className="text-sm font-medium text-zinc-200">Showcase</h2>
           {isOwner ? (
-            <span className="text-[11px] text-zinc-500">
+            <span className="text-[11px] text-zinc-400">
               {items.length}/{SHOWCASE_MAX} pinned
             </span>
           ) : null}
@@ -308,7 +308,7 @@ export function ShowcaseShelf({ userId, showcase, isOwner, onOpenPost, className
                 <li key={`${option.kind}:${option.id}`} className="flex items-center justify-between gap-2 rounded-lg px-2 py-1 hover:bg-white/5">
                   <span className="min-w-0 truncate text-xs text-zinc-200">
                     {option.label}
-                    {option.detail ? <span className="text-zinc-500"> · {option.detail}</span> : null}
+                    {option.detail ? <span className="text-zinc-400"> · {option.detail}</span> : null}
                   </span>
                   <button
                     type="button"

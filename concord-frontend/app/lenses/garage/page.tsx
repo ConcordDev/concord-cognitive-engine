@@ -63,6 +63,8 @@ interface Vehicle {
   id: string;
   world_id: string;
   kind: string;
+  name?: string;
+  spec?: string;
   owner_kind: string;
   owner_id?: string;
   ownerDisplay?: string;
@@ -109,6 +111,7 @@ export default function GarageLensPage() {
   const [worldIdDraft, setWorldIdDraft] = useState('concordia-hub');
   const [tab, setTab] = useState<FleetTab>('world');
   const [filterKind, setFilterKind] = useState<string>('all');
+  const [fleetQuery, setFleetQuery] = useState('');
 
   const [worldFleet, setWorldFleet] = useState<Vehicle[] | null>(null);
   const [myFleet, setMyFleet] = useState<Vehicle[] | null>(null);
@@ -117,6 +120,8 @@ export default function GarageLensPage() {
 
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
   const [spawnKind, setSpawnKind] = useState<string>('cart');
+  const [spawnName, setSpawnName] = useState('');
+  const [spawnSpec, setSpawnSpec] = useState('');
 
   const spawnFeedback = useMacroDispatchFeedback<GarageSpawnResult>();
 
@@ -178,18 +183,33 @@ export default function GarageLensPage() {
       worldId,
       kind: spawnKind,
       ownerKind: 'player',
+      name: spawnName.trim(),
+      spec: spawnSpec.trim(),
     });
     if (result) {
+      setSpawnName('');
+      setSpawnSpec('');
       await refresh();
       setTab('mine');
     }
-  }, [spawnFeedback, worldId, spawnKind, refresh]);
+  }, [spawnFeedback, worldId, spawnKind, spawnName, spawnSpec, refresh]);
 
   const activeFleet = tab === 'world' ? worldFleet : myFleet;
   const filteredFleet = useMemo(() => {
     if (!activeFleet) return [];
-    return filterKind === 'all' ? activeFleet : activeFleet.filter((v) => v.kind === filterKind);
-  }, [activeFleet, filterKind]);
+    // FIX-garage-006: the fleet had a kind filter but no search — the
+    // query matches id, kind and owner, case-insensitively.
+    const q = fleetQuery.trim().toLowerCase();
+    return activeFleet.filter((v) => {
+      if (filterKind !== 'all' && v.kind !== filterKind) return false;
+      if (!q) return true;
+      return v.id.toLowerCase().includes(q)
+        || v.kind.toLowerCase().includes(q)
+        || (v.name || '').toLowerCase().includes(q)
+        || (v.ownerDisplay || '').toLowerCase().includes(q)
+        || (v.owner_id || '').toLowerCase().includes(q);
+    });
+  }, [activeFleet, filterKind, fleetQuery]);
 
   const kindCounts = useMemo(() => {
     const counts: Record<string, number> = { cart: 0, boat: 0, canal_taxi: 0 };
@@ -198,6 +218,15 @@ export default function GarageLensPage() {
   }, [worldFleet]);
 
   const columns: DataTableColumn<Vehicle>[] = useMemo(() => [
+    {
+      id: 'name',
+      header: 'Name',
+      sortable: true,
+      accessor: (v) => v.name
+        ? <span className="text-gray-100">{v.name}</span>
+        : <span className="text-gray-500 italic">unnamed</span>,
+      sortValue: (v) => v.name || '',
+    },
     {
       id: 'kind',
       header: 'Kind',
@@ -353,6 +382,28 @@ export default function GarageLensPage() {
                   {SPAWNABLE_KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
                 </select>
               </div>
+              <div>
+                <label htmlFor="garage-spawn-name" className={ds.label}>Name</label>
+                <input
+                  id="garage-spawn-name"
+                  value={spawnName}
+                  onChange={(e) => setSpawnName(e.target.value)}
+                  maxLength={80}
+                  placeholder="e.g. Old Reliable"
+                  className={cn(ds.select, 'w-44 py-1.5 text-sm')}
+                />
+              </div>
+              <div>
+                <label htmlFor="garage-spawn-spec" className={ds.label}>Spec</label>
+                <input
+                  id="garage-spawn-spec"
+                  value={spawnSpec}
+                  onChange={(e) => setSpawnSpec(e.target.value)}
+                  maxLength={280}
+                  placeholder="Oak bed, iron-rim wheels…"
+                  className={cn(ds.select, 'w-56 py-1.5 text-sm')}
+                />
+              </div>
               <button
                 type="button"
                 onClick={spawn}
@@ -411,11 +462,19 @@ export default function GarageLensPage() {
             >
               My fleet {myFleet ? `(${myFleet.length})` : ''}
             </button>
+            <input
+              type="search"
+              value={fleetQuery}
+              onChange={(e) => setFleetQuery(e.target.value)}
+              placeholder="Search fleet…"
+              aria-label="Search fleet"
+              className={cn(ds.input, 'ml-auto my-1.5 w-44 py-1.5 text-xs')}
+            />
             <select
               value={filterKind}
               onChange={(e) => setFilterKind(e.target.value)}
               aria-label="Filter by vehicle kind"
-              className={cn(ds.select, 'ml-auto my-1.5 w-36 py-1 text-xs')}
+              className={cn(ds.select, 'my-1.5 w-36 py-1 text-xs')}
             >
               <option value="all">All kinds</option>
               {VEHICLE_KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
@@ -449,9 +508,11 @@ export default function GarageLensPage() {
                 icon={<Car className="h-5 w-5" aria-hidden="true" />}
                 title={tab === 'world' ? 'No vehicles in this world yet' : 'You don’t own any vehicles yet'}
                 description={
-                  tab === 'world'
-                    ? `No ${filterKind === 'all' ? '' : `${filterKind} `}vehicles are spawned in ${worldId}.`
-                    : 'Spawn one above to start your fleet.'
+                  fleetQuery.trim()
+                    ? `No vehicles match “${fleetQuery.trim()}” in this fleet.`
+                    : tab === 'world'
+                      ? `No ${filterKind === 'all' ? '' : `${filterKind} `}vehicles are spawned in ${worldId}.`
+                      : 'Spawn one above to start your fleet.'
                 }
               />
             )}

@@ -32,6 +32,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import { FlaskConical as MobileTabFlask, SlidersHorizontal as MobileTabSliders, Activity as MobileTabActivity, BarChart3 as MobileTabBar3, GitCompare as MobileTabCompare, Cpu as MobileTabCpu, Workflow as MobileTabWorkflow } from 'lucide-react';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 // ─── Type Definitions ────────────────────────────────────────────────────────
 
@@ -271,6 +272,7 @@ function formatDuration(ms: number): string {
 }
 
 function formatNumber(n: number): string {
+  if (n == null || !Number.isFinite(n)) return '—';
   if (Math.abs(n) >= 1000000) return `${(n / 1000000).toFixed(2)}M`;
   if (Math.abs(n) >= 1000) return `${(n / 1000).toFixed(2)}K`;
   if (Number.isInteger(n)) return n.toLocaleString();
@@ -1333,8 +1335,8 @@ export function SimConsole() {
       {/* ── Scenario Builder Modal ──────────────────────────────────────── */}
       {/* ═══════════════════════════════════════════════════════════════════ */}
       {showScenarioBuilder && editingScenario && (
-        <div className={ds.modalBackdrop} onClick={() => setShowScenarioBuilder(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-          <div className={ds.modalContainer} onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className={ds.modalBackdrop} onClick={() => setShowScenarioBuilder(false)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
+          <div className={ds.modalContainer} onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <div className={cn(ds.modalPanel, 'max-w-4xl max-h-[90vh] overflow-y-auto')}>
               {/* Modal Header */}
               <div className="flex items-center justify-between p-6 border-b border-lattice-border">
@@ -1577,8 +1579,8 @@ export function SimConsole() {
 
       {/* ── Import Modal ──────────────────────────────────────────────────── */}
       {showImportModal && (
-        <div className={ds.modalBackdrop} onClick={() => setShowImportModal(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-          <div className={ds.modalContainer} onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className={ds.modalBackdrop} onClick={() => setShowImportModal(false)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
+          <div className={ds.modalContainer} onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <div className={cn(ds.modalPanel, 'max-w-lg')}>
               <div className="flex items-center justify-between p-6 border-b border-lattice-border">
                 <h2 className={ds.heading2}>Import Scenario</h2>
@@ -1721,7 +1723,7 @@ function ScenariosTab({
                 </span>
               </div>
             </div>
-            <div className="flex items-center gap-1 ml-3 flex-shrink-0" onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            <div className="flex items-center gap-1 ml-3 flex-shrink-0" onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
               <button onClick={() => onRun(scenario)} className={cn(ds.btnGhost, 'p-1.5')} title="Run">
                 <Play className="w-4 h-4 text-green-400" />
               </button>
@@ -1987,7 +1989,7 @@ function RunsTab({
               className={cn(
                 'flex items-center justify-between bg-lattice-surface/50 rounded-lg p-3 cursor-pointer hover:bg-lattice-surface transition-colors',
                 selectedRunId === run.id && 'ring-1 ring-neon-cyan/50'
-              )} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+              )} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
               <div className="flex items-center gap-3">
                 <button
                   onClick={(e) => { e.stopPropagation(); onToggleComparison(run.id); }}
@@ -2053,21 +2055,29 @@ function ResultsTab({
   fallbackResults: SimResults;
   onExport: () => void;
 }) {
-  // Use run.results if available, otherwise show empty fallback
   const results = run?.results || fallbackResults;
 
-  return (
-    <div className="space-y-4">
-      {!run && (
+  // FIX-sim-009: with no run selected the tab used to render fabricated
+  // "sample" statistics, charts and a CSV export that read exactly like
+  // real results. Show an honest empty state instead — no numbers at all
+  // until a real run exists.
+  if (!run) {
+    return (
+      <div className="space-y-4">
         <div className={cn(ds.panel, 'border-yellow-500/20 bg-yellow-500/5')}>
           <div className="flex items-center gap-2">
             <Info className="w-4 h-4 text-yellow-400" />
             <span className="text-sm text-yellow-400">
-              Showing sample results. Select a completed run to view actual data.
+              No run selected — there are no results to show yet. Run a simulation or select a completed run to see its actual data.
             </span>
           </div>
         </div>
-      )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
 
       {/* Summary Statistics */}
       <div className={ds.panel}>

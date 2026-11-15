@@ -132,7 +132,7 @@ function CitationChain({ dtuId }: { dtuId: string }) {
 
   if (isLoading) {
     return (
-      <div className="flex items-center gap-2 px-2 py-2 text-[11px] text-zinc-500">
+      <div className="flex items-center gap-2 px-2 py-2 text-[11px] text-zinc-400">
         <Loader2 className="h-3 w-3 animate-spin" /> Resolving chain…
       </div>
     );
@@ -141,7 +141,7 @@ function CitationChain({ dtuId }: { dtuId: string }) {
   const citers = data?.citedBy || [];
   if (citers.length === 0) {
     return (
-      <p className="px-2 py-2 text-[11px] text-zinc-500">
+      <p className="px-2 py-2 text-[11px] text-zinc-400">
         Not yet cited. When you derive a DTU from this one (cite it as a parent), the chain grows here and
         royalties cascade to the source.
       </p>
@@ -150,7 +150,7 @@ function CitationChain({ dtuId }: { dtuId: string }) {
 
   return (
     <div className="space-y-1 py-1 pl-4">
-      <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+      <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-400">
         Cited by {data?.total ?? citers.length}
       </p>
       {citers.map((c) => (

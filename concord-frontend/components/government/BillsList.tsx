@@ -49,7 +49,7 @@ export function BillsList() {
         </div>
       </header>
       <form onSubmit={(e) => { e.preventDefault(); load.mutate(); }} className="flex items-center gap-2">
-        <input type="text" value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Topic filter (optional)" className="flex-1 rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white" />
+        <input aria-label="Topic filter (optional)" type="text" value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Topic filter (optional)" className="flex-1 rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white" />
         <button type="submit" disabled={load.isPending} className="inline-flex items-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-50">
           {load.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Landmark className="h-3.5 w-3.5" />}
           Load recent bills

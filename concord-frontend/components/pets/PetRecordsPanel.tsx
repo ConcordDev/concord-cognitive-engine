@@ -154,6 +154,12 @@ export function PetRecordsPanel({
   // 4 — Photo gallery / timeline
   const addPhoto = async () => {
     if (!photoForm.url.trim()) { setError('Photo URL is required.'); return; }
+    // The timeline accepted any URL — a favicon.ico was added as a
+    // 'photo' (FIX-pets-008). Only image URLs (or data:image uploads)
+    // belong on a photo timeline; anything else is refused in words.
+    const u = photoForm.url.trim();
+    const isImage = /^data:image\//i.test(u) || /\.(png|jpe?g|gif|webp|avif|svg)(\?.*)?$/i.test(u);
+    if (!isImage) { setError('That URL does not point at an image (use a .jpg, .png, .gif, .webp, .avif, or .svg link).'); return; }
     setBusy('photo');
     const r = await lensRun('pets', 'photo-add', {
       petId, url: photoForm.url.trim(), caption: photoForm.caption.trim(),

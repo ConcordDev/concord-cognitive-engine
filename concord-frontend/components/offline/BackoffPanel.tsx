@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Wifi, WifiOff, Timer, Loader2, RotateCw, Zap } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { onConnectionLost, onReconnected } from '@/lib/realtime/socket';
 import { ChartKit } from '@/components/viz';
 import { dirtyDocs } from './local-store';
 
@@ -32,7 +33,9 @@ interface BackoffResult {
  * pending queue down. The schedule is charted so the backoff curve is visible.
  */
 export function BackoffPanel({ onRetryDue }: { onRetryDue?: () => void }) {
-  const [online, setOnline] = useState(true);
+  const [browserOn, setBrowserOn] = useState(true);
+  const [socketDown, setSocketDown] = useState(false);
+  const online = browserOn && !socketDown;
   const [dirty, setDirty] = useState(0);
   const [plan, setPlan] = useState<BackoffResult | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -68,25 +71,35 @@ export function BackoffPanel({ onRetryDue }: { onRetryDue?: () => void }) {
   useEffect(() => {
     refreshDirty();
     loadPlan(0);
-    if (typeof navigator !== 'undefined') setOnline(navigator.onLine);
+    if (typeof navigator !== 'undefined') setBrowserOn(navigator.onLine);
 
-    const goOnline = () => {
-      setOnline(true);
+    const replay = () => {
       setAttempt(0);
       refreshDirty();
-      // Browsers without Background Sync get an explicit kick to the SW.
       if (typeof navigator !== 'undefined' && navigator.serviceWorker?.controller) {
         navigator.serviceWorker.controller.postMessage({ type: 'ONLINE' });
       }
       onRetryDue?.();
     };
-    const goOffline = () => setOnline(false);
+    const goOnline = () => {
+      setBrowserOn(true);
+      replay();
+    };
+    const goOffline = () => setBrowserOn(false);
+
+    const offLost = onConnectionLost(() => setSocketDown(true));
+    const offBack = onReconnected(() => {
+      setSocketDown(false);
+      if (typeof navigator === 'undefined' || navigator.onLine) replay();
+    });
 
     if (typeof window !== 'undefined') {
       window.addEventListener('online', goOnline);
       window.addEventListener('offline', goOffline);
     }
     return () => {
+      offLost();
+      offBack();
       if (typeof window !== 'undefined') {
         window.removeEventListener('online', goOnline);
         window.removeEventListener('offline', goOffline);
@@ -155,7 +168,9 @@ export function BackoffPanel({ onRetryDue }: { onRetryDue?: () => void }) {
             </h2>
             <p className="text-[11px] text-zinc-400">
               {online
-                ? 'Network detected — queue replays automatically'
+                ? dirty > 0
+                  ? `${dirty} write${dirty === 1 ? '' : 's'} queued — replaying now`
+                  : 'Online — a queued write replays when the link comes back'
                 : dirty > 0
                   ? `${dirty} write${dirty === 1 ? '' : 's'} queued — retrying with backoff`
                   : 'No pending writes'}

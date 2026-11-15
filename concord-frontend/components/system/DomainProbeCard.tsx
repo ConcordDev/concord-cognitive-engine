@@ -6,6 +6,8 @@
  * Calls runDomain(domain, macro, input) on mount via TanStack Query
  * and renders a compact diagnostic card with the probe's accent
  * colour, icon, and a one-line summary derived from the response.
+ * Probes flagged `operatorAction` are the exception: they render a
+ * gated state and never call their macro from the card.
  *
  * Used by the system / dtus / settings lenses to give each headless
  * domain at least one UI consumer. Cards are visually distinct by
@@ -35,8 +37,13 @@ function resolveIcon(name: string): LucideIconComponent {
 export function DomainProbeCard({ probe, className }: DomainProbeCardProps) {
   const accent = probeAccentClasses(probe.accent);
   const Icon = resolveIcon(probe.icon);
+  // Operator actions are listed, never auto-fired: the macro behind one
+  // is a mutating verb (its probe input is a dry run), so a diagnostics
+  // grid must not invoke it on mount or on re-probe for any viewer.
+  const gated = probe.operatorAction === true;
 
   const { data, error, isFetching, refetch } = useQuery({
+    enabled: !gated,
     queryKey: ['domain-probe', probe.domain, probe.macro, JSON.stringify(probe.input ?? {})],
     queryFn: async () => {
       // `runDomain` resolves to the raw axios response — the envelope
@@ -57,18 +64,21 @@ export function DomainProbeCard({ probe, className }: DomainProbeCardProps) {
 
   const envelopeFailed = !!data && data.ok === false;
   let summary: string;
-  if (isFetching && !data) summary = 'probing…';
+  if (gated) summary = 'operator action — not probed';
+  else if (isFetching && !data) summary = 'probing…';
   else if (error) summary = error instanceof Error ? error.message : 'unreachable';
   else if (envelopeFailed) summary = data?.error || data?.reason || 'unreachable';
   else if (probe.summarise) summary = probe.summarise(data?.result);
   else summary = 'ok';
 
   const status: 'pending' | 'ok' | 'error' = (error || envelopeFailed) ? 'error' : isFetching && !data ? 'pending' : 'ok';
-  const statusDot = status === 'error'
-    ? 'bg-red-400'
-    : status === 'pending'
-      ? 'bg-gray-500 animate-pulse'
-      : accent.dot;
+  const statusDot = gated
+    ? 'bg-gray-500'
+    : status === 'error'
+      ? 'bg-red-400'
+      : status === 'pending'
+        ? 'bg-gray-500 animate-pulse'
+        : accent.dot;
 
   return (
     <article
@@ -94,8 +104,8 @@ export function DomainProbeCard({ probe, className }: DomainProbeCardProps) {
         <button
           type="button"
           onClick={() => refetch()}
-          disabled={isFetching}
-          aria-label={`Re-probe ${probe.title}`}
+          disabled={gated || isFetching}
+          aria-label={gated ? `${probe.title} is an operator action and is not probed` : `Re-probe ${probe.title}`}
           className="text-gray-400 hover:text-white transition disabled:opacity-50"
         >
           <LucideIcons.RotateCw className={cn('h-3 w-3', isFetching && 'animate-spin')} />

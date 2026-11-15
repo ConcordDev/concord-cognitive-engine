@@ -40,6 +40,7 @@ export function RateLimitPanel() {
   const [form, setForm] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const refresh = useCallback(async () => {
@@ -73,8 +74,13 @@ export function RateLimitPanel() {
   const save = async (slot: string) => {
     setBusy(true);
     const n = form.trim() === '' ? null : Number(form);
-    await lensRun('byo_keys', 'rate_limit_set', { slot, maxPerMinute: n });
+    const r = await lensRun('byo_keys', 'rate_limit_set', { slot, maxPerMinute: n });
     setBusy(false);
+    // A refusal speaks and the editor stays open (FIX-byo-keys-009); an
+    // empty save is a clear, and says so instead of silently closing.
+    if (!r.data?.ok) { setError(String(r.data?.error || r.data?.message || 'That limit was not saved.')); return; }
+    setError(null);
+    setNotice(n === null ? 'Rate limit cleared.' : null);
     setEditing(null);
     refresh();
   };
@@ -91,7 +97,7 @@ export function RateLimitPanel() {
     >
       <div className="flex items-center justify-between gap-3 mb-3">
         <h2 className="text-sm font-semibold text-zinc-100">Rate limits</h2>
-        <span className="text-[10px] text-zinc-500 font-mono">requests / min</span>
+        <span className="text-[10px] text-zinc-400 font-mono">requests / min</span>
       </div>
       <p className="text-[11px] text-zinc-400 mb-3">
         A burst throttle, separate from the monthly budget cap above. When a slot&apos;s bucket
@@ -101,6 +107,9 @@ export function RateLimitPanel() {
 
       {error && (
         <div className="mb-3 text-[11px] text-red-400" data-testid="ratelimit-error">{error}</div>
+      )}
+      {notice && (
+        <div className="mb-3 text-[11px] text-zinc-400" data-testid="ratelimit-notice">{notice}</div>
       )}
 
       <ul className="space-y-2">
@@ -139,7 +148,7 @@ export function RateLimitPanel() {
                               {r!.remaining} / {r!.maxPerMinute} available
                             </span>
                             {r!.nextTokenInMs > 0 && (
-                              <span className="text-zinc-500" data-testid={`ratelimit-${slot}-next`}>
+                              <span className="text-zinc-400" data-testid={`ratelimit-${slot}-next`}>
                                 next in {fmtCountdown(r!.nextTokenInMs)}
                               </span>
                             )}
@@ -199,7 +208,7 @@ export function RateLimitPanel() {
                   <div className="flex-1">
                     <label className="block text-[10px] text-zinc-400 mb-1">Max requests / minute</label>
                     <input
-                      type="number" min="1" step="1"
+                      type="number" aria-label="Max requests per minute" min="1" step="1"
                       value={form}
                       onChange={(e) => setForm(e.target.value)}
                       placeholder="(unrestricted)"

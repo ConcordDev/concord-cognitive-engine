@@ -33,7 +33,7 @@ export interface TmsAppointment { id: string; dockName: string; date: string; st
 export interface TmsShellProps {
   totalShipments: number;
   inTransit: number;
-  onTimePct: number;
+  onTimePct: number | null;
   exceptions: number;
   deliveredToday: number;
   shipments: TmsShipment[];
@@ -70,7 +70,7 @@ export function TmsShell({
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
         <Metric icon={Package} label="Total" value={String(totalShipments)} caption="shipments" tone="cyan" />
         <Metric icon={Truck} label="In transit" value={String(inTransit)} caption="active" tone="cyan" />
-        <Metric icon={TrendingUp} label="On time" value={`${onTimePct}%`} caption="delivery rate" tone="emerald" />
+        <Metric icon={TrendingUp} label="On time" value={onTimePct == null ? '—' : `${onTimePct}%`} caption={onTimePct == null ? 'no delivered shipments yet' : 'delivery rate'} tone="emerald" />
         <Metric icon={CheckCircle} label="Delivered" value={String(deliveredToday)} caption="today" tone="emerald" />
         <Metric icon={AlertTriangle} label="Exceptions" value={String(exceptions)} caption="needs attention" tone="rose" />
       </div>

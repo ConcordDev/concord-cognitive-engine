@@ -34,9 +34,23 @@
 // broadcast to members already viewing the lens, and stop there.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { checkTitle, checkQuantity, firstBoundsFailure } from "../lib/bounds.js";
+
+// GB-1539 (FIX-emergency-services-003): incident priority is a 1–5
+// domain range. Out-of-range values used to clamp silently into it
+// (-99 became 1 and dispatched as a real priority); they now refuse
+// in the bounds shape.
+function checkPriority(field, value) {
+  if (value == null) return null;
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 1 || n > 5) {
+    return { ok: false, error: "invalid_input", reason: "bounds_quantity", field, message: `${field} must be between 1 and 5 (got ${value}).` };
+  }
+  return null;
+}
 import {
   createOrganization, getOrganization, joinOrganization, leaveOrganization,
-  setMemberRole, getOrgMembers, getOrgsForUser, listOrganizations,
+  setMemberRole, setOrganizationRecruitCriteria, getOrgMembers, getOrgsForUser, listOrganizations,
 } from "../lib/world-organizations.js";
 
 export default function registerEmergencyServicesActions(registerLensAction) {
@@ -75,6 +89,18 @@ export default function registerEmergencyServicesActions(registerLensAction) {
   registerLensAction("emergency-services", "dispatchOptimize", (ctx, artifact, _params) => {
     const units = artifact.data?.units || [];
     const incidents = artifact.data?.incidents || [];
+    // GB-1539 (FIX-emergency-services-003): poisoned inputs refuse
+    // instead of computing a nonsense ETA — a priority of -99 or a
+    // distance of 999999999 in the artifact data is a bounds breach,
+    // answered in the policy shape, never silently dispatched on.
+    for (const inc of incidents) {
+      const bad = checkPriority("priority", inc?.priority);
+      if (bad) return bad;
+    }
+    for (const u of units) {
+      const bad = checkQuantity("distanceKm", u?.distanceKm);
+      if (bad) return bad;
+    }
     if (units.length === 0) return { ok: true, result: { message: "Add available units to optimize dispatch." } };
     const available = units.filter(u => u.status === "available" || !u.status);
     const assigned = incidents.map(inc => {
@@ -190,12 +216,16 @@ export default function registerEmergencyServicesActions(registerLensAction) {
     const s = getEmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const scope = emScope(ctx, params, EMS_WRITE_TIERS);
     if (!scope.ok) return scope;
+    // GB-1539 (FIX-emergency-services-004): a summary over the title
+    // limit refuses — emClean's truncation to 200 was silent.
+    const badIncident = firstBoundsFailure(checkTitle("summary", params.summary), checkPriority("priority", params.priority));
+    if (badIncident) return badIncident;
     const summary = emClean(params.summary, 200);
     if (!summary) return { ok: false, error: "incident summary required" };
     const incident = {
       id: emId("inc"), summary,
       kind: INCIDENT_KINDS.includes(params.kind) ? params.kind : "other",
-      priority: Math.min(5, Math.max(1, Math.round(emNum(params.priority)) || 3)),
+      priority: Math.round(emNum(params.priority)) || 3,
       location: emClean(params.location, 200) || "",
       status: "open",
       assignedUnitId: null,
@@ -232,6 +262,28 @@ export default function registerEmergencyServicesActions(registerLensAction) {
     saveEms();
     emitOrgRealtime("ems:incident-status", { incident }, scope.orgId);
     return { ok: true, result: { incident } };
+  });
+
+  registerLensAction("emergency-services", "incident-delete", (ctx, _a, params = {}) => {
+    try {
+      const s = getEmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const scope = emScope(ctx, params, EMS_WRITE_TIERS);
+      if (!scope.ok) return scope;
+      const incidents = emList(s.incidents, scope.key);
+      const idx = incidents.findIndex((i) => i.id === params.id);
+      if (idx < 0) return { ok: false, error: "incident not found" };
+      const incident = incidents[idx];
+      const units = emList(s.units, scope.key);
+      const active = units.find((u) => u.assignedIncidentId === incident.id && ["dispatched", "en_route", "on_scene", "transporting"].includes(u.status));
+      if (active) return { ok: false, error: "incident_has_active_unit", result: { incident } };
+      incidents.splice(idx, 1);
+      // Clear any stale assignment pointer a stood-down unit still
+      // carries — the incident is gone, the pointer must not dangle.
+      for (const u of units) if (u.assignedIncidentId === incident.id) u.assignedIncidentId = null;
+      saveEms();
+      emitOrgRealtime("ems:incident-deleted", { incidentId: incident.id }, scope.orgId);
+      return { ok: true, result: { deleted: true, incident } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
 
   registerLensAction("emergency-services", "unit-add", (ctx, _a, params = {}) => {
@@ -353,7 +405,10 @@ export default function registerEmergencyServicesActions(registerLensAction) {
 
   const UNIT_STATUS_FLOW = {
     available: ["dispatched", "out_of_service"],
-    dispatched: ["en_route", "available"],
+    // FIX-emergency-services-009: a dispatched unit can go out of service
+    // (breakdown, crew relief) without first bouncing through en_route or
+    // available — the transition was missing from the flow entirely.
+    dispatched: ["en_route", "available", "out_of_service"],
     en_route: ["on_scene", "available"],
     on_scene: ["clear", "transporting"],
     transporting: ["clear"],
@@ -398,13 +453,15 @@ export default function registerEmergencyServicesActions(registerLensAction) {
       const s = getEmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const scope = emScope(ctx, params, EMS_WRITE_TIERS);
       if (!scope.ok) return scope;
+      const badIncident = firstBoundsFailure(checkTitle("summary", params.summary), checkPriority("priority", params.priority));
+      if (badIncident) return badIncident;
       const summary = emClean(params.summary, 200);
       if (!summary) return { ok: false, error: "incident summary required" };
       const lat = Number(params.lat), lng = Number(params.lng ?? params.lon);
       const incident = {
         id: emId("inc"), summary,
         kind: INCIDENT_KINDS.includes(params.kind) ? params.kind : "other",
-        priority: Math.min(5, Math.max(1, Math.round(emNum(params.priority)) || 3)),
+        priority: Math.round(emNum(params.priority)) || 3,
         location: emClean(params.location, 200) || "",
         lat: Number.isFinite(lat) ? lat : null,
         lng: Number.isFinite(lng) ? lng : null,
@@ -471,7 +528,12 @@ export default function registerEmergencyServicesActions(registerLensAction) {
       if (!scope.ok) return scope;
       const incident = emList(s.incidents, scope.key).find((i) => i.id === params.incidentId);
       if (!incident) return { ok: false, error: "incident not found" };
-      if (!emHasGeo(incident)) return { ok: false, error: "incident has no map position" };
+      // FIX-emergency-services-010: a position-less incident is a normal
+      // state (geo is optional at create; the detail panel renders its
+      // "add lat/lng" note for exactly this case), not a failed request.
+      // Answer ok with the empty ranking + noPosition so merely opening
+      // the detail does not book a failed request on the shell's tracker.
+      if (!emHasGeo(incident)) return { ok: true, result: { incidentId: incident.id, recommended: null, ranked: [], candidateCount: 0, noPosition: true } };
       const iLat = incident.lat, iLng = emLngOf(incident);
       const candidates = emList(s.units, scope.key)
         .filter((u) => u.status === "available" && emHasGeo(u))
@@ -541,7 +603,9 @@ export default function registerEmergencyServicesActions(registerLensAction) {
         }
         emPushEvent(s, scope.key, incidentId, "unit_status", `${unit.name}: ${prev}→${next}`);
       }
-      if (next === "clear" || next === "available") {
+      if (next === "clear" || next === "available" || next === "out_of_service") {
+        // Out of service unassigns like available does — the incident stays
+        // open for another unit; the unit is no longer bound to it.
         unit.assignedIncidentId = null;
         if (next === "clear") unit.status = "available";
       }
@@ -686,6 +750,9 @@ export default function registerEmergencyServicesActions(registerLensAction) {
         description: emClean(params.description, 500),
         districtId: params.districtId ? emClean(params.districtId, 100) : null,
         purpose: emClean(params.purpose, 300) || "Mutual-aid emergency response agency",
+        // FIX-emergency-services-014: an agency is private ("closed")
+        // unless its creator opts into the public Browse listing.
+        recruitCriteria: params.visibility === "open" ? "open" : "closed",
       });
       if (!res.ok) return res;
       return { ok: true, result: { organization: res.organization, role: "chief", orgRole: "leader" } };
@@ -702,6 +769,13 @@ export default function registerEmergencyServicesActions(registerLensAction) {
       // officer/leader (EMS "supervisor"/"chief") requires an existing
       // supervisor+ to call agency-set-role.
       const requested = params.role === "apprentice" ? "apprentice" : "member";
+      // FIX-emergency-services-014: a private ("closed") agency is not
+      // joinable by ID — its chief opens the listing first.
+      const orgForJoin = getOrganization(ctx?.db, orgId);
+      if (orgForJoin && orgForJoin.recruitCriteria === "closed"
+        && !getOrgMembers(ctx?.db, orgId).some((m) => m.userId === userId)) {
+        return { ok: false, error: "agency_not_open" };
+      }
       const res = joinOrganization(ctx?.db, orgId, userId, requested);
       if (!res.ok) return res;
       return { ok: true, result: { role: res.role, emsRole: EMS_ROLE_BY_ORG_ROLE[res.role] || "trainee" } };
@@ -766,12 +840,28 @@ export default function registerEmergencyServicesActions(registerLensAction) {
 
   registerLensAction("emergency-services", "agency-list", (ctx, _a, params = {}) => {
     try {
+      const memberOf = new Set(getOrgsForUser(ctx?.db, emActor(ctx)).map((m) => m.orgId));
       const orgs = listOrganizations(ctx?.db, {
         type: EMS_ORG_TYPE,
         districtId: params.districtId,
         limit: Math.min(intOr(params.limit, 50), 100),
-      });
+        // FIX-emergency-services-014: private ("closed") agencies are
+        // discovery-visible only to their own members.
+      }).filter((o) => o.recruitCriteria !== "closed" || memberOf.has(o.id));
       return { ok: true, result: { organizations: orgs } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  registerLensAction("emergency-services", "agency-set-visibility", (ctx, _a, params = {}) => {
+    try {
+      const actorId = emActor(ctx);
+      const orgId = emClean(params.orgId, 100);
+      if (!orgId) return { ok: false, error: "orgId_required" };
+      const criteria = params.visibility === "open" ? "open" : params.visibility === "private" ? "closed" : null;
+      if (!criteria) return { ok: false, error: "visibility_required" };
+      const res = setOrganizationRecruitCriteria(ctx?.db, orgId, criteria, actorId);
+      if (!res.ok) return res;
+      return { ok: true, result: { organization: getOrganization(ctx?.db, orgId), recruitCriteria: criteria } };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
 

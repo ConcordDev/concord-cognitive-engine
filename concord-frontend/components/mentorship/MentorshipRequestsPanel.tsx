@@ -86,12 +86,12 @@ export function MentorshipRequestsPanel() {
 
       {/* Incoming — mentor view */}
       <div className="panel p-4 space-y-3">
-        <h3 className="font-semibold text-sm flex items-center gap-2">
+        <h2 className="font-semibold text-sm flex items-center gap-2">
           <Inbox className="w-4 h-4 text-neon-blue" /> Incoming requests
           {pendingIncoming > 0 && (
             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-400/20 text-amber-400">{pendingIncoming} pending</span>
           )}
-        </h3>
+        </h2>
         {incoming.length === 0 ? (
           <p className="text-xs text-zinc-400">No incoming requests. List yourself as a mentor to receive them.</p>
         ) : incoming.map((req) => (
@@ -123,9 +123,9 @@ export function MentorshipRequestsPanel() {
 
       {/* Outgoing — mentee view */}
       <div className="panel p-4 space-y-3">
-        <h3 className="font-semibold text-sm flex items-center gap-2">
+        <h2 className="font-semibold text-sm flex items-center gap-2">
           <Send className="w-4 h-4 text-neon-cyan" /> Outgoing requests
-        </h3>
+        </h2>
         {outgoing.length === 0 ? (
           <p className="text-xs text-zinc-400">No outgoing requests. Find a mentor in the Directory tab.</p>
         ) : outgoing.map((req) => (

@@ -31,6 +31,7 @@ import {
 import { getDestinationsByGroup, isDestination, type DestinationDef } from '@/lib/destinations';
 import { cn } from '@/lib/utils';
 import { useHUDContext } from '@/components/world/concordia-hud/HUDContextProvider';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 /**
  * Static active-highlight classes per core color.
@@ -136,7 +137,7 @@ export function Sidebar() {
         <div
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
-          aria-hidden="true" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
+          aria-hidden="true" role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace} />
       )}
 
       {/* Sidebar */}

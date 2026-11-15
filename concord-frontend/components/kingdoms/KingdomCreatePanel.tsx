@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { kingdomErrorWords } from './errorWords';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { RegionPolygonEditor } from '@/components/kingdoms/RegionPolygonEditor';
 import type { Kingdom } from './types';
@@ -66,7 +67,7 @@ export function KingdomCreatePanel({ onCreated }: { onCreated: (id: string) => v
       });
       const j = await r.json();
       if (j?.ok) onCreated(j.kingdomId);
-      else setError(j?.error || 'create_failed');
+      else setError(kingdomErrorWords(j?.error || 'create_failed'));
     } finally { setSubmitting(false); }
   }, [mode, points, name, worldId, onCreated]);
 
@@ -79,6 +80,7 @@ export function KingdomCreatePanel({ onCreated }: { onCreated: (id: string) => v
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
+            maxLength={200}
             placeholder="Kingdom of …"
             className="w-full rounded bg-slate-800 px-2 py-1 text-sm"
           />

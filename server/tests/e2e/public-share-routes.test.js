@@ -192,6 +192,14 @@ describe('E2E — /api/public-share/:kind/:id', { timeout: 120000 }, function ()
     const evId = ev.body?.result?.event?.id;
     const draft = await run('events', 'event-create', { name: 'Secret Offsite' });
     const draftId = draft.body?.result?.event?.id;
+    // FIX-events-003: a private event's page cannot be published — events
+    // default to private, so publishing before going Public is refused...
+    const refused = await run('events', 'publish-page', { eventId: evId, headline: 'Come celebrate', blurb: 'Cake.' });
+    assert.notEqual(refused.body?.ok, true, JSON.stringify(refused.body));
+    assert.match(JSON.stringify(refused.body), /private/i);
+    // ...so set the event's visibility to Public first, then publish.
+    const vis = await run('events', 'event-update', { id: evId, visibility: 'public' });
+    assert.equal(vis.body?.result?.event?.visibility, 'public', JSON.stringify(vis.body));
     const pub = await run('events', 'publish-page', { eventId: evId, headline: 'Come celebrate', blurb: 'Cake.' });
     eventSlug = pub.body?.result?.publicPage?.slug;
     assert.ok(eventSlug, JSON.stringify(pub.body));

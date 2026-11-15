@@ -21,7 +21,9 @@ import { useConkayInitiativeStore } from '@/components/conkay/conkayInitiativeSt
 import { apiHelpers } from '@/lib/api/client';
 import { openLensTool, useAvailableLensTools, type LensTool } from '@/lib/lens-dock';
 import { ContentPublisher } from '@/components/lens/ContentPublisher';
+import { useLensPublishTarget } from '@/lib/lens-publish-target';
 import { ExportMenu } from '@/components/common/ExportMenu';
+import { rememberOverlayOpener } from '@/lib/a11y/overlay-keyboard';
 
 const TOOLS: Array<{ tool: LensTool; icon: ComponentType<{ className?: string }>; label: string; shortcut?: string }> = [
   { tool: 'capture', icon: Plus, label: 'Quick capture', shortcut: '⌘N' },
@@ -34,6 +36,19 @@ const TOOLS: Array<{ tool: LensTool; icon: ComponentType<{ className?: string }>
 
 const itemCls =
   'flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left text-[13px] text-zinc-300 hover:bg-white/[0.06] hover:text-zinc-50';
+
+function PublisherForLens({ domain }: { domain: string }) {
+  const saved = useLensPublishTarget(domain);
+  return (
+    <ContentPublisher
+      domain={domain}
+      artifactId={saved?.id}
+      title={saved?.title || ''}
+      compact
+      className="[&>button]:h-7 [&>button]:w-7 [&>button]:justify-center [&>button]:px-0"
+    />
+  );
+}
 
 export function LensToolbar({ domain, domainLabel }: { domain: string; domainLabel: string }) {
   const available = useAvailableLensTools();
@@ -67,15 +82,53 @@ export function LensToolbar({ domain, domainLabel }: { domain: string; domainLab
 
   const run = (fn: () => void) => () => { setOpen(false); fn(); };
 
+  // Menu-button keyboard contract (FIX-energy-010): opening the menu
+  // moves focus to its first item; Tab closes the menu and lets focus
+  // proceed (a menu never holds Tab the way a dialog does — WAI-ARIA
+  // menu-button pattern); arrows cycle the items; Escape closes and
+  // returns focus to the trigger.
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
+  }, [open ]);
+
+  const onMenuKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Tab') {
+      // Close without preventDefault: focus continues to the next (or
+      // previous, with Shift) page control with the menu gone — never
+      // into the page behind an open menu.
+      setOpen(false);
+      return;
+    }
+    if (e.key === 'Escape') {
+      setOpen(false);
+      buttonRef.current?.focus();
+      return;
+    }
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    const items = Array.from(menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') || []);
+    if (items.length === 0) return;
+    e.preventDefault();
+    const idx = items.indexOf(document.activeElement as HTMLElement);
+    const next = e.key === 'ArrowDown'
+      ? items[(idx + 1) % items.length]
+      : items[(idx - 1 + items.length) % items.length];
+    next?.focus();
+  };
+
   return (
     <div className="flex flex-shrink-0 items-center gap-0.5">
-      <ContentPublisher domain={domain} compact className="[&>button]:h-7 [&>button]:w-7 [&>button]:justify-center [&>button]:px-0" />
+      <PublisherForLens domain={domain} />
       <ExportMenu domain={domain} />
-      <div className="relative" ref={ref}>
+      <div className="relative" ref={ref} onKeyDown={open ? onMenuKeyDown : undefined}>
         <button
+          ref={buttonRef}
           type="button"
           onClick={() => setOpen((o) => !o)}
-          className="relative flex h-10 w-10 items-center justify-center rounded-md text-zinc-400 md:h-7 md:w-7 transition-colors hover:bg-white/[0.06] hover:text-zinc-100"
+          className="relative flex h-11 w-11 items-center justify-center rounded-md text-zinc-400 md:h-7 md:w-7 transition-colors hover:bg-white/[0.06] hover:text-zinc-100"
           aria-label="Lens tools"
           aria-expanded={open}
           aria-haspopup="menu"
@@ -86,7 +139,7 @@ export function LensToolbar({ domain, domainLabel }: { domain: string; domainLab
           {kayPending > 0 && <span className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-teal-400" aria-hidden="true" />}
         </button>
         {open && (
-          <div role="menu" className="absolute right-0 top-full z-50 mt-1.5 w-60 rounded-xl border border-white/10 bg-[#141414] p-1 shadow-2xl">
+          <div ref={menuRef} role="menu" onClickCapture={() => rememberOverlayOpener(buttonRef.current)} className="absolute right-0 top-full z-50 mt-1.5 w-60 rounded-xl border border-white/10 bg-[#141414] p-1 shadow-2xl">
             <a role="menuitem" href={`/lenses/chat?context=${encodeURIComponent(domain)}`} className={itemCls}>
               <MessageCircle className="h-4 w-4 text-zinc-500" />
               <span className="flex-1">Ask about {domainLabel}</span>

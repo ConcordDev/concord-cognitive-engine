@@ -47,6 +47,22 @@ const WITHDRAW_REFUSAL_COPY: Record<string, string> = {
   not_found: 'That submission could not be found.',
 };
 
+// FIX-vault-001: edit (before review) and remove (once withdrawn or declined).
+const EDIT_REFUSAL_COPY: Record<string, string> = {
+  wrong_state: 'A curator has already opened this work for review, so it can no longer be edited.',
+  missing_title: 'The work still needs a title.',
+  nothing_to_update: 'Nothing changed.',
+  not_submitter: 'Only the person who submitted a work can edit it.',
+  not_found: 'That submission could not be found.',
+};
+
+const REMOVE_REFUSAL_COPY: Record<string, string> = {
+  admitted_records_are_permanent: 'An admitted record is permanent and cannot be removed.',
+  wrong_state: 'Only a withdrawn or declined work can be removed — withdraw it first.',
+  not_submitter: 'Only the person who submitted a work can remove it.',
+  not_found: 'That submission could not be found.',
+};
+
 export function statusLabel(status: string): string {
   return STATUS_LABEL[status] || status;
 }
@@ -59,14 +75,45 @@ export interface MySubmissionsProps {
   submissions: MySubmission[];
   /** Resolves with null on success or the refusal reason. */
   onWithdraw: (id: string, reason: string) => Promise<string | null>;
+  /** FIX-vault-001: edit a still-`submitted` work. Same resolve contract. */
+  onEdit?: (id: string, fields: { title: string; description: string; body: string }) => Promise<string | null>;
+  /** FIX-vault-001: remove a withdrawn or declined work. Same resolve contract. */
+  onRemove?: (id: string) => Promise<string | null>;
 }
 
-export function MySubmissions({ submissions, onWithdraw }: MySubmissionsProps) {
+export function MySubmissions({ submissions, onWithdraw, onEdit, onRemove }: MySubmissionsProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // FIX-vault-001 state: the edit form and the remove confirm.
+  const [editing, setEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editBody, setEditBody] = useState('');
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
+  // FIX-vault-002: the list had no search, filter, or sort — with
+  // more than a handful of submissions there was no way to find one
+  // entry. Client-side controls over the caller's own rows: a text
+  // filter (title / description / kind / status), a status filter,
+  // and a sort (newest / oldest / title).
+  const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [sort, setSort] = useState<'newest' | 'oldest' | 'title'>('newest');
+  const visible = submissions
+    .filter((s) => statusFilter === 'all' || s.status === statusFilter)
+    .filter((s) => {
+      const q = query.trim().toLowerCase();
+      if (!q) return true;
+      return [s.title, s.description || '', s.workKind || '', statusLabel(s.status)]
+        .join(' ').toLowerCase().includes(q);
+    })
+    .sort((a, b) => (sort === 'title'
+      ? a.title.localeCompare(b.title)
+      : sort === 'oldest'
+        ? (a.submittedAt || 0) - (b.submittedAt || 0)
+        : (b.submittedAt || 0) - (a.submittedAt || 0)));
 
   const selected = submissions.find((s) => s.id === selectedId) || null;
   const kept = selected ? vaultSubmissionKeepRecord(selected) : null;
@@ -77,6 +124,8 @@ export function MySubmissions({ submissions, onWithdraw }: MySubmissionsProps) {
     setConfirming(false);
     setReason('');
     setError('');
+    setEditing(false);
+    setConfirmingRemove(false);
   };
 
   const withdraw = async () => {
@@ -93,6 +142,46 @@ export function MySubmissions({ submissions, onWithdraw }: MySubmissionsProps) {
     setReason('');
   };
 
+  const startEdit = () => {
+    if (!selected) return;
+    setEditTitle(selected.title);
+    setEditDescription(selected.description || '');
+    setEditBody(selected.body || '');
+    setError('');
+    setEditing(true);
+  };
+
+  const saveEdit = async () => {
+    if (!selected || !onEdit || busy) return;
+    setBusy(true);
+    setError('');
+    const refusal = await onEdit(selected.id, {
+      title: editTitle,
+      description: editDescription,
+      body: editBody,
+    });
+    setBusy(false);
+    if (refusal) {
+      setError(EDIT_REFUSAL_COPY[refusal] || refusal);
+      return;
+    }
+    setEditing(false);
+  };
+
+  const remove = async () => {
+    if (!selected || !onRemove || busy) return;
+    setBusy(true);
+    setError('');
+    const refusal = await onRemove(selected.id);
+    setBusy(false);
+    if (refusal) {
+      setError(REMOVE_REFUSAL_COPY[refusal] || refusal);
+      return;
+    }
+    setConfirmingRemove(false);
+    setSelectedId(null);
+  };
+
   if (submissions.length === 0) return null;
 
   return (
@@ -100,9 +189,47 @@ export function MySubmissions({ submissions, onWithdraw }: MySubmissionsProps) {
       <h2 className={vault.sectionTitle}>Your submissions</h2>
       <p className={cn(vault.caption, 'mt-1')}>Only you can see this list, including any reason a curator gave.</p>
 
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <input
+          type="search"
+          aria-label="Filter your submissions"
+          placeholder="Filter by title, kind, or words…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className={cn(vault.input, 'min-w-[12rem] flex-1')}
+        />
+        <select
+          aria-label="Filter by status"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className={vault.input}
+        >
+          <option value="all">All statuses</option>
+          {Object.entries(STATUS_LABEL).map(([value, label]) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
+        </select>
+        <select
+          aria-label="Sort your submissions"
+          value={sort}
+          onChange={(e) => setSort(e.target.value as typeof sort)}
+          className={vault.input}
+        >
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+          <option value="title">Title A–Z</option>
+        </select>
+        <span className={vault.caption} aria-live="polite">
+          {visible.length} of {submissions.length}
+        </span>
+      </div>
+
       <div className="mt-4 grid gap-6 sm:grid-cols-[minmax(0,18rem)_1fr]">
         <ul className="m-0 list-none space-y-1 p-0" data-testid="vault-my-list">
-          {submissions.map((item) => (
+          {visible.length === 0 && (
+            <li className={cn(vault.caption, 'px-1 py-2')}>No submissions match your filter.</li>
+          )}
+          {visible.map((item) => (
             <li key={item.id}>
               <button
                 type="button"
@@ -172,6 +299,78 @@ export function MySubmissions({ submissions, onWithdraw }: MySubmissionsProps) {
                   ) : (
                     <button type="button" onClick={() => setConfirming(true)} className={vault.button}>
                       Withdraw
+                    </button>
+                  )}
+                </div>
+              ) : null}
+
+              {selected.status === 'submitted' && onEdit ? (
+                <div className="mt-5">
+                  {editing ? (
+                    <div className="space-y-2" data-testid="vault-edit-form">
+                      <label className="block">
+                        <span className={cn(vault.label, 'mb-1 block')}>Title</span>
+                        <input
+                          className={vault.input}
+                          value={editTitle}
+                          maxLength={300}
+                          aria-label="Edit submission title"
+                          onChange={(e) => setEditTitle(e.target.value)}
+                        />
+                      </label>
+                      <label className="block">
+                        <span className={cn(vault.label, 'mb-1 block')}>Description</span>
+                        <textarea
+                          className={vault.input}
+                          value={editDescription}
+                          rows={3}
+                          maxLength={4000}
+                          aria-label="Edit submission description"
+                          onChange={(e) => setEditDescription(e.target.value)}
+                        />
+                      </label>
+                      <label className="block">
+                        <span className={cn(vault.label, 'mb-1 block')}>Body</span>
+                        <textarea
+                          className={vault.input}
+                          value={editBody}
+                          rows={6}
+                          aria-label="Edit submission body"
+                          onChange={(e) => setEditBody(e.target.value)}
+                        />
+                      </label>
+                      <div className="flex items-center gap-3">
+                        <button type="button" onClick={saveEdit} disabled={busy} className={vault.buttonAccent}>
+                          {busy ? 'Saving…' : 'Save changes'}
+                        </button>
+                        <button type="button" onClick={() => setEditing(false)} disabled={busy} className={vault.button}>
+                          Cancel edit
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button type="button" onClick={startEdit} className={vault.button}>
+                      Edit this work
+                    </button>
+                  )}
+                </div>
+              ) : null}
+
+              {(selected.status === 'withdrawn' || selected.status === 'declined') && onRemove ? (
+                <div className="mt-5">
+                  {confirmingRemove ? (
+                    <div className="flex items-center gap-3" data-testid="vault-remove-confirm">
+                      <span className={vault.caption}>Remove this {selected.status} work from your list for good?</span>
+                      <button type="button" onClick={remove} disabled={busy} className={vault.buttonAccent}>
+                        {busy ? 'Removing…' : 'Remove this work'}
+                      </button>
+                      <button type="button" onClick={() => setConfirmingRemove(false)} disabled={busy} className={vault.button}>
+                        Keep it
+                      </button>
+                    </div>
+                  ) : (
+                    <button type="button" onClick={() => setConfirmingRemove(true)} className={vault.button}>
+                      Remove
                     </button>
                   )}
                 </div>

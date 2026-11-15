@@ -1373,7 +1373,10 @@ export default function registerRetailActions(registerLensAction) {
     const name = String(params.name || "").trim();
     const email = String(params.email || "").trim().toLowerCase();
     if (!name) return { ok: false, error: "name required" };
-    if (!email) return { ok: false, error: "email required" };
+    if (!email) return { ok: false, error: "email required", message: "Email is required." };
+    if (!/^[^\s@]+@[^\s@]+$/.test(email)) {
+      return { ok: false, error: "invalid_input", field: "email", message: "Email must include a name and a domain, like name@example.com." };
+    }
     const customer = {
       id: nextRetailId("cust"), name, email,
       phone: String(params.phone || ""),
@@ -1389,6 +1392,36 @@ export default function registerRetailActions(registerLensAction) {
     ensureRetailBucket(s, "customers", userId).push(customer);
     saveRetailState();
     return { ok: true, result: { customer } };
+  });
+
+  // FIX-retail-007: customers gain an in-place edit.
+  registerLensAction("retail", "customers-update", (ctx, _a, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const id = String(params.id || "");
+    const list = ensureRetailBucket(s, "customers", userId);
+    const c = list.find(x => x.id === id);
+    if (!c) return { ok: false, error: "customer not found" };
+    if (params.name !== undefined) {
+      const name = String(params.name || "").trim();
+      if (!name) return { ok: false, error: "name required" };
+      c.name = name;
+    }
+    if (params.email !== undefined) {
+      const email = String(params.email || "").trim().toLowerCase();
+      if (!email) return { ok: false, error: "email required", message: "Email is required." };
+      if (!/^[^\s@]+@[^\s@]+$/.test(email)) {
+        return { ok: false, error: "invalid_input", field: "email", message: "Email must include a name and a domain, like name@example.com." };
+      }
+      c.email = email;
+    }
+    if (typeof params.phone === "string") c.phone = params.phone;
+    if (typeof params.city === "string") c.city = params.city;
+    if (typeof params.state === "string") c.state = params.state;
+    if (params.acceptsMarketing !== undefined) c.acceptsMarketing = params.acceptsMarketing !== false;
+    if (Array.isArray(params.tags)) c.tags = params.tags;
+    saveRetailState();
+    return { ok: true, result: { customer: c } };
   });
 
   registerLensAction("retail", "customers-delete", (ctx, _a, params = {}) => {
@@ -2148,19 +2181,19 @@ export default function registerRetailActions(registerLensAction) {
   });
 
   // Buyer-facing read — returns published catalog with stock + ratings.
-  registerLensAction("retail", "storefront-catalog", (ctx, _a, _p = {}) => {
-  try {
-    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = retailActor(ctx);
-    const sf = ensureStorefront(s, userId);
-    if (!sf.published) return { ok: true, result: { published: false, products: [] } };
-    const productMap = s.products.get(userId);
-    const reviews = ensureRetailBucket(s, "reviews", userId);
-    const skuFilter = sf.publishedSkus.length > 0 ? new Set(sf.publishedSkus) : null;
+  // The public catalog shape for one owner's storefront — shared by
+  // the owner-scoped catalog and the by-slug public read below.
+  // Founder ruling (FIX-retail-002): an empty selection publishes
+  // NOTHING. A product is public only when the owner explicitly
+  // selected it — there is no whole-catalog default.
+  function publicCatalogFor(s, ownerId, sf) {
+    const productMap = s.products.get(ownerId);
+    const reviews = ensureRetailBucket(s, "reviews", ownerId);
+    const skuFilter = new Set(sf.publishedSkus);
     const products = [];
     if (productMap) {
       for (const p of productMap.values()) {
-        if (skuFilter && !skuFilter.has(p.sku)) continue;
+        if (!skuFilter.has(p.sku)) continue;
         const skuReviews = reviews.filter((r) => r.sku === p.sku && r.status === "published");
         const avgRating = skuReviews.length > 0
           ? Math.round((skuReviews.reduce((sum, r) => sum + r.rating, 0) / skuReviews.length) * 10) / 10
@@ -2173,10 +2206,40 @@ export default function registerRetailActions(registerLensAction) {
       }
     }
     products.sort((a, b) => a.name.localeCompare(b.name));
-    return {
-      ok: true,
-      result: { published: true, storeName: sf.name, tagline: sf.tagline, theme: sf.theme, products },
-    };
+    return { published: true, slug: sf.slug, storeName: sf.name, tagline: sf.tagline, theme: sf.theme, products };
+  }
+
+  registerLensAction("retail", "storefront-catalog", (ctx, _a, _p = {}) => {
+  try {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const sf = ensureStorefront(s, userId);
+    if (!sf.published) return { ok: true, result: { published: false, products: [] } };
+    return { ok: true, result: publicCatalogFor(s, userId, sf) };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // Public by-slug read — what the published /shop/<slug> URL serves
+  // (FIX-retail-013). storefront-publish hands the merchant a public
+  // URL and the manager UI prints "Published at /shop/<slug>", but the
+  // only catalog read was owner-scoped and no /shop route existed, so
+  // the shared URL 404'd. This resolves the slug to its storefront
+  // across owners and returns the same FIX-retail-002-filtered public
+  // catalog — never the owner's id or any non-selected product.
+  registerLensAction("retail", "storefront-public", (ctx, _a, params = {}) => {
+  try {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const slug = String(params.slug || "").trim().toLowerCase();
+    if (!slug) return { ok: false, error: "slug required" };
+    if (!s.storefronts) s.storefronts = new Map();
+    let ownerId = null;
+    let sf = null;
+    for (const [uid, f] of s.storefronts.entries()) {
+      if (f && f.slug === slug) { ownerId = uid; sf = f; break; }
+    }
+    if (!sf) return { ok: false, error: "storefront not found" };
+    if (!sf.published) return { ok: true, result: { published: false, slug } };
+    return { ok: true, result: publicCatalogFor(s, ownerId, sf) };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
@@ -2202,6 +2265,7 @@ export default function registerRetailActions(registerLensAction) {
       const qty = Math.max(1, Math.round(Number(ln.qty) || 1));
       const product = productMap.get(sku);
       if (!product) return { ok: false, error: `product not found: ${sku}` };
+      if (!new Set(sf.publishedSkus).has(sku)) return { ok: false, error: `product is not published on this storefront: ${sku}` };
       if (product.stock < qty) return { ok: false, error: `insufficient stock for ${product.name} (${product.stock} available)` };
       orderLines.push({ sku, name: product.name, unitPrice: product.price, qty });
     }

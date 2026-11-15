@@ -121,7 +121,7 @@ export function StravaWearablePanel() {
           <Watch className="w-4 h-4 text-orange-400" />
           <h3 className="text-sm font-semibold text-zinc-100">Connected devices</h3>
         </div>
-        <input
+        <input id="fitness-device-name-optional-eg-forerunner-965" name="device-name-optional-eg-forerunner-965" aria-label="Device name (optional, e.g. Forerunner 965)"
           placeholder="Device name (optional, e.g. Forerunner 965)"
           value={deviceName}
           onChange={(e) => setDeviceName(e.target.value)}
@@ -187,7 +187,7 @@ export function StravaWearablePanel() {
         ) : (
           <>
             <div className="grid grid-cols-2 gap-2">
-              <select
+              <select id="fitness-syncprovider" name="syncprovider"
                 value={syncProvider}
                 onChange={(e) => setSyncProvider(e.target.value)}
                 className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100"
@@ -195,31 +195,31 @@ export function StravaWearablePanel() {
                 <option value="">Select device…</option>
                 {links.map((l) => <option key={l.provider} value={l.provider}>{providerLabel(l.provider)}</option>)}
               </select>
-              <input
+              <input id="fitness-date-10" name="date-10"
                 type="date"
                 value={sample.date}
                 onChange={(e) => setSample({ ...sample, date: e.target.value })}
                 className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100"
               />
-              <input placeholder="Resting HR (bpm)" inputMode="numeric" value={sample.restingHr}
+              <input id="fitness-resting-hr-bpm" name="resting-hr-bpm" aria-label="Resting HR (bpm)" placeholder="Resting HR (bpm)" inputMode="numeric" value={sample.restingHr}
                 onChange={(e) => setSample({ ...sample, restingHr: e.target.value })}
                 className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-              <input placeholder="HRV (ms)" inputMode="decimal" value={sample.hrv}
+              <input id="fitness-hrv-ms" name="hrv-ms" aria-label="HRV (ms)" placeholder="HRV (ms)" inputMode="decimal" value={sample.hrv}
                 onChange={(e) => setSample({ ...sample, hrv: e.target.value })}
                 className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-              <input placeholder="Sleep (hours)" inputMode="decimal" value={sample.sleepHours}
+              <input id="fitness-sleep-hours" name="sleep-hours" aria-label="Sleep (hours)" placeholder="Sleep (hours)" inputMode="decimal" value={sample.sleepHours}
                 onChange={(e) => setSample({ ...sample, sleepHours: e.target.value })}
                 className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-              <input placeholder="Recovery score (%)" inputMode="numeric" value={sample.recoveryScore}
+              <input id="fitness-recovery-score" name="recovery-score" aria-label="Recovery score (%)" placeholder="Recovery score (%)" inputMode="numeric" value={sample.recoveryScore}
                 onChange={(e) => setSample({ ...sample, recoveryScore: e.target.value })}
                 className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-              <input placeholder="Steps" inputMode="numeric" value={sample.steps}
+              <input id="fitness-steps" name="steps" aria-label="Steps" placeholder="Steps" inputMode="numeric" value={sample.steps}
                 onChange={(e) => setSample({ ...sample, steps: e.target.value })}
                 className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-              <input placeholder="Active calories" inputMode="numeric" value={sample.activeCalories}
+              <input id="fitness-active-calories" name="active-calories" aria-label="Active calories" placeholder="Active calories" inputMode="numeric" value={sample.activeCalories}
                 onChange={(e) => setSample({ ...sample, activeCalories: e.target.value })}
                 className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-              <input placeholder="Exercise minutes" inputMode="numeric" value={sample.exerciseMinutes}
+              <input id="fitness-exercise-minutes" name="exercise-minutes" aria-label="Exercise minutes" placeholder="Exercise minutes" inputMode="numeric" value={sample.exerciseMinutes}
                 onChange={(e) => setSample({ ...sample, exerciseMinutes: e.target.value })}
                 className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
               <button

@@ -59,6 +59,7 @@ export function PjBoardPanel({ projectId, onChange, openTaskRequest, onOpenTaskR
   const [error, setError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [groupBy, setGroupBy] = useState<string>('none');
+  const [boardQuery, setBoardQuery] = useState('');
   const [form, setForm] = useState({ title: '', type: 'task', priority: 'none' });
   const [openTask, setOpenTask] = useState<string | null>(null);
   const [swimlaneError, setSwimlaneError] = useState<string | null>(null);
@@ -137,6 +138,11 @@ export function PjBoardPanel({ projectId, onChange, openTaskRequest, onOpenTaskR
 
   const labelColor = (name: string) => meta?.labels.find((l) => l.name === name)?.color || 'zinc';
 
+  const bq = boardQuery.trim().toLowerCase();
+  const filterTasks = (tasks: Task[]): Task[] => (bq
+    ? tasks.filter((t) => t.title.toLowerCase().includes(bq) || t.ref.toLowerCase().includes(bq) || (t.assigneeName || '').toLowerCase().includes(bq))
+    : tasks);
+
   const renderCard = (t: Task) => (
     <li key={t.id} className="bg-lattice-surface border border-lattice-border rounded-lg p-2">
       <button type="button" onClick={() => setOpenTask(t.id)} className="block w-full text-left">
@@ -201,6 +207,9 @@ export function PjBoardPanel({ projectId, onChange, openTaskRequest, onOpenTaskR
           className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg">
           <Plus className="w-3.5 h-3.5" /> Task
         </button>
+        <input value={boardQuery} onChange={(e) => setBoardQuery(e.target.value)} placeholder="Search board…"
+          aria-label="Search board"
+          className="min-w-[130px] flex-1 bg-lattice-void border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-white" />
         <span className="text-[11px] text-gray-400 ml-auto">Swimlanes</span>
         <select value={groupBy} onChange={(e) => setGroupBy(e.target.value)}
           className="bg-lattice-void border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-white">
@@ -212,7 +221,7 @@ export function PjBoardPanel({ projectId, onChange, openTaskRequest, onOpenTaskR
       {groupBy === 'none' ? (
         <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-2">
           {STATUSES.map((col) => {
-            const tasks = columns.find((c) => c.status === col.id)?.tasks || [];
+            const tasks = filterTasks(columns.find((c) => c.status === col.id)?.tasks || []);
             const limit = wip[col.id];
             const over = limit > 0 && tasks.length > limit;
             return (
@@ -248,7 +257,7 @@ export function PjBoardPanel({ projectId, onChange, openTaskRequest, onOpenTaskR
               <p className="text-xs font-semibold text-indigo-300 mb-1">{lane.label}</p>
               <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-2">
                 {STATUSES.map((col) => {
-                  const tasks = lane.columns.find((c) => c.status === col.id)?.tasks || [];
+                  const tasks = filterTasks(lane.columns.find((c) => c.status === col.id)?.tasks || []);
                   return (
                     <div key={col.id} className="bg-lattice-surface/50 border-t-2 border-lattice-border rounded-lg p-2">
                       <p className="text-[10px] font-semibold text-gray-400 uppercase mb-1.5">{col.label} <span className="tabular-nums">{tasks.length}</span></p>

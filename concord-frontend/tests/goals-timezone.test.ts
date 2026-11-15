@@ -23,9 +23,9 @@ describe('goals timezone helpers (S12)', () => {
     expect(daysUntil(localDayKey(plus2))).toBe(2);
   });
 
-  it('a past date floors at 0 and garbage is 0', () => {
+  it('a past date counts backward and garbage is 0', () => {
     const past = new Date(); past.setDate(past.getDate() - 3);
-    expect(daysUntil(localDayKey(past))).toBe(0);
+    expect(daysUntil(localDayKey(past))).toBe(-3);
     expect(daysUntil('not-a-date')).toBe(0);
   });
 });

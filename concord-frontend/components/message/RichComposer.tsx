@@ -120,6 +120,7 @@ export function RichComposer({
       </div>
       <textarea
         ref={ref}
+        aria-label={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSubmit(); } }}

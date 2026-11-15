@@ -161,7 +161,7 @@ export function StravaGpsPanel() {
           <h3 className="text-sm font-semibold text-zinc-100">GPS recorder</h3>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <select
+          <select id="fitness-type-3" name="type-3"
             value={type}
             onChange={(e) => setType(e.target.value)}
             disabled={recording}
@@ -191,7 +191,7 @@ export function StravaGpsPanel() {
           )}
           <label className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg cursor-pointer">
             <Upload className="w-3.5 h-3.5" /> Import GPX
-            <input
+            <input id="fitness-field-23" name="field-23"
               type="file"
               accept=".gpx,application/gpx+xml,text/xml"
               className="hidden"

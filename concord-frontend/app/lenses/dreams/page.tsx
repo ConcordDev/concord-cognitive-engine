@@ -115,7 +115,7 @@ export default function DreamsPage() {
                 aria-current={on ? 'page' : undefined}
                 title={`${t.hint} (${t.keys})`}
                 className={cn(
-                  'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
+                  'inline-flex min-h-11 items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
                   on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
                 )}
               >

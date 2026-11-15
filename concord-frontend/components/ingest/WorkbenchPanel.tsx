@@ -282,7 +282,10 @@ export function WorkbenchPanel() {
         </h3>
         <div className="flex items-center gap-2 flex-wrap py-2">
           {[
-            { stage: 'Queued', count: 0, color: 'bg-gray-500', textColor: 'text-gray-400' },
+            // FIX-ingest-003: no 'Queued' stage — ingest is synchronous
+            // (one mutation, no queue exists), so a Queued tile was a
+            // hardcoded 0 that could never move. The stages shown are
+            // the ones that are real.
             { stage: 'Processing', count: ingestText.isPending ? 1 : 0, color: 'bg-neon-cyan', textColor: 'text-neon-cyan' },
             { stage: 'Complete', count: totalIngested, color: 'bg-neon-green', textColor: 'text-neon-green' },
             { stage: 'Failed', count: receipt?.failures ?? 0, color: 'text-red-500', textColor: 'text-red-400' },
@@ -292,7 +295,7 @@ export function WorkbenchPanel() {
                 <p className={`text-xl font-bold font-mono ${stage.textColor}`}>{stage.count}</p>
                 <p className="text-xs text-gray-400">{stage.stage}</p>
               </div>
-              {i < 3 && <div className="w-4 h-px bg-white/20 flex-shrink-0" />}
+              {i < 2 && <div className="w-4 h-px bg-white/20 flex-shrink-0" />}
             </div>
           ))}
         </div>
@@ -339,6 +342,7 @@ export function WorkbenchPanel() {
           <div className="flex gap-3">
             <input
               ref={titleInputRef}
+              aria-label="Title (optional)"
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -346,6 +350,7 @@ export function WorkbenchPanel() {
               className="flex-1 px-4 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan"
             />
             <input
+              aria-label="Domain (optional)"
               type="text"
               value={domain}
               onChange={(e) => setDomain(e.target.value)}
@@ -356,6 +361,7 @@ export function WorkbenchPanel() {
 
           {/* Text area */}
           <textarea
+            aria-label="Text to ingest"
             value={textInput}
             onChange={(e) => setTextInput(e.target.value)}
             placeholder="Paste or type text to ingest..."
@@ -415,12 +421,12 @@ export function WorkbenchPanel() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs text-gray-400 block mb-1">Chunk size (chars): {chunkSize}</label>
-                  <input type="range" min="100" max="2000" step="50" value={chunkSize}
+                  <input type="range" aria-label="Chunk size (chars)" min="100" max="2000" step="50" value={chunkSize}
                     onChange={(e) => setChunkSize(+e.target.value)} className="w-full" />
                 </div>
                 <div>
                   <label className="text-xs text-gray-400 block mb-1">Overlap (chars): {chunkOverlap}</label>
-                  <input type="range" min="0" max="200" step="10" value={chunkOverlap}
+                  <input type="range" aria-label="Overlap (chars)" min="0" max="200" step="10" value={chunkOverlap}
                     onChange={(e) => setChunkOverlap(+e.target.value)} className="w-full" />
                 </div>
               </div>
@@ -463,6 +469,7 @@ export function WorkbenchPanel() {
               <Database className="w-4 h-4 text-gray-400" /> Recent DTUs
             </h2>
             <input
+              aria-label="Search your ingested DTUs"
               type="text"
               value={searchQ}
               onChange={(e) => setSearchQ(e.target.value)}
@@ -546,7 +553,7 @@ export function WorkbenchPanel() {
             <BarChart3 className="w-4 h-4 text-neon-cyan" />
             Ingest Analysis
           </h2>
-          <span className="text-[11px] text-gray-500">
+          <span className="text-[11px] text-gray-400">
             Runs on the text above. Schema / batch expect a <span className="text-gray-300 font-mono">JSON array</span>.
           </span>
         </div>
@@ -759,7 +766,7 @@ export function WorkbenchPanel() {
                               {f.type}
                             </span>
                             {f.type === 'mixed' && f.typeBreakdown && (
-                              <p className="text-[10px] text-gray-500 mt-1">
+                              <p className="text-[10px] text-gray-400 mt-1">
                                 {Object.entries(f.typeBreakdown).map(([t, n]) => `${t}:${n}`).join(', ')}
                               </p>
                             )}

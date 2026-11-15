@@ -1,6 +1,7 @@
 {
   "id": "rebellion_fired",
   "name": "Rebellion Fired",
+  "summary": "Torches flare in the street and a hundred fists rise as one. The rebellion has fired — and from the ruler's window, the view is suddenly very different.",
   "trigger": "rebellion_fired",
   "comment": "Phase W — torch-lit street tilt + raised-fist crowd shot + ruler's-eye reverse.",
   "shots": [

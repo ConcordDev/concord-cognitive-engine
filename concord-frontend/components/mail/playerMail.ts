@@ -6,6 +6,19 @@
 import { lensRun } from '@/lib/api/client';
 import type { MailRow } from './types';
 
+/** FIX-mail-002: the autosaved compose draft (mail.draft-get/save). */
+export interface MailDraft {
+  toUserId: string;
+  subject: string;
+  body: string;
+  attachmentCc: number;
+  codCc: number;
+  attachmentDtuIds: string[];
+  attachmentTitles: Record<string, string>;
+  parentId?: string;
+  updatedAt: number;
+}
+
 export interface MailClaimBody {
   ok?: boolean;
   error?: string;
@@ -13,7 +26,11 @@ export interface MailClaimBody {
   mail?: MailRow[];
   claimed?: boolean;
   alreadyClaimed?: boolean;
+  declined?: boolean;
+  alreadyDeclined?: boolean;
+  refundedCc?: number;
   dtuIds?: string[];
+  draft?: MailDraft | null;
   payout?: { attachmentCc?: number; codCcPaid?: number };
   attachments?: { dtuIds?: string[]; transferred?: string[]; skipped?: string[] };
 }
@@ -35,8 +52,9 @@ export function sendFailureText(error: string | undefined): string {
   if (error === 'dtu_not_owned') return 'Not sent. You can only attach DTUs you own.';
   if (error === 'insufficient_funds') return 'Not sent. Not enough Concord Coin to escrow that gift.';
   if (error === 'cannot_mail_self') return 'Not sent. You cannot mail yourself.';
+  if (error === 'parent_not_found') return 'Not sent. The mail this replies to could not be found.';
   if (error === 'subject_required') return 'Not sent. A subject is required.';
-  if (error === 'missing_users' || error === 'no_user') return 'Not sent. Pick a recipient who has a Concord account.';
+  if (error === 'missing_users' || error === 'no_user' || error === 'recipient_unresolved') return 'Not sent. Pick a recipient who has a Concord account.';
   return error ? `Not sent. ${error.replace(/_/g, ' ')}.` : 'Not sent.';
 }
 
@@ -59,6 +77,24 @@ export function deleteResultText(j: PlayerMailResult): { kind: 'ok' | 'err'; msg
     return { kind: 'err', msg: 'Not removed. Mail could not be reached just now.' };
   }
   return { kind: 'ok', msg: 'Removed from your Sent list. The recipient keeps their copy.' };
+}
+
+export function declineResultText(j: PlayerMailResult): { kind: 'ok' | 'err'; msg: string } {
+  if (!j.ok) {
+    if (j.error === 'already_claimed') return { kind: 'err', msg: 'Not declined. This mail was already claimed.' };
+    if (j.error === 'expired') return { kind: 'err', msg: 'Not declined. This mail already expired and its attachments went back.' };
+    if (j.error === 'not_authorized') return { kind: 'err', msg: 'Not declined. You can only decline mail addressed to you.' };
+    if (j.error === 'not_found') return { kind: 'err', msg: 'Not declined. That mail is already gone.' };
+    return { kind: 'err', msg: 'Not declined. Mail could not be reached just now.' };
+  }
+  if (j.alreadyDeclined) return { kind: 'ok', msg: 'Already declined. Nothing moved.' };
+  const refunded = j.refundedCc || 0;
+  return {
+    kind: 'ok',
+    msg: refunded > 0
+      ? `Declined. The ${refunded} CC gift and any DTUs went back to the sender; you paid nothing.`
+      : 'Declined. The attachments went back to the sender; you paid nothing.',
+  };
 }
 
 export function claimResultText(j: PlayerMailResult): { kind: 'ok' | 'err'; msg: string } {

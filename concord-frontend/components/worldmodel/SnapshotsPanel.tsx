@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Camera, GitCompareArrows, Loader2, RefreshCcw } from 'lucide-react';
+import { Camera, GitCompareArrows, Loader2, RefreshCcw, Trash2 } from 'lucide-react';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import {
   type SnapshotDiff, type WmSnapshot,
   btn, btnGhost, card, input, invalidateWorldModel, wmRun, WM_QUERY_KEYS,
@@ -33,6 +34,13 @@ export function SnapshotsPanel() {
     mutationFn: (id: string) => wmRun('restore_snapshot', { id }),
     onSuccess: onRestored,
   });
+  const del = useMutation({
+    mutationFn: (id: string) => wmRun('delete_snapshot', { id }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: WM_QUERY_KEYS.snapshots });
+      qc.invalidateQueries({ queryKey: WM_QUERY_KEYS.status });
+    },
+  });
 
   const list = snaps.data?.snapshots ?? [];
 
@@ -58,9 +66,26 @@ export function SnapshotsPanel() {
                 <span className="text-emerald-100">{s.label}</span>
                 <span className="text-emerald-600">{s.entityCount}E · {s.relationCount}R</span>
                 <span className="text-[10px] text-emerald-800">{new Date(s.capturedAt).toLocaleString()}</span>
-                <button className={`${btnGhost} ml-auto`} onClick={() => restore.mutate(s.id)}>
-                  <RefreshCcw className="h-3 w-3" /> restore
-                </button>
+                <span className="ml-auto">
+                  <StickyDeleteConfirm
+                    onConfirm={() => restore.mutate(s.id)}
+                    armLabel={<span className="inline-flex items-center gap-1"><RefreshCcw className="h-3 w-3" /> restore</span>}
+                    confirmLabel="Restore this snapshot?"
+                    armAriaLabel={`Restore ${s.label}`}
+                    confirmAriaLabel={`Confirm restore ${s.label}`}
+                    className={btnGhost}
+                  />
+                </span>
+                <span>
+                  <StickyDeleteConfirm
+                    onConfirm={() => del.mutate(s.id)}
+                    armLabel={<span className="inline-flex items-center gap-1"><Trash2 className="h-3 w-3" /> delete</span>}
+                    confirmLabel={`Delete "${s.label}"?`}
+                    armAriaLabel={`Delete snapshot ${s.label}`}
+                    confirmAriaLabel={`Confirm delete snapshot ${s.label}`}
+                    className={btnGhost}
+                  />
+                </span>
               </li>
             ))}
           </ul>

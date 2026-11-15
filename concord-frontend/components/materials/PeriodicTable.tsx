@@ -154,7 +154,7 @@ export function PeriodicTable() {
           <input
             type="text" value={query} onChange={(e) => setQuery(e.target.value)}
             placeholder="Filter by name, symbol, Z…"
-            className="w-full rounded-md border border-zinc-800 bg-zinc-950 py-1.5 pl-8 pr-2 text-xs text-white placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
+            className="w-full rounded-md border border-zinc-800 bg-zinc-950 py-1.5 pl-8 pr-2 text-xs text-white placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
           />
         </div>
       </header>
@@ -192,7 +192,7 @@ export function PeriodicTable() {
       <div className="overflow-x-auto rounded-lg border border-zinc-800 bg-zinc-950/40 p-2">
         <div className="grid gap-0.5" style={{ gridTemplateColumns: 'repeat(18, minmax(38px, 1fr))', gridTemplateRows: 'repeat(10, minmax(38px, auto))', minWidth: '760px' }}>
           {footnotePointers.map((p) => (
-            <div key={p.text} style={{ gridColumn: p.col, gridRow: p.row }} className="flex items-center justify-center rounded border border-dashed border-zinc-700 text-[9px] text-zinc-500">
+            <div key={p.text} style={{ gridColumn: p.col, gridRow: p.row }} className="flex items-center justify-center rounded border border-dashed border-zinc-700 text-[9px] text-zinc-400">
               {p.text}
             </div>
           ))}
@@ -257,7 +257,7 @@ function ElementDetail({
   findError: string | null;
 }) {
   const s = styleFor(element.categoryGroup);
-  const NOT_KNOWN = <span className="italic text-zinc-500">not authoritatively known</span>;
+  const NOT_KNOWN = <span className="italic text-zinc-400">not authoritatively known</span>;
 
   return (
     <div className="space-y-4">
@@ -322,7 +322,7 @@ function ElementDetail({
           {findLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="h-3.5 w-3.5" />}
           Find materials containing {element.symbol}
         </button>
-        <p className="mt-1 text-[10px] text-zinc-500">Runs the real Materials Project search (materials.mp-search) — the same client as the search panel above.</p>
+        <p className="mt-1 text-[10px] text-zinc-400">Runs the real Materials Project search (materials.mp-search) — the same client as the search panel above.</p>
 
         {findError && <div className="mt-2 rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">{findError}</div>}
 
@@ -333,7 +333,7 @@ function ElementDetail({
               <div key={m.materialId} className="flex items-center justify-between rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 text-[11px]">
                 <div className="flex items-baseline gap-2">
                   <span className="font-mono font-semibold text-cyan-300">{m.formula}</span>
-                  <span className="font-mono text-zinc-500">{m.materialId}</span>
+                  <span className="font-mono text-zinc-400">{m.materialId}</span>
                   {m.crystalSystem && <span className="text-zinc-400">{m.crystalSystem}</span>}
                 </div>
                 {m.isStable && <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[9px] font-bold text-emerald-300">stable</span>}
@@ -349,9 +349,9 @@ function ElementDetail({
 function Cell({ label, value, fallback, mono }: { label: string; value?: string; fallback?: React.ReactNode; mono?: boolean }) {
   return (
     <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1.5">
-      <div className="text-[9px] uppercase tracking-wider text-zinc-500">{label}</div>
+      <div className="text-[9px] uppercase tracking-wider text-zinc-400">{label}</div>
       <div className={cn('text-[11px] text-zinc-200', mono && 'font-mono break-all')}>
-        {value != null && value !== '' ? value : (fallback ?? <span className="italic text-zinc-500">—</span>)}
+        {value != null && value !== '' ? value : (fallback ?? <span className="italic text-zinc-400">—</span>)}
       </div>
     </div>
   );

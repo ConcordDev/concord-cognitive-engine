@@ -19,6 +19,7 @@
  */
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { formatCalendarDate } from '@/lib/calendar-date';
 import {
   CalendarDays, FileText, Receipt, BookOpen, Award, Camera,
   Search, Loader2, Plus, Trash2, Send, ArrowRightCircle,
@@ -57,6 +58,7 @@ interface Estimate {
 interface Payment { id: string; amount: number; method: string; reference?: string; recordedAt: string }
 interface Invoice {
   id: string; invoiceNumber: string; jobId: string; client?: string; title?: string;
+  lineItems?: LineItem[];
   amount: number; amountPaid: number; balance: number; status: string;
   issuedDate: string; dueDate: string; payments: Payment[]; portalToken?: string;
   overdue?: boolean;
@@ -240,10 +242,9 @@ function ScheduleTab() {
 
           <div className="grid grid-cols-7 gap-1">
             {cal.days.map((d) => {
-              const day = new Date(d.date);
               return (
                 <div key={d.date} className={`min-h-[64px] rounded border p-1 ${d.jobs.length ? 'border-orange-500/30 bg-orange-500/5' : 'border-zinc-800 bg-zinc-950/40'}`}>
-                  <div className="text-[9px] text-zinc-400">{day.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</div>
+                  <div className="text-[9px] text-zinc-400">{formatCalendarDate(d.date, { year: false }) || d.date}</div>
                   {d.jobs.map((j) => (
                     <button key={j.id} type="button" onClick={() => setSelectedId(j.id)} className="mt-0.5 block w-full truncate rounded bg-orange-500/20 px-1 py-0.5 text-left text-[9px] text-orange-100 hover:bg-orange-500/30" title={`${j.title}${j.client ? ` · ${j.client}` : ''} — open job`}>{j.title}</button>
                   ))}
@@ -494,6 +495,7 @@ function InvoicesTab() {
   const [jobId, setJobId] = useState('');
   const [amount, setAmount] = useState('');
   const [portal, setPortal] = useState<string | null>(null);
+  const [invoiceErr, setInvoiceErr] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     setBusy(true);
@@ -513,8 +515,16 @@ function InvoicesTab() {
   const createInvoice = async () => {
     if (!jobId) return;
     setBusy(true);
-    const r = await run<{ invoice: Invoice }>('invoice-from-job', { jobId, amount: Number(amount) || 0 });
-    if (r?.invoice?.portalToken) setPortal(r.invoice.portalToken);
+    setInvoiceErr(null);
+    const payload: Record<string, unknown> = { jobId };
+    if (amount.trim() !== '') payload.amount = Number(amount);
+    const r = await lensRun<{ invoice: Invoice }>('welding', 'invoice-from-job', payload);
+    if (!r.data?.ok || !r.data.result?.invoice) {
+      setInvoiceErr(r.data?.error || 'Could not generate an invoice. Enter an amount when the job has no estimate.');
+      setBusy(false);
+      return;
+    }
+    if (r.data.result.invoice.portalToken) setPortal(r.data.result.invoice.portalToken);
     setJobId(''); setAmount('');
     await reload();
     bumpOps();
@@ -530,6 +540,7 @@ function InvoicesTab() {
         <input type="number" min={0} className={inputCls} placeholder="Amount (if no estimate)" value={amount} onChange={(e) => setAmount(e.target.value)} />
         <button type="button" className={btnCls} onClick={createInvoice} disabled={busy || !jobId}><Receipt className="h-3.5 w-3.5" /> Generate invoice</button>
       </div>
+      {invoiceErr && <p className="text-xs text-rose-400">{invoiceErr}</p>}
 
       {portal && <PortalLinkBanner token={portal} label="Send to client:" />}
 
@@ -553,6 +564,8 @@ function InvoicesTab() {
 function InvoiceRow({ invoice, onPaid }: { invoice: Invoice; onPaid: () => void }) {
   const [amt, setAmt] = useState('');
   const [method, setMethod] = useState('card');
+  const [due, setDue] = useState(invoice.dueDate || '');
+  const [dueErr, setDueErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const bumpOps = useContext(OpsRefreshCtx);
   const pay = async () => {
@@ -570,18 +583,40 @@ function InvoiceRow({ invoice, onPaid }: { invoice: Invoice; onPaid: () => void 
     bumpOps();
     onPaid();
   };
+  const saveDue = async () => {
+    setBusy(true);
+    setDueErr(null);
+    const r = await lensRun('welding', 'invoice-update', { invoiceId: invoice.id, dueDate: due });
+    if (!r.data?.ok) setDueErr(r.data?.error || 'Could not save the due date.');
+    setBusy(false);
+    onPaid();
+  };
   return (
     <div className={`rounded-lg border p-2.5 ${invoice.overdue ? 'border-rose-500/30 bg-rose-500/5' : 'border-zinc-800 bg-zinc-950/40'}`}>
       <div className="flex items-center justify-between">
         <div className="min-w-0">
           <div className="truncate text-[12px] font-medium text-white">{invoice.invoiceNumber} · {invoice.title || invoice.client}</div>
           <div className="text-[10px] text-zinc-400">due {invoice.dueDate}{invoice.overdue ? ' · OVERDUE' : ''}</div>
+          {invoice.lineItems && invoice.lineItems.length > 0 && (
+            <ul className="mt-1 space-y-0.5 text-[10px] text-zinc-400">
+              {invoice.lineItems.map((li, i) => (
+                <li key={i}>{li.description} · {li.quantity} × {fmt(li.unitPrice)}</li>
+              ))}
+            </ul>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <span className="font-mono text-[11px] text-zinc-400">{fmt(invoice.amountPaid)} / {fmt(invoice.amount)}</span>
           <span className={`rounded px-1.5 py-0.5 text-[10px] ${invoice.status === 'paid' ? 'bg-emerald-500/20 text-emerald-200' : invoice.status === 'partial' ? 'bg-amber-500/20 text-amber-200' : 'bg-zinc-700 text-zinc-300'}`}>{invoice.status}</span>
         </div>
       </div>
+      {invoice.status !== 'paid' && (
+        <div className="mt-1.5 flex items-center gap-1.5">
+          <input type="date" className={inputCls} aria-label="Due date" value={due} onChange={(e) => setDue(e.target.value)} />
+          <button type="button" className={ghostBtn} onClick={saveDue} disabled={busy || due === invoice.dueDate}>Save due date</button>
+          {dueErr && <span className="text-[10px] text-rose-400">{dueErr}</span>}
+        </div>
+      )}
       {invoice.status !== 'paid' && (
         <div className="mt-1.5 flex items-center gap-1.5">
           <input type="number" min={0} className={`${inputCls} w-28`} placeholder={`Balance ${fmt(invoice.balance)}`} value={amt} onChange={(e) => setAmt(e.target.value)} />
@@ -602,6 +637,7 @@ function InvoiceRow({ invoice, onPaid }: { invoice: Invoice; onPaid: () => void 
 // ── WPS tab ─────────────────────────────────────────────────────────
 function WpsTab() {
   const [list, setList] = useState<Wps[]>([]);
+  const [wpsQuery, setWpsQuery] = useState('');
   const bumpOps = useContext(OpsRefreshCtx);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({
@@ -619,9 +655,16 @@ function WpsTab() {
   }, []);
   useEffect(() => { void reload(); }, [reload]);
 
+  const rangeNegative = [form.amperageRange, form.voltageRange, form.travelSpeed, form.thicknessRange, form.preheat].some((v) => /(?:^|[^\d])-\d/.test(v));
+  const wpsError = !form.fillerMetal.trim() || !form.amperageRange.trim() || !form.thicknessRange.trim()
+    ? 'Filler metal, amperage range, and thickness range are required.'
+    : rangeNegative ? 'Ranges and temperatures cannot be negative.' : null;
+
   const create = async () => {
+    if (wpsError) return;
     setBusy(true);
-    await run('wps-create', { ...form, positions: form.positions.split(',').map((p) => p.trim()).filter(Boolean) });
+    const r = await run('wps-create', { ...form, positions: form.positions.split(',').map((p) => p.trim()).filter(Boolean) });
+    if (!r) { setBusy(false); return; }
     setForm((f) => ({ ...f, wpsNumber: '', fillerMetal: '', amperageRange: '', voltageRange: '', thicknessRange: '', preheat: '' }));
     await reload();
     bumpOps();
@@ -642,6 +685,11 @@ function WpsTab() {
   };
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
+  const wpsNeedle = wpsQuery.trim().toLowerCase();
+  const visibleWps = list.filter((w) =>
+    !wpsNeedle
+    || `${w.wpsNumber} ${w.process} ${w.baseMetal} ${w.code} ${w.status}`.toLowerCase().includes(wpsNeedle));
+
   return (
     <div className="space-y-3">
       <div className="grid gap-2 rounded-lg border border-zinc-800 bg-zinc-950/40 p-3 sm:grid-cols-4">
@@ -660,12 +708,23 @@ function WpsTab() {
         <input className={inputCls} placeholder="Preheat" value={form.preheat} onChange={set('preheat')} />
         <input className={inputCls} placeholder="Interpass temp" value={form.interpassTemp} onChange={set('interpassTemp')} />
         <select className={inputCls} value={form.code} onChange={set('code')}>{['AWS D1.1', 'AWS D1.6', 'ASME IX', 'API 1104'].map((c) => <option key={c}>{c}</option>)}</select>
-        <button type="button" className={btnCls} onClick={create} disabled={busy}><Plus className="h-3.5 w-3.5" /> Create WPS</button>
+        <button type="button" className={btnCls} onClick={create} disabled={busy || !!wpsError}><Plus className="h-3.5 w-3.5" /> Create WPS</button>
+        {wpsError && <p role="alert" className="sm:col-span-4 text-[11px] text-rose-300">{wpsError}</p>}
       </div>
+
+      {list.length > 0 && (
+        <input
+          className={`${inputCls} w-full min-h-[40px]`}
+          placeholder="Search WPS records by number, process, metal, or code…"
+          aria-label="Search WPS records"
+          value={wpsQuery}
+          onChange={(e) => setWpsQuery(e.target.value)}
+        />
+      )}
 
       <div className="space-y-1.5">
         {busy && list.length === 0 && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>}
-        {list.map((w) => (
+        {visibleWps.map((w) => (
           <div key={w.id} className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-2.5">
             <div className="flex items-center justify-between">
               <div>
@@ -682,6 +741,7 @@ function WpsTab() {
           </div>
         ))}
         {!busy && list.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No WPS documents yet.</div>}
+        {!busy && list.length > 0 && visibleWps.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No WPS records match your search.</div>}
       </div>
 
       <PqrSection />
@@ -692,6 +752,7 @@ function WpsTab() {
 // ── PQR records — the qualification evidence a WPS stands on ────────
 function PqrSection() {
   const [list, setList] = useState<Pqr[]>([]);
+  const [pqrQuery, setPqrQuery] = useState('');
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({
     pqrNumber: '', wpsNumber: '', process: 'SMAW', baseMetal: '', couponThickness: '',
@@ -706,9 +767,17 @@ function PqrSection() {
   }, []);
   useEffect(() => { void reload(); }, [reload]);
 
+  const pqrError = !form.welder.trim() || !form.wpsNumber.trim()
+    ? 'Welder and the WPS number this record supports are required.'
+    : (/(?:^|[^\d])-\d/.test(form.couponThickness) || /(?:^|[^\d])-\d/.test(form.qualifiedRange))
+      ? 'Coupon thickness and qualified range cannot be negative.'
+      : null;
+
   const create = async () => {
+    if (pqrError) return;
     setBusy(true);
-    await run('pqr-create', { ...form });
+    const r = await run('pqr-create', { ...form });
+    if (!r) { setBusy(false); return; }
     setForm({ pqrNumber: '', wpsNumber: '', process: 'SMAW', baseMetal: '', couponThickness: '', welder: '', testDate: '', tensileResult: 'not_recorded', bendResult: 'not_recorded', qualifiedRange: '' });
     await reload();
   };
@@ -718,6 +787,11 @@ function PqrSection() {
   };
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setForm((f) => ({ ...f, [k]: e.target.value }));
   const outcomeCls = (v?: string) => v === 'pass' ? 'bg-emerald-500/20 text-emerald-200' : v === 'fail' ? 'bg-rose-500/20 text-rose-200' : 'bg-zinc-700 text-zinc-300';
+
+  const pqrNeedle = pqrQuery.trim().toLowerCase();
+  const visiblePqr = list.filter((p) =>
+    !pqrNeedle
+    || `${p.pqrNumber} ${p.wpsNumber ?? ''} ${p.process} ${p.baseMetal} ${p.welder ?? ''} ${p.code}`.toLowerCase().includes(pqrNeedle));
 
   return (
     <div className="space-y-3 border-t border-zinc-800 pt-3">
@@ -741,11 +815,22 @@ function PqrSection() {
             <option value="not_recorded">not recorded</option><option value="pass">pass</option><option value="fail">fail</option>
           </select>
         </label>
-        <button type="button" className={`${btnCls} sm:col-span-2`} onClick={create} disabled={busy}><Plus className="h-3.5 w-3.5" /> Record PQR</button>
+        <button type="button" className={`${btnCls} sm:col-span-2`} onClick={create} disabled={busy || !!pqrError}><Plus className="h-3.5 w-3.5" /> Record PQR</button>
+        {pqrError && <p role="alert" className="sm:col-span-4 text-[11px] text-rose-300">{pqrError}</p>}
       </div>
 
+      {list.length > 0 && (
+        <input
+          className={`${inputCls} w-full min-h-[40px]`}
+          placeholder="Search PQR records by number, process, metal, or welder…"
+          aria-label="Search PQR records"
+          value={pqrQuery}
+          onChange={(e) => setPqrQuery(e.target.value)}
+        />
+      )}
+
       <div className="space-y-1.5">
-        {list.map((p) => (
+        {visiblePqr.map((p) => (
           <div key={p.id} className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-950/40 p-2.5">
             <div className="min-w-0">
               <div className="text-[12px] font-medium text-white">{p.pqrNumber} <span className="font-normal text-zinc-400">· {p.process} · {p.code}</span></div>
@@ -761,6 +846,7 @@ function PqrSection() {
           </div>
         ))}
         {!busy && list.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No PQRs recorded yet — a WPS stands on the PQR that qualified it.</div>}
+        {!busy && list.length > 0 && visiblePqr.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No PQR records match your search.</div>}
       </div>
     </div>
   );
@@ -780,8 +866,11 @@ function CertsTab() {
   }, []);
   useEffect(() => { void reload(); }, [reload]);
 
+  // FIX-welding-002: reversed cert dates (expiry before issued) were
+  // accepted with no message and Add stayed enabled.
+  const datesReversed = Boolean(form.issuedDate && form.expiryDate && form.expiryDate < form.issuedDate);
   const add = async () => {
-    if (!form.welder.trim()) return;
+    if (!form.welder.trim() || datesReversed) return;
     setBusy(true);
     await run('cert-add', { ...form });
     setForm({ welder: '', certType: 'AWS D1.1 Structural', certNumber: '', process: '', position: '', issuedBy: '', issuedDate: '', expiryDate: '' });
@@ -813,7 +902,10 @@ function CertsTab() {
         <input className={inputCls} placeholder="Issued by" value={form.issuedBy} onChange={set('issuedBy')} />
         <label className="text-[10px] text-zinc-400">Issued<input type="date" className={`${inputCls} mt-0.5 w-full`} value={form.issuedDate} onChange={set('issuedDate')} /></label>
         <label className="text-[10px] text-zinc-400">Expires<input type="date" className={`${inputCls} mt-0.5 w-full`} value={form.expiryDate} onChange={set('expiryDate')} /></label>
-        <button type="button" className={`${btnCls} sm:col-span-4`} onClick={add} disabled={busy || !form.welder.trim()}><Plus className="h-3.5 w-3.5" /> Add certification</button>
+        <button type="button" className={`${btnCls} sm:col-span-4`} onClick={add} disabled={busy || !form.welder.trim() || datesReversed}><Plus className="h-3.5 w-3.5" /> Add certification</button>
+        {datesReversed && (
+          <p role="alert" className="text-[11px] text-rose-300 sm:col-span-4">Expiry date is before the issued date — a certification can&rsquo;t expire before it was issued.</p>
+        )}
       </div>
 
       {data && (
@@ -893,10 +985,19 @@ function PhotosTab() {
   }, []);
   useEffect(() => { void loadPhotos(jobId); }, [jobId, loadPhotos]);
 
+  const urlProblem = (() => {
+    const t = url.trim();
+    if (!t) return '';
+    try {
+      const u = new URL(t);
+      if (u.protocol === 'http:' || u.protocol === 'https:') return '';
+    } catch { /* not a url */ }
+    return 'Photo address must start with http:// or https://';
+  })();
   const attach = async () => {
-    if (!jobId || !url.trim()) return;
+    if (!jobId || !url.trim() || urlProblem) return;
     setBusy(true);
-    await run('photo-attach', { jobId, url, stage, caption, weldId });
+    await run('photo-attach', { jobId, url: url.trim(), stage, caption, weldId });
     setUrl(''); setCaption(''); setWeldId('');
     await loadPhotos(jobId);
   };
@@ -914,13 +1015,14 @@ function PhotosTab() {
 
       {jobId && (
         <div className="grid gap-2 rounded-lg border border-zinc-800 bg-zinc-950/40 p-3 sm:grid-cols-4">
-          <input className={`${inputCls} sm:col-span-2`} placeholder="Photo URL" value={url} onChange={(e) => setUrl(e.target.value)} />
+          <input className={`${inputCls} sm:col-span-2`} placeholder="Photo URL" aria-label="Photo URL" value={url} onChange={(e) => setUrl(e.target.value)} />
           <select className={inputCls} value={stage} onChange={(e) => setStage(e.target.value)}>
             {['before', 'fit-up', 'root-pass', 'fill', 'cap', 'after', 'ndt'].map((s) => <option key={s}>{s}</option>)}
           </select>
           <input className={inputCls} placeholder="Weld ID" value={weldId} onChange={(e) => setWeldId(e.target.value)} />
           <input className={`${inputCls} sm:col-span-3`} placeholder="Caption" value={caption} onChange={(e) => setCaption(e.target.value)} />
-          <button type="button" className={btnCls} onClick={attach} disabled={busy || !url.trim()}><Camera className="h-3.5 w-3.5" /> Attach photo</button>
+          <button type="button" className={btnCls} onClick={attach} disabled={busy || !url.trim() || !!urlProblem}><Camera className="h-3.5 w-3.5" /> Attach photo</button>
+          {urlProblem && <p className="sm:col-span-4 text-[11px] text-rose-300">{urlProblem}</p>}
         </div>
       )}
 
@@ -940,7 +1042,7 @@ function PhotosTab() {
             <div className="p-1.5">
               <div className="flex items-center justify-between">
                 <span className="rounded bg-orange-500/20 px-1.5 py-0.5 text-[9px] text-orange-200">{p.stage}</span>
-                <button type="button" className="text-zinc-400 hover:text-rose-300" onClick={() => remove(p.id)} aria-label="Remove photo"><Trash2 className="h-3 w-3" /></button>
+                <DeleteButton onDelete={() => remove(p.id)} label="Remove" />
               </div>
               {p.caption && <div className="mt-0.5 line-clamp-2 text-[10px] text-zinc-400">{p.caption}</div>}
               {p.weldId && <div className="text-[9px] text-zinc-400">weld {p.weldId}</div>}

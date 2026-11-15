@@ -4,7 +4,8 @@
 // Adds saved (starred) messages, full-text search across DM history snapshots,
 // reactions store, and voice-note metadata registry — all per-user scoped.
 
-import { guardAnonWrites } from "../lib/lens-authz.js";
+import { guardAnonWrites, refuseAnonWrite } from "../lib/lens-authz.js";
+import { registerHeartbeat } from "../emergent/heartbeat-registry.js";
 export default function registerMessageActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   function getMessageState() {
@@ -51,7 +52,9 @@ export default function registerMessageActions(registerLensAction) {
       try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
     }
   }
-  function msgActor(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
+  // SB-12: actor from ctx.actor only — a top-level ctx.userId is never
+  // honoured (see domains/social.js actor()).
+  function msgActor(ctx) { return ctx?.actor?.userId || "anon"; }
   function nextMsgId(p) { return `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`; }
   function nowIsoMsg() { return new Date().toISOString(); }
 
@@ -72,6 +75,8 @@ export default function registerMessageActions(registerLensAction) {
   try {
     const s = getMessageState();
     if (!s) return { ok: false, error: "STATE unavailable" };
+    // SB-13: per-user stores never key on the shared "anon" identity.
+    const noAnon = refuseAnonWrite(ctx); if (noAnon) return noAnon;
     const userId = msgActor(ctx);
     const map = s.saved.get(userId);
     if (!map) return { ok: true, result: { saved: [] } };
@@ -151,6 +156,9 @@ export default function registerMessageActions(registerLensAction) {
   registerLensAction("message", "index-message", (ctx, _artifact, params = {}) => {
     const s = getMessageState();
     if (!s) return { ok: false, error: "STATE unavailable" };
+    // SB-13: index-message persists into the per-user corpus but its name
+    // is not write-classified for the registrar guard — refuse anon here.
+    const noAnon = refuseAnonWrite(ctx); if (noAnon) return noAnon;
     const userId = msgActor(ctx);
     const messageId = String(params.messageId || "");
     if (!messageId) return { ok: false, error: "messageId required" };
@@ -159,10 +167,50 @@ export default function registerMessageActions(registerLensAction) {
     return { ok: true, result: { messageId, total } };
   });
 
+  // FIX-message-008: creation paths index new messages, but history from
+  // before that wiring (and anything already sitting in channels) never
+  // entered the corpus, and the Search tab offered no way to index it —
+  // it just reported "0 messages indexed". Backfill walks the caller's
+  // own channels (plus shared channels they belong to) and indexes every
+  // message not already in the corpus. Idempotent.
+  registerLensAction("message", "index-backfill", (ctx, _artifact, _params = {}) => {
+    const s = getMessageState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    // SB-13: same unclassified persisting path as index-message.
+    const noAnon = refuseAnonWrite(ctx); if (noAnon) return noAnon;
+    const userId = msgActor(ctx);
+    const seen = new Set((s.searchIdx.get(userId) || []).map((m) => m.messageId));
+    const before = seen.size;
+    let added = 0;
+    const channels = [...listB(s.channels, userId)];
+    for (const ch of s.channelIndex.values()) {
+      if (isChannelMember(ch, userId) && !channels.some((c) => c.id === ch.id)) channels.push(ch);
+    }
+    for (const ch of channels) {
+      for (const m of channelMessages(s, userId, ch)) {
+        const mid = String(m.id || m.messageId || "");
+        if (!mid || seen.has(mid)) continue;
+        seen.add(mid);
+        indexMessageEntry(s, userId, {
+          messageId: mid,
+          threadId: ch.id,
+          body: m.body || m.text || "",
+          sender: m.sender || m.senderId || "",
+          ts: m.ts || m.createdAt,
+        });
+        added++;
+      }
+    }
+    if (added > 0) saveMessageState();
+    return { ok: true, result: { added, before, total: (s.searchIdx.get(userId) || []).length } };
+  });
+
   registerLensAction("message", "search-messages", (ctx, _artifact, params = {}) => {
   try {
     const s = getMessageState();
     if (!s) return { ok: false, error: "STATE unavailable" };
+    // SB-13: the corpus is a per-user store — no reads under the shared key.
+    const noAnon = refuseAnonWrite(ctx); if (noAnon) return noAnon;
     const userId = msgActor(ctx);
     const query = String(params.query || "").trim().toLowerCase();
     if (!query) return { ok: false, error: "query required" };
@@ -583,6 +631,23 @@ export default function registerMessageActions(registerLensAction) {
     return { ok: true, result: { label: lbl } };
   });
 
+  registerLensAction("message", "labels-delete", (ctx, _a, params = {}) => {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    const labelId = String(params.labelId || "");
+    if (!labelId) return { ok: false, error: "labelId required" };
+    const list = listB(s.labels, userId);
+    const idx = list.findIndex(l => l.id === labelId);
+    if (idx < 0) return { ok: false, error: "label not found" };
+    const [label] = list.splice(idx, 1);
+    // Strip the deleted label from every message it was applied to —
+    // a label id must never dangle in a message's label set.
+    const labelMap = mapB(s.messageLabels, userId);
+    for (const set of labelMap.values()) set.delete(labelId);
+    saveMessageState();
+    return { ok: true, result: { deleted: true, label } };
+  });
+
   registerLensAction("message", "labels-apply", (ctx, _a, params = {}) => {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = msgActor(ctx);
@@ -702,11 +767,12 @@ export default function registerMessageActions(registerLensAction) {
     return { ok: true, result: { cancelled: true } };
   });
 
-  // Flush due scheduled sends — call this on demand or wire to a heartbeat.
-  registerLensAction("message", "schedule-flush-due", (ctx, _a, _p = {}) => {
-  try {
-    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = msgActor(ctx);
+  // One flush implementation, two callers: the on-demand action below and
+  // the scheduler sweep registered after it. Due items become real
+  // messages in their channels, exactly as a manual flush has always made
+  // them — the sweep changes WHO calls the flush (the platform's clock,
+  // not a button), never what a flush does.
+  function flushDueScheduledSends(s, userId, senderName) {
     const list = listB(s.scheduled, userId);
     const now = Date.now();
     const due = list.filter(x => !x.sent && new Date(x.sendAt).getTime() <= now);
@@ -718,7 +784,7 @@ export default function registerMessageActions(registerLensAction) {
         number: `M-${String(seq.msg).padStart(6, '0')}`,
         channelId: item.channelId,
         senderId: userId,
-        senderName: ctx?.actor?.displayName || ctx?.actor?.username || userId,
+        senderName: senderName || userId,
         body: item.body,
         ts: nowIsoMsg(),
         edited: false,
@@ -733,9 +799,47 @@ export default function registerMessageActions(registerLensAction) {
       sent.push(msg);
     }
     if (sent.length > 0) saveMessageState();
+    return sent;
+  }
+
+  // Flush due scheduled sends — fired on demand by this action, and on
+  // the platform's clock by the message-scheduled-sweep heartbeat below.
+  registerLensAction("message", "schedule-flush-due", (ctx, _a, _p = {}) => {
+  try {
+    const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    const sent = flushDueScheduledSends(s, userId, ctx?.actor?.displayName || ctx?.actor?.username || userId);
     return { ok: true, result: { sentCount: sent.length, sent } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+
+  // Scheduler sweep — the wire this flush waited for. Registered on the
+  // platform's shared firing layer (emergent/heartbeat-registry, the same
+  // registry the productivity reminder sweep uses): frequency 2 on the
+  // ~15s governor tick ≈ every 30s, global scope, iterating EVERY user's
+  // queue through the one flush above. Before this registration a
+  // scheduled send fired only if its author opened the Scheduled panel
+  // and pressed "Flush due now". Kill-switch:
+  // CONCORD_MESSAGE_SCHEDULE_SWEEP=0.
+  try {
+    registerHeartbeat("message-scheduled-sweep", {
+      frequency: 2,
+      scope: "global",
+      handler: () => {
+        try {
+          if (process.env.CONCORD_MESSAGE_SCHEDULE_SWEEP === "0") return { ok: true, skipped: "disabled" };
+          const s = getMessageState();
+          if (!s || !(s.scheduled instanceof Map)) return { ok: true, skipped: "no_state" };
+          let sentCount = 0;
+          for (const userId of s.scheduled.keys()) {
+            try { sentCount += flushDueScheduledSends(s, userId, userId).length; }
+            catch (_e) { /* one user's queue never blocks the sweep */ }
+          }
+          return { ok: true, sentCount };
+        } catch (e) { return { ok: false, reason: String(e?.message || e) }; }
+      },
+    });
+  } catch (_e) { /* registry unavailable — the on-demand flush still works */ }
 
   // ── AI 2026 features ──────────────────────────────────────────
 
@@ -835,6 +939,8 @@ export default function registerMessageActions(registerLensAction) {
   registerLensAction("message", "ai-search-messages", (ctx, _a, params = {}) => {
   try {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    // SB-13: searches the caller's own corpus/channels — refuse anon.
+    const noAnon = refuseAnonWrite(ctx); if (noAnon) return noAnon;
     const userId = msgActor(ctx);
     const q = String(params.query || "").trim().toLowerCase();
     if (!q) return { ok: false, error: "query required" };
@@ -861,6 +967,8 @@ export default function registerMessageActions(registerLensAction) {
   registerLensAction("message", "inbox-summary", (ctx, _a, _p = {}) => {
   try {
     const s = getMessageState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    // SB-13: aggregates the caller's own stores — refuse anon.
+    const noAnon = refuseAnonWrite(ctx); if (noAnon) return noAnon;
     const userId = msgActor(ctx);
     const channels = listB(s.channels, userId);
     const messagesMap = mapB(s.messages, userId);

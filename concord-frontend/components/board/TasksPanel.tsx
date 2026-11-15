@@ -6,7 +6,7 @@
  * Workspace / BGG are routed by the page shell.
  */
 
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ListTodo, ChevronDown, Search, Filter, LayoutGrid, BarChart3, CheckCircle2, AlertTriangle, TrendingUp, Activity, Loader2, XCircle, Zap,
@@ -24,8 +24,8 @@ import { BoardLanes } from './BoardLanes';
 import {
   type Task, type TaskView,
   columns, priorityConfig, typeConfig, labels, assignees, projects,
-  TASKS_FALLBACK, lensItemToTask, isOverdue,
-  buildBoardActionParams,
+  TASKS_FALLBACK, lensItemToTask, isOverdue, formatTaskDate, taskPatchToLensUpdate,
+  buildBoardActionParams, createKeyedSerialWriter,
 } from './board-shared';
 
 export function TasksPanel({ mode }: { mode: TaskView }) {
@@ -49,6 +49,16 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
     seed: TASKS_FALLBACK,
   });
 
+  // FIX-board-004: route every task write through a per-task serial writer —
+  // concurrent writes from one drag/typing stream landed out of order and an
+  // earlier value could overwrite the final one on the server. (updateLens is
+  // a stable useCallback over the react-query mutation, so the writer — and
+  // its per-task queues — is created once for the panel's lifetime.)
+  const enqueueTaskWrite = useMemo(
+    () => createKeyedSerialWriter((id, patch) => updateLens(id, patch)),
+    [updateLens],
+  );
+
   const tasks: Task[] = useMemo(() => lensItems.map(lensItemToTask), [lensItems]);
 
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -63,6 +73,23 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!selectedTask && !showFilters) return;
+    const onPointer = (event: MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (selectedTask) {
+        const drawer = document.getElementById('board-task-drawer');
+        if (drawer && !drawer.contains(target)) setSelectedTask(null);
+      }
+      if (showFilters && !(target instanceof Element && target.closest('[data-board-filters]'))) {
+        setShowFilters(false);
+      }
+    };
+    document.addEventListener('mousedown', onPointer);
+    return () => document.removeEventListener('mousedown', onPointer);
+  }, [selectedTask, showFilters]);
 
   useLensCommand(
     [
@@ -122,7 +149,7 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     return {
       total: tasks.length,
-      inProgress: tasks.filter((t) => !['backlog', 'done'].includes(t.status)).length,
+      inProgress: tasks.filter((t) => ['in_progress', 'in_review', 'testing'].includes(t.status)).length,
       overdue: tasks.filter((t) => isOverdue(t.dueDate) && t.status !== 'done').length,
       completedThisWeek: tasks.filter((t) => t.status === 'done' && new Date(t.dueDate) >= weekAgo)
         .length,
@@ -134,11 +161,9 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
     (taskId: string, patch: Partial<Task>) => {
       // Optimistically update the selected task panel
       setSelectedTask((prev) => (prev && prev.id === taskId ? { ...prev, ...patch } : prev));
-      // Persist to backend
-      const { id: _id, ...patchData } = patch as Record<string, unknown>;
-      updateLens(taskId, { data: patchData as Record<string, unknown> });
+      enqueueTaskWrite(taskId, taskPatchToLensUpdate(patch));
     },
-    [updateLens]
+    [enqueueTaskWrite]
   );
 
   const toggleSubtask = useCallback(
@@ -151,7 +176,7 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
       const doneCount = updatedSubs.filter((s) => s.done).length;
       const progress =
         updatedSubs.length > 0 ? Math.round((doneCount / updatedSubs.length) * 100) : task.progress;
-      updateLens(taskId, {
+      enqueueTaskWrite(taskId, {
         data: { subtasks: updatedSubs, progress } as unknown as Record<string, unknown>,
       });
       setSelectedTask((prev) => {
@@ -159,7 +184,7 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
         return { ...prev, subtasks: updatedSubs, progress };
       });
     },
-    [tasks, updateLens]
+    [tasks, enqueueTaskWrite]
   );
 
   // -----------------------------------------------------------------------
@@ -276,7 +301,7 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
                 >
                   <s.icon className={cn('w-4 h-4', s.color)} />
                   <span className="text-lg font-semibold text-white">{s.value}</span>
-                  <span className="text-xs text-gray-400">{s.label}</span>
+                  <span className="text-xs text-zinc-200">{s.label}</span>
                 </div>
               ))}
             </div>
@@ -295,6 +320,7 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
                 />
               </div>
               <button
+                data-board-filters=""
                 onClick={() => setShowFilters(!showFilters)}
                 className={cn(
                   'flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border transition-colors',
@@ -316,6 +342,8 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
                   className="overflow-hidden"
+                  data-overlay-open="true"
+                  data-board-filters=""
                 >
                   <div className="flex gap-3 pb-1">
                     {/* Assignee filter */}
@@ -370,6 +398,9 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
                         </option>
                       ))}
                     </select>
+                    <button type="button" onClick={() => setShowFilters(false)} className="px-3 py-1.5 text-sm text-gray-300" aria-label="Close">
+                      Close
+                    </button>
                   </div>
                 </motion.div>
               )}
@@ -441,7 +472,7 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
                   <button
                     onClick={() => setActionResult(null)}
                     className="p-1 rounded-md hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
-                  aria-label="Xcircle">
+                  aria-label="Dismiss result">
                     <XCircle className="w-4 h-4" />
                   </button>
                 </div>
@@ -451,7 +482,12 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
                   !actionResult.cycleTime &&
                   !actionResult.rankedCards &&
                   !actionResult.forecast && (
-                    <p className="text-sm text-gray-400">{actionResult.message as string}</p>
+                    <p className="text-sm text-zinc-200">
+                      {actionResult.message as string}
+                      {String(actionResult.message).toLowerCase().includes('sprint history')
+                        ? ' Mark a task done and give it a due date. The forecast uses those finished weeks.'
+                        : ''}
+                    </p>
                   )}
 
                 {/* ---- Workflow Analysis ---- */}
@@ -541,6 +577,7 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
                       <p className="text-sm text-gray-400">{actionResult.message as string}</p>
                     ) : (
                       <>
+                        <p className="text-[11px] text-gray-500">Cards ranked by WSJF score, split into quartiles — not task priority.</p>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                           {(['critical', 'high', 'medium', 'low'] as const).map((tier) => {
                             const tierColors: Record<string, string> = {
@@ -551,12 +588,13 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
                             };
                             const tierData =
                               (actionResult.tiers as Record<string, string[]>)?.[tier] || [];
+                            const tierLabel = { critical: 'Top quartile', high: 'Second quartile', medium: 'Third quartile', low: 'Bottom quartile' }[tier];
                             return (
                               <div
                                 key={tier}
                                 className={`text-center p-2.5 rounded-lg border ${tierColors[tier]}`}
                               >
-                                <p className="text-[10px] capitalize mb-1 opacity-80">{tier}</p>
+                                <p className="text-[10px] mb-1 opacity-80">{tierLabel}</p>
                                 <p className="text-base font-bold">{tierData.length}</p>
                               </div>
                             );
@@ -729,7 +767,7 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
               onMove={(taskId, status) => {
                 const task = tasks.find((x) => x.id === taskId);
                 if (!task || task.status === status) return;
-                updateLens(taskId, {
+                enqueueTaskWrite(taskId, {
                   data: { status, progress: status === 'done' ? 100 : task.progress } as unknown as Record<string, unknown>,
                 });
               }}
@@ -791,7 +829,7 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
                               overdue ? 'text-red-400 font-medium' : 'text-gray-400',
                             )}>
                               {task.dueDate
-                                ? new Date(task.dueDate).toLocaleDateString()
+                                ? formatTaskDate(task.dueDate)
                                 : 'no due date'}
                               {overdue && ' · overdue'}
                             </span>
@@ -849,7 +887,7 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
                         <td className="py-2 text-xs text-gray-400 capitalize">{task.priority}</td>
                         <td className="py-2 text-xs text-gray-400">{task.assignee}</td>
                         <td className={cn('py-2 text-xs', overdue ? 'text-red-400 font-medium' : 'text-gray-400')}>
-                          {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : '—'}
+                          {task.dueDate ? formatTaskDate(task.dueDate) : '—'}
                           {overdue && ' · overdue'}
                         </td>
                         <td className="py-2 pr-2 text-xs text-gray-400 text-right">{task.progress}%</td>
@@ -867,12 +905,18 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
         <AnimatePresence>
           {selectedTask && (
             <motion.aside
+              id="board-task-drawer"
+              data-overlay-open="true"
               key="detail-panel"
-              initial={{ width: 0, opacity: 0 }}
-              animate={{ width: 400, opacity: 1 }}
-              exit={{ width: 0, opacity: 0 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="flex-shrink-0 border-l border-white/[0.08] bg-gray-950/80 backdrop-blur-sm overflow-y-auto"
+              // FIX-board-015: the drawer was animated to a fixed 400px in
+              // the flex row — wider than a 390px viewport, so it overflowed
+              // and its header clipped. Below sm it is now a full-viewport
+              // overlay drawer; sm+ keeps the 400px side panel.
+              className="fixed inset-y-0 right-0 z-50 w-[100vw] flex-shrink-0 overflow-y-auto border-l border-white/[0.08] bg-gray-950/95 backdrop-blur-sm sm:static sm:z-auto sm:w-[400px] sm:bg-gray-950/80"
             >
               <TaskDetailPanel
                 task={selectedTask}

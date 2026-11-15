@@ -2,6 +2,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { useState } from 'react';
 import { Users, Star, Eye, Lock, Globe, EyeOff, Boxes, Pause, Play, Loader2 } from 'lucide-react';
 
 export interface SubWorld {
@@ -55,6 +56,10 @@ export function WorldCard({
   onManage?: () => void;
   onEdit?: () => void;
 }) {
+  // FIX-sub-worlds-010: a stored thumbnail URL that 404s (a dead
+  // harness/fixture image) left a broken-image card and a console 404;
+  // fall back to the designed no-thumbnail state on load error.
+  const [thumbFailed, setThumbFailed] = useState(false);
   const PrivIcon = PRIVACY_ICON[world.privacy] || Globe;
   const archived = world.status === 'archived';
   const paused = world.status === 'paused';
@@ -62,9 +67,9 @@ export function WorldCard({
   return (
     <div className="flex flex-col rounded-xl border border-zinc-700/60 bg-zinc-900/80 overflow-hidden">
       <div className="relative h-28 bg-gradient-to-br from-cyan-900/50 to-fuchsia-900/40 flex items-center justify-center">
-        {world.thumbnail ? (
+        {world.thumbnail && !thumbFailed ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={world.thumbnail} alt={world.name} className="h-full w-full object-cover" />
+          <img src={world.thumbnail} alt={world.name} className="h-full w-full object-cover" onError={() => setThumbFailed(true)} />
         ) : (
           <Boxes className="h-10 w-10 text-cyan-400/40" />
         )}
@@ -91,8 +96,8 @@ export function WorldCard({
         <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-zinc-400">
           <span className="flex items-center gap-0.5"><Eye className="h-3 w-3" />{world.visits}</span>
           <span className="flex items-center gap-0.5"><Users className="h-3 w-3" />{world.unique_visitors}</span>
-          <span className="flex items-center gap-0.5"><Star className="h-3 w-3" />{world.favorites}</span>
-          <span className="text-cyan-400/70">★{world.popularity}</span>
+          <span className="flex items-center gap-0.5" title="Favorites"><Star className="h-3 w-3" />{world.favorites}</span>
+          <span className="text-cyan-400/70" title="Popularity">pop {world.popularity}</span>
         </div>
         <div className="flex items-center gap-1.5 pt-1">
           <button

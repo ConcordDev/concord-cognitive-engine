@@ -494,7 +494,7 @@ describe("logistics.dashboard-summary (TmsShell data source)", () => {
     const s2 = call("shipments-create", ctxA, { origin: "C", destination: "D" });
     call("delivery-confirm", ctxA, { shipmentId: s2.result.shipment.id, signatureName: "X" });
     call("fleet-vehicles-add", ctxA, { number: "T-1" });
-    call("loads-post", ctxA, { origin: "X", destination: "Y", ratePerMile: 2 });
+    call("loads-post", ctxA, { origin: "X", destination: "Y", ratePerMile: 2, weightLbs: 100 });
     const d = call("dashboard-summary", ctxA, {});
     assert.equal(d.result.totalShipments, 2);
     assert.equal(d.result.inTransit, 1);

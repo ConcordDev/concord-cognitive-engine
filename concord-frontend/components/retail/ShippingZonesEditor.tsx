@@ -75,11 +75,11 @@ export function ShippingZonesEditor() {
 
       {creating && (
         <div className="p-3 border-b border-white/10 grid grid-cols-5 gap-2">
-          <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Zone name" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <input value={form.countries} onChange={e => setForm({ ...form, countries: e.target.value })} placeholder="US, CA, MX" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
-          <input type="number" value={form.standardCents} onChange={e => setForm({ ...form, standardCents: e.target.value })} placeholder="Standard ¢" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <input type="number" value={form.standardFreeThreshold} onChange={e => setForm({ ...form, standardFreeThreshold: e.target.value })} placeholder="Free at $" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <input type="number" value={form.expressCents} onChange={e => setForm({ ...form, expressCents: e.target.value })} placeholder="Express ¢" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input id="retail-zone-name" name="zone-name" aria-label="Zone name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Zone name" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input id="retail-us-ca-mx" name="us-ca-mx" aria-label="US, CA, MX" value={form.countries} onChange={e => setForm({ ...form, countries: e.target.value })} placeholder="US, CA, MX" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+          <input id="retail-standard" name="standard" aria-label="Standard ¢" type="number" value={form.standardCents} onChange={e => setForm({ ...form, standardCents: e.target.value })} placeholder="Standard ¢" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input id="retail-free-at" name="free-at" aria-label="Free at $" type="number" value={form.standardFreeThreshold} onChange={e => setForm({ ...form, standardFreeThreshold: e.target.value })} placeholder="Free at $" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input id="retail-express" name="express" aria-label="Express ¢" type="number" value={form.expressCents} onChange={e => setForm({ ...form, expressCents: e.target.value })} placeholder="Express ¢" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <button onClick={create} className="col-span-2 px-3 py-1.5 text-xs rounded bg-emerald-500 text-black font-bold hover:bg-emerald-400">Create zone</button>
         </div>
       )}
@@ -115,8 +115,8 @@ export function ShippingZonesEditor() {
       </div>
 
       <footer className="px-3 py-2 border-t border-white/10 bg-white/[0.02] grid grid-cols-4 gap-2 text-xs">
-        <input value={quoteCountry} onChange={e => setQuoteCountry(e.target.value.toUpperCase())} placeholder="Country" className="px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
-        <input type="number" value={quoteSubtotal} onChange={e => setQuoteSubtotal(e.target.value)} placeholder="Subtotal $" className="px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
+        <input id="retail-country" name="country" aria-label="Country" value={quoteCountry} onChange={e => setQuoteCountry(e.target.value.toUpperCase())} placeholder="Country" className="px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+        <input id="retail-subtotal" name="subtotal" aria-label="Subtotal $" type="number" value={quoteSubtotal} onChange={e => setQuoteSubtotal(e.target.value)} placeholder="Subtotal $" className="px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
         <button onClick={getQuote} className="px-2 py-1 text-xs rounded bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30">Quote</button>
         {quote && (
           <span className="text-[11px] text-gray-300 truncate">

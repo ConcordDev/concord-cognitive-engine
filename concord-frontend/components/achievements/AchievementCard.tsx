@@ -52,7 +52,7 @@ export function AchievementCard({ achievement: a, earned, earnedAt, highlighted,
       className={cn(
         'rounded-lg border p-3 transition-shadow duration-300',
         RARITY_RING[a.rarity] || RARITY_RING.bronze,
-        !earned && 'opacity-60 grayscale-[40%]',
+        !earned && 'opacity-80 grayscale-[25%]',
         highlighted && 'ring-2 ring-fuchsia-400 ring-offset-2 ring-offset-zinc-950 animate-[pulse_1.4s_ease-in-out_2]',
       )}
       aria-label={`${a.title}, ${a.rarity} ${a.category} achievement, ${earned ? 'earned' : 'locked'}`}

@@ -42,7 +42,7 @@ const PANELS: Record<OrganView, ComponentType> = {
 
 export default function OrganLensPage() {
   useLensNav('organ');
-  const { latestData: realtimeData, alerts: realtimeAlerts, isLive, lastUpdated } = useRealtimeLens('organ');
+  const { alerts: realtimeAlerts, isLive, lastUpdated } = useRealtimeLens('organ');
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<OrganView>('designer');
 
@@ -85,7 +85,8 @@ export default function OrganLensPage() {
         actions={
           <>
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-            <DTUExportButton domain="organ" data={realtimeData || {}} compact />
+            {/* FIX-organ-002: the .dtu export carries the caller’s own lens records — with an empty payload the button loads them itself. The realtime feed is not the user’s data. */}
+            <DTUExportButton domain="organ" data={{}} compact />
             {realtimeAlerts.length > 0 && (
               <span className="rounded bg-yellow-500/10 px-2 py-0.5 text-xs text-yellow-400">
                 {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}

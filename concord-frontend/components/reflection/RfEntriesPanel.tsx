@@ -148,9 +148,9 @@ export function RfEntriesPanel({ onChange }: { onChange: () => void }) {
             <span key={j.id} className={cn('flex items-center gap-1 text-[11px] pl-2.5 pr-1.5 py-1 rounded-lg',
               activeJournal === j.id ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-300')}>
               <button type="button" onClick={() => setActiveJournal(j.id)}>{j.name} ({j.entryCount})</button>
-              <button aria-label="Delete" type="button" onClick={() => delJournal(j.id)}
-                className={confirmJournalId === j.id ? 'text-rose-300 font-semibold' : 'text-zinc-400 hover:text-rose-300'}>
-                {confirmJournalId === j.id ? <span className="text-[10px]">Delete “{j.name}”? Click again</span> : <Trash2 className="w-3 h-3" />}
+              <button aria-label={confirmJournalId === j.id ? `Confirm delete of journal ${j.name}` : 'Delete'} type="button" onClick={() => delJournal(j.id)}
+                className={confirmJournalId === j.id ? 'rounded bg-rose-600 px-1.5 py-0.5 text-white font-semibold ring-1 ring-rose-300' : 'text-zinc-400 hover:text-rose-300'}>
+                {confirmJournalId === j.id ? <span className="text-[10px]">Delete “{j.name}”? Click again to confirm</span> : <Trash2 className="w-3 h-3" />}
               </button>
             </span>
           ))}
@@ -259,11 +259,11 @@ export function RfEntriesPanel({ onChange }: { onChange: () => void }) {
                     </div>
                   </div>
                   <button
-                    aria-label="Delete" type="button"
+                    aria-label={confirmEntryId === e.id ? `Confirm delete of entry ${e.title || e.date}` : 'Delete'} type="button"
                     onClick={() => delEntry(e.id)}
-                    className={confirmEntryId === e.id ? 'text-rose-300 shrink-0 text-[10px] font-semibold' : 'text-zinc-600 hover:text-rose-400 shrink-0'}
+                    className={confirmEntryId === e.id ? 'shrink-0 rounded bg-rose-600 px-2 py-1 text-white text-[10px] font-semibold ring-1 ring-rose-300' : 'text-zinc-600 hover:text-rose-400 shrink-0'}
                   >
-                    {confirmEntryId === e.id ? `Delete “${e.title || e.date}”? Click again` : <Trash2 className="w-3.5 h-3.5" />}
+                    {confirmEntryId === e.id ? `Delete “${e.title || e.date}”? Click again to confirm` : <Trash2 className="w-3.5 h-3.5" />}
                   </button>
                 </div>
               </li>

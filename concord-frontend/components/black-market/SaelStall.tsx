@@ -45,6 +45,7 @@ export function SaelStall() {
         <div className="flex items-center gap-2">
           <Skull className="h-5 w-5 text-rose-400" />
           <h2 className="text-sm font-semibold text-white">Sael's stall — black market intercepts</h2>
+          <span className="rounded bg-rose-500/15 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-rose-300">Fiction — NPC intercepts</span>
           <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">/api/black-market · live</span>
         </div>
         {(listings.data?.length ?? 0) > 0 && (
@@ -58,6 +59,7 @@ export function SaelStall() {
           />
         )}
       </header>
+      <p className="text-[11px] text-zinc-400">Every intercept here is invented NPC traffic, labelled as fiction — no real user's messages are surfaced or sold.</p>
       <div className="flex items-center gap-2">
         <input type="text" value={fence} onChange={(e) => setFence(e.target.value)} placeholder="Filter by fence NPC id (empty = all)" className="flex-1 rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 font-mono text-xs text-white" />
         {rep.data && rep.data.length > 0 && (

@@ -5,6 +5,7 @@ import { Video, Loader2, FileText, Save, Play, Pause } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { useLessonOptions } from './useLessonOptions';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface TranscriptCue { sec: number; text: string }
 interface VideoProgress {
@@ -186,7 +187,7 @@ export function VideoLessonPlayer() {
                 onClick={e => {
                   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
                   seek(Math.round(((e.clientX - rect.left) / rect.width) * duration));
-                }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                 <div className="h-full bg-neon-cyan rounded-full" style={{ width: `${pct}%` }} />
               </div>
               <div className="flex items-center gap-3">

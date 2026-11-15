@@ -102,7 +102,7 @@ export function GbifPanel({ domain, className }: GbifPanelProps) {
     <section className={cn('rounded-lg border border-zinc-800 bg-zinc-950/80 overflow-hidden', className)}>
       <header className="flex items-center gap-2 px-3 py-2 border-b border-zinc-800/80 bg-zinc-900/40">
         <Leaf className="w-4 h-4 text-green-300" aria-hidden="true" />
-        <h3 className="text-sm font-medium text-zinc-100 flex-1">GBIF · species + occurrences</h3>
+        <h2 className="text-sm font-medium text-zinc-100 flex-1">GBIF · species + occurrences</h2>
         <span className="text-[10px] text-emerald-400 font-mono">REAL data</span>
         <button
           type="button"

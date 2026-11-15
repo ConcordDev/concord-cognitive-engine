@@ -22,6 +22,7 @@
  * job) but detection. It answers: "is the system drifting?"
  */
 
+import { createHash } from "node:crypto";
 import { getEmergentState } from "./store.js";
 import { directCausalEdgeBetween } from "../lib/causal-edges.js";
 import { updateConfidence } from "../lib/dtu-confidence.js";
@@ -504,6 +505,108 @@ export function getDriftAlerts(STATE, filters = {}) {
 
   const limit = Math.min(filters.limit || 50, 200);
   return { ok: true, alerts: results.slice(-limit), total: results.length };
+}
+
+// ── drift_alerts persistence (the producer) ────────────────────────────────
+//
+// Migration 316 created the drift_alerts table as "a persistent store for
+// lattice drift alerts" and named the lattice orchestrator its persistence
+// target, but nothing ever inserted: scans minted alerts into the in-memory
+// store above and they died with the process, so every SQL reader
+// (ghost-hunt residues/detail, patterns, news-story-composer) read an
+// ever-empty table. persistDriftAlerts is that missing producer, called by
+// the orchestrator after each periodic scan.
+
+// The drift_alerts readers speak the residue severity vocabulary
+// (ghost-hunt's SEVERITY_WEIGHT: low|medium|high|critical); the monitor's
+// own severities map onto it tier-for-tier. The original rides in context.
+const DRIFT_ALERT_SEVERITY_MAP = Object.freeze({
+  info: "low",
+  warning: "medium",
+  alert: "high",
+  critical: "critical",
+});
+
+// A residue's signature is its stable identity: the drift TYPE plus the
+// alert's data with numeric readings blanked (string identity — DTU ids,
+// evidence ids — kept). A detector re-fires every scan while its condition
+// holds with slightly different numbers each time; the identity must not
+// drift with the readings, or one real drift becomes a new map position
+// (ghost-hunt derives map coords from the signature) on every scan.
+export function driftAlertSignature(alert) {
+  const data = (alert && typeof alert.data === "object" && alert.data) || {};
+  const parts = Object.keys(data).sort().map((k) => {
+    const v = data[k];
+    if (typeof v === "number") return `${k}=#`;
+    if (typeof v === "string") return `${k}=${v}`;
+    if (typeof v === "boolean") return `${k}=${v}`;
+    return `${k}=${JSON.stringify(v) ?? ""}`;
+  });
+  return createHash("sha256").update(`${alert?.type || "unknown"}|${parts.join("&")}`).digest("hex").slice(0, 32);
+}
+
+const DRIFT_ALERT_DEDUPE_WINDOW_SEC = 24 * 3600;
+
+/**
+ * Persist one scan's alerts into drift_alerts. Best-effort by contract:
+ * never throws; a missing substrate reports substrate_unavailable (the
+ * readers' own name for it) instead of crashing the orchestrator tick.
+ * Detectors re-fire while a condition holds, so an unresolved row with the
+ * same signature inside the dedupe window suppresses the re-insert — one
+ * residue per real drift, refreshed at most daily while it keeps firing.
+ *
+ * @param {object} db — better-sqlite3-shaped handle (prepare/run/get)
+ * @param {Array} alerts — alerts minted by one runDriftScan
+ * @returns {{ ok: boolean, inserted: number, skipped: number, reason?: string }}
+ */
+export function persistDriftAlerts(db, alerts, opts = {}) {
+  if (!db || typeof db.prepare !== "function") return { ok: false, reason: "no_db", inserted: 0, skipped: 0 };
+  if (!Array.isArray(alerts) || alerts.length === 0) return { ok: true, inserted: 0, skipped: 0 };
+  const nowSec = Math.floor((opts.nowMs ?? Date.now()) / 1000);
+  let inserted = 0;
+  let skipped = 0;
+  try {
+    const findOpen = db.prepare(
+      `SELECT id FROM drift_alerts WHERE signature = ? AND resolved_at IS NULL AND detected_at >= ? LIMIT 1`,
+    );
+    const insert = db.prepare(
+      `INSERT OR IGNORE INTO drift_alerts
+         (id, type, drift_type, severity, message, signature, context_json, detected_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+    for (const alert of alerts) {
+      if (!alert || !alert.type) { skipped++; continue; }
+      const signature = driftAlertSignature(alert);
+      if (findOpen.get(signature, nowSec - DRIFT_ALERT_DEDUPE_WINDOW_SEC)) { skipped++; continue; }
+      const tsMs = Date.parse(alert.timestamp || "");
+      const detectedAt = Number.isFinite(tsMs) ? Math.floor(tsMs / 1000) : nowSec;
+      const context = {
+        source: "drift-monitor",
+        severity: alert.severity || null,
+        data: alert.data || {},
+      };
+      const res = insert.run(
+        String(alert.alertId || `drift_${signature}_${detectedAt}`),
+        alert.type,
+        alert.type,
+        DRIFT_ALERT_SEVERITY_MAP[alert.severity] || "low",
+        String(alert.message || ""),
+        signature,
+        JSON.stringify(context),
+        detectedAt,
+      );
+      if (res && res.changes > 0) inserted++; else skipped++;
+    }
+  } catch (err) {
+    return {
+      ok: false,
+      reason: /no such table/i.test(String(err?.message || err)) ? "substrate_unavailable" : "persist_failed",
+      error: String(err?.message || err),
+      inserted,
+      skipped,
+    };
+  }
+  return { ok: true, inserted, skipped };
 }
 
 /**

@@ -18,6 +18,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { cn } from '@/lib/utils';
@@ -91,6 +92,18 @@ function BalanceCalculators() {
   const addUnit = () => setUnits((u) => [...u, { name: `Unit ${u.length + 1}`, hp: 100, attack: 15, defense: 10, speed: 10, cost: 3 }]);
   const removeUnit = (i: number) => setUnits((u) => u.filter((_, idx) => idx !== i));
   const updateUnit = (i: number, patch: Partial<UnitRow>) => setUnits((u) => u.map((row, idx) => (idx === i ? { ...row, ...patch } : row)));
+  // FIX-game-005: stat fields used to store Number(text) raw — '-' became
+  // NaN and 999999 passed — with no word. Name the first unusable stat and
+  // hold the balance check until every stat is a number of 0 or more.
+  const unitIssue = (() => {
+    for (let i = 0; i < units.length; i++) {
+      for (const f of ['hp', 'attack', 'defense', 'speed', 'cost'] as const) {
+        const v = units[i][f];
+        if (!Number.isFinite(v) || v < 0) return `Row ${i + 1} (${units[i].name || 'unnamed'}): ${f} must be a number of 0 or more.`;
+      }
+    }
+    return '';
+  })();
 
   // Economy simulation
   const [econ, setEcon] = useState({ startingGold: 100, goldPerMinute: 5, avgSpendPerMinute: 3, inflationPercent: 2, simulateMinutes: 60 });
@@ -137,7 +150,7 @@ function BalanceCalculators() {
           <div className="space-y-2">
             {units.map((u, i) => (
               <div key={i} className="grid grid-cols-7 gap-1.5 items-center">
-                <input value={u.name} onChange={(e) => updateUnit(i, { name: e.target.value })} placeholder="Name" className="input-lattice text-xs col-span-2" />
+                <input value={u.name} onChange={(e) => updateUnit(i, { name: e.target.value })} placeholder="Name" maxLength={200} className="input-lattice text-xs col-span-2" />
                 {(['hp', 'attack', 'defense', 'speed', 'cost'] as const).map((field) => (
                   <input key={field} type="number" value={u[field]} onChange={(e) => updateUnit(i, { [field]: Number(e.target.value) } as Partial<UnitRow>)} placeholder={field} title={field} className="input-lattice text-xs" />
                 ))}
@@ -145,9 +158,10 @@ function BalanceCalculators() {
               </div>
             ))}
           </div>
+          {unitIssue && <p role="note" className="text-[11px] text-amber-300 mb-1">{unitIssue}</p>}
           <div className="flex items-center gap-2">
             <button onClick={addUnit} className="text-xs text-neon-cyan flex items-center gap-1"><Plus className="w-3 h-3" /> Add unit</button>
-            <button onClick={() => run('balanceCheck', { units })} disabled={busy || units.length < 2} className="btn-neon text-xs py-1.5 px-4 ml-auto flex items-center gap-1">
+            <button onClick={() => run('balanceCheck', { units })} disabled={busy || units.length < 2 || !!unitIssue} className="btn-neon text-xs py-1.5 px-4 ml-auto flex items-center gap-1">
               {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />} Check Balance
             </button>
           </div>
@@ -287,7 +301,7 @@ function BalanceCalculators() {
 // ---------------------------------------------------------------------------
 
 function PlaytestSessions() {
-  const { items, isLoading, create, refetch } = useLensData<SessionData>('game', 'playtest', { noSeed: true });
+  const { items, isLoading, create, update, remove, refetch } = useLensData<SessionData>('game', 'playtest', { noSeed: true });
   const runArtifact = useRunArtifact('game');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [newTitle, setNewTitle] = useState('');
@@ -298,6 +312,7 @@ function PlaytestSessions() {
   const [balanceForm, setBalanceForm] = useState({ base: 100, growthRate: 1.5, maxLevel: 20 });
   const [analysis, setAnalysis] = useState<{ kind: 'simulate' | 'balance'; data: Record<string, unknown> } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [actNote, setActNote] = useState<string | null>(null);
 
   const selected = useMemo(() => items.find((i) => i.id === selectedId) || null, [items, selectedId]);
 
@@ -320,6 +335,12 @@ function PlaytestSessions() {
       if (res.ok === false) { setError((res as unknown as { error?: string }).error || `${action} failed`); }
       else if (action === 'simulate' || action === 'balance') {
         setAnalysis({ kind: action, data: res.result as Record<string, unknown> });
+      } else if (action === 'levelup' || action === 'claim') {
+        const result = (res.result || {}) as Record<string, unknown>;
+        const msg = typeof result.message === 'string' ? result.message : null;
+        setActNote(msg || (action === 'levelup'
+          ? 'Level up finished. The level on this session is shown above.'
+          : 'Claim finished. XP on this session changes only when the reward is recorded.'));
       }
       await refetch();
     } catch (e) { setError(e instanceof Error ? e.message : `${action} failed`); }
@@ -350,18 +371,28 @@ function PlaytestSessions() {
       {items.length > 0 && (
         <div className="flex gap-1.5 flex-wrap">
           {items.map((s) => (
-            <button
-              key={s.id}
-              onClick={() => { setSelectedId(s.id); setAnalysis(null); }}
-              className={cn('text-xs px-3 py-1.5 rounded border', selectedId === s.id ? 'border-neon-purple/50 bg-neon-purple/15 text-neon-purple' : 'border-lattice-border text-gray-400 hover:text-white')}
-            >
-              {s.title} · Lv {(s.data?.level as number) || 1}
-            </button>
+            <span key={s.id} className="inline-flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => { setSelectedId(s.id); setAnalysis(null); }}
+                className={cn('text-xs px-3 py-1.5 rounded border', selectedId === s.id ? 'border-neon-purple/50 bg-neon-purple/15 text-neon-purple' : 'border-lattice-border text-gray-400 hover:text-white')}
+              >
+                {s.title} · Lv {(s.data?.level as number) || 1}
+              </button>
+              <button type="button" className="text-[10px] text-zinc-400 hover:text-white" onClick={() => {
+                const next = window.prompt('Session name', s.title || '');
+                const title = (next || '').trim();
+                if (!title) return;
+                void update(s.id, { title });
+              }}>Rename</button>
+              <StickyDeleteConfirm onConfirm={() => { void remove(s.id); if (selectedId === s.id) setSelectedId(null); }} armAriaLabel={`Delete ${s.title || 'session'}`} confirmAriaLabel={`Confirm delete ${s.title || 'session'}`} className="text-rose-300" />
+            </span>
           ))}
         </div>
       )}
 
       {error && <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded px-3 py-2">{error}</p>}
+      {actNote && <p role="status" className="text-xs text-amber-200">{actNote}</p>}
 
       {selected && (
         <div className="lens-card space-y-4">

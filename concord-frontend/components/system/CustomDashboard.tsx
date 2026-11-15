@@ -111,14 +111,26 @@ export function CustomDashboard({ live }: { live: boolean }) {
     setSaving(false);
   }, [loadLayout]);
 
+  // FIX-system-004: Add opens a chooser (kind + metric) instead of always
+  // inserting a fixed 'CPU %' panel; panel removal is two-step.
+  const [adding, setAdding] = useState(false);
+  const [newKind, setNewKind] = useState<PanelKind>('metric');
+  const [newMetric, setNewMetric] = useState<MetricKey>('cpuPct');
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
   const addPanel = () => {
+    const title = newKind === 'metric' ? METRIC_LABELS[newMetric] : KIND_OPTS.find((k) => k.kind === newKind)?.label || 'Panel';
     setPanels((p) => [
       ...p,
-      { id: `p_${Date.now().toString(36)}`, kind: 'metric', metric: 'cpuPct', title: 'CPU %', w: 1 },
+      { id: `p_${Date.now().toString(36)}`, kind: newKind, metric: newMetric, title, w: 1 },
     ]);
     setDirty(true);
+    setAdding(false);
   };
-  const removePanel = (id: string) => { setPanels((p) => p.filter((x) => x.id !== id)); setDirty(true); };
+  const removePanel = (id: string) => {
+    if (confirmRemoveId !== id) { setConfirmRemoveId(id); return; }
+    setConfirmRemoveId(null);
+    setPanels((p) => p.filter((x) => x.id !== id)); setDirty(true);
+  };
   const updatePanel = (id: string, patch: Partial<Panel>) => {
     setPanels((p) => p.map((x) => (x.id === id ? { ...x, ...patch } : x)));
     setDirty(true);
@@ -147,13 +159,29 @@ export function CustomDashboard({ live }: { live: boolean }) {
           >
             {editing ? 'Done editing' : 'Edit panels'}
           </button>
-          {editing && (
+          {editing && !adding && (
             <button
-              onClick={addPanel}
+              onClick={() => setAdding(true)}
               className="inline-flex items-center gap-1.5 rounded border border-cyan-700/50 bg-cyan-900/20 px-2.5 py-1.5 text-xs text-cyan-200 hover:bg-cyan-800/40"
             >
               <Plus className="h-3 w-3" aria-hidden /> Add
             </button>
+          )}
+          {editing && adding && (
+            <span className="inline-flex items-center gap-1.5">
+              <select value={newKind} onChange={(e) => setNewKind(e.target.value as PanelKind)} aria-label="New panel kind"
+                className="rounded border border-cyan-900/40 bg-cyan-950/30 px-1.5 py-1.5 text-xs text-cyan-200">
+                {KIND_OPTS.map((k) => <option key={k.kind} value={k.kind}>{k.label}</option>)}
+              </select>
+              {newKind === 'metric' && (
+                <select value={newMetric} onChange={(e) => setNewMetric(e.target.value as MetricKey)} aria-label="New panel metric"
+                  className="rounded border border-cyan-900/40 bg-cyan-950/30 px-1.5 py-1.5 text-xs text-cyan-200">
+                  {(Object.keys(METRIC_LABELS) as MetricKey[]).map((m) => <option key={m} value={m}>{METRIC_LABELS[m]}</option>)}
+                </select>
+              )}
+              <button onClick={addPanel} className="rounded border border-emerald-700/50 bg-emerald-900/20 px-2.5 py-1.5 text-xs text-emerald-200 hover:bg-emerald-800/40">Add panel</button>
+              <button onClick={() => setAdding(false)} className="rounded border border-cyan-700/50 bg-cyan-900/20 px-2.5 py-1.5 text-xs text-cyan-200 hover:bg-cyan-800/40">Cancel</button>
+            </span>
           )}
           <button
             onClick={save}
@@ -185,10 +213,10 @@ export function CustomDashboard({ live }: { live: boolean }) {
               {editing && (
                 <button
                   onClick={() => removePanel(panel.id)}
-                  className="text-cyan-700 hover:text-rose-400"
-                  aria-label={`Remove ${panel.title}`}
+                  className={confirmRemoveId === panel.id ? 'rounded bg-rose-600 px-2 py-1 text-[10px] font-semibold text-white' : 'text-cyan-700 hover:text-rose-400'}
+                  aria-label={confirmRemoveId === panel.id ? `Confirm remove ${panel.title}` : `Remove ${panel.title}`}
                 >
-                  <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                  {confirmRemoveId === panel.id ? `Remove “${panel.title}”? Click again` : <Trash2 className="h-3.5 w-3.5" aria-hidden />}
                 </button>
               )}
             </div>

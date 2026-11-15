@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Truck, Plus, X, Loader2, Hash } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 
 interface Pickup { id: string; carrierId: string; carrierName: string; address: string; date: string; timeWindow: string; packageCount: number; status: string; confirmationNumber: string | null }
@@ -13,6 +14,16 @@ export function PickupsPanel() {
   const [carriers, setCarriers] = useState<Carrier[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ carrierId: '', address: '', date: '', timeWindow: '9am-5pm', packageCount: '1', confirmationNumber: '' });
+  // FIX-logistics-009: find controls for the pickup list.
+  const [query, setQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'default' | 'date' | 'carrier'>('default');
+  const visiblePickups = pickups
+    .filter(p => {
+      const q = query.trim().toLowerCase();
+      if (!q) return true;
+      return [p.carrierName, p.address, p.confirmationNumber || '', p.status].some(x => x.toLowerCase().includes(q));
+    })
+    .sort((a, b) => sortBy === 'date' ? a.date.localeCompare(b.date) : sortBy === 'carrier' ? a.carrierName.localeCompare(b.carrierName) : 0);
 
   useEffect(() => { refresh(); }, []);
 
@@ -38,11 +49,11 @@ export function PickupsPanel() {
     } catch (e) { console.error('[Pickups] schedule', e); }
   }
 
-  async function cancel(id: string) {
+  async function remove(id: string) {
     try {
-      await lensRun({ domain: 'logistics', action: 'pickups-cancel', input: { id } });
+      await lensRun({ domain: 'logistics', action: 'pickups-delete', input: { id } });
       await refresh();
-    } catch (e) { console.error('[Pickups] cancel', e); }
+    } catch (e) { console.error('[Pickups] delete', e); }
   }
 
   return (
@@ -69,14 +80,27 @@ export function PickupsPanel() {
         <button onClick={schedule} className="col-span-full px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 inline-flex items-center justify-center gap-1"><Plus className="w-3 h-3" />Schedule pickup</button>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2 px-3 py-2 border-b border-white/10">
+        <input aria-label="Search pickups" value={query} onChange={e => setQuery(e.target.value)} placeholder="Search carrier, address, confirmation…"
+          className="flex-1 min-w-[160px] px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <select aria-label="Sort pickups" value={sortBy} onChange={e => setSortBy(e.target.value as typeof sortBy)}
+          className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+          <option value="default">Delivered order</option>
+          <option value="date">Date</option>
+          <option value="carrier">Carrier</option>
+        </select>
+      </div>
+
       <div className="max-h-80 overflow-y-auto">
         {loading ? (
           <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : pickups.length === 0 ? (
           <div className="px-3 py-10 text-center text-xs text-gray-400"><Truck className="w-6 h-6 mx-auto mb-2 opacity-30" />No pickups scheduled.</div>
+        ) : visiblePickups.length === 0 ? (
+          <div className="px-3 py-10 text-center text-xs text-gray-400">No pickups match the current search.</div>
         ) : (
           <ul className="divide-y divide-white/5">
-            {pickups.map(p => (
+            {visiblePickups.map(p => (
               <li key={p.id} className={cn('px-3 py-2 hover:bg-white/[0.03] group flex items-center gap-3', p.status === 'cancelled' && 'opacity-50')}>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
@@ -86,8 +110,14 @@ export function PickupsPanel() {
                   </div>
                   <div className="text-[10px] text-gray-400 truncate">{p.address}</div>
                   <div className="text-[10px] text-gray-400">{p.date} · {p.timeWindow} · {p.packageCount} pkg</div>
+                  <input defaultValue={p.confirmationNumber || ''} aria-label="Carrier confirmation" placeholder="Carrier confirmation" onBlur={async (e) => {
+                    const confirmationNumber = e.target.value.trim();
+                    if (confirmationNumber === (p.confirmationNumber || '')) return;
+                    await lensRun({ domain: 'logistics', action: 'pickups-update', input: { id: p.id, confirmationNumber } });
+                    await refresh();
+                  }} className="mt-1 w-full bg-transparent text-[10px] text-gray-300 border-b border-transparent focus:border-cyan-500/40 outline-none" />
                 </div>
-                {p.status === 'scheduled' && <button aria-label="Close" onClick={() => cancel(p.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400 hover:text-rose-300"><X className="w-3 h-3" /></button>}
+                <StickyDeleteConfirm onConfirm={() => remove(p.id)} armLabel={<X className="w-3 h-3" />} armAriaLabel="Delete pickup" confirmLabel="Delete pickup?" className="p-1 text-rose-400 hover:text-rose-300" />
               </li>
             ))}
           </ul>

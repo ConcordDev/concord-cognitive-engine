@@ -44,7 +44,7 @@ export function OshaIncidentSearch() {
       <form onSubmit={(e) => { e.preventDefault(); if (query.trim()) openCatalog(); }} className="flex items-center gap-2">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
-          <input type="text" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search OSHA / construction safety datasets…" className="w-full rounded-md border border-zinc-800 bg-zinc-950 py-1.5 pl-8 pr-3 text-sm text-white" />
+          <input aria-label="Search OSHA and construction safety datasets" type="text" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search OSHA / construction safety datasets…" className="w-full rounded-md border border-zinc-800 bg-zinc-950 py-1.5 pl-8 pr-3 text-sm text-white" />
         </div>
         <button type="submit" disabled={!query.trim()} className="inline-flex items-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-50">
           <ExternalLink className="h-3.5 w-3.5" />

@@ -300,10 +300,40 @@ export default function registerAgentsActions(registerLensAction) {
       if (!agentId) return { ok: false, error: "agentId required" };
       const agentName = aClean(params.agentName, 120) || agentId;
       const goal = aClean(params.goal, 500) || "Complete assigned objective";
+      const toolless = Array.isArray(params.tools) && params.tools.length === 0;
       const tools = Array.isArray(params.tools) && params.tools.length
         ? params.tools.map(t => aClean(t, 60)).filter(Boolean)
         : ["dtu_read", "summarize", "classify"];
       const maxSteps = Math.min(Math.max(aNum(params.maxSteps, 5), 1), 20);
+
+      // CKPT-19: with CONCORD_COCKPIT_RUNS on, the run is a cockpit run (goal-shaped steps, receipts,
+      // confirm cards). A tool-less agent (tools: [] on purpose) gets a written answer and no tool call.
+      try {
+        const { cockpitFlag } = await import("../lib/cockpit/flags.js");
+        if (cockpitFlag("RUNS") && ctx?.db) {
+          const { runAgentOnCore } = await import("../lib/cockpit/agents-run.js");
+          const core = await runAgentOnCore({
+            db: ctx.db, userId, goal, allowTools: toolless ? [] : tools, maxSteps,
+            runMacro: ctx.runMacro || globalThis.__concordRunMacro, lensActions: ctx.lensActions || globalThis.__concordLensActions,
+          });
+          if (core) {
+            const tokens = Number(core.usage?.tokensIn || 0) + Number(core.usage?.tokensOut || 0);
+            const run = {
+              id: aId("run"), agentId, agentName, goal, status: core.status, stoppedReason: null,
+              steps: core.steps, stepCount: core.steps.length,
+              totalLatencyMs: core.steps.reduce((x, st) => x + st.latencyMs, 0), totalTokens: tokens, tokensEstimated: true,
+              cockpitRunId: core.cockpitRunId, startedAt: new Date().toISOString(), finishedAt: new Date().toISOString(),
+            };
+            const coreRuns = arr(s.runs, userId);
+            coreRuns.unshift(run);
+            if (coreRuns.length > 200) coreRuns.length = 200;
+            const b = submap(s.budgets, userId).get(agentId);
+            if (b) { b.tokensUsed = (b.tokensUsed || 0) + tokens; submap(s.budgets, userId).set(agentId, b); }
+            saveAgents();
+            return { ok: true, result: { run, budgetRemaining: b ? Math.max(0, b.tokenLimit - b.tokensUsed) : null } };
+          }
+        }
+      } catch { /* fall through to the existing loop */ }
 
       // Budget enforcement
       const budgetMap = submap(s.budgets, userId);
@@ -579,6 +609,9 @@ export default function registerAgentsActions(registerLensAction) {
       const kind = SCHEDULE_KINDS.includes(params.kind) ? params.kind : "interval";
       const spec = aClean(params.spec, 200);
       if (!spec) return { ok: false, error: "spec required (interval ms / cron / webhook path / event name)" };
+      if (kind === "interval" && !(Number.isInteger(Number(spec)) && Number(spec) >= 1)) {
+        return { ok: false, error: "invalid_input", message: "Interval must be a whole number of milliseconds that is 1 or greater." };
+      }
       const schedule = {
         id: aId("sched"),
         agentId,
@@ -634,6 +667,34 @@ export default function registerAgentsActions(registerLensAction) {
       schedules.splice(idx, 1);
       saveAgents();
       return { ok: true, result: { deleted: true } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // Edit a schedule in place — same fields and validation as
+  // createSchedule; enabled / fire history are not editable here
+  // (toggleSchedule owns enabled).
+  registerLensAction("agents", "updateSchedule", (ctx, _a, params = {}) => {
+    try {
+      const s = getAgentState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const schedules = arr(s.schedules, aActor(ctx));
+      const sch = schedules.find(x => x.id === aClean(params.id, 80));
+      if (!sch) return { ok: false, error: "schedule not found" };
+      const kind = params.kind != null
+        ? (SCHEDULE_KINDS.includes(params.kind) ? params.kind : sch.kind)
+        : sch.kind;
+      const spec = params.spec != null ? aClean(params.spec, 200) : sch.spec;
+      if (!spec) return { ok: false, error: "spec required (interval ms / cron / webhook path / event name)" };
+      if (kind === "interval" && !(Number.isInteger(Number(spec)) && Number(spec) >= 1)) {
+        return { ok: false, error: "invalid_input", message: "Interval must be a whole number of milliseconds that is 1 or greater." };
+      }
+      sch.kind = kind;
+      sch.spec = spec;
+      if (params.agentName != null) sch.agentName = aClean(params.agentName, 120) || sch.agentName;
+      if (params.goal != null) sch.goal = aClean(params.goal, 500) || sch.goal;
+      saveAgents();
+      return { ok: true, result: { schedule: sch } };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
@@ -781,15 +842,21 @@ export default function registerAgentsActions(registerLensAction) {
       const userId = aActor(ctx);
       const agentId = aClean(params.agentId, 80);
       if (!agentId) return { ok: false, error: "agentId required" };
-      const tokenLimit = aNum(params.tokenLimit, 0);
-      if (tokenLimit <= 0) return { ok: false, error: "tokenLimit must be positive" };
+      const tokenLimit = Number(params.tokenLimit);
+      const costPer1k = Number(params.costPer1k);
+      if (!Number.isFinite(tokenLimit) || tokenLimit <= 0) {
+        return { ok: false, error: "tokenLimit must be positive", message: "Token limit must be a number greater than 0." };
+      }
+      if (params.costPer1k != null && params.costPer1k !== "" && !(costPer1k >= 0)) {
+        return { ok: false, error: "invalid_input", message: "Cost per 1k tokens must be a number that is 0 or greater." };
+      }
       const budgetMap = submap(s.budgets, userId);
       const prev = budgetMap.get(agentId);
       const budget = {
         agentId,
         tokenLimit,
         // $ per 1k tokens — used for the cost projection.
-        costPer1k: aNum(params.costPer1k, 3),
+        costPer1k: params.costPer1k == null || params.costPer1k === "" ? 3 : costPer1k,
         enforce: params.enforce !== false,
         tokensUsed: prev ? (prev.tokensUsed || 0) : 0,
         updatedAt: new Date().toISOString(),
@@ -839,6 +906,20 @@ export default function registerAgentsActions(registerLensAction) {
       budget.updatedAt = new Date().toISOString();
       saveAgents();
       return { ok: true, result: { budget } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  registerLensAction("agents", "clearBudget", (ctx, _a, params = {}) => {
+    try {
+      const s = getAgentState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const budgetMap = submap(s.budgets, aActor(ctx));
+      const agentId = aClean(params.agentId, 80);
+      if (!agentId || !budgetMap.has(agentId)) return { ok: false, error: "no budget set for agent" };
+      budgetMap.delete(agentId);
+      saveAgents();
+      return { ok: true, result: { agentId, cleared: true } };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
@@ -968,6 +1049,27 @@ export default function registerAgentsActions(registerLensAction) {
     }
   });
 
+  // Undo an import (FIX-agents-013) — drops the caller's install count
+  // back down so the import is reversible. The created agent artifact
+  // itself is removed by the frontend through the generic store, the
+  // same delete the Fleet view uses.
+  registerLensAction("agents", "uninstallTemplate", (ctx, _a, params = {}) => {
+    try {
+      const templateId = aClean(params.templateId || params.id, 80);
+      const tpl = AGENT_TEMPLATES.find(t => t.id === templateId);
+      if (!tpl) return { ok: false, error: "template not found" };
+      const userId = aActor(ctx);
+      const installs = templateInstallsFor(userId);
+      const next = Math.max(0, (installs.get(tpl.id) || 0) - 1);
+      if (next === 0) installs.delete(tpl.id);
+      else installs.set(tpl.id, next);
+      saveAgents();
+      return { ok: true, result: { template: { ...tpl, installs: next } } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
   // ── Feature 8: task definitions (skill-based routing input) ──────────
   // Structurally cloned from the createSchedule/listSchedules/toggleSchedule/
   // deleteSchedule per-user CRUD family above. Lets a user author a reusable
@@ -987,11 +1089,19 @@ export default function registerAgentsActions(registerLensAction) {
       const requiredSkills = Array.isArray(params.requiredSkills)
         ? params.requiredSkills.map(sk => aClean(sk, 60)).filter(Boolean)
         : [];
+      // FIX-agents-005: priority was any cleaned string, so a junk
+      // value ('not-a-number') stored and rendered as a priority.
+      // The vocabulary is the one the surface offers: low / normal /
+      // high / urgent; absent still defaults to "normal".
+      const priorityRaw = aClean(params.priority, 20);
+      if (priorityRaw && !["low", "normal", "high", "urgent"].includes(priorityRaw.toLowerCase())) {
+        return { ok: false, error: "priority must be one of: low, normal, high, urgent" };
+      }
       const taskDefinition = {
         id: aId("taskdef"),
         name,
         requiredSkills,
-        priority: aClean(params.priority, 20) || "normal",
+        priority: priorityRaw ? priorityRaw.toLowerCase() : "normal",
         description: aClean(params.description, 500),
         createdAt: new Date().toISOString(),
       };

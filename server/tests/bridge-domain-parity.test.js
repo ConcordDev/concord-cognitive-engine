@@ -102,6 +102,13 @@ describe("bridge.recordFlow / flowList / flowReplay — per-flow retry", () => {
     assert.equal(replay.result.attempts, 2);
   });
 
+  it("refuses a negative record count", () => {
+    const id = newPeer("Hub-Neg");
+    const r = call("recordFlow", ctx, { peerId: id, status: "succeeded", records: -1 });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /records must be a number that is 0 or more/);
+  });
+
   it("refuses to replay an already-succeeded flow", () => {
     const id = newPeer("Hub-B");
     const rec = call("recordFlow", ctx, { peerId: id, status: "succeeded" });

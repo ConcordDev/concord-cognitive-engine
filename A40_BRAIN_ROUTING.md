@@ -27,3 +27,25 @@
 # BRAIN_CONSCIOUS_URL=http://<free-tier-llm>:443
 # BRAIN_SUBCONSCIOUS_URL=http://<free-tier-llm>:443
 # etc.
+
+---
+
+## Role → model map (GB-1541, founder-confirmed 2026-11-14)
+
+The platform's brain roles route to Ollama Cloud models, set by env at
+deploy (BRAIN_CONSCIOUS_MODEL / CONKAY_MODEL / BRAIN_REPAIR_MODEL /
+BRAIN_BACKGROUND_MODEL and the subconscious equivalent in brain-config.js):
+
+| Role          | Model                  | Notes                                   |
+|---------------|------------------------|-----------------------------------------|
+| conscious     | kimi-k3.1-pro:cloud    | main chat / reasoning                   |
+| ConKay        | kimi-k3.1-pro:cloud    | dedicated `conkay` slot (BR-02)         |
+| subconscious  | minimax-m3:cloud       | background cognition                    |
+| background    | gpt-oss:20b-cloud      | high-frequency small jobs (GB-1540)     |
+| repair        | gpt-oss:120b-cloud     | repair proposer (BR-01, flag-gated)     |
+
+Emergent-layer jobs (dream cycle, detectors' narrative passes) ride the
+**background** brain — they are high-frequency, small, and must never
+contend with the user-facing conscious/ConKay slots. Anything emergent
+that needs deep reasoning escalates through the repair/conscious routes
+explicitly rather than borrowing a bigger slot by default.

@@ -38,7 +38,7 @@ interface LocalInvoice {
   customerName: string;
   customerEmail?: string;
   total: number;
-  status: 'draft' | 'open' | 'paid' | 'voided';
+  status: 'draft' | 'open' | 'paid' | 'void' | 'credited' | 'voided';
   issuedAt: string;
   dueAt: string;
   paidAt: string | null;
@@ -108,6 +108,28 @@ export function StripeInvoicePanel() {
     mutationFn: async ({ id }: { id: string }) => callMacro<{ invoice: LocalInvoice }>('invoice-mark-paid', { id }),
     onSuccess: (env, { id }) => {
       if (env.ok && env.result) setInvoices((prev) => prev.map((i) => i.id === id ? env.result!.invoice : i));
+      else setErrorMsg(env.error || 'Could not mark that invoice paid.');
+    },
+  });
+
+  const voidMutation = useMutation({
+    mutationFn: async ({ id }: { id: string }) => callMacro<{ invoice: LocalInvoice }>('invoice-void', { id }),
+    onSuccess: (env, { id }) => {
+      if (env.ok && env.result) {
+        setInvoices((prev) => prev.map((i) => i.id === id ? env.result!.invoice : i));
+        setErrorMsg(null);
+      } else setErrorMsg(env.error || 'Could not void that invoice.');
+    },
+  });
+
+  const creditMutation = useMutation({
+    mutationFn: async ({ id, amount }: { id: string; amount: number }) =>
+      callMacro<{ invoice: LocalInvoice }>('invoice-credit-note', { id, amount }),
+    onSuccess: (env, { id }) => {
+      if (env.ok && env.result) {
+        setInvoices((prev) => prev.map((i) => i.id === id ? env.result!.invoice : i));
+        setErrorMsg(null);
+      } else setErrorMsg(env.error || 'Could not issue that credit note.');
     },
   });
 
@@ -252,7 +274,9 @@ export function StripeInvoicePanel() {
               invoice={inv}
               onStripeSend={(email) => stripeMutation.mutate({ id: inv.id, email })}
               onMarkPaid={() => markPaidMutation.mutate({ id: inv.id })}
-              isPending={stripeMutation.isPending}
+              onVoid={() => voidMutation.mutate({ id: inv.id })}
+              onCredit={() => creditMutation.mutate({ id: inv.id, amount: inv.total })}
+              isPending={stripeMutation.isPending || voidMutation.isPending || creditMutation.isPending}
             />
           ))}
         </AnimatePresence>
@@ -261,18 +285,24 @@ export function StripeInvoicePanel() {
   );
 }
 
-function InvoiceRow({ invoice, onStripeSend, onMarkPaid, isPending }: {
+function InvoiceRow({ invoice, onStripeSend, onMarkPaid, onVoid, onCredit, isPending }: {
   invoice: LocalInvoice;
   onStripeSend: (email: string) => void;
   onMarkPaid: () => void;
+  onVoid: () => void;
+  onCredit: () => void;
   isPending: boolean;
 }) {
   const [emailInput, setEmailInput] = useState(invoice.customerEmail || '');
+  const [confirm, setConfirm] = useState<'void' | 'credit' | null>(null);
   const isOverdue = invoice.status === 'open' && invoice.dueAt && invoice.dueAt < calendarDateKey();
+  const closed = invoice.status === 'void' || invoice.status === 'credited' || invoice.status === 'voided';
   const hasStripe = !!invoice.stripeHostedInvoiceUrl;
 
   const statusClass =
     invoice.status === 'paid' ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' :
+    invoice.status === 'credited' ? 'bg-amber-500/15 text-amber-200 border-amber-500/30' :
+    invoice.status === 'void' || invoice.status === 'voided' ? 'bg-zinc-500/15 text-zinc-300 border-zinc-500/30' :
     isOverdue ? 'bg-red-500/15 text-red-300 border-red-500/30' :
     invoice.status === 'open' ? 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30' :
     'bg-lattice-elevated text-gray-400 border-lattice-border';
@@ -312,7 +342,7 @@ function InvoiceRow({ invoice, onStripeSend, onMarkPaid, isPending }: {
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        {!hasStripe && invoice.status !== 'paid' && (
+        {!hasStripe && invoice.status === 'open' && (
           <>
             <input
               type="email"
@@ -377,20 +407,40 @@ function InvoiceRow({ invoice, onStripeSend, onMarkPaid, isPending }: {
             />
           </>
         )}
-        {invoice.status !== 'paid' && (
-          <button
-            type="button"
-            onClick={onMarkPaid}
-            className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-lattice-border px-2.5 py-1 text-[11px] text-gray-400 transition-colors hover:bg-emerald-500/10 hover:text-emerald-300"
-          >
-            <CheckCircle2 className="h-3 w-3" />
-            Mark paid
-          </button>
+        {invoice.status === 'open' && (
+          confirm === 'void' ? (
+            <>
+              <button type="button" onClick={onVoid} disabled={isPending} className="ml-auto min-h-11 rounded-md bg-rose-500/20 px-2.5 text-[11px] text-rose-200">Confirm void</button>
+              <button type="button" onClick={() => setConfirm(null)} className="min-h-11 rounded-md px-2 text-[11px] text-gray-400">Cancel</button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={onMarkPaid}
+                className="ml-auto inline-flex min-h-11 items-center gap-1.5 rounded-md border border-lattice-border px-2.5 text-[11px] text-gray-400 transition-colors hover:bg-emerald-500/10 hover:text-emerald-300"
+              >
+                <CheckCircle2 className="h-3 w-3" />
+                Mark paid
+              </button>
+              <button type="button" onClick={() => setConfirm('void')} className="inline-flex min-h-11 items-center rounded-md border border-rose-500/30 px-2.5 text-[11px] text-rose-200">Void</button>
+            </>
+          )
         )}
         {invoice.status === 'paid' && (
-          <span className="ml-auto inline-flex items-center gap-1 text-[11px] text-emerald-400">
-            <Wallet className="h-3 w-3" /> Settled
-          </span>
+          confirm === 'credit' ? (
+            <>
+              <button type="button" onClick={onCredit} disabled={isPending} className="ml-auto min-h-11 rounded-md bg-amber-400/20 px-2.5 text-[11px] text-amber-100">Confirm credit note</button>
+              <button type="button" onClick={() => setConfirm(null)} className="min-h-11 rounded-md px-2 text-[11px] text-gray-400">Cancel</button>
+            </>
+          ) : (
+            <button type="button" onClick={() => setConfirm('credit')} className="ml-auto inline-flex min-h-11 items-center gap-1 rounded-md border border-amber-500/30 px-2.5 text-[11px] text-amber-100">
+              <Wallet className="h-3 w-3" /> Credit note
+            </button>
+          )
+        )}
+        {closed && (
+          <span className="ml-auto text-[11px] text-zinc-400">{invoice.status}</span>
         )}
       </div>
     </motion.div>

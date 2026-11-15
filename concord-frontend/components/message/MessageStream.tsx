@@ -416,6 +416,7 @@ export function MessageStream({
                       <button role="menuitem" onClick={() => snoozeMsg(m, snoozePreset(24 * 7))} className="w-full text-left px-2 py-1 text-xs rounded text-gray-200 hover:bg-white/10">Next week</button>
                       <div className="flex items-center gap-1 pt-1 border-t border-white/10">
                         <input
+                          aria-label="Snooze until"
                           type="datetime-local"
                           value={snoozeCustom}
                           onChange={(e) => setSnoozeCustom(e.target.value)}
@@ -434,7 +435,7 @@ export function MessageStream({
               </div>
               {editingId === m.id ? (
                 <div className="flex items-center gap-1 mt-1">
-                  <input value={editBody} onChange={e => setEditBody(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') saveEdit(m); if (e.key === 'Escape') setEditingId(null); }} autoFocus className="flex-1 px-2 py-1 text-xs bg-lattice-deep border border-violet-500/30 rounded text-white" />
+                  <input aria-label="Edit message" value={editBody} onChange={e => setEditBody(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') saveEdit(m); if (e.key === 'Escape') setEditingId(null); }} autoFocus className="flex-1 px-2 py-1 text-xs bg-lattice-deep border border-violet-500/30 rounded text-white" />
                   <button onClick={() => saveEdit(m)} className="px-2 py-1 text-[10px] rounded bg-violet-500 text-white">save</button>
                   <button onClick={() => setEditingId(null)} className="text-gray-400 text-[10px]">esc</button>
                 </div>
@@ -480,7 +481,7 @@ export function MessageStream({
         {showSchedule && (
           <div className="mb-2 flex items-center gap-2 bg-amber-500/[0.06] border border-amber-500/30 rounded px-2 py-1.5">
             <Calendar className="w-3 h-3 text-amber-400" />
-            <input type="datetime-local" value={scheduleAt} onChange={e => setScheduleAt(e.target.value)} className="flex-1 px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+            <input aria-label="Schedule send time" type="datetime-local" value={scheduleAt} onChange={e => setScheduleAt(e.target.value)} className="flex-1 px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
             <button onClick={scheduleSend} disabled={!body.trim() || !scheduleAt} className="px-2 py-1 text-[10px] rounded bg-amber-500 text-black font-bold hover:bg-amber-400 disabled:opacity-40">Schedule</button>
             <button onClick={() => setShowSchedule(false)} className="text-amber-300 text-[10px]">cancel</button>
           </div>

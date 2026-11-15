@@ -5,6 +5,7 @@
  * Self-contained; runs the 4 new wellness.* macros plus mint/DM/publish/agent.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import {
   Moon, Activity, Battery, TrendingUp, Sparkles, Send, Globe, Wand2,
@@ -16,7 +17,7 @@ import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
-interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string; reason?: string }
+interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string; reason?: string; message?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
   const r = await apiHelpers.lens.runDomain('wellness', action, { input });
   const data = (r as { data?: { ok: boolean; result?: T } }).data;
@@ -81,11 +82,17 @@ export function WellnessActionPanel() {
   });
 
   async function actSleep() {
+    const asleepN = parseFloat(minutesAsleep);
+    const inBedN = parseFloat(minutesInBed);
+    if (Number.isFinite(asleepN) && Number.isFinite(inBedN) && asleepN > inBedN) {
+      err('Minutes asleep cannot exceed minutes in bed.');
+      return;
+    }
     setBusy('sleep'); setFeedback(null);
     try {
       const r = await callMacro<SleepResult>('sleepScore', { minutesAsleep: parseFloat(minutesAsleep), minutesInBed: parseFloat(minutesInBed), disturbances: parseInt(disturbances, 10) });
       if (r.ok && r.result) { setSleepResult(r.result); pipe.publish('wellness.sleep', r.result, { label: `${r.result.score}/100` }); ok(`Sleep ${r.result.band} (${r.result.score}).`); }
-      else err(r.reason ?? r.error ?? 'sleep failed');
+      else err(r.message ?? r.reason ?? r.error ?? 'sleep failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -99,6 +106,10 @@ export function WellnessActionPanel() {
     finally { setBusy(null); }
   }
   async function actRecovery() {
+    if (hrvMs.trim().startsWith('-') || Number(hrvMs) < 0) {
+      err('HRV is in milliseconds and cannot be negative.');
+      return;
+    }
     setBusy('recovery'); setFeedback(null);
     try {
       const r = await callMacro<RecoveryResult>('recoveryReport', { hrvMs: parseFloat(hrvMs), baselineHrvMs: parseFloat(baselineHrv), rhrBpm: parseFloat(rhrBpm), baselineRhrBpm: parseFloat(baselineRhr), sleepScore: sleepResult?.score ?? 70 });
@@ -109,6 +120,10 @@ export function WellnessActionPanel() {
   }
   async function actHrv() {
     const readings = hrvSeries.split('\n').map(l => { const [date, ms] = l.split(',').map(s => s.trim()); return date && ms ? { date, hrvMs: parseFloat(ms) } : null; }).filter(Boolean);
+    if (readings.some((row) => row && Number(row.hrvMs) < 0)) {
+      err('HRV is in milliseconds and cannot be negative.');
+      return;
+    }
     setBusy('hrv'); setFeedback(null);
     try {
       const r = await callMacro<HrvTrendResult>('hrvTrend', { readings });
@@ -197,9 +212,9 @@ export function WellnessActionPanel() {
         'Plain text. Practical, not vague.',
       ].filter(Boolean).join(' ');
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 4 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('24-hour plan ready.'); }
-      else err('Agent returned empty.');
+      const reply = readAgentReply(r.data);
+      if (reply.ok) { setAgentReply(reply.text); ok('24-hour plan ready.'); }
+      else err(reply.reason);
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -237,7 +252,7 @@ export function WellnessActionPanel() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        <div><label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">HRV ms</label><input type="text" value={hrvMs} onChange={(e) => setHrvMs(e.target.value.replace(/[^\d.]/g, ''))} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" /></div>
+        <div><label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">HRV ms</label><input type="text" value={hrvMs} onChange={(e) => setHrvMs(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" /></div>
         <div><label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Baseline HRV</label><input type="text" value={baselineHrv} onChange={(e) => setBaselineHrv(e.target.value.replace(/[^\d.]/g, ''))} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" /></div>
         <div><label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">RHR bpm</label><input type="text" value={rhrBpm} onChange={(e) => setRhrBpm(e.target.value.replace(/[^\d.]/g, ''))} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" /></div>
         <div><label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Baseline RHR</label><input type="text" value={baselineRhr} onChange={(e) => setBaselineRhr(e.target.value.replace(/[^\d.]/g, ''))} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" /></div>

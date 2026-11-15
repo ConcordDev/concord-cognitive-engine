@@ -35,6 +35,19 @@ interface DueSrsCard {
   };
 }
 
+interface ScheduledSrsItem {
+  dtuId: string;
+  title: string;
+  nextReview: string;
+  due: boolean;
+}
+
+function formatReviewWhen(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString();
+}
+
 const QUALITY_BUTTONS = [
   { label: 'Again', sublabel: 'forgot it', quality: 0, color: 'bg-red-500/20 text-red-400 border-red-500/30 hover:bg-red-500/30' },
   { label: 'Hard', sublabel: 'shaky', quality: 2, color: 'bg-orange-500/20 text-orange-400 border-orange-500/30 hover:bg-orange-500/30' },
@@ -66,7 +79,6 @@ export default function SRSLensPage() {
   // things you've already written/saved anywhere in Concord, not cards
   // you author from scratch. ─────────────────────────────────────────
   const [revealed, setRevealed] = useState(false);
-  const [reviewIndex, setReviewIndex] = useState(0);
   const [sessionReviewed, setSessionReviewed] = useState(0);
   const [sessionCorrect, setSessionCorrect] = useState(0);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -87,19 +99,37 @@ export default function SRSLensPage() {
   });
 
   const dueCards: DueSrsCard[] = useMemo(() => dueQuery.data?.cards || [], [dueQuery.data]);
-  const current = dueCards[reviewIndex] || null;
-  const remaining = Math.max(0, dueCards.length - reviewIndex);
+  // Always the first card still due. Advancing an index AND dropping the
+  // reviewed card from the front of the refetch skips the next card and
+  // can say "All caught up" while one is still due.
+  const current = dueCards[0] || null;
+  const remaining = dueCards.length;
+
+  const scheduledQuery = useQuery({
+    queryKey: ['srs-scheduled'],
+    queryFn: () => apiHelpers.srs.scheduled().then((r) => r.data as { ok: boolean; items?: ScheduledSrsItem[] }),
+    enabled: view === 'review',
+  });
+  const waiting = (scheduledQuery.data?.items || []).filter((item) => !item.due);
 
   const addMutation = useMutation({
     // dtuId must be a REAL id from STATE.dtus — the ephemeral review
     // substrate rejects (honest `{ok:false}`, not a fabricated success)
     // anything else, and we surface that rejection instead of
     // pretending the add worked.
-    mutationFn: (dtuId: string) => apiHelpers.srs.add(dtuId).then((r) => r.data as { ok: boolean; error?: string }),
+    mutationFn: (dtuId: string) => apiHelpers.srs.add(dtuId).then((r) => r.data as {
+      ok: boolean; error?: string; already?: boolean; nextReview?: string;
+    }),
     onSuccess: (data) => {
-      if (data.ok) {
+      if (data.already) {
+        flash(data.nextReview
+          ? `Already scheduled. Next review ${formatReviewWhen(data.nextReview)}.`
+          : 'Already scheduled.');
+        queryClient.invalidateQueries({ queryKey: ['srs-scheduled'] });
+      } else if (data.ok) {
         flash('Added to spaced review.');
         queryClient.invalidateQueries({ queryKey: ['srs-due'] });
+        queryClient.invalidateQueries({ queryKey: ['srs-scheduled'] });
       } else {
         flash(data.error || 'Could not add that DTU to spaced review.');
       }
@@ -111,10 +141,15 @@ export default function SRSLensPage() {
     mutationFn: ({ dtuId, quality }: { dtuId: string; quality: number }) =>
       apiHelpers.srs.review(dtuId, { quality }).then((r) => r.data as { ok: boolean; error?: string }),
     onSuccess: (data) => {
-      if (data.ok) queryClient.invalidateQueries({ queryKey: ['srs-due'] });
-      else flash(data.error || 'Review did not save.');
+      if (data.ok) {
+        queryClient.invalidateQueries({ queryKey: ['srs-due'] });
+        queryClient.invalidateQueries({ queryKey: ['srs-scheduled'] });
+      } else flash(data.error || 'Review did not save.');
     },
-    onError: (err) => flash(err instanceof Error ? err.message : 'Review did not save.'),
+    onError: (err) => {
+      flash(err instanceof Error ? err.message : 'Review did not save.');
+      queryClient.invalidateQueries({ queryKey: ['srs-due'] });
+    },
   });
 
   const removeMutation = useMutation({
@@ -122,9 +157,9 @@ export default function SRSLensPage() {
     onSuccess: (data) => {
       if (data.ok) {
         setRevealed(false);
-        setReviewIndex(0);
         flash('Removed from review.');
         queryClient.invalidateQueries({ queryKey: ['srs-due'] });
+        queryClient.invalidateQueries({ queryKey: ['srs-scheduled'] });
       } else {
         flash(data.error || 'Could not remove that card.');
       }
@@ -134,12 +169,20 @@ export default function SRSLensPage() {
 
   const handleReview = useCallback((quality: number) => {
     if (!current) return;
+    const reviewedId = current.dtu.id;
     setSessionReviewed((p) => p + 1);
     if (quality >= 3) setSessionCorrect((p) => p + 1);
-    reviewMutation.mutate({ dtuId: current.dtu.id, quality });
+    queryClient.setQueryData(
+      ['srs-due'],
+      (old: { ok: boolean; cards: DueSrsCard[]; total: number } | undefined) => {
+        if (!old?.cards) return old;
+        const cards = old.cards.filter((c) => c.dtu.id !== reviewedId);
+        return { ...old, cards, total: cards.length };
+      },
+    );
+    reviewMutation.mutate({ dtuId: reviewedId, quality });
     setRevealed(false);
-    setReviewIndex((p) => p + 1);
-  }, [current, reviewMutation]);
+  }, [current, queryClient, reviewMutation]);
 
   const handlePickDtu = useCallback((dtu: DTU) => {
     addMutation.mutate(dtu.id);
@@ -289,6 +332,29 @@ export default function SRSLensPage() {
                   </button>
                 </div>
               </motion.article>
+            )}
+            {waiting.length > 0 && (
+              <section className="mt-8" aria-label="Not due yet">
+                <h3 className="text-[13px] uppercase tracking-wide text-zinc-500">Not due yet</h3>
+                <ul className="mt-2 divide-y divide-white/[0.06] rounded-2xl border border-white/[0.08]">
+                  {waiting.map((item) => (
+                    <li key={item.dtuId} className="flex items-center justify-between gap-3 px-4 py-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-[14px] text-zinc-100">{item.title}</p>
+                        <p className="text-[12px] text-zinc-500">Next review {formatReviewWhen(item.nextReview)}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeMutation.mutate(item.dtuId)}
+                        disabled={removeMutation.isPending}
+                        className="shrink-0 text-[13px] text-zinc-500 underline-offset-2 hover:text-zinc-200 hover:underline disabled:opacity-50"
+                      >
+                        Remove
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </section>
             )}
           </div>
         )}

@@ -822,7 +822,8 @@ export function GraphBloomCanvas({ interactive = true }: { interactive?: boolean
           ctx.fillStyle = isSelected || isHovered ? '#ffffff' : '#9ca3af';
           ctx.font = `${Math.max(10, 12 / zoom)}px Inter, sans-serif`;
           ctx.textAlign = 'center';
-          ctx.fillText(node.label.slice(0, 25) + (node.label.length > 25 ? '...' : ''), node.x, node.y + radius + 16);
+          const label = String(node.label || '');
+          ctx.fillText(label.slice(0, 25) + (label.length > 25 ? '...' : ''), node.x, node.y + radius + 16);
         }
       });
 

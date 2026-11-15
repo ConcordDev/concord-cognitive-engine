@@ -41,7 +41,7 @@ async function run(name: string, params: Record<string, unknown> = {}): Promise<
 }
 
 const card = 'rounded-lg border border-lattice-border bg-lattice-elevated';
-const input = 'input-lattice text-xs py-1 px-2 bg-lattice-surface border border-lattice-border rounded';
+const input = 'input-lattice min-h-11 text-xs py-1 px-2 bg-lattice-surface border border-lattice-border rounded';
 const btn = 'btn-secondary text-xs flex items-center gap-1 disabled:opacity-50';
 
 // ─── Deployments ─────────────────────────────────────────────────────
@@ -52,6 +52,9 @@ function DeploymentsTab() {
   const [ref, setRef] = useState('main');
   const [environment, setEnvironment] = useState('production');
   const [openLogs, setOpenLogs] = useState<string | null>(null);
+  // FIX-platform-004: the Refresh button spun and stopped — a failed or
+  // empty refresh read exactly like a good one. The outcome speaks.
+  const [refreshNote, setRefreshNote] = useState<string | null>(null);
   const [logs, setLogs] = useState<any[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [sha, setSha] = useState('');
@@ -59,7 +62,13 @@ function DeploymentsTab() {
   const load = useCallback(async () => {
     setLoading(true);
     const r = await run('deploy-list');
-    if (r) setDeployments(r.deployments || []);
+    if (r) {
+      const list = (r.deployments || []) as unknown[];
+      setDeployments(r.deployments || []);
+      setRefreshNote(`Refreshed — ${list.length} release${list.length === 1 ? '' : 's'} recorded.`);
+    } else {
+      setRefreshNote('Could not refresh the releases — try again.');
+    }
     setLoading(false);
   }, []);
 
@@ -110,6 +119,7 @@ function DeploymentsTab() {
         <button className={btn} onClick={load} disabled={loading}>
           <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} /> Refresh
         </button>
+        {refreshNote && <p className="text-[11px] text-gray-400 self-center" role="status">{refreshNote}</p>}
       </div>
 
       {deployments.length === 0 ? (
@@ -250,6 +260,9 @@ function ConfigTab() {
 
   return (
     <div className="space-y-4">
+      <p className="text-xs text-gray-400">
+        Your account’s variables only — this is your workspace config, not Concord’s system-wide platform config.
+      </p>
       <div className={`${card} p-3 flex flex-wrap items-end gap-2`}>
         <label className="flex flex-col gap-1 text-[10px] text-gray-400">Key
           <input className={input} value={key} onChange={(e) => setKey(e.target.value)} placeholder="API_KEY" />
@@ -430,7 +443,7 @@ function AlertsTab() {
       <div className={`${card} p-3 space-y-2`}>
         <p className="text-xs text-gray-400 flex items-center gap-1"><BellRing className="w-3 h-3" /> Notification channel</p>
         <div className="flex flex-wrap items-end gap-2">
-          <select className={input} value={chKind} onChange={(e) => setChKind(e.target.value)}>
+          <select aria-label="Channel kind" className={input} value={chKind} onChange={(e) => setChKind(e.target.value)}>
             <option value="in-app">in-app</option>
             <option value="webhook">webhook</option>
             <option value="email">email</option>
@@ -443,17 +456,17 @@ function AlertsTab() {
       <div className={`${card} p-3 space-y-2`}>
         <p className="text-xs text-gray-400">Threshold alert rule</p>
         <div className="flex flex-wrap items-end gap-2">
-          <select className={input} value={metric} onChange={(e) => setMetric(e.target.value)}>
+          <select aria-label="Metric" className={input} value={metric} onChange={(e) => setMetric(e.target.value)}>
             {['cpu', 'memory', 'requests', 'latencyMs', 'errorRate'].map((m) => <option key={m} value={m}>{m}</option>)}
           </select>
-          <select className={input} value={op} onChange={(e) => setOp(e.target.value)}>
+          <select aria-label="Operator" className={input} value={op} onChange={(e) => setOp(e.target.value)}>
             {['>', '>=', '<', '<='].map((o) => <option key={o} value={o}>{o}</option>)}
           </select>
           <input className={`${input} w-20`} value={threshold} onChange={(e) => setThreshold(e.target.value)} />
-          <select className={input} value={severity} onChange={(e) => setSeverity(e.target.value)}>
+          <select aria-label="Severity" className={input} value={severity} onChange={(e) => setSeverity(e.target.value)}>
             {['info', 'warning', 'critical'].map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
-          <select className={input} value={channelId} onChange={(e) => setChannelId(e.target.value)}>
+          <select aria-label="Channel" className={input} value={channelId} onChange={(e) => setChannelId(e.target.value)}>
             <option value="">no channel</option>
             {channels.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
           </select>
@@ -583,6 +596,9 @@ function AuditTab() {
 
   return (
     <div className="space-y-4">
+      <p className="text-xs text-gray-400">
+        Your account’s changes only — this log records what changed in your workspace, not platform-wide activity.
+      </p>
       <div className={`${card} p-3 flex flex-wrap items-center gap-2`}>
         <input className={input} value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="filter by action prefix" />
         <button className={btn} onClick={load} disabled={loading}>
@@ -593,7 +609,7 @@ function AuditTab() {
         ))}
       </div>
       {entries.length === 0 ? (
-        <p className="text-xs text-gray-400 text-center py-8">No audit entries. Platform changes are recorded here.</p>
+        <p className="text-xs text-gray-400 text-center py-8">No audit entries. Your account’s platform changes are recorded here.</p>
       ) : (
         <div className={`${card} divide-y divide-lattice-border`}>
           {entries.map((e) => (
@@ -618,6 +634,10 @@ export default function PlatformConsole() {
       <h2 className="text-xl font-bold text-gray-100 flex items-center gap-3">
         <Rocket className="w-6 h-6 text-neon-blue" /> Platform Console
       </h2>
+      <p className="text-xs text-gray-400 -mt-2">
+        Scoped to your account: this console holds your own deployments, config, domains, alerts and audit
+        history — your workspace records, not system-wide platform configuration, and not visible to other accounts.
+      </p>
       <div className="flex gap-1 flex-wrap border-b border-lattice-border">
         {CONSOLE_TABS.map((t) => {
           const Icon = t.icon;

@@ -127,11 +127,11 @@ export function MhPracticePanel({ onChange }: { onChange: () => void }) {
           <Flower2 className="w-3.5 h-3.5 text-sky-400" /> Log a session
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-          <select value={sForm.type} onChange={(e) => setSForm({ ...sForm, type: e.target.value })}
+          <select aria-label="Session type" value={sForm.type} onChange={(e) => setSForm({ ...sForm, type: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
             {SESSION_TYPES.map((t) => <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>)}
           </select>
-          <select value={sForm.durationMin} onChange={(e) => setSForm({ ...sForm, durationMin: e.target.value })}
+          <select aria-label="Session duration" value={sForm.durationMin} onChange={(e) => setSForm({ ...sForm, durationMin: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
             {[3, 5, 10, 15, 20, 30, 45].map((m) => <option key={m} value={m}>{m} min</option>)}
           </select>
@@ -182,9 +182,9 @@ export function MhPracticePanel({ onChange }: { onChange: () => void }) {
           <GraduationCap className="w-3.5 h-3.5 text-sky-400" /> Courses
         </h3>
         <div className="flex gap-2 mb-2">
-          <input value={cForm.name} onChange={(e) => setCForm({ ...cForm, name: e.target.value })} placeholder="New course — e.g. Basics"
+          <input aria-label="New course name" value={cForm.name} onChange={(e) => setCForm({ ...cForm, name: e.target.value })} placeholder="New course — e.g. Basics"
             className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-100" />
-          <input value={cForm.totalSessions} onChange={(e) => setCForm({ ...cForm, totalSessions: e.target.value })}
+          <input aria-label="Course sessions" value={cForm.totalSessions} onChange={(e) => setCForm({ ...cForm, totalSessions: e.target.value })}
             inputMode="numeric" className="w-16 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <button type="button" onClick={createCourse}
             className="px-2.5 py-1.5 text-xs bg-sky-600 hover:bg-sky-500 text-white rounded-lg">Create</button>

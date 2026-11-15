@@ -145,7 +145,7 @@ export function SessionsPanel() {
     <div className="rounded-lg border border-sky-500/20 bg-zinc-950/60 p-3 space-y-3">
       <header className="flex items-center gap-2 border-b border-sky-500/10 pb-2">
         <Wind className="h-4 w-4 text-sky-400" />
-        <h3 className="text-sm font-semibold text-white">Meditation &amp; breathing</h3>
+        <h2 className="text-sm font-semibold text-white">Meditation &amp; breathing</h2>
         {loading && <Loader2 className="w-3 h-3 animate-spin text-zinc-400" />}
         {history && (
           <span className="ml-auto text-[10px] text-zinc-400 inline-flex items-center gap-1">

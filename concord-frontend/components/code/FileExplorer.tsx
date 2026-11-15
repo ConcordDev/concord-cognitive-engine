@@ -30,8 +30,8 @@ export function FileExplorer({
   // failed delete renders its reason here instead of vanishing.
   const [confirmingPath, setConfirmingPath] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState('');
-  const armTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [renameDraft, setRenameDraft] = useState('');
+  const [renameError, setRenameError] = useState('');
   const [renameFlash, setRenameFlash] = useState(0);
   const renameInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -82,11 +82,10 @@ export function FileExplorer({
   function handleDeleteClick(path: string) {
     if (confirmingPath === path) { void remove(path); return; }
     setConfirmingPath(path);
-    if (armTimerRef.current) clearTimeout(armTimerRef.current);
-    armTimerRef.current = setTimeout(() => setConfirmingPath(cur => (cur === path ? null : cur)), 4000);
   }
 
   function startRename(path: string) {
+    setRenameError('');
     setRenamingPath(path);
     setRenameDraft(path);
     // Focus + select the basename (not the directory prefix) on next paint, VS-Code-style.
@@ -104,7 +103,10 @@ export function FileExplorer({
     const to = renameDraft.trim();
     const from = renamingPath;
     setRenamingPath(null);
-    if (!to || to === from) return;
+    // FIX-code-003: a blank rename used to just revert with no word.
+    if (!to) { setRenameError('The rename was cancelled — a file name cannot be empty.'); return; }
+    if (to === from) return;
+    setRenameError('');
     try {
       const r = await lensRun({ domain: 'code', action: 'files-rename', input: { projectId, from, to } });
       if (r.data?.ok === false) { alert(r.data?.error); return; }
@@ -131,6 +133,9 @@ export function FileExplorer({
       </div>
       {deleteError && (
         <div role="alert" className="px-2 py-1.5 border-b border-rose-500/30 bg-rose-500/10 text-[11px] text-rose-200">{deleteError}</div>
+      )}
+      {renameError && (
+        <div role="alert" className="px-2 py-1.5 border-b border-amber-500/30 bg-amber-500/10 text-[11px] text-amber-200">{renameError}</div>
       )}
       {creating && (
         <div className="p-2 border-b border-white/10 flex items-center gap-1">
@@ -181,9 +186,14 @@ export function FileExplorer({
                   <Pencil className="w-3 h-3" />
                 </button>
                 {confirmingPath === f.path ? (
-                  <button aria-label={`Confirm delete ${f.path}`} onClick={(e) => { e.stopPropagation(); handleDeleteClick(f.path); }} className="p-0.5 px-1 rounded bg-rose-500/20 text-rose-200 text-[10px] font-bold hover:bg-rose-500/30">
-                    Delete?
-                  </button>
+                  <>
+                    <button aria-label={`Confirm delete ${f.path}`} onClick={(e) => { e.stopPropagation(); handleDeleteClick(f.path); }} className="p-0.5 px-1 rounded bg-rose-500/20 text-rose-200 text-[10px] font-bold hover:bg-rose-500/30">
+                      Delete?
+                    </button>
+                    <button aria-label={`Cancel delete ${f.path}`} onClick={(e) => { e.stopPropagation(); setConfirmingPath(null); }} className="p-0.5 px-1 text-[10px] text-gray-300 hover:text-white">
+                      Cancel
+                    </button>
+                  </>
                 ) : (
                   <button aria-label="Delete" onClick={(e) => { e.stopPropagation(); handleDeleteClick(f.path); }} className="opacity-0 group-hover:opacity-100 p-0.5 text-gray-400 hover:text-rose-300">
                     <Trash2 className="w-3 h-3" />

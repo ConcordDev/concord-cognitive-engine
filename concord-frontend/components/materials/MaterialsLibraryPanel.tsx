@@ -13,6 +13,8 @@ import {
   Database, Beaker, Scale,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 type ModeTab = 'library' | 'tests' | 'comparisons' | 'suppliers' | 'composites' | 'standards';
 type ArtifactType = 'Material' | 'Test' | 'Comparison' | 'Supplier' | 'Composite' | 'Standard';
@@ -191,8 +193,8 @@ export function MaterialsLibraryPanel({ mode, onModeChange }: { mode: MaterialsC
   const renderEditor = () => {
     if (!editorOpen) return null;
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setEditorOpen(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-        <div className={cn(ds.panel, 'w-full max-w-lg max-h-[85vh] overflow-y-auto')} onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setEditorOpen(false)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
+        <div className={cn(ds.panel, 'w-full max-w-lg max-h-[85vh] overflow-y-auto')} onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <div className="flex items-center justify-between mb-4"><h3 className={ds.heading3}>{editingItem ? 'Edit' : 'New'} {activeArtifactType}</h3><button onClick={() => setEditorOpen(false)} className={ds.btnGhost} aria-label="Close"><X className="w-4 h-4" /></button></div>
           <div className="space-y-3">
             <div><label className={ds.label}>Name</label><input className={ds.input} value={formName} onChange={e => setFormName(e.target.value)} /></div>
@@ -274,7 +276,9 @@ export function MaterialsLibraryPanel({ mode, onModeChange }: { mode: MaterialsC
         <button onClick={openCreate} className={ds.btnPrimary}><Plus className="w-4 h-4" /> New</button>
       </div>
       {isLoading ? <div className="flex items-center justify-center py-12"><div className="w-6 h-6 border-2 border-zinc-300 border-t-transparent rounded-full animate-spin" /></div>
-      : filtered.length === 0 ? <div className={cn(ds.panel, 'text-center py-12')}><Box className="w-12 h-12 text-gray-600 mx-auto mb-3" /><p className={ds.textMuted}>No {activeArtifactType} items yet</p><button onClick={openCreate} className={cn(ds.btnPrimary, 'mt-3')}><Plus className="w-4 h-4" /> Create First</button></div>
+      : filtered.length === 0 ? ((searchQuery || filterStatus !== 'all')
+        ? <div className={cn(ds.panel, 'text-center py-12')}><Box className="w-12 h-12 text-gray-600 mx-auto mb-3" /><p className={ds.textMuted}>No {activeArtifactType} items match{searchQuery ? ` “${searchQuery}”` : ''}{filterStatus !== 'all' ? ` with status ${filterStatus}` : ''} — {items.length} in the library.</p><button onClick={() => { setSearchQuery(''); setFilterStatus('all'); }} className={cn(ds.btnSecondary, 'mt-3')}>Clear search & filter</button></div>
+        : <div className={cn(ds.panel, 'text-center py-12')}><Box className="w-12 h-12 text-gray-600 mx-auto mb-3" /><p className={ds.textMuted}>No {activeArtifactType} items yet</p><button onClick={openCreate} className={cn(ds.btnPrimary, 'mt-3')}><Plus className="w-4 h-4" /> Create First</button></div>)
       : filtered.map((item, index) => {
         const d = item.data as unknown as MaterialArtifact;
         const sc = STATUS_CONFIG[d.status] || STATUS_CONFIG.active;
@@ -298,7 +302,7 @@ export function MaterialsLibraryPanel({ mode, onModeChange }: { mode: MaterialsC
                 {d.meltingPoint && <span className="text-xs text-orange-400">{d.meltingPoint}&deg;C</span>}
                 {d.pricePerUnit && <span className="text-xs text-green-400">${d.pricePerUnit}/unit</span>}
                 <span className={`text-xs px-2 py-0.5 rounded-full bg-${sc.color}/20 text-${sc.color}`}>{sc.label}</span>
-                <button onClick={e => { e.stopPropagation(); remove(item.id); }} className={ds.btnGhost} aria-label="Delete"><Trash2 className="w-4 h-4 text-red-400" /></button>
+                <StickyDeleteConfirm onConfirm={() => remove(item.id)} armAriaLabel="Delete material" confirmAriaLabel="Confirm delete material" className={ds.btnGhost} armLabel={<Trash2 className="w-4 h-4 text-red-400" />} />
               </div>
             </div>
           </motion.div>

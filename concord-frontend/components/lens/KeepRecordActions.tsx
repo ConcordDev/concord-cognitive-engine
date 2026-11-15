@@ -103,7 +103,9 @@ export function KeepRecordActions({
         {draftId ? 'Drafted' : busy === 'draft' ? 'Drafting…' : 'Draft in Thread'}
       </button>
       {note ? (
-        <p role="status" className="basis-full text-[13px] text-zinc-400">{note}</p>
+        <p role="status" className="basis-full text-[13px] text-zinc-200">{note}</p>
+      ) : !dtuId ? (
+        <p className="basis-full text-[13px] text-zinc-300">Keep as DTU first. Draft in Thread stays off until that private DTU reads back.</p>
       ) : null}
     </div>
   );

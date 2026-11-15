@@ -32,6 +32,10 @@ const reliabilityColour = (score?: number) => {
 export function TimelineSourceTools() {
   const [events, setEvents] = useState<HistEvent[]>([{ name: '', date: '', era: '', category: 'political', significance: 'medium' }]);
   const [source, setSource] = useState<Source>({ title: '', type: 'primary', author: '', date: '', bias: 'none' });
+  // An unnamed source must not be scored: with only the form's defaults
+  // (primary / no bias) the evaluator returns 63/100 for a source that
+  // does not exist. Analyze stays disabled until the source has a title.
+  const sourceMissing = !source.title.trim();
 
   const addEvent = () => setEvents((es) => [...es, { name: '', date: '', era: '', category: 'political', significance: 'medium' }]);
   const updateEvent = <K extends keyof HistEvent>(i: number, key: K, value: HistEvent[K]) =>
@@ -92,6 +96,9 @@ export function TimelineSourceTools() {
                   {BIASES.map((b) => <option key={b} value={b}>{b}</option>)}
                 </select></label>
             </div>
+            {sourceMissing && (
+              <p className="text-[11px] text-amber-300">Name the source first — an unnamed source can&rsquo;t be scored. Give it a title and Analyze will run.</p>
+            )}
           </div>
         ),
       }}
@@ -145,6 +152,8 @@ export function TimelineSourceTools() {
           </div>
         </>
       )}
+      disabled={sourceMissing}
+      disabledHint="Name the source first — an unnamed source can't be scored."
       dtu={{
         apiSource: 'concord-history-timeline-source',
         title: (t, s) => `History analysis — ${t.totalEvents ?? 0} events · source ${s.reliabilityScore ?? '—'}/100`,

@@ -49,7 +49,7 @@ export function AnalyticsPanel() {
               </div>
               <span className="text-xs text-gray-400 tabular-nums">{item.sales} sales</span>
               <span className="text-sm text-neon-green font-bold tabular-nums">
-                ${(item.sales * item.prices.basic * 0.7).toFixed(0)}
+                {(item.sales * item.prices.basic * 0.7).toFixed(0)} CC
               </span>
             </div>
           ))}
@@ -59,7 +59,7 @@ export function AnalyticsPanel() {
         {[
           {
             label: 'Total Revenue',
-            value: totalRevenue > 0 ? `$${Math.round(totalRevenue).toLocaleString()}` : '$0',
+            value: totalRevenue > 0 ? `${Math.round(totalRevenue).toLocaleString()} CC` : '0 CC',
             sub: `From ${totalSales} sales`,
             color: 'text-neon-green',
           },
@@ -71,7 +71,7 @@ export function AnalyticsPanel() {
           },
           {
             label: 'Avg Order Value',
-            value: avgOrder > 0 ? `$${avgOrder}` : '$0',
+            value: avgOrder > 0 ? `${avgOrder} CC` : '0 CC',
             sub: 'Across all licenses',
             color: 'text-neon-purple',
           },

@@ -18,6 +18,7 @@ import {
 import { checkDurabilityGate } from "../lib/asset-gen/durability-gate.js";
 import { HONEST_BOUNDARY as DEGRADATION_HONEST_BOUNDARY } from "../lib/simulation/degradation-kinetics.js";
 import { needNums, notComputed, requireList } from "../lib/lens-inputs.js";
+import { badNumber, readingOrNull } from "../lib/finite-input.js";
 
 const MP_BASE = "https://api.materialsproject.org";
 
@@ -120,7 +121,11 @@ export default function registerMaterialsActions(registerLensAction) {
       }
       if (requirements.maxDensity) {
         const val = parseFloat(mat.density) || 0;
-        if (val <= requirements.maxDensity || val === 0) passes.push(`Density: ${val} <= ${requirements.maxDensity} g/cm\u00B3`);
+        // FIX-materials-008: an unrecorded density (parses to 0) is not
+        // a pass -- no data cannot satisfy a maximum; it fails
+        // as not recorded, like a property that was never measured.
+        if (val === 0) fails.push(`Density: not recorded (requirement <= ${requirements.maxDensity} g/cm\u00B3)`);
+        else if (val <= requirements.maxDensity) passes.push(`Density: ${val} <= ${requirements.maxDensity} g/cm\u00B3`);
         else fails.push(`Density: ${val} > ${requirements.maxDensity} g/cm\u00B3`);
       }
       if (requirements.minMelting) {
@@ -130,7 +135,10 @@ export default function registerMaterialsActions(registerLensAction) {
       }
       if (requirements.maxCost) {
         const val = parseFloat(mat.pricePerUnit || mat.cost) || 0;
-        if (val <= requirements.maxCost || val === 0) passes.push(`Cost: $${val} <= $${requirements.maxCost}`);
+        // FIX-materials-008: same rule as density — an unrecorded cost
+        // is not a free material; it fails as not recorded.
+        if (val === 0) fails.push(`Cost: not recorded (requirement <= $${requirements.maxCost})`);
+        else if (val <= requirements.maxCost) passes.push(`Cost: $${val} <= $${requirements.maxCost}`);
         else fails.push(`Cost: $${val} > $${requirements.maxCost}`);
       }
 
@@ -149,13 +157,35 @@ export default function registerMaterialsActions(registerLensAction) {
 
     const qualifying = filtered.filter(f => f.meetsAll);
 
+    // FIX-materials-008: the recommendation must say what it is. A
+    // candidate that meets NONE of the stated requirements is not a
+    // "closest match" under a trophy — when nothing qualifies and the
+    // best-ranked candidate still passes zero requirements, there is
+    // no recommendation at all (recommended: null, basis 'none'), and
+    // the panel says "No match" in words. A partial passer keeps the
+    // closest-match label with its basis named, so the panel can warn
+    // instead of celebrating.
+    const best = filtered[0];
+    let recommended = null;
+    let recommendationBasis = "none";
+    if (qualifying.length > 0) {
+      recommended = qualifying[0].name;
+      recommendationBasis = "meets-all";
+    } else if (best && best.passes > 0) {
+      recommended = best.name + " (closest match)";
+      recommendationBasis = "closest-partial";
+    }
+
     return {
       ok: true,
       result: {
         requirements,
         totalCandidates: candidates.length,
         qualifying: qualifying.length,
-        recommended: qualifying[0]?.name || (filtered[0]?.name + " (closest match)"),
+        recommended,
+        recommendationBasis,
+        recommendedMeets: recommendationBasis === "closest-partial" ? best.passes : undefined,
+        recommendedOf: recommendationBasis === "closest-partial" ? best.passes + best.fails : undefined,
         rankings: filtered,
         application: requirements.application || "General purpose",
       },
@@ -275,7 +305,13 @@ export default function registerMaterialsActions(registerLensAction) {
 
     // Material-specific adjustments
     if (material.includes("stainless") || material.includes("316") || material.includes("304")) resistance += 30;
-    if (material.includes("aluminum") || material.includes("6061")) resistance += 15;
+    // FIX-materials-009: aluminium's passive oxide layer is the reason
+    // it is specified unprotected outdoors; at +15 a 6061-T6 in mild
+    // outdoor air (25 C, 50% RH) scored 45 = "high" risk with a 3-10
+    // year lifespan, worse than the alloy's known atmospheric service.
+    // +25 puts mild-outdoor aluminium at 55 = moderate (10-20 years),
+    // while marine/chemical exposure stays high.
+    if (material.includes("aluminum") || material.includes("aluminium") || material.includes("6061")) resistance += 25;
     if (material.includes("titanium")) resistance += 35;
     if (material.includes("copper") || material.includes("bronze")) resistance += 10;
     if (material.includes("carbon steel") || material.includes("mild steel")) resistance -= 20;
@@ -649,7 +685,19 @@ export default function registerMaterialsActions(registerLensAction) {
    */
   registerLensAction("materials", "mp-search", async (_ctx, _artifact, params = {}) => {
     const apiKey = process.env.MATERIALS_PROJECT_API_KEY;
-    if (!apiKey) return { ok: false, error: "MATERIALS_PROJECT_API_KEY env required (free at materialsproject.org)" };
+    if (!apiKey) {
+      return {
+        // FIX-materials-006: the platform's key-gated shape (the
+        // key-required-live.js contract) — reason 'missing_api_key'
+        // stays HTTP 200 through the lens-run shaper and panels render
+        // it as the calm operator note, instead of a plain error
+        // string that shaped to a 422 and a red failure box.
+        ok: false, reason: "missing_api_key",
+        envVar: "MATERIALS_PROJECT_API_KEY",
+        signupUrl: "https://materialsproject.org",
+        message: "Set MATERIALS_PROJECT_API_KEY in .env to enable this panel. Free signup: https://materialsproject.org",
+      };
+    }
     const formula = params.formula ? String(params.formula).trim() : null;
     const elements = Array.isArray(params.elements) ? params.elements : null;
     if (!formula && !elements) return { ok: false, error: "formula or elements required" };
@@ -701,7 +749,19 @@ export default function registerMaterialsActions(registerLensAction) {
    */
   registerLensAction("materials", "mp-material", async (_ctx, _artifact, params = {}) => {
     const apiKey = process.env.MATERIALS_PROJECT_API_KEY;
-    if (!apiKey) return { ok: false, error: "MATERIALS_PROJECT_API_KEY env required" };
+    if (!apiKey) {
+      return {
+        // FIX-materials-006: the platform's key-gated shape (the
+        // key-required-live.js contract) — reason 'missing_api_key'
+        // stays HTTP 200 through the lens-run shaper and panels render
+        // it as the calm operator note, instead of a plain error
+        // string that shaped to a 422 and a red failure box.
+        ok: false, reason: "missing_api_key",
+        envVar: "MATERIALS_PROJECT_API_KEY",
+        signupUrl: "https://materialsproject.org",
+        message: "Set MATERIALS_PROJECT_API_KEY in .env to enable this panel. Free signup: https://materialsproject.org",
+      };
+    }
     const materialId = String(params.materialId || "").trim();
     if (!materialId) return { ok: false, error: "materialId required (e.g. 'mp-149')" };
     if (!/^mp-\d+$/.test(materialId)) return { ok: false, error: "materialId format must be 'mp-<digits>'" };
@@ -812,8 +872,15 @@ export default function registerMaterialsActions(registerLensAction) {
 
   registerLensAction("materials", "shortlist-add", (ctx, _a, params = {}) => {
     const s = getMaterialsState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const name = mtClean(params.name, 160);
-    if (!name) return { ok: false, error: "material name required" };
+    const rawName = String(params.name ?? "").trim();
+    if (!rawName) return { ok: false, error: "material name required", message: "Material name is required." };
+    if (rawName.length > 160) return badNumber("name", "must be 160 characters or fewer");
+    const name = rawName;
+    if (params.density !== undefined && params.density !== null && params.density !== "") {
+      const density = readingOrNull(params.density, { min: 0, max: 50, fallback: null });
+      if (density === null) return badNumber("density", "must be a number from 0 to 50");
+      params = { ...params, density };
+    }
     const list = mtSaved(s, mtActor(ctx));
     const refId = mtClean(params.refId, 120) || name.toLowerCase();
     if (list.some((m) => m.refId === refId)) return { ok: false, error: "material already shortlisted" };
@@ -1014,7 +1081,19 @@ export default function registerMaterialsActions(registerLensAction) {
   registerLensAction("materials", "mp-structure", async (_ctx, _artifact, params = {}) => {
     try {
       const apiKey = process.env.MATERIALS_PROJECT_API_KEY;
-      if (!apiKey) return { ok: false, error: "MATERIALS_PROJECT_API_KEY env required (free at materialsproject.org)" };
+      if (!apiKey) {
+        return {
+          // FIX-materials-006: the platform's key-gated shape (the
+          // key-required-live.js contract) — reason 'missing_api_key'
+          // stays HTTP 200 through the lens-run shaper and panels render
+          // it as the calm operator note, instead of a plain error
+          // string that shaped to a 422 and a red failure box.
+          ok: false, reason: "missing_api_key",
+          envVar: "MATERIALS_PROJECT_API_KEY",
+          signupUrl: "https://materialsproject.org",
+          message: "Set MATERIALS_PROJECT_API_KEY in .env to enable this panel. Free signup: https://materialsproject.org",
+        };
+      }
       const materialId = String(params.materialId || "").trim();
       if (!/^mp-\d+$/.test(materialId)) return { ok: false, error: "materialId format must be 'mp-<digits>'" };
       const url = `${MP_BASE}/materials/summary/?material_ids=${encodeURIComponent(materialId)}&_fields=material_id,formula_pretty,structure,symmetry,volume`;

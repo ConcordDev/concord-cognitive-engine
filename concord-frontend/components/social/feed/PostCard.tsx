@@ -11,7 +11,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   Heart, Repeat2, MessageSquare, Share2, MoreHorizontal, Quote,
-  Link2, Flag, VolumeX, Ban, Check, BarChart3, Trash2,
+  Link2, Flag, VolumeX, Ban, Check, BarChart3, Trash2, ChevronDown,
 } from 'lucide-react';
 import { api, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -113,7 +113,18 @@ export function PostCard({ post, username, currentUserId, onChanged, onQuote, on
     setShowReactions(false);
     const r = await lensRun('social', 'react', { postId: post.id, reaction: kind });
     if (r.data?.ok) onChanged();
+    // FIX-social-005: a failed react used to be swallowed whole — the
+    // click looked exactly like the toggle doing nothing. Say so.
+    else setNotice(r.data?.error ? `Reaction didn't go through: ${r.data.error}` : "Reaction didn't go through — try again.");
   }, [post.id, onChanged]);
+
+  // FIX-social-005: the heart button only opened the emoji picker, so
+  // "react, click again" opened and closed the picker — no count, no
+  // removal, and removing a reaction meant re-picking it in the
+  // picker. The heart now toggles the heart reaction itself (the
+  // macro toggles the same kind off and switches from any other
+  // kind); the picker stays one tap away on its own button.
+  const toggleHeart = useCallback(() => { void react('love'); }, [react]);
 
   const repost = useCallback(async () => {
     const r = await lensRun('social', 'repost', { postId: post.id });
@@ -207,7 +218,7 @@ export function PostCard({ post, username, currentUserId, onChanged, onQuote, on
     <article className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3 hover:border-indigo-500/20 transition-colors">
       <div className="flex items-baseline gap-2">
         <span className="text-sm font-medium text-zinc-100">{author.name}</span>
-        {author.handle && author.handle !== author.name && <span className="text-xs text-zinc-500">@{author.handle}</span>}
+        {author.handle && author.handle !== author.name && <span className="text-xs text-zinc-400">@{author.handle}</span>}
         <span className="text-[10px] text-zinc-400">{relTime(post.createdAt)}</span>
         <div className="relative ml-auto">
           <button
@@ -271,7 +282,7 @@ export function PostCard({ post, username, currentUserId, onChanged, onQuote, on
         </div>
       </div>
 
-      {post.editedAt && <p className="text-[10px] text-zinc-500">edited</p>}
+      {post.editedAt && <p className="text-[10px] text-zinc-400">edited</p>}
       {post.isPinned && <p className="text-[10px] text-amber-300/80">pinned</p>}
       {editing ? (
         <form className="mt-2 flex gap-2" onSubmit={(e) => { e.preventDefault(); void saveEdit(); }}>
@@ -365,11 +376,23 @@ export function PostCard({ post, username, currentUserId, onChanged, onQuote, on
         <div className="relative">
           <button
             type="button"
-            onClick={() => setShowReactions((v) => !v)}
+            aria-label="React to post"
+            aria-pressed={post.viewerReaction === 'love'}
+            onClick={toggleHeart}
+            title={post.viewerReaction === 'love' ? 'Remove heart' : 'Heart'}
             className={cn('flex items-center gap-1 text-xs hover:text-rose-400', post.viewerReaction && 'text-rose-400')}
           >
-            <Heart className={cn('w-4 h-4', post.viewerReaction && 'fill-rose-400')} />
+            <Heart className={cn('w-4 h-4', post.viewerReaction === 'love' && 'fill-rose-400')} />
             {post.reactionTotal > 0 && post.reactionTotal}
+          </button>
+          <button
+            type="button"
+            aria-label="Choose a reaction"
+            aria-expanded={showReactions}
+            onClick={() => setShowReactions((v) => !v)}
+            className="flex items-center text-xs text-zinc-400 hover:text-zinc-300"
+          >
+            <ChevronDown className="w-3.5 h-3.5" />
           </button>
           {showReactions && (
             <div className="absolute bottom-7 left-0 z-20 flex gap-0.5 rounded-full border border-zinc-800 bg-zinc-950 px-1.5 py-1 shadow-xl">
@@ -382,7 +405,7 @@ export function PostCard({ post, username, currentUserId, onChanged, onQuote, on
                     'rounded-full px-1 text-base hover:scale-125 transition-transform',
                     post.viewerReaction === id && 'bg-indigo-500/20',
                   )}
-                  title={id}
+                  title={post.viewerReaction === id ? `${id} — click again to remove` : id}
                 >
                   {REACTION_EMOJI[id] || '➕'}
                 </button>
@@ -392,6 +415,8 @@ export function PostCard({ post, username, currentUserId, onChanged, onQuote, on
         </div>
         <button
           type="button"
+          aria-label="Show replies"
+          aria-expanded={showReplies}
           onClick={() => setShowReplies((v) => !v)}
           className="flex items-center gap-1 text-xs hover:text-indigo-300"
         >
@@ -400,6 +425,8 @@ export function PostCard({ post, username, currentUserId, onChanged, onQuote, on
         </button>
         <button
           type="button"
+          aria-label={post.viewerReposted ? 'Reposted' : 'Repost post'}
+          aria-pressed={!!post.viewerReposted}
           onClick={() => void repost()}
           className={cn('flex items-center gap-1 text-xs hover:text-emerald-400', post.viewerReposted && 'text-emerald-400')}
         >
@@ -447,7 +474,7 @@ export function PostCard({ post, username, currentUserId, onChanged, onQuote, on
 
       {showReplies && (
         <div className="mt-2 border-t border-zinc-800 pt-2">
-          <ReplyTree postId={post.id} username={username} />
+          <ReplyTree postId={post.id} username={username} currentUserId={currentUserId} />
         </div>
       )}
     </article>

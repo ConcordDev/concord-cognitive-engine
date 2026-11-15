@@ -14,6 +14,17 @@ import {
   getEmailServiceStatus,
 } from "../lib/email-service.js";
 import { isHighPowerModeAllowed } from "../lib/high-power-allowlist.js";
+import {
+  base32Decode,
+  verifyTotp,
+  generateSecretBase32,
+  buildOtpauthUri,
+  generateRecoveryCodes,
+  hashRecoveryCode,
+  encryptSecret,
+  decryptSecret,
+  signInChallenges,
+} from "../lib/totp.js";
 
 // ── Auth rate limiters (defense-in-depth) ────────────────────────────────────
 // Two independent buckets:
@@ -308,6 +319,109 @@ export default function createAuthRouter({
     });
   });
 
+  // ── Two-factor authentication (FIX-settings-005) ────────────────────
+  // Enrolment lives at /2fa/* below; enforcement gates this router's
+  // /login and OAuth completion (routes/oauth.js) on the shared
+  // challenge store from lib/totp.js. The store of record is the
+  // user_totp table (migration 511); every read is guarded, so a DB
+  // without the table behaves exactly as before — no 2FA anywhere.
+  function getTotpRow(userId) {
+    if (!db || !userId) return null;
+    try {
+      return db.prepare("SELECT user_id, secret_enc, enabled, last_step, confirmed_at FROM user_totp WHERE user_id = ?").get(userId) || null;
+    } catch (_e) { return null; }
+  }
+
+  function twoFactorEnabled(userId) {
+    const row = getTotpRow(userId);
+    return !!(row && row.enabled);
+  }
+
+  // Verify a TOTP code OR consume a recovery code for the user.
+  // Returns "totp" | "recovery" | null. The replay guard (last_step)
+  // and the code consumption persist as side effects of a SUCCESS only.
+  function verifySecondFactor(userId, code) {
+    const row = getTotpRow(userId);
+    if (!row || !row.enabled) return null;
+    const secret = decryptSecret(row.secret_enc);
+    if (secret) {
+      const verdict = verifyTotp(base32Decode(secret), code, { lastAcceptedStep: row.last_step ?? -1 });
+      if (verdict.ok) {
+        try { db.prepare("UPDATE user_totp SET last_step = ? WHERE user_id = ?").run(verdict.step, userId); } catch (_e) { /* the ±1 window still bounds reuse */ }
+        return "totp";
+      }
+    }
+    try {
+      const hash = hashRecoveryCode(code);
+      const rec = db.prepare("SELECT id FROM user_totp_recovery WHERE user_id = ? AND code_hash = ? AND used_at IS NULL").get(userId, hash);
+      if (rec) {
+        db.prepare("UPDATE user_totp_recovery SET used_at = ? WHERE id = ?").run(Date.now(), rec.id);
+        return "recovery";
+      }
+    } catch (_e) { /* table absent → no recovery path */ }
+    return null;
+  }
+
+  // Derive the personal locker key from the plaintext password.
+  // Background — does not block the response. Runs at the password
+  // step (the only moment the password exists), including on the 2FA
+  // challenge path: every locker endpoint requires a completed
+  // session, so deriving the key before the second factor completes
+  // exposes nothing usable.
+  function kickLockerDerivation(user, password) {
+    if (!setLockerKey || !db || !password) return;
+    (async () => {
+      try {
+        let lockerSalt = user.locker_salt;
+        if (!lockerSalt) {
+          lockerSalt = generateLockerSalt();
+          db.prepare("UPDATE users SET locker_salt = ? WHERE id = ?").run(lockerSalt, user.id);
+        }
+        const key = await deriveLockerKey(password, user.id, lockerSalt);
+        setLockerKey(user.id, key);
+      } catch (_e) { /* non-fatal — locker simply stays locked */ }
+    })();
+  }
+
+  // Issue a completed sign-in: last-login stamp, token pair, cookies,
+  // refresh-family tracking, audit. Called by /login when no second
+  // factor stands in the way, and by /login/verify-2fa once it does.
+  function issueSession(req, res, user, { password = null, factor = "password" } = {}) {
+    AuthDB.updateUserLogin(user.id);
+
+    const token = createToken(user.id);
+    const refreshToken = createRefreshToken(user.id);
+
+    // SECURITY: Set httpOnly cookies for browser auth
+    if (token) setAuthCookie(res, token, req);
+    if (refreshToken) setRefreshCookie(res, refreshToken, req);
+
+    // Track refresh token family
+    try {
+      if (refreshToken) {
+        const decoded = jwt.decode(refreshToken);
+        if (decoded?.family) _REFRESH_FAMILIES.set(decoded.family, { userId: user.id, currentJti: decoded.jti, rotatedAt: Date.now() });
+      }
+    } catch (_e) { logger.debug('auth', 'silent catch', { error: _e?.message }); }
+
+    // Audit successful login
+    auditLog("auth", "login_success", {
+      userId: user.id,
+      username: user.username,
+      ip: req.ip,
+      userAgent: req.headers["user-agent"],
+      factor
+    });
+
+    if (password) kickLockerDerivation(user, password);
+
+    res.json({
+      ok: true,
+      user: { id: user.id, username: user.username, email: user.email, role: user.role },
+      token: token || undefined // Only return token if JWT is available
+    });
+  }
+
   // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/login", authRateLimitMiddleware, validate("userLogin"), async (req, res) => {
     // Defense-in-depth: per-IP AND per-account rate limiting so NAT
@@ -372,52 +486,176 @@ export default function createAuthRouter({
     // elevate it via this response.
     clearAccountRateLimit(accountKey);
 
-    AuthDB.updateUserLogin(user.id);
-
-    const token = createToken(user.id);
-    const refreshToken = createRefreshToken(user.id);
-
-    // SECURITY: Set httpOnly cookies for browser auth
-    if (token) setAuthCookie(res, token, req);
-    if (refreshToken) setRefreshCookie(res, refreshToken, req);
-
-    // Track refresh token family
-    try {
-      if (refreshToken) {
-        const decoded = jwt.decode(refreshToken);
-        if (decoded?.family) _REFRESH_FAMILIES.set(decoded.family, { userId: user.id, currentJti: decoded.jti, rotatedAt: Date.now() });
-      }
-    } catch (_e) { logger.debug('auth', 'silent catch', { error: _e?.message }); }
-
-    // Audit successful login
-    auditLog("auth", "login_success", {
-      userId: user.id,
-      username: user.username,
-      ip: req.ip,
-      userAgent: req.headers["user-agent"]
-    });
-
-    // Derive personal locker key from plaintext password (available only at login).
-    // Run async in background — does not block the login response.
-    if (setLockerKey && db) {
-      (async () => {
-        try {
-          let lockerSalt = user.locker_salt;
-          if (!lockerSalt) {
-            lockerSalt = generateLockerSalt();
-            db.prepare("UPDATE users SET locker_salt = ? WHERE id = ?").run(lockerSalt, user.id);
-          }
-          const key = await deriveLockerKey(password, user.id, lockerSalt);
-          setLockerKey(user.id, key);
-        } catch (_e) { /* non-fatal — locker simply stays locked */ }
-      })();
+    // Two-factor gate (FIX-settings-005): the password has verified,
+    // but an enrolled account earns no session until the second factor
+    // does — no tokens, no cookies, only a 5-minute challenge. The
+    // locker derivation still runs here (see kickLockerDerivation).
+    if (twoFactorEnabled(user.id)) {
+      kickLockerDerivation(user, password);
+      const challengeId = signInChallenges.mint(user.id);
+      auditLog("auth", "login_2fa_challenge", {
+        userId: user.id,
+        username: user.username,
+        ip: req.ip,
+        userAgent: req.headers["user-agent"]
+      });
+      return res.json({ ok: true, twoFactorRequired: true, challengeId });
     }
 
-    res.json({
+    return issueSession(req, res, user, { password });
+  });
+
+  // Second step of a gated sign-in. The challenge id is the only
+  // credential this endpoint takes: it was minted server-side after
+  // the password verified, lives 5 minutes, and burns after 5 failed
+  // attempts or on success. One error shape for every failure — the
+  // response never says which factor was tried or why it failed.
+  // AUTH: public — pre-session by design; the server-minted, single-use sign-in challenge id is the credential; protected by authRateLimitMiddleware.
+  router.post("/login/verify-2fa", authRateLimitMiddleware, async (req, res) => {
+    const { challengeId, code } = req.body || {};
+    const challenge = typeof challengeId === "string" ? signInChallenges.get(challengeId) : null;
+    if (!challenge) {
+      return res.status(401).json({ ok: false, error: "This sign-in step has expired. Sign in again to get a fresh one." });
+    }
+    const user = AuthDB.getUser(challenge.userId);
+    if (!user) {
+      signInChallenges.burn(challengeId);
+      return res.status(401).json({ ok: false, error: "This sign-in step has expired. Sign in again to get a fresh one." });
+    }
+    const factor = verifySecondFactor(user.id, code);
+    if (!factor) {
+      signInChallenges.fail(challengeId);
+      auditLog("auth", "login_2fa_failed", {
+        userId: user.id,
+        ip: req.ip,
+        userAgent: req.headers["user-agent"]
+      });
+      return res.status(401).json({ ok: false, error: "That code didn't match. Check your authenticator app, or use a recovery code." });
+    }
+    signInChallenges.burn(challengeId);
+    return issueSession(req, res, user, { factor });
+  });
+
+  // ── 2FA enrolment + management (authenticated) ──────────────────────
+
+  router.get("/2fa/status", (req, res) => {
+    if (!req.user) return res.status(401).json({ ok: false, error: "Not authenticated" });
+    const row = getTotpRow(req.user.id);
+    let recoveryCodesRemaining = 0;
+    if (row && row.enabled && db) {
+      try {
+        const counted = db.prepare("SELECT COUNT(*) AS n FROM user_totp_recovery WHERE user_id = ? AND used_at IS NULL").get(req.user.id);
+        recoveryCodesRemaining = counted?.n || 0;
+      } catch (_e) { /* table absent */ }
+    }
+    return res.json({
       ok: true,
-      user: { id: user.id, username: user.username, email: user.email, role: user.role },
-      token: token || undefined // Only return token if JWT is available
+      enabled: !!(row && row.enabled),
+      pending: !!row && !row.enabled,
+      confirmedAt: row?.confirmed_at || null,
+      recoveryCodesRemaining,
     });
+  });
+
+  // Begin (or restart) enrolment: mint a PENDING secret. Nothing is
+  // enforced until /2fa/enable proves possession with a valid code.
+  // The plaintext secret is returned in this response only, for the
+  // authenticator setup (QR + manual entry); it is stored encrypted.
+  router.post("/2fa/setup", (req, res) => {
+    if (!req.user) return res.status(401).json({ ok: false, error: "Not authenticated" });
+    if (!db) return res.status(503).json({ ok: false, error: "Two-factor authentication is unavailable on this server." });
+    const existing = getTotpRow(req.user.id);
+    if (existing && existing.enabled) {
+      return res.status(409).json({ ok: false, error: "Two-factor authentication is already on. Turn it off first if you need to set it up again." });
+    }
+    const secret = generateSecretBase32();
+    try {
+      db.prepare(
+        "INSERT INTO user_totp (user_id, secret_enc, enabled, last_step, created_at, confirmed_at) VALUES (?, ?, 0, -1, ?, NULL) " +
+        "ON CONFLICT(user_id) DO UPDATE SET secret_enc = excluded.secret_enc, enabled = 0, last_step = -1, created_at = excluded.created_at, confirmed_at = NULL"
+      ).run(req.user.id, encryptSecret(secret), Date.now());
+    } catch (_e) {
+      return res.status(503).json({ ok: false, error: "Two-factor authentication is unavailable on this server." });
+    }
+    const account = req.user.username || req.user.email || req.user.id;
+    return res.json({ ok: true, secret, otpauthUri: buildOtpauthUri({ account, secretBase32: secret }) });
+  });
+
+  // Confirm enrolment: a valid code against the pending secret turns
+  // enforcement ON and issues the recovery codes — returned in this
+  // response only; at rest they exist solely as SHA-256 hashes.
+  router.post("/2fa/enable", (req, res) => {
+    if (!req.user) return res.status(401).json({ ok: false, error: "Not authenticated" });
+    const row = getTotpRow(req.user.id);
+    if (!row) return res.status(400).json({ ok: false, error: "Start setup first, then confirm with a code from your authenticator." });
+    if (row.enabled) return res.status(409).json({ ok: false, error: "Two-factor authentication is already on." });
+    const secret = decryptSecret(row.secret_enc);
+    const { code } = req.body || {};
+    const verdict = secret ? verifyTotp(base32Decode(secret), code, { lastAcceptedStep: -1 }) : { ok: false };
+    if (!verdict.ok) {
+      return res.status(401).json({ ok: false, error: "That code didn't match the setup secret. Check the time on your phone and try again." });
+    }
+    const recoveryCodes = generateRecoveryCodes();
+    try {
+      db.prepare("UPDATE user_totp SET enabled = 1, confirmed_at = ?, last_step = ? WHERE user_id = ?").run(Date.now(), verdict.step, req.user.id);
+      db.prepare("DELETE FROM user_totp_recovery WHERE user_id = ?").run(req.user.id);
+      const insert = db.prepare("INSERT INTO user_totp_recovery (user_id, code_hash, used_at, created_at) VALUES (?, ?, NULL, ?)");
+      for (const code of recoveryCodes) insert.run(req.user.id, hashRecoveryCode(code), Date.now());
+    } catch (_e) {
+      return res.status(503).json({ ok: false, error: "Two-factor authentication is unavailable on this server." });
+    }
+    auditLog("auth", "2fa_enabled", { userId: req.user.id, ip: req.ip, userAgent: req.headers["user-agent"] });
+    return res.json({ ok: true, recoveryCodes });
+  });
+
+  // Shared gate for the destructive 2FA actions: the account password
+  // AND a current second factor (TOTP or an unused recovery code).
+  async function requirePasswordAndFactor(req, res) {
+    const user = AuthDB.getUser(req.user.id);
+    const { password, code } = req.body || {};
+    if (!user || !(await verifyPassword(String(password || ""), user.passwordHash))) {
+      res.status(401).json({ ok: false, error: "Your password didn't match." });
+      return null;
+    }
+    if (!verifySecondFactor(user.id, code)) {
+      res.status(401).json({ ok: false, error: "That code didn't match. Turning this off needs your password and a current code." });
+      return null;
+    }
+    return user;
+  }
+
+  router.post("/2fa/disable", async (req, res) => {
+    if (!req.user) return res.status(401).json({ ok: false, error: "Not authenticated" });
+    if (!twoFactorEnabled(req.user.id)) return res.status(400).json({ ok: false, error: "Two-factor authentication is not on for this account." });
+    const user = await requirePasswordAndFactor(req, res);
+    if (!user) return;
+    try {
+      db.prepare("DELETE FROM user_totp WHERE user_id = ?").run(req.user.id);
+      db.prepare("DELETE FROM user_totp_recovery WHERE user_id = ?").run(req.user.id);
+    } catch (_e) {
+      return res.status(503).json({ ok: false, error: "Two-factor authentication is unavailable on this server." });
+    }
+    auditLog("auth", "2fa_disabled", { userId: req.user.id, ip: req.ip, userAgent: req.headers["user-agent"] });
+    return res.json({ ok: true });
+  });
+
+  // Replace the recovery-code set: the old set burns, the new set is
+  // returned in this response only.
+  router.post("/2fa/recovery-codes", async (req, res) => {
+    if (!req.user) return res.status(401).json({ ok: false, error: "Not authenticated" });
+    if (!twoFactorEnabled(req.user.id)) return res.status(400).json({ ok: false, error: "Two-factor authentication is not on for this account." });
+    const user = await requirePasswordAndFactor(req, res);
+    if (!user) return;
+    const recoveryCodes = generateRecoveryCodes();
+    try {
+      db.prepare("DELETE FROM user_totp_recovery WHERE user_id = ?").run(req.user.id);
+      const insert = db.prepare("INSERT INTO user_totp_recovery (user_id, code_hash, used_at, created_at) VALUES (?, ?, NULL, ?)");
+      for (const code of recoveryCodes) insert.run(req.user.id, hashRecoveryCode(code), Date.now());
+    } catch (_e) {
+      return res.status(503).json({ ok: false, error: "Two-factor authentication is unavailable on this server." });
+    }
+    auditLog("auth", "2fa_recovery_regenerated", { userId: req.user.id, ip: req.ip, userAgent: req.headers["user-agent"] });
+    return res.json({ ok: true, recoveryCodes });
   });
 
   router.get("/me", (req, res) => {

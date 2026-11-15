@@ -14,7 +14,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api/client';
+import { api, lensRun } from '@/lib/api/client';
 import {
   Scale, Plus, Search, Users, MessageSquare,
   ThumbsUp, ThumbsDown, Zap, Send, Timer, Trophy, TrendingUp, Loader2, Trash2,
@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { DebateActionPanel } from '@/components/debate/DebateActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
 
@@ -53,6 +54,7 @@ interface DebateData {
   moderator: string;
   timeLimit: number;
   createdAt: string;
+  mapDebateId?: string;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -416,15 +418,42 @@ function VerdictDisplay({ proArguments, conArguments, proVotes, conVotes }:
 
 export function LiveFloorPanel() {
   const [search, setSearch] = useState('');
-  const [selectedDebate, setSelectedDebate] = useState<string | null>(null);
+  const [selectedDebate, setSelectedDebate] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    return sessionStorage.getItem('concord:debate:selected');
+  });
   const [showCreate, setShowCreate] = useState(false);
   const [showDebateTools, setShowDebateTools] = useState(false);
+  const createRef = useRef<HTMLDivElement>(null);
+  const toolsRef = useRef<HTMLDivElement>(null);
+
+  const revealCreate = useCallback(() => {
+    setShowCreate(true);
+    requestAnimationFrame(() => createRef.current?.scrollIntoView({ block: 'center' }));
+  }, []);
+  const revealTools = useCallback(() => {
+    setShowDebateTools(true);
+    requestAnimationFrame(() => toolsRef.current?.scrollIntoView({ block: 'center' }));
+  }, []);
+
+  useEffect(() => {
+    const open = () => revealCreate();
+    window.addEventListener('debate:open-floor', open);
+    return () => window.removeEventListener('debate:open-floor', open);
+  }, [revealCreate]);
   const [newDebate, setNewDebate] = useState<{ topic: string; description: string; format: DebateData['format']; timeLimit: number }>({ topic: '', description: '', format: 'open', timeLimit: 30 });
+  const [createError, setCreateError] = useState<string | null>(null);
   const [newArgument, setNewArgument] = useState('');
+  const [editingArg, setEditingArg] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
   const [argumentSide, setArgumentSide] = useState<'pro' | 'con'>('pro');
 
   // --- Debate phase & turn management ---
-  const [debatePhase, setDebatePhase] = useState<DebatePhase>('setup');
+  const [debatePhase, setDebatePhase] = useState<DebatePhase>(() => {
+    if (typeof window === 'undefined') return 'setup';
+    const saved = sessionStorage.getItem('concord:debate:phase');
+    return saved && saved in PHASE_CONFIG ? saved as DebatePhase : 'setup';
+  });
   const [currentTurn, setCurrentTurn] = useState<DebateSide>('pro');
   const [turnCount, setTurnCount] = useState(0);
 
@@ -536,16 +565,29 @@ export function LiveFloorPanel() {
     totalVotes: debates.reduce((s, d) => s + (d.proVotes || 0) + (d.conVotes || 0), 0),
   }), [debates]);
 
+  useEffect(() => {
+    sessionStorage.setItem('concord:debate:phase', debatePhase);
+    if (selectedDebate) sessionStorage.setItem('concord:debate:selected', selectedDebate);
+  }, [debatePhase, selectedDebate]);
+
   const handleCreate = useCallback(async () => {
-    if (!newDebate.topic.trim()) return;
+    const topic = newDebate.topic.trim();
+    if (!topic) { setCreateError('A debate topic is required.'); return; }
+    setCreateError(null);
+    let mapDebateId: string | undefined;
+    if (topic.length >= 8) {
+      const mapped = await lensRun<{ debate?: { id: string } }>('debate', 'debate-create', { thesis: topic });
+      mapDebateId = mapped.data?.result?.debate?.id;
+    }
     await create({
-      title: newDebate.topic,
+      title: topic,
       data: {
-        topic: newDebate.topic, description: newDebate.description,
+        topic, description: newDebate.description,
         status: 'open', format: newDebate.format,
         proArguments: [], conArguments: [],
         proVotes: 0, conVotes: 0, moderator: '',
         timeLimit: newDebate.timeLimit, createdAt: new Date().toISOString(),
+        mapDebateId,
       },
     });
     setNewDebate({ topic: '', description: '', format: 'open', timeLimit: 30 });
@@ -564,8 +606,32 @@ export function LiveFloorPanel() {
       updatedData.conArguments = [...(updatedData.conArguments || []), newArg];
     }
     await update(selectedDebate, { data: updatedData });
+    const mapDebateId = (item.data as DebateData).mapDebateId;
+    if (mapDebateId && newArgument.trim().length >= 4) {
+      await lensRun('debate', 'claim-add', { debateId: mapDebateId, text: newArgument.trim(), stance: argumentSide });
+    }
     setNewArgument('');
   }, [newArgument, selectedDebate, selectedDebateData, argumentSide, items, update]);
+
+  const editArgument = useCallback(async (side: 'pro' | 'con', index: number, text: string) => {
+    if (!selectedDebate || !text.trim()) return;
+    const item = items.find((i) => i.id === selectedDebate);
+    if (!item) return;
+    const data = { ...item.data } as DebateData;
+    const key = side === 'pro' ? 'proArguments' : 'conArguments';
+    data[key] = (data[key] || []).map((arg, i) => i === index ? { ...arg, text: text.trim() } : arg);
+    await update(selectedDebate, { data });
+  }, [selectedDebate, items, update]);
+
+  const removeArgument = useCallback(async (side: 'pro' | 'con', index: number) => {
+    if (!selectedDebate) return;
+    const item = items.find((i) => i.id === selectedDebate);
+    if (!item) return;
+    const data = { ...item.data } as DebateData;
+    const key = side === 'pro' ? 'proArguments' : 'conArguments';
+    data[key] = (data[key] || []).filter((_, i) => i !== index);
+    await update(selectedDebate, { data });
+  }, [selectedDebate, items, update]);
 
   if (isError) return <div className="flex items-center justify-center h-full p-8"><ErrorState error={error?.message} onRetry={refetch} /></div>;
 
@@ -573,11 +639,11 @@ export function LiveFloorPanel() {
     <>
     <div className="space-y-6">
       <header className="flex items-center justify-end gap-2 flex-wrap">
-        <button onClick={() => setShowDebateTools(t => !t)}
+        <button onClick={revealTools}
           className={cn('btn-neon', showDebateTools && 'bg-purple-500/20 border-purple-500/40')}>
           <Timer className="w-4 h-4 mr-1 inline" /> Tools
         </button>
-        <button onClick={() => setShowCreate(!showCreate)} className="btn-neon purple">
+        <button onClick={revealCreate} className="btn-neon purple">
           <Plus className="w-4 h-4 mr-2 inline" /> New Debate
         </button>
       </header>
@@ -766,7 +832,7 @@ export function LiveFloorPanel() {
       </div>
 
       {showCreate && (
-        <div className="panel p-4 space-y-3">
+        <div ref={createRef} className="panel p-4 space-y-3">
           <h3 className="font-semibold">Start a Debate</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <input value={newDebate.topic} onChange={e => setNewDebate(p => ({ ...p, topic: e.target.value }))} placeholder="Debate topic..." className="input-lattice" />
@@ -776,7 +842,8 @@ export function LiveFloorPanel() {
             </select>
             <input value={newDebate.description} onChange={e => setNewDebate(p => ({ ...p, description: e.target.value }))} placeholder="Description..." className="input-lattice md:col-span-2" />
           </div>
-          <button onClick={handleCreate} disabled={createMut.isPending || !newDebate.topic.trim()} className="btn-neon green w-full">
+          {createError && <p role="alert" className="text-xs text-rose-300">{createError}</p>}
+          <button onClick={handleCreate} disabled={createMut.isPending} className="btn-neon green w-full">
             {createMut.isPending ? 'Creating...' : 'Start Debate'}
           </button>
         </div>
@@ -818,6 +885,7 @@ export function LiveFloorPanel() {
       <AnimatePresence>
         {showDebateTools && (
           <motion.div
+            ref={toolsRef}
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
@@ -833,6 +901,24 @@ export function LiveFloorPanel() {
               />
               {selectedDebateData ? (
                 <div className="space-y-4">
+                  {debatePhase === 'voting' && (
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => void update(selectedDebateData.id, { data: { ...items.find((item) => item.id === selectedDebateData.id)?.data, proVotes: (selectedDebateData.proVotes || 0) + 1 } })}
+                        className="rounded bg-emerald-700 px-3 py-1.5 text-xs text-white"
+                      >
+                        Vote Pro
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void update(selectedDebateData.id, { data: { ...items.find((item) => item.id === selectedDebateData.id)?.data, conVotes: (selectedDebateData.conVotes || 0) + 1 } })}
+                        className="rounded bg-rose-800 px-3 py-1.5 text-xs text-white"
+                      >
+                        Vote Con
+                      </button>
+                    </div>
+                  )}
                   <ProConScale
                     proCount={selectedDebateData.proArguments?.length || 0}
                     conCount={selectedDebateData.conArguments?.length || 0}
@@ -897,9 +983,7 @@ export function LiveFloorPanel() {
                     <span>{d.format}</span>
                   </div>
                 </button>
-                <button onClick={() => remove(d.id)} disabled={deleteMut.isPending} className="mt-2 text-gray-400 hover:text-red-400 text-xs flex items-center gap-1">
-                  {deleteMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />} Remove
-                </button>
+                <StickyDeleteConfirm onConfirm={() => remove(d.id)} disabled={deleteMut.isPending} armLabel={<><Trash2 className="w-3 h-3" /> Remove</>} armAriaLabel={`Remove ${d.topic}`} confirmAriaLabel={`Confirm remove ${d.topic}`} className="mt-2 text-gray-400 hover:text-red-400 text-xs flex items-center gap-1" />
               </div>
             ))}
           </div>
@@ -920,9 +1004,14 @@ export function LiveFloorPanel() {
                     <div className="space-y-2">
                       {(selectedDebateData.proArguments || []).map((arg, i) => (
                         <div key={i} className="bg-neon-green/5 border border-neon-green/20 rounded-lg p-3 space-y-2">
-                          <p className="text-sm text-gray-200">{arg.text}</p>
+                          {editingArg === `pro-${i}` ? (
+                            <input value={editText} onChange={(e) => setEditText(e.target.value)} onBlur={() => { void editArgument('pro', i, editText); setEditingArg(null); }} className="w-full bg-transparent text-sm text-gray-200 outline-none" autoFocus />
+                          ) : (
+                            <button type="button" onClick={() => { setEditingArg(`pro-${i}`); setEditText(arg.text); }} className="text-left text-sm text-gray-200">{arg.text}</button>
+                          )}
                           <p className="text-xs text-gray-400">{arg.author}</p>
                           <ArgumentStrengthMeter evaluation={arg.evaluation} />
+                          <StickyDeleteConfirm onConfirm={() => removeArgument('pro', i)} armLabel="Remove" className="text-[11px] text-gray-400" />
                         </div>
                       ))}
                     </div>
@@ -933,9 +1022,14 @@ export function LiveFloorPanel() {
                     <div className="space-y-2">
                       {(selectedDebateData.conArguments || []).map((arg, i) => (
                         <div key={i} className="bg-red-400/5 border border-red-400/20 rounded-lg p-3 space-y-2">
-                          <p className="text-sm text-gray-200">{arg.text}</p>
+                          {editingArg === `con-${i}` ? (
+                            <input value={editText} onChange={(e) => setEditText(e.target.value)} onBlur={() => { void editArgument('con', i, editText); setEditingArg(null); }} className="w-full bg-transparent text-sm text-gray-200 outline-none" autoFocus />
+                          ) : (
+                            <button type="button" onClick={() => { setEditingArg(`con-${i}`); setEditText(arg.text); }} className="text-left text-sm text-gray-200">{arg.text}</button>
+                          )}
                           <p className="text-xs text-gray-400">{arg.author}</p>
                           <ArgumentStrengthMeter evaluation={arg.evaluation} />
+                          <StickyDeleteConfirm onConfirm={() => removeArgument('con', i)} armLabel="Remove" className="text-[11px] text-gray-400" />
                         </div>
                       ))}
                     </div>

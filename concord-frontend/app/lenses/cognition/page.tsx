@@ -11,7 +11,9 @@
  * complete: edit (updateExport), delete (deleteExport, two-step), an
  * answered state (answerExport), and an identical re-create returns the
  * standing record (the server's duplicate flag) instead of a second
- * copy. Title and trace live in cognition_traces, so a server restart
+ * copy. Saving an entry as a DTU records the link on the entry
+ * (linkExportDtu) so the saved state survives reload, and deleting a
+ * linked entry offers to remove its DTU too instead of orphaning it. Title and trace live in cognition_traces, so a server restart
  * still lists them. Below the log, a labelled window states this lens's
  * relationship to the platform's emergent-entity store (D3).
  */
@@ -21,7 +23,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
-import { lensRun } from '@/lib/api/client';
+import { lensRun, apiHelpers } from '@/lib/api/client';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 
 interface TraceRow {
@@ -29,13 +31,14 @@ interface TraceRow {
   title: string;
   question: string;
   answered: { note: string; at: string } | null;
+  dtuId: string | null;
 }
 
 type Phase = 'loading' | 'ready' | 'error';
 
-function rowsFrom(rows: unknown): { id: string; title: string; answered: { note: string; at: string } | null }[] {
+function rowsFrom(rows: unknown): { id: string; title: string; answered: { note: string; at: string } | null; dtuId: string | null }[] {
   if (!Array.isArray(rows)) return [];
-  const out: { id: string; title: string; answered: { note: string; at: string } | null }[] = [];
+  const out: { id: string; title: string; answered: { note: string; at: string } | null; dtuId: string | null }[] = [];
   for (const row of rows) {
     if (!row || typeof row !== 'object') continue;
     const id = (row as { id?: string }).id;
@@ -43,10 +46,12 @@ function rowsFrom(rows: unknown): { id: string; title: string; answered: { note:
     if (typeof id !== 'string' || !id) continue;
     if (typeof title !== 'string' || !title.trim()) continue;
     const ans = (row as { answered?: { note?: unknown; at?: unknown } | null }).answered;
+    const dtuId = (row as { dtuId?: unknown }).dtuId;
     out.push({
       id,
       title: title.trim(),
       answered: ans && typeof ans.note === 'string' ? { note: ans.note, at: typeof ans.at === 'string' ? ans.at : '' } : null,
+      dtuId: typeof dtuId === 'string' && dtuId ? dtuId : null,
     });
   }
   return out;
@@ -85,7 +90,7 @@ async function readTraces(): Promise<TraceRow[]> {
       { exportId: row.id },
       'Could not read your question log.',
     );
-    out.push({ id: row.id, title: row.title, question: questionFrom(detail.export?.trace), answered: row.answered });
+    out.push({ id: row.id, title: row.title, question: questionFrom(detail.export?.trace), answered: row.answered, dtuId: row.dtuId });
   }
   return out;
 }
@@ -217,18 +222,44 @@ export default function CognitionPage() {
     } finally { setBusy(false); }
   }, [editTitle, editQuestion, refresh]);
 
-  const removeTrace = useCallback(async (id: string) => {
+  const removeTrace = useCallback(async (id: string, opts?: { withDtu?: boolean }) => {
     // S-COG-2: delete is two-step — the first click names the entry.
     if (confirmDeleteId !== id) { setConfirmDeleteId(id); return; }
     setConfirmDeleteId(null);
     setBusy(true);
     try {
+      // FIX-cognition-002: deleting an entry that was saved as a DTU offers
+      // to remove the DTU too, through the platform's own gated delete —
+      // otherwise the DTU is orphaned with no surface pointing at it.
+      if (opts?.withDtu) {
+        const trace = traces.find((t) => t.id === id);
+        if (trace?.dtuId) {
+          try {
+            await apiHelpers.dtus.delete(trace.dtuId);
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            if (!/not found|404/i.test(msg)) throw new Error(`Could not remove the DTU: ${msg}`);
+            // Already gone — the log entry can still be deleted.
+          }
+        }
+      }
       await runCognition('deleteExport', { exportId: id }, 'Could not delete that entry.');
       await refresh();
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Could not delete that entry.');
     } finally { setBusy(false); }
-  }, [confirmDeleteId, refresh]);
+  }, [confirmDeleteId, refresh, traces]);
+
+  // FIX-cognition-002: record the DTU a Save-as-DTU just minted on the log
+  // entry itself, so the saved state and the link survive a reload.
+  const linkDtu = useCallback(async (id: string, dtuId: string) => {
+    setTraces((rows) => rows.map((t) => (t.id === id ? { ...t, dtuId } : t)));
+    try {
+      await runCognition('linkExportDtu', { exportId: id, dtuId }, 'Could not record the DTU link.');
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not record the DTU link.');
+    }
+  }, []);
 
   const saveAnswer = useCallback(async (id: string) => {
     const note = answerText.trim();
@@ -272,14 +303,14 @@ export default function CognitionPage() {
           className="min-h-[22rem] rounded-2xl border border-white/10 bg-zinc-950 px-6 py-5"
         >
           {phase === 'loading' && (
-            <p data-testid="cg-loading" role="status" aria-busy="true" className="text-[14px] text-zinc-500">
+            <p data-testid="cg-loading" role="status" aria-busy="true" className="text-[14px] text-zinc-400">
               Opening your question log.
             </p>
           )}
           {phase === 'error' && (
             <div data-testid="cg-error" role="alert">
               <p className="text-[14px] text-zinc-300">{loadError || 'Could not load your question log.'}</p>
-              <button type="button" onClick={load} className="mt-4 text-[14px] text-zinc-100 underline">
+              <button type="button" onClick={load} className="mt-4 inline-flex min-h-[40px] items-center text-[14px] text-zinc-100 underline">
                 Retry
               </button>
             </div>
@@ -287,7 +318,7 @@ export default function CognitionPage() {
           {empty && (
             <div data-testid="cg-empty">
               <p className="text-[14px] text-zinc-400">No questions logged yet.</p>
-              <p className="mt-2 max-w-md text-[13px] leading-relaxed text-zinc-500">
+              <p className="mt-2 max-w-md text-[13px] leading-relaxed text-zinc-400">
                 Write down a question you&apos;re carrying — a decision you&apos;re circling, a thing you don&apos;t yet understand.
                 It stays here in your words. When you settle it, mark it answered and note what you concluded.
               </p>
@@ -309,7 +340,7 @@ export default function CognitionPage() {
                       Answered{trace.answered.at ? ` · ${trace.answered.at.slice(0, 10)}` : ''} — {trace.answered.note}
                     </p>
                   ) : (
-                    <p className="mt-2 text-[12px] text-zinc-500">Still open.</p>
+                    <p className="mt-2 text-[12px] text-zinc-400">Still open.</p>
                   )}
                   {editingId === trace.id ? (
                     <div className="mt-3 space-y-2">
@@ -318,8 +349,8 @@ export default function CognitionPage() {
                       <input value={editQuestion} onChange={(e) => setEditQuestion(e.target.value)} aria-label="Edit question"
                         className="w-full border-b border-white/15 bg-transparent pb-1 text-[14px] text-zinc-100 outline-none" />
                       <div className="flex gap-3 text-[13px]">
-                        <button type="button" onClick={() => { void saveEdit(trace.id); }} className="text-teal-300 underline">Save</button>
-                        <button type="button" onClick={() => setEditingId(null)} className="text-zinc-400 underline">Cancel</button>
+                        <button type="button" onClick={() => { void saveEdit(trace.id); }} className="inline-flex min-h-[40px] items-center text-teal-300 underline">Save</button>
+                        <button type="button" onClick={() => setEditingId(null)} className="inline-flex min-h-[40px] items-center text-zinc-400 underline">Cancel</button>
                       </div>
                     </div>
                   ) : answeringId === trace.id ? (
@@ -328,27 +359,39 @@ export default function CognitionPage() {
                         placeholder="What did you settle on?"
                         className="w-full border-b border-white/15 bg-transparent pb-1 text-[14px] text-zinc-100 outline-none" />
                       <div className="flex gap-3 text-[13px]">
-                        <button type="button" onClick={() => { void saveAnswer(trace.id); }} className="text-teal-300 underline">Mark answered</button>
-                        <button type="button" onClick={() => setAnsweringId(null)} className="text-zinc-400 underline">Cancel</button>
+                        <button type="button" disabled={busy} onClick={() => { void saveAnswer(trace.id); }} className="inline-flex min-h-[40px] items-center text-teal-300 underline disabled:opacity-50">Mark answered</button>
+                        <button type="button" onClick={() => setAnsweringId(null)} className="inline-flex min-h-[40px] items-center text-zinc-400 underline">Cancel</button>
                       </div>
                     </div>
                   ) : (
                     <div className="mt-3 flex flex-wrap items-center gap-3 text-[13px] text-zinc-400">
-                      <button type="button" onClick={() => { setEditingId(trace.id); setEditTitle(trace.title); setEditQuestion(trace.question); }} className="underline hover:text-zinc-200">Edit</button>
+                      <button type="button" onClick={() => { setEditingId(trace.id); setEditTitle(trace.title); setEditQuestion(trace.question); }} className="inline-flex min-h-[40px] items-center underline hover:text-zinc-200">Edit</button>
                       {trace.answered ? (
-                        <button type="button" onClick={() => { void clearAnswer(trace.id); }} className="underline hover:text-zinc-200">Reopen</button>
+                        <button type="button" disabled={busy} onClick={() => { void clearAnswer(trace.id); }} className="inline-flex min-h-[40px] items-center underline hover:text-zinc-200 disabled:opacity-50">Reopen</button>
                       ) : (
-                        <button type="button" onClick={() => { setAnsweringId(trace.id); setAnswerText(''); }} className="underline hover:text-zinc-200">Mark answered</button>
+                        <button type="button" onClick={() => { setAnsweringId(trace.id); setAnswerText(''); }} className="inline-flex min-h-[40px] items-center underline hover:text-zinc-200">Mark answered</button>
                       )}
-                      <button type="button" onClick={() => { void removeTrace(trace.id); }}
-                        className={confirmDeleteId === trace.id ? 'text-rose-300 underline' : 'underline hover:text-zinc-200'}>
-                        {confirmDeleteId === trace.id ? `Delete “${trace.title}”? Click again` : 'Delete'}
-                      </button>
+                      {confirmDeleteId === trace.id ? (
+                        <>
+                          <span className="text-rose-300">Delete “{trace.title}”?</span>
+                          <button type="button" onClick={() => { void removeTrace(trace.id); }} className="inline-flex min-h-[40px] items-center text-rose-300 underline">Delete</button>
+                          {trace.dtuId && (
+                            <button type="button" onClick={() => { void removeTrace(trace.id, { withDtu: true }); }} className="inline-flex min-h-[40px] items-center text-rose-300 underline">
+                              Delete + remove its DTU
+                            </button>
+                          )}
+                          <button type="button" onClick={() => setConfirmDeleteId(null)} className="inline-flex min-h-[40px] items-center underline hover:text-zinc-200">Keep</button>
+                        </>
+                      ) : (
+                        <button type="button" onClick={() => { void removeTrace(trace.id); }} className="inline-flex min-h-[40px] items-center underline hover:text-zinc-200">Delete</button>
+                      )}
                       <SaveAsDtuButton compact
                         apiSource="cognition-question-log"
                         title={trace.title}
                         content={trace.answered ? `${trace.question}\n\nAnswered: ${trace.answered.note}` : trace.question}
-                        extraTags={['cognition', 'question-log']} />
+                        extraTags={['cognition', 'question-log']}
+                        initialSavedId={trace.dtuId || undefined}
+                        onSaved={(dtuId) => { void linkDtu(trace.id, dtuId); }} />
                     </div>
                   )}
                 </li>
@@ -393,7 +436,7 @@ export default function CognitionPage() {
         {entities && (
           <section aria-label="Emergent entities" className="mt-8 rounded-2xl border border-white/10 bg-zinc-950 px-6 py-5">
             <h2 className="text-[15px] font-medium text-zinc-200">The platform&apos;s emergent entities</h2>
-            <p className="mt-2 max-w-lg text-[13px] leading-relaxed text-zinc-500">
+            <p className="mt-2 max-w-lg text-[13px] leading-relaxed text-zinc-400">
               Separate from your log: Concord also keeps a population of {entities.registered.toLocaleString()} registered emergent
               entities — system content, spawned and run by the platform&apos;s own emergent layer, not questions of yours and not
               activity counts. This lens is their named home; their working view lives in Attention.

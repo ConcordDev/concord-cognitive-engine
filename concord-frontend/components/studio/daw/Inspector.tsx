@@ -36,7 +36,7 @@ export interface InspectorProps {
 export function Inspector({ project, track, clip, recorder, onTrack, onClip, onDeleteTrack, onDuplicateTrack, onTransport, onProject }: InspectorProps) {
   const sec = 'space-y-2 border-b border-white/5 p-3';
   return (
-    <div className="h-full w-64 flex-shrink-0 overflow-y-auto border-l border-white/5 bg-[#111117]" data-testid="studio-inspector">
+    <div className="w-full flex-shrink-0 overflow-y-auto border-t border-white/5 bg-[#111117] sm:h-full sm:w-64 sm:border-l sm:border-t-0" data-testid="studio-inspector">
       {track && trackKind(track) === 'audio' && <div className={sec}><RecordPanel api={recorder} transport={project.transport} onTransport={onTransport} /></div>}
       {track ? (
         <div className={sec}>

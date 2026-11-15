@@ -9,6 +9,7 @@
 // Shadows Instagram / X core engagement features.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { checkText, checkTitle, firstBoundsFailure } from "../lib/bounds.js";
 import { screenLocalSync } from "../lib/content-safety/index.js";
 import { resolveUserDisplay } from "../lib/friend-presence.js";
 import { lookupUserIdentity } from "../lib/user-identity.js";
@@ -156,7 +157,10 @@ export default function registerSocialActions(registerLensAction) {
   }
   const sid = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   const now = () => new Date().toISOString();
-  const actor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  // SB-12: the actor is the session-resolved ctx.actor only. A top-level
+  // ctx.userId is never honoured — no production ctx builder sets one
+  // (SB-10), and honouring it let a hand-built ctx assume any identity.
+  const actor = (ctx) => ctx?.actor?.userId || "anon";
   const clip = (v, max) => String(v == null ? "" : v).trim().slice(0, max);
 
   // Extract #hashtags from arbitrary text, lowercased + deduped.
@@ -263,7 +267,22 @@ export default function registerSocialActions(registerLensAction) {
   try {
     const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actor(ctx);
-    const body = clip(params.body, 2000);
+    // GB-1539 (FIX-feed-008): the composer body is the POST class
+    // (5,000). It used to clip silently at 2,000 — under the policy an
+    // over-limit post refuses with the limit named, and an in-policy
+    // post stores whole. Poll questions are titles (200).
+    const badPost = firstBoundsFailure(
+      checkText("body", params.body, "post"),
+      checkTitle("question", params.poll?.question),
+    );
+    if (badPost) return badPost;
+    const body = clip(params.body, 5000);
+    // FIX-social-006 — honor the composer's audience choice. The read
+    // side (canViewPost) already enforces this exact vocabulary:
+    // private = author only, followers = followers, else public.
+    // Anything unrecognized falls back to public, never to a wider
+    // audience than the author picked.
+    const privacy = ["public", "followers", "private"].includes(params.privacy) ? params.privacy : "public";
     // #3 — screen the post at the publish boundary (sync local checks for the
     // public tier). Blocks policy-violating content; allows the rest.
     if (body) {
@@ -319,7 +338,7 @@ export default function registerSocialActions(registerLensAction) {
       shares: [],
       bookmarks: new Set(),
       reactions: new Map(),
-      privacy: "public",
+      privacy,
       sensitive: params.sensitive === true,
       lensReplies: [],
       lensReactions: new Map(),
@@ -437,6 +456,32 @@ export default function registerSocialActions(registerLensAction) {
       }
     }
     return { ok: true, result: { tree: roots, total: flat.length } };
+  });
+
+  registerLensAction("social", "deleteReply", (ctx, _a, params = {}) => {
+    const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const postId = String(params.postId || "");
+    const replyId = String(params.replyId || "");
+    const userId = actor(ctx);
+    const list = s.replies.get(postId) || [];
+    const target = list.find((r) => r.id === replyId);
+    if (!target) return { ok: false, error: "reply not found" };
+    if (target.userId !== userId) return { ok: false, error: "only the author can delete this reply" };
+    // Children keep their place in the thread: they re-attach to the
+    // deleted reply's parent rather than being deleted with it or
+    // orphaned out of the tree. Mutate in place: getSocialState aliases
+    // s.replies[postId] onto the post's own lensReplies array, so a
+    // replaced array would be overwritten back on the next read.
+    for (const r of list) if (r.parentId === replyId) r.parentId = target.parentId;
+    list.splice(list.findIndex((r) => r.id === replyId), 1);
+    const host = s.posts.get(postId);
+    if (host && Array.isArray(host.comments)) {
+      for (const c of host.comments) if (c.parentCommentId === replyId) c.parentCommentId = target.parentId;
+      const ci = host.comments.findIndex((c) => c.id === replyId);
+      if (ci >= 0) host.comments.splice(ci, 1);
+    }
+    save();
+    return { ok: true, result: { id: replyId, deleted: true } };
   });
 
   // ── 2. Likes / reactions / repost actions ───────────────────────────

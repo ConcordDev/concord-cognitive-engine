@@ -56,21 +56,21 @@ export function StreaksPanel({ refreshKey }: { refreshKey: number }) {
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
         <div className="rounded-lg border border-rose-900/40 bg-rose-950/10 p-3">
-          <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-rose-700">
+          <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-rose-400">
             <Flame className="h-3.5 w-3.5 text-orange-400" aria-hidden /> Overall streak
           </div>
           <div className="mt-1 font-mono text-2xl font-semibold text-orange-300">
-            {data.overall}<span className="ml-1 text-xs text-rose-700">days</span>
+            {data.overall}<span className="ml-1 text-xs text-rose-400">days</span>
           </div>
         </div>
         <div className="rounded-lg border border-rose-900/40 bg-rose-950/10 p-3">
-          <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-rose-700">
+          <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-rose-400">
             <CalendarCheck className="h-3.5 w-3.5 text-rose-500" aria-hidden /> Active days
           </div>
           <div className="mt-1 font-mono text-2xl font-semibold text-rose-200">{data.activeDays}</div>
         </div>
         <div className="rounded-lg border border-rose-900/40 bg-rose-950/10 p-3">
-          <div className="text-[10px] uppercase tracking-wider text-rose-700">Best metric streak</div>
+          <div className="text-[10px] uppercase tracking-wider text-rose-400">Best metric streak</div>
           <div className="mt-1 text-sm font-semibold text-rose-200">
             {data.bestStreak ? `${data.bestStreak.label} · ${data.bestStreak.current}d` : '—'}
           </div>
@@ -78,7 +78,7 @@ export function StreaksPanel({ refreshKey }: { refreshKey: number }) {
       </div>
 
       <div className="rounded-lg border border-rose-900/40 bg-rose-950/10">
-        <div className="border-b border-rose-900/30 px-3 py-2 text-[10px] uppercase tracking-wider text-rose-700">
+        <div className="border-b border-rose-900/30 px-3 py-2 text-[10px] uppercase tracking-wider text-rose-400">
           Per-metric
         </div>
         <ul className="divide-y divide-rose-900/20">
@@ -90,7 +90,7 @@ export function StreaksPanel({ refreshKey }: { refreshKey: number }) {
               </span>
               <span className="flex items-center gap-3 font-mono">
                 <span className="text-rose-100">{m.current}d</span>
-                <span className="text-rose-700">best {m.longest}d</span>
+                <span className="text-rose-400">best {m.longest}d</span>
               </span>
             </li>
           ))}

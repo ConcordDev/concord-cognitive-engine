@@ -9,7 +9,8 @@
 
 // Phase 1 — real type-aware semantics for the code lens (TS LanguageService over
 // the in-memory workspace). Lazy: typescript only loads on the first lsp-* call.
-import { guardAnonWrites } from "../lib/lens-authz.js";
+import { guardAnonWrites, actorId } from "../lib/lens-authz.js";
+import { dtuListedOwner } from "../lib/dtu-list-source.js";
 import tsLang from "../lib/ts-language-service.js";
 // Phase 3 — the verifiable build loop (make→write→run→lint→verify→done).
 import { runBuildLoop } from "../lib/build-loop.js";
@@ -488,15 +489,22 @@ export default function registerCodeActions(registerLensAction) {
 
   /**
    * snippets-list — List the caller's code snippets (DTUs of kind=code_snippet).
-   * Falls back to global snippet corpus for anon users.
+   * GB-1536 hard privacy rule: the caller is resolved with lens-authz
+   * actorId (placeholder identities — anon/anonymous/guest — are not a
+   * caller). No real actor gets an empty list, never the corpus: a
+   * guest request returns only public or seeded sample content, and a
+   * snippet is neither. With an actor, only the actor's own snippets
+   * are returned (ownerless rows fall — office call, CB-0594).
    */
   registerLensAction("code", "snippets-list", (ctx, _artifact, params = {}) => {
     const language = params.language;
     const limit = Math.min(Math.max(Number(params.limit) || 50, 1), 200);
-    const userId = ctx?.userId || ctx?.actor?.userId || null;
+    const userId = actorId(ctx);
     const snippets = collectSnippets(userId, language, limit);
     return { ok: true, result: { snippets, count: snippets.length } };
-  });
+    // GB-1536 guestRead: not write-shaped, no LLM; an anonymous actor
+    // receives [] by the actorId rule in collectSnippets.
+  }, { guestRead: true });
 
   /**
    * snippets-save — Persist a code snippet as a kind=code_snippet DTU.
@@ -517,7 +525,7 @@ export default function registerCodeActions(registerLensAction) {
       return { ok: false, error: "STATE unavailable" };
     }
     const id = `dtu_snip_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    const userId = ctx?.userId || ctx?.actor?.userId || null;
+    const userId = actorId(ctx);
     const dtu = {
       id,
       title: `Snippet: ${title}`,
@@ -526,7 +534,12 @@ export default function registerCodeActions(registerLensAction) {
       human: { summary: `Code snippet: ${title}`, bullets: [`Language: ${language}`, `${code.split("\n").length} lines`] },
       core: { definitions: [`Language: ${language}`], examples: [code.slice(0, 4000)] },
       machine: { kind: SNIPPET_KIND, code, language, title },
+      // GB-1536: stamp ownerId alongside creator_id — creator_id alone
+      // left saved snippets looking ownerless to every DTU list /
+      // visibility / export path. dtuListedOwner now also reads
+      // creator_id as a last fallback for rows saved before this stamp.
       creator_id: userId || undefined,
+      ownerId: userId || undefined,
       source: "code-lens",
       createdAt: new Date().toISOString(),
     };
@@ -566,10 +579,12 @@ export default function registerCodeActions(registerLensAction) {
    */
   registerLensAction("code", "snapshots-list", (ctx, _artifact, params = {}) => {
     const limit = Math.min(Math.max(Number(params.limit) || 25, 1), 100);
-    const userId = ctx?.userId || ctx?.actor?.userId || null;
+    // GB-1536: same rule as snippets-list — actorId-resolved caller only.
+    const userId = actorId(ctx);
     const snapshots = collectSnapshots(userId, limit);
     return { ok: true, result: { snapshots, count: snapshots.length } };
-  });
+    // GB-1536 guestRead: not write-shaped, no LLM; anonymous actors get [].
+  }, { guestRead: true });
 
   /**
    * commit-snapshot — Bundle a set of tabs into a DTU representing a
@@ -592,7 +607,7 @@ export default function registerCodeActions(registerLensAction) {
     const STATE = globalThis._concordSTATE;
     if (!STATE?.dtus) return { ok: false, error: "STATE unavailable" };
 
-    const userId = ctx?.userId || ctx?.actor?.userId || null;
+    const userId = actorId(ctx);
     const id = `dtu_snap_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const totalLines = files.reduce((sum, f) => sum + (typeof f.content === "string" ? f.content.split("\n").length : 0), 0);
     const dtu = {
@@ -613,7 +628,9 @@ export default function registerCodeActions(registerLensAction) {
         })),
         committedAt: new Date().toISOString(),
       },
+      // GB-1536: ownerId stamped alongside creator_id (see snippets-save).
       creator_id: userId || undefined,
+      ownerId: userId || undefined,
       source: "code-lens",
       createdAt: new Date().toISOString(),
     };
@@ -1415,6 +1432,32 @@ Rules:
       return tsLang.offsetOf(files.get(path).content, pos.line, pos.column);
     }
     return null;
+  }
+  // The word under a cursor. Monaco sends position and no symbol; when the
+  // TypeScript service is off or throws, the lexical fallback needs this
+  // word. A position with no identifier is "nothing under the cursor", not
+  // a 422 — that 422 was showing up in the Network tab during Save.
+  function identifierAt(content, offset) {
+    const text = String(content || "");
+    if (!text) return "";
+    let i = Math.max(0, Math.min(Math.round(offset) || 0, text.length));
+    const isId = (ch) => /[A-Za-z0-9_$]/.test(ch || "");
+    if (!isId(text[i]) && i > 0 && isId(text[i - 1])) i -= 1;
+    if (!isId(text[i])) return "";
+    let start = i;
+    while (start > 0 && isId(text[start - 1])) start -= 1;
+    let end = i + 1;
+    while (end < text.length && isId(text[end])) end += 1;
+    const word = text.slice(start, end);
+    return /^[A-Za-z_$]/.test(word) ? word : "";
+  }
+  function symbolAtRequest(files, path, params, explicit) {
+    const named = String(explicit || "").trim();
+    const offset = positionToOffset(files, path, params);
+    if (named) return { symbol: named, offset, hadPosition: offset != null || !!(params && (params.position || Number.isFinite(params.offset))) };
+    const hadPosition = offset != null || !!(params && params.position && Number.isFinite(params.position.line) && Number.isFinite(params.position.column));
+    if (offset == null || !files.has(path)) return { symbol: "", offset, hadPosition };
+    return { symbol: identifierAt(files.get(path).content, offset), offset, hadPosition };
   }
 
   // ── Projects (virtual workspaces) ──────────────────────────────
@@ -2244,17 +2287,21 @@ Rules:
     const userId = aidC(ctx);
     const projectId = String(params.projectId || "");
     const path = String(params.path || "");
-    const symbol = String(params.symbol || "").trim();
     if (!projectId) return { ok: false, error: "projectId required" };
     const files = ensureFiles(s, userId, projectId);
     // Scope-correct references (distinguishes shadowed/same-named bindings) when a
     // cursor position is given. Lexical word-boundary grep is the fallback.
-    const offset = positionToOffset(files, path, params);
+    const resolved = symbolAtRequest(files, path, params, params.symbol);
+    const symbol = resolved.symbol;
+    const offset = resolved.offset;
     if (offset != null && tsLang.tsAvailable(path)) {
       const r = tsLang.references(files, path, offset);
       if (r) return { ok: true, result: { symbol: symbol || null, references: r.references, count: r.count, source: "typescript" } };
     }
-    if (!symbol) return { ok: false, error: "symbol or position required" };
+    if (!symbol) {
+      if (resolved.hadPosition) return { ok: true, result: { symbol: null, references: [], count: 0, source: "none" } };
+      return { ok: false, error: "symbol or position required" };
+    }
     const refs = [];
     const re = new RegExp(`\\b${symbol.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g');
     for (const [path, blob] of files) {
@@ -2447,19 +2494,23 @@ Rules:
     const userId = aidC(ctx);
     const projectId = String(params.projectId || "");
     const path = String(params.path || "");
-    const symbol = String(params.symbol || "").trim();
     if (!projectId || !path) return { ok: false, error: "projectId + path required" };
     const files = ensureFiles(s, userId, projectId);
     if (!files.has(path)) return { ok: false, error: "file not found" };
     const lang = langFromPath(path);
     // Real type-aware hover (inferred types) when a cursor position is given.
-    const offset = positionToOffset(files, path, params);
+    const resolved = symbolAtRequest(files, path, params, params.symbol);
+    const symbol = resolved.symbol;
+    const offset = resolved.offset;
     if (offset != null && tsLang.tsAvailable(path)) {
       const r = tsLang.hover(files, path, offset);
       if (r && r.found) return { ok: true, result: { symbol: symbol || null, found: true, kind: r.kind, type: r.type, hover: r.hover, doc: r.doc, language: lang, source: "typescript" } };
       if (r && !r.found) return { ok: true, result: { symbol: symbol || null, found: false, hover: "No symbol under the cursor." } };
     }
-    if (!symbol) return { ok: false, error: "symbol or position required" };
+    if (!symbol) {
+      if (resolved.hadPosition) return { ok: true, result: { symbol: null, found: false, hover: "No symbol under the cursor.", language: lang, source: "none" } };
+      return { ok: false, error: "symbol or position required" };
+    }
     // Scan every project file for a declaration of the symbol.
     let decl = null;
     for (const [p, blob] of files) {
@@ -2491,16 +2542,20 @@ Rules:
     const userId = aidC(ctx);
     const projectId = String(params.projectId || "");
     const path = String(params.path || "");
-    const fnName = String(params.symbol || "").trim();
     if (!projectId) return { ok: false, error: "projectId required" };
     const files = ensureFiles(s, userId, projectId);
     // Real signature help (resolved overload + param types) at a call site.
-    const offset = positionToOffset(files, path, params);
+    const resolved = symbolAtRequest(files, path, params, params.symbol);
+    const fnName = resolved.symbol;
+    const offset = resolved.offset;
     if (offset != null && tsLang.tsAvailable(path)) {
       const r = tsLang.signature(files, path, offset);
       if (r && r.found) return { ok: true, result: { symbol: fnName || null, found: true, label: r.label, parameters: r.parameters, activeParameter: r.activeParameter, source: "typescript" } };
     }
-    if (!fnName) return { ok: false, error: "symbol or position required" };
+    if (!fnName) {
+      if (resolved.hadPosition) return { ok: true, result: { symbol: null, found: false, parameters: [], source: "none" } };
+      return { ok: false, error: "symbol or position required" };
+    }
     let sig = null;
     for (const [p, blob] of files) {
       const d = findDeclaration(blob.content, fnName, langFromPath(p));
@@ -3131,14 +3186,21 @@ Rules:
 
 // ─── helpers ────────────────────────────────────────────────────────────
 
+// GB-1536 hard privacy rule: userId here is an actorId-resolved caller
+// (null = no real actor). No actor → nothing. With an actor, a row is
+// included ONLY when its owner — resolved through the canonical
+// dtuListedOwner chain, which reads creator_id as a last fallback — IS
+// the caller. Ownerless rows fall (office call, CB-0594): they are not
+// the caller's, and they are not public sample content either.
 function collectSnippets(userId, language, limit) {
   const STATE = globalThis._concordSTATE;
   if (!STATE?.dtus?.values) return [];
+  if (!userId) return [];
   const out = [];
   for (const dtu of STATE.dtus.values()) {
     if (dtu?.machine?.kind !== SNIPPET_KIND) continue;
     if (language && dtu.machine.language !== language) continue;
-    if (userId && dtu.creator_id && dtu.creator_id !== userId) continue;
+    if (dtuListedOwner(dtu) !== userId) continue;
     out.push(toSnippetShape(dtu));
     if (out.length >= limit * 2) break;
   }
@@ -3149,10 +3211,11 @@ function collectSnippets(userId, language, limit) {
 function collectSnapshots(userId, limit) {
   const STATE = globalThis._concordSTATE;
   if (!STATE?.dtus?.values) return [];
+  if (!userId) return [];
   const out = [];
   for (const dtu of STATE.dtus.values()) {
     if (dtu?.machine?.kind !== SNAPSHOT_KIND) continue;
-    if (userId && dtu.creator_id && dtu.creator_id !== userId) continue;
+    if (dtuListedOwner(dtu) !== userId) continue;
     out.push(toSnapshotShape(dtu));
     if (out.length >= limit * 2) break;
   }

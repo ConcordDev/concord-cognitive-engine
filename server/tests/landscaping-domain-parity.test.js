@@ -628,6 +628,20 @@ describe("landscaping — persisted Client (CRM) entity", () => {
     assert.ok(list.result.clients.some((c) => c.id === id), "client appears in the list");
   });
 
+  it("client-update edits contact fields; client-delete removes only that client", () => {
+    const added = call("client-add", ctxA, { name: "Old Name" });
+    const id = added.result.client.id;
+    const upd = call("client-update", ctxA, { id, name: "New Name", phone: "555-2222", email: "n@example.com", address: "9 Oak" });
+    assert.equal(upd.ok, true);
+    assert.equal(upd.result.client.name, "New Name");
+    assert.equal(upd.result.client.phone, "555-2222");
+    assert.equal(call("client-update", ctxA, { id, name: " " }).ok, false);
+    assert.equal(call("client-update", ctxB, { id, name: "Stolen" }).ok, false);
+    assert.equal(call("client-delete", ctxA, { id }).ok, true);
+    assert.equal(call("client-list", ctxA, {}).result.clients.some((c) => c.id === id), false);
+    assert.equal(call("client-delete", ctxA, { id }).ok, false);
+  });
+
   it("client-add: rejects a blank name", () => {
     const r = call("client-add", ctxA, { phone: "555-0000" });
     assert.equal(r.ok, false);

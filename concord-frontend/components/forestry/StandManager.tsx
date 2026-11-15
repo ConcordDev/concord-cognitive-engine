@@ -8,7 +8,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Trees, Plus, Trash2, Loader2, AlertTriangle } from 'lucide-react';
+import { Trees, Plus, Trash2, Loader2, AlertTriangle, Pencil } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
 
@@ -26,8 +26,13 @@ export function StandManager() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', species: 'mixed', acres: '', treesPerAcre: '' });
+  const [formError, setFormError] = useState<string | null>(null);
   const [actForm, setActForm] = useState({ kind: 'survey', notes: '' });
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const [editing, setEditing] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', species: 'mixed', acres: '', treesPerAcre: '' });
+  const [editError, setEditError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -54,11 +59,23 @@ export function StandManager() {
   useEffect(() => { void refresh(); }, [refresh]);
 
   async function addStand() {
-    if (!form.name.trim()) return;
-    await lensRun('forestry', 'stand-add', {
-      name: form.name.trim(), species: form.species,
-      acres: form.acres ? Number(form.acres) : 0, treesPerAcre: form.treesPerAcre ? Number(form.treesPerAcre) : 0,
+    const name = form.name.trim();
+    if (!name) { setFormError('Stand name is required.'); return; }
+    if (name.length > 160) { setFormError('Stand name must be 160 characters or fewer.'); return; }
+    const acres = form.acres.trim() === '' ? 0 : Number(form.acres);
+    if (!Number.isFinite(acres) || acres < 0 || acres > 1_000_000) {
+      setFormError('Acres must be a number from 0 to 1000000.');
+      return;
+    }
+    const r = await lensRun('forestry', 'stand-add', {
+      name, species: form.species,
+      acres, treesPerAcre: form.treesPerAcre ? Number(form.treesPerAcre) : 0,
     });
+    if (!r.data?.ok) {
+      setFormError(r.data?.message || r.data?.error || 'Could not add that stand.');
+      return;
+    }
+    setFormError(null);
     setForm({ name: '', species: 'mixed', acres: '', treesPerAcre: '' });
     await refresh();
   }
@@ -66,6 +83,37 @@ export function StandManager() {
     await lensRun('forestry', 'stand-delete', { id });
     if (active === id) setActive(null);
     setConfirmDelete(null);
+    await refresh();
+  }
+  function startEdit(st: Stand) {
+    setEditing(st.id);
+    setEditError(null);
+    setEditForm({
+      name: st.name,
+      species: st.species,
+      acres: String(st.acres),
+      treesPerAcre: String(st.treesPerAcre),
+    });
+  }
+  async function saveEdit(id: string) {
+    const name = editForm.name.trim();
+    if (!name) { setEditError('Stand name is required.'); return; }
+    if (name.length > 160) { setEditError('Stand name must be 160 characters or fewer.'); return; }
+    const acres = editForm.acres.trim() === '' ? 0 : Number(editForm.acres);
+    if (!Number.isFinite(acres) || acres < 0 || acres > 1_000_000) {
+      setEditError('Acres must be a number from 0 to 1000000.');
+      return;
+    }
+    const r = await lensRun('forestry', 'stand-update', {
+      id, name, species: editForm.species,
+      acres, treesPerAcre: editForm.treesPerAcre ? Number(editForm.treesPerAcre) : 0,
+    });
+    if (!r.data?.ok) {
+      setEditError(r.data?.message || r.data?.error || 'Could not save that stand.');
+      return;
+    }
+    setEditing(null);
+    setEditError(null);
     await refresh();
   }
   async function logActivity(standId: string) {
@@ -90,6 +138,11 @@ export function StandManager() {
       </button>
     </div>
   );
+
+  const q = query.trim().toLowerCase();
+  const visibleStands = q
+    ? stands.filter(st => st.name.toLowerCase().includes(q) || st.species.toLowerCase().includes(q))
+    : stands;
 
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
@@ -122,22 +175,49 @@ export function StandManager() {
           className="w-16 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
         <input value={form.treesPerAcre} onChange={e => setForm({ ...form, treesPerAcre: e.target.value })} placeholder="trees/ac"
           className="w-20 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
-        <button onClick={addStand} disabled={!form.name.trim()}
-          className="px-2.5 py-1 text-xs rounded bg-emerald-600 hover:bg-emerald-500 text-white font-semibold disabled:opacity-40">Add stand</button>
+        <button onClick={addStand}
+          className="px-2.5 py-1 text-xs rounded bg-emerald-600 hover:bg-emerald-500 text-white font-semibold">Add stand</button>
       </div>
+      {formError && <p role="alert" className="mb-3 text-xs text-rose-300">{formError}</p>}
 
+      {stands.length > 0 && (
+        <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search stands by name or species"
+          aria-label="Search stands"
+          className="mb-2 w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200" />
+      )}
       <ul className="space-y-1">
         {stands.length === 0 && <li className="text-xs text-zinc-400 italic py-3 text-center">No stands yet.</li>}
-        {stands.map(st => (
+        {stands.length > 0 && visibleStands.length === 0 && (
+          <li className="text-xs text-zinc-400 italic py-3 text-center">No stands match &ldquo;{query}&rdquo;.</li>
+        )}
+        {visibleStands.map(st => (
           <li key={st.id} className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2">
             <div className="group flex items-center gap-2">
               <button onClick={() => setActive(active === st.id ? null : st.id)} className="text-left min-w-0 flex-1">
                 <p className="text-xs font-semibold text-zinc-100 truncate">{st.name}</p>
                 <p className="text-[10px] text-zinc-400">{st.species.replace(/_/g, ' ')} · {st.acres} ac · ~{st.estimatedTrees.toLocaleString()} trees · {st.activityCount} activities</p>
-                <p className="text-[10px] text-zinc-500 font-mono">stand id {st.id}</p>
+                <p className="text-[10px] text-zinc-400 font-mono">stand id {st.id}</p>
               </button>
-              <button aria-label="Delete" onClick={() => setConfirmDelete(confirmDelete === st.id ? null : st.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+              <button type="button" aria-label={`Edit ${st.name}`} onClick={() => startEdit(st)} className="text-zinc-400 hover:text-zinc-100"><Pencil className="w-3 h-3" /></button>
+              <button aria-label="Delete" onClick={() => setConfirmDelete(confirmDelete === st.id ? null : st.id)} className="text-rose-400"><Trash2 className="w-3 h-3" /></button>
             </div>
+            {editing === st.id && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} aria-label="Stand name"
+                  className="flex-1 min-w-[120px] bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
+                <select value={editForm.species} onChange={(e) => setEditForm({ ...editForm, species: e.target.value })} aria-label="Species"
+                  className="bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1 text-xs text-zinc-200">
+                  {SPECIES.map((sp) => <option key={sp} value={sp}>{sp.replace(/_/g, ' ')}</option>)}
+                </select>
+                <input value={editForm.acres} onChange={(e) => setEditForm({ ...editForm, acres: e.target.value })} aria-label="Acres"
+                  className="w-16 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
+                <input value={editForm.treesPerAcre} onChange={(e) => setEditForm({ ...editForm, treesPerAcre: e.target.value })} aria-label="Trees per acre"
+                  className="w-20 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
+                <button type="button" onClick={() => void saveEdit(st.id)} className="px-2 py-1 text-[11px] rounded bg-emerald-600 hover:bg-emerald-500 text-white font-semibold">Save</button>
+                <button type="button" onClick={() => { setEditing(null); setEditError(null); }} className="px-2 py-1 text-[11px] rounded bg-zinc-800 text-zinc-300">Cancel</button>
+                {editError && <p role="alert" className="w-full text-[11px] text-rose-300">{editError}</p>}
+              </div>
+            )}
             {confirmDelete === st.id && (
               <div className="mt-2 flex flex-wrap items-center gap-2 rounded border border-rose-500/30 bg-rose-500/5 px-2 py-1.5">
                 <p className="text-[11px] text-rose-300">Delete {st.name}? Its logged activities go with it. This can’t be undone.</p>

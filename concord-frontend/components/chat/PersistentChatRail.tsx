@@ -24,6 +24,8 @@ import { useState, useEffect, useRef, useCallback, Fragment } from 'react';
 import { useSocket } from '@/hooks/useSocket';
 import { useSessionId, resetSessionId } from '@/hooks/useSessionId';
 import { api } from '@/lib/api/client';
+import { useGuest, useGuestAction, useRestoredDraft } from '@/lib/guest';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/ui';
 import { SovereigntyPrompt } from '@/components/sovereignty/SovereigntyPrompt';
@@ -280,6 +282,20 @@ export function PersistentChatRail({
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
+  // GB-1536: sending a chat message is an ACT — for a guest it opens
+  // the signup modal with the typed text stashed as the intent draft;
+  // after auth the user lands back with the text restored in the box
+  // (restored, never auto-sent).
+  const guest = useGuest();
+  const guestAction = useGuestAction();
+  const restoredDraft = useRestoredDraft();
+  useEffect(() => {
+    if (!guest && restoredDraft?.chat) {
+      setInputValue((prev) => (prev ? prev : restoredDraft.chat));
+    }
+    // Runs once when the post-auth draft arrives.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restoredDraft]);
   const [chatStatus, setChatStatus] = useState<ChatStatus>('idle');
   // When the LLM queue is under load, the server tells us our position +
   // estimated wait. Cleared when status leaves 'queued'.
@@ -700,12 +716,20 @@ export function PersistentChatRail({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (guest) {
+      guestAction(() => {}, { draft: { chat: inputValue } });
+      return;
+    }
     sendMessage(inputValue);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
+      if (guest) {
+        guestAction(() => {}, { draft: { chat: inputValue } });
+        return;
+      }
       sendMessage(inputValue);
     }
   };
@@ -838,14 +862,29 @@ export function PersistentChatRail({
           )}
         </div>
         <div className="flex items-center gap-1">
-          <button
-            onClick={handleNewConversation}
-            className="p-1.5 rounded-lg hover:bg-lattice-elevated text-gray-400 hover:text-white transition-colors"
-            title="New conversation"
-            aria-label="New conversation"
-          >
-            <Plus className="w-4 h-4" />
-          </button>
+          {messages.length > 0 ? (
+            /* FIX-projects-007: starting a new conversation clears the
+               current chat — with messages on screen that is a delete, so
+               it confirms first (sticky, no timer). An empty chat starts
+               instantly: there is nothing to lose. */
+            <StickyDeleteConfirm
+              onConfirm={handleNewConversation}
+              className="p-1.5 rounded-lg hover:bg-lattice-elevated text-gray-400 hover:text-white transition-colors"
+              armAriaLabel="New conversation"
+              confirmLabel="Start new? This chat clears."
+              confirmAriaLabel="Confirm new conversation"
+              armLabel={<Plus className="w-4 h-4" />}
+            />
+          ) : (
+            <button
+              onClick={handleNewConversation}
+              className="p-1.5 rounded-lg hover:bg-lattice-elevated text-gray-400 hover:text-white transition-colors"
+              title="New conversation"
+              aria-label="New conversation"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          )}
           <button
             onClick={() => setIsExpanded(!isExpanded)}
             className="p-1.5 rounded-lg hover:bg-lattice-elevated text-gray-400 hover:text-white transition-colors"

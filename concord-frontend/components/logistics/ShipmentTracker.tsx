@@ -23,6 +23,14 @@ export function ShipmentTracker() {
   const [loading, setLoading] = useState(true);
   const [tracking, setTracking] = useState('');
   const [carrier, setCarrier] = useState<Shipment['carrier']>('UPS');
+  // FIX-logistics-012: a refused track (tracking not configured on the
+  // server, carrier unreachable) used to vanish into console.error —
+  // the input cleared, the list stayed empty, and nothing on the panel
+  // said why. Refusals now surface in the panel, the typed number is
+  // kept, and the list load reports whether live tracking is
+  // configured at all so the unavailable state shows before submit.
+  const [notice, setNotice] = useState<string | null>(null);
+  const [trackingConfigured, setTrackingConfigured] = useState<boolean | null>(null);
 
   useEffect(() => { refresh(); }, []);
   async function refresh() {
@@ -30,15 +38,26 @@ export function ShipmentTracker() {
     try {
       const res = await lensRun({ domain: 'logistics', action: 'shipments-list', input: {} });
       setShipments((res.data?.result?.shipments || []) as Shipment[]);
+      if (typeof res.data?.result?.trackingConfigured === 'boolean') {
+        setTrackingConfigured(res.data.result.trackingConfigured);
+      }
     } catch (e) { console.error(e); } finally { setLoading(false); }
   }
   async function track() {
     if (!tracking.trim()) return;
     try {
-      await lensRun({ domain: 'logistics', action: 'shipment-track', input: { trackingNumber: tracking.trim(), carrier } });
+      const res = await lensRun({ domain: 'logistics', action: 'shipment-track', input: { trackingNumber: tracking.trim(), carrier } });
+      if (!res.data?.ok) {
+        setNotice(res.data?.error || 'Tracking failed — the carrier could not be reached.');
+        return;
+      }
+      setNotice(null);
       setTracking('');
       await refresh();
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+      setNotice('Tracking request failed — the carrier could not be reached.');
+    }
   }
 
   const STATUS: Record<Shipment['status'], { label: string; color: string }> = {
@@ -66,6 +85,14 @@ export function ShipmentTracker() {
           <Plus className="w-3.5 h-3.5" /> Track
         </button>
       </div>
+      {trackingConfigured === false && !notice && (
+        <p className="mx-3 mt-2 rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-300">
+          Live tracking isn&apos;t configured on this server, so tracking numbers can&apos;t be looked up right now.
+        </p>
+      )}
+      {notice && (
+        <p className="mx-3 mt-2 rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-300">{notice}</p>
+      )}
       <div className="max-h-[500px] overflow-y-auto">
         {loading ? (
           <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
@@ -74,7 +101,8 @@ export function ShipmentTracker() {
         ) : (
           <ul className="divide-y divide-white/5">
             {shipments.map(s => {
-              const st = STATUS[s.status];
+              const events = s.events || [];
+              const st = STATUS[s.status] || { label: s.status || 'Unknown', color: 'bg-gray-500/20 text-gray-300' };
               return (
                 <li key={s.id} className="px-3 py-2 hover:bg-white/[0.03]">
                   <div className="flex items-center gap-2">
@@ -89,7 +117,7 @@ export function ShipmentTracker() {
                     <span className="inline-flex items-center gap-0.5"><MapPin className="w-3 h-3" /> {s.from} → {s.to}</span>
                     {s.currentLocation && <span>Now: {s.currentLocation}</span>}
                     {s.etaDate && <span>ETA: {new Date(s.etaDate).toLocaleDateString()}</span>}
-                    <span>{s.events.length} events</span>
+                    <span>{events.length} events</span>
                   </div>
                 </li>
               );

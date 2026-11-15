@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Coins, Play, ScrollText } from 'lucide-react';
 import { BracketView } from '@/components/tournaments/BracketView';
 import { EntrantsManager } from '@/components/tournaments/EntrantsManager';
@@ -20,6 +21,7 @@ export function TournamentDetailPanel({
   onRefresh: () => void;
 }) {
   const champion = t.winnerId ? t.entrants.find((e) => e.id === t.winnerId) : null;
+  const [armed, setArmed] = useState<'start' | 'cancel' | null>(null);
 
   return (
     <div className="space-y-5">
@@ -45,21 +47,31 @@ export function TournamentDetailPanel({
         <div className="mt-4 flex flex-wrap gap-2">
           {(t.status === 'upcoming' || t.status === 'checkin') && (
             <button
-              onClick={async () => { await run('start', { id: t.id }); onRefresh(); }}
+              onClick={async () => {
+                if (armed !== 'start') { setArmed('start'); return; }
+                setArmed(null);
+                await run('start', { id: t.id });
+                onRefresh();
+              }}
               disabled={busy || t.entrants.length < 2}
               className="flex items-center gap-1 rounded bg-amber-700 px-3 py-1.5 text-sm font-medium hover:bg-amber-600 disabled:opacity-40"
             >
               <Play className="h-3.5 w-3.5" />
-              {t.status === 'checkin' ? 'Start & lock bracket' : 'Start now'}
+              {armed === 'start' ? 'Confirm start' : (t.status === 'checkin' ? 'Start & lock bracket' : 'Start now')}
             </button>
           )}
           {(t.status === 'upcoming' || t.status === 'checkin') && (
             <button
-              onClick={async () => { await run('cancel', { id: t.id }); onRefresh(); }}
+              onClick={async () => {
+                if (armed !== 'cancel') { setArmed('cancel'); return; }
+                setArmed(null);
+                await run('cancel', { id: t.id });
+                onRefresh();
+              }}
               disabled={busy}
               className="rounded bg-slate-700 px-3 py-1.5 text-sm hover:bg-rose-900/60 disabled:opacity-40"
             >
-              Cancel
+              {armed === 'cancel' ? 'Confirm cancel' : 'Cancel'}
             </button>
           )}
           {champion && (

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, useImperativeHandle, forwardRef } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { ASPECTS, card, primaryBtn, type MintedMove, type MoveDetail } from './types';
 
 export type MintedMovesHandle = { reload: () => void };
@@ -15,6 +16,10 @@ export const MintedMovesPanel = forwardRef<MintedMovesHandle>(function MintedMov
   const [detail, setDetail] = useState<MoveDetail['move'] | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
+  const [armedId, setArmedId] = useState<string | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [rename, setRename] = useState('');
+  const [moveQuery, setMoveQuery] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -70,6 +75,11 @@ export const MintedMovesPanel = forwardRef<MintedMovesHandle>(function MintedMov
     );
   }
 
+  const mq = moveQuery.trim().toLowerCase();
+  const visibleMoves = mq
+    ? (moves ?? []).filter((m) => m.name.toLowerCase().includes(mq) || (m.element || '').toLowerCase().includes(mq) || (m.skillKind || '').toLowerCase().includes(mq))
+    : (moves ?? []);
+
   return (
     <section aria-label="Your minted moves">
       <h2 style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Your moves</h2>
@@ -78,8 +88,17 @@ export const MintedMovesPanel = forwardRef<MintedMovesHandle>(function MintedMov
           No moves yet. Compose one and mint it to start your library.
         </div>
       ) : (
+        <>
+        {(moves ?? []).length > 1 && (
+          <input value={moveQuery} onChange={(e) => setMoveQuery(e.target.value)} placeholder="Search your moves…"
+            aria-label="Search your moves"
+            style={{ width: '100%', marginBottom: 8, background: 'transparent', color: 'inherit', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 6, padding: '6px 8px', fontSize: 13 }} />
+        )}
+        {visibleMoves.length === 0 && (
+          <div style={{ ...card, opacity: 0.7 }}>No moves match &ldquo;{moveQuery.trim()}&rdquo;.</div>
+        )}
         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-          {(moves ?? []).map((m) => (
+          {visibleMoves.map((m) => (
             <li key={m.id} style={{ ...card, marginBottom: 8, padding: '10px 14px' }}>
               <button
                 type="button"
@@ -92,8 +111,36 @@ export const MintedMovesPanel = forwardRef<MintedMovesHandle>(function MintedMov
                 <span style={{ opacity: 0.6, fontSize: 12, marginLeft: 8 }}>
                   {m.element ?? '—'} · {m.skillKind ?? '—'} · tier {m.tier ?? 1}
                 </span>
-                <span style={{ opacity: 0.4, fontSize: 11, marginLeft: 8 }}>{expandedId === m.id ? '▲ hide detail' : '▼ show detail'}</span>
+                <span style={{ color: 'var(--text-tertiary)', fontSize: 11, marginLeft: 8 }}>{expandedId === m.id ? '▲ hide detail' : '▼ show detail'}</span>
               </button>
+              {renamingId === m.id ? (
+                <span style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                  <input value={rename} onChange={(e) => setRename(e.target.value)}
+                    style={{ flex: 1, background: 'transparent', color: 'inherit', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 6, padding: '2px 6px' }} />
+                  <button type="button" className="underline" onClick={async () => {
+                    await lensRun('move-builder', 'rename', { moveId: m.id, name: rename });
+                    setRenamingId(null);
+                    await load();
+                  }}>Save</button>
+                </span>
+              ) : (
+                <button type="button" className="underline" style={{ fontSize: 12, marginRight: 8 }}
+                  onClick={() => { setRenamingId(m.id); setRename(m.name); }}>Rename</button>
+              )}
+              <StickyDeleteConfirm
+                armed={armedId === m.id}
+                onArm={() => setArmedId(m.id)}
+                onCancel={() => setArmedId(null)}
+                onConfirm={async () => {
+                  await lensRun('move-builder', 'delete', { moveId: m.id });
+                  setArmedId(null);
+                  if (expandedId === m.id) setExpandedId(null);
+                  await load();
+                }}
+                armLabel="Delete"
+                confirmLabel={`Delete “${m.name}”?`}
+                className="text-[12px] underline"
+              />
 
               {expandedId === m.id && (
                 <div data-testid="move-detail" style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #2a2a35', fontSize: 13 }}>
@@ -125,6 +172,7 @@ export const MintedMovesPanel = forwardRef<MintedMovesHandle>(function MintedMov
             </li>
           ))}
         </ul>
+        </>
       )}
     </section>
   );

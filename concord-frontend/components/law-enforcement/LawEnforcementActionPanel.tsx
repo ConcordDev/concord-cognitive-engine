@@ -23,6 +23,7 @@
  * lookup, not a fabricated match.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState, useEffect, useRef } from 'react';
 import { Shield, MapPin, FileText, BarChart3, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle, Plus, X, FolderSearch } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -31,7 +32,7 @@ import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
-interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
+interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string; reason?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
   const r = await apiHelpers.lens.runDomain('law-enforcement', action, { input });
   const data = (r as { data?: { ok: boolean; result?: T } }).data;
@@ -105,6 +106,7 @@ export function LawEnforcementActionPanel() {
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
+  const [armingConfirm, setArmingConfirm] = useState<'dm' | 'publish' | null>(null);
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [caseResult, setCaseResult] = useState<CaseResult | null>(null);
   const [patrolResult, setPatrolResult] = useState<PatrolResult | null>(null);
@@ -144,6 +146,15 @@ export function LawEnforcementActionPanel() {
   async function actCase() {
     const evidence = evidenceRows.map((v) => v.trim()).filter(Boolean).map((description) => ({ description }));
     const witnesses = witnessRows.map((v) => v.trim()).filter(Boolean).map((name) => ({ name }));
+    // FIX-law-enforcement-006: the links count used to be expanded into
+    // a real array of that length — a huge typed count built a huge
+    // array in the browser and shipped it. Refuse out-of-range counts
+    // by name before anything is built or sent.
+    for (const s of suspectRows) {
+      if (!s.name.trim() || !s.evidenceLinks.trim()) continue;
+      const links = parseInt(s.evidenceLinks, 10);
+      if (!Number.isFinite(links) || links < 0 || links > 1000) { err(`Suspect "${s.name.trim()}": evidence links must be a whole number between 0 and 1,000.`); return; }
+    }
     const suspects = suspectRows
       .filter((s) => s.name.trim())
       .map((s) => ({ name: s.name.trim(), evidenceLinks: Array(Math.max(0, parseInt(s.evidenceLinks, 10) || 0)).fill(true) }));
@@ -151,7 +162,7 @@ export function LawEnforcementActionPanel() {
     setBusy('case'); setFeedback(null);
     try {
       const r = await callMacro<CaseResult>('caseAnalysis', { artifact: { data: { caseId: caseId.trim() || undefined, evidence, witnesses, suspects } } });
-      if (r.ok && r.result) { setCaseResult(r.result); pipe.publish('le.case', r.result, { label: `Case ${r.result.caseStrength}/100` }); ok(`Strength ${r.result.caseStrength} · ${r.result.status}.`); } else err(r.error ?? 'case failed');
+      if (r.ok && r.result) { setCaseResult(r.result); pipe.publish('le.case', r.result, { label: `Case ${r.result.caseStrength}/100` }); ok(`Strength ${r.result.caseStrength} · ${r.result.status}.`); } else err(r.reason ?? r.error ?? 'case failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 
@@ -160,10 +171,22 @@ export function LawEnforcementActionPanel() {
       .filter((z) => z.name.trim())
       .map((z) => ({ name: z.name.trim(), crimeRate: z.crimeRate, population: z.population, currentPatrols: z.currentPatrols }));
     if (zones.length === 0) { err('Add at least one patrol zone.'); return; }
+    // FIX-law-enforcement-006: refuse out-of-range zone numbers by name
+    // here (the server refuses them too) — negatives and absurd
+    // magnitudes used to compute straight into the plan (Patrol -1/-1;
+    // "need 100000000 units"). Blank still counts as 0.
+    for (const z of zones) {
+      const rate = z.crimeRate.trim() === '' ? 0 : Number(z.crimeRate);
+      const pop = z.population.trim() === '' ? 0 : Number(z.population);
+      const cur = z.currentPatrols.trim() === '' ? 0 : Number(z.currentPatrols);
+      if (!Number.isFinite(rate) || rate < 0 || rate > 10000) { err(`Zone "${z.name}": crime rate must be a number between 0 and 10,000.`); return; }
+      if (!Number.isFinite(pop) || pop < 0 || pop > 100000000) { err(`Zone "${z.name}": population must be a number between 0 and 100,000,000.`); return; }
+      if (!Number.isFinite(cur) || cur < 0 || cur > 100000) { err(`Zone "${z.name}": current patrols must be a number between 0 and 100,000.`); return; }
+    }
     setBusy('patrol'); setFeedback(null);
     try {
       const r = await callMacro<PatrolResult>('patrolOptimize', { artifact: { data: { zones } } });
-      if (r.ok && r.result) { setPatrolResult(r.result); pipe.publish('le.patrol', r.result, { label: `Patrol plan ${r.result.totalCurrentUnits}/${r.result.totalUnitsNeeded} units` }); ok(`${r.result.hotspots.length} high-rate staged zone(s) · need ${r.result.totalUnitsNeeded} units.`); } else err(r.error ?? 'patrol failed');
+      if (r.ok && r.result) { setPatrolResult(r.result); pipe.publish('le.patrol', r.result, { label: `Patrol plan ${r.result.totalCurrentUnits}/${r.result.totalUnitsNeeded} units` }); ok(`${r.result.hotspots.length} high-rate staged zone(s) · need ${r.result.totalUnitsNeeded} units.`); } else err(r.reason ?? r.error ?? 'patrol failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 
@@ -265,8 +288,8 @@ export function LawEnforcementActionPanel() {
       } catch { /* keep the not-run wording — honest either way */ }
       const task = `Watch commander brief. Use ONLY the figures in this prompt; do not invent detections, counts, or places. ${mapFact} ${caseResult ? `Case strength: ${caseResult.caseStrength}/100 (${caseResult.status})${caseResult.scope ? ` — ${caseResult.scope}` : ''}` : 'No case analysis run.'} ${statsResult ? `Crime stats: ${statsResult.totalIncidents} incidents, ${statsResult.clearanceRate}% clearance${statsResult.scope ? ` — ${statsResult.scope}` : ''}` : 'No crime stats run.'} ${patrolResult ? `Patrol plan (staged workbench zones, planning figures only): ${patrolResult.totalCurrentUnits}/${patrolResult.totalUnitsNeeded} units allocated.` : ''} Identify single highest-leverage allocation change for next shift + one community-engagement opportunity. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Brief ready.'); } else err('Agent returned empty.');
+      const reply = readAgentReply(r.data);
+      if (reply.ok) { setAgentReply(reply.text); ok('Brief ready.'); } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 
@@ -396,18 +419,41 @@ export function LawEnforcementActionPanel() {
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
         {actions.map(act => {
           const Icon = act.icon; const isBusy = busy === act.id;
+          // FIX-law-enforcement-007: the two outbound tiles — DM (sends a
+          // beat report to a person) and Publish (mints a PUBLIC DTU) —
+          // arm a named confirm before they fire. Analysis tiles run
+          // directly, as before.
+          const confirmId = act.id === 'dm' || act.id === 'publish' ? act.id : null;
+          const needsConfirm = confirmId !== null;
+          const armed = armingConfirm === act.id;
           return (
-            <button key={act.id} type="button" disabled={!!busy} onClick={act.handler}
-              className={cn('flex flex-col items-start gap-1.5 p-2.5 rounded-lg text-left border transition-all', 'bg-zinc-900/40 border-zinc-800 hover:bg-zinc-800/60 hover:border-zinc-700', 'disabled:opacity-40 disabled:cursor-not-allowed')}>
+            <button key={act.id} type="button" disabled={!!busy}
+              onClick={() => { if (confirmId && !armed) { setArmingConfirm(confirmId); return; } setArmingConfirm(null); void act.handler(); }}
+              aria-pressed={needsConfirm ? armed : undefined}
+              className={cn('flex flex-col items-start gap-1.5 p-2.5 rounded-lg text-left border transition-all', armed ? 'bg-amber-500/10 border-amber-500/50' : 'bg-zinc-900/40 border-zinc-800 hover:bg-zinc-800/60 hover:border-zinc-700', 'disabled:opacity-40 disabled:cursor-not-allowed')}>
               <div className="w-7 h-7 rounded-md flex items-center justify-center" style={{ backgroundColor: act.accent + '20', color: act.accent }}>
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
-              <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
+              <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{armed ? `Confirm ${act.label}?` : act.label}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{armed ? 'Click again to confirm — or Cancel below' : act.desc}</div>
             </button>
           );
         })}
       </div>
+      {armingConfirm && (
+        <div role="alert" className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/5 px-3 py-2 text-xs text-amber-200">
+          <span>
+            {armingConfirm === 'dm'
+              ? `Send this beat report${recipient.trim() ? ` to ${recipient.trim()}` : ''}? It leaves the lens as a direct message.`
+              : 'Publish these crime stats as a public, anonymized DTU? Anyone will be able to read it.'}
+          </span>
+          <button type="button" className="rounded bg-amber-600/30 px-2 py-1 font-medium text-amber-100 hover:bg-amber-600/50"
+            onClick={() => { const a = actions.find((x) => x.id === armingConfirm); setArmingConfirm(null); if (a) void a.handler(); }}>
+            {armingConfirm === 'dm' ? 'Confirm send' : 'Confirm publish'}
+          </button>
+          <button type="button" className="rounded bg-zinc-700/40 px-2 py-1 text-zinc-300" onClick={() => setArmingConfirm(null)}>Cancel</button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
         {caseResult && (

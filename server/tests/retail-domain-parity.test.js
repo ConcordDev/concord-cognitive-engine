@@ -553,7 +553,9 @@ describe("retail.fulfillment-* (pick/pack/ship workflow)", () => {
   it("advances an order through fulfillment stages + records a shipment notice", () => {
     call("product-upsert", ctxA, { sku: "F1", name: "Box", price: 12, stock: 5 });
     call("storefront-configure", ctxA, { name: "Fulfil Co" });
-    call("storefront-publish", ctxA, { published: true });
+    // FIX-retail-002 (founder ruling A): publishing selects explicitly —
+    // an empty selection now publishes nothing, so the setup names its SKU.
+    call("storefront-publish", ctxA, { published: true, publishedSkus: ["F1"] });
     const co = call("storefront-checkout", ctxA, { buyerName: "Lee", buyerEmail: "lee@x.com", lines: [{ sku: "F1", qty: 1 }] });
     const orderId = co.result.order.id;
     const q = call("fulfillment-queue", ctxA, {});
@@ -569,7 +571,7 @@ describe("retail.fulfillment-* (pick/pack/ship workflow)", () => {
   it("rejects backward fulfillment moves", () => {
     call("product-upsert", ctxA, { sku: "F2", name: "Y", price: 1, stock: 9 });
     call("storefront-configure", ctxA, { name: "C" });
-    call("storefront-publish", ctxA, { published: true });
+    call("storefront-publish", ctxA, { published: true, publishedSkus: ["F2"] }); // FIX-retail-002: explicit selection
     const co = call("storefront-checkout", ctxA, { buyerName: "B", buyerEmail: "b@x", lines: [{ sku: "F2", qty: 1 }] });
     call("fulfillment-advance", ctxA, { orderId: co.result.order.id, toStatus: "packed" });
     assert.equal(call("fulfillment-advance", ctxA, { orderId: co.result.order.id, toStatus: "picking" }).ok, false);
@@ -580,7 +582,7 @@ describe("retail.shipping-label-* + shipping-track (carrier integration)", () =>
   it("label-buy returns a clear not-configured error without a provider", async () => {
     call("product-upsert", ctxA, { sku: "L1", name: "Z", price: 1, stock: 5 });
     call("storefront-configure", ctxA, { name: "Ship Co" });
-    call("storefront-publish", ctxA, { published: true });
+    call("storefront-publish", ctxA, { published: true, publishedSkus: ["L1"] }); // FIX-retail-002: explicit selection
     const co = call("storefront-checkout", ctxA, { buyerName: "B", buyerEmail: "b@x", lines: [{ sku: "L1", qty: 1 }] });
     const r = await call("shipping-label-buy", ctxA, { orderId: co.result.order.id, carrier: "usps", toAddress: { name: "B" } });
     assert.equal(r.ok, false);

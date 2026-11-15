@@ -27,8 +27,14 @@
  * data.name, and data.spec.name — not the title alone, or the exported
  * artifact goes on calling the piece by its old name. The load-time
  * convergence checks all three copies, so an artifact that diverged
- * before this fix heals on the next load. An empty name on "Save the
- * name" is refused out loud in the form; it used to return silently.
+ * before this fix heals on the next load. An empty name on "Save
+ * piece" is refused out loud in the form; it used to return silently.
+ *
+ * FIX-crafting-004: a piece is a project record, not a name alone —
+ * clicking its title opens it, and the editor carries its materials,
+ * steps, status, photo and notes (data.project on the recipe row,
+ * written by the same PATCH), with the materials-cost and step
+ * estimators computed from the record on the row and in the editor.
  * The name being typed is a lens draft
  * (useLensDraft): leaving the lens no longer destroys it, and a
  * successful save clears it. Typing a name already on the bench says so
@@ -46,20 +52,26 @@ import { api } from '@/lib/api/client';
 import {
   artifactNameLag,
   artifactsFromList,
+  emptyProject,
   isDuplicateName,
   joinPieces,
   pieceArtifactBody,
   pieceDesignBody,
   pieceRenameBody,
+  PIECE_PROJECT_STATUSES,
+  projectEstimates,
+  projectsFromRecipesList,
   recipesFromList,
   saveErrorFrom,
   specsFromRecipesList,
   type BenchPiece,
+  type PieceProject,
 } from '@/components/crafting/bench';
 
 export default function CraftingPage() {
   const nameId = useId();
   const [recipes, setRecipes] = useState<BenchPiece[]>([]);
+  const [pieceQuery, setPieceQuery] = useState('');
   const [phase, setPhase] = useState<'loading' | 'ready' | 'error'>('loading');
   const [loadError, setLoadError] = useState('');
   const [open, setOpen] = useState(false);
@@ -68,6 +80,8 @@ export default function CraftingPage() {
   const { value: name, setValue: setName, clear: clearDraft } = useLensDraft<string>('crafting', 'benchPieceName', { initial: '' });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
+  // FIX-crafting-004: the piece's project record, edited with the name.
+  const [projectDraft, setProjectDraft] = useState<PieceProject>(() => emptyProject());
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -81,7 +95,12 @@ export default function CraftingPage() {
       const error = typeof body.error === 'string' && body.error ? body.error : 'The bench did not answer.';
       return { ok: false as const, error };
     }
-    return { ok: true as const, recipes: recipesFromList(body), specs: specsFromRecipesList(body) };
+    return {
+      ok: true as const,
+      recipes: recipesFromList(body),
+      specs: specsFromRecipesList(body),
+      projects: projectsFromRecipesList(body),
+    };
   }, []);
 
   // The canonical layer is additive: its failure never errors the bench.
@@ -121,7 +140,7 @@ export default function CraftingPage() {
       return;
     }
     let finalRows = listed.rows;
-    let pieces = joinPieces(result.recipes, finalRows);
+    let pieces = joinPieces(result.recipes, finalRows, result.projects);
     // Backfill: pieces saved before D1 have no artifact yet. Registration
     // is owner-scoped by construction (the recipes list is the caller's).
     const missing = pieces.filter((p) => !p.artifactId);
@@ -139,7 +158,7 @@ export default function CraftingPage() {
         const refreshed = await pullArtifacts();
         if (refreshed.ok) {
           finalRows = refreshed.rows;
-          pieces = joinPieces(result.recipes, finalRows);
+          pieces = joinPieces(result.recipes, finalRows, result.projects);
         }
       }
     }
@@ -188,8 +207,12 @@ export default function CraftingPage() {
 
   const putOnBench = useCallback(async () => {
     const title = name.trim();
-    if (!title || saving) {
-      setOpen(true);
+    if (saving) return;
+    // FIX-crafting-005: an empty or whitespace name used to vanish here
+    // — the click did nothing and said nothing. Refuse out loud, the
+    // same words the rename path already uses for the same case.
+    if (!title) {
+      setSaveError('A piece needs a name.');
       return;
     }
     setSaving(true);
@@ -218,7 +241,7 @@ export default function CraftingPage() {
       const known = recipes
         .filter((p) => p.artifactId)
         .map((p) => ({ id: p.artifactId as string, recipeId: p.id, title: p.title, published: Boolean(p.published) }));
-      setRecipes(joinPieces(rows, artifactId ? [...known, { id: artifactId, recipeId: id, title, published: false }] : known));
+      setRecipes(joinPieces(rows, artifactId ? [...known, { id: artifactId, recipeId: id, title, published: false }] : known, projectsFromRecipesList(listed.data)));
       if (!artifactId) {
         setNotice('Saved to the bench. Its platform record could not be created yet — it will be completed when the bench reloads.');
       }
@@ -232,20 +255,24 @@ export default function CraftingPage() {
   }, [name, saving, registerPiece, recipes, clearDraft]);
 
   const [publishingId, setPublishingId] = useState<string | null>(null);
+  const [confirmPublishId, setConfirmPublishId] = useState<string | null>(null);
 
   // D1's publish act: the piece's canonical artifact is what publish acts
   // on (POST /api/lens/crafting/:artifactId/publish flips its visibility).
   // A piece with no artifact yet has nothing to publish — no button.
-  const publishPiece = useCallback(async (piece: BenchPiece) => {
+  const publishPiece = useCallback(async (piece: BenchPiece, unpublish = false) => {
     if (!piece.artifactId || publishingId) return;
     setPublishingId(piece.id);
     try {
-      const res = await api.post(`/api/lens/crafting/${piece.artifactId}/publish`, {});
+      const res = await api.post(`/api/lens/crafting/${piece.artifactId}/publish`, unpublish ? { unpublish: true } : {});
       const body = res.data as { ok?: boolean } | null;
       if (!body || body.ok === false) throw new Error('publish refused');
-      setRecipes((prev) => prev.map((p) => (p.id === piece.id ? { ...p, published: true } : p)));
+      setRecipes((prev) => prev.map((p) => (p.id === piece.id ? { ...p, published: !unpublish } : p)));
+      setConfirmPublishId(null);
     } catch {
-      setNotice('That piece could not be published. It is still on your bench.');
+      setNotice(unpublish
+        ? 'That piece could not be unpublished. It is still marked published.'
+        : 'That piece could not be published. It is still on your bench.');
     } finally {
       setPublishingId(null);
     }
@@ -254,6 +281,7 @@ export default function CraftingPage() {
   const startEdit = useCallback((piece: BenchPiece) => {
     setEditingId(piece.id);
     setEditName(piece.title);
+    setProjectDraft(piece.project ?? emptyProject());
     setConfirmingId(null);
     setSaveError('');
     setOpen(true);
@@ -276,7 +304,7 @@ export default function CraftingPage() {
     setSaving(true);
     setSaveError('');
     try {
-      const res = await api.patch(`/api/crafting/recipes/${piece.id}`, { title });
+      const res = await api.patch(`/api/crafting/recipes/${piece.id}`, { title, project: projectDraft });
       const body = res.data as { ok?: boolean } | null;
       if (!body || body.ok === false) throw new Error('rename refused');
       if (piece.artifactId) {
@@ -293,15 +321,15 @@ export default function CraftingPage() {
           // Converged on the next load; the bench name already moved.
         }
       }
-      setRecipes((prev) => prev.map((p) => (p.id === piece.id ? { ...p, title } : p)));
+      setRecipes((prev) => prev.map((p) => (p.id === piece.id ? { ...p, title, project: projectDraft } : p)));
       setEditingId(null);
       setOpen(false);
     } catch {
-      setSaveError('That name could not be saved. The piece keeps its old name.');
+      setSaveError('That piece could not be saved. It keeps its old name and record.');
     } finally {
       setSaving(false);
     }
-  }, [recipes, editingId, editName, saving]);
+  }, [recipes, editingId, editName, projectDraft, saving]);
 
   // D2 delete: two-step on the row (first click arms, second confirms).
   // The bench row goes first; a platform record that cannot be removed
@@ -350,6 +378,11 @@ export default function CraftingPage() {
     { lensId: 'crafting' },
   );
 
+  const pq = pieceQuery.trim().toLowerCase();
+  const visiblePieces = pq
+    ? recipes.filter((p) => p.title.toLowerCase().includes(pq))
+    : recipes;
+
 
   return (
     <LensShell lensId="crafting" asMain={false}>
@@ -377,18 +410,68 @@ export default function CraftingPage() {
           {phase === 'ready' && recipes.length === 0 && !open && (
             <p className="text-[14px] text-zinc-500">The bench is clear.</p>
           )}
+          {phase === 'ready' && recipes.length > 1 && (
+            <input value={pieceQuery} onChange={(e) => setPieceQuery(e.target.value)}
+              placeholder="Search your pieces" aria-label="Search your pieces"
+              className="mb-3 w-full max-w-xl self-stretch rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500" />
+          )}
+          {phase === 'ready' && recipes.length > 0 && visiblePieces.length === 0 && (
+            <p className="text-[14px] text-zinc-500">No pieces match &ldquo;{pieceQuery}&rdquo;.</p>
+          )}
           {phase === 'ready' && recipes.length > 0 && (
             <ul className="w-full max-w-xl self-stretch">
-              {recipes.map((row) => (
+              {visiblePieces.map((row) => (
                 <li key={row.id} className="flex items-baseline justify-between gap-4 border-b border-white/10 py-3 text-[16px] text-zinc-100">
-                  <span>{row.title}</span>
+                  <span className="flex flex-col">
+                    <button
+                      type="button"
+                      onClick={() => startEdit(row)}
+                      title="Open this piece"
+                      className="text-left hover:underline"
+                    >
+                      {row.title}
+                    </button>
+                    {row.project && (row.project.materials.length > 0 || row.project.steps.length > 0) ? (
+                      <span className="text-[12px] text-zinc-500">
+                        {(() => {
+                          const est = projectEstimates(row.project);
+                          const parts: string[] = [];
+                          if (row.project.materials.length > 0) parts.push(`$${est.materialsCost.toFixed(2)} in materials`);
+                          if (est.stepsTotal > 0) parts.push(`${est.stepsDone}/${est.stepsTotal} steps done`);
+                          return parts.join(' · ');
+                        })()}
+                      </span>
+                    ) : null}
+                  </span>
                   <span className="flex shrink-0 items-baseline gap-3">
                     {row.published ? (
-                      <span className="text-[12px] text-zinc-500">Published</span>
+                      <button
+                        type="button"
+                        onClick={() => void publishPiece(row, true)}
+                        disabled={publishingId === row.id}
+                        className="text-[13px] text-zinc-300 underline disabled:opacity-60"
+                      >
+                        Unpublish
+                      </button>
+                    ) : row.artifactId && confirmPublishId === row.id ? (
+                      <span className="flex items-baseline gap-2">
+                        <span className="text-[12px] text-zinc-500">Anyone who can list published pieces will see this. It is not posted to a feed or a market.</span>
+                        <button
+                          type="button"
+                          onClick={() => void publishPiece(row)}
+                          disabled={publishingId === row.id}
+                          className="text-[13px] text-zinc-100 underline disabled:opacity-60"
+                        >
+                          Confirm publish
+                        </button>
+                        <button type="button" onClick={() => setConfirmPublishId(null)} className="text-[13px] text-zinc-400 underline">
+                          Cancel
+                        </button>
+                      </span>
                     ) : row.artifactId ? (
                       <button
                         type="button"
-                        onClick={() => void publishPiece(row)}
+                        onClick={() => setConfirmPublishId(row.id)}
                         disabled={publishingId === row.id}
                         className="text-[13px] text-zinc-300 underline disabled:opacity-60"
                       >
@@ -434,6 +517,8 @@ export default function CraftingPage() {
               <input
                 id={nameId}
                 value={editingId ? editName : name}
+                aria-invalid={saveError ? true : undefined}
+                aria-describedby={saveError ? 'crafting-name-error' : undefined}
                 onChange={(event) => {
                   if (editingId) setEditName(event.target.value);
                   else setName(event.target.value);
@@ -451,7 +536,141 @@ export default function CraftingPage() {
               {isDuplicateName(editingId ? editName : name, recipes, editingId ?? undefined) ? (
                 <p className="mt-2 text-[13px] text-zinc-400">A piece with this name is already on the bench.</p>
               ) : null}
-              {saveError ? <p role="alert" className="mt-3 text-[14px] text-zinc-300">{saveError}</p> : null}
+              {!editingId && !(editingId ? editName : name).trim() ? (
+                <p className="mt-2 text-[13px] text-zinc-500">Give the piece a name to put it on the bench.</p>
+              ) : null}
+              {editingId ? (
+                <div className="mt-6 space-y-5 text-left">
+                  <div>
+                    <label htmlFor="crafting-project-status" className="block text-[13px] text-zinc-400">Project status</label>
+                    <select
+                      id="crafting-project-status"
+                      value={projectDraft.status}
+                      onChange={(e) => setProjectDraft((p) => ({ ...p, status: e.target.value as PieceProject['status'] }))}
+                      className="mt-2 w-full rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-zinc-100"
+                    >
+                      {PIECE_PROJECT_STATUSES.map((s) => (
+                        <option key={s} value={s}>{s.replace('_', ' ')}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="crafting-project-photo" className="block text-[13px] text-zinc-400">Photo URL</label>
+                    <input
+                      id="crafting-project-photo"
+                      value={projectDraft.photoUrl}
+                      onChange={(e) => setProjectDraft((p) => ({ ...p, photoUrl: e.target.value }))}
+                      placeholder="https://…"
+                      className="mt-2 w-full rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500"
+                    />
+                    {projectDraft.photoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={projectDraft.photoUrl} alt={`Photo of ${editName || 'the piece'}`} className="mt-3 max-h-40 rounded-lg border border-white/10 object-cover" />
+                    ) : null}
+                  </div>
+                  <div>
+                    <p className="text-[13px] text-zinc-400">Materials</p>
+                    {projectDraft.materials.map((m, i) => (
+                      <div key={i} className="mt-2 flex items-center gap-2">
+                        <input
+                          aria-label={`Material ${i + 1} name`}
+                          value={m.name}
+                          onChange={(e) => setProjectDraft((p) => ({ ...p, materials: p.materials.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)) }))}
+                          placeholder="Material"
+                          className="min-w-0 flex-1 rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500"
+                        />
+                        <input
+                          aria-label={`Material ${i + 1} quantity`}
+                          type="number" min={0} step="any"
+                          value={m.quantity}
+                          onChange={(e) => setProjectDraft((p) => ({ ...p, materials: p.materials.map((x, j) => (j === i ? { ...x, quantity: Number(e.target.value) } : x)) }))}
+                          className="w-20 rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-zinc-100"
+                        />
+                        <input
+                          aria-label={`Material ${i + 1} unit cost`}
+                          type="number" min={0} step="any"
+                          value={m.unitCost}
+                          onChange={(e) => setProjectDraft((p) => ({ ...p, materials: p.materials.map((x, j) => (j === i ? { ...x, unitCost: Number(e.target.value) } : x)) }))}
+                          className="w-24 rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-zinc-100"
+                        />
+                        <button
+                          type="button"
+                          aria-label={`Remove material ${i + 1}`}
+                          onClick={() => setProjectDraft((p) => ({ ...p, materials: p.materials.filter((_, j) => j !== i) }))}
+                          className="text-[13px] text-zinc-400 underline"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setProjectDraft((p) => ({ ...p, materials: [...p.materials, { name: '', quantity: 1, unitCost: 0 }] }))}
+                      className="mt-2 text-[13px] text-zinc-300 underline"
+                    >
+                      Add a material
+                    </button>
+                  </div>
+                  <div>
+                    <p className="text-[13px] text-zinc-400">Steps</p>
+                    {projectDraft.steps.map((s, i) => (
+                      <div key={i} className="mt-2 flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          aria-label={`Step ${i + 1} done`}
+                          checked={s.done}
+                          onChange={(e) => setProjectDraft((p) => ({ ...p, steps: p.steps.map((x, j) => (j === i ? { ...x, done: e.target.checked } : x)) }))}
+                          className="h-4 w-4 shrink-0"
+                        />
+                        <input
+                          aria-label={`Step ${i + 1} label`}
+                          value={s.label}
+                          onChange={(e) => setProjectDraft((p) => ({ ...p, steps: p.steps.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)) }))}
+                          placeholder="Step"
+                          className="min-w-0 flex-1 rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500"
+                        />
+                        <button
+                          type="button"
+                          aria-label={`Remove step ${i + 1}`}
+                          onClick={() => setProjectDraft((p) => ({ ...p, steps: p.steps.filter((_, j) => j !== i) }))}
+                          className="text-[13px] text-zinc-400 underline"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setProjectDraft((p) => ({ ...p, steps: [...p.steps, { label: '', done: false }] }))}
+                      className="mt-2 text-[13px] text-zinc-300 underline"
+                    >
+                      Add a step
+                    </button>
+                  </div>
+                  <div>
+                    <label htmlFor="crafting-project-notes" className="block text-[13px] text-zinc-400">Notes</label>
+                    <textarea
+                      id="crafting-project-notes"
+                      value={projectDraft.notes}
+                      onChange={(e) => setProjectDraft((p) => ({ ...p, notes: e.target.value }))}
+                      rows={3}
+                      className="mt-2 w-full rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-zinc-100"
+                    />
+                  </div>
+                  {(projectDraft.materials.length > 0 || projectDraft.steps.length > 0) ? (
+                    <p role="status" className="text-[13px] text-zinc-400">
+                      {(() => {
+                        const est = projectEstimates(projectDraft);
+                        const parts: string[] = [];
+                        if (projectDraft.materials.length > 0) parts.push(`Materials est. $${est.materialsCost.toFixed(2)}`);
+                        if (est.stepsTotal > 0) parts.push(`Steps ${est.stepsDone}/${est.stepsTotal} done (${Math.round((est.stepsDone / est.stepsTotal) * 100)}%)`);
+                        return parts.join(' · ');
+                      })()}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+              {saveError ? <p role="alert" id="crafting-name-error" className="mt-3 text-[14px] text-zinc-300">{saveError}</p> : null}
               {saving ? <p role="status" className="mt-3 text-[14px] text-zinc-500">Saving the piece.</p> : null}
             </form>
           )}
@@ -460,11 +679,11 @@ export default function CraftingPage() {
         <button
           type="button"
           onClick={onPrimary}
-          disabled={saving || phase !== 'ready'}
+          disabled={saving || phase !== 'ready' || (open && !(editingId ? editName : name).trim())}
           title="Start a piece (N)"
           className="fixed bottom-8 right-8 z-30 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black disabled:opacity-60"
         >
-          {open && editingId ? 'Save the name' : '+ Start a piece'}
+          {open && editingId ? 'Save piece' : '+ Start a piece'}
         </button>
       </div>
     </LensShell>

@@ -110,6 +110,7 @@
 
 import crypto from "node:crypto";
 import { registerCitation } from "../economy/royalty-cascade.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
 
 // The world every Vault record is placed in. Set explicitly on the DTU —
 // see the DTU-convention note above for why leaving it NULL is not an option.
@@ -362,6 +363,63 @@ export function withdraw(db, submissionId, submitterId, reason = null) {
     WHERE id = ?
   `).run(trimmed(reason).slice(0, 500) || null, row.id);
   return { ok: true, id: row.id, status: "withdrawn" };
+}
+
+/**
+ * Edit a submission before review (FIX-vault-001). The submitter may
+ * correct the work's title, description, or body only while it is still
+ * `submitted` — once a curator opens review, the work is read as
+ * submitted and changing it would change what was reviewed. The work's
+ * kind and lineage are its identity and provenance, not editable fields:
+ * a different work is a new submission.
+ */
+export function updateSubmission(db, submissionId, submitterId, input = {}) {
+  if (!db) return { ok: false, reason: "no_db" };
+  const row = getSubmissionRow(db, submissionId);
+  if (!row) return { ok: false, reason: "not_found" };
+  if (row.submitter_id !== String(submitterId || "")) return { ok: false, reason: "not_submitter" };
+  if (row.status !== "submitted") return { ok: false, reason: "wrong_state", status: row.status };
+  const sets = [];
+  const vals = [];
+  if (Object.prototype.hasOwnProperty.call(input, "title")) {
+    const title = trimmed(input.title);
+    if (!title) return { ok: false, reason: "missing_title" };
+    sets.push("title = ?"); vals.push(title.slice(0, 300));
+  }
+  if (Object.prototype.hasOwnProperty.call(input, "description")) {
+    sets.push("description = ?"); vals.push(trimmed(input.description).slice(0, 4000));
+  }
+  if (Object.prototype.hasOwnProperty.call(input, "body")) {
+    sets.push("body = ?"); vals.push(typeof input.body === "string" ? input.body.slice(0, 200000) : "");
+  }
+  if (!sets.length) return { ok: false, reason: "nothing_to_update" };
+  db.prepare(`UPDATE vault_submissions SET ${sets.join(", ")} WHERE id = ?`).run(...vals, row.id);
+  return { ok: true, id: row.id, status: row.status };
+}
+
+/**
+ * Remove a withdrawn submission (FIX-vault-001). Withdrawal leaves the
+ * row in the submitter's own list forever; a withdrawn work was never
+ * admitted, so deleting its row touches nothing the archive promised to
+ * keep. Only the submitter, only from `withdrawn` — an admitted record
+ * stays permanent, and a live submission is removed through its own
+ * path (withdraw first), never silently.
+ *
+ * Declined rows ride the same verb (the DTU archive/delete ruling,
+ * CB-0554 (1), carried leg): a declined work was likewise never admitted,
+ * but it sat in a dead end — withdraw refuses it (not a live state) and
+ * remove refused it (not withdrawn) — so `declined` is removable here
+ * too, under the same submitter-only gate.
+ */
+export function removeSubmission(db, submissionId, submitterId) {
+  if (!db) return { ok: false, reason: "no_db" };
+  const row = getSubmissionRow(db, submissionId);
+  if (!row) return { ok: false, reason: "not_found" };
+  if (row.submitter_id !== String(submitterId || "")) return { ok: false, reason: "not_submitter" };
+  if (row.status === "admitted") return { ok: false, reason: "admitted_records_are_permanent" };
+  if (row.status !== "withdrawn" && row.status !== "declined") return { ok: false, reason: "wrong_state", status: row.status };
+  db.prepare(`DELETE FROM vault_submissions WHERE id = ?`).run(row.id);
+  return { ok: true, id: row.id, removed: true };
 }
 
 // ── Invariant 2 helper: machine evidence can never BE the statement ───────
@@ -753,7 +811,31 @@ export function mySubmissions(db, submitterId, opts = {}) {
 // LENS_ACTIONS are declared thousands of lines into that file and top-level
 // references to either TDZ at boot; see CLAUDE.md's boot-order hazard note).
 
+function vaultExportRows(ctx) {
+  const db = ctx?.db;
+  const userId = ctx?.actor?.userId || ctx?.userId || null;
+  if (!db || !userId) return [];
+  const listed = mySubmissions(db, userId, { limit: 200 });
+  if (!listed?.ok) return [];
+  return (listed.submissions || []).map((row) => ({
+    id: row.id,
+    type: "submission",
+    title: row.title || "Submission",
+    createdAt: row.submittedAt || null,
+    updatedAt: row.admittedAt || row.declinedAt || row.submittedAt || null,
+    data: {
+      id: row.id,
+      title: row.title,
+      workKind: row.workKind,
+      status: row.status,
+      description: row.description,
+      submittedAt: row.submittedAt,
+    },
+  }));
+}
+
 export default function registerVaultActions(registerLensAction) {
+  registerLensExportProvider("vault", vaultExportRows);
   // The /api/lens/run path mirrors `input` onto BOTH artifact.data and
   // params; the harness passes params. Read both, params winning.
   const payload = (artifact, params) => ({
@@ -787,6 +869,8 @@ export default function registerVaultActions(registerLensAction) {
 
   registerLensAction("vault", "submit", needsActor(({ db, p, userId }) => submit(db, userId, p)));
   registerLensAction("vault", "withdraw", needsActor(({ db, p, userId }) => withdraw(db, p.submissionId, userId, p.reason)));
+  registerLensAction("vault", "update_submission", needsActor(({ db, p, userId }) => updateSubmission(db, p.submissionId, userId, p)));
+  registerLensAction("vault", "remove_submission", needsActor(({ db, p, userId }) => removeSubmission(db, p.submissionId, userId)));
   registerLensAction("vault", "my_submissions", needsActor(({ db, p, userId }) => mySubmissions(db, userId, p)));
 
   // Public reads — admitted records only, by construction (invariant 3).

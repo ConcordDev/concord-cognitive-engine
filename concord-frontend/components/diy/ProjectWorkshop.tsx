@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz';
 import { ds } from '@/lib/design-system';
@@ -32,6 +32,7 @@ import {
   Clock3,
   Calculator,
 } from 'lucide-react';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 // ── Shapes mirrored from server/domains/diy.js ──────────────────────
 interface DStep {
@@ -67,6 +68,7 @@ interface DProject {
   tags: string[];
   steps: DStep[];
   bom: DBomLine[];
+  cutList?: { stockLength: number; cuts: { label: string; length: number; quantity: number }[]; updatedAt?: string } | null;
   status: string;
   published?: boolean;
   forkedFrom: { projectId: string; name: string } | null;
@@ -431,8 +433,8 @@ export function ProjectWorkshop() {
       {showCreate && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-          onClick={() => setShowCreate(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-          <div className={cn(ds.panel, 'w-full max-w-md')} onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          onClick={() => setShowCreate(false)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
+          <div className={cn(ds.panel, 'w-full max-w-md')} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="New project">
             <div className="mb-4 flex items-center justify-between">
               <h3 className={ds.heading3}>New Project</h3>
               <button onClick={() => setShowCreate(false)} className={ds.btnGhost} aria-label="Close">
@@ -442,12 +444,12 @@ export function ProjectWorkshop() {
             <div className="space-y-3">
               <div>
                 <label className={ds.label}>Project name</label>
-                <input className={ds.input} value={npName} onChange={(e) => setNpName(e.target.value)} autoFocus />
+                <input className={ds.input} aria-label="Project name" value={npName} onChange={(e) => setNpName(e.target.value)} autoFocus />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className={ds.label}>Category</label>
-                  <select className={ds.select} value={npCategory} onChange={(e) => setNpCategory(e.target.value)}>
+                  <select className={ds.select} aria-label="Category" value={npCategory} onChange={(e) => setNpCategory(e.target.value)}>
                     {CATEGORIES.map((c) => (
                       <option key={c} value={c}>
                         {c}
@@ -457,7 +459,7 @@ export function ProjectWorkshop() {
                 </div>
                 <div>
                   <label className={ds.label}>Difficulty</label>
-                  <select className={ds.select} value={npDifficulty} onChange={(e) => setNpDifficulty(e.target.value)}>
+                  <select className={ds.select} aria-label="Difficulty" value={npDifficulty} onChange={(e) => setNpDifficulty(e.target.value)}>
                     {DIFFICULTIES.map((d) => (
                       <option key={d} value={d}>
                         {d}
@@ -471,6 +473,7 @@ export function ProjectWorkshop() {
                 <input
                   type="number"
                   className={ds.input}
+                  aria-label="Estimated hours"
                   value={npHours}
                   onChange={(e) => setNpHours(e.target.value)}
                 />
@@ -480,6 +483,7 @@ export function ProjectWorkshop() {
                 <textarea
                   className={ds.textarea}
                   rows={2}
+                  aria-label="Description"
                   value={npDesc}
                   onChange={(e) => setNpDesc(e.target.value)}
                 />
@@ -696,7 +700,7 @@ function ProjectDetail({
       {tab === 'steps' && <StepBuilder project={project} busy={busy} run={run} onChanged={onChanged} />}
       {tab === 'bom' && <BomEditor project={project} busy={busy} run={run} onChanged={onChanged} />}
       {tab === 'tools' && <ToolGate project={project} busy={busy} run={run} />}
-      {tab === 'cutlist' && <CutListPanel busy={busy} run={run} />}
+      {tab === 'cutlist' && <CutListPanel key={project.id} project={project} busy={busy} run={run} />}
       {tab === 'insights' && <InsightsPanel project={project} busy={busy} run={run} />}
     </div>
   );
@@ -797,12 +801,14 @@ function StepBuilder({
                 {editingId === s.id ? (
                   <div className="space-y-1.5">
                     <input
+                      aria-label="Step title"
                       value={editDraft.title}
                       onChange={(e) => setEditDraft((d) => ({ ...d, title: e.target.value }))}
                       className="w-full rounded border border-orange-600/50 bg-zinc-900 px-2 py-1 text-sm text-white focus:outline-none"
                       placeholder="Step title"
                     />
                     <textarea
+                      aria-label="Step instructions"
                       value={editDraft.text}
                       onChange={(e) => setEditDraft((d) => ({ ...d, text: e.target.value }))}
                       rows={2}
@@ -813,6 +819,7 @@ function StepBuilder({
                       <input
                         type="number"
                         min={0}
+                        aria-label="Estimated minutes"
                         value={editDraft.estimatedMinutes}
                         onChange={(e) => setEditDraft((d) => ({ ...d, estimatedMinutes: e.target.value }))}
                         className="w-24 rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs text-white focus:outline-none"
@@ -919,11 +926,12 @@ function StepBuilder({
           <Plus className="h-3.5 w-3.5" /> Add a step
         </div>
         <div className="grid grid-cols-2 gap-2">
-          <input className={ds.input} placeholder="Step title" value={title} onChange={(e) => setTitle(e.target.value)} />
+          <input className={ds.input} placeholder="Step title" aria-label="New step title" value={title} onChange={(e) => setTitle(e.target.value)} />
           <input
             type="number"
             className={ds.input}
             placeholder="Est. minutes"
+            aria-label="New step minutes"
             value={minutes}
             onChange={(e) => setMinutes(e.target.value)}
           />
@@ -932,12 +940,14 @@ function StepBuilder({
           className={ds.textarea}
           rows={2}
           placeholder="What to do in this step…"
+          aria-label="New step instructions"
           value={text}
           onChange={(e) => setText(e.target.value)}
         />
         <input
           className={ds.input}
           placeholder="Photo URL for this step (optional)"
+          aria-label="Step photo URL"
           value={photo}
           onChange={(e) => setPhoto(e.target.value)}
         />
@@ -964,6 +974,7 @@ function ResultPhotoInput({ onSave }: { onSave: (url: string) => void }) {
       <input
         className={cn(ds.input, 'h-7 py-0 text-[11px]')}
         placeholder="Result photo URL"
+        aria-label="Result photo URL"
         value={url}
         onChange={(e) => setUrl(e.target.value)}
       />
@@ -1020,14 +1031,18 @@ function BomEditor({
 
   const addLine = async () => {
     if (!item.trim()) return;
+    const quantity = Number(qty);
+    const unitPrice = price.trim() ? Number(price) : 0;
+    if (!Number.isFinite(quantity) || quantity <= 0) return;
+    if (!Number.isFinite(unitPrice) || unitPrice < 0) return;
     await run(
       'bom-add',
       {
         projectId: project.id,
         item: item.trim(),
-        quantity: parseFloat(qty) || 1,
+        quantity,
         unit,
-        unitPrice: parseFloat(price) || 0,
+        unitPrice,
         supplier: supplier.trim(),
       },
       apply,
@@ -1143,25 +1158,33 @@ function BomEditor({
         <div className="flex items-center gap-1.5 text-xs font-medium text-orange-300">
           <Plus className="h-3.5 w-3.5" /> Add a material
         </div>
-        <input className={ds.input} placeholder="Material name" value={item} onChange={(e) => setItem(e.target.value)} />
+        <input className={ds.input} placeholder="Material name" aria-label="Material name" value={item} onChange={(e) => setItem(e.target.value)} />
         <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-          <input type="number" className={ds.input} placeholder="Qty" value={qty} onChange={(e) => setQty(e.target.value)} />
-          <input className={ds.input} placeholder="Unit" value={unit} onChange={(e) => setUnit(e.target.value)} />
+          <input type="number" className={ds.input} placeholder="Qty" aria-label="Material quantity" value={qty} onChange={(e) => setQty(e.target.value)} />
+          <input className={ds.input} placeholder="Unit" aria-label="Material unit" value={unit} onChange={(e) => setUnit(e.target.value)} />
           <input
             type="number"
             className={ds.input}
             placeholder="Unit $"
+            aria-label="Material unit price"
             value={price}
             onChange={(e) => setPrice(e.target.value)}
           />
           <input
             className={ds.input}
             placeholder="Supplier"
+            aria-label="Material supplier"
             value={supplier}
             onChange={(e) => setSupplier(e.target.value)}
           />
         </div>
-        <button onClick={addLine} className={ds.btnPrimary} disabled={!item.trim() || busy}>
+        {(!Number.isFinite(Number(qty)) || Number(qty) <= 0) && (
+          <p role="alert" className="text-xs text-rose-300">Quantity has to be a number greater than 0.</p>
+        )}
+        {Number.isFinite(Number(qty)) && Number(qty) > 0 && price.trim() !== '' && (!Number.isFinite(Number(price)) || Number(price) < 0) && (
+          <p role="alert" className="text-xs text-rose-300">Unit price has to be a number that is 0 or more.</p>
+        )}
+        <button onClick={addLine} className={ds.btnPrimary} disabled={!item.trim() || busy || !Number.isFinite(Number(qty)) || Number(qty) <= 0 || (price.trim() !== '' && (!Number.isFinite(Number(price)) || Number(price) < 0))}>
           <Plus className="h-4 w-4" /> Add to BOM
         </button>
       </div>
@@ -1213,6 +1236,7 @@ function ToolGate({
         <input
           className={ds.input}
           placeholder="table saw, drill, sander…"
+          aria-label="Required tools"
           value={required}
           onChange={(e) => setRequired(e.target.value)}
         />
@@ -1221,8 +1245,8 @@ function ToolGate({
       <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 space-y-2">
         <label className={ds.label}>Your tool inventory</label>
         <div className="flex gap-2">
-          <input className={ds.input} placeholder="Tool name" value={invName} onChange={(e) => setInvName(e.target.value)} />
-          <select className={cn(ds.select, 'w-36')} value={invCond} onChange={(e) => setInvCond(e.target.value)}>
+          <input className={ds.input} placeholder="Tool name" aria-label="Tool name" value={invName} onChange={(e) => setInvName(e.target.value)} />
+          <select className={cn(ds.select, 'w-36')} aria-label="Tool condition" value={invCond} onChange={(e) => setInvCond(e.target.value)}>
             {TOOL_CONDITIONS.map((c) => (
               <option key={c} value={c}>
                 {c}
@@ -1286,18 +1310,29 @@ function ToolGate({
 
 // ── Cut-list optimizer with board-layout diagram ────────────────────
 function CutListPanel({
+  project,
   busy,
   run,
 }: {
+  project: DProject;
   busy: boolean;
   run: (a: string, i: Record<string, unknown>, after?: (r: any) => void) => Promise<any>;
 }) {
-  const [stock, setStock] = useState('96');
-  const [cuts, setCuts] = useState<{ label: string; length: string; quantity: string }[]>([]);
+  // Hydrate from the project's saved cut list (FIX-diy-003) — the panel used
+  // to keep stock + cuts in component state only, so the work vanished on
+  // reload. Inputs persist via diy.cutlist-save; the estimate is recomputed
+  // from the restored inputs on mount.
+  const saved = project.cutList;
+  const [stock, setStock] = useState(saved ? String(saved.stockLength) : '96');
+  const [cuts, setCuts] = useState<{ label: string; length: string; quantity: string }[]>(
+    (saved?.cuts || []).map((c) => ({ label: c.label, length: String(c.length), quantity: String(c.quantity) })),
+  );
   const [cLabel, setCLabel] = useState('');
   const [cLen, setCLen] = useState('');
   const [cQty, setCQty] = useState('1');
   const [result, setResult] = useState<DCutList | null>(null);
+  const hydratedRef = useRef(false);
+  const autoRanRef = useRef(false);
 
   const addCut = () => {
     if (!cLen.trim()) return;
@@ -1326,17 +1361,45 @@ function CutListPanel({
     if (r) setResult(r as DCutList);
   };
 
+  // Persist the working inputs on the project (debounced), and re-run the
+  // optimizer once on mount when a saved cut list was restored so the
+  // estimate the user left is what they come back to.
+  useEffect(() => {
+    if (!hydratedRef.current) {
+      hydratedRef.current = true;
+      if (!autoRanRef.current && cuts.length > 0) {
+        autoRanRef.current = true;
+        void optimize();
+      }
+      return;
+    }
+    const t = setTimeout(() => {
+      void run('cutlist-save', {
+        projectId: project.id,
+        stockLength: parseFloat(stock) || 96,
+        cuts: cuts.map((c) => ({
+          label: c.label,
+          length: parseFloat(c.length) || 0,
+          quantity: parseInt(c.quantity) || 1,
+        })),
+      });
+    }, 600);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stock, cuts]);
+
   return (
     <div className="space-y-3">
       <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 space-y-2">
         <label className={ds.label}>Stock board length (inches)</label>
-        <input type="number" className={cn(ds.input, 'w-40')} value={stock} onChange={(e) => setStock(e.target.value)} />
+        <input type="number" className={cn(ds.input, 'w-40')} aria-label="Stock board length (inches)" value={stock} onChange={(e) => setStock(e.target.value)} />
         <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-          <input className={ds.input} placeholder="Label" value={cLabel} onChange={(e) => setCLabel(e.target.value)} />
+          <input className={ds.input} placeholder="Label" aria-label="Cut label" value={cLabel} onChange={(e) => setCLabel(e.target.value)} />
           <input
             type="number"
             className={ds.input}
             placeholder="Length"
+            aria-label="Cut length"
             value={cLen}
             onChange={(e) => setCLen(e.target.value)}
           />
@@ -1344,6 +1407,7 @@ function CutListPanel({
             type="number"
             className={ds.input}
             placeholder="Qty"
+            aria-label="Cut quantity"
             value={cQty}
             onChange={(e) => setCQty(e.target.value)}
           />
@@ -1441,19 +1505,19 @@ function InsightsPanel({
     category: project.category,
     difficulty: project.difficulty,
     estimatedHours: project.estimatedHours,
-    materials: project.bom.map((b) => ({ name: b.item, quantity: b.quantity, unit: b.unit, unitPrice: b.unitPrice })),
+    materials: (project.bom || []).map((b) => ({ name: b.item, quantity: b.quantity, unit: b.unit, unitPrice: b.unitPrice })),
   }, (r) => setEstimate(r as DEstimate));
 
   const runSafety = () => run('safetyCheck', {
     category: project.category,
     difficulty: project.difficulty,
-    materials: project.bom.map((b) => b.item),
+    materials: (project.bom || []).map((b) => b.item),
   }, (r) => setSafety(r as DSafety));
 
   const runBuildTime = () => run('buildTimeEstimate', {
     difficulty: project.difficulty,
     estimatedHours: project.estimatedHours,
-    steps: project.steps.map((s) => ({ name: s.title, estimatedMinutes: s.estimatedMinutes })),
+    steps: (project.steps || []).map((s) => ({ name: s.title, estimatedMinutes: s.estimatedMinutes })),
   }, (r) => setBuildTime(r as DBuildTime));
 
   const riskTone: Record<string, string> = {
@@ -1469,7 +1533,7 @@ function InsightsPanel({
             <Calculator className="h-3.5 w-3.5 text-orange-300" /> Full cost estimate
           </h4>
           <button onClick={runEstimate} disabled={busy} className={cn(ds.btnSecondary, 'text-[11px]')}>
-            Compute from {project.bom.length} BOM line{project.bom.length === 1 ? '' : 's'}
+            Compute from {(project.bom || []).length} BOM line{(project.bom || []).length === 1 ? '' : 's'}
           </button>
         </div>
         {estimate ? (
@@ -1483,7 +1547,7 @@ function InsightsPanel({
             <p className="text-[11px] text-zinc-400">{estimate.budgetTip}</p>
           </div>
         ) : (
-          <p className="text-[11px] text-zinc-500 italic">Rolls materials cost + labor ({project.estimatedHours}h) + waste + contingency into one number.</p>
+          <p className="text-[11px] text-zinc-400 italic">Rolls materials cost + labor ({project.estimatedHours}h) + waste + contingency into one number.</p>
         )}
       </div>
 
@@ -1520,7 +1584,7 @@ function InsightsPanel({
             )}
           </div>
         ) : (
-          <p className="text-[11px] text-zinc-500 italic">
+          <p className="text-[11px] text-zinc-400 italic">
             Derives PPE + hazards from this project&apos;s material list. Add tools in the Tool Gate tab first for tool-based hazards too.
           </p>
         )}
@@ -1533,20 +1597,25 @@ function InsightsPanel({
             <Clock3 className="h-3.5 w-3.5 text-orange-300" /> Build-time estimate
           </h4>
           <button onClick={runBuildTime} disabled={busy} className={cn(ds.btnSecondary, 'text-[11px]')}>
-            Compute from {project.stepCount} step{project.stepCount === 1 ? '' : 's'}
+            Compute from {(project.steps || []).length || project.stepCount} step{((project.steps || []).length || project.stepCount) === 1 ? '' : 's'}
           </button>
         </div>
         {buildTime ? (
           <div className="space-y-1.5">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-              <Stat label="Total time" value={`${buildTime.grandTotalHours}h`} />
-              <Stat label="Setup/cleanup" value={`${buildTime.setupCleanupMinutes}m`} />
+              {/* FIX-diy-004: the headline rendered hours only, so a
+                  sub-hour build read 'Total time 0h' while its own
+                  payload carried the minutes. Under an hour the total
+                  reads in minutes; a zero-rounded setup share of a
+                  nonzero build reads '<1m', not '0m'. */}
+              <Stat label="Total time" value={buildTime.grandTotalMinutes < 60 ? `${buildTime.grandTotalMinutes}m` : `${buildTime.grandTotalHours}h`} />
+              <Stat label="Setup/cleanup" value={buildTime.setupCleanupMinutes === 0 && buildTime.grandTotalMinutes > 0 ? '<1m' : `${buildTime.setupCleanupMinutes}m`} />
               <Stat label="Weekends" value={`${buildTime.weekends}`} />
             </div>
             <p className="text-[11px] text-zinc-400">{buildTime.tip}</p>
           </div>
         ) : (
-          <p className="text-[11px] text-zinc-500 italic">Adjusts step time for &quot;{project.difficulty}&quot; experience and adds 15% setup/cleanup overhead.</p>
+          <p className="text-[11px] text-zinc-400 italic">Adjusts step time for &quot;{project.difficulty}&quot; experience and adds 15% setup/cleanup overhead.</p>
         )}
       </div>
     </div>

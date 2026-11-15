@@ -69,6 +69,35 @@ function hasWildcard(scopes) {
 /**
  * Scope required for a bridge risk on the lens path.
  */
+/**
+ * The Ask grant. The in-product agent loop (lib/chat-agent.js) acts as
+ * the signed-in user themselves — it is not an external API key — so
+ * the actor it presents to the bridge carries the lens/conkay scopes
+ * its tools require. Without them, a human session's own scopes
+ * (["read","write"] from makeCtx) read as a restricted service key and
+ * every bridge call is scope_denied (FIX-crisis-ops-001 and the
+ * commonsense/docs/suffering Ask family). mcp:lens:high is deliberately
+ * NOT granted: high-risk actions still require the high scope plus
+ * explicit approval. External MCP/API-key callers never pass through
+ * the agent loop and are unaffected.
+ */
+export const ASK_GRANT_SCOPES = Object.freeze([
+  "mcp:lens:read",
+  "mcp:lens:compute",
+  "mcp:lens:write",
+  "mcp:conkay:read",
+  "mcp:conkay:compute",
+]);
+
+export function withAskGrant(actor) {
+  if (!actor) return actor;
+  const merged = new Set([
+    ...(Array.isArray(actor.scopes) ? actor.scopes.map(String) : []),
+    ...ASK_GRANT_SCOPES,
+  ]);
+  return { ...actor, scopes: [...merged] };
+}
+
 export function requiredLensScope(risk) {
   switch (risk) {
     case BRIDGE_RISK.HIGH: return "mcp:lens:high";

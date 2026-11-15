@@ -6,6 +6,7 @@
  * mint/DM/publish/agent.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import { ShieldCheck, FileSearch, Activity, ListChecks, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -145,8 +146,8 @@ export function AuditActionPanel() {
     try {
       const task = `Internal audit memo. ${compResult ? `${compResult.framework}: ${compResult.complianceRate}% compliance.${(compResult.gaps?.length ?? 0) > 0 ? ` Gaps: ${compResult.gaps?.map(g => g.requirement).slice(0, 3).join(', ')}.` : ''}` : ''} ${riskResult ? `Audit risk ${riskResult.auditRisk}, ${riskResult.riskLevel}.` : ''} ${trailResult?.anomalies?.length ? `${trailResult.anomalies.length} trail anomalies.` : ''} Identify single highest-priority finding for management response + suggested remediation timeline. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Memo ready.'); } else err('Agent returned empty.');
+      const reply = readAgentReply(r.data);
+      if (reply.ok) { setAgentReply(reply.text); ok('Memo ready.'); } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 

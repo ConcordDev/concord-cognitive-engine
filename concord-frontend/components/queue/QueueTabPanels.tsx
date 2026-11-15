@@ -70,6 +70,7 @@ export function ScheduledPanel({
         onRetry={onRetry}
         onRemove={onRemove}
         onSelect={onSelect}
+        emptyHint="No scheduled jobs. Enqueue a job with a Delay (s) from the Overview tab and it will appear here."
       />
     </div>
   );

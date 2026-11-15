@@ -315,7 +315,7 @@ export function ScienceDataGrid() {
                 </div>
                 <span className="w-14 text-right font-mono text-gray-400">{f.completeness}%</span>
                 {f.numeric && (
-                  <span className="text-gray-500 font-mono">
+                  <span className="text-zinc-200 font-mono">
                     μ={f.numeric.mean} σ={f.numeric.stdDev} {f.numeric.outlierCount > 0 ? `· ${f.numeric.outlierCount} outlier(s)` : ''}
                   </span>
                 )}

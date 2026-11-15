@@ -115,6 +115,10 @@ function CombatSandboxInner() {
   // target a client-only placeholder id no NPC exists for — a guaranteed
   // silent no-op — so fireAttack gates on it instead of spamming the socket.
   const [arenaReady, setArenaReady] = useState(false);
+  // FIX-sandbox-001: a failed enterArena sync used to be swallowed whole,
+  // leaving every click a silent no-op forever. The failure is now state
+  // the click path can report in the hit log.
+  const [arenaSyncFailed, setArenaSyncFailed] = useState(false);
 
   // Active loadout — drives the damage / weapon sent to the combat pipeline.
   const [loadout, setLoadout] = useState<ActiveLoadout>({
@@ -148,9 +152,17 @@ function CombatSandboxInner() {
   // newly-added dummies are (re)spawned so an add/remove doesn't heal a
   // dummy mid-fight — the response's per-dummy `hp` is always the server's
   // authoritative current health.
+  // FIX-sandbox-005: syncs raced — the mount sync, add/remove, Apply and
+  // Reset all fire enterArena with no ordering, so a slow earlier
+  // response landing after a later one silently restored the earlier
+  // dummy count (the arena showed 1 vs 3 dummies between identical
+  // tries). Only the newest sync may apply its response.
+  const syncSeqRef = useRef(0);
   const syncArena = useCallback(async (count: number, hp: number, opts: { reset?: boolean } = {}) => {
+    const seq = ++syncSeqRef.current;
     try {
       const r = await lensRun('sandbox', 'enterArena', { count, hp, reset: !!opts.reset });
+      if (seq !== syncSeqRef.current) return; // superseded by a newer sync
       if (r.data?.ok && r.data.result) {
         const info = r.data.result as { cityId: string; dummies: { index: number; npcId: string; hp: number }[] };
         setDummies(
@@ -160,10 +172,17 @@ function CombatSandboxInner() {
             .map((d) => ({ id: d.npcId, name: `Training Dummy ${d.index + 1}`, hp: d.hp, maxHp: hp })),
         );
         setArenaReady(true);
+        setArenaSyncFailed(false);
+      } else {
+        // A resolved-but-refused sync is a failure too (FIX-sandbox-001).
+        setArenaSyncFailed(true);
       }
     } catch {
-      // Best-effort — the raycast/socket path just stays a no-op until the
-      // next sync succeeds (mount retry, or the next user-triggered change).
+      if (seq !== syncSeqRef.current) return; // superseded by a newer sync
+      // The sync may recover on the next user-triggered change, but until
+      // it does, clicks report the failure in the hit log (FIX-sandbox-001)
+      // instead of dying silently.
+      setArenaSyncFailed(true);
     }
   }, []);
 
@@ -208,12 +227,44 @@ function CombatSandboxInner() {
         }
       },
     );
-    return off;
+    // FIX-sandbox-001: the server answers refused attacks with
+    // combat:attack:ack (rate_limited / raid friendly-fire immune) —
+    // the World surface already listens; the sandbox never did, so a
+    // refused attack looked identical to a landed one that missed.
+    const offAck = subscribe<{ ok: boolean; reason?: string; immune?: boolean }>(
+      'combat:attack:ack',
+      (a) => {
+        if (a.ok && !a.immune) return;
+        setHitLog((prev) =>
+          [...prev, {
+            id: `hl-${Date.now()}-${Math.random()}`,
+            text: a.immune
+              ? 'Attack passed through — target is friendly-fire immune.'
+              : `Attack refused by the server${a.reason ? ` (${a.reason.replace(/_/g, ' ')})` : ''}.`,
+            t: Date.now(),
+          }].slice(-12),
+        );
+      },
+    );
+    return () => { off(); offAck(); };
   }, []);
 
   const fireAttack = useCallback(
     (targetId: string, heavy = false) => {
-      if (!arenaReady) return;
+      if (!arenaReady) {
+        // FIX-sandbox-001: the click used to die here with no trace.
+        // Say why in the hit log instead.
+        setHitLog((prev) =>
+          [...prev, {
+            id: `hl-${Date.now()}-${Math.random()}`,
+            text: arenaSyncFailed
+              ? 'Arena failed to sync — attack not sent. Change the dummy count or reset to retry the sync.'
+              : 'Arena is still syncing — attack not sent yet.',
+            t: Date.now(),
+          }].slice(-12),
+        );
+        return;
+      }
       const sock = getSocket();
       sock.emit('combat:attack', {
         targetId,
@@ -229,7 +280,7 @@ function CombatSandboxInner() {
         worldId: SANDBOX_WORLD_ID,
       });
     },
-    [loadout, behaviorId, arenaReady],
+    [loadout, behaviorId, arenaReady, arenaSyncFailed],
   );
 
   const resetDummies = () => {
@@ -402,6 +453,7 @@ function CombatSandboxInner() {
           <button
             onClick={resetDummies}
             className="flex items-center gap-1 rounded bg-emerald-700 px-2 py-1 text-xs hover:bg-emerald-600"
+            title="Fully heal every dummy and clear the hit log — dummy count and HP stay as currently set"
           >
             <RotateCcw className="h-3 w-3" /> Reset
           </button>

@@ -312,7 +312,7 @@ export function VoiceLiveTranscribe({ onFinalized }: { onFinalized?: () => void 
             )}
           </p>
           <p className="text-sm text-zinc-200 leading-relaxed">
-            {session.words.length === 0 && <span className="text-zinc-600 italic">no data yet — start speaking</span>}
+            {session.words.length === 0 && <span className="text-zinc-200 italic">no data yet — start speaking</span>}
             {session.words.map(w => (
               <span key={w.id} className={cn(w.isFinal ? 'text-zinc-100' : 'text-zinc-400 italic')}>{w.text} </span>
             ))}
@@ -329,12 +329,14 @@ export function VoiceLiveTranscribe({ onFinalized }: { onFinalized?: () => void 
           <p className="text-[10px] uppercase tracking-wide text-zinc-400 mb-1">Recent live sessions</p>
           <ul className="space-y-1">
             {recent.map(s => (
-              <li key={s.id} className="flex items-center gap-2 bg-zinc-900/40 rounded px-2 py-1 text-xs">
+              <li key={s.id}>
+                <button type="button" onClick={() => void reloadSession(s.id)} className="flex w-full items-center gap-2 bg-zinc-900/40 rounded px-2 py-1 text-xs text-left hover:bg-zinc-800">
                 <span className="flex-1 truncate text-zinc-300">{s.title}</span>
                 <span className="text-zinc-400">{s.wordCount} words</span>
                 <span className={cn('px-1.5 rounded text-[10px]', s.status === 'finalized' ? 'bg-emerald-900/40 text-emerald-300' : s.status === 'ended' ? 'bg-zinc-800 text-zinc-400' : 'bg-rose-900/40 text-rose-300')}>
                   {s.status === 'finalized' ? 'saved' : s.status}
                 </span>
+                </button>
               </li>
             ))}
           </ul>

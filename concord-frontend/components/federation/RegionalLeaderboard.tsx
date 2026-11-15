@@ -146,7 +146,7 @@ function RegionalLeaderboard({
             <p className="mb-2">
               You haven&apos;t declared your {scope === 'regional' ? 'region' : 'country'} yet.
             </p>
-            <Link href="/onboarding/location" className="text-neon-cyan hover:underline text-xs">
+            <Link href="/profile" className="text-neon-cyan hover:underline text-xs">
               Set your location →
             </Link>
           </div>

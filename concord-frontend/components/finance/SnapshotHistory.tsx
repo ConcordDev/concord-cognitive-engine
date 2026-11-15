@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 export interface SnapshotRow {
   date: string;
@@ -57,14 +58,14 @@ export function SnapshotHistory({
         <li key={s.date} className="flex items-center justify-between gap-3 px-3 py-2 text-[13px]">
           <span className="text-zinc-300">{s.date}</span>
           <span className="tabular-nums text-zinc-100">{money(s.total)}</span>
-          <button
-            type="button"
-            onClick={() => { void remove(s.date); }}
+          <StickyDeleteConfirm
+            onConfirm={() => { void remove(s.date); }}
             disabled={busyDate !== null}
+            armLabel={busyDate === s.date ? 'Deleting…' : `Delete ${s.date}`}
+            armAriaLabel={`Delete snapshot ${s.date}`}
+            confirmAriaLabel={`Confirm delete snapshot ${s.date}`}
             className="text-[12px] text-rose-300 hover:underline disabled:opacity-40"
-          >
-            {busyDate === s.date ? 'Deleting…' : `Delete ${s.date}`}
-          </button>
+          />
         </li>
       ))}
       {note && <li className="px-3 py-2 text-[12px] text-zinc-400" role="status">{note}</li>}

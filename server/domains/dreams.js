@@ -232,6 +232,18 @@ function interpretDream(dtu, row) {
 
 // ── registration ────────────────────────────────────────────────────────────
 
+// Calendar day in the caller's zone. tzOffsetMin is Date.getTimezoneOffset()
+// (minutes to add to local time to get UTC). Omitted offset stays on UTC,
+// which is what the existing noon-UTC fixtures assert.
+function dreamCalendarDay(composedAt, tzOffsetMin) {
+  const offset = Number(tzOffsetMin);
+  const minutes = Number.isFinite(offset) ? Math.max(-14 * 60, Math.min(14 * 60, Math.trunc(offset))) : 0;
+  const ms = Number(composedAt) * 1000 - minutes * 60_000;
+  const d = new Date(ms);
+  if (Number.isNaN(d.getTime())) return "unknown";
+  return d.toISOString().slice(0, 10);
+}
+
 export default function registerDreamsMacros(register) {
   register("dreams", "recent", async (ctx, input = {}) => {
     const db = ctx?.db;
@@ -385,13 +397,17 @@ export default function registerDreamsMacros(register) {
       const loaded = loadDream(db, userId, dreamId);
       if (!loaded) return { ok: false, reason: "dream_not_found" };
       const raw = Array.isArray(input?.tags) ? input.tags : [];
-      const tags = [...new Set(
-        raw.map((t) => String(t || "").trim().toLowerCase())
-          .filter((t) => t.length > 0 && t.length <= 32),
-      )].slice(0, 12);
+      const cleaned = raw.map((t) => String(t || "").trim().toLowerCase()).filter((t) => t.length > 0);
+      const dropped = cleaned.filter((t) => t.length > 32).length + Math.max(0, new Set(cleaned.filter((t) => t.length <= 32)).size - 12);
+      const tags = [...new Set(cleaned.filter((t) => t.length <= 32))].slice(0, 12);
       const tagMap = tagsForUser(userId);
       tagMap.set(String(dreamId), tags);
-      return { ok: true, dreamId: String(dreamId), tags };
+      return {
+        ok: true,
+        dreamId: String(dreamId),
+        tags,
+        ...(dropped > 0 ? { message: `${dropped} tag${dropped === 1 ? " was" : "s were"} not saved. Use at most 12 tags, each 32 characters or fewer.` } : {}),
+      };
     } catch (err) { return { ok: false, error: String(err?.message || err) }; }
   }, { note: "Set (replace) the tag list on one of your dreams. Up to 12 tags, ≤32 chars each." });
 
@@ -473,7 +489,7 @@ export default function registerDreamsMacros(register) {
   }, { note: "Search your dream history by free text (title/prose/fragment kinds), tag, or scope." });
 
   // ── dreams.timeline — dreams grouped by calendar day ─────────────────────
-  register("dreams", "timeline", async (ctx, _input = {}) => {
+  register("dreams", "timeline", async (ctx, input = {}) => {
     const db = ctx?.db;
     const userId = ctx?.actor?.userId;
     if (!db) return { ok: false, reason: "no_db" };
@@ -497,8 +513,9 @@ export default function registerDreamsMacros(register) {
         } catch { /* dtus absent */ }
       }
       const byDay = new Map();
+      const tzOffsetMin = input?.tzOffsetMin;
       for (const row of rows) {
-        const day = new Date(Number(row.composed_at) * 1000).toISOString().slice(0, 10);
+        const day = dreamCalendarDay(row.composed_at, tzOffsetMin);
         const dtu = dtuTitleById.get(row.dream_dtu_id) || null;
         if (!byDay.has(day)) byDay.set(day, []);
         byDay.get(day).push({
@@ -564,8 +581,9 @@ export default function registerDreamsMacros(register) {
       }
 
       const byDay = new Map();
+      const tzOffsetMin = input?.tzOffsetMin;
       for (const row of rows) {
-        const day = new Date(Number(row.composed_at) * 1000).toISOString().slice(0, 10);
+        const day = dreamCalendarDay(row.composed_at, tzOffsetMin);
         if (!byDay.has(day)) {
           byDay.set(day, { day, dreamCount: 0, activityIntensity: 0, dreamIds: [] });
         }

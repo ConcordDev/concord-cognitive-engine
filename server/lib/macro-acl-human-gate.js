@@ -63,9 +63,14 @@ const SELF_SCOPED_NAMES = new Set(["list_mine", "recent_mine"]);
  * @param {Map<string,{roles:string[],scopes:string[]}>} args.macroAclDomain per-domain rules
  * @returns {null|{ok:false,error:string,status:403,code:"admin_only"}} null = allowed
  */
-export function humanMacroAclDenial({ ctx, domain, name, macroAcl, macroAclDomain }) {
-  // Internal system callers (emergent ticks, autogen, repair cortex) bypass.
-  if (ctx?.internal === true || ctx?.actor?.internal === true) return null;
+/**
+ * The admin/owner-tier rule that governs a macro for human callers, or
+ * null when the macro is open to members (no rule, member/public tier,
+ * self-scoped, or on the member-usable allowlist). Shared by the denial
+ * below and by macroGateFor so discovery metadata can never drift from
+ * enforcement.
+ */
+function gateRuleFor({ domain, name, macroAcl, macroAclDomain }) {
   // Self-scoped bulk macros never touch other users' data.
   if (SELF_SCOPED_NAMES.has(name)) return null;
   // Product-facing admin-tagged macros stay open to members (guarded inline).
@@ -77,6 +82,15 @@ export function humanMacroAclDenial({ ctx, domain, name, macroAcl, macroAclDomai
   // Member-tier or public rules: unchanged, everyone can run them.
   const roles = rule.roles;
   if (!Array.isArray(roles) || roles.length === 0 || roles.includes("member") || roles.includes("viewer")) return null;
+  return rule;
+}
+
+export function humanMacroAclDenial({ ctx, domain, name, macroAcl, macroAclDomain }) {
+  // Internal system callers (emergent ticks, autogen, repair cortex) bypass.
+  if (ctx?.internal === true || ctx?.actor?.internal === true) return null;
+
+  const rule = gateRuleFor({ domain, name, macroAcl, macroAclDomain });
+  if (!rule) return null;
 
   // Admin or owner tier: allowed only for privileged roles / super scopes.
   const actor = ctx?.actor || {};
@@ -88,6 +102,19 @@ export function humanMacroAclDenial({ ctx, domain, name, macroAcl, macroAclDomai
     status: 403,
     code: "admin_only",
   };
+}
+
+/**
+ * Discovery-time view of the same gate (GB-1538 genus leg 4, FIX-grounding-001):
+ * returns { requiresRole: "admin" } when a member would be denied, else null.
+ * Owner-tier rules are reported as "admin" because the gate deliberately
+ * treats them as admin-satisfiable (see PRIVILEGED_ROLES). The action
+ * discovery endpoint annotates actions with this so the frontend can skip
+ * gated actions instead of firing them into an honest 403.
+ */
+export function macroGateFor({ domain, name, macroAcl, macroAclDomain }) {
+  const rule = gateRuleFor({ domain, name, macroAcl, macroAclDomain });
+  return rule ? { requiresRole: "admin" } : null;
 }
 
 export { PRIVILEGED_ROLES, MEMBER_USABLE_ADMIN_MACROS, SELF_SCOPED_NAMES };

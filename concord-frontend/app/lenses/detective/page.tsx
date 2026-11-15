@@ -44,7 +44,12 @@ export default function DetectiveLensPage() {
         tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, keys: v.keys, hint: v.hint, icon: v.icon }))}
         activeTab={active}
         onTab={(id) => setActive(id as DetectiveView)}
-        cta={{ label: 'Find a case', icon: Search, onClick: () => setActive('open'), title: 'Find a case to take (N)' }}
+        // FIX-detective-003: on the Open cases view (the default) the
+        // floating CTA only switches to the view already on screen, and at
+        // 390px it floated over the detail card's lower text. It now shows
+        // only from My case file, where jumping to open cases is a real
+        // action; the tab strip and the N command remain on Open cases.
+        cta={active === 'open' ? undefined : { label: 'Find a case', icon: Search, onClick: () => setActive('open'), title: 'Find a case to take (N)' }}
       >
         <section>
           <DetectiveBoardPanel active={active} onActiveChange={setActive} />

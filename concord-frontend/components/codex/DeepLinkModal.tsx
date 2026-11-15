@@ -26,7 +26,12 @@ export function DeepLinkModal({ deepLinkId }: { deepLinkId: string }) {
       if (cancelled) return;
       const event = r.data.ok ? ((r.data.result as { event?: LoreEvent } | null)?.event ?? null) : null;
       if (event) setDeepLink({ loading: false, error: null, event });
-      else setDeepLink({ loading: false, error: r.data.error || 'No entry matches this link.', event: null });
+      else {
+        // FIX-codex-001: lore.get answers a bad id with the raw token
+        // 'unknown_event' (in the reason field). Show the sentence.
+        const raw = r.data.error || (r.data as { reason?: string }).reason;
+        setDeepLink({ loading: false, error: raw === 'unknown_event' || !raw ? 'No entry matches this link.' : raw, event: null });
+      }
     })();
     return () => { cancelled = true; };
   }, [deepLinkId]);

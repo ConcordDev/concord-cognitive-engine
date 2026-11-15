@@ -185,7 +185,7 @@ export const ComputationNotebook = forwardRef<NotebookHandle, Props>(function Co
               ) : (
                 <span className="flex-1 min-w-0">
                   <span className="block text-xs text-gray-300 font-mono truncate">{c.label}</span>
-                  <span className="block text-[10px] text-gray-500">{new Date(c.createdAt).toLocaleString()}</span>
+                  <span className="block text-[10px] text-gray-400">{new Date(c.createdAt).toLocaleString()}</span>
                 </span>
               )}
               {c.resultGlyph && <span className="text-sm text-violet-300 shrink-0">{c.resultGlyph}</span>}

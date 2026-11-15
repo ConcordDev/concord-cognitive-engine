@@ -5,6 +5,7 @@ import { Search, X, Loader2, MessageSquare, Clock } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { useViewport } from '@/hooks/useViewport';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 export interface ThreadHit {
   threadId: string;
@@ -126,7 +127,7 @@ export function ThreadSearchOverlay({ open, onClose, onSelect, projectId }: Prop
   return (
     <div
       className={containerClasses}
-      onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+      onClick={onClose} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
       <div
         className={panelClasses}
         onClick={(e) => e.stopPropagation()}

@@ -6,13 +6,23 @@
  * handshake. Every value is real user input; no seed data.
  */
 
-import { useMemo, useState } from 'react';
-import { Plus, Trash2, ScrollText } from 'lucide-react';
-import { lensRun } from '@/lib/api/client';
+import { useEffect, useMemo, useState } from 'react';
+import { Check, Copy, Plus, Trash2, ScrollText } from 'lucide-react';
+import { api, lensRun } from '@/lib/api/client';
+import { useAuth } from '@/hooks/useAuth';
 
 interface BeneRow {
   userId: string;
+  /** Set when userId came from the people picker, with the display label. */
+  pickedId?: string;
+  pickedLabel?: string;
   sharePct: number;
+}
+
+interface MentionResult {
+  userId: string;
+  username?: string | null;
+  displayName?: string | null;
 }
 
 type Freq = 'upfront' | 'weekly' | 'monthly';
@@ -22,6 +32,10 @@ interface PactWriterProps {
 }
 
 export function PactWriter({ onWritten }: PactWriterProps) {
+  const { user } = useAuth();
+  const [copiedOwnId, setCopiedOwnId] = useState(false);
+  const [searchRow, setSearchRow] = useState<number | null>(null);
+  const [searchResults, setSearchResults] = useState<MentionResult[]>([]);
   const [beneficiaries, setBeneficiaries] = useState<BeneRow[]>([{ userId: '', sharePct: 100 }]);
   const [payoutSparks, setPayoutSparks] = useState(500);
   const [premiumSparks, setPremiumSparks] = useState(50);
@@ -41,6 +55,48 @@ export function PactWriter({ onWritten }: PactWriterProps) {
 
   const updateBene = (i: number, patch: Partial<BeneRow>) => {
     setBeneficiaries((prev) => prev.map((b, idx) => (idx === i ? { ...b, ...patch } : b)));
+  };
+
+  // People picker: typing in a beneficiary field searches the user
+  // directory by handle/name (the same mention search the Social composer
+  // uses), so a beneficiary is picked by who they are — nobody has to
+  // hunt for a raw user id. Free-typed ids still work unchanged.
+  const searchQuery = searchRow != null ? (beneficiaries[searchRow]?.userId || '') : '';
+  const searchPickedId = searchRow != null ? beneficiaries[searchRow]?.pickedId : undefined;
+  const searchActive = searchRow != null
+    && searchQuery.trim().length >= 2
+    && !(searchPickedId && searchQuery === searchPickedId);
+  useEffect(() => {
+    if (!searchActive) return;
+    const q = searchQuery.trim();
+    let live = true;
+    const t = window.setTimeout(async () => {
+      try {
+        const r = await api.get<{ results?: MentionResult[] }>(
+          `/api/social/mention-search?q=${encodeURIComponent(q.replace(/^@/, ''))}&limit=6`,
+        );
+        if (live) setSearchResults(r.data?.results || []);
+      } catch {
+        if (live) setSearchResults([]);
+      }
+    }, 200);
+    return () => { live = false; window.clearTimeout(t); };
+  }, [searchActive, searchQuery]);
+
+  const pickBene = (i: number, r: MentionResult) => {
+    const label = r.displayName || (r.username ? `@${r.username}` : r.userId);
+    updateBene(i, { userId: r.userId, pickedId: r.userId, pickedLabel: label });
+    setSearchRow(null);
+    setSearchResults([]);
+  };
+
+  const copyOwnId = async () => {
+    if (!user?.id) return;
+    try {
+      await navigator.clipboard.writeText(user.id);
+      setCopiedOwnId(true);
+      window.setTimeout(() => setCopiedOwnId(false), 1800);
+    } catch { /* clipboard unavailable; the id stays visible to copy by hand */ }
   };
   const addBene = () => setBeneficiaries((prev) => [...prev, { userId: '', sharePct: 0 }]);
   const removeBene = (i: number) =>
@@ -115,15 +171,59 @@ export function PactWriter({ onWritten }: PactWriterProps) {
             Split evenly
           </button>
         </div>
+        {user?.id && (
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-zinc-400">
+            Your user id:
+            <span className="font-mono text-zinc-200">{user.id}</span>
+            <button
+              type="button"
+              onClick={copyOwnId}
+              className="flex items-center gap-1 text-cyan-400 hover:text-cyan-300"
+            >
+              {copiedOwnId ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+              {copiedOwnId ? 'Copied' : 'Copy'}
+            </button>
+            <span>— share it with anyone naming you as a beneficiary.</span>
+          </p>
+        )}
         {beneficiaries.map((b, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <input
-              type="text"
-              placeholder="Beneficiary user id"
-              value={b.userId}
-              onChange={(e) => updateBene(i, { userId: e.target.value })}
-              className="flex-1 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-sm text-zinc-100"
-            />
+          <div key={i} className="flex items-start gap-2">
+            <div className="relative flex-1">
+              <input
+                type="text"
+                placeholder="Search by name or @handle, or paste a user id"
+                value={b.userId}
+                onFocus={() => setSearchRow(i)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  updateBene(i, b.pickedId && v !== b.pickedId
+                    ? { userId: v, pickedId: undefined, pickedLabel: undefined }
+                    : { userId: v });
+                  setSearchRow(i);
+                }}
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-sm text-zinc-100"
+                aria-label={`Beneficiary ${i + 1}`}
+              />
+              {b.pickedId && b.userId === b.pickedId && (
+                <p className="mt-1 text-[11px] text-emerald-400">{b.pickedLabel} — picked from the directory</p>
+              )}
+              {searchRow === i && searchActive && searchResults.length > 0 && (
+                <ul className="absolute left-0 right-0 top-full z-10 mt-1 overflow-hidden rounded-lg border border-zinc-700 bg-zinc-900 shadow-xl">
+                  {searchResults.map((r) => (
+                    <li key={r.userId}>
+                      <button
+                        type="button"
+                        onClick={() => pickBene(i, r)}
+                        className="flex w-full items-center justify-between px-3 py-1.5 text-left text-sm text-zinc-100 hover:bg-zinc-800"
+                      >
+                        <span>{r.displayName || r.username || r.userId}</span>
+                        {r.username && <span className="text-[11px] text-zinc-400">@{r.username}</span>}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
             <input
               type="number"
               min={0}

@@ -4,9 +4,13 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useLensTool } from '@/lib/lens-dock';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
+import { BOUNDS } from '@/lib/bounds';
 import { useUIStore } from '@/store/ui';
 import { Plus, X, Send, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { shouldIgnoreLensHotkey } from '@/lib/a11y/editable-target';
+import { useLensData } from '@/lib/hooks/use-lens-data';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface QuickCaptureProps {
   domain: string;
@@ -33,6 +37,8 @@ function QuickCapture({ domain }: QuickCaptureProps) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
+        // A field keeps Ctrl/Cmd+N while the user is typing (FIX-commonsense-004).
+        if (shouldIgnoreLensHotkey(e)) return;
         e.preventDefault();
         setIsOpen((prev) => !prev);
       }
@@ -74,11 +80,33 @@ function QuickCapture({ domain }: QuickCaptureProps) {
       addToast({ type: 'success', message: 'Captured successfully.' });
       queryClient.invalidateQueries({ queryKey: ['domain-context', domain] });
       queryClient.invalidateQueries({ queryKey: ['lens-data', domain] });
+      queryClient.invalidateQueries({ queryKey: ['lens', domain, 'list'] });
     },
     onError: () => {
       addToast({ type: 'error', message: 'Failed to capture. Please try again.' });
     },
   });
+
+  // Captures already in this lens — listed so a capture can be reviewed and
+  // removed where it was made. Deleting goes through the canonical verb
+  // (lens.delete via useLensData.remove): the artifact and its vault exhaust
+  // DTU are removed together, so no orphan is left behind in the lens export
+  // or My Vault (FIX-ux-suite-015 family: FIX-commonsense-003 · FIX-docs-006 ·
+  // FIX-strategic-adds-004 · FIX-ux-suite-007).
+  const { items: captures, remove: removeCapture } = useLensData<{ content?: string }>(domain, 'capture', {
+    noSeed: true,
+    enabled: isOpen,
+    limit: 20,
+  });
+
+  const handleDeleteCapture = async (id: string) => {
+    try {
+      await removeCapture(id);
+      addToast({ type: 'success', message: 'Capture deleted.' });
+    } catch {
+      addToast({ type: 'error', message: 'Could not delete that capture. Please try again.' });
+    }
+  };
 
   const handleSubmit = () => {
     if (content.trim()) {
@@ -117,6 +145,8 @@ function QuickCapture({ domain }: QuickCaptureProps) {
                   Quick Capture &mdash; {domain}
                 </span>
                 <button
+                  type="button"
+                  data-overlay-close=""
                   onClick={() => setIsOpen(false)}
                   className="p-1 rounded hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
                   aria-label="Close capture"
@@ -130,6 +160,10 @@ function QuickCapture({ domain }: QuickCaptureProps) {
                 <input
                   type="text"
                   placeholder="Title (optional)"
+                  // FIX-wallet-008: cap the title at the platform's title
+                  // limit (INPUT_LIMITS.title = 200) — it accepted 600
+                  // chars that the record layer then had to swallow.
+                  maxLength={200}
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   className="w-full bg-lattice-surface border border-lattice-border rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-neon-cyan"
@@ -138,6 +172,11 @@ function QuickCapture({ domain }: QuickCaptureProps) {
                 <textarea
                   ref={inputRef}
                   placeholder="Capture your thought..."
+                  // GB-1539 (FIX-ux-suite-008): a capture is NOTE class
+                  // (5,000) — the field now bounds at the policy limit
+                  // with a live counter instead of saving 5,001 chars
+                  // silently into a server refusal.
+                  maxLength={BOUNDS.NOTE}
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   onKeyDown={(e) => {
@@ -153,6 +192,7 @@ function QuickCapture({ domain }: QuickCaptureProps) {
                 {/* Footer */}
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-gray-400">Ctrl+Enter to save</span>
+                  <span className="text-xs text-gray-500">{content.length} / {BOUNDS.NOTE}</span>
                   <button
                     onClick={handleSubmit}
                     disabled={!content.trim() || createMutation.isPending}
@@ -165,7 +205,36 @@ function QuickCapture({ domain }: QuickCaptureProps) {
                     )}
                     Capture
                   </button>
+                  {!content.trim() && <span role="note" className="text-xs text-gray-400 self-center">Write something to capture.</span>}
                 </div>
+              </div>
+
+              {/* Captures in this lens — review + delete where they were made */}
+              <div className="border-t border-lattice-border p-3">
+                <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-1.5">Captures in this lens</p>
+                {captures.length === 0 ? (
+                  <p className="text-xs text-gray-500">No captures yet in this lens.</p>
+                ) : (
+                  <ul className="max-h-44 overflow-y-auto space-y-1">
+                    {captures.map((c) => (
+                      <li key={c.id} className="flex items-start justify-between gap-2 rounded-lg bg-lattice-surface px-2 py-1.5">
+                        <div className="min-w-0">
+                          <p className="truncate text-xs text-gray-200">{c.title}</p>
+                          {typeof c.data?.content === 'string' && c.data.content && (
+                            <p className="truncate text-[11px] text-gray-500">{c.data.content}</p>
+                          )}
+                        </div>
+                        <StickyDeleteConfirm
+                          onConfirm={() => { void handleDeleteCapture(c.id); }}
+                          armLabel="Delete"
+                          confirmLabel="Confirm delete?"
+                          armAriaLabel={`Delete capture ${c.title}`}
+                          className="shrink-0 text-[11px] text-rose-300/80 hover:text-rose-300"
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             </motion.div>
           </motion.div>

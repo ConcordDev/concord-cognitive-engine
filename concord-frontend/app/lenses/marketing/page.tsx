@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -62,7 +62,17 @@ export default function MarketingLensPage() {
   useLensNav('marketing');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('marketing');
 
-  const [studioTab, setStudioTab] = useState<StudioTab>('email');
+  const [studioTab, setStudioTab] = useState<StudioTab>(() => {
+    try {
+      const raw = sessionStorage.getItem('concord:marketing:studio');
+      if (raw && STUDIO_TABS.some((t) => t.id === raw)) return raw as StudioTab;
+    } catch { /* storage unavailable */ }
+    return 'email';
+  });
+
+  useEffect(() => {
+    try { sessionStorage.setItem('concord:marketing:studio', studioTab); } catch { /* storage unavailable */ }
+  }, [studioTab]);
 
   const composeEmail = useCallback(() => {
     setStudioTab('email');

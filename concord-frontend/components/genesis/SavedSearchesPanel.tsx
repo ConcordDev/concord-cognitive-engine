@@ -19,6 +19,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Search, Bookmark, Play, Trash2, Loader2, AlertTriangle } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 import type { RosterFilters } from './RosterExplorer';
 
@@ -106,7 +107,7 @@ export function SavedSearchesPanel({
       <div className="flex items-center gap-2 mb-3">
         <Search className="w-4 h-4 text-violet-400" />
         <h3 className="text-sm font-semibold text-zinc-100">Saved searches</h3>
-        {loading && <Loader2 className="w-3.5 h-3.5 animate-spin text-zinc-500" />}
+        {loading && <Loader2 className="w-3.5 h-3.5 animate-spin text-zinc-400" />}
       </div>
 
       {error && (
@@ -116,7 +117,7 @@ export function SavedSearchesPanel({
       )}
 
       <div className="space-y-1.5 mb-3">
-        {searches.length === 0 && !loading && <p className="text-xs text-zinc-500">No saved searches yet — filter the roster below, then save it.</p>}
+        {searches.length === 0 && !loading && <p className="text-xs text-zinc-400">No saved searches yet — filter the roster below, then save it.</p>}
         {searches.map((s) => {
           const summary = filterSummary(s.filters);
           return (
@@ -131,18 +132,20 @@ export function SavedSearchesPanel({
                 <Play className="h-3 w-3 flex-shrink-0" />
                 {s.label}
               </button>
-              {summary && <span className="truncate max-w-[10rem] font-mono text-zinc-500">{summary}</span>}
-              <button type="button" onClick={() => void remove(s.id)} aria-label={`Delete saved search "${s.label}"`}
-                className="opacity-0 group-hover:opacity-100 p-1 text-rose-300 hover:bg-rose-500/20 rounded"><Trash2 className="w-3 h-3" /></button>
+              {summary && <span className="truncate max-w-[10rem] font-mono text-zinc-400">{summary}</span>}
+              <StickyDeleteConfirm onConfirm={() => void remove(s.id)} armAriaLabel={`Delete saved search ${s.label}`} confirmAriaLabel={`Confirm delete saved search ${s.label}`} className="p-1 text-rose-300 hover:bg-rose-500/20 rounded" armLabel={<Trash2 className="w-3 h-3" />} />
             </div>
           );
         })}
       </div>
 
       <form onSubmit={(e) => { e.preventDefault(); void save(); }} className="flex flex-wrap items-center gap-2">
-        <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Label this search" maxLength={40}
+        <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Label this search" maxLength={40} aria-describedby="saved-search-label-count"
           className="w-40 bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-100 focus:border-violet-500 focus:outline-none" />
-        <span className="flex-1 min-w-[8rem] truncate text-[11px] text-zinc-500" title={filterSummary(currentFilters) || undefined}>
+        {/* FIX-genesis-005: the 40-char cap was silent — the label just
+            stopped growing. The bound is named with a live counter. */}
+        <span id="saved-search-label-count" className="text-[10px] text-zinc-500">{label.length}/40</span>
+        <span className="flex-1 min-w-[8rem] truncate text-[11px] text-zinc-400" title={filterSummary(currentFilters) || undefined}>
           {hasActiveFilters ? `Saves: ${filterSummary(currentFilters)}` : 'No active filters on the roster below'}
         </span>
         <button type="submit" disabled={saving || !label.trim() || !hasActiveFilters}

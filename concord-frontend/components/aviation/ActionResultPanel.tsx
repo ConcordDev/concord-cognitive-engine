@@ -172,6 +172,7 @@ export function ActionResultPanel({
         </div>
       )}
       {result.totalHours !== undefined && result.averageDuration !== undefined && (
+        <div className="space-y-2">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2" data-testid="flight-summary-result">
           <div className="p-2 bg-lattice-surface rounded text-center">
             <p className="text-sm font-bold text-neon-cyan">{String(result.totalHours)}h</p>
@@ -197,6 +198,10 @@ export function ActionResultPanel({
             <p className="text-sm font-bold text-neon-cyan">{String(result.avgFuelPerHour)}</p>
             <p className="text-[10px] text-gray-400">Gal/hr</p>
           </div>
+        </div>
+        {result.message !== undefined && (
+          <p className="text-[11px] text-gray-300">{String(result.message)}</p>
+        )}
         </div>
       )}
       {result.flightCategory !== undefined && result.windComponents !== undefined && (

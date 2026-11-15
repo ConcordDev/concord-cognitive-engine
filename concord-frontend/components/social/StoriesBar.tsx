@@ -255,7 +255,7 @@ function StoryViewer({
             const x = e.clientX - rect.left;
             if (x < rect.width / 3) goPrev();
             else goNext();
-          }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           {currentStory.imageUrl ? (
             <Image src={currentStory.imageUrl} alt="" fill className="object-cover" />
           ) : currentStory.content ? (
@@ -387,6 +387,7 @@ function StoriesBar({ currentUserId, onCreateStory, className }: StoriesBarProps
 }
 
 import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 const _WrappedStoriesBar = withErrorBoundary(StoriesBar);
 export { _WrappedStoriesBar as StoriesBar };
 export default _WrappedStoriesBar;

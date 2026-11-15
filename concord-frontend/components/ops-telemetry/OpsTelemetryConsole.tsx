@@ -771,7 +771,7 @@ export function OpsTelemetryConsole({ view }: { view: OpsView }) {
             </div>
           )}
           {lastRefresh && (
-            <div className="mx-auto mt-1 max-w-screen-2xl text-[10px] text-slate-500">last refreshed {lastRefresh.toLocaleTimeString()}</div>
+            <div className="mx-auto mt-1 max-w-screen-2xl text-[10px] text-slate-400">last refreshed {lastRefresh.toLocaleTimeString()}</div>
           )}
         </header>
 
@@ -936,7 +936,7 @@ export function OpsTelemetryConsole({ view }: { view: OpsView }) {
                 </thead>
                 <tbody>
                   {missions.length === 0 && (
-                    <tr><td colSpan={5} className="px-2 py-4 text-center text-slate-500">no missions yet</td></tr>
+                    <tr><td colSpan={5} className="px-2 py-4 text-center text-slate-400">no missions yet</td></tr>
                   )}
                   {missions.map((m) => (
                     <tr key={m.id} className="border-b border-zinc-900">
@@ -989,7 +989,7 @@ export function OpsTelemetryConsole({ view }: { view: OpsView }) {
                   </ul>
                 )}
                 {Array.isArray(missionDetail.memory) && (missionDetail.memory as Array<{ lesson?: string }>).length > 0 && (
-                  <p className="mt-1 truncate text-slate-500">
+                  <p className="mt-1 truncate text-slate-400">
                     lesson: {(missionDetail.memory as Array<{ lesson?: string }>)[0]?.lesson}
                   </p>
                 )}
@@ -1009,7 +1009,7 @@ export function OpsTelemetryConsole({ view }: { view: OpsView }) {
               </div>
             )}
             {benchmarkRuns.length > 0 && (
-              <div className="mt-2 text-[10px] text-slate-500">
+              <div className="mt-2 text-[10px] text-slate-400">
                 latest benchmark: {benchmarkRuns[0]?.status} ({benchmarkRuns[0]?.id?.slice(0, 12)})
               </div>
             )}
@@ -1036,7 +1036,7 @@ export function OpsTelemetryConsole({ view }: { view: OpsView }) {
                       )}
                     </p>
                     {(dilaRecovery.recent || []).slice(0, 2).map((e, i) => (
-                      <p key={i} className="truncate text-[10px] text-slate-500">{e.failure_kind} → {e.recovery_action}</p>
+                      <p key={i} className="truncate text-[10px] text-slate-400">{e.failure_kind} → {e.recovery_action}</p>
                     ))}
                   </div>
                 )}
@@ -1044,7 +1044,7 @@ export function OpsTelemetryConsole({ view }: { view: OpsView }) {
                   <div className="rounded-lg border border-fuchsia-500/10 bg-fuchsia-500/[0.02] p-2">
                     <h3 className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-fuchsia-300/80">Workspace audit</h3>
                     <p className="text-[11px] text-slate-300">{workspaceAudit.envKeyCount ?? 0} env keys · {workspaceAudit.connectors?.length ?? 0} connectors</p>
-                    <p className="truncate text-[10px] text-slate-500">
+                    <p className="truncate text-[10px] text-slate-400">
                       sources: {(workspaceAudit.dataSources || []).filter((d) => d.fileCount > 0).map((d) => d.id).join(', ') || 'none'}
                     </p>
                     {workspaceAudit.soak && (
@@ -1092,7 +1092,7 @@ export function OpsTelemetryConsole({ view }: { view: OpsView }) {
               </div>
             )}
             {!simError && simTotals && simWorlds && simWorlds.length === 0 && (
-              <p className="text-[11px] text-slate-500">No worlds detected on this instance.</p>
+              <p className="text-[11px] text-slate-400">No worlds detected on this instance.</p>
             )}
             {simTotals && simWorlds && simWorlds.length > 0 && (
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
@@ -1102,7 +1102,7 @@ export function OpsTelemetryConsole({ view }: { view: OpsView }) {
                 <Metric label="realms" value={simTotals.realmCount.toLocaleString()} />
                 <Metric label="districts" value={simTotals.districtCount.toLocaleString()} />
                 <div className={`rounded-lg border px-2.5 py-1.5 ${simTotals.worldsWithWarnings > 0 ? 'border-red-500/40 bg-red-500/10' : 'border-zinc-800 bg-zinc-950/40'}`}>
-                  <div className={`flex items-center gap-1 text-[10px] uppercase tracking-wider ${simTotals.worldsWithWarnings > 0 ? 'text-red-300' : 'text-slate-500'}`}>
+                  <div className={`flex items-center gap-1 text-[10px] uppercase tracking-wider ${simTotals.worldsWithWarnings > 0 ? 'text-red-300' : 'text-slate-400'}`}>
                     {simTotals.worldsWithWarnings > 0 && <ShieldAlert className="h-3 w-3" aria-hidden="true" />} worlds w/ warnings
                   </div>
                   <div className={`mt-0.5 text-sm font-semibold tabular-nums ${simTotals.worldsWithWarnings > 0 ? 'text-red-200' : 'text-slate-100'}`}>
@@ -1117,7 +1117,7 @@ export function OpsTelemetryConsole({ view }: { view: OpsView }) {
               </div>
             )}
             {!simTotals && !simError && (
-              <p className="text-[11px] text-slate-500">no simulation data loaded</p>
+              <p className="text-[11px] text-slate-400">no simulation data loaded</p>
             )}
           </div>
 
@@ -1153,10 +1153,10 @@ export function OpsTelemetryConsole({ view }: { view: OpsView }) {
               </div>
             )}
             {!fedPeers && !fedPeersError && (
-              <p className="mb-2 text-[11px] text-slate-500">no peer data loaded</p>
+              <p className="mb-2 text-[11px] text-slate-400">no peer data loaded</p>
             )}
             {fedPeers && fedPeers.length === 0 && (
-              <p className="mb-2 text-[11px] text-slate-500">No peers registered.</p>
+              <p className="mb-2 text-[11px] text-slate-400">No peers registered.</p>
             )}
             {fedPeers && fedPeers.length > 0 && (
               <div className="mb-2 overflow-x-auto">
@@ -1197,15 +1197,15 @@ export function OpsTelemetryConsole({ view }: { view: OpsView }) {
             </div>
 
             <div className="mt-2 rounded-lg border border-zinc-800 bg-zinc-950/40 px-2.5 py-1.5">
-              <div className="text-[10px] uppercase tracking-wider text-slate-500">automatic sync (fedmesh-sync-cycle heartbeat)</div>
+              <div className="text-[10px] uppercase tracking-wider text-slate-400">automatic sync (fedmesh-sync-cycle heartbeat)</div>
               {fedSyncModule ? (
                 <p className="mt-0.5 text-[11px] text-slate-300">
                   last ran {fedSyncModule.lastAt ? `${Math.round((Date.now() - fedSyncModule.lastAt) / 1000)}s ago` : 'never'} · {fedSyncModule.totalRuns} run{fedSyncModule.totalRuns === 1 ? '' : 's'} since boot
                 </p>
               ) : (
-                <p className="mt-0.5 text-[11px] text-slate-500">no heartbeat sample yet (runs every 120 ticks — give it time)</p>
+                <p className="mt-0.5 text-[11px] text-slate-400">no heartbeat sample yet (runs every 120 ticks — give it time)</p>
               )}
-              <p className="mt-1 text-[10px] text-slate-500">
+              <p className="mt-1 text-[10px] text-slate-400">
                 The heartbeat&apos;s own per-run accepted/rejected counts aren&apos;t exposed by telemetry (only that it ran) — use &quot;Drain inbox now&quot; for a real, visible result.
               </p>
             </div>
@@ -1240,7 +1240,7 @@ export function OpsTelemetryConsole({ view }: { view: OpsView }) {
                 ))}
               </div>
             ) : (
-              <p className="text-[11px] text-slate-500">No inference recorded in the window — the village is living on instinct.</p>
+              <p className="text-[11px] text-slate-400">No inference recorded in the window — the village is living on instinct.</p>
             )}
           </div>
             </>
@@ -1277,7 +1277,7 @@ export function OpsTelemetryConsole({ view }: { view: OpsView }) {
                 </thead>
                 <tbody>
                   {hbStats.length === 0 && (
-                    <tr><td colSpan={9} className="px-2 py-4 text-center text-slate-500">no samples yet (tick interval 60s — give it a minute)</td></tr>
+                    <tr><td colSpan={9} className="px-2 py-4 text-center text-slate-400">no samples yet (tick interval 60s — give it a minute)</td></tr>
                   )}
                   {hbStats.slice(0, 80).map((m) => (
                     <tr key={m.id} className={`border-b border-zinc-900 ${m.p99 > 10000 ? 'bg-red-500/10' : m.p99 > 5000 ? 'bg-amber-500/10' : ''}`}>
@@ -1292,13 +1292,13 @@ export function OpsTelemetryConsole({ view }: { view: OpsView }) {
                       <td className="px-2 py-1 text-right font-mono text-slate-400">{m.p50.toFixed(1)}</td>
                       <td className="px-2 py-1 text-right font-mono text-slate-400">{m.p90.toFixed(1)}</td>
                       <td className="px-2 py-1 text-right font-mono text-slate-200">{m.p99.toFixed(1)}</td>
-                      <td className="px-2 py-1 text-right font-mono text-slate-500">{m.totalRuns}</td>
+                      <td className="px-2 py-1 text-right font-mono text-slate-400">{m.totalRuns}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
               {hbStats.length > 80 && (
-                <p className="mt-1 text-[10px] text-slate-500">
+                <p className="mt-1 text-[10px] text-slate-400">
                   showing the 80 slowest of {hbStats.length} modules by p99 — the rest are faster and less actionable
                 </p>
               )}
@@ -1336,7 +1336,7 @@ export function OpsTelemetryConsole({ view }: { view: OpsView }) {
                   </ul>
                 </div>
               ))}
-              {brains.length === 0 && <p className="text-[11px] text-slate-500">no endpoints loaded</p>}
+              {brains.length === 0 && <p className="text-[11px] text-slate-400">no endpoints loaded</p>}
             </div>
           </div>
 
@@ -1344,7 +1344,7 @@ export function OpsTelemetryConsole({ view }: { view: OpsView }) {
           <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-3">
             <h2 className="mb-2 flex items-center gap-2 text-[12px] font-semibold uppercase tracking-wider text-cyan-300">
               <Activity className="h-4 w-4" /> Brain activity
-              <span className="ml-1 text-[10px] font-normal normal-case text-slate-500">who&apos;s pulling their weight (counts only)</span>
+              <span className="ml-1 text-[10px] font-normal normal-case text-slate-400">who&apos;s pulling their weight (counts only)</span>
             </h2>
             <div className="space-y-1.5">
               {brainActivity.map((b) => {
@@ -1354,20 +1354,20 @@ export function OpsTelemetryConsole({ view }: { view: OpsView }) {
                     <div className="min-w-0">
                       <span className="font-mono font-semibold text-slate-200">{b.brain}</span>
                       <span className="ml-2 text-slate-400">{b.role}</span>
-                      <div className="text-[10px] text-slate-500">{b.model}{!b.enabled && ' · offline'}</div>
+                      <div className="text-[10px] text-slate-400">{b.model}{!b.enabled && ' · offline'}</div>
                     </div>
                     <div className="flex items-center gap-3 text-right tabular-nums">
-                      <span className="text-cyan-300" title="total requests">{b.requests}<span className="text-slate-500"> req</span></span>
+                      <span className="text-cyan-300" title="total requests">{b.requests}<span className="text-slate-400"> req</span></span>
                       {b.errors > 0 && <span className="text-red-400" title="errors">{b.errors} err</span>}
                       <span className="text-slate-400" title="avg latency">{b.avgMs}ms</span>
-                      <span className={live ? 'text-emerald-400' : 'text-slate-500'} title="last active">
+                      <span className={live ? 'text-emerald-400' : 'text-slate-400'} title="last active">
                         {b.idleSeconds == null ? 'idle' : live ? '● active' : `${b.idleSeconds}s ago`}
                       </span>
                     </div>
                   </div>
                 );
               })}
-              {brainActivity.length === 0 && <p className="text-[11px] text-slate-500">no brain activity loaded</p>}
+              {brainActivity.length === 0 && <p className="text-[11px] text-slate-400">no brain activity loaded</p>}
             </div>
           </div>
             </>
@@ -1402,7 +1402,7 @@ export function OpsTelemetryConsole({ view }: { view: OpsView }) {
                   </thead>
                   <tbody>
                     {shards.length === 0 && (
-                      <tr><td colSpan={6} className="px-2 py-4 text-center text-slate-500">no shards spawned</td></tr>
+                      <tr><td colSpan={6} className="px-2 py-4 text-center text-slate-400">no shards spawned</td></tr>
                     )}
                     {shards.map((s) => (
                       <tr key={s.worldId} className={`border-b border-zinc-900 ${s.status === 'crashed' ? 'bg-red-500/10' : s.status === 'catching-up' ? 'bg-amber-500/10' : ''}`}>
@@ -1430,7 +1430,7 @@ export function OpsTelemetryConsole({ view }: { view: OpsView }) {
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 px-2.5 py-1.5">
-      <div className="text-[10px] uppercase tracking-wider text-slate-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-slate-400">{label}</div>
       <div className="mt-0.5 text-sm font-semibold tabular-nums text-slate-100">{value}</div>
     </div>
   );
@@ -1454,7 +1454,7 @@ function PoolCard({ title, icon: Icon, stats }: { title: string; icon: React.Com
           <Stat label="avg ms" value={`${stats.metrics.avgLatencyMs}`} />
         </div>
       ) : (
-        <p className="text-[11px] text-slate-500">pool stats unavailable</p>
+        <p className="text-[11px] text-slate-400">pool stats unavailable</p>
       )}
     </div>
   );

@@ -161,6 +161,25 @@ export function evaluateAchievement(db, userId, eventKind, payload = {}) {
  * Evaluate a stat-threshold trigger. Caller invokes this when a stat
  * changes (or periodically). `currentValue` is the current numeric stat.
  */
+/**
+ * Re-check DTU creation achievements from a count the caller already
+ * measured. One or more DTUs unlocks First DTU. The Creator stat
+ * unlocks at its threshold (25). Idempotent: an achievement already
+ * earned is not awarded again.
+ */
+export function syncDtuCreationAchievements(db, userId, count) {
+  const n = Number(count);
+  if (!db || !userId || !Number.isFinite(n) || n < 0) return { ok: false, unlocked: [] };
+  const unlocked = [];
+  if (n >= 1) {
+    const ev = evaluateAchievement(db, userId, "dtu:created", { userId, creatorId: userId });
+    if (ev?.unlocked) unlocked.push(...ev.unlocked);
+  }
+  const st = evaluateStatThreshold(db, userId, "dtus_created", n);
+  if (st?.unlocked) unlocked.push(...st.unlocked);
+  return { ok: true, count: n, unlocked };
+}
+
 export function evaluateStatThreshold(db, userId, statName, currentValue) {
   if (!db || !userId || !statName) return { unlocked: [] };
   if (!_initialized) initAchievementCatalog(db);

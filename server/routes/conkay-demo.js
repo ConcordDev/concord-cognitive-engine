@@ -11,7 +11,11 @@
 import express from "express";
 import { listBeamMaterials, solveBeamStudy, solveBeamSweep } from "../domains/engineering.js";
 import { listSnapshots, loadSnapshot, loadSnapshotFile } from "../lib/conkay/showcase/index.js";
-import { attestReceipt, ensureSigningKey } from "../lib/receipts/attest.js";
+import { attestReceipt, ensureSigningKey, verifyAttestation } from "../lib/receipts/attest.js";
+import { renderCalcSheetHtml } from "../lib/receipts/calc-sheet.js";
+import { buildCalcReceipt, roundTo } from "../lib/receipts/calc-receipt.js";
+import { openDesign } from "../lib/conkay/index.js";
+import { chemKernelKey } from "../lib/conkay/chem/cantera.js";
 import { hydrateAssembly } from "../lib/conkay/assembly/build.js";
 import { presentGlbFromStl } from "../lib/conkay/assembly/present-glb.js";
 import { subscribeLive, eventsAfter, loadLiveRunFile } from "../lib/conkay/chat/live.js";
@@ -33,6 +37,11 @@ function studyInput(q) {
     loadN: Number(q.loadN),
     support: typeof q.support === "string" ? q.support : undefined,
     material: typeof q.material === "string" ? q.material : undefined,
+    // GB-1534: optional caller-supplied job references, signed into the
+    // calc receipt (each capped at 200 chars by the receipt builder).
+    ...(typeof q.projectRef === "string" ? { projectRef: q.projectRef } : {}),
+    ...(typeof q.jobRef === "string" ? { jobRef: q.jobRef } : {}),
+    ...(typeof q.preparedFor === "string" ? { preparedFor: q.preparedFor } : {}),
   };
 }
 
@@ -52,6 +61,21 @@ export default function createConkayDemoRouter({ rateLimit }) {
       const solved = solveBeamStudy(studyInput(req.query));
       if (!solved.ok) return res.status(400).json({ ok: false, error: solved.error });
       res.json({ ok: true, saved: false, result: solved.result });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e instanceof Error ? e.message : String(e) });
+    }
+  });
+
+  // GB-1534: the one-page human calc sheet for the same solve, rendered
+  // from the signed v2 calc receipt (verified first, verdict on the page).
+  router.get("/beam/sheet", limit, (req, res) => {
+    try {
+      const solved = solveBeamStudy(studyInput(req.query));
+      if (!solved.ok) return res.status(400).json({ ok: false, error: solved.error });
+      const receipt = solved.result.calcReceipt;
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.setHeader("Cache-Control", "no-store");
+      res.send(renderCalcSheetHtml(receipt, { verify: verifyAttestation(receipt) }));
     } catch (e) {
       res.status(500).json({ ok: false, error: e instanceof Error ? e.message : String(e) });
     }
@@ -201,5 +225,187 @@ export default function createConkayDemoRouter({ rateLimit }) {
     }
   });
 
+  // GB-1534: no-login chemistry equilibrium demo. Same discipline as the
+  // beam demo — compute only, nothing saved. The Cantera kernel is a child
+  // process, so the design is settled off the request path (the
+  // conkay_design pattern) and kernel runs are serialized (cap 1 per
+  // process) and cached by the kernel key. When Cantera is unavailable the
+  // answer is an honest NOT_COMPUTED with the reason — never a fake number.
+  router.get("/chem/equilibrium", limit, async (req, res) => {
+    try {
+      const spec = chemInput(req.query);
+      if (!spec.ok) return res.status(400).json({ ok: false, error: spec.error });
+      const outcome = await solveChemEquilibrium(spec);
+      const receipt = chemCalcReceipt(spec, outcome);
+      res.json({
+        ok: true, saved: false,
+        result: {
+          fuel: spec.fuel, phi: spec.phi, T0: spec.T0, P0: spec.P0atm, mechanism: CHEM_FUELS[spec.fuel].mechanism,
+          status: outcome.status,
+          ...(outcome.reason ? { reason: outcome.reason } : {}),
+          ...(outcome.status !== "NOT_COMPUTED"
+            ? { adiabaticFlameTemperatureK: roundTo(outcome.tAd, 1), majorProducts: outcome.products }
+            : {}),
+          reference: CHEM_FUELS[spec.fuel].reference,
+          calcReceipt: receipt,
+          receipt,
+        },
+      });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e instanceof Error ? e.message : String(e) });
+    }
+  });
+
+  router.get("/chem/equilibrium/sheet", limit, async (req, res) => {
+    try {
+      const spec = chemInput(req.query);
+      if (!spec.ok) return res.status(400).json({ ok: false, error: spec.error });
+      const outcome = await solveChemEquilibrium(spec);
+      const receipt = chemCalcReceipt(spec, outcome);
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.setHeader("Cache-Control", "no-store");
+      res.send(renderCalcSheetHtml(receipt, { verify: verifyAttestation(receipt) }));
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e instanceof Error ? e.message : String(e) });
+    }
+  });
+
   return router;
+}
+
+const CHEM_FUELS = {
+  CH4: {
+    mechanism: "gri30.yaml",
+    reference: { case: "Turns, An Introduction to Combustion, 3rd ed. — stoichiometric CH4/air at 300 K, 1 atm", value: 2226, unit: "K", tolerance: 25 },
+  },
+  H2: {
+    mechanism: "h2o2.yaml",
+    reference: { case: "Turns, An Introduction to Combustion, 3rd ed. — stoichiometric H2/air at 300 K, 1 atm", value: 2380, unit: "K", tolerance: 40 },
+  },
+};
+const CHEM_OXIDIZER = "O2:1, N2:3.76";
+
+/** Bounded chem demo inputs: fuel CH4|H2, phi 0.5–2.0, T0 250–1000 K, P0 0.5–10 atm. */
+function chemInput(q) {
+  const fuel = typeof q.fuel === "string" ? q.fuel.toUpperCase() : "CH4";
+  if (!CHEM_FUELS[fuel]) return { ok: false, error: "fuel must be CH4 or H2" };
+  const phi = q.phi === undefined || q.phi === "" ? 1 : Number(q.phi);
+  if (!Number.isFinite(phi) || phi < 0.5 || phi > 2.0) return { ok: false, error: "phi must be between 0.5 and 2.0" };
+  const T0 = q.T0 === undefined || q.T0 === "" ? 300 : Number(q.T0);
+  if (!Number.isFinite(T0) || T0 < 250 || T0 > 1000) return { ok: false, error: "T0 must be between 250 and 1000 K" };
+  const P0atm = q.P0 === undefined || q.P0 === "" ? 1 : Number(q.P0);
+  if (!Number.isFinite(P0atm) || P0atm < 0.5 || P0atm > 10) return { ok: false, error: "P0 must be between 0.5 and 10 atm" };
+  return { ok: true, fuel, phi, T0, P0atm };
+}
+
+const chemOutcomeCache = new Map();
+let chemQueue = Promise.resolve();
+
+/** Serialize kernel runs: at most one chem demo solve in flight per process. */
+function enqueueChem(fn) {
+  const run = chemQueue.then(fn, fn);
+  chemQueue = run.then(() => undefined, () => undefined);
+  return run;
+}
+
+/**
+ * Run (or reuse) one equilibrium solve. The outcome — never the receipt —
+ * is cached by chemKernelKey, so a repeat request attests fresh while the
+ * kernel runs once.
+ */
+function solveChemEquilibrium(spec) {
+  const { mechanism } = CHEM_FUELS[spec.fuel];
+  const request = {
+    mechanism, fuel: spec.fuel, oxidizer: CHEM_OXIDIZER,
+    phi: spec.phi, T0: spec.T0, P0: spec.P0atm * 101325,
+  };
+  const key = chemKernelKey("equilibrium", request);
+  if (chemOutcomeCache.has(key)) return chemOutcomeCache.get(key);
+  const pending = enqueueChem(async () => {
+    const ir = { nodes: [{ id: "CMB", kind: "Volume", props: { chemistry: { op: "equilibrium", ...request } } }] };
+    const opened = openDesign(ir);
+    if (!opened.ok) return { status: "NOT_COMPUTED", reason: "the demo design did not compile" };
+    await opened.session.settle();
+    const env = opened.session.results().find((e) => e && e.solver && e.solver.id === "chem.equilibrium");
+    if (!env) return { status: "NOT_COMPUTED", reason: "the equilibrium solver produced no run for the demo design" };
+    const tAd = env.outputs && env.outputs.adiabaticFlameTemperature
+      ? env.outputs.adiabaticFlameTemperature.value
+      : undefined;
+    if (env.status === "NOT_COMPUTED" || typeof tAd !== "number" || !Number.isFinite(tAd)) {
+      return {
+        status: "NOT_COMPUTED",
+        reason: typeof env.reason === "string" && env.reason
+          ? env.reason
+          : "the chemistry kernel did not compute a result",
+        solver: env.solver,
+        assumptions: env.assumptions,
+      };
+    }
+    const products = env.outputs.majorProducts && Array.isArray(env.outputs.majorProducts.value)
+      ? env.outputs.majorProducts.value.map((p) => ({ species: p.species, moleFraction: roundTo(p.X, 4) }))
+      : [];
+    return { status: "COMPUTED", tAd, products, solver: env.solver, assumptions: env.assumptions };
+  });
+  chemOutcomeCache.set(key, pending);
+  return pending;
+}
+
+/**
+ * The signed v2 calc receipt for one chem demo outcome. The reference
+ * verdict (PASS/FAIL against the cited Turns value) is computed only at
+ * the reference state (phi 1, 300 K, 1 atm) the citation describes; off
+ * that state a computed temperature carries WARN with the reason stated,
+ * and an uncomputed one is NOT_COMPUTED — never a fabricated verdict.
+ */
+function chemCalcReceipt(spec, outcome) {
+  const fuelSpec = CHEM_FUELS[spec.fuel];
+  const atReference = spec.phi === 1 && spec.T0 === 300 && spec.P0atm === 1;
+  let verdict;
+  if (outcome.status === "NOT_COMPUTED") {
+    verdict = { status: "NOT_COMPUTED", text: outcome.reason || "The chemistry kernel did not compute a result." };
+  } else if (atReference) {
+    const within = Math.abs(outcome.tAd - fuelSpec.reference.value) <= fuelSpec.reference.tolerance;
+    verdict = {
+      status: within ? "PASS" : "FAIL",
+      governing: "reference comparison",
+      text: `${within ? "PASS" : "FAIL"}: adiabatic flame temperature ${roundTo(outcome.tAd, 1)} K against the cited ${fuelSpec.reference.value} K ± ${fuelSpec.reference.tolerance} K.`,
+    };
+  } else {
+    verdict = {
+      status: "WARN",
+      governing: "reference comparison",
+      text: `Computed ${roundTo(outcome.tAd, 1)} K. The cited reference verdict applies at phi 1, 300 K, 1 atm; this run's inputs differ, so no pass/fail is claimed against it.`,
+    };
+  }
+  return buildCalcReceipt({
+    solver: outcome.solver && outcome.solver.id
+      ? { id: outcome.solver.id, version: outcome.solver.version }
+      : { id: "chem.equilibrium", version: "" },
+    inputs: {
+      fuel: spec.fuel,
+      mechanism: fuelSpec.mechanism,
+      oxidizer: CHEM_OXIDIZER,
+      equivalenceRatio: spec.phi,
+      initialTemperature: { value: spec.T0, unit: "K" },
+      initialPressure: { value: spec.P0atm, unit: "atm" },
+    },
+    method: outcome.solver && typeof outcome.solver.method === "string"
+      ? outcome.solver.method
+      : "Cantera chemical equilibrium at fixed enthalpy and pressure (HP)",
+    designBasis: {
+      code: "none — reference-value comparison only",
+      loadFactors: "n/a",
+      checksPerformed: ["Adiabatic flame temperature against the cited reference value, within its stated tolerance"],
+      checksNotPerformed: ["Finite-rate kinetics", "Heat loss and radiation", "Transport and mixing effects"],
+    },
+    assumptions: Array.isArray(outcome.assumptions) && outcome.assumptions.length ? outcome.assumptions : undefined,
+    results: outcome.status === "NOT_COMPUTED"
+      ? {}
+      : {
+          adiabaticFlameTemperature: { value: roundTo(outcome.tAd, 1), unit: "K" },
+          ...(outcome.products && outcome.products.length ? { majorProducts: outcome.products } : {}),
+        },
+    verdict,
+    reference: fuelSpec.reference,
+  });
 }

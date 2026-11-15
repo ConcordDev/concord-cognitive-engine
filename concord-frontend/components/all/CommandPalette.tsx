@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Command, Loader2, CornerDownLeft, Search } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { getLensById } from '@/lib/lens-registry';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface CommandEntry {
   kind: string;
@@ -81,13 +82,13 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     <div
       className="fixed inset-0 z-[120] flex items-start justify-center bg-black/70 backdrop-blur-sm pt-[12vh] px-4"
       onClick={onClose}
-      role="presentation" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+      role="presentation" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
       <div
         className="w-full max-w-xl rounded-xl border border-neon-cyan/30 bg-lattice-void shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-label="Command palette" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        aria-label="Command palette" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
         <div className="flex items-center gap-2 border-b border-lattice-border px-3 py-2.5">
           <Search className="w-4 h-4 text-neon-cyan shrink-0" />
           <input
@@ -99,6 +100,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
             className="flex-1 bg-transparent text-sm text-white outline-none placeholder:text-gray-600"
           />
           {loading && <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-400" />}
+          <button type="button" data-overlay-close="" aria-label="Close" onClick={onClose} className="text-[11px] text-gray-400">Close</button>
           <kbd className="text-[10px] text-gray-400 border border-lattice-border rounded px-1">Esc</kbd>
         </div>
         <div ref={listRef} className="max-h-[50vh] overflow-y-auto">

@@ -38,9 +38,10 @@ export function NewsSearchBar({ onChange }: { onChange?: () => void } = {}) {
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 overflow-hidden">
       <div className="relative p-3">
-        <Search className="absolute left-6 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+        <Search className="absolute left-6 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
         <input
           type="text"
+          aria-label="Search article directory"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search your article directory — title, source, topic, summary…"
@@ -48,14 +49,14 @@ export function NewsSearchBar({ onChange }: { onChange?: () => void } = {}) {
         />
         {query && (
           <button type="button" onClick={clear} aria-label="Clear search"
-            className="absolute right-6 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300">
+            className="absolute right-6 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-300">
             <X className="h-4 w-4" />
           </button>
         )}
       </div>
 
       {loading && (
-        <div className="flex items-center gap-2 px-4 pb-3 text-[11px] text-zinc-500">
+        <div className="flex items-center gap-2 px-4 pb-3 text-[11px] text-zinc-400">
           <Loader2 className="h-3.5 w-3.5 animate-spin" /> Searching…
         </div>
       )}
@@ -63,10 +64,10 @@ export function NewsSearchBar({ onChange }: { onChange?: () => void } = {}) {
       {!loading && results !== null && (
         <div className="border-t border-zinc-800 px-3 py-3">
           {results.length === 0 ? (
-            <p className="text-[11px] italic text-zinc-500">No articles match &ldquo;{query}&rdquo;.</p>
+            <p className="text-[11px] italic text-zinc-400">No articles match &ldquo;{query}&rdquo;.</p>
           ) : (
             <>
-              <p className="mb-2 text-[10px] uppercase tracking-wide text-zinc-500">
+              <p className="mb-2 text-[10px] uppercase tracking-wide text-zinc-400">
                 {results.length} result{results.length !== 1 ? 's' : ''}
               </p>
               <ul className="space-y-2 max-h-96 overflow-y-auto">

@@ -38,7 +38,7 @@ export function FitnessSubstratePanel() {
           <StatTile label="Total steps" value={(fitness.data?.days ?? []).reduce((a, d) => a + (d.steps ?? 0), 0) || '—'} icon={Activity} />
           <StatTile label="Active min" value={(fitness.data?.days ?? []).reduce((a, d) => a + (d.exerciseMinutes ?? 0), 0) || '—'} icon={Activity} />
         </div>
-        <p className="text-[11px] text-rose-800">Last 7 days · sourced from {fitness.data?.source ?? 'your activity ledger'}.</p>
+        <p className="text-[11px] text-rose-400">Last 7 days · sourced from {fitness.data?.source ?? 'your activity ledger'}.</p>
       </div>
     );
   }

@@ -108,7 +108,7 @@ function BrainCouncil({ className }: { className?: string }) {
       {/* Ask a question */}
       <div className="p-4">
         <div className="flex gap-2">
-          <input
+          <input aria-label="Ask the council"
             type="text"
             value={question}
             onChange={(e) => setQuestion(e.target.value)}

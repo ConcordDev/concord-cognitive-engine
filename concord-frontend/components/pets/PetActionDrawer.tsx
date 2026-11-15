@@ -26,6 +26,7 @@
  *   6. Quick log walk     → pets.activity-log (kind: 'walk')
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   X, Stethoscope, FileText, Pill, Phone, Globe, Activity,
@@ -182,11 +183,11 @@ export function PetActionDrawer({ pet, onClose, onChange }: PetActionDrawerProps
         'Return the clinic name, address, phone number, and a one-line note on why it fits.',
       ].filter(Boolean).join(' ');
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 5 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
-      if (reply) {
-        setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2));
+      const reply = readAgentReply(r.data);
+      if (reply.ok) {
+        setAgentReply(reply.text);
         ok('Agent returned emergency-vet candidates.');
-      } else err('Agent returned empty.');
+      } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }

@@ -287,7 +287,7 @@ describe("creative — production substrate CRUD + workflow (shared ctx)", () =>
   it("review-asset-create → prooflink-create → public-comment: external comment lands in owner inbox", async () => {
     const asset = await lensRun("creative", "review-asset-create", { params: { name: "Cut v1", kind: "video", durationSec: 120 } }, ctx);
     assert.equal(asset.ok, true);
-    const link = await lensRun("creative", "prooflink-create", { params: { assetId: asset.result.asset.id } }, ctx);
+    const link = await lensRun("creative", "prooflink-create", { params: { assetId: asset.result.asset.id, allowComments: true } }, ctx);
     assert.equal(link.ok, true);
     const token = link.result.link.token;
 

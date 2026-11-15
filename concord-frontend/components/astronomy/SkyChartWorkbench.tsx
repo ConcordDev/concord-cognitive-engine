@@ -136,6 +136,14 @@ export function SkyChartWorkbench() {
     try { localStorage.setItem(STORE_KEY, JSON.stringify(o)); } catch { /* storage off */ }
   }, []);
 
+  const clearObserver = useCallback(() => {
+    setObserver(null);
+    setLatInput('');
+    setLonInput('');
+    setGeoError(null);
+    try { localStorage.removeItem(STORE_KEY); } catch { /* storage off */ }
+  }, []);
+
   const applyManual = useCallback(() => {
     const lat = parseFloat(latInput);
     const lon = parseFloat(lonInput);
@@ -210,6 +218,15 @@ export function SkyChartWorkbench() {
             <span className="text-[11px] text-emerald-400">
               Observing from {observer.latitude.toFixed(4)}°, {observer.longitude.toFixed(4)}°
             </span>
+          )}
+          {observer && (
+            <button
+              type="button" onClick={clearObserver}
+              aria-label="Clear observer location"
+              className="flex items-center min-h-[40px] gap-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium rounded-lg px-3 py-1.5"
+            >
+              Clear location
+            </button>
           )}
         </div>
         {geoError && <p className="mt-1.5 text-[11px] text-rose-400">{geoError}</p>}

@@ -236,6 +236,33 @@ describe("forge.listProjects", () => {
   });
 });
 
+describe("forge.workbench-config (FIX-forge-003)", () => {
+  it("saves and reloads the workbench config per user", () => {
+    const save = call("workbench-config-save", ctxA, {
+      templateId: "saas", appName: "qa-saas", port: 4321, dbDriver: "postgres",
+      concordNode: true, domainTables: ["qa_items", "users"], enabledSections: null,
+    });
+    assert.equal(save.ok, true);
+    const got = call("workbench-config-get", ctxA, {});
+    assert.equal(got.ok, true);
+    assert.equal(got.result.config.appName, "qa-saas");
+    assert.equal(got.result.config.port, 4321);
+    assert.deepEqual(got.result.config.domainTables, ["qa_items", "users"]);
+    assert.equal(call("workbench-config-get", ctxB, {}).result.config, null);
+  });
+
+  it("rejects a blank app name and an out-of-range port; never stores secrets", () => {
+    assert.equal(call("workbench-config-save", ctxA, { appName: "  ", port: 3000 }).ok, false);
+    assert.equal(call("workbench-config-save", ctxA, { appName: "x", port: 70000 }).ok, false);
+    const save = call("workbench-config-save", ctxA, {
+      appName: "x", port: 3000, jwtSecret: "shh", stripeKey: "sk_live_nope",
+    });
+    assert.equal(save.ok, true);
+    assert.equal("jwtSecret" in save.result.config, false);
+    assert.equal("stripeKey" in save.result.config, false);
+  });
+});
+
 describe("INVARIANT: handlers never throw", () => {
   it("returns { ok:false } for malformed input instead of throwing", () => {
     for (const name of [

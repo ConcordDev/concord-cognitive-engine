@@ -78,6 +78,7 @@ export function ThreadPane({
       </div>
       <div className="border-t border-white/10 p-2 flex items-end gap-1">
         <textarea
+          aria-label="Reply in thread"
           value={body}
           onChange={e => setBody(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}

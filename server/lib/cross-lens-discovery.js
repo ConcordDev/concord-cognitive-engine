@@ -28,7 +28,18 @@ function _dtusOptionalColumns(db) {
   let names = new Set();
   try { names = new Set(db.prepare(`PRAGMA table_info(dtus)`).all().map((r) => r.name)); }
   catch { /* leave empty — every optional column reads as absent */ }
-  cached = { hasContent: names.has("content"), hasBodyJson: names.has("body_json") };
+  cached = {
+    hasContent: names.has("content"), hasBodyJson: names.has("body_json"),
+    // GB-1538 follow-on: the kind and body columns THEMSELVES vary by
+    // lineage — the migrated shape carries type/data, the live
+    // dtu-store runtime shape carries content_type/content and no
+    // type/data/lens_id at all. Queries below are built from this
+    // plan; on the migrated shape the generated SQL is byte-identical
+    // to the historical fixed strings.
+    kindCol: names.has("type") ? "type" : names.has("content_type") ? "content_type" : null,
+    bodyCol: names.has("data") ? "data" : names.has("content") ? "content" : null,
+    hasLensId: names.has("lens_id"),
+  };
   _dtusColumnCache.set(db, cached);
   return cached;
 }
@@ -121,6 +132,8 @@ export function searchDtus(db, query, opts = {}) {
   const safeQ = q.replace(/[%_\\]/g, "\\$&");
   const likePattern = `%${safeQ}%`;
 
+  const plan = _dtusOptionalColumns(db);
+
   const where = [];
   const params = [];
 
@@ -128,20 +141,29 @@ export function searchDtus(db, query, opts = {}) {
   // NOTE: the real column is `data` (aliased to meta_json in the SELECT); SQLite
   // can't resolve a SELECT alias in WHERE, so referencing d.meta_json here threw
   // "no such column" on every call — searchDtus/discovery.search were silently
-  // dead. Use the real column.
-  where.push(`(d.title LIKE ? ESCAPE '\\' OR d.data LIKE ? ESCAPE '\\')`);
-  params.push(likePattern, likePattern);
+  // dead. Use the real column. GB-1538 follow-on: the real column is whichever
+  // the table actually carries (data on the migrated shape, content on the
+  // dtu-store runtime shape); with no body column the text leg is title-only.
+  if (plan.bodyCol) {
+    where.push(`(d.title LIKE ? ESCAPE '\\' OR d.${plan.bodyCol} LIKE ? ESCAPE '\\')`);
+    params.push(likePattern, likePattern);
+  } else {
+    where.push(`(d.title LIKE ? ESCAPE '\\')`);
+    params.push(likePattern);
+  }
 
   if (opts.kind) {
-    where.push(`d.type = ?`);
-    params.push(opts.kind);
+    // No kind column anywhere on this shape → nothing can match a kind
+    // filter; say so in the query rather than throwing.
+    where.push(plan.kindCol ? `d.${plan.kindCol} = ?` : `1 = 0`);
+    if (plan.kindCol) params.push(opts.kind);
   }
 
   // DTU→lens routing: when a lens (lensHint) is supplied, filter to that lens's
   // own grounding instead of the flat pool. Falls back to flat when the lens
   // owns nothing yet (so an unrouted corpus still searches). 2026 RAG best-
   // practice: metadata-filter (lens) before the text LIKE.
-  if (opts.lens && process.env.CONCORD_DTU_ROUTING !== "0") {
+  if (opts.lens && process.env.CONCORD_DTU_ROUTING !== "0" && plan.hasLensId) {
     where.push(`d.lens_id = ?`);
     params.push(String(opts.lens));
   }
@@ -155,20 +177,31 @@ export function searchDtus(db, query, opts = {}) {
   // whose meta_json doesn't include "scope":"personal".
   // We use a meta_json LIKE check as a coarse filter; a true privacy
   // gate happens at the macro layer via publicReadDomains.
+  // With no body column the scope marker is unevaluable: a requester
+  // sees only their own rows, an anonymous requester sees none — the
+  // conservative direction, never a silent widening.
   if (requesterId) {
-    where.push(`(d.creator_id = ? OR d.data NOT LIKE '%"scope":"personal"%')`);
+    if (plan.bodyCol) {
+      where.push(`(d.creator_id = ? OR d.${plan.bodyCol} NOT LIKE '%"scope":"personal"%')`);
+    } else {
+      where.push(`(d.creator_id = ?)`);
+    }
     params.push(requesterId);
+  } else if (plan.bodyCol) {
+    where.push(`d.${plan.bodyCol} NOT LIKE '%"scope":"personal"%'`);
   } else {
-    where.push(`d.data NOT LIKE '%"scope":"personal"%'`);
+    where.push(`1 = 0`);
   }
 
-  const { hasContent, hasBodyJson } = _dtusOptionalColumns(db);
+  const { hasContent, hasBodyJson } = plan;
   const optionalCols = [hasContent ? "content" : "NULL AS content", hasBodyJson ? "body_json" : "NULL AS body_json"].join(", ");
+  const kindExpr = plan.kindCol ? `${plan.kindCol} AS kind` : "NULL AS kind";
+  const metaExpr = plan.bodyCol ? `${plan.bodyCol} AS meta_json` : "NULL AS meta_json";
 
   let rows = [];
   try {
     rows = db.prepare(`
-      SELECT id, type AS kind, title, creator_id, data AS meta_json, ${optionalCols}, created_at
+      SELECT id, ${kindExpr}, title, creator_id, ${metaExpr}, ${optionalCols}, created_at
       FROM dtus d
       WHERE ${where.join(" AND ")}
       ORDER BY created_at DESC
@@ -282,11 +315,19 @@ function summarizeMeta(meta) {
  */
 export function getKindFacets(db, requesterId = null) {
   if (!db) return [];
+  const plan = _dtusOptionalColumns(db);
+  // No kind column on this shape → there are no kinds to count.
+  if (!plan.kindCol) return [];
   try {
+    const where = requesterId
+      ? (plan.bodyCol
+        ? `WHERE (creator_id = ? OR ${plan.bodyCol} NOT LIKE '%"scope":"personal"%')`
+        : `WHERE (creator_id = ?)`)
+      : "";
     const rows = db.prepare(`
-      SELECT type AS kind, COUNT(*) AS n FROM dtus
-      ${requesterId ? `WHERE (creator_id = ? OR data NOT LIKE '%"scope":"personal"%')` : ""}
-      GROUP BY type ORDER BY n DESC LIMIT 50
+      SELECT ${plan.kindCol} AS kind, COUNT(*) AS n FROM dtus
+      ${where}
+      GROUP BY ${plan.kindCol} ORDER BY n DESC LIMIT 50
     `).all(...(requesterId ? [requesterId] : []));
     return rows;
   } catch { return []; }
@@ -301,10 +342,12 @@ export function getTrending(db, opts = {}) {
   const lookbackS = Math.max(60, Math.min(86400 * 7, Number(opts.lookbackS) || 86400));
   const cutoff = Math.floor(Date.now() / 1000) - lookbackS;
   const limit = Math.min(50, Math.max(1, Number(opts.limit) || 10));
+  const plan = _dtusOptionalColumns(db);
+  const kindExpr = plan.kindCol ? `d.${plan.kindCol} AS kind` : "NULL AS kind";
   try {
     return db.prepare(`
       SELECT c.parent_id AS id, COUNT(*) AS citations,
-             d.title, d.type AS kind, d.creator_id
+             d.title, ${kindExpr}, d.creator_id
       FROM royalty_lineage c
       JOIN dtus d ON d.id = c.parent_id
       WHERE c.created_at > datetime(?, 'unixepoch')

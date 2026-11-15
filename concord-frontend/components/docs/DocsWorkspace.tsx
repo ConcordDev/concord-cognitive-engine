@@ -18,6 +18,7 @@ import { lensRun } from '@/lib/api/client';
 import { useLensStatePersistence } from '@/lib/lens-state-persistence';
 import { cn } from '@/lib/utils';
 import { setDocsWorkspaceSnapshot } from './docsSession';
+import { downloadPageExport } from './exportPages';
 import { requestDelete } from './delete-safety-store';
 import { ConfirmDeleteButton, DeleteReceiptToast, useDeleteSafety } from './DeleteSafety';
 import { BlockEditorRow, blockDeleteLabel } from './BlockEditorRow';
@@ -65,14 +66,28 @@ export function requestNewDoc() {
  * and a server refusal (a duplicate title — [[title]] links resolve
  * by title) reverts the field and names the reason.
  */
-function PageTitleField({ title, pageId, onCommit, onNotice }: {
+function PageTitleField({ title, pageId, onCommit, onNotice, focusOnMount }: {
   title: string;
   pageId: string;
   onCommit: (t: string) => Promise<boolean>;
   onNotice: (msg: string | null) => void;
+  focusOnMount?: boolean;
 }) {
   const [draft, setDraft] = useState(title);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const focusedFor = useRef<string | null>(null);
   useEffect(() => { setDraft(title); }, [title, pageId]);
+  // FIX-docs-002: a freshly created page takes keyboard focus in its title
+  // (the Notion/Docs create flow). Without this, focus stayed on the
+  // still-focused "New page" button, so the user's next Enter re-clicked
+  // it and minted a second page.
+  useEffect(() => {
+    if (focusOnMount && focusedFor.current !== pageId) {
+      focusedFor.current = pageId;
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }
+  }, [focusOnMount, pageId]);
   const commit = async () => {
     const t = draft.trim();
     if (t === title) return;
@@ -85,7 +100,7 @@ function PageTitleField({ title, pageId, onCommit, onNotice }: {
     if (!ok) setDraft(title);
   };
   return (
-    <input value={draft} onChange={e => setDraft(e.target.value)} onBlur={() => void commit()}
+    <input ref={inputRef} value={draft} onChange={e => setDraft(e.target.value)} onBlur={() => void commit()}
       onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
       aria-label="Page title"
       className="flex-1 bg-transparent text-lg font-bold text-zinc-100 focus:outline-none border-b border-transparent focus:border-zinc-700" />
@@ -99,7 +114,7 @@ export function DocsWorkspace() {
   const didRestore = useRef(false);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [results, setResults] = useState<{ id: string; title: string; icon: string; snippet?: string }[] | null>(null);
+  const [results, setResults] = useState<{ id: string; kind?: string; title: string; icon: string; snippet?: string }[] | null>(null);
   const [tab, setTab] = useState<Tab>('editor');
   const [side, setSide] = useState<SidePanel>('none');
   const [showTemplates, setShowTemplates] = useState(false);
@@ -151,10 +166,15 @@ export function DocsWorkspace() {
     return () => { alive = false; };
   }, [active]);
 
+  const [freshPageId, setFreshPageId] = useState<string | null>(null);
   async function createPage(parentId: string | null) {
     const r = await lensRun('docs', 'page-create', parentId ? { parentId } : {});
     await refreshTree();
-    if (r.data?.ok) await openPage(r.data.result?.page.id as string);
+    if (r.data?.ok) {
+      const id = r.data.result?.page.id as string;
+      await openPage(id);
+      setFreshPageId(id);
+    }
   }
   const createRootRef = useRef<() => void>(() => {});
   useEffect(() => {
@@ -262,7 +282,7 @@ export function DocsWorkspace() {
     const run = ++searchRunRef.current;
     const r = await lensRun('docs', 'docs-search', { query: q });
     if (run !== searchRunRef.current) return; // a newer keystroke superseded this run
-    setResults((r.data?.result?.results as { id: string; title: string; icon: string; snippet?: string }[]) || []);
+    setResults((r.data?.result?.results as { id: string; kind?: string; title: string; icon: string; snippet?: string }[]) || []);
   }, []);
 
   // Search runs as the user types (S3 / F2). The control previously
@@ -353,9 +373,9 @@ export function DocsWorkspace() {
                   </p>
                 )}
                 {results.map(r => (
-                  <button key={r.id} onClick={() => { void openPage(r.id); setResults(null); }}
+                  <button key={r.id} onClick={() => { if (r.kind === 'database') { setTab('database'); } else { void openPage(r.id); } setResults(null); }}
                     className="block w-full text-left px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-800 rounded">
-                    <span className="truncate block">{r.icon} {r.title}</span>
+                    <span className="truncate block">{r.icon} {r.title}{r.kind === 'database' && <span className="ml-1 text-[9px] uppercase tracking-wide text-zinc-400">Database</span>}</span>
                     {r.snippet && <span className="block text-[10px] text-zinc-400 truncate">{r.snippet}</span>}
                   </button>
                 ))}
@@ -378,7 +398,7 @@ export function DocsWorkspace() {
               <div className="flex items-center gap-2 mb-2">
                 <input value={active.icon} onChange={e => setIcon(e.target.value)} maxLength={4}
                   className="w-9 text-center text-xl bg-transparent" />
-                <PageTitleField title={active.title} pageId={active.id}
+                <PageTitleField title={active.title} pageId={active.id} focusOnMount={active.id === freshPageId}
                   onCommit={async (t) => { const r = await renamePage(t); if (!r.ok) setTitleNotice(r.error ?? 'Rename failed.'); else setTitleNotice(null); return r.ok; }}
                   onNotice={setTitleNotice} />
                 <ConfirmDeleteButton itemLabel={active.title || 'Untitled page'} deleteTitle="Delete page"
@@ -394,6 +414,10 @@ export function DocsWorkspace() {
                 <button onClick={snapshotNow}
                   className="px-1.5 py-0.5 text-[10px] rounded border border-zinc-800 text-zinc-400 hover:text-zinc-100 hover:border-zinc-600">
                   Save version
+                </button>
+                <button onClick={() => downloadPageExport(active)} data-testid="docs-export-page"
+                  className="px-1.5 py-0.5 text-[10px] rounded border border-zinc-800 text-zinc-400 hover:text-zinc-100 hover:border-zinc-600">
+                  Export page
                 </button>
                 <PanelTab icon={<History className="w-3 h-3" />} label="History" active={side === 'versions'}
                   onClick={() => setSide(side === 'versions' ? 'none' : 'versions')} />

@@ -245,6 +245,25 @@ describe("self — layout: saveLayout / layout", () => {
     assert.deepEqual(r.result.tiles, ["steps", "mood", "water_ml"]);
   });
 
+  it("layout: a saved layout identical to the default reads as default; resetLayout restores it (FIX-self-010)", async () => {
+    const save = await lensRun("self", "saveLayout", {
+      params: { tiles: ["steps", "sleep_hours", "workout_min", "mood"] },
+    }, ctx);
+    assert.equal(save.ok, true);
+    const r = await lensRun("self", "layout", {}, ctx);
+    assert.equal(r.result.isDefault, true);
+
+    await lensRun("self", "saveLayout", { params: { tiles: ["mood"] } }, ctx);
+    const custom = await lensRun("self", "layout", {}, ctx);
+    assert.equal(custom.result.isDefault, false);
+
+    const reset = await lensRun("self", "resetLayout", {}, ctx);
+    assert.equal(reset.result.isDefault, true);
+    const after = await lensRun("self", "layout", {}, ctx);
+    assert.equal(after.result.isDefault, true);
+    assert.deepEqual(after.result.tiles, ["steps", "sleep_hours", "workout_min", "mood"]);
+  });
+
   it("saveLayout: rejects when no valid tiles supplied", async () => {
     const r = await lensRun("self", "saveLayout", { params: { tiles: ["bogus", "nonsense"] } }, ctx);
     assert.equal(r.result.ok, false);

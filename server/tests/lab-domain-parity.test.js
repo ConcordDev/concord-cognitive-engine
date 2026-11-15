@@ -83,6 +83,15 @@ describe("lab — electronic lab notebook", () => {
 
   it("rejects an untitled entry", () => {
     const r = call("notebook-create", ctxA, {}, { title: "" });
+  it("refuses a title past the 200 cap by name (FIX-lab-003)", () => {
+    // FIX-lab-003: a title past the 200 cap is refused by name, not
+    // silently sliced into a different title.
+    const long = call("notebook-create", ctxA, {}, { title: "x".repeat(250) });
+    assert.equal(long.ok, false);
+    assert.match(long.error, /200 characters or fewer/);
+    const atCap = call("notebook-create", ctxA, {}, { title: "y".repeat(200) });
+    assert.equal(atCap.ok, true);
+  });
     assert.equal(r.ok, false);
   });
 });

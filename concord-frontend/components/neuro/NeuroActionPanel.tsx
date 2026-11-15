@@ -6,6 +6,7 @@
  * mint/DM/publish/agent.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState, useMemo } from 'react';
 import { Brain, Activity, Network, Zap, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -156,8 +157,8 @@ export function NeuroActionPanel() {
       const ch0 = freqResult?.channels?.[0];
       const task = `EEG bench. ${ch0 ? `Channel ${ch0.channel}: dominant ${ch0.dominantBand.name} (${ch0.dominantBand.relativePower}%, ${ch0.dominantBand.association}), peak ${ch0.peakFrequency} Hz, arousal ${ch0.indices.arousalLevel}, attention ${ch0.indices.attentionIndex}.` : ''} ${connResult?.significantConnections?.length ? `${connResult.significantConnections.length} functional connections.` : ''} Interpret the most likely cognitive state + one neurofeedback intervention. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Interpretation ready.'); } else err('Agent returned empty.');
+      const reply = readAgentReply(r.data);
+      if (reply.ok) { setAgentReply(reply.text); ok('Interpretation ready.'); } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 
@@ -191,7 +192,7 @@ export function NeuroActionPanel() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        <select value={signalKind} onChange={(e) => setSignalKind(e.target.value as typeof signalKind)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white">
+        <select value={signalKind} onChange={(e) => setSignalKind(e.target.value as typeof signalKind)} aria-label="Signal kind" className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white">
           <option value="composite">Composite 2-ch</option>
           <option value="alpha">Alpha 10 Hz</option>
           <option value="beta">Beta 20 Hz</option>
@@ -199,7 +200,7 @@ export function NeuroActionPanel() {
           <option value="gamma">Gamma 40 Hz</option>
         </select>
         <div className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-zinc-400 font-mono">{channels.length} ch · {channels[0].samples.length} samp · {channels[0].sampleRate} Hz</div>
-        <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
+        <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" aria-label="DM recipient" />
         {simState && <div className="bg-zinc-900 border border-cyan-700 rounded px-3 py-1.5 text-[11px] text-cyan-300 font-mono">sim: {simState.kind}</div>}
       </div>
 
@@ -250,15 +251,18 @@ export function NeuroActionPanel() {
           <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">ERP · {erpResult.epochCount} epoch{erpResult.epochCount === 1 ? '' : 's'}</div>
             <div className="text-2xl font-bold text-amber-300">{erpResult.peakAmplitude} μV</div>
-            <div className="text-[10px] text-zinc-400">SNR {erpResult.snr} ({erpResult.snrQuality}) · baseline RMS {erpResult.baselineRms}</div>
+            <div className="text-[10px] text-zinc-400">SNR {erpResult.snr} ({erpResult.snrQuality}) · baseline RMS {erpResult.baselineRms} μV</div>
             {erpResult.identifiedComponents.length > 0 ? (
               <div className="text-[10px] text-amber-200 mt-1">
-                {erpResult.identifiedComponents.map((c, i) => (
+                {erpResult.identifiedComponents.filter((c, i, arr) => arr.findIndex((x) => x.component === c.component) === i).map((c, i) => (
                   <span key={i} className="mr-2">{c.component}@{c.latencyMs}ms ({c.amplitude}μV)</span>
                 ))}
               </div>
             ) : (
-              <div className="text-[10px] text-zinc-500 mt-1">{erpResult.peaks.length} peak{erpResult.peaks.length === 1 ? '' : 's'}, none matched a known component</div>
+              <div className="text-[10px] text-zinc-400 mt-1">{erpResult.peaks.length} peak{erpResult.peaks.length === 1 ? '' : 's'}, none matched a known component</div>
+            )}
+            {erpResult.epochCount === 1 && erpResult.identifiedComponents.length > 0 && (
+              <div className="text-[10px] text-zinc-400 mt-1">Named from a single epoch — treat these component labels as tentative; one noisy epoch cannot reliably identify components.</div>
             )}
           </div>
         )}

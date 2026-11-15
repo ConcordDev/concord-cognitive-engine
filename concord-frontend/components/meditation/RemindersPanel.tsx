@@ -23,6 +23,10 @@ interface RemindersResult {
   reminders: Reminder[]; count: number; nextFire: NextFire | null; dueToday: number;
 }
 
+/** FIX-meditation-004: reminder labels are short phrases; the form caps the
+ * label and says so, instead of accepting a label that spills the card. */
+const LABEL_MAX = 80;
+
 const DOW: { id: string; label: string }[] = [
   { id: 'mon', label: 'M' }, { id: 'tue', label: 'T' }, { id: 'wed', label: 'W' },
   { id: 'thu', label: 'T' }, { id: 'fri', label: 'F' }, { id: 'sat', label: 'S' }, { id: 'sun', label: 'S' },
@@ -168,9 +172,12 @@ export function RemindersPanel() {
           <input type="time" value={time} onChange={(e) => setTime(e.target.value)}
             className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-sm text-zinc-100" />
           <input type="text" value={label} onChange={(e) => setLabel(e.target.value)}
-            placeholder="Label (optional)"
-            className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-sm text-zinc-100 focus:outline-none focus:ring-1 focus:ring-rose-500/40" />
+            placeholder="Label (optional)" maxLength={LABEL_MAX}
+            className="flex-1 min-w-0 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-sm text-zinc-100 focus:outline-none focus:ring-1 focus:ring-rose-500/40" />
         </div>
+        {label.length >= LABEL_MAX && (
+          <p role="note" className="text-[11px] text-amber-300">Labels are capped at {LABEL_MAX} characters.</p>
+        )}
         <div className="flex gap-1">
           {DOW.map((d) => (
             <button key={d.id} type="button" onClick={() => toggleDay(d.id)}
@@ -226,9 +233,12 @@ export function RemindersPanel() {
                     <input type="time" value={editTime} onChange={(e) => setEditTime(e.target.value)}
                       className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-sm text-zinc-100" />
                     <input type="text" value={editLabel} onChange={(e) => setEditLabel(e.target.value)}
-                      placeholder="Label (optional)"
-                      className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-sm text-zinc-100 focus:outline-none focus:ring-1 focus:ring-rose-500/40" />
+                      placeholder="Label (optional)" maxLength={LABEL_MAX}
+                      className="flex-1 min-w-0 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-sm text-zinc-100 focus:outline-none focus:ring-1 focus:ring-rose-500/40" />
                   </div>
+                  {editLabel.length >= LABEL_MAX && (
+                    <p role="note" className="text-[11px] text-amber-300">Labels are capped at {LABEL_MAX} characters.</p>
+                  )}
                   <div className="flex gap-1 items-center">
                     {DOW.map((d) => (
                       <button key={d.id} type="button" onClick={() => toggleEditDay(d.id)}

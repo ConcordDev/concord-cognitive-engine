@@ -8,7 +8,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { lensRun } from '@/lib/api/client';
-import { Plus, Loader2, AlertTriangle, ChevronUp, ChevronDown, ShieldAlert } from 'lucide-react';
+import { Plus, Loader2, AlertTriangle, ChevronUp, ChevronDown, ShieldAlert, Pencil } from 'lucide-react';
 import { ConfirmDeleteButton } from './ConfirmDeleteButton';
 
 interface Threat {
@@ -45,6 +45,18 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 const STATUSES = ['watching', 'engaged', 'neutralized'] as const;
+
+/**
+ * FIX-defense-004: the severity-change entries in a threat's history.
+ * The history also carries the creation event ("added") and status
+ * changes ("status:…"), which are NOT severity changes — counting every
+ * entry made a single Escalate click read as "2 escalation events".
+ */
+export function severityChanges(history: Threat['history']): Threat['history'] {
+  return history.filter(
+    (h) => h.event === 'escalated' || h.event === 'deescalated' || h.event.startsWith('severity:'),
+  );
+}
 
 export function ThreatBoard() {
   const [board, setBoard] = useState<ThreatBoardResult | null>(null);
@@ -110,6 +122,27 @@ export function ThreatBoard() {
     else setError(r.data?.error || 'Failed to escalate threat');
     setBusy(false);
   }, [refresh]);
+
+  // FIX-defense-003: threats gain an in-place edit (name / category /
+  // region / note) through threat-update.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', category: '', region: '', note: '' });
+  const saveEdit = useCallback(async (threat: Threat) => {
+    if (!editForm.name.trim()) return;
+    setBusy(true);
+    setError(null);
+    const r = await lensRun('defense', 'threat-update', {
+      id: threat.id, name: editForm.name.trim(), category: editForm.category,
+      region: editForm.region, note: editForm.note,
+    });
+    if (r.data?.ok) {
+      setEditingId(null);
+      await refresh();
+    } else {
+      setError(r.data?.error || 'Failed to update threat');
+    }
+    setBusy(false);
+  }, [editForm, refresh]);
 
   const setStatus = useCallback(async (threat: Threat) => {
     const idx = STATUSES.indexOf(threat.status);
@@ -213,6 +246,17 @@ export function ThreatBoard() {
                   >
                     <ChevronDown className="w-3.5 h-3.5" />
                   </button>
+                  <button
+                    onClick={() => {
+                      setEditingId(editingId === t.id ? null : t.id);
+                      setEditForm({ name: t.name, category: t.category || '', region: t.region || '', note: t.note || '' });
+                    }}
+                    disabled={busy}
+                    aria-label={`Edit threat ${t.name}`}
+                    className="p-1 text-zinc-400 hover:text-zinc-100 disabled:opacity-30"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
                   <ConfirmDeleteButton
                     ariaLabel="Delete threat"
                     itemLabel={`threat "${t.name}"`}
@@ -221,13 +265,37 @@ export function ThreatBoard() {
                   />
                 </div>
               </div>
-              {t.note && <p className="text-[10px] text-zinc-400 mt-1">{t.note}</p>}
-              {t.history.length > 1 && (
-                <p className="text-[10px] text-zinc-400 mt-1">
-                  {t.history.length} escalation events · latest:{' '}
-                  {t.history[t.history.length - 1].event}
-                </p>
+              {editingId === t.id && (
+                <div className="flex flex-wrap gap-2 mt-2 border-t border-zinc-700/50 pt-2">
+                  <input value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+                    aria-label="Edit threat name" placeholder="Name"
+                    className="flex-1 min-w-32 rounded bg-zinc-900 border border-zinc-700 px-2 py-1 text-xs text-white" />
+                  <input value={editForm.category} onChange={(e) => setEditForm((f) => ({ ...f, category: e.target.value }))}
+                    aria-label="Edit threat category" placeholder="Category"
+                    className="w-28 rounded bg-zinc-900 border border-zinc-700 px-2 py-1 text-xs text-white" />
+                  <input value={editForm.region} onChange={(e) => setEditForm((f) => ({ ...f, region: e.target.value }))}
+                    aria-label="Edit threat region" placeholder="Region"
+                    className="w-28 rounded bg-zinc-900 border border-zinc-700 px-2 py-1 text-xs text-white" />
+                  <input value={editForm.note} onChange={(e) => setEditForm((f) => ({ ...f, note: e.target.value }))}
+                    aria-label="Edit threat note" placeholder="Note"
+                    className="flex-1 min-w-32 rounded bg-zinc-900 border border-zinc-700 px-2 py-1 text-xs text-white" />
+                  <button onClick={() => saveEdit(t)} disabled={!editForm.name.trim() || busy}
+                    className="rounded bg-red-600 hover:bg-red-500 px-2.5 py-1 text-xs font-medium text-white disabled:opacity-50">Save</button>
+                  <button onClick={() => setEditingId(null)} className="text-xs text-zinc-400 px-1.5">Cancel</button>
+                </div>
               )}
+              {t.note && <p className="text-[10px] text-zinc-400 mt-1">{t.note}</p>}
+              {(() => {
+                const changes = severityChanges(t.history);
+                if (changes.length === 0) return null;
+                const last = changes[changes.length - 1];
+                return (
+                  <p className="text-[10px] text-zinc-400 mt-1">
+                    {changes.length} severity {changes.length === 1 ? 'change' : 'changes'} · latest:{' '}
+                    {last.event} → {last.severity}
+                  </p>
+                );
+              })()}
             </div>
           ))}
           {threats.length === 0 && (
@@ -241,12 +309,21 @@ export function ThreatBoard() {
 
       {/* New threat */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2 border-t border-zinc-800 pt-3">
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Threat name"
-          className="col-span-2 bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white"
-        />
+        <div className="col-span-2">
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Threat name"
+            maxLength={100}
+            aria-label="Threat name (max 100 characters)"
+            className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white"
+          />
+          {/* FIX-defense-010: the server refuses names over 100 chars; the
+              field now carries that cap with a live counter, so an over-long
+              name is rejected at the field instead of being accepted and
+              then silently unsaved. */}
+          <span className="mt-0.5 block text-right font-mono text-[10px] text-zinc-500">{name.length}/100</span>
+        </div>
         <input
           value={category}
           onChange={(e) => setCategory(e.target.value)}

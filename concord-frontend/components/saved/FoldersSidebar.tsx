@@ -11,6 +11,7 @@
 
 import { useState } from 'react';
 import { Folder, FolderPlus, Inbox, Layers, Pencil, Trash2, Check, X } from 'lucide-react';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import type { SavedFolder } from './types';
 
 export interface FoldersSidebarProps {
@@ -96,6 +97,7 @@ export function FoldersSidebar({
               <input
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
+                maxLength={120}
                 onKeyDown={(e) => { if (e.key === 'Enter') submitRename(f.id); }}
                 className="flex-1 text-xs bg-zinc-950 border border-zinc-700 rounded px-1.5 py-1 text-zinc-100"
                 autoFocus
@@ -133,14 +135,14 @@ export function FoldersSidebar({
                 >
                   <Pencil className="w-3 h-3" />
                 </button>
-                <button
-                  type="button"
-                  onClick={() => onDelete(f.id)}
-                  aria-label="Delete folder"
+                <StickyDeleteConfirm
+                  onConfirm={() => onDelete(f.id)}
                   className="text-zinc-400 hover:text-rose-300"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
+                  armLabel={<Trash2 className="w-3 h-3" />}
+                  armAriaLabel={`Delete collection ${f.name}`}
+                  confirmLabel={`Delete "${f.name}"?`}
+                  confirmAriaLabel={`Confirm delete collection ${f.name}`}
+                />
               </span>
             </div>
           )}
@@ -152,6 +154,7 @@ export function FoldersSidebar({
           <input
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
+            maxLength={120}
             onKeyDown={(e) => { if (e.key === 'Enter') submitCreate(); }}
             placeholder="Folder name"
             className="flex-1 text-xs bg-zinc-950 border border-zinc-700 rounded px-1.5 py-1 text-zinc-100"
@@ -161,6 +164,12 @@ export function FoldersSidebar({
             <Check className="w-3.5 h-3.5" />
           </button>
         </div>
+      )}
+      {/* FIX-saved-003: a blank name used to submit into silence (the
+          submit returned early and the form just stayed). The missing
+          precondition is named while it is missing. */}
+      {creating && !newName.trim() && (
+        <p className="px-1 text-[10px] text-zinc-500" role="note">Name the collection to create it.</p>
       )}
     </aside>
   );

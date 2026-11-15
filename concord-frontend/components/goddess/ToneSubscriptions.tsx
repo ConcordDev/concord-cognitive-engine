@@ -10,6 +10,7 @@ import { useCallback, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { useSmartPolling } from '@/hooks/useSmartPolling';
 import { Bell, BellRing, Loader2, X } from 'lucide-react';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import {
   TONE_COLOR, KNOWN_TONES,
   type Subscription, type SubscriptionNotification,
@@ -99,13 +100,14 @@ export function ToneSubscriptions({
                 >
                   <span className="capitalize">{s.tone}</span>
                   <span className="font-mono text-[9px] text-zinc-400">{s.worldId}</span>
-                  <button
-                    type="button" onClick={() => unsubscribe(s.id)}
-                    aria-label={`Unsubscribe from ${s.tone}`}
+                  <StickyDeleteConfirm
+                    onConfirm={() => unsubscribe(s.id)}
+                    armLabel={<X className="h-3 w-3" />}
+                    confirmLabel={`Unsubscribe from ${s.tone}?`}
+                    armAriaLabel={`Unsubscribe from ${s.tone}`}
+                    confirmAriaLabel={`Confirm unsubscribe from ${s.tone}`}
                     className="text-zinc-400 hover:text-red-400"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
+                  />
                 </li>
               ))}
             </ul>

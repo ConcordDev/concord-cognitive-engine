@@ -109,7 +109,7 @@ describe('CryptoWalletWorkspace', () => {
     fireEvent.click(screen.getByTitle(/^Wallets/));
     fireEvent.click(screen.getByRole('button', { name: /Add Wallet/i }));
     fireEvent.change(screen.getByPlaceholderText('Wallet Name'), { target: { value: 'Backup' } });
-    fireEvent.change(screen.getByPlaceholderText('Wallet Address'), { target: { value: '0x123' } });
+    fireEvent.change(screen.getByPlaceholderText('Wallet Address'), { target: { value: '0x1111111111111111111111111111111111111111' } });
     fireEvent.click(screen.getAllByRole('button', { name: /^Add Wallet$/ }).at(-1)!);
     await waitFor(() => expect(mocks.createWallet).toHaveBeenCalled());
   });

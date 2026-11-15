@@ -49,6 +49,7 @@ import { LensShell } from '@/components/lens/LensShell';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { TravelTripsSection } from '@/components/travel/TravelTripsSection';
+import { TRAVEL_NEW_TRIP_EVENT } from '@/components/travel/TripWorkspaceSection';
 import { ZippopotamPanel } from '@/components/travel/ZippopotamPanel';
 import { ParksPanel } from '@/components/travel/ParksPanel';
 import { TripPlannerPanel } from '@/components/travel/TripPlannerPanel';
@@ -118,7 +119,7 @@ export default function TravelLensPage() {
         activeTab={tab}
         onTab={(id) => setTab(id as TopTab)}
         tabsLabel="Travel views"
-        cta={{ label: 'Plan a trip', icon: Plus, onClick: () => setTab('trips'), title: 'Open My Trips to start a new trip' }}
+        cta={{ label: 'Plan a trip', icon: Plus, onClick: () => { setTab('trips'); window.dispatchEvent(new CustomEvent(TRAVEL_NEW_TRIP_EVENT)); }, title: 'Start a new trip' }}
       >
         <div className="space-y-6">
         {/* ── Real dashboard — travel-dashboard macro, honest loading/error/populated states ── */}

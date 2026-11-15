@@ -57,7 +57,7 @@ export function ResultsPanel() {
             result={feaResult as unknown as FeaComputationResult | null}
           />
           {utilizationBasis && (
-            <p className="text-[11px] text-gray-500 px-1">
+            <p className="text-[11px] text-gray-400 px-1">
               Utilization basis: combined stress ÷ member allowable stress — {utilizationBasis}. The default
               21,600 psi is the A36 ASD allowable; a member's material sets its own where one is assigned.
             </p>

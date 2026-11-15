@@ -14,10 +14,18 @@ import { DOMAIN, cardVariants, type HiProject } from './hi-shared';
 
 export function BudgetPanel() {
   const [projects, setProjects] = useState<HiProject[]>([]);
+  // FIX-home-improvement-010: purchased shopping items with no project
+  // still cost money — the server reports them as unassignedShoppingSpent
+  // and the headline Spent includes them (assigned purchases already
+  // roll into their project's spent server-side).
+  const [unassignedShoppingSpent, setUnassignedShoppingSpent] = useState(0);
 
   const loadProjects = useCallback(async () => {
-    const { data } = await lensRun<{ projects: HiProject[] }>(DOMAIN, 'project-list', {});
-    if (data.ok && data.result) setProjects(data.result.projects || []);
+    const { data } = await lensRun<{ projects: HiProject[]; unassignedShoppingSpent?: number }>(DOMAIN, 'project-list', {});
+    if (data.ok && data.result) {
+      setProjects(data.result.projects || []);
+      setUnassignedShoppingSpent(data.result.unassignedShoppingSpent || 0);
+    }
   }, []);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -25,8 +33,8 @@ export function BudgetPanel() {
 
   const stats = useMemo(() => ({
     totalBudget: projects.reduce((s, p) => s + (p.budget || 0), 0),
-    totalSpent: projects.reduce((s, p) => s + (p.spent || 0), 0),
-  }), [projects]);
+    totalSpent: projects.reduce((s, p) => s + (p.spent || 0), 0) + unassignedShoppingSpent,
+  }), [projects, unassignedShoppingSpent]);
 
   const budgetRemaining = stats.totalBudget - stats.totalSpent;
   const budgetPercent = stats.totalBudget > 0 ? (stats.totalSpent / stats.totalBudget) * 100 : 0;

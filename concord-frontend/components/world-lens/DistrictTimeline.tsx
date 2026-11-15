@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Clock, Building2, Users, Zap } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface BackendDistrictSnapshot {
   at?: string;
@@ -154,7 +155,7 @@ export default function DistrictTimeline({ districtId }: DistrictTimelineProps) 
               }`}
               style={{ height: `${Math.max(4, h)}%` }}
               onClick={() => setSelectedWeek(i)}
-              title={`${s.timestamp || `Snapshot ${i + 1}`}: ${s.population ?? NOT_RECORDED} pop`} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
+              title={`${s.timestamp || `Snapshot ${i + 1}`}: ${s.population ?? NOT_RECORDED} pop`} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace} />
           );
         })}
       </div>

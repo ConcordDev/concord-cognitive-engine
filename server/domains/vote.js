@@ -730,8 +730,31 @@ export default function registerVoteActions(registerLensAction) {
       .map((o) => vtclean(o, 120)).filter(Boolean);
     if (options.length < 2) return { ok: false, error: "at least 2 options required" };
     if (options.length > 30) return { ok: false, error: "at most 30 options allowed" };
+    // FIX-vote-003: duplicate options were accepted (two identical
+    // choices a ballot cannot tell apart), and a description past the
+    // stored 2,000 characters was silently truncated. Both now refuse
+    // by name — the duplicate is named, the limit is stated.
+    const seenOpts = new Map();
+    for (const o of options) {
+      const k = o.toLowerCase();
+      if (seenOpts.has(k)) return { ok: false, error: `options must be unique \u2014 "${seenOpts.get(k)}" appears more than once` };
+      seenOpts.set(k, o);
+    }
+    if (params.description != null && String(params.description).length > 2000) {
+      return { ok: false, error: "description must be 2,000 characters or fewer" };
+    }
 
-    const durationDays = Math.max(0, Math.min(365, vtnum(params.durationDays, 7)));
+    if (params.durationDays != null && params.durationDays !== "") {
+      const days = Number(params.durationDays);
+      if (!Number.isInteger(days) || days < 1 || days > 365) {
+        return { ok: false, error: "invalid_input", message: "Duration must be a whole number of days from 1 to 365." };
+      }
+    }
+    if (params.quorum != null && params.quorum !== "") {
+      const q = Number(params.quorum);
+      if (!Number.isFinite(q) || q < 0) return { ok: false, error: "invalid_input", message: "Quorum must be a number that is 0 or greater." };
+    }
+    const durationDays = params.durationDays == null || params.durationDays === "" ? 7 : Number(params.durationDays);
     const deadline = durationDays > 0
       ? new Date(Date.now() + durationDays * 86400000).toISOString()
       : (params.deadline ? new Date(params.deadline).toISOString() : null);
@@ -753,7 +776,7 @@ export default function registerVoteActions(registerLensAction) {
       opensAt: params.opensAt ? new Date(params.opensAt).toISOString() : null,
       deadline,
       closedAt: null,
-      quorum: Math.max(0, Math.round(vtnum(params.quorum, 0))),
+      quorum: params.quorum == null || params.quorum === "" ? 0 : Math.round(Number(params.quorum)),
       passThreshold: params.passThreshold != null
         ? Math.max(0, Math.min(1, vtnum(params.passThreshold, 0.5))) : null,
       // eligibility: 'all' | 'list'  — when 'list', only eligibleVoters may cast
@@ -808,6 +831,20 @@ export default function registerVoteActions(registerLensAction) {
     poll.closedAt = vtnow();
     saveVoteState();
     return { ok: true, result: { poll: { ...poll, status: "closed" } } };
+  });
+
+  registerLensAction("vote", "poll-delete", (ctx, _a, params = {}) => {
+    const s = getVoteState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const poll = findPoll(s, vtclean(params.pollId || params.id, 80));
+    if (!poll) return { ok: false, error: "poll not found" };
+    if (poll.owner !== vtaid(ctx)) return { ok: false, error: "only the poll owner can delete it" };
+    const arr = s.polls.get(poll.owner) || [];
+    const i = arr.findIndex((p) => p.id === poll.id);
+    if (i >= 0) arr.splice(i, 1);
+    s.ballots.delete(poll.id);
+    saveVoteState();
+    return { ok: true, result: { deleted: poll.id } };
   });
 
   /**

@@ -3,6 +3,7 @@
 // lock contention analysis, and fairness scoring.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { checkDuration, checkTitle, firstBoundsFailure } from "../lib/bounds.js";
 export default function registerLockActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -12,8 +13,56 @@ export default function registerLockActions(registerLensAction) {
    */
   registerLensAction("lock", "deadlockDetect", (ctx, artifact, params) => {
   try {
-    const locks = artifact.data?.locks || [];
-    if (locks.length === 0) {
+    const supplied = (Array.isArray(params?.locks) && params.locks)
+      || (Array.isArray(params?.data?.locks) && params.data.locks)
+      || artifact?.data?.locks
+      || [];
+    // FIX-lock-001: deadlockDetect used to read ONLY a caller-supplied
+    // snapshot, while every sibling analysis reads the recorded trace —
+    // so the Wait-For Graph said "no lock data" (or missed the cycle)
+    // on traces Lock Ordering analysed fine. Derive wait-for rows from
+    // the same events: replay the trace, and a thread that waits on a
+    // lock another thread holds — and never acquires it later in the
+    // trace — contributes a { holder, waiting } row.
+    const traceEvents = (Array.isArray(artifact?.data?.trace) && artifact.data.trace.length > 0)
+      ? artifact.data.trace
+      : tracesFor(ctx);
+    const traceRows = [];
+    if (Array.isArray(traceEvents) && traceEvents.length > 0) {
+      const events = traceEvents.slice().sort((a, b) => (a.ts || 0) - (b.ts || 0));
+      const waits = []; // { thread, lock, index }
+      events.forEach((ev, i) => {
+        if (ev && ev.action === "wait" && ev.thread && ev.lock) waits.push({ thread: ev.thread, lock: ev.lock, index: i });
+      });
+      // Replay the holds in order; at each wait, the lock's current
+      // holder is who the waiter waits for.
+      const heldAt = new Map();
+      const acquiredLater = new Set(); // `${thread}|${lock}` acquired at a later index than its wait
+      events.forEach((ev, i) => {
+        if (!ev || !ev.thread || !ev.lock) return;
+        if (ev.action === "acquire") {
+          heldAt.set(ev.lock, ev.thread);
+          for (const w of waits) if (w.index < i && w.thread === ev.thread && w.lock === ev.lock) acquiredLater.add(`${w.thread}|${w.lock}`);
+        } else if (ev.action === "release") {
+          if (heldAt.get(ev.lock) === ev.thread) heldAt.delete(ev.lock);
+        } else if (ev.action === "wait") {
+          const holder = heldAt.get(ev.lock);
+          if (holder && holder !== ev.thread) traceRows.push({ holder, waiting: ev.thread, _lock: ev.lock });
+        }
+      });
+      for (let i = traceRows.length - 1; i >= 0; i--) {
+        if (acquiredLater.has(`${traceRows[i].waiting}|${traceRows[i]._lock}`)) traceRows.splice(i, 1);
+      }
+    }
+    const seenRow = new Set();
+    const locks = [];
+    for (const row of [...supplied, ...traceRows]) {
+      const key = `${row?.holder}|${Array.isArray(row?.waiting) ? row.waiting.join(",") : row?.waiting}`;
+      if (seenRow.has(key)) continue;
+      seenRow.add(key);
+      locks.push(row);
+    }
+    if (locks.length === 0 && !(Array.isArray(traceEvents) && traceEvents.length > 0)) {
       return { ok: true, result: { deadlocked: false, cycles: [], message: "No lock data provided." } };
     }
 
@@ -260,7 +309,18 @@ export default function registerLockActions(registerLensAction) {
    */
   registerLensAction("lock", "fairnessScore", (ctx, artifact, params) => {
   try {
-    const waits = artifact.data?.processWaits || [];
+    // FIX-lock-005: the profiler never called this action — it was
+    // the one server analysis with no surface. Explicit processWaits
+    // input still wins; with none supplied, derive the waits from
+    // the caller's recorded lock trace (the same store the other
+    // profiler analyses read), so the Fairness tab scores the real
+    // trace instead of demanding a hand-built payload.
+    let waits = artifact.data?.processWaits || [];
+    if (waits.length === 0) {
+      waits = tracesFor(ctx)
+        .filter((ev) => (ev.waitMs || 0) > 0)
+        .map((ev) => ({ processId: ev.thread, waitMs: ev.waitMs, resource: ev.lock, attempts: 1 }));
+    }
     if (waits.length === 0) {
       return { ok: true, result: { message: "No wait data to analyze." } };
     }
@@ -428,6 +488,16 @@ export default function registerLockActions(registerLensAction) {
       if (!["acquire", "release", "wait"].includes(action)) {
         return { ok: false, error: "action must be acquire, release or wait" };
       }
+      // GB-1539 (FIX-lock-002): negative durations were recorded as-is
+      // (-1 accepted with no message). waitMs/holdMs are durations —
+      // out-of-policy values refuse in the bounds shape.
+      const badLock = firstBoundsFailure(
+        checkDuration("waitMs", p.waitMs, "milliseconds"),
+        checkDuration("holdMs", p.holdMs, "milliseconds"),
+        checkTitle("thread", p.thread),
+        checkTitle("lock", p.lock),
+      );
+      if (badLock) return badLock;
       const store = tracesFor(ctx);
       const ev = {
         id: `lt_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`,
@@ -460,6 +530,28 @@ export default function registerLockActions(registerLensAction) {
       return { ok: true, result: { cleared: true } };
     } catch (e) {
       return { ok: false, error: e?.message || "clearLockTrace failed" };
+    }
+  });
+
+  /**
+   * deleteLockEvent — remove ONE recorded event from the caller's own
+   * trace (FIX-lock-004: the trace had only a bulk Clear). The store
+   * is per-user, so an event id belonging to another user is simply
+   * not found here — the refusal names that plainly.
+   * params: { id }
+   */
+  registerLensAction("lock", "deleteLockEvent", (ctx, artifact, params) => {
+    try {
+      const id = String(params?.id || artifact?.data?.id || "");
+      if (!id) return { ok: false, error: "event id required" };
+      const store = tracesFor(ctx);
+      const idx = store.findIndex((ev) => ev.id === id);
+      if (idx === -1) return { ok: false, error: `lock event ${id} not found in your trace` };
+      const [removed] = store.splice(idx, 1);
+      saveLockState();
+      return { ok: true, result: { deleted: removed.id, totalEvents: store.length } };
+    } catch (e) {
+      return { ok: false, error: e?.message || "deleteLockEvent failed" };
     }
   });
 

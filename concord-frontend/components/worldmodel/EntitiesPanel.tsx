@@ -36,10 +36,21 @@ export function EntitiesPanel() {
   const [name, setName] = useState('');
   const [type, setType] = useState('concept');
   const [value, setValue] = useState('100');
+  const [entityQuery, setEntityQuery] = useState('');
+  const [entitySort, setEntitySort] = useState<'name-asc' | 'name-desc' | 'value-desc' | 'value-asc'>('name-asc');
   const [editId, setEditId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [extractNote, setExtractNote] = useState<string | null>(null);
+
+  const entityNeedle = entityQuery.trim().toLowerCase();
+  const visibleEntities = entities
+    .filter((e) => !entityNeedle || `${e.name} ${e.type}`.toLowerCase().includes(entityNeedle))
+    .sort((a, b) =>
+      entitySort === 'name-desc' ? b.name.localeCompare(a.name)
+      : entitySort === 'value-desc' ? Number(b.attributes?.value ?? 0) - Number(a.attributes?.value ?? 0)
+      : entitySort === 'value-asc' ? Number(a.attributes?.value ?? 0) - Number(b.attributes?.value ?? 0)
+      : a.name.localeCompare(b.name));
 
   // typed schema builder
   const [typeName, setTypeName] = useState('');
@@ -96,13 +107,16 @@ export function EntitiesPanel() {
           </select>
           <input className={`${input} w-28`} type="number" placeholder="value" aria-label="Initial value"
             value={value} onChange={(e) => setValue(e.target.value)} />
-          <button className={btn} disabled={!name || create.isPending} onClick={() => create.mutate()}>
+          <button className={btn} disabled={!name.trim() || create.isPending} onClick={() => create.mutate()}>
             {create.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />} Create
           </button>
           <button className={btnGhost} disabled={extractFromDtu.isPending} onClick={() => { setExtractNote(null); setPickerOpen(true); }}>
             {extractFromDtu.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileSearch className="h-3 w-3" />} Extract from DTU
           </button>
         </div>
+        {!name.trim() && (
+          <p role="note" className="mt-1.5 text-[11px] text-amber-300/90">Give the entity a name to create it.</p>
+        )}
         <p className="mt-1.5 text-[11px] text-emerald-700">Entities carry a numeric <code>value</code> attribute that simulations propagate. &quot;Extract from DTU&quot; grounds a node in a real DTU from your archive instead of typing one by hand.</p>
         {err && <p className="mt-2 text-xs text-rose-400">{err}</p>}
         {extractNote && <p className="mt-2 text-xs text-emerald-400">{extractNote}</p>}
@@ -168,8 +182,34 @@ export function EntitiesPanel() {
 
       {loading && <Loader2 className="h-4 w-4 animate-spin text-emerald-500" />}
       {!loading && entities.length === 0 && <p className="text-xs text-emerald-700">No entities yet — create one above.</p>}
+      {!loading && entities.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            type="text"
+            value={entityQuery}
+            onChange={(e) => setEntityQuery(e.target.value)}
+            placeholder="Search entities by name or type…"
+            aria-label="Search entities"
+            className="min-h-[40px] flex-1 min-w-[180px] rounded border border-emerald-900/40 bg-black/30 px-2 py-1.5 text-xs text-emerald-100"
+          />
+          <select
+            value={entitySort}
+            onChange={(e) => setEntitySort(e.target.value as typeof entitySort)}
+            aria-label="Sort entities"
+            className="min-h-[40px] rounded border border-emerald-900/40 bg-black/30 px-2 py-1.5 text-xs text-emerald-100"
+          >
+            <option value="name-asc">Name A–Z</option>
+            <option value="name-desc">Name Z–A</option>
+            <option value="value-desc">Value high–low</option>
+            <option value="value-asc">Value low–high</option>
+          </select>
+        </div>
+      )}
+      {!loading && entities.length > 0 && visibleEntities.length === 0 && (
+        <p className="text-xs text-emerald-700">No entities match your search.</p>
+      )}
       <ul className="space-y-1">
-        {entities.map((e) => (
+        {visibleEntities.map((e) => (
           <li key={e.id} className="rounded border border-emerald-900/30 bg-emerald-950/10">
             <div className="flex items-center gap-3 px-3 py-2 text-xs">
               <Boxes className="h-3.5 w-3.5 text-emerald-500" aria-hidden />

@@ -26,6 +26,8 @@
 //   save_scenario         — scenario library: save a named scenario
 //   list_scenarios        — scenario library listing
 //   delete_scenario       — remove a saved scenario
+//   delete_snapshot       — remove a captured snapshot
+//   delete_sim            — remove a stored simulation run
 //   ingest                — live data ingestion to update entity state
 //   ingest_log            — recent ingestion events
 //
@@ -613,6 +615,16 @@ export default function registerWorldmodelActions(registerLensAction) {
       });
 
       const totalSwing = Number((cf.total - base.total).toFixed(4));
+      // FIX-worldmodel-006: when the two sides are configured the same
+      // (the walker's case: growth 0 on both), the trajectories are
+      // identical and "no net difference" reads as a broken compare.
+      // Say WHY there is no difference and what to change — a real
+      // tie between differently-configured scenarios gets no hint.
+      const baseGrowth = clamp(baseCfg.growth, -0.5, 0.5, 0.05);
+      const cfGrowth = clamp(cfCfg.growth, -0.5, 0.5, 0.05);
+      const sameConfig = baseGrowth === cfGrowth
+        && JSON.stringify(baseCfg.shocks || []) === JSON.stringify(cfCfg.shocks || []);
+      const identical = delta.every((row) => Object.entries(row).every(([k, v]) => k === "step" || v === 0));
       return {
         ok: true,
         result: {
@@ -627,6 +639,9 @@ export default function registerWorldmodelActions(registerLensAction) {
             : totalSwing < 0
               ? "counterfactual underperforms baseline"
               : "no net difference",
+          hint: sameConfig && identical
+            ? `Both scenarios are configured the same (growth ${baseGrowth} on both sides, no differing shocks), so there is nothing to compare yet — set a different growth rate on one side to see a difference.`
+            : null,
         },
       };
     } catch (err) {
@@ -847,6 +862,34 @@ export default function registerWorldmodelActions(registerLensAction) {
       const id = str(params.id);
       if (!scenarios.has(id)) return { ok: false, error: "scenario not found" };
       scenarios.delete(id);
+      return { ok: true, result: { deleted: id } };
+    } catch (err) {
+      return { ok: false, error: String(err && err.message || err) };
+    }
+  });
+
+  registerLensAction("worldmodel", "delete_snapshot", (ctx, _artifact, params = {}) => {
+    try {
+      const S = wmState();
+      const uid = userIdOf(ctx);
+      const snaps = bucket(S.snapshots, uid);
+      const id = str(params.id);
+      if (!snaps.has(id)) return { ok: false, error: "snapshot not found" };
+      snaps.delete(id);
+      return { ok: true, result: { deleted: id } };
+    } catch (err) {
+      return { ok: false, error: String(err && err.message || err) };
+    }
+  });
+
+  registerLensAction("worldmodel", "delete_sim", (ctx, _artifact, params = {}) => {
+    try {
+      const S = wmState();
+      const uid = userIdOf(ctx);
+      const sims = bucket(S.sims, uid);
+      const id = str(params.id);
+      if (!sims.has(id)) return { ok: false, error: "simulation not found" };
+      sims.delete(id);
       return { ok: true, result: { deleted: id } };
     } catch (err) {
       return { ok: false, error: String(err && err.message || err) };

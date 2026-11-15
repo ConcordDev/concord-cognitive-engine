@@ -104,7 +104,9 @@ export default function RoboticsLensPage() {
         cta={{ label: 'Register a robot', icon: Plus, onClick: () => setActiveTab('fleet') }}
       >
         <RealtimeDataPanel domain="robotics" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
-        <ArxivPanel domain="robotics" title="arXiv · Robotics (cs.RO)" />
+        <div className="max-h-64 overflow-y-auto">
+          <ArxivPanel domain="robotics" title="arXiv · Robotics (cs.RO)" />
+        </div>
 
         {/* Robot selector — shared across the per-robot tabs. */}
         {['telemetry', 'teleop', 'sensors'].includes(activeTab) && robots.length > 0 && (

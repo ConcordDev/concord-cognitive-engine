@@ -118,10 +118,10 @@ export function FieldMonitoringPanel() {
             {trails.map((t, i) => (
               <div key={i} className="grid grid-cols-[1fr_90px_90px_1fr_30px] gap-1.5">
                 <input className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white" placeholder="Ridge Loop" value={t.name} onChange={(e) => updateTrail(i, 'name', e.target.value)} />
-                <select className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white" value={t.condition} onChange={(e) => updateTrail(i, 'condition', e.target.value as TrailRow['condition'])}>
+                <select className="min-h-11 rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white" aria-label="Trail condition" value={t.condition} onChange={(e) => updateTrail(i, 'condition', e.target.value as TrailRow['condition'])}>
                   <option value="5">Good</option><option value="3">Fair</option><option value="1">Poor</option><option value="0">Closed</option>
                 </select>
-                <select className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white" value={t.usage} onChange={(e) => updateTrail(i, 'usage', e.target.value as TrailRow['usage'])}>
+                <select className="min-h-11 rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white" aria-label="Trail usage" value={t.usage} onChange={(e) => updateTrail(i, 'usage', e.target.value as TrailRow['usage'])}>
                   <option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option>
                 </select>
                 <input className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white" placeholder="Re-blaze, repair bridge…" value={t.maintenanceNeeded} onChange={(e) => updateTrail(i, 'maintenanceNeeded', e.target.value)} />

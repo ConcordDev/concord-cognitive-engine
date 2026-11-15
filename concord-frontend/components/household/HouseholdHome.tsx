@@ -42,6 +42,7 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -238,6 +239,7 @@ export function HouseholdHome() {
   const [formTitle, setFormTitle] = useState('');
   const [formStatus, setFormStatus] = useState<Status>('planned');
   const [formData, setFormData] = useState<Record<string, unknown>>({});
+  const [formError, setFormError] = useState('');
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
 
   const currentTab = MODE_TABS.find(t => t.id === mode) ?? MODE_TABS[0];
@@ -348,6 +350,7 @@ export function HouseholdHome() {
     setFormTitle('');
     setFormStatus('planned');
     setFormData({});
+    setFormError('');
     setShowEditor(true);
   }, [mode]);
 
@@ -356,10 +359,26 @@ export function HouseholdHome() {
     setFormTitle(item.title);
     setFormStatus((item.meta.status as Status) || 'planned');
     setFormData(item.data as unknown as Record<string, unknown>);
+    setFormError('');
     setShowEditor(true);
   }, []);
 
   const handleSave = async () => {
+    // FIX-household-005: the numeric fields below are counts, durations,
+    // money and weights — a negative is never a real value, and the form
+    // used to store it silently. Refuse the save and name the field.
+    const NON_NEGATIVE: Record<string, string> = {
+      servings: 'Servings', prepTime: 'Prep Time', estimatedMinutes: 'Est. Minutes',
+      points: 'Points', cost: 'Est. Cost', amount: 'Amount', weight: 'Weight',
+    };
+    for (const [key, label] of Object.entries(NON_NEGATIVE)) {
+      const v = formData[key];
+      if (typeof v === 'number' && (!Number.isFinite(v) || v < 0)) {
+        setFormError(`${label} can't be negative — enter 0 or more.`);
+        return;
+      }
+    }
+    setFormError('');
     const payload = { title: formTitle, data: formData, meta: { status: formStatus } };
     if (editingId) { await update(editingId, payload); }
     else { await create(payload); }
@@ -700,9 +719,9 @@ export function HouseholdHome() {
                       )} onClick={() => {
                         setFormData({ day, mealType: mealType.toLowerCase() });
                         openNew();
-                      }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                      }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                         {meals.length > 0 ? meals.map(m => (
-                          <div key={m.id} className="text-xs p-1 rounded bg-neon-cyan/10 text-neon-cyan mb-1 truncate" onClick={e => { e.stopPropagation(); openEdit(m); }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                          <div key={m.id} className="text-xs p-1 rounded bg-neon-cyan/10 text-neon-cyan mb-1 truncate" onClick={e => { e.stopPropagation(); openEdit(m); }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                             {m.title}
                           </div>
                         )) : (
@@ -909,7 +928,7 @@ export function HouseholdHome() {
                 return d.season === season && i.meta.status === 'overdue';
               }).length;
               return (
-                <div key={season} className={cn(ds.panelHover, 'text-center')} onClick={() => setMaintenanceSeason(season)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                <div key={season} className={cn(ds.panelHover, 'text-center')} onClick={() => setMaintenanceSeason(season)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                   <SeasonIcon className={cn('w-8 h-8 mx-auto mb-2', season === maintenanceSeason ? 'text-neon-cyan' : 'text-gray-400')} />
                   <p className="text-sm font-medium text-white">{season}</p>
                   <p className={ds.textMuted}>{count} task{count !== 1 ? 's' : ''}</p>
@@ -1071,14 +1090,14 @@ export function HouseholdHome() {
                       !day.isCurrentMonth && 'opacity-40',
                       isToday && 'border-neon-cyan/50 bg-neon-cyan/5',
                       'hover:border-neon-cyan/30 transition-colors cursor-pointer'
-                    )} onClick={() => { setFormData({ date: day.date }); openNew(); }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                    )} onClick={() => { setFormData({ date: day.date }); openNew(); }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                       <p className={cn('text-xs font-medium mb-1', isToday ? 'text-neon-cyan' : 'text-gray-400')}>{day.day}</p>
                       {dayEvents.slice(0, 3).map(ev => {
                         const evd = ev.data as unknown as CalendarEvent;
                         return (
                           <div key={ev.id} className="text-xs p-0.5 rounded mb-0.5 truncate cursor-pointer"
                             style={{ backgroundColor: `${evd.color || '#3B82F6'}20`, color: evd.color || '#3B82F6' }}
-                            onClick={e => { e.stopPropagation(); openEdit(ev); }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                            onClick={e => { e.stopPropagation(); openEdit(ev); }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                             {ev.title}
                           </div>
                         );
@@ -1109,7 +1128,7 @@ export function HouseholdHome() {
                         return (
                           <div key={ev.id} className="p-1.5 rounded text-xs cursor-pointer hover:opacity-80 transition-opacity"
                             style={{ backgroundColor: `${evd.color || '#3B82F6'}20`, color: evd.color || '#3B82F6', borderLeft: `3px solid ${evd.color || '#3B82F6'}` }}
-                            onClick={() => openEdit(ev)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                            onClick={() => openEdit(ev)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                             <p className="font-medium truncate">{ev.title}</p>
                             {evd.time && <p className="opacity-70">{evd.time}</p>}
                             {evd.isShared && <span className="opacity-60">Shared</span>}
@@ -1544,8 +1563,8 @@ export function HouseholdHome() {
               <div><label className={ds.label}>Meal Type</label><select className={ds.select} value={(formData.mealType as string) || ''} onChange={e => setFormData({ ...formData, mealType: e.target.value })}><option value="breakfast">Breakfast</option><option value="lunch">Lunch</option><option value="dinner">Dinner</option><option value="snack">Snack</option></select></div>
             </div>
             <div className={ds.grid2}>
-              <div><label className={ds.label}>Servings</label><input type="number" className={ds.input} value={(formData.servings as number) || ''} onChange={e => setFormData({ ...formData, servings: parseInt(e.target.value) || 0 })} /></div>
-              <div><label className={ds.label}>Prep Time (min)</label><input type="number" className={ds.input} value={(formData.prepTime as number) || ''} onChange={e => setFormData({ ...formData, prepTime: parseInt(e.target.value) || 0 })} /></div>
+              <div><label className={ds.label}>Servings</label><input type="number" min={0} className={ds.input} value={(formData.servings as number) || ''} onChange={e => setFormData({ ...formData, servings: parseInt(e.target.value) || 0 })} /></div>
+              <div><label className={ds.label}>Prep Time (min)</label><input type="number" min={0} className={ds.input} value={(formData.prepTime as number) || ''} onChange={e => setFormData({ ...formData, prepTime: parseInt(e.target.value) || 0 })} /></div>
             </div>
             <div><label className={ds.label}>Recipe Link/Name</label><input className={ds.input} value={(formData.recipe as string) || ''} onChange={e => setFormData({ ...formData, recipe: e.target.value })} /></div>
             <div><label className={ds.label}>Assigned Cook</label><input className={ds.input} value={(formData.assignedCook as string) || ''} onChange={e => setFormData({ ...formData, assignedCook: e.target.value })} /></div>
@@ -1564,8 +1583,8 @@ export function HouseholdHome() {
             </div>
             <div className={ds.grid3}>
               <div><label className={ds.label}>Frequency</label><select className={ds.select} value={(formData.frequency as string) || 'weekly'} onChange={e => setFormData({ ...formData, frequency: e.target.value })}><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="biweekly">Bi-weekly</option><option value="monthly">Monthly</option></select></div>
-              <div><label className={ds.label}>Est. Minutes</label><input type="number" className={ds.input} value={(formData.estimatedMinutes as number) || ''} onChange={e => setFormData({ ...formData, estimatedMinutes: parseInt(e.target.value) || 0 })} /></div>
-              <div><label className={ds.label}>Points</label><input type="number" className={ds.input} value={(formData.points as number) || ''} onChange={e => setFormData({ ...formData, points: parseInt(e.target.value) || 0 })} /></div>
+              <div><label className={ds.label}>Est. Minutes</label><input type="number" min={0} className={ds.input} value={(formData.estimatedMinutes as number) || ''} onChange={e => setFormData({ ...formData, estimatedMinutes: parseInt(e.target.value) || 0 })} /></div>
+              <div><label className={ds.label}>Points</label><input type="number" min={0} className={ds.input} value={(formData.points as number) || ''} onChange={e => setFormData({ ...formData, points: parseInt(e.target.value) || 0 })} /></div>
             </div>
             <div><label className={ds.label}>Rotation Order (comma-separated names)</label><input className={ds.input} value={((formData.rotationOrder as string[]) || []).join(', ')} onChange={e => setFormData({ ...formData, rotationOrder: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })} placeholder="Alice, Bob, Charlie" /></div>
             <div className="flex items-center gap-2">
@@ -1588,7 +1607,7 @@ export function HouseholdHome() {
               <div><label className={ds.label}>Season</label><select className={ds.select} value={(formData.season as string) || ''} onChange={e => setFormData({ ...formData, season: e.target.value })}><option value="">Select...</option>{SEASONS.map(s => <option key={s} value={s}>{s}</option>)}</select></div>
             </div>
             <div className={ds.grid2}>
-              <div><label className={ds.label}>Est. Cost ($)</label><input type="number" className={ds.input} value={(formData.cost as number) || ''} onChange={e => setFormData({ ...formData, cost: parseFloat(e.target.value) || 0 })} /></div>
+              <div><label className={ds.label}>Est. Cost ($)</label><input type="number" min={0} className={ds.input} value={(formData.cost as number) || ''} onChange={e => setFormData({ ...formData, cost: parseFloat(e.target.value) || 0 })} /></div>
               <div><label className={ds.label}>Warranty Expiry</label><input type="date" className={ds.input} value={(formData.warrantyExpiry as string) || ''} onChange={e => setFormData({ ...formData, warrantyExpiry: e.target.value })} /></div>
             </div>
             <div className={ds.grid2}>
@@ -1630,7 +1649,7 @@ export function HouseholdHome() {
               <div><label className={ds.label}>Category</label><select className={ds.select} value={(formData.category as string) || ''} onChange={e => setFormData({ ...formData, category: e.target.value })}><option value="">Select...</option>{BUDGET_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
             </div>
             <div className={ds.grid2}>
-              <div><label className={ds.label}>Amount ($)</label><input type="number" className={ds.input} value={(formData.amount as number) || ''} onChange={e => setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 })} /></div>
+              <div><label className={ds.label}>Amount ($)</label><input type="number" min={0} className={ds.input} value={(formData.amount as number) || ''} onChange={e => setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 })} /></div>
               <div><label className={ds.label}>Due Date</label><input type="date" className={ds.input} value={(formData.dueDate as string) || ''} onChange={e => setFormData({ ...formData, dueDate: e.target.value })} /></div>
             </div>
             <div><label className={ds.label}>Split Among (comma-separated)</label><input className={ds.input} value={((formData.splitAmong as string[]) || []).join(', ')} onChange={e => setFormData({ ...formData, splitAmong: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })} placeholder="Alice, Bob" /></div>
@@ -1669,7 +1688,7 @@ export function HouseholdHome() {
               <div><label className={ds.label}>Breed</label><input className={ds.input} value={(formData.breed as string) || ''} onChange={e => setFormData({ ...formData, breed: e.target.value })} /></div>
             </div>
             <div className={ds.grid2}>
-              <div><label className={ds.label}>Weight (lbs)</label><input type="number" className={ds.input} value={(formData.weight as number) || ''} onChange={e => setFormData({ ...formData, weight: parseFloat(e.target.value) || 0 })} /></div>
+              <div><label className={ds.label}>Weight (lbs)</label><input type="number" min={0} className={ds.input} value={(formData.weight as number) || ''} onChange={e => setFormData({ ...formData, weight: parseFloat(e.target.value) || 0 })} /></div>
               <div><label className={ds.label}>Food Brand</label><input className={ds.input} value={(formData.food as string) || ''} onChange={e => setFormData({ ...formData, food: e.target.value })} /></div>
             </div>
             <div className={ds.grid2}>
@@ -1852,9 +1871,9 @@ export function HouseholdHome() {
 
       {/* Editor modal */}
       {showEditor && (
-        <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <div className={ds.modalContainer}>
-            <div className={cn(ds.modalPanel, 'max-w-2xl')} onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            <div className={cn(ds.modalPanel, 'max-w-2xl')} onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
               <div className="p-6 border-b border-lattice-border">
                 <div className={ds.sectionHeader}>
                   <h2 className={ds.heading2}>{editingId ? 'Edit' : 'New'} {currentType}</h2>
@@ -1877,6 +1896,7 @@ export function HouseholdHome() {
                 </div>
                 {renderFormFields()}
               </div>
+              {formError && <p className="px-6 pt-3 text-[12px] text-rose-300" role="alert">{formError}</p>}
               <div className="p-6 border-t border-lattice-border flex items-center justify-end gap-3">
                 <button className={ds.btnSecondary} onClick={() => setShowEditor(false)}>Cancel</button>
                 <button className={ds.btnPrimary} onClick={handleSave} disabled={!formTitle.trim()}>

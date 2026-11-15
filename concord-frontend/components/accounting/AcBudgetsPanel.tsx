@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
-import { ErrorState } from '@/components/ui';
+import { ErrorState, EmptyState } from '@/components/ui';
 
 interface Budget { id: string; name: string; fiscalYear: number; lines: Record<string, number> }
 interface Account { id: string; code: string; name: string }
@@ -75,7 +75,7 @@ export function AcBudgetsPanel() {
             className="w-20 bg-black/40 border border-white/10 rounded px-2 py-1.5 text-xs text-gray-100" />
           <button type="button" onClick={addBudget} className={btn}><Plus className="w-3.5 h-3.5" /> Budget</button>
           {budgets.length > 0 && (
-            <select value={active} onChange={(e) => setActive(e.target.value)} className={inp}>
+            <select aria-label="Active budget" value={active} onChange={(e) => setActive(e.target.value)} className={inp}>
               {budgets.map((b) => <option key={b.id} value={b.id}>{b.name} ({b.fiscalYear})</option>)}
             </select>
           )}
@@ -85,9 +85,9 @@ export function AcBudgetsPanel() {
       {active && (
         <>
           <section className="bg-black/30 border border-white/10 rounded-lg p-3">
-            <h3 className="text-xs font-semibold text-gray-300 mb-2">Set a budget line</h3>
+            <h2 className="text-xs font-semibold text-gray-300 mb-2">Set a budget line</h2>
             <div className="flex flex-wrap items-center gap-2">
-              <select value={line.accountId} onChange={(e) => setLine({ ...line, accountId: e.target.value })} className={inp}>
+              <select aria-label="Budget line account" value={line.accountId} onChange={(e) => setLine({ ...line, accountId: e.target.value })} className={inp}>
                 <option value="">Account…</option>
                 {accounts.map((a) => <option key={a.id} value={a.id}>{a.code} {a.name}</option>)}
               </select>
@@ -101,9 +101,9 @@ export function AcBudgetsPanel() {
 
           {bva && (
             <section>
-              <h3 className="text-xs font-semibold text-gray-300 mb-2">
+              <h2 className="text-xs font-semibold text-gray-300 mb-2">
                 Budget vs actual — budgeted ${bva.totalBudgeted.toLocaleString()} · actual ${bva.totalActual.toLocaleString()}
-              </h3>
+              </h2>
               {bva.rows.length === 0 ? <Empty text="No budget lines set." /> : (
                 <ul className="space-y-1">
                   {bva.rows.map((r) => (
@@ -130,4 +130,6 @@ export function AcBudgetsPanel() {
 const inp = 'bg-black/40 border border-white/10 rounded px-2 py-1.5 text-xs text-gray-100';
 const btn = 'flex items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded px-3 py-1.5';
 function Spin() { return <div className="flex items-center justify-center py-10 text-gray-400"><Loader2 className="w-5 h-5 animate-spin" /></div>; }
-function Empty({ text }: { text: string }) { return <p className="text-[11px] text-gray-400 italic">{text}</p>; }
+function Empty({ text }: { text: string }) {
+  return <EmptyState compact title={text} description="This book has no saved rows yet. Add one above and it will show up here." />;
+}

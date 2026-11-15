@@ -9,6 +9,7 @@
  * for cross-panel hand-off, recall window on DM + publish.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import { Calculator, TrendingUp, FileText, Scale, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -176,12 +177,12 @@ export function AccountingActionPanel() {
     try {
       const task = `CFO brief. ${plResult ? `Net income $${plResult.netIncome.toLocaleString()} on $${plResult.revenue.total.toLocaleString()} revenue (${plResult.netMarginPct}% margin).` : ''} ${agingResult ? `AR outstanding $${agingResult.totalOutstanding.toLocaleString()}, overdue $${agingResult.totalOverdue.toLocaleString()}, ${agingResult.avgDaysOutstanding}d avg.` : ''} ${varResult ? `Budget variance ${varResult.totalVariance >= 0 ? '+' : ''}$${varResult.totalVariance.toLocaleString()} (${varOverallStatus(varResult)}).` : ''} Identify single biggest cash-flow lever this month + one cost to address. Plain text, 3 sentences max.`;
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
-      if (reply) {
-        const text = typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2);
+      const reply = readAgentReply(r.data);
+      if (reply.ok) {
+        const text = reply.text;
         setAgentReply(text); pipe.publish('accounting.agentReply', text, { label: 'CFO brief' });
         ok('Brief ready.');
-      } else err('Agent returned empty.');
+      } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 
@@ -201,7 +202,7 @@ export function AccountingActionPanel() {
     <div className="rounded-lg border border-emerald-500/20 bg-lattice-surface/60 p-3 space-y-3">
       <header className="flex items-center gap-2 border-b border-emerald-500/10 pb-2">
         <Calculator className="h-4 w-4 text-emerald-400" />
-        <h3 className="text-sm font-semibold text-white">Accounting bench</h3>
+        <h2 className="text-sm font-semibold text-white">Accounting bench</h2>
         <span className="rounded bg-lattice-elevated px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-gray-400">TB · P&L · AR aging · variance · validate</span>
       </header>
 

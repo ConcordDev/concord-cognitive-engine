@@ -65,7 +65,7 @@ export function HourlyBreakdown({ worldId, refreshKey = 0 }: { worldId: string; 
         </select>
       </div>
 
-      <p className="text-[10px] leading-relaxed text-zinc-500">
+      <p className="text-[10px] leading-relaxed text-zinc-400">
         Diurnal model on the measured embodied baseline. Beyond the first day, each day
         drifts deterministically off that baseline and confidence decays — simulated
         values, not observations.

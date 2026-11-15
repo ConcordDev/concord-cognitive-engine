@@ -80,7 +80,7 @@ export function ResearchCollectionsPanel({ onChange }: { onChange: () => void })
   return (
     <div className="space-y-3">
       <div className="flex gap-2">
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="New collection name"
+        <input aria-label="New collection name" value={name} onChange={(e) => setName(e.target.value)} placeholder="New collection name"
           className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-100" />
         <button type="button" onClick={create}
           className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-red-600 hover:bg-red-500 text-white rounded-lg">

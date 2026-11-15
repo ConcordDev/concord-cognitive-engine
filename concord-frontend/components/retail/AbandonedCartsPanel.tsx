@@ -57,8 +57,8 @@ export function AbandonedCartsPanel() {
         <span className="ml-auto inline-flex items-center gap-1 text-[10px] text-rose-300"><AlertTriangle className="w-3 h-3" />${totalLost.toFixed(0)} lost value</span>
       </header>
       <div className="px-3 py-2 border-b border-white/10 grid grid-cols-4 gap-2 text-xs">
-        <label className="space-y-1"><span className="text-gray-400">Threshold (hours)</span><input type="number" value={thresholdHours} onChange={e => setThresholdHours(e.target.value)} onBlur={refresh} className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" /></label>
-        <label className="col-span-2 space-y-1"><span className="text-gray-400">Recovery discount code (optional)</span><input value={recoveryCode} onChange={e => setRecoveryCode(e.target.value.toUpperCase())} placeholder="WIN10" className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white font-mono" /></label>
+        <label className="space-y-1"><span className="text-gray-400">Threshold (hours)</span><input id="retail-thresholdhours" name="thresholdhours" type="number" value={thresholdHours} onChange={e => setThresholdHours(e.target.value)} onBlur={refresh} className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" /></label>
+        <label className="col-span-2 space-y-1"><span className="text-gray-400">Recovery discount code (optional)</span><input id="retail-win10" name="win10" aria-label="WIN10" value={recoveryCode} onChange={e => setRecoveryCode(e.target.value.toUpperCase())} placeholder="WIN10" className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white font-mono" /></label>
         <button onClick={refresh} className="self-end px-3 py-1 text-xs rounded bg-amber-500 text-black font-bold hover:bg-amber-400">Refresh</button>
       </div>
       {draft && (

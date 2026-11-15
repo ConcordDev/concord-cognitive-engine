@@ -12,6 +12,7 @@ import {
   Box,
   GitCompare,
   RefreshCw,
+  Pencil,
 } from 'lucide-react';
 
 interface Massing {
@@ -114,6 +115,9 @@ export function ScenarioStudio({ onDataChanged }: { onDataChanged?: () => void }
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [compare, setCompare] = useState<CompareResult | null>(null);
+  // FIX-urban-planning-003: scenario edit state (scenario-update).
+  const [editingScenario, setEditingScenario] = useState<string | null>(null);
+  const [scenarioForm, setScenarioForm] = useState({ name: '', description: '', lotSizeSqFt: '5000', efficiency: '0.82' });
 
   // New-scenario form.
   const [name, setName] = useState('');
@@ -201,17 +205,19 @@ export function ScenarioStudio({ onDataChanged }: { onDataChanged?: () => void }
     <div className="space-y-4">
       {/* New scenario */}
       <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
-        <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
+        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
           <Layers className="h-4 w-4 text-emerald-400" /> New Development Scenario
-        </h3>
+        </h2>
         <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Scenario name"
+            aria-label="Scenario name"
             className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder-zinc-600"
           />
           <select
+            aria-label="Zone type"
             value={zoneType}
             onChange={(e) => setZoneType(e.target.value)}
             className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white"
@@ -223,6 +229,7 @@ export function ScenarioStudio({ onDataChanged }: { onDataChanged?: () => void }
             ))}
           </select>
           <select
+            aria-label="Use mix"
             value={useMix}
             onChange={(e) => setUseMix(e.target.value)}
             className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white"
@@ -238,6 +245,7 @@ export function ScenarioStudio({ onDataChanged }: { onDataChanged?: () => void }
             onChange={(e) => setLotSizeSqFt(e.target.value)}
             type="number"
             placeholder="Lot size (sqft)"
+            aria-label="Lot size (sqft)"
             className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder-zinc-600"
           />
           <input
@@ -248,12 +256,14 @@ export function ScenarioStudio({ onDataChanged }: { onDataChanged?: () => void }
             min="0.4"
             max="1"
             placeholder="Floor efficiency 0.4-1"
+            aria-label="Floor efficiency"
             className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder-zinc-600"
           />
           <input
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Description (optional)"
+            aria-label="Scenario description"
             className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder-zinc-600"
           />
         </div>
@@ -291,9 +301,9 @@ export function ScenarioStudio({ onDataChanged }: { onDataChanged?: () => void }
       {/* Comparison dashboard */}
       {compare && (
         <div className="rounded-lg border border-emerald-500/20 bg-zinc-900/60 p-4">
-          <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
             <GitCompare className="h-4 w-4 text-emerald-400" /> Scenario Comparison ({compare.count})
-          </h3>
+          </h2>
           <ChartKit
             kind="bar"
             data={compare.scenarios.map((s) => ({
@@ -347,7 +357,7 @@ export function ScenarioStudio({ onDataChanged }: { onDataChanged?: () => void }
                 ))}
               </tbody>
             </table>
-            <p className="mt-1 text-[10px] text-zinc-400">
+            <p className="mt-1 text-[10px] text-zinc-300">
               Emerald = best scenario for that metric (lowest emissions, highest yield otherwise).
             </p>
           </div>
@@ -393,18 +403,64 @@ export function ScenarioStudio({ onDataChanged }: { onDataChanged?: () => void }
                   {s.description && (
                     <p className="mt-0.5 text-xs text-zinc-400">{s.description}</p>
                   )}
-                  <p className="mt-0.5 text-[10px] uppercase tracking-wider text-zinc-400">
+                  <p className="mt-0.5 text-[10px] uppercase tracking-wider text-zinc-300">
                     {s.zoneType} · use {s.useMix} · {s.lotSizeSqFt.toLocaleString()} sqft lot
                   </p>
                 </div>
-                <button
-                  onClick={() => remove(s.id)}
-                  className="rounded p-1 text-zinc-600 hover:bg-zinc-800 hover:text-red-400"
-                  aria-label="Delete scenario"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => {
+                      setEditingScenario(editingScenario === s.id ? null : s.id);
+                      setScenarioForm({ name: s.name, description: s.description || '', lotSizeSqFt: String(s.lotSizeSqFt), efficiency: String(s.efficiency) });
+                    }}
+                    className="inline-flex min-h-[24px] min-w-[24px] items-center justify-center rounded p-1 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
+                    aria-label={`Edit scenario ${s.name}`}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => remove(s.id)}
+                    className="inline-flex min-h-[24px] min-w-[24px] items-center justify-center rounded p-1 text-zinc-600 hover:bg-zinc-800 hover:text-red-400"
+                    aria-label="Delete scenario"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
+              {editingScenario === s.id && (
+                <div className="mb-2 space-y-2 rounded border border-zinc-800 bg-zinc-950 p-2.5">
+                  <input value={scenarioForm.name} onChange={(e) => setScenarioForm({ ...scenarioForm, name: e.target.value })}
+                    aria-label="Edit scenario name" placeholder="Scenario name"
+                    className="w-full rounded border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-100" />
+                  <input value={scenarioForm.description} onChange={(e) => setScenarioForm({ ...scenarioForm, description: e.target.value })}
+                    aria-label="Edit scenario description" placeholder="Description"
+                    className="w-full rounded border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-100" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input value={scenarioForm.lotSizeSqFt} onChange={(e) => setScenarioForm({ ...scenarioForm, lotSizeSqFt: e.target.value })}
+                      aria-label="Edit scenario lot size" type="number" min={0} placeholder="Lot sq ft"
+                      className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-100" />
+                    <input value={scenarioForm.efficiency} onChange={(e) => setScenarioForm({ ...scenarioForm, efficiency: e.target.value })}
+                      aria-label="Edit scenario efficiency" type="number" min={0.4} max={1} step={0.01} placeholder="Efficiency"
+                      className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-100" />
+                  </div>
+                  <div className="flex gap-2">
+                    <button type="button" disabled={busy || !scenarioForm.name.trim()}
+                      onClick={async () => {
+                        setBusy(true);
+                        const r = await lensRun('urban-planning', 'scenario-update', {
+                          id: s.id, name: scenarioForm.name, description: scenarioForm.description,
+                          lotSizeSqFt: Number(scenarioForm.lotSizeSqFt) || 0, efficiency: Number(scenarioForm.efficiency) || 0.82,
+                        });
+                        setBusy(false);
+                        if (r.data.ok) { setEditingScenario(null); setCompare(null); await refresh(); onDataChanged?.(); }
+                        else setError(r.data.error || 'update failed');
+                      }}
+                      className="rounded bg-emerald-600 px-2.5 py-1 text-[11px] text-white hover:bg-emerald-500 disabled:opacity-40">Save changes</button>
+                    <button type="button" onClick={() => setEditingScenario(null)}
+                      className="rounded border border-zinc-700 px-2.5 py-1 text-[11px] text-zinc-300 hover:bg-zinc-800">Cancel</button>
+                  </div>
+                </div>
+              )}
               {s.impacts && (
                 <>
                   <MassingBox m={s.impacts} />
@@ -419,7 +475,7 @@ export function ScenarioStudio({ onDataChanged }: { onDataChanged?: () => void }
                         key={label as string}
                         className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1"
                       >
-                        <div className="text-[9px] uppercase tracking-wider text-zinc-400">
+                        <div className="text-[9px] uppercase tracking-wider text-zinc-300">
                           {label}
                         </div>
                         <div className="font-mono text-sm text-emerald-300">

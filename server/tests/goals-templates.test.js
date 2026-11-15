@@ -15,9 +15,11 @@ test("applying Quarterly OKR creates the objective and its 3 KRs", async () => {
   const r = await templates({ op: "apply", templateId: "tpl_okr_quarter" });
   assert.equal(r.ok, true);
   assert.equal(r.result.objective.keyResults.length, 3);
-  assert.ok(r.result.recurring);
+  assert.equal(r.result.recurring, null);
   const t = await tree({ op: "list" });
   assert.equal(t.result.stats.keyResultsLinked, 3);
+  const withRecurring = await templates({ op: "apply", templateId: "tpl_okr_quarter", alsoRecurring: true });
+  assert.ok(withRecurring.result.recurring);
   const bad = await templates({ op: "apply", templateId: "tpl_nope" });
   assert.equal(bad.ok, false);
 });

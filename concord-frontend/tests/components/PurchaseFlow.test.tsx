@@ -55,6 +55,7 @@ import { api } from '@/lib/api/client';
 
 const mockedApi = api as unknown as {
   post: ReturnType<typeof vi.fn>;
+  get: ReturnType<typeof vi.fn>;
 };
 
 describe('PurchaseFlow', () => {
@@ -63,6 +64,9 @@ describe('PurchaseFlow', () => {
     mockedApi.post.mockResolvedValue({
       data: { ok: true, checkoutUrl: 'https://checkout.stripe.com/test' },
     });
+    // FIX-sponsorship-006: the flow now gates on the server config —
+    // the purchase-flow tests run with purchases OPEN.
+    mockedApi.get.mockResolvedValue({ data: { ok: true, stripeEnabled: true } });
     // Prevent actual location change
     Object.defineProperty(window, 'location', {
       writable: true,
@@ -70,60 +74,60 @@ describe('PurchaseFlow', () => {
     });
   });
 
-  it('renders preset amount buttons', () => {
+  it('renders preset amount buttons', async () => {
     render(<PurchaseFlow />);
-    expect(screen.getByText('10')).toBeDefined();
+    expect(await screen.findByText('10')).toBeDefined();
     expect(screen.getByText('50')).toBeDefined();
     expect(screen.getByText('100')).toBeDefined();
     expect(screen.getByText('500')).toBeDefined();
     expect(screen.getByText('1,000')).toBeDefined();
   });
 
-  it('preset amount selection highlights the selected amount', () => {
+  it('preset amount selection highlights the selected amount', async () => {
     render(<PurchaseFlow />);
-    const button100 = screen.getByText('100').closest('button')!;
+    const button100 = (await screen.findByText('100')).closest('button')!;
     fireEvent.click(button100);
 
     // Active button should have highlighted style
     expect(button100.className).toContain('neon-blue');
   });
 
-  it('custom amount input works', () => {
+  it('custom amount input works', async () => {
     render(<PurchaseFlow />);
 
-    const customInput = screen.getByPlaceholderText(/\d+\s*-\s*[\d,]+/) as HTMLInputElement;
+    const customInput = (await screen.findByPlaceholderText(/\d+\s*-\s*[\d,]+/)) as HTMLInputElement;
     fireEvent.change(customInput, { target: { value: '250' } });
     expect(customInput.value).toBe('250');
   });
 
-  it('custom amount input validation rejects non-numeric', () => {
+  it('custom amount input validation rejects non-numeric', async () => {
     render(<PurchaseFlow />);
 
-    const customInput = screen.getByPlaceholderText(/\d+\s*-\s*[\d,]+/) as HTMLInputElement;
+    const customInput = (await screen.findByPlaceholderText(/\d+\s*-\s*[\d,]+/)) as HTMLInputElement;
     fireEvent.change(customInput, { target: { value: 'abc' } });
     expect(customInput.value).toBe('');
   });
 
-  it('USD equivalent display for preset', () => {
+  it('USD equivalent display for preset', async () => {
     render(<PurchaseFlow />);
     // Each preset shows USD equivalent (1:1 peg)
-    expect(screen.getByText('$10')).toBeDefined();
+    expect(await screen.findByText('$10')).toBeDefined();
     expect(screen.getByText('$50')).toBeDefined();
     expect(screen.getByText('$100')).toBeDefined();
     expect(screen.getByText('$500')).toBeDefined();
     expect(screen.getByText('$1,000')).toBeDefined();
   });
 
-  it('shows 1 CC = $1.00 USD label', () => {
+  it('shows 1 CC = $1.00 USD label', async () => {
     render(<PurchaseFlow />);
-    expect(screen.getByText(/1 CC = \$1\.00/)).toBeDefined();
+    expect(await screen.findByText(/1 CC = \$1\.00/)).toBeDefined();
   });
 
   it('buy button calls Stripe checkout API', async () => {
     render(<PurchaseFlow />);
 
     // Select a preset amount
-    fireEvent.click(screen.getByText('100').closest('button')!);
+    fireEvent.click((await screen.findByText('100')).closest('button')!);
 
     // Click buy button - match the button text "Buy 100 CC for $100"
     const buyBtn = screen.getByText(/buy \d+ cc for/i);
@@ -139,7 +143,7 @@ describe('PurchaseFlow', () => {
   it('buy button redirects to Stripe checkout URL', async () => {
     render(<PurchaseFlow />);
 
-    fireEvent.click(screen.getByText('50').closest('button')!);
+    fireEvent.click((await screen.findByText('50')).closest('button')!);
     fireEvent.click(screen.getByText(/buy \d+ cc for/i));
 
     await waitFor(() => {
@@ -152,7 +156,7 @@ describe('PurchaseFlow', () => {
 
     render(<PurchaseFlow />);
 
-    fireEvent.click(screen.getByText('100').closest('button')!);
+    fireEvent.click((await screen.findByText('100')).closest('button')!);
     fireEvent.click(screen.getByText(/buy \d+ cc for/i));
 
     await waitFor(() => {
@@ -168,7 +172,7 @@ describe('PurchaseFlow', () => {
 
     render(<PurchaseFlow />);
 
-    fireEvent.click(screen.getByText('100').closest('button')!);
+    fireEvent.click((await screen.findByText('100')).closest('button')!);
     fireEvent.click(screen.getByText(/buy \d+ cc for/i));
 
     await waitFor(() => {
@@ -177,10 +181,10 @@ describe('PurchaseFlow', () => {
     });
   });
 
-  it('selecting preset clears custom amount', () => {
+  it('selecting preset clears custom amount', async () => {
     render(<PurchaseFlow />);
 
-    const customInput = screen.getByPlaceholderText(/\d+\s*-\s*[\d,]+/) as HTMLInputElement;
+    const customInput = (await screen.findByPlaceholderText(/\d+\s*-\s*[\d,]+/)) as HTMLInputElement;
     fireEvent.change(customInput, { target: { value: '250' } });
     expect(customInput.value).toBe('250');
 
@@ -189,30 +193,48 @@ describe('PurchaseFlow', () => {
     expect(customInput.value).toBe('');
   });
 
-  it('typing custom amount deselects preset', () => {
+  it('typing custom amount deselects preset', async () => {
     render(<PurchaseFlow />);
 
     // Select preset
-    const btn100 = screen.getByText('100').closest('button')!;
+    const btn100 = (await screen.findByText('100')).closest('button')!;
     fireEvent.click(btn100);
     expect(btn100.className).toContain('neon-blue');
 
     // Type custom amount
-    const customInput = screen.getByPlaceholderText(/\d+\s*-\s*[\d,]+/);
+    const customInput = await screen.findByPlaceholderText(/\d+\s*-\s*[\d,]+/);
     fireEvent.change(customInput, { target: { value: '75' } });
 
     // Preset should no longer be highlighted
     expect(btn100.className).not.toContain('neon-blue');
   });
 
-  it('renders Buy CC Tokens header', () => {
+  it('renders Buy CC Tokens header', async () => {
     render(<PurchaseFlow />);
-    expect(screen.getByText(/buy cc tokens/i)).toBeDefined();
+    expect(await screen.findByText(/buy cc tokens/i)).toBeDefined();
   });
 
-  it('initialAmount prop pre-selects amount', () => {
+  it('gates the purchase surface closed when the server says purchases are off (FIX-sponsorship-006)', async () => {
+    mockedApi.get.mockResolvedValue({ data: { ok: true, stripeEnabled: false } });
+    render(<PurchaseFlow />);
+    expect(await screen.findByText(/purchases aren't open yet/i)).toBeDefined();
+    // No amounts, no Stripe copy, no buy path while money is off.
+    expect(screen.queryByText('1,000')).toBeNull();
+    expect(screen.queryByText(/processed securely by Stripe/i)).toBeNull();
+    expect(screen.queryByText(/buy \d+ cc for/i)).toBeNull();
+    expect(mockedApi.post).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when the config check errors (FIX-sponsorship-006)', async () => {
+    mockedApi.get.mockRejectedValue(new Error('network down'));
+    render(<PurchaseFlow />);
+    expect(await screen.findByText(/purchases aren't open yet/i)).toBeDefined();
+    expect(screen.queryByText(/buy \d+ cc for/i)).toBeNull();
+  });
+
+  it('initialAmount prop pre-selects amount', async () => {
     render(<PurchaseFlow initialAmount={500} />);
-    const btn500 = screen.getByText('500').closest('button')!;
+    const btn500 = (await screen.findByText('500')).closest('button')!;
     expect(btn500.className).toContain('neon-blue');
   });
 });

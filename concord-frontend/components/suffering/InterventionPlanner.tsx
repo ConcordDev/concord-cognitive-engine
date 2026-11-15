@@ -22,6 +22,7 @@
 
 import { useCallback, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { BOUNDS } from '@/lib/bounds';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Plus, Trash2, Loader2, Calculator, ListChecks, ArrowUpRight } from 'lucide-react';
 
@@ -177,10 +178,10 @@ export function InterventionPlanner({ onTracked }: { onTracked: () => void }) {
                   placeholder="Intervention description"
                   className="flex-1 bg-white/5 border border-white/10 rounded px-2 py-1"
                 />
-                <input type="number" min={0} value={iv.cost} onChange={(e) => updateIntv(iv.key, { cost: Number(e.target.value) })} title="Cost" className="w-16 bg-white/5 border border-white/10 rounded px-1.5 py-1" />
+                <input type="number" min={0} max={BOUNDS.MONEY_MAX} value={iv.cost} onChange={(e) => updateIntv(iv.key, { cost: Number(e.target.value) })} title="Cost" className="w-16 bg-white/5 border border-white/10 rounded px-1.5 py-1" />
                 <input type="number" min={1} max={10} value={iv.effort} onChange={(e) => updateIntv(iv.key, { effort: Number(e.target.value) })} title="Effort 1-10" className="w-14 bg-white/5 border border-white/10 rounded px-1.5 py-1" />
                 <input type="number" min={0} max={1} step={0.1} value={iv.effectiveness} onChange={(e) => updateIntv(iv.key, { effectiveness: Number(e.target.value) })} title="Effectiveness 0-1" className="w-14 bg-white/5 border border-white/10 rounded px-1.5 py-1" />
-                <input type="number" min={1} value={iv.timeToImplement} onChange={(e) => updateIntv(iv.key, { timeToImplement: Number(e.target.value) })} title="Days to implement" className="w-16 bg-white/5 border border-white/10 rounded px-1.5 py-1" />
+                <input type="number" min={1} max={3650} value={iv.timeToImplement} onChange={(e) => updateIntv(iv.key, { timeToImplement: Number(e.target.value) })} title="Days to implement" className="w-16 bg-white/5 border border-white/10 rounded px-1.5 py-1" />
                 <button onClick={() => removeIntv(iv.key)} className="text-gray-600 hover:text-red-400" aria-label="Remove intervention">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -237,7 +238,7 @@ export function InterventionPlanner({ onTracked }: { onTracked: () => void }) {
           <div className="space-y-1.5">
             {result.rankedInterventions.map((r, i) => (
               <div key={r.id} className="flex items-center gap-2 p-2 rounded-lg bg-white/[0.03] border border-white/10">
-                <span className="text-xs text-gray-500 w-5 shrink-0">#{i + 1}</span>
+                <span className="text-xs text-gray-400 w-5 shrink-0">#{i + 1}</span>
                 <span className="text-sm flex-1 truncate">{r.description}</span>
                 <span className="text-[11px] text-gray-400 shrink-0">cov {(r.coverage * 100).toFixed(0)}%</span>
                 <span className="text-[11px] text-gray-400 shrink-0">ROI {formatRoiPct(r.roi)}%</span>

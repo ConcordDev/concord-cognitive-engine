@@ -58,7 +58,7 @@ export function ZippopotamPanel({ domain, className }: ZippopotamPanelProps) {
     <section className={cn('rounded-lg border border-zinc-800 bg-zinc-950/80 overflow-hidden', className)}>
       <header className="flex items-center gap-2 px-3 py-2 border-b border-zinc-800/80 bg-zinc-900/40">
         <MapPin className="w-4 h-4 text-cyan-300" aria-hidden="true" />
-        <h3 className="text-sm font-medium text-zinc-100 flex-1">Postal code lookup</h3>
+        <h2 className="text-sm font-medium text-zinc-100 flex-1">Postal code lookup</h2>
         <span className="text-[10px] text-emerald-400 font-mono">REAL data</span>
       </header>
 
@@ -66,10 +66,10 @@ export function ZippopotamPanel({ domain, className }: ZippopotamPanelProps) {
         onSubmit={(e) => { e.preventDefault(); void lookup(); }}
         className="px-3 py-2 border-b border-zinc-800/40 flex gap-2 items-center"
       >
-        <select
+        <select aria-label="Country"
           value={country}
           onChange={(e) => setCountry(e.target.value)}
-          className="text-xs bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-zinc-100"
+          className="min-h-11 text-xs bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-zinc-100"
         >
           {SUPPORTED_COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.label}</option>)}
         </select>

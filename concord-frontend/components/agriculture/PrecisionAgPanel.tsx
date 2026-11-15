@@ -78,6 +78,17 @@ export default function PrecisionAgPanel() {
     refreshFields();
   }, [refreshFields]);
 
+  // FIX-agriculture-014: the Farm Workbench overlay can create, rename, or
+  // delete a field while this panel stays mounted underneath it; without
+  // this, the NDVI field dropdown kept the mount-time list until a reload
+  // (the Climate FieldView pattern: a field created anywhere in the app is
+  // immediately selectable everywhere).
+  useEffect(() => {
+    const onFieldsChanged = () => { void refreshFields(); };
+    window.addEventListener('agriculture:fields-changed', onFieldsChanged);
+    return () => window.removeEventListener('agriculture:fields-changed', onFieldsChanged);
+  }, [refreshFields]);
+
   return (
     <section className="rounded-xl border border-emerald-900/30 bg-[#0b0f14]">
       <header className="px-4 py-3 border-b border-emerald-900/30 flex items-center gap-2">

@@ -127,7 +127,7 @@ export function PhilosophyOverview({ onJump }: { onJump: (destination: Destinati
 
       {kindEntries.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 text-[11px] text-zinc-400">
-          <span className="uppercase tracking-wider text-zinc-500">Block mix</span>
+          <span className="uppercase tracking-wider text-zinc-400">Block mix</span>
           {kindEntries.map(([k, v]) => (
             <span key={k} className="rounded bg-zinc-900 border border-zinc-800 px-2 py-0.5 text-zinc-300">
               {v} {KIND_LABEL[k] || k}
@@ -157,13 +157,13 @@ export function PhilosophyOverview({ onJump }: { onJump: (destination: Destinati
               >
                 <div className="flex items-center gap-2">
                   <span className="text-[11px] font-semibold text-white truncate">{t.title}</span>
-                  <span className="text-[9px] uppercase text-zinc-500">{t.branch}</span>
-                  <span className="text-[9px] text-zinc-500">{t.public === true ? 'public' : 'private'}</span>
+                  <span className="text-[9px] uppercase text-zinc-400">{t.branch}</span>
+                  <span className="text-[9px] text-zinc-400">{t.public === true ? 'public' : 'private'}</span>
                   {(t.mine || t.authorName) && (
-                    <span className="text-[9px] text-zinc-500">{t.mine ? 'you' : t.authorName}</span>
+                    <span className="text-[9px] text-zinc-400">{t.mine ? 'you' : t.authorName}</span>
                   )}
                   {t.status === 'resolved' && <span className="text-[9px] text-emerald-400">resolved</span>}
-                  <span className="ml-auto text-[9px] text-zinc-500">{t.postCount} posts</span>
+                  <span className="ml-auto text-[9px] text-zinc-400">{t.postCount} posts</span>
                 </div>
                 <p className="text-[10px] text-zinc-400 italic truncate">{t.claim}</p>
               </button>

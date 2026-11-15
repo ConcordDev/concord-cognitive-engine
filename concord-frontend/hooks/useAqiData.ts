@@ -34,10 +34,14 @@ interface UseAqiDataOptions {
 interface UseAqiDataResult {
   data: AqiData | null;
   loading: boolean;
+  /** True while the coordinates are still unresolved (geolocation phase). */
+  locating: boolean;
   error: string | null;
   lastFetchedAt: number | null;
   refresh: () => void;
 }
+
+const FALLBACK_COORDS = { lat: 37.7749, lng: -122.4194 };
 
 export function useAqiData({ lat, lng }: UseAqiDataOptions = {}): UseAqiDataResult {
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
@@ -50,13 +54,25 @@ export function useAqiData({ lat, lng }: UseAqiDataOptions = {}): UseAqiDataResu
   const generation = useRef(0);
 
   useEffect(() => {
-    if (!coords && typeof navigator !== 'undefined' && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        pos => setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        () => setCoords({ lat: 37.7749, lng: -122.4194 }),
-        { maximumAge: 5 * 60 * 1000, timeout: 5000 }
-      );
+    if (coords) return;
+    // FIX-graph-010: the locating phase had no resolution guarantee — with
+    // geolocation unavailable, or a browser that never answers the request,
+    // coords stayed null forever: the hero sat on 'Locating…' perpetually
+    // and the panel fell through to 'AQI failed: no data'. The denied
+    // callback already falls back to default coords; the unavailable case
+    // and a hard watchdog deadline now resolve the same way, so every
+    // surface reaches data or an explained state.
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      setCoords(FALLBACK_COORDS);
+      return;
     }
+    const watchdog = setTimeout(() => setCoords(FALLBACK_COORDS), 6000);
+    navigator.geolocation.getCurrentPosition(
+      pos => setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => setCoords(FALLBACK_COORDS),
+      { maximumAge: 5 * 60 * 1000, timeout: 5000 }
+    );
+    return () => clearTimeout(watchdog);
   }, [coords]);
 
   const [gen, setGen] = useState(0);
@@ -91,5 +107,5 @@ export function useAqiData({ lat, lng }: UseAqiDataOptions = {}): UseAqiDataResu
     setGen(generation.current);
   }, []);
 
-  return { data, loading, error: coords ? error : null, lastFetchedAt, refresh };
+  return { data, loading, locating: !coords, error: coords ? error : null, lastFetchedAt, refresh };
 }

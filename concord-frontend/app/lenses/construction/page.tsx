@@ -88,7 +88,21 @@ export default function ConstructionLensPage() {
         activeTab={active}
         onTab={(id) => setActive(id as ConstrView)}
         tabsLabel="Construction views"
-        cta={{ label: 'Open job board', icon: HardHat, onClick: () => setActive('jobs'), title: 'Open the job board (J)' }}
+        cta={{
+          label: 'Open job board',
+          icon: HardHat,
+          onClick: () => {
+            setActive('jobs');
+            // The board is the default view, so from the board itself the
+            // click used to change nothing at all. It always lands the
+            // user ON the board: switch if needed, then scroll it into
+            // view (after the view swap) so the click is visible.
+            requestAnimationFrame(() => {
+              document.getElementById('construction-main')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+          },
+          title: 'Open the job board (J)',
+        }}
       >
         <main id="construction-main" className="pt-4 min-w-0">
           <BenchStoreProvider>

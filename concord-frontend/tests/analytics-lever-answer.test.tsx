@@ -69,7 +69,7 @@ describe('Lever (chat_agent) terminal states (R5)', () => {
     });
     render(<AnalyticsActionPanel />);
     fireEvent.click(screen.getByRole('button', { name: /lever/i }));
-    await waitFor(() => expect(screen.getByText('Agent unavailable: no_actor.')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('no_actor')).toBeTruthy());
     expect(screen.queryByText('Agent returned empty.')).toBeNull();
   });
 });

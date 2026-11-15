@@ -173,6 +173,17 @@ describe("fractal preset persistence", () => {
     assert.equal(deleted.result.count, 1); // imported copy remains
   });
 
+  it("updates a preset when the same name is saved again", () => {
+    const first = call("savePreset", ctxA, {}, { name: "Same Name", config: { type: "mandelbrot", maxIter: 100 } });
+    const second = call("savePreset", ctxA, {}, { name: "Same Name", config: { type: "julia", maxIter: 400 } });
+    assert.equal(second.ok, true);
+    assert.equal(second.result.updated, true);
+    assert.equal(second.result.preset.id, first.result.preset.id);
+    assert.equal(second.result.preset.config.type, "julia");
+    const listed = call("listPresets", ctxA, {}, {});
+    assert.equal(listed.result.presets.filter((p) => p.name === "Same Name").length, 1);
+  });
+
   it("requires a preset name", () => {
     const r = call("savePreset", ctxA, {}, { config: {} });
     assert.equal(r.ok, false);

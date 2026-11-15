@@ -97,6 +97,7 @@ export function ElectionsPanel() {
             <div><span className="text-gray-400">State:</span> {registration.stateCode} · <span className="text-gray-400">Party:</span> {registration.partyPreference}</div>
             <div><span className="text-gray-400">Mail-in ballot:</span> {registration.mailInRequested ? 'requested' : 'no'}</div>
             <div><span className="text-gray-400">Status:</span> <span className="text-emerald-300">{registration.status}</span> · recorded in Concord {new Date(registration.submittedAt).toLocaleDateString()} — not filed with any election office</div>
+            <button type="button" className="mt-1 text-[10px] text-rose-300" onClick={async () => { await lensRun({ domain: 'government', action: 'voter-registration-withdraw', input: {} }); await loadRegistration(); }}>Withdraw registration</button>
           </div>
         ) : (
           <div className="space-y-2">
@@ -104,13 +105,13 @@ export function ElectionsPanel() {
               Local record only — this does not register you to vote. Concord is not an election office, and nothing entered here is sent to one; the record is saved only in your Concord workspace.
             </LocalRecordNotice>
             <div className="grid grid-cols-6 gap-2">
-              <input value={regForm.fullName} onChange={e => setRegForm({ ...regForm, fullName: e.target.value })} placeholder="Full legal name" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-              <input value={regForm.dateOfBirth} onChange={e => setRegForm({ ...regForm, dateOfBirth: e.target.value })} type="date" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-              <input value={regForm.stateCode} onChange={e => setRegForm({ ...regForm, stateCode: e.target.value.toUpperCase().slice(0, 2) })} placeholder="ST" maxLength={2} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+              <input aria-label="Full legal name" value={regForm.fullName} onChange={e => setRegForm({ ...regForm, fullName: e.target.value })} placeholder="Full legal name" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+              <input aria-label="Date of birth" value={regForm.dateOfBirth} onChange={e => setRegForm({ ...regForm, dateOfBirth: e.target.value })} type="date" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+              <input aria-label="ST" value={regForm.stateCode} onChange={e => setRegForm({ ...regForm, stateCode: e.target.value.toUpperCase().slice(0, 2) })} placeholder="ST" maxLength={2} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
             </div>
-            <input value={regForm.residentialAddress} onChange={e => setRegForm({ ...regForm, residentialAddress: e.target.value })} placeholder="Residential address" className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+            <input aria-label="Residential address" value={regForm.residentialAddress} onChange={e => setRegForm({ ...regForm, residentialAddress: e.target.value })} placeholder="Residential address" className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
             <div className="flex items-center gap-2">
-              <select value={regForm.partyPreference} onChange={e => setRegForm({ ...regForm, partyPreference: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+              <select aria-label="Party preference" value={regForm.partyPreference} onChange={e => setRegForm({ ...regForm, partyPreference: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
                 <option value="unaffiliated">Unaffiliated</option>
                 <option value="democratic">Democratic</option>
                 <option value="republican">Republican</option>
@@ -119,7 +120,7 @@ export function ElectionsPanel() {
                 <option value="libertarian">Libertarian</option>
               </select>
               <label className="text-[10px] text-gray-400 inline-flex items-center gap-1 cursor-pointer">
-                <input type="checkbox" checked={regForm.mailInRequested} onChange={e => setRegForm({ ...regForm, mailInRequested: e.target.checked })} className="accent-cyan-500" />
+                <input aria-label="Mail-in ballot requested" type="checkbox" checked={regForm.mailInRequested} onChange={e => setRegForm({ ...regForm, mailInRequested: e.target.checked })} className="accent-cyan-500" />
                 Request mail-in ballot
               </label>
               <button onClick={submitRegistration} className="ml-auto px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400">Submit registration</button>
@@ -133,7 +134,7 @@ export function ElectionsPanel() {
       <div className="p-3 border-b border-white/10">
         <div className="text-[10px] uppercase text-gray-400 mb-1.5 inline-flex items-center gap-1"><CalendarClock className="w-3 h-3" />Upcoming elections</div>
         <div className="flex items-center gap-2">
-          <input value={stateFilter} onChange={e => setStateFilter(e.target.value.toUpperCase().slice(0, 2))} placeholder="ST (optional)" maxLength={2} className="w-24 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+          <input aria-label="ST (optional)" value={stateFilter} onChange={e => setStateFilter(e.target.value.toUpperCase().slice(0, 2))} placeholder="ST (optional)" maxLength={2} className="w-24 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
           <button onClick={lookupElections} className="px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 inline-flex items-center gap-1">
             {electionsLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}Look up
           </button>
@@ -156,7 +157,7 @@ export function ElectionsPanel() {
       <div className="p-3">
         <div className="text-[10px] uppercase text-gray-400 mb-1.5 inline-flex items-center gap-1"><MapPin className="w-3 h-3" />Polling place lookup</div>
         <div className="flex items-center gap-2">
-          <input value={pollAddress} onChange={e => setPollAddress(e.target.value)} placeholder="Your registered address" className="flex-1 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input aria-label="Your registered address" value={pollAddress} onChange={e => setPollAddress(e.target.value)} placeholder="Your registered address" className="flex-1 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <button onClick={lookupPolling} className="px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 inline-flex items-center gap-1">
             {pollLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}Find
           </button>

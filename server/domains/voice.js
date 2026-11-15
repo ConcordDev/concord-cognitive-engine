@@ -378,12 +378,49 @@ export default function registerVoiceActions(registerLensAction) {
     const rec = vcList(s, vcActor(ctx)).find((r) => r.id === params.id);
     if (!rec) return { ok: false, error: "recording not found" };
     if (rec.segments.length === 0) return { ok: false, error: "recording has no transcript" };
-    // Highlights are explicit summary points; otherwise pick the longest segments.
+    // Highlights are explicit summary points — the user's own picks,
+    // kept as marked. Otherwise (FIX-voice-010): the old fallback
+    // repeated the five LONGEST segments verbatim as "key points" —
+    // whole multi-sentence blocks copied from the transcript, which
+    // is a quote list, not a summary. The deterministic fallback now
+    // does sentence-level extractive scoring (Luhn-style): split the
+    // transcript into sentences, score each by the transcript-wide
+    // frequency of its content words, and take the most central
+    // sentences (deduped, in transcript order). For the abstractive
+    // summary, recording-summary-llm remains the opt-in path.
     const highlighted = rec.segments.filter((g) => g.highlighted);
-    const keyPoints = (highlighted.length > 0
-      ? highlighted
-      : [...rec.segments].sort((a, b) => b.text.length - a.text.length).slice(0, 5).sort((a, b) => a.startSec - b.startSec)
-    ).map((g) => g.text.slice(0, 200));
+    let keyPoints;
+    if (highlighted.length > 0) {
+      keyPoints = highlighted.map((g) => g.text.slice(0, 200));
+    } else {
+      const STOP = new Set(["the", "a", "an", "and", "or", "but", "of", "to", "in", "on", "for", "with", "is", "are", "was", "were", "be", "it", "its", "this", "that", "we", "you", "i", "they", "he", "she", "so", "as", "at", "by", "from", "have", "has", "had", "will", "would", "can", "could", "should", "our", "your", "their", "there", "here", "what", "when", "how", "all", "any", "if", "then", "than", "too", "very", "just"]);
+      const sentences = [];
+      for (const g of rec.segments) {
+        for (const part of String(g.text).split(/(?<=[.!?])\s+/)) {
+          const text = part.trim();
+          if (text) sentences.push({ text, startSec: g.startSec });
+        }
+      }
+      const freq = new Map();
+      const wordsOf = (t) => t.toLowerCase().replace(/[^a-z0-9\s'-]/g, " ").split(/\s+/).filter((w) => w.length >= 3 && !STOP.has(w));
+      for (const s of sentences) for (const w of wordsOf(s.text)) freq.set(w, (freq.get(w) || 0) + 1);
+      const seenNorm = new Set();
+      const scored = [];
+      sentences.forEach((s, idx) => {
+        const norm = s.text.toLowerCase().replace(/\s+/g, " ");
+        if (seenNorm.has(norm)) return;
+        seenNorm.add(norm);
+        const ws = wordsOf(s.text);
+        if (ws.length === 0) return;
+        const score = ws.reduce((n, w) => n + (freq.get(w) || 0), 0) / Math.sqrt(ws.length);
+        scored.push({ ...s, idx, score });
+      });
+      keyPoints = scored
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 5)
+        .sort((a, b) => a.idx - b.idx)
+        .map((s) => s.text.slice(0, 200));
+    }
     const actionItems = [];
     for (const g of rec.segments) {
       const low = g.text.toLowerCase();
@@ -775,11 +812,14 @@ Only use information present in the transcript. Do not invent owners or decision
     if (!title) return { ok: false, error: "meeting title required" };
     const startAt = vcClean(params.startAt, 40);
     if (!startAt || Number.isNaN(Date.parse(startAt))) return { ok: false, error: "valid startAt (ISO datetime) required" };
+    if (params.durationMin != null && params.durationMin !== "" && !(Number(params.durationMin) > 0)) {
+      return { ok: false, error: "invalid_input", message: "Duration must be a number of minutes greater than 0." };
+    }
     const meeting = {
       id: vcId("mtg"),
       title,
       startAt: new Date(startAt).toISOString(),
-      durationMin: Number.isFinite(Number(params.durationMin)) ? Math.max(5, Math.round(Number(params.durationMin))) : 30,
+      durationMin: params.durationMin == null || params.durationMin === "" ? 30 : Math.round(Number(params.durationMin)),
       meetingUrl: vcClean(params.meetingUrl, 500),
       attendees: Array.isArray(params.attendees) ? params.attendees.map((a) => vcClean(a, 120)).filter(Boolean).slice(0, 50) : [],
       autoRecord: params.autoRecord !== false,

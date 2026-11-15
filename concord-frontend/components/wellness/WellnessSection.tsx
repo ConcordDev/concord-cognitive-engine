@@ -9,11 +9,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   HeartPulse, Loader2, Plus, Trash2, Flame, Activity, Smile, Target,
-  TrendingUp, TrendingDown, Minus, Dumbbell, Sparkles, Check,
+  TrendingUp, TrendingDown, Minus, Dumbbell, Sparkles, Check, Pencil,
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { notifyWellnessChanged } from '@/lib/wellness/refresh';
 
 type Tab = 'today' | 'habits' | 'mood' | 'workouts' | 'goals';
 
@@ -125,7 +126,7 @@ export function WellnessSection() {
     try {
       const r = await lensRun({ domain: 'wellness', action: 'metrics-log', input: { type: type.trim(), value: Number(value) } });
       if (r.data?.ok === false) { alert(r.data?.error); return; }
-      await refresh();
+      await refresh(); notifyWellnessChanged();
       await loadMetricsLog(metricsLogFilter);
     } catch (e) { console.error('[Wellness] logMetric', e); }
   }
@@ -134,7 +135,7 @@ export function WellnessSection() {
     const name = prompt('Habit name?'); if (!name?.trim()) return;
     const unit = prompt('Unit (blank for simple check, e.g. "glasses")') || '';
     const target = unit ? Number(prompt('Daily target?') || '1') : 1;
-    try { await lensRun({ domain: 'wellness', action: 'habits-create', input: { name: name.trim(), unit, target } }); await refresh(); }
+    try { await lensRun({ domain: 'wellness', action: 'habits-create', input: { name: name.trim(), unit, target } }); await refresh(); notifyWellnessChanged(); }
     catch (e) { console.error('[Wellness] addHabit', e); }
   }
   async function checkinHabit(h: Habit) {
@@ -146,12 +147,12 @@ export function WellnessSection() {
         if (v === null) return;
         await lensRun({ domain: 'wellness', action: 'habits-checkin', input: { habitId: h.id, value: Number(v) } });
       }
-      await refresh();
+      await refresh(); notifyWellnessChanged();
     } catch (e) { console.error('[Wellness] checkin', e); }
   }
   async function archiveHabit(id: string) {
     if (!confirm('Archive this habit?')) return;
-    try { await lensRun({ domain: 'wellness', action: 'habits-archive', input: { id } }); await refresh(); }
+    try { await lensRun({ domain: 'wellness', action: 'habits-archive', input: { id } }); await refresh(); notifyWellnessChanged(); }
     catch (e) { console.error('[Wellness] archive', e); }
   }
 
@@ -160,7 +161,7 @@ export function WellnessSection() {
     const note = prompt('Note (optional)?') || '';
     try {
       await lensRun({ domain: 'wellness', action: 'mood-log', input: { mood, activities: actStr.split(',').map(a => a.trim()).filter(Boolean), note } });
-      await refresh();
+      await refresh(); notifyWellnessChanged();
     } catch (e) { console.error('[Wellness] logMood', e); }
   }
 
@@ -168,29 +169,77 @@ export function WellnessSection() {
     const kind = prompt(`Workout kind (${WORKOUT_KINDS.join('/')})?`); if (!kind?.trim()) return;
     const dur = prompt('Duration (minutes)?'); if (!dur) return;
     const intensity = prompt('Intensity (easy/moderate/hard/max)?') || 'moderate';
-    try { await lensRun({ domain: 'wellness', action: 'workouts-log', input: { kind: kind.trim(), durationMin: Number(dur), intensity } }); await refresh(); }
+    try { await lensRun({ domain: 'wellness', action: 'workouts-log', input: { kind: kind.trim(), durationMin: Number(dur), intensity } }); await refresh(); notifyWellnessChanged(); }
     catch (e) { console.error('[Wellness] logWorkout', e); }
   }
   async function delWorkout(id: string) {
-    try { await lensRun({ domain: 'wellness', action: 'workouts-delete', input: { id } }); await refresh(); }
+    // Confirmation (FIX-wellness-005): this delete used to fire on a
+    // single click, unlike the habit archive's confirm.
+    if (!confirm('Delete this workout?')) return;
+    try { await lensRun({ domain: 'wellness', action: 'workouts-delete', input: { id } }); await refresh(); notifyWellnessChanged(); }
     catch (e) { console.error('[Wellness] delWorkout', e); }
+  }
+
+  // Metric + mood entry edit/delete (FIX-wellness-005) — the entry
+  // lists were read-only; edits go through the new update macros and
+  // deletes confirm first, in this panel's prompt/confirm idiom.
+  async function editMetric(m: MetricEntry) {
+    const v = prompt(`${METRIC_TYPE_LABELS[m.type] || m.type} on ${m.date} — value?`, String(m.value));
+    if (v === null) return;
+    try {
+      await lensRun({ domain: 'wellness', action: 'metrics-update', input: { id: m.id, value: Number(v) } });
+      await loadMetricsLog(metricsLogFilter); await refresh(); notifyWellnessChanged();
+    } catch (e) { console.error('[Wellness] editMetric', e); }
+  }
+  async function delMetric(m: MetricEntry) {
+    if (!confirm(`Delete this ${METRIC_TYPE_LABELS[m.type] || m.type} entry (${m.value} on ${m.date})?`)) return;
+    try {
+      await lensRun({ domain: 'wellness', action: 'metrics-delete', input: { id: m.id } });
+      await loadMetricsLog(metricsLogFilter); await refresh(); notifyWellnessChanged();
+    } catch (e) { console.error('[Wellness] delMetric', e); }
+  }
+  async function editMood(m: MoodEntry) {
+    const note = prompt('Note for this mood entry?', m.note || '');
+    if (note === null) return;
+    const actStr = prompt('Activities (comma-separated)?', (m.activities || []).join(', '));
+    if (actStr === null) return;
+    try {
+      await lensRun({ domain: 'wellness', action: 'mood-update', input: { id: m.id, note, activities: actStr.split(',').map(a => a.trim()).filter(Boolean) } });
+      await refresh(); notifyWellnessChanged();
+    } catch (e) { console.error('[Wellness] editMood', e); }
+  }
+  async function delMood(m: MoodEntry) {
+    if (!confirm(`Delete this mood entry from ${m.date}?`)) return;
+    try {
+      await lensRun({ domain: 'wellness', action: 'mood-delete', input: { id: m.id } });
+      await refresh(); notifyWellnessChanged();
+    } catch (e) { console.error('[Wellness] delMood', e); }
   }
 
   async function addGoal() {
     const name = prompt('Goal name?'); if (!name?.trim()) return;
+    // FIX-wellness-007: the create result used to be ignored entirely, so a
+    // name over the platform's 200-character limit failed with no message
+    // anywhere. Check the length first, then check the result.
+    if (name.trim().length > 200) { alert(`Goal names can be up to 200 characters — yours is ${name.trim().length}. Shorten it and try again.`); return; }
     const target = prompt('Target value?'); if (!target) return;
     const unit = prompt('Unit?') || '';
-    try { await lensRun({ domain: 'wellness', action: 'goals-create', input: { name: name.trim(), target: Number(target), unit } }); await refresh(); }
-    catch (e) { console.error('[Wellness] addGoal', e); }
+    try {
+      const r = await lensRun({ domain: 'wellness', action: 'goals-create', input: { name: name.trim(), target: Number(target), unit } });
+      if (r.data?.ok === false) { alert(r.data?.error || 'That goal could not be created.'); return; }
+      await refresh(); notifyWellnessChanged();
+    }
+    catch (e) { console.error('[Wellness] addGoal', e); alert('That goal could not be created — the request failed.'); }
   }
   async function updateGoal(g: Goal) {
     const v = prompt(`${g.name} — current progress (${g.unit})?`, String(g.current));
     if (v === null) return;
-    try { await lensRun({ domain: 'wellness', action: 'goals-update-progress', input: { id: g.id, current: Number(v) } }); await refresh(); }
+    try { await lensRun({ domain: 'wellness', action: 'goals-update-progress', input: { id: g.id, current: Number(v) } }); await refresh(); notifyWellnessChanged(); }
     catch (e) { console.error('[Wellness] updateGoal', e); }
   }
   async function delGoal(id: string) {
-    try { await lensRun({ domain: 'wellness', action: 'goals-delete', input: { id } }); await refresh(); }
+    if (!confirm('Delete this goal?')) return;
+    try { await lensRun({ domain: 'wellness', action: 'goals-delete', input: { id } }); await refresh(); notifyWellnessChanged(); }
     catch (e) { console.error('[Wellness] delGoal', e); }
   }
 
@@ -264,7 +313,7 @@ export function WellnessSection() {
             <div className="rounded border border-white/10 bg-black/30 p-3">
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Trend</span>
-                <select value={trendType} onChange={e => setTrendType(e.target.value)} className="text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white">
+                <select value={trendType} onChange={e => setTrendType(e.target.value)} aria-label="Trend metric" className="text-[10px] px-1.5 py-0.5 min-h-[40px] bg-lattice-deep border border-lattice-border rounded text-white">
                   {TREND_METRICS.map(m => <option key={m.type} value={m.type}>{m.label}</option>)}
                 </select>
                 {trend && trend.latest !== null && (
@@ -302,8 +351,8 @@ export function WellnessSection() {
             <div className="rounded border border-white/10 bg-black/30 p-3">
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">All entries (90d)</span>
-                <select value={metricsLogFilter} onChange={e => setMetricsLogFilter(e.target.value)}
-                  className="text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white">
+                <select value={metricsLogFilter} onChange={e => setMetricsLogFilter(e.target.value)} aria-label="Filter entries by type"
+                  className="text-[10px] px-1.5 py-0.5 min-h-[40px] bg-lattice-deep border border-lattice-border rounded text-white">
                   <option value="all">All types</option>
                   {Object.entries(METRIC_TYPE_LABELS).map(([type, label]) => <option key={type} value={type}>{label}</option>)}
                 </select>
@@ -322,6 +371,8 @@ export function WellnessSection() {
                       <span className="text-[10px] text-gray-400 font-mono w-20 flex-shrink-0">{m.date}</span>
                       <span className="flex-1 text-white font-mono">{m.value}</span>
                       {m.source && <span className="text-[9px] text-gray-500 font-mono flex-shrink-0">{m.source.replace(/_/g, ' ')}</span>}
+                      <button aria-label={`Edit ${METRIC_TYPE_LABELS[m.type] || m.type} entry`} onClick={() => editMetric(m)} className="p-1 text-gray-400 hover:text-cyan-300 flex-shrink-0"><Pencil className="w-3 h-3" /></button>
+                      <button aria-label={`Delete ${METRIC_TYPE_LABELS[m.type] || m.type} entry`} onClick={() => delMetric(m)} className="p-1 text-gray-400 hover:text-rose-300 flex-shrink-0"><Trash2 className="w-3 h-3" /></button>
                     </li>
                   ))}
                 </ul>
@@ -416,6 +467,8 @@ export function WellnessSection() {
                       <span className="text-lg">{MOODS[m.moodScore]?.emoji}</span>
                       <span className="text-[10px] text-gray-400 font-mono w-20">{m.date}</span>
                       <span className="flex-1 text-gray-300 truncate">{m.activities.join(', ')}{m.note && ` — ${m.note}`}</span>
+                      <button aria-label="Edit mood entry" onClick={() => editMood(m)} className="p-1 text-gray-400 hover:text-cyan-300 flex-shrink-0"><Pencil className="w-3 h-3" /></button>
+                      <button aria-label="Delete mood entry" onClick={() => delMood(m)} className="p-1 text-gray-400 hover:text-rose-300 flex-shrink-0"><Trash2 className="w-3 h-3" /></button>
                     </li>
                   ))}
                 </ul>

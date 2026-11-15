@@ -11,6 +11,7 @@ import {
   CheckCircle, Send, Clock, ShieldCheck,
 } from 'lucide-react';
 import { WebhookSignatureVerifier } from '@/components/integrations/WebhookSignatureVerifier';
+import { httpsUrlError } from '@/lib/form-guards';
 
 function EmptyState({ icon, message }: { icon: React.ReactNode; message: string }) {
   return (
@@ -81,19 +82,30 @@ function WebhookIngestInfo() {
 
 function CreateWebhookModal({ onClose, onCreate, creating }: { onClose: () => void; onCreate: (data: CreateWebhookRequest) => void; creating: boolean }) {
   const [form, setForm] = useState({ name: '', url: '', events: 'dtu.created' });
+  const [urlError, setUrlError] = useState<string | null>(null);
+  const submit = () => {
+    const problem = httpsUrlError(form.url);
+    if (problem) {
+      setUrlError(problem);
+      return;
+    }
+    setUrlError(null);
+    onCreate({ ...form, url: form.url.trim(), events: form.events.split(',').map(e => e.trim()) });
+  };
 
   return (
     <div data-lens-theme="integrations" className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-lattice-bg border border-lattice-border rounded-lg p-6 w-full max-w-md space-y-4">
         <h2 className="text-lg font-bold">Create Webhook</h2>
         <input type="text" placeholder="Webhook Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full px-3 py-2 bg-lattice-surface border border-lattice-border rounded" />
-        <input type="text" placeholder="URL (https://...)" value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} className="w-full px-3 py-2 bg-lattice-surface border border-lattice-border rounded" />
+        <input type="text" placeholder="URL (https://...)" value={form.url} onChange={(e) => { setUrlError(null); setForm({ ...form, url: e.target.value }); }} className="w-full px-3 py-2 bg-lattice-surface border border-lattice-border rounded" />
+        {urlError && <p role="alert" className="text-xs text-red-400">{urlError}</p>}
         <input type="text" placeholder="Events (comma-separated)" value={form.events} onChange={(e) => setForm({ ...form, events: e.target.value })} className="w-full px-3 py-2 bg-lattice-surface border border-lattice-border rounded" />
         <div className="flex gap-3 justify-end">
           <button onClick={onClose} className="btn-secondary">Cancel</button>
           <button
-            onClick={() => onCreate({ ...form, events: form.events.split(',').map(e => e.trim()) })}
-            disabled={creating || !form.name || !form.url}
+            onClick={submit}
+            disabled={creating || !form.name.trim() || !form.url.trim()}
             className="btn-primary"
           >
             {creating ? 'Creating...' : 'Create'}
@@ -117,13 +129,17 @@ export function WebhooksPanel({ showCreate, setShowCreate }: { showCreate: boole
   });
 
   const createWebhookMutation = useMutation({
-    mutationFn: (data: CreateWebhookRequest) => apiHelpers.webhooks.register(data),
+    mutationFn: async (data: CreateWebhookRequest) => {
+      const r = await apiHelpers.webhooks.register(data);
+      if (r.data?.ok === false) throw new Error(r.data.error || 'Webhook was not saved');
+      return r;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['webhooks'] });
       setShowCreate(false);
     },
-    onError: () => {
-      useUIStore.getState().addToast({ type: 'error', message: 'Operation failed. Please try again.' });
+    onError: (err) => {
+      useUIStore.getState().addToast({ type: 'error', message: err instanceof Error ? err.message : 'Webhook was not saved' });
     },
   });
 

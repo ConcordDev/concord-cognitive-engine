@@ -46,7 +46,7 @@ export function CompsPanel() {
             >
               <Icon className="w-3.5 h-3.5" />
               {t.label}
-              <span className="hidden sm:inline text-[10px] text-gray-500">{t.hint}</span>
+              <span className="hidden sm:inline text-[10px] text-gray-400">{t.hint}</span>
             </button>
           );
         })}

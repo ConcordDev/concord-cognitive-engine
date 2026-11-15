@@ -191,7 +191,7 @@ export function FmProfilePanel({ onOpenTopic }: { onOpenTopic?: (id: string) => 
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5 flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2">
               <Search className="w-3.5 h-3.5 text-zinc-400" />
-              <input placeholder="Search topics and replies" value={query}
+              <input aria-label="Search topics and replies" placeholder="Search topics and replies" value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') void search(); }}
                 className="flex-1 bg-transparent py-1.5 text-xs text-zinc-100 focus:outline-none" />

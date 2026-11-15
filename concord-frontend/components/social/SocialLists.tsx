@@ -60,7 +60,7 @@ export function SocialLists() {
         <button type="submit" className="rounded bg-white/10 px-2 text-xs">Create list</button>
       </form>
       <button type="button" onClick={() => void load()} className="mb-2 text-[11px] text-zinc-400 underline">Refresh lists</button>
-      {lists.length === 0 && <p className="mb-2 text-[11px] text-zinc-500">No lists yet.</p>}
+      {lists.length === 0 && <p className="mb-2 text-[11px] text-zinc-400">No lists yet.</p>}
       {lists.map((list) => (
         <form key={list.id} className="mb-2 flex gap-1" onSubmit={(e) => { e.preventDefault(); void addMember(list.id); }}>
           <span className="text-xs text-zinc-300">{list.name}</span>

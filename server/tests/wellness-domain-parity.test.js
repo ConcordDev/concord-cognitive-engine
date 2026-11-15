@@ -261,6 +261,23 @@ describe("wellness — wearable import", () => {
     assert.ok(hist.result.syncs.length >= 1);
   });
 
+  it("FIX-wellness-006: future-dated and impossible-date readings are skipped and counted by reason", () => {
+    const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+    const r = call("wearable-import", ctxA, {
+      source: "oura",
+      readings: [
+        { type: "sleep", value: 7.1, date: tomorrow },
+        { type: "sleep", value: 7.2, date: "2026-99-99" },
+        { type: "sleep", value: 7.3, date: dayAgo(2) },
+      ],
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.summary.imported, 1);
+    assert.equal(r.result.summary.skipped, 2);
+    assert.equal(r.result.summary.futureDates, 1);
+    assert.equal(r.result.summary.invalidDates, 1);
+  });
+
   it("rejects an empty readings batch", () => {
     assert.equal(call("wearable-import", ctxA, { source: "whoop", readings: [] }).ok, false);
   });

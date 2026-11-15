@@ -118,6 +118,14 @@ export function CrossLensRecentsPanel({ lensId, sinceDays = 7, limit = 8, hideWh
     return () => { cancelled = true; };
   }, [lensId, sinceDays, limit]);
 
+  // A hide-when-empty panel must stay hidden until its first read
+  // settles. Rendering the shell while loading made the "From
+  // elsewhere" header flash on every reload, including lenses with no
+  // surfaced DTUs at all (FIX-debate-008).
+  if (loading && rows.length === 0 && hideWhenEmpty) {
+    return null;
+  }
+
   if (rows.length === 0 && !loading && hideWhenEmpty && !error) {
     return null;
   }
@@ -134,12 +142,19 @@ export function CrossLensRecentsPanel({ lensId, sinceDays = 7, limit = 8, hideWh
           type="button"
           onClick={() => void load()}
           disabled={loading || !lensId}
+          title={!lensId ? 'Refresh needs a lens context — open this panel inside a lens' : undefined}
           className="p-1 text-zinc-400 hover:text-zinc-200 transition-colors disabled:opacity-40"
           aria-label="Refresh items from other lenses"
         >
           <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
         </button>
       </header>
+
+      {!lensId && (
+        <p role="note" className="px-3 py-2 text-[11px] text-zinc-500">
+          Refresh is unavailable here — this panel reads items in the context of a lens.
+        </p>
+      )}
 
       {rows.length === 0 && !loading && (
         <div className={cn('px-3 py-3 text-xs text-center', error ? 'text-amber-300' : 'text-zinc-400 italic')}>

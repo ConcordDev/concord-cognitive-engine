@@ -6,6 +6,7 @@
 // shareable saved views).
 
 import { cachedFetchJson } from "../lib/external-fetch.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
 
 // ---- World Bank API helpers -------------------------------------------------
 
@@ -63,7 +64,33 @@ function savedViewStore() {
   return state.globalSavedViews;
 }
 
+
+// ── lens export provider (FIX-global-012) ─────────────────────────────
+// Saved views live in STATE.globalSavedViews (savedViewStore) — a
+// top-level state key the shared export's state leg never reads (it reads
+// STATE.<domain>Lens bags only) — so the Global export said "Nothing to
+// export yet" over a saved view the lens itself had just persisted.
+// Emit the caller's own views, the same list listViews returns.
+function globalExportRows(ctx) {
+  const userId = ctx?.actor?.userId || ctx?.userId || null;
+  if (!userId) return [];
+  const list = savedViewStore().get(userId) || [];
+  return list.map((v) => ({
+    id: v.id,
+    type: "saved-view",
+    title: v.label || v.mode || v.id,
+    createdAt: v.createdAt || null,
+    updatedAt: v.createdAt || null,
+    data: {
+      mode: v.mode || null,
+      config: v.config || {},
+      shareLink: `/lenses/global?view=${v.id}`,
+    },
+  }));
+}
+
 export default function registerGlobalActions(registerLensAction) {
+  registerLensExportProvider("global", globalExportRows);
   /**
    * crossDomainSearch
    * Search across multiple domains — merge results with relevance scoring,
@@ -983,6 +1010,27 @@ export default function registerGlobalActions(registerLensAction) {
    * Remove a saved view by id.
    * params.id (required).
    */
+  // FIX-global-007: saved views gain a rename.
+  registerLensAction("global", "renameView", (ctx, _artifact, params) => {
+    try {
+      const userId = ctx?.actor?.userId || ctx?.userId;
+      if (!userId) return { ok: false, error: "Authentication required." };
+      const id = String(params.id || "").trim();
+      if (!id) return { ok: false, error: "View id is required." };
+      const label = String(params.label || "").trim();
+      if (!label) return { ok: false, error: "View name is required." };
+      const store = savedViewStore();
+      const list = store.get(userId) || [];
+      const view = list.find((v) => v.id === id);
+      if (!view) return { ok: false, error: "Saved view not found." };
+      view.label = label.slice(0, 120);
+      store.set(userId, list);
+      return { ok: true, result: { saved: view, total: list.length } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
   registerLensAction("global", "deleteView", (ctx, _artifact, params) => {
     try {
       const userId = ctx?.actor?.userId || ctx?.userId;

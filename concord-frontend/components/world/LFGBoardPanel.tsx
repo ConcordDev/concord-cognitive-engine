@@ -164,14 +164,17 @@ export function LFGBoardPanel() {
         <div className="rounded border border-emerald-500/30 bg-emerald-950/30 p-3">
           <div className="mb-2 text-[10px] uppercase text-emerald-300/70">post your own</div>
           <div className="grid grid-cols-2 gap-2">
-            <select value={postRole} onChange={(e) => setPostRole(e.target.value as LfgRequest['role'])} className="rounded border border-emerald-500/30 bg-zinc-950 px-2 py-1.5 text-xs text-emerald-100">
+            <select id="lfg-board-role" name="role" aria-label="Post role" value={postRole} onChange={(e) => setPostRole(e.target.value as LfgRequest['role'])} className="rounded border border-emerald-500/30 bg-zinc-950 px-2 py-1.5 text-xs text-emerald-100">
               {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
             </select>
-            <select value={postSize} onChange={(e) => setPostSize(Number(e.target.value))} className="rounded border border-emerald-500/30 bg-zinc-950 px-2 py-1.5 text-xs text-emerald-100">
+            <select id="lfg-board-size" name="partySize" aria-label="Party size" value={postSize} onChange={(e) => setPostSize(Number(e.target.value))} className="rounded border border-emerald-500/30 bg-zinc-950 px-2 py-1.5 text-xs text-emerald-100">
               {[2, 3, 4, 5, 6, 8, 10, 20, 40].map((n) => <option key={n} value={n}>party {n}</option>)}
             </select>
           </div>
           <input
+            id="lfg-board-note"
+            name="note"
+            aria-label="Post note"
             value={postNote}
             onChange={(e) => setPostNote(e.target.value)}
             placeholder="Optional note (240 chars max)"

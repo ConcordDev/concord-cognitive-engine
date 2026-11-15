@@ -18,7 +18,7 @@ import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api/client';
+import { api, lensRun } from '@/lib/api/client';
 import type { DTU } from '@/lib/api/generated-types';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -197,6 +197,33 @@ export function MusicWorkspace() {
       })),
     [playlistItems]
   );
+
+  // ---- Home stat cards count the library the Listen view renders ----
+  // The cards used to read the generic per-lens artifact store (the
+  // useLensData 'track'/'playlist' rows above) while Listen renders
+  // the music domain's track-list / playlist-list payloads — two
+  // different stores, so Home showed 0 tracks / 0 playlists for a user
+  // whose library lives in the domain store (FIX-music-008). The
+  // Tracks / Playlists / Total Plays cards now derive from the same
+  // list payloads Listen renders; the workspace's own rows stay as
+  // the fallback until that read lands or if it fails.
+  const { data: library } = useQuery({
+    queryKey: ['music', 'home-library'],
+    queryFn: async () => {
+      const [t, p] = await Promise.all([
+        lensRun('music', 'track-list', {}),
+        lensRun('music', 'playlist-list', {}),
+      ]);
+      const libTracks = (t.data?.result as { tracks?: { playCount?: number }[] } | null)?.tracks;
+      const libPlaylists = (p.data?.result as { playlists?: unknown[] } | null)?.playlists;
+      if (!Array.isArray(libTracks) || !Array.isArray(libPlaylists)) return null;
+      return {
+        tracks: libTracks.length,
+        playlists: libPlaylists.length,
+        plays: libTracks.reduce((s, x) => s + (x.playCount || 0), 0),
+      };
+    },
+  });
 
   // ---- Seed DTU fallback: when library is empty, surface global music-tagged DTUs ----
   const { data: seedDTUData } = useQuery({
@@ -869,7 +896,7 @@ export function MusicWorkspace() {
                 aria-current={view === nav.id ? 'page' : undefined}
                 className={cn(
                   'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
-                  view === nav.id ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200'
+                  view === nav.id ? 'bg-white/10 text-zinc-50' : 'text-zinc-400 hover:text-zinc-200'
                 )}
               >
                 <nav.icon className="h-3.5 w-3.5" />
@@ -918,7 +945,7 @@ export function MusicWorkspace() {
                     {
                       icon: Music,
                       label: 'Tracks',
-                      value: tracks.length,
+                      value: library?.tracks ?? tracks.length,
                       color: 'text-neon-cyan',
                       bg: 'from-cyan-500/10 to-transparent',
                     },
@@ -932,14 +959,14 @@ export function MusicWorkspace() {
                     {
                       icon: ListMusic,
                       label: 'Playlists',
-                      value: playlists.length,
+                      value: library?.playlists ?? playlists.length,
                       color: 'text-neon-green',
                       bg: 'from-green-500/10 to-transparent',
                     },
                     {
                       icon: Headphones,
                       label: 'Total Plays',
-                      value: tracks.reduce((s, t) => s + (t.playCount || 0), 0).toLocaleString(),
+                      value: (library?.plays ?? tracks.reduce((s, t) => s + (t.playCount || 0), 0)).toLocaleString(),
                       color: 'text-neon-pink',
                       bg: 'from-pink-500/10 to-transparent',
                     },
@@ -997,9 +1024,31 @@ export function MusicWorkspace() {
                   </div>
                 )}
 
-                <p className="max-w-2xl text-[14px] leading-relaxed text-zinc-500">
+                <p className="max-w-2xl text-[14px] leading-relaxed text-zinc-400">
                   Post your music for free. Background play, real artist profiles, remix rights for listeners. You keep 90%+. No ads, no algorithmic gatekeeping.
                 </p>
+
+                {/* FIX-014: with no library tracks and no global-realm
+                    seeds, the sections below rendered as bare headings
+                    over void — the walker's 'zero entries, reachability-
+                    only'. One honest empty state with the way in. */}
+                {displayTracks.length === 0 && (
+                  <div className="rounded-xl border border-lattice-border bg-lattice-surface/50 px-6 py-10 text-center">
+                    <Music className="mx-auto mb-3 h-8 w-8 text-gray-500" />
+                    <p className="text-sm font-medium text-zinc-200">No music here yet</p>
+                    <p className="mx-auto mt-1 max-w-md text-[13px] leading-relaxed text-zinc-500">
+                      Your library is empty and no tracks have been published to the shared catalog yet.
+                      Upload the first one — posting is free and you keep 90%+ of every sale.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setView('upload')}
+                      className="mt-4 rounded-full bg-neon-cyan/90 px-5 py-2 text-sm font-medium text-black transition-colors hover:bg-neon-cyan"
+                    >
+                      Upload a track
+                    </button>
+                  </div>
+                )}
 
                 {/* New Releases (chronological) */}
                 <section>
@@ -2066,7 +2115,7 @@ export function MusicWorkspace() {
               <div className="space-y-6 max-w-4xl">
                 <div>
                   <h1 className="text-xl font-bold">Revenue Dashboard</h1>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-gray-400 mt-1">
                     Your real creator earnings across everything you&apos;ve published on Concord — not
                     filtered to music specifically (marketplace + royalty ledger rows don&apos;t carry a
                     reliable per-lens tag to split by).
@@ -2198,7 +2247,7 @@ export function MusicWorkspace() {
                     </div>
                   )}
                   {!revenueLoading && !revenueError && (creatorDashboard?.recentListings?.length ?? 0) === 0 && (
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-400">
                       No listings yet — publish a track to the marketplace to see it here.
                     </p>
                   )}

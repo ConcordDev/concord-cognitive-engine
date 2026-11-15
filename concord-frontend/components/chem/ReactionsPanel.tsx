@@ -98,7 +98,7 @@ export function ReactionsPanel({ onGotoCompounds }: { onGotoCompounds?: () => vo
             </div>
           </div>
           <div className="flex gap-2">
-            <input type="text" value={reactionInput} onChange={(e) => setReactionInput(e.target.value)}
+            <input type="text" aria-label="Reaction formula" value={reactionInput}onChange={(e) => setReactionInput(e.target.value)}
               placeholder="e.g., H2 + O2 → H2O" className="input-lattice flex-1 font-mono" />
             <button onClick={() => runReaction.mutate(reactionInput)} disabled={!reactionInput || runReaction.isPending} className="btn-neon purple">
               <Zap className="w-4 h-4 mr-2 inline" />
@@ -121,7 +121,7 @@ export function ReactionsPanel({ onGotoCompounds }: { onGotoCompounds?: () => vo
               )}
             </div>
           )}
-          <p className="text-xs text-gray-500">Runs the real chem.balanceReaction Gaussian-elimination solver — coefficients are computed, not guessed. Each product is minted into the Compound Library with its real molecular weight.</p>
+          <p className="text-xs text-gray-400">Runs the real chem.balanceReaction Gaussian-elimination solver — coefficients are computed, not guessed. Each product is minted into the Compound Library with its real molecular weight.</p>
         </div>
 
         <div className="panel p-4 space-y-4">
@@ -139,7 +139,7 @@ export function ReactionsPanel({ onGotoCompounds }: { onGotoCompounds?: () => vo
                 </div>
                 <p className="font-mono text-sm text-gray-400">{compound.formula}</p>
                 {compound.molecularWeight != null && (
-                  <p className="text-xs text-gray-500 mt-1">MW: <span className="text-gray-300 font-mono">{compound.molecularWeight} g/mol</span></p>
+                  <p className="text-xs text-gray-400 mt-1">MW:<span className="text-gray-300 font-mono">{compound.molecularWeight} g/mol</span></p>
                 )}
               </button>
             ))}

@@ -42,6 +42,8 @@ export function GoalsListPanel() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [undoGoal, setUndoGoal] = useState<{ title: string; data: Record<string, unknown> } | null>(null);
   const [deleteError, setDeleteError] = useState('');
+  const [formError, setFormError] = useState('');
+  const [draftEpoch, setDraftEpoch] = useState(0);
   const [showFocusPicker, setShowFocusPicker] = useState(false);
 
   const { isLoading, isError, error, refetch, items: goalItems, create: createGoalItem, update: updateGoalItem, remove: removeGoalItem } = useLensData<Record<string, unknown>>('goals', 'goal', {
@@ -65,7 +67,7 @@ export function GoalsListPanel() {
         } as unknown as Record<string, unknown>,
       });
     },
-    onSuccess: () => { setShowCreate(false); setNewTitle(''); setNewDescription(''); setNewSubtasks(''); },
+    onSuccess: () => { resetCreateForm(); },
     onError: (err) => {
       console.error('Failed to create goal:', err instanceof Error ? err.message : err);
     },
@@ -93,6 +95,25 @@ export function GoalsListPanel() {
     return () => window.removeEventListener(GOALS_NEW_EVENT, open);
   }, []);
 
+  const resetCreateForm = () => {
+    setShowCreate(false);
+    setNewTitle('');
+    setNewDescription('');
+    setNewSubtasks('');
+    setNewCategory('Career');
+    setNewPriority('medium');
+    setNewTargetDate('');
+    setFormError('');
+    setDraftEpoch((n) => n + 1);
+  };
+
+  const goalPercent = (goal: Goal) => {
+    const steps = goal.subtasks || [];
+    if (steps.length > 0) return Math.round((steps.filter((st) => st.done).length / steps.length) * 100);
+    const n = Number(goal.progress) || 0;
+    return n > 1 ? Math.round(Math.min(n, 100)) : Math.round(n * 100);
+  };
+
   const toggleSubtask = (goalId: string, subtaskId: string) => {
     const goal = goals.find(g => g.id === goalId);
     if (!goal) return;
@@ -107,7 +128,8 @@ export function GoalsListPanel() {
   const completeGoalItem = (goalId: string) => {
     const goal = goals.find(g => g.id === goalId);
     if (!goal) return;
-    updateGoalItem(goalId, { data: { ...goal, status: 'completed', progress: 1 } as unknown as Record<string, unknown> }).catch((err) => console.error('Failed to complete goal:', err instanceof Error ? err.message : err));
+    const subtasks = (goal.subtasks || []).map((st) => ({ ...st, done: true }));
+    updateGoalItem(goalId, { data: { ...goal, status: 'completed', progress: 1, subtasks } as unknown as Record<string, unknown> }).catch((err) => console.error('Failed to complete goal:', err instanceof Error ? err.message : err));
   };
 
   // S13 (F14/§3b 4): the weekly focus is a property of the goal the
@@ -183,7 +205,14 @@ export function GoalsListPanel() {
       .catch(() => setDeleteError('Undo failed — the goal was not restored.'));
   };
 
-  const handleCreateGoal = () => { createGoalMutation.mutate(); };
+  const handleCreateGoal = () => {
+    if (newTargetDate && daysUntil(newTargetDate) < 0) {
+      setFormError('That target date is in the past.');
+      return;
+    }
+    setFormError('');
+    createGoalMutation.mutate();
+  };
 
   if (isLoading) {
     return (
@@ -204,6 +233,19 @@ export function GoalsListPanel() {
 
   return (
     <div className="max-w-2xl space-y-3 pb-24">
+      {/* FIX-goals-009: the New goal action is position:fixed, so its
+          DOM position is free — it mounts FIRST in the panel so a
+          keyboard user reaches it in a couple of Tabs instead of
+          tabbing through every goal card's controls (~40 stops). */}
+      <button
+        type="button"
+        onClick={() => setShowCreate(true)}
+        className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+        aria-label="New goal"
+      >
+        <Plus className="h-4 w-4" />
+        New goal
+      </button>
       {showFocusPicker && (
         <div className="rounded-2xl border border-violet-400/20 bg-violet-400/[0.04] px-5 py-4">
           <div className="flex items-center justify-between">
@@ -260,7 +302,7 @@ export function GoalsListPanel() {
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
             <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.02] p-5">
               <input autoFocus type="text" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="What do you want to achieve?" aria-label="Goal title" className={`${field} font-vault text-[18px]`} />
-              <DraftedTextarea lensId="goals" draftKey="newDescription" initial="" onValueChange={setNewDescription} placeholder="What does success look like? (optional)" className={`${field} h-16 resize-none`} />
+              <DraftedTextarea lensId="goals" draftKey="newDescription" resetToken={draftEpoch} initial="" onValueChange={setNewDescription} placeholder="What does success look like? (optional)" className={`${field} h-16 resize-none`} />
               <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
                 <select value={newCategory} onChange={(e) => setNewCategory(e.target.value as Goal['category'])} className={field} aria-label="Category">
                   {['Career', 'Health', 'Learning', 'Creative', 'Financial', 'Personal'].map((c) => <option key={c} value={c}>{c}</option>)}
@@ -272,9 +314,10 @@ export function GoalsListPanel() {
                 </select>
                 <input type="date" value={newTargetDate} onChange={(e) => setNewTargetDate(e.target.value)} className={field} aria-label="Target date" />
               </div>
-              <DraftedTextarea lensId="goals" draftKey="newSubtasks" initial="" onValueChange={setNewSubtasks} placeholder="Steps, one per line — progress follows them" className={`${field} h-16 resize-none`} />
+              <DraftedTextarea lensId="goals" draftKey="newSubtasks" resetToken={draftEpoch} initial="" onValueChange={setNewSubtasks} placeholder="Steps, one per line — progress follows them" className={`${field} h-16 resize-none`} />
+              {formError && <p className="text-[12px] text-rose-300" role="alert">{formError}</p>}
               <div className="flex justify-end gap-2">
-                <button type="button" onClick={() => setShowCreate(false)} className="rounded-lg px-3 py-2 text-[13px] text-zinc-400 hover:text-zinc-100">Cancel</button>
+                <button type="button" onClick={resetCreateForm} className="rounded-lg px-3 py-2 text-[13px] text-zinc-400 hover:text-zinc-100">Cancel</button>
                 <button type="button" onClick={handleCreateGoal} disabled={!newTitle || createGoalMutation.isPending} className="rounded-lg bg-teal-400 px-4 py-2 text-[13px] font-medium text-black hover:bg-teal-300 disabled:opacity-50">
                   {createGoalMutation.isPending ? 'Creating…' : 'Create goal'}
                 </button>
@@ -316,7 +359,7 @@ export function GoalsListPanel() {
 
       {filteredGoals.map((goal, i) => {
         const isExpanded = expandedGoal === goal.id;
-        const pct = Math.round(Math.min(goal.progress, 1) * 100);
+        const pct = goalPercent(goal);
         const bar = i % 2 === 1 ? 'bg-teal-400' : 'bg-violet-400';
         const pctCls = i % 2 === 1 ? 'text-teal-400' : 'text-violet-400';
         const dLeft = daysUntil(goal.targetDate);
@@ -380,11 +423,11 @@ export function GoalsListPanel() {
                         <Pencil className="h-3.5 w-3.5" /> Edit goal
                       </button>
                       {confirmDeleteId === goal.id ? (
-                        <>
+                        <span data-overlay-open="true" className="contents">
                           <button type="button" onClick={() => deleteGoal(goal)} className="rounded-lg bg-rose-500/90 px-3 py-1.5 text-[13px] font-medium text-white hover:bg-rose-400">Confirm delete</button>
                           <button type="button" onClick={() => setConfirmDeleteId(null)} className="text-[13px] text-zinc-400 hover:text-zinc-200">Cancel</button>
                           <span className="text-[12px] text-zinc-500">You can undo after deleting.</span>
-                        </>
+                        </span>
                       ) : (
                         <button type="button" onClick={() => setConfirmDeleteId(goal.id)} className="inline-flex items-center gap-1 rounded-lg border border-rose-400/30 px-3 py-1.5 text-[13px] text-rose-300 hover:bg-rose-400/10">
                           <Trash2 className="h-3.5 w-3.5" /> Delete goal
@@ -406,15 +449,6 @@ export function GoalsListPanel() {
         <p className="py-8 text-[14px] text-zinc-500">{goals.length === 0 ? 'No goals yet.' : 'Nothing in this filter.'}</p>
       )}
 
-      <button
-        type="button"
-        onClick={() => setShowCreate(true)}
-        className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
-        aria-label="New goal"
-      >
-        <Plus className="h-4 w-4" />
-        New goal
-      </button>
     </div>
   );
 }

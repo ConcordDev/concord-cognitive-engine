@@ -52,7 +52,7 @@ function SaveBadge({ save, onClick }: { save: SaveInfo; onClick: () => void }) {
     unsaved: { icon: Circle, text: 'Unsaved changes', cls: 'text-amber-300' },
     saving: { icon: Loader2, text: 'Saving…', cls: 'text-sky-300' },
     offline: { icon: CloudOff, text: 'Offline — kept on this device', cls: 'text-amber-300' },
-    error: { icon: AlertTriangle, text: 'Save failed — retrying', cls: 'text-red-400' },
+    error: { icon: AlertTriangle, text: save.error || 'Save failed — retrying', cls: 'text-red-400' },
   } as const;
   const m = map[save.status];
   const Icon = m.icon;
@@ -84,40 +84,43 @@ export function TransportBar(p: TransportBarProps) {
   const playing = p.transport !== 'stopped';
   const btn = 'h-8 w-8 flex items-center justify-center rounded-md transition-colors';
   return (
-    <div className="flex h-12 flex-shrink-0 items-center gap-2 border-b border-white/5 bg-[#101016] px-2">
+    // FIX-music-002: below lg the bar wraps into stacked rows — as one
+    // fixed h-12 row its ~1,300px of controls pushed the tempo field to
+    // x≈752, off a 390px viewport entirely. lg+ keeps the single row.
+    <div className="flex min-h-12 flex-shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b border-white/5 bg-[#101016] px-2 py-1 lg:h-12 lg:flex-nowrap lg:py-0">
       <button onClick={p.onBack} className={cn(btn, 'text-zinc-400 hover:bg-white/5 hover:text-white')} title="Projects">
         <ChevronLeft className="h-4 w-4" />
       </button>
       <input
         value={p.project.title}
         onChange={(e) => p.onRename(e.target.value)}
-        className="w-40 truncate rounded bg-transparent px-1 text-sm font-medium text-zinc-100 outline-none focus:bg-white/5"
+        className="w-24 truncate rounded bg-transparent px-1 text-sm font-medium text-zinc-100 outline-none focus:bg-white/5 sm:w-40"
         aria-label="Song title"
       />
       <SaveBadge save={p.save} onClick={p.onSaveNow} />
 
-      <div className="mx-auto flex items-center gap-1">
-        <button onClick={p.onUndo} disabled={!p.canUndo} className={cn(btn, 'text-zinc-400 hover:bg-white/5 disabled:opacity-30')} title="Undo (⌘Z)"><Undo2 className="h-4 w-4" /></button>
-        <button onClick={p.onRedo} disabled={!p.canRedo} className={cn(btn, 'text-zinc-400 hover:bg-white/5 disabled:opacity-30')} title="Redo (⇧⌘Z)"><Redo2 className="h-4 w-4" /></button>
+      <div className="mx-auto flex flex-wrap items-center justify-center gap-1">
+        <button onClick={p.onUndo} disabled={!p.canUndo} className={cn(btn, 'text-zinc-400 hover:bg-white/5 disabled:opacity-30')} title="Undo (⌘Z)" aria-label="Undo"><Undo2 className="h-4 w-4" /></button>
+        <button onClick={p.onRedo} disabled={!p.canRedo} className={cn(btn, 'text-zinc-400 hover:bg-white/5 disabled:opacity-30')} title="Redo (⇧⌘Z)" aria-label="Redo"><Redo2 className="h-4 w-4" /></button>
         <div className="mx-1 h-6 w-px bg-white/10" />
-        <button onClick={playing ? p.onStop : p.onPlay} className={cn(btn, playing ? 'bg-emerald-500/20 text-emerald-300' : 'text-zinc-200 hover:bg-white/10')} title="Play / Stop (Space)" data-testid="studio-play">
+        <button onClick={playing ? p.onStop : p.onPlay} className={cn(btn, playing ? 'bg-emerald-500/20 text-emerald-300' : 'text-zinc-200 hover:bg-white/10')} title="Play / Stop (Space)" aria-label={playing ? 'Stop' : 'Play'} data-testid="studio-play">
           {playing ? <Square className="h-4 w-4 fill-current" /> : <Play className="h-4 w-4 fill-current" />}
         </button>
-        <button onClick={p.onRecord} className={cn(btn, p.recording ? 'bg-red-500 text-white animate-pulse' : 'text-red-400 hover:bg-red-500/15')} title="Record on armed tracks (R)" data-testid="studio-record">
+        <button onClick={p.onRecord} className={cn(btn, p.recording ? 'bg-red-500 text-white animate-pulse' : 'text-red-400 hover:bg-red-500/15')} title="Record on armed tracks (R)" aria-label="Record" data-testid="studio-record">
           <Circle className="h-4 w-4 fill-current" />
         </button>
-        <button onClick={p.onToggleLoop} className={cn(btn, p.project.transport.loopEnabled ? 'bg-sky-500/20 text-sky-300' : 'text-zinc-500 hover:bg-white/5')} title="Loop (L)"><Repeat className="h-4 w-4" /></button>
-        <button onClick={p.onToggleMetronome} className={cn(btn, p.metronome ? 'bg-amber-500/20 text-amber-300' : 'text-zinc-500 hover:bg-white/5')} title="Metronome (K)"><Timer className="h-4 w-4" /></button>
-        <select value={p.countInBars} onChange={(e) => p.onCountIn(Number(e.target.value))} className="h-7 rounded bg-white/5 px-1 text-[11px] text-zinc-300 outline-none" title="Count-in before recording">
+        <button onClick={p.onToggleLoop} className={cn(btn, p.project.transport.loopEnabled ? 'bg-sky-500/20 text-sky-300' : 'text-zinc-500 hover:bg-white/5')} title="Loop (L)" aria-label="Loop" aria-pressed={p.project.transport.loopEnabled}><Repeat className="h-4 w-4" /></button>
+        <button onClick={p.onToggleMetronome} className={cn(btn, p.metronome ? 'bg-amber-500/20 text-amber-300' : 'text-zinc-500 hover:bg-white/5')} title="Metronome (K)" aria-label="Metronome" aria-pressed={p.metronome}><Timer className="h-4 w-4" /></button>
+        <select value={p.countInBars} onChange={(e) => p.onCountIn(Number(e.target.value))} className="h-7 rounded bg-white/5 px-1 text-[11px] text-zinc-300 outline-none" title="Count-in before recording" aria-label="Count-in before recording">
           <option value={0}>No count-in</option>
           <option value={1}>Count-in 1 bar</option>
           <option value={2}>Count-in 2 bars</option>
         </select>
         <div className="ml-2 flex items-baseline gap-2 rounded-md bg-black/40 px-3 py-1 font-mono tabular-nums">
           <span ref={posRef} className="w-16 text-sm text-zinc-100">1.1.1</span>
-          <span ref={timeRef} className="w-12 text-[11px] text-zinc-500">0:00.0</span>
+          <span ref={timeRef} className="w-12 text-[11px] text-zinc-400">0:00.0</span>
         </div>
-        <label className="ml-2 flex items-center gap-1 text-[11px] text-zinc-500">
+        <label className="ml-2 flex items-center gap-1 text-[11px] text-zinc-400">
           <input
             type="number"
             min={TEMPO_MIN}
@@ -129,7 +132,7 @@ export function TransportBar(p: TransportBarProps) {
           />
           BPM
         </label>
-        <label className="flex items-center gap-0.5 text-[11px] text-zinc-500">
+        <label className="flex items-center gap-0.5 text-[11px] text-zinc-400">
           <input aria-label="Beats per bar" type="number" min={1} max={16} value={sigBeats} onChange={(e) => p.onTimeSignature(Number(e.target.value), sigUnit)} className="w-8 rounded bg-white/5 px-0.5 py-0.5 text-right text-sm text-zinc-100 outline-none" />
           /
           <select aria-label="Beat unit" value={sigUnit} onChange={(e) => p.onTimeSignature(sigBeats, Number(e.target.value))} className="rounded bg-white/5 px-0.5 py-0.5 text-sm text-zinc-100 outline-none">

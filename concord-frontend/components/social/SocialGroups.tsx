@@ -179,7 +179,7 @@ export function SocialGroups({ currentUserId }: { currentUserId: string }) {
             <button type="button" onClick={() => void openGroup(group.groupId)} className="truncate text-left hover:text-zinc-100">
               {group.name}
             </button>
-            <span className="text-zinc-500">{group.visibility === 'private' ? 'private' : 'public'}</span>
+            <span className="text-zinc-400">{group.visibility === 'private' ? 'private' : 'public'}</span>
             {group.isMember ? (
               <button type="button" onClick={() => void leave(group.groupId)} className="ml-auto text-zinc-400">Leave</button>
             ) : (

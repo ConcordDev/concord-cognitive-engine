@@ -6,6 +6,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { publicLookup } from '@/lib/public-lookup';
 import { LookupNotice } from '@/components/common/LookupNotice';
 import { TreeDiagram, type TreeNode } from '@/components/viz';
@@ -284,13 +285,13 @@ function GraphTab({ graph, busy, mutate }: {
           <Plus className="w-3 h-3" /> Add Entity Node
         </p>
         <div className="flex gap-2 flex-wrap">
-          <input
+          <input id="entity-knowledgegraphworkbench-entity-name" name="entity-name"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             placeholder="Entity name"
             className="input-lattice text-sm flex-1 min-w-[160px]"
           />
-          <select
+          <select id="entity-knowledgegraphworkbench-field" name="field"
             value={newType}
             onChange={(e) => setNewType(e.target.value)}
             className="input-lattice text-sm"
@@ -316,17 +317,17 @@ function GraphTab({ graph, busy, mutate }: {
           <Link2 className="w-3 h-3" /> Link Nodes
         </p>
         <div className="flex gap-2 flex-wrap items-center">
-          <select value={edgeFrom} onChange={(e) => setEdgeFrom(e.target.value)} className="input-lattice text-sm flex-1 min-w-[140px]">
+          <select id="entity-knowledgegraphworkbench-field-2" name="field-2" value={edgeFrom} onChange={(e) => setEdgeFrom(e.target.value)} className="input-lattice text-sm flex-1 min-w-[140px]">
             <option value="">From…</option>
             {graph.nodes.map((n) => <option key={n.id} value={n.id}>{n.name}</option>)}
           </select>
-          <input
+          <input id="entity-knowledgegraphworkbench-relation" name="relation"
             value={edgeRel}
             onChange={(e) => setEdgeRel(e.target.value)}
             placeholder="relation"
             className="input-lattice text-sm w-32"
           />
-          <select value={edgeTo} onChange={(e) => setEdgeTo(e.target.value)} className="input-lattice text-sm flex-1 min-w-[140px]">
+          <select id="entity-knowledgegraphworkbench-field-3" name="field-3" value={edgeTo} onChange={(e) => setEdgeTo(e.target.value)} className="input-lattice text-sm flex-1 min-w-[140px]">
             <option value="">To…</option>
             {graph.nodes.map((n) => <option key={n.id} value={n.id}>{n.name}</option>)}
           </select>
@@ -376,7 +377,7 @@ function GraphTab({ graph, busy, mutate }: {
 
               {/* Rename */}
               <div className="flex gap-2">
-                <input
+                <input id="entity-knowledgegraphworkbench-field-4" name="field-4"
                   value={renameVal}
                   onChange={(e) => setRenameVal(e.target.value)}
                   className="input-lattice text-sm flex-1"
@@ -388,17 +389,22 @@ function GraphTab({ graph, busy, mutate }: {
                 >
                   <Pencil className="w-3 h-3" />
                 </button>
-                <button
-                  disabled={busy}
-                  onClick={() => { mutate('node-delete', { id: selNode.id }, 'Node deleted'); setSelected(null); }}
-                  className="btn-neon text-xs text-red-400"
-                  aria-label="Delete node"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
+                <StickyDeleteConfirm onConfirm={() => { mutate('node-delete', { id: selNode.id }, 'Node deleted'); setSelected(null); }} disabled={busy} className="btn-neon text-xs text-red-400" armAriaLabel={`Delete node ${selNode.name}`} confirmLabel={`Delete “${selNode.name}”?`} confirmAriaLabel={`Confirm delete node ${selNode.name}`} armLabel={<Trash2 className="w-3 h-3" />} />
               </div>
+              <label className="block text-[11px] text-gray-400">
+                Type
+                <select id="entity-knowledgegraphworkbench-entity-type" name="entity-type"
+                  value={selNode.entityType}
+                  aria-label="Entity type"
+                  disabled={busy}
+                  onChange={(e) => mutate('node-update', { id: selNode.id, entityType: e.target.value }, 'Type updated')}
+                  className="input-lattice mt-1 w-full text-sm"
+                >
+                  {(typeOptions.includes(selNode.entityType) ? typeOptions : [selNode.entityType, ...typeOptions]).map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </label>
               <p className="text-[11px] text-gray-400 font-mono">
-                {selNode.entityType} · #{selNode.id}
+                #{selNode.id}
                 {selNode.wikidataId && <span className="text-cyan-400"> · {selNode.wikidataId}</span>}
               </p>
 
@@ -415,14 +421,7 @@ function GraphTab({ graph, busy, mutate }: {
                       <span className="text-[9px] px-1 py-0.5 rounded bg-zinc-800 text-gray-400" title="provenance">
                         {a.source}
                       </span>
-                      <button
-                        disabled={busy}
-                        onClick={() => mutate('node-update', { id: selNode.id, attributeKey: k, deleteAttribute: true }, 'Attribute removed')}
-                        className="text-gray-600 hover:text-red-400"
-                        aria-label={`Delete attribute ${k}`}
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
+                      <StickyDeleteConfirm onConfirm={() => mutate('node-update', { id: selNode.id, attributeKey: k, deleteAttribute: true }, 'Attribute removed')} disabled={busy} className="text-gray-400 hover:text-red-400" armAriaLabel={`Delete attribute ${k}`} confirmLabel={`Remove attribute ${k}?`} confirmAriaLabel={`Confirm delete attribute ${k}`} armLabel={<X className="w-3 h-3" />} />
                     </div>
                   ))
                 )}
@@ -430,9 +429,9 @@ function GraphTab({ graph, busy, mutate }: {
 
               {/* Add attribute */}
               <div className="flex gap-1.5 flex-wrap">
-                <input value={attrKey} onChange={(e) => setAttrKey(e.target.value)} placeholder="key" className="input-lattice text-xs w-24" />
-                <input value={attrVal} onChange={(e) => setAttrVal(e.target.value)} placeholder="value" className="input-lattice text-xs flex-1 min-w-[80px]" />
-                <input value={attrSrc} onChange={(e) => setAttrSrc(e.target.value)} placeholder="source" className="input-lattice text-xs w-24" />
+                <input id="entity-knowledgegraphworkbench-key" name="key" value={attrKey} onChange={(e) => setAttrKey(e.target.value)} placeholder="key" className="input-lattice text-xs w-24" />
+                <input id="entity-knowledgegraphworkbench-value" name="value" value={attrVal} onChange={(e) => setAttrVal(e.target.value)} placeholder="value" className="input-lattice text-xs flex-1 min-w-[80px]" />
+                <input id="entity-knowledgegraphworkbench-source" name="source" value={attrSrc} onChange={(e) => setAttrSrc(e.target.value)} placeholder="source" className="input-lattice text-xs w-24" />
                 <button
                   disabled={busy || !attrKey.trim()}
                   onClick={async () => {
@@ -463,14 +462,7 @@ function GraphTab({ graph, busy, mutate }: {
                         <span className="text-gray-400">{e.from === selNode.id ? '→' : '←'}</span>
                         <span className="text-gray-300 flex-1 truncate">{other?.name || '?'}</span>
                         <span className="text-purple-300">{e.relType}</span>
-                        <button
-                          disabled={busy}
-                          onClick={() => mutate('edge-delete', { id: e.id }, 'Edge deleted')}
-                          className="text-gray-600 hover:text-red-400"
-                          aria-label="Delete edge"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
+                        <StickyDeleteConfirm onConfirm={() => mutate('edge-delete', { id: e.id }, 'Edge deleted')} disabled={busy} className="text-gray-400 hover:text-red-400" armAriaLabel={`Delete edge to ${other?.name || 'node'}`} confirmLabel={`Remove this ${e.relType} edge?`} confirmAriaLabel="Confirm delete edge" armLabel={<X className="w-3 h-3" />} />
                       </div>
                     );
                   })
@@ -512,7 +504,7 @@ function SchemasTab({ schemas, busy, mutate }: {
         <p className="text-xs font-semibold uppercase text-gray-400">
           {editId ? 'Edit Entity Class' : 'Define Entity Class'}
         </p>
-        <input
+        <input id="entity-knowledgegraphworkbench-class-name-e-g-person-organization" name="class-name-e-g-person-organization"
           value={className}
           onChange={(e) => setClassName(e.target.value)}
           placeholder="Class name (e.g. Person, Organization)"
@@ -521,13 +513,13 @@ function SchemasTab({ schemas, busy, mutate }: {
         <div className="space-y-1.5">
           {attrs.map((a, i) => (
             <div key={i} className="flex gap-2 items-center">
-              <input
+              <input name="attribute-name"
                 value={a.name}
                 onChange={(e) => setAttrs((arr) => arr.map((x, j) => j === i ? { ...x, name: e.target.value } : x))}
                 placeholder="attribute name"
                 className="input-lattice text-xs flex-1"
               />
-              <select
+              <select id="entity-knowledgegraphworkbench-field-5" name="field-5"
                 value={a.type}
                 onChange={(e) => setAttrs((arr) => arr.map((x, j) => j === i ? { ...x, type: e.target.value } : x))}
                 className="input-lattice text-xs"
@@ -535,7 +527,7 @@ function SchemasTab({ schemas, busy, mutate }: {
                 {SCHEMA_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
               <label className="flex items-center gap-1 text-[10px] text-gray-400">
-                <input
+                <input id="entity-knowledgegraphworkbench-field-6" name="field-6"
                   type="checkbox"
                   checked={a.required}
                   onChange={(e) => setAttrs((arr) => arr.map((x, j) => j === i ? { ...x, required: e.target.checked } : x))}
@@ -544,7 +536,7 @@ function SchemasTab({ schemas, busy, mutate }: {
               </label>
               <button
                 onClick={() => setAttrs((arr) => arr.filter((_, j) => j !== i))}
-                className="text-gray-600 hover:text-red-400"
+                className="text-gray-400 hover:text-red-400"
                 aria-label="Remove attribute"
               >
                 <X className="w-3.5 h-3.5" />
@@ -596,14 +588,7 @@ function SchemasTab({ schemas, busy, mutate }: {
                   <button onClick={() => startEdit(s)} className="text-gray-400 hover:text-white" aria-label="Edit schema">
                     <Pencil className="w-3.5 h-3.5" />
                   </button>
-                  <button
-                    disabled={busy}
-                    onClick={() => mutate('schema-delete', { id: s.id }, 'Schema deleted')}
-                    className="text-gray-400 hover:text-red-400"
-                    aria-label="Delete schema"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  <StickyDeleteConfirm onConfirm={() => mutate('schema-delete', { id: s.id }, 'Schema deleted')} disabled={busy} className="text-gray-400 hover:text-red-400" armAriaLabel={`Delete schema ${s.className}`} confirmLabel={`Delete class “${s.className}”?`} confirmAriaLabel={`Confirm delete schema ${s.className}`} armLabel={<Trash2 className="w-3.5 h-3.5" />} />
                 </div>
               </div>
               <div className="flex flex-wrap gap-1.5">
@@ -691,7 +676,7 @@ function MergeSplitTab({ graph, busy, mutate, prefill, onPrefillConsumed }: {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="bg-zinc-900 rounded-lg p-3 border border-purple-500/20">
               <p className="text-[10px] uppercase text-purple-300 mb-1">Source (will be removed)</p>
-              <select value={sourceId} onChange={(e) => setSourceId(e.target.value)} className="input-lattice text-sm w-full">
+              <select id="entity-knowledgegraphworkbench-field-7" name="field-7" value={sourceId} onChange={(e) => setSourceId(e.target.value)} className="input-lattice text-sm w-full">
                 <option value="">Select source…</option>
                 {graph.nodes.map((n) => <option key={n.id} value={n.id}>{n.name}</option>)}
               </select>
@@ -699,7 +684,7 @@ function MergeSplitTab({ graph, busy, mutate, prefill, onPrefillConsumed }: {
             </div>
             <div className="bg-zinc-900 rounded-lg p-3 border border-cyan-500/20">
               <p className="text-[10px] uppercase text-cyan-300 mb-1">Target (survives)</p>
-              <select value={targetId} onChange={(e) => setTargetId(e.target.value)} className="input-lattice text-sm w-full">
+              <select id="entity-knowledgegraphworkbench-field-8" name="field-8" value={targetId} onChange={(e) => setTargetId(e.target.value)} className="input-lattice text-sm w-full">
                 <option value="">Select target…</option>
                 {graph.nodes.map((n) => <option key={n.id} value={n.id}>{n.name}</option>)}
               </select>
@@ -752,13 +737,13 @@ function MergeSplitTab({ graph, busy, mutate, prefill, onPrefillConsumed }: {
             Split selected attributes off a node into a new entity, linked back by a
             <span className="font-mono text-gray-300"> split_from </span> edge.
           </p>
-          <select value={splitId} onChange={(e) => { setSplitId(e.target.value); setSplitKeys([]); }} className="input-lattice text-sm w-full">
+          <select id="entity-knowledgegraphworkbench-field-9" name="field-9" value={splitId} onChange={(e) => { setSplitId(e.target.value); setSplitKeys([]); }} className="input-lattice text-sm w-full">
             <option value="">Select node to split…</option>
             {graph.nodes.map((n) => <option key={n.id} value={n.id}>{n.name}</option>)}
           </select>
           {splitNode && (
             <>
-              <input
+              <input id="entity-knowledgegraphworkbench-new-entity-name" name="new-entity-name"
                 value={splitName}
                 onChange={(e) => setSplitName(e.target.value)}
                 placeholder="New entity name"
@@ -770,7 +755,7 @@ function MergeSplitTab({ graph, busy, mutate, prefill, onPrefillConsumed }: {
                   <p className="text-[11px] text-gray-400">Node has no attributes to split.</p>
                 ) : Object.entries(splitNode.attributes).map(([k, a]) => (
                   <label key={k} className="flex items-center gap-2 text-[11px] cursor-pointer">
-                    <input
+                    <input name="field-10"
                       type="checkbox"
                       checked={splitKeys.includes(k)}
                       onChange={(e) => setSplitKeys((arr) => e.target.checked ? [...arr, k] : arr.filter((x) => x !== k))}
@@ -842,12 +827,12 @@ function PathTab({ graph }: { graph: GraphState }) {
         Find the shortest relationship path between two entities (breadth-first, undirected edges).
       </p>
       <div className="flex gap-2 flex-wrap items-center">
-        <select value={from} onChange={(e) => setFrom(e.target.value)} className="input-lattice text-sm flex-1 min-w-[140px]">
+        <select id="entity-knowledgegraphworkbench-field-11" name="field-11" value={from} onChange={(e) => setFrom(e.target.value)} className="input-lattice text-sm flex-1 min-w-[140px]">
           <option value="">From entity…</option>
           {graph.nodes.map((n) => <option key={n.id} value={n.id}>{n.name}</option>)}
         </select>
-        <Route className="w-4 h-4 text-gray-600" />
-        <select value={to} onChange={(e) => setTo(e.target.value)} className="input-lattice text-sm flex-1 min-w-[140px]">
+        <Route className="w-4 h-4 text-gray-400" />
+        <select id="entity-knowledgegraphworkbench-field-12" name="field-12" value={to} onChange={(e) => setTo(e.target.value)} className="input-lattice text-sm flex-1 min-w-[140px]">
           <option value="">To entity…</option>
           {graph.nodes.map((n) => <option key={n.id} value={n.id}>{n.name}</option>)}
         </select>
@@ -983,7 +968,7 @@ function ImportTab({ busy, mutate }: {
             Paste CSV (header row + rows) or a JSON array. Each row needs a
             <span className="font-mono text-gray-300"> name</span> field; other columns become provenance-tagged attributes.
           </p>
-          <input
+          <input id="entity-knowledgegraphworkbench-field-13" name="field-13"
             ref={fileRef}
             type="file"
             accept=".csv,.json,.txt"
@@ -996,7 +981,7 @@ function ImportTab({ busy, mutate }: {
               reader.readAsText(f);
             }}
           />
-          <textarea
+          <textarea id="entity-knowledgegraphworkbench-field-14" name="field-14"
             value={raw}
             onChange={(e) => setRaw(e.target.value)}
             placeholder={'name,type,city\nAda Lovelace,person,London\n\n…or…\n[{"name":"Ada Lovelace","type":"person"}]'}
@@ -1027,7 +1012,7 @@ function ImportTab({ busy, mutate }: {
           <div className="flex gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-              <input
+              <input id="entity-knowledgegraphworkbench-search-wikidata-entities" name="search-wikidata-entities"
                 value={wdQuery}
                 onChange={(e) => setWdQuery(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') searchWikidata(); }}
@@ -1255,7 +1240,7 @@ function DuplicatesPanel({ graph, onReviewMerge }: {
       <div className="flex items-center gap-3 flex-wrap">
         <label className="flex items-center gap-2 text-xs text-gray-400">
           Confidence threshold
-          <input
+          <input id="entity-knowledgegraphworkbench-field-15" name="field-15"
             type="number" min={0.5} max={1} step={0.05}
             value={threshold}
             onChange={(e) => setThreshold(Math.min(1, Math.max(0.5, Number(e.target.value) || 0.85)))}
@@ -1471,11 +1456,11 @@ function ValidatePanel({ graph }: { graph: GraphState }) {
         schemas: required fields, type checks, and email/url format checks.
       </p>
       <div className="flex gap-2 flex-wrap items-center">
-        <select value={nodeId} onChange={(e) => setNodeId(e.target.value)} className="input-lattice text-sm flex-1 min-w-[140px]">
+        <select id="entity-knowledgegraphworkbench-field-16" name="field-16" value={nodeId} onChange={(e) => setNodeId(e.target.value)} className="input-lattice text-sm flex-1 min-w-[140px]">
           <option value="">Select node…</option>
           {graph.nodes.map((n) => <option key={n.id} value={n.id}>{n.name}</option>)}
         </select>
-        <select value={schemaId} onChange={(e) => setSchemaId(e.target.value)} className="input-lattice text-sm flex-1 min-w-[140px]">
+        <select id="entity-knowledgegraphworkbench-field-17" name="field-17" value={schemaId} onChange={(e) => setSchemaId(e.target.value)} className="input-lattice text-sm flex-1 min-w-[140px]">
           <option value="">Select schema…</option>
           {graph.schemas.map((s) => <option key={s.id} value={s.id}>{s.className}</option>)}
         </select>

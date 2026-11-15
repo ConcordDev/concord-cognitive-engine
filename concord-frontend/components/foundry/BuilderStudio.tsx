@@ -18,6 +18,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { foundryReasonWords } from './reasonWords';
 import {
   Workflow, PlayCircle, Boxes, Users2, Store, BarChart3, UserPlus,
   Loader2, RefreshCw, Plus, Trash2, Star, Check, AlertTriangle, Radio,
@@ -34,7 +35,7 @@ interface BlueprintEdge { id: string; from: string; to: string }
 interface Blueprint { nodes: BlueprintNode[]; edges: BlueprintEdge[]; updatedAt?: number }
 interface BlueprintValidation { ok: boolean; errors: string[]; warnings: string[]; nodeCount: number; edgeCount: number }
 interface PlaytestSession { sessionId: string; previewWorldId: string; revision: number; activatedSystems: string[] }
-interface FoundryAsset { id: string; kind: string; name: string; url: string; tags: string[]; importedAt: number }
+interface FoundryAsset { id: string; kind: string; name: string; url: string; source?: string; tags: string[]; importedAt: number }
 interface MultiplayerCfg {
   enabled: boolean; minPlayers: number; maxPlayers: number; matchmaking: string;
   lobbyCountdownSec: number; teamCount: number; fillBots: boolean;
@@ -81,8 +82,8 @@ async function fcall<T = Record<string, unknown>>(
 ): Promise<{ ok: boolean; payload: T | null; error: string | null }> {
   const r = await lensRun<T & { ok?: boolean; reason?: string; error?: string }>('foundry', name, input);
   const p = r.data?.result;
-  if (r.data?.ok === false || !p) return { ok: false, payload: null, error: r.data?.error || 'request failed' };
-  if (p.ok === false) return { ok: false, payload: null, error: p.error || p.reason || 'request failed' };
+  if (r.data?.ok === false || !p) return { ok: false, payload: null, error: foundryReasonWords(r.data?.error, 'request failed') };
+  if (p.ok === false) return { ok: false, payload: null, error: foundryReasonWords(p.error || p.reason) };
   return { ok: true, payload: p, error: null };
 }
 
@@ -432,6 +433,9 @@ function AssetsTab({ worldId, ok, err }: TabProps) {
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
   const [tags, setTags] = useState('');
+  // FIX-foundry-011: file-upload leg — the picked file rides as a data URL.
+  const [fileDataUrl, setFileDataUrl] = useState('');
+  const [fileName, setFileName] = useState('');
 
   const load = useCallback(async () => {
     const r = await fcall<{ assets: FoundryAsset[] }>('asset_list', { id: worldId });
@@ -446,14 +450,29 @@ function AssetsTab({ worldId, ok, err }: TabProps) {
   }, []);
   useEffect(() => { load(); }, [load]);
 
+  // FIX-foundry-011: pick a file to upload instead of pasting a URL.
+  function onPickFile(file: File | null) {
+    if (!file) { setFileDataUrl(''); setFileName(''); return; }
+    if (file.size > 6 * 1024 * 1024) { err('File too large — uploads are capped at 6MB.'); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setFileDataUrl(String(reader.result || ''));
+      setFileName(file.name);
+      if (!name.trim()) setName(file.name.replace(/\.[^.]+$/, ''));
+    };
+    reader.onerror = () => err('Could not read that file.');
+    reader.readAsDataURL(file);
+  }
+
   async function importAsset() {
-    if (!name.trim() || !url.trim()) { err('Name and URL required.'); return; }
+    if (!name.trim() || (!url.trim() && !fileDataUrl)) { err('Name and a URL or file required.'); return; }
     setBusy(true);
     const r = await fcall<{ asset: FoundryAsset }>('asset_import', {
-      id: worldId, kind, name: name.trim(), url: url.trim(),
+      id: worldId, kind, name: name.trim(),
+      ...(fileDataUrl ? { dataUrl: fileDataUrl } : { url: url.trim() }),
       tags: tags.split(',').map((t) => t.trim()).filter(Boolean),
     });
-    if (r.ok) { ok('Asset imported.'); setName(''); setUrl(''); setTags(''); load(); }
+    if (r.ok) { ok('Asset imported.'); setName(''); setUrl(''); setTags(''); setFileDataUrl(''); setFileName(''); load(); }
     else err(r.error ?? 'import failed');
     setBusy(false);
   }
@@ -481,6 +500,17 @@ function AssetsTab({ worldId, ok, err }: TabProps) {
         <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="tags, comma-sep"
           className="rounded border border-zinc-800 bg-zinc-900 px-2.5 py-1.5 text-[11px] text-white" />
       </div>
+      <div className="flex flex-wrap items-center gap-2 text-[11px] text-zinc-400">
+        <span>or upload a file:</span>
+        <input type="file" aria-label="Upload asset file" onChange={(e) => onPickFile(e.target.files?.[0] ?? null)}
+          className="text-[11px] text-zinc-300 file:mr-2 file:rounded file:border file:border-zinc-700 file:bg-zinc-800 file:px-2 file:py-1 file:text-[11px] file:text-zinc-200" />
+        {fileName && (
+          <>
+            <span className="text-zinc-200">{fileName} — will upload instead of the URL</span>
+            <button type="button" onClick={() => { setFileDataUrl(''); setFileName(''); }} className="text-zinc-500 hover:text-zinc-300">clear</button>
+          </>
+        )}
+      </div>
       <button type="button" onClick={importAsset} disabled={busy}
         className="flex items-center gap-1.5 rounded bg-sky-500/20 px-3 py-1.5 text-[12px] font-semibold text-sky-200 hover:bg-sky-500/30 disabled:opacity-50">
         {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />} Import asset
@@ -494,7 +524,7 @@ function AssetsTab({ worldId, ok, err }: TabProps) {
               <li key={a.id} className="flex items-center justify-between gap-2 rounded border border-zinc-800 bg-zinc-900/50 px-2.5 py-1.5">
                 <div className="min-w-0">
                   <div className="truncate text-[11px] font-medium text-zinc-100">{a.name}</div>
-                  <div className="truncate text-[10px] text-zinc-400">{a.kind} · {a.url}</div>
+                  <div className="truncate text-[10px] text-zinc-400">{a.kind} · {a.source === 'upload' ? 'uploaded file' : a.url}</div>
                 </div>
                 <button type="button" onClick={() => remove(a.id)} className="text-zinc-600 hover:text-rose-400" aria-label="Remove asset">
                   <Trash2 className="h-3.5 w-3.5" />
@@ -533,6 +563,8 @@ function PlaceBuildingCard({ worldId, ok, err }: TabProps) {
   const [placing, setPlacing] = useState(false);
   const [placed, setPlaced] = useState<PublishedBuilding | null>(null);
   const [placeError, setPlaceError] = useState<string | null>(null);
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const [removing, setRemoving] = useState(false);
 
   const widthNum = Number(width);
   const heightNum = Number(height);
@@ -569,6 +601,27 @@ function PlaceBuildingCard({ worldId, ok, err }: TabProps) {
     const result = r.data.result;
     setPlaced(result);
     ok(`Placed in ${worldId} — switch to Playtest to walk it.`);
+  }
+
+  // Two-step remove (FIX-foundry-008): undo the placement from the same
+  // receipt that placed it. The blueprint DTU stays — only the world
+  // placement is removed.
+  async function removePlaced() {
+    if (!placed?.buildingId) return;
+    if (!confirmRemove) { setConfirmRemove(true); return; }
+    setRemoving(true);
+    const r = await lensRun('game-design', 'building-remove', { buildingId: placed.buildingId });
+    setRemoving(false);
+    setConfirmRemove(false);
+    const res = (r.data as { result?: { ok?: boolean; error?: string }; error?: string } | undefined)?.result;
+    if (!res || res.ok === false) {
+      const reason = res?.error || (r.data as { error?: string } | undefined)?.error || 'remove failed';
+      setPlaceError(reason);
+      err(`Could not remove building: ${reason}`);
+      return;
+    }
+    setPlaced(null);
+    ok(`Removed from ${worldId}. The blueprint stays in your assets.`);
   }
 
   const archLabel = (a: string) => a.charAt(0).toUpperCase() + a.slice(1);
@@ -660,11 +713,17 @@ function PlaceBuildingCard({ worldId, ok, err }: TabProps) {
       {placed && (
         <div className="flex items-start gap-2 rounded border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-2 text-[11px] text-emerald-300">
           <Check className="mt-0.5 h-3 w-3 shrink-0" />
-          <div>
+          <div className="min-w-0 flex-1">
             <div>Placed in <span className="font-mono">{worldId}</span> — switch to Playtest to walk it.</div>
             <div className="mt-0.5 font-mono text-[10px] text-emerald-400/80">
               buildingId: {placed.buildingId || '—'} · dtuId: {placed.dtuId || '—'}
             </div>
+            {placed.buildingId && (
+              <button type="button" onClick={() => void removePlaced()} disabled={removing}
+                className="mt-1.5 rounded bg-rose-500/15 px-2 py-1 text-[11px] font-medium text-rose-200 hover:bg-rose-500/25 disabled:opacity-50">
+                {removing ? 'Removing…' : confirmRemove ? 'Confirm remove' : 'Remove from world'}
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -1008,6 +1067,9 @@ function CollabTab({ worldId, ok, err }: TabProps) {
     // Ping presence + refresh the roster so co-editors show online.
     fcall('collab_ping', { id: worldId, node: 'builder-studio' });
     const t = setInterval(() => {
+      // Same visibility discipline as the federation trust graph
+      // (FIX-federation-008): no presence pings from a hidden tab.
+      if (document.visibilityState !== 'visible') return;
       fcall('collab_ping', { id: worldId, node: 'builder-studio' });
       load();
     }, 30_000);

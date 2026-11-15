@@ -294,7 +294,7 @@ export function ApiHubPanel() {
                         {endpoint.description}
                       </span>
                       {endpoint.brain && (
-                        <span className="text-xs text-gray-500 hidden lg:block">
+                        <span className="text-xs text-gray-400 hidden lg:block">
                           {endpoint.brain}
                         </span>
                       )}

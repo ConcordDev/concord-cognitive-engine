@@ -1,10 +1,112 @@
 'use client';
 
 import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
-import { Box, Loader2, Search, ExternalLink, Heart, Eye } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Box, Loader2, Search, ExternalLink, Heart, Eye, ChevronRight } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
+import { apiHelpers } from '@/lib/api/client';
 import { publicLookup, lookupMeta } from '@/lib/public-lookup';
+
+interface SavedDtuRow {
+  id: string;
+  title?: string;
+  tags?: string[];
+  timestamp?: string;
+  createdAt?: string;
+}
+
+/**
+ * FIX-ar-016 — the caller's own Sketchfab saves, as library rows in the
+ * lens. A Sketchfab "Save as DTU" minted a normal DTU (tagged
+ * 'sketchfab') that no surface listed afterwards: the button forgot
+ * the id on reload and the save had no row the caller could open or
+ * delete. This lists the caller's DTUs carrying the sketchfab tag
+ * (scope=mine), opens one in place (full content via dtus.get), and
+ * deletes it behind the two-step confirm (dtus.delete). The platform
+ * Global Library search leg is a separate, desk-priced item.
+ */
+function SavedSketchfabDtus() {
+  const queryClient = useQueryClient();
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [openContent, setOpenContent] = useState<string | null>(null);
+  const [rowError, setRowError] = useState<string | null>(null);
+
+  const saved = useQuery({
+    queryKey: ['dtus-mine', 'sketchfab'],
+    queryFn: async () => {
+      const res = await apiHelpers.dtus.paginated({ scope: 'mine', tags: 'sketchfab', limit: 100, offset: 0 });
+      const data = (res as { data?: { dtus?: SavedDtuRow[]; items?: SavedDtuRow[] } })?.data;
+      const rows = data?.dtus || data?.items || [];
+      return rows.filter((d) => (d.tags || []).includes('sketchfab'));
+    },
+  });
+  const rows = saved.data || [];
+  if (rows.length === 0) return null;
+
+  const toggleOpen = async (row: SavedDtuRow) => {
+    setRowError(null);
+    if (openId === row.id) { setOpenId(null); setOpenContent(null); return; }
+    setOpenId(row.id);
+    setOpenContent(null);
+    try {
+      const res = await apiHelpers.dtus.get(row.id) as { data?: { content?: string; summary?: string; dtu?: { content?: string; summary?: string } } };
+      const dtu = res?.data?.dtu || res?.data;
+      setOpenContent(dtu?.content || dtu?.summary || '(no content stored)');
+    } catch {
+      setRowError('Could not open that DTU.');
+    }
+  };
+
+  const remove = async (row: SavedDtuRow) => {
+    setRowError(null);
+    try {
+      const resp = await apiHelpers.dtus.delete(row.id) as { data?: { ok?: boolean; error?: string } };
+      if (resp?.data && resp.data.ok === false) throw new Error(resp.data.error || 'delete failed');
+      if (openId === row.id) { setOpenId(null); setOpenContent(null); }
+      await queryClient.invalidateQueries({ queryKey: ['dtus-mine'] });
+    } catch {
+      setRowError('Could not delete that DTU.');
+    }
+  };
+
+  return (
+    <div className="space-y-2 border-t border-cyan-500/15 pt-3">
+      <h3 className="text-xs font-semibold text-white">Your saved Sketchfab DTUs</h3>
+      {rowError && <p role="alert" className="text-[11px] text-rose-300">{rowError}</p>}
+      <ul className="space-y-1.5">
+        {rows.map((row) => (
+          <li key={row.id} className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-2">
+            <div className="flex items-center gap-2">
+              <button onClick={() => void toggleOpen(row)} aria-expanded={openId === row.id}
+                aria-label={`Open ${row.title || row.id}`}
+                className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-[12px] text-zinc-100 hover:text-cyan-300">
+                <ChevronRight className={`h-3 w-3 shrink-0 text-zinc-500 transition-transform ${openId === row.id ? 'rotate-90' : ''}`} />
+                <span className="truncate">{row.title || row.id}</span>
+              </button>
+              {(row.timestamp || row.createdAt) && (
+                <span className="shrink-0 text-[10px] text-zinc-500">{new Date(row.timestamp || row.createdAt || '').toLocaleDateString()}</span>
+              )}
+              <StickyDeleteConfirm
+                onConfirm={() => void remove(row)}
+                armLabel={<span className="text-[10px]">Delete</span>}
+                confirmLabel="Delete DTU?"
+                armAriaLabel={`Delete ${row.title || row.id}`}
+                confirmAriaLabel="Confirm delete"
+                cancelAriaLabel="Cancel delete"
+              />
+            </div>
+            {openId === row.id && (
+              <div className="mt-2 max-h-48 overflow-y-auto whitespace-pre-wrap rounded bg-black/40 p-2 text-[11px] text-zinc-300">
+                {openContent === null ? 'Loading…' : openContent}
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 interface SfModel {
   uid: string;
@@ -111,6 +213,7 @@ export function SketchfabModels() {
           <div className="col-span-full rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-400">Search for 3D models to anchor in AR.</div>
         )}
       </div>
+      <SavedSketchfabDtus />
     </div>
   );
 }

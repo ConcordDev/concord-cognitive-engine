@@ -18,6 +18,8 @@ import { persistToolCall as _persistToolCall } from "./lib/chat/tool-call-normal
 installSlowSyncIoOnce();
 import expressRateLimit from "express-rate-limit";
 import { findActiveUserRowByEmail, emailsMatchIgnoreCase } from "./lib/user-email-lookup.js";
+import { whiteboardRoomAllowed } from "./lib/whiteboard-room.js";
+import { lensExhaustEmitTarget } from "./lib/lens-dtu-emit.js";
 import { podPick as _podPick } from "./lib/pod-profile.js";
 import { createDtuQualityService as _createDtuQualityService, dtuQualityMode as _dtuQualityMode } from "./lib/dtu-quality/service.js";
 import { router as p2pSignallingRouter } from "./lib/p2p-dtu-signalling.js";
@@ -59,6 +61,7 @@ import { aggregateTopicCounts } from "./lib/trending-topics.js";
 import { normalizeTagList, sanitizeDtuTags, scrubStoredTags } from "./lib/dtu-tags.js";
 import { collectPaginatedEvents, emptyEventsPage } from "./lib/events-page.js";
 import { humanMacroAclDenial } from "./lib/macro-acl-human-gate.js";
+import { macroGateFor } from "./lib/macro-acl-human-gate.js";
 import { forumModDenial } from "./lib/forum-mod-gate.js";
 import { personaCreateDenial, personaModifyDenial, personaListVisible, personaPromptVisible, personaRosterPutDenial } from "./lib/persona-legacy-gate.js";
 import { lensUpdateDenial, lensOwnerlessDenial, isOwnerlessArtifact } from "./lib/lens-update-gate.js";
@@ -112,6 +115,9 @@ import cors from "cors";
 import crypto from "crypto";
 import v8 from "node:v8";
 import { checkMacroArgs, validateRegistry } from "./lib/macro-contract.js";
+import { validateIrAgainstSolvers } from "./lib/cross-model-validator.js";
+import { validateArtifactSchemas, validateArtifactSchemaTargets } from "./lib/cross-model-dtu.js";
+import { getVocabulary } from "./lib/quality-gate.js";
 import { censusAccess } from "./lib/macro-access.js";
 import { buildAnalyticsGroundingBlock, groundingUserId } from "./lib/lens-grounding.js";
 import { createSqliteBridgeService } from "./lib/dtu-bridge/service.js";
@@ -138,9 +144,11 @@ import { dtuMatchesDomain, dtuKind } from "./lib/art-dtu-filter.js";
 import { MACRO_INPUT_HINTS } from "./lib/macro-input-hints.js";
 import { deriveConkayVerdictEmit as _deriveConkayVerdictEmit } from "./lib/conkay-verdict-bridge.js";
 import { resolvePiperVoice } from "./lib/voice-piper-voice.js";
-import { peelRedundantArtifactWrapper as _peelRedundantArtifactWrapper } from "./lib/lens-input-normalize.js";
+import { lensRunParams as _lensRunParams, peelRedundantArtifactWrapper as _peelRedundantArtifactWrapper } from "./lib/lens-input-normalize.js";
 import { httpErrorFromLensAction as _httpErrorFromLensAction } from "./lib/lens-action-http.js";
 import { shapeLensRunHttp as _shapeLensRunHttp, respondMacroResult as _respondMacroResult } from "./lib/lens-run-http.js";
+import { checkTitle as boundsCheckTitle, checkText as boundsCheckText } from "./lib/bounds.js";
+import { isUserNotification as _isUserNotification } from "./lib/notification-queue.js";
 import { createLensRunLogger as _createLensRunLogger } from "./lib/lens-run-log.js";
 import { resolveDualRegistry as _resolveDualRegistry } from "./lib/dual-registry-resolve.js";
 import {
@@ -151,6 +159,7 @@ import { startSSE } from "./lib/sse.js";
 import { stringifyChunked } from "./lib/chunked-json.js";
 import { writeFileChunkedYielding } from "./lib/chunked-write.js";
 import { createLensArtifactStore } from "./lib/lens-artifact-store.js";
+import { sweepArtifactExhausts } from "./lib/dtu-family.js";
 import fs from "fs";
 import { startWalCheckpointer, walCheckpointerEnabled } from "./lib/wal-checkpointer.js";
 import path from "path";
@@ -183,6 +192,7 @@ import * as loopJobs from "./lib/loop-job-tracker.js";
 import { createLoopBlockSampler } from "./lib/loop-block-attribution.js";
 import { HUB_WORLD_ID, canonicalWorldId } from "./lib/world-ids.js";
 import { uniqueTmpPath, writeFileAtomicSync, createSnapshotOrdering, sweepStaleStateTmps } from "./lib/state-file-write.js";
+import { criticalStampPathFor, writeCriticalStamp, readCriticalStamp, snapshotSatisfiesFloor } from "./lib/read-your-write.js";
 import { runConsolidationCycle } from "./lib/consolidation-cycle.js";
 import { createVerifyGateService } from "./lib/verify-gate/service.js";
 import { proveClaim as _vgProveClaim } from "./lib/proof-gate.js";
@@ -1848,11 +1858,20 @@ registerHeartbeat("scheduled-posts", {
   // filter (processScheduledPosts walks every pending post regardless of
   // which world it was authored in). Parent-only.
   scope: "global",
-  handler: async ({ state }) => {
+  handler: async ({ state, db }) => {
     try {
       const sl = await import("./emergent/social-layer.js").catch(() => null);
       if (!sl?.processScheduledPosts) return { ok: false, reason: "no_export" };
-      return sl.processScheduledPosts(state);
+      const mapResult = sl.processScheduledPosts(state);
+      // The live queue: the frontend schedules into the SQL-backed store
+      // (routes/social-groups.js → social_scheduled_posts), which had no
+      // consumer at all. Drain it on the same tick through the same
+      // publish path — one scheduler for both scheduled-post queues.
+      let sqlResult = null;
+      if (typeof sl.processScheduledSqlPosts === "function") {
+        sqlResult = sl.processScheduledSqlPosts(db, state);
+      }
+      return { ...mapResult, sql: sqlResult };
     } catch (err) {
       structuredLog("warn", "scheduled_posts_failed", { error: err?.message });
       return { ok: false, reason: "exception" };
@@ -2019,7 +2038,7 @@ import { shouldPauseHeavyBackground, shouldRunConsolidation, shouldPauseBackgrou
 import * as goSidecar from "./lib/sidecars/go-sidecar-client.js"; // Concurrency Refactor Phase 1 — Whisper/Piper/sandbox off the event loop
 import * as dtuSidecar from "./lib/sidecars/dtu-sidecar-client.js"; // Concurrency Refactor Phase 3 — DTU get/list off the event loop (CONCORD_DTU_SIDECAR=1)
 import { detectContentInjection } from "./lib/dtu-content-injection.js";
-import { noteDtuWrite, shouldFallbackFromSidecarList, sidecarListTotal, sidecarCandidatePageIsComplete, resolveListLimit, dtuListedOwner, tagFilterTerms, dtuMatchesTagFilter } from "./lib/dtu-list-source.js";
+import { noteDtuWrite, shouldFallbackFromSidecarList, sidecarListTotal, sidecarCandidatePageIsComplete, resolveListLimit, dtuListedOwner, tagFilterTerms, dtuMatchesTagFilter, dtuExcludedFromUserList } from "./lib/dtu-list-source.js";
 // Concurrency Refactor (2026-09-08, session 2 finding): the sidecar's UDS
 // double-hop is a WIN under normal load but a LOSS under loop starvation — a
 // starved loop can't schedule the `await fetch(sidecar)` continuation promptly,
@@ -2045,7 +2064,7 @@ async function _dtuSidecarListCall(args) {
 }
 import { BRAIN_CONFIG, SYSTEM_TO_BRAIN, BRAIN_PRIORITY, getBrainForSystem, getActiveBrainConfig, getSystemStatus, pickBrainEndpoint, noteEndpointStart, noteEndpointFinish, resolveBrainModel } from "./lib/brain-config.js";
 import { answerConfidence, smallModelPromptSuffix } from "./lib/answer-confidence.js";
-import { authenticatedBrainStatus, brainStatusForViewer, denyAnonymousBrainRead, mountBrainStatusRoute } from "./lib/brain-status-public.js";
+import { authenticatedBrainStatus, brainStatusForViewer, denyAnonymousBrainRead, mountBrainStatusRoute, viewerCanSeeBrainUrls } from "./lib/brain-status-public.js";
 import { installOllamaRequestGuard } from "./lib/ollama-request-guard.js";
 // Every brain request: num_ctx pinned per model (so ollama loads each model
 // once instead of reloading on every caller's different window) and, opt-in,
@@ -2103,7 +2122,7 @@ import { exportableDtus, exportBulkDenial } from "./lib/export-filter.js";
 import { dtuImportDecision, importAuthDenial, stampImportedDtu } from "./lib/dtu-import-guard.js";
 import { renderAndAttach, hasRenderer as _hasRenderer } from "./lib/render-engine.js";
 import { registerAllRenderers } from "./lib/render-registry.js";
-import { getArtifactSchema } from "./lib/artifact-schemas.js";
+import { getArtifactSchema, listArtifactSchemas, schemasReady } from "./lib/artifact-schemas.js";
 import { getExemplarArtifact } from "./lib/exemplar-artifacts.js";
 import "./lib/vocabularies.js";
 import { BoundedMap } from "./lib/bounded-map.js";
@@ -2136,7 +2155,7 @@ import { billMacroCall } from "./lib/macro-billing.js";
 import { checkUserQuota, incrementUserQuota } from "./lib/macro-quota.js";
 // Gate D — per-macro param-schema validation (opt-in via spec.paramSchema).
 import { validateParamSchema } from "./lib/macro-param-schema.js";
-import { invokeLensHandler, rememberLensActionSpec, lensActionSpec } from "./lib/lens-action-dispatch.js";
+import { invokeLensHandler, rememberLensActionSpec, lensActionSpec, lensActionGuestRead } from "./lib/lens-action-dispatch.js";
 import { rejectNonFiniteInput as _rejectNonFiniteInput } from "./lib/finite-input.js";
 // World Lens / MMO presence system
 import * as cityPresence from "./lib/city-presence.js";
@@ -2263,13 +2282,14 @@ import {
   rememberCompletedChatTurn,
 } from "./lib/chat/turn-pipeline.js";
 import { initializeManifests, getManifestStats, registerUserLens, registerEmergentLens } from "./lib/lens-manifest.js";
-import { DOMAIN_RULES, validateArtifact, computeFields, getValidTransitions, scoreArtifact, getDomainSchema } from "./lib/domain-logic.js";
+import { DOMAIN_RULES, validateArtifact, artifactDataWithTitle, computeFields, getValidTransitions, scoreArtifact, getDomainSchema } from "./lib/domain-logic.js";
+import { resolveMeshSendDtu } from "./lib/mesh-send-dtu.js";
 import { EXTENDED_DOMAIN_RULES } from "./lib/domain-logic-extended.js";
 import { reconcileArtifactTypes } from "./lib/lens-artifact-types.js";
 import { pickLegacyShadow } from "./lib/whiteboard-board-artifacts.js";
 import { accumulate as accumulateSessionContext, getContextSnapshot, getAccumulatorMetrics, cleanupExpiredSessions as cleanupAccumulatorSessions } from "./lib/session-context-accumulator.js";
 import { detectForge, runForgePipeline, saveForgedDTU, deleteForgedDTU, saveAndList, iterateForge, recordForgeMetric, getForgeMetrics, recordEmergentContribution } from "./lib/inline-dtu-forge.js";
-import { initializeShield, scanContent as shieldScanContent, scanHashAgainstLattice, runAnalysisPipeline as shieldAnalyze, classifyWithYARA, runProphet as shieldProphet, runSurgeon as shieldSurgeon, runGuardian as shieldGuardian, propagateThreatToLattice, shieldHeartbeatTick, computeSecurityScore, detectShieldIntent, performSweep, processUserReport, getThreatFeed, getFirewallRules, getPredictions, getShieldMetrics, queueScan as shieldQueueScan, createThreatDTU, THREAT_SUBTYPES, SCAN_MODES } from "./lib/concord-shield.js";
+import { initializeShield, scanContent as shieldScanContent, scanHashAgainstLattice, runAnalysisPipeline as shieldAnalyze, classifyWithYARA, runProphet as shieldProphet, runSurgeon as shieldSurgeon, runGuardian as shieldGuardian, propagateThreatToLattice, shieldHeartbeatTick, computeSecurityScore, detectShieldIntent, performSweep, processUserReport, retractUserReport, getThreatFeed, getFirewallRules, getPredictions, getShieldMetrics, queueScan as shieldQueueScan, createThreatDTU, THREAT_SUBTYPES, SCAN_MODES } from "./lib/concord-shield.js";
 import registerShieldRoutes from "./routes/shield.js";
 import { initializeMesh, detectChannels as meshDetectChannels, getChannelStatus as meshGetChannelStatus, getNodeId as meshGetNodeId, sendDTU as meshSendDTU, receiveDTU as meshReceiveDTU, initiateTransfer as meshInitiateTransfer, getTransferStatus as meshGetTransferStatus, registerPeer as meshRegisterPeer, getPeers as meshGetPeers, getTopology as meshGetTopology, getMeshMetrics, getTransmissionStats as meshGetTransmissionStats, getPendingQueue as meshGetPendingQueue, configureRelay as meshConfigureRelay, detectMeshIntent, meshHeartbeatTick, planOfflineSync as meshPlanOfflineSync, TRANSPORT_LAYERS, TRANSPORT_LIST, RELAY_PRIORITIES } from "./lib/concord-mesh.js";
 import registerMeshRoutes from "./routes/mesh.js";
@@ -2378,6 +2398,7 @@ import {
   initSpotCheck,
 } from "./emergent/repair-cortex.js";
 import { createRoleGate } from "./lib/role-gate.js";
+import { registerLensExportProvider } from "./lib/lens-export.js";
 import { registerDbConsoleRoutes, dbMacroDenied } from "./lib/db-console.js";
 import { registerRepairCortexStatusRoutes } from "./lib/repair-cortex-status-routes.js";
 import {
@@ -8748,6 +8769,10 @@ function authMiddleware(req, res, next) {
   // handler verifies a signature and writes nothing. Unconditional so a
   // stale Authorization header cannot turn a public check into a 401.
   if (req.method === "POST" && req.path === "/api/receipts/verify") return next();
+  // GB-1534: public calc sheet. Same shape as the verify check — the body is
+  // a receipt the caller already has; the handler verifies it first, renders
+  // it, and writes nothing.
+  if (req.method === "POST" && req.path === "/api/receipts/sheet") return next();
   // Gate 1 POST bypass: ActivityPub inbox. Per W3C AP §7 federated peers
   // POST activities here without any local auth — authentication is the
   // HTTP-Signature on the request, verified by the inbox handler itself
@@ -8973,6 +8998,19 @@ function authMiddleware(req, res, next) {
     }
   }
 
+  // GB-1536 §2b: a guestRead lens action is a public/sample READ that
+  // happens to travel over POST /api/lens/run. Credential resolution
+  // has already failed at this point, so no identity can be lost by
+  // letting exactly those calls proceed as anonymous — the H1 gate at
+  // the route re-checks the spec flag itself, and the handler only
+  // ever sees an anon actor. Anything else unresolved is a 401.
+  if (req.method === "POST" && req.path === "/api/lens/run") {
+    try {
+      const _gb = req.body && typeof req.body === "object" ? req.body : null;
+      if (_gb && lensActionGuestRead(_gb.domain, _gb.action)) return next();
+    } catch { /* fail closed */ }
+  }
+
   return res.status(401).json({
     ok: false,
     error: "Unauthorized",
@@ -9056,11 +9094,27 @@ function productionWriteAuthMiddleware(req, res, next) {
   // Exact path, not a prefix, so no other route under /api/receipts/ is opened.
   // Rate limit: write.receipt-verify. See routes/receipts.js.
   if (method === "POST" && req.path === "/api/receipts/verify") return next();
-  // In production, require at least an API key or authenticated session for writes
-  if (!req.user && !req.headers["x-api-key"] && !req.cookies?.concord_auth && !req.headers.authorization) {
-    return res.status(401).json({ ok: false, error: "Authentication required for write operations in production", code: "PROD_WRITE_AUTH" });
+  // GB-1534: POST /api/receipts/sheet verifies a receipt and renders its
+  // calc sheet; it writes nothing. Exact path, same discipline as verify.
+  // Rate limit: write.receipt-verify. See routes/receipts.js.
+  if (method === "POST" && req.path === "/api/receipts/sheet") return next();
+  // GB-1536 §2b: the guestRead pass — a public/sample READ travelling
+  // over POST /api/lens/run is not a write. Let exactly those through
+  // to the H1 gate (which re-checks the spec flag); the body must
+  // already be parsed, and any doubt fails closed to the 401 below.
+  if (method === "POST" && req.path === "/api/lens/run") {
+    try {
+      const _gb = req.body && typeof req.body === "object" ? req.body : null;
+      if (_gb && lensActionGuestRead(_gb.domain, _gb.action)) return next();
+    } catch { /* fail closed */ }
   }
-  return next();
+  // GB-1536: credential PRESENCE is not validity. req.user is resolved
+  // upstream from a verified session cookie/JWT or a hash-matched API
+  // key; reaching this line means it stayed unresolved, so a garbage
+  // Authorization header, a junk x-api-key or a forged concord_auth
+  // cookie must not carry a write. (Verified callers resolved req.user
+  // upstream and already returned next() at the top of this function.)
+  return res.status(401).json({ ok: false, error: "Authentication required for write operations in production", code: "PROD_WRITE_AUTH" });
 }
 
 // H1 — lens-action authz gate. /api/lens/run + the lens.run macro dispatch
@@ -11424,7 +11478,7 @@ async function tryInitWebSockets(server) {
     socket.emit("hello", { clientId, version: VERSION, ts: nowISO(), authenticated: socket.data.authenticated });
 
     // Room management
-    socket.on("room:join", ({ room }) => {
+    socket.on("room:join", async ({ room }) => {
       if (!room || typeof room !== "string") return;
 
       // Authorization check: require authenticated user (in production)
@@ -11434,11 +11488,48 @@ async function tryInitWebSockets(server) {
         return;
       }
 
+      // SECURITY: per-user rooms carry that user's private realtime
+      // traffic (direct messages, sale and invite notifications, …).
+      // A socket may only ever join its OWN user room — the server
+      // already auto-joins it on connection; an explicit join of
+      // another user's room is refused.
+      const userMatch = room.match(/^user:(.+)$/);
+      if (userMatch) {
+        if (!socket.data.userId || socket.data.userId !== userMatch[1]) {
+          console.warn('[ws] Cross-user room join blocked:', { userId: socket.data.userId, room });
+          socket.emit('error', { code: 'UNAUTHORIZED', message: 'Not authorized to join this room' });
+          return;
+        }
+      }
+
+      // SECURITY: party rooms are for the party's current members.
+      // Membership is the caller's own current party (getMyParty, the
+      // same lookup the connection handler auto-join uses); the leg
+      // fails closed on any lookup error.
+      const partyMatch = room.match(/^party:(.+)$/);
+      if (partyMatch) {
+        let isMember = false;
+        try {
+          const { getMyParty } = await import("./lib/parties.js");
+          const mine = socket.data.userId ? getMyParty(db, socket.data.userId) : null;
+          isMember = !!mine && mine.party_id === partyMatch[1];
+        } catch { isMember = false; }
+        if (!isMember) {
+          console.warn('[ws] Non-member party room join blocked:', { userId: socket.data.userId, room });
+          socket.emit('error', { code: 'UNAUTHORIZED', message: 'Not authorized to join this party' });
+          return;
+        }
+      }
+
       // SECURITY: session-scoped rooms must verify the session BELONGS
       // TO the connecting user. Previously we only checked that the
       // session existed, which let user A join `session:<bob-private>`
       // as long as the session was valid — exposing Bob's realtime
-      // events to A. Now we also verify ownership.
+      // events to A. Now we also verify ownership. Owner-less sessions
+      // are no longer joinable by elimination: an authenticated socket
+      // must be the session's owner or one of its participants
+      // (participantIds — the Set modern records carry — read alongside
+      // the legacy participants array).
       const sessionMatch = room.match(/^session:(.+)$/);
       if (sessionMatch) {
         const sessionId = sessionMatch[1];
@@ -11449,11 +11540,13 @@ async function tryInitWebSockets(server) {
         }
         const uid = socket.data.userId;
         const sessOwner = sess.userId || sess.ownerId || sess.createdBy;
-        const participants = Array.isArray(sess.participants) ? sess.participants : [];
+        const participantSet = new Set();
+        if (Array.isArray(sess.participants)) for (const p of sess.participants) participantSet.add(p);
+        if (Array.isArray(sess.participantIds)) for (const p of sess.participantIds) participantSet.add(p);
+        else if (sess.participantIds && typeof sess.participantIds.forEach === "function") sess.participantIds.forEach((p) => participantSet.add(p));
         const allowed =
-          !sessOwner || // legacy sessions without owner — allow (back-compat)
-          sessOwner === uid ||
-          participants.includes(uid);
+          !!uid &&
+          ((!!sessOwner && sessOwner === uid) || participantSet.has(uid));
         if (!allowed) {
           console.warn('[ws] Cross-user session room join blocked:', { userId: uid, room, sessOwner });
           socket.emit('error', { code: 'UNAUTHORIZED', message: 'Not authorized to join this session' });
@@ -11496,6 +11589,26 @@ async function tryInitWebSockets(server) {
           socket.emit('error', { code: 'UNAUTHORIZED', message: 'Join the astronomy session before listening' });
           return;
         }
+      }
+
+      const whiteboardMatch = room.match(/^whiteboard:(.+)$/);
+      if (whiteboardMatch && !whiteboardRoomAllowed(STATE, socket.data.userId, whiteboardMatch[1])) {
+        console.warn('[ws] Non-member whiteboard room join blocked:', { userId: socket.data.userId, room });
+        socket.emit('error', { code: 'UNAUTHORIZED', message: 'Join this board before listening' });
+        return;
+      }
+
+      // Default-deny: only known platform room prefixes may be joined
+      // at all. The prefixes with their own authorization checks above
+      // (user:, party:, session:, org:, astronomy:, whiteboard:) have
+      // already been decided; the remaining known prefixes keep their
+      // standing authenticated-only rule. Unknown prefixes — and
+      // prefix-less room names — are refused.
+      const KNOWN_ROOM_PREFIXES = ["user:", "party:", "session:", "org:", "astronomy:", "whiteboard:", "collab:", "code:", "law:", "workspace:", "world:", "house:"];
+      if (!KNOWN_ROOM_PREFIXES.some((p) => room.startsWith(p))) {
+        console.warn('[ws] Unknown room prefix join blocked:', { userId: socket.data.userId, room });
+        socket.emit('error', { code: 'UNAUTHORIZED', message: 'Not authorized to join this room' });
+        return;
       }
 
       socket.join(room); try { _socketRoomBridge?.writeBehindJoin(room, socket.id); } catch (_e) { /* fail-soft */ }
@@ -11542,14 +11655,22 @@ async function tryInitWebSockets(server) {
 
       // SECURITY: subscribe must verify the user owns / is a
       // participant of the session before joining its room. Same gap
-      // that `room:join` had.
+      // that `room:join` had — and the same rule SB-04 landed there:
+      // owner or participant only (participantIds, the Set modern
+      // records carry, read alongside the legacy participants array);
+      // owner-less sessions are not joinable through this door either.
       if (sessionId) {
         const sess = STATE.sessions?.get(sessionId);
         if (sess) {
           const uid = socket.data.userId;
           const sessOwner = sess.userId || sess.ownerId || sess.createdBy;
-          const participants = Array.isArray(sess.participants) ? sess.participants : [];
-          const allowed = !sessOwner || sessOwner === uid || participants.includes(uid);
+          const participantSet = new Set();
+          if (Array.isArray(sess.participants)) for (const p of sess.participants) participantSet.add(p);
+          if (Array.isArray(sess.participantIds)) for (const p of sess.participantIds) participantSet.add(p);
+          else if (sess.participantIds && typeof sess.participantIds.forEach === "function") sess.participantIds.forEach((p) => participantSet.add(p));
+          const allowed =
+            !!uid &&
+            ((!!sessOwner && sessOwner === uid) || participantSet.has(uid));
           if (allowed) {
             c.sessionId = sessionId;
             socket.join(`session:${sessionId}`);
@@ -12918,6 +13039,14 @@ async function tryInitNativeWebSockets(server) {
 // Production: SQLite (if available). Dev fallback: JSON file.
 // This prevents "DTUs disappeared" when server restarts or hot-reloads.
 const STATE_PATH = process.env.STATE_PATH || path.join(DATA_DIR, "concord_state.json");
+// FIX-veterinary-012: the read-your-write floor stamp for critical saves
+// (lib/read-your-write.js) — a tiny sidecar beside the state file, shared
+// with every snapshot reader in this DATA_DIR, replicas included.
+const CRITICAL_STAMP_PATH = criticalStampPathFor(STATE_PATH);
+// How long a snapshot reader waits for a pending critical save to land
+// before serving the newest snapshot anyway (loudly). Covers the
+// critical rate window (2 s) plus the save itself; 0 disables the wait.
+const RYW_WAIT_MS = Math.max(0, Number(process.env.CONCORD_RYW_WAIT_MS || 3000));
 const IS_PRODUCTION = (process.env.NODE_ENV || "").toLowerCase() === "production";
 const USE_SQLITE_STATE = db && (IS_PRODUCTION || process.env.STATE_BACKEND === "sqlite");
 let _saveTimer = null;
@@ -13005,6 +13134,10 @@ function _serializeState() {
   return {
     version: VERSION,
     savedAt: nowISO(),
+    // FIX-veterinary-012: the mutation sequence this snapshot serializes,
+    // so a snapshot reader can order it against the critical-save floor
+    // (lib/read-your-write.js). Additive — hydration reads named keys.
+    saveSeq: _stateMutationSeq,
     ...(dtuStoreActive ? {} : { dtus: toArr(STATE.dtus) }),
     shadowDtus: toArr(STATE.shadowDtus),
     wrappers: toArr(STATE.wrappers),
@@ -13304,7 +13437,7 @@ function _normalizeSettingsDefaults() {
   }
 }
 
-function loadStateFromDisk() {
+function _loadStateFromDiskOnce() {
   // INC-100: debounced saves durable-write JSON (yielding I/O) and skip the
   // sync SQLite blob upsert by default. Prefer the newer of SQLite vs JSON by
   // savedAt so a crash after a debounced save still restores the latest state.
@@ -13379,6 +13512,7 @@ function loadStateFromDisk() {
         path: c.path || STATE_PATH,
         backend: c.source === "sqlite" ? "sqlite" : (USE_SQLITE_STATE ? "json (preferred)" : "json"),
         savedAt: c.savedAt || obj.savedAt || null,
+        saveSeq: Number.isFinite(obj.saveSeq) ? obj.saveSeq : null,
       };
     } catch (e) {
       lastErr = e;
@@ -13641,6 +13775,7 @@ function saveStateSync() {
     }
   }
 }
+globalThis._concordSaveStateSync = saveStateSync;
 
 /**
  * Critical state save — for operations that must not sit in the coalescing
@@ -13660,6 +13795,19 @@ const CRITICAL_SAVE_MIN_INTERVAL_MS = Math.max(0, Number(process.env.CONCORD_CRI
 let _lastSyncSaveAt = 0;
 let _criticalCatchupTimer = null;
 function saveStateCritical() {
+  // FIX-veterinary-012: stamp the read-your-write floor BEFORE the
+  // rate-window decision (lib/read-your-write.js). The stamp is bytes
+  // and lands synchronously even when the full save below defers to the
+  // catch-up timer, so a snapshot reader booting inside the window can
+  // tell the on-disk snapshot predates this write and wait for the save
+  // instead of serving pre-write state. Fail-soft: a stamp I/O failure
+  // must never block the critical write itself.
+  _stateMutationSeq++;
+  try {
+    writeCriticalStamp(CRITICAL_STAMP_PATH, { seq: _stateMutationSeq, at: nowISO() });
+  } catch (e) {
+    structuredLog("warn", "state_critical_stamp_failed", { error: String(e?.message || e) });
+  }
   const sinceLast = Date.now() - _lastSyncSaveAt;
   if (sinceLast >= CRITICAL_SAVE_MIN_INTERVAL_MS) {
     saveStateSync();
@@ -13674,6 +13822,11 @@ function saveStateCritical() {
   }, Math.max(50, CRITICAL_SAVE_MIN_INTERVAL_MS - sinceLast));
   if (typeof _criticalCatchupTimer?.unref === "function") _criticalCatchupTimer.unref();
 }
+
+// Eagerly expose so domain files (which cannot reach this lexical
+// scope) can route durability-critical writes through the critical
+// path — FIX-veterinary-012 routes the veterinary lens's saveVet here.
+globalThis._concordSaveStateCritical = saveStateCritical;
 
 // ---- Periodic Safety-Net Save ----
 // REMOVED (audit 2026-07-27): a second, UNCONDITIONAL 2-minute
@@ -13703,6 +13856,38 @@ if (!READ_REPLICA) {
     const removed = sweepStaleStateTmps(STATE_PATH);
     if (removed) structuredLog("info", "state_tmp_swept", { removed });
   } catch (_e) { /* best effort */ }
+}
+
+// FIX-veterinary-012: the read-your-write floor guard. When a critical
+// save has stamped a floor (lib/read-your-write.js), a snapshot older
+// than that floor must not be served as current: the writer's save is
+// still inside its rate window or in flight. Re-read on a bounded wait
+// until a satisfying snapshot lands; if none does, serve the newest
+// anyway and say so at error level — degraded loudly, never silently,
+// and never a boot blocker. With no stamp the guard is inert and the
+// load is exactly the historical one.
+function loadStateFromDisk() {
+  const stamp = readCriticalStamp(CRITICAL_STAMP_PATH);
+  let result = _loadStateFromDiskOnce();
+  if (!stamp || !result?.loaded) return result;
+  const satisfied = () => snapshotSatisfiesFloor(
+    { saveSeq: result.saveSeq, savedAt: result.savedAt },
+    readCriticalStamp(CRITICAL_STAMP_PATH) || stamp,
+  );
+  if (satisfied()) return result;
+  const deadline = Date.now() + RYW_WAIT_MS;
+  const waitCell = new Int32Array(new SharedArrayBuffer(4));
+  while (Date.now() < deadline) {
+    try { Atomics.wait(waitCell, 0, 0, 100); } catch (_e) { break; }
+    result = _loadStateFromDiskOnce();
+    if (!result?.loaded || satisfied()) break;
+  }
+  if (result?.loaded && !satisfied()) {
+    structuredLog("error", "state_ryw_floor_unsatisfied", { floorSeq: stamp.seq, floorAt: stamp.at, loadedSeq: result.saveSeq ?? null, loadedSavedAt: result.savedAt ?? null });
+  } else if (result?.loaded) {
+    structuredLog("info", "state_ryw_floor_satisfied_after_wait", { floorSeq: stamp.seq });
+  }
+  return result;
 }
 
 const STATE_DISK = loadStateFromDisk();
@@ -13777,6 +13962,28 @@ if (_DTU_STORE_READY && db) {
   // Replace STATE.dtus with the write-through store
   STATE.dtus = dtuStore;
 }
+
+// GB-1536 one-time backfill, inside the state-load migration path above:
+// rows whose owner was stamped only in creator_id (the code lens's
+// snippet/snapshot saves) get ownerId := creator_id where ownerId is
+// missing, so DTU list/visibility/export paths stop treating them as
+// ownerless. Idempotent — a row that already carries ownerId is never
+// touched — and written through the store so SQLite (the source of
+// truth) carries it too. Best-effort: a backfill failure must never
+// stop the boot.
+try {
+  let _gb1536Backfilled = 0;
+  for (const _dtu of [...STATE.dtus.values()]) {
+    if (_dtu && _dtu.creator_id && !_dtu.ownerId) {
+      _dtu.ownerId = _dtu.creator_id;
+      STATE.dtus.set(_dtu.id, _dtu);
+      _gb1536Backfilled++;
+    }
+  }
+  if (_gb1536Backfilled > 0) {
+    structuredLog("info", "gb1536_creator_id_owner_backfill", { backfilled: _gb1536Backfilled });
+  }
+} catch (_e) { /* best effort — boot continues */ }
 
 // ── Lens-artifact write-through store ──────────────────────────────────────
 //
@@ -14662,7 +14869,7 @@ function _recordLensActivity(domain, action, ctx, input, result) {
     if (!userId || userId === "anon" || userId === "system") return;
     if (ctx?.internal === true || ctx?.actor?.internal === true) return;
     if (typeof domain !== "string" || !domain || typeof action !== "string" || !action) return;
-    if (isQuietLensAction(domain, action)) return;
+    if (isQuietLensAction(domain, action, input)) return;
     const verb = lensActivityLabel(domain, action);
     const label = lensActivityObject(domain, action, input, result);
     log(domain, label ? `${verb}: ${label}` : verb, { domain, action }, userId);
@@ -17379,6 +17586,39 @@ register("worldmodel", "list_snapshots", (ctx, _input = {}) => {
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
+register("worldmodel", "delete_snapshot", (ctx, input = {}) => {
+  try {
+  enforceEthosInvariant("worldmodel_delete_snapshot");
+  ensureWorldModel();
+
+  const snapId = String(input.snapshotId || input.id || "");
+  if (!snapId) return { ok: false, error: "snapshotId required" };
+
+  const idx = ctx.state.worldModel.snapshots.findIndex(s => s.id === snapId);
+  if (idx < 0) return { ok: false, error: "Snapshot not found" };
+
+  ctx.state.worldModel.snapshots.splice(idx, 1);
+  saveStateDebounced();
+  return { ok: true, id: snapId, deleted: true };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+}, { public: false });
+
+register("worldmodel", "delete_simulation", (ctx, input = {}) => {
+  try {
+  enforceEthosInvariant("worldmodel_delete_simulation");
+  ensureWorldModel();
+
+  const simId = String(input.simId || input.id || "");
+  if (!simId) return { ok: false, error: "simId required" };
+
+  if (!ctx.state.worldModel.simulations.has(simId)) return { ok: false, error: "Simulation not found" };
+
+  ctx.state.worldModel.simulations.delete(simId);
+  saveStateDebounced();
+  return { ok: true, id: simId, deleted: true };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+}, { public: false });
+
 register("worldmodel", "extract_from_dtu", (ctx, input = {}) => {
   try {
   enforceEthosInvariant("worldmodel_extract");
@@ -17603,11 +17843,22 @@ register("transfer", "classify_domain", (ctx, input = {}) => {
   try {
   enforceEthosInvariant("transfer_classify");
   const dtuId = String(input.dtuId || "");
-  if (!dtuId) return { ok: false, error: "dtuId required" };
-  const dtu = ctx.state.dtus?.get(dtuId);
-  if (!dtu) return { ok: false, error: "DTU not found" };
-  const domain = classifyDomain(dtu);
-  return { ok: true, dtuId, domain };
+  if (dtuId) {
+    const dtu = ctx.state.dtus?.get(dtuId);
+    if (!dtu) return { ok: false, error: "DTU not found" };
+    const domain = classifyDomain(dtu);
+    return { ok: true, dtuId, domain };
+  }
+  // FIX-transfer-009: the Transfer UI classifies free text — it sends
+  // { content } and has no DTU to point at, so every classification
+  // from the UI died on "dtuId required". Classify the text through
+  // the platform's own pseudo-DTU shape (the multi-lens convergence
+  // pattern) instead of demanding a stored record.
+  const content = String(input.content || "").trim();
+  if (!content) return { ok: false, error: "dtuId or content required — pass a DTU id, or the text to classify" };
+  const pseudoDtu = { title: content.slice(0, 200), human: { summary: content.slice(0, 2000) }, tags: [] };
+  const domain = classifyDomain(pseudoDtu);
+  return { ok: true, domain, classifiedFrom: "content" };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
@@ -17631,10 +17882,21 @@ register("transfer", "list_patterns", (ctx, _input = {}) => {
 register("transfer", "find_analogies", (ctx, input = {}) => {
   try {
   enforceEthosInvariant("transfer_analogies");
-  const targetDomain = String(input.domain || "general");
-  const query = String(input.query || "");
+  // FIX-transfer-008: the Transfer UI sends { source, target } — this
+  // macro read only { query, domain }, so every UI search ran with an
+  // empty query against "general" and returned []. Accept the UI's
+  // field names (the FIX-transfer-009 classify_domain shape).
+  const targetDomain = String(input.target || input.domain || "general");
+  const query = String(input.source || input.query || input.text || "");
   const results = findAnalogousPatterns(targetDomain, query);
-  return { ok: true, results };
+  if (results.length > 0) return { ok: true, results };
+  // Honest empty state: name why nothing came back instead of a bare [].
+  ensureTransferEngine();
+  const patternCount = STATE.transfer.patterns.size;
+  const note = patternCount === 0
+    ? "No analogy patterns have been extracted yet. Extract a pattern from DTUs first, then find analogies against it."
+    : `Patterns exist, but none from a domain other than "${targetDomain}" — analogies only cross domains.`;
+  return { ok: true, results, note };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
@@ -18119,7 +18381,15 @@ register("reasoning", "status", (ctx, _input = {}) => {
 
 register("reasoning", "create_chain", (ctx, input = {}) => {
   enforceEthosInvariant("reasoning_create");
-  return createReasoningChain(input);
+  // Owner from auth ctx — never trust client-supplied user ids (INC-59).
+  return createReasoningChain(input, _inferenceActorId(ctx));
+}, { public: false });
+
+register("reasoning", "delete_chain", (ctx, input = {}) => {
+  enforceEthosInvariant("reasoning_delete");
+  const chainId = String(input.chainId || "");
+  if (!chainId) return { ok: false, error: "chainId required" };
+  return deleteReasoningChain(chainId, _inferenceActorId(ctx));
 }, { public: false });
 
 register("reasoning", "add_step", (ctx, input = {}) => {
@@ -18160,7 +18430,7 @@ register("reasoning", "list_chains", (ctx, _input = {}) => {
   ensureReasoningEngine();
   const chains = Array.from(ctx.state.reasoning.chains.values())
     .slice(-50)
-    .map(c => ({ id: c.id, question: c.question, status: c.status, stepCount: c.steps.length, confidence: c.confidence }));
+    .map(c => ({ id: c.id, ownerId: c.ownerId ?? null, question: c.question, type: c.type, status: c.status, stepCount: c.steps.length, confidence: c.confidence }));
   return { ok: true, chains };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
@@ -18240,10 +18510,9 @@ register("hypothesis", "status", (ctx, _input = {}) => {
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
-register("hypothesis", "propose", (ctx, input = {}) => {
-  enforceEthosInvariant("hypothesis_propose");
-  return proposeHypothesis(input);
-}, { public: false });
+register("hypothesis", "propose", (_ctx, input = {}) => _hypothesisEngineCall("proposeHypothesis", [
+  input.statement, input.domain, input.priority, { force: input.force === true },
+]), { public: false });
 
 register("hypothesis", "design_experiment", (ctx, input = {}) => {
   enforceEthosInvariant("hypothesis_experiment");
@@ -18266,31 +18535,32 @@ register("hypothesis", "evaluate", (ctx, input = {}) => {
   return evaluateHypothesis(hypothesisId);
 }, { public: false });
 
-register("hypothesis", "get", (ctx, input = {}) => {
-  try {
-  enforceEthosInvariant("hypothesis_get");
-  ensureHypothesisEngine();
+// FIX-hypothesis-004: propose/get/list used to read and write the
+// monolith's own STATE.hypothesisEngine store (above) while the Lab and
+// the Ghost Fleet registrations use server/emergent/hypothesis-engine.js
+// — two stores, two envelopes, and which one answered depended on the
+// Ghost Fleet's 20s boot timer: a proposal written to one store read
+// back "Hypothesis not found" from the other, and the Lab list (which
+// expects emergent DTU shapes) showed 0 for monolith summaries. All
+// three now delegate to the emergent engine through the same
+// _hypothesisEngineCall path metrics/add_test/delete already use, so
+// the Lab's actions reach the one engine at any boot phase. The Ghost
+// Fleet re-registration of the same three stays as a same-target shadow.
+register("hypothesis", "get", async (_ctx, input = {}) => {
+  const { loadHypothesisEngine, HYPOTHESIS_ENGINE_UNAVAILABLE } = await import("./lib/hypothesis-rest.js");
+  const hypo = await loadHypothesisEngine();
+  if (!hypo?.getHypothesis) return { ...HYPOTHESIS_ENGINE_UNAVAILABLE };
   const hypothesisId = String(input.hypothesisId || input.id || "");
   if (!hypothesisId) return { ok: false, error: "hypothesisId required" };
-  const h = ctx.state.hypothesisEngine.hypotheses.get(hypothesisId);
-  if (!h) return { ok: false, error: "Hypothesis not found" };
-  return { ok: true, hypothesis: h };
-  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  const h = hypo.getHypothesis(hypothesisId);
+  return h ? { ok: true, hypothesis: h } : { ok: false, error: "not_found" };
 }, { public: true });
 
-register("hypothesis", "list", (ctx, input = {}) => {
-  try {
-  enforceEthosInvariant("hypothesis_list");
-  ensureHypothesisEngine();
-  const state = input.state;
-  let hypotheses = Array.from(ctx.state.hypothesisEngine.hypotheses.values());
-  if (state) hypotheses = hypotheses.filter(h => h.state === state);
-  hypotheses = hypotheses.slice(-50).map(h => ({
-    id: h.id, statement: h.statement.slice(0, 100), state: h.state,
-    posteriorConfidence: h.posteriorConfidence, evidenceCount: h.evidenceFor.length + h.evidenceAgainst.length
-  }));
-  return { ok: true, hypotheses };
-  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+register("hypothesis", "list", async (_ctx, input = {}) => {
+  const { loadHypothesisEngine, HYPOTHESIS_ENGINE_UNAVAILABLE } = await import("./lib/hypothesis-rest.js");
+  const hypo = await loadHypothesisEngine();
+  if (!hypo?.listHypotheses) return { ...HYPOTHESIS_ENGINE_UNAVAILABLE };
+  return ghostFleetOk(hypo.listHypotheses(input.status));
 }, { public: true });
 
 // Lifecycle-engine names the REST routes and HypothesisLab call. Ghost
@@ -18319,6 +18589,16 @@ register("hypothesis", "delete", (_ctx, input = {}) => _hypothesisEngineCall("de
 register("hypothesis", "add_evidence", (_ctx, input = {}) => _hypothesisEngineCall("addEvidence", [
   input.hypothesisId, input.side, input.dtuId, input.weight, input.summary,
 ]), { public: false });
+// FIX-hypothesis-004 (cont.): the remaining Lab lifecycle actions existed
+// ONLY as Ghost Fleet registrations, so before the fleet's boot timer
+// landed they were unregistered entirely. Same delegation, same engine.
+register("hypothesis", "update_test", (_ctx, input = {}) => _hypothesisEngineCall("updateTestResult", [input.hypothesisId, input.testId, input.result]), { public: false });
+register("hypothesis", "add_prediction", (_ctx, input = {}) => _hypothesisEngineCall("addPrediction", [input.hypothesisId, input.statement]), { public: false });
+register("hypothesis", "verify_prediction", (_ctx, input = {}) => _hypothesisEngineCall("verifyPrediction", [input.hypothesisId, input.predIndex, input.verified]), { public: false });
+register("hypothesis", "confirm", (_ctx, input = {}) => _hypothesisEngineCall("confirmHypothesis", [input.id]), { public: false });
+register("hypothesis", "reject", (_ctx, input = {}) => _hypothesisEngineCall("rejectHypothesis", [input.id, input.reason]), { public: false });
+register("hypothesis", "refine", (_ctx, input = {}) => _hypothesisEngineCall("refineHypothesis", [input.id, input.newStatement]), { public: false });
+register("hypothesis", "archive", (_ctx, input = {}) => _hypothesisEngineCall("archiveHypothesis", [input.id]), { public: false });
 
 // ===== END HYPOTHESIS ENGINE MACROS =====
 
@@ -18537,7 +18817,7 @@ register("metalearning", "status", (ctx, _input = {}) => {
 
 register("metalearning", "define_strategy", (ctx, input = {}) => {
   enforceEthosInvariant("metalearning_define");
-  return defineLearningStrategy(input);
+  return defineLearningStrategy(input, metaCallerId(ctx));
 }, { public: false });
 
 register("metalearning", "record_outcome", (ctx, input = {}) => {
@@ -18558,7 +18838,7 @@ register("metalearning", "curriculum", (ctx, input = {}) => {
   enforceEthosInvariant("metalearning_curriculum");
   const topic = String(input.topic || "");
   if (!topic) return { ok: false, error: "topic required" };
-  return generateCurriculum(topic, input);
+  return generateCurriculum(topic, input, metaCallerId(ctx));
 }, { public: true });
 
 register("metalearning", "best_strategy", (ctx, input = {}) => {
@@ -18575,7 +18855,7 @@ register("metalearning", "list_strategies", (ctx, _input = {}) => {
   ensureMetaLearningSystem();
   const strategies = Array.from(ctx.state.metaLearning.strategies.values())
     .map(s => ({
-      id: s.id, name: s.name, domain: s.domain,
+      id: s.id, name: s.name, domain: s.domain, ownerId: s.ownerId || null,
       uses: s.uses, successes: s.successes, failures: s.failures,
       // Derived from the counts at read time, so a strategy recorded
       // under the old rule also reads true; null until the first
@@ -18595,6 +18875,8 @@ register("metalearning", "delete_strategy", (ctx, input = {}) => {
   const strategyId = String(input.strategyId || "");
   const strategy = ctx.state.metaLearning.strategies.get(strategyId);
   if (!strategy) return { ok: false, error: "Strategy not found" };
+  if (!strategy.ownerId) return { ok: false, error: "This strategy predates ownership records — it has no recorded owner, so it can't be deleted from the desk." };
+  if (strategy.ownerId !== metaCallerId(ctx)) return { ok: false, error: "You can only delete strategies you defined." };
   ctx.state.metaLearning.strategies.delete(strategyId);
   // Its outcome history goes with it — orphaned rows would keep
   // feeding adaptation windows for a strategy that no longer exists.
@@ -18614,6 +18896,22 @@ register("metalearning", "list_curricula", (ctx, _input = {}) => {
   return { ok: true, curricula, total: curricula.length };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
+
+register("metalearning", "delete_curriculum", (ctx, input = {}) => {
+  try {
+  enforceEthosInvariant("metalearning_curriculum_delete");
+  ensureMetaLearningSystem();
+  const curriculumId = String(input.curriculumId || "");
+  const idx = ctx.state.metaLearning.curriculum.findIndex(c => c.id === curriculumId);
+  if (idx === -1) return { ok: false, error: "Curriculum not found" };
+  const target = ctx.state.metaLearning.curriculum[idx];
+  if (!target.ownerId) return { ok: false, error: "This curriculum is part of the shared platform corpus — it has no recorded owner, so it can't be deleted from the desk." };
+  if (target.ownerId !== metaCallerId(ctx)) return { ok: false, error: "You can only delete curricula you generated." };
+  const [removed] = ctx.state.metaLearning.curriculum.splice(idx, 1);
+  saveStateDebounced();
+  return { ok: true, deleted: curriculumId, topic: removed.topic };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+}, { public: false });
 
 register("metalearning", "adaptations", (ctx, _input = {}) => {
   try {
@@ -19783,6 +20081,8 @@ function upsertDTU(dtu, { broadcast = true, federate = false } = {}) {
         title: dtu.title,
         tier: dtu.tier,
         tags: dtu.tags,
+        userId: dtu.ownerUserId || dtu.ownerId || dtu.createdBy || dtu.author || null,
+        creatorId: dtu.ownerUserId || dtu.ownerId || dtu.createdBy || dtu.author || null,
       };
       if (isNew) {
         realtimeEmit("dtu:created", dtuBroadcastPayload);
@@ -20877,8 +21177,36 @@ function addToSRS(dtuId) {
   const dtu = STATE.dtus.get(dtuId);
   if (!dtu) return { ok: false, error: "DTU not found" };
 
+  if (SRS.cards.has(dtuId)) {
+    const card = SRS.cards.get(dtuId);
+    return {
+      ok: true,
+      already: true,
+      dtuId,
+      nextReview: card.nextReview,
+      message: "Already scheduled",
+    };
+  }
   getSRSCard(dtuId); // Initialize if not exists
-  return { ok: true, dtuId, message: "Added to SRS" };
+  const created = SRS.cards.get(dtuId);
+  return { ok: true, dtuId, nextReview: created?.nextReview, message: "Added to SRS" };
+}
+
+function listScheduledSRS() {
+  const now = new Date().toISOString();
+  const items = [];
+  for (const [dtuId, card] of SRS.cards) {
+    const dtu = STATE.dtus.get(dtuId);
+    if (!dtu) continue;
+    items.push({
+      dtuId,
+      title: dtu.title || dtu.human?.title || dtuId,
+      nextReview: card.nextReview,
+      due: String(card.nextReview || "") <= now,
+    });
+  }
+  items.sort((a, b) => String(a.nextReview).localeCompare(String(b.nextReview)));
+  return { ok: true, items, total: items.length };
 }
 
 function removeFromSRS(dtuId) {
@@ -22836,6 +23164,57 @@ if (process.env.CONCORD_DISABLE_GHOST_FLEET !== "true") {
         }
         } catch (e) {
           logger.error("macro-contract", "registry validation failed", { error: e?.message });
+        }
+        if (process.env.CONCORD_BOOT_CROSS_MODEL_REPORT === "1") {
+          // Cohesive R-3 — cross-model boot report (report-only). Runs the
+          // cross-model validators where their registries are live: the
+          // artifact-schema registry, the quality gate's vocabularies, the
+          // solver registry, and LENS_ACTIONS (monolith-scoped until boot,
+          // which is why schema-target-resolves exists only here). Counts
+          // always log; findings log loudly; nothing here can fail boot.
+          schemasReady
+            .then(async () => {
+              try {
+                const schemas = listArtifactSchemas();
+                const lensReg = globalThis.__concordLensActions;
+                const targets = validateArtifactSchemaTargets({
+                  schemas,
+                  lensActions: lensReg instanceof Map ? lensReg : new Map(),
+                });
+                const artifacts = validateArtifactSchemas({ schemas, getVocabulary });
+                let irReport = null;
+                try {
+                  await import("./lib/conkay/index.js");
+                  const { listSolvers } = await import("./lib/conkay/physics/registry.js");
+                  const { buildSentinelM1IR } = await import("./lib/conkay/demos/sentinel-m1.js");
+                  irReport = validateIrAgainstSolvers({
+                    solvers: listSolvers(),
+                    documents: [{ location: "demos/sentinel-m1 buildSentinelM1IR()", ir: buildSentinelM1IR() }],
+                  });
+                } catch (e) {
+                  logger.error("cross-model", "IR report leg failed", { error: e?.message });
+                }
+                structuredLog("info", "cross_model_boot_report", {
+                  schemaTargets: { schemas: targets.checked.schemas, lensActions: targets.checked.lensActions, errors: targets.errors.length },
+                  artifactSchemas: { schemas: artifacts.checked.schemas, errors: artifacts.errors.length, warnings: artifacts.warnings.length },
+                  irSolvers: irReport ? { requirements: irReport.checked.requirements, solvers: irReport.checked.solversConsulted, errors: irReport.errors.length, warnings: irReport.warnings.length } : null,
+                });
+                const findings = [
+                  ...targets.errors.map((f) => ({ desk: "cross-model-targets", ...f })),
+                  ...artifacts.errors.map((f) => ({ desk: "cross-model-artifacts", ...f })),
+                  ...artifacts.warnings.map((f) => ({ desk: "cross-model-artifacts", ...f })),
+                  ...(irReport ? [...irReport.errors, ...irReport.warnings].map((f) => ({ desk: "cross-model-ir", ...f })) : []),
+                ];
+                if (findings.length) {
+                  logger.error("cross-model", "cross-model findings at boot", { count: findings.length, findings: findings.slice(0, 20) });
+                }
+              } catch (e) {
+                logger.error("cross-model", "boot report failed", { error: e?.message });
+              }
+            })
+            .catch((e) => {
+              logger.error("cross-model", "boot report failed", { error: e?.message });
+            });
         }
       })
       .catch(err => {
@@ -26740,6 +27119,8 @@ async function pipelineCommitDTU(ctx, dtu, opts={}) {
     // Broadcast DTU birth so LiveDTUFeed, ActivityFeed, and lens views see pipeline-committed DTUs
     realtimeEmit("dtu:created", {
       dtuId: dtu.id, title: dtu.title, tier: dtu.tier, tags: dtu.tags,
+      userId: dtu.ownerUserId || dtu.ownerId || dtu.createdBy || dtu.author || null,
+      creatorId: dtu.ownerUserId || dtu.ownerId || dtu.createdBy || dtu.author || null,
     });
     // v2.0 Workstream 6c: realtime fast-path for public timeline posts so
     // they appear instantly in other players' feeds (and so the
@@ -27661,6 +28042,36 @@ register("dtu", "delete", async (ctx, input) => {
   try { noteDtuWrite(); } catch { /* clock */ }
   SEARCH_INDEX.dirty = true;
   EMBEDDINGS.store.delete(id); // Remove from embedding index
+
+  // FIX-world-observatory-009: deleting a lens artifact's CREATE exhaust
+  // DTU (the vault record a Quick Capture makes) removes the artifact it
+  // points at — the capture is one record in two stores, and deleting
+  // the record the user can see must not leave the lens copy behind to
+  // keep exporting with no delete path. Narrow by construction: only
+  // the create-action exhaust cascades (update/run/export exhausts are
+  // lifecycle bookkeeping — the artifact lives on), only while the
+  // artifact is still the same owner's unpublished record (a published
+  // artifact has a life beyond this pointer and keeps it), and a
+  // missing artifact is a no-op (deleted lens-side first).
+  if (dtu.machine?.kind === "lens_exhaust" && dtu.machine?.action === "create" && typeof dtu.machine?.artifactId === "string") {
+    try {
+      const artifact = STATE.lensArtifacts.get(dtu.machine.artifactId);
+      const vis = artifact?.meta?.visibility;
+      if (artifact && artifact.ownerId === dtu.ownerId && vis !== "published" && vis !== "public") {
+        STATE.lensArtifacts.delete(artifact.id);
+        _lensDomainIndexRemove(artifact.domain, artifact.id);
+        _lensEmitDTU(ctx, artifact.domain, "delete", artifact.type, artifact);
+        // The canonical archive/delete verb (CB-0554 ruling (1)): the
+        // artifact is gone, so its remaining lifecycle exhausts (update /
+        // run / export — and the delete exhaust just minted) are orphans
+        // naming a dead record; sweep the family whole (FIX-ux-suite-015).
+        // The narrowness pins stand: this runs only inside the create-
+        // exhaust cascade, so a lifecycle-exhaust delete on a living
+        // artifact still changes nothing.
+        sweepArtifactExhausts(STATE, artifact, { onDtuRemoved: _sweepDtuSideEffects });
+      }
+    } catch (e) { log("dtu.warn", `lens artifact cascade (${id}): ${e?.message}`); }
+  }
   saveStateDebounced();
 
   // Storage audit fix (2026-07-27): clean up the per-DTU legacy artifact
@@ -27712,6 +28123,29 @@ register("dtu", "delete", async (ctx, input) => {
   return { ok: true, deleted: { id, title: dtu.title } };
   } finally { releaseMutex(); }
 }, { description: "Delete a DTU by id" });
+
+// The canonical archive/delete verb (founder ruling, CB-0554 (1)): ONE
+// owner-scoped verb for removing a DTU record family, so no lens invents its
+// own delete variant. Accepts a DTU id or a lens artifact id and delegates to
+// the matching canonical delete path — dtu.delete for a DTU, lens.delete for
+// an artifact — each of which applies its own owner gate and completes the
+// family (lib/dtu-family.js): the linked artifact (create-exhaust cascade,
+// unpublished only) and every exhaust DTU of a removed artifact are removed
+// with the primary record. Holds no mutex while delegating (the platform
+// mutex is not reentrant; the delegate paths acquire it themselves).
+register("dtu", "archive", async (ctx, input) => {
+  const id = String(input.id || input.dtuId || input.artifactId || "");
+  if (!id) return { ok: false, error: "Missing id" };
+  if (STATE.dtus.has(id)) {
+    const out = await runMacro("dtu", "delete", { id }, ctx);
+    return { ...out, via: "dtu.archive" };
+  }
+  if (STATE.lensArtifacts.has(id)) {
+    const out = await runMacro("lens", "delete", { id }, ctx);
+    return { ...out, via: "dtu.archive" };
+  }
+  return { ok: false, error: "DTU not found" };
+}, { description: "Canonical owner-scoped archive/delete verb: remove a DTU or lens artifact and its whole exhaust family" });
 
 // Admin custody: set visibility and owner on existing DTUs by id.
 // Persists through upsertDTU so STATE.dtus and dtu_store stay in sync
@@ -27822,15 +28256,22 @@ register("dtu", "list", async (ctx, input) => {
           // quarantine:* rows are never listed to anyone but their owner
           // (lib/dtu-read-access.js); the sidecar filter predates that rule.
           const narrowed = narrowListedDtus(r.dtus.filter((d) => !(isQuarantined(d) && privateDtuHiddenFrom(d, userId))));
-          const items = narrowed.slice(0, limit);
+          const visible = narrowed.filter((d) => !dtuExcludedFromUserList(d));
+          // A partial sidecar page that still holds automatic chat rows
+          // cannot be recounted here. Fall through to the in-process list.
+          if (visible.length !== narrowed.length && !pageComplete) {
+            /* fall through */
+          } else {
+          const items = visible.slice(0, limit);
           if (typeof calculateFreshness === "function") {
             for (const d of items) {
               d._freshness = calculateFreshness(d);
               d._freshnessLabel = freshnessLabel(d._freshness);
             }
           }
-          const total = postFilter ? narrowed.length : sidecarListTotal(r);
+          const total = (postFilter || visible.length !== narrowed.length) ? visible.length : sidecarListTotal(r);
           return { ok: true, dtus: items, limit, offset, total, _source: "dtu-sidecar" };
+          }
         }
       }
     } catch (_e) { logger.debug("server", "dtu-sidecar list unavailable — inline fallback", { error: _e?.message }); }
@@ -27838,8 +28279,7 @@ register("dtu", "list", async (ctx, input) => {
 
   // Filter out shadow/repair/system DTUs - internal, not real user content.
   // Pass viewer ID so private/user-scoped uploads by other users are hidden.
-  const INTERNAL_KINDS = new Set(["shadow", "pattern_shadow", "repair_record", "royalty_record", "session_context", "linguistic_map", "audit_trail", "system_metric", "repair_dtu", "client_error"]);
-  let items = userVisibleDTUs(userId).filter(d => !isShadowDTU(d) && !INTERNAL_KINDS.has(d.machine?.kind) && d.tier !== "shadow");
+    let items = userVisibleDTUs(userId).filter(d => !dtuExcludedFromUserList(d));
 
   // ── Scope Hierarchy Enforcement ──────────────────────────────────
   // Scopes: local → regional → national → global (strict containment)
@@ -27949,8 +28389,7 @@ register("dtu", "recent", (ctx, input = {}) => {
   try {
     const limit = clamp(Number(input.limit || 20), 1, 200);
     const userId = ctx?.actor?.id || ctx?.actor?.userId || ctx?.actor?.odId || null;
-    const INTERNAL_KINDS = new Set(["shadow", "pattern_shadow", "repair_record", "royalty_record", "session_context", "linguistic_map", "audit_trail", "system_metric", "repair_dtu", "client_error"]);
-    let items = userVisibleDTUs(userId).filter(d => !isShadowDTU(d) && !INTERNAL_KINDS.has(d.machine?.kind) && d.tier !== "shadow");
+        let items = userVisibleDTUs(userId).filter(d => !dtuExcludedFromUserList(d));
     items = items.sort((a,b)=> (b.createdAt||"").localeCompare(a.createdAt||"")).slice(0, limit);
     return { ok: true, dtus: items, limit, total: items.length };
   } catch (e) {
@@ -27961,8 +28400,7 @@ register("dtu", "recent", (ctx, input = {}) => {
 register("dtu", "count", (ctx, input = {}) => {
   try {
     const userId = ctx?.actor?.id || ctx?.actor?.userId || ctx?.actor?.odId || null;
-    const INTERNAL_KINDS = new Set(["shadow", "pattern_shadow", "repair_record", "royalty_record", "session_context", "linguistic_map", "audit_trail", "system_metric", "repair_dtu", "client_error"]);
-    const items = userVisibleDTUs(userId).filter(d => !isShadowDTU(d) && !INTERNAL_KINDS.has(d.machine?.kind) && d.tier !== "shadow");
+        const items = userVisibleDTUs(userId).filter(d => !dtuExcludedFromUserList(d));
     return { ok: true, count: items.length };
   } catch (e) {
     return { ok: false, error: "handler_error", message: String(e?.message || e) };
@@ -27999,8 +28437,7 @@ register("dtu", "paginated", (ctx, input = {}) => {
     // list is already registered above; but MACROS may not be populated until after all registers.
     // Safer: compute via direct filter like list.
     const userId = ctx?.actor?.id || ctx?.actor?.userId || ctx?.actor?.odId || null;
-    const INTERNAL_KINDS = new Set(["shadow", "pattern_shadow", "repair_record", "royalty_record", "session_context", "linguistic_map", "audit_trail", "system_metric", "repair_dtu", "client_error"]);
-    let items = userVisibleDTUs(userId).filter(d => !isShadowDTU(d) && !INTERNAL_KINDS.has(d.machine?.kind) && d.tier !== "shadow");
+        let items = userVisibleDTUs(userId).filter(d => !dtuExcludedFromUserList(d));
     items = items.sort((a,b)=> (b.createdAt||"").localeCompare(a.createdAt||""));
     const total = items.length;
     items = items.slice(offset, offset + pageSize);
@@ -29136,7 +29573,27 @@ if (_isTimeQuery(prompt)) {
 // is never a weather question — let the compute router take it.
 if (_isWeatherQuery(prompt) && !_routeComputeQuestion(prompt)) {
   const tz = String(localSettings?.timezone || "America/New_York");
-  const loc = _extractLocation(prompt) || String(localSettings?.defaultLocation || "Poughkeepsie, NY");
+  let loc = _extractLocation(prompt) || String(localSettings?.defaultLocation || "Poughkeepsie, NY");
+  // GB-1500 CKPT-18 (FIX-forecast-001): a "place" that is really the whole sentence is re-read with one constrained call.
+  const _wxExtracted = _extractLocation(prompt);
+  if (_wxExtracted && (_wxExtracted.length > 40 || _wxExtracted.split(/\s+/).length > 4)) {
+    try {
+      const { cockpitFlag: _ckFlag } = await import("./lib/cockpit/flags.js");
+      if (_ckFlag("ASK_CONTEXT")) {
+        const { extractSlots: _extractSlots } = await import("./lib/cockpit/slot-extract.js");
+        const { defaultProfile: _ckProfile } = await import("./lib/cockpit/model-caps.js");
+        const sl = await _extractSlots({ text: prompt, slots: [{ name: "place", description: "city or region the person wants weather for", required: true }], profile: _ckProfile(), db, userId: ctx?.actor?.userId });
+        if (sl.ok) loc = sl.values.place;
+        else {
+          const reply = "Which place do you want the forecast for?";
+          sess.messages.push({ role:"assistant", content: reply, ts: nowISO(), meta: { llmUsed:false, source:"weather" } });
+          _persistDeterministicTurn(reply, { llmUsed: false, source: "weather" });
+          saveStateDebounced();
+          return { ok:true, reply, sessionId, mode, llmUsed:false, meta:{ panel:"chat", sessionId, mode, llmUsed:false, source:"weather" } };
+        }
+      }
+    } catch { /* fall through to the extracted place */ }
+  }
   try {
     const wx = await getWeather(loc, { timeZone: tz });
     if (!wx.ok) {
@@ -29185,6 +29642,35 @@ if (_isWeatherQuery(prompt) && !_routeComputeQuestion(prompt)) {
       for (let _i = sess.messages.length - 1; _i >= 0; _i--) {
         const _m = sess.messages[_i];
         if (_m?.role === "assistant") { _prevAgentRoute = _m.meta?.agentRoute || null; _prevReply = String(_m.content || ""); break; }
+      }
+      // GB-1500 CKPT-16: with CONCORD_COCKPIT_ROUTE on, the cockpit decides whether this turn is an
+      // answer, one call, a run, or the reply to a waiting run. null means "not ours": the old route runs.
+      let _cockpitTurn = null;
+      try {
+        const { cockpitFlag: _cockpitFlag } = await import("./lib/cockpit/flags.js");
+        if (_cockpitFlag("ROUTE") && ctx?.actor?.userId) {
+          const { handleChatTurn: _handleCockpitTurn } = await import("./lib/cockpit/chat-entry.js");
+          _cockpitTurn = await _handleCockpitTurn({
+            db: ctx?.db || globalThis._concordSTATE?.db || null, userId: ctx.actor.userId,
+            chatSessionId: sessionId || null, message: prompt, lensContext: currentLens || null,
+            surface: "chat", prevRoute: _prevAgentRoute, prevReply: _prevReply,
+            runMacro, lensActions: LENS_ACTIONS,
+            chatProgress: (e) => { try { _chatProgress(ctx, e); } catch { /* progress never blocks */ } },
+            deadlineMs: Date.now() + 25000,
+          });
+        }
+      } catch (_ckErr) { console.warn("[cockpit] chat entry failed, using the old route:", _ckErr?.message || _ckErr); }
+      if (_cockpitTurn?.handled) {
+        const _ckReply = _cockpitTurn.reply;
+        const _ckMeta = { llmUsed: true, mode, source: "chat_agent", agentRoute: "cockpit", cockpit: _cockpitTurn.meta.cockpit, toolCallCount: 0, tools: [] };
+        sess.messages.push({ role: "assistant", content: _ckReply, ts: nowISO(), meta: _ckMeta });
+        _persistDeterministicTurn(_ckReply, _ckMeta);
+        saveStateDebounced();
+        return {
+          ok: true, reply: _ckReply, content: _ckReply, sessionId, mode, llmUsed: true,
+          route: "chat_agent", agentRoute: "cockpit", toolCalls: [], artifacts: [], sources: [],
+          meta: { panel: "chat", sessionId, ..._ckMeta },
+        };
       }
       const _agentRouteKind = _ar.chatAgentRoute(prompt, { prevRoute: _prevAgentRoute, prevReply: _prevReply });
       const _agentCtx = { ...ctx, db: ctx?.db || globalThis._concordSTATE?.db || null };
@@ -30589,6 +31075,7 @@ ${_operatorV6Block}` : "";
   // before it happens on a CSL rejection, and gives a single point to attach
   // cslRouted/proofArtifact onto every result (Task 6) without editing any
   // individual case.
+  const _cockpitRetryOn = (await import("./lib/cockpit/flags.js")).cockpitFlag("RETRY");
   const _executeToolCalls = async (calls) => {
     const results = [];
     for (const call of calls.slice(0, 5)) { // cap at 5 tool calls per turn
@@ -30599,7 +31086,12 @@ ${_operatorV6Block}` : "";
         result = { tool: call.tool, ok: false, error: _gate.reason || "csl_rejected" };
       } else {
         // running/done reach a streaming client as the call really starts and ends
-        result = await _chatWithToolProgress(ctx, call, () => _executeToolCall(call));
+        result = await _chatWithToolProgress(ctx, call, async () => {
+          if (!_cockpitRetryOn) return _executeToolCall(call);
+          const { runWithRetry } = await import("./lib/cockpit/retry-policy.js");
+          const { getToolSpec } = await import("./lib/cockpit/tool-spec.js");
+          return (await runWithRetry(_executeToolCall, call, { getSpec: (id) => getToolSpec(id, { lensActions: LENS_ACTIONS }) })).result;
+        });
       }
       if (_gate) {
         result.cslRouted = !!_gate.cslRouted;
@@ -30608,6 +31100,10 @@ ${_operatorV6Block}` : "";
       }
       results.push(result);
       ctx.log("chat_tools", "Tool executed", { tool: call.tool, ok: result.ok, error: result.error || null });
+      try {
+        const { recordToolOutcomeEvent } = await import("./lib/cockpit/telemetry.js");
+        recordToolOutcomeEvent(ctx?.db, { userId: ctx?.actor?.userId, sessionId: ctx?.reqMeta?.sessionId || null, surface: "chat", call, result });
+      } catch { /* telemetry never blocks a turn */ }
     }
     return results;
   };
@@ -31046,6 +31542,19 @@ ${_operatorV6Block}` : "";
             _toolResults[_i] = await _executeToolCall(_next);
           }
           _toolCallsExecuted = _toolResults;
+        }
+        // GB-1500 CKPT-05: plain chat has one tool round; when every call failed
+        // for a recoverable reason, run one bounded recovery pass before giving up.
+        if (_cockpitRetryOn && _toolResults.length && _toolResults.every((r) => !r.ok)) {
+          const { classifyFailure } = await import("./lib/cockpit/failure-taxonomy.js");
+          const _recoverable = _toolResults.every((r) => classifyFailure(r).retryable);
+          if (_recoverable) {
+            const { chatAgentRecoveryTurn } = await import("./lib/cockpit/retry-policy.js");
+            const _rec = await chatAgentRecoveryTurn({ runMacro, ctx, prompt, failed: _toolResults, lensActions: LENS_ACTIONS });
+            if (_rec?.ok && Array.isArray(_rec.toolCalls) && _rec.toolCalls.some((t) => t.ok)) {
+              _toolResults.length = 0; _toolResults.push(..._rec.toolCalls); _toolCallsExecuted = _toolResults;
+            }
+          }
         }
         const _arithOnly = _toolResults.length > 0 && _toolResults.every((r) => r.ok && r.key === "symbolic.evaluate" && r.expression);
 
@@ -31984,7 +32493,13 @@ register("shield", "report", (ctx, input) => {
     description: input.description,
   }, userId, STATE);
   return result;
-}, { description: "Report a suspected threat to the collective lattice." });
+}, { description: "Save a private, unverified threat report. It does not enter the lattice or the score until reviewed." });
+
+register("shield", "retract-report", (ctx, input) => {
+  const userId = ctx?.actor?.userId || input.userId || "";
+  const id = input.id || input.threatId || input.reportId;
+  return retractUserReport(id, userId, STATE);
+}, { description: "Retract the caller's own unverified threat report." });
 
 register("shield", "firewall", (ctx, input) => {
   const limit = Number(input.limit) || 50;
@@ -32058,20 +32573,20 @@ register("mesh", "send", async (ctx, input) => {
   // — the caller already has whatever content they put in it — so only the
   // id-resolved path is gated. Mirrors the dtu.create lineage-consent check
   // above: owner, system/founder-authored, or public/global-scope all pass.
-  let dtu = input.dtu || null;
-  if (!dtu && input.dtuId) {
-    const stored = STATE.dtus?.get(input.dtuId);
-    if (stored) {
-      const _meshUserId = ctx?.actor?.userId || ctx?.actor?.id || "anon";
-      const isOwner = !stored.ownerId || stored.ownerId === _meshUserId ||
-        stored.ownerId === "system" || stored.ownerId === "founder";
-      const vis = stored.meta?.visibility || stored.visibility;
-      const isPublic = vis === "published" || vis === "public" || stored.scope === "global";
-      if (!isOwner && !isPublic) return { ok: false, error: "not_your_dtu" };
-      dtu = stored;
-    }
+  const _meshUserId = ctx?.actor?.userId || ctx?.actor?.id || "anon";
+  let _meshLocal = null;
+  if (_meshUserId && _meshUserId !== "anon") {
+    try { _meshLocal = getUserUniverse(_meshUserId)?.localDTUs || null; } catch { _meshLocal = null; }
   }
-  if (!dtu) return { ok: false, error: "No DTU specified. Provide dtu or dtuId." };
+  const _meshResolved = resolveMeshSendDtu({
+    stateDtus: STATE.dtus,
+    localDtus: _meshLocal,
+    dtuId: input?.dtuId,
+    inlineDtu: input?.dtu || null,
+    userId: _meshUserId,
+  });
+  if (!_meshResolved.ok) return _meshResolved;
+  const dtu = _meshResolved.dtu;
   const result = meshSendDTU(dtu, input.destination || input.destinationNodeId || "broadcast", {
     proximity: input.proximity,
     priorityClass: input.priorityClass,
@@ -35447,7 +35962,15 @@ register("dtu", "lineage", (ctx, input = {}) => {
         .map((p) => (typeof p === "string" ? p : p?.id))
         .filter(Boolean);
     }
-    const childIds = Array.isArray(dtu.lineage?.children) ? dtu.lineage.children : [];
+    let childIds = Array.isArray(dtu.lineage?.children) ? dtu.lineage.children : [];
+    // FIX-graph-009: legacy records also carry top-level `parents` /
+    // `children` arrays, which the detail view's Metadata tab counts.
+    // The two fields are the same relation stamped in different eras;
+    // union them (deduped) so the Lineage view and the Metadata count
+    // can never disagree about how many links a DTU has.
+    const normIds = (arr) => (Array.isArray(arr) ? arr.map((p) => (typeof p === "string" ? p : p?.id)).filter(Boolean) : []);
+    parentIds = [...new Set([...parentIds, ...normIds(dtu.parents)])];
+    childIds = [...new Set([...childIds, ...normIds(dtu.children)])];
     const parents = parentIds.map((pid) => _dtuLineageRef(pid, ctx));
     const children = childIds.map((cid) => _dtuLineageRef(cid, ctx));
 
@@ -49781,10 +50304,27 @@ function _lensIsOwnerActor(ctx, artifact) {
   const userId = ctx?.actor?.userId;
   return !!userId && (artifact.ownerId === userId || artifact.createdBy === userId || artifact.createdByUser === userId);
 }
+// GB-1536: placeholder identities are not a person (the lens-authz
+// doctrine). An anonymous actor is held to the hard guest rule — only
+// explicitly public/published content — in EVERY domain, social ones
+// included, and ownerless rows fall for anon (office call, CB-0594).
+const _LENS_ANON_IDS = new Set(["anon", "anonymous", "guest"]);
+function _lensActorIsAnon(ctx) {
+  const uid = ctx?.actor?.userId;
+  return !uid || _LENS_ANON_IDS.has(String(uid).toLowerCase());
+}
+function _lensAnonVisible(artifact) {
+  const vis = artifact?.meta?.visibility;
+  return vis === "published" || vis === "public";
+}
+
 // Read visibility — same rule `lens.list`/`lens.get` already enforce: system/
 // anonymous-owned artifacts and social-domain artifacts are open; everything
 // else requires ownership, admin, or an explicit published/public visibility.
+// GB-1536: anonymous actors are scoped FIRST by the guest rule above —
+// the social bypass and the ownerless-open branch never apply to them.
 function _lensArtifactVisible(ctx, artifact) {
+  if (_lensActorIsAnon(ctx)) return _lensAnonVisible(artifact);
   if (LENS_SOCIAL_DOMAINS.has(artifact.domain)) return true;
   if (!artifact.ownerId || artifact.ownerId === "anon") return true;
   if (_lensIsOwnerActor(ctx, artifact) || _lensIsAdminActor(ctx)) return true;
@@ -49868,6 +50408,15 @@ function _presentLensArtifact(artifact, ctx) {
   return presented;
 }
 
+// Per-DTU cleanup for exhausts removed by the family sweep (lib/dtu-family.js):
+// the same index/embedding/write-clock hygiene dtu.delete applies to its own
+// target, factored so a swept sibling gets exactly the deleted DTU's treatment.
+function _sweepDtuSideEffects(dtuId) {
+  try { EMBEDDINGS.store.delete(dtuId); } catch { /* index cleanup is best-effort */ }
+  try { SEARCH_INDEX.dirty = true; } catch { /* same */ }
+  try { noteDtuWrite(); } catch { /* clock */ }
+}
+
 function _lensEmitDTU(ctx, domain, action, artifactType, artifact, extra={}) {
   try {
     const dtuId = uid("dtu");
@@ -49931,19 +50480,23 @@ function _lensEmitDTU(ctx, domain, action, artifactType, artifact, extra={}) {
       updateCrossDomainContext(extra.sessionId, domain, action, dtuId, artifact.title);
     }
 
-    // MEGA SPEC: Emit new WebSocket events for artifact lifecycle
-    realtimeEmit("artifact:rendered", {
-      dtuId, domain, action, fileType: artifact.type || artifactType,
-    });
-    // Broadcast DTU birth so LiveDTUFeed and ActivityFeed see lens-generated DTUs
-    realtimeEmit("dtu:created", {
-      dtuId, title: dtu.title, tier: dtu.tier, tags: dtu.tags,
-    });
-    // Separate event so ActivityFeed can distinguish lens-generated DTUs from user-created ones
-    realtimeEmit("lens:dtu_generated", {
-      dtuId, domain, action, artifactType, artifactId: artifact.id,
-      title: dtu.title, timestamp: nowISO(),
-    });
+    // The owner's own feed still hears the birth. Title and tags stay in
+    // that user's room — a global emit handed every signed-in socket the
+    // artifact title (FIX-xl-ws-001). No owner, no emit.
+    const exhaustRoom = lensExhaustEmitTarget(ownerId);
+    if (exhaustRoom) {
+      realtimeEmit("artifact:rendered", {
+        dtuId, domain, action, fileType: artifact.type || artifactType,
+      }, exhaustRoom);
+      realtimeEmit("dtu:created", {
+        dtuId, title: dtu.title, tier: dtu.tier, tags: dtu.tags,
+        userId: ownerId || null, creatorId: ownerId || null,
+      }, exhaustRoom);
+      realtimeEmit("lens:dtu_generated", {
+        dtuId, domain, action, artifactType, artifactId: artifact.id,
+        title: dtu.title, timestamp: nowISO(),
+      }, exhaustRoom);
+    }
 
     saveStateDebounced();
 
@@ -49974,14 +50527,32 @@ register("lens", "list", (ctx, input={}) => {
 
   // User sovereignty: filter by ownership for non-social domains
   const SOCIAL_DOMAINS = new Set(["forum", "feed", "marketplace", "collab", "thread", "vote", "alliance", "global", "news", "questmarket"]);
-  if (!SOCIAL_DOMAINS.has(domain)) {
+  const isActivityMint = (a) => {
+    const from = a?.meta?.createdFrom;
+    if (from === "dtu-auto-sync" || from === "integrity-repair") return true;
+    if (typeof a?.id === "string" && a.id.startsWith("dtu_lens_")) return true;
+    if (typeof a?.title === "string" && a.title.startsWith("Lens:")) return true;
+    return false;
+  };
+  if (_lensActorIsAnon(ctx)) {
+    // GB-1536 hard privacy rule: a guest sees only explicitly public /
+    // published rows, in EVERY domain — the social-domain bypass below
+    // does not apply to anonymous actors, ownerless rows fall (CB-0594),
+    // and activity mints (owner-only exhaust) never ride.
+    artifacts = artifacts.filter(a => !isActivityMint(a) && _lensAnonVisible(a));
+  } else if (!SOCIAL_DOMAINS.has(domain)) {
     const currentUserId = ctx.actor?.userId || "anon";
     artifacts = artifacts.filter(a => {
-      // System/anonymous artifacts are always visible (backward compat)
+      // Hotfix 2026-11-09: activity-minted mirrors (private exhaust copied
+      // public as system) are owner-only. System-owned activity mints stay hidden.
+      if (isActivityMint(a)) {
+        return !!(a.ownerId && a.ownerId !== "system" && a.ownerId !== "anon" && a.ownerId === currentUserId);
+      }
+      // Ownerless / anonymous scaffolding stays visible (backward compat)
       if (!a.ownerId || a.ownerId === "anon") return true;
       // User's own artifacts are always visible
       if (a.ownerId === currentUserId) return true;
-      // Published or public artifacts are visible to everyone
+      // Genuinely public/published catalog (feeds, shared work) stays visible
       const vis = a.meta?.visibility;
       if (vis === "published" || vis === "public") return true;
       return false;
@@ -49995,6 +50566,14 @@ register("lens", "list", (ctx, input={}) => {
   return { ok: true, artifacts, total, domain, type, schema: _domainRule ? { types: _domainRule.types, validStatuses: _domainRule.validStatuses } : null };
 });
 
+// GB-1536 guestRead opt-ins for the two core read macros: lens.list and
+// lens.get are not write-shaped, make no LLM call, and — with the
+// anon scoping in their filters (anonymous actors see only public /
+// published / system rows; ownerless rows fall for anon) — return only
+// public content to a guest. See docs/audits/GUEST_READ_AUDIT.md.
+rememberLensActionSpec("lens.list", { guestRead: true });
+rememberLensActionSpec("lens.get", { guestRead: true });
+
 register("lens", "get", (ctx, input={}) => {
   const { id, domain } = input;
   if (!id) return { ok: false, error: "id required" };
@@ -50005,6 +50584,11 @@ register("lens", "get", (ctx, input={}) => {
   const currentUserId = ctx.actor?.userId || "anon";
   const vis = artifact.meta?.visibility;
   const SOCIAL_DOMAINS = new Set(["forum", "feed", "marketplace", "collab", "thread", "vote", "alliance", "global", "news", "questmarket"]);
+  // GB-1536: anonymous actors get the guest rule in every domain (the
+  // social bypass never applies to them); don't reveal existence.
+  if (_lensActorIsAnon(ctx) && !_lensAnonVisible(artifact)) {
+    return { ok: false, error: "not found" };
+  }
   if (!SOCIAL_DOMAINS.has(artifact.domain) && artifact.ownerId && artifact.ownerId !== "anon" && artifact.ownerId !== currentUserId && vis !== "published" && vis !== "public") {
     return { ok: false, error: "not found" }; // Don't reveal existence
   }
@@ -50025,6 +50609,18 @@ register("lens", "create", async (ctx, input={}) => {
   const trimmedTitle = typeof title === "string" ? title.trim() : (title == null ? "" : String(title).trim());
   if ((domain === "lab" || domain === "agents") && !trimmedTitle) {
     return { ok: false, error: "title required" };
+  }
+  // GB-1539 bounds policy at the shared artifact layer: EVERY artifact
+  // title is the TITLE class (200) — a 600-char agent name
+  // (FIX-agents-004) or any other over-limit title refuses here, once,
+  // for every lens riding this create path. Capture artifacts
+  // (QuickCapture, FIX-ux-suite-008) also bound their note-class
+  // content (5,000) at this same layer.
+  const badTitle = boundsCheckTitle("title", trimmedTitle);
+  if (badTitle) return badTitle;
+  if (type === "capture") {
+    const badCapture = boundsCheckText("content", data?.content, "note");
+    if (badCapture) return badCapture;
   }
   // Education's classroom dialog must not store a blank record as "New artifact".
   if (domain === "education" && !trimmedTitle) {
@@ -50054,7 +50650,7 @@ register("lens", "create", async (ctx, input={}) => {
   }
 
   // Domain-specific validation
-  const validation = validateArtifact(domain, type, data, meta);
+  const validation = validateArtifact(domain, type, artifactDataWithTitle(data, trimmedTitle), meta);
   if (!validation.ok) {
     // Education's dialog used to toast the bare token. The rule error
     // already names the field (type or status). Other domains keep the token.
@@ -50140,7 +50736,12 @@ register("lens", "update", async (ctx, input={}) => {
   }
 
   const before = { title: artifact.title, data: { ...artifact.data } };
-  if (title !== undefined) artifact.title = title;
+  if (title !== undefined) {
+    // GB-1539: updates carry the same title bound as creates.
+    const badTitle = boundsCheckTitle("title", typeof title === "string" ? title.trim() : title);
+    if (badTitle) return badTitle;
+    artifact.title = title;
+  }
   if (data !== undefined) {
     const merged = { ...artifact.data, ...data };
     artifact.data = computeFields(artifact.domain, artifact.type, merged);
@@ -50173,7 +50774,16 @@ register("lens", "delete", async (ctx, input={}) => {
   _lensDomainIndexRemove(artifact.domain, id);
   saveStateDebounced();
   _lensEmitDTU(ctx, artifact.domain, "delete", artifact.type, artifact);
-  return { ok: true, deleted: id };
+  // The canonical archive/delete verb (CB-0554 ruling (1)): deleting the
+  // artifact removes its whole exhaust family — the create/update/delete
+  // 'Lens:<domain> …' DTUs are bookkeeping for this record, and leaving them
+  // in the owner's vault left dead records naming a piece that no longer
+  // exists (FIX-crafting-002). The delete exhaust minted just above is part
+  // of the family and is swept with it. Authorization is the owner gate
+  // above; the sweep inherits it.
+  const sweptExhausts = sweepArtifactExhausts(STATE, artifact, { onDtuRemoved: _sweepDtuSideEffects });
+  if (sweptExhausts.length) saveStateDebounced();
+  return { ok: true, deleted: id, sweptExhausts: sweptExhausts.length };
   } finally { releaseMutex(); }
 });
 
@@ -50183,8 +50793,11 @@ register("lens", "run", async (ctx, input={}) => {
   // H1: same anon gate as the /api/lens/run handler — the lens-action dispatch below
   // bypasses the runMacro ACL, so block anonymous callers in secured production.
   // Internal/system callers have a real (non-"anon") actor.userId and pass through.
-  if (_lensActionForbiddenForAnon(ctx)) return { ok: false, error: "forbidden: authentication required" };
+  // GB-1536: the artifact is fetched silently first so a guestRead-marked
+  // action (spec opt-in on the artifact's domain) can pass; the gate's
+  // answer for everything else is unchanged.
   const artifact = STATE.lensArtifacts.get(id);
+  if (_lensActionForbiddenForAnon(ctx) && !(artifact && lensActionGuestRead(artifact.domain, action))) return { ok: false, error: "forbidden: authentication required" };
   if (!artifact) return { ok: false, error: "not found" };
   // Same visibility rule as lens.get/lens.list — a private, non-social
   // artifact can only be acted on by its owner or an admin. Previously
@@ -50624,6 +51237,12 @@ register("lens", "bulkCreate", (ctx, input={}) => {
 // These REST routes expose the observability panel and profile data.
 
 app.get("/api/context/panel/:sessionId", asyncHandler(async (req, res) => {
+  // GB-1536: a session's working set is that session owner's context
+  // (their DTU titles + activation) — never a guest read. Closed to
+  // logged-out callers here; see docs/audits/GUEST_READ_AUDIT.md.
+  if (!req.user?.id) {
+    return res.status(401).json({ ok: false, error: "auth_required" });
+  }
   res.json(await runMacro("emergent", "context.panel", { sessionId: req.params.sessionId, lens: req.query.lens }, makeCtx(req)));
 }));
 
@@ -50632,6 +51251,18 @@ app.get("/api/context/profiles", asyncHandler(async (req, res) => {
 }));
 
 app.get("/api/context/user/:userId", asyncHandler(async (req, res) => {
+  // GB-1536: a user's context profile is that user's data. The macro
+  // was registered public:true and answered for ANY userId — the route
+  // now self-gates: the caller must be that user or an admin (the same
+  // shape as /api/context/inspector below). Guests get 401.
+  const callerId = req.user?.id || null;
+  if (!callerId) {
+    return res.status(401).json({ ok: false, error: "auth_required" });
+  }
+  const role = req.user?.role;
+  if (callerId !== req.params.userId && role !== "admin" && role !== "owner" && role !== "founder") {
+    return res.status(403).json({ ok: false, error: "forbidden" });
+  }
   res.json(await runMacro("emergent", "context.userProfile", { userId: req.params.userId }, makeCtx(req)));
 }));
 
@@ -50681,6 +51312,16 @@ app.get("/api/dtus/:id/artifact", asyncHandler(async (req, res) => {
 }));
 
 app.get("/api/lens/:domain/:id/dtus", asyncHandler(async (req, res) => {
+  // GB-1536: this route returned the FULL DTU bodies linked to any
+  // artifact with no visibility check at all. Gate it on the artifact's
+  // own visibility (the /api/dtus/:id/context pattern): a viewer who
+  // cannot see the artifact gets a 404, so private artifacts' linked
+  // DTUs never leak by id — and guests see only public artifacts' DTUs.
+  const artifact = STATE.lensArtifacts.get(req.params.id);
+  if (!artifact) return res.status(404).json({ ok: false, error: "artifact_not_found" });
+  if (!_lensArtifactVisible(makeCtx(req), artifact)) {
+    return res.status(404).json({ ok: false, error: "artifact_not_found" });
+  }
   res.json(getArtifactDTUs(STATE, req.params.id));
 }));
 
@@ -51358,7 +51999,7 @@ try {
   structuredLog("warn", "chat_agent_stream_mount_failed", { error: String(streamErr?.message || streamErr) });
 }
 
-// GB-1500 cockpit routes (failure counts now; run routes behind CONCORD_COCKPIT_RUNS).
+// GB-1500 cockpit routes (failure counts now; run routes in later tickets).
 try {
   const { mountCockpitRoutes } = await import("./routes/cockpit.js");
   const { makeExec: _cockpitMakeExec } = await import("./lib/cockpit/executor.js");
@@ -51598,18 +52239,10 @@ app.post("/api/lens/run", async (req, res) => {
   };
   try {
     const body = req.body || {};
-    const { domain } = body;
     // Accept both macro-style {domain, name, input} and legacy lens-action
-    // {domain, action, ...rest}. `name` and `action` are aliases.
-    const action = body.action || body.name;
-    const rest = _peelRedundantArtifactWrapper(
-      body.input && typeof body.input === "object"
-        ? body.input
-        : (() => {
-            const { domain: _d, action: _a, name: _n, input: _i, ...r } = body;
-            return r;
-          })()
-    );
+    // {domain, action, ...rest}. `name` is the action only when `action`
+    // is absent, so a payload field named name is not discarded.
+    const { domain, action, rest } = _lensRunParams(body);
     if (!domain || !action) { _lrNote("pre_dispatch", false, "domain_action_required"); return res.status(400).json({ ok: false, error: "domain and action required" }); }
     if (enforcePlatformInternalLensRole(req, res, domain, requireRole)) { _lrNote("pre_dispatch", false, "platform_internal_role"); return; }
     // Non-finite guard for BOTH the lens-action and macro paths (1e999 → Infinity).
@@ -51629,7 +52262,11 @@ app.post("/api/lens/run", async (req, res) => {
     // H1: gate the whole dispatch (lens-action AND macro paths) for anonymous callers
     // in secured production — the runMacro ACL doesn't protect this surface (see
     // _lensActionForbiddenForAnon). Reads use the GET /api/lens/:domain[/:id] routes.
-    if (_lensActionForbiddenForAnon(ctx)) {
+    // GB-1536: guestRead actions (spec opt-in, deny-by-default) are the
+    // one pass-through — an anonymous caller may run an action only
+    // when its spec is marked guestRead (non-write-shaped, no LLM,
+    // public/sample rows only; see docs/audits/GUEST_READ_AUDIT.md).
+    if (_lensActionForbiddenForAnon(ctx) && !lensActionGuestRead(domain, action)) {
       _lrNote("pre_dispatch", false, "authentication_required", { code: "LENS_AUTH" });
       return res.status(401).json({ ok: false, error: "authentication required", code: "LENS_AUTH" });
     }
@@ -51885,12 +52522,18 @@ app.post("/api/lens/:domain/:id/publish", async (req, res) => {
       return res.status(403).json({ ok: false, error: "not your artifact" });
     }
     artifact.meta = artifact.meta || {};
-    artifact.meta.visibility = "published";
-    artifact.meta.publishedAt = new Date().toISOString();
+    const unpublish = req.body?.unpublish === true;
+    if (unpublish) {
+      artifact.meta.visibility = "private";
+      delete artifact.meta.publishedAt;
+    } else {
+      artifact.meta.visibility = "published";
+      artifact.meta.publishedAt = new Date().toISOString();
+    }
     artifact.updatedAt = new Date().toISOString();
     saveStateDebounced();
     // Close-out A1: the publish mutation records like any other write.
-    _recordLensActivity(req.params.domain, "publish", ctx, { title: artifact.title || "" }, { artifact });
+    _recordLensActivity(req.params.domain, unpublish ? "unpublish" : "publish", ctx, { title: artifact.title || "" }, { artifact });
     res.json({ ok: true, artifact: _presentLensArtifact(artifact, ctx) });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
@@ -56126,6 +56769,13 @@ app.get("/api/lens-actions/:domain", (req, res) => {
     // shape this way. Absent for the rest — AutoActionStrip falls back to
     // its raw-JSON editor when `fields` is undefined.
     const fields = MACRO_INPUT_HINTS[`${domain}.${name}`];
+    // GB-1538 genus leg 4 (FIX-grounding-001, office ruling (i)): annotate
+    // actions the human ACL gate would deny to a member, from the gate's
+    // own rule lookup (macroGateFor shares humanMacroAclDenial's logic, so
+    // this cannot drift from enforcement). The frontend skips gated
+    // actions for users who cannot run them; the 403 stays honest for
+    // direct calls.
+    const gate = macroGateFor({ domain, name, macroAcl: MACRO_ACL, macroAclDomain: MACRO_ACL_DOMAIN });
     return {
       action: name,
       desc: ai?.desc || null,
@@ -56136,6 +56786,7 @@ app.get("/api/lens-actions/:domain", (req, res) => {
       isLive: /^live_/.test(name),
       isCompute: !ai && !/^live_/.test(name),
       ...(fields ? { fields } : {}),
+      ...(gate ? { gated: true, requiresRole: gate.requiresRole } : {}),
     };
   });
   res.json({ ok: true, domain, total: actions.length, actions });
@@ -59674,7 +60325,7 @@ register("whiteboard", "update", (ctx, input) => {
   try { _wbSyncShadows(dtu, wb.title); }
   catch (e) { structuredLog("error", "whiteboard_artifact_sync_failed", { id: whiteboardId, error: String(e?.message || e) }); }
   saveStateDebounced();
-  realtimeEmit("whiteboard:updated", { whiteboardId, elementCount: wb.elements.length }, {});
+  realtimeEmit("whiteboard:updated", { whiteboardId, elementCount: wb.elements.length }, { userId: dtu.ownerId || ctx?.actor?.userId || "" });
   return { ok: true, whiteboard: wb };
 });
 
@@ -60571,8 +61222,15 @@ register("integration", "list", (_ctx, _input) => {
   return { ok: true, integrations };
 });
 
-app.post("/api/webhooks", asyncHandler(async (req, res) => res.json(await runMacro("webhook", "register", req.body, makeCtx(req)))));
-app.get("/api/webhooks", asyncHandler(async (req, res) => res.json(await runMacro("webhook", "list", {}, makeCtx(req)))));
+app.post("/api/webhooks", asyncHandler(async (req, res) => {
+  const ctx = makeCtx(req);
+  const result = registerWh(STATE, { ...(req.body || {}), ownerId: ctx?.actor?.userId || req.user?.id || null });
+  res.status(result.ok ? 200 : 422).json(result);
+}));
+app.get("/api/webhooks", asyncHandler(async (req, res) => {
+  const ctx = makeCtx(req);
+  res.json(listWebhooks(STATE, ctx?.actor?.userId || req.user?.id || null));
+}));
 app.delete("/api/webhooks/:id", asyncHandler(async (req, res) => res.json(await runMacro("webhook", "delete", { webhookId: req.params.id }, makeCtx(req)))));
 app.post("/api/webhooks/:id/toggle", asyncHandler(async (req, res) => res.json(await runMacro("webhook", "toggle", { webhookId: req.params.id, ...req.body }, makeCtx(req)))));
 // Webhook auth — per-domain HMAC secret management
@@ -60792,6 +61450,11 @@ app.get("/api/system/health", (req, res) => {
     const total = dtus.length;
     const sessions = STATE.sessions?.size || 0;
     const brainStatus = brainStatusForViewer(typeof getBrainStatus === "function" ? getBrainStatus() : {}, req.user);
+    // Instance runtime detail (uptime, memory, DTU/session counts, store
+    // status, scheduler stats) is operator-only — the same viewer scoping
+    // brainStatusForViewer applies to the brain block above. Members and
+    // anonymous callers get the status signal and nothing operational.
+    const operatorViewer = viewerCanSeeBrainUrls(req.user);
     const uptime = process.uptime();
 
     // Heartbeat liveness. `__governorTickAt` is stamped on EVERY governorTick
@@ -60824,9 +61487,7 @@ app.get("/api/system/health", (req, res) => {
       fetchScheduler = getSchedulerStats();
     } catch { /* module not loaded yet — leave null */ }
 
-    return res.json({
-      ok: true,
-      health: {
+    const health = {
         status: "operational",
         uptime: Math.floor(uptime),
         dtuCount: total,
@@ -60849,7 +61510,10 @@ app.get("/api/system/health", (req, res) => {
             return ts && (Date.now() - new Date(ts).getTime()) < 604800000;
           }).length,
         },
-      },
+    };
+    return res.json({
+      ok: true,
+      health: operatorViewer ? health : { status: health.status, brains: brainStatus },
     });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
@@ -61912,6 +62576,10 @@ app.post("/api/ai/chat", asyncHandler(async (req, res) => {
 app.get("/api/srs/due", (req, res) => {
   const result = getDueCards(Number(req.query.limit || 20));
   res.json(result);
+});
+
+app.get("/api/srs/scheduled", (_req, res) => {
+  res.json(listScheduledSRS());
 });
 
 app.post("/api/srs/:dtuId/add", (req, res) => {
@@ -68268,6 +68936,36 @@ function sumCompletedQuestXp(userId) {
   return { xp, completed };
 }
 
+// FIX-game-004 (founder ruling (2), 2026-11-13): period XP for the
+// leaderboard's Weekly/Monthly filters. The score-bearing events already
+// carry timestamps in their source records — DTUs their createdAt,
+// council votes their timestamp, quest completions the artifact updatedAt
+// the completion handler stamps — so a period score is the SAME formula
+// as refreshGameProfile's lifetime XP, summed over events at or after
+// the window start. Quest completions are dated by updatedAt (the stamp
+// the completion write leaves); an artifact edited after completion
+// counts at its last edit, which is the honest limit of the record.
+function gamePeriodXp(userId, sinceMs) {
+  const inWindow = (t) => {
+    const ms = new Date(t).getTime();
+    return Number.isFinite(ms) && ms >= sinceMs;
+  };
+  const mine = (d) => d.authorId === userId || d.source === userId;
+  const dtus = dtusArray().filter(d => mine(d) && inWindow(d.createdAt));
+  const mega = dtus.filter(d => d.tier === "mega").length;
+  const hyper = dtus.filter(d => d.tier === "hyper").length;
+  const votes = Array.from(STATE.councilVotes?.values() || []).flat()
+    .filter(v => v.voterId === userId && inWindow(v.timestamp)).length;
+  let questXp = 0;
+  for (const art of _lensDomainArtifacts("game")) {
+    if (!art || art.type !== "quest" || art.ownerId !== userId) continue;
+    if (art.data?.status !== "completed" || !inWindow(art.updatedAt)) continue;
+    const reward = Number(art.data?.xpReward);
+    if (Number.isFinite(reward)) questXp += Math.max(0, Math.min(2000, reward));
+  }
+  return (dtus.length * 10) + (mega * 50) + (hyper * 100) + (votes * 5) + questXp;
+}
+
 function refreshGameProfile(userId) {
   const profile = getGameProfile(userId);
   const dtuCount = dtusArray().filter(d => d.authorId === userId || d.source === userId).length;
@@ -68338,19 +69036,33 @@ app.get("/api/game/leaderboard", (req, res) => {
   const knownUsers = new Set(Array.from(STATE.gameProfiles.keys()));
   dtusArray().forEach(d => { if (d.authorId) knownUsers.add(d.authorId); if (d.source) knownUsers.add(d.source); });
   for (const uid of knownUsers) {
-    if (!STATE.gameProfiles.has(uid)) getGameProfile(uid);
-    const p = STATE.gameProfiles.get(uid);
-    const userDtus = dtusArray().filter(d => d.authorId === uid || d.source === uid);
-    const questXp = sumCompletedQuestXp(uid).xp;
-    p.xp = (userDtus.length * 10) + (userDtus.filter(d => d.tier === "mega").length * 50) + (userDtus.filter(d => d.tier === "hyper").length * 100) + questXp;
-    p.level = Math.floor(Math.sqrt(p.xp / 100)) + 1;
-    p.badges = computeAchievements(uid).filter(a => a.earned).map(a => a.id);
+    // One XP computation: the leaderboard reads the same refreshed
+    // profile /api/game/profile serves. Its own copy of the formula
+    // had drifted — it omitted the votes x5 term refreshGameProfile
+    // counts — so the leaderboard's row for the signed-in user
+    // disagreed with their header/dashboard XP (FIX-game-001).
+    refreshGameProfile(uid);
   }
+  // FIX-game-004: ?period=weekly|monthly ranks by XP earned inside the
+  // window (gamePeriodXp over the timestamped score events); alltime —
+  // and any absent/unknown period — keeps the lifetime board exactly as
+  // before. Badges are lifetime honours and stay the profile's count in
+  // every period; xp and level are the period figures.
+  const period = String(req.query?.period || "alltime").toLowerCase();
+  const windowMs = period === "weekly" ? 7 * 24 * 3600 * 1000
+    : period === "monthly" ? 30 * 24 * 3600 * 1000 : 0;
+  const since = windowMs ? Date.now() - windowMs : 0;
   const entries = Array.from(STATE.gameProfiles.values())
-    .map(p => ({ userId: p.userId, xp: p.xp || 0, level: p.level || 1, badges: (p.badges || []).length, badgeList: p.badges || [] }))
+    .map(p => {
+      if (!windowMs) {
+        return { userId: p.userId, xp: p.xp || 0, level: p.level || 1, badges: (p.badges || []).length, badgeList: p.badges || [] };
+      }
+      const xp = gamePeriodXp(p.userId, since);
+      return { userId: p.userId, xp, level: Math.floor(Math.sqrt(xp / 100)) + 1, badges: (p.badges || []).length, badgeList: p.badges || [] };
+    })
     .sort((a, b) => b.xp - a.xp)
     .slice(0, 20);
-  res.json({ ok: true, leaderboard: entries, totalPlayers: STATE.gameProfiles.size });
+  res.json({ ok: true, leaderboard: entries, totalPlayers: STATE.gameProfiles.size, period: windowMs ? period : "alltime" });
 });
 
 // POST /api/game/quests/:questId/complete — mark the quest artifact completed.
@@ -68384,7 +69096,10 @@ app.get("/api/notifications/count", (req, res) => {
   ensureQueues();
   const userId = req.user?.id;
   const all = STATE.queues?.notifications || [];
-  const userNotifs = userId ? all.filter(n => !n.targetUserId || n.targetUserId === userId) : all;
+  // FIX-social-020: the queue also holds the autogen pipeline's operator
+  // proposals (dtu_proposal) — never a user's notifications, in the count
+  // or the list. isUserNotification is the one discriminator (lib).
+  const userNotifs = all.filter(n => _isUserNotification(n) && (!userId || !n.targetUserId || n.targetUserId === userId));
   const unread = userNotifs.filter(n => !n.readAt);
   res.json({ ok: true, count: userNotifs.length, unread: unread.length });
 });
@@ -68400,7 +69115,7 @@ app.get("/api/notifications", (req, res) => {
   const userId = req.user?.id;
   const limit = Math.min(Number(req.query.limit) || 50, 200);
   const all = STATE.queues?.notifications || [];
-  const mine = userId ? all.filter(n => !n.targetUserId || n.targetUserId === userId) : all;
+  const mine = all.filter(n => _isUserNotification(n) && (!userId || !n.targetUserId || n.targetUserId === userId));
   const notifications = [...mine]
     .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")))
     .slice(0, limit);
@@ -68413,7 +69128,7 @@ app.post("/api/notifications/read-all", (req, res) => {
   const all = STATE.queues?.notifications || [];
   let marked = 0;
   for (const n of all) {
-    if ((!userId || !n.targetUserId || n.targetUserId === userId) && !n.readAt) {
+    if (_isUserNotification(n) && (!userId || !n.targetUserId || n.targetUserId === userId) && !n.readAt) {
       n.readAt = new Date().toISOString();
       marked++;
     }
@@ -68426,7 +69141,7 @@ app.post("/api/notifications/:id/read", (req, res) => {
   ensureQueues();
   const userId = req.user?.id;
   const item = (STATE.queues?.notifications || []).find(n => n.id === req.params.id);
-  if (!item) return res.status(404).json({ ok: false, error: "Notification not found" });
+  if (!item || !_isUserNotification(item)) return res.status(404).json({ ok: false, error: "Notification not found" });
   if (userId && item.targetUserId && item.targetUserId !== userId) {
     return res.status(404).json({ ok: false, error: "Notification not found" });
   }
@@ -68438,7 +69153,7 @@ app.delete("/api/notifications/:id", (req, res) => {
   ensureQueues();
   const userId = req.user?.id;
   const all = STATE.queues?.notifications || [];
-  const idx = all.findIndex(n => n.id === req.params.id && (!userId || !n.targetUserId || n.targetUserId === userId));
+  const idx = all.findIndex(n => n.id === req.params.id && _isUserNotification(n) && (!userId || !n.targetUserId || n.targetUserId === userId));
   if (idx < 0) return res.status(404).json({ ok: false, error: "Notification not found" });
   all.splice(idx, 1);
   saveStateDebounced();
@@ -69644,10 +70359,23 @@ app.get("/api/affect/state", (req, res) => {
   res.json({ ok: true, state });
 });
 
+// FIX-affect-002: ATS sessions are per-caller (the middleware derives
+// user_<id> / an anon fingerprint). A write naming any other session is
+// refused unless the caller is an operator — the lens opens on the
+// shared "default" session, so without this any member could reset or
+// drive shared state.
+function atsWriteSession(req, requested) {
+  const own = req._atsSessionId || "default";
+  const isOperator = req.user?.role === "admin" || req.user?.role === "sovereign";
+  const target = requested || own;
+  return target === own || isOperator ? target : null;
+}
+
 // POST /api/affect/event — apply an affect event
 app.post("/api/affect/event", (req, res) => {
   if (!ATS) return res.status(501).json({ ok: false, error: "ATS not loaded" });
-  const sessionId = req.body?.source?.sessionId || req.body?.sessionId || req._atsSessionId || "default";
+  const sessionId = atsWriteSession(req, req.body?.source?.sessionId || req.body?.sessionId);
+  if (!sessionId) return res.status(403).json({ ok: false, error: "forbidden", message: "Affect sessions can only be changed by their owner or an operator." });
   const result = ATS.emitAffectEvent(sessionId, req.body);
   if (!result.ok) return res.status(400).json(result);
   res.json(result);
@@ -69665,7 +70393,8 @@ app.get("/api/affect/policy", (req, res) => {
 // POST /api/affect/reset — reset to baseline or cooldown
 app.post("/api/affect/reset", (req, res) => {
   if (!ATS) return res.status(501).json({ ok: false, error: "ATS not loaded" });
-  const sessionId = req.body?.sessionId || req._atsSessionId || "default";
+  const sessionId = atsWriteSession(req, req.body?.sessionId);
+  if (!sessionId) return res.status(403).json({ ok: false, error: "forbidden", message: "Affect sessions can only be changed by their owner or an operator." });
   const mode = req.body?.mode || "baseline";
   const result = ATS.resetAffect(sessionId, mode);
   res.json(result);
@@ -70177,7 +70906,7 @@ app.delete("/api/social/post/:postId", requireAuth(), (req, res) => {
 app.get("/api/social/posts/user/:userId", (req, res) => {
   try {
     const viewerId = req.user?.id || req.actor?.userId || null;
-    res.json(socialGetUserPosts(STATE, req.params.userId, { limit: Number(req.query.limit || 30), offset: Number(req.query.offset || 0), viewerId }));
+    res.json(socialGetUserPosts(STATE, req.params.userId, { limit: Number(req.query.limit || 30), offset: Number(req.query.offset || 0), viewerId, mediaOnly: req.query.mediaOnly === "true" || req.query.mediaOnly === "1" }));
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
@@ -70393,6 +71122,9 @@ app.get("/api/social/feed/explore", (req, res) => {
 // ---- Social DMs ----
 app.post("/api/social/dm", requireAuth(), (req, res) => {
   try {
+    // SB-14: DM routes require a real session in every AUTH_MODE —
+    // requireAuth() is a pass-through in public mode, so the handler gates.
+    if (!req.user?.id) return res.status(401).json({ ok: false, error: "auth_required" });
     const fromUserId = req.user?.id || req.actor?.userId || "anon";
      
     // eslint-disable-next-line no-restricted-syntax
@@ -70402,6 +71134,9 @@ app.post("/api/social/dm", requireAuth(), (req, res) => {
 
 app.get("/api/social/dm/conversations", requireAuth(), (req, res) => {
   try {
+    // SB-14: DM routes require a real session in every AUTH_MODE —
+    // requireAuth() is a pass-through in public mode, so the handler gates.
+    if (!req.user?.id) return res.status(401).json({ ok: false, error: "auth_required" });
     const userId = req.user?.id || req.actor?.userId || "anon";
     res.json(socialGetConversations(STATE, userId));
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
@@ -70416,6 +71151,9 @@ function respondSocialDm(res, result) {
 
 app.get("/api/social/dm/:conversationId", requireAuth(), (req, res) => {
   try {
+    // SB-14: DM routes require a real session in every AUTH_MODE —
+    // requireAuth() is a pass-through in public mode, so the handler gates.
+    if (!req.user?.id) return res.status(401).json({ ok: false, error: "auth_required" });
     const userId = req.user?.id || req.actor?.userId || null;
     respondSocialDm(res, socialGetMessages(STATE, req.params.conversationId, { limit: Number(req.query.limit || 50), offset: Number(req.query.offset || 0), userId }));
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
@@ -70423,6 +71161,9 @@ app.get("/api/social/dm/:conversationId", requireAuth(), (req, res) => {
 
 app.delete("/api/social/dm/:messageId", requireAuth(), (req, res) => {
   try {
+    // SB-14: DM routes require a real session in every AUTH_MODE —
+    // requireAuth() is a pass-through in public mode, so the handler gates.
+    if (!req.user?.id) return res.status(401).json({ ok: false, error: "auth_required" });
     const userId = req.user?.id || req.actor?.userId || null;
     respondSocialDm(res, socialRecallMessage(STATE, { messageId: req.params.messageId, userId }));
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
@@ -70430,6 +71171,9 @@ app.delete("/api/social/dm/:messageId", requireAuth(), (req, res) => {
 
 app.post("/api/social/dm/read", requireAuth(), (req, res) => {
   try {
+    // SB-14: DM routes require a real session in every AUTH_MODE —
+    // requireAuth() is a pass-through in public mode, so the handler gates.
+    if (!req.user?.id) return res.status(401).json({ ok: false, error: "auth_required" });
     const userId = req.user?.id || req.actor?.userId || null;
     respondSocialDm(res, socialMarkMessagesRead(STATE, { userId, conversationId: req.body?.conversationId }));
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
@@ -70438,6 +71182,9 @@ app.post("/api/social/dm/read", requireAuth(), (req, res) => {
 // Param-path variant: frontend calls POST /api/social/dm/:conversationId/read
 app.post("/api/social/dm/:conversationId/read", requireAuth(), (req, res) => {
   try {
+    // SB-14: DM routes require a real session in every AUTH_MODE —
+    // requireAuth() is a pass-through in public mode, so the handler gates.
+    if (!req.user?.id) return res.status(401).json({ ok: false, error: "auth_required" });
     const userId = req.user?.id || req.actor?.userId || null;
     respondSocialDm(res, socialMarkMessagesRead(STATE, { userId, conversationId: req.params.conversationId }));
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
@@ -71243,6 +71990,16 @@ app.get("/api/dtus/search/semantic", asyncHandler(async (req, res) => {
   const results = await semanticSearch(String(q), all, { lens: lens || null, topK });
 
   // Enrich results with DTU data
+  // Ownership class rides every result (FIX-inference-008): the
+  // cross-domain panel shows these records' titles and snippets, and a
+  // reader must be able to tell whose record each one is — the viewer's
+  // own, another member's, or a platform/ownerless record. The class is
+  // all that is added; no owner identifier is exposed.
+  const ownershipOf = (d) => {
+    const owner = d?.ownerId || d?.userId || d?.meta?.ownerId || null;
+    if (!owner || owner === "system") return "platform";
+    return viewerId && String(owner) === String(viewerId) ? "mine" : "member";
+  };
   const enriched = results.map(r => {
     const dtu = all.find(d => d.id === r.id);
     return {
@@ -71253,6 +72010,7 @@ app.get("/api/dtus/search/semantic", asyncHandler(async (req, res) => {
       score: Math.round(r.score * 1000) / 1000,
       rawSimilarity: Math.round((r.rawSimilarity || 0) * 1000) / 1000,
       summary: (dtu?.human?.summary || dtu?.cretiHuman || "").slice(0, 300),
+      ownership: ownershipOf(dtu),
     };
   });
   // Archived DTUs keep their vectors; include them (archive=0 opts out).
@@ -71269,6 +72027,7 @@ app.get("/api/dtus/search/semantic", asyncHandler(async (req, res) => {
           score: Math.round(h.sim * w * 1000) / 1000,
           rawSimilarity: Math.round(h.sim * 1000) / 1000,
           summary: (h.dtu.human?.summary || h.dtu.cretiHuman || "").slice(0, 300),
+          ownership: ownershipOf(h.dtu),
           archived: h.dtu._archived || true,
         });
       }
@@ -78974,7 +79733,7 @@ async function _runMacroFromGateway(domain, name, input, gatewayCtx) {
     ctx.actor.internal = false;
     ctx.actor.kind = ctx.actor.kind || "user";
   }
-  if (_lensActionForbiddenForAnon(ctx)) {
+  if (_lensActionForbiddenForAnon(ctx) && !lensActionGuestRead(domain, name)) {
     return { ok: false, reason: "authentication required", error: "authentication required", code: "LENS_AUTH" };
   }
   const rest = _peelRedundantArtifactWrapper(input && typeof input === "object" ? input : {});
@@ -81400,6 +82159,7 @@ function createWorldEntity(input = {}) {
     source: {
       dtuIds: Array.isArray(input.dtuIds) ? input.dtuIds.slice(0, 50) : [],
       extractedFrom: input.extractedFrom || null,
+      extractedBy: input.extractedBy || null,
       createdBy: input.createdBy || "system"
     },
 
@@ -82043,7 +82803,13 @@ function extractEntitiesFromDtu(dtu) {
         salience: 0.3,
         dtuIds: [dtuId],
         extractedFrom: dtuId,
-        createdBy: "auto_extract"
+        // FIX-entity-009: the entity belongs to the DTU's owner —
+        // stamping the literal "auto_extract" made the creating user
+        // a stranger to their own entity (the update/delete ownership
+        // gate refused them). The extractor keeps the provenance in
+        // extractedBy; ownership follows the DTU.
+        extractedBy: "auto_extract",
+        createdBy: dtu.creatorId || dtu.creator_id || dtu.ownerId || dtu.createdBy || "auto_extract"
       });
 
       if (result.ok) extracted.push(result.entity);
@@ -83183,12 +83949,22 @@ function recordSensorReading(sensorId, value, timestamp = null) {
   const sensor = STATE.grounding.sensors.get(sensorId);
   if (!sensor) return { ok: false, error: "Sensor not found" };
 
+  // FIX-grounding-003: a reading's value was stored as given — 'abc', NaN
+  // and objects all landed in the readings log. Mirror the sensor lens's
+  // rule (domains/sensor.js reading-record): coerce, require finite, and
+  // refuse by name; a supplied timestamp must at least parse.
+  const numValue = Number(value);
+  if (!Number.isFinite(numValue)) return { ok: false, error: "numeric value required" };
+  if (timestamp != null && Number.isNaN(new Date(timestamp).getTime())) {
+    return { ok: false, error: "invalid timestamp" };
+  }
+
   const reading = {
     id: uid("reading"),
     sensorId,
     sensorName: sensor.name,
     type: sensor.type,
-    value,
+    value: numValue,
     unit: sensor.unit,
     timestamp: timestamp || nowISO()
   };
@@ -83511,7 +84287,7 @@ function ensureReasoningEngine() {
 }
 
 // Create a new reasoning chain
-function createReasoningChain(input = {}) {
+function createReasoningChain(input = {}, ownerId = null) {
   ensureReasoningEngine();
 
   const id = uid("chain");
@@ -83519,6 +84295,12 @@ function createReasoningChain(input = {}) {
 
   const chain = {
     id,
+    // Ownership (FIX-reasoning-005, chains leg): chains were unowned
+    // global engine state — anyone could read the list and no one could
+    // delete. The creator's actor id is stamped at creation (from ctx,
+    // never from client input — INC-59) and delete_chain is scoped to it.
+    // Chains created before this model carry ownerId null.
+    ownerId: ownerId ? String(ownerId) : null,
     question: String(input.question || "").slice(0, 1000),
     goal: String(input.goal || "derive_conclusion").slice(0, 200),
     type: String(input.type || "deductive").slice(0, 50),
@@ -83535,6 +84317,27 @@ function createReasoningChain(input = {}) {
   STATE.reasoning.stats.chainsCreated++;
 
   return { ok: true, chain };
+}
+
+// Delete a reasoning chain — owner-scoped (FIX-reasoning-005, chains leg).
+// Only the chain's stamped owner may delete it. Legacy chains (ownerId
+// null, created before the ownership model) are not member-deletable;
+// they remain for the desk to clear. The chain's steps go with it.
+function deleteReasoningChain(chainId, ownerId) {
+  ensureReasoningEngine();
+
+  const chain = STATE.reasoning.chains.get(chainId);
+  if (!chain) return { ok: false, error: "Chain not found" };
+  if (!chain.ownerId || !ownerId || chain.ownerId !== String(ownerId)) {
+    return { ok: false, error: "forbidden: not your chain" };
+  }
+  STATE.reasoning.chains.delete(chainId);
+  if (STATE.reasoning.steps instanceof Map) {
+    for (const [stepId, step] of STATE.reasoning.steps) {
+      if (step && step.chainId === chainId) STATE.reasoning.steps.delete(stepId);
+    }
+  }
+  return { ok: true, deleted: chainId };
 }
 
 // Add a step to a reasoning chain
@@ -84142,28 +84945,52 @@ function syllogisticReason(input = {}, userId = "anon") {
   }
 
   if (minorUniversal) {
-    // Canonical Barbara: All Z are X + All X are Y ⊢ All Z are Y.
+    // Canonical Barbara, in either slot order — the two universal premises
+    // chain through their shared middle term whichever field each was
+    // typed into:
+    //   subclass order: All X are Y + All Z are X ⊢ All Z are Y
+    //     (the minor names a subclass of the major's subject);
+    //   chain order:    All X are Y + All Y are Z ⊢ All X are Z
+    //     (the minor's subject is the major's object).
+    // Only the subclass order was tried before, so the audit's chain-order
+    // entry ('All A are B' / 'All B are C') was refused with
+    // 'Category mismatch: "c" does not match "a"' — it compared the minor's
+    // object against the major's subject and never tried the chain
+    // (FIX-inference-002).
     const minorCategoryTyped = minorUniversal[1];
     const minorObject = minorUniversal[2].toLowerCase();
-    if (stem(minorObject) !== stem(category)) {
+    const minorCategory = _singularizeCategory(minorCategoryTyped.toLowerCase());
+    let conclusionSubject, conclusionSubjectTyped, conclusionObject, minorFactObject, ruleConsequent;
+    if (stem(minorObject) === stem(category)) {
+      conclusionSubject = minorCategory;
+      conclusionSubjectTyped = minorCategoryTyped;
+      conclusionObject = property;
+      minorFactObject = category;
+      ruleConsequent = property;
+    } else if (stem(minorCategory) === stem(property)) {
+      conclusionSubject = category;
+      conclusionSubjectTyped = majorMatch[1];
+      conclusionObject = minorObject;
+      minorFactObject = minorObject;
+      ruleConsequent = minorObject;
+    } else {
       return {
         ok: false,
         step: "category",
         error: `Category mismatch: "${minorObject}" does not match "${category}"`
       };
     }
-    const minorCategory = _singularizeCategory(minorCategoryTyped.toLowerCase());
     addInferenceFact({
       subject: category, predicate: "is", object: property, universal: true, source: "major_premise"
     }, userId);
     addInferenceFact({
-      subject: minorCategory, predicate: "is", object: category, universal: true, source: "minor_premise"
+      subject: minorCategory, predicate: "is", object: minorFactObject, universal: true, source: "minor_premise"
     }, userId);
     addInferenceRule({
-      name: `All ${category} are ${property}`,
+      name: `All ${category} are ${ruleConsequent}`,
       type: "implication",
       antecedent: { predicate: "is", object: category },
-      consequent: { predicate: "is", object: property },
+      consequent: { predicate: "is", object: ruleConsequent },
       confidence: 1.0
     });
     _inferenceNoteDeskOperation(userId, "inference");
@@ -84173,14 +85000,14 @@ function syllogisticReason(input = {}, userId = "anon") {
     // path (S-INF-1).
     const kbU = STATE.reasoning.knowledgeBase;
     const standingU = [...kbU.facts.values(), ...kbU.derived.values()].find(d =>
-      d.subject === minorCategory && d.predicate === "is" && d.object === property && d.universal
+      d.subject === conclusionSubject && d.predicate === "is" && d.object === conclusionObject && d.universal
     );
     if (!standingU) {
       const derivedFact = {
         id: uid("derived"),
-        subject: minorCategory,
+        subject: conclusionSubject,
         predicate: "is",
-        object: property,
+        object: conclusionObject,
         universal: true,
         negated: false,
         confidence: 1.0,
@@ -84194,19 +85021,19 @@ function syllogisticReason(input = {}, userId = "anon") {
     }
     return {
       ok: true,
-      conclusion: `All ${minorCategoryTyped.toLowerCase()} are ${property}`,
+      conclusion: `All ${conclusionSubjectTyped.toLowerCase()} are ${conclusionObject}`,
       derivation: {
         majorPremise,
         minorPremise,
-        conclusion: `all ${minorCategory} are ${property}`,
+        conclusion: `all ${conclusionSubject} are ${conclusionObject}`,
         rule: "Syllogistic reasoning (Barbara): transitivity of universal premises",
         confidence: 1.0,
         derivedThisRun: !standingU,
         alreadyDerived: Boolean(standingU)
       },
       kbWrites: {
-        premisesStored: [`all ${category} are ${property}`, `all ${minorCategory} are ${category}`],
-        ruleAdded: `All ${category} are ${property}`,
+        premisesStored: [`all ${category} are ${property}`, `all ${minorCategory} are ${minorFactObject}`],
+        ruleAdded: `All ${category} are ${ruleConsequent}`,
         conclusionStored: true
       }
     };
@@ -85811,8 +86638,17 @@ function ensureMetaLearningSystem() {
   }
 }
 
+// The caller a metalearning generation or deletion acts for: the
+// authenticated actor's id, or null when the call is anonymous. Ownership
+// in this system is stamped from this and only this (delete-ownership
+// fix, 2026-11-14) — a record with no ownerId is legacy / platform corpus.
+function metaCallerId(ctx) {
+  const id = ctx?.actor?.userId;
+  return id && id !== "anon" ? String(id) : null;
+}
+
 // Define a learning strategy
-function defineLearningStrategy(input = {}) {
+function defineLearningStrategy(input = {}, ownerId = null) {
   ensureMetaLearningSystem();
 
   const id = uid("strat");
@@ -85820,6 +86656,7 @@ function defineLearningStrategy(input = {}) {
     id,
     name: String(input.name || "").slice(0, 100) || "Unnamed Strategy",
     domain: String(input.domain || "general").slice(0, 100),
+    ownerId: ownerId || null,
 
     // Parameters that can be adjusted
     parameters: {
@@ -85994,7 +86831,7 @@ function adaptStrategy(strategyId) {
 }
 
 // Generate a curriculum (learning sequence) for a topic
-function generateCurriculum(topic, input = {}) {
+function generateCurriculum(topic, input = {}, ownerId = null) {
   ensureMetaLearningSystem();
   ensureSemanticEngine();
 
@@ -86037,6 +86874,7 @@ function generateCurriculum(topic, input = {}) {
     id: uid("curr"),
     topic,
     source: "corpus",
+    ownerId: ownerId || null,
     provenance: `Assembled from ${steps.length} DTU${steps.length === 1 ? "" : "s"} in the platform corpus matching "${topic}", ordered from foundational to advanced. Steps are existing material, not newly written lessons.`,
     steps,
     estimatedEffort: steps.length * 0.5,  // Rough estimate in hours
@@ -90812,7 +91650,23 @@ function applyAutoTagging(dtu) {
  */
 function syncDTUToLensArtifacts(dtu) {
   try {
+    // Hotfix 2026-11-09 export-leak: never mirror private / lens_exhaust
+    // activity into public system lens artifacts. Inherit real owner + visibility.
     if (!dtu || !dtu.id) return 0;
+    if (dtu.machine?.kind === "lens_exhaust") return 0;
+    const vis = String(dtu.meta?.visibility || dtu.visibility || "private");
+    if (
+      vis === "private" ||
+      vis === "internal" ||
+      dtu.privacy === "private" ||
+      dtu.privacy === "followers-only" ||
+      dtu.scope === "user"
+    ) {
+      return 0;
+    }
+    if (vis !== "public" && vis !== "published" && vis !== "marketplace") return 0;
+    const ownerId = dtu.ownerId || dtu.createdBy || dtu.entityId || null;
+    if (!ownerId) return 0;
     const domains = (dtu.tags || []).filter(t => LENS_DOMAIN_KEYWORDS[t]);
     let synced = 0;
     for (const domain of domains) {
@@ -90822,7 +91676,7 @@ function syncDTUToLensArtifacts(dtu) {
           id: key,
           domain,
           type: dtu.tier || "regular",
-          ownerId: dtu.createdBy || dtu.entityId || "system",
+          ownerId,
           title: dtu.title || "Untitled DTU",
           data: {
             dtuId: dtu.id,
@@ -90833,8 +91687,8 @@ function syncDTUToLensArtifacts(dtu) {
           },
           meta: {
             tags: dtu.tags || [],
-            status: "published",
-            visibility: "public",
+            status: vis === "published" ? "published" : "draft",
+            visibility: vis === "marketplace" ? "public" : vis,
             scope: dtu.scope || "local",
             createdFrom: "dtu-auto-sync",
           },
@@ -93623,17 +94477,46 @@ register("inheritance", "open_listing", (ctx, input = {}) => {
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
 }, { note: "Mentor opens an heir-slot listing for a dying NPC. Currency: CC." });
 
+register("inheritance", "close_listing", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const listingId = input?.listingId ?? input?.id;
+  if (!listingId) return { ok: false, reason: "missing_listing" };
+  try {
+    const listing = db.prepare(`SELECT * FROM inheritance_market_listings WHERE id = ?`).get(listingId);
+    if (!listing) return { ok: false, reason: "listing_not_found" };
+    if (listing.mentor_user_id !== userId) return { ok: false, reason: "not_your_listing" };
+    if (listing.status !== "open") return { ok: false, reason: "not_open" };
+    db.prepare(`UPDATE inheritance_market_listings SET status = 'withdrawn' WHERE id = ?`).run(listingId);
+    return { ok: true, listingId, status: "withdrawn" };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Mentor withdraws their own open heir-slot listing." });
+
 register("inheritance", "claim_slot", (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
   const userId = ctx?.actor?.userId;
   if (!userId) return { ok: false, reason: "no_actor" };
-  const { listingId } = input || {};
-  if (!listingId) return { ok: false, reason: "missing_listingId" };
+  const listingId = input?.listingId ?? input?.id ?? input?.params?.listingId;
+  if (!listingId) return { ok: false, error: "missing_listingId", reason: "missing_listingId" };
+  try {
+    db.exec(`CREATE TABLE IF NOT EXISTS inheritance_market_listings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      dying_npc_id TEXT NOT NULL,
+      mentor_user_id TEXT NOT NULL,
+      heir_slot_price_cc INTEGER NOT NULL,
+      buyer_user_id TEXT,
+      status TEXT NOT NULL DEFAULT 'open',
+      listed_at INTEGER NOT NULL DEFAULT (unixepoch()),
+      claimed_at INTEGER,
+      resolved_at INTEGER
+    )`);
+  } catch { /* table already present */ }
   try {
     const listing = db.prepare(`SELECT * FROM inheritance_market_listings WHERE id = ?`).get(listingId);
-    if (!listing) return { ok: false, reason: "listing_not_found" };
-    if (listing.status !== "open") return { ok: false, reason: "already_claimed" };
-    if (listing.mentor_user_id === userId) return { ok: false, reason: "cannot_claim_own" };
+    if (!listing) return { ok: false, error: "listing_not_found", reason: "listing_not_found" };
+    if (listing.status !== "open") return { ok: false, error: "already_claimed", reason: "already_claimed" };
+    if (listing.mentor_user_id === userId) return { ok: false, error: "cannot_claim_own", reason: "cannot_claim_own" };
     db.prepare(`
       UPDATE inheritance_market_listings
       SET buyer_user_id = ?, status = 'locked', claimed_at = unixepoch()
@@ -93979,13 +94862,17 @@ structuredLog("info", "phase9_2_spectator_init", {
 // ── Phase 9.3: Voice / music / foresight ────────────────────────────────────
 
 // #16 Concordia weather forecasting.
-register("forecast", "compose", async (_ctx, input = {}) => {
+register("forecast", "compose", async (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
   const { worldId = "concordia-hub", persist = true } = input || {};
   try {
     const lib = await import("./lib/world-forecast.js");
     const r = await lib.composeForecast(db, STATE, worldId);
-    if (r.ok && persist) lib.persistForecast(db, worldId, r.forecast);
+    // FIX-forecast-002: stamp the composer — archived forecasts are
+    // owned by their creator, and the export's archive leg is scoped
+    // by this stamp. Anonymous/system composes carry no stamp and
+    // belong to no one's export.
+    if (r.ok && persist) lib.persistForecast(db, worldId, r.forecast, ctx?.actor?.userId || null);
     return r;
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
 }, { note: "Compose 24h forecast for a world. Combines forward-sim + drift + faction + embodied baselines." });
@@ -94053,7 +94940,7 @@ register("forecast", "archive", async (_ctx, input = {}) => {
 // Alert subscriptions — per-user, persisted.
 register("forecast", "subscribeAlert", async (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
-  const userId = ctx?.actor?.userId || ctx?.userId;
+  const userId = ctx?.actor?.userId;
   if (!userId) return { ok: false, reason: "no_user" };
   try {
     const lib = await import("./lib/world-forecast.js");
@@ -94063,7 +94950,7 @@ register("forecast", "subscribeAlert", async (ctx, input = {}) => {
 
 register("forecast", "listAlerts", async (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
-  const userId = ctx?.actor?.userId || ctx?.userId;
+  const userId = ctx?.actor?.userId;
   if (!userId) return { ok: false, reason: "no_user" };
   try {
     const lib = await import("./lib/world-forecast.js");
@@ -94074,7 +94961,7 @@ register("forecast", "listAlerts", async (ctx, input = {}) => {
 
 register("forecast", "unsubscribeAlert", async (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
-  const userId = ctx?.actor?.userId || ctx?.userId;
+  const userId = ctx?.actor?.userId;
   if (!userId) return { ok: false, reason: "no_user" };
   try {
     const lib = await import("./lib/world-forecast.js");
@@ -94084,13 +94971,28 @@ register("forecast", "unsubscribeAlert", async (ctx, input = {}) => {
 
 register("forecast", "checkAlerts", async (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
-  const userId = ctx?.actor?.userId || ctx?.userId;
+  const userId = ctx?.actor?.userId;
   if (!userId) return { ok: false, reason: "no_user" };
   try {
     const lib = await import("./lib/world-forecast.js");
     return await lib.checkAlerts(db, STATE, userId, input?.worldId);
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
 }, { note: "Compose a fresh forecast and return which alert subscriptions trip." });
+
+// FIX-forecast-002: the forecast domain's export provider. Until now the
+// domain registered none, so a personal export came back empty while
+// the caller's alerts and archived forecasts existed. The provider
+// returns exactly the caller's own records (lib.forecastExportRows) —
+// alerts and archived forecasts are owned by their creator
+// (DUTCH-DECISIONS-46 #12), owner-scoped like every other provider.
+registerLensExportProvider("forecast", async (ctx) => {
+  const userId = ctx?.actor?.userId || null;
+  if (!userId || !db) return [];
+  try {
+    const lib = await import("./lib/world-forecast.js");
+    return lib.forecastExportRows(db, userId);
+  } catch { return []; }
+});
 
 // #18 Glyph spell as music.
 register("sonic_glyph", "spell_to_chord", (_ctx, input = {}) => {
@@ -94403,6 +95305,71 @@ register("bounty", "resolve", (_ctx, input = {}) => {
     return { ok: true, autofixId, winningChoice, paid: totalPaid, winnerCount: winners.length, currency: "CC" };
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
 }, { note: "Resolve a bounty after maintainer merge. Pays winners proportionally; 5% platform cut on losing pool." });
+
+// HV-13 port gate (Mega Plan v2 §6): the propose_from_fix macro registers
+// only when CONCORD_BOUNTY_PROPOSE_FROM_FIX=1 — off by default, the macro
+// is absent from the registry entirely. Its internal CONCORD_AUTOFIX_LOOP
+// kill-switch stands as written inside the handler.
+if (process.env.CONCORD_BOUNTY_PROPOSE_FROM_FIX === "1") {
+  // Generation hop (Group B B9 — the Bounties pair; founder-ruled
+  // 2026-11-05: BUILD the hop, generation proposes ONLY). A registered
+  // repair-cortex fix + a detector finding become a STAGED bounty: an
+  // autofix_proposals row in 'pending_review', surfaced by bounty.list_open
+  // and the Autofix staking view like any reflex-born proposal. The hop
+  // never applies the fix (application stays behind the repair doctrine's
+  // approval gates) and moves no money. Kill-switch mirrors reflex.*:
+  // CONCORD_AUTOFIX_LOOP=true must be set or the macro short-circuits.
+  register("bounty", "propose_from_fix", async (_ctx, input = {}) => {
+    if (process.env.CONCORD_AUTOFIX_LOOP !== "true") {
+      return { ok: false, reason: "autofix_loop_disabled" };
+    }
+    if (!db) return { ok: false, reason: "no_db" };
+    const { fixId, finding } = input || {};
+    if (!fixId || !finding) return { ok: false, reason: "missing_inputs" };
+    try {
+      const { getFix } = await import("./lib/autofix/index.js");
+      const { shapeBountyProposal } = await import("./lib/autofix/bounty-proposal.js");
+      const shaped = shapeBountyProposal(getFix(fixId), finding);
+      if (!shaped.ok) return shaped;
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS autofix_proposals (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          proposal_id INTEGER NOT NULL,
+          proposal_kind TEXT NOT NULL,
+          forge_output_json TEXT NOT NULL,
+          pr_url TEXT,
+          status TEXT NOT NULL DEFAULT 'pending_review',
+          created_at INTEGER NOT NULL DEFAULT (unixepoch())
+        )
+      `);
+      // Dedupe: an open staged proposal for the same fix + file is
+      // returned, never duplicated.
+      const open = db.prepare(`
+        SELECT id, forge_output_json FROM autofix_proposals
+        WHERE proposal_kind = ? AND status = 'pending_review'
+      `).all(shaped.proposalKind);
+      for (const row of open) {
+        try {
+          const prior = JSON.parse(row.forge_output_json);
+          if (prior && prior.dedupeKey === shaped.dedupeKey) {
+            return { ok: true, autofixId: row.id, fixId, deduped: true, next: "Human reviews via /lenses/autofix-queue, then triggers .github/workflows/autofix.yml" };
+          }
+        } catch { /* unparseable legacy row — not a dedupe match */ }
+      }
+      const r = db.prepare(`
+        INSERT INTO autofix_proposals (proposal_id, proposal_kind, forge_output_json)
+        VALUES (?, ?, ?)
+      `).run(0, shaped.proposalKind, JSON.stringify(shaped.payload));
+      return {
+        ok: true,
+        autofixId: r.lastInsertRowid,
+        fixId,
+        deduped: false,
+        next: "Human reviews via /lenses/autofix-queue, then triggers .github/workflows/autofix.yml",
+      };
+    } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+  }, { note: "Generation hop: stage a bounty proposal from a registered autofix fix + a detector finding. Proposes only — never applies the fix. Gated by CONCORD_AUTOFIX_LOOP=true." });
+}
 
 // #22 NPC psyops detector — flag NPCs whose skill_revisions diverge
 // suspiciously fast from cohort baseline.

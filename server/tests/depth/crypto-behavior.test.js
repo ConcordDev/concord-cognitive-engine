@@ -887,7 +887,15 @@ describe("crypto — swap quote/route validation rejections (pre-fetch, determin
 
     const zero = await lensRun("crypto", "swap-quote", { params: { fromId: "bitcoin", toId: "ethereum", amountIn: 0 } }, ctx);
     assert.equal(zero.result.ok, false);
-    assert.match(zero.result.error, /fromId, toId, positive amountIn required/);
+    assert.match(zero.result.error, /positive number up to 1e12/);
+
+    const huge = await lensRun("crypto", "swap-quote", { params: { fromId: "bitcoin", toId: "ethereum", amountIn: 1e20 } }, ctx);
+    assert.equal(huge.result.ok, false);
+    assert.match(huge.result.error, /positive number up to 1e12/);
+
+    const neg = await lensRun("crypto", "swap-quote", { params: { fromId: "bitcoin", toId: "ethereum", amountIn: -1 } }, ctx);
+    assert.equal(neg.result.ok, false);
+    assert.match(neg.result.error, /positive number up to 1e12/);
   });
 
   it("swap-quote: identical from/to tokens are rejected before any price fetch", async () => {

@@ -5,8 +5,9 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, UserRound, Package, BellRing, Check } from 'lucide-react';
+import { Loader2, Plus, UserRound, Package, BellRing, Check, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
 
@@ -84,6 +85,11 @@ export function InsuranceVaultPanel({ onChange }: { onChange: () => void }) {
     await lensRun('insurance', 'reminder-complete', { id: r.id, reopen: r.done });
     await refresh();
   };
+  // FIX-insurance-004: reminders gain a delete (reminder-delete).
+  const deleteReminder = async (r: Reminder) => {
+    await lensRun('insurance', 'reminder-delete', { id: r.id });
+    await refresh();
+  };
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
@@ -129,6 +135,15 @@ export function InsuranceVaultPanel({ onChange }: { onChange: () => void }) {
                 </button>
                 <span className={cn('flex-1 text-xs', r.done ? 'text-zinc-400 line-through' : 'text-zinc-200')}>{r.title}</span>
                 <span className={cn('text-[10px]', STATUS_COLOR[r.status] || 'text-zinc-400')}>{r.dueDate || 'no date'}</span>
+                <StickyDeleteConfirm
+                  onConfirm={() => deleteReminder(r)}
+                  armLabel={<Trash2 className="w-3.5 h-3.5" />}
+                  armAriaLabel={`Delete reminder ${r.title}`}
+                  confirmLabel="Delete?"
+                  confirmAriaLabel="Confirm delete reminder"
+                  cancelAriaLabel="Cancel delete reminder"
+                  className="text-zinc-400 hover:text-red-400"
+                />
               </li>
             ))}
           </ul>

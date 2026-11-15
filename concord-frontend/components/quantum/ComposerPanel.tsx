@@ -8,7 +8,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Atom, Zap, Play, Loader2, Layers, X, StepForward,
-  StepBack, Save, FolderOpen, Trash2, Download, Upload, Sparkles,
+  StepBack, Save, FolderOpen, Trash2, Download, Upload, Sparkles, Copy, Check, Pencil,
 } from 'lucide-react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensState } from '@/hooks/useLensState';
@@ -170,10 +170,34 @@ export function ComposerPanel() {
     if (res) await refreshSaved();
   }, [run, refreshSaved]);
 
+  // FIX-quantum-004: saved circuits gain an inline rename.
+  const [renaming, setRenaming] = useState<SavedCircuitMeta | null>(null);
+  const [renameText, setRenameText] = useState('');
+  const handleRename = useCallback(async () => {
+    if (!renaming || !renameText.trim()) return;
+    const res = await run('renameCircuit', { id: renaming.id, name: renameText.trim() });
+    if (res) { setRenaming(null); await refreshSaved(); }
+  }, [run, refreshSaved, renaming, renameText]);
+
   const handleExportQASM = useCallback(async () => {
     const res = await run('exportQASM', { circuit });
     if (res) setQasm((res as { qasm: string }).qasm || '');
   }, [circuit, run]);
+
+  // FIX-quantum-005: the exported QASM used to land in the textarea
+  // and stop there — no way to take the file out of the lens. Copy
+  // puts the exact source on the clipboard with a visible confirm.
+  const [qasmCopied, setQasmCopied] = useState(false);
+  const handleCopyQASM = useCallback(async () => {
+    if (!qasm.trim()) return;
+    try {
+      await navigator.clipboard.writeText(qasm);
+      setQasmCopied(true);
+      setTimeout(() => setQasmCopied(false), 2000);
+    } catch {
+      setError('Copy failed — select the QASM text and copy it manually.');
+    }
+  }, [qasm]);
 
   const handleImportQASM = useCallback(async () => {
     if (!qasm.trim()) { setError('Paste OpenQASM source first.'); return; }
@@ -350,7 +374,7 @@ export function ComposerPanel() {
               <StepBack className="w-4 h-4" /> Prev
             </button>
             <input type="range" min={0} max={frames.length - 1} value={frameIdx}
-              onChange={(e) => setFrameIdx(Number(e.target.value))} className="flex-1" />
+              onChange={(e) => setFrameIdx(Number(e.target.value))} aria-label="Animation frame" className="flex-1" />
             <button onClick={() => setFrameIdx((i) => Math.min(frames.length - 1, i + 1))}
               disabled={frameIdx === frames.length - 1}
               className="btn-neon flex items-center gap-1 disabled:opacity-40">
@@ -472,7 +496,7 @@ export function ComposerPanel() {
           <Zap className="w-4 h-4 text-neon-green" /> Noise Model &amp; Error Analysis
         </h2>
         <div className="flex flex-wrap items-center gap-2">
-          <select value={selectedPreset} onChange={(e) => setSelectedPreset(e.target.value)}
+          <select value={selectedPreset} onChange={(e) => setSelectedPreset(e.target.value)} aria-label="Noise preset"
             className="bg-black/40 border border-white/10 rounded px-2 py-1 text-xs text-gray-200">
             {noisePresets.map((np) => (
               <option key={np.id} value={np.id}>{np.label}</option>
@@ -534,6 +558,7 @@ export function ComposerPanel() {
         </h2>
         <textarea value={qasm} onChange={(e) => setQasm(e.target.value)}
           placeholder="OpenQASM 2.0 source — Export current circuit, or paste QASM and Import."
+          aria-label="OpenQASM source"
           spellCheck={false}
           className="w-full h-32 bg-black/40 border border-white/10 rounded p-2 font-mono text-xs text-gray-200" />
         <div className="flex gap-2">
@@ -544,6 +569,13 @@ export function ComposerPanel() {
           <button onClick={handleImportQASM} disabled={!!busy}
             className="btn-neon flex items-center gap-1.5 disabled:opacity-40">
             <Upload className="w-4 h-4" /> Import QASM
+          </button>
+          <button onClick={handleCopyQASM} disabled={!qasm.trim()}
+            data-testid="quantum-copy-qasm"
+            className="btn-neon flex items-center gap-1.5 disabled:opacity-40">
+            {qasmCopied
+              ? <><Check className="w-4 h-4" /> Copied</>
+              : <><Copy className="w-4 h-4" /> Copy QASM</>}
           </button>
         </div>
       </div>
@@ -584,7 +616,20 @@ export function ComposerPanel() {
                     {new Date(sc.updatedAt).toLocaleString()}
                   </p>
                 </div>
-                {confirmDelete?.id === sc.id ? (
+                {renaming?.id === sc.id ? (
+                  <span className="flex items-center gap-1.5 text-xs">
+                    <input value={renameText} onChange={(e) => setRenameText(e.target.value)} maxLength={120}
+                      className="w-36 rounded border border-zinc-600 bg-zinc-900 px-2 py-1 text-xs text-zinc-100" aria-label="New circuit name" autoFocus />
+                    <button onClick={handleRename} disabled={!renameText.trim()}
+                      className="px-2 py-1 rounded bg-emerald-600 text-white font-semibold hover:bg-emerald-500 disabled:opacity-40">
+                      Save
+                    </button>
+                    <button onClick={() => setRenaming(null)}
+                      className="px-2 py-1 rounded border border-zinc-600 text-zinc-200 hover:text-white">
+                      Cancel
+                    </button>
+                  </span>
+                ) : confirmDelete?.id === sc.id ? (
                   <span className="flex items-center gap-1.5 text-xs text-red-300">
                     Delete &ldquo;{sc.name}&rdquo;?
                     <button
@@ -606,6 +651,11 @@ export function ComposerPanel() {
                       className="p-1.5 rounded bg-neon-cyan/10 border border-neon-cyan/30 text-neon-cyan hover:bg-neon-cyan/20"
                       title="Load">
                       <FolderOpen className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={() => { setRenaming(sc); setRenameText(sc.name); }}
+                      className="p-1.5 rounded bg-zinc-500/10 border border-zinc-500/30 text-zinc-300 hover:bg-zinc-500/20"
+                      title="Rename">
+                      <Pencil className="w-3.5 h-3.5" />
                     </button>
                     <button onClick={() => setConfirmDelete(sc)}
                       className="p-1.5 rounded bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20"

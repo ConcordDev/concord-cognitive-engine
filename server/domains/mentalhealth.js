@@ -11,7 +11,9 @@ export default function registerMentalhealthActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("mental-health", "moodTracker", (ctx, artifact, _params) => { const entries = artifact.data?.entries || []; if (entries.length === 0) return { ok: true, result: { message: "Log mood entries to track patterns." } }; const scores = entries.map(e => parseInt(e.mood || e.score) || 5); const avg = Math.round(scores.reduce((s, v) => s + v, 0) / scores.length * 10) / 10; const trend = scores.length >= 3 ? (scores[scores.length-1] > scores[0] ? "improving" : scores[scores.length-1] < scores[0] ? "declining" : "stable") : "insufficient-data"; return { ok: true, result: { entries: scores.length, avgMood: avg, trend, lowest: Math.min(...scores), highest: Math.max(...scores), variance: Math.round(Math.sqrt(scores.reduce((s,v) => s + Math.pow(v-avg,2),0)/scores.length)*10)/10 } }; });
   registerLensAction("mental-health", "copingStrategies", advisory("general self-help suggestions; not clinical advice", (ctx, artifact, _params) => { const triggers = artifact.data?.triggers || []; const strategies = { anxiety: ["Deep breathing (4-7-8)", "Progressive muscle relaxation", "Grounding (5-4-3-2-1 senses)", "Journaling"], depression: ["Physical activity", "Social connection", "Routine building", "Gratitude practice"], stress: ["Time management", "Boundary setting", "Mindfulness meditation", "Nature walk"], anger: ["Timeout technique", "Counting to 10", "Physical exercise", "Writing it out"], grief: ["Allow the feelings", "Memory sharing", "Support group", "Self-compassion"] }; const matched = triggers.flatMap(t => strategies[(t.type || t).toLowerCase()] || strategies.stress); return { ok: true, result: { triggers: triggers.length, strategies: [...new Set(matched)], categories: Object.keys(strategies), note: "These are general wellness suggestions, not medical advice" } }; }));
-  registerLensAction("mental-health", "wellnessScore", (ctx, artifact, _params) => { const data = artifact.data || {}; const _req = needNums(data, ["sleepHours>=0", "exerciseMinutes>=0", "socialInteractions>=0", "moodScore>=0"]); if (_req.missing.length) return notComputed(_req.missing, "Wellness score needs sleep hours, exercise minutes, social interactions and a 0–10 mood score — missing values are not assumed."); const sleep = _req.values.sleepHours; const exercise = _req.values.exerciseMinutes; const social = Math.trunc(_req.values.socialInteractions); const mood = Math.trunc(_req.values.moodScore); const score = Math.min(100, Math.round(Math.min(sleep/8,1)*25 + Math.min(exercise/30,1)*25 + Math.min(social/3,1)*25 + (mood/10)*25)); return { ok: true, result: { wellnessScore: score, breakdown: { sleep: `${sleep}h (target: 7-9h)`, exercise: `${exercise}min (target: 30min)`, social: `${social} interactions`, mood: `${mood}/10` }, areas: score < 60 ? [sleep < 7 ? "Improve sleep" : null, exercise < 20 ? "Increase activity" : null, social < 2 ? "Reach out to someone" : null].filter(Boolean) : ["Keep up the good work"] } }; });
+  registerLensAction("mental-health", "wellnessScore", (ctx, artifact, _params) => { const data = artifact.data || {}; const _req = needNums(data, ["sleepHours>=0", "exerciseMinutes>=0", "socialInteractions>=0", "moodScore>=0"]); if (_req.missing.length) return notComputed(_req.missing, "Wellness score needs sleep hours, exercise minutes, social interactions and a 0–10 mood score — missing values are not assumed."); // FIX-mental-health-006: the >=0 gate let the form's declared maxima through — mood 11 paid (11/10)*25 = 27.5 of a 25-point pillar into the score. Enforce the ranges the manual calculator declares (sleep 0–24, exercise 0–600, social 0–50, mood 0–10) by name.
+    for (const [k, lo, hi] of [["sleepHours", 0, 24], ["exerciseMinutes", 0, 600], ["socialInteractions", 0, 50], ["moodScore", 0, 10]]) { const v = _req.values[k]; if (Number.isFinite(v) && (v < lo || v > hi)) return { ok: false, error: `${k} must be between ${lo} and ${hi}` }; }
+    const sleep = _req.values.sleepHours; const exercise = _req.values.exerciseMinutes; const social = Math.trunc(_req.values.socialInteractions); const mood = Math.trunc(_req.values.moodScore); const score = Math.min(100, Math.round(Math.min(sleep/8,1)*25 + Math.min(exercise/30,1)*25 + Math.min(social/3,1)*25 + (mood/10)*25)); return { ok: true, result: { wellnessScore: score, breakdown: { sleep: `${sleep}h (target: 7-9h)`, exercise: `${exercise}min (target: 30min)`, social: `${social} interactions`, mood: `${mood}/10` }, areas: score < 60 ? [sleep < 7 ? "Improve sleep" : null, exercise < 20 ? "Increase activity" : null, social < 2 ? "Reach out to someone" : null].filter(Boolean) : ["Keep up the good work"] } }; });
   registerLensAction("mental-health", "journalPrompt", (ctx, artifact, _params) => { const mood = (artifact.data?.currentMood || "neutral").toLowerCase(); const prompts = { happy: ["What made today great?", "Who contributed to your happiness?", "How can you create more moments like this?"], sad: ["What are you feeling right now?", "What would you tell a friend feeling this way?", "Name three things you are grateful for"], anxious: ["What is within your control right now?", "What would your future self say about this?", "Describe your safe place in detail"], neutral: ["What are you looking forward to?", "What did you learn today?", "Describe your ideal tomorrow"], angry: ["What boundary was crossed?", "What need is not being met?", "How would you handle this differently next time?"] }; const selected = prompts[mood] || prompts.neutral; return { ok: true, result: { mood, prompts: selected, instruction: "Write freely for 10 minutes without judgment", reminder: "Journaling is for you — there are no wrong answers" } }; });
 
   /**
@@ -137,6 +139,15 @@ export default function registerMentalhealthActions(registerLensAction) {
   const mhListB = (map, k) => { if (!map.has(k)) map.set(k, []); return map.get(k); };
   const mhNum = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
   const mhClean = (v, max = 500) => String(v == null ? "" : v).trim().slice(0, max);
+  const gratitudeLine = (v) => {
+    if (typeof v === "string") return mhClean(v, 200);
+    if (v && typeof v === "object") {
+      for (const k of ["text", "entry", "body", "content", "item", "note", "value"]) {
+        if (typeof v[k] === "string" && v[k].trim()) return mhClean(v[k], 200);
+      }
+    }
+    return "";
+  };
   const mhDay = (v) => mhClean(v, 10).slice(0, 10);
   const MH_DAY = 86400000;
   const SESSION_TYPES = ["meditation", "sleep", "breathing", "focus", "body_scan", "movement"];
@@ -319,6 +330,33 @@ export default function registerMentalhealthActions(registerLensAction) {
     return { ok: true, result: { series, count: series.length } };
   });
 
+  registerLensAction("mental-health", "mood-delete", (ctx, _a, params = {}) => {
+    const s = getMhState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = s.moods.get(mhAid(ctx)) || [];
+    const id = String(params.id || "");
+    const idx = list.findIndex((m) => m.id === id);
+    if (idx < 0) return { ok: false, error: "mood entry not found" };
+    list.splice(idx, 1);
+    saveMhState();
+    return { ok: true, result: { deleted: id } };
+  });
+
+  registerLensAction("mental-health", "mood-update", (ctx, _a, params = {}) => {
+    const s = getMhState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = s.moods.get(mhAid(ctx)) || [];
+    const entry = list.find((m) => m.id === String(params.id || ""));
+    if (!entry) return { ok: false, error: "mood entry not found" };
+    if (params.mood != null) {
+      const mood = Math.round(mhNum(params.mood));
+      if (mood < 1 || mood > 5) return { ok: false, error: "mood must be 1–5" };
+      entry.mood = mood;
+    }
+    if (params.note != null) entry.note = mhClean(params.note, 500) || null;
+    if (params.label != null) entry.label = mhClean(params.label, 40).toLowerCase() || null;
+    saveMhState();
+    return { ok: true, result: { entry } };
+  });
+
   registerLensAction("mental-health", "mood-insights", (ctx, _a, _params = {}) => {
     const s = getMhState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const moods = (s.moods.get(mhAid(ctx)) || []).slice().sort((a, b) => a.at.localeCompare(b.at));
@@ -410,7 +448,7 @@ export default function registerMentalhealthActions(registerLensAction) {
   registerLensAction("mental-health", "gratitude-add", (ctx, _a, params = {}) => {
     const s = getMhState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const items = Array.isArray(params.entries)
-      ? params.entries.map((x) => mhClean(x, 200)).filter(Boolean).slice(0, 10) : [];
+      ? params.entries.map(gratitudeLine).filter(Boolean).slice(0, 10) : [];
     if (!items.length) return { ok: false, error: "at least one gratitude entry required" };
     const entry = { id: mhId("grt"), items, date: mhDay(mhNow()), at: mhNow() };
     mhListB(s.gratitude, mhAid(ctx)).push(entry);
@@ -420,8 +458,35 @@ export default function registerMentalhealthActions(registerLensAction) {
 
   registerLensAction("mental-health", "gratitude-list", (ctx, _a, _params = {}) => {
     const s = getMhState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const entries = [...(s.gratitude.get(mhAid(ctx)) || [])].sort((a, b) => b.at.localeCompare(a.at));
+    const entries = [...(s.gratitude.get(mhAid(ctx)) || [])].sort((a, b) => b.at.localeCompare(a.at)).map((e) => ({
+      ...e,
+      items: (Array.isArray(e.items) ? e.items : []).map(gratitudeLine).filter(Boolean),
+    }));
     return { ok: true, result: { entries, count: entries.length } };
+  });
+
+  registerLensAction("mental-health", "gratitude-delete", (ctx, _a, params = {}) => {
+    const s = getMhState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = s.gratitude.get(mhAid(ctx)) || [];
+    const id = String(params.id || "");
+    const idx = list.findIndex((e) => e.id === id);
+    if (idx < 0) return { ok: false, error: "gratitude entry not found" };
+    list.splice(idx, 1);
+    saveMhState();
+    return { ok: true, result: { deleted: id } };
+  });
+
+  registerLensAction("mental-health", "gratitude-update", (ctx, _a, params = {}) => {
+    const s = getMhState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = s.gratitude.get(mhAid(ctx)) || [];
+    const entry = list.find((e) => e.id === String(params.id || ""));
+    if (!entry) return { ok: false, error: "gratitude entry not found" };
+    const items = Array.isArray(params.entries)
+      ? params.entries.map(gratitudeLine).filter(Boolean).slice(0, 10) : [];
+    if (!items.length) return { ok: false, error: "at least one gratitude entry required" };
+    entry.items = items;
+    saveMhState();
+    return { ok: true, result: { entry } };
   });
 
   // ── Goal ────────────────────────────────────────────────────────────

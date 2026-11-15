@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Receipt, Loader2, Trash2, Plus, Check } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface Expense {
   id: string; engagementId: string; engagementName: string; description: string;
@@ -88,8 +89,8 @@ export function ExpenseTracker({ engagements }: { engagements: EngagementOption[
       </div>
 
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5 flex flex-wrap gap-1.5 items-center">
-        <select value={form.engagementId} onChange={e => setForm({ ...form, engagementId: e.target.value })}
-          className="flex-1 min-w-[120px] bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200">
+        <select aria-label="Engagement" onChange={e => setForm({ ...form, engagementId: e.target.value })}
+          className="min-h-11 flex-1 min-w-[120px] bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200">
           <option value="">Engagement…</option>
           {engagements.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
         </select>
@@ -131,7 +132,7 @@ export function ExpenseTracker({ engagements }: { engagements: EngagementOption[
             {exp.status === 'pending' && (
               <button onClick={() => reject(exp)} className="text-[10px] text-rose-400 hover:text-rose-300">reject</button>
             )}
-            <button onClick={() => del(exp.id)} aria-label="Delete" className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+            <StickyDeleteConfirm onConfirm={() => { void del(exp.id); }} armLabel={<Trash2 className="w-3.5 h-3.5" />} armAriaLabel={`Delete expense ${exp.description}`} confirmAriaLabel={`Confirm delete expense ${exp.description}`} className="opacity-0 group-hover:opacity-100 text-rose-400" />
           </li>
         ))}
       </ul>

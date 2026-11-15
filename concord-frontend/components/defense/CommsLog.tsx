@@ -2,13 +2,13 @@
 
 /**
  * CommsLog — classification-tagged communications record, channel-filtered.
- * Backed by defense.comms-post / comms-ack / comms-delete /
- * comms-log macros.
+ * Backed by defense.comms-post / comms-ack / comms-update /
+ * comms-delete / comms-log macros.
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { lensRun } from '@/lib/api/client';
-import { Loader2, Radio, Check, Tag, Send } from 'lucide-react';
+import { Loader2, Radio, Check, Tag, Send, Pencil } from 'lucide-react';
 import { ConfirmDeleteButton } from './ConfirmDeleteButton';
 
 interface CommsMessage {
@@ -114,6 +114,23 @@ export function CommsLog() {
     }
     setBusy(false);
   }, [channel, body, classification, precedence, sender, channelFilter, refresh]);
+
+  // FIX-defense-003: log entries gain an in-place edit (body text).
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editBody, setEditBody] = useState('');
+  const saveEdit = useCallback(async (message: { id: string }) => {
+    if (!editBody.trim()) return;
+    setBusy(true);
+    setError(null);
+    const r = await lensRun('defense', 'comms-update', { id: message.id, body: editBody.trim() });
+    if (r.data?.ok) {
+      setEditingId(null);
+      await refresh(channelFilter);
+    } else {
+      setError(r.data?.error || 'Failed to update message');
+    }
+    setBusy(false);
+  }, [editBody, channelFilter, refresh]);
 
   const ack = useCallback(async (id: string) => {
     setBusy(true);
@@ -235,6 +252,18 @@ export function CommsLog() {
                       <Check className="w-3.5 h-3.5" />
                     </button>
                   )}
+                  <button
+                    onClick={() => {
+                      setEditingId(editingId === m.id ? null : m.id);
+                      setEditBody(m.body);
+                    }}
+                    disabled={busy}
+                    title="Edit message"
+                    aria-label={`Edit message on ${m.channel}`}
+                    className="p-1 text-zinc-400 hover:text-zinc-100 disabled:opacity-50"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
                   <ConfirmDeleteButton
                     ariaLabel="Delete message"
                     itemLabel={`message on ${m.channel}`}
@@ -243,7 +272,20 @@ export function CommsLog() {
                   />
                 </div>
               </div>
-              <p className="text-xs text-zinc-200 mt-1 whitespace-pre-wrap">{m.body}</p>
+              {editingId === m.id ? (
+                <div className="mt-2 space-y-2">
+                  <textarea value={editBody} onChange={(e) => setEditBody(e.target.value)}
+                    aria-label="Edit message body" rows={2}
+                    className="w-full rounded bg-zinc-900 border border-zinc-700 px-2 py-1 text-xs text-white" />
+                  <div className="flex gap-2">
+                    <button onClick={() => saveEdit(m)} disabled={!editBody.trim() || busy}
+                      className="rounded bg-purple-600 hover:bg-purple-500 px-2.5 py-1 text-xs font-medium text-white disabled:opacity-50">Save</button>
+                    <button onClick={() => setEditingId(null)} className="text-xs text-zinc-400 px-1.5">Cancel</button>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-zinc-200 mt-1 whitespace-pre-wrap">{m.body}</p>
+              )}
               <div className="flex items-center justify-between mt-1">
                 <span className="text-[10px] text-zinc-400">{fmtTime(m.postedAt)}</span>
                 {m.acknowledged && (

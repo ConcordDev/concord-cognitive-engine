@@ -85,6 +85,8 @@ describe("marketing.leads", () => {
     const sc = call("lead-score", ctxA, { id: lead.id, emailOpens: 5, linkClicks: 4, formSubmits: 2 });
     assert.equal(sc.result.score, 5 * 2 + 4 * 6 + 2 * 20); // 74
     assert.equal(sc.result.grade, "B");
+    assert.equal(sc.result.weights.emailOpens, 2);
+    assert.equal(sc.result.points.linkClicks, 24);
     call("lead-update-stage", ctxA, { id: lead.id, stage: "won" });
     const attr = call("attribution-report", ctxA, {});
     assert.equal(attr.result.totalRevenue, 5000);

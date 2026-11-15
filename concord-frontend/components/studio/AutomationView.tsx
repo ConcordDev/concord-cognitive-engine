@@ -5,6 +5,7 @@ import { PenTool, MousePointer2, Eraser, Eye, EyeOff, Plus, Trash2 } from 'lucid
 import { cn } from '@/lib/utils';
 import { emitAutomationDrawn } from '@/lib/daw/dtu-hooks';
 import type { AutomationLane, AutomationPoint, DAWTrack } from '@/lib/daw/types';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface AutomationViewProps {
   track: DAWTrack | null;
@@ -218,7 +219,7 @@ export function AutomationView({
                   onClick={(e) => handleCanvasClick(e, lane.id)}
                   onMouseMove={(e) => handlePointDrag(e, lane.id)}
                   onMouseUp={handlePointDragEnd}
-                  onMouseLeave={handlePointDragEnd} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                  onMouseLeave={handlePointDragEnd} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                   {/* Beat grid */}
                   {Array.from({ length: Math.ceil(lengthBeats / 4) }).map((_, i) => (
                     <div

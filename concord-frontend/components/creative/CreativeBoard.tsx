@@ -146,7 +146,7 @@ export function CreativeBoard({ boardId, onExit }: { boardId: string; onExit: ()
     <div className="space-y-3">
       <div className="flex items-center gap-2">
         <button type="button" onClick={onExit}
-          className="flex items-center gap-1 px-2.5 py-1.5 text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg">
+          className="min-h-11 flex items-center gap-1 px-2.5 py-1.5 text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg">
           <ArrowLeft className="w-3.5 h-3.5" /> Boards
         </button>
         {renaming ? (
@@ -156,16 +156,16 @@ export function CreativeBoard({ boardId, onExit }: { boardId: string; onExit: ()
             onChange={(e) => setTitleDraft(e.target.value)}
             onBlur={commitRename}
             onKeyDown={(e) => { if (e.key === 'Enter') void commitRename(); if (e.key === 'Escape') setRenaming(false); }}
-            className="flex-1 bg-zinc-950 border border-amber-600/50 rounded-lg px-2 py-1 text-sm text-zinc-100 focus:outline-none"
+            className="min-h-11 flex-1 bg-zinc-950 border border-amber-600/50 rounded-lg px-2 py-1 text-sm text-zinc-100 focus:outline-none"
           />
         ) : (
-          <button type="button" onClick={startRename} className="flex-1 flex items-center gap-1.5 min-w-0 text-left group" title="Rename board">
+          <button type="button" onClick={startRename} className="min-h-11 flex-1 flex items-center gap-1.5 min-w-0 text-left group" title="Rename board">
             <span className="text-sm font-semibold text-zinc-100 truncate">{title}</span>
             <Pencil className="w-3 h-3 text-zinc-600 group-hover:text-zinc-300 shrink-0" />
           </button>
         )}
         {renaming && (
-          <button aria-label="Confirm rename" type="button" onClick={commitRename} className="text-emerald-400 hover:text-emerald-300">
+          <button aria-label="Confirm rename" type="button" onClick={commitRename} className="min-h-11 text-emerald-400 hover:text-emerald-300">
             <Check className="w-4 h-4" />
           </button>
         )}
@@ -182,7 +182,7 @@ export function CreativeBoard({ boardId, onExit }: { boardId: string; onExit: ()
           const Icon = t.icon;
           return (
             <button key={t.type} type="button" onClick={() => addCard(t.type)}
-              className="flex items-center gap-1 px-2.5 py-1 text-[11px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg">
+              className="min-h-11 flex items-center gap-1 px-2.5 py-1 text-[11px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg">
               <Icon className="w-3 h-3" /> {t.label}
             </button>
           );
@@ -229,7 +229,7 @@ export function CreativeBoard({ boardId, onExit }: { boardId: string; onExit: ()
                   <input value={card.content} placeholder="Heading"
                     onChange={(e) => patchCard(card.id, { content: e.target.value })}
                     onBlur={(e) => saveCard(card.id, { content: e.target.value })}
-                    className="w-full bg-transparent text-sm font-bold text-zinc-100 focus:outline-none" />
+                    className="min-h-11 w-full bg-transparent text-sm font-bold text-zinc-100 focus:outline-none" />
                 ) : card.type === 'task' ? (
                   <div className="flex items-start gap-1.5">
                     <button type="button" onClick={() => saveCard(card.id, { done: !card.done })}
@@ -249,10 +249,10 @@ export function CreativeBoard({ boardId, onExit }: { boardId: string; onExit: ()
                     <input value={card.content} placeholder="https://…"
                       onChange={(e) => patchCard(card.id, { content: e.target.value })}
                       onBlur={(e) => saveCard(card.id, { content: e.target.value })}
-                      className="w-full bg-zinc-950/60 rounded px-1.5 py-1 text-[11px] text-sky-300 focus:outline-none" />
+                      className="min-h-11 w-full bg-zinc-950/60 rounded px-1.5 py-1 text-[11px] text-sky-300 focus:outline-none" />
                     {card.content && /^https?:\/\//.test(card.content) && (
                       <a href={card.content} target="_blank" rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-[10px] text-amber-400 hover:underline">
+                        className="min-h-11 flex items-center gap-1 text-[10px] text-amber-400 hover:underline">
                         <Link2 className="w-3 h-3" /> Open link
                       </a>
                     )}
@@ -262,7 +262,7 @@ export function CreativeBoard({ boardId, onExit }: { boardId: string; onExit: ()
                     <input value={card.content} placeholder="Image URL"
                       onChange={(e) => patchCard(card.id, { content: e.target.value })}
                       onBlur={(e) => saveCard(card.id, { content: e.target.value })}
-                      className="w-full bg-zinc-950/60 rounded px-1.5 py-1 text-[11px] text-zinc-200 focus:outline-none" />
+                      className="min-h-11 w-full bg-zinc-950/60 rounded px-1.5 py-1 text-[11px] text-zinc-200 focus:outline-none" />
                     {card.content && /^https?:\/\//.test(card.content) && (
                       /* eslint-disable-next-line @next/next/no-img-element */
                       <img src={card.content} alt="reference" className="w-full rounded max-h-40 object-cover" />
@@ -284,7 +284,7 @@ export function CreativeBoard({ boardId, onExit }: { boardId: string; onExit: ()
                         card.color === col ? 'ring-1 ring-white' : '')} />
                   ))}
                   <div className="flex-1" />
-                  <button aria-label="Delete" type="button" onClick={() => delCard(card.id)} className="text-zinc-400 hover:text-rose-300">
+                  <button aria-label="Delete" type="button" onClick={() => delCard(card.id)} className="min-h-11 text-zinc-400 hover:text-rose-300">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -303,7 +303,7 @@ export function CreativeBoard({ boardId, onExit }: { boardId: string; onExit: ()
             return (
               <span key={cn.id} className="flex items-center gap-1 text-[10px] bg-zinc-800 text-zinc-400 rounded-lg pl-2 pr-1 py-0.5">
                 {(a?.content || 'card').slice(0, 14) || 'card'} → {(b?.content || 'card').slice(0, 14) || 'card'}
-                <button type="button" onClick={() => delConnection(cn.id)} className="hover:text-rose-300">×</button>
+                <button type="button" onClick={() => delConnection(cn.id)} className="min-h-11 hover:text-rose-300">×</button>
               </span>
             );
           })}

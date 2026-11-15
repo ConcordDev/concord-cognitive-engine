@@ -50,6 +50,17 @@ const SAMPLE_FILES = [
 ];
 
 describe("legacy.technicalDebt (pure-compute)", () => {
+  it("FIX-legacy-004: a negative metric is refused by name; sane metrics still score", () => {
+    const neg = call("technicalDebt", ctxA, { data: { modules: [{ name: "core", linesOfCode: -5 }] } }, {});
+    assert.equal(neg.ok, false);
+    assert.match(neg.error, /Module "core": lines of code must be 0 or more/);
+    const negCov = call("technicalDebt", ctxA, { data: { modules: [{ name: "core", linesOfCode: 100, testCoverage: -20 }] } }, {});
+    assert.equal(negCov.ok, false);
+    assert.match(negCov.error, /test coverage must be between 0 and 100/);
+    const sane = call("technicalDebt", ctxA, { data: { modules: [{ name: "core", linesOfCode: 100, testCoverage: 0 }] } }, {});
+    assert.equal(sane.ok, true);
+  });
+
   it("returns a message when no modules supplied", () => {
     const r = call("technicalDebt", ctxA, { data: { modules: [] } }, {});
     assert.equal(r.ok, true);

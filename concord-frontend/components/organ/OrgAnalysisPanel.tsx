@@ -171,13 +171,13 @@ export function OrgAnalysisPanel() {
                     {teamResult.belbinRoleBalance.missingRoles.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1">
                         {teamResult.belbinRoleBalance.missingRoles.map((r, i) => (
-                          <span key={i} className="text-xs bg-lattice-surface border border-lattice-border rounded px-2 py-0.5 text-gray-500">{r}</span>
+                          <span key={i} className="text-xs bg-lattice-surface border border-lattice-border rounded px-2 py-0.5 text-gray-400">{r}</span>
                         ))}
                       </div>
                     )}
                   </>
                 ) : (
-                  <p className="text-xs text-gray-500">Not offered — no roster member has a Belbin team role set. Add one via Edit Person.</p>
+                  <p className="text-xs text-gray-400">Not offered — no roster member has a Belbin team role set. Add one via Edit Person.</p>
                 )}
               </div>
               <div>
@@ -188,12 +188,12 @@ export function OrgAnalysisPanel() {
                       <div key={key} className="flex items-center gap-2 text-xs">
                         <span className="text-gray-400 w-20 shrink-0">{key}</span>
                         <span className="text-neon-cyan">{d.simpsonDiversity.toFixed(2)}</span>
-                        <span className="text-gray-500">({d.uniqueValues} groups)</span>
+                        <span className="text-gray-400">({d.uniqueValues} groups)</span>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-xs text-gray-500">Not offered — no roster member has demographics set. Add via Edit Person.</p>
+                  <p className="text-xs text-gray-400">Not offered — no roster member has demographics set. Add via Edit Person.</p>
                 )}
               </div>
             </>
@@ -239,6 +239,7 @@ export function OrgAnalysisPanel() {
               {' '}(channel and weight optional).
             </p>
             <textarea
+              aria-label="Interaction log CSV"
               value={commsCsv}
               onChange={(e) => setCommsCsv(e.target.value)}
               placeholder={'ada,grace,slack,3\ngrace,ada,slack,2\nada,linus,email'}

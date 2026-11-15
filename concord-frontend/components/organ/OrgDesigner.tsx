@@ -170,13 +170,18 @@ function ChartTab({ roster, onChange }: { roster: RosterResult | null; onChange:
   const [reassigning, setReassigning] = useState<Employee | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  // FIX-organ-003: removing a person is two-step — the first click arms a
+  // named confirm, the second removes.
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
 
   const employees = roster?.employees || [];
   const tree = roster?.tree || [];
 
-  const remove = async (id: string) => {
+  const remove = async (emp: Employee) => {
+    if (confirmRemoveId !== emp.id) { setConfirmRemoveId(emp.id); return; }
+    setConfirmRemoveId(null);
     setBusy(true);
-    const res = await run('employee-remove', { id });
+    const res = await run('employee-remove', { id: emp.id });
     setMsg(res.ok ? `Removed (${(res.result as any)?.reassigned || 0} reports reassigned)` : res.error);
     setBusy(false);
     if (res.ok) onChange();
@@ -256,8 +261,10 @@ function ChartTab({ roster, onChange }: { roster: RosterResult | null; onChange:
                       <button onClick={() => setEditing(e)} className="p-1 text-gray-400 hover:text-white" aria-label="Edit">
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
-                      <button onClick={() => remove(e.id)} disabled={busy} className="p-1 text-gray-400 hover:text-red-400" aria-label="Remove">
-                        <Trash2 className="w-3.5 h-3.5" />
+                      <button onClick={() => remove(e)} disabled={busy}
+                        className={confirmRemoveId === e.id ? 'rounded bg-rose-600 px-2 py-1 text-[10px] font-semibold text-white' : 'p-1 text-gray-400 hover:text-red-400'}
+                        aria-label={confirmRemoveId === e.id ? `Confirm remove ${e.name}` : 'Remove'}>
+                        {confirmRemoveId === e.id ? `Remove ${e.name}? Click again` : <Trash2 className="w-3.5 h-3.5" />}
                       </button>
                     </div>
                   </td>
@@ -447,6 +454,7 @@ function ReassignModal({
         <div>
           <label className="text-xs text-gray-400">New manager</label>
           <select
+            aria-label="New manager"
             value={newMgr}
             onChange={(e) => setNewMgr(e.target.value)}
             className="w-full mt-0.5 px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-sm"
@@ -557,6 +565,7 @@ function ImportTab({ onImported }: { onImported: () => void }) {
           <input type="file" accept=".csv,text/csv" onChange={onFile} className="hidden" />
         </label>
         <select
+          aria-label="Import mode"
           value={mode}
           onChange={(e) => setMode(e.target.value as 'replace' | 'merge')}
           className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs"
@@ -566,6 +575,7 @@ function ImportTab({ onImported }: { onImported: () => void }) {
         </select>
       </div>
       <textarea
+        aria-label="Roster CSV"
         value={csv}
         onChange={(e) => setCsv(e.target.value)}
         placeholder={'name,title,department,manager,compensation,startDate,status\nAda Lovelace,VP Engineering,Engineering,,210000,2021-03-01,active'}
@@ -623,8 +633,16 @@ function CompTab() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <Stat label="Total Comp" value={usd(data.totalComp)} />
         <Stat label="Headcount" value={String(data.headcount)} />
-        <Stat label="Avg Comp" value={usd(data.avgComp)} />
+        <Stat label="Avg Comp" value={data.avgComp == null ? '—' : usd(data.avgComp)} />
       </div>
+      {/* FIX-organ-004: people with no comp recorded are excluded from
+          the averages — say so, with the count, instead of letting a
+          $0 average pose as a measured one. */}
+      {data.missingComp > 0 && (
+        <p className="text-[11px] text-amber-400">
+          {data.missingComp} {data.missingComp === 1 ? 'person has' : 'people have'} no comp recorded — excluded from the averages above.
+        </p>
+      )}
       <div className="panel p-3">
         <h3 className="text-xs font-semibold mb-2 text-gray-400">Compensation by Department</h3>
         <ChartKit
@@ -653,7 +671,7 @@ function CompTab() {
                 <td className="p-2 text-right">{d.headcount}</td>
                 <td className="p-2 text-right text-amber-400">{d.openReqs}</td>
                 <td className="p-2 text-right font-mono">{usd(d.totalComp)}</td>
-                <td className="p-2 text-right font-mono text-gray-400">{usd(d.avgComp)}</td>
+                <td className="p-2 text-right font-mono text-gray-400">{d.avgComp == null ? '—' : usd(d.avgComp)}{d.missingComp > 0 && <span className="ml-1 text-amber-400" title={`${d.missingComp} with no comp recorded, excluded from this average`}>({d.missingComp} missing)</span>}</td>
               </tr>
             ))}
           </tbody>
@@ -743,12 +761,14 @@ function ScenarioTab({ roster }: { roster: RosterResult | null }) {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Scenario name (e.g. FY27 Q1 expansion)"
+            aria-label="Scenario name"
             className="flex-1 min-w-[200px] px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-sm"
           />
           <div>
             <input
               type="number"
               step="0.05"
+              aria-label="Load factor"
               value={loadFactor}
               onChange={(e) => setLoadFactor(e.target.value)}
               className="w-24 px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-sm"
@@ -760,15 +780,15 @@ function ScenarioTab({ roster }: { roster: RosterResult | null }) {
           <p className="text-xs text-gray-400">Open requisitions to model:</p>
           {reqs.map((r, i) => (
             <div key={i} className="grid grid-cols-5 gap-1.5">
-              <input value={r.title} onChange={(e) => setReq(i, 'title', e.target.value)} placeholder="Title"
+              <input value={r.title} onChange={(e) => setReq(i, 'title', e.target.value)} placeholder="Title" aria-label="Requisition title"
                 className="px-2 py-1 bg-lattice-surface border border-lattice-border rounded text-xs" />
-              <input value={r.department} onChange={(e) => setReq(i, 'department', e.target.value)} placeholder="Dept"
+              <input value={r.department} onChange={(e) => setReq(i, 'department', e.target.value)} placeholder="Dept" aria-label="Requisition department"
                 className="px-2 py-1 bg-lattice-surface border border-lattice-border rounded text-xs" />
-              <input value={r.level} onChange={(e) => setReq(i, 'level', e.target.value)} placeholder="Level"
+              <input value={r.level} onChange={(e) => setReq(i, 'level', e.target.value)} placeholder="Level" aria-label="Requisition level"
                 className="px-2 py-1 bg-lattice-surface border border-lattice-border rounded text-xs" />
-              <input type="number" value={r.baseComp} onChange={(e) => setReq(i, 'baseComp', e.target.value)} placeholder="Base comp"
+              <input type="number" value={r.baseComp} onChange={(e) => setReq(i, 'baseComp', e.target.value)} placeholder="Base comp" aria-label="Requisition base compensation"
                 className="px-2 py-1 bg-lattice-surface border border-lattice-border rounded text-xs" />
-              <input type="number" value={r.count} onChange={(e) => setReq(i, 'count', e.target.value)} placeholder="#"
+              <input type="number" value={r.count} onChange={(e) => setReq(i, 'count', e.target.value)} placeholder="#" aria-label="Requisition count"
                 className="px-2 py-1 bg-lattice-surface border border-lattice-border rounded text-xs" />
             </div>
           ))}
@@ -955,6 +975,7 @@ function SnapshotTab({ roster }: { roster: RosterResult | null }) {
             value={label}
             onChange={(e) => setLabel(e.target.value)}
             placeholder="Label (defaults to today's date)"
+            aria-label="Snapshot label"
             className="flex-1 px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-sm"
           />
           <button onClick={capture} disabled={busy} className="btn-neon text-sm flex items-center gap-1">
@@ -995,12 +1016,12 @@ function SnapshotTab({ roster }: { roster: RosterResult | null }) {
             <div className="panel p-3 space-y-3">
               <h3 className="text-sm font-semibold">Diff Snapshots</h3>
               <div className="flex gap-2 items-center flex-wrap text-sm">
-                <select value={fromId} onChange={(e) => setFromId(e.target.value)}
+                <select aria-label="Diff from snapshot" value={fromId} onChange={(e) => setFromId(e.target.value)}
                   className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-sm">
                   {snapshots.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
                 </select>
                 <span className="text-gray-400">→</span>
-                <select value={toId} onChange={(e) => setToId(e.target.value)}
+                <select aria-label="Diff to snapshot" value={toId} onChange={(e) => setToId(e.target.value)}
                   className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-sm">
                   <option value="live">Live roster</option>
                   {snapshots.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}

@@ -168,7 +168,7 @@ export function AnalysisPanel() {
         ))}
       </div>
       {selectedPage && (
-        <p className="text-[11px] text-gray-500">
+        <p className="text-[11px] text-gray-400">
           Analyzing “{selectedPage.title}” — the tools run over this page’s real content.
         </p>
       )}

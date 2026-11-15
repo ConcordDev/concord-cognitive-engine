@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { TimelineView } from '@/components/viz';
 import type { TimelineEvent } from '@/components/viz';
 import { GanttChartSquare, Plus, Trash2, Loader2, Link2 } from 'lucide-react';
@@ -129,6 +130,7 @@ export function ProjectGantt() {
           <button onClick={createProject} disabled={busy || !newProjectName.trim()} className="btn-neon text-xs disabled:opacity-50">
             <Plus className="w-3.5 h-3.5 inline" /> Project
           </button>
+          {!newProjectName.trim() && <span role="note" className="text-xs text-gray-400 self-center">Project name is required.</span>}
         </div>
       </div>
 
@@ -172,7 +174,7 @@ export function ProjectGantt() {
                             </span>
                           )}
                           <span>{b.durationDays}d · {b.progress}%</span>
-                          <button aria-label="Delete" onClick={() => deletePhase(b.id)} disabled={busy} className="text-gray-400 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
+                          <StickyDeleteConfirm onConfirm={() => deletePhase(b.id)} armAriaLabel="Delete" confirmAriaLabel="Confirm delete" className="text-gray-400 hover:text-red-400" armLabel={<Trash2 className="w-3 h-3" />} disabled={busy} />
                         </span>
                       </div>
                       <div className="relative h-5 bg-lattice-deep rounded">
@@ -216,6 +218,7 @@ export function ProjectGantt() {
             <button onClick={addPhase} disabled={busy || !phaseForm.name.trim()} className="btn-neon green w-full text-xs disabled:opacity-50">
               {busy ? 'Saving...' : 'Add Phase'}
             </button>
+            {!phaseForm.name.trim() && <span role="note" className="text-xs text-gray-400">Phase name is required.</span>}
           </div>
         </>
       )}

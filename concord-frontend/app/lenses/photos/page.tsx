@@ -22,10 +22,13 @@ import { LensShell } from '@/components/lens/LensShell';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useUIStore } from '@/store/ui';
 import { PhotoLightboxModal } from '@/components/photos/PhotoLightboxModal';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface Frame {
   id: string;
   caption: string | null;
+  alt_text?: string | null;
+  tags?: string[];
   dtu_id: string | null;
   taken_at: number | null;
   favorite: boolean;
@@ -40,6 +43,14 @@ interface Album {
 
 type View = 'all' | 'favorites' | 'albums';
 
+type Sort = 'newest' | 'oldest' | 'caption';
+
+const SORTS: { id: Sort; label: string }[] = [
+  { id: 'newest', label: 'Newest first' },
+  { id: 'oldest', label: 'Oldest first' },
+  { id: 'caption', label: 'Caption A–Z' },
+];
+
 function monthLabel(ts: number | null): string {
   if (!ts) return 'Undated';
   return new Date(ts * 1000).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
@@ -47,12 +58,28 @@ function monthLabel(ts: number | null): string {
 
 type Phase = 'loading' | 'ready' | 'error';
 
-function readAsPngDataUrl(file: File): Promise<string> {
+// FIX-photos-008: imports used to be decoded and re-encoded as PNG
+// through a canvas, which destroyed the original format and its EXIF
+// — an uploaded JPG came back labelled "PNG". The file is now sent as
+// its own bytes (the decode below only VALIDATES that the browser can
+// read it as an image). Only a format the store cannot keep as-is
+// (e.g. SVG) still takes the canvas-PNG path.
+const STORABLE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
+
+function readAsImageDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
     const img = new Image();
     img.onload = () => {
       try {
+        if (STORABLE_TYPES.has(file.type)) {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result));
+          reader.onerror = () => reject(new Error('That file could not be read.'));
+          reader.readAsDataURL(file);
+          URL.revokeObjectURL(url);
+          return;
+        }
         const canvas = document.createElement('canvas');
         canvas.width = img.naturalWidth;
         canvas.height = img.naturalHeight;
@@ -120,14 +147,34 @@ export default function PhotosLensPage() {
   const [actionError, setActionError] = useState('');
   const [lightboxId, setLightboxId] = useState<string | null>(null);
   const [view, setView] = useState<View>('all');
-  const [query, setQuery] = useState('');
+  // Search text and sort live in the URL (?q=beach&sort=oldest) so a
+  // reload keeps them instead of clearing the search (FIX-photos-010).
+  // Read once at first render; written back with history.replaceState —
+  // the AssemblyViewer's pattern — so other params survive and no
+  // navigation or remount is triggered.
+  const [query, setQuery] = useState<string>(() => {
+    if (typeof window === 'undefined') return '';
+    return new URLSearchParams(window.location.search).get('q') || '';
+  });
+  const [sort, setSort] = useState<Sort>(() => {
+    if (typeof window === 'undefined') return 'newest';
+    const s = new URLSearchParams(window.location.search).get('sort');
+    return SORTS.some((x) => x.id === s) ? (s as Sort) : 'newest';
+  });
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (query) url.searchParams.set('q', query);
+    else url.searchParams.delete('q');
+    if (sort === 'newest') url.searchParams.delete('sort');
+    else url.searchParams.set('sort', sort);
+    window.history.replaceState(window.history.state, '', url.toString());
+  }, [query, sort]);
   const [editId, setEditId] = useState<string | null>(null);
-  const [editText, setEditText] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [albums, setAlbums] = useState<Album[] | null>(null);
   const [albumMenuFor, setAlbumMenuFor] = useState<string | null>(null);
   const [openAlbum, setOpenAlbum] = useState<{ album: Album; ids: string[] } | null>(null);
-  const [newAlbum, setNewAlbum] = useState('');
 
   const pull = useCallback(async () => {
     const response = await fetch('/api/photos/mine', { credentials: 'include' });
@@ -172,7 +219,7 @@ export default function PhotosLensPage() {
     try {
       for (const file of list) {
         try {
-          const dataUrl = await readAsPngDataUrl(file);
+          const dataUrl = await readAsImageDataUrl(file);
           const caption = file.name.replace(/\.[^.]+$/, '');
           const response = await fetch('/api/photos/save', {
             method: 'POST',
@@ -183,7 +230,7 @@ export default function PhotosLensPage() {
           const body = await readJson(response);
           if (!response.ok || !body.ok || !body.id) {
             throw new Error(body.error === 'blob_too_large'
-              ? 'Over the 5 MB limit once converted to PNG.'
+              ? 'Over the 5 MB limit for a photo.'
               : (body.error || `HTTP ${response.status}`));
           }
           const rows = await pull();
@@ -273,17 +320,17 @@ export default function PhotosLensPage() {
     }
   }, [post, fail]);
 
-  const saveCaption = useCallback(async (id: string) => {
+  const saveCaption = useCallback(async (id: string, details: { caption: string; altText: string; tags: string }) => {
     setActionError('');
     try {
-      const body = await post(`/api/photos/${id}/update`, { caption: editText });
-      const caption = (body as { photo?: { caption?: string | null } }).photo?.caption ?? null;
-      setFrames((rows) => rows.map((r) => (r.id === id ? { ...r, caption } : r)));
+      const body = await post(`/api/photos/${id}/update`, { caption: details.caption, altText: details.altText, tags: details.tags });
+      const photo = (body as { photo?: { caption?: string | null; alt_text?: string | null; tags?: string[] } }).photo;
+      setFrames((rows) => rows.map((r) => (r.id === id ? { ...r, caption: photo?.caption ?? null, alt_text: photo?.alt_text ?? null, tags: photo?.tags ?? [] } : r)));
       setEditId(null);
     } catch (e) {
-      fail(e, 'Could not save caption');
+      fail(e, 'Could not save photo details');
     }
-  }, [post, editText, fail]);
+  }, [post, fail]);
 
   const loadAlbums = useCallback(async () => {
     try {
@@ -307,17 +354,18 @@ export default function PhotosLensPage() {
     void loadAlbums();
   }, [loadAlbums]);
 
-  const createAlbum = useCallback(async () => {
-    const name = newAlbum.trim();
-    if (!name) return;
+  const createAlbum = useCallback(async (rawName: string) => {
+    const name = rawName.trim();
+    if (!name) return false;
     try {
       await post('/api/photos/albums', { name });
-      setNewAlbum('');
       await loadAlbums();
+      return true;
     } catch (e) {
       fail(e, 'Could not create album');
+      return false;
     }
-  }, [newAlbum, post, loadAlbums, fail]);
+  }, [post, loadAlbums, fail]);
 
   const deleteAlbum = useCallback(async (album: Album) => {
     try {
@@ -361,10 +409,19 @@ export default function PhotosLensPage() {
     if (view === 'favorites') rows = rows.filter((f) => f.favorite);
     if (view === 'albums') rows = openAlbum ? rows.filter((f) => openAlbum.ids.includes(f.id)) : [];
     if (q) rows = rows.filter((f) => (f.caption || 'untitled').toLowerCase().includes(q));
-    return rows;
-  }, [frames, view, openAlbum, query]);
+    // Sort (FIX-photos-010): the frame shipped with view filters but no
+    // ordering control. Undated frames sort last in both date orders.
+    const sorted = [...rows];
+    if (sort === 'newest') sorted.sort((a, b) => (b.taken_at ?? 0) - (a.taken_at ?? 0));
+    else if (sort === 'oldest') sorted.sort((a, b) => (a.taken_at ?? Number.MAX_SAFE_INTEGER) - (b.taken_at ?? Number.MAX_SAFE_INTEGER));
+    else sorted.sort((a, b) => (a.caption || 'untitled').localeCompare(b.caption || 'untitled'));
+    return sorted;
+  }, [frames, view, openAlbum, query, sort]);
 
   const groups = useMemo(() => {
+    // Month sections only make sense for date orderings; a caption sort
+    // is one alphabetical run.
+    if (sort === 'caption') return visible.length ? [{ label: 'Caption A–Z', rows: visible }] : [];
     const out: { label: string; rows: Frame[] }[] = [];
     for (const f of visible) {
       const label = monthLabel(f.taken_at);
@@ -373,7 +430,7 @@ export default function PhotosLensPage() {
       else out.push({ label, rows: [f] });
     }
     return out;
-  }, [visible]);
+  }, [visible, sort]);
 
   useLensCommand(
     [{ id: 'photos-import', keys: 'i', description: 'Import', category: 'actions', action: () => fileRef.current?.click() }],
@@ -422,34 +479,29 @@ export default function PhotosLensPage() {
                     </button>
                   ))}
                 </div>
+                <select
+                  value={sort}
+                  onChange={(e) => setSort(e.target.value as Sort)}
+                  aria-label="Sort photos"
+                  className="ml-auto rounded-full border border-white/10 bg-black/40 px-3 py-1 text-[13px] text-zinc-100"
+                >
+                  {SORTS.map((s) => (
+                    <option key={s.id} value={s.id}>{s.label}</option>
+                  ))}
+                </select>
                 <input
                   type="search"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search captions"
                   aria-label="Search captions"
-                  className="ml-auto w-48 rounded-full border border-white/10 bg-black/40 px-3 py-1 text-[13px] text-zinc-100 placeholder:text-zinc-600"
+                  className="w-48 rounded-full border border-white/10 bg-black/40 px-3 py-1 text-[13px] text-zinc-100 placeholder:text-zinc-600"
                 />
               </div>
 
               {view === 'albums' && !openAlbum && (
                 <div data-testid="photos-albums" className="mb-6">
-                  <form
-                    className="mb-4 flex gap-2"
-                    onSubmit={(e) => { e.preventDefault(); void createAlbum(); }}
-                  >
-                    <input
-                      value={newAlbum}
-                      onChange={(e) => setNewAlbum(e.target.value)}
-                      placeholder="New album name"
-                      aria-label="New album name"
-                      maxLength={80}
-                      className="flex-1 rounded-lg border border-white/10 bg-black/40 px-3 py-1.5 text-[13px] text-zinc-100"
-                    />
-                    <button type="submit" disabled={!newAlbum.trim()} className="rounded-lg bg-zinc-100 px-3 py-1.5 text-[13px] text-black disabled:opacity-40">
-                      Create album
-                    </button>
-                  </form>
+                  <CreateAlbumForm onCreate={createAlbum} />
                   {albums === null ? (
                     <p role="status" className="text-[13px] text-zinc-500">Loading albums.</p>
                   ) : albums.length === 0 ? (
@@ -468,14 +520,13 @@ export default function PhotosLensPage() {
                             <span className="block px-3 pt-2 text-[14px] text-zinc-100">{album.name}</span>
                             <span className="block px-3 pb-2 text-[12px] text-zinc-500">{album.count} {album.count === 1 ? 'photo' : 'photos'}</span>
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => void deleteAlbum(album)}
-                            aria-label={`Delete album ${album.name}`}
-                            className="absolute right-2 top-2 rounded bg-black/70 px-2 py-0.5 text-[11px] text-zinc-300 opacity-0 transition-opacity focus:opacity-100 group-hover:opacity-100"
-                          >
-                            Delete
-                          </button>
+                          <StickyDeleteConfirm
+                            onConfirm={() => void deleteAlbum(album)}
+                            armLabel="Delete"
+                            armAriaLabel={`Delete album ${album.name}`}
+                            confirmAriaLabel={`Confirm delete album ${album.name}`}
+                            className="absolute right-2 top-2 rounded bg-black/70 px-2 py-0.5 text-[11px] text-zinc-100"
+                          />
                         </li>
                       ))}
                     </ul>
@@ -515,7 +566,7 @@ export default function PhotosLensPage() {
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
                                 src={`/api/photos/${frame.id}/image`}
-                                alt={frame.caption || 'Untitled photo'}
+                                alt={frame.alt_text || frame.caption || 'Untitled photo'}
                                 className="mb-2 aspect-square w-full rounded-lg object-cover"
                               />
                             </button>
@@ -529,23 +580,23 @@ export default function PhotosLensPage() {
                               {frame.favorite ? '\u2605' : '\u2606'}
                             </button>
                             {editId === frame.id ? (
-                              <form
-                                className="flex gap-1"
-                                onSubmit={(e) => { e.preventDefault(); void saveCaption(frame.id); }}
-                              >
-                                <input
-                                  autoFocus
-                                  value={editText}
-                                  onChange={(e) => setEditText(e.target.value)}
-                                  onKeyDown={(e) => { if (e.key === 'Escape') setEditId(null); }}
-                                  aria-label={`Caption for ${name}`}
-                                  maxLength={280}
-                                  className="min-w-0 flex-1 rounded border border-white/10 bg-black/60 px-2 py-0.5 text-[13px] text-zinc-100"
-                                />
-                                <button type="submit" className="text-[12px] text-teal-300">Save</button>
-                              </form>
+                              <CaptionEditForm
+                                initial={frame.caption || ''}
+                                initialAlt={frame.alt_text || ''}
+                                initialTags={(frame.tags || []).join(', ')}
+                                label={name}
+                                onSave={(details) => void saveCaption(frame.id, details)}
+                                onCancel={() => setEditId(null)}
+                              />
                             ) : (
-                              <span className="block truncate text-[14px] text-zinc-100">{name}</span>
+                              <>
+                                <span className="block truncate text-[14px] text-zinc-100">{name}</span>
+                                {(frame.tags || []).length > 0 && (
+                                  <span className="mt-0.5 flex flex-wrap gap-1">
+                                    {frame.tags!.map((t) => <span key={t} className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-zinc-400">#{t}</span>)}
+                                  </span>
+                                )}
+                              </>
                             )}
                             {frame.dtu_id ? (
                               <p className="mt-1 truncate text-[11px] text-zinc-500">
@@ -557,8 +608,8 @@ export default function PhotosLensPage() {
                               {editId !== frame.id && (
                                 <button
                                   type="button"
-                                  onClick={() => { setEditId(frame.id); setEditText(frame.caption || ''); }}
-                                  aria-label={`Edit caption ${name}`}
+                                  onClick={() => setEditId(frame.id)}
+                                  aria-label={`Edit details for ${name}`}
                                   className="text-zinc-400 underline"
                                 >
                                   Edit
@@ -677,7 +728,87 @@ export default function PhotosLensPage() {
           {importing ? 'Importing…' : 'Import'}
         </button>
       </div>
-      <PhotoLightboxModal photoId={lightboxId} onClose={() => setLightboxId(null)} />
+      <PhotoLightboxModal
+        photoId={lightboxId}
+        photoIds={visible.map((f) => f.id)}
+        onClose={() => setLightboxId(null)}
+        onSelect={setLightboxId}
+      />
     </LensShell>
+  );
+}
+
+// FIX-photos-009: the album-name and caption fields held their text in the
+// page component, so every keystroke re-rendered the whole library grid.
+// Both forms now own their text locally; the page only hears about a
+// completed name/caption.
+function CreateAlbumForm({ onCreate }: { onCreate: (name: string) => Promise<boolean> }) {
+  const [name, setName] = useState('');
+  const [touched, setTouched] = useState(false);
+  return (
+    <form
+      className="mb-4 flex gap-2"
+      onSubmit={(e) => { e.preventDefault(); void onCreate(name).then((ok) => { if (ok) setName(''); }); }}
+    >
+      <input
+        value={name}
+        onChange={(e) => { setName(e.target.value); setTouched(true); }}
+        placeholder="New album name"
+        aria-label="New album name"
+        maxLength={80}
+        className="flex-1 rounded-lg border border-white/10 bg-black/40 px-3 py-1.5 text-[13px] text-zinc-100"
+      />
+      <button type="submit" disabled={!name.trim()} className="rounded-lg bg-zinc-100 px-3 py-1.5 text-[13px] text-black disabled:opacity-40">
+        Create album
+      </button>
+      {touched && !name.trim() && <span className="self-center text-[11px] text-zinc-500">Name the album to create it.</span>}
+    </form>
+  );
+}
+
+function CaptionEditForm({ initial, initialAlt, initialTags, label, onSave, onCancel }: {
+  initial: string; initialAlt: string; initialTags: string; label: string;
+  onSave: (details: { caption: string; altText: string; tags: string }) => void; onCancel: () => void;
+}) {
+  // FIX-photos-006: the editor gains alt text + tags beside the caption.
+  const [text, setText] = useState(initial);
+  const [altText, setAltText] = useState(initialAlt);
+  const [tags, setTags] = useState(initialTags);
+  const inputCls = "w-full rounded border border-white/10 bg-black/60 px-2 py-0.5 text-[13px] text-zinc-100";
+  return (
+    <form
+      className="space-y-1.5"
+      onSubmit={(e) => { e.preventDefault(); onSave({ caption: text, altText, tags }); }}
+      onKeyDown={(e) => { if (e.key === 'Escape') onCancel(); }}
+    >
+      <input
+        autoFocus
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        aria-label={`Caption for ${label}`}
+        placeholder="Caption"
+        maxLength={280}
+        className={inputCls}
+      />
+      <input
+        value={altText}
+        onChange={(e) => setAltText(e.target.value)}
+        aria-label={`Alt text for ${label}`}
+        placeholder="Alt text (for screen readers)"
+        maxLength={300}
+        className={inputCls}
+      />
+      <input
+        value={tags}
+        onChange={(e) => setTags(e.target.value)}
+        aria-label={`Tags for ${label}`}
+        placeholder="Tags, comma separated"
+        className={inputCls}
+      />
+      <span className="flex gap-2">
+        <button type="submit" className="text-[12px] text-teal-300">Save</button>
+        <button type="button" onClick={onCancel} className="text-[12px] text-zinc-400">Cancel</button>
+      </span>
+    </form>
   );
 }

@@ -104,6 +104,22 @@ describe("romance-engine library", () => {
     assert.equal(getCourtship(db, "alice", "npc", "bob").status, "engaged");
   });
 
+  it("propose reconciles an estranged courtship at high affinity and refuses a widowed one", () => {
+    courtInteraction(db, "alice", "npc", "estranged-npc", 1);
+    db.prepare(`UPDATE player_courtship SET affinity = 0.93, status = 'estranged' WHERE player_user_id = ? AND partner_id = ?`)
+      .run("alice", "estranged-npc");
+    const again = propose(db, "alice", "npc", "estranged-npc");
+    assert.equal(again.ok, true);
+    assert.equal(getCourtship(db, "alice", "npc", "estranged-npc").status, "engaged");
+
+    courtInteraction(db, "alice", "npc", "widowed-npc", 1);
+    db.prepare(`UPDATE player_courtship SET affinity = 1, status = 'widowed' WHERE player_user_id = ? AND partner_id = ?`)
+      .run("alice", "widowed-npc");
+    const blocked = propose(db, "alice", "npc", "widowed-npc");
+    assert.equal(blocked.ok, false);
+    assert.equal(blocked.reason, "widowed");
+  });
+
   it("wed transitions engaged → married and creates a marriage row", () => {
     pumpAffinity("alice", "bob", 25);
     propose(db, "alice", "npc", "bob");

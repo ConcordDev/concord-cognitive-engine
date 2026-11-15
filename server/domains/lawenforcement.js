@@ -42,6 +42,8 @@
 // no figure is presented as lens-wide that was computed over less.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { checkTitle, checkText, firstBoundsFailure } from "../lib/bounds.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
 import { lookupUserIdentity } from "../lib/user-identity.js";
 import crypto from "node:crypto";
 
@@ -203,7 +205,10 @@ export default function registerLawEnforcementActions(registerLensAction) {
     const evidenceCount = bookedEvidence.length + stagedEvidence.length;
     const evidenceScore = Math.min(100, evidenceCount * 15);
     const witnessScore = Math.min(100, witnesses.length * 20);
-    const suspectLinks = suspects.reduce((s, su) => s + ((su.evidenceLinks || []).length), 0);
+    // FIX-law-enforcement-006: count at most 1,000 links per suspect
+    // (4 already max the score term) and only when the field is really
+    // an array — a numeric evidenceLinks used to poison the sum to NaN.
+    const suspectLinks = suspects.reduce((s, su) => s + (Array.isArray(su && su.evidenceLinks) ? Math.min(1000, su.evidenceLinks.length) : 0), 0);
     const caseStrength = Math.round(evidenceScore * 0.4 + witnessScore * 0.3 + Math.min(100, suspectLinks * 25) * 0.3);
     const scope = linkedCase
       ? `Scope: case ${linkedCase.caseNumber} on file — ${bookedEvidence.length} evidence item(s) booked in custody against it, plus ${stagedEvidence.length} staged workbench row(s); witnesses and suspects are workbench entries only.`
@@ -219,7 +224,24 @@ export default function registerLawEnforcementActions(registerLensAction) {
     // zone as a detected hotspot.
     const scope = "Scope: patrol zones staged in this workbench (planning rows with operator-entered crime rates) — not detections; the Crime Map is the lens's hotspot detector.";
     if (zones.length === 0) return { ok: true, result: { message: "Add patrol zones with crime data.", scope } };
-    const analyzed = zones.map(z => ({ zone: z.name, crimeRate: parseFloat(z.crimeRate) || 0, population: parseInt(z.population) || 0, currentPatrols: parseInt(z.currentPatrols) || 0, recommended: Math.ceil((parseFloat(z.crimeRate) || 0) / 10) }));
+    // FIX-law-enforcement-006: the zone numbers used to pass through
+    // parseFloat/parseInt with only a NaN fallback, so negatives and
+    // absurd magnitudes computed straight into the plan (Patrol -1/-1;
+    // a 1e9 crime rate "needs 100000000 units"). Each field is now
+    // refused by name outside a sane range — blank still counts as 0,
+    // as it did.
+    const analyzed = [];
+    for (const z of zones) {
+      const zoneName = z && z.name != null ? String(z.name) : "";
+      const blank = (v) => v === "" || v == null;
+      const crimeRate = blank(z && z.crimeRate) ? 0 : Number(z.crimeRate);
+      const population = blank(z && z.population) ? 0 : Number(z.population);
+      const currentPatrols = blank(z && z.currentPatrols) ? 0 : Number(z.currentPatrols);
+      if (!Number.isFinite(crimeRate) || crimeRate < 0 || crimeRate > 10000) return { ok: false, error: "invalid_input", reason: `Zone "${zoneName}": crime rate must be a number between 0 and 10,000.` };
+      if (!Number.isFinite(population) || population < 0 || population > 100000000) return { ok: false, error: "invalid_input", reason: `Zone "${zoneName}": population must be a number between 0 and 100,000,000.` };
+      if (!Number.isFinite(currentPatrols) || currentPatrols < 0 || currentPatrols > 100000) return { ok: false, error: "invalid_input", reason: `Zone "${zoneName}": current patrols must be a number between 0 and 100,000.` };
+      analyzed.push({ zone: z.name, crimeRate, population: Math.floor(population), currentPatrols: Math.floor(currentPatrols), recommended: Math.ceil(crimeRate / 10) });
+    }
     return { ok: true, result: { zones: analyzed, totalUnitsNeeded: analyzed.reduce((s, z) => s + z.recommended, 0), totalCurrentUnits: analyzed.reduce((s, z) => s + z.currentPatrols, 0), hotspots: analyzed.filter(z => z.crimeRate > 50).map(z => z.zone), scope } };
   });
   registerLensAction("law-enforcement", "incidentReport", (ctx, artifact, _params) => {
@@ -1229,6 +1251,13 @@ export default function registerLawEnforcementActions(registerLensAction) {
       const p = params || {};
       const title = str(p.title);
       if (!title) return { ok: false, error: "title is required" };
+      // GB-1539 (FIX-law-enforcement-008): a case title over the title
+      // limit refuses with the limit named — it stored unbounded before.
+      const badCase = firstBoundsFailure(
+        checkTitle("title", p.title),
+        checkText("synopsis", p.synopsis, "note"),
+      );
+      if (badCase) return badCase;
       const uidActor = actorId(ctx);
       const cs = caseStore(ctx);
       const requestedNumber = normalizeCaseNumber(p.caseNumber);
@@ -1335,9 +1364,15 @@ export default function registerLawEnforcementActions(registerLensAction) {
       if (p.title !== undefined) {
         const nextTitle = str(p.title);
         if (!nextTitle) return { ok: false, error: "title cannot be blank" };
+        const badTitle = checkTitle("title", p.title);
+        if (badTitle) return badTitle;
         rec.title = nextTitle;
       }
-      if (p.synopsis !== undefined) rec.synopsis = str(p.synopsis);
+      if (p.synopsis !== undefined) {
+        const badSynopsis = checkText("synopsis", p.synopsis, "note");
+        if (badSynopsis) return badSynopsis;
+        rec.synopsis = str(p.synopsis);
+      }
       if (p.assignedDetective !== undefined) rec.assignedDetective = str(p.assignedDetective);
       if (p.closureReason !== undefined && rec.status === "closed") rec.closureReason = str(p.closureReason);
 
@@ -1427,5 +1462,29 @@ export default function registerLawEnforcementActions(registerLensAction) {
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }
+  });
+
+  // FIX-law-enforcement-001: the ticket's fixture is a case, and cases
+  // are the one LE store that does NOT live in the state bag — with a
+  // database present they sit in the le_cases table (migration 362);
+  // the in-memory cases bucket is only the no-db fallback. No export
+  // leg reads the table, so the Export menu said "Nothing to export
+  // yet" over a live case load. The provider emits the caller's cases
+  // through the domain's own caseStore, which already resolves the
+  // db-vs-memory store per call. (The other LE buckets — calls, units,
+  // evidence, officers, map incidents, warrants, reports, bookings —
+  // are state-bag Maps the shared state leg already enumerates.)
+  registerLensExportProvider("law-enforcement", (ctx) => {
+    const userId = actorId(ctx);
+    if (!userId || userId === "anon") return [];
+    let cases = [];
+    try { cases = caseStore(ctx).listForUser(userId); } catch { cases = []; }
+    return (Array.isArray(cases) ? cases : []).map((c) => ({
+      id: c.id, type: "case",
+      title: c.title || c.caseNumber || c.id,
+      createdAt: c.createdAt || c.openedAt || null,
+      updatedAt: c.updatedAt || null,
+      data: c,
+    }));
   });
 }

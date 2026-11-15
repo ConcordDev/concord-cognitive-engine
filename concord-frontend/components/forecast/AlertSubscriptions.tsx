@@ -22,6 +22,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Radio, BellRing } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { BOUNDS } from '@/lib/bounds';
 import { useSocket } from '@/hooks/useSocket';
 import { useUIStore } from '@/store/ui';
 
@@ -204,6 +205,7 @@ export function AlertSubscriptions({ worldId }: { worldId: string }) {
               <input
                 type="text"
                 value={weatherKinds}
+                maxLength={BOUNDS.TITLE}
                 onChange={(e) => setWeatherKinds(e.target.value)}
                 placeholder="storm, snow, fog"
                 className="mt-1 w-full rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-100"
@@ -222,8 +224,8 @@ export function AlertSubscriptions({ worldId }: { worldId: string }) {
       </div>
 
       {/* Honest live-vs-manual delivery labeling */}
-      <div className="flex items-center gap-1.5 text-[10px] text-zinc-500">
-        <Radio className={isConnected ? 'w-3 h-3 text-emerald-400' : 'w-3 h-3 text-zinc-600'} />
+      <div className="flex items-center gap-1.5 text-[10px] text-zinc-400">
+        <Radio className={isConnected ? 'w-3 h-3 text-emerald-400' : 'w-3 h-3 text-zinc-400'} />
         <span>
           {isConnected
             ? 'Live alerts — while this tab is open, a tripped subscription notifies you within a few minutes of the sweep.'
@@ -263,7 +265,7 @@ export function AlertSubscriptions({ worldId }: { worldId: string }) {
           )}
         </div>
         {subs.length > 0 && (
-          <p className="mb-2 text-[10px] text-zinc-500">
+          <p className="mb-2 text-[10px] text-zinc-400">
             Subscriptions deliver live to this tab (~5min sweep cadence) while connected. Use &quot;Check against fresh forecast&quot; (or press <kbd className="rounded border border-zinc-700 bg-zinc-900 px-1 py-0.5 font-mono">7</kbd> then check) any time for an immediate read, or to catch alerts that fired while this tab was closed.
           </p>
         )}

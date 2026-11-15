@@ -62,13 +62,13 @@ export function RankedFeed({ currentUserId, onOpenPost }: { currentUserId: strin
           )}
           <div className="relative">
             <p className="text-sm text-zinc-200">{post.content}</p>
-            {post.sensitiveHidden && <p className="mt-1 text-xs text-zinc-500">Sensitive media hidden</p>}
+            {post.sensitiveHidden && <p className="mt-1 text-xs text-zinc-400">Sensitive media hidden</p>}
             {/* Attached Studio track or Marketplace item → real media card
                 (play button, never autoplay). `relative` keeps its controls
                 above the open-post overlay. */}
             <PostMediaCard className="relative" mediaType={post.mediaType} mediaUrl={post.mediaUrl} listing={post.listing} />
             {post.why && post.why.length > 0 && (
-              <p className="mt-1 text-[11px] text-zinc-500">Why this is here: {post.why.join(' · ')}</p>
+              <p className="mt-1 text-[11px] text-zinc-400">Why this is here: {post.why.join(' · ')}</p>
             )}
           </div>
           <div className="relative mt-2 flex gap-2">

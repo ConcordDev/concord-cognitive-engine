@@ -49,10 +49,16 @@ export function selectGlobalFeed(dtus, opts = {}) {
     if (isPrivateFrom(d, viewerId || null)) continue;
     if (tier && d.tier !== tier) continue;
     if (lens) {
+      // A row that names the lens it was published FROM belongs to that
+      // lens's feed only: a tag or domain match must never pull another
+      // lens's publication into this lens's feed. Origin-less rows
+      // (no publishedFromLens) are still discoverable by tag/domain.
+      const fromLens = d.meta?.publishedFromLens ? String(d.meta.publishedFromLens).toLowerCase() : null;
+      if (fromLens && fromLens !== lens) continue;
       const onLens =
-        d.meta?.publishedFromLens === lens ||
+        fromLens === lens ||
         (d.tags || []).some((t) => String(t).toLowerCase() === lens) ||
-        d.meta?.domain === lens;
+        String(d.meta?.domain || "").toLowerCase() === lens;
       if (!onLens) continue;
     }
     out.push(d);

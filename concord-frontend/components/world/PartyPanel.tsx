@@ -242,12 +242,18 @@ export function PartyPanel() {
               <div>
                 <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">You're not in a party.</h3>
                 <input
+                  id="party-create-name"
+                  name="name"
+                  aria-label="Party name"
                   value={createForm.name}
                   onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
                   placeholder="Party name"
                   className="mb-2 block w-full rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-100 focus:border-emerald-500/50 focus:outline-none"
                 />
                 <select
+                  id="party-create-type"
+                  name="partyType"
+                  aria-label="Party type"
                   value={createForm.partyType}
                   onChange={(e) => setCreateForm({ ...createForm, partyType: e.target.value as 'normal' | 'raid' })}
                   className="mb-2 block w-full rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-100 focus:border-emerald-500/50 focus:outline-none"

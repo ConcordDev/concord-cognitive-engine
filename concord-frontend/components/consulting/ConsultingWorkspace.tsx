@@ -144,6 +144,7 @@ export function ConsultingWorkspace() {
     isConsultingTool(initialState?.tool) ? initialState.tool : 'engagements'
   ));
   const [refreshKey, setRefreshKey] = useState(0);
+  const [newFocusSignal, setNewFocusSignal] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const queryClient = useQueryClient();
   const reduceMotion = useReducedMotion();
@@ -218,7 +219,7 @@ export function ConsultingWorkspace() {
   );
 
   let panel: ReactNode;
-  if (tool === 'engagements') panel = <EngagementTracker onChanged={() => void refetchEngagements()} />;
+  if (tool === 'engagements') panel = <EngagementTracker onChanged={() => void refetchEngagements()} newFocusSignal={newFocusSignal} />;
   else if (tool === 'timer') panel = <LiveTimer engagements={engagements} onLogged={onTimeLogged} />;
   else if (tool === 'invoices') panel = <InvoiceManager key={`invoice-${refreshKey}`} engagements={engagements} />;
   else if (tool === 'proposals') panel = <ProposalBuilder />;
@@ -247,18 +248,18 @@ export function ConsultingWorkspace() {
           >
             {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
             Refresh
-            <kbd aria-hidden="true" className="font-mono text-[10px] text-white/30">⇧R</kbd>
+            <kbd aria-hidden="true" className="font-mono text-[10px] text-stone-400">⇧R</kbd>
           </button>
           <DTUExportButton domain="consulting" data={latestData || {}} compact />
         </>
       )}
-      cta={{ label: 'New', icon: Plus, onClick: () => selectTool('engagements'), title: 'Start or open an engagement (1)' }}
+      cta={{ label: 'New', icon: Plus, onClick: () => { selectTool('engagements'); setNewFocusSignal((n) => n + 1); }, title: 'Start a new engagement (1)' }}
     >
       <div className="grid gap-6 rounded-2xl border border-white/10 bg-zinc-950 p-4 lg:grid-cols-[12rem_minmax(0,1fr)]">
         <nav aria-label="Consulting tools" className="flex gap-2 overflow-x-auto border-b border-amber-100/10 pb-3 lg:block lg:border-b-0 lg:border-r lg:pb-0 lg:pr-4">
           {GROUPS.map((group) => (
             <div key={group} className="flex shrink-0 gap-1 lg:mb-5 lg:block">
-              <p className="hidden px-2 pb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-700 lg:block">{group}</p>
+              <p className="hidden px-2 pb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-400 lg:block">{group}</p>
               {TOOLS.filter((item) => item.group === group).map((item) => {
                 const Icon: ComponentType<{ className?: string }> = item.icon;
                 const selected = item.id === tool;
@@ -270,15 +271,15 @@ export function ConsultingWorkspace() {
                     aria-current={selected ? 'page' : undefined}
                     title={item.description}
                     className={cn(
-                      'flex w-full shrink-0 items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition-colors',
+                      'flex min-h-11 w-full shrink-0 items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition-colors',
                       selected
                         ? 'bg-amber-100/10 text-stone-50'
-                        : 'text-stone-500 hover:bg-amber-50/[0.04] hover:text-stone-200',
+                        : 'text-stone-400 hover:bg-amber-50/[0.04] hover:text-stone-200',
                     )}
                   >
                     <Icon className="h-4 w-4" />
                     <span>{item.label}</span>
-                    <kbd aria-hidden="true" className="ml-auto hidden font-mono text-[10px] text-white/25 lg:inline">{item.key}</kbd>
+                    <kbd aria-hidden="true" className="ml-auto hidden font-mono text-[10px] text-stone-400 lg:inline">{item.key}</kbd>
                   </button>
                 );
               })}
@@ -292,7 +293,7 @@ export function ConsultingWorkspace() {
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-100/10 bg-amber-50/[0.03] px-4 py-3">
                 <div>
                   <p className="text-sm font-medium text-stone-200">Consulting-domain event feed</p>
-                  <p className="text-xs text-stone-500">Platform events only; this is not a client activity collector.</p>
+                  <p className="text-xs text-stone-400">Platform events only; this is not a client activity collector.</p>
                 </div>
                 <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
               </div>

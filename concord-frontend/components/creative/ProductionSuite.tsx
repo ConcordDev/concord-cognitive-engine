@@ -17,14 +17,16 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { calendarDateKey } from '@/lib/calendar-date';
 import { TimelineView, type TimelineEvent } from '@/components/viz';
 import { notifyCreativeDashboardDirty } from '@/lib/creative/dashboard-bus';
 import {
   Clapperboard, MessageSquare, ClipboardList, Layers, CalendarDays, Link2,
   Plus, Trash2, X, CheckCircle2, Clock, Send, RotateCcw, Film, Image as ImageIcon,
-  Copy, Check, ChevronRight, Tag, Users, MapPin,
+  Copy, Check, ChevronRight, Tag, Users, MapPin, Pencil,
 } from 'lucide-react';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -91,11 +93,11 @@ const CAL_TONE: Record<string, TimelineEvent['tone']> = {
 // Shared UI atoms
 // ---------------------------------------------------------------------------
 const PANEL = 'rounded-xl border border-zinc-800 bg-zinc-950/40 p-4';
-const INPUT = 'w-full rounded-lg bg-zinc-900 border border-zinc-700 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-violet-500 focus:outline-none';
-const BTN = 'inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors';
+const INPUT = 'min-h-11 w-full rounded-lg bg-zinc-900 border border-zinc-700 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-violet-500 focus:outline-none';
+const BTN = 'inline-flex min-h-11 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors';
 const BTN_PRIMARY = `${BTN} bg-violet-600 hover:bg-violet-500 text-white disabled:opacity-40`;
 const BTN_SECONDARY = `${BTN} bg-zinc-800 hover:bg-zinc-700 text-zinc-200`;
-const BTN_GHOST = 'p-1 rounded text-zinc-400 hover:text-zinc-200 transition-colors';
+const BTN_GHOST = 'inline-flex h-11 w-11 items-center justify-center rounded text-zinc-400 hover:text-zinc-200 transition-colors';
 
 function fmtTime(sec: number | null): string {
   if (sec == null) return '--:--';
@@ -146,7 +148,7 @@ export function ProductionSuite() {
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+              className={`min-h-11 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
                 tab === t.id ? 'bg-violet-500/20 text-violet-300' : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100'
               }`}
             >
@@ -178,6 +180,7 @@ function ReviewTab() {
   const [showNew, setShowNew] = useState(false);
   const [name, setName] = useState('');
   const [kind, setKind] = useState<'video' | 'image'>('video');
+  const [uploadedKind, setUploadedKind] = useState<'video' | 'image' | null>(null);
   const [src, setSrc] = useState('');
   const [duration, setDuration] = useState('');
   const [project, setProject] = useState('');
@@ -214,6 +217,7 @@ function ReviewTab() {
       const { src: uploadedSrc, kind: detectedKind } = await uploadReviewFile(file);
       setSrc(uploadedSrc);
       setKind(detectedKind);
+      setUploadedKind(detectedKind);
       if (!name.trim()) setName(file.name.replace(/\.[^.]+$/, ''));
     } catch (e: unknown) {
       setUploadErr(e instanceof Error ? e.message : 'Upload failed');
@@ -224,15 +228,34 @@ function ReviewTab() {
 
   const createAsset = async () => {
     if (!name.trim()) return;
+    // FIX-creative-010: an image saved as a Video asset leaves the
+    // player spinning forever. Uploaded files already detect their
+    // kind — a mismatch with the manual select is refused in words;
+    // pasted URLs are checked by extension the same way.
+    const trimmedSrc = src.trim();
+    if (trimmedSrc.startsWith('/api/artifact/') && uploadedKind && uploadedKind !== kind) {
+      setUploadErr(`The uploaded file is ${uploadedKind === 'image' ? 'an image' : 'a video'}, but the asset type is set to ${kind === 'image' ? 'Image' : 'Video'}. Switch the type to match the file.`);
+      return;
+    }
+    if (trimmedSrc && !trimmedSrc.startsWith('/api/artifact/')) {
+      const isImageUrl = /\.(png|jpe?g|gif|webp|avif|svg)(\?.*)?$/i.test(trimmedSrc);
+      const isVideoUrl = /\.(mp4|webm|mov|m4v)(\?.*)?$/i.test(trimmedSrc);
+      if (kind === 'video' && isImageUrl) { setUploadErr('That URL points at an image, but the asset type is Video. Switch the type to Image or use a video file.'); return; }
+      if (kind === 'image' && isVideoUrl) { setUploadErr('That URL points at a video, but the asset type is Image. Switch the type to Video or use an image file.'); return; }
+    }
+    if (kind === 'video' && duration.trim()) {
+      const seconds = Number(duration);
+      if (!Number.isFinite(seconds) || seconds < 0) { setUploadErr('Duration must be a number of seconds that is 0 or greater.'); return; }
+    }
     setBusy(true);
     const r = await lensRun<{ asset: ReviewAsset }>('creative', 'review-asset-create', {
       name: name.trim(), kind, src: src.trim() || undefined,
-      durationSec: kind === 'video' ? Number(duration) || 0 : 0,
+      durationSec: kind === 'video' ? Number(duration) : 0,
       project: project.trim() || undefined,
     });
     setBusy(false);
     if (r.data.ok && r.data.result) {
-      setName(''); setSrc(''); setDuration(''); setProject(''); setShowNew(false); setUploadErr(null);
+      setName(''); setSrc(''); setDuration(''); setProject(''); setShowNew(false); setUploadErr(null); setUploadedKind(null);
       await loadAssets();
       setSelected(r.data.result.asset.id);
       notifyCreativeDashboardDirty();
@@ -305,7 +328,7 @@ function ReviewTab() {
               ) : (
                 <p className="text-zinc-400">
                   Drop a video or image here or{' '}
-                  <button type="button" onClick={() => fileInputRef.current?.click()} className="text-violet-400 underline underline-offset-2">
+                  <button type="button" onClick={() => fileInputRef.current?.click()} className="min-h-11 text-violet-400 underline underline-offset-2">
                     browse files
                   </button>
                 </p>
@@ -336,7 +359,7 @@ function ReviewTab() {
           <div
             key={a.id}
             onClick={() => setSelected(a.id)}
-            className={`${PANEL} cursor-pointer transition-colors ${selected === a.id ? 'border-violet-500/60' : 'hover:border-zinc-700'}`} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            className={`${PANEL} cursor-pointer transition-colors ${selected === a.id ? 'border-violet-500/60' : 'hover:border-zinc-700'}`} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-2 min-w-0">
                 {a.kind === 'video' ? <Film className="w-4 h-4 text-violet-400 shrink-0" /> : <ImageIcon className="w-4 h-4 text-cyan-400 shrink-0" />}
@@ -345,9 +368,7 @@ function ReviewTab() {
                   <p className="text-xs text-zinc-400">{a.project || 'No project'}{a.kind === 'video' ? ` · ${fmtTime(a.durationSec)}` : ''}</p>
                 </div>
               </div>
-              <button onClick={(e) => { e.stopPropagation(); deleteAsset(a.id); }} className={`${BTN_GHOST} hover:text-rose-400`} aria-label="Delete asset">
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              <StickyDeleteConfirm onConfirm={() => { void deleteAsset(a.id); }} className={`${BTN_GHOST} hover:text-rose-400`} armAriaLabel={`Delete asset ${a.name}`} confirmLabel={`Delete “${a.name}”?`} confirmAriaLabel={`Confirm delete asset ${a.name}`} armLabel={<Trash2 className="w-3.5 h-3.5" />} />
             </div>
             <div className="flex items-center gap-3 mt-2 text-xs text-zinc-400">
               <span><MessageSquare className="w-3 h-3 inline mr-1" />{a.commentCount} comment{a.commentCount !== 1 ? 's' : ''}</span>
@@ -416,9 +437,7 @@ function ReviewTab() {
                       <button onClick={() => toggleResolved(c)} className={`${BTN_GHOST} ${c.resolved ? 'text-emerald-400' : 'hover:text-emerald-400'}`} aria-label="Resolve">
                         <CheckCircle2 className="w-3.5 h-3.5" />
                       </button>
-                      <button onClick={() => deleteComment(c.id)} className={`${BTN_GHOST} hover:text-rose-400`} aria-label="Delete comment">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      <StickyDeleteConfirm onConfirm={() => { void deleteComment(c.id); }} className={`${BTN_GHOST} hover:text-rose-400`} armAriaLabel={`Delete comment by ${c.author}`} confirmLabel={`Delete ${c.author}'s comment?`} confirmAriaLabel="Confirm delete comment" armLabel={<Trash2 className="w-3.5 h-3.5" />} />
                     </div>
                   </div>
                   <p className="text-sm text-zinc-300 mt-1">{c.body}</p>
@@ -442,6 +461,7 @@ function CallSheetTab() {
   const [project, setProject] = useState('');
   const [shootDate, setShootDate] = useState('');
   const [dayNumber, setDayNumber] = useState('1');
+  const [sheetError, setSheetError] = useState<string | null>(null);
   const [generalCall, setGeneralCall] = useState('08:00');
   // row composer
   const [section, setSection] = useState<'cast' | 'crew' | 'locations' | 'schedule'>('cast');
@@ -462,11 +482,14 @@ function CallSheetTab() {
 
   const createSheet = async () => {
     if (!project.trim()) return;
+    const day = Number(dayNumber);
+    if (!Number.isInteger(day) || day < 1) { setSheetError('Shoot day must be a whole number that is 1 or greater.'); return; }
+    setSheetError(null);
     setBusy(true);
     const r = await lensRun<{ sheet: CallSheet }>('creative', 'callsheet-create', {
       project: project.trim(),
       shootDate: shootDate || undefined,
-      dayNumber: Number(dayNumber) || 1,
+      dayNumber: day,
       generalCall: generalCall || undefined,
     });
     setBusy(false);
@@ -505,6 +528,34 @@ function CallSheetTab() {
     if (r.data.ok && r.data.result) { setActive(r.data.result.sheet); await loadSheets(); }
   };
 
+  // Row edit (FIX-creative-007): inline inputs prefilled from the row,
+  // saved through callsheet-update-row.
+  const [editingRow, setEditingRow] = useState<{ sec: string; rowId: string } | null>(null);
+  const [editFields, setEditFields] = useState<Record<string, string>>({});
+
+  const startEditRow = (sec: string, row: CallSheetRow) => {
+    setEditingRow({ sec, rowId: row.id });
+    const fields: Record<string, string> = {};
+    for (const col of ['name', 'role', 'department', 'callTime', 'address', 'time', 'scene']) {
+      if (row[col] != null) fields[col] = String(row[col]);
+    }
+    setEditFields(fields);
+  };
+
+  const saveEditRow = async () => {
+    if (!active || !editingRow) return;
+    setBusy(true);
+    const r = await lensRun<{ sheet: CallSheet }>('creative', 'callsheet-update-row', {
+      id: active.id, section: editingRow.sec, rowId: editingRow.rowId, ...editFields,
+    });
+    setBusy(false);
+    if (r.data.ok && r.data.result) {
+      setEditingRow(null);
+      setActive(r.data.result.sheet);
+      await loadSheets();
+    }
+  };
+
   const rowSpec: Record<string, { key: string; label: string }[]> = {
     cast: [{ key: 'name', label: 'Cast name' }, { key: 'role', label: 'Role' }, { key: 'callTime', label: 'Call time (HH:MM)' }],
     crew: [{ key: 'name', label: 'Crew name' }, { key: 'department', label: 'Department' }, { key: 'callTime', label: 'Call time (HH:MM)' }],
@@ -524,7 +575,8 @@ function CallSheetTab() {
             <input className={INPUT} placeholder="Project" value={project} onChange={(e) => setProject(e.target.value)} />
             <input className={INPUT} type="date" value={shootDate} onChange={(e) => setShootDate(e.target.value)} />
             <div className="flex gap-2">
-              <input className={INPUT} type="number" min={1} placeholder="Day #" value={dayNumber} onChange={(e) => setDayNumber(e.target.value)} />
+              <input className={INPUT} type="number" min={1} placeholder="Day #" value={dayNumber} onChange={(e) => { setDayNumber(e.target.value); setSheetError(null); }} />
+              {sheetError && <p className="col-span-full text-xs text-rose-300" role="alert">{sheetError}</p>}
               <input className={INPUT} placeholder="General call" value={generalCall} onChange={(e) => setGeneralCall(e.target.value)} />
             </div>
             <button onClick={createSheet} disabled={busy || !project.trim()} className={BTN_PRIMARY}>Create call sheet</button>
@@ -535,15 +587,13 @@ function CallSheetTab() {
           <div
             key={cs.id}
             onClick={() => loadSheet(cs.id)}
-            className={`${PANEL} cursor-pointer transition-colors ${active?.id === cs.id ? 'border-violet-500/60' : 'hover:border-zinc-700'}`} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            className={`${PANEL} cursor-pointer transition-colors ${active?.id === cs.id ? 'border-violet-500/60' : 'hover:border-zinc-700'}`} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium text-zinc-100">{cs.project}</p>
                 <p className="text-xs text-zinc-400">Day {cs.dayNumber} · {cs.shootDate} · call {cs.generalCall}</p>
               </div>
-              <button onClick={(e) => { e.stopPropagation(); deleteSheet(cs.id); }} className={`${BTN_GHOST} hover:text-rose-400`} aria-label="Delete">
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              <StickyDeleteConfirm onConfirm={() => { void deleteSheet(cs.id); }} className={`${BTN_GHOST} hover:text-rose-400`} armAriaLabel={`Delete call sheet for ${cs.project}`} confirmLabel={`Delete the ${cs.project} call sheet (day ${cs.dayNumber})?`} confirmAriaLabel="Confirm delete call sheet" armLabel={<Trash2 className="w-3.5 h-3.5" />} />
             </div>
             <div className="flex gap-3 mt-2 text-xs text-zinc-400">
               <span>{cs.castCount ?? cs.cast?.length ?? 0} cast</span>
@@ -609,14 +659,32 @@ function CallSheetTab() {
                   ) : (
                     <div className="space-y-1">
                       {rows.map((row) => (
-                        <div key={row.id} className="flex items-center gap-3 text-sm text-zinc-300 border-b border-zinc-800/60 last:border-0 py-1.5">
-                          {sec.cols.map((col) => (
-                            <span key={col} className="flex-1 truncate">{String(row[col] ?? '—')}</span>
-                          ))}
-                          <button onClick={() => removeRow(sec.key, row.id)} className={`${BTN_GHOST} hover:text-rose-400`} aria-label="Remove row">
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
+                        editingRow?.sec === sec.key && editingRow.rowId === row.id ? (
+                          <div key={row.id} className="flex flex-wrap items-center gap-2 border-b border-zinc-800/60 last:border-0 py-1.5">
+                            {sec.cols.map((col) => (
+                              <input
+                                key={col} className={`${INPUT} flex-1 min-w-[90px]`}
+                                aria-label={`Edit ${col}`}
+                                value={editFields[col] || ''}
+                                onChange={(e) => setEditFields((f) => ({ ...f, [col]: e.target.value }))}
+                              />
+                            ))}
+                            <button onClick={saveEditRow} disabled={busy} className={BTN_PRIMARY} aria-label="Save row">Save</button>
+                            <button onClick={() => setEditingRow(null)} className={BTN_GHOST} aria-label="Cancel edit">Cancel</button>
+                          </div>
+                        ) : (
+                          <div key={row.id} className="flex items-center gap-3 text-sm text-zinc-300 border-b border-zinc-800/60 last:border-0 py-1.5">
+                            {sec.cols.map((col) => (
+                              <span key={col} className="flex-1 truncate">{String(row[col] ?? '—')}</span>
+                            ))}
+                            <button onClick={() => startEditRow(sec.key, row)} className={`${BTN_GHOST} hover:text-violet-300`} aria-label="Edit row">
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button onClick={() => removeRow(sec.key, row.id)} className={`${BTN_GHOST} hover:text-rose-400`} aria-label="Remove row">
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )
                       ))}
                     </div>
                   )}
@@ -719,15 +787,13 @@ function BreakdownTab() {
           <div
             key={b.id}
             onClick={() => loadOne(b.id)}
-            className={`${PANEL} cursor-pointer transition-colors ${active?.id === b.id ? 'border-violet-500/60' : 'hover:border-zinc-700'}`} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            className={`${PANEL} cursor-pointer transition-colors ${active?.id === b.id ? 'border-violet-500/60' : 'hover:border-zinc-700'}`} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium text-zinc-100">{b.title}</p>
                 <p className="text-xs text-zinc-400">{b.project || 'No project'} · {b.tagCount ?? 0} tags · {b.scriptLength ?? 0} chars</p>
               </div>
-              <button onClick={(e) => { e.stopPropagation(); deleteBreakdown(b.id); }} className={`${BTN_GHOST} hover:text-rose-400`} aria-label="Delete">
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              <StickyDeleteConfirm onConfirm={() => { void deleteBreakdown(b.id); }} className={`${BTN_GHOST} hover:text-rose-400`} armAriaLabel={`Delete breakdown ${b.title}`} confirmLabel={`Delete “${b.title}”?`} confirmAriaLabel={`Confirm delete breakdown ${b.title}`} armLabel={<Trash2 className="w-3.5 h-3.5" />} />
             </div>
           </div>
         ))}
@@ -753,7 +819,7 @@ function BreakdownTab() {
                       <p className="text-xs text-zinc-400 mb-1">Detected cast — click to tag</p>
                       <div className="flex flex-wrap gap-1">
                         {suggestions.cast.map((s) => (
-                          <button key={s} onClick={() => tag('cast', s)} className="rounded-full bg-zinc-800 hover:bg-violet-500/30 px-2 py-0.5 text-xs text-zinc-300">
+                          <button key={s} onClick={() => tag('cast', s)} className="min-h-11 rounded-full bg-zinc-800 hover:bg-violet-500/30 px-2 py-0.5 text-xs text-zinc-300">
                             <Plus className="w-2.5 h-2.5 inline mr-0.5" />{s}
                           </button>
                         ))}
@@ -765,7 +831,7 @@ function BreakdownTab() {
                       <p className="text-xs text-zinc-400 mb-1">Detected locations — click to tag</p>
                       <div className="flex flex-wrap gap-1">
                         {suggestions.locations.map((s) => (
-                          <button key={s} onClick={() => tag('locations', s)} className="rounded-full bg-zinc-800 hover:bg-violet-500/30 px-2 py-0.5 text-xs text-zinc-300">
+                          <button key={s} onClick={() => tag('locations', s)} className="min-h-11 rounded-full bg-zinc-800 hover:bg-violet-500/30 px-2 py-0.5 text-xs text-zinc-300">
                             <Plus className="w-2.5 h-2.5 inline mr-0.5" />{s}
                           </button>
                         ))}
@@ -927,15 +993,13 @@ function DeliverableTab() {
           <div
             key={d.id}
             onClick={() => loadOne(d.id)}
-            className={`${PANEL} cursor-pointer transition-colors ${active?.id === d.id ? 'border-violet-500/60' : 'hover:border-zinc-700'}`} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            className={`${PANEL} cursor-pointer transition-colors ${active?.id === d.id ? 'border-violet-500/60' : 'hover:border-zinc-700'}`} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium text-zinc-100">{d.name}</p>
                 <p className="text-xs text-zinc-400">{d.project || 'No project'} · v{d.currentVersion} of {d.versionCount ?? d.versions?.length ?? 1}</p>
               </div>
-              <button onClick={(e) => { e.stopPropagation(); del(d.id); }} className={`${BTN_GHOST} hover:text-rose-400`} aria-label="Delete">
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              <StickyDeleteConfirm onConfirm={() => { void del(d.id); }} className={`${BTN_GHOST} hover:text-rose-400`} armAriaLabel={`Delete deliverable ${d.name}`} confirmLabel={`Delete “${d.name}”?`} confirmAriaLabel={`Confirm delete deliverable ${d.name}`} armLabel={<Trash2 className="w-3.5 h-3.5" />} />
             </div>
             <span className={`mt-2 inline-block rounded px-1.5 py-0.5 text-xs ${STATUS_TONE[d.status] || STATUS_TONE.draft}`}>
               {d.status.replace(/_/g, ' ')}
@@ -1023,7 +1087,7 @@ function DeliverableTab() {
                     {v.version === active.currentVersion ? (
                       <span className="text-xs text-violet-300 flex items-center gap-1"><Check className="w-3 h-3" /> current</span>
                     ) : (
-                      <button onClick={() => setCurrent(v.version)} className="text-xs text-zinc-400 hover:text-violet-300">Set current</button>
+                      <button onClick={() => setCurrent(v.version)} className="min-h-11 text-xs text-zinc-400 hover:text-violet-300">Set current</button>
                     )}
                   </div>
                 ))}
@@ -1082,6 +1146,39 @@ function CalendarTab() {
     notifyCreativeDashboardDirty();
   };
 
+  // Event edit (FIX-creative-007): the server's calendar-update already
+  // accepts title/date/kind/project/notes — wire the form to it.
+  const [editingEvent, setEditingEvent] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDate, setEditDate] = useState('');
+  const [editKind, setEditKind] = useState('shoot_day');
+  const [editProject, setEditProject] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+
+  const startEditEvent = (ev: CalendarEvent) => {
+    setEditingEvent(ev.id);
+    setEditTitle(ev.title);
+    setEditDate(ev.date);
+    setEditKind(ev.kind);
+    setEditProject(ev.project || '');
+    setEditNotes(ev.notes || '');
+  };
+
+  const saveEditEvent = async () => {
+    if (!editingEvent || !editTitle.trim() || !editDate) return;
+    setBusy(true);
+    const r = await lensRun('creative', 'calendar-update', {
+      id: editingEvent, title: editTitle.trim(), date: editDate, kind: editKind,
+      project: editProject.trim(), notes: editNotes,
+    });
+    setBusy(false);
+    if (r.data.ok) {
+      setEditingEvent(null);
+      await load();
+      notifyCreativeDashboardDirty();
+    }
+  };
+
   const timelineEvents: TimelineEvent[] = useMemo(
     () => events.map((e) => ({
       id: e.id,
@@ -1138,11 +1235,28 @@ function CalendarTab() {
         {events.length === 0 && <p className="text-xs text-zinc-400">No production events. Add shoot days, milestones and due dates.</p>}
         {events.map((ev) => {
           const overdue = !ev.done && ev.date < today;
+          if (editingEvent === ev.id) {
+            return (
+              <div key={ev.id} className={`${PANEL} grid grid-cols-1 sm:grid-cols-2 gap-2`}>
+                <input className={INPUT} placeholder="Event title" aria-label="Edit event title" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
+                <input className={INPUT} type="date" aria-label="Edit event date" value={editDate} onChange={(e) => setEditDate(e.target.value)} />
+                <select className={INPUT} aria-label="Edit event kind" value={editKind} onChange={(e) => setEditKind(e.target.value)}>
+                  {CAL_KINDS.map((k) => <option key={k} value={k}>{k.replace(/_/g, ' ')}</option>)}
+                </select>
+                <input className={INPUT} placeholder="Project (optional)" aria-label="Edit event project" value={editProject} onChange={(e) => setEditProject(e.target.value)} />
+                <input className={`${INPUT} sm:col-span-2`} placeholder="Notes (optional)" aria-label="Edit event notes" value={editNotes} onChange={(e) => setEditNotes(e.target.value)} />
+                <div className="flex gap-2 sm:col-span-2">
+                  <button onClick={saveEditEvent} disabled={busy || !editTitle.trim() || !editDate} className={BTN_PRIMARY}>Save changes</button>
+                  <button onClick={() => setEditingEvent(null)} className={BTN_GHOST}>Cancel</button>
+                </div>
+              </div>
+            );
+          }
           return (
             <div key={ev.id} className={`${PANEL} flex items-center gap-3`}>
               <button
                 onClick={() => toggleDone(ev)}
-                className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${ev.done ? 'border-emerald-400 bg-emerald-400/20' : 'border-zinc-600 hover:border-violet-400'}`}
+                className={`h-11 w-11 rounded border-2 flex items-center justify-center shrink-0 ${ev.done ? 'border-emerald-400 bg-emerald-400/20' : 'border-zinc-600 hover:border-violet-400'}`}
                 aria-label="Toggle done"
               >
                 {ev.done && <Check className="w-3 h-3 text-emerald-400" />}
@@ -1154,9 +1268,10 @@ function CalendarTab() {
                   {overdue && <span className="text-rose-400 ml-1">overdue</span>}
                 </p>
               </div>
-              <button onClick={() => del(ev.id)} className={`${BTN_GHOST} hover:text-rose-400`} aria-label="Delete event">
-                <Trash2 className="w-3.5 h-3.5" />
+              <button onClick={() => startEditEvent(ev)} className={`${BTN_GHOST} hover:text-violet-300`} aria-label="Edit event">
+                <Pencil className="w-3.5 h-3.5" />
               </button>
+              <StickyDeleteConfirm onConfirm={() => { void del(ev.id); }} className={`${BTN_GHOST} hover:text-rose-400`} armAriaLabel={`Delete event ${ev.title}`} confirmLabel={`Delete “${ev.title}”?`} confirmAriaLabel={`Confirm delete event ${ev.title}`} armLabel={<Trash2 className="w-3.5 h-3.5" />} />
             </div>
           );
         })}
@@ -1174,7 +1289,7 @@ function ProofLinkTab() {
   const [inbox, setInbox] = useState<ExtComment[]>([]);
   const [assetId, setAssetId] = useState('');
   const [label, setLabel] = useState('');
-  const [allowComments, setAllowComments] = useState(true);
+  const [allowComments, setAllowComments] = useState(false);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -1275,9 +1390,7 @@ function ProofLinkTab() {
                 <button onClick={() => toggle(l)} className={BTN_SECONDARY}>
                   {l.active ? 'Disable' : 'Enable'}
                 </button>
-                <button onClick={() => del(l.id)} className={`${BTN_GHOST} hover:text-rose-400`} aria-label="Delete link">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                <StickyDeleteConfirm onConfirm={() => { void del(l.id); }} className={`${BTN_GHOST} hover:text-rose-400`} armAriaLabel="Delete proof link" confirmLabel="Delete this proof link?" confirmAriaLabel="Confirm delete proof link" armLabel={<Trash2 className="w-3.5 h-3.5" />} />
                 <span className="ml-auto text-xs text-zinc-400">
                   <MessageSquare className="w-3 h-3 inline mr-1" />{l.externalCommentCount} external
                 </span>

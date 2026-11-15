@@ -62,7 +62,14 @@ export default function LinguisticsLensPage() {
     setActive('analyze');
     let tries = 0;
     const focus = () => {
-      const el = document.querySelector<HTMLElement>('[data-lens-theme="linguistics"] main textarea, [data-lens-theme="linguistics"] textarea');
+      // FIX-linguistics-006: the analyze view's text field is an
+      // <input> (AnalyzePanel), not a <textarea> — the old
+      // textarea-only selector never matched, so the FAB switched
+      // the view and then silently gave up: no focus, no feedback,
+      // a dead click whenever the analyze view was already up. The
+      // panel now marks its field data-open-text-target; target it
+      // first, with the textarea shape kept as a fallback.
+      const el = document.querySelector<HTMLElement>('[data-lens-theme="linguistics"] [data-open-text-target], [data-lens-theme="linguistics"] main textarea, [data-lens-theme="linguistics"] textarea');
       if (el) el.focus();
       else if (tries++ < 20) requestAnimationFrame(focus);
     };
@@ -154,7 +161,7 @@ export default function LinguisticsLensPage() {
                 title={`${v.hint} (${v.keys})`}
                 className={cn(
                   'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
-                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-400 hover:text-zinc-200',
                 )}
                 aria-current={on ? 'page' : undefined}
               >

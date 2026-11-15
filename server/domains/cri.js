@@ -3,6 +3,8 @@
 // timeline generation, and stakeholder impact mapping.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
+import { checkQuantity, checkMoney, checkDuration, firstBoundsFailure } from "../lib/bounds.js";
 export default function registerCriActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -13,7 +15,29 @@ export default function registerCriActions(registerLensAction) {
    */
   registerLensAction("cri", "severityAssessment", (ctx, artifact, params) => {
   try {
-    const crisis = artifact.data?.crisis || {};
+    // GB-1539 bounds (FIX-cri-008): an affected count of -1 used to fall
+    // through the impact ladder and silently score as 1. Out-of-policy
+    // numbers now refuse with a clear invalid_input — never coerced.
+    const crisisIn = artifact?.data?.crisis || params?.crisis || {};
+    const badBounds = firstBoundsFailure(
+      checkQuantity("affectedCount", params?.affectedCount ?? artifact?.data?.affectedCount ?? crisisIn.affectedCount),
+      checkDuration("durationHours", params?.durationHours ?? crisisIn.durationHours, "hours"),
+      checkQuantity("casualties", crisisIn.casualties ?? params?.casualties),
+      checkMoney("financialExposure", crisisIn.financialExposure ?? params?.financialExposure),
+    );
+    if (badBounds) return badBounds;
+    // FIX-cri-004 (contract repair): the Crisis panel sends flat fields
+    // ({ scope: 'local'|'regional'|'global', affectedCount, durationHours })
+    // which used to be dropped entirely — every factor defaulted to 3 and
+    // the score was fiction. Derive the factors from the real input when
+    // no structured crisis object is attached.
+    const flat = (!artifact?.data?.crisis && (params?.affectedCount != null || typeof params?.scope === 'string' || artifact?.data?.affectedCount != null)) ? (artifact?.data || params || {}) : null;
+    const crisis = artifact?.data?.crisis || params?.crisis || (flat ? {
+      scope: flat.scope === 'local' ? 2 : flat.scope === 'global' ? 5 : flat.scope === 'regional' ? 3 : (Number(flat.scope) || 3),
+      impact: flat.affectedCount >= 10000 ? 5 : flat.affectedCount >= 1000 ? 4 : flat.affectedCount >= 100 ? 3 : flat.affectedCount >= 10 ? 2 : 1,
+      urgency: 3,
+      controllability: 3,
+    } : {});
 
     // Factor scores (1-5 scale, default to 3 if missing)
     const scope = Math.max(1, Math.min(5, crisis.scope || 3));
@@ -76,7 +100,7 @@ export default function registerCriActions(registerLensAction) {
       { factor: "controllability", score: controllability, invertedScore: invertedControllability, weightedContribution: Math.round(invertedControllability * weights.controllability * 100) / 100 },
     ].sort((a, b) => b.weightedContribution - a.weightedContribution);
 
-    artifact.data.severityAssessment = { score: finalScore, level: severityLevel, timestamp: new Date().toISOString() };
+    if (artifact?.data) artifact.data.severityAssessment = { score: finalScore, level: severityLevel, timestamp: new Date().toISOString() };
 
     return {
       ok: true, result: {
@@ -112,10 +136,27 @@ export default function registerCriActions(registerLensAction) {
    */
   registerLensAction("cri", "responseTimeline", (ctx, artifact, params) => {
   try {
-    const steps = artifact.data?.responseSteps || [];
-    if (steps.length === 0) return { ok: true, result: { message: "No response steps defined." } };
+    // FIX-cri-004: steps used to be read only from an attached artifact,
+    // so the Crisis panel (which sends its context as run input) always
+    // got "No response steps defined" and showed 0 phases. Steps now also
+    // read from the run input; with no custom steps, the standard
+    // five-phase response plan is generated and labelled as such.
+    let steps = artifact?.data?.responseSteps || params?.responseSteps || params?.input?.responseSteps || [];
+    let planSource = steps.length > 0 ? "custom-steps" : null;
+    if (steps.length === 0) {
+      const sev = String(params?.severity || artifact?.data?.severity || "high").toLowerCase();
+      const scale = sev === "critical" ? 0.5 : sev === "high" ? 1 : sev === "moderate" || sev === "medium" ? 1.5 : 2;
+      const phase = (name, mins, actions) => ({ name, durationMinutes: Math.max(5, Math.round(mins * scale)), actions });
+      const p1 = phase("Detect & triage", 15, ["Confirm the incident and open the crisis record", "Classify severity and notify the response lead"]);
+      const p2 = phase("Contain", 60, ["Stop the spread: isolate affected systems or areas", "Freeze changes that could worsen impact"]);
+      const p3 = phase("Eradicate & mitigate", 240, ["Remove the root cause", "Apply mitigations for affected stakeholders"]);
+      const p4 = phase("Recover", 480, ["Restore normal operations in stages", "Verify recovery against pre-incident baselines"]);
+      const p5 = phase("Review & learn", 120, ["Run a blameless post-incident review", "Record corrective actions with owners and dates"]);
+      steps = [p1, p2, p3, p4, p5].map((p, i, arr) => ({ ...p, dependencies: i === 0 ? [] : [arr[i - 1].name] }));
+      planSource = "standard-5-phase";
+    }
 
-    const startTime = new Date(artifact.data?.startTime || Date.now());
+    const startTime = new Date(artifact?.data?.startTime || params?.startTime || Date.now());
 
     // Build dependency graph and compute earliest start/finish (forward pass)
     const stepMap = {};
@@ -232,11 +273,23 @@ export default function registerCriActions(registerLensAction) {
     // SLA summary
     const slaBreaches = timeline.filter(t => t.slaStatus === "sla_breach");
 
-    artifact.data.timeline = timeline;
+    if (artifact?.data) artifact.data.timeline = timeline;
 
     return {
       ok: true, result: {
         timeline,
+        planSource,
+        // Panel-shaped view (CrisisActionPanel): one entry per phase with
+        // its minute window and the actions the phase carries.
+        phases: timeline.map((t) => {
+          const src = stepMap[t.name];
+          return {
+            phase: t.name,
+            window: `${t.startMinute}–${t.endMinute} min`,
+            actions: (src && src.actions) || [],
+          };
+        }),
+        totalDurationHours: Math.round((totalDuration / 60) * 10) / 10,
         criticalPath,
         totalDurationMinutes: totalDuration,
         estimatedCompletion: new Date(startTime.getTime() + totalDuration * 60000).toISOString(),
@@ -263,10 +316,14 @@ export default function registerCriActions(registerLensAction) {
    */
   registerLensAction("cri", "stakeholderImpact", (ctx, artifact, params) => {
   try {
-    const stakeholders = artifact.data?.stakeholders || [];
+    // FIX-cri-004: stakeholders also read from the run input, and a
+    // stakeholder may be named by { group } (the Crisis panel's shape)
+    // instead of { name } — groups used to score as nameless and the
+    // panel, which reads result.stakeholders, showed 0 groups.
+    const stakeholders = artifact?.data?.stakeholders || params?.stakeholders || params?.input?.stakeholders || [];
     if (stakeholders.length === 0) return { ok: true, result: { message: "No stakeholders defined." } };
 
-    const crisisType = artifact.data?.crisisType || "general";
+    const crisisType = artifact?.data?.crisisType || params?.crisisType || "general";
 
     // Type-based urgency multipliers
     const typeMultiplier = { regulatory: 1.5, external: 1.2, internal: 1.0 };
@@ -292,7 +349,7 @@ export default function registerCriActions(registerLensAction) {
       else quadrant = "monitor";
 
       return {
-        name: sh.name,
+        name: sh.name || sh.group || "stakeholder group",
         type: sh.type || "internal",
         influence,
         dependence,
@@ -344,10 +401,18 @@ export default function registerCriActions(registerLensAction) {
       avgImpact: Math.round((data.sum / data.count) * 100) / 100,
     }));
 
-    artifact.data.stakeholderMap = tiered;
+    if (artifact?.data) artifact.data.stakeholderMap = tiered;
 
     return {
       ok: true, result: {
+        // Panel-shaped view (CrisisActionPanel): per-group impact + priority.
+        stakeholders: tiered.map((sh) => ({
+          ...sh,
+          group: sh.name,
+          impact: sh.impactScore >= 7 ? "severe" : sh.impactScore >= 5 ? "high" : sh.impactScore >= 3 ? "moderate" : "low",
+          priority: `tier ${sh.communicationTier} — ${sh.communicationTimeframe}`,
+        })),
+        totalAffected: stakeholders.length,
         communicationPriority: tiered,
         quadrantAnalysis: quadrantSummary,
         typeDistribution,
@@ -861,5 +926,58 @@ export default function registerCriActions(registerLensAction) {
         total: sorted.length,
       },
     };
+  });
+
+  // FIX-cri-006: CRI's panel records (score snapshots, per-DTU flags,
+  // regression alerts, baselines, custom score rules) live in
+  // STATE.criLens — no export leg enumerates it, so the Export menu
+  // said "Nothing to export yet" while the Scores view held 179 scored
+  // DTUs. The provider emits the caller's own quality-loop records.
+  registerLensExportProvider("cri", (ctx) => {
+    const s = getCriState();
+    if (!s) return [];
+    const userId = criActor(ctx);
+    const rows = [];
+    for (const snap of s.snapshots.get(userId) || []) {
+      rows.push({
+        id: `cri-snapshot:${snap.at}`, type: "score-snapshot",
+        title: `Score snapshot — ${snap.at}`,
+        createdAt: snap.at || null, updatedAt: snap.at || null,
+        data: snap,
+      });
+    }
+    for (const flag of (s.flags.get(userId) || new Map()).values()) {
+      rows.push({
+        id: `cri-flag:${flag.dtuId}`, type: "dtu-flag",
+        title: flag.title || flag.dtuId,
+        createdAt: flag.at || null, updatedAt: flag.at || null,
+        data: flag,
+      });
+    }
+    for (const alert of s.alerts.get(userId) || []) {
+      rows.push({
+        id: alert.id, type: "regression-alert",
+        title: alert.title || alert.id,
+        createdAt: alert.at || null, updatedAt: alert.at || null,
+        data: alert,
+      });
+    }
+    for (const [dtuId, base] of (s.baselines.get(userId) || new Map()).entries()) {
+      rows.push({
+        id: `cri-baseline:${dtuId}`, type: "dtu-baseline",
+        title: dtuId,
+        createdAt: base.at || null, updatedAt: base.at || null,
+        data: { dtuId, ...base },
+      });
+    }
+    if (s.rules.has(userId)) {
+      rows.push({
+        id: "cri:score-rules", type: "score-rules",
+        title: "Custom score rules",
+        createdAt: null, updatedAt: null,
+        data: s.rules.get(userId),
+      });
+    }
+    return rows;
   });
 }

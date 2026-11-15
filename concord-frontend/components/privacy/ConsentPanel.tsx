@@ -31,6 +31,7 @@ import {
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ds } from '@/lib/design-system';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -332,7 +333,7 @@ function ConfirmModal({
   if (!open) return null;
 
   return (
-    <div className={ds.modalBackdrop} onClick={onCancel} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+    <div className={ds.modalBackdrop} onClick={onCancel} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
       <div className={ds.modalContainer}>
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}

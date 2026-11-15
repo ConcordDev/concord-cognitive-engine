@@ -9,7 +9,7 @@ import styles from './SplashHome.module.css';
  * previous marketing homepage used as its no-account entry CTA. It is in
  * middleware PUBLIC_PATHS, so a logged-out visitor lands there directly.
  */
-export const SPLASH_ENTER_HREF = '/explore';
+export const SPLASH_ENTER_HREF = '/hub';
 
 interface SplashHomeProps {
   quote: DailyQuote;

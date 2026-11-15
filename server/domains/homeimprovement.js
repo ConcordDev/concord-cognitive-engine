@@ -6,6 +6,7 @@
 // feed. Free public source, no API key.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { checkTitle, checkText, checkMoney, firstBoundsFailure } from "../lib/bounds.js";
 export default function registerHomeImprovementActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ─── Planning calculators ───────────────────────────────────────────
@@ -40,7 +41,12 @@ export default function registerHomeImprovementActions(registerLensAction) {
     const style = (data.style || "modern").toLowerCase();
     const palettes = { modern: { primary: "#FFFFFF", accent: "#2C2C2C", warm: "#E8D4B8", pop: "#4A90D9" }, farmhouse: { primary: "#F5F0EB", accent: "#8B7355", warm: "#D4A574", pop: "#6B8E5A" }, coastal: { primary: "#FFFFFF", accent: "#5B8FA8", warm: "#E8D6C4", pop: "#2F6682" }, traditional: { primary: "#F0EDE8", accent: "#5C3D2E", warm: "#C4956A", pop: "#8B4513" }, minimalist: { primary: "#FAFAFA", accent: "#333333", warm: "#E0DCD8", pop: "#B0B0B0" } };
     const palette = palettes[style] || palettes.modern;
-    return { ok: true, result: { room, style, palette, wallColor: palette.primary, trim: "#FFFFFF", accent: palette.accent, furniture: palette.warm, decor: palette.pop, coverage: data.squareFootage ? `${Math.ceil(parseFloat(data.squareFootage) / 350)} gallons of paint needed` : "Measure walls to estimate paint" } };
+    // `palette` is the summary STRING the lens renders (the FE contract
+    // declares palette: string) — returning the raw object here crashed
+    // the lens render 2/2 ("Objects are not valid as a React child",
+    // FIX-home-improvement-001). The hex set rides as paletteHexes; the
+    // named swatch fields below already carry each hex individually.
+    return { ok: true, result: { room, style, palette: `Primary ${palette.primary} · Accent ${palette.accent} · Warm ${palette.warm} · Pop ${palette.pop}`, paletteHexes: palette, wallColor: palette.primary, trim: "#FFFFFF", accent: palette.accent, furniture: palette.warm, decor: palette.pop, coverage: data.squareFootage ? `${Math.ceil(parseFloat(data.squareFootage) / 350)} gallons of paint needed` : "Measure walls to estimate paint" } };
   });
 
   // ─── Renovation-project substrate (per-user, STATE-backed) ──────────
@@ -66,14 +72,23 @@ export default function registerHomeImprovementActions(registerLensAction) {
 
   registerLensAction("home-improvement", "project-add", (ctx, _a, params = {}) => {
     const s = getHiState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const name = hiClean(params.name, 160);
+    // GB-1539 (FIX-home-improvement-004/005): over-limit names refuse and
+    // budgets refuse out-of-policy values — no silent truncation, no
+    // Math.max(0, …) flooring of a negative budget.
+    const badBounds = firstBoundsFailure(
+      checkTitle("name", params.name),
+      checkMoney("budget", params.budget),
+      checkText("notes", params.notes, "note"),
+    );
+    if (badBounds) return badBounds;
+    const name = hiClean(params.name, 200);
     if (!name) return { ok: false, error: "project name required" };
     const project = {
       id: hiId("proj"), name,
       room: ROOMS.includes(params.room) ? params.room : "other",
-      budget: Math.max(0, hiNum(params.budget)),
+      budget: hiNum(params.budget),
       status: "planning",
-      notes: hiClean(params.notes, 1000) || "",
+      notes: hiClean(params.notes, 5000) || "",
       tasks: [], expenses: [],
       createdAt: new Date().toISOString(),
     };
@@ -84,16 +99,32 @@ export default function registerHomeImprovementActions(registerLensAction) {
 
   registerLensAction("home-improvement", "project-list", (ctx, _a, _params = {}) => {
     const s = getHiState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    // FIX-home-improvement-010: Budget "Spent" counted only the manual
+    // expense log, so a purchased shopping item never moved it. Purchased
+    // items roll into spent: assigned items into their project, the rest
+    // reported as unassignedShoppingSpent so the Budget headline can
+    // include them without inventing a project for them.
+    const shopping = hiList(s, "shopping", hiActor(ctx));
+    const purchasedOf = (pid) => shopping
+      .filter((it) => it.purchased && (pid === undefined ? !it.projectId : it.projectId === pid))
+      .reduce((n, it) => n + it.price * (it.qty || 1), 0);
+    const projectIds = new Set(hiProjects(s, hiActor(ctx)).map((p) => p.id));
+    const unassignedShoppingSpent = Math.round(shopping
+      .filter((it) => it.purchased && (!it.projectId || !projectIds.has(it.projectId)))
+      .reduce((n, it) => n + it.price * (it.qty || 1), 0) * 100) / 100;
     const projects = hiProjects(s, hiActor(ctx)).map((p) => {
-      const spent = p.expenses.reduce((n, e) => n + e.amount, 0);
+      const expenseSpent = p.expenses.reduce((n, e) => n + e.amount, 0);
+      const shoppingSpent = purchasedOf(p.id);
+      const spent = expenseSpent + shoppingSpent;
       return {
         ...p, taskCount: p.tasks.length,
         tasksDone: p.tasks.filter((t) => t.done).length,
         spent: Math.round(spent * 100) / 100,
+        shoppingSpent: Math.round(shoppingSpent * 100) / 100,
         budgetRemaining: Math.round((p.budget - spent) * 100) / 100,
       };
     });
-    return { ok: true, result: { projects, count: projects.length } };
+    return { ok: true, result: { projects, count: projects.length, unassignedShoppingSpent } };
   });
 
   registerLensAction("home-improvement", "project-status", (ctx, _a, params = {}) => {
@@ -141,10 +172,15 @@ export default function registerHomeImprovementActions(registerLensAction) {
     const s = getHiState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const project = hiProjects(s, hiActor(ctx)).find((p) => p.id === params.projectId);
     if (!project) return { ok: false, error: "project not found" };
+    const badExpense = firstBoundsFailure(
+      checkTitle("label", params.label),
+      checkMoney("amount", params.amount),
+    );
+    if (badExpense) return badExpense;
     const expense = {
       id: hiId("exp"),
-      label: hiClean(params.label, 160) || "expense",
-      amount: Math.max(0, hiNum(params.amount)),
+      label: hiClean(params.label, 200) || "expense",
+      amount: hiNum(params.amount),
       kind: ["materials", "labor", "permit", "tools", "other"].includes(params.kind) ? params.kind : "materials",
       date: hiClean(params.date, 30) || new Date().toISOString().slice(0, 10),
     };
@@ -165,6 +201,12 @@ export default function registerHomeImprovementActions(registerLensAction) {
       tasks += p.tasks.length;
       tasksDone += p.tasks.filter((t) => t.done).length;
     }
+    // FIX-home-improvement-010: purchased shopping rolls into spent here
+    // too (all of it — the dashboard is the whole-home view).
+    const shoppingSpent = hiList(s, "shopping", hiActor(ctx))
+      .filter((it) => it.purchased)
+      .reduce((n, it) => n + it.price * (it.qty || 1), 0);
+    spent += shoppingSpent;
     return {
       ok: true,
       result: {
@@ -172,6 +214,7 @@ export default function registerHomeImprovementActions(registerLensAction) {
         activeProjects: projects.filter((p) => p.status === "in_progress").length,
         totalBudget: Math.round(budget * 100) / 100,
         totalSpent: Math.round(spent * 100) / 100,
+        shoppingSpent: Math.round(shoppingSpent * 100) / 100,
         tasks, tasksDone,
       },
     };
@@ -246,6 +289,24 @@ export default function registerHomeImprovementActions(registerLensAction) {
     return { ok: true, result: { board } };
   });
 
+  // FIX-home-improvement-011: boards, inventory, maintenance tasks and
+  // contractors could be created and deleted but never edited. One
+  // update verb per record type, mirroring its add verb's fields.
+  registerLensAction("home-improvement", "board-update", (ctx, _a, params = {}) => {
+    const s = getHiState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const board = hiList(s, "boards", hiActor(ctx)).find((b) => b.id === params.id);
+    if (!board) return { ok: false, error: "board not found" };
+    if (params.name != null) {
+      const name = hiClean(params.name, 120);
+      if (!name) return { ok: false, error: "board name required" };
+      board.name = name;
+    }
+    if (params.room != null) board.room = hiClean(params.room, 80) || board.room;
+    if (params.description != null) board.description = hiClean(params.description, 600);
+    saveHi();
+    return { ok: true, result: { board } };
+  });
+
   registerLensAction("home-improvement", "board-list", (ctx, _a, _params = {}) => {
     const s = getHiState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const boards = hiList(s, "boards", hiActor(ctx)).map((b) => ({ ...b, ideaCount: b.ideas.length }));
@@ -312,6 +373,24 @@ export default function registerHomeImprovementActions(registerLensAction) {
       createdAt: new Date().toISOString(),
     };
     hiList(s, "pros", hiActor(ctx)).push(pro);
+    saveHi();
+    return { ok: true, result: { pro } };
+  });
+
+  registerLensAction("home-improvement", "pro-update", (ctx, _a, params = {}) => {
+    const s = getHiState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const pro = hiList(s, "pros", hiActor(ctx)).find((p) => p.id === params.id);
+    if (!pro) return { ok: false, error: "contractor not found" };
+    if (params.name != null) {
+      const name = hiClean(params.name, 120);
+      if (!name) return { ok: false, error: "contractor name required" };
+      pro.name = name;
+    }
+    if (params.trade != null) pro.trade = hiClean(params.trade, 80) || pro.trade;
+    if (params.phone != null) pro.phone = hiClean(params.phone, 40);
+    if (params.email != null) pro.email = hiClean(params.email, 120);
+    if (params.license != null) pro.license = hiClean(params.license, 80);
+    if (params.notes != null) pro.notes = hiClean(params.notes, 800);
     saveHi();
     return { ok: true, result: { pro } };
   });
@@ -458,7 +537,13 @@ export default function registerHomeImprovementActions(registerLensAction) {
   // ─── Home inventory / asset register (warranties, manuals) ─────────
   registerLensAction("home-improvement", "inventory-add", (ctx, _a, params = {}) => {
     const s = getHiState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const name = hiClean(params.name, 160);
+    const badAsset = firstBoundsFailure(
+      checkTitle("name", params.name),
+      checkMoney("purchasePrice", params.purchasePrice),
+      checkText("notes", params.notes, "note"),
+    );
+    if (badAsset) return badAsset;
+    const name = hiClean(params.name, 200);
     if (!name) return { ok: false, error: "asset name required" };
     const asset = {
       id: hiId("asset"), name,
@@ -468,13 +553,36 @@ export default function registerHomeImprovementActions(registerLensAction) {
       model: hiClean(params.model, 100) || "",
       serial: hiClean(params.serial, 100) || "",
       purchaseDate: hiClean(params.purchaseDate, 30) || "",
-      purchasePrice: Math.max(0, hiNum(params.purchasePrice)),
+      purchasePrice: hiNum(params.purchasePrice),
       warrantyExpires: hiClean(params.warrantyExpires, 30) || "",
       manualUrl: hiClean(params.manualUrl, 600) || "",
-      notes: hiClean(params.notes, 800) || "",
+      notes: hiClean(params.notes, 5000) || "",
       createdAt: new Date().toISOString(),
     };
     hiList(s, "inventory", hiActor(ctx)).push(asset);
+    saveHi();
+    return { ok: true, result: { asset } };
+  });
+
+  registerLensAction("home-improvement", "inventory-update", (ctx, _a, params = {}) => {
+    const s = getHiState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const asset = hiList(s, "inventory", hiActor(ctx)).find((a) => a.id === params.id);
+    if (!asset) return { ok: false, error: "asset not found" };
+    if (params.name != null) {
+      const name = hiClean(params.name, 160);
+      if (!name) return { ok: false, error: "asset name required" };
+      asset.name = name;
+    }
+    if (params.category != null) asset.category = hiClean(params.category, 80) || asset.category;
+    if (params.room != null && ROOMS.includes(params.room)) asset.room = params.room;
+    if (params.brand != null) asset.brand = hiClean(params.brand, 100);
+    if (params.model != null) asset.model = hiClean(params.model, 100);
+    if (params.serial != null) asset.serial = hiClean(params.serial, 100);
+    if (params.purchaseDate != null) asset.purchaseDate = hiClean(params.purchaseDate, 30);
+    if (params.purchasePrice != null) asset.purchasePrice = Math.max(0, hiNum(params.purchasePrice));
+    if (params.warrantyExpires != null) asset.warrantyExpires = hiClean(params.warrantyExpires, 30);
+    if (params.manualUrl != null) asset.manualUrl = hiClean(params.manualUrl, 600);
+    if (params.notes != null) asset.notes = hiClean(params.notes, 800);
     saveHi();
     return { ok: true, result: { asset } };
   });
@@ -662,6 +770,22 @@ export default function registerHomeImprovementActions(registerLensAction) {
     return { ok: true, result: { reminder } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+
+  registerLensAction("home-improvement", "maintenance-update", (ctx, _a, params = {}) => {
+    const s = getHiState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const reminder = hiList(s, "maintenance", hiActor(ctx)).find((m) => m.id === params.id);
+    if (!reminder) return { ok: false, error: "maintenance task not found" };
+    if (params.task != null) {
+      const task = hiClean(params.task, 200);
+      if (!task) return { ok: false, error: "task description required" };
+      reminder.task = task;
+    }
+    if (params.season != null && ["spring", "summer", "fall", "winter", "any"].includes(params.season)) reminder.season = params.season;
+    if (params.intervalDays != null) reminder.intervalDays = Math.max(1, Math.round(hiNum(params.intervalDays)) || reminder.intervalDays);
+    if (params.dueDate != null) reminder.dueDate = hiClean(params.dueDate, 30) || reminder.dueDate;
+    saveHi();
+    return { ok: true, result: { reminder } };
+  });
 
   registerLensAction("home-improvement", "maintenance-list", (ctx, _a, _params = {}) => {
     const s = getHiState(); if (!s) return { ok: false, error: "STATE unavailable" };

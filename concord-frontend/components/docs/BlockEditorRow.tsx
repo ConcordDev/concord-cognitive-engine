@@ -7,13 +7,14 @@
  * table and embed. Live presence cursors of co-editors are shown.
  */
 
-import { useEffect, useState } from 'react';
-import { ChevronUp, ChevronDown, Trash2, ChevronRight } from 'lucide-react';
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { ChevronUp, ChevronDown, Trash2, ChevronRight, Bold, Italic, Strikethrough, Code as CodeIcon, Link2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Block, BlockData, Cursor } from './types';
 import { highlightCode } from './syntax';
 import { ConfirmDeleteButton } from './DeleteSafety';
 import { safeLinkUrl } from '@/lib/safe-url';
+import { renderInlineMarks, toggleMark, applyLinkMark, markForShortcut, type MarkEdit } from './inline-marks';
 
 /** The name a block's delete confirmation carries: its own text,
  *  trimmed, or its type for text-less blocks (divider, table…). */
@@ -46,6 +47,70 @@ export function BlockEditorRow({ block, cursors, onChange, onDelete, onUp, onDow
   const [text, setText] = useState(block.text);
   useEffect(() => { setText(block.text); }, [block.text]);
   const commit = () => { if (text !== block.text) onChange({ text }); };
+  // FIX-docs-003: inline marks (see ./inline-marks). A text row renders
+  // its marks while it is not being edited; clicking swaps in the
+  // textarea, where the markers stay visible (the markdown-editor
+  // contract). The textarea stays mounted (hidden) while the rendered
+  // view shows, so the block's text keeps its exact DOM contract.
+  // Ctrl/Cmd+B / +I / +E / +K and Ctrl+Shift+X toggle marks
+  // on the selection, and the main text branch shows a format toolbar
+  // while editing. Code blocks are exempt — their text is literal.
+  const [editing, setEditing] = useState(false);
+  const taRef = useRef<HTMLTextAreaElement | null>(null);
+  useEffect(() => {
+    if (editing && taRef.current) {
+      const ta = taRef.current;
+      ta.focus();
+      ta.setSelectionRange(ta.value.length, ta.value.length);
+    }
+  }, [editing]);
+  const applyEdit = (edit: MarkEdit, ta: HTMLTextAreaElement | null) => {
+    setText(edit.value);
+    requestAnimationFrame(() => {
+      const el = ta || taRef.current;
+      if (el) { el.focus(); el.setSelectionRange(edit.selStart, edit.selEnd); }
+    });
+  };
+  const applyMark = (mark: string | 'link') => {
+    const ta = taRef.current;
+    const st = ta ? (ta.selectionStart ?? text.length) : text.length;
+    const en = ta ? (ta.selectionEnd ?? text.length) : text.length;
+    applyEdit(mark === 'link' ? applyLinkMark(text, st, en) : toggleMark(text, st, en, mark), ta);
+  };
+  const onMarkKeyDown = (e: ReactKeyboardEvent<HTMLTextAreaElement>) => {
+    const mark = markForShortcut(e);
+    if (!mark) return;
+    e.preventDefault();
+    const ta = e.currentTarget;
+    const st = ta.selectionStart ?? 0;
+    const en = ta.selectionEnd ?? 0;
+    applyEdit(mark === 'link' ? applyLinkMark(text, st, en) : toggleMark(text, st, en, mark), ta);
+  };
+  const enterEdit = () => { setEditing(true); onFocus(); };
+  const exitEdit = () => { commit(); setEditing(false); };
+  const renderedText = (placeholder: string, extraCls?: string) => (
+    <div role="button" tabIndex={0} aria-label="Edit block text" onClick={enterEdit} onFocus={enterEdit}
+      className={cn('flex-1 cursor-text whitespace-pre-wrap break-words rounded px-1 min-h-[1.75rem]', extraCls)}>
+      {text.trim() ? renderInlineMarks(text) : <span className="text-zinc-500">{placeholder}</span>}
+    </div>
+  );
+  const markToolbar = (
+    <div className="mb-0.5 flex items-center gap-0.5" role="toolbar" aria-label="Text formatting">
+      {([
+        { m: '**', Icon: Bold, label: 'Bold (Ctrl+B)' },
+        { m: '*', Icon: Italic, label: 'Italic (Ctrl+I)' },
+        { m: '~~', Icon: Strikethrough, label: 'Strikethrough (Ctrl+Shift+X)' },
+        { m: '`', Icon: CodeIcon, label: 'Code (Ctrl+E)' },
+        { m: 'link', Icon: Link2, label: 'Link (Ctrl+K)' },
+      ] as const).map(({ m, Icon, label }) => (
+        <button key={label} type="button" aria-label={label} title={label}
+          onMouseDown={e => e.preventDefault()} onClick={() => applyMark(m)}
+          className="rounded px-1.5 py-1 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100">
+          <Icon className="w-3.5 h-3.5" />
+        </button>
+      ))}
+    </div>
+  );
   // Embed URL keeps the same local-state discipline (S-DOCS-4 / F12):
   // the write-through form committed per keystroke over a server
   // round-trip + reload, and a lagging reload could overwrite an
@@ -105,8 +170,9 @@ export function BlockEditorRow({ block, cursors, onChange, onDelete, onUp, onDow
         <input value={block.data?.emoji || '💡'} maxLength={4}
           onChange={e => onChange({ data: { ...block.data, emoji: e.target.value } })}
           className="w-7 text-center bg-transparent text-base" />
-        <textarea value={text} onFocus={onFocus} onChange={e => setText(e.target.value)} onBlur={commit} rows={1}
-          placeholder="Callout text…" className="flex-1 bg-transparent resize-none focus:outline-none text-sm" />
+        {!editing && renderedText('Callout text…', 'text-sm')}
+        <textarea ref={taRef} value={text} onFocus={onFocus} onChange={e => setText(e.target.value)} onBlur={exitEdit} onKeyDown={onMarkKeyDown} rows={1}
+          placeholder="Callout text…" className={cn('flex-1 bg-transparent resize-none focus:outline-none text-sm', !editing && 'hidden')} />
         <select value={block.data?.tone || 'info'}
           onChange={e => onChange({ data: { ...block.data, tone: e.target.value } })}
           className="bg-zinc-950/60 border border-zinc-700 rounded text-[10px] px-1 py-0.5 self-start">
@@ -127,8 +193,9 @@ export function BlockEditorRow({ block, cursors, onChange, onDelete, onUp, onDow
             className="text-zinc-400 hover:text-zinc-100 mt-1">
             <ChevronRight className={cn('w-3.5 h-3.5 transition-transform', open && 'rotate-90')} />
           </button>
-          <textarea value={text} onFocus={onFocus} onChange={e => setText(e.target.value)} onBlur={commit} rows={1}
-            placeholder="Toggle summary…" className="flex-1 bg-transparent resize-none focus:outline-none text-sm font-medium text-zinc-200" />
+          {!editing && renderedText('Toggle summary…', 'text-sm font-medium text-zinc-200')}
+          <textarea ref={taRef} value={text} onFocus={onFocus} onChange={e => setText(e.target.value)} onBlur={exitEdit} onKeyDown={onMarkKeyDown} rows={1}
+            placeholder="Toggle summary…" className={cn('flex-1 bg-transparent resize-none focus:outline-none text-sm font-medium text-zinc-200', !editing && 'hidden')} />
           <RowControls onDelete={onDelete} onUp={onUp} onDown={onDown} deleteItemLabel={deleteLabel} />
         </div>
         {open && (
@@ -246,19 +313,24 @@ export function BlockEditorRow({ block, cursors, onChange, onDelete, onUp, onDow
   };
 
   return (
-    <div className="group relative flex items-start gap-1">
-      {presenceRail}
-      {block.type === 'todo' && (
-        <input type="checkbox" checked={block.checked} onChange={e => onChange({ checked: e.target.checked })}
-          className="mt-1.5 accent-emerald-500" />
-      )}
-      {block.type === 'bulleted_list' && <span className="text-zinc-400 mt-1">•</span>}
-      {block.type === 'numbered_list' && <span className="text-zinc-400 mt-1 text-xs">#</span>}
-      <textarea value={text} onFocus={onFocus} onChange={e => setText(e.target.value)} onBlur={commit} rows={1}
-        placeholder={`Type ${block.type.replace('_', ' ')}…`}
-        className={cn('flex-1 bg-transparent resize-none focus:outline-none focus:bg-zinc-800/40 rounded px-1',
-          cls[block.type] || cls.paragraph, block.type === 'todo' && block.checked && 'line-through text-zinc-400')} />
-      <RowControls onDelete={onDelete} onUp={onUp} onDown={onDown} deleteItemLabel={deleteLabel} />
+    <div className="group relative">
+      {editing && markToolbar}
+      <div className="flex items-start gap-1">
+        {presenceRail}
+        {block.type === 'todo' && (
+          <input type="checkbox" checked={block.checked} onChange={e => onChange({ checked: e.target.checked })}
+            className="mt-1.5 accent-emerald-500" />
+        )}
+        {block.type === 'bulleted_list' && <span className="text-zinc-400 mt-1">•</span>}
+        {block.type === 'numbered_list' && <span className="text-zinc-400 mt-1 text-xs">#</span>}
+        {!editing && renderedText(`Type ${block.type.replace('_', ' ')}…`,
+          cn(cls[block.type] || cls.paragraph, block.type === 'todo' && block.checked && 'line-through text-zinc-400'))}
+        <textarea ref={taRef} value={text} onFocus={onFocus} onChange={e => setText(e.target.value)} onBlur={exitEdit} onKeyDown={onMarkKeyDown} rows={1}
+          placeholder={`Type ${block.type.replace('_', ' ')}…`}
+          className={cn('flex-1 bg-transparent resize-none focus:outline-none focus:bg-zinc-800/40 rounded px-1',
+            cls[block.type] || cls.paragraph, block.type === 'todo' && block.checked && 'line-through text-zinc-400', !editing && 'hidden')} />
+        <RowControls onDelete={onDelete} onUp={onUp} onDown={onDown} deleteItemLabel={deleteLabel} />
+      </div>
     </div>
   );
 }

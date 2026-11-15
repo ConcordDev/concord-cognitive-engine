@@ -258,6 +258,21 @@ export function setMemberRole(db, orgId, targetUserId, newRole, actorId) {
   return { ok: true, role: newRole };
 }
 
+export function setOrganizationRecruitCriteria(db, orgId, criteria, actorId) {
+  if (!db) return { ok: false, error: "db_required" };
+  if (criteria !== "open" && criteria !== "closed") return { ok: false, error: "invalid_criteria" };
+  const org = _readOrgRow(db, orgId);
+  if (!org) return { ok: false, error: "org_not_found" };
+  if (org.leaderId !== actorId) return { ok: false, error: "leader_only" };
+  try {
+    db.prepare(`UPDATE world_organizations SET recruit_criteria = ? WHERE id = ?`).run(criteria, orgId);
+  } catch (err) {
+    return { ok: false, error: err?.message || "set_criteria_failed" };
+  }
+  _orgRowCache.delete(orgId);
+  return { ok: true, recruitCriteria: criteria };
+}
+
 export function getOrgMembers(db, orgId) {
   if (!db || !orgId) return [];
   try {

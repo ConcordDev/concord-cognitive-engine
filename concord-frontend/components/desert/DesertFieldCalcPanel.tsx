@@ -156,7 +156,7 @@ function TerrainSolarPanel() {
               <label className="block"><span className="block text-[9px] uppercase tracking-wider text-zinc-400">Elevation (m)</span>
                 <input type="number" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={terrain.elevationMeters} onChange={(e) => setTerrain({ ...terrain, elevationMeters: Number(e.target.value) || 0 })} /></label>
               <label className="block"><span className="block text-[9px] uppercase tracking-wider text-zinc-400">Soil type</span>
-                <select className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white" value={terrain.soilType} onChange={(e) => setTerrain({ ...terrain, soilType: e.target.value })}>
+                <select className="min-h-11 mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white" value={terrain.soilType} onChange={(e) => setTerrain({ ...terrain, soilType: e.target.value })}>
                   {SOIL_TYPES.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select></label>
               <label className="block"><span className="block text-[9px] uppercase tracking-wider text-zinc-400">Vegetation cover (%)</span>

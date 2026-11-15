@@ -5,7 +5,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { useState, useCallback, useRef, useMemo } from 'react';
+import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { GitFork, GitBranch, GitMerge, Layers, Loader2, ArrowLeftRight, RefreshCw, Network, Eye, FlaskConical } from 'lucide-react';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
@@ -51,7 +51,23 @@ export default function ForkLensPage() {
   useLensNav('fork');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('fork');
   const [selectedFork, setSelectedFork] = useState<string | null>(null);
-  const [activeView, setActiveView] = useState<ForkView>('lineage');
+  // Tab state lives in the URL (?tab=lab) so a reload, a shared link, or
+  // a back/forward hop lands on the same view instead of resetting to
+  // Lineage (FIX-fork-003). Read once at first render; written back with
+  // history.replaceState — the AssemblyViewer's pattern — so other
+  // params survive and no navigation or remount is triggered.
+  const [activeView, setActiveView] = useState<ForkView>(() => {
+    if (typeof window === 'undefined') return 'lineage';
+    const t = new URLSearchParams(window.location.search).get('tab');
+    return FORK_TABS.some((tab) => tab.id === t) ? (t as ForkView) : 'lineage';
+  });
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (activeView === 'lineage') url.searchParams.delete('tab');
+    else url.searchParams.set('tab', activeView);
+    window.history.replaceState(window.history.state, '', url.toString());
+  }, [activeView]);
   const [layout, setLayout] = useState<'tree' | 'list'>('tree');
   const [forkSearch, setForkSearch] = useState('');
   const [forkStatusFilter, setForkStatusFilter] = useState<ForkStatusFilter>('all');
@@ -108,8 +124,17 @@ export default function ForkLensPage() {
     await update(forkItem.id, { data: { ...forkItem.data, status: 'merged' as const } });
   }, [selectedFork, forkItems, update]);
 
+  const [forkNote, setForkNote] = useState<string | null>(null);
+
   const handleFork = useCallback(async () => {
-    if (!selectedFork) return;
+    if (!selectedFork) {
+      setForkNote(forks.length === 0
+        ? 'There is no fork in Lineage yet.'
+        : 'Pick a fork in Lineage, then branch it.');
+      setActiveView('lineage');
+      return;
+    }
+    setForkNote(null);
     const parent = forks.find((f) => f.id === selectedFork);
     if (!parent) return;
     await create({
@@ -241,14 +266,19 @@ export default function ForkLensPage() {
           icon: GitFork,
           onClick: () => { void handleFork(); },
           title: selectedForkData ? 'Create a child fork of the selected fork' : 'Pick a fork in Lineage first',
-          disabled: !selectedForkData,
         }}
       >
+      {forkNote && (
+        <p role="status" className="mb-3 text-sm text-amber-200">{forkNote}</p>
+      )}
       <div data-lens-theme="fork" className="space-y-5">
       {activeView === 'lineage' && (
         <div className="flex flex-wrap items-center gap-2">
           <input
             ref={forkSearchInputRef}
+            id="fork-search"
+            name="forkSearch"
+            aria-label="Search forks"
             type="text"
             value={forkSearch}
             onChange={(e) => setForkSearch(e.target.value)}

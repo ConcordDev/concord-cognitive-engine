@@ -6,6 +6,7 @@
  * ops.* macros plus mint/DM/publish/agent.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import {
   Phone, BookOpen, AlertOctagon, FileText,
@@ -225,9 +226,9 @@ export function OpsActionPanel() {
         'Be specific (e.g. add a circuit breaker, not "improve reliability"). Plain text, one paragraph.',
       ].filter(Boolean).join(' ');
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 4 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Action item ready.'); }
-      else err('Agent returned empty.');
+      const reply = readAgentReply(r.data);
+      if (reply.ok) { setAgentReply(reply.text); ok('Action item ready.'); }
+      else err(reply.reason);
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -254,43 +255,43 @@ export function OpsActionPanel() {
         <div className="space-y-2">
           <div>
             <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Rotation (user startHour endHour, one per line, UTC)</label>
-            <textarea value={rotation} onChange={(e) => setRotation(e.target.value)} rows={3} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono focus:outline-none focus:ring-2 focus:ring-pink-400/40 resize-none" />
+            <textarea name="rotation" aria-label="Rotation (user startHour endHour, one per line, UTC)" value={rotation} onChange={(e) => setRotation(e.target.value)} rows={3} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono focus:outline-none focus:ring-2 focus:ring-pink-400/40 resize-none" />
           </div>
           <div>
             <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Runbooks (alertPattern | step;step | owner)</label>
-            <textarea value={runbooks} onChange={(e) => setRunbooks(e.target.value)} rows={3} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono focus:outline-none focus:ring-2 focus:ring-cyan-400/40 resize-none" />
+            <textarea name="runbooks" aria-label="Runbooks (alertPattern | step;step | owner)" value={runbooks} onChange={(e) => setRunbooks(e.target.value)} rows={3} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono focus:outline-none focus:ring-2 focus:ring-cyan-400/40 resize-none" />
           </div>
           <div>
             <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Alert signature (for runbook lookup)</label>
-            <input type="text" value={alertSig} onChange={(e) => setAlertSig(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="db-timeout" />
+            <input type="text" name="alertSignature" aria-label="Alert signature (for runbook lookup)" value={alertSig} onChange={(e) => setAlertSig(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="db-timeout" />
           </div>
         </div>
         <div className="space-y-2">
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Escalation severity</label>
-              <select value={escSev} onChange={(e) => setEscSev(e.target.value as typeof escSev)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white">
+              <select name="escalationSeverity" aria-label="Escalation severity" value={escSev} onChange={(e) => setEscSev(e.target.value as typeof escSev)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white">
                 {(['sev1', 'sev2', 'sev3', 'sev4'] as const).map(s => <option key={s} value={s}>{s.toUpperCase()}</option>)}
               </select>
             </div>
             <div>
               <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Minutes open</label>
-              <input type="text" value={escMin} onChange={(e) => setEscMin(e.target.value.replace(/[^\d.]/g, ''))} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" />
+              <input type="text" name="escalationMinutes" aria-label="Minutes open" value={escMin} onChange={(e) => setEscMin(e.target.value.replace(/[^\d.]/g, ''))} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" />
             </div>
           </div>
           <div>
             <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Post-mortem title</label>
-            <input type="text" value={pmTitle} onChange={(e) => setPmTitle(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white" placeholder="API outage post-mortem" />
+            <input type="text" name="postmortemTitle" aria-label="Post-mortem title" value={pmTitle} onChange={(e) => setPmTitle(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white" placeholder="API outage post-mortem" />
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <select value={pmSev} onChange={(e) => setPmSev(e.target.value as typeof pmSev)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white">
+            <select name="postmortemSeverity" aria-label="Post-mortem severity" value={pmSev} onChange={(e) => setPmSev(e.target.value as typeof pmSev)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white">
               {(['sev1', 'sev2', 'sev3', 'sev4'] as const).map(s => <option key={s} value={s}>{s.toUpperCase()}</option>)}
             </select>
-            <input type="text" value={pmAffected} onChange={(e) => setPmAffected(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white" placeholder="affected service" />
+            <input type="text" name="postmortemAffected" aria-label="Affected service" value={pmAffected} onChange={(e) => setPmAffected(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white" placeholder="affected service" />
           </div>
           <div>
             <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">DM recipient (for handoff)</label>
-            <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white" placeholder="next on-call user id" />
+            <input type="text" name="recipient" aria-label="DM recipient (for handoff)" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white" placeholder="next on-call user id" />
           </div>
         </div>
       </div>

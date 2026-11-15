@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Tag, Loader2, Plus, Eye, EyeOff, Trash2, Sparkles, ChevronDown, ChevronUp, Pencil } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { BOUNDS } from '@/lib/bounds';
 import { cn } from '@/lib/utils';
 import { SkeletonTableRows } from '@/components/ui/Skeleton';
 
@@ -41,6 +42,7 @@ interface PriceResult {
 export function ListingsPanel() {
   const [list, setList] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'published' | 'draft' | 'archived'>('all');
   const [creating, setCreating] = useState(false);
   const [draft, setDraft] = useState({ title: '', kind: 'digital_download', priceUsd: '', description: '', tags: '', stockQty: '', images: '' });
@@ -56,10 +58,16 @@ export function ListingsPanel() {
 
   async function refresh() {
     setLoading(true);
+    setLoadError(null);
     try {
       const r = await lensRun({ domain: 'marketplace', action: 'listings-list', input: { status: filter } });
       setList((r.data?.result?.listings || []) as Listing[]);
-    } catch (e) { console.error('[Listings] failed', e); }
+    } catch (e) {
+      console.error('[Listings] failed', e);
+      // FIX-marketplace-005: a failed load used to fall through to an
+      // empty table that read as "no listings". Say so, with a retry.
+      setLoadError('Your listings could not be loaded. Check your connection and try again.');
+    }
     finally { setLoading(false); }
   }
 
@@ -162,15 +170,18 @@ export function ListingsPanel() {
 
         {creating && (
           <div className="px-4 py-3 border-b border-white/10 grid grid-cols-12 gap-2">
-            <input value={draft.title} onChange={e => setDraft({ ...draft, title: e.target.value })} placeholder="Title *" className="col-span-6 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+            <div className="col-span-6">
+              <input value={draft.title} maxLength={BOUNDS.TITLE} onChange={e => setDraft({ ...draft, title: e.target.value })} placeholder="Title *" aria-label="Listing title" className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+              <p className="mt-0.5 text-right text-[10px] text-gray-500">{draft.title.length} / 120</p>
+            </div>
             <select value={draft.kind} onChange={e => setDraft({ ...draft, kind: e.target.value })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
               {KINDS.map(k => <option key={k} value={k}>{k.replace(/_/g, ' ')}</option>)}
             </select>
-            <input type="number" step="0.01" value={draft.priceUsd} onChange={e => setDraft({ ...draft, priceUsd: e.target.value })} placeholder="Price USD *" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+            <input type="number" step="0.01" min={0} max={BOUNDS.MONEY_MAX} value={draft.priceUsd} onChange={e => setDraft({ ...draft, priceUsd: e.target.value })} placeholder="Price (CC) *" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
             <input value={draft.tags} onChange={e => setDraft({ ...draft, tags: e.target.value })} placeholder="Tags (comma-separated, ≤13)" className="col-span-6 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-            <input type="number" value={draft.stockQty} onChange={e => setDraft({ ...draft, stockQty: e.target.value })} placeholder="Stock qty (blank = unlimited)" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+            <input type="number" min={0} max={BOUNDS.QUANTITY_MAX} value={draft.stockQty} onChange={e => setDraft({ ...draft, stockQty: e.target.value })} placeholder="Stock qty (blank = unlimited)" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
             <input value={draft.images} onChange={e => setDraft({ ...draft, images: e.target.value })} placeholder="Image URLs (comma-separated)" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-            <textarea value={draft.description} onChange={e => setDraft({ ...draft, description: e.target.value })} placeholder="Description" rows={3} className="col-span-12 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+            <textarea maxLength={BOUNDS.NOTE} value={draft.description} onChange={e => setDraft({ ...draft, description: e.target.value })} placeholder="Description" rows={3} className="col-span-12 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
             <button onClick={create} className="col-span-12 px-3 py-1.5 text-xs rounded bg-orange-500 text-black font-bold hover:bg-orange-400">Save as draft</button>
           </div>
         )}
@@ -178,6 +189,11 @@ export function ListingsPanel() {
         <div className="max-h-[32rem] overflow-y-auto">
           {loading ? (
             <SkeletonTableRows rows={6} columns={5} />
+          ) : loadError ? (
+            <div role="alert" className="px-3 py-10 text-center text-xs text-rose-300">
+              {loadError}
+              <button onClick={refresh} aria-label="Retry loading listings" className="mx-auto mt-3 block rounded border border-rose-400/40 bg-rose-500/15 px-3 py-1.5 text-[11px] text-rose-100 hover:bg-rose-500/25">Retry</button>
+            </div>
           ) : list.length === 0 ? (
             <div className="px-3 py-10 text-center text-xs text-gray-400"><Tag className="w-6 h-6 mx-auto mb-2 opacity-30" />No listings yet.</div>
           ) : (
@@ -206,7 +222,7 @@ export function ListingsPanel() {
                           {l.kind.replace(/_/g, ' ')} · {l.stockQty === null ? '∞ stock' : `${l.stockQty} in stock`} · {l.tags.length} tags
                         </div>
                       </div>
-                      <div className="text-sm font-mono tabular-nums text-orange-300 w-20 text-right">${l.priceUsd.toFixed(2)}</div>
+                      <div className="text-sm font-mono tabular-nums text-orange-300 w-20 text-right">{l.priceUsd.toFixed(2)} CC</div>
                       {l.status === 'published' ? (
                         <button onClick={() => unpublish(l.id)} className="p-1.5 rounded hover:bg-white/[0.05] text-gray-400" title="Unpublish"><EyeOff className="w-3.5 h-3.5" /></button>
                       ) : (
@@ -221,11 +237,14 @@ export function ListingsPanel() {
                       <div className="px-4 pb-3 bg-black/30 space-y-2">
                         {editingId === l.id ? (
                           <div className="grid grid-cols-12 gap-2 pt-2">
-                            <input value={editDraft.title} onChange={e => setEditDraft({ ...editDraft, title: e.target.value })} placeholder="Title" className="col-span-6 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-                            <input type="number" step="0.01" value={editDraft.priceUsd} onChange={e => setEditDraft({ ...editDraft, priceUsd: e.target.value })} placeholder="Price USD" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+                            <div className="col-span-6">
+                              <input value={editDraft.title} maxLength={BOUNDS.TITLE} onChange={e => setEditDraft({ ...editDraft, title: e.target.value })} placeholder="Title" aria-label="Listing title" className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                              <p className="mt-0.5 text-right text-[10px] text-gray-500">{editDraft.title.length} / 120</p>
+                            </div>
+                            <input type="number" step="0.01" min={0} max={BOUNDS.MONEY_MAX} value={editDraft.priceUsd} onChange={e => setEditDraft({ ...editDraft, priceUsd: e.target.value })} placeholder="Price (CC)" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
                             <input type="number" value={editDraft.stockQty} onChange={e => setEditDraft({ ...editDraft, stockQty: e.target.value })} placeholder="Stock (blank = ∞)" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
                             <input value={editDraft.tags} onChange={e => setEditDraft({ ...editDraft, tags: e.target.value })} placeholder="Tags (comma-separated)" className="col-span-8 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-                            <input type="number" step="0.01" value={editDraft.shippingCostUsd} onChange={e => setEditDraft({ ...editDraft, shippingCostUsd: e.target.value })} placeholder="Shipping $" className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+                            <input type="number" step="0.01" value={editDraft.shippingCostUsd} onChange={e => setEditDraft({ ...editDraft, shippingCostUsd: e.target.value })} placeholder="Shipping (CC)" className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
                             <textarea value={editDraft.description} onChange={e => setEditDraft({ ...editDraft, description: e.target.value })} placeholder="Description" rows={3} className="col-span-12 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
                             <div className="col-span-12 flex gap-2">
                               <button onClick={() => saveEdit(l.id)} className="flex-1 px-3 py-1.5 text-xs rounded bg-orange-500 text-black font-bold hover:bg-orange-400">Save changes</button>
@@ -284,18 +303,18 @@ export function ListingsPanel() {
                               <div className="grid grid-cols-3 gap-2 tabular-nums">
                                 <div>
                                   <div className="text-[10px] uppercase text-emerald-300">Aggressive</div>
-                                  <div className="text-base font-mono text-white">${priceResult.suggestion.aggressive}</div>
+                                  <div className="text-base font-mono text-white">{priceResult.suggestion.aggressive} CC</div>
                                 </div>
                                 <div>
                                   <div className="text-[10px] uppercase text-emerald-300">Competitive</div>
-                                  <div className="text-lg font-mono text-emerald-200 font-bold">${priceResult.suggestion.competitive}</div>
+                                  <div className="text-lg font-mono text-emerald-200 font-bold">{priceResult.suggestion.competitive} CC</div>
                                 </div>
                                 <div>
                                   <div className="text-[10px] uppercase text-emerald-300">Premium</div>
-                                  <div className="text-base font-mono text-white">${priceResult.suggestion.premium}</div>
+                                  <div className="text-base font-mono text-white">{priceResult.suggestion.premium} CC</div>
                                 </div>
                                 <div className="col-span-3 text-[10px] text-emerald-300/70 mt-1">
-                                  Based on {priceResult.comparableCount} comparable listings · peers avg ${priceResult.peerStats.avg}, median ${priceResult.peerStats.median} · you're <span className="font-semibold">{priceResult.positioning}</span>
+                                  Based on {priceResult.comparableCount} comparable listings · peers avg {priceResult.peerStats.avg} CC, median {priceResult.peerStats.median} CC · you're <span className="font-semibold">{priceResult.positioning}</span>
                                 </div>
                               </div>
                             ) : null}

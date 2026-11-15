@@ -73,7 +73,7 @@ export function CategoryRulesPanel({ className }: { className?: string }) {
     <div className={cn('rounded-xl border border-lattice-border bg-lattice-surface/40 p-4', className)}>
       <div className="flex items-center gap-2 mb-3">
         <Wand2 className="w-4 h-4 text-emerald-400" />
-        <h3 className="text-sm font-semibold text-gray-100">Auto-categorization rules</h3>
+        <h2 className="text-sm font-semibold text-gray-100">Auto-categorization rules</h2>
         {loading && <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-500" />}
       </div>
 
@@ -85,7 +85,7 @@ export function CategoryRulesPanel({ className }: { className?: string }) {
 
       <div className="space-y-1.5 mb-3">
         {rules.length === 0 && !loading && (
-          <p className="text-xs text-gray-500">No rules yet — transactions matching a pattern will auto-post to the chosen account.</p>
+          <p className="text-xs text-gray-400">No rules yet — transactions matching a pattern will auto-post to the chosen account.</p>
         )}
         {rules.map((r) => (
           <div key={r.id} className="flex items-center gap-2 text-xs group">
@@ -100,11 +100,11 @@ export function CategoryRulesPanel({ className }: { className?: string }) {
       </div>
 
       <form onSubmit={(e) => { e.preventDefault(); void create(); }} className="flex flex-wrap items-center gap-2">
-        <span className="text-xs text-gray-500">If contains</span>
+        <span className="text-xs text-gray-400">If contains</span>
         <input value={pattern} onChange={(e) => setPattern(e.target.value)} placeholder="e.g. AMAZON" maxLength={60}
           className="w-32 bg-lattice-elevated border border-lattice-border rounded px-2 py-1.5 text-xs text-gray-100 focus:border-emerald-500 focus:outline-none" />
-        <span className="text-xs text-gray-500">post to</span>
-        <select value={accountId} onChange={(e) => setAccountId(e.target.value)}
+        <span className="text-xs text-gray-400">post to</span>
+        <select aria-label="Assign to account" value={accountId} onChange={(e) => setAccountId(e.target.value)}
           className="flex-1 min-w-[10rem] bg-lattice-elevated border border-lattice-border rounded px-2 py-1.5 text-xs text-gray-100 focus:outline-none">
           {accounts.map((a) => <option key={a.id} value={a.id}>{a.code ? `${a.code} · ` : ''}{a.name}</option>)}
         </select>

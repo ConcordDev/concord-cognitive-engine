@@ -9,12 +9,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Users, Trophy, Flag } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 
-interface Club { id: string; name: string; sport: string; description: string | null; memberCount: number; joined: boolean }
+interface Club { id: string; name: string; sport: string; description: string | null; memberCount: number; joined: boolean; isOwner?: boolean }
 interface ChallengeRow { rank: number; userId?: string; displayName?: string; value: number; isMe: boolean }
 interface Challenge {
-  id: string; name: string; metric: string; target: number;
+  id: string; name: string; metric: string; target: number; isOwner?: boolean;
   startDate: string; endDate: string; active: boolean; joined: boolean;
   participantCount: number;
   myProgress: { value: number; pct: number; complete: boolean };
@@ -87,9 +88,9 @@ export function StravaClubsPanel() {
           <Users className="w-3.5 h-3.5 text-orange-400" /> Clubs
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
-          <input placeholder="Club name" value={clubForm.name} onChange={(e) => setClubForm({ ...clubForm, name: e.target.value })}
+          <input id="fitness-club-name" name="club-name" aria-label="Club name" placeholder="Club name" value={clubForm.name} onChange={(e) => setClubForm({ ...clubForm, name: e.target.value })}
             className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-          <select value={clubForm.sport} onChange={(e) => setClubForm({ ...clubForm, sport: e.target.value })}
+          <select id="fitness-sport" name="sport" value={clubForm.sport} onChange={(e) => setClubForm({ ...clubForm, sport: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
             {['run', 'ride', 'swim', 'hike'].map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
@@ -98,6 +99,7 @@ export function StravaClubsPanel() {
             <Plus className="w-3.5 h-3.5" /> Create
           </button>
         </div>
+        <p className="text-[11px] text-zinc-400 mb-2">Shared with everyone on Concord — clubs are public and anyone can join.</p>
         {clubs.length === 0 ? (
           <p className="text-[11px] text-zinc-400 italic">No clubs yet.</p>
         ) : (
@@ -108,11 +110,21 @@ export function StravaClubsPanel() {
                   <p className="text-sm font-semibold text-zinc-100">{c.name}</p>
                   <p className="text-[11px] text-zinc-400 capitalize">{c.sport} · {c.memberCount} members</p>
                 </div>
+                <div className="flex items-center gap-2">
+                {c.isOwner && (
+                  <StickyDeleteConfirm
+                    armLabel="Delete"
+                    confirmLabel="Delete this club?"
+                    className="text-[11px] text-rose-300"
+                    onConfirm={async () => { await lensRun('fitness', 'club-delete', { id: c.id }); await refresh(); }}
+                  />
+                )}
                 <button type="button" onClick={() => joinClub(c)}
                   className={cn('text-[11px] px-2.5 py-1 rounded-lg border',
                     c.joined ? 'border-zinc-700 text-zinc-400' : 'border-orange-700/50 bg-orange-950/40 text-orange-300')}>
                   {c.joined ? 'Leave' : 'Join'}
                 </button>
+                </div>
               </li>
             ))}
           </ul>
@@ -125,15 +137,16 @@ export function StravaClubsPanel() {
           <Flag className="w-3.5 h-3.5 text-orange-400" /> Challenges
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
-          <input placeholder="Challenge name" value={chForm.name} onChange={(e) => setChForm({ ...chForm, name: e.target.value })}
+          <input id="fitness-challenge-name" name="challenge-name" aria-label="Challenge name" placeholder="Challenge name" value={chForm.name} onChange={(e) => setChForm({ ...chForm, name: e.target.value })}
             className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-          <select value={chForm.metric} onChange={(e) => setChForm({ ...chForm, metric: e.target.value })}
+          <select id="fitness-metric" name="metric" value={chForm.metric} onChange={(e) => setChForm({ ...chForm, metric: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
             {['distance', 'elevation', 'activity_count', 'duration'].map((m) => <option key={m} value={m}>{m.replace(/_/g, ' ')}</option>)}
           </select>
-          <input placeholder="Target" inputMode="decimal" value={chForm.target} onChange={(e) => setChForm({ ...chForm, target: e.target.value })}
+          <input id="fitness-target-3" name="target-3" aria-label="Target" placeholder="Target" inputMode="decimal" value={chForm.target} onChange={(e) => setChForm({ ...chForm, target: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
         </div>
+        <p className="text-[11px] text-zinc-400 mb-2">Shared with everyone on Concord — challenges are public and anyone can join.</p>
         <button type="button" onClick={createChallenge}
           className="w-full mb-2 flex items-center justify-center gap-1 bg-orange-600 hover:bg-orange-500 text-white text-xs font-medium rounded-lg py-1.5">
           <Plus className="w-3.5 h-3.5" /> Create challenge
@@ -152,11 +165,32 @@ export function StravaClubsPanel() {
                       {ch.active ? '' : ' · ended'}
                     </p>
                   </div>
-                  <button type="button" onClick={() => joinChallenge(ch)}
-                    className={cn('text-[11px] px-2.5 py-1 rounded-lg border',
-                      ch.joined ? 'border-zinc-700 text-zinc-400' : 'border-orange-700/50 bg-orange-950/40 text-orange-300')}>
-                    {ch.joined ? 'Leave' : 'Join'}
-                  </button>
+                  <div className="flex items-center gap-2">
+                  {ch.isOwner && (
+                    <StickyDeleteConfirm
+                      armLabel="Delete"
+                      confirmLabel="Delete this challenge?"
+                      className="text-[11px] text-rose-300"
+                      onConfirm={async () => { await lensRun('fitness', 'challenge-delete', { id: ch.id }); await refresh(); }}
+                    />
+                  )}
+                  {ch.joined ? (
+                    <StickyDeleteConfirm
+                      armLabel="Leave"
+                      confirmLabel={`Leave "${ch.name}"?`}
+                      armAriaLabel={`Leave challenge ${ch.name}`}
+                      confirmAriaLabel={`Confirm leave challenge ${ch.name}`}
+                      cancelAriaLabel="Stay in challenge"
+                      className="text-[11px] px-2.5 py-1 rounded-lg border border-zinc-700 text-zinc-400"
+                      onConfirm={() => joinChallenge(ch)}
+                    />
+                  ) : (
+                    <button type="button" onClick={() => joinChallenge(ch)}
+                      className="text-[11px] px-2.5 py-1 rounded-lg border border-orange-700/50 bg-orange-950/40 text-orange-300">
+                      Join
+                    </button>
+                  )}
+                  </div>
                 </div>
                 {ch.joined && (
                   <div className="mt-1.5 h-2 rounded-full bg-zinc-800 overflow-hidden">

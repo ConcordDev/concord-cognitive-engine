@@ -119,7 +119,7 @@ export default function TelecommunicationsLensPage() {
             </div>
             <p className="text-2xl font-bold text-violet-400">
               {overview ? overview.activeTowers : '—'}
-              {overview ? <span className="text-sm text-zinc-500"> / {overview.towers}</span> : null}
+              {overview ? <span className="text-sm text-zinc-400"> / {overview.towers}</span> : null}
             </p>
             <p className="text-xs text-gray-400">Active sites</p>
           </div>
@@ -153,7 +153,7 @@ export default function TelecommunicationsLensPage() {
           </div>
         )}
 
-        <section id="telecom-planner" className="scroll-mt-6">
+        <section id="telecom-planner" className="min-w-0 scroll-mt-6 overflow-x-auto [&_button:focus-visible]:outline [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-violet-300 [&_input:focus-visible]:outline [&_input:focus-visible]:outline-2 [&_input:focus-visible]:outline-violet-300 [&_select:focus-visible]:outline [&_select:focus-visible]:outline-2 [&_select:focus-visible]:outline-violet-300">
           <RFPlanner tab={rfTab} onTabChange={setRfTab} onDataChanged={loadOverview} />
         </section>
 

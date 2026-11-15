@@ -642,7 +642,7 @@ function PublicPostsTab({ userId }: { userId: string }) {
   const { data, isLoading } = useQuery({
     queryKey: ['public-posts', userId],
     queryFn: async () => {
-      const res = await api.get(`/api/social/posts/${userId}`);
+      const res = await api.get(`/api/social/posts/user/${userId}`);
       return (res.data.posts || []) as PublicPost[];
     },
   });
@@ -682,7 +682,7 @@ function PublicMediaTab({ userId }: { userId: string }) {
   const { data, isLoading } = useQuery({
     queryKey: ['public-media', userId],
     queryFn: async () => {
-      const res = await api.get(`/api/social/posts/${userId}`, {
+      const res = await api.get(`/api/social/posts/user/${userId}`, {
         params: { mediaOnly: true },
       });
       return (res.data.posts || []) as PublicPost[];
@@ -724,10 +724,24 @@ function PublicDTUsTab({ userId }: { userId: string }) {
   const { data, isLoading } = useQuery({
     queryKey: ['public-dtus', userId],
     queryFn: async () => {
-      const res = await api.get(`/api/social/posts/${userId}`, {
-        params: { type: 'dtu' },
-      });
-      return (res.data.posts || []) as PublicPost[];
+      // The DTUs tab reads the dedicated collection route (GET
+      // /dtus/user/:userId, rows under `dtus`) — the same shape
+      // UserProfile's DTUs tab consumes. Rows carry id/title/createdAt
+      // only; the rest of the card's fields stay honestly empty.
+      const res = await api.get(`/api/social/dtus/user/${userId}`, { params: { limit: 30 } });
+      const rows = (res.data.dtus || []) as Array<{ id: string; title: string; createdAt: string | null }>;
+      return rows.map((row) => ({
+        id: row.id,
+        dtuId: row.id,
+        title: row.title,
+        content: '',
+        authorId: userId,
+        authorName: '',
+        tags: [],
+        tier: 'regular',
+        createdAt: row.createdAt || '',
+        citationCount: 0,
+      })) as PublicPost[];
     },
   });
 

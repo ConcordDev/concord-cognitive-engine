@@ -52,7 +52,7 @@ export function BiomePreview({ biome, weatherIntensity }: { biome: string; weath
   }, [biome, weatherIntensity]);
 
   if (loading && !data) {
-    return <div className="rounded border border-stone-800 bg-stone-950 p-4 text-xs text-stone-500">Loading biome preview…</div>;
+    return <div className="rounded border border-stone-800 bg-stone-950 p-4 text-xs text-stone-400">Loading biome preview…</div>;
   }
   if (err) {
     return <div className="rounded border border-red-800 bg-red-950/40 p-3 text-xs text-red-300">{err}</div>;
@@ -83,7 +83,7 @@ export function BiomePreview({ biome, weatherIntensity }: { biome: string; weath
 
       {/* day-cycle climate curve */}
       <div>
-        <div className="mb-1 text-[10px] uppercase tracking-wider text-stone-500">Day-cycle climate</div>
+        <div className="mb-1 text-[10px] uppercase tracking-wider text-stone-400">Day-cycle climate</div>
         <ChartKit
           kind="line"
           height={140}
@@ -103,7 +103,7 @@ export function BiomePreview({ biome, weatherIntensity }: { biome: string; weath
       <div className="rounded border border-amber-800/40 bg-amber-950/20 px-3 py-2 text-xs text-amber-200">
         Storm chance: <strong>{data.stormChancePct}%</strong> at current weather intensity.
       </div>
-      <p className="text-[11px] text-stone-500">{data.summary}</p>
+      <p className="text-[11px] text-stone-400">{data.summary}</p>
     </div>
   );
 }
@@ -111,7 +111,7 @@ export function BiomePreview({ biome, weatherIntensity }: { biome: string; weath
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded border border-stone-800 bg-stone-900 px-2 py-1.5">
-      <div className="text-[10px] uppercase tracking-wider text-stone-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-stone-400">{label}</div>
       <div className="mt-0.5 font-mono text-sm text-stone-200">{value}</div>
     </div>
   );

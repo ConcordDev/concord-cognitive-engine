@@ -1,0 +1,157 @@
+# Coordinator QA review log (slug | result | reviewed ET | note)
+global | PASS | 2026-11-09 2:58 PM | ZT1; criteria+WebDB, full matrix incl. Lighthouse, 15 tickets, leftovers logged
+admin | PASS | 2026-11-09 2:58 PM | ZT5 BLOCKED legit (admin account forbidden); non-admin gate verified, 2 tickets
+audit | PASS | 2026-11-09 2:58 PM | ZT5 BLOCKED legit (live 404, screenshot+console), FIX-audit-001
+spectate | RETURNED | 2026-11-09 2:58 PM | ZT2; criteria missing job-to-be-done, outcome criteria, WebDB section, outcome verdict
+billing | RETURNED | 2026-11-09 2:58 PM | ZT2; Economy tab @390 NOT_TESTED
+self | RETURNED | 2026-11-09 2:58 PM | ZT5; search/filter/sort matrix row undocumented
+self | PASS | 2026-11-09 3:09 PM | ZT5 rework: search/filter/sort documented, FIX-self-015..017 added
+spectate | PASS | 2026-11-09 3:09 PM | ZT2 rework: job, outcome criteria, verdict, WebDB section added; BLOCKED reason legit
+byo-keys | RETURNED | 2026-11-09 3:09 PM | ZT1; HIGH FIX-byo-keys-001 hidden AI-addressed text is unverified (no DOM evidence); empty states undocumented
+billing | PASS | 2026-11-09 3:33 PM | ZT2 rework: Economy @390 captured (4 shots), FIX-billing-015
+byo-keys | PASS | 2026-11-09 3:33 PM | ZT1 rework: DOM check found no hidden agent text, FIX-byo-keys-001 downgraded to low/unproven; empty states documented
+eco | PASS | 2026-11-09 3:33 PM | ZT4; full matrix, 10 tickets, own fixtures deleted, LT2 leftovers logged
+code-quality | PASS | 2026-11-09 3:33 PM | ZT5; criteria+verdict, 9 tickets, leftovers logged
+cognition | RETURNED | 2026-11-09 3:33 PM | ZT1; FIX-cognition-010 private-DTU visibility unverified, verify with QA account 2
+dx-platform | RETURNED | 2026-11-09 3:33 PM | ZT1; 7-min walk, 6 features not run, notes too thin
+crypto | PASS | 2026-11-09 3:45 PM | ZT2; full matrix incl. 390, criteria+WebDB+verdict, 14 tickets, leftovers logged
+custom | RETURNED | 2026-11-09 3:45 PM | ZT4; HIGH 001 widget loss lacks repeatable repro; ~405 not 390; reload + gallery search undocumented
+export | RETURNED | 2026-11-09 3:45 PM | ZT4; confirm HIGH 001 encrypted-archive round trip; ~400 not 390; gallery search + focus trap
+debug | RETURNED | 2026-11-09 3:45 PM | ZT5; edit_alert_rules, traces_create, metrics_sample NOT_RUN
+export | PASS | 2026-11-09 3:57 PM | ZT4 rework: FIX-export-001 HIGH reproduced 2/2 with screenshots; true 390 desk/toolkit/gallery; gallery search none; focus trap FAIL logged
+debug | PASS | 2026-11-09 3:57 PM | ZT5 rework: 3 cases run, FIX-debug-012..015, leftovers logged
+cognition | PASS | 2026-11-09 3:57 PM | ZT1 rework: account-2 check shows no cross-account leak; 010 rewritten low
+productivity | RETURNED | 2026-11-09 3:57 PM | ZT3; 15 KB notes but zero screenshots in evidence/
+custom | PASS | 2026-11-09 4:17 PM | ZT4 rework: widget loss repro 2/2, duplicate not reproduced (observation), true 390, reload PASS, gallery search none
+fork | PASS | 2026-11-09 4:17 PM | ZT5; full matrix table, 25 images, 11 tickets, leftovers logged
+legacy | PASS | 2026-11-09 4:17 PM | ZT5; full matrix table, 20 images, 8 tickets; Debt Trend unreachable explained
+import | RETURNED | 2026-11-09 4:17 PM | ZT4; round trip skipped on a naming technicality, Global Library visibility unchecked, no outcome verdict
+import | PASS | 2026-11-09 4:24 PM | ZT4 rework: round trip PASS via renamed fixture, imports private (Global: No), outcome verdict added
+dx-platform | PASS | 2026-11-09 4:24 PM | ZT1 rework: all 12 areas walked with numbered shots, 390, keyboard, Lighthouse, verdict; FIX through 017
+expert-mode | PASS | 2026-11-09 4:50 PM | ZT1; 22 shots incl 390, CRUD+reload+delete, keyboard, verdict, FIX 001..008, fixtures cleaned
+integrations | PASS | 2026-11-09 4:50 PM | ZT2; 15 shots incl 390, full matrix, verdict FAIL, FIX 001..011, leftovers logged
+lattice | PASS | 2026-11-09 4:50 PM | ZT3; 23 shots incl 390, two passes, verdict FAIL, FIX 001..010
+lock | PASS | 2026-11-09 4:50 PM | ZT5; 16 shots incl mobile, Run Audit not clicked (global state, legit), verdict, 10 tickets
+productivity | PASS | 2026-11-09 4:50 PM | ZT3 rework: 32 shots incl 390, full matrix, verdict, 24 tickets, leftovers logged
+mesh | RETURNED | 2026-11-09 4:50 PM | ZT4; no search/filter or empty-state rows
+ops | RETURNED | 2026-11-09 4:50 PM | ZT5; reach_mobile NOT_RUN with no valid reason (390 needs no role)
+psyops | RETURNED | 2026-11-09 4:50 PM | ZT3; BLOCKED legit (admin-gated) but no 390 check of gate screen
+ops | PASS | 2026-11-09 5:00 PM | ZT5 rework: true 390 walk, 14 m390 shots, FIX-ops-007..011; BLOCKED legit (403 operator gate, paging real responders)
+queue | PASS | 2026-11-09 5:00 PM | ZT5; 16 shots incl mobile, 3 passes, NOT_RUN only shared-global actions, verdict PARTIAL, FIX 001..013, leftover logged
+repair-telemetry | PASS | 2026-11-09 5:00 PM | ZT2; BLOCKED legit (admin/owner gate), 390 shot, own thread delete verified, FIX 001..003
+mesh | PASS | 2026-11-09 5:25 PM | ZT4 rework: search/filter (topic dropdown, 3 shots) and empty-state rows added
+psyops | PASS | 2026-11-09 5:25 PM | ZT3 rework: 4 true-390 shots of gate + Share/Export/Escape, FIX-psyops-001/002; BLOCKED legit (admin gate)
+offline | PASS | 2026-11-09 5:25 PM | ZT4; 11 shots incl 390, offline/reconnect, CRUD+reload+delete, cleanup verified, FIX 001..008
+schema | PASS | 2026-11-09 5:25 PM | ZT5; 41 shots incl 390, full matrix, verdict, FIX 001..013, fixture qa5 deleted, no leftovers
+resonance | PASS | 2026-11-09 5:50 PM | ZT3; pass2 closed search/filter, Tab walk, Escape, 390; 35 shots, verdict FAIL, FIX 001..006, fixtures deleted
+sentinel | PASS | 2026-11-09 5:50 PM | ZT5; 35 shots incl 390, NOT_RUN only shared/owner-gated actions, 13 tickets, undeletable threat report logged (FIX-sentinel-001, 1x, not re-run to avoid more shared pollution)
+platform | RETURNED | 2026-11-09 5:50 PM | ZT1; no outcome verdict, no validation, overlays undocumented, some shots outside evidence/
+sandbox | RETURNED | 2026-11-09 5:50 PM | ZT2; 7 shots, no CRUD/validation screenshots, no verdict in report
+platform | PASS | 2026-11-09 5:55 PM | ZT1 rework: verdict, validation section, overlays/dialogs table, 43 local shots, no /tmp paths; cleanup verified
+sandbox | PASS | 2026-11-09 5:55 PM | ZT2 rework: 6 data-path shots (empty-name, create, edit, reload, delete, empty after reload) + outcome verdict FAIL
+system | PASS | 2026-11-09 5:55 PM | ZT2; BLOCKED legit (telemetry 403, admin forbidden); reachable parts walked incl dashboard add/remove, 390, Share/Escape; FIX 001..008
+worldmodel | PASS | 2026-11-09 6:15 PM | ZT5; 40 shots incl 390, full matrix, verdict FAIL, FIX 001..009, cleanup complete, leftovers logged
+sync | RETURNED | 2026-11-09 6:15 PM | ZT4; full 15-row matrix but 8 shots, no screenshots for CRUD/privacy/offline/validation/Esc FAIL rows
+sync | PASS | 2026-11-09 6:25 PM | ZT4 rework: 11 new shots for create/reload/privacy scope/offline loss/validation/Esc/cleanup, FIX through 013
+app-maker | PASS | 2026-11-09 6:25 PM | ZT2; 17 shots incl 390, full matrix, verdict FAIL, FIX 001..008 (001 high: preview runs no app logic, functional), leftover logged
+artistry | PASS | 2026-11-09 6:25 PM | ZT4; 15-row matrix, CRUD create/edit/reload/delete shots, 390, dialog/Esc FAIL ticketed, cleanup PASS, FIX 001..007
+tick | RETURNED | 2026-11-09 6:25 PM | ZT3; no search/filter, empty-state, validation or a11y/perf rows; lens-tab keyboard reach unresolved
+tick | PASS | 2026-11-09 6:50 PM | ZT3 rework: search none, empty/prereq, validation N/A, perf 0 console errors, lens tabs keyboard-reachable
+animation | PASS | 2026-11-09 6:50 PM | ZT1; 29 shots incl 390, full matrix, verdict, FIX 001..007, no leftovers
+game-design | PASS | 2026-11-09 6:50 PM | ZT2; 21 shots incl 390, full matrix, verdict FAIL, FIX 001..008, leftover logged
+narrative-walk | PASS | 2026-11-09 6:50 PM | ZT3; full walk W01-W06 + reload, keyboard, export, Esc, perf, 390; verdict PARTIAL; FIX 001..006
+photography | PASS | 2026-11-09 6:50 PM | ZT4; 15-row matrix, upload + CRUD + reload + delete, validation, 390, cleanup verified, FIX 001..009
+podcast | RETURNED | 2026-11-09 6:50 PM | ZT5; audio upload/subscribe/sync skipped citing a nonexistent no-upload rule
+creative-writing | RETURNED | 2026-11-09 6:50 PM | ZT5; narrative trail (authored walk, not AI) NOT_RUN
+vault | RETURNED | 2026-11-09 7:05 PM | ZT1; own criteria item 3 cross-account privacy check not done
+answers | RETURNED | 2026-11-09 7:05 PM | ZT3; no edit row in CRUD (create/reload/delete only)
+answers | PASS | 2026-11-09 7:20 PM | ZT3 rework: edit own question + answer persists after reload (R01-R03)
+atlas | PASS | 2026-11-09 7:20 PM | ZT2; 24 shots incl 390, full matrix incl edit/reload/delete, verdict FAIL, FIX 001..007, leftover logged
+podcast | PASS | 2026-11-09 7:35 PM | ZT5 rework: upload tried (click + drag-drop), FIX-podcast-006 high functional; subscribe/unsub + auto-download persist with shots; speed FIX-007
+creative-writing | PASS | 2026-11-09 7:35 PM | ZT5 rework: Narrative trail walked (11 beats, back, reload, Enter), FIX 008..011 with shots
+desert | PASS | 2026-11-09 7:35 PM | ZT1; 15 shots incl 390, full matrix incl edit/reload/delete, verdict, FIX 001..005
+frontier | PASS | 2026-11-09 7:35 PM | ZT3; all 10 tool tabs run with defaults (B/C rows), validation, export, Esc, keyboard, perf, 390; verdict PARTIAL; FIX 001..007
+geology | PASS | 2026-11-09 7:35 PM | ZT2; 26 shots incl 390, full matrix, verdict FAIL, FIX 001..009, leftover logged
+vault | RETURNED | 2026-11-09 7:35 PM | ZT1; BLOCKED on account-2 login not legit (same tester signed acct 2 into incognito for cognition at 3:35 PM)
+linguistics | RETURNED | 2026-11-09 7:45 PM | ZT1; Datamuse/Dictionary lookups (lens-specific) not run; search only tried with zero records (inconclusive)
+vault | PASS-BLOCKED | 2026-11-09 7:45 PM | ZT1; per 7:33 PM coordinator ruling, BLOCKED is legit: account-2 check waits on a saved vault login (walker won't type a password from file). Reopen when login exists.
+linguistics | PASS | 2026-11-09 8:05 PM | ZT1 rework: Datamuse + Dictionary lookups run (both fail, FIX-008), search with fixture 1 hit / nonsense 0, fixture deleted (rework-01..05)
+astronomy | PASS | 2026-11-09 8:05 PM | ZT5; full matrix incl 390, verdict PARTIAL, FIX 001..009, undeletable qa5 session logged in LEFTOVER_FIXTURES (FIX-008)
+history | RETURNED | 2026-11-09 8:05 PM | ZT3; matrix + perf + 390 + cleanup fine, but no written outcome verdict section
+poetry | RETURNED | 2026-11-09 8:05 PM | ZT4; 15-row matrix + cleanup fine, but no written outcome verdict section
+history | PASS | 2026-11-09 8:12 PM | ZT3 rework: Outcome verdict PARTIAL added against job-to-be-done, FIX ids
+poetry | PASS | 2026-11-09 8:12 PM | ZT4 rework: Outcome verdict PARTIAL added against job-to-be-done, FIX ids
+ocean | RETURNED | 2026-11-09 8:12 PM | ZT2; write-up stale (390 + focus-trap NOT_TESTED, shots cited in /tmp), no notes for later shots, no outcome verdict, no load timing
+space | PASS | 2026-11-09 8:25 PM | ZT3; pass1+pass2 incl all tabs, CRUD+reload+delete, search/validation, Esc shots, 390, perf; verdict PARTIAL (ISS speed units FIX-001); FIX 001..003
+understanding | PASS | 2026-11-09 8:25 PM | ZT4; 15-row matrix incl 390, CRUD+reload+delete, validation, Esc, perf, cleanup verified; verdict PARTIAL; FIX 001..006
+ocean | PASS | 2026-11-09 8:51 PM | ZT2 rework: final-notes.md supersedes run1 (390 x5 tabs, focus trap tested), every row mapped to existing files, load timing 2 runs, verdict FAIL, FIX 001..009, fixtures clean
+creator | PASS | 2026-11-09 8:51 PM | ZT4; 15-row matrix incl 390 + Ctrl+K-in-field, CRUD+reload+delete, validation 600/HTML escape, Esc/focus, load timing; verdict with FIX 001..006; fixtures clean
+philosophy | PASS | 2026-11-09 8:51 PM | ZT1; 11 steps each with shot, create/reload/edit/search/delete+reload, overlay table, LH+console, 390; verdict PASS-WITH-ISSUES; FIX 001..006; fixtures none remain
+robotics | PASS | 2026-11-09 8:51 PM | ZT5; pass1+pass2 matrix + lens features (FK/IK/path/3D/telemetry/teleop/sensors/missions), 390, verdict PARTIAL; FIX 001..008; fleet empty after reload verified
+analytics | PASS | 2026-11-09 9:15 PM | ZT2; 3 runs, 25-row table mapped to existing files, CRUD+reload+delete, validation 300/dates/numbers, hotkeys, Share Esc/Tab, 390 all 8 tabs, load timing; verdict FAIL; FIX 001..011; undeletable event logged
+projects | PASS | 2026-11-09 9:15 PM | ZT3 resume: pass3 covered remaining 5 views + sprint create/reload/edit-delete gap; all 12 views, CRUD+confirm delete, 390, perf; criteria w/ job, WebDB, verdict PARTIAL; FIX 001..007; fixtures none
+genesis | PASS | 2026-11-09 9:15 PM | ZT4 resume: hotkeys, export, contrast, keyboard, 390 filled in; 15-row matrix, verdict with FIX 001..008; 0 fixtures
+mentorship | RETURNED | 2026-11-09 9:15 PM | ZT1; matrix otherwise complete, but Share & Publish Escape "not recorded" in overlay table (closed with x); test Esc on Share, add shot + row
+mentorship | PASS | 2026-11-09 9:36 PM | ZT1 rework: Share Esc x1/x2 tested with 2 shots, row filled, FIX-mentorship-009
+plugins | PASS | 2026-11-09 9:36 PM | ZT1; empty gallery (no create/install, FIX-001) so CRUD N/A legit; search/validation, overlay table w/ Esc, export, console+LH, 390, verdict PASS-WITH-ISSUES; FIX 001..005; no fixtures
+debate | RETURNED | 2026-11-09 9:36 PM | ZT5; pass1-3 solid (17 tickets, voting HIGH 015), but feature_ai_analysis NOT_TESTED citing "no GPU"; AI analysis runs on the chat brain like Ask, not a GPU job (TESTING_PROTOCOL: AI exclusions incorrect). Run it once and record.
+debate | PASS | 2026-11-09 10:13 PM | ZT5 rework: AI analysis run on chat brain (~10 s), Evaluate PASS, Score tie-winner FIX-debate-018; 18 tickets
+supplychain | PASS | 2026-11-09 10:13 PM | ZT1; 11-step matrix w/ shots, CRUD+reload+delete, validation, overlays, export, LH, 390; verdict; FIX 001..007. Incident: double-click on silent trash deleted 1 pre-existing QA-account scenario, documented + HIGH FIX-supplychain-001 (seen once, not alerted)
+world | PASS | 2026-11-09 10:13 PM | ZT3 pass 1-4: Unity view freeze/dead MENU, ledger, perf DCL 210 ms, export panel, Share Esc, keyboard, reload, 390, Ask; verdict PARTIAL; FIX-world-001..007; no fixtures
+telecommunications | RETURNED | 2026-11-09 10:13 PM | ZT5; matrix + features solid (FIX 001..009) but repo topic selector UNVERIFIED (timeouts, not ticketed) and load time is an estimate, not measured
+concord-link-frontier | RETURNED | 2026-11-09 10:26 PM | ZT2 run 2; full matrix, timing, 390 x10, verdict FAIL, FIX 001..009, undeletable fixture logged; only gap: Share Esc-while-open UNVERIFIED (300-char submit skipped OK, it would create another undeletable record)
+world-observatory | RETURNED | 2026-11-09 10:36 PM | ZT1; matrix complete (create/edit/delete+reload, export, LH, 390, verdict, FIX 001..007, clean) but Share & Publish Esc "not recorded" (same gap as mentorship)
+energy | RETURNED | 2026-11-09 10:36 PM | ZT4; 15-row matrix solid (CRUD+rename+reload, validation, timing, 390, cleanup, FIX x8) but Share & Publish and Lens tools never opened for Esc/focus
+world-observatory | PASS | 2026-11-09 11:13 PM | ZT1 rework: Share Esc x1/x2 shots, FIX-world-observatory-008; export still holds deleted fixture noted
+energy | PASS | 2026-11-09 11:13 PM | ZT4 rework: Share (Esc ignored, FIX-energy-009) + Lens tools (Esc closes, Tab escapes) with shots; row 10 complete
+concord-link-frontier | PASS | 2026-11-09 11:13 PM | ZT2 rework: Esc-while-open recheck 10:55 PM, stays open, FIX-010, shots + share-esc-check.md
+sports | PASS | 2026-11-09 11:13 PM | ZT1; 11 steps w/ shots, create/persist/search/delete+reload, export incl fixture, overlay table w/ Esc-while-open, LH, 390; verdict; FIX 001..007; Pull feed ingest logged as leftover
+parenting | PASS | 2026-11-09 11:21 PM | ZT2; 26-row matrix mapped to files, timing, CRUD+reload+delete (no confirm), validation (empty/300 written, numbers FAIL 999999999999 kg), Esc while open after Tab FAIL, theme, 390; verdict FAIL; FIX 001..011; fixtures cleaned + verified
+telecommunications | PASS | 2026-11-09 11:42 PM | ZT5 rework: topic selector PASS by mouse/retry/keyboard; timing measured 2 hard reloads (DCL 440/423 ms, Load 872/678 ms) w/ shots; stale REOPENED header corrected by coordinator
+cooking | PASS | 2026-11-09 11:42 PM | ZT5; matrix incl edit/reload/delete w/ confirm, .dtu export, AI meal plan (chat brain) run, 390, measured timing; verdict PARTIAL; FIX 001..006; cleanup verified
+travel | PASS | 2026-11-09 11:42 PM | ZT1; 11 steps w/ shots, create/edit/persist/delete-confirm+reload, export, overlay table with Esc-while-open, LH, 390; verdict; FIX 001..007; clean
+pets | PASS | 2026-11-09 11:42 PM | ZT4; 15-row matrix incl CRUD across sub-records + reload, photo URL upload, validation, hotkeys, overlays Esc/Tab, partial exports, 390, cleanup w/ confirm; FIX x8
+wallet | RETURNED | 2026-11-10 12:03 AM | ZT4; 15-row matrix, timing, overlays, validation, 390, export, FIX 001..008 solid, but CRUD row 5 BLOCKED is not legitimate: Quick Capture creates a note, so full create/read/edit/reload/delete of own QA note is possible by pasting the name or using hotkey-safe letters
+black-market | RETURNED | 2026-11-10 12:18 AM | ZT2; matrix, timing, 390 x7, overlays, light theme, Ask, FIX 001..010 solid and shared-market skips legit, but Watchlist is the user's own state (per its own WebDB row) and watch-save/reload/delete was skipped; JTBD in criteria still the generic draft
+consulting | RETURNED | 2026-11-10 12:18 AM | ZT1; engagement CRUD+reload+delete, validation, overlays Tab x15, LH, 390, verdict, FIX 001..009, clean, but core job features "not run": proposals, invoices, generate, staffing allocate, share deliverable
+wallet | PASS | 2026-11-10 12:23 AM | ZT4 rework: Quick capture note created by paste, read back in Activity Timeline, persists after reload, edit N/A, no delete control (FIX-wallet-009, leftover logged) with 5 shots; row 5 PARTIAL is legit
+consulting | PASS | 2026-11-10 12:42 AM | ZT1 rework: proposal, invoice, expense, retainer, time record, staffing allocation created/reloaded/deleted with shots; Generate PARTIAL (FIX-013); deliverable share inspect-only; no-confirm deletes FIX-010/011
+hr | PASS | 2026-11-10 12:42 AM | ZT4; 15-row matrix, CRUD+edit+reload, validation, overlays, Ctrl+E, 390, export, verdict; FIX 001..008; no permanent delete (FIX-hr-003) so 2 offboarded fixtures logged as leftovers
+disputes | RETURNED | 2026-11-10 12:42 AM | ZT5; 24-row matrix w/ shots, case #10 create/read/reload, no close/delete HIGH FIX-003 + leftover logged, timing x2, FIX 001..009 solid, but feature_file_a_case (core JTBD control) UNVERIFIED with no evidence or ticket
+black-market | PASS | 2026-11-10 1:03 AM | ZT2 rework: watchlist save/list/edit-check/reload/invalid/delete with 6 shots, FIX-011..013, confirmed JTBD in criteria; fixtures cleaned
+marketing | RETURNED | 2026-11-10 1:03 AM | ZT2; campaign CRUD+reload+delete, validation, overlays, theme, 390 x14, timing, FIX 001..009 solid, but only Campaigns exercised: Leads, Content & A/B tests, Email builder draft, Workflows, Landing pages, Social scheduler (inspect), Lead scoring, SEO audit, Quick Analysis calc (skipped as "fixture being cleaned") untested; no keyboard tab-order row
+mental-health | PASS | 2026-11-10 1:17 AM | ZT1; mood/journal/factor create+reload, support resources + country switch, report generate + CSV, calculator validation, overlays Esc x1/x2, Tab x15, LH, 390, verdict; FIX 001..010; undeletable mood + journal logged (FIX-001 high, privacy design gap, not data loss)
+veterinary | RETURNED | 2026-11-10 1:17 AM | ZT4; 15-row matrix, patient/vaccination CRUD+reload+delete, validation, overlays, export JSON/CSV, 390, FIX 001..006 solid, but only Patients exercised: Appointments, SOAP Records, Billing, Pharmacy, Lab & Imaging, Inventory, Reminders, Owner Portal, Calculators untested
+carpentry | RETURNED | 2026-11-10 1:31 AM | ZT4; 15-row matrix, dispatch+time CRUD+reload+delete, takeoff/photo no-persist HIGH FIX-001/002, calculators verified, validation, 390, FIX 001..008 solid, but Cut list edit, Invoicing, Client portals and Wood species reference never exercised (job-to-be-done ends in 'invoices')
+veterinary | PASS | 2026-11-10 1:43 AM | ZT4 rework Q1-Q9: appointment+day filter, SOAP, invoice, Rx, lab, inventory CRUD w/ reload shots, reminders, owner portal search, calculator hand-checked; FIX-007..012; invoice + Rx undeletable leftovers logged
+marketing | PASS | 2026-11-10 1:57 AM | ZT2 rework: lead stage move, A/B test, email draft, workflow, landing page CRUD+reload+delete; social inspect; lead scoring, SEO audit, Quick Analysis ROI vs ROAS recomputed; keyboard tab order with 5 shots; FIX-010..015; analysis card leftover logged
+carpentry | PASS | 2026-11-10 1:57 AM | ZT4 rework: cut-list optimizer hand-verified (72.25 in, 25% waste), invoice matches 2h x $50 with reload/delete, client portal inspected (share action, nothing created), species values plausible; FIX-009..012; clean
+disputes | PASS | 2026-11-10 2:33 AM | ZT5 rework: File a case FAB retried desktop + verified 390x844, no form/no request, HIGH FIX-disputes-010 with shots; verdict updated
+automotive | PASS | 2026-11-10 2:33 AM | ZT2; vehicle + 7 child types create/read/edit/reload/delete, calc sanity, validation, Ask, Share Esc/Tab, theme, 390, timing; verdict FAIL; FIX 001..016 (stale garage aggregate HIGH, possible orphans, logged)
+electrical | RETURNED | 2026-11-10 2:33 AM | ZT4; job CRUD, wire/panel calc hand-checked, export, validation, hotkeys, FIX 001..010 solid, but mobile tested at ~414 px (use DevTools device toolbar 390x844) and CRM clients (in acceptance), Estimate, NEC, One-line, Inspect, Materials, Certs untested
+pharmacy | RETURNED | 2026-11-10 2:47 AM | ZT5; matrix w/ shots, med CRUD+edit+reload+archive, FDA deep dive, recalls fail, timing x2, 390, FIX 001..007 solid, but feature_appointments/refills/orders/record_price SKIPPED with no stated reason (own-data features; only orders/price submits that contact a real pharmacy are off-limits)
+hvac | RETURNED (held, walks paused) | 2026-11-10 2:56 AM | ZT2; matrix, job/client CRUD+reload, load+duct calcs hand-checked, FIX 001..012 solid, but E-Sign, payments, contracts, Dispatch, Bookings and Save-load-as-DTU skipped with no reason; also run overlaps the ~2:39 AM account mix-up (ZT1 vault shows hvac DTUs), so confirm which account holds the hvac fixtures before PASS. Not messaged: coordinator pause in effect.
+construction | HELD (blocked, pause) | 2026-11-10 2:56 AM | ZT1; BLOCKED reason legitimate (profile/account mix-up, not a shortcut), but steps 9-10 and cleanup of 9 qa-zt1-construction fixtures pending; resume after coordinator clears the pause.
+electrical | PASS | 2026-11-10 3:30 AM | ZT4 rework: true 390x844 (3 shots), CRM, Estimate totals, NEC box fill, One-line, Inspect, Materials, Certs persist+delete+reload shots; FIX-011, 006 narrowed, 007 flagged as suspected session flip; panel leftover logged
+landscaping | RETURNED | 2026-11-10 3:30 AM | ZT5; irrigation calc, job create, timing x2, 390 shots, FIX 001..007, leftover logged, but Yard Designer/New design (core JTBD) and garden bed CRUD untested, Care Reminders/Health Diary/Inspections/Certs/invoices/client form untested, FIX-004..006 no evidence, inventory not updated
+hvac | RETURNED (sent) | 2026-11-10 3:30 AM | sent to ZT2 now that walks resumed; queued after masonry
+forestry | PASS | 2026-11-10 4:02 AM | ZT4; 16-row matrix with shots, stand/cruise/polygon/replant CRUD+reload, cruise + growth math hand-checked, Fire Watch/GBIF/carbon (inspect only), 390 Device Toolbar, verdict; FIX 001..012; 2 leftovers logged
+pharmacy | PASS | 2026-11-10 4:02 AM | ZT5 rework on zuko_qa_t1: med create/archive, refills, appointment, price record, dose, journal exercised; orders N/A (no checkout exists); FIX 001..013 incl HIGH 008 date corruption + 013 orphan refill; leftovers logged. Coordinator added a possible-leftover line for the unverified appointment.
+hvac | RETURNED | 2026-11-10 4:02 AM | ZT2 rework good (FIX-002 retracted, 001 confirmed, 013/014 new, automotive-001 not reproduced, skips for sends/payments/publish legitimate), but Estimates, Inspections, Certs, Materials skipped only because job delete failed
+masonry | RETURNED | 2026-11-10 4:02 AM | ZT2; takeoff CRUD, calc hand-checked, proposal, 390 x12, timing, FIX 001..012 solid, but Schedule, Change Orders, Price Book, Invoices, Clients, Inspections, Certs, Photos skipped only because proposal was undeletable
+landscaping | PASS | 2026-11-10 4:24 AM | ZT5 rework on zuko_qa_t1: New design FAB no-op HIGH 008, proposal no-persist HIGH 009, beds/diary/certs CRUD+reload+delete, invoices N/A (convert-only, stated), Care Reminders N/A, Inspections blocked by 003, 004..006 re-shot; inventory updated; leftovers logged
+construction | PASS | 2026-11-10 4:24 AM | ZT1 redo on zuko_qa_t1: 9 surface types create/reload/edit/delete (no-confirm deletes), job edit value corruption FAIL, validation, workbench calcs, export, DevTools a11y, 390; FIX 001..010; t1 fixtures cleaned, main-account x9 logged as leftovers
+masonry | PASS | 2026-11-10 4:44 AM | ZT2 rework on zuko_qa_t1: Price Book full CRUD, Invoices/Clients/Certs/Photos create/reload/delete, Schedule create+delete (late render 013, no edit 014), Change Orders + Inspections undeletable HIGH 015/017, orphan 016; no sends or payments; 13 new shots; leftovers logged
+hvac | PASS | 2026-11-10 4:58 AM | ZT2 rework 2 on zuko_qa_t1: Estimates/Inspections/Certs/Materials create+read+edit+reload, deletes reload-proven except Estimates (FIX-015 confirm-revert, same pattern as 013); stated skips accepted; FIX 001..015; leftovers logged
+materials | PASS | 2026-11-10 5:17 AM | ZT4; 15-row matrix w/ shots, library + 6 record tabs create/reload/edit/delete, periodic table + rule-of-mixtures checked, validation, hotkey/Escape, 390, verdict; FIX 001..012; all fixtures deleted
+welding | RETURNED | 2026-11-10 5:17 AM | ZT1; jobs/estimate/WPS/PQR/cert CRUD+reload+delete, calculators, validation, overlays, 390, FIX 001..010 solid, but Invoices + Photos not exercised, no outcome verdict, WPS-002/PQR-002 left and unlogged
+plumbing | RETURNED | 2026-11-10 5:17 AM | ZT5; two passes, 390 x10, FIX 001..008 (007 HIGH no client create), leftovers logged, inventory updated, but Technician + Price Book CRUD and price validation UNVERIFIED (stills missing)
+welding | PASS | 2026-11-10 5:33 AM | ZT1 rework: invoice INV-0001 generate/reload/delete (no send or payment), photo attach/reload/remove + invalid URL FAIL, blank WPS/PQR cleanup, verdict added; FIX 001..012
+mining | RETURNED | 2026-11-10 5:33 AM | ZT2; sites/holes/assays/fleet create+reload+delete, calcs, validation, Ask, theme, 390, FIX 001..011, fixtures cleaned, but no page keyboard tab-order row and Mine Plan/MSHA/Environmental lack shots of their contents
+plumbing | PASS | 2026-11-10 5:47 AM | ZT5 rework on zuko_qa_t1: Technician + Price Book create/reload/edit/delete with 29 new shots, negative/huge price validation, FIX-007 retracted (typeahead client create), new FIX 009..016 image-verified, leftovers logged, inventory updated
+mining | PASS | 2026-11-10 5:56 AM | ZT2 rework: tab-order row (3 shots, new FIX-mining-012 skip link), Mine Plan/MSHA/Environmental content shots with no own-record forms; FIX 001..012; fixtures clean, Ask leftover logged
+bridge | RETURNED | 2026-11-10 5:56 AM | ZT4; 16-row matrix with shots, peers CRUD+confirm, validation, Escape, 390, verdict PARTIAL, FIX 001..011 with evidence, Frontier leftover logged, inventory updated, but HIGH FIX-bridge-001 (mapping/flows vanish) seen once; needs a second repro and trigger isolation
+command-center | PASS | 2026-11-10 6:11 AM | ZT2; system console, 17-row matrix with shots, CRUD/metrics N/A with reasons, shared controls inspect-only, Esc/focus trap, theme, 390, timing, verdict FAIL; FIX 001..006; Ask leftover logged; inventory updated
+crafting | RETURNED | 2026-11-10 6:11 AM | ZT1; CRUD+reload+delete, validation, export JSON/CSV, Lighthouse, 390, publish side-effect audit, FIX 001..007, leftover DTUs logged, but no page keyboard tab-order row and inventory.json entry not updated
+all | PASS | 2026-11-10 6:33 AM | ZT5; Lens Hub, full matrix with image-verified stills, Docs fixture create/rename/reload/delete, search incl. no-match, 13 groups, 390x844, 2 timed reloads, overlays Escape, verdict FAIL; FIX 001..007 (001/002 HIGH); hidden agent-addressed text logged as finding, not followed; Ask leftover logged; inventory updated
+crafting | PASS | 2026-11-10 6:33 AM | ZT1 rework: full keyboard tab-order section with shots (skip link, bench, Start, row edit/delete, Esc focus return), FIX-crafting-008 added, inventory entry filled

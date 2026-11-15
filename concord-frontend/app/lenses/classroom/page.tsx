@@ -19,6 +19,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { OpenLibrarySearch } from '@/components/classroom/OpenLibrarySearch';
 import { ClassroomWorkspace } from '@/components/classroom/ClassroomWorkspace';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cohortStillListed, parseClassroomCohort } from '@/components/classroom/quiz-attempt';
 
 const COHORT_SCOPE_KEY = 'classroom-active-cohort';
@@ -229,13 +230,14 @@ export default function ClassroomPage() {
         <span className="truncate text-zinc-100"><span className="font-mono text-zinc-500">#{c.id}</span> {c.name}</span>
         <span className="shrink-0 text-zinc-500">{right}</span>
       </button>
-      <button
-        type="button"
-        onClick={action.onClick}
+      <StickyDeleteConfirm
+        onConfirm={action.onClick}
+        armLabel={action.label}
+        confirmLabel={`${action.label} this cohort?`}
+        armAriaLabel={`${action.label} ${c.name}`}
+        confirmAriaLabel={`Confirm ${action.label.toLowerCase()} ${c.name}`}
         className="shrink-0 rounded-full border border-white/15 px-2.5 py-1 text-[11px] text-zinc-300 hover:border-rose-400/40 hover:text-rose-100"
-      >
-        {action.label}
-      </button>
+      />
     </li>
   );
 
@@ -277,9 +279,15 @@ export default function ClassroomPage() {
           })}
         </nav>
 
-        {status && (
-          <div className="mb-4 rounded-xl border border-teal-400/30 bg-teal-400/10 px-3 py-2 text-[13px] text-teal-100">{status}</div>
-        )}
+        {/* FIX-classroom-010: the status line's slot is always reserved —
+            when '✓ Left the cohort' appeared and vanished after 4s, the
+            cohort cards below shifted twice and clicks landed on the
+            wrong row. The banner now fills a fixed-height live region. */}
+        <div className="mb-4 min-h-[38px]" aria-live="polite">
+          {status && (
+            <div className="rounded-xl border border-teal-400/30 bg-teal-400/10 px-3 py-2 text-[13px] text-teal-100">{status}</div>
+          )}
+        </div>
 
         {loadError && (
           <div role="alert" className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-rose-700/50 bg-rose-950/50 px-3 py-2 text-[13px] text-rose-200">
@@ -295,18 +303,18 @@ export default function ClassroomPage() {
             <div className="grid gap-5 md:grid-cols-2">
               <section className={cn(cardCls, 'space-y-2.5')}>
                 <h2 className="text-[13px] font-medium text-zinc-300">Create a cohort</h2>
-                <input id="classroom-cohort-name" type="text" placeholder="Cohort name" value={createForm.name}
+                <input id="classroom-cohort-name" name="name" type="text" placeholder="Cohort name" value={createForm.name}
                   onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })} className={inputCls} />
-                <input type="text" placeholder="Rubric DTU id (optional)" value={createForm.rubricDtuId}
+                <input id="classroom-cohort-rubric" name="rubricDtuId" type="text" placeholder="Rubric DTU id (optional)" value={createForm.rubricDtuId}
                   onChange={(e) => setCreateForm({ ...createForm, rubricDtuId: e.target.value })} className={inputCls} />
                 <button onClick={create} disabled={!createForm.name} className={submitCls}>Create</button>
                 {refusal('create')}
               </section>
               <section className={cn(cardCls, 'space-y-2.5')}>
                 <h2 className="text-[13px] font-medium text-zinc-300">Enrol</h2>
-                <input type="text" placeholder="Cohort id" value={enrolForm.cohortId}
+                <input id="classroom-enrol-cohort" name="cohortId" type="text" placeholder="Cohort id" value={enrolForm.cohortId}
                   onChange={(e) => setEnrolForm({ ...enrolForm, cohortId: e.target.value })} className={inputCls} />
-                <input type="text" placeholder="Student id (optional, self if blank)" value={enrolForm.studentUserId}
+                <input id="classroom-enrol-student" name="studentUserId" type="text" placeholder="Student id (optional, self if blank)" value={enrolForm.studentUserId}
                   onChange={(e) => setEnrolForm({ ...enrolForm, studentUserId: e.target.value })} className={inputCls} />
                 <button onClick={enrol} disabled={!enrolForm.cohortId} className={submitCls}>Enrol</button>
                 {refusal('enrol')}
@@ -316,6 +324,31 @@ export default function ClassroomPage() {
 
             {loading && <div role="status" aria-busy="true" className="text-[13px] italic text-zinc-500">Loading classroom cohorts…</div>}
             {refusal('list')}
+
+            {activeCohort !== null && (() => {
+              const t = teaching.find((c) => c.id === activeCohort);
+              const st = studying.find((c) => c.id === activeCohort);
+              const c = t || st;
+              if (!c) return null;
+              return (
+                <section className={cn(cardCls, 'space-y-1')} aria-label={`Cohort ${c.id} details`}>
+                  <h2 className="text-[13px] font-medium text-zinc-300">
+                    Cohort #{c.id} — {c.name}
+                  </h2>
+                  <p className="text-[12px] text-zinc-500">
+                    {t ? 'You teach this cohort' : `You study in this cohort · teacher: ${teacherLabel(c)}`}
+                    {typeof c.enrolled === 'number' ? ` · ${c.enrolled} student${c.enrolled === 1 ? '' : 's'} enrolled` : ''}
+                    {c.rubric_dtu_id ? ` · rubric DTU ${c.rubric_dtu_id}` : ' · no rubric DTU attached'}
+                  </p>
+                  <p className="text-[12px] text-zinc-500">
+                    The workspace below is scoped to this cohort.{' '}
+                    <button type="button" onClick={() => { setActiveCohort(null); writeStoredCohort(null); }}
+                      className="text-teal-300 underline hover:text-teal-200">Clear scope</button>
+                    {' '}to return to all your work. A named student roster is not available in this view yet.
+                  </p>
+                </section>
+              );
+            })()}
 
             <div className="grid gap-5 lg:grid-cols-2">
               <section className={cardCls}>
@@ -337,7 +370,14 @@ export default function ClassroomPage() {
         {view === 'workspace' && (
           <section>
             <p className="mb-3 text-[13px] text-zinc-500">
-              {activeCohort ? `Scoped to cohort #${activeCohort}. Pick another on the Cohorts view.` : 'Showing all your work. Select a cohort on the Cohorts view to scope it.'}
+              {activeCohort ? (
+                <>
+                  {`Scoped to cohort #${activeCohort}. Pick another on the Cohorts view, or `}
+                  <button type="button" onClick={() => { setActiveCohort(null); writeStoredCohort(null); }}
+                    className="text-teal-300 underline hover:text-teal-200">clear the scope</button>
+                  {' to see all your work.'}
+                </>
+              ) : 'Showing all your work. Select a cohort on the Cohorts view to scope it.'}
             </p>
             <ClassroomWorkspace cohortId={activeCohort} />
           </section>
@@ -351,6 +391,7 @@ export default function ClassroomPage() {
 
         <CrossLensRecentsPanel lensId="classroom" sinceDays={7} limit={6} hideWhenEmpty className="mt-8" />
 
+        {view !== 'cohorts' && (
         <button
           type="button"
           onClick={newCohort}
@@ -360,6 +401,7 @@ export default function ClassroomPage() {
           <Plus className="h-4 w-4" />
           Create a cohort
         </button>
+        )}
       </div>
     </LensShell>
   );

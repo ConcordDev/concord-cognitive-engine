@@ -88,7 +88,7 @@ export function WordTools() {
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
       <div className="flex items-center gap-2 mb-3">
         <ScrollText className="w-4 h-4 text-violet-400" />
-        <h3 className="text-sm font-bold text-zinc-100">Word Tools</h3>
+        <h2 className="text-sm font-bold text-zinc-100">Word Tools</h2>
         <span className="text-[10px] text-zinc-400">pronunciation · usage · etymology</span>
       </div>
 
@@ -122,7 +122,7 @@ export function WordTools() {
             {pron.ipa
               ? <span className="text-sm font-mono text-cyan-300">{pron.ipa}</span>
               : lexiconIpa
-                ? <span className="text-sm font-mono text-cyan-300">{lexiconIpa} <span className="text-[10px] text-zinc-500 not-italic">(from your Lexicon)</span></span>
+                ? <span className="text-sm font-mono text-cyan-300">{lexiconIpa} <span className="text-[10px] text-zinc-400 not-italic">(from your Lexicon)</span></span>
                 : <span className="text-xs text-zinc-400 italic">no IPA available</span>}
             {pron.audio ? (
               <button

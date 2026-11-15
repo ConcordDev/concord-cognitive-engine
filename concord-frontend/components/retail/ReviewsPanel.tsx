@@ -131,20 +131,20 @@ export function ReviewsPanel() {
       {/* Submit a review */}
       <div className="p-3 border-b border-white/10 space-y-2">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-          <select value={form.sku} onChange={e => setForm({ ...form, sku: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+          <select id="retail-sku-4" name="sku-4" value={form.sku} onChange={e => setForm({ ...form, sku: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
             <option value="">Product…</option>
             {products.map(p => <option key={p.sku} value={p.sku}>{p.name}</option>)}
           </select>
-          <select value={form.rating} onChange={e => setForm({ ...form, rating: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+          <select id="retail-rating" name="rating" value={form.rating} onChange={e => setForm({ ...form, rating: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
             {[5, 4, 3, 2, 1].map(n => <option key={n} value={n}>{n} star{n > 1 ? 's' : ''}</option>)}
           </select>
-          <input value={form.authorName} onChange={e => setForm({ ...form, authorName: e.target.value })} placeholder="Your name" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input id="retail-your-name" name="your-name" aria-label="Your name" value={form.authorName} onChange={e => setForm({ ...form, authorName: e.target.value })} placeholder="Your name" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         </div>
         <div className="grid grid-cols-2 gap-2">
-          <input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Review title" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <input value={form.buyerEmail} onChange={e => setForm({ ...form, buyerEmail: e.target.value })} placeholder="Buyer email (verifies purchase)" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input id="retail-review-title" name="review-title" aria-label="Review title" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Review title" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input id="retail-buyer-email-verifies-purchase" name="buyer-email-verifies-purchase" aria-label="Buyer email (verifies purchase)" value={form.buyerEmail} onChange={e => setForm({ ...form, buyerEmail: e.target.value })} placeholder="Buyer email (verifies purchase)" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         </div>
-        <textarea value={form.body} onChange={e => setForm({ ...form, body: e.target.value })} placeholder="What did you think?" rows={2} className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <textarea id="retail-what-did-you-think" name="what-did-you-think" aria-label="What did you think?" value={form.body} onChange={e => setForm({ ...form, body: e.target.value })} placeholder="What did you think?" rows={2} className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <button onClick={submit} disabled={busy || !form.sku} className="px-3 py-1.5 text-xs rounded bg-amber-500 text-black font-bold hover:bg-amber-400 disabled:opacity-40 inline-flex items-center gap-1">
           <Plus className="w-3 h-3" /> Submit review
         </button>

@@ -102,6 +102,14 @@ test("veterinary / mental-health / pharmacy: no assumed values", () => {
   assert.equal(run("veterinary.weightCheck", { species: "cat", weight: 10 }).result.status, "healthy-weight");
   isNC(run("mental-health.wellnessScore", { sleepHours: 8 }), ["exerciseMinutes", "socialInteractions", "moodScore"]);
   assert.equal(run("mental-health.wellnessScore", { sleepHours: 8, exerciseMinutes: 30, socialInteractions: 3, moodScore: 10 }).result.wellnessScore, 100);
+  // FIX-mental-health-006: out-of-range values are refused by name —
+  // mood 11 previously paid (11/10)*25 into the score uncapped.
+  const mood11 = run("mental-health.wellnessScore", { sleepHours: 8, exerciseMinutes: 30, socialInteractions: 3, moodScore: 11 });
+  assert.equal(mood11.ok, false);
+  assert.match(mood11.error, /moodScore must be between 0 and 10/);
+  const social99 = run("mental-health.wellnessScore", { sleepHours: 8, exerciseMinutes: 30, socialInteractions: 99, moodScore: 5 });
+  assert.equal(social99.ok, false);
+  assert.match(social99.error, /socialInteractions must be between 0 and 50/);
   const p = run("pharmacy.inventoryAlert", { inventory: [{ name: "a", quantity: 5 }, { name: "b", quantity: 20, reorderPoint: 10 }] }).result;
   assert.equal(p.notComputed, 1); assert.equal(p.allClear, false); assert.equal(p.lowStock, 0);
 });

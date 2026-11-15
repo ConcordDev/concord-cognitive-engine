@@ -64,7 +64,11 @@ export default function MiningLensPage() {
         tabs={MODE_TABS.map((t) => ({ id: t.key, label: t.label, keys: t.keys, hint: t.hint, icon: t.icon }))}
         activeTab={activeMode}
         onTab={(id) => setActiveMode(id as ModeTab)}
-        cta={{ label: 'Add a site', icon: Mountain, onClick: () => setActiveMode('Sites'), title: 'Add a mine site (N)' }}
+        // FIX-mining-005: on the Sites tab the floating CTA only switches
+        // to the tab the user is already on, and at 390px it floated over
+        // the panel's inline site-entry form row. The inline form is the
+        // add path there, so the CTA shows only from the other tabs.
+        cta={activeMode === 'Sites' ? undefined : { label: 'Add a site', icon: Mountain, onClick: () => setActiveMode('Sites'), title: 'Add a mine site (N)' }}
       >
         {activeMode === 'Sites' && <MineSiteManager />}
         {activeMode === 'Geology' && <GeologyWorkbench />}

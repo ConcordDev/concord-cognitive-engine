@@ -27,6 +27,24 @@ function fmtRel(unix: number | null): string {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
+// A provider's raw error can be a JSON blob; surface its message in
+// words, never the blob (FIX-byo-keys-008). Non-JSON errors pass through.
+function humanError(raw: string): string {
+  const t = raw.trim();
+  if (t.startsWith('{') || t.startsWith('[')) {
+    try {
+      const parsed: unknown = JSON.parse(t);
+      const obj = (Array.isArray(parsed) ? parsed[0] : parsed) as Record<string, unknown> | null;
+      const msg = obj && (typeof obj.message === 'string' ? obj.message
+        : typeof obj.error === 'string' ? obj.error
+        : (obj.error as Record<string, unknown> | undefined)?.message);
+      if (typeof msg === 'string' && msg) return msg;
+      return 'Provider returned an error';
+    } catch { return 'Provider returned an error'; }
+  }
+  return t.length > 180 ? `${t.slice(0, 180)}…` : t;
+}
+
 const DOT: Record<HealthRow['status'], string> = {
   ok: 'bg-emerald-500',
   error: 'bg-red-500',
@@ -85,7 +103,7 @@ export function KeyHealthPanel() {
               </div>
               <div className="mt-1 text-[11px] text-zinc-400 pl-[18px]">
                 {r.status === 'error' && r.lastError && (
-                  <span className="text-red-400">last error: {r.lastError} ({fmtRel(r.lastErrorAt)})</span>
+                  <span className="text-red-400">last error: {humanError(r.lastError)} ({fmtRel(r.lastErrorAt)})</span>
                 )}
                 {r.status === 'ok' && <span>last ok {fmtRel(r.lastOkAt)}</span>}
                 {r.status === 'untested' && <span>not yet tested — run a test ping</span>}

@@ -855,6 +855,10 @@ export default function registerDomainRoutes(app, {
     const out = await runMacro("reasoning", "list_chains", {}, makeCtx(req));
     return res.json(out);
   }));
+  app.delete("/api/reasoning/chains/:chainId", asyncHandler(async (req, res) => {
+    const out = await runMacro("reasoning", "delete_chain", { chainId: req.params.chainId }, makeCtx(req));
+    return res.json(out);
+  }));
   app.post("/api/reasoning/chains/:chainId/steps", asyncHandler(async (req, res) => {
     const out = await runMacro("reasoning", "add_step", { ...req.body, chainId: req.params.chainId }, makeCtx(req));
     return res.json(out);
@@ -1095,6 +1099,10 @@ export default function registerDomainRoutes(app, {
   }));
   app.delete("/api/metalearning/strategies/:strategyId", asyncHandler(async (req, res) => {
     const out = await runMacro("metalearning", "delete_strategy", { strategyId: req.params.strategyId }, makeCtx(req));
+    return res.json(out);
+  }));
+  app.delete("/api/metalearning/curricula/:curriculumId", asyncHandler(async (req, res) => {
+    const out = await runMacro("metalearning", "delete_curriculum", { curriculumId: req.params.curriculumId }, makeCtx(req));
     return res.json(out);
   }));
   app.get("/api/metalearning/adaptations", asyncHandler(async (req, res) => {

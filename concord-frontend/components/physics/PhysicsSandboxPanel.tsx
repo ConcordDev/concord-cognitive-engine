@@ -30,6 +30,7 @@ import {
 import { ErrorState } from '@/components/common/EmptyState';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useUIStore } from '@/store/ui';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 // Physics body types
 interface Vector2D {
@@ -1496,7 +1497,7 @@ export function PhysicsSandboxPanel() {
                   onClick={() => setSelectedBody(body.id)}
                   className={`flex items-center justify-between text-sm py-1 px-2 rounded cursor-pointer transition-colors ${
                     selectedBody === body.id ? 'bg-neon-purple/20' : 'hover:bg-white/5'
-                  }`} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                  }`} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full" style={{ backgroundColor: body.color }} />
                     <span className="text-gray-300">{body.name}</span>
@@ -1556,7 +1557,7 @@ export function PhysicsSandboxPanel() {
                     if (d.forceFields) setForceFields(d.forceFields as ForceField[]);
                     if (d.settings) setSettings(d.settings as SimSettings);
                     addToast({ type: 'success', message: `Restored "${sim.title}"` });
-                  }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                  }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                   <span className="text-gray-300 truncate">{sim.title}</span>
                   <button
                     onClick={e => { e.stopPropagation(); removeSim(sim.id); }}

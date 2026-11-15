@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { cn, formatBytes } from '@/lib/utils';
 import { api } from '@/lib/api/client';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 // ── Types ────────────────────────────────────────────────────────────────
 
@@ -259,10 +260,11 @@ export function UniversalImport({
             isDragOver
               ? 'border-neon-cyan bg-neon-cyan/5 scale-[1.01]'
               : 'border-lattice-border hover:border-gray-500 hover:bg-lattice-deep/30'
-          )} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          )} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace} aria-label="Drop files to import, or activate to browse for files">
           <input
             ref={fileInputRef}
             type="file"
+            aria-label="Choose files to import"
             multiple
             onChange={handleFileSelect}
             className="hidden"
@@ -334,7 +336,7 @@ export function UniversalImport({
                   <button
                     onClick={(e) => { e.stopPropagation(); removeFile(f.id); }}
                     className="flex-shrink-0 p-1 text-gray-400 hover:text-gray-300 transition-colors"
-                  aria-label="Close">
+                  aria-label={`Remove ${f.file.name}`}>
                     <X className="w-3 h-3" />
                   </button>
                 )}
@@ -355,7 +357,7 @@ export function UniversalImport({
                 </span>
               )}
             </span>
-            <span className="text-gray-600">
+            <span className="text-gray-400">
               {files.length} file{files.length !== 1 ? 's' : ''}
             </span>
           </div>

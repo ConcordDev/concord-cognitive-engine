@@ -43,6 +43,7 @@ import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useAuth } from '@/hooks/useAuth';
+import { lensRun } from '@/lib/api/client';
 import { subscribe } from '@/lib/realtime/socket';
 import { StatTile, StatTileGrid } from '@/components/ui/StatTile';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -125,6 +126,20 @@ function AchievementsLensInner() {
   const refresh = useCallback(async () => {
     setState('loading');
     setError(null);
+    await load();
+  }, [load]);
+
+  const syncUnlocks = useCallback(async () => {
+    setState('loading');
+    setError(null);
+    try {
+      const r = await lensRun<{ count: number }>('achievements', 'sync', {});
+      if (r.data.ok === false) {
+        setError(r.data.error || 'Sync could not check your DTUs.');
+      }
+    } catch {
+      setError('Sync could not check your DTUs.');
+    }
     await load();
   }, [load]);
 
@@ -294,9 +309,9 @@ function AchievementsLensInner() {
         cta={{
           label: 'Sync unlocks',
           icon: RefreshCw,
-          onClick: () => void refresh(),
+          onClick: () => void syncUnlocks(),
           disabled: state === 'loading',
-          title: 'Re-read the catalog and your unlocks (r)',
+          title: 'Check the DTUs you already created and unlock what that count earns',
         }}
       >
         {state === 'ready' && (
@@ -374,7 +389,7 @@ function AchievementsLensInner() {
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search achievements… (/)"
                     aria-label="Search achievements"
-                    className="w-40 rounded-full border border-white/10 bg-white/[0.03] py-1.5 pl-7 pr-3 text-xs text-slate-200 placeholder:text-slate-500 focus:border-teal-400 focus:outline-none sm:w-56"
+                    className="w-40 rounded-full border border-white/10 bg-white/[0.03] py-1.5 pl-7 pr-3 text-xs text-slate-200 placeholder:text-slate-400 focus:border-teal-400 focus:outline-none sm:w-56"
                   />
                 </div>
                 <label className="sr-only" htmlFor="achievements-sort">Sort achievements</label>

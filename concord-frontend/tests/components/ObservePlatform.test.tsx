@@ -315,7 +315,8 @@ describe('ObservePlatform', () => {
 
     // remove it
     const widgetCard = screen.getByText('timeseries widget').closest('div')!.parentElement!;
-    fireEvent.click(within(widgetCard).getByRole('button', { name: 'Delete' }));
+    fireEvent.click(within(widgetCard).getByRole('button', { name: /^Delete / }));
+    fireEvent.click(screen.getByRole('button', { name: /^Confirm delete / }));
     await waitFor(() => expect(screen.getByText(/Empty layout/)).toBeDefined());
   });
 
@@ -324,7 +325,7 @@ describe('ObservePlatform', () => {
     await switchTab('Dashboards');
     await waitFor(() => expect(screen.getByText(/Saved \(0\)/)).toBeDefined());
     fireEvent.click(screen.getByRole('button', { name: /Create/i }));
-    await waitFor(() => expect(screen.getByText('Title required.')).toBeDefined());
+    await waitFor(() => expect(screen.getByText('Dashboard title is required.')).toBeDefined());
   });
 
   it('selects then deletes a saved dashboard', async () => {
@@ -337,7 +338,9 @@ describe('ObservePlatform', () => {
     // select via the saved list entry
     fireEvent.click(screen.getByRole('button', { name: 'Board A' }));
     // delete it
-    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    // two-step confirm (FIX-observe-008): arm, then confirm
+    fireEvent.click(screen.getByRole('button', { name: /^Delete / }));
+    fireEvent.click(screen.getByRole('button', { name: /^Confirm delete / }));
     await waitFor(() => expect(screen.getByText(/Saved \(0\)/)).toBeDefined());
   });
 
@@ -413,7 +416,9 @@ describe('ObservePlatform', () => {
     await waitFor(() => expect(screen.getByText(/1 alerting/)).toBeDefined());
     expect(screen.getByText('avg 320 > 200')).toBeDefined();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    // two-step confirm (FIX-observe-008): arm, then confirm
+    fireEvent.click(screen.getByRole('button', { name: /^Delete / }));
+    fireEvent.click(screen.getByRole('button', { name: /^Confirm delete / }));
     await waitFor(() => expect(screen.getByText(/Monitors \(0\)/)).toBeDefined());
   });
 
@@ -457,7 +462,9 @@ describe('ObservePlatform', () => {
     fireEvent.click(runBtn!);
     await waitFor(() => expect(screen.getByText(/svc health: up \(142ms\)/)).toBeDefined());
 
-    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    // two-step confirm (FIX-observe-008): arm, then confirm
+    fireEvent.click(screen.getByRole('button', { name: /^Delete / }));
+    fireEvent.click(screen.getByRole('button', { name: /^Confirm delete / }));
     await waitFor(() => expect(screen.getByText(/Checks \(0\)/)).toBeDefined());
   });
 

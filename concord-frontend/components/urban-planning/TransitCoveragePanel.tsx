@@ -52,35 +52,44 @@ export function TransitCoveragePanel() {
     if (r.data.ok && r.data.result) setParcels(r.data.result.parcels);
   }, []);
 
+  // FIX-urban-planning-002: stops persist server-side like parcels do —
+  // load the saved stops on mount instead of starting from an empty
+  // in-memory list that a reload wiped.
+  const loadStops = useCallback(async () => {
+    const r = await lensRun<{ stops: Stop[] }>('urban-planning', 'stop-list', {});
+    if (r.data.ok && r.data.result) setStops(r.data.result.stops);
+  }, []);
+
   useEffect(() => {
     loadParcels();
+    loadStops();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const addStop = useCallback(() => {
+  const addStop = useCallback(async () => {
     if (!lat || !lng) {
       setError('stop latitude + longitude are required');
       return;
     }
     setError(null);
-    setStops((s) => [
-      ...s,
-      {
-        id: `stop_${Date.now().toString(36)}_${s.length}`,
-        name: name.trim() || `${mode} stop ${s.length + 1}`,
-        mode,
-        lat: Number(lat),
-        lng: Number(lng),
-      },
-    ]);
-    setName('');
-    setLat('');
-    setLng('');
+    const r = await lensRun<{ stop: Stop }>('urban-planning', 'stop-add', {
+      name: name.trim(), mode, lat: Number(lat), lng: Number(lng),
+    });
+    const added = r.data.result?.stop;
+    if (r.data.ok && added) {
+      setStops((s) => [...s, added]);
+      setName('');
+      setLat('');
+      setLng('');
+    } else {
+      setError(r.data.error || 'stop could not be saved');
+    }
   }, [name, mode, lat, lng]);
 
-  const removeStop = useCallback((id: string) => {
+  const removeStop = useCallback(async (id: string) => {
     setStops((s) => s.filter((x) => x.id !== id));
     setResult(null);
+    await lensRun('urban-planning', 'stop-remove', { id });
   }, []);
 
   // Run the transit-coverage catchment-buffer analysis on the server.
@@ -113,17 +122,19 @@ export function TransitCoveragePanel() {
   return (
     <div className="space-y-4">
       <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
-        <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
+        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
           <TrainFront className="h-4 w-4 text-emerald-400" /> Transit Stops
-        </h3>
+        </h2>
         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Stop name"
+            aria-label="Stop name"
             className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder-zinc-600"
           />
           <select
+            aria-label="Transit mode"
             value={mode}
             onChange={(e) => setMode(e.target.value)}
             className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white"
@@ -140,6 +151,7 @@ export function TransitCoveragePanel() {
             type="number"
             step="0.0001"
             placeholder="Latitude"
+            aria-label="Latitude"
             className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder-zinc-600"
           />
           <input
@@ -148,6 +160,7 @@ export function TransitCoveragePanel() {
             type="number"
             step="0.0001"
             placeholder="Longitude"
+            aria-label="Longitude"
             className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder-zinc-600"
           />
         </div>
@@ -209,7 +222,7 @@ export function TransitCoveragePanel() {
                 key={label as string}
                 className="rounded-lg border border-emerald-500/20 bg-zinc-900/60 p-3"
               >
-                <div className="text-[10px] uppercase tracking-wider text-zinc-400">
+                <div className="text-[10px] uppercase tracking-wider text-zinc-300">
                   {label}
                 </div>
                 <div className="mt-0.5 font-mono text-lg text-emerald-300">{val}</div>
@@ -217,9 +230,9 @@ export function TransitCoveragePanel() {
             ))}
           </div>
           <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
-            <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
+            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
               <Radar className="h-4 w-4 text-emerald-400" /> Walk-Shed Catchment Map
-            </h3>
+            </h2>
             <CityMap parcels={mapParcels} catchments={result.catchments} height={420} />
           </div>
           <div className="overflow-x-auto rounded-lg border border-zinc-800 bg-zinc-900/60 p-3">

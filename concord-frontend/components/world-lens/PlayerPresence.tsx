@@ -7,6 +7,7 @@ import {
   User, Hammer, TrendingUp, Compass, Heart, GraduationCap,
   Monitor, Clock, ChevronDown, X, Search, Swords,
 } from 'lucide-react';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 /* ── Types ─────────────────────────────────────────────────────── */
 
@@ -375,8 +376,8 @@ export default function PlayerPresence({
 
       {/* Selected player card overlay */}
       {selectedPlayer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setSelectedPlayer(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-          <div onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setSelectedPlayer(null)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
+          <div onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             {renderPlayerCard(selectedPlayer)}
           </div>
         </div>

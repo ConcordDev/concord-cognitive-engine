@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { api } from '@/lib/api/client';
 import { connectSocket } from '@/lib/realtime/socket';
 import { Brain, Lock, Eye, EyeOff } from 'lucide-react';
+import { validateReturnTo } from '@/lib/return-to';
 
 function LoginForm() {
   const searchParams = useSearchParams();
@@ -24,6 +25,14 @@ function LoginForm() {
       // Fetch CSRF token before login (needed for the POST itself in production)
       await api.get('/api/auth/csrf-token').catch((e) => console.warn('[Auth] CSRF pre-fetch failed:', e));
       const res = await api.post('/api/auth/login', { username, password });
+      if (res.data?.ok && res.data?.twoFactorRequired && res.data?.challengeId) {
+        // FIX-settings-005: the password checked out, but this account
+        // has two-factor on — no session exists yet. Hand off to the
+        // challenge step, carrying the validated destination.
+        const dest = validateReturnTo(searchParams.get('from'));
+        window.location.href = `/login/2fa?challenge=${encodeURIComponent(res.data.challengeId)}&from=${encodeURIComponent(dest)}`;
+        return;
+      }
       if (res.data?.ok) {
         // Mark as entered so HomeClient shows dashboard
         localStorage.setItem('concord_entered', 'true');
@@ -33,10 +42,10 @@ function LoginForm() {
         connectSocket();
         // Record login timestamp so HomeClient won't redirect back during auth check race
         localStorage.setItem('concord_login_ts', String(Date.now()));
-        // Redirect to the page they were trying to reach, or home
-        // Validate redirect is a relative path to prevent open redirect attacks
-        const from = searchParams.get('from');
-        const safeRedirect = from && from.startsWith('/') && !from.startsWith('//') ? from : '/';
+        // Redirect to the page they were trying to reach, or /hub.
+        // GB-1536: the shared returnTo validation (same-origin relative
+        // path, never back into the auth flow) — one rule everywhere.
+        const safeRedirect = validateReturnTo(searchParams.get('from'));
         // Use hard navigation (not router.push) so the browser sends cookies
         // with the request headers — prevents middleware redirect loop
         window.location.href = safeRedirect;
@@ -175,7 +184,7 @@ function LoginForm() {
             </p>
             <p className="text-gray-300 text-sm">
               Just curious?{' '}
-              <Link href="/explore" className="text-neon-cyan hover:text-neon-blue transition-colors font-medium">
+              <Link href="/hub" className="text-neon-cyan hover:text-neon-blue transition-colors font-medium">
                 Look around first
               </Link>
             </p>

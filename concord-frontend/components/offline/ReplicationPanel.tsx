@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { TimelineView, type TimelineEvent } from '@/components/viz';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import {
   allDocs,
   dirtyDocs,
@@ -116,9 +117,11 @@ function summarizeFilter(f: SavedFilter): string {
 export function ReplicationPanel({
   onConflicts,
   onStateChange,
+  onReady,
 }: {
   onConflicts: (c: PushResult['conflicts']) => void;
   onStateChange?: () => void;
+  onReady?: (api: { syncBoth: () => Promise<void> }) => void;
 }) {
   const [docs, setDocs] = useState<LocalDoc[]>([]);
   const [serverStatus, setServerStatus] = useState<StatusResult | null>(null);
@@ -309,6 +312,10 @@ export function ReplicationPanel({
     await pull();
   }, [push, pull]);
 
+  useEffect(() => {
+    onReady?.({ syncBoth });
+  }, [onReady, syncBoth]);
+
   // Continuous replication — PouchDB-style live changes feed on a poll loop.
   useEffect(() => {
     if (!continuous) return;
@@ -401,14 +408,32 @@ export function ReplicationPanel({
       setErr('document id required');
       return;
     }
+    if (!draftBody.trim()) {
+      setErr('document body required — a blank body would store an empty document');
+      return;
+    }
+    // JSON.parse silently rounds integers past the safe range; refuse
+    // them in words instead of storing a different number (FIX-offline-005).
+    const huge = draftBody.match(/-?\d{16,}/g)?.find((lit) => {
+      try { return !Number.isSafeInteger(Number(lit)); } catch { return false; }
+    });
+    if (huge) {
+      setErr(`the number ${huge} is too large to store exactly — it would be rounded; quote it as a string instead`);
+      return;
+    }
     let body: Record<string, unknown>;
     try {
-      body = draftBody.trim() ? JSON.parse(draftBody) : {};
+      body = JSON.parse(draftBody);
       if (typeof body !== 'object' || body === null || Array.isArray(body)) {
         throw new Error('body must be a JSON object');
       }
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'invalid JSON body');
+      if (e instanceof Error && e.message === 'body must be a JSON object') {
+        setErr('body must be a JSON object');
+      } else {
+        const pos = e instanceof Error ? /position (\d+)/.exec(e.message)?.[1] : undefined;
+        setErr(`body is not valid JSON${pos ? ` (problem near character ${pos})` : ''} — check for missing quotes, commas, or braces`);
+      }
       return;
     }
     await putDoc(id, body);
@@ -581,13 +606,13 @@ export function ReplicationPanel({
                     aria-label={`Use filter ${f.name} for pull`}
                   />
                   <span className="truncate text-zinc-100">{f.name}</span>
-                  <span className="truncate font-mono text-[10px] text-zinc-500">{summarizeFilter(f)}</span>
+                  <span className="truncate font-mono text-[10px] text-zinc-400">{summarizeFilter(f)}</span>
                 </label>
                 <button
                   onClick={() => deleteFilter(f.id)}
                   disabled={filterBusy}
                   aria-label={`Delete filter ${f.name}`}
-                  className="shrink-0 rounded border border-red-500/30 p-1 text-red-300 hover:bg-red-500/10 disabled:opacity-50"
+                  className="shrink-0 rounded border border-red-500/30 p-1 text-red-300 hover:bg-red-500/10 disabled:opacity-75"
                 >
                   <Trash2 className="h-3 w-3" />
                 </button>
@@ -668,7 +693,7 @@ export function ReplicationPanel({
               <button
                 onClick={createFilter}
                 disabled={filterBusy}
-                className="flex items-center gap-1.5 rounded bg-cyan-500/15 px-3 py-1.5 text-xs text-cyan-300 hover:bg-cyan-500/25 disabled:opacity-50"
+                className="flex items-center gap-1.5 rounded bg-cyan-500/15 px-3 py-1.5 text-xs text-cyan-300 hover:bg-cyan-500/25 disabled:opacity-75"
               >
                 {filterBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
                 Save filter
@@ -702,7 +727,7 @@ export function ReplicationPanel({
         <button
           onClick={syncBoth}
           disabled={!!busy}
-          className="flex items-center gap-1.5 rounded bg-emerald-500/15 px-3 py-1.5 text-xs text-emerald-300 hover:bg-emerald-500/25 disabled:opacity-50"
+          className="flex items-center gap-1.5 rounded bg-emerald-500/15 px-3 py-1.5 text-xs text-emerald-300 hover:bg-emerald-500/25 disabled:opacity-75"
         >
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ArrowLeftRight className="h-3.5 w-3.5" />}
           Sync (push + pull)
@@ -710,7 +735,7 @@ export function ReplicationPanel({
         <button
           onClick={push}
           disabled={!!busy}
-          className="flex items-center gap-1.5 rounded border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:text-white disabled:opacity-50"
+          className="flex items-center gap-1.5 rounded border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:text-white disabled:opacity-75"
         >
           {busy === 'push' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
           Push ({dirtyCount})
@@ -718,7 +743,7 @@ export function ReplicationPanel({
         <button
           onClick={pull}
           disabled={!!busy}
-          className="flex items-center gap-1.5 rounded border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:text-white disabled:opacity-50"
+          className="flex items-center gap-1.5 rounded border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:text-white disabled:opacity-75"
         >
           {busy === 'pull' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
           Pull{selectedFilterId ? ' (filtered)' : ''}
@@ -726,7 +751,7 @@ export function ReplicationPanel({
         <button
           onClick={wipeLocal}
           disabled={!!busy || docs.length === 0}
-          className="flex items-center gap-1.5 rounded border border-red-500/30 px-3 py-1.5 text-xs text-red-300 hover:bg-red-500/10 disabled:opacity-50"
+          className="flex items-center gap-1.5 rounded border border-red-500/30 px-3 py-1.5 text-xs text-red-300 hover:bg-red-500/10 disabled:opacity-75"
         >
           <Trash2 className="h-3.5 w-3.5" />
           Wipe local
@@ -785,13 +810,14 @@ export function ReplicationPanel({
               >
                 <Pencil className="h-3.5 w-3.5" />
               </button>
-              <button
-                onClick={() => removeDoc(d.id)}
+              <StickyDeleteConfirm
+                onConfirm={() => removeDoc(d.id)}
+                armLabel={<Trash2 className="h-3.5 w-3.5" />}
+                confirmLabel={`Delete ${d.id}?`}
+                armAriaLabel={`Delete ${d.id}`}
+                confirmAriaLabel={`Confirm delete ${d.id}`}
                 className="rounded border border-red-500/30 p-1.5 text-red-300 hover:bg-red-500/10"
-                aria-label={`Delete ${d.id}`}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
+              />
             </div>
           </div>
         ))}

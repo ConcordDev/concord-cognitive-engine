@@ -110,7 +110,7 @@ export function ProductivityCalendarPanel({ onChange }: { onChange: () => void }
       {/* Month nav */}
       <div className="flex items-center justify-between">
         <button type="button" onClick={() => setAnchor((a) => shiftMonth(a, -1))}
-          className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300" aria-label="Previous month">
+          className="grid h-10 w-10 place-items-center rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300" aria-label="Previous month">
           <ChevronLeft className="w-4 h-4" />
         </button>
         <div className="flex items-center gap-1.5 text-sm font-semibold text-zinc-100">
@@ -118,7 +118,7 @@ export function ProductivityCalendarPanel({ onChange }: { onChange: () => void }
           {cal?.month} <span className="text-[11px] font-normal text-zinc-400">· {cal?.totalScheduled} scheduled</span>
         </div>
         <button type="button" onClick={() => setAnchor((a) => shiftMonth(a, 1))}
-          className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300" aria-label="Next month">
+          className="grid h-10 w-10 place-items-center rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300" aria-label="Next month">
           <ChevronRight className="w-4 h-4" />
         </button>
       </div>
@@ -179,10 +179,10 @@ export function ProductivityCalendarPanel({ onChange }: { onChange: () => void }
           className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 text-zinc-200 rounded-lg">
           <Download className="w-3.5 h-3.5" /> Export tasks as .ics
         </button>
-        <input placeholder="Google Calendar iCal feed URL (https://…)" value={icsUrl}
+        <input aria-label="Google Calendar iCal feed URL" placeholder="Google Calendar iCal feed URL (https://…)" value={icsUrl}
           onChange={(e) => setIcsUrl(e.target.value)}
           className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-100" />
-        <textarea placeholder="…or paste ICS text" value={icsText} onChange={(e) => setIcsText(e.target.value)}
+        <textarea aria-label="ICS calendar text" placeholder="…or paste ICS text" value={icsText} onChange={(e) => setIcsText(e.target.value)}
           rows={3}
           className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-100 font-mono" />
         <button type="button" onClick={importIcs} disabled={busy}

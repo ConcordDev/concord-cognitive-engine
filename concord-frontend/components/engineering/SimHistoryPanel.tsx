@@ -96,7 +96,7 @@ export function SimHistoryPanel({ refreshKey }: { refreshKey?: unknown }) {
                       <XCircle className="w-3.5 h-3.5 text-red-400 inline" aria-label="Fail" />
                     )}
                   </td>
-                  <td className="py-1 px-2 text-right text-gray-500">
+                  <td className="py-1 px-2 text-right text-gray-400">
                     {new Date(j.createdAt).toLocaleString()}
                   </td>
                 </tr>

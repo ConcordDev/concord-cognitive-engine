@@ -29,6 +29,7 @@ import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { SrsDeckMenu } from './SrsDeckMenu';
 import { dtuRecordId, dtuReadBackCall, dtuReadBackMatches } from './srsDeckReport';
+import { eligibleDeckParents, parseLearningSteps } from './deckOptions';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
 import { ChartKit } from '@/components/viz';
 
@@ -415,6 +416,7 @@ function DeckOptionsPanel({
 }) {
   const [opts, setOpts] = useState<DeckOptions>(() => deck.options ?? ({} as DeckOptions));
   const [stepsText, setStepsText] = useState((deck.options?.learningSteps || []).join(' '));
+  const [stepsError, setStepsError] = useState<string | null>(null);
   const [nameText, setNameText] = useState(deck.name);
   const [filterText, setFilterText] = useState(deck.filterQuery || '');
 
@@ -430,8 +432,12 @@ function DeckOptionsPanel({
   }, [deck.id]);
 
   async function save() {
-    const learningSteps = stepsText.split(/[\s,]+/).map(Number)
-      .filter(n => Number.isFinite(n) && n > 0);
+    const parsed = parseLearningSteps(stepsText);
+    if (!parsed.ok) {
+      setStepsError(parsed.error);
+      return;
+    }
+    setStepsError(null);
     const r = await lensRun('srs', 'deck-options-update', {
       deckId: deck.id,
       name: nameText.trim() && nameText.trim() !== deck.name ? nameText.trim() : undefined,
@@ -441,10 +447,11 @@ function DeckOptionsPanel({
         reviewsPerDay: opts.reviewsPerDay,
         scheduler: opts.scheduler,
         desiredRetention: opts.desiredRetention,
-        learningSteps: learningSteps.length ? learningSteps : undefined,
+        learningSteps: parsed.steps,
       },
     });
     if (r.data?.ok) { flash('Deck options saved.'); await refreshDecks(); }
+    else flash(r.data?.error || 'Deck options were not saved.');
   }
 
   return (
@@ -526,9 +533,13 @@ function DeckOptionsPanel({
 
       <label className="block">
         <span className="text-[10px] text-zinc-400 uppercase tracking-wide">Learning steps (minutes)</span>
-        <input value={stepsText} onChange={e => setStepsText(e.target.value)}
+        <input value={stepsText} onChange={e => { setStepsText(e.target.value); setStepsError(null); }}
           placeholder="1 10"
+          aria-invalid={stepsError ? true : undefined}
           className="mt-1 w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
+        {stepsError && (
+          <span role="alert" className="mt-1 block text-[10px] leading-relaxed text-amber-300">{stepsError}</span>
+        )}
         <span className="mt-1 block text-[10px] leading-relaxed text-zinc-500">
           Minutes between repeats while a card is being learned: “1 10” brings a new card back
           after 1 minute, then 10 minutes, then it graduates to daily reviews.
@@ -541,7 +552,7 @@ function DeckOptionsPanel({
           onChange={e => void moveDeck(deck.id, e.target.value)}
           className="mt-1 w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-300">
           <option value="">Top level</option>
-          {decks.filter(d => d.id !== deck.id && !d.filtered).map(d => (
+          {eligibleDeckParents(decks, deck.id).map(d => (
             <option key={d.id} value={d.id}>{d.name}</option>
           ))}
         </select>
@@ -1650,6 +1661,42 @@ function Stat({
 interface SharedBundle { deck?: { name?: string }; cards?: unknown[] }
 interface SharedDtu { id: string; title?: string; machine?: { kind?: string; bundle?: SharedBundle } }
 
+interface BundleCard { front?: string; back?: string; question?: string }
+
+/**
+ * The dtu.create input for publishing a deck (FIX-srs-003).
+ *
+ * The council gate scores a DTU's knowledge core (definitions / examples /
+ * claims / nextActions) — a DTU whose whole content sits in `machine.bundle`
+ * scores ~0 and every publish was rejected as "low_value", so Shared decks
+ * could never be populated. The cards ARE the deck's knowledge: carry them
+ * in core.examples (front → back, the DTU's citable content), with the
+ * bundle kept in machine for Add-to-my-decks import. The nextAction is the
+ * deck's real use. Examples cap at 50 cards / ~280 chars a side so a huge
+ * deck stays a sane DTU; the machine bundle always holds the full deck.
+ */
+export function sharedDeckDtuInput(bundle: SharedBundle, deckId: string) {
+  const deckName = bundle.deck?.name || 'Deck';
+  const cards = (bundle.cards || []) as BundleCard[];
+  const examples = cards.slice(0, 50).map((c) => {
+    const front = String(c.front || c.question || '').slice(0, 280);
+    const back = String(c.back || '').slice(0, 280);
+    return back ? `${front} → ${back}` : front;
+  }).filter((s) => s.trim().length > 0);
+  return {
+    title: deckName + ' (shared deck)',
+    tags: ['srs', 'shared-deck'],
+    source: 'srs-lens:shared-deck',
+    human: { summary: 'Shared SRS deck "' + deckName + '" — ' + cards.length + ' cards, published from the SRS lens. Adding it creates a copy in your own decks.' },
+    core: {
+      examples,
+      nextActions: ['Add this deck to your decks from the SRS lens to study it.'],
+    },
+    machine: { kind: 'srs_deck_bundle', version: 1, bundle },
+    meta: { visibility: 'public', consent: { allowCitations: true }, createdFrom: 'srs', srs: { deckId, deckName } },
+  };
+}
+
 function SharedDecksPanel({
   decks, refreshDecks, flash,
 }: {
@@ -1673,14 +1720,7 @@ function SharedDecksPanel({
     const bundle = r.data?.result?.bundle as SharedBundle | undefined;
     if (!r.data?.ok || !bundle) { setBusy(false); flash(r.data?.error || 'Could not read that deck.'); return; }
     const deckName = bundle.deck?.name || 'Deck';
-    const created = await lensRun('dtu', 'create', {
-      title: deckName + ' (shared deck)',
-      tags: ['srs', 'shared-deck'],
-      source: 'srs-lens:shared-deck',
-      human: { summary: 'Shared SRS deck "' + deckName + '" — ' + (bundle.cards?.length ?? 0) + ' cards, published from the SRS lens. Adding it creates a copy in your own decks.' },
-      machine: { kind: 'srs_deck_bundle', version: 1, bundle },
-      meta: { visibility: 'public', consent: { allowCitations: true }, createdFrom: 'srs', srs: { deckId: shareDeck, deckName } },
-    });
+    const created = await lensRun('dtu', 'create', sharedDeckDtuInput(bundle as SharedBundle, shareDeck));
     const id = dtuRecordId(created.data);
     if (!id) { setBusy(false); flash('Not published. ' + (created.data?.error || 'The record store refused it.')); return; }
     const rb = dtuReadBackCall(id);

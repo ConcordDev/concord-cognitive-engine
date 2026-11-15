@@ -60,6 +60,20 @@ export default function SchemaLensPage() {
 
       <DepthBadge lensId="schema" size="sm" className="ml-2" />
       <div data-lens-theme="schema" className="relative min-h-full px-8 pb-28 pt-6">
+        {/* FIX-schema-013: in-page skip affordance — the lens tabs sit
+            behind the shell chrome and header row, so this link (first
+            focusable in the page, revealed on focus) moves focus
+            straight to the Schema tools tab strip. */}
+        <a
+          href="#schema-tools"
+          onClick={(e) => {
+            e.preventDefault();
+            document.getElementById('schema-tools')?.focus();
+          }}
+          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-teal-400 focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-black"
+        >
+          Skip to schema tools
+        </a>
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Schema</h1>
@@ -70,7 +84,7 @@ export default function SchemaLensPage() {
           </div>
         </div>
 
-        <nav className="mb-6 flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1 sm:inline-flex" aria-label="Schema tools">
+        <nav id="schema-tools" tabIndex={-1} className="mb-6 flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1 sm:inline-flex focus:outline-none" aria-label="Schema tools">
           {NAV.map((n, i) => {
             const Icon = n.icon;
             const on = view === n.id;

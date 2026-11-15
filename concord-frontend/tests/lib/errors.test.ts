@@ -232,6 +232,32 @@ describe('fromAxiosError', () => {
     expect(err).toBeInstanceOf(RateLimitError);
   });
 
+  it('names the field on a 422 validation_failed instead of the bare code', () => {
+    const err = fromAxiosError({
+      response: {
+        status: 422,
+        data: {
+          ok: false,
+          error: 'validation_failed',
+          errors: ['Invalid status "detected" for domain "security". Valid statuses: draft, identified'],
+          message: 'Invalid status "detected" for domain "security". Valid statuses: draft, identified',
+        },
+      },
+      message: 'Request failed with status code 422',
+    });
+    expect(err.message).toContain('Invalid status "detected"');
+    expect(err.message).not.toBe('validation_failed');
+    expect(err.statusCode).toBe(422);
+  });
+
+  it('keeps the bare code when a 422 has no sentence', () => {
+    const err = fromAxiosError({
+      response: { status: 422, data: { error: 'validation_failed' } },
+      message: 'Request failed with status code 422',
+    });
+    expect(err.message).toBe('validation_failed');
+  });
+
   it('converts 500+ to ServerError', () => {
     const err = fromAxiosError({
       response: { status: 502, data: { error: 'Bad Gateway' } },

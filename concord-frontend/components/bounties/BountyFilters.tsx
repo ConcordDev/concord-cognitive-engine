@@ -13,7 +13,7 @@ export interface FilterState {
 
 const CATEGORIES = ['security', 'feature', 'bug', 'design', 'docs', 'research', 'infra', 'other'];
 const DIFFICULTIES = ['beginner', 'intermediate', 'advanced', 'expert'];
-const STATUSES = ['open', 'claimed', 'in_review', 'paid', 'disputed'];
+const STATUSES = ['open', 'claimed', 'in_review', 'paid', 'disputed', 'cancelled'];
 
 export function BountyFilters({
   value, onChange, total,

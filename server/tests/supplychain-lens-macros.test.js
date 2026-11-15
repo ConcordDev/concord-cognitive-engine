@@ -307,15 +307,13 @@ describe("supplychain robustness contract", () => {
       assert.ok(Number.isFinite(o.replenishCost), `replenishCost finite`);
       assert.ok(Number.isFinite(o.daysToStockout), `daysToStockout finite`);
     }
-    // multiEchelon — poison the echelon numerics.
+    // multiEchelon — a provided non-finite field is refused, not defaulted into a stock figure.
     const ech = dispatch("multiEchelonOptimize", ctxA, {
       echelons: [{ location: "X", tier: "regional", dailyDemand: NaN, leadTimeDays: Infinity, currentStock: "no", demandStdDev: NaN }],
       serviceLevelZ: NaN,
     });
-    const e0 = ech.echelons[0];
-    for (const k of ["dailyDemand", "leadTimeDays", "currentStock", "cycleStock", "safetyStock", "reorderPoint", "targetStock", "daysOfStock", "imbalance"]) {
-      assert.ok(Number.isFinite(e0[k]), `multiEchelon.${k} must be finite, got ${e0[k]}`);
-    }
+    assert.equal(ech.echelons, undefined);
+    assert.match(ech.message, /Service level Z must be a number from 0 to 5/);
   });
 
   it("per-user isolation: one actor's planning state never bleeds to another", () => {
