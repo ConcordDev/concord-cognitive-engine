@@ -24,10 +24,12 @@ function makeFakeDb() {
   function allStmt(sql, args) {
     if (sql.startsWith("PRAGMA table_info(dtus)")) {
       // R8/CL3 gap fix: searchDtus probes for the optional content/body_json
-      // columns before building its SELECT. This fake db has neither — an
-      // empty result here is the honest answer, matching a legacy/minimal
-      // `dtus` table with no body-text columns.
-      return [];
+      // columns before building its SELECT. This fake db has neither.
+      // GB-1538 follow-on: the probe now resolves the whole column plan
+      // (kind/body/lens columns vary by dtus lineage), so the stub names
+      // the migrated shape this fake's SQL matchers emulate — id, type,
+      // title, creator_id, data, created_at — and nothing else.
+      return ["id", "type", "title", "creator_id", "data", "created_at"].map((name) => ({ name }));
     }
     if (sql.startsWith("SELECT id, type AS kind, title, creator_id, data AS meta_json, NULL AS content, NULL AS body_json, created_at FROM dtus")) {
       // Walk all params: like1, like2, [kind], [creatorId], [requesterId], limit

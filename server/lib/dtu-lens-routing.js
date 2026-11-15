@@ -75,13 +75,34 @@ export function lensOwnedKinds(lensId) {
  * Reads type + tags(data/tags_json) + meta(data) to resolve.
  * @returns {{ok:boolean, scanned:number, stamped:number, byLens:object, reason?:string}}
  */
+// GB-1538 follow-on: the dtus shape varies by lineage — the migrated
+// shape carries type/data/lens_id, the live dtu-store runtime shape
+// carries content_type/content and no lens_id at all. Resolve the
+// columns this sweep reads (and whether its target column exists)
+// from PRAGMA instead of assuming the migrated shape.
+function _dtusShape(db) {
+  let names = new Set();
+  try { names = new Set(db.prepare(`PRAGMA table_info(dtus)`).all().map((r) => r.name)); }
+  catch { /* leave empty — every column reads as absent */ }
+  return {
+    kindCol: names.has("type") ? "type" : names.has("content_type") ? "content_type" : null,
+    bodyCol: names.has("data") ? "data" : names.has("content") ? "content" : null,
+    hasLensId: names.has("lens_id"),
+  };
+}
+
 export function backfillLensIds(db, { limit = 5000 } = {}) {
   if (process.env.CONCORD_DTU_ROUTING === "0") return { ok: true, scanned: 0, stamped: 0, byLens: {}, disabled: true };
   if (!db) return { ok: false, reason: "no_db", scanned: 0, stamped: 0, byLens: {} };
+  const shape = _dtusShape(db);
+  // No lens_id column → the routing layer is not installed on this
+  // shape and there is nothing to stamp. An honest no-op with the
+  // reason named, not a thrown "no such column" on every heartbeat.
+  if (!shape.hasLensId) return { ok: true, scanned: 0, stamped: 0, byLens: {}, reason: "no_lens_id_column" };
   let rows;
   try {
     rows = db.prepare(
-      `SELECT id, type, data FROM dtus WHERE lens_id IS NULL OR lens_id = 'unknown' LIMIT ?`
+      `SELECT id, ${shape.kindCol ? `${shape.kindCol} AS type` : "NULL AS type"}, ${shape.bodyCol ? `${shape.bodyCol} AS data` : "NULL AS data"} FROM dtus WHERE lens_id IS NULL OR lens_id = 'unknown' LIMIT ?`
     ).all(limit);
   } catch (e) {
     return { ok: false, reason: String(e?.message || e), scanned: 0, stamped: 0, byLens: {} };

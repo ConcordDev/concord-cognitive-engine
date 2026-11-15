@@ -986,7 +986,36 @@ function rowToDtu(row) {
   };
 }
 
+// GB-1538 follow-on: this module's DTU SELECTs named `type` and
+// `content` together — a union neither dtus lineage actually carries
+// (the migrated shape has type, the live dtu-store runtime shape has
+// content_type/content and no type/status/body_json/tags_json/
+// visibility/updated_at at all), so search/get/list/compress threw
+// on the runtime shape. Resolve the table's actual columns from
+// PRAGMA once per db handle and build each SELECT from the plan,
+// aliasing back to the historical output names so result rows keep
+// their shape on either lineage.
+const _dtuShapeCache = new WeakMap();
+function _dtuShape(db) {
+  let cached = _dtuShapeCache.get(db);
+  if (cached) return cached;
+  let names = new Set();
+  try { names = new Set(db.prepare(`PRAGMA table_info(dtus)`).all().map((r) => r.name)); }
+  catch { /* leave empty — every optional column reads as absent */ }
+  cached = {
+    names,
+    kindCol: names.has("type") ? "type" : names.has("content_type") ? "content_type" : null,
+    bodyCol: names.has("content") ? "content" : names.has("data") ? "data" : null,
+    col: (c) => (names.has(c) ? c : `NULL AS ${c}`),
+  };
+  _dtuShapeCache.set(db, cached);
+  return cached;
+}
+
 export async function dtuSearch(db, args) {
+  const { kindCol } = _dtuShape(db);
+  const kindExpr = kindCol ? `${kindCol} AS type` : "NULL AS type";
+  const dKindExpr = kindCol ? `d.${kindCol} AS type` : "NULL AS type";
   const query = String(args?.query || "").trim();
   const limit = Math.min(50, Math.max(1, Number(args?.limit) || 10));
   const tier = args?.tier || null;
@@ -1006,7 +1035,7 @@ export async function dtuSearch(db, args) {
     // fallback below (confirmed empirically: `fts5` was always `false`).
     // The fix joins on `d.rowid`, the column that actually corresponds.
     if (tier) {
-      sql = `SELECT d.id, d.title, d.tier, d.type, substr(coalesce(d.content, ''), 1, 200) AS snippet, d.created_at
+      sql = `SELECT d.id, d.title, d.tier, ${dKindExpr}, substr(coalesce(d.content, ''), 1, 200) AS snippet, d.created_at
              FROM dtus d JOIN dtus_fts f ON d.rowid = f.rowid
              WHERE dtus_fts MATCH ? AND d.tier = ?
              ORDER BY rank LIMIT ?`;
@@ -1016,7 +1045,7 @@ export async function dtuSearch(db, args) {
              WHERE dtus_fts MATCH ? AND d.tier = ?`;
       countParams = [ftsQuery, tier];
     } else {
-      sql = `SELECT d.id, d.title, d.tier, d.type, substr(coalesce(d.content, ''), 1, 200) AS snippet, d.created_at
+      sql = `SELECT d.id, d.title, d.tier, ${dKindExpr}, substr(coalesce(d.content, ''), 1, 200) AS snippet, d.created_at
              FROM dtus d JOIN dtus_fts f ON d.rowid = f.rowid
              WHERE dtus_fts MATCH ?
              ORDER BY rank LIMIT ?`;
@@ -1036,14 +1065,14 @@ export async function dtuSearch(db, args) {
     try {
       if (tier) {
         rows = db.prepare(
-          "SELECT id, title, tier, type, substr(coalesce(content, ''), 1, 200) AS snippet, created_at FROM dtus WHERE (title LIKE ? OR content LIKE ?) AND tier = ? ORDER BY created_at DESC LIMIT ?"
+          "SELECT id, title, tier, " + kindExpr + ", substr(coalesce(content, ''), 1, 200) AS snippet, created_at FROM dtus WHERE (title LIKE ? OR content LIKE ?) AND tier = ? ORDER BY created_at DESC LIMIT ?"
         ).all(like, like, tier, limit);
         total = Number(db.prepare(
           "SELECT COUNT(*) AS n FROM dtus WHERE (title LIKE ? OR content LIKE ?) AND tier = ?"
         ).get(like, like, tier)?.n ?? rows.length);
       } else {
         rows = db.prepare(
-          "SELECT id, title, tier, type, substr(coalesce(content, ''), 1, 200) AS snippet, created_at FROM dtus WHERE title LIKE ? OR content LIKE ? ORDER BY created_at DESC LIMIT ?"
+          "SELECT id, title, tier, " + kindExpr + ", substr(coalesce(content, ''), 1, 200) AS snippet, created_at FROM dtus WHERE title LIKE ? OR content LIKE ? ORDER BY created_at DESC LIMIT ?"
         ).all(like, like, limit);
         total = Number(db.prepare(
           "SELECT COUNT(*) AS n FROM dtus WHERE title LIKE ? OR content LIKE ?"
@@ -1064,13 +1093,16 @@ export async function dtuSearch(db, args) {
 export async function dtuGet(db, args) {
   const id = String(args?.id || "").trim();
   if (!id) return { ok: false, error: "id is required" };
+  const shape = _dtuShape(db);
+  const kindExpr = shape.kindCol ? `${shape.kindCol} AS type` : "NULL AS type";
+  const cols = `id, title, tier, ${kindExpr}, ${shape.col("status")}, ${shape.col("content")}, ${shape.col("body_json")}, ${shape.col("tags_json")}, ${shape.col("visibility")}, creator_id, created_at, ${shape.col("updated_at")}`;
   try {
     let row = db.prepare(
-      "SELECT id, title, tier, type, status, content, body_json, tags_json, visibility, creator_id, created_at, updated_at FROM dtus WHERE id = ? LIMIT 1"
+      `SELECT ${cols} FROM dtus WHERE id = ? LIMIT 1`
     ).get(id);
     if (!row && id.length >= 6) {
       row = db.prepare(
-        "SELECT id, title, tier, type, status, content, body_json, tags_json, visibility, creator_id, created_at, updated_at FROM dtus WHERE id LIKE ? LIMIT 1"
+        `SELECT ${cols} FROM dtus WHERE id LIKE ? LIMIT 1`
       ).get(id + "%");
     }
     if (!row) return { ok: false, error: "DTU not found" };
@@ -1083,12 +1115,14 @@ export async function dtuGet(db, args) {
 export async function dtuList(db, args) {
   const limit = Math.min(100, Math.max(1, Number(args?.limit) || 20));
   const tier = args?.tier || null;
+  const { kindCol } = _dtuShape(db);
+  const kindExpr = kindCol ? `${kindCol} AS type` : "NULL AS type";
   try {
     let rows;
     if (tier) {
-      rows = db.prepare("SELECT id, title, tier, type, created_at FROM dtus WHERE tier = ? ORDER BY created_at DESC LIMIT ?").all(tier, limit);
+      rows = db.prepare(`SELECT id, title, tier, ${kindExpr}, created_at FROM dtus WHERE tier = ? ORDER BY created_at DESC LIMIT ?`).all(tier, limit);
     } else {
-      rows = db.prepare("SELECT id, title, tier, type, created_at FROM dtus ORDER BY created_at DESC LIMIT ?").all(limit);
+      rows = db.prepare(`SELECT id, title, tier, ${kindExpr}, created_at FROM dtus ORDER BY created_at DESC LIMIT ?`).all(limit);
     }
     return { ok: true, results: rows, count: rows.length };
   } catch (e) {
@@ -1102,10 +1136,13 @@ export async function dtuCompress(db, args) {
   if (ids.length === 0) return { ok: false, error: "ids array is required" };
   if (ids.length > 50) return { ok: false, error: "max 50 DTUs per compress call" };
 
+  const shape = _dtuShape(db);
+  const kindExpr = shape.kindCol ? `${shape.kindCol} AS type` : "NULL AS type";
+  const previewExpr = shape.bodyCol ? `substr(coalesce(${shape.bodyCol}, ''), 1, 1500)` : "''";
   try {
     const placeholders = ids.map(() => "?").join(",");
     const rows = db.prepare(
-      `SELECT id, title, tier, type, substr(coalesce(content, ''), 1, 1500) AS preview FROM dtus WHERE id IN (${placeholders})`
+      `SELECT id, title, tier, ${kindExpr}, ${previewExpr} AS preview FROM dtus WHERE id IN (${placeholders})`
     ).all(...ids);
     if (rows.length === 0) return { ok: false, error: "no DTUs found" };
 
@@ -1373,6 +1410,12 @@ export async function atlasSearch(db, args) {
 // ═══════════════════════════════════════════════════════════════════════
 
 export async function lensList(db, args) {
+  // GB-1538 follow-on: no lens_id column on the dtu-store runtime
+  // shape → no DTU carries a lens assignment there; the honest
+  // answer is the empty set, not a "no such column" failure.
+  if (!_dtuShape(db).names.has("lens_id")) {
+    return { ok: true, lenses: [], count: 0, truncated: false, basis: "lens_ids with at least one DTU, top 50 by DTU count" };
+  }
   try {
     const rows = db.prepare(
       `SELECT DISTINCT lens_id, COUNT(*) AS dtus FROM dtus WHERE lens_id IS NOT NULL AND lens_id != 'unknown' GROUP BY lens_id ORDER BY dtus DESC LIMIT 50`
@@ -1399,6 +1442,13 @@ export async function lensList(db, args) {
 export async function lensManifest(db, args) {
   const lensId = String(args?.lens_id || "").trim();
   if (!lensId) return { ok: false, error: "lens_id is required" };
+  const shape = _dtuShape(db);
+  // GB-1538 follow-on: as in lensList — no lens_id column on this
+  // shape means the lens holds no DTUs here.
+  if (!shape.names.has("lens_id")) {
+    return { ok: true, lens_id: lensId, dtuCount: 0, sampleSize: 0, sample: [] };
+  }
+  const kindExpr = shape.kindCol ? `${shape.kindCol} AS type` : "NULL AS type";
   try {
     // dtuCount is the lens_id's TRUE DTU count (COUNT(*) over the corpus),
     // never the sample length — the sample is capped at 10 rows and its
@@ -1407,7 +1457,7 @@ export async function lensManifest(db, args) {
       `SELECT COUNT(*) AS c FROM dtus WHERE lens_id = ?`
     ).get(lensId);
     const dtus = db.prepare(
-      `SELECT id, title, tier, type FROM dtus WHERE lens_id = ? ORDER BY created_at DESC LIMIT 10`
+      `SELECT id, title, tier, ${kindExpr} FROM dtus WHERE lens_id = ? ORDER BY created_at DESC LIMIT 10`
     ).all(lensId);
     return {
       ok: true,
