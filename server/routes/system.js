@@ -15,6 +15,7 @@ import { getShedLagMs } from "../lib/request-admission.js";
 import { noteAdmittingTransition } from "../lib/request-admission.js";
 import { getHostIdentity } from "../lib/host-profile.js";
 import { getMemorySnapshot } from "../lib/heap-limit.js";
+import { resolveBuildSha } from "../lib/build-sha.js";
 import { dtuMatchesQuery, shapePaginatedBody, dtuListedOwner, tagFilterTerms, dtuMatchesTagFilter } from "../lib/dtu-list-source.js";
 import { viewerIdFromCtx } from "../lib/dtu-read-access.js";
 import { filterVisibleSearchHits, searchCandidateLimit } from "../lib/dtu-search-hits.js";
@@ -108,6 +109,8 @@ export default function registerSystemRoutes(app, {
   });
 
   // ---- Health & Readiness ----
+  // Resolved once here (boot), never per request: the git sha of the running tree.
+  const BUILD_SHA = resolveBuildSha();
   app.get("/health", (req, res) => {
     // LIVENESS probe: "is the process alive and responding?" — nothing more. It must
     // NOT 503 on a DB blip or memory use, or the orchestrator restart-loops a healthy
@@ -166,6 +169,7 @@ export default function registerSystemRoutes(app, {
     res.status(200).json({
       status: "healthy",
       version: VERSION,
+      buildSha: BUILD_SHA,
       uptime: process.uptime(),
       timestamp: new Date().toISOString(),
       host,
