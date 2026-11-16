@@ -154,8 +154,12 @@ def cmd_walk(args, cfg, log):
     manifest.data["deploy"] = run_deploy
     log("run %s: %d lens(es), phases=%s, write=%s, dry=%s, premap=%s" % (rid, len(lenses), phases, args.allow_write, dry, premap))
     summary = []
-    from concord_walker.runstate import LensBudget
+    from concord_walker.runstate import LensBudget, ReplayBudget
     walk_budget = LensBudget(cfg["thresholds"]["lens_budget_s"])  # WALK-05 hook: one run-shared per-lens budget
+    # replay's OWN per-lens budget (base + per_ticket x n_tickets, capped), on its own clock: never the sweep's spent time
+    replay_budget = ReplayBudget.from_config(cfg, args)
+    log("replay budget per lens: %s" % ("fixed %ss" % replay_budget.override_s if replay_budget.override_s is not None else
+        "min(%ss cap, %ss base + %ss x tickets)" % (replay_budget.cap_s, replay_budget.base_s, replay_budget.per_ticket_s)))
     abort = None
     relaunches_left = int(getattr(args, "auto_resume", 2) or 0)
     replay = None
@@ -178,10 +182,10 @@ def cmd_walk(args, cfg, log):
         if not no_replay:
             rv = Reverifier(browser, cfg, rec, store, log, inv, allow_write=args.allow_write)
             replay = ReplayRun(rv, store, ledger, live_sha=live, run_id=rid, walker_version=run_deploy.get("walker_sha"),
-                               run_dir=rec.run_dir, tester=cfg["tester_name"], log=log, budget=walk_budget)
+                               run_dir=rec.run_dir, tester=cfg["tester_name"], log=log, budget=walk_budget, replay_budget=replay_budget)
         else:
             replay = ReplayRun(None, store, None, live_sha=None, run_id=rid, walker_version=None, run_dir=rec.run_dir,
-                               tester=cfg["tester_name"], log=log, budget=walk_budget, no_replay=True)
+                               tester=cfg["tester_name"], log=log, budget=walk_budget, no_replay=True, replay_budget=replay_budget)
         try:
             for lens in lenses:
                 slug = lens["slug"]
@@ -571,6 +575,11 @@ def main():
         p.add_argument("--base-url", help="override base url (selftest only)")
         p.add_argument("--premap", action="store_true", help="MST-W0-03: add the control sweep (every named control: clicked once if sweep-safe, else a reason)")
         p.add_argument("--premap-budget-s", type=int, help="MST-W0-03: sweep budget per lens in seconds (default thresholds.premap_budget_s, else 600)")
+        p.add_argument("--replay-budget-s", type=int, help="replay of original tickets: a FIXED per-lens budget in seconds on replay's own clock "
+                       "(default: min(cap, base + per_ticket x n_tickets) = 60 + 25 x n, cap 900; thresholds.replay_budget_s in config)")
+        p.add_argument("--replay-budget-base-s", type=int, help="replay budget base seconds (default 60)")
+        p.add_argument("--replay-budget-per-ticket-s", type=int, help="replay budget seconds per ticket (default 25)")
+        p.add_argument("--replay-budget-cap-s", type=int, help="replay budget cap seconds per lens (default 900)")
         p.add_argument("--expect-sha", help="MST-W0-01: flag every record whose /health buildSha differs (sha_status=mismatch); never gates a read walk")
         p.add_argument("--two-account", action="store_true", help="upgrade 3: replay t1's object calls (reads + non-DELETE writes) as t2 from its saved session; 2xx = ownership finding. Needs auth/t2.json; never deletes")
         p.add_argument("--resume", help="resume this run id: lenses already walked in its walk-manifest.json are skipped")
