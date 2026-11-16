@@ -96,6 +96,12 @@ SWEEP_NAV = re.compile(r"(?i)^\s*(search|find|refresh|reload|load more|show more
 SWEEP_BULK = re.compile(r"(?i)\b(all|bulk|batch|every|everyone|global|public)\b")
 
 
+# Payments stay untouched (standing rule): no upgrade/plan/pricing/billing/checkout-adjacent
+# control is clicked by the sweep, even when it only looks like navigation.
+SWEEP_PAYMENT = re.compile(r"(?i)\b(upgrade|go\s*pro|get\s*pro|pro\s*plan|premium|pricing|plans?|subscri\w*|billing|"
+                           r"credits?|top\s*-?\s*up|wallet|invoices?|payouts?|stripe|card|refunds?|cart|paywall|tiers?|license|licence)\b")
+
+
 def sweep_decision(name, admin=False, read_only=False):
     """(clickable, reason) for the premap sweep. reason in unsafe | destructive |
     admin_only | write_skip_lens (None when clickable)."""
@@ -108,6 +114,8 @@ def sweep_decision(name, admin=False, read_only=False):
         return False, "admin_only"  # admin lenses stay look-only: nothing new is clicked there
     if SWEEP_DENY.search(n):
         return False, "unsafe"
+    if SWEEP_PAYMENT.search(n):
+        return False, "payments"
     m = SWEEP_COMPUTE.match(n)
     if m:
         rest = n[m.end():]

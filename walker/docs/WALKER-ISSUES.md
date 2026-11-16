@@ -98,3 +98,8 @@ Read this before starting the next walker version.
 - A ticket naming more than 4 lenses gets one row per lens (MST-W6-05 names 20 and was 13.9 KB before this).
 - Test: test_w0_pack.
 
+## 2026-11-16 09:12 ET: Premap sweep could click payment-adjacent controls (found before the MST-W0-06 baseline walk)
+- Cause: `sweep_decision` allowed "Upgrade", "Upgrade plan", "Get Pro", "Go Pro", "Pricing" and "Billing", because they read as navigation and are not in HARD_DENY or SWEEP_DENY. On prod they can open a checkout or plan flow. The standing rule is that payments stay untouched.
+- Fix: a new `safety.SWEEP_PAYMENT` regex covers upgrade, pro, premium, pricing, plan(s), subscri*, billing, credits, top up, wallet, invoice, payout, stripe, card, refund, cart, paywall, tier, license. Matching controls are refused with reason `payments` and recorded as skipped.
+- Test: test_w0_schema `payment-adjacent controls refused` (15 names).
+

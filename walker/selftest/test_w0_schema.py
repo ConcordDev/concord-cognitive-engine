@@ -162,6 +162,10 @@ def test_sweep_safety_and_crash():
     check("sweep-safe names clickable", all(S.sweep_decision(n)[0] for n, _ in ok), [n for n, _ in ok if not S.sweep_decision(n)[0]])
     check("unsafe names refused with the right reason", all(S.sweep_decision(n) == (False, r) for n, r in bad),
           [(n, S.sweep_decision(n)) for n, r in bad if S.sweep_decision(n) != (False, r)])
+    pay = ["Upgrade", "Upgrade plan", "Get Pro", "Go Pro", "Pricing", "Billing", "View plans", "Credits", "Top up", "Wallet",
+           "Manage subscription", "Invoices", "Add card", "Premium", "View cart"]
+    check("payment-adjacent controls refused (reason payments)", all(S.sweep_decision(n) == (False, "payments") for n in pay),
+          [(n, S.sweep_decision(n)) for n in pay if S.sweep_decision(n) != (False, "payments")])
     check("admin lens clicks nothing new", S.sweep_decision("Elements", admin=True) == (False, "admin_only"))
     check("write-skip lens refuses compute verbs", S.sweep_decision("Run calc", read_only=True) == (False, "write_skip_lens")
           and S.sweep_decision("Elements", read_only=True)[0])
