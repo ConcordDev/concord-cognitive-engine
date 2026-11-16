@@ -126,6 +126,13 @@ check("FP scoped: an empty payload for t2 is EMPTY, not ownership",
 check("FP scoped: the real leak (t2 gets t1's exact note) stays OWNERSHIP_FAIL",
       calls.get(("GET", "/api/notes/:uuid"), {}).get("verdict") == "OWNERSHIP_FAIL"
       and calls.get(("GET", "/api/notes/:uuid"), {}).get("same_as_t1") is True, calls)
+mr = calls.get(("GET", "/api/ct/merit/:uuid"), {})
+check("intended public: merit (allowlisted, identical non-empty) is PUBLIC_INTENDED, not OWNERSHIP_FAIL",
+      mr.get("verdict") == "PUBLIC_INTENDED" and mr.get("same_as_t1") is True and (mr.get("intended_public") or {}).get("decided_by") == "Dutch", mr)
+check("intended public: no ownership finding for merit", not any(f["class"] == "ownership" and "/ct/merit/" in f["title"] for f in pf))
+check("intended public: counted in two_account.public_intended", ta.get("public_intended") == 1, ta)
+check("intended public: a non-listed identical non-empty payload (notes) is still OWNERSHIP_FAIL",
+      calls.get(("GET", "/api/notes/:uuid"), {}).get("verdict") == "OWNERSHIP_FAIL" and any(f["class"] == "ownership" and "/api/notes/" in f["title"] for f in pf))
 cm = calls.get(("GET", "/api/chat/memory/:uuid"), {})
 check("FP contentless: identical zeroed chat-memory body (counts 0, topics [], '0/N') is EMPTY, not ownership",
       cm.get("verdict") == "EMPTY" and cm.get("same_as_t1") is True and cm.get("t1_contentless") is True

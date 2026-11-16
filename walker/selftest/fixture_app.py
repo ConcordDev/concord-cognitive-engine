@@ -98,7 +98,7 @@ UPGRADES = r"""<!doctype html><html><head><meta name=viewport content="width=dev
 <div id=menu></div>
 <script>
 const ID='__NOTE__';
-function openNote(){fetch('/api/notes/'+ID);fetch('/api/secure-notes/'+ID);fetch('/api/public-notes/'+ID);fetch('/api/memory/'+ID);fetch('/api/drafts/'+ID);fetch('/api/chat/memory/'+ID);}
+function openNote(){fetch('/api/notes/'+ID);fetch('/api/secure-notes/'+ID);fetch('/api/public-notes/'+ID);fetch('/api/memory/'+ID);fetch('/api/drafts/'+ID);fetch('/api/chat/memory/'+ID);fetch('/api/ct/merit/'+ID);}
 async function bookmark(){const r=await fetch('/api/bookmarks',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
  if(r.ok){const t=document.getElementById('toast');t.textContent='Bookmarked successfully';}}
 function openMenu(){document.getElementById('menu').textContent='Avatars; Power Mode; Settings';
@@ -173,6 +173,12 @@ class H(BaseHTTPRequestHandler):
             # readable by anyone, signed out too: the two-account replay must call this PUBLIC, not ownership
             n = NOTES.get(self.path.split("/")[3])
             return self._send(200 if n else 404, json.dumps({"title": "public"} if n else {"error": "not found"}), "application/json")
+        if self.path.startswith("/api/ct/merit/"):
+            # intended public to members (config/intended_public.json): identical non-empty for
+            # t1 and t2, signed-out 401 -> PUBLIC_INTENDED, never OWNERSHIP_FAIL
+            if _who(self.headers) is None:
+                return self._send(401, json.dumps({"error": "sign in"}), "application/json")
+            return self._send(200, json.dumps({"ok": True, "score": 712, "tier": "gold", "events": 9, "updated": "2026-11-15"}), "application/json")
         if self.path.startswith("/api/chat/memory/"):
             # pre-#2371 prod shape: any signed-in caller gets the same zeroed stats for an
             # unseen session. Identical for t1 and t2 but contentless -> EMPTY, not a leak.

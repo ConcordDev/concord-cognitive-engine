@@ -336,7 +336,8 @@ def lens_data(inp, slug, ticket=None):
     pf = list(rec.get("premap_findings") or [])
     ta = rec.get("two_account")
     d["two_account"] = (OrderedDict([("status", ta.get("status")), ("replayed", ta.get("replayed")),
-                                     ("ownership_failures", ta.get("ownership_failures")), ("reason", ta.get("reason"))])
+                                     ("ownership_failures", ta.get("ownership_failures")),
+                                     ("public_intended", ta.get("public_intended")), ("reason", ta.get("reason"))])
                         if isinstance(ta, dict) else None)
     d["premap_findings"] = [OrderedDict([("class", p.get("class")), ("control", p.get("control_id")), ("sid", p.get("sid")),
                                          ("title", p.get("title")),

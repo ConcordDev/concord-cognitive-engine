@@ -511,6 +511,8 @@ class LensWalk:
         if not has_session(self.cfg, "t2"):
             self.result["two_account"] = {"status": "SKIPPED", "reason": "no saved t2 session (auth/t2.json)"}
             return
+        from . import intended_public as _ip
+        ip_entries = _ip.load(self.cfg.get("intended_public_file"))
         seen, todo = set(), []
         # prefer the call a named control made over the same call made by a page load
         for r in sorted(self.net.replay, key=lambda x: (x["method"] != "GET", self.net._cid_at(x["t"]).endswith(":page:-"), x["t"])):
@@ -578,6 +580,12 @@ class LensWalk:
                             row["verdict"], leak = "EMPTY", False
                         elif same is False:
                             row["verdict"], leak = "SCOPED", False
+                if leak:
+                    # product decision: route intended to be readable by any member (config/intended_public.json)
+                    ip = _ip.match(ip_entries, r["method"], r["path"])
+                    if ip is not None:
+                        row["verdict"], leak = "PUBLIC_INTENDED", False
+                        row["intended_public"] = _ip.tag(ip)
                 rows.append(row)
                 if leak:
                     kind = "read" if r["method"] == "GET" else "write"
@@ -597,6 +605,7 @@ class LensWalk:
         self.result["two_account"] = {"status": "FAIL" if fails else "PASS", "replayed": len(rows),
                                       "ownership_failures": fails, "public": sum(1 for x in rows if x["verdict"] == "PUBLIC"),
                                       "scoped": sum(1 for x in rows if x["verdict"] in ("SCOPED", "EMPTY")),
+                                      "public_intended": sum(1 for x in rows if x["verdict"] == "PUBLIC_INTENDED"),
                                       "calls": rows}
 
     def _same_as_t1(self, url, t2_body, vp):
