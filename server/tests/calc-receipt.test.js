@@ -85,7 +85,7 @@ describe("calc receipt v2 (GB-1534)", () => {
   it("carries the full signed body: schema, inputs beside their hash, design basis, results, verdict", () => {
     const receipt = demoReceipt();
     assert.equal(receipt.receiptSchema, CALC_RECEIPT_SCHEMA);
-    assert.equal(receipt.receiptSchema, "concord-calc-receipt/2");
+    assert.equal(receipt.receiptSchema, "concord-calc-receipt/3");
     assert.deepEqual(receipt.solver, { id: "fea-solver", version: "5.0.0" });
     // The full canonical inputs are signed, not just their hash — and the
     // hash still recomputes from exactly those inputs.
@@ -121,7 +121,7 @@ describe("calc receipt v2 (GB-1534)", () => {
   it("verifies as a v2 receipt with outputs signed", () => {
     const verdict = verifyAttestation(JSON.parse(JSON.stringify(demoReceipt())));
     assert.equal(verdict.valid, true);
-    assert.equal(verdict.schema, "concord-calc-receipt/2");
+    assert.equal(verdict.schema, "concord-calc-receipt/3");
     assert.equal(verdict.outputsSigned, true);
     assert.equal(verdict.note, undefined);
   });

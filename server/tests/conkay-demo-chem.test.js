@@ -97,7 +97,7 @@ describe("conkay demo chem equilibrium (GB-1534)", () => {
       assert.equal(body.saved, false);
       assert.equal(body.saveError, "no_database");
       const receipt = body.result.calcReceipt;
-      assert.equal(receipt.receiptSchema, "concord-calc-receipt/2");
+      assert.equal(receipt.receiptSchema, "concord-calc-receipt/3");
       assert.equal(receipt.reference.value, 2226);
       assert.equal(receipt.reference.tolerance, 25);
       const verdict = verifyAttestation(JSON.parse(JSON.stringify(receipt)));

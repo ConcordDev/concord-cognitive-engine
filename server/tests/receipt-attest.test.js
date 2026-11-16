@@ -287,7 +287,7 @@ describe("calc receipt schema reporting (GB-1534)", () => {
       const v2 = await postJson(srv.port, "/api/receipts/verify", { receipt: v2Receipt() });
       assert.equal(v2.status, 200);
       assert.equal(v2.body.valid, true);
-      assert.equal(v2.body.schema, "concord-calc-receipt/2");
+      assert.equal(v2.body.schema, "concord-calc-receipt/3");
       assert.equal(v2.body.outputsSigned, true);
       assert.equal(v2.body.note, undefined);
 
@@ -339,7 +339,8 @@ describe("calc receipt schema reporting (GB-1534)", () => {
       const junk = await postJson(srv.port, "/api/receipts/sheet", { receipt: { nope: true } });
       assert.equal(junk.status, 200);
       assert.match(junk.text, /INVALID/);
-      assert.match(junk.text, /malformed/);
+      // A non-receipt object has no signature block; the verifier reports that, not "malformed".
+      assert.match(junk.text, /missing_signature/);
     } finally {
       await srv.close();
     }
