@@ -33,14 +33,47 @@ def gate_verdict(status, texts, signed_out):
 
 
 
+# Template strings that carry no data of their own: "0", "0.0", "0%", "0/50", "0/N", "n/a", "-".
+_TEMPLATE_STR = re.compile(r"(?i)^\s*(0+(\.0+)?\s*(%|/\s*(\d+|n))?|n/?a|none|null|-+|\u2014)?\s*$")
+_FLAG_KEYS = ("ok", "success")
+
+
+def _payload_shape(body, echoes=()):
+    """(leaf_count, nonempty_leaf_count) of a JSON payload. A leaf is empty when it is
+    0/false/null/"", an empty list or dict, a template string like '0/N', or an echo of a
+    value the caller itself sent in the URL path. ok/success flags are not counted.
+    Only these two numbers ever leave this function (no values are stored)."""
+    leaves = nonempty = 0
+    stack = [(None, body)]
+    while stack:
+        k, v = stack.pop()
+        if k in _FLAG_KEYS:
+            continue
+        if isinstance(v, dict) and v:
+            stack.extend(v.items())
+            continue
+        if isinstance(v, list) and v:
+            stack.extend((None, x) for x in v)
+            continue
+        leaves += 1
+        if v is None or v is False or v == 0 or v in ([], {}):
+            continue
+        if isinstance(v, str) and (_TEMPLATE_STR.match(v) or v in echoes):
+            continue
+        nonempty += 1
+    return leaves, nonempty
+
+
+def _contentless(body, echoes=()):
+    """True when a JSON payload holds no data: every leaf empty/zero/template (see _payload_shape).
+    Non-JSON (None) is never contentless — the conservative side."""
+    if body is None:
+        return False
+    return _payload_shape(body, echoes)[1] == 0
+
+
 def _empty_payload(body):
-    """JSON with no content of its own: null, {}, [], or a dict whose values are all empty/false."""
-    if body is None or body == {} or body == []:
-        return body is not None
-    if isinstance(body, dict):
-        vals = [v for k, v in body.items() if k not in ("ok", "success", "status")]
-        return all(v in (None, [], {}, "", 0, False) for v in vals)
-    return False
+    return _contentless(body)
 
 class LensResult(dict):
     pass
@@ -532,9 +565,16 @@ class LensWalk:
                         # CALLER's own data (or an empty shell). Only t2 receiving the same non-empty
                         # payload t1 receives is a leak. Payloads are compared in memory only; just
                         # the verdict is stored (live run 2026-11-16, /api/chat/memory/:id).
-                        same = self._same_as_t1(r["url"], body, vp)
+                        same, b1 = self._same_as_t1(r["url"], body, vp)
+                        echoes = tuple(x for x in urlsplit(r["url"]).path.split("/") if x)
                         row["same_as_t1"] = same
-                        if _empty_payload(body):
+                        # shape stats only (leaf counts, never values) so a later reader can tell a
+                        # zeroed shell from real data; t1_contentless covers 'identical zero bodies'
+                        # (e.g. chat-memory {counts 0, topics [], windowUtilization '0/N'}).
+                        row["t2_shape"] = dict(zip(("leaves", "nonempty"), _payload_shape(body, echoes))) if body is not None else None
+                        row["t1_shape"] = dict(zip(("leaves", "nonempty"), _payload_shape(b1, echoes))) if b1 is not None else None
+                        row["t1_contentless"] = _contentless(b1, echoes) if b1 is not None else None
+                        if _contentless(body, echoes):
                             row["verdict"], leak = "EMPTY", False
                         elif same is False:
                             row["verdict"], leak = "SCOPED", False
@@ -560,10 +600,11 @@ class LensWalk:
                                       "calls": rows}
 
     def _same_as_t1(self, url, t2_body, vp):
-        """True/False: does t1 get the identical JSON payload for this GET? None if unknown."""
+        """(same, t1_payload): does t1 get the identical JSON payload for this GET? same is None
+        if unknown. The payload stays in memory; callers store only derived booleans/counts."""
         import json as _json
         if t2_body is None:
-            return None
+            return None, None
         ctx = None
         try:
             ctx = new_context(self.b, self.cfg, "t1", vp)
@@ -571,11 +612,11 @@ class LensWalk:
             try:
                 b1 = resp.json()
             except Exception:
-                return None
+                return None, None
             canon = lambda x: _json.dumps(x, sort_keys=True, default=str)
-            return canon(b1) == canon(t2_body)
+            return canon(b1) == canon(t2_body), b1
         except Exception:
-            return None
+            return None, None
         finally:
             try:
                 if ctx is not None:

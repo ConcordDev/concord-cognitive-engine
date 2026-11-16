@@ -126,6 +126,17 @@ check("FP scoped: an empty payload for t2 is EMPTY, not ownership",
 check("FP scoped: the real leak (t2 gets t1's exact note) stays OWNERSHIP_FAIL",
       calls.get(("GET", "/api/notes/:uuid"), {}).get("verdict") == "OWNERSHIP_FAIL"
       and calls.get(("GET", "/api/notes/:uuid"), {}).get("same_as_t1") is True, calls)
+cm = calls.get(("GET", "/api/chat/memory/:uuid"), {})
+check("FP contentless: identical zeroed chat-memory body (counts 0, topics [], '0/N') is EMPTY, not ownership",
+      cm.get("verdict") == "EMPTY" and cm.get("same_as_t1") is True and cm.get("t1_contentless") is True
+      and (cm.get("t2_shape") or {}).get("nonempty") == 0 and (cm.get("t2_shape") or {}).get("leaves", 0) >= 6, cm)
+nt = calls.get(("GET", "/api/notes/:uuid"), {})
+check("FP contentless: identical NON-zero payload (real leak) stays OWNERSHIP_FAIL with t1_contentless False",
+      nt.get("verdict") == "OWNERSHIP_FAIL" and nt.get("same_as_t1") is True and nt.get("t1_contentless") is False
+      and (nt.get("t2_shape") or {}).get("nonempty", 0) > 0, nt)
+check("FP contentless: no ownership finding for chat memory", not any(f["class"] == "ownership" and "/chat/memory/" in f["title"] for f in pf))
+check("shape stats store counts only (no values)",
+      all(set((c.get(k) or {}).keys()) <= {"leaves", "nonempty"} for c in calls.values() for k in ("t1_shape", "t2_shape")))
 check("FP scoped: no ownership finding for memory/drafts", not any(f["class"] == "ownership" and ("/memory/" in f["title"] or "/drafts/" in f["title"]) for f in pf))
 bm = ctl.get("Bookmark", {})
 check("FP toast: a write whose only visible change is a role=status toast is unverifiable, not fake_success",
