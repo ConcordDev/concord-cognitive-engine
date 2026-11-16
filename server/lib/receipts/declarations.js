@@ -34,7 +34,7 @@ import { buildCalcReceipt } from "./calc-receipt.js";
 import { attestReceipt } from "./attest.js";
 import { issueStoredReceipt } from "./store.js";
 import { solveBeamStudy } from "../../domains/engineering.js";
-import { CHEM_FUELS, CHEM_BOUNDS, chemReceiptParts } from "./chem-equilibrium.js";
+import { CHEM_FUELS, CHEM_BOUNDS, CHEM_OXIDIZER, chemReceiptParts } from "./chem-equilibrium.js";
 
 const REGISTRY = new Map();
 
@@ -256,7 +256,60 @@ const unsigned = (raw, reason, extra = {}) => {
  * annotated (`signed:false`) because the chem lens renders the banner from it,
  * every other domain's result passes through byte-for-byte.
  */
-export function applyReceiptDeclaration({ domain, action, inputs, raw, db, store, now } = {}) {
+export function applyReceiptDeclaration(args = {}) {
+  const out = applyReceiptDeclarationCore(args);
+  // Demo routes render a calc sheet even when we refuse to sign: give them the
+  // receipt body with its signature block nulled, never a signed one.
+  if (args.withUnsignedBody && out && out.result && out.result.signed === false && !out.result.calcReceipt) {
+    try {
+      const decl = getDeclaration(args.domain, args.action);
+      if (decl && typeof decl.buildParts === "function") {
+        const flat = typeof decl.normalizeInputs === "function" ? decl.normalizeInputs(args.inputs || {}) : { ...(args.inputs || {}) };
+        const parts = decl.buildParts(flat, args.raw.result, decl);
+        const built = parts && parts.prebuilt ? parts.prebuilt : buildCalcReceipt(parts);
+        const body = { ...built, signed: false, reason: out.result.signingReason, signature: { signature: null } };
+        return { ...out, result: { ...out.result, calcReceipt: body, receipt: body } };
+      }
+    } catch { /* no body to show; the numbers still come back */ }
+  }
+  return out;
+}
+
+/**
+ * Envelope gate for the ConKay solver path (MCP conkay_solve, conkay_design
+ * views). `env` is a solver envelope { solver, status, inputs, outputs, ... }.
+ * The declaration is found by solver id and must supply `fromEnvelope(env)` ->
+ * { inputs, result } in its own lens shape. No declaration (or no adapter) ->
+ * unsigned `missing_declaration`; the caller still returns the envelope's numbers.
+ * @returns {{ signed:boolean, saved:boolean, signingReason?:string, calcReceipt:object|null, receipt:object|null, receiptId?:string, receiptUrl?:string }}
+ */
+export function applyEnvelopeDeclaration(env, { db, store, now } = {}) {
+  const refuse = (reason) => ({ signed: false, saved: false, signingReason: reason, calcReceipt: null, receipt: null });
+  try {
+    const solverId = env && env.solver && typeof env.solver === "object" ? env.solver.id : null;
+    let found = null;
+    for (const [k, d] of REGISTRY) {
+      if (d && d.certifiable === true && typeof d.fromEnvelope === "function" && d.solver && d.solver.id === solverId) { found = { k, d }; break; }
+    }
+    if (!found) return refuse("missing_declaration");
+    const [domain, ...rest] = found.k.split(".");
+    const action = rest.join(".");
+    const adapted = found.d.fromEnvelope(env);
+    if (!adapted || typeof adapted !== "object" || !adapted.inputs || !adapted.result) return refuse("out_of_envelope:envelope_not_adaptable");
+    const out = applyReceiptDeclarationCore({ domain, action, inputs: adapted.inputs, raw: { ok: true, result: adapted.result }, db, store, now });
+    const r = out && out.result ? out.result : {};
+    if (r.signed !== true) return refuse(r.signingReason || "not_signed");
+    return {
+      signed: true, saved: r.saved === true, calcReceipt: r.calcReceipt, receipt: r.receipt,
+      ...(r.receiptId ? { receiptId: r.receiptId, receiptUrl: r.receiptUrl } : {}),
+      ...(r.saveError ? { saveError: r.saveError } : {}),
+    };
+  } catch (e) {
+    return refuse(`receipt_failed:${e instanceof Error ? e.message : String(e)}`);
+  }
+}
+
+function applyReceiptDeclarationCore({ domain, action, inputs, raw, db, store, now } = {}) {
   try {
     if (!raw || raw.ok === false || !raw.result || typeof raw.result !== "object" || Array.isArray(raw.result)) return raw;
     if (raw.result.receiptId) return raw; // already carries a stored receipt: one signing decision only
@@ -360,6 +413,25 @@ registerDeclaration("chem", "equilibrium", {
     T0: numOr(i.T0, 300),
     P0: numOr(i.P0, 1),
   }),
+  // ConKay solver envelope (Pa, nested echo values) -> the lens shape (atm). Anything the
+  // certified envelope does not cover (other oxidizer, mechanism not matching the fuel) is not adapted.
+  fromEnvelope: (env) => {
+    const v = (k) => (env.inputs && env.inputs[k] && typeof env.inputs[k] === "object" ? env.inputs[k].value : undefined);
+    const fuel = typeof v("fuel") === "string" ? v("fuel").toUpperCase() : null;
+    if (!fuel || !CHEM_FUELS[fuel] || v("mechanism") !== CHEM_FUELS[fuel].mechanism || v("oxidizer") !== CHEM_OXIDIZER) return null;
+    const P0 = Number(v("initialPressure")) / 101325;
+    const out = env.outputs || {};
+    const T = out.adiabaticFlameTemperature && out.adiabaticFlameTemperature.value;
+    const ok = env.status !== "NOT_COMPUTED" && Number.isFinite(T);
+    return {
+      inputs: { fuel, phi: Number(v("equivalenceRatio")), T0: Number(v("initialTemperature")), P0 },
+      result: {
+        status: ok ? "COMPUTED" : "NOT_COMPUTED",
+        ...(ok ? { adiabaticFlameTemperatureK: T, majorProducts: out.majorProducts ? out.majorProducts.value : [] } : { reason: env.reason || "not computed" }),
+        solver: env.solver, assumptions: env.assumptions,
+      },
+    };
+  },
   computed: (r) => (r.status === "COMPUTED" && Number.isFinite(r.adiabaticFlameTemperatureK) ? null : (r.reason || "the chemistry kernel did not compute a result")),
   buildParts: (inputs, r) => {
     const spec = { fuel: inputs.fuel, phi: inputs.phi, T0: inputs.T0, P0atm: inputs.P0 };

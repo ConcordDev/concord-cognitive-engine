@@ -13,6 +13,7 @@
 
 import crypto from "node:crypto";
 import { attestReceipt, verifyAttestation } from "./attest.js";
+import { buildVerificationBlock } from "./calc-receipt.js";
 
 export const RECEIPT_ID_PREFIX = "rcpt_";
 const ID_RE = /^rcpt_[A-Za-z0-9-]{8,64}$/;
@@ -87,7 +88,13 @@ export function getStoredReceipt(db, key) {
 export function issueStoredReceipt(receipt, opts = {}) {
   const { signature: _s, issuedAt: _i, receiptId: _r, ...body } = receipt || {};
   const receiptId = newReceiptId();
-  const signed = attestReceipt({ ...body, receiptId }, opts.now ? { now: opts.now } : {});
+  // A /3 receipt's signed `verification` block names where to fetch THIS receipt,
+  // which is only known now; add fetchUrl before signing so it is covered.
+  const withId = { ...body, receiptId };
+  if (body.verification && typeof body.verification === "object" && !Array.isArray(body.verification)) {
+    withId.verification = { ...body.verification, ...buildVerificationBlock({ keyId: body.verification.keyId ?? null, receiptId }) };
+  }
+  const signed = attestReceipt(withId, opts.now ? { now: opts.now } : {});
   let outcome;
   try {
     outcome = (opts.store || storeReceipt)(opts.db, signed);

@@ -24,7 +24,7 @@ import {
   BRIDGE_RISK,
 } from "./mcp-hermes-identity.js";
 import { formatIrErrors, CONKAY_IR_MINI_EXAMPLE, CONKAY_IR_HINTS } from "./conkay/compiler/soften-ir.js";
-import { calcReceiptForEnvelope } from "./receipts/calc-receipt.js";
+import { applyReceiptDeclaration, applyEnvelopeDeclaration } from "./receipts/declarations.js";
 import { compileDesignBrief } from "./conkay/compiler/design-brief.js";
 
 const PREFERRED_LENS_ACTIONS = [
@@ -267,10 +267,12 @@ export async function runLensActionMcp(db, args = {}, STATE = null, callCtx = nu
 
   const ctx = buildLensCtx(db, STATE, actor);
   try {
-    const result = resolved.via === "lens_action"
+    const rawResult = resolved.via === "lens_action"
       ? await invokeLensHandler(resolved.handler, ctx, null, actionInput, lensActionSpec(domain, action))
       : await runMacro(domain, action, actionInput, ctx);
 
+    // Same single signing decision as POST /api/lens/run; never fails the call.
+    const result = applyReceiptDeclaration({ domain, action, inputs: actionInput, raw: rawResult, db: db || null });
     const failed = result && typeof result === "object" && result.ok === false;
     return {
       ok: !failed,
@@ -281,6 +283,9 @@ export async function runLensActionMcp(db, args = {}, STATE = null, callCtx = nu
       via: resolved.via,
       input: actionInput,
       result,
+      // The signing decision, surfaced at the top so an agent never has to dig for it.
+      signed: !failed && result?.result?.signed === true,
+      ...(!failed && result?.result?.signed !== true ? { signingReason: result?.result?.signingReason || "missing_declaration" } : {}),
       actor_id: imp.actorId,
       idempotency_key: clean.idempotency_key || null,
       audited: true,
@@ -459,11 +464,11 @@ export async function conkaySolveMcp(db, args = {}, STATE = null, callCtx = null
   }
 
   const results = envelopes.map((env) => {
-    // GB-1534: every returned result carries a signed v2 calc receipt of
-    // its own inputs + outputs (also under `receipt`, the slot callers
-    // already read), so a chat/MCP solve is as tamper-evident as a demo
-    // solve. An envelope that did not compute signs a NOT_COMPUTED verdict.
-    const calcReceipt = calcReceiptForEnvelope(env);
+    // One signing decision (lib/receipts/declarations.js): a result is signed
+    // only when its solver has a declaration and the inputs sit inside the
+    // declared envelope. Otherwise the numbers come back unsigned, with the
+    // reason in `signingReason` (missing_declaration, out_of_envelope:..., ...).
+    const gate = applyEnvelopeDeclaration(env, { db });
     return {
       runId: env.runId,
       status: env.status,
@@ -477,8 +482,12 @@ export async function conkaySolveMcp(db, args = {}, STATE = null, callCtx = null
       solver: env.solver,
       provenance: provenanceFromEnvelope(env),
       runtimeMs: env.runtimeMs,
-      calcReceipt,
-      receipt: calcReceipt,
+      signed: gate.signed,
+      saved: gate.saved,
+      ...(gate.signingReason ? { signingReason: gate.signingReason } : {}),
+      ...(gate.receiptId ? { receiptId: gate.receiptId, receiptUrl: gate.receiptUrl } : {}),
+      calcReceipt: gate.calcReceipt,
+      receipt: gate.receipt,
     };
   });
 

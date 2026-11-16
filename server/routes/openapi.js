@@ -99,9 +99,14 @@ export default function openapiRoutes() {
       "/ct/loan-eligibility/{userId}": {
         get: {
           tags: ["Economy"],
-          summary: "Check 0% loan eligibility",
+          summary: "Check your own 0% loan eligibility",
+          description: "Authenticated owner only. Another userId, including one that does not exist, is 403 with no eligibility payload. GET /ct/merit/{userId} stays public.",
           parameters: [{ name: "userId", in: "path", required: true, schema: { type: "string" } }],
-          responses: { 200: { description: "Loan eligibility tier and max amount" } },
+          responses: {
+            200: { description: "Loan eligibility tier and max amount for the caller" },
+            401: { description: "Not signed in" },
+            403: { description: "Caller is not the path userId; no eligibility data" },
+          },
         },
       },
       "/ct/dtu/create": {

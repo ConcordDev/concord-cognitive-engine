@@ -93,18 +93,21 @@ describe("conkay demo chem equilibrium (GB-1534)", () => {
       const body = await res.json();
       assert.equal(body.ok, true);
       // This router is mounted without a database, so the store is honestly
-      // unavailable: the signed receipt still comes back, saved:false + why.
+      // unavailable: saved:false either way.
       assert.equal(body.saved, false);
-      assert.equal(body.saveError, "no_database");
       const receipt = body.result.calcReceipt;
-      assert.equal(receipt.receiptSchema, "concord-calc-receipt/2");
+      assert.equal(receipt.receiptSchema, "concord-calc-receipt/3");
       assert.equal(receipt.reference.value, 2226);
       assert.equal(receipt.reference.tolerance, 25);
       const verdict = verifyAttestation(JSON.parse(JSON.stringify(receipt)));
-      assert.equal(verdict.valid, true);
-      assert.equal(verdict.outputsSigned, true);
       if (HAVE_KERNEL) {
-        // The CI leg (cantera installed): the cited reference check passes.
+        // The CI leg (cantera installed): the one signing gate signs, the
+        // signed receipt still comes back with saved:false + why, and the
+        // cited reference check passes.
+        assert.equal(body.saveError, "no_database");
+        assert.equal(body.result.signed, true);
+        assert.equal(verdict.valid, true);
+        assert.equal(verdict.outputsSigned, true);
         assert.equal(body.result.status, "COMPUTED");
         assert.equal(receipt.verdict.status, "PASS");
         assert.ok(
@@ -113,10 +116,16 @@ describe("conkay demo chem equilibrium (GB-1534)", () => {
         );
         assert.equal(receipt.results.adiabaticFlameTemperature.value, body.result.adiabaticFlameTemperatureK);
       } else {
-        // No kernel in this environment: an honest NOT_COMPUTED, signed,
-        // with the reason — and no temperature anywhere.
+        // No kernel in this environment: an honest NOT_COMPUTED. The one
+        // signing gate refuses to sign a result nothing computed, so the body
+        // is explicitly unsigned (signed:false + the reason, signature null,
+        // never verifiable) and carries no temperature anywhere.
         assert.equal(body.result.status, "NOT_COMPUTED");
         assert.equal(typeof body.result.reason, "string");
+        assert.equal(body.result.signed, false);
+        assert.match(body.result.signingReason, /^not_computed:/);
+        assert.equal(receipt.signature.signature, null);
+        assert.equal(verdict.valid, false);
         assert.equal(receipt.verdict.status, "NOT_COMPUTED");
         assert.equal(body.result.adiabaticFlameTemperatureK, undefined);
         assert.deepEqual(receipt.results, {});

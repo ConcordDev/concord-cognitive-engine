@@ -20,7 +20,7 @@ export default function createReceiptRouter({ readLimit, verifyLimit, db } = {})
   const read = readLimit || ((_req, _res, next) => next());
   const verify = verifyLimit || ((_req, _res, next) => next());
 
-  router.get("/.well-known/concord-receipt-keys.json", read, async (_req, res) => {
+  const serveKeys = async (_req, res) => {
     try {
       await ensureSigningKey();
       res.setHeader("Cache-Control", "public, max-age=300");
@@ -28,7 +28,11 @@ export default function createReceiptRouter({ readLimit, verifyLimit, db } = {})
     } catch (e) {
       res.status(500).json({ ok: false, error: e instanceof Error ? e.message : String(e) });
     }
-  });
+  };
+  router.get("/.well-known/concord-receipt-keys.json", read, serveKeys);
+  // AUTH: public — same document as the .well-known path, for clients that only know /api/receipts.
+  // Registered before /:id so "keys" is never read as a receipt id.
+  router.get("/api/receipts/keys", read, serveKeys);
 
   // AUTH: public — receipt verification is unauthenticated by design (CSRF-exempt exact path).
   router.post("/api/receipts/verify", verify, (req, res) => {

@@ -1,7 +1,7 @@
 // server/lib/receipts/calc-receipt.js
 //
 // GB-1534 — the signing-grade calculation receipt (schema
-// "concord-calc-receipt/2"). A v1 analysis receipt signed only the solver's
+// "concord-calc-receipt/2"; /3 adds a signed `verification` block). A v1 analysis receipt signed only the solver's
 // identity and a hash of the inputs; the numbers it reported (stress,
 // safety factor, PASS) rode NEXT TO the signed body, unsigned, so an edited
 // result still verified. A v2 calc receipt puts the full inputs, the design
@@ -14,9 +14,47 @@
 // has them — a receipt never claims a check, a reference or a job it does
 // not have.
 
-import { attestReceipt, loadSigningKey } from "./attest.js";
+import { attestReceipt, loadSigningKey, ALG, CANON } from "./attest.js";
 
-export const CALC_RECEIPT_SCHEMA = "concord-calc-receipt/2";
+const DEFAULT_PUBLIC_BASE_URL = "https://concord-os.org";
+
+/**
+ * Public base URL for links embedded in signed receipts. Comes from config
+ * (PUBLIC_BASE_URL), never from a request Host header: the value is signed, so
+ * a spoofed Host must not be able to mint a receipt that points elsewhere.
+ */
+export function receiptBaseUrl() {
+  const raw = process.env.PUBLIC_BASE_URL;
+  const v = typeof raw === "string" ? raw.trim().replace(/\/+$/, "") : "";
+  return /^https?:\/\/[^\s]+$/i.test(v) ? v : DEFAULT_PUBLIC_BASE_URL;
+}
+
+export const VERIFY_HOW_TO =
+  "Offline: remove the top-level `signature` field, canonicalize the rest as sorted-json-v1 "
+  + "(object keys sorted, no whitespace, UTF-8), SHA-256 it and compare to signature.digest, then "
+  + "Ed25519-verify signature.signature (base64) over those bytes with the public key for keyId "
+  + "from publicKeysUrl. Or POST this receipt to verifyUrl. Script: scripts/verify-receipt.mjs.";
+
+/**
+ * The self-describing `verification` block signed inside every /3 receipt.
+ * `fetchUrl` is only present when the receipt has a stored id.
+ */
+export function buildVerificationBlock({ keyId = null, receiptId = null } = {}) {
+  const base = receiptBaseUrl();
+  return {
+    verifyUrl: `${base}/api/receipts/verify`,
+    ...(receiptId ? { fetchUrl: `${base}/api/receipts/${receiptId}` } : {}),
+    publicKeysUrl: `${base}/.well-known/concord-receipt-keys.json`,
+    alg: ALG,
+    canon: CANON,
+    keyId,
+    howTo: VERIFY_HOW_TO,
+  };
+}
+
+export const CALC_RECEIPT_SCHEMA = "concord-calc-receipt/3";
+/** Schemas this module has issued. /2 receipts (no `verification` block) remain valid forever. */
+export const CALC_RECEIPT_SCHEMAS = ["concord-calc-receipt/2", "concord-calc-receipt/3"];
 export const CALC_RECEIPT_SERVICE = "concord-os.org";
 
 /** Round a finite number to `digits` decimals; anything else passes through as null/value unchanged. */
@@ -76,6 +114,7 @@ export function buildCalcReceipt(parts = {}, opts = {}) {
     ...(parts.reference ? { reference: parts.reference } : {}),
     ...(parts.review ? { review: parts.review } : {}),
     issuer: { service: CALC_RECEIPT_SERVICE, keyId: key && key.keyId ? key.keyId : null },
+    verification: buildVerificationBlock({ keyId: key && key.keyId ? key.keyId : null }),
   };
   const job = cleanJob(parts.job);
   if (job) body.job = job;

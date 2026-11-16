@@ -8776,7 +8776,8 @@ function authMiddleware(req, res, next) {
   if (req.method === "POST" && req.path === "/api/receipts/sheet") return next();
   // Stored-receipt read-by-id. GET only, exact one-segment shape; reads one
   // signed calc artifact, no user data. Rate limit: read.receipt-keys.
-  if (req.method === "GET" && /^\/api\/receipts\/[A-Za-z0-9_-]{8,80}$/.test(req.path)) return next();
+  // /api/receipts/keys serves the same document as /.well-known/concord-receipt-keys.json.
+  if (req.method === "GET" && /^\/api\/receipts\/(?:keys|[A-Za-z0-9_-]{8,80})$/.test(req.path)) return next();
   // Gate 1 POST bypass: ActivityPub inbox. Per W3C AP §7 federated peers
   // POST activities here without any local auth — authentication is the
   // HTTP-Signature on the request, verified by the inbox handler itself
@@ -10389,11 +10390,16 @@ const _BOT_UA_RE = /\b(bot|crawler|spider|scraper|python-requests|aiohttp|httpx|
 // from the bot guard is the only way the public actor + inbox + outbox
 // can interop with the wider Fediverse.
 const _AP_PUBLIC_RE = /^\/api\/federation\/users\/[^/]+(?:\/(inbox|outbox|followers|following))?$/;
+const _RECEIPT_PUBLIC_RE = /^(?:GET|HEAD) \/api\/receipts\/(?:keys|[A-Za-z0-9_-]{8,80})$|^POST \/api\/receipts\/verify$/;
 function botGuardMiddleware(req, res, next) {
   if (req.user?.id) return next(); // authenticated — pass (requires identity on alwaysPublic too)
   if (!req.path.startsWith("/api/")) return next(); // non-API — pass
   if (_HEALTH_PROBE_RE.test(req.path)) return next(); // health probes — pass
   if (_AP_PUBLIC_RE.test(req.path)) return next(); // federation discovery — pass
+  // Public receipts are meant to be fetched and verified by scripts (curl,
+  // python-requests, CI). Exact shapes only; normal rate limiting still applies
+  // (read.receipt-keys / write.receipt-verify). /sheet is NOT exempt.
+  if (_RECEIPT_PUBLIC_RE.test(req.method + " " + req.path)) return next();
   // INC-72: inbound ingest webhooks are sent by external automation (Zapier,
   // cron jobs, curl). The 32-hex token in the exact route is the credential.
   if (req.method === "POST" && INGEST_WEBHOOK_RE.test(req.path)) return next();
