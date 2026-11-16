@@ -1,6 +1,6 @@
 """Run outputs: findings, judgment queue ('needs tester/Zuko'), fixtures + leftovers."""
 import json, os
-from .util import append_jsonl, append_text, human_et, ts_et, scrub
+from .util import append_jsonl, append_text, human_et, ts_et, scrub, safe_filename
 
 
 class RunRecorder:
@@ -17,7 +17,7 @@ class RunRecorder:
     def evidence_dir(self, slug):
         # dry runs keep screenshots inside the run dir so the shared evidence/ tree only gets filed-ticket evidence
         root = os.path.join(self.run_dir, "evidence") if self.dry else (self.cfg.get("evidence_dir") or os.path.join(self.cfg["audit_dir"], "evidence"))
-        d = os.path.join(root, slug, "walker-" + self.rid)
+        d = os.path.join(root, safe_filename(slug), "walker-" + self.rid)
         os.makedirs(d, exist_ok=True)
         return d
 

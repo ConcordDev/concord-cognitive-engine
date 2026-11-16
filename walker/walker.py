@@ -4,10 +4,11 @@ import argparse, json, os, sys, signal
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-from concord_walker.util import load_config, run_id, Log, mem_available_mb, human_et, append_text
+from concord_walker.util import load_config, run_id, Log, mem_available_mb, human_et, append_text, lens_result_path
 from concord_walker.auth import AccountMismatch, has_session, login, whoami, new_context
 from concord_walker.records import RunRecorder
 from concord_walker.tickets import TicketStore
+from concord_walker.root_causes import write_root_causes
 from concord_walker.checks import LensWalk
 from concord_walker.reverify import Reverifier, status_update
 from concord_walker.runstate import RunLock  # WALK-05: stale-aware lock (runstate.py)
@@ -129,13 +130,15 @@ def cmd_walk(args, cfg, log):
                 new, dups = file_findings(store, rec, lw.findings, dry, log, cfg["tester_name"])
                 res["new_tickets"] = [t["id"] for t in new]
                 res["duplicates"] = [{"title": f["title"], "dup_of": d} for f, d in dups]
-                with open(os.path.join(rec.run_dir, "lens-%s.json" % slug), "w") as f:
+                with open(lens_result_path(rec.run_dir, slug), "w") as f:
                     json.dump(res, f, indent=1)
                 summary.append(res)
+                write_root_causes(cfg["audit_dir"], log=log)
         finally:
             browser.close()
             left = rec.flush_leftovers()
             write_summary(rec, summary, left, dry)
+            write_root_causes(cfg["audit_dir"], log=log)
     log("run %s done: %s" % (rid, rec.run_dir))
 
 
@@ -198,14 +201,55 @@ def cmd_reverify(args, cfg, log):
         raise SystemExit("no saved session for %s; run walker.py login --account t1 --headed first" % cfg["accounts"]["t1"]["username"])
     ids = list(args.ids)
     if args.from_status:
-        ids += [i for i in store.base if store.status(i) == args.from_status.upper()]
+        # comma list allowed, e.g. FIXED_PENDING_VERIFY,OPEN (the coverage scope)
+        _st = {x.strip().upper() for x in args.from_status.split(",") if x.strip()}
+        ids += [i for i in store.base if store.status(i) in _st]
+    ids = list(dict.fromkeys(ids))
+    # Coverage table (Dutch, Nov 15): every in-scope FIXED_PENDING_VERIFY/OPEN
+    # ticket gets one row with a reason. Tickets that are not replayed are
+    # decided here, before the loop, so they never sit pending silently.
+    from concord_walker import coverage as cov
+    scope = [(i, store.get(i)) for i in ids]
+    cov_results, cov_skip = {}, {}
+    walked = None
+    if getattr(args, "walked_run", None):
+        rdirs = []
+        for w in args.walked_run:
+            for part in [x.strip() for x in w.split(",") if x.strip()]:
+                rdirs.append(part if os.path.isdir(part) else os.path.join(cfg.get("runs_dir") or os.path.join(cfg["_walker_dir"], "runs"), part))
+        walked = cov.walked_lenses(rdirs)
+        log("walked-run: %d lens(es) walked in %s" % (len(walked), rdirs))
+    only_lens = set(x.strip() for x in (getattr(args, "only_lens", None) or "").split(",") if x.strip())
+    inv_slugs = {l.get("slug") for l in inv}
+    keep = []
+    for i, t in scope:
+        if t is None:
+            keep.append(i)  # unknown id: Reverifier reports it; no coverage row (not in scope)
+            continue
+        lens = t.get("lens")
+        ci = store.lane(i) == "ci"
+        if only_lens and lens not in only_lens:
+            cov_skip[i] = cov.R_FILTER + " (--only-lens)"
+        elif not ci and lens not in inv_slugs:
+            cov_skip[i] = cov.R_NOT_IN_INV + (" (%s)" % lens if lens else " (ticket has no lens)")
+        elif walked is not None and not ci and lens not in walked:
+            cov_skip[i] = cov.R_NOT_WALKED + " (%s)" % lens
+        else:
+            keep.append(i)
+    ids = keep
+    if cov_skip:
+        log("coverage: %d ticket(s) not replayed (filter / inventory / not walked)" % len(cov_skip))
     # WALK-05: the run journal + heartbeat. On --resume the journal already holds
     # the prior attempt's lines; finished ids (done|skipped) are never re-run.
     journal = Journal(rec.run_dir)
     heartbeat = Heartbeat(rec.run_dir)
     if getattr(args, "resume", None):
         before = len(ids)
+        _all = ids
         ids = journal.remaining(ids)
+        for _i in _all:
+            if _i not in ids:
+                cov_skip.setdefault(_i, cov.R_RESUMED)
         log("resume %s: %d id(s) finished in the journal, %d remaining" % (args.resume, before - len(ids), len(ids)))
     budget = LensBudget(getattr(args, "lens_budget_s", None) or cfg.get("thresholds", {}).get("lens_budget_s", 900))
     results = []
@@ -213,8 +257,10 @@ def cmd_reverify(args, cfg, log):
         browser = pw.chromium.launch(channel="chrome", headless=True, args=["--disable-dev-shm-usage"])
         try:
             rv = Reverifier(browser, cfg, rec, store, log, inv, allow_write=args.allow_write)
-            for tid in ids:
+            for n_done, tid in enumerate(ids):
                 if not wait_for_memory(cfg, log):
+                    for rest in ids[n_done:]:
+                        cov_skip.setdefault(rest, cov.R_LOW_MEM)
                     break
                 heartbeat.beat("reverify %s" % tid)
                 _lens = (store.get(tid) or {}).get("lens")
@@ -222,6 +268,7 @@ def cmd_reverify(args, cfg, log):
                     budget.start(_lens)
                     if budget.over(_lens):
                         journal.record("reverify", tid, "failed", "time_budget: lens %s over %ds" % (_lens, budget.budget_s))
+                        cov_skip[tid] = cov.R_BUDGET + " (%s over %ds)" % (_lens, budget.budget_s)
                         log("  => %s skipped: lens %s over its time budget" % (tid, _lens))
                         continue
                 if store.lane(tid) == "ci":
@@ -231,6 +278,7 @@ def cmd_reverify(args, cfg, log):
                            "notes": "non-lens code ticket; routed to the WALK-06 CI lane"}
                     results.append(res)
                     journal.record("reverify", tid, "skipped", "ci-lane (WALK-06)")
+                    cov_skip[tid] = cov.R_CI
                     log("  => %s CI_LANE (WALK-06)" % tid)
                     with open(os.path.join(rec.run_dir, "reverify.jsonl"), "a") as f:
                         f.write(json.dumps(res) + "\n")
@@ -241,11 +289,18 @@ def cmd_reverify(args, cfg, log):
                 except AccountMismatch as e:
                     journal.record("reverify", tid, "failed", "account mismatch: %s" % e)
                     log("ABORT: account check failed during %s: %s" % (tid, e))
+                    cov_skip[tid] = "aborted: account mismatch (%s)" % str(e)[:120]
+                    for rest in ids[n_done + 1:]:
+                        cov_skip.setdefault(rest, cov.R_ABORT + " (account mismatch)")
                     break
                 except Exception as e:
                     journal.record("reverify", tid, "failed", "%s: %s" % (type(e).__name__, e))
+                    cov_skip[tid] = "aborted: %s: %s" % (type(e).__name__, str(e)[:120])
+                    for rest in ids[n_done + 1:]:
+                        cov_skip.setdefault(rest, cov.R_ABORT + " (%s)" % type(e).__name__)
                     raise
                 results.append(res)
+                cov_results[tid] = res
                 log("  => %s %s (%s)" % (tid, res["verdict"], res.get("notes", "")[:140]))
                 with open(os.path.join(rec.run_dir, "reverify.jsonl"), "a") as f:
                     f.write(json.dumps(res) + "\n")
@@ -267,6 +322,14 @@ def cmd_reverify(args, cfg, log):
         finally:
             browser.close()
             rec.flush_leftovers()
+            # Coverage table: always in the run dir; the shared audit copy only
+            # when the run is not dry (same rule as tickets/queue).
+            cov_rows = cov.build_rows(scope, cov_results, cov_skip)
+            cov_dirs = [rec.run_dir] + ([] if dry else [cfg["audit_dir"]])
+            cov.write(cov_dirs, cov_rows, {"run_id": rid, "live_sha": live, "dry": dry, "ts": human_et(),
+                                           "walked_runs": getattr(args, "walked_run", None), "only_lens": sorted(only_lens)})
+            _s = cov.summarize(cov_rows)
+            log("coverage: %d row(s) %s -> %s" % (_s["total"], _s["by_verdict"], ", ".join(cov_dirs)))
     log("ledger: %d verdict row(s) written, %d suppressed (dry)" % (ledger.written, ledger.suppressed))
     # WALK-05: per-run RESULTS (md + csv) with the live sha stamped on every row.
     results_mod.write_results(rec.run_dir, results_mod.build_rows(rec.run_dir, live_sha=live or "unverified"), rid)
@@ -309,7 +372,8 @@ def cmd_reverify_ci(args, cfg, log):
                                        "walker.jsonl"), dry=args.dry_run)
     ids = list(args.ids)
     if args.from_status:
-        ids += [i for i in store.base if store.status(i) == args.from_status.upper()]
+        _st = {x.strip().upper() for x in args.from_status.split(",") if x.strip()}
+        ids += [i for i in store.base if store.status(i) in _st]
     if not ids:
         ids = fold.ci_ids()
     results = ci_verify.run_ci_lane(store=store, repo=args.from_repo, deploy_sha=args.deploy_sha,
@@ -363,7 +427,7 @@ def main():
     walk_opts(p)
     p = sub.add_parser("reverify", help="replay tickets by id")
     p.add_argument("ids", nargs="*")
-    p.add_argument("--from-status", help="also take every ticket currently in this status, e.g. FIXED_PENDING_VERIFY")
+    p.add_argument("--from-status", help="also take every ticket currently in this status (comma list ok), e.g. FIXED_PENDING_VERIFY or FIXED_PENDING_VERIFY,OPEN")
     p.add_argument("--from-repo", help="WALK-01: read the ticket fold from this repo clone at --deploy-sha (fix_tickets.jsonl + records/*.jsonl)")
     p.add_argument("--deploy-sha", help="WALK-01: the pinned sha the fold is read at (with --from-repo)")
     p.add_argument("--expect-sha", help="WALK-01: sha gate — hex git sha; REQUIRED with --apply-status. Rows are written only if /health buildSha matches; anything else runs dry")
@@ -372,6 +436,8 @@ def main():
     p.add_argument("--resume", help="WALK-05: resume this run id — ids finished in its journal (done|skipped) are not re-run")
     p.add_argument("--lens-budget-s", type=int, help="WALK-05: per-lens time budget in seconds (default from config thresholds, else 900)")
     p.add_argument("--allow-write", action="store_true")
+    p.add_argument("--walked-run", action="append", help="coverage: run dir (or run id under runs_dir) of the sweep(s) this reverify grades; repeatable / comma list. Tickets on lenses with no lens-*.json there are NOT_ATTEMPTED 'lens not walked this run' and are not replayed")
+    p.add_argument("--only-lens", help="coverage: comma list of lens slugs to replay; other in-scope tickets are NOT_ATTEMPTED 'excluded by filter'")
     p.add_argument("--apply-status", action="store_true", help="write verdict rows (VERIFIED/REOPENED/OPEN) to records/walker.jsonl")
     p.add_argument("--dry-run", action="store_true")
     p = sub.add_parser("login", help="save a session for a QA account")

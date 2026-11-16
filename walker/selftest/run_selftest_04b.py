@@ -16,6 +16,7 @@ WALKER = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 sys.path.insert(0, WALKER)
 import fixture_app_04b as fx
+from concord_walker.util import lens_result_path
 
 srv = fx.serve()
 base = "http://127.0.0.1:%d" % srv.server_address[1]
@@ -73,7 +74,7 @@ def creates_during(fn):
 
 def lens_checks(slug):
     rd = latest_run()
-    res = json.load(open(os.path.join(rd, "lens-%s.json" % slug)))
+    res = json.load(open(lens_result_path(rd, slug)))
     fxrows = [json.loads(l) for l in open(os.path.join(rd, "fixtures.jsonl"))] if os.path.exists(os.path.join(rd, "fixtures.jsonl")) else []
     left = open(os.path.join(rd, "LEFTOVERS.md")).read() if os.path.exists(os.path.join(rd, "LEFTOVERS.md")) else ""
     return res["checks"], fxrows, left
@@ -134,8 +135,15 @@ fx.ME_USER = {"username": cfg["accounts"]["t1"]["username"], "role": "member"}
 
 run("reverify", "FIX-good-900", "FIX-ambig-900", "--allow-write")
 rd = latest_run()
-rv = {r["id"]: r["verdict"] for r in [json.loads(l) for l in open(os.path.join(rd, "reverify.jsonl"))]}
-R["crud_missing_fixed_on_good"] = rv.get("FIX-good-900") == "FIXED"
+rvrows = {r["id"]: r for r in [json.loads(l) for l in open(os.path.join(rd, "reverify.jsonl"))]}
+rv = {k: r["verdict"] for k, r in rvrows.items()}
+# Recipe-only VERIFIED (Dutch, Nov 15): crud_missing is a keyword-classified
+# standard check, so its FIXED is capped at NEEDS_HUMAN; the check itself
+# still has to have passed (uncapped_verdict FIXED).
+_g = rvrows.get("FIX-good-900", {})
+R["crud_missing_fixed_on_good"] = (rv.get("FIX-good-900") == "NEEDS_HUMAN" and _g.get("uncapped_verdict") == "FIXED"
+                                   and _g.get("capped") is True
+                                   and str(_g.get("notes", "")).startswith("no hand-written repro recipe; keyword match only (crud_missing)"))
 R["crud_missing_still_on_ambig"] = rv.get("FIX-ambig-900") == "STILL_FAILING"
 
 # publate pins G2 (the pre-submit re-scan), which lands after B2's budget

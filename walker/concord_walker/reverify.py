@@ -10,6 +10,7 @@ from .tickets import CATEGORY_WORDS
 from .util import scrub, ts_et, control_label
 from .matching import fuzzy_match, match_any
 from . import colors
+from .coverage import cap_verdict
 
 try:
     from .vision import VisionJudge, wants_visual
@@ -142,6 +143,9 @@ class Reverifier:
         res.update(id=tid, lens=lens, prior_status=t.get("status") or "OPEN",
                    smoke={"findings": len(lw.findings), "checks": {k: v.get("status") for k, v in lw.result["checks"].items()}})
         res["evidence"] = list(dict.fromkeys(e for e in (res.get("evidence") or []) if e))
+        # Dutch, Nov 15: only a hand-written recipe can verify; a keyword-only
+        # FIXED is capped at NEEDS_HUMAN (and so goes to the tester queue).
+        cap_verdict(tid, res, self.recipes)
         if res["verdict"] == HUMAN:
             self.rec.judgment(lens, "reverify", "%s: %s" % (tid, res.get("notes", "")), res.get("evidence"), ticket_id=tid)
         return res

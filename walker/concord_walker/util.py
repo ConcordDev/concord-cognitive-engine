@@ -22,6 +22,30 @@ def run_id():
     return now_et().strftime("%Y%m%d-%H%M%S")
 
 
+_UNSAFE_FILENAME = re.compile(r"[^A-Za-z0-9._-]+")
+
+
+def safe_filename(name):
+    """A single path component for a lens slug (or similar label).
+
+    Nested slugs like world-creator/anomalies must not become subdirectories:
+    '/' and '\\' become '__', other unsafe characters become '_'. Never
+    returns empty, '.', or '..', and never contains a path separator.
+    """
+    s = str(name or "")
+    s = s.replace("/", "__").replace("\\", "__")
+    s = _UNSAFE_FILENAME.sub("_", s)
+    s = s.strip(" .")
+    if s in ("", ".", ".."):
+        return "slug"
+    return s
+
+
+def lens_result_path(run_dir, slug):
+    """Run-dir path for the per-lens result JSON (slug sanitized)."""
+    return os.path.join(run_dir, "lens-%s.json" % safe_filename(slug))
+
+
 def resolve_config_path(cfg_dir, p):
     """Config-relative paths: an absolute path stands; a relative one resolves
     against the walker dir (the tree this code lives in), never the CWD."""
@@ -107,6 +131,11 @@ def append_jsonl(path, rec):
 
 
 def append_text(path, text):
+    # the parent dir may not exist yet (e.g. audit/reports on a fresh audit
+    # dir): the first judgment of the Nov 16 05:24 live sweep crashed on it.
+    d = os.path.dirname(path)
+    if d:
+        os.makedirs(d, exist_ok=True)
     with file_lock(path):
         with open(path, "a") as f:
             f.write(text)

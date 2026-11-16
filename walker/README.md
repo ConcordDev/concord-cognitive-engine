@@ -102,7 +102,17 @@ Check a session with `walker.py whoami --account t1`.
 # (a Next.js build id never counts); any gate failure runs dry with 0 rows
 .venv/bin/python walker.py reverify --from-status FIXED_PENDING_VERIFY --apply-status --expect-sha <git-sha>
 .venv/bin/python walker.py reverify FIX-007 --allow-write     # lets FIX-007 actually send its labelled message
+# grade a sweep: --from-status takes a comma list; --walked-run names the sweep run dir(s);
+# tickets on lenses that sweep never finished are NOT_ATTEMPTED "lens not walked this run"
+.venv/bin/python walker.py reverify --from-status FIXED_PENDING_VERIFY,OPEN --walked-run <run-id> --apply-status --expect-sha <git-sha>
 ```
+Recipe-only VERIFIED (Nov 15): only a hand-written recipe (per-ticket `r_*`/prod recipes in
+`Reverifier.recipes`, the form bad-input validation recipe, the two-account privacy probe) can produce
+FIXED -> VERIFIED. A FIXED from a keyword-classified standard check is capped at NEEDS_HUMAN with
+"no hand-written repro recipe; keyword match only (<category>)"; a keyword STILL_FAILING still reopens.
+Every in-scope FIXED_PENDING_VERIFY/OPEN ticket gets exactly one row in `reverify_coverage.json`/`.md`
+(run dir always; audit dir unless dry) with attempted, verdict, coverage_basis (recipe/keyword/none)
+and a never-empty reason.
 Only one walker runs at a time (`run.lock`). Before each lens it waits for at least 1.5 GB of free memory
 (`min_mem_available_mb`) and stops if memory stays low.
 

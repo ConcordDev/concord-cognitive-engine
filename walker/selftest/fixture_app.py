@@ -64,6 +64,9 @@ class H(BaseHTTPRequestHandler):
         self.wfile.write(b)
 
     def do_GET(self):
+        if self.path.startswith("/health"):
+            # sha gate (WALK-01): the selftest passes --expect-sha FIXTURE_SHA
+            return self._send(200, json.dumps({"ok": True, "buildSha": FIXTURE_SHA}), "application/json")
         if self.path.startswith("/api/auth/me"):
             return self._send(200, json.dumps({"ok": True, "user": {"username": "concord-zukoqa", "role": "member"}}), "application/json")
         if self.path.startswith("/api/items"):
@@ -90,6 +93,9 @@ class H(BaseHTTPRequestHandler):
         elif self.path.startswith("/api/items"):
             ITEMS.append(body)
         self._send(200, "{}", "application/json")
+
+
+FIXTURE_SHA = "f1c7a2e0" * 5  # 40-hex fixture build sha for the selftest sha gate
 
 
 def serve(port=0):
