@@ -128,7 +128,7 @@
     "@types/react-dom": "^18.2.18",
     "@types/three": "^0.187.0",
     "@vitejs/plugin-react": "^6.2.1",
-    "@vitest/coverage-v8": "4.1.11",
+    "@vitest/coverage-v8": "5.1.0",
     "autoprefixer": "^10.6.2",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.4.5",
@@ -142,7 +142,7 @@
     "tailwindcss": "~3.4.19",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.72.1",
-    "vitest": "4.1.11"
+    "vitest": "5.1.0"
   },
   "overrides": {
     "dompurify": "^3.4.17",
