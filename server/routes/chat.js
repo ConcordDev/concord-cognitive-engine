@@ -454,6 +454,55 @@ export default function registerChatRoutes(app, {
   }));
 
   // ── Conversation Memory (rolling window) ─────────────────────────────
+  // Owner of a chat-memory id. In-memory ownerId wins. The state snapshot
+  // persists sessions without ownerId (server.js _serializeState), and
+  // assertSessionAccessible treats that as public — so a restored session
+  // was readable by every signed-in member. chat_sessions.owner_id is the
+  // durable owner for that case. No admin bypass: participants already
+  // recorded on the session are the only other allow, via the shared gate.
+  function persistedChatOwnerId(sessionId) {
+    const db = STATE?.db;
+    if (!db || typeof db.prepare !== "function") return null;
+    try {
+      const row = db.prepare("SELECT owner_id FROM chat_sessions WHERE session_id = ?").get(sessionId);
+      const id = row?.owner_id;
+      return id ? String(id) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function chatMemoryVisibleTo(sess, sessionId, userId) {
+    if (!sess || !userId) return false;
+    const ownerId = sess.ownerId ? String(sess.ownerId) : persistedChatOwnerId(sessionId);
+    if (!ownerId) return false;
+    return assertSessionAccessible(
+      { ownerId, participantIds: sess.participantIds },
+      String(userId),
+    );
+  }
+
+  // Same 404 for missing and not-owned on the write path, so an id
+  // cannot be probed and nothing is compressed.
+  function chatMemoryNotFound(res) {
+    return res.status(404).json({ ok: false, error: "not_found" });
+  }
+
+  // One object for every GET that must not reveal a session. Missing and
+  // not-owned share it, key for key, so the two responses are the same bytes.
+  function zeroedChatMemoryStats() {
+    return {
+      ok: true,
+      activeMessages: 0,
+      totalMessagesProcessed: 0,
+      compressionCycles: 0,
+      memoryDtuCount: 0,
+      megaCount: 0,
+      topics: [],
+      windowUtilization: `0/${ACTIVE_WINDOW}`,
+    };
+  }
+
   // GET /api/chat/memory/:sessionId — memory stats for the caller's own
   // session: counts and topics only, never message bodies (the
   // context-budget route's discipline). The client hook
@@ -463,26 +512,20 @@ export default function registerChatRoutes(app, {
   // FIX-transfer-005). A session the server has never seen is not an
   // error — it holds no server-side memory yet, so it reads as zeroed
   // stats in the same shape getSessionMemoryStats returns; this surface
-  // never 404s during a normal load.
+  // never 404s during a normal load. A session the caller does not own
+  // (including one with no owner at all, or whose owner lookup failed)
+  // returns that same zeroed body, so a normal load stays quiet and an
+  // id cannot be probed for someone else's counts or topics. Owner is
+  // the in-memory ownerId, or chat_sessions.owner_id when the state
+  // snapshot dropped ownerId. Participants already recorded on the
+  // session still read real stats. No admin bypass.
   app.get("/api/chat/memory/:sessionId", auth, asyncHandler(async (req, res) => {
     try {
       const sessionId = String(req.params.sessionId || "");
       if (!sessionId) return res.status(400).json({ ok: false, error: "sessionId required" });
       const sess = STATE.sessions?.get?.(sessionId);
-      if (sess && !assertSessionAccessible(sess, req.user?.id)) {
-        return res.status(403).json({ ok: false, error: "session_forbidden" });
-      }
-      if (!sess) {
-        return res.json({
-          ok: true,
-          activeMessages: 0,
-          totalMessagesProcessed: 0,
-          compressionCycles: 0,
-          memoryDtuCount: 0,
-          megaCount: 0,
-          topics: [],
-          windowUtilization: `0/${ACTIVE_WINDOW}`,
-        });
+      if (!chatMemoryVisibleTo(sess, sessionId, req.user?.id)) {
+        return res.json(zeroedChatMemoryStats());
       }
       return res.json(getSessionMemoryStats(STATE, sessionId));
     } catch (e) {
@@ -490,22 +533,16 @@ export default function registerChatRoutes(app, {
     }
   }));
 
-  // POST /api/chat/memory/:sessionId/compress — run rolling-window
-  // compression for the caller's own session now; the hook fires this
-  // at the window threshold and from the rail's stats chip. The result
-  // rides at 200 in the house macro style: below_threshold /
-  // owner_required are benign no-ops ({ ok:false, error }) — never a
-  // claimed success, and never an HTTP error status for a state that
-  // is not a failure (the hook reads only the status and would log it).
+  // POST /api/chat/memory/:sessionId/compress — rolling-window compression
+  // for the caller's own session. below_threshold stays a 200 no-op.
+  // Missing and not-owned are 404 before any write. GET stays 200 so a
+  // lens load of a never-seen session does not 404; this write does not.
   app.post("/api/chat/memory/:sessionId/compress", auth, chatRateLimit, asyncHandler(async (req, res) => {
     try {
       const sessionId = String(req.params.sessionId || "");
       if (!sessionId) return res.status(400).json({ ok: false, error: "sessionId required" });
       const sess = STATE.sessions?.get?.(sessionId);
-      if (!sess) return res.json({ ok: false, error: "session_not_found", sessionId });
-      if (!assertSessionAccessible(sess, req.user?.id)) {
-        return res.status(403).json({ ok: false, error: "session_forbidden" });
-      }
+      if (!chatMemoryVisibleTo(sess, sessionId, req.user?.id)) return chatMemoryNotFound(res);
       const out = await compressRollingWindow(STATE, sessionId, { userId: req.user?.id || null });
       const stats = getSessionMemoryStats(STATE, sessionId);
       return res.json({ ...out, sessionId, stats: stats.ok ? stats : null });
