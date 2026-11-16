@@ -11,6 +11,8 @@ from .util import scrub, ts_et, control_label
 from .matching import fuzzy_match, match_any
 from . import colors
 from .coverage import cap_verdict
+from . import repro as _repro
+from .ledger import VERIFIED as _VERIFIED
 
 try:
     from .vision import VisionJudge, wants_visual
@@ -103,6 +105,9 @@ class Reverifier:
                         "FIX-global-016": self._prod_scan, "FIX-metalearning-014": self._prod_scan,
                         "FIX-repos-002": self._prod_reload, "FIX-ingest-001": self._prod_compare}
         self.vision = VisionJudge(cfg, rec, log) if VisionJudge else None
+        # repro_steps replay (repro.py). Injectable: tests pass a fake that never opens a browser.
+        self.repro_runner = self._run_repro_live
+        self.live_walk_count = 0  # LensWalks THIS Reverifier ran itself (adopted sweep walks do not count)
         from .chatcheck import SendBudget
         self.chat_budget = SendBudget(cfg)
 
@@ -120,8 +125,16 @@ class Reverifier:
                           inv_entry=self.inv[lens],
                           phases=["reach", "surface", "tabs", "keyboard", "openers", "export", "contrast", "mobile"] + (["write"] if write else []))
             lw.run()
+            self.live_walk_count += 1
             self.walks[key] = lw
         return self.walks[key]
+
+    def adopt_walk(self, lens, lw):
+        """Reuse a LensWalk the sweep already ran as this lens's smoke — the replay must not walk
+        the lens a second time. A write-phase walk also serves the write-category checks."""
+        self.walks[(lens, False)] = lw
+        if getattr(lw, "allow_write", False):
+            self.walks[(lens, True)] = lw
 
     @staticmethod
     def _row(r):
@@ -146,8 +159,53 @@ class Reverifier:
         # Dutch, Nov 15: only a hand-written recipe can verify; a keyword-only
         # FIXED is capped at NEEDS_HUMAN (and so goes to the tester queue).
         cap_verdict(tid, res, self.recipes)
+        self._apply_repro_steps(t, res)
         if res["verdict"] == HUMAN:
             self.rec.judgment(lens, "reverify", "%s: %s" % (tid, res.get("notes", "")), res.get("evidence"), ticket_id=tid)
+        return res
+
+    # ------------------------------------------------------------ repro_steps basis
+    def _run_repro_live(self, t):
+        lens = t["lens"]
+        acct, admin = self.account_for(lens)
+        lw = LensWalk(self.b, self.cfg, self.rec, self.inv[lens], acct, self.log, admin=admin,
+                      inv_entry=self.inv[lens], phases=[])
+        ctx, page, cdp = lw.open()
+        drv = _repro.PlaywrightDriver(lw, ctx, page, cdp, lw.url)
+        try:
+            if acct:
+                assert_account(ctx, self.cfg, acct, "repro-steps replay", self.log)
+            readonly = admin or lens in self.cfg.get("write_skip_lenses", []) or lens in self.cfg.get("admin_lenses", [])
+            return _repro.run_repro(t, drv, lens_slug=lens, allow_fill=not readonly, log=self.log)
+        finally:
+            drv.close()
+
+    def _apply_repro_steps(self, t, res):
+        """Run the ticket's own repro_steps when nothing stronger decided it.
+        A hand-written recipe's verdict is final; a STILL_FAILING from any path stands."""
+        if res.get("coverage_basis") == "recipe" or res["verdict"] == STILL:
+            return res
+        try:
+            rr = self.repro_runner(t)
+        except AccountMismatch:
+            raise
+        except Exception as e:
+            rr = {"verdict": HUMAN, "steps": None, "evidence": [], "notes": "repro_steps replay errored: %s: %s" % (type(e).__name__, str(e)[:120])}
+        if rr.get("steps") is not None:
+            res["steps"] = rr["steps"]
+        if rr.get("expected") is not None:
+            res["expected_check"] = rr["expected"]
+        res["evidence"] = list(dict.fromkeys(e for e in (res.get("evidence") or []) + (rr.get("evidence") or []) if e))
+        if rr["verdict"] == FIXED:
+            res.update(verdict=FIXED, coverage_basis="repro-steps", recipe_kind="repro-steps",
+                       method="repro-steps (%d step(s))" % len(rr.get("steps") or []), notes=rr["notes"])
+            res.pop("capped", None)
+        elif rr["verdict"] == STILL:
+            res.update(verdict=STILL, coverage_basis="repro-steps", recipe_kind="repro-steps",
+                       method="repro-steps (%d step(s))" % len(rr.get("steps") or []), notes=rr["notes"])
+        else:
+            # undecided: the first unmapped / unexecuted / unchecked step is the reason a tester sees
+            res["notes"] = ("repro-steps: " + rr["notes"] + ("; keyword check: " + res["notes"] if res.get("notes") else ""))[:600]
         return res
 
     # ------------------------------------------------------------ generic
@@ -631,7 +689,7 @@ def status_update(store, res, tester):
     elif res["verdict"] == FIXED:
         if prior != "FIXED_PENDING_VERIFY":
             return None  # not claimed fixed by a builder: tester decides
-        status, verdict = "VERIFIED", "fixed: repro passes + nearby smoke (lens walker)"
+        status, verdict = _VERIFIED, "fixed: repro passes + nearby smoke (lens walker)"
     else:
         return None
     ev = [e for e in (res.get("evidence") or []) if e]

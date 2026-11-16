@@ -26,13 +26,15 @@ _CATEGORY_RECIPES = {"validation": re.compile(r"^form bad-input recipe"),
 
 NOTE_FIRST_RUN = ("First-run numbers reflect the old matching; judge re-verify by the next run's "
                   "NEEDS_HUMAN queue length.")
-BASES = ("recipe", "keyword", "none")
+BASES = ("recipe", "repro-steps", "keyword", "none")
 
 # Reasons for tickets that were not replayed.
 R_NOT_WALKED = "lens not walked this run"
 R_NOT_IN_INV = "lens not in inventory"
 R_FILTER = "excluded by filter"
 R_CI = "routed to the CI lane (WALK-06), not walked"
+R_ADMIN = "admin lens without an admin session (look-only gate check only)"
+R_NO_REPLAY = "replay disabled for this run (--no-replay)"
 R_BUDGET = "lens time budget exceeded"
 R_LOW_MEM = "stopped: low memory before this ticket"
 R_ABORT = "stopped: run aborted before this ticket"
@@ -102,13 +104,17 @@ def row_for(tid, t, res=None, skip_reason=None):
         return {"id": tid, "lens": lens, "prior_status": prior, "attempted": False,
                 "verdict": NOT_ATTEMPTED, "coverage_basis": "none", "reason": reason, "method": None}
     v = res["verdict"]
-    basis = res.get("coverage_basis") if res.get("coverage_basis") in ("recipe", "keyword") else "keyword"
-    if v == FIXED and basis != "recipe":
+    basis = res.get("coverage_basis") if res.get("coverage_basis") in ("recipe", "repro-steps", "keyword") else "keyword"
+    if v == FIXED and basis not in ("recipe", "repro-steps"):
         # defensive: a FIXED that did not pass through cap_verdict is not trusted
         v = HUMAN
         reason = capped_reason(res.get("category"))
     elif v == HUMAN:
         reason = _human_reason(res)
+    elif v == FIXED and basis == "repro-steps":
+        reason = "repro_steps replayed (every step mapped + executed, expected outcome machine-checked): %s" % (res.get("method") or "repro-steps")
+        if prior != "FIXED_PENDING_VERIFY":
+            reason += "; prior %s, not claimed fixed: tester closes" % prior
     elif v == FIXED:
         reason = "recipe repro passes (%s): %s" % (res.get("recipe_kind") or "recipe", res.get("method") or "recipe")
         if prior != "FIXED_PENDING_VERIFY":

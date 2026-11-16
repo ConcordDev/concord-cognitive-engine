@@ -105,7 +105,7 @@ def test_review_decisions():
     for call, status, result in [("VERIFIED", "VERIFIED", "human_confirmed"),
                                  ("REOPENED", "REOPENED", "human_confirmed"),
                                  ("CANT_REPRO", "NEEDS_HUMAN", "cant_repro")]:
-        row = R.human_row({"id": "FIX-a-001", "call": call}, live_sha="deadbeef", run_id="run-x")
+        row = R.human_row({"id": "FIX-a-001", "call": call, "evidence_path": "ev/a.png"}, live_sha="deadbeef", run_id="run-x")
         check("decision %s -> %s/%s in the union schema" % (call, status, result),
               row["status"] == status and row["result"] == result and all(k in row for k in FIELDS)
               and all(row[k] for k in ("id", "status", "ts", "live_sha", "walker_run_id", "recipe", "result", "account")), str(row))
@@ -118,7 +118,7 @@ def test_review_decisions():
     from concord_walker.runstate import _append_line
     d = tempfile.mkdtemp()
     out = os.path.join(d, "records", "human.jsonl")
-    _append_line(out, R.human_row({"id": "FIX-a-009", "call": "VERIFIED"}, live_sha="s", run_id="r"))
+    _append_line(out, R.human_row({"id": "FIX-a-009", "call": "VERIFIED", "evidence_path": "ev/a.png"}, live_sha="abcdef1", run_id="r"))
     rows = read_ledger(out)
     check("human.jsonl row appends + reads back", len(rows) == 1 and rows[0]["account"] == "human", str(rows))
 

@@ -99,6 +99,9 @@ class TicketStore:
             if u.get("status") and u.get("type") in (None, "retest_update", "followup", "correction", "record"):
                 t["status"] = u["status"]
             t.setdefault("_updates", []).append(u)
+        if self.fold is not None:
+            # the fold owns the status: an unbacked VERIFIED reads as FIXED_PENDING_VERIFY
+            t["status"] = self.fold.status(tid)
         return t
 
     def status(self, tid):

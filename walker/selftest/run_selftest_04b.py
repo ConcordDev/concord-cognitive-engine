@@ -55,7 +55,7 @@ R = {}
 
 def run(*a):
     print("$ walker.py", " ".join(a), flush=True)
-    r = subprocess.run([py, os.path.join(WALKER, "walker.py"), "--config", cfgp] + list(a),
+    r = subprocess.run([py, os.path.join(WALKER, "walker.py"), "--config", cfgp] + list(a) + (["--no-replay"] if a and a[0] in ("lens", "sweep") else []),
                        capture_output=True, text=True, timeout=900)
     print(r.stdout[-2500:]); print(r.stderr[-1200:])
     return r

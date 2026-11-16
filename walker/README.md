@@ -219,3 +219,24 @@ that every check fires, findings carry existing screenshots, ticket keys match, 
 existing ticket, the fixture is deleted, re-verify gives STILL_FAILING/FIXED correctly for two Escape
 tickets, FIX-deities-002 → FIXED, FIX-007 → NEEDS_HUMAN read-only and FIXED with `--allow-write` (leftover
 logged), and there are no page-JS calls. All output goes to a temp dir. Last result: **PASS**.
+
+
+## Replay of the original lens-walk tickets (replay-original-tickets)
+
+A live `sweep` / `lens` run now sits ON TOP of the original tickets: after the general checks for a
+lens, every OPEN / FIXED_PENDING_VERIFY ticket for that lens is replayed on the same walk (no second walk).
+
+    walker.py sweep --from-repo <checkout> --deploy-sha <sha> --expect-sha <sha> [--allow-write ...]
+
+* `--from-repo` + `--deploy-sha` are REQUIRED (the fold is read at that pinned sha, same as `reverify`).
+  `--no-replay` opts out explicitly and is logged loudly; `--no-auth` smokes cannot replay.
+* Verdict rows go to `records/walker.jsonl` only, and only when `--expect-sha` equals `/health`'s buildSha;
+  otherwise the run is dry for the ledger (verdicts still land in the run dir).
+* `repro_steps` (the testers' own prose steps) are executed by `concord_walker/repro.py`. A ticket verifies on basis
+  `repro-steps` only if every step mapped AND executed AND the `expected` outcome was machine-checked; otherwise
+  NEEDS_HUMAN naming the first unmapped step / unchecked clause. STILL_FAILING from any path stands.
+* Nothing is VERIFIED without a walker replay row on a sha-gated build: `ledger.assert_verifiable` is the single gate
+  (run id, hex live sha == expect sha, allowed basis, non-empty evidence). The fold reads an unbacked VERIFIED
+  (any file, no matching gate-shaped `walker.jsonl` row) as FIXED_PENDING_VERIFY.
+* Every in-scope ticket gets exactly one row, with a reason, in `reverify_coverage.json/.md`; each lens record
+  (`lens-<slug>.json`) carries a `replay` block (counts + ids by verdict).
