@@ -98,7 +98,7 @@ UPGRADES = r"""<!doctype html><html><head><meta name=viewport content="width=dev
 <div id=menu></div>
 <script>
 const ID='__NOTE__';
-function openNote(){fetch('/api/notes/'+ID);fetch('/api/secure-notes/'+ID);fetch('/api/public-notes/'+ID);}
+function openNote(){fetch('/api/notes/'+ID);fetch('/api/secure-notes/'+ID);fetch('/api/public-notes/'+ID);fetch('/api/memory/'+ID);fetch('/api/drafts/'+ID);}
 async function bookmark(){const r=await fetch('/api/bookmarks',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
  if(r.ok){const t=document.getElementById('toast');t.textContent='Bookmarked successfully';}}
 function openMenu(){document.getElementById('menu').textContent='Avatars; Power Mode; Settings';
@@ -173,6 +173,14 @@ class H(BaseHTTPRequestHandler):
             # readable by anyone, signed out too: the two-account replay must call this PUBLIC, not ownership
             n = NOTES.get(self.path.split("/")[3])
             return self._send(200 if n else 404, json.dumps({"title": "public"} if n else {"error": "not found"}), "application/json")
+        if self.path.startswith("/api/memory/") or self.path.startswith("/api/drafts/"):
+            # ignore the path id and answer with the CALLER's own data: not an ownership leak
+            w = _who(self.headers)
+            if w is None:
+                return self._send(401, json.dumps({"error": "sign in"}), "application/json")
+            if self.path.startswith("/api/memory/"):
+                return self._send(200, json.dumps({"ok": True, "owner": w, "items": [w + " memory"]}), "application/json")
+            return self._send(200, json.dumps({"ok": True, "items": [w + " draft"] if w == "t1" else []}), "application/json")
         if self.path.startswith("/api/notes/"):
             if _who(self.headers) is None:
                 return self._send(401, json.dumps({"error": "sign in"}), "application/json")

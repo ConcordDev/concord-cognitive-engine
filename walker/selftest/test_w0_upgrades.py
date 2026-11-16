@@ -118,6 +118,15 @@ check("FP public: signed-in-only object stays OWNERSHIP_FAIL (anon got 401)",
       calls.get(("GET", "/api/notes/:uuid"), {}).get("anon_status") == 401, calls)
 check("FP public: no ownership finding for the public read", not any(f["class"] == "ownership" and "public-notes" in f["title"] for f in pf))
 check("FP telemetry never replayed as t2", ("POST", "/api/metrics/vitals") not in calls)
+check("FP scoped: a route that answers with the caller's own data is SCOPED, not ownership",
+      calls.get(("GET", "/api/memory/:uuid"), {}).get("verdict") == "SCOPED"
+      and calls.get(("GET", "/api/memory/:uuid"), {}).get("same_as_t1") is False, calls)
+check("FP scoped: an empty payload for t2 is EMPTY, not ownership",
+      calls.get(("GET", "/api/drafts/:uuid"), {}).get("verdict") == "EMPTY", calls)
+check("FP scoped: the real leak (t2 gets t1's exact note) stays OWNERSHIP_FAIL",
+      calls.get(("GET", "/api/notes/:uuid"), {}).get("verdict") == "OWNERSHIP_FAIL"
+      and calls.get(("GET", "/api/notes/:uuid"), {}).get("same_as_t1") is True, calls)
+check("FP scoped: no ownership finding for memory/drafts", not any(f["class"] == "ownership" and ("/memory/" in f["title"] or "/drafts/" in f["title"]) for f in pf))
 bm = ctl.get("Bookmark", {})
 check("FP toast: a write whose only visible change is a role=status toast is unverifiable, not fake_success",
       bm.get("exercised") and not bm.get("fake_success") and "fake_success" not in bm.get("broken", [])

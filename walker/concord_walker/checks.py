@@ -32,6 +32,16 @@ def gate_verdict(status, texts, signed_out):
     return None
 
 
+
+def _empty_payload(body):
+    """JSON with no content of its own: null, {}, [], or a dict whose values are all empty/false."""
+    if body is None or body == {} or body == []:
+        return body is not None
+    if isinstance(body, dict):
+        vals = [v for k, v in body.items() if k not in ("ok", "success", "status")]
+        return all(v in (None, [], {}, "", 0, False) for v in vals)
+    return False
+
 class LensResult(dict):
     pass
 
@@ -517,6 +527,17 @@ class LensWalk:
                     if anon_st is not None and 200 <= anon_st < 300:
                         row["verdict"] = "PUBLIC"
                         leak = False
+                    else:
+                        # false-positive control 2: many routes ignore the path id and answer with the
+                        # CALLER's own data (or an empty shell). Only t2 receiving the same non-empty
+                        # payload t1 receives is a leak. Payloads are compared in memory only; just
+                        # the verdict is stored (live run 2026-11-16, /api/chat/memory/:id).
+                        same = self._same_as_t1(r["url"], body, vp)
+                        row["same_as_t1"] = same
+                        if _empty_payload(body):
+                            row["verdict"], leak = "EMPTY", False
+                        elif same is False:
+                            row["verdict"], leak = "SCOPED", False
                 rows.append(row)
                 if leak:
                     kind = "read" if r["method"] == "GET" else "write"
@@ -535,7 +556,32 @@ class LensWalk:
         fails = sum(1 for x in rows if x["verdict"] == "OWNERSHIP_FAIL")
         self.result["two_account"] = {"status": "FAIL" if fails else "PASS", "replayed": len(rows),
                                       "ownership_failures": fails, "public": sum(1 for x in rows if x["verdict"] == "PUBLIC"),
+                                      "scoped": sum(1 for x in rows if x["verdict"] in ("SCOPED", "EMPTY")),
                                       "calls": rows}
+
+    def _same_as_t1(self, url, t2_body, vp):
+        """True/False: does t1 get the identical JSON payload for this GET? None if unknown."""
+        import json as _json
+        if t2_body is None:
+            return None
+        ctx = None
+        try:
+            ctx = new_context(self.b, self.cfg, "t1", vp)
+            resp = ctx.request.get(url, timeout=15000)
+            try:
+                b1 = resp.json()
+            except Exception:
+                return None
+            canon = lambda x: _json.dumps(x, sort_keys=True, default=str)
+            return canon(b1) == canon(t2_body)
+        except Exception:
+            return None
+        finally:
+            try:
+                if ctx is not None:
+                    ctx.close()
+            except Exception:
+                pass
 
     def _anon_get(self, url):
         """Status of the same GET with no session at all (fresh context, no cookies)."""
