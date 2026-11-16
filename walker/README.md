@@ -196,6 +196,19 @@ For each ticket ID:
 - Leftovers (anything not verified deleted) go to `runs/<id>/LEFTOVERS.md` and `audit/reports/LEFTOVER_FIXTURES.md`.
 - No repo, DB, server, Mac or tmux access. It's a pure browser client of https://concord-os.org.
 
+## Wave 0: premap, endpoint ledger, registry diff, run diff, packets
+
+- `sweep --premap` writes lens record schema v2 (`SCHEMA-LENS-V2.md`). Each record carries a per-control endpoint ledger, stable control ids, per-control errors, slow calls and freezes, `fake_success` read-back, failure-only screenshots, and the backend build stamp on every row.
+- `--two-account` (opt-in) runs the t2 ownership replay.
+- `--resume <run>` skips lenses already walked; `--auto-resume N` relaunches a crashed browser; `--expect-sha` flags a mismatch.
+- The walker prints `WALK ABORTED … walked N/M` and exits 3 when a walk aborts.
+- Tools:
+  - `tools/action_registry.py`: registry snapshot.
+  - `tools/unused_actions.py`: observed vs registered, false-positive safe.
+  - `tools/run_diff.py`: run-to-run progress.
+  - `tools/pack.py`: builder packets.
+- Full usage and the packet format are in `premap/README.md`. The problems Wave 0 fixed are logged in `docs/WALKER-ISSUES.md`.
+
 ## Self-test (offline, no live site)
 ```
 .venv/bin/python selftest/run_selftest.py
