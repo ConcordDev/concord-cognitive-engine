@@ -165,6 +165,23 @@ class Reverifier:
         return res
 
     # ------------------------------------------------------------ repro_steps basis
+    def _write_ctx(self, t, acct, admin, readonly):
+        """repro.run_repro's write context. None unless the run has --allow-write AND this lens is
+        neither admin nor write-skip: replay writes only on the walker's OWN labelled fixtures, as the
+        account that is replaying (t1 here; a t2 label never counts as t1's own)."""
+        if not self.allow_write or readonly or admin:
+            return None
+        lens, tid = t["lens"], str(t.get("id") or "x")
+        stem = "%s-%s-%s-%s-%s" % (self.cfg["fixture_prefix"], lens, acct or "t1", self.rec.rid[-6:], re.sub(r"[^a-z0-9]+", "", tid.lower())[-12:])
+
+        def live_labels():
+            return [f["label"] for f in (self.rec.fixtures or {}).values()
+                    if f.get("lens") == lens and f.get("state") not in ("deleted", "never_created")
+                    and ("-%s-" % ("t2" if (acct or "t1") == "t1" else "t1")) not in f.get("label", "")]
+
+        return {"allow_write": True, "admin": admin, "write_skip": readonly, "account": acct, "label_base": stem,
+                "fixtures": live_labels, "on_fixture": lambda label, state, note="": self.rec.fixture(label, lens, state, note)}
+
     def _run_repro_live(self, t):
         lens = t["lens"]
         acct, admin = self.account_for(lens)
@@ -176,9 +193,13 @@ class Reverifier:
             if acct:
                 assert_account(ctx, self.cfg, acct, "repro-steps replay", self.log)
             readonly = admin or lens in self.cfg.get("write_skip_lenses", []) or lens in self.cfg.get("admin_lenses", [])
-            return _repro.run_repro(t, drv, lens_slug=lens, allow_fill=not readonly, log=self.log)
+            return _repro.run_repro(t, drv, lens_slug=lens, allow_fill=not readonly, log=self.log,
+                                    write=self._write_ctx(t, acct, admin, readonly), lens_title=self.inv[lens].get("name") or self.inv[lens].get("title"))
         finally:
-            drv.close()
+            try:
+                drv.close()
+            except Exception:
+                pass  # a page/context the browser already closed: nothing left to close
 
     def _apply_repro_steps(self, t, res):
         """Run the ticket's own repro_steps when nothing stronger decided it.
@@ -186,7 +207,16 @@ class Reverifier:
         if res.get("coverage_basis") == "recipe" or res["verdict"] == STILL:
             return res
         try:
-            rr = self.repro_runner(t)
+            try:
+                rr = self.repro_runner(t)
+            except AccountMismatch:
+                raise
+            except Exception as e:
+                if "closed" not in type(e).__name__.lower() and "closed" not in str(e).lower()[:80]:
+                    raise
+                # the page/context died mid-replay (TargetClosedError): reopen once on a fresh page
+                self.log("  repro replay of %s hit a closed page (%s); reopening once" % (t.get("id"), type(e).__name__))
+                rr = self.repro_runner(t)
         except AccountMismatch:
             raise
         except Exception as e:

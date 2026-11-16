@@ -112,6 +112,34 @@ class LensBudget:
         return self.spent_map.get(lens, 0.0)
 
 
+class ReplayBudget:
+    """Per-lens time budget for the REPLAY of original tickets, separate from the sweep's budget.
+
+    for_lens(n) = override_s when given, else min(cap_s, base_s + per_ticket_s * n). Replay's clock
+    starts when replay starts (ReplayRun), so a sweep that used its whole 240 s never starves replay."""
+    DEFAULT_BASE_S, DEFAULT_PER_TICKET_S, DEFAULT_CAP_S = 60, 25, 900
+
+    def __init__(self, base_s=None, per_ticket_s=None, cap_s=None, override_s=None):
+        self.base_s = self.DEFAULT_BASE_S if base_s is None else base_s
+        self.per_ticket_s = self.DEFAULT_PER_TICKET_S if per_ticket_s is None else per_ticket_s
+        self.cap_s = self.DEFAULT_CAP_S if cap_s is None else cap_s
+        self.override_s = override_s
+
+    @classmethod
+    def from_config(cls, cfg, args=None):
+        th = (cfg or {}).get("thresholds", {}) or {}
+        pick = lambda a, k: (getattr(args, a, None) if args is not None and getattr(args, a, None) is not None else th.get(k))
+        return cls(base_s=pick("replay_budget_base_s", "replay_budget_base_s"),
+                   per_ticket_s=pick("replay_budget_per_ticket_s", "replay_budget_per_ticket_s"),
+                   cap_s=pick("replay_budget_cap_s", "replay_budget_cap_s"),
+                   override_s=pick("replay_budget_s", "replay_budget_s"))
+
+    def for_lens(self, n_tickets):
+        if self.override_s is not None:
+            return self.override_s
+        return min(self.cap_s, self.base_s + self.per_ticket_s * max(0, n_tickets))
+
+
 def _pid_alive(pid):
     try:
         os.kill(pid, 0)

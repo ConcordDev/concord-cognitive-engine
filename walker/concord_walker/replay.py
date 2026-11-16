@@ -22,14 +22,19 @@ from . import coverage as cov
 from .auth import AccountMismatch
 from .ledger import VerifyGateError
 from .reverify import status_update, HUMAN, FIXED, STILL
+from .runstate import ReplayBudget
 
 
 class ReplayRun:
-    def __init__(self, rv, store, ledger, *, live_sha, run_id, walker_version, run_dir, tester, log, budget, no_replay=False):
+    def __init__(self, rv, store, ledger, *, live_sha, run_id, walker_version, run_dir, tester, log, budget=None, no_replay=False, replay_budget=None):
         self.rv, self.store, self.ledger = rv, store, ledger
         self.live_sha, self.run_id, self.walker_version = live_sha, run_id, walker_version
         self.run_dir, self.tester, self.log, self.budget = run_dir, tester, log, budget
         self.no_replay = no_replay
+        # Replay has its OWN per-lens budget; its clock starts when replay starts, never from the sweep's
+        # spent time. A legacy `budget` (LensBudget) with no explicit replay_budget is read as a fixed
+        # per-lens replay allowance (its budget_s), still on replay's own clock.
+        self.replay_budget = replay_budget or (ReplayBudget(override_s=budget.budget_s) if budget is not None else ReplayBudget())
         # tickets filed by THIS run (the sweep's own new findings) are never replayed
         self.baseline = set(store.base)
         self.results, self.skipped, self.blocks = {}, {}, {}
@@ -39,9 +44,9 @@ class ReplayRun:
         return [tid for tid, t in self.store.base.items()
                 if tid in self.baseline and t.get("lens") == slug and self.store.lane(tid) == "lens" and self.store.status(tid) in cov.SCOPE_STATUSES]
 
-    def _over_budget(self, slug, t0):
-        b = self.budget
-        return b is not None and (b.spent(slug) + (time.monotonic() - t0)) > b.budget_s
+    @staticmethod
+    def _over_budget(budget_s, t0):
+        return (time.monotonic() - t0) > budget_s
 
     # ------------------------------------------------------------ one lens
     def replay_lens(self, slug, lw, *, admin_gate=False):
@@ -64,10 +69,14 @@ class ReplayRun:
             return block
         self.rv.adopt_walk(slug, lw)
         walks_before = self.rv.live_walk_count
-        t0 = time.monotonic()
+        budget_s = self.replay_budget.for_lens(len(tids))
+        block["replay_budget_s"] = budget_s
+        self.log("  replay %s: %d ticket(s), replay budget %ss (separate from the sweep's)" % (slug, len(tids), budget_s))
+        t0 = time.monotonic()  # replay's own clock
+        done = 0
         for tid in tids:
-            if self._over_budget(slug, t0):
-                self.skipped[tid] = cov.R_BUDGET + " (%s)" % slug
+            if self._over_budget(budget_s, t0):
+                self.skipped[tid] = cov.R_BUDGET + " (replay budget %ss, %d/%d done)" % (budget_s, done, len(tids))
                 block["skipped"][tid] = self.skipped[tid]
                 continue
             try:
@@ -75,12 +84,15 @@ class ReplayRun:
             except AccountMismatch:
                 raise
             except Exception as e:
-                self.skipped[tid] = "replay errored: %s: %s" % (type(e).__name__, str(e)[:120])
-                block["skipped"][tid] = self.skipped[tid]
-                self.log("  replay %s errored: %s" % (tid, self.skipped[tid]))
-                continue
+                # never crash the lens, never lose the ticket: it becomes a NEEDS_HUMAN attempt naming the error
+                t = self.store.get(tid) or {}
+                res = {"id": tid, "lens": t.get("lens", slug), "verdict": HUMAN, "method": "none",
+                       "prior_status": t.get("status") or "OPEN", "evidence": [],
+                       "notes": "replay errored: %s: %s" % (type(e).__name__, str(e)[:160])}
+                self.log("  replay %s errored: %s" % (tid, res["notes"]))
             self._record(res)
             self.results[tid] = res
+            done += 1
             block["counts"][res["verdict"]] = block["counts"].get(res["verdict"], 0) + 1
             block["ids"].setdefault(res["verdict"], []).append(tid)
         block["second_walks"] = self.rv.live_walk_count - walks_before

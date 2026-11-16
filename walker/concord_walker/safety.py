@@ -35,6 +35,8 @@ CLOSE = re.compile(r"(?i)^\s*(close|cancel|dismiss|done|back|\u00d7|x|\u2715|\u2
 CREATE_OPENER = re.compile(r"(?i)^\s*(\+\s*)?(new|create|add)\b[\w\s-]{0,30}$")
 CREATE_SUBMIT = re.compile(r"(?i)^\s*(create|save|add|submit|ok|done)\b[\w\s-]{0,20}$")
 DELETE_CTRL = re.compile(r"(?i)\b(delete|remove|trash)\b")
+# A quoted control label that names a delete button (formfuzz filters these out of "bad values").
+DELETE_BTN = re.compile(r"(?i)^\s*(delete|remove|trash|destroy)\b[\w\s-]{0,20}$")
 CONFIRM_DELETE = re.compile(r"(?i)^\s*(delete|remove|yes|confirm|ok)\b[\w\s-]{0,20}$")
 PUBLIC_HINT = re.compile(r"(?i)\b(public|publish|everyone|global|feed|post to|visible to all|community|marketplace|share with)\b")
 CONFIRM_TEXT = re.compile(r"(?i)(are you sure|cannot be undone|can't be undone|permanently|confirm|delete .*\?|remove .*\?)")
@@ -137,3 +139,51 @@ def sweep_decision(name, admin=False, read_only=False):
 
 def is_sweep_safe(name, admin=False, read_only=False):
     return sweep_decision(name, admin, read_only)[0]
+
+
+# ---------------------------------------------------------------- replay write policy (--allow-write)
+# Replayed ticket steps may create/edit/delete ONLY on the walker's own labelled fixture data, as the
+# test accounts, on a lens that is neither write-skip nor admin. WRITE_NEVER is refused even with
+# --allow-write: payments/billing, roles/permissions/admin, account deletion/sign-out, and anything
+# that publishes or sends to other people. Anything in HARD_DENY that is not a plain create/edit verb
+# or a delete of the walker's own fixture stays refused exactly as in read-only mode.
+WRITE_NEVER = re.compile(r"(?i)\b(pay|payment|payments|buy|purchase|checkout|billing|invoice|subscri\w*|upgrade|plans?|pricing|"
+                         r"withdraw|transfer|deposit|donate|fund|tip|stake|sell|trade|swap|bid|mint|refund|payout|wallet|credits?|"
+                         r"roles?|permissions?|grant|revoke|promote|demote|ban|kick|impersonate|admin\w*|sudo|"
+                         r"account|log\s*out|logout|sign\s*out|deactivate|"
+                         r"publish|unpublish|share|send|post|broadcast|announce|invite|dm|"
+                         r"all users|everyone|global|public|bulk|every|wipe|purge|truncate|drop|"
+                         r"deploy|restart|shutdown|failover|kill|rotate)\b")
+WRITE_CREATE_EDIT = re.compile(r"(?i)\b(save|submit|create|add|new|edit|rename|apply|confirm|update|capture|schedule|ok|done)\b")
+WRITE_DELETE = re.compile(r"(?i)\b(delete|remove|trash)\b")
+
+
+def write_step_decision(name, *, admin=False, write_skip=False, allow_write=False, fixture_labels=()):
+    """(allowed, reason, kind) for a replayed click. kind: read | create | delete.
+    `fixture_labels` are labels of fixtures THIS run's walker created (rec.fixtures, live state)."""
+    n = name or ""
+    if SWEEP_PAYMENT.search(n):
+        return False, "control %r is payment/billing-adjacent - payments are never touched, even with --allow-write" % n, "payment"
+    if not HARD_DENY.search(n):
+        return True, None, "read"
+    if not allow_write:
+        return False, "write step needs --allow-write", "write"
+    if admin:
+        return False, "admin lens stays look-only (no write step)", "write"
+    if write_skip:
+        return False, "write-skip lens stays read-only (no write step)", "write"
+    if WRITE_NEVER.search(n):
+        return False, "control %r is a payment/billing/role/admin/account/outward-facing action (safety.WRITE_NEVER) - never run, even with --allow-write" % n, "write"
+    if WRITE_DELETE.search(n):
+        low = n.lower()
+        labels = [l for l in fixture_labels if l]
+        if any(l.lower() in low for l in labels):
+            return True, None, "delete"
+        if labels:
+            # a plain "Delete" control: the executor must click it ROW-SCOPED to a walker fixture label
+            return True, None, "delete_scoped"
+        return False, "delete refused: %r - no fixture created by this walker in this run to target" % n, "delete"
+    rest = WRITE_CREATE_EDIT.sub("", n)
+    if WRITE_CREATE_EDIT.search(n) and not HARD_DENY.search(rest):
+        return True, None, "create"
+    return False, "control %r is not a plain create/edit action (safety.HARD_DENY)" % n, "write"
