@@ -25,7 +25,9 @@ FILES = {
 import createNotesRouter from "./routes/notes.js";
 import { createWidgetsRouter } from "./routes/widgets.js";
 import registerSystemRoutes from "./routes/system.js";
+import { registerGuidanceEndpoints } from "./guidance.js";
 registerSystemRoutes(app, {});
+registerGuidanceEndpoints(app, db);
 app.use("/api/notes", createNotesRouter({ db }));
 app.get("/api/dtus/:id(\\\\d+)", h);
 app.post("/api/lens/run", h);
@@ -39,6 +41,9 @@ registerLensAction("chem", "equilibrium", fn);
   router.get("/:id", h); router.patch("/:id", h); return router; }''',
     "server/routes/widgets.js": '''export function createWidgetsRouter() { const router = express.Router();
   router.get("/widgets/:wid/parts", h); return router; }  // mounted at runtime elsewhere''',
+    "server/guidance.js": '''export function registerGuidanceEndpoints(app, db) {
+  app.get("/api/guidance/first-win", h); registerLensAction("guidance", "suggestions", f); }''',
+    "server/tests/fake.test.js": '''app.get("/api/only-in-tests", h);''',
     "server/routes/system.js": '''export default function registerSystemRoutes(app) { app.get("/health", h); }''',
     "server/domains/chem.js": '''export default function registerChemActions(registerLensAction) {
   const registerCalc = (name, fn) => registerLensAction("chem", name, fn);
@@ -83,6 +88,8 @@ def test_normalization():
     check("* needs >=1 segment, ** allows 0", not RM.pattern_match("/docs/*", "/docs") and RM.pattern_match("/h/**", "/h"))
     check("runtime mount = suffix match only when flagged", RM.pattern_match("/widgets/:p/parts", "/api/v2/widgets/:n/parts", runtime=True)
           and not RM.pattern_match("/widgets/:p/parts", "/api/v2/widgets/:n/parts"))
+    check("runtime suffix needs a literal segment (bare /:id never claims a path)",
+          not RM.pattern_match("/:p", "/api/guidance/first-win", runtime=True) and not RM.pattern_match("/:p/:p", "/api/x/y", runtime=True))
     check("status_ok: 2xx/3xx/pending ok; 4xx/5xx/None/failed not",
           all(RM.status_ok(s) for s in (200, 204, "304", "pending")) and not any(RM.status_ok(s) for s in (404, 405, 500, None, "failed", "net::ERR_FAILED")))
 
@@ -160,12 +167,17 @@ def test_fp_classes():
         ("sweep:button:j", "GET", "/api/dtus/:n", 500, "fetch"),              # declared but failing
         ("sweep:button:k", "DELETE", "/api/notes/:uuid", 405, "fetch"),       # declared path, wrong method, 405
         ("sweep:button:l", "POST", "/api/lens/run", 200, "fetch"),
+        ("sweep:button:m", "GET", "/api/guidance/first-win", 503, "fetch"),   # registrar outside routes/: declared, failing
+        ("sweep:button:n", "GET", "/api/only-in-tests", 404, "fetch"),        # tests are not the app
     ]
     d = UA.diff(reg, {"t": ("x", _rec("t", calls))})
     cls = {r["control_id"]: r["class"] for r in d["lenses"]["t"]["calls"]}
     for cid in ("a", "b", "c", "e", "f", "l"):
         check("2xx on a declared %s route is matched_ok (never real_missing)" % cid, cls["sweep:button:" + cid] == "matched_ok", cls)
     check("route group page 2xx matched_ok", cls["load:page:-"] == "matched_ok", cls)
+    check("registrar outside server/routes is scanned (503 there = matched_failing, not real_missing)", cls["sweep:button:m"] == "matched_failing", cls)
+    check("routes declared only in tests do not count", cls["sweep:button:n"] == "real_missing", cls)
+    check("lens action registered outside domains/ is scanned", any(a["domain"] == "guidance" and a["action"] == "suggestions" for a in reg["actions"]))
     check("next catch-all page 2xx matched_ok", cls["sweep:button:d"] == "matched_ok", cls)
     check("undeclared + 2xx = unmatched_but_ok (noise)", cls["sweep:button:g"] == "unmatched_but_ok")
     check("undeclared + 404 = real_missing", cls["sweep:button:h"] == "real_missing")
@@ -174,7 +186,7 @@ def test_fp_classes():
     k = next(r for r in d["lenses"]["t"]["calls"] if r["control_id"] == "sweep:button:k")
     check("declared path, wrong method, 405 = real_missing with a note", k["class"] == "real_missing" and "not DELETE" in (k.get("note") or ""), k)
     defects = {r["control_id"] for r in d["lenses"]["t"]["defects"]}
-    check("defects = real_missing + matched_failing only", defects == {"sweep:button:h", "sweep:button:i", "sweep:button:j", "sweep:button:k"}, defects)
+    check("defects = real_missing + matched_failing only", defects == {"sweep:button:h", "sweep:button:i", "sweep:button:j", "sweep:button:k", "sweep:button:m", "sweep:button:n"}, defects)
     check("noise never in defects", "sweep:button:g" not in defects and [r["control_id"] for r in d["lenses"]["t"]["noise"]] == ["sweep:button:g"])
     check("unused_route counted (declared, never observed)", d["totals"]["unused_route"] > 0 and any("/health" in u for u in d["unused_routes_sample"]))
     check("catch-all 404 handler excluded from matching", not any(r["route"] == "ALL /api/*" for r in d["lenses"]["t"]["calls"]))

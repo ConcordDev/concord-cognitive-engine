@@ -85,6 +85,11 @@ def pattern_match(pattern, path, runtime=False):
     if _match(pat, obs):
         return True
     if runtime:
+        # a runtime-mounted router's prefix is unknown, so match by suffix -- but only when the
+        # route has a literal segment: a bare '/:id' would otherwise claim every path and hide
+        # a real 404 behind somebody else's route.
+        if not any(not s.startswith(":") and s not in ("*", "**") for s in pat):
+            return False
         return any(_match(pat, obs[k:]) for k in range(1, len(obs)))
     return False
 

@@ -27,8 +27,8 @@ DECL_RE = re.compile(r"registerDeclaration\(\s*([\"'])([\w.-]+)\1\s*,\s*([\"'])(
 LLM_RE = re.compile(r"^(analy[sz]e|generate|suggest)", re.I)
 ROUTE_RE = re.compile(r"\b(\w+)\.(get|post|put|patch|delete|all)\(\s*([\"'`])(/[^\"'`]*)\3")
 MOUNT_RE = re.compile(r"\bapp\.use\(\s*([\"'`])(/[^\"'`]*)\1\s*,\s*(?:\w+\.)?(\w+)\s*\(?")
-IMPORT_RE = re.compile(r"import\s+(?:(\w+)\s*,?\s*)?(?:\{([^}]*)\})?\s*from\s*[\"'](\./routes/[^\"']+)[\"']")
-DYN_IMPORT_RE = re.compile(r"\{\s*([^}]*)\}\s*=\s*await\s+import\(\s*[\"'](\./routes/[^\"']+)[\"']")
+IMPORT_RE = re.compile(r"import\s+(?:(\w+)\s*,?\s*)?(?:\{([^}]*)\})?\s*from\s*[\"'](\./[^\"']+)[\"']")
+DYN_IMPORT_RE = re.compile(r"\{\s*([^}]*)\}\s*=\s*await\s+import\(\s*[\"'](\./[^\"']+)[\"']")
 REGISTER_CALL_RE = re.compile(r"^\s*(?:await\s+)?(\w+)\(\s*app\b", re.M)
 FE_CALL_RE = re.compile(r"lensRun(?:<.*?>)?\(\s*([\"'])([\w.-]+)\1\s*,\s*([\"'`])([\w.${}-]+)\3")
 FE_OBJ_RE = re.compile(r"domain:\s*([\"'])([\w.-]+)\1\s*,\s*action:\s*([\"'`])([\w.${}-]+)\3")
@@ -79,8 +79,18 @@ def _line(text, pos):
     return text.count("\n", 0, pos) + 1
 
 
-def scan_actions(tree):
-    files = [p for p in tree.ls("server/domains") if p.endswith(".js")] + ["server/server.js"]
+SKIP_DIRS = re.compile(r"^server/(tests|migrations|scripts|data|seeds|results)/|(__tests__|\.test\.|\.spec\.)")
+
+
+def server_files(tree):
+    """Every server .js that can register a route or action (tests/migrations/scripts excluded).
+    Scanning only server.js + routes/ missed registrars such as registerGuidanceEndpoints(app)
+    in server/guidance.js and produced false real_missing rows (see WALKER-ISSUES)."""
+    return sorted(p for p in tree.ls("server") if p.endswith((".js", ".mjs")) and not SKIP_DIRS.search(p))
+
+
+def scan_actions(tree, files=None):
+    files = files if files is not None else server_files(tree)
     acts = {}
     for path in files:
         text = tree.read(path)
@@ -139,7 +149,7 @@ def _fe_for(domain, action, fe):
     return sorted(set(hits))
 
 
-def scan_routes(tree):
+def scan_routes(tree, files=None):
     routes = []
     server = tree.read("server/server.js")
     imports = {}
@@ -161,7 +171,7 @@ def scan_routes(tree):
         f = imports.get(m.group(1))
         if f:
             app_files.add(f)
-    files = ["server/server.js"] + [p for p in tree.ls("server/routes") if p.endswith(".js")]
+    files = ["server/server.js"] + [p for p in (files if files is not None else server_files(tree)) if p != "server/server.js"]
     for path in files:
         text = server if path == "server/server.js" else tree.read(path)
         for m in ROUTE_RE.finditer(text):
@@ -202,15 +212,16 @@ def scan_routes(tree):
 
 
 def build(tree, sha):
-    acts = scan_actions(tree)
+    files = server_files(tree)
+    acts = scan_actions(tree, files)
     decls = scan_declarations(tree)
     fe = scan_fe_callers(tree)
     rows = []
     for (d, a), (f, ln) in sorted(acts.items()):
         rows.append({"domain": d, "action": a, "file": f, "line": ln, "receipt_class": receipt_class(d, a, decls),
                      "fe_callers": _fe_for(d, a, fe)[:4], "fe_caller_count": len(_fe_for(d, a, fe))})
-    routes = scan_routes(tree)
-    return {"sha": sha, "source": tree.desc, "counts": {"actions": len(rows), "routes": len(routes),
+    routes = scan_routes(tree, files)
+    return {"sha": sha, "source": tree.desc, "counts": {"actions": len(rows), "routes": len(routes), "server_files": len(files),
                                                         "declarations": len(decls), "fe_call_sites": sum(len(v) for v in fe.values())},
             "actions": rows, "routes": routes}
 
