@@ -150,9 +150,28 @@ export default function connectiveTissueRoutes({ db, requireAuth }) {
     }
   });
 
-  router.get("/loan-eligibility/:userId", (req, res) => {
+  // Private to the authenticated owner. The merit route above stays a
+  // public read by product decision — do not add requireAuth to it. Gate 1 lists the
+  // whole /api/connective-tissue prefix as public-read, so an anonymous
+  // GET reaches this handler; requireAuth() is what 401s it (the /api/ct
+  // mount already 401s at Gate 1). A path userId that is not req.user.id
+  // — another member, or an id that does not exist — is the same 403,
+  // and checkLoanEligibility is not called, so the body has no tier,
+  // balance, or merit. AUTH_MODE=public leaves req.user unset after
+  // requireAuth() (see requireSelf); that single-user mode may read the
+  // path id. This module has no admin/sovereign bypass, and this route
+  // does not add one.
+  router.get("/loan-eligibility/:userId", requireAuth(), (req, res) => {
     try {
-      const result = checkLoanEligibility(db, req.params.userId);
+      const target = req.params.userId;
+      const actual = req.user?.id;
+      if (actual && target !== actual) {
+        return res.status(403).json({
+          ok: false,
+          error: "unauthorized: loan eligibility must be your own user id",
+        });
+      }
+      const result = checkLoanEligibility(db, actual || target);
       res.json({ ok: true, ...result });
     } catch (err) {
       res.status(500).json({ error: "Internal server error" });
