@@ -16,14 +16,36 @@ export const CHEM_BOUNDS = Object.freeze({
   P0atm: { min: 0.5, max: 10 },
 });
 
+// The cited source is machine-checkable by a stranger: ISBN-13 9780073380193 (verified against
+// Open Library) is Turns, An Introduction to Combustion: Concepts and Applications, 3rd ed.
+// (McGraw-Hill). The repo only ever recorded "ch. 2" for the stoichiometric adiabatic flame
+// temperatures; the page/table/figure number has NOT been verified against a copy of the book
+// (locatorVerified:false), so it is stated at chapter level rather than invented.
+const TURNS_3E = (what) => ({
+  kind: "book",
+  citation: "Turns, S. R., An Introduction to Combustion: Concepts and Applications, 3rd ed., McGraw-Hill, 2011/2012",
+  locator: `Ch. 2 (Combustion and Thermochemistry), adiabatic flame temperature, ${what}`,
+  isbn: "9780073380193",
+  locatorVerified: false,
+  locatorNote: "chapter-level only; page/table/figure number not checked against the book",
+});
+
 export const CHEM_FUELS = {
   CH4: {
     mechanism: "gri30.yaml",
-    reference: { case: "Turns, An Introduction to Combustion, 3rd ed. — stoichiometric CH4/air at 300 K, 1 atm", value: 2226, unit: "K", tolerance: 25 },
+    reference: {
+      case: "Turns, An Introduction to Combustion, 3rd ed. — stoichiometric CH4/air at 300 K, 1 atm", value: 2226, unit: "K", tolerance: 25,
+      inputs: { fuel: "CH4", phi: 1, T0: 300, P0: 1 },
+      source: TURNS_3E("stoichiometric CH4/air"),
+    },
   },
   H2: {
     mechanism: "h2o2.yaml",
-    reference: { case: "Turns, An Introduction to Combustion, 3rd ed. — stoichiometric H2/air at 300 K, 1 atm", value: 2380, unit: "K", tolerance: 40 },
+    reference: {
+      case: "Turns, An Introduction to Combustion, 3rd ed. — stoichiometric H2/air at 300 K, 1 atm", value: 2380, unit: "K", tolerance: 40,
+      inputs: { fuel: "H2", phi: 1, T0: 300, P0: 1 },
+      source: TURNS_3E("stoichiometric H2/air"),
+    },
   },
 };
 export const CHEM_OXIDIZER = "O2:1, N2:3.76";

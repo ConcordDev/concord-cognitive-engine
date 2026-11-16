@@ -91,7 +91,7 @@ function cleanJob(job) {
  *   solver: string | { id: string, version?: string },
  *   inputs: object, inputHash?: string, units?: string, method?: string,
  *   designBasis?: object, assumptions?: string[], outOfScope?: string[],
- *   results?: object, handCheck?: object, verdict?: object, reference?: object,
+ *   results?: object, handCheck?: object, verdict?: object, reference?: object, review?: object,
  *   job?: { projectRef?: string, jobRef?: string, preparedFor?: string },
  * }} parts
  * @param {{ now?: () => string }} [opts] forwarded to attestReceipt (test hook)
@@ -112,6 +112,7 @@ export function buildCalcReceipt(parts = {}, opts = {}) {
     ...(parts.handCheck ? { handCheck: parts.handCheck } : {}),
     ...(parts.verdict ? { verdict: parts.verdict } : {}),
     ...(parts.reference ? { reference: parts.reference } : {}),
+    ...(parts.review ? { review: parts.review } : {}),
     issuer: { service: CALC_RECEIPT_SERVICE, keyId: key && key.keyId ? key.keyId : null },
     verification: buildVerificationBlock({ keyId: key && key.keyId ? key.keyId : null }),
   };
