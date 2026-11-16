@@ -94,7 +94,9 @@ def build_verdict(repo, deploy, fix_sha):
     d = deploy or {}
     b = d.get("backend_sha")
     if not b:
-        return "ran against an UNKNOWN build (/health gave no buildSha): cannot say whether fix %s is in it" % (fix_sha or "?")[:12]
+        if not fix_sha:
+            return "ran against an UNKNOWN build (no buildSha stamp on this record)"
+        return "ran against an UNKNOWN build (no buildSha stamp): cannot say whether fix %s is in it" % fix_sha[:12]
     flag = "" if d.get("sha_status") in (None, "ok") else " [build stamp %s: %s]" % (d.get("sha_status"), d.get("sha_note"))
     if not fix_sha:
         return "ran against build %s (no fix commit named)%s" % (b[:12], flag)

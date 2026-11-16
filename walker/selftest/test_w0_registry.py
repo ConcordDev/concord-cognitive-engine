@@ -26,6 +26,7 @@ import createNotesRouter from "./routes/notes.js";
 import { createWidgetsRouter } from "./routes/widgets.js";
 import registerSystemRoutes from "./routes/system.js";
 import { registerGuidanceEndpoints } from "./guidance.js";
+import { r as shadow } from "./lib/shadow.js";
 registerSystemRoutes(app, {});
 registerGuidanceEndpoints(app, db);
 app.use("/api/notes", createNotesRouter({ db }));
@@ -35,6 +36,9 @@ app.get("/api/files/*", h);
 app.get("/api/opt/:a?", h);
 app.all("/api/*", notFound);
 app.get(`/api/tpl/${PREFIX}/x`, h);
+app.get("/api/auth/me", h);
+// app.get("/api/commented-out", h);
+
 registerLensAction("chem", "equilibrium", fn);
 ''',
     "server/routes/notes.js": '''export default function createNotesRouter() { const router = express.Router();
@@ -43,6 +47,10 @@ registerLensAction("chem", "equilibrium", fn);
   router.get("/widgets/:wid/parts", h); return router; }  // mounted at runtime elsewhere''',
     "server/guidance.js": '''export function registerGuidanceEndpoints(app, db) {
   app.get("/api/guidance/first-win", h); registerLensAction("guidance", "suggestions", f); }''',
+    "server/lib/generator.js": '''const tpl = `
+  app.get('/api/auth/me', h);
+  app.get('/api/generated-only', h);`;''',
+    "server/lib/shadow.js": '''export function r(app) { app.get("/api/auth/me", h); }''',
     "server/tests/fake.test.js": '''app.get("/api/only-in-tests", h);''',
     "server/routes/system.js": '''export default function registerSystemRoutes(app) { app.get("/health", h); }''',
     "server/domains/chem.js": '''export default function registerChemActions(registerLensAction) {
@@ -177,6 +185,10 @@ def test_fp_classes():
     check("route group page 2xx matched_ok", cls["load:page:-"] == "matched_ok", cls)
     check("registrar outside server/routes is scanned (503 there = matched_failing, not real_missing)", cls["sweep:button:m"] == "matched_failing", cls)
     check("routes declared only in tests do not count", cls["sweep:button:n"] == "real_missing", cls)
+    check("route in a comment is not a route", not any(r["pattern"] == "/api/commented-out" for r in reg["routes"]))
+    check("file not reachable from server.js (code generator) is not scanned", not any(r["pattern"] == "/api/generated-only" for r in reg["routes"]))
+    me = [r for r in reg["routes"] if r["pattern"] == "/api/auth/me"]
+    check("duplicate route attributed to server.js before lib files", len(me) == 1 and me[0]["file"] == "server/server.js", me)
     check("lens action registered outside domains/ is scanned", any(a["domain"] == "guidance" and a["action"] == "suggestions" for a in reg["actions"]))
     check("next catch-all page 2xx matched_ok", cls["sweep:button:d"] == "matched_ok", cls)
     check("undeclared + 2xx = unmatched_but_ok (noise)", cls["sweep:button:g"] == "unmatched_but_ok")

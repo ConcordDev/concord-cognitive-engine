@@ -82,11 +82,50 @@ def _line(text, pos):
 SKIP_DIRS = re.compile(r"^server/(tests|migrations|scripts|data|seeds|results)/|(__tests__|\.test\.|\.spec\.)")
 
 
-def server_files(tree):
-    """Every server .js that can register a route or action (tests/migrations/scripts excluded).
-    Scanning only server.js + routes/ missed registrars such as registerGuidanceEndpoints(app)
-    in server/guidance.js and produced false real_missing rows (see WALKER-ISSUES)."""
-    return sorted(p for p in tree.ls("server") if p.endswith((".js", ".mjs")) and not SKIP_DIRS.search(p))
+ANY_IMPORT_RE = re.compile(r"""(?:\bfrom\s*|\bimport\s*\(\s*|\brequire\(\s*|^\s*import\s+)["'`](\.{1,2}/[^"'`]+)["'`]""", re.M)
+
+
+def _resolve(base_file, rel, files):
+    p = os.path.normpath(os.path.join(os.path.dirname(base_file), rel))
+    for c in (p, p + ".js", p + ".mjs", os.path.join(p, "index.js")):
+        if c in files:
+            return c
+    return None
+
+
+def server_files(tree, entry="server/server.js"):
+    """Server files reachable from server.js through relative imports (static, dynamic, require),
+    tests/migrations/scripts excluded. Scanning only server.js + routes/ missed registrars such as
+    registerGuidanceEndpoints(app) in server/guidance.js (false real_missing); scanning every file
+    picked up code inside generators/comments. Reachability is the honest middle (WALKER-ISSUES)."""
+    allf = {p for p in tree.ls("server") if p.endswith((".js", ".mjs")) and not SKIP_DIRS.search(p)}
+    if entry not in allf:
+        return sorted(allf)
+    seen, todo = {entry}, [entry]
+    while todo:
+        f = todo.pop()
+        for m in ANY_IMPORT_RE.finditer(tree.read(f)):
+            r = _resolve(f, m.group(1), allf)
+            if r and r not in seen:
+                seen.add(r)
+                todo.append(r)
+    # routes/ and domains/ are loaded by directory scans as well as imports: always in
+    seen |= {p for p in allf if p.startswith(("server/routes/", "server/domains/"))}
+    return sorted(seen)
+
+
+def _in_comment(text, pos):
+    ls = text.rfind("\n", 0, pos) + 1
+    head = text[ls:pos].lstrip()
+    return head.startswith(("//", "*", "/*")) or " // " in text[ls:pos]
+
+
+def _file_rank(path, app_files):
+    if path == "server/server.js":
+        return 0
+    if path.startswith("server/routes/"):
+        return 1
+    return 2 if path in app_files else 3
 
 
 def scan_actions(tree, files=None):
@@ -97,6 +136,8 @@ def scan_actions(tree, files=None):
         if "registerLensAction" not in text:
             continue
         for m in ACTION_RE.finditer(text):
+            if _in_comment(text, m.start()):
+                continue
             acts.setdefault((m.group(2), m.group(4)), (path, _line(text, m.start())))
         for h in HELPER_RE.finditer(text):
             name, dom = h.group(1), h.group(4)
@@ -175,6 +216,8 @@ def scan_routes(tree, files=None):
     for path in files:
         text = server if path == "server/server.js" else tree.read(path)
         for m in ROUTE_RE.finditer(text):
+            if _in_comment(text, m.start()):
+                continue
             ident, method, raw = m.group(1), m.group(2).upper(), m.group(4)
             line = _line(text, m.start())
             if ident == "app" or (path in app_files and ident == "app"):
@@ -202,7 +245,7 @@ def scan_routes(tree, files=None):
             routes.append({"method": "GET", "pattern": next_pattern(rel), "file": path, "line": 1,
                            "source": "next-page", "mount": ""})
     seen, out = set(), []
-    for r in sorted(routes, key=lambda r: (r["pattern"], r["method"], r["file"], r["line"])):
+    for r in sorted(routes, key=lambda r: (r["pattern"], r["method"], _file_rank(r["file"], app_files), r["file"], r["line"])):
         k = (r["method"], r["pattern"], r["mount"] == "runtime")
         if k in seen:
             continue
