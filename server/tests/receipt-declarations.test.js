@@ -88,7 +88,7 @@ describe("merge gate: chem lens equilibrium -> stored, verifiable, Turns-cited v
     assert.match(out.result.receiptId, /^rcpt_/);
     assert.equal(out.result.receiptUrl, `/api/receipts/${out.result.receiptId}`);
     const r = out.result.calcReceipt;
-    assert.equal(r.receiptSchema, "concord-calc-receipt/2");
+    assert.equal(r.receiptSchema, "concord-calc-receipt/3");
     assert.equal(r.reference.value, 2226);
     assert.equal(r.reference.tolerance, 25);
     assert.match(r.reference.case, /Turns/);

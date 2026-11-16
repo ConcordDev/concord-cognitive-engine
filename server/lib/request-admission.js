@@ -58,7 +58,7 @@ const _PUBLIC_DEMO_PATH_RE = /^\/api\/conkay\/demo\/(materials|beam|sweep|design
 
 // Public receipt keys + the unauthenticated verify POST. Same reserved lane
 // as the demo: anonymous, but not the first traffic to shed.
-const _RECEIPT_PATH_RE = /^\/(?:\.well-known\/concord-receipt-keys\.json|api\/receipts\/verify)(?:\?|$)/;
+const _RECEIPT_PATH_RE = /^\/(?:\.well-known\/concord-receipt-keys\.json|api\/receipts\/(?:verify|keys))(?:\?|$)/;
 
 // Authenticated interactive work: chat and lens run. Never an instant 503.
 const _INTERACTIVE_PATH_RE = /^\/api\/(?:lens\/run|chat-agent(?:\/|$|\?)|chat(?:\/|$|\?))/;

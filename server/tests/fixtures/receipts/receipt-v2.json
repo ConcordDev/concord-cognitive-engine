@@ -1,0 +1,32 @@
+{
+  "receiptSchema": "concord-calc-receipt/2",
+  "solver": {
+    "id": "fea-solver",
+    "version": "5.0.0"
+  },
+  "inputs": {
+    "loadN": 200000
+  },
+  "results": {
+    "maxStressMPa": {
+      "value": 286.4,
+      "unit": "MPa"
+    }
+  },
+  "verdict": {
+    "status": "PASS"
+  },
+  "issuer": {
+    "service": "concord-os.org",
+    "keyId": "fe812c12f3ab4ce6"
+  },
+  "issuedAt": "2026-11-01T00:00:00.000Z",
+  "signature": {
+    "alg": "Ed25519",
+    "canon": "sorted-json-v1",
+    "digest": "3213dc332a0ea025d801df4e3a9f30a6c47d7b8f051bc8d4f1412c46a8c8eeb5",
+    "keyId": "fe812c12f3ab4ce6",
+    "signature": "pZFZyN2oqCgUYZDu6mRdMNzVg1clRNRFcB5oqRE8AZd/N3Wh9YukGBCnUAp6yAqCsY6WlTfZ9xRRhN/DdYVCDw==",
+    "reason": null
+  }
+}

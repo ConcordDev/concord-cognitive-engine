@@ -1,0 +1,40 @@
+{
+  "receiptSchema": "concord-calc-receipt/3",
+  "solver": {
+    "id": "fea-solver",
+    "version": "5.0.0"
+  },
+  "inputs": {
+    "loadN": 200000
+  },
+  "results": {
+    "maxStressMPa": {
+      "value": 286.4,
+      "unit": "MPa"
+    }
+  },
+  "verdict": {
+    "status": "PASS"
+  },
+  "issuer": {
+    "service": "concord-os.org",
+    "keyId": "fe812c12f3ab4ce6"
+  },
+  "verification": {
+    "verifyUrl": "https://example.test/api/receipts/verify",
+    "publicKeysUrl": "https://example.test/.well-known/concord-receipt-keys.json",
+    "alg": "Ed25519",
+    "canon": "sorted-json-v1",
+    "keyId": "fe812c12f3ab4ce6",
+    "howTo": "Offline: remove the top-level `signature` field, canonicalize the rest as sorted-json-v1 (object keys sorted, no whitespace, UTF-8), SHA-256 it and compare to signature.digest, then Ed25519-verify signature.signature (base64) over those bytes with the public key for keyId from publicKeysUrl. Or POST this receipt to verifyUrl. Script: scripts/verify-receipt.mjs."
+  },
+  "issuedAt": "2026-11-01T00:00:00.000Z",
+  "signature": {
+    "alg": "Ed25519",
+    "canon": "sorted-json-v1",
+    "digest": "1beac6a2378e6c41b9472bde97cb998cc18cabfb9fa885a1c782cf955e264744",
+    "keyId": "fe812c12f3ab4ce6",
+    "signature": "m1oHFC7iESJzP+XCQm+ZkBD1bUkTzlaap8xG/LLiqmQLrPzKpCmtMKMc1hF1M8hVBW2mtkZF8s6RvUmE+oGfBQ==",
+    "reason": null
+  }
+}
