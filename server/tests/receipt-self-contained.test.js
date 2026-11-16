@@ -182,7 +182,9 @@ describe("public receipt access", () => {
     const src = fs.readFileSync(SERVER_JS, "utf8");
     const m = src.match(/req\.method === "GET" && (\/\^\\\/api\\\/receipts[^\n]*?\/)\.test\(req\.path\)\) return next\(\);/);
     assert.ok(m, "receipts GET bypass present");
-    const re = new RegExp(eval(m[1]).source);
+    const lit = m[1];
+    const lastSlash = lit.lastIndexOf("/");
+    const re = new RegExp(lit.slice(1, lastSlash), lit.slice(lastSlash + 1));
     assert.ok(re.test("/api/receipts/keys"));
     assert.ok(re.test("/api/receipts/rcpt_0b0f5d86-3f7d-4b8c-9b0e-111111111111"));
     assert.equal(re.test("/api/receipts/keys/x"), false);
