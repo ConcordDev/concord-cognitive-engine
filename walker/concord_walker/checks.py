@@ -6,7 +6,7 @@ from .cdp import Cdp, wait_until
 from .auth import new_context, assert_account, AccountMismatch, whoami, expected_username
 from .util import control_label, scrub, human_et
 from .runstate import LensBudget  # WALK-05 budget hook: the run-shared per-lens tracker
-from .netledger import NetLedger, LOAD_CONTROL  # MST-W0-02 per-control endpoint ledger
+from .netledger import NetLedger, LOAD_CONTROL, stable_id, a11y_path, template_path, lens_action, WRITE_METHODS  # MST-W0-02
 from .lensrecord import shot_kind, row_stamp  # MST-W0-01 screenshots[] kinds + build stamp
 
 ERROR_TEXT = re.compile(r"(?i)^\s*(something went wrong|application error|unhandled runtime error|"
@@ -41,7 +41,7 @@ class LensWalk:
 
     def __init__(self, browser, cfg, rec, lens, account_key, log, allow_write=False, admin=False,
                  phases=None, inv_entry=None, url_override=None, gate_check=None, budget=None, deploy=None,
-                 premap=False, premap_budget_s=None):
+                 premap=False, premap_budget_s=None, two_account=False):
         self.b, self.cfg, self.rec, self.lens, self.acct, self.log = browser, cfg, rec, lens, account_key, log
         self.slug, self.url = lens["slug"], lens["url"]
         # A gate check = a non-admin account opening an admin lens: the gate
@@ -73,7 +73,10 @@ class LensWalk:
         # MST-W0-01/02: build stamp, screenshots[], per-control endpoint ledger
         self.deploy = deploy
         self.screens = []
-        self.net = NetLedger(cfg["base_url"], stamp=row_stamp(deploy))
+        self.net = NetLedger(cfg["base_url"], stamp=row_stamp(deploy), slow_ms=self.th.get("slow_call_ms", 3000),
+                             long_task_ms=self.th.get("long_task_ms", 1000))
+        self.premap_findings = []  # recorded in the lens record only; never filed as tickets in Wave 0
+        self.two_account = two_account
         self._nav_cid = LOAD_CONTROL
         # MST-W0-03: premap sweep (opt-in) with its own budget
         self.premap = premap
@@ -340,6 +343,13 @@ class LensWalk:
             else:
                 self.mark("create_delete", "NOT_RUN", reason="read-only run" if not self.allow_write else "write-skip lens / admin / no session")
         self.console_network()
+        if self.two_account:
+            try:
+                self.cross_account()
+            except AccountMismatch as e:
+                self.result["two_account"] = {"status": "SKIPPED", "reason": "t2 account check failed: %s" % scrub(str(e), 120)}
+            except Exception as e:
+                self.result["two_account"] = {"status": "ERROR", "reason": scrub(repr(e), 160)}
         self.result["finished"] = human_et()
         self.result["elapsed_s"] = int(time.time() - self.t_start)
         self._note_budget()
@@ -401,16 +411,33 @@ class LensWalk:
                 self.net.note_control("sweep", role, label, False, reason="not_found_after_reset", cid=cid); counts["skipped"] += 1
                 continue
             url0, sig0 = page.url, self._ax_sig(ax)
-            self.net.open_window("sweep", role, label, cid=cid)
+            texts0 = set(ax.texts())
+            sid = stable_id(role, raw, a11y_path(ax, node))
+            t_click = time.time()
+            self.net.open_window("sweep", role, label, cid=cid, sid=sid)
+            tc = time.time()
             if not cdp.click(node.backend):
                 self.net.meta[cid].update(exercised=False, reason="not_visible"); counts["skipped"] += 1
                 continue
+            click_ms = int((time.time() - tc) * 1000)
             counts["clicked"] += 1
+            # upgrade 4: freeze probe -- the input ack and an AX read both need the
+            # renderer main thread; either one blocking >= freeze_ms is a freeze
+            ta = time.time()
+            cdp.ax()
+            ax_ms = max(int((time.time() - ta) * 1000), click_ms - 250)
+            if ax_ms >= self.th.get("freeze_ms", 1000):
+                self.net.note_freeze(ax_ms, t=tc)
+                self.net.annotate(cid, ax_ms=ax_ms)
             try:
                 page.wait_for_timeout(int(self.th.get("sweep_settle_ms", 1200)))
             except Exception:
                 pass
             ax1 = cdp.ax()
+            why, writes = self.net.quick_broken(t_click - 0.05)
+            if ax_ms >= self.th.get("freeze_ms", 1000):
+                why.add("freeze")
+            self._premap_checks(page, cdp, cid, sid, label, why, writes, texts0, ax1)
             if page.url.split("#")[0] != url0.split("#")[0]:
                 eff = "nav"
             elif self._ax_sig(ax1) != sig0:
@@ -422,8 +449,157 @@ class LensWalk:
             if ax1.popups():
                 page.keyboard.press("Escape")
             self.reset_page(page, cdp)
+        self.net.close_window()
         self.mark("premap_sweep", "PASS", controls=len(cands), budget_s=self.premap_budget_s,
                   elapsed_s=int(time.time() - t0), **counts)
+
+    def cross_account(self):
+        """Upgrade 3 (opt-in --two-account): replay t1's object calls (reads, and non-DELETE
+        writes) as t2 in t2's OWN isolated context. t2 getting 2xx with a non-error body on
+        t1's object = ownership finding. Raw URLs/bodies live only in memory for this
+        replay and are never written. Never deletes; t2 credentials are never read here
+        (the saved auth/t2.json session is used)."""
+        from .auth import has_session
+        from urllib.parse import urlsplit
+        cap = self.th.get("two_account_max_calls", 12)
+        if self.admin or not self.acct or self.acct != "t1":
+            self.result["two_account"] = {"status": "SKIPPED", "reason": "t1 member walks only"}
+            return
+        if not has_session(self.cfg, "t2"):
+            self.result["two_account"] = {"status": "SKIPPED", "reason": "no saved t2 session (auth/t2.json)"}
+            return
+        seen, todo = set(), []
+        # prefer the call a named control made over the same call made by a page load
+        for r in sorted(self.net.replay, key=lambda x: (x["method"] != "GET", self.net._cid_at(x["t"]).endswith(":page:-"), x["t"])):
+            k = (r["method"], r["path"])
+            if k in seen or r["method"] == "DELETE":
+                continue
+            if r["method"] != "GET" and not self.th.get("two_account_writes", True):
+                continue
+            seen.add(k)
+            todo.append(r)
+        todo = todo[:cap]
+        rows = []
+        if not todo:
+            self.result["two_account"] = {"status": "NA", "reason": "no object calls recorded", "replayed": 0}
+            return
+        vp = self.cfg["viewport_desktop"]
+        ctx = new_context(self.b, self.cfg, "t2", vp)
+        try:
+            assert_account(ctx, self.cfg, "t2", "two-account replay", self.log)
+            for r in todo:
+                if urlsplit(r["url"]).netloc != urlsplit(self.cfg["base_url"]).netloc:
+                    continue
+                kw = {"timeout": 15000}
+                if r["post"] is not None:
+                    kw["data"] = r["post"]
+                    kw["headers"] = {"Content-Type": "application/json"}
+                try:
+                    resp = ctx.request.fetch(r["url"], method=r["method"], **kw)
+                    st = resp.status
+                    try:
+                        body = resp.json()
+                    except Exception:
+                        body = None
+                except Exception as e:
+                    rows.append({"method": r["method"], "path": r["path"], "status": None, "verdict": "error", "error": type(e).__name__})
+                    continue
+                refused = isinstance(body, dict) and (body.get("ok") is False or "error" in body)
+                leak = 200 <= st < 300 and not refused
+                cid = self.net._cid_at(r["t"])
+                row = {"method": r["method"], "path": r["path"], "status": st, "control_id": cid,
+                       "verdict": "OWNERSHIP_FAIL" if leak else "PASS"}
+                rows.append(row)
+                if leak:
+                    kind = "read" if r["method"] == "GET" else "write"
+                    self.net.annotate(cid, ownership=["t2 %s %s %s -> %d" % (kind, r["method"], r["path"], st)])
+                    if not (self.net.meta.get(cid) or {}).get("evidence") and self.result.get("initial_evidence"):
+                        self.net.annotate(cid, evidence=[self.result["initial_evidence"]])
+                    sid = (self.net.meta.get(cid) or {}).get("sid")
+                    self._premap_finding("ownership", cid, sid,
+                                         "Second account can %s the first account's object: %s %s -> %d" % (kind, r["method"], r["path"], st),
+                                         [self.result.get("initial_evidence")], severity="high")
+        finally:
+            try:
+                ctx.close()
+            except Exception:
+                pass
+        fails = sum(1 for x in rows if x["verdict"] == "OWNERSHIP_FAIL")
+        self.result["two_account"] = {"status": "FAIL" if fails else "PASS", "replayed": len(rows),
+                                      "ownership_failures": fails, "calls": rows}
+
+    SAVE_ACTION = re.compile(r"(?i)^(save|create|add|update|set|store|record|log|upsert|put|edit|pin|star|rename)")
+
+    def _persisting_writes(self, writes):
+        """Writes whose effect should survive a reload: PUT/PATCH/DELETE, or a POST that is
+        not a pure lens compute (POST /api/lens/run only counts for a known save action)."""
+        out = []
+        for r in writes:
+            try:
+                from urllib.parse import urlsplit
+                path_t = template_path(urlsplit(r.url).path)[0]
+            except Exception:
+                continue
+            if r.method in ("PUT", "PATCH", "DELETE"):
+                out.append((r.method, path_t))
+            elif r.method == "POST":
+                if path_t.rstrip("/") == "/api/lens/run":
+                    try:
+                        a = lens_action("POST", path_t, json.loads(r.post_data or "{}"))
+                    except Exception:
+                        a = None
+                    if a and self.SAVE_ACTION.search(a.get("action", "")):
+                        out.append((r.method, path_t))
+                else:
+                    out.append((r.method, path_t))
+        return out
+
+    def _premap_finding(self, cls, cid, sid, title, evidence, **extra):
+        f = {"class": cls, "control_id": cid, "sid": sid, "title": title, "evidence": [e for e in evidence if e]}
+        f.update(extra)
+        f.update(row_stamp(self.deploy))
+        self.premap_findings.append(f)
+        return f
+
+    def _premap_checks(self, page, cdp, cid, sid, label, why, writes, texts0, ax1):
+        """Upgrades 2 + 7: write-then-read-back on persisting 2xx writes, and one
+        screenshot per broken control (failure only)."""
+        ev = None
+        pw = self._persisting_writes(writes)
+        if pw and not why:
+            new = {t for t in ax1.texts() if t not in texts0 and len(t.strip()) >= 3}
+            if not new:
+                self.net.annotate(cid, readback="unverifiable: no new text after the write")
+            else:
+                ev_after = self.shot(page, "fail-" + label[:30])
+                self.nav(page, cdp)
+                after = set(cdp.ax().texts())
+                kept = new & after
+                if kept:
+                    self.net.annotate(cid, readback="persisted")
+                    if ev_after:  # not a failure: drop the provisional image
+                        self._drop_shot(ev_after)
+                else:
+                    # one image per broken control: the screen that claimed success
+                    self.net.annotate(cid, readback="lost after reload", fake_success=True,
+                                      evidence=[ev_after] if ev_after else [])
+                    self._premap_finding("fake_success", cid, sid,
+                                         "'%s' reports success (%s) but the change is gone after reload: %s" % (
+                                             label, ", ".join("%s %s" % w for w in pw[:2]), "; ".join(sorted(new))[:80]),
+                                         [ev_after], writes=["%s %s" % w for w in pw[:3]])
+                    return
+        if why:
+            ev = self.shot(page, "fail-" + label[:30])
+            self.net.annotate(cid, evidence=[ev] if ev else [])
+            for w in sorted(why):
+                self._premap_finding(w, cid, sid, "'%s': %s after click" % (label, w.replace("_", " ")), [ev])
+
+    def _drop_shot(self, rel):
+        try:
+            os.remove(os.path.join(self.cfg["audit_dir"], rel))
+        except Exception:
+            pass
+        self.screens = [s for s in self.screens if s["path"] != rel]
 
     def reset_page(self, page, cdp):
         """Return to a clean lens state between phases (close popups by reload)."""
@@ -1073,9 +1249,11 @@ class LensWalk:
                 return
             assert_account(ctx, self.cfg, self.acct, "create (submit)", self.log)
             self.rec.fixture(label, self.slug, "create_clicked", "via '%s' > '%s'" % (control_label(opener.name), control_label(submit.name)))
-            self.net.open_window("write", "button", control_label(submit.name))
+            wcid = self.net.open_window("write", "button", control_label(submit.name))
+            t_submit = time.time()
             cdp.click(submit.backend)
             time.sleep(1.5)
+            _why, _writes = self.net.quick_broken(t_submit - 0.05)
             ev_created = self.shot(page, "created")
             self.nav(page, cdp)
             ax = cdp.ax()
@@ -1083,6 +1261,12 @@ class LensWalk:
             if not present:
                 ev = self.shot(page, "created-not-after-reload")
                 self.judge("create_unverified", "Submitted fixture '%s' but it isn't visible after reload. Validation error, other view, or persistence bug?" % label, [ev_created, ev])
+                if self._persisting_writes(_writes) and not _why:
+                    # upgrade 2: the create call answered 2xx but nothing persisted
+                    self.net.annotate(wcid, fake_success=True, readback="lost after reload", evidence=[e for e in (ev_created, ev) if e])
+                    self._premap_finding("fake_success", wcid, (self.net.meta.get(wcid) or {}).get("sid"),
+                                         "Create via '%s' answered 2xx but '%s' is not there after reload" % (control_label(submit.name), label),
+                                         [ev_created, ev])
                 self.rec.fixture(label, self.slug, "unknown", "Not visible after reload; may exist in another view.")
                 self.mark("create_delete", "PARTIAL", reason="not visible after reload")
                 return

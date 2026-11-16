@@ -5,7 +5,8 @@ v2 adds (all v1 keys stay unchanged):
   deploy: {backend_sha, frontend_build_id, walker_sha, walker_dirty, base_url, checked_at, walked_at,
            sha_status: ok|missing|mismatch|drift, sha_note}
   findings[]: {id, signature, check, severity, area, title, evidence[], build_sha, walked_at}
-  screenshots[]: {path, kind: initial|open|after_escape|m390|mid_task}
+  screenshots[]: {path, kind: initial|open|after_escape|m390|mid_task|failure}
+  premap_findings[]: {class, control_id, sid, title, evidence[], build_sha, walked_at} (recorded, never filed in Wave 0)
   controls[] / endpoints[] / actions[] / net (MST-W0-02, see netledger.py)
 
 The build stamp is first-class: a missing or mismatched /health buildSha is
@@ -102,7 +103,7 @@ def build_verdict(repo, deploy, fix_sha):
     return "ran against build %s, %s fix commit %s%s" % (b[:12], word, fix_sha[:12], flag)
 
 
-_KIND = (("desktop-initial", "initial"), ("open-", "open"), ("after-escape", "after_escape"), ("m390", "m390"))
+_KIND = (("fail-", "failure"), ("desktop-initial", "initial"), ("open-", "open"), ("after-escape", "after_escape"), ("m390", "m390"))
 
 
 def shot_kind(name):
@@ -132,12 +133,13 @@ def findings_v2(filed, slugs, deploy):
     return out
 
 
-def upgrade_record(res, deploy, filed, slugs, screenshots, net=None):
+def upgrade_record(res, deploy, filed, slugs, screenshots, net=None, premap_findings=None):
     """Add the v2 keys to a v1 result dict in place (v1 keys untouched)."""
     res["schema_version"] = SCHEMA_VERSION
     res["deploy"] = deploy
     res["findings"] = findings_v2(filed, slugs, deploy)
     res["screenshots"] = screenshots
+    res["premap_findings"] = list(premap_findings or [])
     if net is not None:
         controls, endpoints, actions, summary = net
         res["controls"], res["endpoints"], res["actions"], res["net"] = controls, endpoints, actions, summary

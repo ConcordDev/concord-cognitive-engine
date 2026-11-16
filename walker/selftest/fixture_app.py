@@ -74,6 +74,41 @@ setInterval(()=>fetch('/api/poll'),700);
 </script></body></html>"""
 
 POSTS = []
+
+# Upgrades fixture (Dutch, Nov 16): per-control errors, write-then-read-back,
+# two-account ownership, speed/freeze, failure-only screenshots.
+NOTE_ID = "6f1c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b"
+NOTES = {NOTE_ID: {"owner": "t1", "pinned": False, "title": "t1 private note"}}
+UPGRADES = r"""<!doctype html><html><head><meta name=viewport content="width=device-width,initial-scale=1">
+<style>body{background:#111;color:#eee;font:16px sans-serif} button{margin:4px;padding:8px}</style></head><body>
+<h1>Upgrades lens</h1><div id=out>ready</div><div id=pin>Pinned: no</div><div id=star>Starred: no</div><div id=badge></div>
+<button onclick="openNote()">Open note</button>
+<button onclick="pinNote()">Pin note</button>
+<button onclick="starNote()">Star note</button>
+<button onclick="crash()">Crash widget</button>
+<button onclick="asyncFail()">Async fail</button>
+<button onclick="badge()">Badge icon</button>
+<button onclick="fetch('/api/slow').then(()=>{document.getElementById('out').textContent='report ok'})">Slow stats</button>
+<button onclick="heavy()">Heavy chart</button>
+<button onclick="">Idle button</button>
+<script>
+const ID='__NOTE__';
+function openNote(){fetch('/api/notes/'+ID);fetch('/api/secure-notes/'+ID);}
+async function pinNote(){const r=await fetch('/api/notes/'+ID,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({pinned:true})});
+ if(r.ok) document.getElementById('pin').textContent='Pinned: yes';}
+async function starNote(){const r=await fetch('/api/notes/'+ID+'/star',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+ if(r.ok) document.getElementById('star').textContent='Starred: yes';}
+function crash(){console.error('The above error occurred in the <Widget> component'); throw new Error('widget exploded');}
+function asyncFail(){Promise.reject(new Error('async boom'));}
+function badge(){const i=document.createElement('img');i.src='/static/missing-badge.png';i.alt='badge';document.getElementById('badge').appendChild(i);}
+function heavy(){const t=Date.now();while(Date.now()-t<1600){}}
+fetch('/api/notes/'+ID).then(r=>r.json()).then(j=>{if(j.pinned)document.getElementById('pin').textContent='Pinned: yes';});
+</script></body></html>""".replace("__NOTE__", NOTE_ID)
+
+
+def _who(headers):
+    c = headers.get("Cookie") or ""
+    return "t2" if "fx_user=t2" in c else "t1"
 # resilience knobs (set by selftests in-process): drop the next N auth/me
 # connections without a response, answer auth/me with a fixed status, or send
 # 502 for the next N loads of /lenses/flaky.
@@ -115,7 +150,21 @@ class H(BaseHTTPRequestHandler):
                 return self._send(502, "Bad Gateway")
             return self._send(200, "<!doctype html><html><body><h1>Flaky lens</h1><button>Help</button></body></html>")
         if self.path.startswith("/api/auth/me"):
-            return self._send(200, json.dumps({"ok": True, "user": {"username": "concord-zukoqa", "role": "member"}}), "application/json")
+            user = "zukoqb" if _who(self.headers) == "t2" else "concord-zukoqa"
+            return self._send(200, json.dumps({"ok": True, "user": {"username": user, "role": "member"}}), "application/json")
+        if self.path.startswith("/lenses/upgrades"):
+            return self._send(200, UPGRADES)
+        if self.path.startswith("/api/slow"):
+            time.sleep(1.3)
+            return self._send(200, json.dumps({"ok": True}), "application/json")
+        if self.path.startswith("/api/notes/"):
+            n = NOTES.get(self.path.split("/")[3])
+            # deliberately NO ownership check (the bug the two-account replay must catch)
+            return self._send(200 if n else 404, json.dumps(n or {"error": "not found"}), "application/json")
+        if self.path.startswith("/api/secure-notes/"):
+            n = NOTES.get(self.path.split("/")[3])
+            ok = n and n["owner"] == _who(self.headers)
+            return self._send(200 if ok else 404, json.dumps(n if ok else {"error": "not found"}), "application/json")
         if self.path.startswith("/api/items"):
             return self._send(200, json.dumps(ITEMS), "application/json")
         if self.path.startswith("/api/export"):
@@ -135,10 +184,27 @@ class H(BaseHTTPRequestHandler):
             return self._send(500, "boom")
         self._send(404, "not found")
 
+    def do_PATCH(self):
+        n = int(self.headers.get("Content-Length") or 0)
+        body = self.rfile.read(n).decode()
+        POSTS.append("PATCH " + self.path)
+        if self.path.startswith("/api/notes/"):
+            note = NOTES.get(self.path.split("/")[3])
+            if note:
+                try:
+                    note["pinned"] = bool(json.loads(body or "{}").get("pinned"))
+                except Exception:
+                    pass
+                return self._send(200, json.dumps({"ok": True}), "application/json")
+        self._send(404, "{}", "application/json")
+
     def do_POST(self):
         n = int(self.headers.get("Content-Length") or 0)
         body = self.rfile.read(n).decode()
         POSTS.append(self.path)
+        if self.path.startswith("/api/notes/") and self.path.endswith("/star"):
+            # fake success: 200 but nothing is stored
+            return self._send(200, json.dumps({"ok": True}), "application/json")
         if self.path.startswith("/api/lens/run"):
             return self._send(200, json.dumps({"ok": True, "result": {"value": 4, "signed": False, "signingReason": "missing_declaration"}}),
                               "application/json")

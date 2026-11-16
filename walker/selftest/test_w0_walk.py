@@ -75,7 +75,7 @@ check("W0-01 sha_status ok when it matches --expect-sha", d.get("sha_status") ==
 check("W0-01 deploy has walker_sha/base_url/checked_at/walked_at",
       d.get("base_url") == base and d.get("checked_at") and d.get("walked_at") and "walker_sha" in d, d)
 check("W0-01 screenshots[] with kinds", rec.get("screenshots") and rec["screenshots"][0]["kind"] == "initial"
-      and all(s["kind"] in ("initial", "open", "after_escape", "m390", "mid_task") for s in rec["screenshots"]), rec.get("screenshots"))
+      and all(s["kind"] in ("initial", "open", "after_escape", "m390", "mid_task", "failure") for s in rec["screenshots"]), rec.get("screenshots"))
 check("W0-01 findings[] carry id/signature/check/severity/area/evidence + build stamp",
       isinstance(rec.get("findings"), list) and all(set(("id", "signature", "check", "severity", "area", "evidence", "build_sha", "walked_at")) <= set(f) for f in rec["findings"])
       and all(f["build_sha"] == FIXTURE_SHA[:12] for f in rec["findings"]), rec.get("findings"))

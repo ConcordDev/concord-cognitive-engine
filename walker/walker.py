@@ -168,7 +168,8 @@ def cmd_walk(args, cfg, log):
                         lw = LensWalk(browser, cfg, rec, lens, acct, log, allow_write=args.allow_write, admin=admin,
                                       phases=lphases, inv_entry=lens, gate_check=gate, budget=walk_budget, deploy=deploy,
                                       premap=premap and not gate,
-                                      premap_budget_s=getattr(args, "premap_budget_s", None))
+                                      premap_budget_s=getattr(args, "premap_budget_s", None),
+                                      two_account=bool(getattr(args, "two_account", False)) and not gate and not admin)
                         res = lw.run()
                         break
                     except AccountMismatch as e:
@@ -200,7 +201,7 @@ def cmd_walk(args, cfg, log):
                 new, dups = file_findings(store, rec, lw.findings, dry, log, cfg["tester_name"], filed=filed)
                 res["new_tickets"] = [t["id"] for t in new]
                 res["duplicates"] = [{"title": f["title"], "dup_of": d} for f, d in dups]
-                upgrade_record(res, deploy, filed, all_slugs, lw.screens, lw.net.build())
+                upgrade_record(res, deploy, filed, all_slugs, lw.screens, lw.net.build(), premap_findings=lw.premap_findings)
                 with open(lens_result_path(rec.run_dir, slug), "w") as f:
                     json.dump(res, f, indent=1)
                 manifest.lens(slug, "walked", reason="gate check (reach only)" if gate else None,
@@ -501,6 +502,7 @@ def main():
         p.add_argument("--premap", action="store_true", help="MST-W0-03: add the control sweep (every named control: clicked once if sweep-safe, else a reason)")
         p.add_argument("--premap-budget-s", type=int, help="MST-W0-03: sweep budget per lens in seconds (default thresholds.premap_budget_s, else 600)")
         p.add_argument("--expect-sha", help="MST-W0-01: flag every record whose /health buildSha differs (sha_status=mismatch); never gates a read walk")
+        p.add_argument("--two-account", action="store_true", help="upgrade 3: replay t1's object calls (reads + non-DELETE writes) as t2 from its saved session; 2xx = ownership finding. Needs auth/t2.json; never deletes")
         p.add_argument("--resume", help="resume this run id: lenses already walked in its walk-manifest.json are skipped")
         p.add_argument("--auto-resume", type=int, default=2, help="browser crash relaunches per run (each retries the crashed lens once; default 2)")
 
