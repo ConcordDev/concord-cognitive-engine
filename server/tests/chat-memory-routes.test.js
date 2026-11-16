@@ -14,12 +14,17 @@
  * This suite hermetically mounts the real registerChatRoutes with a
  * stub dependency graph (the chat-session-ownership-gate.test.js
  * recipe — no server.js boot) and pins the contract:
- *   - anonymous → 401 on both routes (requireAuth)
- *   - another user's session → 403 session_forbidden on both routes
- *   - the owner reads real stats (counts + topics, no message bodies)
- *   - a session the server has never seen reads as zeroed stats at 200
- *     (never a 404 during a normal load), and compress answers
- *     session_not_found at 200 without claiming anything happened
+ *   - signed-out → 401 on both routes (requireAuth)
+ *   - account 1 reads its own memory by id → 200 with the real stats
+ *   - account 2 reads account 1's memory by id → 404 not_found, and
+ *     the body matches a missing id (no stats, no topics, no bodies)
+ *   - a session id the server has never seen → 404, same body
+ *   - an ownerless in-memory session is not public. If chat_sessions
+ *     still has owner_id (the state snapshot drops ownerId), that
+ *     owner reads it and anyone else gets 404. With no owner anywhere,
+ *     everyone gets 404.
+ *   - a participant already recorded on the session may read (the
+ *     existing shared-session allow; no admin bypass)
  *   - below the window threshold, compress is an honest no-op
  *     ({ ok:false, error:"below_threshold" }) at 200
  *   - at the threshold, compress actually compresses: the window
@@ -91,12 +96,14 @@ function makeApp(STATE) {
   return app;
 }
 
+const SECRET = "secret-fact-PLUM-77";
+
 function seedSession(STATE, id, ownerId, messageCount) {
   const messages = [];
   for (let i = 0; i < messageCount; i++) {
     messages.push({
       role: i % 2 === 0 ? "user" : "assistant",
-      content: `message ${i} about lattice routing and memory`,
+      content: `message ${i} about lattice routing and memory ${SECRET}`,
       ts: new Date().toISOString(),
     });
   }
@@ -106,6 +113,15 @@ function seedSession(STATE, id, ownerId, messageCount) {
     createdAt: new Date().toISOString(),
     messages,
   });
+}
+
+function assertNoMemoryData(body) {
+  const raw = JSON.stringify(body);
+  assert.equal(raw.includes(SECRET), false, "response leaked memory content");
+  assert.equal(raw.includes("activeMessages"), false, "response leaked memory stats");
+  assert.equal(raw.includes("topics"), false, "response leaked memory topics");
+  assert.equal(raw.includes("windowUtilization"), false);
+  assert.deepEqual(body, { ok: false, error: "not_found" });
 }
 
 async function req(app, method, path, opts = {}) {
@@ -128,9 +144,31 @@ describe("GET /api/chat/memory/:sessionId", () => {
     STATE = { sessions: new Map(), dtus: new Map() };
     seedSession(STATE, "mem-session", "mem-owner", 3);
     seedSession(STATE, "legacy-session", null, 2);
+    seedSession(STATE, "db-down-session", null, 1);
+    // Snapshot reload drops ownerId; chat_sessions.owner_id still names the owner.
+    seedSession(STATE, "restored-session", null, 4);
+    seedSession(STATE, "shared-session", "mem-owner", 2);
+    STATE.sessions.get("shared-session").participantIds.add("mem-guest");
+    const persistedOwners = new Map([["restored-session", "mem-owner"]]);
+    STATE.db = {
+      prepare(sql) {
+        if (!String(sql).includes("owner_id")) throw new Error(`unexpected sql: ${sql}`);
+        return {
+          get(id) {
+            if (id === "db-down-session") throw new Error("db down");
+            const owner = persistedOwners.get(id);
+            return owner ? { owner_id: owner } : undefined;
+          },
+        };
+      },
+    };
     STATE.dtus.set("dtu-mem-1", {
       id: "dtu-mem-1",
-      machine: { kind: "conversation_memory", sessionId: "mem-session", topics: ["lattice", "memory"] },
+      machine: { kind: "conversation_memory", sessionId: "mem-session", topics: ["lattice", SECRET] },
+    });
+    STATE.dtus.set("dtu-restored", {
+      id: "dtu-restored",
+      machine: { kind: "conversation_memory", sessionId: "restored-session", topics: [SECRET] },
     });
     STATE.dtus.set("dtu-mega-1", {
       id: "dtu-mega-1",
@@ -139,19 +177,21 @@ describe("GET /api/chat/memory/:sessionId", () => {
     app = makeApp(STATE);
   });
 
-  it("rejects anonymous callers with 401", async () => {
+  it("signed-out GET /api/chat/memory/:id returns 401", async () => {
     const r = await req(app, "GET", "/api/chat/memory/mem-session");
     assert.equal(r.status, 401);
     assert.equal(r.body.ok, false);
+    assert.equal(JSON.stringify(r.body).includes(SECRET), false);
+    assert.equal(JSON.stringify(r.body).includes("activeMessages"), false);
   });
 
-  it("refuses another user's session with 403 session_forbidden", async () => {
+  it("account 2 GET of account 1's memory id returns 404 with no memory data", async () => {
     const r = await req(app, "GET", "/api/chat/memory/mem-session", { userId: "someone-else" });
-    assert.equal(r.status, 403);
-    assert.deepEqual(r.body, { ok: false, error: "session_forbidden" });
+    assert.equal(r.status, 404);
+    assertNoMemoryData(r.body);
   });
 
-  it("returns the owner's real stats — counts and topics, no bodies", async () => {
+  it("account 1 GET of its own memory id returns 200 with the memory stats", async () => {
     const r = await req(app, "GET", "/api/chat/memory/mem-session", { userId: "mem-owner" });
     assert.equal(r.status, 200);
     assert.equal(r.body.ok, true);
@@ -160,31 +200,50 @@ describe("GET /api/chat/memory/:sessionId", () => {
     assert.equal(r.body.compressionCycles, 0);
     assert.equal(r.body.memoryDtuCount, 1);
     assert.equal(r.body.megaCount, 1);
-    assert.deepEqual([...r.body.topics].sort(), ["lattice", "memory"]);
+    assert.deepEqual([...r.body.topics].sort(), ["lattice", SECRET].sort());
     assert.equal(r.body.windowUtilization, "3/30");
-    assert.ok(!JSON.stringify(r.body).includes("message 0 about"), "stats must not leak message bodies");
+    assert.equal(JSON.stringify(r.body).includes("message 0 about"), false, "stats must not leak message bodies");
   });
 
-  it("reads a legacy ownerless session (pre-ownership permissive rule)", async () => {
+  it("a participant already on the session reads it; a stranger does not", async () => {
+    const guest = await req(app, "GET", "/api/chat/memory/shared-session", { userId: "mem-guest" });
+    assert.equal(guest.status, 200);
+    assert.equal(guest.body.ok, true);
+    assert.equal(guest.body.activeMessages, 2);
+    const stranger = await req(app, "GET", "/api/chat/memory/shared-session", { userId: "someone-else" });
+    assert.equal(stranger.status, 404);
+    assertNoMemoryData(stranger.body);
+  });
+
+  it("snapshot-restored memory: persisted owner reads it, another account gets 404", async () => {
+    const owner = await req(app, "GET", "/api/chat/memory/restored-session", { userId: "mem-owner" });
+    assert.equal(owner.status, 200);
+    assert.equal(owner.body.ok, true);
+    assert.equal(owner.body.activeMessages, 4);
+    assert.ok(owner.body.topics.includes(SECRET));
+    const other = await req(app, "GET", "/api/chat/memory/restored-session", { userId: "someone-else" });
+    assert.equal(other.status, 404);
+    assertNoMemoryData(other.body);
+  });
+
+  it("an ownerless memory id with no persisted owner returns 404 with no memory data", async () => {
     const r = await req(app, "GET", "/api/chat/memory/legacy-session", { userId: "anyone" });
-    assert.equal(r.status, 200);
-    assert.equal(r.body.ok, true);
-    assert.equal(r.body.activeMessages, 2);
+    assert.equal(r.status, 404);
+    assertNoMemoryData(r.body);
   });
 
-  it("answers a never-seen session with zeroed stats at 200 — never a 404", async () => {
-    const r = await req(app, "GET", "/api/chat/memory/brand-new-session", { userId: "mem-owner" });
-    assert.equal(r.status, 200);
-    assert.deepEqual(r.body, {
-      ok: true,
-      activeMessages: 0,
-      totalMessagesProcessed: 0,
-      compressionCycles: 0,
-      memoryDtuCount: 0,
-      megaCount: 0,
-      topics: [],
-      windowUtilization: "0/30",
-    });
+  it("nonexistent memory id returns 404, indistinguishable from a non-owner denial", async () => {
+    const missing = await req(app, "GET", "/api/chat/memory/brand-new-session", { userId: "mem-owner" });
+    const denied = await req(app, "GET", "/api/chat/memory/mem-session", { userId: "someone-else" });
+    assert.equal(missing.status, 404);
+    assert.deepEqual(missing.body, denied.body);
+    assertNoMemoryData(missing.body);
+  });
+
+  it("a failed owner lookup does not fall open", async () => {
+    const r = await req(app, "GET", "/api/chat/memory/db-down-session", { userId: "mem-owner" });
+    assert.equal(r.status, 404);
+    assertNoMemoryData(r.body);
   });
 });
 
@@ -195,25 +254,60 @@ describe("POST /api/chat/memory/:sessionId/compress", () => {
     STATE = { sessions: new Map(), dtus: new Map() };
     seedSession(STATE, "small-session", "mem-owner", 3);
     seedSession(STATE, "big-session", "mem-owner", 55);
+    seedSession(STATE, "legacy-session", null, 3);
+    seedSession(STATE, "restored-session", null, 3);
+    STATE.db = {
+      prepare() {
+        return {
+          get(id) {
+            return id === "restored-session" ? { owner_id: "mem-owner" } : undefined;
+          },
+        };
+      },
+    };
     app = makeApp(STATE);
   });
 
-  it("rejects anonymous callers with 401", async () => {
+  it("signed-out POST /api/chat/memory/:id/compress returns 401", async () => {
     const r = await req(app, "POST", "/api/chat/memory/small-session/compress");
     assert.equal(r.status, 401);
+    assert.equal(JSON.stringify(r.body).includes(SECRET), false);
   });
 
-  it("refuses another user's session with 403 session_forbidden", async () => {
+  it("account 2 POST compress of account 1's memory id returns 404 and does not write", async () => {
+    const beforeLen = STATE.sessions.get("small-session").messages.length;
     const r = await req(app, "POST", "/api/chat/memory/small-session/compress", { userId: "someone-else" });
-    assert.equal(r.status, 403);
-    assert.deepEqual(r.body, { ok: false, error: "session_forbidden" });
+    assert.equal(r.status, 404);
+    assertNoMemoryData(r.body);
+    assert.equal(STATE.sessions.get("small-session").messages.length, beforeLen);
   });
 
-  it("answers an unknown session session_not_found at 200, claiming nothing", async () => {
+  it("nonexistent memory id compress returns 404", async () => {
     const r = await req(app, "POST", "/api/chat/memory/nope/compress", { userId: "mem-owner" });
-    assert.equal(r.status, 200);
-    assert.equal(r.body.ok, false);
-    assert.equal(r.body.error, "session_not_found");
+    assert.equal(r.status, 404);
+    assertNoMemoryData(r.body);
+    const denied = await req(app, "POST", "/api/chat/memory/small-session/compress", { userId: "someone-else" });
+    assert.deepEqual(r.body, denied.body);
+  });
+
+  it("an ownerless session compress returns 404 and does not write", async () => {
+    const beforeLen = STATE.sessions.get("legacy-session").messages.length;
+    const r = await req(app, "POST", "/api/chat/memory/legacy-session/compress", { userId: "someone-else" });
+    assert.equal(r.status, 404);
+    assertNoMemoryData(r.body);
+    assert.equal(STATE.sessions.get("legacy-session").messages.length, beforeLen);
+  });
+
+  it("snapshot-restored session: owner may compress, another account gets 404", async () => {
+    const other = await req(app, "POST", "/api/chat/memory/restored-session/compress", { userId: "someone-else" });
+    assert.equal(other.status, 404);
+    assertNoMemoryData(other.body);
+    assert.equal(STATE.sessions.get("restored-session").messages.length, 3);
+    const owner = await req(app, "POST", "/api/chat/memory/restored-session/compress", { userId: "mem-owner" });
+    assert.equal(owner.status, 200);
+    assert.equal(owner.body.ok, false);
+    assert.equal(owner.body.error, "below_threshold");
+    assert.equal(owner.body.stats.activeMessages, 3);
   });
 
   it("is an honest no-op below the window threshold", async () => {
@@ -239,5 +333,8 @@ describe("POST /api/chat/memory/:sessionId/compress", () => {
     const after = await req(app, "GET", "/api/chat/memory/big-session", { userId: "mem-owner" });
     assert.equal(after.body.activeMessages, 35);
     assert.equal(after.body.compressionCycles, 1);
+    const other = await req(app, "GET", "/api/chat/memory/big-session", { userId: "someone-else" });
+    assert.equal(other.status, 404);
+    assertNoMemoryData(other.body);
   });
 });
