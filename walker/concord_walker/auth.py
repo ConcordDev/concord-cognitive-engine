@@ -71,10 +71,38 @@ def expected_username(cfg, account_key):
     return cfg["accounts"][account_key]["username"]
 
 
+AUTH_RETRY_BACKOFF_S = (2, 5, 15, 30)
+
+
+def _transient(me):
+    """No response at all, or a gateway/server error: a blip, not a signed-out session."""
+    st = me.get("status")
+    return st is None or st in (408, 429) or st >= 500
+
+
+def whoami_with_retry(context, cfg, purpose="", log=None, sleep=time.sleep):
+    """WALKER-ISSUES (Nov 16, 07:06 ET): auth/me returned no response once and the
+    whole walk aborted. Retry transient failures (no response, 408/429/5xx) with
+    backoff (thresholds.auth_retry_backoff_s, default 2,5,15,30 s). A real answer
+    (200 wrong user, 401, 403) is returned at once: a signed-out or wrong account
+    still aborts immediately."""
+    backoff = (cfg.get("thresholds") or {}).get("auth_retry_backoff_s", AUTH_RETRY_BACKOFF_S)
+    me = whoami(context, cfg["base_url"])
+    for i, wait in enumerate(backoff):
+        if me.get("ok") or not _transient(me):
+            break
+        if log:
+            log("  auth/me transient failure before %s (status %s); retry %d/%d in %ss"
+                % (purpose, me.get("status"), i + 1, len(backoff), wait))
+        sleep(wait)
+        me = whoami(context, cfg["base_url"])
+    return me
+
+
 def assert_account(context, cfg, account_key, purpose, log=None):
     """Abort (raise) unless the session is exactly the expected QA account with an allowed role."""
     acct = cfg["accounts"][account_key]
-    me = whoami(context, cfg["base_url"])
+    me = whoami_with_retry(context, cfg, purpose, log)
     if log:
         log("auth/me before %s: user=%s role=%s status=%s" % (purpose, me.get("username"), me.get("role"), me.get("status")))
     if not me["ok"]:

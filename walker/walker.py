@@ -39,12 +39,15 @@ def wait_for_memory(cfg, log):
     return False
 
 
-def file_findings(store, rec, findings, dry, log, tester):
+def file_findings(store, rec, findings, dry, log, tester, filed=None):
+    """filed (optional list) receives (finding, ticket_id, 'new'|'dup') for schema v2 findings[]."""
     new, dups, reserved = [], [], []
+    filed = filed if filed is not None else []
     for f in findings:
         dup = store.find_duplicate(f)
         if dup:
             dups.append((f, dup))
+            filed.append((f, dup, "dup"))
             st = store.status(dup)
             if st in ("VERIFIED",):
                 rec.judgment(f["lens"], "possible_regression", "Walker finding '%s' matches %s which is VERIFIED; reopen?" % (f["title"], dup), f["evidence"], ticket_id=dup)
@@ -52,6 +55,7 @@ def file_findings(store, rec, findings, dry, log, tester):
         tid = store.next_id(f["lens"], reserved)
         reserved.append(tid)
         new.append(store.to_ticket(f, tid, tester))
+        filed.append((f, tid if not dry else "candidate:" + tid, "new" if not dry else "candidate"))
     with open(os.path.join(rec.run_dir, "dedup.jsonl"), "a") as fh:
         for f, d in dups:
             fh.write(json.dumps({"lens": f["lens"], "check": f["check"], "title": f["title"], "dup_of": d}) + "\n")
@@ -85,31 +89,65 @@ def pick_lenses(inv, args):
     return lenses
 
 
+class WalkAborted(SystemExit):
+    pass
+
+
+def _is_browser_crash(e):
+    n = type(e).__name__
+    t = str(e)
+    return n in ("Error", "TargetClosedError") and any(k in t for k in (
+        "Target closed", "Target page, context or browser has been closed", "Browser has been closed",
+        "browser has disconnected", "Connection closed"))
+
+
 def cmd_walk(args, cfg, log):
     from playwright.sync_api import sync_playwright
+    from concord_walker.lensrecord import deploy_stamp, upgrade_record, Manifest, checks_not_run
     inv = load_inventory(cfg)
     lenses = pick_lenses(inv, args)
+    all_slugs = [l["slug"] for l in inv]
     dry = args.dry_run or args.no_auth
-    rid = run_id()
+    rid = getattr(args, "resume", None) or run_id()
     rec = RunRecorder(cfg, rid, dry=dry)
     log.path = os.path.join(rec.run_dir, "walker.log")
     store = TicketStore(cfg["audit_dir"])
+    premap = bool(getattr(args, "premap", False))
     phases = args.phases.split(",") if args.phases else READ_PHASES + (["write"] if args.allow_write else [])
+    if premap and "sweep" not in phases:
+        phases = phases + ["sweep"]
     if not args.no_auth and not has_session(cfg, "t1"):
         raise SystemExit("no saved session for %s (auth/t1.json). Run: walker.py login --account t1 --headed  "
                          "(or use --no-auth for a signed-out smoke)" % cfg["accounts"]["t1"]["username"])
-    log("run %s: %d lens(es), phases=%s, write=%s, dry=%s" % (rid, len(lenses), phases, args.allow_write, dry))
+    manifest = Manifest(rec.run_dir, rid, len(lenses))
+    done_before = manifest.walked_slugs() if getattr(args, "resume", None) else set()
+    if done_before:
+        log("resume %s: %d lens(es) already walked, skipping them" % (rid, len(done_before)))
+    expect = getattr(args, "expect_sha", None)
+    run_deploy = deploy_stamp(cfg["base_url"], cfg["_walker_dir"], expect_sha=expect)
+    log("build stamp: backend=%s frontend=%s walker=%s status=%s%s" % (
+        (run_deploy["backend_sha"] or "NONE")[:12], run_deploy["frontend_build_id"], (run_deploy["walker_sha"] or "?")[:12],
+        run_deploy["sha_status"], (" (%s)" % run_deploy["sha_note"]) if run_deploy["sha_note"] else ""))
+    manifest.data["deploy"] = run_deploy
+    log("run %s: %d lens(es), phases=%s, write=%s, dry=%s, premap=%s" % (rid, len(lenses), phases, args.allow_write, dry, premap))
     summary = []
     from concord_walker.runstate import LensBudget
     walk_budget = LensBudget(cfg["thresholds"]["lens_budget_s"])  # WALK-05 hook: one run-shared per-lens budget
+    abort = None
+    relaunches_left = int(getattr(args, "auto_resume", 2) or 0)
     with RunLock(os.path.join(cfg.get("runs_dir") or cfg["_walker_dir"], "run.lock")), sync_playwright() as pw:
-        browser = pw.chromium.launch(channel="chrome", headless=True, args=["--disable-dev-shm-usage"])
+        def launch():
+            return pw.chromium.launch(channel="chrome", headless=True, args=["--disable-dev-shm-usage"])
+        browser = launch()
         try:
             for lens in lenses:
-                if not wait_for_memory(cfg, log):
-                    log("memory stayed low; stopping run before %s" % lens["slug"])
-                    break
                 slug = lens["slug"]
+                if slug in done_before:
+                    continue
+                if not wait_for_memory(cfg, log):
+                    log("memory stayed low; stopping run before %s" % slug)
+                    abort = (slug, "memory stayed low")
+                    break
                 acct, admin, lphases = (None if args.no_auth else "t1"), False, phases
                 gate = False
                 if slug in cfg["admin_lenses"]:
@@ -119,27 +157,72 @@ def cmd_walk(args, cfg, log):
                     else:
                         gate = True  # non-admin gate check: the gate holding is the PASS
                         lphases = ["reach"]
-                try:
-                    lw = LensWalk(browser, cfg, rec, lens, acct, log, allow_write=args.allow_write, admin=admin,
-                                  phases=lphases, inv_entry=lens, gate_check=gate, budget=walk_budget)
-                    res = lw.run()
-                except AccountMismatch as e:
-                    log("ABORT: account check failed on %s: %s" % (slug, e))
-                    append_text(os.path.join(rec.run_dir, "ABORTED.txt"), "%s %s: %s\n" % (human_et(), slug, e))
+                # MST-W0-01: every record carries the build it ran against (re-read per lens:
+                # a mid-run deploy shows as sha_status=drift, never silently as current)
+                deploy = deploy_stamp(cfg["base_url"], cfg["_walker_dir"], expect_sha=expect, previous=run_deploy)
+                if deploy["sha_status"] != "ok":
+                    log("  build stamp %s: %s" % (deploy["sha_status"], deploy["sha_note"]))
+                lw, attempt = None, 0
+                while True:
+                    try:
+                        lw = LensWalk(browser, cfg, rec, lens, acct, log, allow_write=args.allow_write, admin=admin,
+                                      phases=lphases, inv_entry=lens, gate_check=gate, budget=walk_budget, deploy=deploy,
+                                      premap=premap and not gate,
+                                      premap_budget_s=getattr(args, "premap_budget_s", None))
+                        res = lw.run()
+                        break
+                    except AccountMismatch as e:
+                        log("ABORT: account check failed on %s: %s" % (slug, e))
+                        append_text(os.path.join(rec.run_dir, "ABORTED.txt"), "%s %s: %s\n" % (human_et(), slug, e))
+                        abort = (slug, "account check failed: %s" % e)
+                        break
+                    except Exception as e:
+                        # WALKER-ISSUES auto-resume: a browser crash relaunches Chrome and retries the lens once
+                        if _is_browser_crash(e) and relaunches_left > 0 and attempt == 0:
+                            relaunches_left -= 1
+                            attempt += 1
+                            log("  browser crashed on %s (%s); relaunching and retrying once (%d relaunch(es) left)"
+                                % (slug, type(e).__name__, relaunches_left))
+                            try:
+                                browser.close()
+                            except Exception:
+                                pass
+                            browser = launch()
+                            continue
+                        log("ABORT: %s on %s: %s" % (type(e).__name__, slug, str(e)[:200]))
+                        append_text(os.path.join(rec.run_dir, "ABORTED.txt"), "%s %s: %s %s\n" % (human_et(), slug, type(e).__name__, str(e)[:200]))
+                        abort = (slug, "%s: %s" % (type(e).__name__, str(e)[:120]))
+                        break
+                if abort:
+                    manifest.lens(slug, "aborted", reason=abort[1], deploy=deploy)
                     break
-                new, dups = file_findings(store, rec, lw.findings, dry, log, cfg["tester_name"])
+                filed = []
+                new, dups = file_findings(store, rec, lw.findings, dry, log, cfg["tester_name"], filed=filed)
                 res["new_tickets"] = [t["id"] for t in new]
                 res["duplicates"] = [{"title": f["title"], "dup_of": d} for f, d in dups]
+                upgrade_record(res, deploy, filed, all_slugs, lw.screens, lw.net.build())
                 with open(lens_result_path(rec.run_dir, slug), "w") as f:
                     json.dump(res, f, indent=1)
+                manifest.lens(slug, "walked", reason="gate check (reach only)" if gate else None,
+                              checks_not_run=checks_not_run(res), deploy=deploy)
                 summary.append(res)
                 write_root_causes(cfg["audit_dir"], log=log)
         finally:
-            browser.close()
+            try:
+                browser.close()
+            except Exception:
+                pass
             left = rec.flush_leftovers()
             write_summary(rec, summary, left, dry)
             write_root_causes(cfg["audit_dir"], log=log)
-    log("run %s done: %s" % (rid, rec.run_dir))
+    walked, total = manifest.counts()
+    if abort:
+        manifest.finish("aborted", note="aborted at %s: %s" % abort)
+        log("WALK ABORTED run %s at %s: walked %d/%d lenses (%s). Resume: walker.py sweep --resume %s"
+            % (rid, abort[0], walked, total, abort[1], rid))
+        raise WalkAborted(3)
+    manifest.finish("done")
+    log("WALK DONE run %s: walked %d/%d lenses: %s" % (rid, walked, total, rec.run_dir))
 
 
 def write_summary(rec, summary, left, dry):
@@ -415,6 +498,11 @@ def main():
         p.add_argument("--no-auth", action="store_true", help="signed-out smoke (implies --dry-run)")
         p.add_argument("--phases", help="comma list from: " + ",".join(READ_PHASES + ["write"]))
         p.add_argument("--base-url", help="override base url (selftest only)")
+        p.add_argument("--premap", action="store_true", help="MST-W0-03: add the control sweep (every named control: clicked once if sweep-safe, else a reason)")
+        p.add_argument("--premap-budget-s", type=int, help="MST-W0-03: sweep budget per lens in seconds (default thresholds.premap_budget_s, else 600)")
+        p.add_argument("--expect-sha", help="MST-W0-01: flag every record whose /health buildSha differs (sha_status=mismatch); never gates a read walk")
+        p.add_argument("--resume", help="resume this run id: lenses already walked in its walk-manifest.json are skipped")
+        p.add_argument("--auto-resume", type=int, default=2, help="browser crash relaunches per run (each retries the crashed lens once; default 2)")
 
     p = sub.add_parser("sweep", help="walk every lens in inventory.json (or a filtered subset)")
     walk_opts(p)

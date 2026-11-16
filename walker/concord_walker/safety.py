@@ -76,3 +76,56 @@ def is_menu_format_safe(name):
 
 def is_close_safe(name):
     return bool(CLOSE.search(name or ""))
+
+
+# ---------------------------------------------------------------- MST-W0-03 premap sweep
+# The sweep clicks a named control once only when this policy allows it. It
+# reuses HARD_DENY / ADMIN_EXTRA_DENY and adds the spec's sweep list. Lens
+# compute verbs (Run, Calculate, Balance, Solve, ...) are the one widening over
+# HARD_DENY: they hit POST /api/lens/run, which is exactly the endpoint the
+# premap must record. They are still refused on write-skip lenses, and any
+# bulk/all qualifier refuses them everywhere.
+SWEEP_DENY = re.compile(r"(?i)\b(delete|remove|clear|reset|publish|share|send|pay|buy|purchase|withdraw|transfer|"
+                        r"mint|approve|reject|accept|sign\s*out|log\s*out|logout|theme|dark mode|light mode|"
+                        r"notifications?|inbox|language|locale|mark (all )?(as )?read|dismiss all|unsubscribe|destroy|purge|wipe|trash)\b")
+DESTRUCTIVE = re.compile(r"(?i)\b(delete|remove|clear|reset|purge|wipe|destroy|trash|drop|truncate|revoke|ban)\b")
+SWEEP_COMPUTE = re.compile(r"(?i)^\s*(run|calc|calculate|compute|balance|solve|analy[sz]e|check|validate|preview|"
+                           r"estimate|convert|predict|evaluate)\b")
+SWEEP_NAV = re.compile(r"(?i)^\s*(search|find|refresh|reload|load more|show more|show less|next|prev|previous|"
+                       r"zoom in|zoom out|expand|collapse|open|close|back|toggle sidebar)\b")
+SWEEP_BULK = re.compile(r"(?i)\b(all|bulk|batch|every|everyone|global|public)\b")
+
+
+def sweep_decision(name, admin=False, read_only=False):
+    """(clickable, reason) for the premap sweep. reason in unsafe | destructive |
+    admin_only | write_skip_lens (None when clickable)."""
+    n = (name or "").strip()
+    if not n:
+        return False, "unsafe"
+    if DESTRUCTIVE.search(n):
+        return False, "destructive"
+    if admin:
+        return False, "admin_only"  # admin lenses stay look-only: nothing new is clicked there
+    if SWEEP_DENY.search(n):
+        return False, "unsafe"
+    m = SWEEP_COMPUTE.match(n)
+    if m:
+        rest = n[m.end():]
+        if SWEEP_BULK.search(rest) or HARD_DENY.search(rest):
+            return False, "unsafe"
+        if read_only:
+            return False, "write_skip_lens"
+        return True, None
+    if is_opener_safe(n):
+        return True, None
+    m = SWEEP_NAV.match(n)
+    if m:
+        rest = n[m.end():]
+        return (False, "unsafe") if HARD_DENY.search(rest) else (True, None)
+    if HARD_DENY.search(n):
+        return False, "unsafe"
+    return True, None
+
+
+def is_sweep_safe(name, admin=False, read_only=False):
+    return sweep_decision(name, admin, read_only)[0]

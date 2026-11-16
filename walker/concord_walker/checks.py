@@ -6,6 +6,8 @@ from .cdp import Cdp, wait_until
 from .auth import new_context, assert_account, AccountMismatch, whoami, expected_username
 from .util import control_label, scrub, human_et
 from .runstate import LensBudget  # WALK-05 budget hook: the run-shared per-lens tracker
+from .netledger import NetLedger, LOAD_CONTROL  # MST-W0-02 per-control endpoint ledger
+from .lensrecord import shot_kind, row_stamp  # MST-W0-01 screenshots[] kinds + build stamp
 
 ERROR_TEXT = re.compile(r"(?i)^\s*(something went wrong|application error|unhandled runtime error|"
                         r"this page could not be found|404|page not found|failed to load( lens)?|error loading|"
@@ -38,7 +40,8 @@ class LensWalk:
     """One lens, one account. Call run(); then .findings / .result."""
 
     def __init__(self, browser, cfg, rec, lens, account_key, log, allow_write=False, admin=False,
-                 phases=None, inv_entry=None, url_override=None, gate_check=None, budget=None):
+                 phases=None, inv_entry=None, url_override=None, gate_check=None, budget=None, deploy=None,
+                 premap=False, premap_budget_s=None):
         self.b, self.cfg, self.rec, self.lens, self.acct, self.log = browser, cfg, rec, lens, account_key, log
         self.slug, self.url = lens["slug"], lens["url"]
         # A gate check = a non-admin account opening an admin lens: the gate
@@ -67,6 +70,14 @@ class LensWalk:
         self.native_dialogs = []
         self.t_start = time.time()
         self.shot_n = 0
+        # MST-W0-01/02: build stamp, screenshots[], per-control endpoint ledger
+        self.deploy = deploy
+        self.screens = []
+        self.net = NetLedger(cfg["base_url"], stamp=row_stamp(deploy))
+        self._nav_cid = LOAD_CONTROL
+        # MST-W0-03: premap sweep (opt-in) with its own budget
+        self.premap = premap
+        self.premap_budget_s = premap_budget_s or self.th.get("premap_budget_s", 600)
 
     # ---------------------------------------------------------------- infra
     def over_budget(self):
@@ -128,11 +139,18 @@ class LensWalk:
         ctx = new_context(self.b, self.cfg, account if account is not None else self.acct, vp, mobile=mobile)
         page = ctx.new_page()
         self.attach(page)
-        return ctx, page, Cdp(ctx, page)
+        self.net.attach(page)
+        cdp = Cdp(ctx, page)
+        self.net.watch_initiators(cdp.s)
+        return ctx, page, cdp
 
     def _close(self, ctx):
         """Persist refreshed session cookies (token rotation) back to auth/<acct>.json, then close.
         Only saved when auth/me still shows the expected account."""
+        try:
+            self.net.flush()  # resolve this page's requests before the context goes away
+        except Exception:
+            pass
         try:
             if self.acct:
                 from .auth import storage_path
@@ -163,7 +181,9 @@ class LensWalk:
             if jpeg:
                 kw.update(type="jpeg", quality=60)
             page.screenshot(**kw)
-            return self.rec.rel(path)
+            rel = self.rec.rel(path)
+            self.screens.append({"path": rel, "kind": shot_kind(safe)})
+            return rel
         except Exception as e:
             self.log("  screenshot failed", name, type(e).__name__)
             return None
@@ -193,17 +213,38 @@ class LensWalk:
         d["status"] = st
         self.result["checks"][check] = d
 
+    GATEWAY = (502, 503, 504)
+
     def nav(self, page, cdp, label="load"):
+        # MST-W0-02: a navigation is the page-load control (sticky window until settled)
+        self.net.open_window("load", "page", "-", sticky=True, cid=self._nav_cid)
+        try:
+            return self._nav(page, cdp)
+        finally:
+            self.net.close_window()
+
+    def _nav(self, page, cdp):
         t0 = time.time()
         resp, err = None, None
-        try:
-            resp = page.goto(self.url, wait_until="domcontentloaded", timeout=self.th["nav_timeout_ms"])
-            t_dcl = time.time() - t0
-            page.wait_for_load_state("load", timeout=self.th["nav_timeout_ms"])
-            t_load = time.time() - t0
-        except Exception as e:
-            err = type(e).__name__
-            t_dcl = t_load = time.time() - t0
+        retries = self.th.get("gateway_retries", 2)
+        for attempt in range(retries + 1):
+            resp, err = None, None
+            try:
+                resp = page.goto(self.url, wait_until="domcontentloaded", timeout=self.th["nav_timeout_ms"])
+                t_dcl = time.time() - t0
+                page.wait_for_load_state("load", timeout=self.th["nav_timeout_ms"])
+                t_load = time.time() - t0
+            except Exception as e:
+                err = type(e).__name__
+                t_dcl = t_load = time.time() - t0
+            # WALKER-ISSUES: a 502/503/504 from the edge is a blip, not a lens bug —
+            # back off and retry the navigation before judging the lens.
+            if resp is not None and resp.status in self.GATEWAY and attempt < retries:
+                self.log("  gateway %d on %s; retry %d/%d" % (resp.status, self.slug, attempt + 1, retries))
+                self.gateway_retries = getattr(self, "gateway_retries", 0) + 1
+                time.sleep(self.th.get("gateway_backoff_s", 5) * (attempt + 1))
+                continue
+            break
         try:
             page.wait_for_load_state("networkidle", timeout=self.th["settle_ms_judgment"])
             settled = True
@@ -247,7 +288,21 @@ class LensWalk:
             ok = self.reach(page, cdp)
             if ok:
                 for ph, fn in (("surface", self.surface), ("tabs", self.tabs), ("keyboard", self.keyboard),
-                               ("openers", self.openers), ("export", self.export), ("contrast", self.contrast)):
+                               ("openers", self.openers), ("export", self.export), ("contrast", self.contrast),
+                               ("sweep", self.sweep)):
+                    if ph == "sweep":
+                        # MST-W0-03: opt-in (--premap), its own budget, never NOT_RUN by the lens budget
+                        if not (self.premap or "sweep" in self.phases):
+                            continue
+                        try:
+                            self.reset_page(page, cdp)
+                            self.sweep(page, cdp)
+                        except AccountMismatch:
+                            raise
+                        except Exception as e:
+                            self.log("  phase sweep error: %s" % scrub(repr(e), 200))
+                            self.mark("premap_sweep", "ERROR", error=scrub(repr(e), 200))
+                        continue
                     if ph not in self.phases:
                         self.mark(ph, "NOT_RUN", reason="phase not selected")
                         continue
@@ -289,6 +344,86 @@ class LensWalk:
         self.result["elapsed_s"] = int(time.time() - self.t_start)
         self._note_budget()
         return self.result
+
+    # ---------------------------------------------------------------- MST-W0-03 sweep
+    SWEEP_ROLES = ("button", "tab", "menuitem")
+    REUSE_PHASES = ("tab", "opener", "export", "write")
+
+    @staticmethod
+    def _ax_sig(ax):
+        return frozenset((n.role, n.name) for n in ax.live() if n.name)
+
+    def sweep(self, page, cdp):
+        """Every named button/tab/menuitem gets one controls[] row: exercised (clicked
+        once here, or reused from the phase that already clicked it) or a reason.
+        Records only; files nothing (DEAD-BUTTON filing is MST-W2-19)."""
+        from .netledger import control_id
+        t0 = time.time()
+        read_only = self.slug in self.cfg.get("write_skip_lenses", [])
+        ax = cdp.ax()
+        cands, seen = [], set()
+        for n in ax.by_role(*self.SWEEP_ROLES):
+            if not (n.name or "").strip():
+                continue
+            key = (n.role, control_label(n.name))
+            if key in seen:
+                continue
+            seen.add(key)
+            cands.append((n.role, control_label(n.name), n.name, n.disabled))
+        prior = {}
+        for cid, m in self.net.meta.items():
+            if m["phase"] in self.REUSE_PHASES and m.get("exercised"):
+                prior.setdefault(m["name"], cid)
+        cap = self.th.get("max_sweep_controls", 120)
+        counts = {"clicked": 0, "reused": 0, "skipped": 0}
+        for i, (role, label, raw, disabled) in enumerate(cands):
+            cid = control_id("sweep", role, label)
+            if i >= cap:
+                self.net.note_control("sweep", role, label, False, reason="not_in_premap", cid=cid); counts["skipped"] += 1
+                continue
+            if label in prior:
+                self.net.note_control("sweep", role, label, True, cid=cid, reused_from=prior[label]); counts["reused"] += 1
+                continue
+            if disabled:
+                self.net.note_control("sweep", role, label, False, reason="disabled", cid=cid); counts["skipped"] += 1
+                continue
+            ok, why = safety.sweep_decision(raw, admin=self.admin, read_only=read_only)
+            if not ok:
+                self.net.note_control("sweep", role, label, False, reason=why, cid=cid); counts["skipped"] += 1
+                continue
+            if time.time() - t0 > self.premap_budget_s or self.crashes:
+                self.net.note_control("sweep", role, label, False, reason="budget" if not self.crashes else "renderer_crashed",
+                                      cid=cid); counts["skipped"] += 1
+                continue
+            ax = cdp.ax()
+            node = next((x for x in ax.by_role(role) if x.name == raw and x.backend and not x.disabled), None)
+            if not node:
+                self.net.note_control("sweep", role, label, False, reason="not_found_after_reset", cid=cid); counts["skipped"] += 1
+                continue
+            url0, sig0 = page.url, self._ax_sig(ax)
+            self.net.open_window("sweep", role, label, cid=cid)
+            if not cdp.click(node.backend):
+                self.net.meta[cid].update(exercised=False, reason="not_visible"); counts["skipped"] += 1
+                continue
+            counts["clicked"] += 1
+            try:
+                page.wait_for_timeout(int(self.th.get("sweep_settle_ms", 1200)))
+            except Exception:
+                pass
+            ax1 = cdp.ax()
+            if page.url.split("#")[0] != url0.split("#")[0]:
+                eff = "nav"
+            elif self._ax_sig(ax1) != sig0:
+                eff = "ax_change"
+            else:
+                eff = "none"
+            self.net.set_effect(cid, eff)
+            self.net.close_window()
+            if ax1.popups():
+                page.keyboard.press("Escape")
+            self.reset_page(page, cdp)
+        self.mark("premap_sweep", "PASS", controls=len(cands), budget_s=self.premap_budget_s,
+                  elapsed_s=int(time.time() - t0), **counts)
 
     def reset_page(self, page, cdp):
         """Return to a clean lens state between phases (close popups by reload)."""
@@ -403,7 +538,10 @@ class LensWalk:
                 continue
             pe0 = len(self.page_errors)
             t0 = time.time()
+            tcid = self.net.open_window("tab", "tab", control_label(name))
             if not cdp.click(node.backend):
+                self.net.note_control("tab", "tab", control_label(name), False, reason="not_visible", cid=tcid)
+                self.net.meta[tcid].update(exercised=False, reason="not_visible")
                 out.append({"tab": control_label(name), "status": "NOT_VISIBLE"})
                 continue
             sel, dt = wait_until(lambda: next((n for n in cdp.ax().by_role("tab") if n.name == name and n.props.get("selected")), None),
@@ -416,6 +554,7 @@ class LensWalk:
             ax2 = cdp.ax()
             errs = self.error_texts(ax2)
             ev = self.shot(page, "tab-" + control_label(name, 24), jpeg=True)
+            self.net.set_effect(tcid, "ax_change" if sel else "none")
             row = {"tab": control_label(name), "selected": bool(sel), "switch_ms": ms if sel else None, "evidence": ev}
             if errs or len(self.page_errors) > pe0 or self.crashes:
                 row["status"] = "FAIL"; status = "FAIL"
@@ -518,9 +657,12 @@ class LensWalk:
             if not node:
                 continue
             before = {p.backend for p in ax.popups()}
+            ocid = self.net.open_window("opener", node.role, key)
             if not cdp.click(node.backend):
+                self.net.meta[ocid].update(exercised=False, reason="not_visible")
                 continue
             got, _ = wait_until(lambda: self._popup_new(cdp, before, node.backend), timeout=2.0)
+            self.net.set_effect(ocid, "ax_change" if got or self._ax_sig(cdp.ax()) != self._ax_sig(ax) else "none")
             if not got:
                 rows.append({"opener": key, "status": "NO_POPUP"})
                 continue
@@ -545,6 +687,7 @@ class LensWalk:
                                  [ev_open, ev], element=key, area="%s/dialog focus trap" % self.slug)
                     row["trap"] = "FAIL"; status = "FAIL"
             # Escape
+            self.net.open_window("escape", "key", key)
             page.keyboard.press("Escape")
             closed, _ = wait_until(lambda: (pop is None and not any(x.props.get("expanded") for x in cdp.ax().live() if x.backend == node.backend))
                                    or (pop is not None and not any(p.backend == pop.backend for p in cdp.ax().popups())), timeout=2.0)
@@ -619,6 +762,7 @@ class LensWalk:
             if not node:
                 continue
             before = {p.backend for p in cdp.ax().popups()}
+            self.net.open_window("export", node.role, key)
             dl = self._try_download(page, lambda: cdp.click(node.backend), 6000)
             path_via = "direct"
             ev = []
@@ -632,6 +776,7 @@ class LensWalk:
                             and d.backend and not d.disabled and d.backend != node.backend and safety.is_menu_format_safe(d.name)]
                     for o in opts[:1]:
                         path_via = "menu:" + control_label(o.name)
+                        self.net.open_window("export", o.role, control_label(o.name))
                         dl = self._try_download(page, lambda: cdp.click(o.backend), 8000)
             texts = " | ".join(cdp.ax().texts())
             if dl:
@@ -798,6 +943,7 @@ class LensWalk:
 
     def mobile(self):
         ctx, page, cdp = self.open(mobile=True)
+        self._nav_cid = "m390:page:-"
         try:
             t = self.nav(page, cdp)
             if self.signed_out(page) and self.acct:
@@ -853,6 +999,7 @@ class LensWalk:
                              element=off[0], area="%s/mobile layout" % self.slug)
             self.mark("mobile_390", status, **row)
         finally:
+            self._nav_cid = LOAD_CONTROL
             self._close(ctx)
 
     # ---------------------------------------------------------------- write mode
@@ -871,6 +1018,7 @@ class LensWalk:
             texts_before = set(ax.texts())
             assert_account(ctx, self.cfg, self.acct, "create (open form)", self.log)
             before = {p.backend for p in ax.popups()}
+            self.net.open_window("write", "button", control_label(opener.name))
             cdp.click(opener.backend)
             got, _ = wait_until(lambda: self._popup_new(cdp, before, opener.backend), timeout=2.5)
             ax = cdp.ax()
@@ -925,6 +1073,7 @@ class LensWalk:
                 return
             assert_account(ctx, self.cfg, self.acct, "create (submit)", self.log)
             self.rec.fixture(label, self.slug, "create_clicked", "via '%s' > '%s'" % (control_label(opener.name), control_label(submit.name)))
+            self.net.open_window("write", "button", control_label(submit.name))
             cdp.click(submit.backend)
             time.sleep(1.5)
             ev_created = self.shot(page, "created")
@@ -978,6 +1127,7 @@ class LensWalk:
         self.native_dialogs.clear()
         self.dialog_mode = "accept"
         before = {p.backend for p in cdp.ax().popups()}
+        self.net.open_window("write", target.role, control_label(target.name))
         cdp.click(target.backend)  # exactly once
         time.sleep(1.0)
         confirm_seen = bool(self.native_dialogs)
@@ -993,6 +1143,7 @@ class LensWalk:
                     ev_confirm = self.shot(page, "delete-confirm")
                     if btn:
                         assert_account(ctx, self.cfg, self.acct, "delete (confirm)", self.log)
+                        self.net.open_window("write", btn.role, control_label(btn.name))
                         cdp.click(btn.backend); time.sleep(1.0)
                     break
         self.dialog_mode = "dismiss"

@@ -49,6 +49,38 @@ CHAT = r"""<!doctype html><html><head><meta name=viewport content="width=device-
 function send(){const p=document.createElement('p');p.textContent=m.value;document.getElementById('tr').appendChild(p);m.value='';s.disabled=true;}</script></body></html>"""
 
 
+# MST-W0-02/03 premap fixture: a lens-run button, a dead button, a destructive
+# button, a 500 button, a tab, a background poll and a lens GET on load.
+PREMAP = r"""<!doctype html><html><head><meta name=viewport content="width=device-width,initial-scale=1">
+<style>body{background:#111;color:#eee;font:16px sans-serif} button{margin:4px;padding:8px}</style></head><body>
+<h1>Premap lens</h1>
+<div role=tablist><button role=tab aria-selected=true id=ta onclick="tab('a')">Main</button>
+<button role=tab aria-selected=false id=tb onclick="tab('b')">Details</button></div>
+<div id=out>ready</div>
+<button onclick="runCalc()">Run calc</button>
+<button onclick="">Dead button</button>
+<button onclick="fetch('/api/items?del=all',{method:'POST'})">Delete all</button>
+<button onclick="fetch('/api/boom').then(()=>{document.getElementById('out').textContent='boom'})">Load stats</button>
+<button onclick="document.getElementById('out').textContent='shown '+Date.now()">Show tips</button>
+<button disabled>Locked</button>
+<script>
+function tab(x){document.getElementById('ta').setAttribute('aria-selected',x=='a');document.getElementById('tb').setAttribute('aria-selected',x=='b');
+ if(x=='b') fetch('/api/lens/fixture/123e4567-e89b-12d3-a456-426614174000');}
+async function runCalc(){const r=await fetch('/api/lens/run',{method:'POST',headers:{'Content-Type':'application/json'},
+ body:JSON.stringify({domain:'fixture',action:'calc',input:{secret_value:'do-not-store-me',n:2}})});const j=await r.json();
+ document.getElementById('out').textContent='result '+j.result.value;}
+fetch('/api/lens/fixture?limit=5&cursor=abc');
+setInterval(()=>fetch('/api/poll'),700);
+</script></body></html>"""
+
+POSTS = []
+# resilience knobs (set by selftests in-process): drop the next N auth/me
+# connections without a response, answer auth/me with a fixed status, or send
+# 502 for the next N loads of /lenses/flaky.
+AUTH = {"drop_next": 0, "status": None}
+GATEWAY = {"flaky_502": 0}
+
+
 class H(BaseHTTPRequestHandler):
     def log_message(self, *a):
         pass
@@ -67,6 +99,21 @@ class H(BaseHTTPRequestHandler):
         if self.path.startswith("/health"):
             # sha gate (WALK-01): the selftest passes --expect-sha FIXTURE_SHA
             return self._send(200, json.dumps({"ok": True, "buildSha": FIXTURE_SHA}), "application/json")
+        if self.path.startswith("/api/auth/me") and AUTH["drop_next"] > 0:
+            AUTH["drop_next"] -= 1
+            self.close_connection = True
+            try:
+                self.connection.shutdown(2)
+            except Exception:
+                pass
+            return
+        if self.path.startswith("/api/auth/me") and AUTH["status"]:
+            return self._send(AUTH["status"], json.dumps({"ok": False}), "application/json")
+        if self.path.startswith("/lenses/flaky"):
+            if GATEWAY["flaky_502"] > 0:
+                GATEWAY["flaky_502"] -= 1
+                return self._send(502, "Bad Gateway")
+            return self._send(200, "<!doctype html><html><body><h1>Flaky lens</h1><button>Help</button></body></html>")
         if self.path.startswith("/api/auth/me"):
             return self._send(200, json.dumps({"ok": True, "user": {"username": "concord-zukoqa", "role": "member"}}), "application/json")
         if self.path.startswith("/api/items"):
@@ -74,6 +121,12 @@ class H(BaseHTTPRequestHandler):
         if self.path.startswith("/api/export"):
             return self._send(200, json.dumps({"items": ["a", "b"]}), "application/json",
                               {"Content-Disposition": "attachment; filename=demo-export.json"})
+        if self.path.startswith("/lenses/premap"):
+            return self._send(200, PREMAP)
+        if self.path.startswith("/api/poll"):
+            return self._send(200, json.dumps({"ok": True, "n": 1}), "application/json")
+        if self.path.startswith("/api/lens/fixture"):
+            return self._send(200, json.dumps({"ok": True, "items": [{"title": "private row value"}]}), "application/json")
         if self.path.startswith("/lenses/demo"):
             return self._send(200, DEMO)
         if self.path.startswith("/lenses/chat"):
@@ -85,6 +138,12 @@ class H(BaseHTTPRequestHandler):
     def do_POST(self):
         n = int(self.headers.get("Content-Length") or 0)
         body = self.rfile.read(n).decode()
+        POSTS.append(self.path)
+        if self.path.startswith("/api/lens/run"):
+            return self._send(200, json.dumps({"ok": True, "result": {"value": 4, "signed": False, "signingReason": "missing_declaration"}}),
+                              "application/json")
+        if self.path.startswith("/api/items?del=all"):
+            return self._send(500, "{}", "application/json")
         if self.path.startswith("/api/items?del="):
             from urllib.parse import unquote
             v = unquote(self.path.split("=", 1)[1])
