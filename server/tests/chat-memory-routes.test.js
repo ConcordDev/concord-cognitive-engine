@@ -15,14 +15,19 @@
  * stub dependency graph (the chat-session-ownership-gate.test.js
  * recipe — no server.js boot) and pins the contract:
  *   - signed-out → 401 on both routes (requireAuth)
- *   - account 1 reads its own memory by id → 200 with the real stats
- *   - account 2 reads account 1's memory by id → 404 not_found, and
- *     the body matches a missing id (no stats, no topics, no bodies)
- *   - a session id the server has never seen → 404, same body
+ *   - account 1 reads its own memory by id → 200 with the real,
+ *     non-zero stats (counts + topics, no message bodies)
+ *   - GET never 404s for a signed-in caller. A never-seen id and a
+ *     non-owned id (including ownerless / no persisted owner, and a
+ *     failed owner lookup) both return 200 with the same zeroed stats
+ *     body, byte-identical, with none of the real session's data.
+ *     That is what keeps PersistentChatRail's fetch quiet on every
+ *     lens load (FIX-feed-002 / FIX-transfer-005).
+ *   - compress of a missing or non-owned id → 404, and the window
+ *     is not written
  *   - an ownerless in-memory session is not public. If chat_sessions
  *     still has owner_id (the state snapshot drops ownerId), that
- *     owner reads it and anyone else gets 404. With no owner anywhere,
- *     everyone gets 404.
+ *     owner reads real stats and anyone else gets the zeroed body.
  *   - a participant already recorded on the session may read (the
  *     existing shared-session allow; no admin bypass)
  *   - below the window threshold, compress is an honest no-op
@@ -124,14 +129,35 @@ function assertNoMemoryData(body) {
   assert.deepEqual(body, { ok: false, error: "not_found" });
 }
 
+const ZEROED_STATS = {
+  ok: true,
+  activeMessages: 0,
+  totalMessagesProcessed: 0,
+  compressionCycles: 0,
+  memoryDtuCount: 0,
+  megaCount: 0,
+  topics: [],
+  windowUtilization: "0/30",
+};
+
+function assertZeroedStats(body) {
+  assert.deepEqual(body, ZEROED_STATS);
+  const raw = JSON.stringify(body);
+  assert.equal(raw.includes(SECRET), false, "zeroed stats leaked memory content");
+  assert.equal(body.activeMessages, 0);
+  assert.deepEqual(body.topics, []);
+}
+
 async function req(app, method, path, opts = {}) {
   const server = app.listen(0);
   const port = server.address().port;
   try {
     const headers = { ...(opts.userId ? { "x-test-user-id": opts.userId } : {}) };
     const res = await fetch(`http://127.0.0.1:${port}${path}`, { method, headers });
-    const body = await res.json().catch(() => null);
-    return { status: res.status, body };
+    const text = await res.text();
+    let body = null;
+    try { body = text ? JSON.parse(text) : null; } catch { body = null; }
+    return { status: res.status, body, text };
   } finally {
     await new Promise((resolve) => server.close(resolve));
   }
@@ -185,10 +211,13 @@ describe("GET /api/chat/memory/:sessionId", () => {
     assert.equal(JSON.stringify(r.body).includes("activeMessages"), false);
   });
 
-  it("account 2 GET of account 1's memory id returns 404 with no memory data", async () => {
+  it("account 2 GET of account 1's memory id returns the zeroed stats and none of the real session", async () => {
     const r = await req(app, "GET", "/api/chat/memory/mem-session", { userId: "someone-else" });
-    assert.equal(r.status, 404);
-    assertNoMemoryData(r.body);
+    assert.equal(r.status, 200);
+    assertZeroedStats(r.body);
+    assert.equal(r.body.activeMessages === 3, false);
+    assert.equal(r.body.topics.includes(SECRET), false);
+    assert.equal(r.body.topics.includes("lattice"), false);
   });
 
   it("account 1 GET of its own memory id returns 200 with the memory stats", async () => {
@@ -211,39 +240,44 @@ describe("GET /api/chat/memory/:sessionId", () => {
     assert.equal(guest.body.ok, true);
     assert.equal(guest.body.activeMessages, 2);
     const stranger = await req(app, "GET", "/api/chat/memory/shared-session", { userId: "someone-else" });
-    assert.equal(stranger.status, 404);
-    assertNoMemoryData(stranger.body);
+    assert.equal(stranger.status, 200);
+    assertZeroedStats(stranger.body);
+    assert.notEqual(stranger.body.activeMessages, 2);
   });
 
-  it("snapshot-restored memory: persisted owner reads it, another account gets 404", async () => {
+  it("snapshot-restored memory: persisted owner reads it, another account gets zeroed stats", async () => {
     const owner = await req(app, "GET", "/api/chat/memory/restored-session", { userId: "mem-owner" });
     assert.equal(owner.status, 200);
     assert.equal(owner.body.ok, true);
     assert.equal(owner.body.activeMessages, 4);
     assert.ok(owner.body.topics.includes(SECRET));
     const other = await req(app, "GET", "/api/chat/memory/restored-session", { userId: "someone-else" });
-    assert.equal(other.status, 404);
-    assertNoMemoryData(other.body);
+    assert.equal(other.status, 200);
+    assertZeroedStats(other.body);
   });
 
-  it("an ownerless memory id with no persisted owner returns 404 with no memory data", async () => {
+  it("an ownerless memory id with no persisted owner returns the zeroed stats", async () => {
     const r = await req(app, "GET", "/api/chat/memory/legacy-session", { userId: "anyone" });
-    assert.equal(r.status, 404);
-    assertNoMemoryData(r.body);
+    assert.equal(r.status, 200);
+    assertZeroedStats(r.body);
+    assert.notEqual(r.body.activeMessages, 2);
   });
 
-  it("nonexistent memory id returns 404, indistinguishable from a non-owner denial", async () => {
-    const missing = await req(app, "GET", "/api/chat/memory/brand-new-session", { userId: "mem-owner" });
+  it("the zeroed body for a non-owner equals the nonexistent-id body", async () => {
     const denied = await req(app, "GET", "/api/chat/memory/mem-session", { userId: "someone-else" });
-    assert.equal(missing.status, 404);
-    assert.deepEqual(missing.body, denied.body);
-    assertNoMemoryData(missing.body);
+    const missing = await req(app, "GET", "/api/chat/memory/brand-new-session", { userId: "mem-owner" });
+    assert.equal(denied.status, 200);
+    assert.equal(missing.status, 200);
+    assert.equal(denied.text, missing.text, "non-owner and missing id must be byte-identical");
+    assertZeroedStats(denied.body);
+    assertZeroedStats(missing.body);
   });
 
   it("a failed owner lookup does not fall open", async () => {
     const r = await req(app, "GET", "/api/chat/memory/db-down-session", { userId: "mem-owner" });
-    assert.equal(r.status, 404);
-    assertNoMemoryData(r.body);
+    assert.equal(r.status, 200);
+    assertZeroedStats(r.body);
+    assert.notEqual(r.body.activeMessages, 1, "the real message count must not leak when owner lookup throws");
   });
 });
 
@@ -334,7 +368,8 @@ describe("POST /api/chat/memory/:sessionId/compress", () => {
     assert.equal(after.body.activeMessages, 35);
     assert.equal(after.body.compressionCycles, 1);
     const other = await req(app, "GET", "/api/chat/memory/big-session", { userId: "someone-else" });
-    assert.equal(other.status, 404);
-    assertNoMemoryData(other.body);
+    assert.equal(other.status, 200);
+    assertZeroedStats(other.body);
+    assert.notEqual(other.body.activeMessages, 35);
   });
 });
