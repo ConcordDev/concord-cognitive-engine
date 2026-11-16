@@ -125,6 +125,8 @@ def test_sha_gate():
     check("health nested checks.buildSha read", sha_gate.health_build_sha({"checks": {"buildSha": "abc123"}}) == "abc123")
     check("html buildId fallback", sha_gate.html_build_id('<script>{"buildId":"next42"}</script>') == "next42")
     check("html _next/static fallback", sha_gate.html_build_id('<link href="/_next/static/next42/_buildManifest.js">') == "next42")
+    check("App Router chunks/ media/ dirs are not a build id (live gave 'chunks')",
+          sha_gate.html_build_id('<script src="/_next/static/chunks/main.js"></script><link href="/_next/static/media/f.woff2">') is None)
     pages = {"https://x/health": json.dumps({"buildSha": "deadbeef"}),
              "https://x/": "<html></html>"}
     g = sha_gate.gate("deadbeef", "https://x", fetch=lambda u: pages[u])

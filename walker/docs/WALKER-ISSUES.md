@@ -103,3 +103,8 @@ Read this before starting the next walker version.
 - Fix: a new `safety.SWEEP_PAYMENT` regex covers upgrade, pro, premium, pricing, plan(s), subscri*, billing, credits, top up, wallet, invoice, payout, stripe, card, refund, cart, paywall, tier, license. Matching controls are refused with reason `payments` and recorded as skipped.
 - Test: test_w0_schema `payment-adjacent controls refused` (15 names).
 
+## 2026-11-16 09:18 ET: frontend_build_id was the string "chunks" on prod
+- Cause: concord-os.org uses the App Router, so its HTML has no `"buildId"`. The fallback regex then took the first `/_next/static/<dir>/`, which is `chunks`.
+- Fix: the fallback now skips the chunks, css, media, webpack, development, images and fonts dirs. With none left, `frontend_build_id` is None, which is honest. The backend `/health` buildSha is unaffected (495efb7ce243).
+- Test: test_walk01 `App Router chunks/ media/ dirs are not a build id`.
+

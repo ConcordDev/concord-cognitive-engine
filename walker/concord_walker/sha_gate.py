@@ -12,7 +12,8 @@ import json, re, urllib.request
 
 _HEALTH_KEYS = ("buildSha", "build_sha", "sha", "commit")
 _BUILD_ID_RES = (re.compile(r'"buildId"\s*:\s*"([^"]+)"'),
-                 re.compile(r"/_next/static/([^/\"']+)/"))
+                 # App Router pages only expose chunks/ css/ media/ dirs, which are not build ids
+                 re.compile(r"/_next/static/(?!(?:chunks|css|media|webpack|development|images|fonts)/)([^/\"']+)/"))
 
 
 def health_build_sha(health):
