@@ -32,6 +32,7 @@
 
 import { buildCalcReceipt } from "./calc-receipt.js";
 import { issueStoredReceipt } from "./store.js";
+import { solveBeamStudy } from "../../domains/engineering.js";
 import { CHEM_FUELS, CHEM_BOUNDS, chemReceiptParts } from "./chem-equilibrium.js";
 
 const REGISTRY = new Map();
@@ -64,10 +65,107 @@ function resolveReference(decl, inputs) {
   return typeof decl.referenceFor === "function" ? decl.referenceFor(inputs) : decl.reference;
 }
 
+const SOURCE_KINDS = ["book", "paper", "standard", "dataset", "url"];
+
+/** ISBN-10 / ISBN-13 with a valid check digit (hyphens/spaces allowed). Fake identifiers fail here. */
+export function isValidIsbn(raw) {
+  if (typeof raw !== "string") return false;
+  const s = raw.replace(/[\s-]/g, "");
+  if (/^\d{13}$/.test(s)) {
+    const sum = [...s].slice(0, 12).reduce((a, c, i) => a + Number(c) * (i % 2 ? 3 : 1), 0);
+    return (10 - (sum % 10)) % 10 === Number(s[12]);
+  }
+  if (/^\d{9}[\dXx]$/.test(s)) {
+    const sum = [...s].slice(0, 9).reduce((a, c, i) => a + Number(c) * (10 - i), 0);
+    const last = s[9].toUpperCase() === "X" ? 10 : Number(s[9]);
+    return (sum + last) % 11 === 0;
+  }
+  return false;
+}
+
+/** Problems with a reference.source a stranger must be able to open. [] when it is checkable. */
+export function sourceProblems(source) {
+  const bad = [];
+  if (!source || typeof source !== "object" || Array.isArray(source)) return ["source"];
+  if (!SOURCE_KINDS.includes(source.kind)) bad.push("source.kind");
+  if (!nonEmpty(source.citation) || source.citation.trim().length < 15) bad.push("source.citation");
+  if (!nonEmpty(source.locator)) bad.push("source.locator");
+  const ids = [];
+  if (source.isbn !== undefined) { if (isValidIsbn(source.isbn)) ids.push("isbn"); else bad.push("source.isbn"); }
+  if (source.doi !== undefined) { if (typeof source.doi === "string" && /^10\.\d{4,9}\/\S+$/.test(source.doi.trim())) ids.push("doi"); else bad.push("source.doi"); }
+  if (source.url !== undefined) { if (typeof source.url === "string" && /^https?:\/\/[^\s/]+\.[^\s/]+/.test(source.url.trim())) ids.push("url"); else bad.push("source.url"); }
+  if (source.standardId !== undefined) { if (nonEmpty(source.standardId) && source.standardId.trim().length >= 3) ids.push("standardId"); else bad.push("source.standardId"); }
+  if (ids.length === 0) bad.push("source.identifier");
+  return bad;
+}
+
+function referenceProblems(ref) {
+  if (!ref || !nonEmpty(ref.case) || !Number.isFinite(ref.value) || !Number.isFinite(ref.tolerance) || !(ref.tolerance > 0)) return ["reference"];
+  if (!nonEmpty(ref.unit)) return ["reference.unit"];
+  if (!ref.inputs || typeof ref.inputs !== "object" || Array.isArray(ref.inputs) || Object.keys(ref.inputs).length === 0) return ["reference.inputs"];
+  return sourceProblems(ref.source);
+}
+
+function reviewProblems(decl) {
+  const bad = [];
+  if (!nonEmpty(decl.reviewedBy)) bad.push("reviewedBy");
+  if (!nonEmpty(decl.reviewedAt) || !/^\d{4}-\d{2}-\d{2}/.test(decl.reviewedAt) || Number.isNaN(Date.parse(decl.reviewedAt))) bad.push("reviewedAt");
+  return bad;
+}
+
+/** Every reference a declaration carries (the golden test replays each). */
+export function declarationReferences(decl) {
+  if (Array.isArray(decl.referenceList) && decl.referenceList.length) return decl.referenceList;
+  return decl.reference ? [decl.reference] : [];
+}
+
+/** All schema problems for a declaration, across ALL its references. [] when complete. */
+export function declarationProblems(decl) {
+  if (!decl || typeof decl !== "object") return ["declaration"];
+  const bad = [];
+  const refs = declarationReferences(decl);
+  if (refs.length === 0) bad.push("reference");
+  for (const r of refs) bad.push(...referenceProblems(r));
+  bad.push(...reviewProblems(decl));
+  return [...new Set(bad)];
+}
+
+/**
+ * Golden check: run the declaration's own solver on each reference case and compare with the
+ * cited value. A declaration whose reference case does not reproduce must fail CI.
+ * @returns {Promise<Array<{ case:string, expected:number, measured:number|null, tolerance:number, ok:boolean, why?:string }>>}
+ */
+export async function checkReferences(decl) {
+  const out = [];
+  for (const ref of declarationReferences(decl)) {
+    const row = { case: ref.case, expected: ref.value, measured: null, tolerance: ref.tolerance, ok: false };
+    try {
+      if (typeof decl.runReference !== "function") row.why = "no_runReference";
+      else {
+        const m = await decl.runReference(ref);
+        row.measured = Number.isFinite(m) ? m : null;
+        if (row.measured === null) row.why = "solver_did_not_compute";
+        else row.ok = Math.abs(row.measured - ref.value) <= ref.tolerance;
+        if (!row.ok && !row.why) row.why = "outside_tolerance";
+      }
+    } catch (e) { row.why = `threw:${e instanceof Error ? e.message : String(e)}`; }
+    out.push(row);
+  }
+  return out;
+}
+
+/** Registered declarations whose reviewedBy is still a placeholder. Visible debt, never silent. */
+export function pendingReviews() {
+  return [...REGISTRY.entries()].filter(([, d]) => /^pending\b/i.test(String(d.reviewedBy || "").trim())).map(([k]) => k);
+}
+
 /** null when complete, else a reason fragment. */
 function incompleteness(decl, inputs) {
   const ref = resolveReference(decl, inputs);
-  if (!ref || !nonEmpty(ref.case) || !Number.isFinite(ref.value) || !Number.isFinite(ref.tolerance) || !(ref.tolerance > 0)) return "reference";
+  const refBad = referenceProblems(ref);
+  if (refBad.length) return refBad[0];
+  const revBad = reviewProblems(decl);
+  if (revBad.length) return revBad[0];
   const env = decl.envelope;
   if (!env || !env.inputRanges || typeof env.inputRanges !== "object" || Object.keys(env.inputRanges).length === 0) return "envelope.inputRanges";
   if (!Array.isArray(env.assumptions) || env.assumptions.length === 0 || !env.assumptions.every(nonEmpty)) return "envelope.assumptions";
@@ -161,6 +259,29 @@ export function applyReceiptDeclaration({ domain, action, inputs, raw, db, store
 
 // ─── seeded declarations ────────────────────────────────────────────────────
 
+// reviewedBy is a HUMAN (Dutch) or Zuko 2 sign-off. The seeds below were drafted by an LLM and
+// have not been signed off, so they say so; pendingReviews() lists them. Replace on review.
+const REVIEW_PENDING = "PENDING: Dutch or Zuko 2 review";
+const SEED_DATE = "2026-11-16";
+
+// Closed-form Euler–Bernoulli beam results (peak moment, deflection) for the three supports:
+// simply supported centre load (M=PL/4, d=PL^3/48EI), cantilever tip load (M=PL, d=PL^3/3EI),
+// fixed-fixed centre load (M=PL/8, d=PL^3/192EI). ISBN-13 9780071742474 verified against Open Library.
+// The case number inside Table 8.1 has NOT been checked against the book (locatorVerified:false).
+const BEAM_REFERENCE = {
+  case: "Closed-form Euler–Bernoulli hand calculation (peak stress and deflection) for the same support and load, compared with the beam-frame FEA result",
+  value: 0, unit: "% disagreement", tolerance: 2,
+  inputs: { dims: { length: 3000, height: 300, flangeWidth: 150, flangeThickness: 12, webThickness: 8 }, loadN: 20000, support: "simply-supported", material: "steel-a992" },
+  source: {
+    kind: "book",
+    citation: "Young, W. C., Budynas, R. G., Sadegh, A. M., Roark's Formulas for Stress and Strain, 8th ed., McGraw-Hill, 2012",
+    locator: "Table 8.1, Shear, moment, slope, and deflection formulas for finite-length beams of constant cross section (end-loaded cantilever, centre-loaded simply supported and fixed-fixed cases)",
+    isbn: "9780071742474",
+    locatorVerified: false,
+    locatorNote: "table title only; the case numbers inside Table 8.1 were not checked against the book",
+  },
+};
+
 const numOr = (v, d) => (v === undefined || v === null || v === "" ? d : Number(v));
 
 registerDeclaration("chem", "equilibrium", {
@@ -169,6 +290,15 @@ registerDeclaration("chem", "equilibrium", {
   // Default (CH4) reference; H2 swaps via referenceFor.
   reference: CHEM_FUELS.CH4.reference,
   referenceFor: (inputs) => (CHEM_FUELS[String(inputs.fuel).toUpperCase()] || CHEM_FUELS.CH4).reference,
+  referenceList: Object.values(CHEM_FUELS).map((f) => f.reference),
+  // Golden-test hook: run the real solver on a reference case's inputs, return the value in the reference's unit.
+  runReference: async (ref) => {
+    const { solveChemEquilibrium } = await import("./chem-equilibrium.js");
+    const out = await solveChemEquilibrium({ fuel: ref.inputs.fuel, phi: ref.inputs.phi, T0: ref.inputs.T0, P0atm: ref.inputs.P0 });
+    return out.status === "NOT_COMPUTED" ? null : out.tAd;
+  },
+  reviewedBy: REVIEW_PENDING,
+  reviewedAt: SEED_DATE,
   envelope: {
     inputRanges: {
       fuel: { oneOf: Object.keys(CHEM_FUELS) },
@@ -210,10 +340,17 @@ registerDeclaration("engineering", "beamStudy", {
   // check is the FEA result against the closed-form Euler–Bernoulli hand
   // calculation for the same support/load case (summarizeBeamStudy's own
   // 2% tolerance); the receipt's verdict is a yield check at the stated SF.
-  reference: {
-    case: "Closed-form Euler–Bernoulli hand calculation (peak stress and deflection) for the same support and load, compared with the beam-frame FEA result",
-    value: 0, unit: "% disagreement", tolerance: 2,
+  reference: BEAM_REFERENCE,
+  referenceList: [BEAM_REFERENCE],
+  // Golden-test hook: FEA vs the closed-form hand calculation on the reference case, as % disagreement (worst of stress, deflection).
+  runReference: async (ref) => {
+    const solved = solveBeamStudy(ref.inputs);
+    if (!solved.ok) return null;
+    const h = solved.result.handCheck;
+    return Math.max(h.stressError, h.deflectionError) * 100;
   },
+  reviewedBy: REVIEW_PENDING,
+  reviewedAt: SEED_DATE,
   envelope: {
     inputRanges: {
       length: { exclusiveMin: 0, max: 50000, unit: "mm" },
