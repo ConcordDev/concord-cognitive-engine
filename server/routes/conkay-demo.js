@@ -13,9 +13,9 @@ import { listBeamMaterials, solveBeamStudy, solveBeamSweep } from "../domains/en
 import { listSnapshots, loadSnapshot, loadSnapshotFile } from "../lib/conkay/showcase/index.js";
 import { attestReceipt, ensureSigningKey, verifyAttestation } from "../lib/receipts/attest.js";
 import { renderCalcSheetHtml } from "../lib/receipts/calc-sheet.js";
-import { buildCalcReceipt, roundTo } from "../lib/receipts/calc-receipt.js";
-import { issueStoredReceipt } from "../lib/receipts/store.js";
-import { CHEM_FUELS, solveChemEquilibrium, chemReceiptParts } from "../lib/receipts/chem-equilibrium.js";
+import { roundTo } from "../lib/receipts/calc-receipt.js";
+import { applyReceiptDeclaration } from "../lib/receipts/declarations.js";
+import { CHEM_FUELS, solveChemEquilibrium } from "../lib/receipts/chem-equilibrium.js";
 import { hydrateAssembly } from "../lib/conkay/assembly/build.js";
 import { presentGlbFromStl } from "../lib/conkay/assembly/present-glb.js";
 import { subscribeLive, eventsAfter, loadLiveRunFile } from "../lib/conkay/chat/live.js";
@@ -45,11 +45,39 @@ function studyInput(q) {
   };
 }
 
-/** Fields every stored-receipt response carries (saved:true + id + URL, or saved:false + why). */
-function savedFields(issued) {
-  return issued.saved
-    ? { saved: true, receiptId: issued.receiptId, receiptUrl: issued.receiptUrl }
-    : { saved: false, saveError: issued.saveError };
+/** Fields every stored-receipt response carries (saved + id + URL, or saved:false + why). */
+function savedFields(r) {
+  return r.saved === true
+    ? { saved: true, receiptId: r.receiptId, receiptUrl: r.receiptUrl }
+    : { saved: false, ...(r.saveError ? { saveError: r.saveError } : {}) };
+}
+
+/** A gate result that was never stored (calc sheets): signed in memory or unsigned, never persisted. */
+const NOT_STORED = () => ({ ok: false, reason: "not_stored" });
+
+/** The one signing decision for a beam solve (engineering.beamStudy declaration). */
+function gateBeam(solved, query, extra = {}) {
+  return applyReceiptDeclaration({
+    domain: "engineering", action: "beamStudy", inputs: studyInput(query),
+    raw: { ok: true, result: solved.result }, withUnsignedBody: true, ...extra,
+  }).result;
+}
+
+/** The one signing decision for a chem solve (chem.equilibrium declaration). */
+function gateChem(spec, outcome, extra = {}) {
+  const computed = outcome.status !== "NOT_COMPUTED" && Number.isFinite(outcome.tAd);
+  return applyReceiptDeclaration({
+    domain: "chem", action: "equilibrium", inputs: { fuel: spec.fuel, phi: spec.phi, T0: spec.T0, P0: spec.P0atm },
+    raw: {
+      ok: true,
+      result: {
+        status: computed ? "COMPUTED" : "NOT_COMPUTED",
+        ...(computed ? { adiabaticFlameTemperatureK: outcome.tAd, majorProducts: outcome.products } : { reason: outcome.reason }),
+        solver: outcome.solver, assumptions: outcome.assumptions,
+      },
+    },
+    withUnsignedBody: true, ...extra,
+  }).result;
 }
 
 export default function createConkayDemoRouter({ rateLimit, db, store } = {}) {
@@ -67,10 +95,11 @@ export default function createConkayDemoRouter({ rateLimit, db, store } = {}) {
     try {
       const solved = solveBeamStudy(studyInput(req.query));
       if (!solved.ok) return res.status(400).json({ ok: false, error: solved.error });
-      // Sign the receipt over a fresh receiptId and store it. A store failure
-      // never fails the solve: the signed receipt still comes back, saved:false.
-      const issued = issueStoredReceipt(solved.result.calcReceipt, { db, store });
-      res.json({ ok: true, ...savedFields(issued), result: { ...solved.result, calcReceipt: issued.receipt } });
+      // Signed only through the declaration gate (in envelope + declared), then
+      // stored. Out of envelope the numbers still come back, unsigned. A store
+      // failure never fails the solve: saved:false.
+      const gated = gateBeam(solved, req.query, { db, store });
+      res.json({ ok: true, ...savedFields(gated), result: gated });
     } catch (e) {
       res.status(500).json({ ok: false, error: e instanceof Error ? e.message : String(e) });
     }
@@ -82,7 +111,7 @@ export default function createConkayDemoRouter({ rateLimit, db, store } = {}) {
     try {
       const solved = solveBeamStudy(studyInput(req.query));
       if (!solved.ok) return res.status(400).json({ ok: false, error: solved.error });
-      const receipt = solved.result.calcReceipt;
+      const receipt = gateBeam(solved, req.query, { store: NOT_STORED }).calcReceipt;
       res.setHeader("Content-Type", "text/html; charset=utf-8");
       res.setHeader("Cache-Control", "no-store");
       res.send(renderCalcSheetHtml(receipt, { verify: verifyAttestation(receipt) }));
@@ -246,11 +275,13 @@ export default function createConkayDemoRouter({ rateLimit, db, store } = {}) {
       const spec = chemInput(req.query);
       if (!spec.ok) return res.status(400).json({ ok: false, error: spec.error });
       const outcome = await solveChemEquilibrium(spec);
-      const issued = issueStoredReceipt(chemCalcReceipt(spec, outcome), { db, store });
-      const receipt = issued.receipt;
+      const issued = gateChem(spec, outcome, { db, store });
+      const receipt = issued.calcReceipt;
       res.json({
         ok: true, ...savedFields(issued),
         result: {
+          signed: issued.signed === true,
+          ...(issued.signingReason ? { signingReason: issued.signingReason } : {}),
           fuel: spec.fuel, phi: spec.phi, T0: spec.T0, P0: spec.P0atm, mechanism: CHEM_FUELS[spec.fuel].mechanism,
           status: outcome.status,
           ...(outcome.reason ? { reason: outcome.reason } : {}),
@@ -272,7 +303,7 @@ export default function createConkayDemoRouter({ rateLimit, db, store } = {}) {
       const spec = chemInput(req.query);
       if (!spec.ok) return res.status(400).json({ ok: false, error: spec.error });
       const outcome = await solveChemEquilibrium(spec);
-      const receipt = chemCalcReceipt(spec, outcome);
+      const receipt = gateChem(spec, outcome, { store: NOT_STORED }).calcReceipt;
       res.setHeader("Content-Type", "text/html; charset=utf-8");
       res.setHeader("Cache-Control", "no-store");
       res.send(renderCalcSheetHtml(receipt, { verify: verifyAttestation(receipt) }));
@@ -295,9 +326,4 @@ function chemInput(q) {
   const P0atm = q.P0 === undefined || q.P0 === "" ? 1 : Number(q.P0);
   if (!Number.isFinite(P0atm) || P0atm < 0.5 || P0atm > 10) return { ok: false, error: "P0 must be between 0.5 and 10 atm" };
   return { ok: true, fuel, phi, T0, P0atm };
-}
-
-/** The signed v2 calc receipt for one chem demo outcome (parts shared with the chem lens action). */
-function chemCalcReceipt(spec, outcome) {
-  return buildCalcReceipt(chemReceiptParts(spec, outcome));
 }

@@ -242,8 +242,10 @@ describe('E2E — no-login ConKay demo (/api/conkay/demo/*)', { timeout: 150000 
     assert.equal(r.body.ok, true);
     // The spawned server has no receipt signing key, so the receipt is
     // unsigned and is honestly not stored (a signed one would be saved:true).
+    // The declaration gate names why: no_signing_key.
     assert.equal(r.body.saved, false);
-    assert.equal(r.body.saveError, 'unsigned_receipt');
+    assert.equal(r.body.result.signed, false);
+    assert.equal(r.body.result.signingReason, 'no_signing_key');
     const res = r.body.result;
     const direct = solveBeamStudy({
       dims: { length: 4000, height: 300, flangeWidth: 150, flangeThickness: 12, webThickness: 8 },
