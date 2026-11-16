@@ -44,7 +44,7 @@ cfgp = os.path.join(tmp, "config.json"); json.dump(cfg, open(cfgp, "w"))
 
 
 def walk(*a):
-    r = subprocess.run([sys.executable, os.path.join(WALKER, "walker.py"), "--config", cfgp] + list(a),
+    r = subprocess.run([sys.executable, os.path.join(WALKER, "walker.py"), "--config", cfgp] + list(a) + (["--no-replay"] if a and a[0] in ("lens", "sweep") else []),
                        capture_output=True, text=True, timeout=900)
     print("$ walker.py", " ".join(a), "->", r.returncode, flush=True)
     return r

@@ -92,8 +92,9 @@ def test_ledger_writes_union_rows_and_never_touches_main():
     with open(main, "w") as f:
         f.write(MAIN)
     before = open(main, "rb").read()
-    led = WalkerLedger(os.path.join(d, "records", "walker.jsonl"))
-    res = {"id": "FIX-alpha-001", "verdict": "FIXED", "method": "export download", "evidence": ["ev/a.png", "ev/b.png"]}
+    led = WalkerLedger(os.path.join(d, "records", "walker.jsonl"), expect_sha="deadbeef")
+    res = {"id": "FIX-alpha-001", "verdict": "FIXED", "method": "export download", "evidence": ["ev/a.png", "ev/b.png"],
+           "coverage_basis": "recipe", "recipe_kind": "per-ticket"}
     upd = {"status": "VERIFIED"}
     row = led.write_verdict(res, upd, live_sha="deadbeef", run_id="20261114-000000-reverify", account="t1")
     check("ledger row carries all union fields", all(row.get(k) not in (None, "") for k in FIELDS), str(row))
@@ -111,9 +112,9 @@ def test_ledger_writes_union_rows_and_never_touches_main():
 def test_ledger_survives_torn_last_line():
     d = tempfile.mkdtemp()
     p = os.path.join(d, "walker.jsonl")
-    led = WalkerLedger(p)
-    led.write(tid="FIX-a-001", status="VERIFIED", live_sha="abcdef1", run_id="r", recipe="m", result="FIXED",
-              evidence_path="", account="t1")
+    led = WalkerLedger(p, expect_sha="abcdef1")
+    led.write(tid="FIX-a-001", status="VERIFIED", live_sha="abcdef1", run_id="r", recipe="per-ticket", result="FIXED",
+              evidence_path="ev/a.png", account="t1")
     with open(p, "a") as f:
         f.write('{"id": "FIX-a-002", "status": "VER')  # crash mid-write
     rows = read_ledger(p)

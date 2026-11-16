@@ -11,6 +11,7 @@ from concord_walker.tickets import TicketStore
 from concord_walker.root_causes import write_root_causes
 from concord_walker.checks import LensWalk
 from concord_walker.reverify import Reverifier, status_update
+from concord_walker import sha_gate, coverage as cov
 from concord_walker.runstate import RunLock  # WALK-05: stale-aware lock (runstate.py)
 
 READ_PHASES = ["reach", "surface", "tabs", "keyboard", "openers", "export", "contrast", "mobile"]
@@ -104,6 +105,7 @@ def _is_browser_crash(e):
 def cmd_walk(args, cfg, log):
     from playwright.sync_api import sync_playwright
     from concord_walker.lensrecord import deploy_stamp, upgrade_record, Manifest, checks_not_run
+    from concord_walker.replay import ReplayRun
     inv = load_inventory(cfg)
     lenses = pick_lenses(inv, args)
     all_slugs = [l["slug"] for l in inv]
@@ -111,7 +113,28 @@ def cmd_walk(args, cfg, log):
     rid = getattr(args, "resume", None) or run_id()
     rec = RunRecorder(cfg, rid, dry=dry)
     log.path = os.path.join(rec.run_dir, "walker.log")
-    store = TicketStore(cfg["audit_dir"])
+    # Replay (replay-original-tickets): the sweep sits ON TOP of the original lens-walk tickets. A live
+    # sweep loads the same pinned fold reverify --from-repo reads, and replays every OPEN /
+    # FIXED_PENDING_VERIFY ticket per lens. Skipping that is an explicit, loudly-logged --no-replay.
+    no_replay = bool(getattr(args, "no_replay", False))
+    fold = None
+    if no_replay:
+        log("!!! --no-replay: this sweep does NOT replay the original lens-walk tickets (no fold loaded, no verdicts, every ticket gets a 'replay disabled' coverage row)")
+    elif args.no_auth:
+        no_replay = True
+        log("replay off: --no-auth signed-out smoke cannot replay tickets")
+    else:
+        if not getattr(args, "from_repo", None) or not getattr(args, "deploy_sha", None):
+            raise SystemExit("a live sweep replays the original tickets and needs --from-repo <checkout> --deploy-sha <sha> "
+                             "(the fold is read at that pinned sha). Pass --no-replay to sweep without replay (logged loudly).")
+        if not sha_gate.is_hex_sha(args.deploy_sha):
+            raise SystemExit("--deploy-sha %r is not a hex git sha (>=7 chars)" % args.deploy_sha)
+        from concord_walker.fold import extract_from_git
+        fold = extract_from_git(args.from_repo, args.deploy_sha)
+        log("fold @ %s: %s" % (args.deploy_sha, fold.counts()))
+        with open(os.path.join(rec.run_dir, "canonical.jsonl"), "w") as f:
+            f.write(fold.canonical_text())
+    store = TicketStore(cfg["audit_dir"], fold=fold)
     premap = bool(getattr(args, "premap", False))
     phases = args.phases.split(",") if args.phases else READ_PHASES + (["write"] if args.allow_write else [])
     if premap and "sweep" not in phases:
@@ -135,10 +158,30 @@ def cmd_walk(args, cfg, log):
     walk_budget = LensBudget(cfg["thresholds"]["lens_budget_s"])  # WALK-05 hook: one run-shared per-lens budget
     abort = None
     relaunches_left = int(getattr(args, "auto_resume", 2) or 0)
+    replay = None
+    if not no_replay:
+        # sha gate: verdict rows are written only when /health's buildSha == --expect-sha; else dry.
+        live = None
+        if expect and sha_gate.is_hex_sha(expect):
+            g = sha_gate.gate(expect, cfg["base_url"])
+            log("sha gate: %s (live=%s via %s)" % (g["reason"], g["live"], g["source"]))
+            live = g["live"] if g["ok"] else None
+        else:
+            log("replay verdicts will NOT be written: --expect-sha %r is missing/not a hex sha (replay still runs, dry)" % (expect,))
+        from concord_walker.ledger import WalkerLedger
+        ledger = WalkerLedger(os.path.join(cfg.get("records_dir") or os.path.join(cfg["_walker_dir"], "records"), "walker.jsonl"),
+                              dry=dry or live is None, expect_sha=expect)
     with RunLock(os.path.join(cfg.get("runs_dir") or cfg["_walker_dir"], "run.lock")), sync_playwright() as pw:
         def launch():
             return pw.chromium.launch(channel="chrome", headless=True, args=["--disable-dev-shm-usage"])
         browser = launch()
+        if not no_replay:
+            rv = Reverifier(browser, cfg, rec, store, log, inv, allow_write=args.allow_write)
+            replay = ReplayRun(rv, store, ledger, live_sha=live, run_id=rid, walker_version=run_deploy.get("walker_sha"),
+                               run_dir=rec.run_dir, tester=cfg["tester_name"], log=log, budget=walk_budget)
+        else:
+            replay = ReplayRun(None, store, None, live_sha=None, run_id=rid, walker_version=None, run_dir=rec.run_dir,
+                               tester=cfg["tester_name"], log=log, budget=walk_budget, no_replay=True)
         try:
             for lens in lenses:
                 slug = lens["slug"]
@@ -189,6 +232,8 @@ def cmd_walk(args, cfg, log):
                             except Exception:
                                 pass
                             browser = launch()
+                            if replay is not None and replay.rv is not None:
+                                replay.rv.b = browser
                             continue
                         log("ABORT: %s on %s: %s" % (type(e).__name__, slug, str(e)[:200]))
                         append_text(os.path.join(rec.run_dir, "ABORTED.txt"), "%s %s: %s %s\n" % (human_et(), slug, type(e).__name__, str(e)[:200]))
@@ -201,6 +246,8 @@ def cmd_walk(args, cfg, log):
                 new, dups = file_findings(store, rec, lw.findings, dry, log, cfg["tester_name"], filed=filed)
                 res["new_tickets"] = [t["id"] for t in new]
                 res["duplicates"] = [{"title": f["title"], "dup_of": d} for f, d in dups]
+                # replay the original tickets for this lens on the SAME walk (no second walk)
+                res["replay"] = replay.replay_lens(slug, lw, admin_gate=gate)
                 upgrade_record(res, deploy, filed, all_slugs, lw.screens, lw.net.build(), premap_findings=lw.premap_findings)
                 with open(lens_result_path(rec.run_dir, slug), "w") as f:
                     json.dump(res, f, indent=1)
@@ -216,6 +263,16 @@ def cmd_walk(args, cfg, log):
             left = rec.flush_leftovers()
             write_summary(rec, summary, left, dry)
             write_root_causes(cfg["audit_dir"], log=log)
+            if replay is not None:
+                _inv_slugs = {l.get("slug") for l in inv}
+                _rows = replay.coverage_rows(_inv_slugs, manifest.walked_slugs() - done_before, resumed=done_before)
+                _dirs = [rec.run_dir] + ([] if dry else [cfg["audit_dir"]])
+                cov.write(_dirs, _rows, {"run_id": rid, "live_sha": replay.live_sha, "dry": dry or (replay.ledger is None or replay.ledger.dry),
+                                         "ts": human_et(), "no_replay": no_replay})
+                _s = cov.summarize(_rows)
+                log("replay coverage: %d row(s) %s -> %s" % (_s["total"], _s["by_verdict"], ", ".join(_dirs)))
+                if replay.ledger is not None:
+                    log("replay ledger: %d row(s) written, %d suppressed (dry/sha gate)" % (replay.ledger.written, replay.ledger.suppressed))
     walked, total = manifest.counts()
     if abort:
         manifest.finish("aborted", note="aborted at %s: %s" % abort)
@@ -280,7 +337,7 @@ def cmd_reverify(args, cfg, log):
             f.write(fold.canonical_text())
     store = TicketStore(cfg["audit_dir"], fold=fold)
     ledger = WalkerLedger(os.path.join(cfg.get("records_dir") or os.path.join(cfg["_walker_dir"], "records"),
-                                       "walker.jsonl"), dry=dry)
+                                       "walker.jsonl"), dry=dry, expect_sha=getattr(args, "expect_sha", None))
     if not has_session(cfg, "t1"):
         raise SystemExit("no saved session for %s; run walker.py login --account t1 --headed first" % cfg["accounts"]["t1"]["username"])
     ids = list(args.ids)
@@ -407,8 +464,8 @@ def cmd_reverify(args, cfg, log):
                         # WALK-01: verdicts land ONLY in records/walker.jsonl (union
                         # schema); fix_tickets.jsonl is never written by a verdict.
                         acct = "admin" if res.get("lens") in cfg.get("admin_lenses", []) else "t1"
-                        row = ledger.write_verdict(res, upd, live_sha=live,
-                                                   run_id=rid, account=acct)
+                        row = ledger.write_verdict(res, upd, live_sha=live, run_id=rid, account=acct,
+                                                   walker_version=rv_deploy.get("walker_sha"))
                         log("  ledger %s -> %s%s" % (tid, upd["status"], " (dry: not written)" if dry else ""))
                     elif res["verdict"] == "FIXED":
                         rec.judgment(res["lens"], "fixed_not_claimed", "%s no longer reproduces but no builder marked it FIXED_PENDING_VERIFY; close?" % tid,
@@ -466,7 +523,7 @@ def cmd_reverify_ci(args, cfg, log):
     with open(os.path.join(rec.run_dir, "canonical.jsonl"), "w") as f:
         f.write(fold.canonical_text())
     ledger = WalkerLedger(os.path.join(cfg.get("records_dir") or os.path.join(cfg["_walker_dir"], "records"),
-                                       "walker.jsonl"), dry=args.dry_run)
+                                       "walker.jsonl"), dry=args.dry_run, expect_sha=args.expect_sha)
     ids = list(args.ids)
     if args.from_status:
         _st = {x.strip().upper() for x in args.from_status.split(",") if x.strip()}
@@ -517,6 +574,9 @@ def main():
         p.add_argument("--expect-sha", help="MST-W0-01: flag every record whose /health buildSha differs (sha_status=mismatch); never gates a read walk")
         p.add_argument("--two-account", action="store_true", help="upgrade 3: replay t1's object calls (reads + non-DELETE writes) as t2 from its saved session; 2xx = ownership finding. Needs auth/t2.json; never deletes")
         p.add_argument("--resume", help="resume this run id: lenses already walked in its walk-manifest.json are skipped")
+        p.add_argument("--from-repo", help="replay: read the ticket fold from this repo checkout at --deploy-sha (REQUIRED for a live sweep unless --no-replay)")
+        p.add_argument("--deploy-sha", help="replay: the pinned sha the fold is read at (with --from-repo)")
+        p.add_argument("--no-replay", action="store_true", help="sweep WITHOUT replaying the original lens-walk tickets (logged loudly; every ticket gets a 'replay disabled' coverage row)")
         p.add_argument("--auto-resume", type=int, default=2, help="browser crash relaunches per run (each retries the crashed lens once; default 2)")
 
     p = sub.add_parser("sweep", help="walk every lens in inventory.json (or a filtered subset)")

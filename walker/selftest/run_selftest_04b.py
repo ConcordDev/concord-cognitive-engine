@@ -55,7 +55,7 @@ R = {}
 
 def run(*a):
     print("$ walker.py", " ".join(a), flush=True)
-    r = subprocess.run([py, os.path.join(WALKER, "walker.py"), "--config", cfgp] + list(a),
+    r = subprocess.run([py, os.path.join(WALKER, "walker.py"), "--config", cfgp] + list(a) + (["--no-replay"] if a and a[0] in ("lens", "sweep") else []),
                        capture_output=True, text=True, timeout=900)
     print(r.stdout[-2500:]); print(r.stderr[-1200:])
     return r
@@ -143,7 +143,11 @@ rv = {k: r["verdict"] for k, r in rvrows.items()}
 _g = rvrows.get("FIX-good-900", {})
 R["crud_missing_fixed_on_good"] = (rv.get("FIX-good-900") == "NEEDS_HUMAN" and _g.get("uncapped_verdict") == "FIXED"
                                    and _g.get("capped") is True
-                                   and str(_g.get("notes", "")).startswith("no hand-written repro recipe; keyword match only (crud_missing)"))
+                                   # Replay (2026-11-16): FIX-good-900's prose repro step ('open lens') maps to no
+                                   # action, so the repro-steps basis is refused, naming the step; the keyword
+                                   # result is still reported and the cap still applies.
+                                   and str(_g.get("notes", "")).startswith("repro-steps: step 1 not mapped to an action: 'open lens'")
+                                   and "keyword check: no hand-written repro recipe; keyword match" in str(_g.get("notes", "")))
 R["crud_missing_still_on_ambig"] = rv.get("FIX-ambig-900") == "STILL_FAILING"
 
 # publate pins G2 (the pre-submit re-scan), which lands after B2's budget

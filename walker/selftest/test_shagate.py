@@ -51,7 +51,7 @@ def test_gate_paths():
 
 def test_ledger_refuses_unconfirmed_sha():
     d = tempfile.mkdtemp()
-    led = WalkerLedger(os.path.join(d, "walker.jsonl"))
+    led = WalkerLedger(os.path.join(d, "walker.jsonl"), expect_sha=SHA)
     for bad in (None, "", "unknown", "next42"):
         try:
             led.write(tid="FIX-a-001", status="VERIFIED", live_sha=bad, run_id="r", recipe="m", result="FIXED", evidence_path="", account="t1")
@@ -59,7 +59,7 @@ def test_ledger_refuses_unconfirmed_sha():
         except ValueError:
             check("ledger refuses live_sha=%r" % (bad,), True)
     check("no rows written by refused writes", not os.path.exists(led.path) or read_ledger(led.path) == [])
-    led.write(tid="FIX-a-001", status="VERIFIED", live_sha=SHA, run_id="r", recipe="m", result="FIXED", evidence_path="", account="t1")
+    led.write(tid="FIX-a-001", status="VERIFIED", live_sha=SHA, run_id="r", recipe="per-ticket", result="FIXED", evidence_path="ev/a.png", account="t1")
     rows = read_ledger(led.path)
     check("confirmed sha => row carries the live sha", len(rows) == 1 and rows[0]["live_sha"] == SHA, str(rows))
 

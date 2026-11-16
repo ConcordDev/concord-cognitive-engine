@@ -16,9 +16,13 @@ WalkerLedger (recipe "ci-evidence", live_sha = the deploy sha, evidence_path =
 the CI run URL + the fix commit). Anything else leaves the row UNMOVED —
 reported, never stamped. The wrong sha cannot stamp VERIFIED by construction:
 the payload's sha must equal the expect sha, and rows carry that same sha.
-This lane is offline: no browser, no session, no network.
+This lane is offline: no browser, no session, no network. Its VERIFIED rows still go through the
+single gate (ledger.assert_verifiable): hex live_sha == the expect sha, a run id, basis
+"ci-evidence", non-empty evidence (CI URL + fix commit). The CI lane never claims the LIVE site
+runs the sha (no /health read) — it records the deploy sha its code + CI evidence prove.
 """
 import json, os, re, subprocess
+from .ledger import VERIFIED
 
 PIN_PATH = re.compile(r"(^|/)(tests?|__tests__)/|\.test\.[jt]sx?$|(^|/)test_[^/]+\.py$|_test\.py$")
 FAIL_CONCLUSIONS = ("failure", "timed_out", "cancelled", "action_required", "startup_failure")
@@ -132,11 +136,13 @@ def run_ci_lane(*, store, repo, deploy_sha, expect_sha, checks, ids, ledger=None
     """Verify ids in order; VERIFIED results write through the ledger (which
     itself honours dry runs). Returns the result dicts."""
     state = checks_verdict(checks, expect_sha)
+    if ledger is not None and getattr(ledger, "expect_sha", None) is None:
+        ledger.expect_sha = expect_sha  # the CI payload was matched to exactly this sha above
     results = []
     for tid in ids:
         res = verify_ticket(store, repo, tid, deploy_sha, state)
         if res["verdict"] == "VERIFIED" and ledger is not None:
-            ledger.write(tid=tid, status="VERIFIED", live_sha=deploy_sha, run_id=run_id_str,
+            ledger.write(tid=tid, status=VERIFIED, live_sha=deploy_sha, run_id=run_id_str,
                          recipe="ci-evidence", result="VERIFIED",
                          evidence_path="; ".join(res["evidence"]), account=account)
         results.append(res)
