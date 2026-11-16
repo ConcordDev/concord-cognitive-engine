@@ -122,8 +122,9 @@ class RouteIndex:
 
 
 def status_ok(st):
-    """2xx/3xx are OK; an in-flight stream (pending) is not a failure."""
-    if st in ("pending",):
+    """2xx/3xx are OK; an in-flight stream (pending) or a client-side cancel (aborted:
+    Next.js prefetch / navigation) is not evidence of a failure."""
+    if st in ("pending", "aborted") or (isinstance(st, str) and "ERR_ABORTED" in st):
         return True
     try:
         st = int(st)

@@ -509,6 +509,14 @@ class LensWalk:
                 cid = self.net._cid_at(r["t"])
                 row = {"method": r["method"], "path": r["path"], "status": st, "control_id": cid,
                        "verdict": "OWNERSHIP_FAIL" if leak else "PASS"}
+                if leak and r["method"] == "GET":
+                    # false-positive control: a resource a signed-out visitor can also read is
+                    # public, not an ownership leak (live run 2026-11-16). GET only; anon never writes.
+                    anon_st = self._anon_get(r["url"])
+                    row["anon_status"] = anon_st
+                    if anon_st is not None and 200 <= anon_st < 300:
+                        row["verdict"] = "PUBLIC"
+                        leak = False
                 rows.append(row)
                 if leak:
                     kind = "read" if r["method"] == "GET" else "write"
@@ -526,7 +534,30 @@ class LensWalk:
                 pass
         fails = sum(1 for x in rows if x["verdict"] == "OWNERSHIP_FAIL")
         self.result["two_account"] = {"status": "FAIL" if fails else "PASS", "replayed": len(rows),
-                                      "ownership_failures": fails, "calls": rows}
+                                      "ownership_failures": fails, "public": sum(1 for x in rows if x["verdict"] == "PUBLIC"),
+                                      "calls": rows}
+
+    def _anon_get(self, url):
+        """Status of the same GET with no session at all (fresh context, no cookies)."""
+        ctx = None
+        try:
+            ctx = self.b.new_context()
+            resp = ctx.request.get(url, timeout=15000)
+            try:
+                body = resp.json()
+            except Exception:
+                body = None
+            if 200 <= resp.status < 300 and isinstance(body, dict) and (body.get("ok") is False or "error" in body):
+                return 403  # a 2xx refusal body counts as not readable
+            return resp.status
+        except Exception:
+            return None
+        finally:
+            try:
+                if ctx is not None:
+                    ctx.close()
+            except Exception:
+                pass
 
     SAVE_ACTION = re.compile(r"(?i)^(save|create|add|update|set|store|record|log|upsert|put|edit|pin|star|rename)")
 
@@ -567,9 +598,9 @@ class LensWalk:
         ev = None
         pw = self._persisting_writes(writes)
         if pw and not why:
-            new = {t for t in ax1.texts() if t not in texts0 and len(t.strip()) >= 3}
+            new = {t for t in ax1.durable_texts() if t not in texts0 and len(t.strip()) >= 3}
             if not new:
-                self.net.annotate(cid, readback="unverifiable: no new text after the write")
+                self.net.annotate(cid, readback="unverifiable: no new durable text after the write (menus/dialogs/toasts ignored)")
             else:
                 ev_after = self.shot(page, "fail-" + label[:30])
                 self.nav(page, cdp)

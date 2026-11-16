@@ -101,6 +101,28 @@ raw = open(os.path.join(rd, "lens-upgrades.json")).read()
 check("3 raw object ids / bodies never written", fixture_app.NOTE_ID not in raw and "t1 private note" not in raw and '"pinned": true' not in raw)
 check("3 credentials never in output", "fx_user" not in raw and "password" not in (r.stdout + r.stderr).lower())
 
+# false-positive controls found on the 2026-11-16 live run
+om = ctl.get("Open menu", {})
+check("FP telemetry: menu that only fires POST /api/metrics/vitals is not fake_success / not a write",
+      om.get("exercised") and not om.get("fake_success") and "fake_success" not in om.get("broken", [])
+      and all(not q.get("write") for q in om.get("requests", []) if q.get("telemetry"))
+      and any(q.get("telemetry") for q in om.get("requests", [])), om)
+check("FP telemetry: no fake_success finding on the menu", not any(f["class"] == "fake_success" and f["control_id"] == om.get("control_id") for f in pf))
+pl = ctl.get("Prefetch link", {})
+check("FP aborted: a client-cancelled fetch is 'aborted', not request_failed",
+      pl.get("exercised") and "request_failed" not in pl.get("broken", []) and any(q.get("error") == "aborted" for q in pl.get("requests", [])), pl)
+check("FP public: an object a signed-out visitor can also read is PUBLIC, not ownership",
+      calls.get(("GET", "/api/public-notes/:uuid"), {}).get("verdict") == "PUBLIC"
+      and calls.get(("GET", "/api/public-notes/:uuid"), {}).get("anon_status") == 200 and ta.get("public", 0) >= 1, calls)
+check("FP public: signed-in-only object stays OWNERSHIP_FAIL (anon got 401)",
+      calls.get(("GET", "/api/notes/:uuid"), {}).get("anon_status") == 401, calls)
+check("FP public: no ownership finding for the public read", not any(f["class"] == "ownership" and "public-notes" in f["title"] for f in pf))
+check("FP telemetry never replayed as t2", ("POST", "/api/metrics/vitals") not in calls)
+bm = ctl.get("Bookmark", {})
+check("FP toast: a write whose only visible change is a role=status toast is unverifiable, not fake_success",
+      bm.get("exercised") and not bm.get("fake_success") and "fake_success" not in bm.get("broken", [])
+      and (bm.get("readback") or "").startswith("unverifiable"), bm)
+
 # 4 speed + freeze
 sr = ctl.get("Slow stats", {})
 check("4 call over the slow budget flagged", sr.get("slow_calls") and "slow_call" in sr.get("broken", []), sr)

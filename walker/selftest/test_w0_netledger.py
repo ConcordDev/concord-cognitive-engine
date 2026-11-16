@@ -205,6 +205,17 @@ def test_bad_bodies_never_crash():
     check("finished but no response object: no_response", rows["/api/c"]["error"] == "no_response")
 
 
+
+def test_fp_telemetry_and_aborted():
+    from concord_walker import netledger as NLm
+    check("telemetry paths recognised", all(NLm.is_telemetry(p) for p in ("/api/metrics/vitals", "/api/telemetry", "/api/analytics/track",
+                                                                           "/api/track", "/api/client-errors", "/api/heartbeat", "/api/presence/ping")))
+    check("beacon/ping resource types are telemetry", NLm.is_telemetry("/x", "beacon") and NLm.is_telemetry("/x", "ping"))
+    check("real API paths are not telemetry", not any(NLm.is_telemetry(p) for p in ("/api/notes/:uuid", "/api/lens/run", "/api/metricsx",
+                                                                                     "/api/economy/balance", "/api/events/paginated")))
+    check("client cancels are aborted, real failures are not", NLm.is_aborted("net::ERR_ABORTED") and NLm.is_aborted("aborted")
+          and not NLm.is_aborted("net::ERR_CONNECTION_RESET") and not NLm.is_aborted(None))
+
 if __name__ == "__main__":
     for fn in [v for k, v in sorted(globals().items()) if k.startswith("test_")]:
         fn()

@@ -99,7 +99,7 @@ def test_normalization():
     check("runtime suffix needs a literal segment (bare /:id never claims a path)",
           not RM.pattern_match("/:p", "/api/guidance/first-win", runtime=True) and not RM.pattern_match("/:p/:p", "/api/x/y", runtime=True))
     check("status_ok: 2xx/3xx/pending ok; 4xx/5xx/None/failed not",
-          all(RM.status_ok(s) for s in (200, 204, "304", "pending")) and not any(RM.status_ok(s) for s in (404, 405, 500, None, "failed", "net::ERR_FAILED")))
+          all(RM.status_ok(s) for s in (200, 204, "304", "pending", "aborted", "net::ERR_ABORTED")) and not any(RM.status_ok(s) for s in (404, 405, 500, None, "failed", "net::ERR_FAILED")))
 
 
 def _registry(tree_src):

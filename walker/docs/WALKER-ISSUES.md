@@ -108,3 +108,20 @@ Read this before starting the next walker version.
 - Fix: the fallback now skips the chunks, css, media, webpack, development, images and fonts dirs. With none left, `frontend_build_id` is None, which is honest. The backend `/health` buildSha is unaffected (495efb7ce243).
 - Test: test_walk01 `App Router chunks/ media/ dirs are not a build id`.
 
+## 2026-11-16 09:20 ET: MST-W0-06 baseline walk stopped after 2 lenses because of false-positive premap findings
+- What happened: the first live v2 walk (run 20261116-091027, build 495efb7ce243) recorded global and hub cleanly. Their v2 records had a build stamp and 80 and 87 endpoint rows. But the new finding types were mostly noise, so I stopped the walk before it became the baseline.
+  - **fake_success ×5** ('Jobs', 'Bounty', 'Open chat', 'User menu' ×2). The only "write" was `POST /api/metrics/vitals`, a web-vitals beacon. The menu text that disappeared after reload was read as lost data.
+  - **request_failed ×5**. These were `net::ERR_ABORTED` on Next.js RSC prefetches of `/lenses/*` and `/legal/*` that the client cancelled.
+  - **ownership ×2** (`GET /api/chat/memory/:id`, `GET /api/ct/merit/:uuid` → 200 for t2). There was no check of whether the resource is simply public.
+- Fixes:
+  1. `netledger.TELEMETRY_RE` / `is_telemetry`. It covers metrics, telemetry, analytics, vitals, rum, beacon, perf, track, client-errors, logs, heartbeat, presence, and the beacon/ping resource types. Telemetry rows are flagged `telemetry: true`. They are never writes, so there is no read-back and no fake_success. They never make a control broken (http_4xx/5xx, slow, request_failed), and they are never replayed as t2. They still show in `endpoints[]` and in the registry diff.
+  2. A client-side cancel (`net::ERR_ABORTED`) is recorded as `error: "aborted"`. It is never `request_failed`, and `routematch.status_ok` treats it as no evidence, so it is never a registry defect.
+  3. In the two-account replay, every GET that leaks to t2 is also fetched with no session at all. If that signed-out fetch gets a 2xx, the verdict is `PUBLIC` (counted in `two_account.public`), not an ownership finding. The signed-out fetch is GET only and never writes.
+- Tests:
+  - test_w0_upgrades fixture: the 'Open menu' button only fires the vitals beacon and must not produce fake_success. 'Prefetch link' aborts a fetch and must not produce request_failed. `/api/public-notes/:id` must be PUBLIC, and `/api/notes/:id` (signed-out 401) must stay OWNERSHIP_FAIL. Telemetry must never be replayed.
+  - test_w0_netledger: is_telemetry / is_aborted.
+  - test_w0_registry: status_ok treats aborted as no evidence.
+- The walk was relaunched as a fresh run on the fixed code. The 2-lens run above is kept for comparison but is not the baseline.
+
+
+- 09:58 ET — fix 4 (same stopped run): fake_success read-back compared *all* AX text, so a menu opened by the click or a role=status "Saved!" toast after a real write looked "lost after reload". Read-back now uses `AX.durable_texts()` (excludes text inside dialog/menu/listbox/tooltip/status/alert/log/timer). Fixture: 'Bookmark' (persisted POST + toast only) → readback unverifiable, no fake_success; the true fake_success fixture still fires. Full suite green.

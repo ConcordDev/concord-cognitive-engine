@@ -91,9 +91,20 @@ UPGRADES = r"""<!doctype html><html><head><meta name=viewport content="width=dev
 <button onclick="fetch('/api/slow').then(()=>{document.getElementById('out').textContent='report ok'})">Slow stats</button>
 <button onclick="heavy()">Heavy chart</button>
 <button onclick="">Idle button</button>
+<button onclick="openMenu()">Open menu</button>
+<button onclick="bookmark()">Bookmark</button>
+<div role=status id=toast></div>
+<button onclick="prefetchLink()">Prefetch link</button>
+<div id=menu></div>
 <script>
 const ID='__NOTE__';
-function openNote(){fetch('/api/notes/'+ID);fetch('/api/secure-notes/'+ID);}
+function openNote(){fetch('/api/notes/'+ID);fetch('/api/secure-notes/'+ID);fetch('/api/public-notes/'+ID);}
+async function bookmark(){const r=await fetch('/api/bookmarks',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+ if(r.ok){const t=document.getElementById('toast');t.textContent='Bookmarked successfully';}}
+function openMenu(){document.getElementById('menu').textContent='Avatars; Power Mode; Settings';
+ fetch('/api/metrics/vitals',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:'INP',value:12})});}
+function prefetchLink(){const c=new AbortController();fetch('/api/slow?prefetch=1',{signal:c.signal}).catch(()=>{});setTimeout(()=>c.abort(),50);
+ document.getElementById('out').textContent='prefetched';}
 async function pinNote(){const r=await fetch('/api/notes/'+ID,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({pinned:true})});
  if(r.ok) document.getElementById('pin').textContent='Pinned: yes';}
 async function starNote(){const r=await fetch('/api/notes/'+ID+'/star',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
@@ -107,8 +118,9 @@ fetch('/api/notes/'+ID).then(r=>r.json()).then(j=>{if(j.pinned)document.getEleme
 
 
 def _who(headers):
+    """t1 / t2 from the fixture session cookie; None = signed out (anonymous)."""
     c = headers.get("Cookie") or ""
-    return "t2" if "fx_user=t2" in c else "t1"
+    return "t2" if "fx_user=t2" in c else ("t1" if "fx_user=t1" in c else None)
 # resilience knobs (set by selftests in-process): drop the next N auth/me
 # connections without a response, answer auth/me with a fixed status, or send
 # 502 for the next N loads of /lenses/flaky.
@@ -157,7 +169,13 @@ class H(BaseHTTPRequestHandler):
         if self.path.startswith("/api/slow"):
             time.sleep(1.3)
             return self._send(200, json.dumps({"ok": True}), "application/json")
+        if self.path.startswith("/api/public-notes/"):
+            # readable by anyone, signed out too: the two-account replay must call this PUBLIC, not ownership
+            n = NOTES.get(self.path.split("/")[3])
+            return self._send(200 if n else 404, json.dumps({"title": "public"} if n else {"error": "not found"}), "application/json")
         if self.path.startswith("/api/notes/"):
+            if _who(self.headers) is None:
+                return self._send(401, json.dumps({"error": "sign in"}), "application/json")
             n = NOTES.get(self.path.split("/")[3])
             # deliberately NO ownership check (the bug the two-account replay must catch)
             return self._send(200 if n else 404, json.dumps(n or {"error": "not found"}), "application/json")
@@ -202,6 +220,10 @@ class H(BaseHTTPRequestHandler):
         n = int(self.headers.get("Content-Length") or 0)
         body = self.rfile.read(n).decode()
         POSTS.append(self.path)
+        if self.path.startswith("/api/metrics/"):
+            return self._send(204, "")
+        if self.path.startswith("/api/bookmarks"):
+            return self._send(200, json.dumps({"ok": True}), "application/json")
         if self.path.startswith("/api/notes/") and self.path.endswith("/star"):
             # fake success: 200 but nothing is stored
             return self._send(200, json.dumps({"ok": True}), "application/json")

@@ -148,6 +148,20 @@ ERROR_KINDS = ("exception", "rejection", "boundary", "console", "asset_fail", "c
 _REJECTION = re.compile(r"(?i)unhandled ?(promise )?rejection|uncaught \(in promise\)")
 _BOUNDARY = re.compile(r"(?i)the above error occurred in|error boundary|minified react error|react will try to recreate")
 STATIC_TYPES = ("script", "stylesheet", "image", "font", "media")
+# Telemetry beacons are not user actions: never a write for read-back, never a control failure,
+# never replayed as t2 (live run 2026-11-16: POST /api/metrics/vitals made 5 false fake_success).
+TELEMETRY_RE = re.compile(r"^/api/(metrics|telemetry|analytics|vitals|rum|beacons?|perf|track|tracking|"
+                          r"client-?(errors?|logs?)|errors/report|logs?|heartbeat|presence|events/track)(/|$)", re.I)
+# A client-side cancel (Next.js prefetch abort, navigation, unmount) is not a failed request.
+ABORTED = ("net::ERR_ABORTED", "aborted")
+
+
+def is_telemetry(path, rtype=None):
+    return rtype in ("ping", "beacon") or bool(TELEMETRY_RE.match(path or ""))
+
+
+def is_aborted(err):
+    return bool(err) and any(a in str(err) for a in ABORTED)
 
 
 def control_id(phase, role, name):
@@ -444,8 +458,12 @@ class NetLedger:
                 t = st / 1000.0
         except Exception:
             pass
-        row = {"_t": t, "method": method, "path": path_t, "type": getattr(req, "resource_type", None),
-               "write": method in WRITE_METHODS}
+        rtype = getattr(req, "resource_type", None)
+        tele = is_telemetry(path_t, rtype)
+        row = {"_t": t, "method": method, "path": path_t, "type": rtype,
+               "write": method in WRITE_METHODS and not tele}
+        if tele:
+            row["telemetry"] = True
         if qkeys:
             row["query_keys"] = qkeys[:CAPS["keys"]]
         ini = self.initiators.get((method, req.url))
@@ -469,7 +487,7 @@ class NetLedger:
             row["lens_action"] = act
         if e["failed"]:
             row["status"] = None
-            row["error"] = e["failed"]
+            row["error"] = "aborted" if is_aborted(e["failed"]) else e["failed"]
             return row
         if not e.get("finished"):
             # still in flight (SSE / long poll): never block on it
@@ -495,7 +513,7 @@ class NetLedger:
         except Exception:
             pass
         if re.search(r"/:(uuid|id|n|hex)(/|$)", path_t) and method != "DELETE" and 200 <= resp.status < 300 \
-                and row.get("type") in API_TYPES:
+                and row.get("type") in API_TYPES and not tele:
             # upgrade 3: kept in memory for the t2 replay only; never serialized
             self.replay.append({"t": t, "method": method, "url": req.url, "path": path_t,
                                 "post": (req.post_data if method in WRITE_METHODS else None)})
@@ -561,9 +579,9 @@ class NetLedger:
                                ("no_call", not reqs), ("requests", reqs), ("lens_actions", acts),
                                ("console_errors", self._console_for(cid, console_at)),
                                ("http_4xx", sorted({"%d %s" % (r["status"], r["path"]) for r in per_ctl[cid]
-                                                    if r.get("status") and 400 <= r["status"] < 500})[:10]),
+                                                    if r.get("status") and 400 <= r["status"] < 500 and not r.get("telemetry")})[:10]),
                                ("http_5xx", sorted({"%d %s" % (r["status"], r["path"]) for r in per_ctl[cid]
-                                                    if r.get("status") and r["status"] >= 500})[:10]),
+                                                    if r.get("status") and r["status"] >= 500 and not r.get("telemetry")})[:10]),
                                ("overflow", sum(1 for r in self.done if r["_cid"] == cid) - len(per_ctl[cid]))])
             errs = [e for e in self.errors if self._cid_at(e[0]) == cid]
             viol = [v for v in self.violations if self._cid_at(v[0]) == cid]
@@ -592,7 +610,7 @@ class NetLedger:
                 reasons.append("http_5xx")
             if row["http_4xx"]:
                 reasons.append("http_4xx")
-            if any(q.get("error") and q["error"] not in ("pending",) for q in reqs):
+            if any(q.get("error") and q["error"] not in ("pending", "aborted") and not q.get("telemetry") for q in reqs):
                 reasons.append("request_failed")
             if any(k in ek for k in ("exception", "rejection", "boundary", "crash")):
                 reasons.append("js_error")
@@ -659,14 +677,22 @@ class NetLedger:
         for e in self.raw:
             if e["t_seen"] < since:
                 continue
+            try:
+                p_t = template_path(urlsplit(e["req"].url).path)[0]
+                tele = is_telemetry(p_t, getattr(e["req"], "resource_type", None))
+            except Exception:
+                tele = False
             if e["failed"]:
-                why.add("request_failed")
+                if not is_aborted(e["failed"]) and not tele:
+                    why.add("request_failed")
                 continue
             if not e.get("finished"):
                 continue
             try:
                 st = e["req"].response().status
             except Exception:
+                continue
+            if tele:
                 continue
             try:
                 if (e["req"].timing or {}).get("responseEnd", -1) >= self.slow_ms:
@@ -677,7 +703,7 @@ class NetLedger:
                 why.add("http_5xx")
             elif st >= 400:
                 why.add("http_4xx")
-            elif e["req"].method in WRITE_METHODS:
+            elif e["req"].method in WRITE_METHODS and not tele:
                 writes.append(e["req"])
         return why, writes
 
@@ -729,7 +755,7 @@ def _aggregate(rows):
         if k not in out:
             q = OrderedDict([("method", r["method"]), ("path", r["path"]), ("status", r.get("status")), ("n", 0),
                              ("ms", r.get("ms")), ("type", r.get("type")), ("write", r["write"])])
-            for f in ("error", "initiator", "query_keys", "req_keys", "resp_keys", "flags", "lens_action", "background", "polling", "slow"):
+            for f in ("error", "initiator", "query_keys", "req_keys", "resp_keys", "flags", "lens_action", "background", "polling", "slow", "telemetry"):
                 if r.get(f) is not None:
                     q[f] = r[f]
             q["req_bytes"] = r.get("req_bytes", 0)

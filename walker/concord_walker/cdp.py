@@ -73,6 +73,21 @@ class AXTree:
     def texts(self):
         return [n.name for n in self.live() if n.role in ("StaticText", "text", "heading", "status", "alert") and n.name]
 
+    TRANSIENT_ROLES = ("dialog", "alertdialog", "menu", "menubar", "listbox", "tooltip", "status", "alert", "log", "timer", "marquee")
+
+    def durable_texts(self):
+        """Page text that a write could have changed durably: excludes text inside menus, dialogs,
+        listboxes, tooltips and live regions (status/alert toasts). A menu opened by the click or a
+        'Saved!' toast is gone after any reload and is not evidence of lost data (live 2026-11-16)."""
+        tr = [n for n in self.live() if n.role in self.TRANSIENT_ROLES]
+        out = []
+        for n in self.live():
+            if n.role in ("StaticText", "text", "heading") and n.name:
+                if tr and any(a.role in self.TRANSIENT_ROLES for a in self.ancestors(n)):
+                    continue
+                out.append(n.name)
+        return out
+
     def dialogs(self):
         return [n for n in self.live() if n.role in ("dialog", "alertdialog")]
 
