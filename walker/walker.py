@@ -341,6 +341,13 @@ def cmd_reverify(args, cfg, log):
         browser = pw.chromium.launch(channel="chrome", headless=True, args=["--disable-dev-shm-usage"])
         try:
             rv = Reverifier(browser, cfg, rec, store, log, inv, allow_write=args.allow_write)
+            # MST-W0-01: every verdict says which build it ran against and whether that
+            # build contains the ticket's fix commit (git merge-base --is-ancestor; 'unknown' otherwise)
+            from concord_walker.lensrecord import deploy_stamp, build_verdict, contains_commit
+            rv_deploy = deploy_stamp(cfg["base_url"], cfg["_walker_dir"], expect_sha=getattr(args, "expect_sha", None))
+            fix_map = dict(x.split("=", 1) for x in (getattr(args, "fix_commit", None) or []) if "=" in x)
+            contain_repo = getattr(args, "containment_repo", None) or getattr(args, "from_repo", None)
+            log("build stamp: %s (%s)" % ((rv_deploy["backend_sha"] or "NONE")[:12], rv_deploy["sha_status"]))
             for n_done, tid in enumerate(ids):
                 if not wait_for_memory(cfg, log):
                     for rest in ids[n_done:]:
@@ -369,6 +376,12 @@ def cmd_reverify(args, cfg, log):
                     continue
                 try:
                     res = rv.run(tid)
+                    _t = store.get(tid) or {}
+                    _fix = fix_map.get(tid) or _t.get("fix_sha") or _t.get("fix_commit") or _t.get("merged_sha")
+                    res["build"] = {"backend_sha": rv_deploy["backend_sha"], "sha_status": rv_deploy["sha_status"],
+                                    "walked_at": rv_deploy["walked_at"], "fix_commit": _fix,
+                                    "contains_fix": contains_commit(contain_repo, rv_deploy["backend_sha"], _fix) if _fix else "unknown",
+                                    "line": build_verdict(contain_repo, rv_deploy, _fix)}
                     journal.record("reverify", tid, "done", res["verdict"])
                 except AccountMismatch as e:
                     journal.record("reverify", tid, "failed", "account mismatch: %s" % e)
@@ -529,6 +542,8 @@ def main():
     p.add_argument("--walked-run", action="append", help="coverage: run dir (or run id under runs_dir) of the sweep(s) this reverify grades; repeatable / comma list. Tickets on lenses with no lens-*.json there are NOT_ATTEMPTED 'lens not walked this run' and are not replayed")
     p.add_argument("--only-lens", help="coverage: comma list of lens slugs to replay; other in-scope tickets are NOT_ATTEMPTED 'excluded by filter'")
     p.add_argument("--apply-status", action="store_true", help="write verdict rows (VERIFIED/REOPENED/OPEN) to records/walker.jsonl")
+    p.add_argument("--fix-commit", action="append", help="MST-W0-01: TICKET=SHA (repeatable): say whether the live build contains that fix commit")
+    p.add_argument("--containment-repo", help="MST-W0-01: git checkout used for merge-base --is-ancestor (defaults to --from-repo); without one the answer is 'unknown'")
     p.add_argument("--dry-run", action="store_true")
     p = sub.add_parser("login", help="save a session for a QA account")
     p.add_argument("--account", choices=["t1", "t2", "admin"], required=True)
