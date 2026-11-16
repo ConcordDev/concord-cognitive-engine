@@ -85,7 +85,13 @@ results["reverify"] = {r["id"]: r["verdict"] for r in rv}
 rvby = {r["id"]: r for r in rv}
 results["demo003_capped"] = (rvby.get("FIX-demo-003", {}).get("coverage_basis") == "keyword" and rvby["FIX-demo-003"].get("capped") is True
                              and rvby["FIX-demo-003"].get("uncapped_verdict") == "FIXED"
-                             and rvby["FIX-demo-003"]["notes"].startswith("no hand-written repro recipe; keyword match only (escape)"))
+                             # Replay (2026-11-16): the ticket's own repro_steps now run FIRST (both steps map + execute) but
+                             # its expected 'closes' has no machine-checkable predicate, so the repro-steps basis is
+                             # NOT granted. The keyword result + cap stay intact and the notes carry both parts.
+                             and rvby["FIX-demo-003"]["notes"].startswith("repro-steps: all 2 step(s) mapped + executed, but the expected outcome is not machine-checkable")
+                             and "keyword check: no hand-written repro recipe; keyword match only (escape)" in rvby["FIX-demo-003"]["notes"]
+                             and [s.get("mapped") and s.get("executed") for s in rvby["FIX-demo-003"].get("steps", [])] == [True, True]
+                             and rvby["FIX-demo-003"].get("expected_check", {}).get("state") == "unchecked")
 results["deities_recipe_basis"] = (rvby.get("FIX-deities-002", {}).get("coverage_basis") == "recipe" and rvby["FIX-deities-002"].get("recipe_kind") == "per-ticket")
 ledger_p = os.path.join(cfg["records_dir"], "walker.jsonl")
 led = [json.loads(l) for l in open(ledger_p)] if os.path.exists(ledger_p) else []
@@ -110,7 +116,8 @@ results["coverage_ok"] = (
     and covby["FIX-demo-003"]["verdict"] == "NEEDS_HUMAN" and covby["FIX-demo-003"]["attempted"]
     and covby["FIX-demo-002"]["verdict"] == "STILL_FAILING" and covby["FIX-deities-002"]["verdict"] == "FIXED"
     and "judge re-verify by the next run's NEEDS_HUMAN queue length" in md.split("## Summary")[0]
-    and covby["FIX-demo-003"]["coverage_basis"] == "keyword" and covby["FIX-demo-003"]["reason"].startswith("no hand-written repro recipe; keyword match only (escape)")
+    and covby["FIX-demo-003"]["coverage_basis"] == "keyword" and covby["FIX-demo-003"]["reason"].startswith("repro-steps: all 2 step(s) mapped + executed, but the expected outcome is not machine-checkable")
+    and "keyword match only (escape)" in covby["FIX-demo-003"]["reason"]
     and covby["FIX-deities-002"]["coverage_basis"] == "recipe" and covby["FIX-ghost-001"]["coverage_basis"] == "none"
     and covby["FIX-demo-002"]["coverage_basis"] == "keyword"
     and os.path.exists(os.path.join(rvd, "reverify_coverage.json")))
