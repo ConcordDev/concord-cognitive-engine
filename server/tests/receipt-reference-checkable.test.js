@@ -1,5 +1,5 @@
 // REC-INT-02: a declaration's reference must be checkable by a stranger.
-// reference.source is structured + required, reviewedBy/reviewedAt are required,
+// reference.source is structured + required, a review object is required,
 // and every registered declaration's own reference case must reproduce.
 import { describe, it, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
@@ -7,7 +7,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import Database from "better-sqlite3";
 import { up as up514 } from "../migrations/514_receipt_store.js";
-import { resetSigningKeyCache } from "../lib/receipts/attest.js";
+import { resetSigningKeyCache, verifyAttestation } from "../lib/receipts/attest.js";
 import { canteraPythonPath } from "../lib/conkay/chem/cantera.js";
 import { solveBeamStudy } from "../domains/engineering.js";
 import {
@@ -33,7 +33,7 @@ const GOOD_SOURCE = getDeclaration("chem", "equilibrium").reference.source;
 function withDecl(mut, fn) {
   const base = getDeclaration("chem", "equilibrium");
   const ref = structuredClone(base.reference);
-  const decl = { ...base, referenceFor: undefined, referenceList: undefined, reference: ref, reviewedBy: base.reviewedBy, reviewedAt: base.reviewedAt };
+  const decl = { ...base, referenceFor: undefined, referenceList: undefined, reference: ref, review: structuredClone(base.review) };
   mut(decl, ref);
   registerDeclaration("scratch", "eq", decl);
   try { return fn(); } finally { unregisterDeclaration("scratch", "eq"); }
@@ -100,27 +100,55 @@ describe("reference.source is required, structured, and checkable", () => {
   });
 });
 
-describe("reviewedBy / reviewedAt are required", () => {
-  for (const [name, mut, frag] of [
-    ["no reviewedBy", (d) => { delete d.reviewedBy; }, "reviewedBy"],
-    ["blank reviewedBy", (d) => { d.reviewedBy = "  "; }, "reviewedBy"],
-    ["no reviewedAt", (d) => { delete d.reviewedAt; }, "reviewedAt"],
-    ["unparseable reviewedAt", (d) => { d.reviewedAt = "last tuesday"; }, "reviewedAt"],
-  ]) {
-    it(`refuses to sign: ${name}`, () => {
-      withDecl(mut, () => {
-        const x = decide();
-        assert.equal(x.sign, false);
-        assert.equal(x.reason, `incomplete_declaration:${frag}`);
-      });
-    });
-  }
-
-  it("a fully reviewed clone signs", () => {
-    withDecl((d) => { d.reviewedBy = "Dutch"; d.reviewedAt = "2026-11-16"; }, () => assert.equal(decide().sign, true));
+describe("review object: self vs independent, never implied", () => {
+  const SELF = { kind: "self", author: "Alice", reviewer: "Alice", reviewedAt: "2026-11-16", note: "checked own work" };
+  const INDEP = { kind: "independent", author: "Alice", reviewer: "Bob Reviewer", reviewedAt: "2026-11-16", note: "re-derived the case" };
+  const refuses = (review, frag) => withDecl((d) => { if (review === undefined) delete d.review; else d.review = review; }, () => {
+    const x = decide();
+    assert.equal(x.sign, false);
+    assert.equal(x.reason, `incomplete_declaration:${frag}`);
   });
 
-  it("the two seeds are still PENDING human review: visible, not silently 'reviewed'", () => {
+  it("missing review refuses", () => refuses(undefined, "review"));
+  it("legacy bare reviewedBy is not a review", () => withDecl((d) => { delete d.review; d.reviewedBy = "Dutch"; d.reviewedAt = "2026-11-16"; }, () => assert.equal(decide().reason, "incomplete_declaration:review")));
+  it("no default kind: missing/unknown kind refuses", () => { refuses({ ...SELF, kind: undefined }, "review.kind"); refuses({ ...SELF, kind: "peer" }, "review.kind"); });
+  it("blank author / reviewer / note / bad date refuse", () => {
+    refuses({ ...SELF, author: " " }, "review.author");
+    refuses({ ...SELF, reviewer: "" }, "review.reviewer");
+    refuses({ ...SELF, note: "" }, "review.note");
+    refuses({ ...SELF, reviewedAt: "last tuesday" }, "review.reviewedAt");
+  });
+  it("independent with reviewer === author refuses (case/space-insensitive)", () => {
+    refuses({ ...INDEP, reviewer: "Alice" }, "review.reviewer_is_author");
+    refuses({ ...INDEP, reviewer: "  alice " }, "review.reviewer_is_author");
+  });
+  it("independent with an agent name as reviewer refuses", () => {
+    for (const n of ["Zuko 2", "Sonnet 5.5", "Claude", "GPT-5", "Cursor agent", "PENDING: Dutch"]) refuses({ ...INDEP, reviewer: n }, "review.reviewer_is_agent");
+  });
+  it("self where reviewer differs from author refuses (would be mislabeled)", () => refuses({ ...SELF, reviewer: "Bob" }, "review.self_requires_same_party"));
+  it("a valid independent review by a different human signs", () => withDecl((d) => { d.review = { ...INDEP }; }, () => assert.equal(decide().sign, true)));
+
+  it("self review signs; the receipt carries kind self + the disclosure, covered by the signature", () => {
+    const out = applyReceiptDeclaration({ domain: "chem", action: "equilibrium", inputs: CHEM_IN, raw: { ok: true, result: { status: "COMPUTED", adiabaticFlameTemperatureK: 2225.5, majorProducts: [], assumptions: ["a"] } }, db });
+    if (!HAVE_KERNEL && !out.result.signed) return;
+    assert.equal(out.result.signed, true, out.result.signingReason);
+    assert.equal(out.result.calcReceipt.review.kind, "self");
+    assert.equal(out.result.calcReceipt.review.disclosure, "Declaration authored and reviewed by the same party; not independently reviewed.");
+    const tampered = structuredClone(out.result.calcReceipt); tampered.review.kind = "independent";
+    assert.equal(verifyAttestation(tampered).valid, false);
+    assert.equal(verifyAttestation(out.result.calcReceipt).valid, true);
+  });
+
+  it("beamStudy (prebuilt receipt) is re-attested with the self review", () => {
+    const beam = { dims: { length: 3000, height: 300, flangeWidth: 150, flangeThickness: 12, webThickness: 8 }, loadN: 20000, support: "simply-supported" };
+    const out = applyReceiptDeclaration({ domain: "engineering", action: "beamStudy", inputs: beam, raw: { ok: true, result: solveBeamStudy(beam).result }, db });
+    assert.equal(out.result.signed, true, out.result.signingReason);
+    assert.equal(out.result.calcReceipt.review.kind, "self");
+    assert.equal(verifyAttestation(out.result.calcReceipt).valid, true);
+  });
+
+  it("the two seeds are kind self and listed as lacking independent review", () => {
+    for (const k of ["chem.equilibrium", "engineering.beamStudy"]) assert.equal(getDeclaration(...k.split(".")).review.kind, "self");
     assert.deepEqual(pendingReviews().sort(), ["chem.equilibrium", "engineering.beamStudy"]);
   });
 });

@@ -31,6 +31,7 @@
 // reference_mismatch:<why>. Every one still returns the numbers.
 
 import { buildCalcReceipt } from "./calc-receipt.js";
+import { attestReceipt } from "./attest.js";
 import { issueStoredReceipt } from "./store.js";
 import { solveBeamStudy } from "../../domains/engineering.js";
 import { CHEM_FUELS, CHEM_BOUNDS, chemReceiptParts } from "./chem-equilibrium.js";
@@ -106,11 +107,40 @@ function referenceProblems(ref) {
   return sourceProblems(ref.source);
 }
 
+const REVIEW_KINDS = ["self", "independent"];
+// Agents / automated parties can never be the independent reviewer.
+const AGENT_NAME_RE = /(zuko|sonnet|opus|haiku|fable|claude|anthropic|gpt|openai|gemini|llama|mistral|copilot|cursor|codex|\bllm\b|\bai\b|\bbot\b|\bagent\b|assistant|pending)/i;
+const norm = (s) => String(s).trim().replace(/\s+/g, " ").toLowerCase();
+export const SELF_REVIEW_DISCLOSURE = "Declaration authored and reviewed by the same party; not independently reviewed.";
+
+/** Problems with decl.review ({ kind, author, reviewer, reviewedAt, note }). Never defaults to independent. */
 function reviewProblems(decl) {
+  const r = decl && decl.review;
+  if (!r || typeof r !== "object" || Array.isArray(r)) return ["review"];
   const bad = [];
-  if (!nonEmpty(decl.reviewedBy)) bad.push("reviewedBy");
-  if (!nonEmpty(decl.reviewedAt) || !/^\d{4}-\d{2}-\d{2}/.test(decl.reviewedAt) || Number.isNaN(Date.parse(decl.reviewedAt))) bad.push("reviewedAt");
+  if (!REVIEW_KINDS.includes(r.kind)) bad.push("review.kind");
+  if (!nonEmpty(r.author)) bad.push("review.author");
+  if (!nonEmpty(r.reviewer)) bad.push("review.reviewer");
+  if (!nonEmpty(r.reviewedAt) || !/^\d{4}-\d{2}-\d{2}/.test(r.reviewedAt) || Number.isNaN(Date.parse(r.reviewedAt))) bad.push("review.reviewedAt");
+  if (!nonEmpty(r.note)) bad.push("review.note");
+  if (bad.length) return bad;
+  const same = norm(r.author) === norm(r.reviewer);
+  if (r.kind === "independent") {
+    if (same) bad.push("review.reviewer_is_author");
+    else if (AGENT_NAME_RE.test(r.reviewer)) bad.push("review.reviewer_is_agent");
+  } else if (!same) {
+    bad.push("review.self_requires_same_party");
+  }
   return bad;
+}
+
+/** The review block copied into the signed receipt (covered by the signature). */
+export function receiptReview(decl) {
+  const r = decl.review;
+  return {
+    kind: r.kind, author: r.author, reviewer: r.reviewer, reviewedAt: r.reviewedAt, note: r.note,
+    disclosure: r.kind === "self" ? SELF_REVIEW_DISCLOSURE : `Declaration independently reviewed by ${r.reviewer}, who is not its author.`,
+  };
 }
 
 /** Every reference a declaration carries (the golden test replays each). */
@@ -154,9 +184,9 @@ export async function checkReferences(decl) {
   return out;
 }
 
-/** Registered declarations whose reviewedBy is still a placeholder. Visible debt, never silent. */
+/** Registered declarations with no independent human review. Visible debt, never silent. */
 export function pendingReviews() {
-  return [...REGISTRY.entries()].filter(([, d]) => /^pending\b/i.test(String(d.reviewedBy || "").trim())).map(([k]) => k);
+  return [...REGISTRY.entries()].filter(([, d]) => !d.review || d.review.kind !== "independent").map(([k]) => k);
 }
 
 /** null when complete, else a reason fragment. */
@@ -244,7 +274,10 @@ export function applyReceiptDeclaration({ domain, action, inputs, raw, db, store
     if (JSON.stringify(flat).length > MAX_SIGNED_INPUT_CHARS) return unsigned(raw, "out_of_envelope:inputs_too_large_to_sign");
 
     const parts = decl.buildParts(flat, raw.result, decl);
-    const built = parts && parts.prebuilt ? parts.prebuilt : buildCalcReceipt(parts, now ? { now } : {});
+    const review = receiptReview(decl);
+    const built = parts && parts.prebuilt
+      ? attestReceipt({ ...parts.prebuilt, review }, now ? { now } : {})
+      : buildCalcReceipt({ ...parts, review }, now ? { now } : {});
     const issued = issueStoredReceipt(built, { db, store, now });
     if (!issued.receipt || !issued.receipt.signature || !issued.receipt.signature.signature) return unsigned(raw, "no_signing_key");
     const common = { signed: true, calcReceipt: issued.receipt, receipt: issued.receipt };
@@ -259,10 +292,16 @@ export function applyReceiptDeclaration({ domain, action, inputs, raw, db, store
 
 // ─── seeded declarations ────────────────────────────────────────────────────
 
-// reviewedBy is a HUMAN (Dutch) or Zuko 2 sign-off. The seeds below were drafted by an LLM and
-// have not been signed off, so they say so; pendingReviews() lists them. Replace on review.
-const REVIEW_PENDING = "PENDING: Dutch or Zuko 2 review";
-const SEED_DATE = "2026-11-16";
+// The seeds below were drafted and checked by the same LLM agent, with no git/doc record of a
+// separate human review, so they are honestly kind "self". Only a different, named human can make
+// one "independent"; pendingReviews() lists every declaration that is not.
+const SEED_REVIEW = {
+  kind: "self",
+  author: "Sonnet 5.5 (Claude Code)",
+  reviewer: "Sonnet 5.5 (Claude Code)",
+  reviewedAt: "2026-11-16",
+  note: "LLM-drafted declaration checked by the same agent; ISBN verified, page/case locator not verified; awaiting independent human review.",
+};
 
 // Closed-form Euler–Bernoulli beam results (peak moment, deflection) for the three supports:
 // simply supported centre load (M=PL/4, d=PL^3/48EI), cantilever tip load (M=PL, d=PL^3/3EI),
@@ -297,8 +336,7 @@ registerDeclaration("chem", "equilibrium", {
     const out = await solveChemEquilibrium({ fuel: ref.inputs.fuel, phi: ref.inputs.phi, T0: ref.inputs.T0, P0atm: ref.inputs.P0 });
     return out.status === "NOT_COMPUTED" ? null : out.tAd;
   },
-  reviewedBy: REVIEW_PENDING,
-  reviewedAt: SEED_DATE,
+  review: { ...SEED_REVIEW },
   envelope: {
     inputRanges: {
       fuel: { oneOf: Object.keys(CHEM_FUELS) },
@@ -349,8 +387,7 @@ registerDeclaration("engineering", "beamStudy", {
     const h = solved.result.handCheck;
     return Math.max(h.stressError, h.deflectionError) * 100;
   },
-  reviewedBy: REVIEW_PENDING,
-  reviewedAt: SEED_DATE,
+  review: { ...SEED_REVIEW },
   envelope: {
     inputRanges: {
       length: { exclusiveMin: 0, max: 50000, unit: "mm" },
