@@ -1,0 +1,16 @@
+{
+  "author": "muse-b5",
+  "authored_on": "2026-11-17",
+  "covers": "UNDECLARED filing (value-assert) for the anon lens, generated from the LC-05 census: no declaration exists for this ticket's computed/displayed value, so correctness is not checkable yet \u2014 this entry maps the gap in the open (baseline at f4f1f77ff: 146 compute actions undeclared, 2 declared). When a declaration is written (cited reference + validity range + review_source), a reviewer binds the reference case into params, records the pre-fix failure transcript as the discriminator, and activates.",
+  "discriminator": null,
+  "id": "FIX-anon-004",
+  "kind": "template",
+  "params": {
+    "declaration": null
+  },
+  "reviewer": "zuko-desk",
+  "status": "draft",
+  "template": "value-assert",
+  "tier": 1,
+  "verified_against": null
+}

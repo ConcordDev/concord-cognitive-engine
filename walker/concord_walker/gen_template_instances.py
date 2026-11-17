@@ -79,13 +79,42 @@ def instance_for(row):
     }
 
 
+def undeclared_for(row):
+    """An UNDECLARED value-assert filing (correction #8): a computed/displayed
+    value row with no declaration on record gets a draft that maps the
+    correctness gap in the open. Baseline of record at f4f1f77ff: 146 compute
+    actions undeclared, 2 declared."""
+    if (row.get("human_category") or "") != "computed_or_displayed_value":
+        return None
+    return {
+        "id": row["id"],
+        "kind": "template",
+        "template": "value-assert",
+        "params": {"declaration": None},
+        "tier": _templates.TEMPLATES["value-assert"]["tier"],
+        "discriminator": None,
+        "covers": "UNDECLARED filing (value-assert) for the %s lens, generated from the LC-05 "
+                  "census: no declaration exists for this ticket's computed/displayed value, so "
+                  "correctness is not checkable yet — this entry maps the gap in the open "
+                  "(baseline at f4f1f77ff: 146 compute actions undeclared, 2 declared). When a "
+                  "declaration is written (cited reference + validity range + review_source), a "
+                  "reviewer binds the reference case into params, records the pre-fix failure "
+                  "transcript as the discriminator, and activates." % (row.get("lens") or "?"),
+        "author": AUTHOR,
+        "reviewer": REVIEWER,
+        "status": "draft",
+        "authored_on": AUTHORED_ON,
+        "verified_against": None,
+    }
+
+
 def generate(csv_path, recipes_dir):
     with open(csv_path, newline="", encoding="utf-8") as fh:
         rows = list(csv.DictReader(fh))
     written, unchanged, skipped = 0, 0, 0
     seen = set()
     for row in sorted(rows, key=lambda r: r["id"]):
-        inst = instance_for(row)
+        inst = instance_for(row) or undeclared_for(row)
         if inst is None or inst["id"] in seen:
             skipped += 1
             continue
