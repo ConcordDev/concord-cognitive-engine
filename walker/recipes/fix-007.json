@@ -1,0 +1,12 @@
+{
+  "id": "FIX-007",
+  "kind": "code",
+  "handler": "r_fix007",
+  "title": "Seed hand recipe (walker seed set)",
+  "author": "zuko-2",
+  "reviewer": "dutch",
+  "status": "active",
+  "authored_on": "2026-11-14",
+  "verified_against": "bc6275de62",
+  "max_age_days": 90
+}

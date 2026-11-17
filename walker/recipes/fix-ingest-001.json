@@ -1,0 +1,12 @@
+{
+  "id": "FIX-ingest-001",
+  "kind": "code",
+  "handler": "_prod_compare",
+  "title": "Global-search vs lens-list compare for one DTU id (WALK-04g prod row, post-deploy only; search leg returns NEEDS_HUMAN until the route set grows)",
+  "author": "muse-b5",
+  "reviewer": "zuko-desk",
+  "status": "active",
+  "authored_on": "2026-11-15",
+  "verified_against": "f68853239",
+  "max_age_days": 90
+}

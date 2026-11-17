@@ -1,0 +1,12 @@
+{
+  "id": "FIX-global-016",
+  "kind": "code",
+  "handler": "_prod_scan",
+  "title": "Hidden-text scan, global row (WALK-04g prod row, post-deploy only)",
+  "author": "muse-b5",
+  "reviewer": "zuko-desk",
+  "status": "active",
+  "authored_on": "2026-11-15",
+  "verified_against": "f68853239",
+  "max_age_days": 90
+}
