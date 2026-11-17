@@ -1,12 +1,14 @@
 {
   "author": "muse-b5",
   "authored_on": "2026-11-17",
-  "covers": "Template instance (contrast) for the markets lens, generated from the LC-05 census: all visible text meets contrast 4.5. Reviewer: confirm the ticket is a contrast defect before activating.",
+  "covers": "Template instance (contrast) for the markets lens, generated from the LC-05 census: all visible text meets contrast 4.5. Reviewer: confirm the ticket is a contrast defect before activating. At activation, record the pre-fix replay failure transcript in the discriminator field (CB-0810).",
+  "discriminator": null,
   "id": "FIX-markets-009",
   "kind": "template",
   "params": {},
   "reviewer": "zuko-desk",
   "status": "draft",
   "template": "contrast",
+  "tier": 2,
   "verified_against": null
 }
