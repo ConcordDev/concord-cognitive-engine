@@ -1045,6 +1045,8 @@ def run_repro(ticket, driver, *, lens_slug, allow_fill=True, log=None, write=Non
                         rec(s, True, "typed own labelled fixture value %r into %r (not submitted by this step)" % (label, s["name"]))
                     else:
                         rec(s, True, "typed %s into %r (not submitted)" % (("the literal %r" % s["literal"]) if s.get("literal") else "an own labelled qa-walker value", s["name"]))
+                if a in _SETTLE_ACTIONS and getattr(driver, "settle", None):
+                    driver.settle()          # in-flight writes/renders after this step land BEFORE its net window closes and the snapshot is taken
                 if mk is not None:
                     ev["step_windows"].append({"n": s["n"], "action": a, "writes": driver.net_since(mk), "typed": s.get("_typed"), "submit": bool(s.get("_submit"))})
             except (_Refused, _NotFound) as e:
@@ -1165,6 +1167,28 @@ _ACTIONABLE = ("button", "link", "tab", "menuitem", "menuitemradio", "menuitemch
 _GENERIC_SUBMIT_VERBS = ("submit", "save", "ok", "done", "apply", "confirm", "create", "add", "post")
 
 
+def settle_loop(inflight, sleep, now, *, quiet_ms=180, max_ms=2500, step_ms=50):
+    """Pure settle logic (no browser): wait until `inflight()` has been 0 for `quiet_ms` straight, bounded by `max_ms`.
+    -> (settled, waited_ms). Never loops past the bound, so a page that polls forever cannot hang a replay."""
+    t0 = now()
+    quiet_since = None
+    while True:
+        t = now()
+        waited = (t - t0) * 1000.0
+        if inflight() == 0:
+            quiet_since = t if quiet_since is None else quiet_since
+            if (t - quiet_since) * 1000.0 >= quiet_ms:
+                return True, waited
+        else:
+            quiet_since = None
+        if waited >= max_ms:
+            return False, waited
+        sleep(step_ms / 1000.0)
+
+
+_SETTLE_ACTIONS = {"click", "submit_form", "delete_own", "fill", "type_value", "press", "open_first"}
+
+
 def pick_submit(buttons, verb):
     """Pure submit discovery over [(name, disabled)]: the ONE enabled button whose name starts with `verb`; for a generic verb
     ('submit', 'save', ...) any single enabled create/save-like button (the ticket says 'submit', the button reads 'Create').
@@ -1207,6 +1231,13 @@ class PlaywrightDriver:
         self.chat_budget = None
         self._scheme = None
         self._writes = []
+        self._inflight = 0
+        try:
+            page.on("request", lambda r: setattr(self, "_inflight", self._inflight + 1))
+            page.on("requestfinished", lambda r: setattr(self, "_inflight", max(0, self._inflight - 1)))
+            page.on("requestfailed", lambda r: setattr(self, "_inflight", max(0, self._inflight - 1)))
+        except Exception:
+            pass
         try:
             page.on("request", lambda r: self._writes.append("%s %s" % (r.method, r.url.split("?")[0][-80:]))
                     if r.method in ("POST", "PUT", "PATCH", "DELETE") and "/api/" in r.url else None)
@@ -1497,6 +1528,15 @@ class PlaywrightDriver:
     # ---- ULW pass 2: per-step net window, popups, typed values, create/fill/submit, delete-with-confirm, first-of-role
     _LIST_ROLES = ("list", "listbox", "grid", "table", "treegrid", "tree", "feed", "rowgroup")
     _ITEM_ROLES = ("listitem", "row", "gridcell", "cell", "treeitem", "option", "article")
+
+    def settle(self, max_ms=2500):
+        """Bounded wait for the step's in-flight requests to finish plus a short DOM-settle, so an async list render
+        (fetch(POST).then(render)) is in the DOM before the snapshot / delete-row lookup."""
+        try:
+            self.page.wait_for_timeout(60)       # let a just-clicked handler issue its request
+            return settle_loop(lambda: self._inflight, lambda sec: self.page.wait_for_timeout(int(sec * 1000)), time.monotonic, max_ms=max_ms)
+        except Exception:
+            return False, 0
 
     def net_mark(self):
         return len(self._writes)
