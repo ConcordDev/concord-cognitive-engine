@@ -1,0 +1,34 @@
+# CI lane template for one ConKay engine (SXE-00).
+#
+# Instantiate as .github/workflows/conkay-engine-<ENGINE_ID>.yml via the
+# desk git route (the GitHub connector cannot write workflow files),
+# replacing every <ENGINE_ID> and the install step. The lane installs
+# ONLY this engine and runs ONLY its tests; it must FAIL if a test
+# skips — an engine tier that never runs in CI does not exist.
+name: conkay-engine-<ENGINE_ID>
+
+on:
+  push:
+    paths:
+      - "server/lib/conkay/engines/**"
+      - "server/tests/conkay/engines/<ENGINE_ID>/**"
+  workflow_dispatch:
+
+jobs:
+  engine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      # Replace with the engine's real install (pinned version, matching
+      # the manifest entry's version pin and licence):
+      - name: Install engine <ENGINE_ID>
+        run: |
+          echo "TODO: install the pinned engine release"
+          exit 1
+      - name: Run engine tests (skips fail the lane)
+        run: |
+          node --test server/tests/conkay/engines/<ENGINE_ID>/ 2>&1 | tee /tmp/engine-tests.log
+          grep -q "ℹ skipped 0" /tmp/engine-tests.log
