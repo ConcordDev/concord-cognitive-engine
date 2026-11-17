@@ -18,7 +18,7 @@ a new one.
 | field | required | meaning |
 |---|---|---|
 | `id` | yes | the ticket id this recipe verifies (e.g. `FIX-chem-003`) |
-| `kind` | no (default `code`) | `code` — the recipe is a walker method; `repro-steps` — the recipe is the ticket's hand-written repro steps (reserved; dispatched by the repro executor, not the code dispatch) |
+| `kind` | no (default `code`) | `code` — the recipe is a walker method; `repro-steps` — the recipe is the ticket's hand-written repro steps (reserved; dispatched by the repro executor, not the code dispatch); `template` — an IMM-14 template instance (LC-06, see below) |
 | `handler` | for `code` | the walker method name in `reverify.py` that runs the recipe (e.g. `_prod_scan`). The loader refuses a dispatch whose registry handler does not match the walker's method of that name |
 | `title` | no | one line: what the recipe proves |
 | `author` | yes | who wrote the recipe (a seat id, e.g. `muse-b5`, or `zuko-2`) |
@@ -30,6 +30,19 @@ a new one.
 | `expect_endpoints` | no | optional assertions the recipe makes about network behaviour: a list of `{method, path, expect_status}` — e.g. "control X hits `POST /api/lens/run` with `domain.action` and gets 2xx" is `{method: "POST", path: "/api/lens/run", expect_status: 200}` plus `expect_action` |
 | `expect_action` | no | optional `domain.action` string the recipe expects the surface to invoke |
 | `override_reason` + `override_by` | no | a refusal override. Usable by **Dutch only**: when `override_by` is `dutch` and the reason is non-empty, the recipe loads despite its refusal and the override is reported in the load result. An override signed by anyone else is itself a refusal |
+
+## Template instances (kind = "template", LC-06)
+
+A template instance binds one of the six IMM-14 templates
+(`concord_walker/recipe_templates.py`) to a ticket: `template` names one of
+`escape` · `overflow-390` · `contrast` · `load-5xx` · `export-file` ·
+`endpoint-hit`, `params` is an object whose keys stay within the template's
+declared parameter list, and `handler` must be omitted — instances dispatch
+through the Reverifier's generic template runner, never a code handler.
+Every other rule in this schema applies unchanged (authorship, reviewers,
+staleness, status). The LC-06 generator emits instances as **drafts** from
+the LC-05 census (`audit/reverify/RECIPE-GAPS.md`); a draft verifies
+nothing until a reviewer of record flips it to `active`.
 
 ## Refusals (each carries its reasons, printed on the load report)
 

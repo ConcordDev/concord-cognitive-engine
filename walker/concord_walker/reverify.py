@@ -13,6 +13,7 @@ from . import colors
 from .coverage import cap_verdict
 from . import repro as _repro
 from . import recipes as _recipe_registry
+from . import recipe_templates as _recipe_templates
 from . import rewrites as _rewrites
 from .ledger import VERIFIED as _VERIFIED
 
@@ -113,10 +114,17 @@ class Reverifier:
         # cap_verdict caps it at NEEDS_HUMAN; every refusal is logged.
         self.recipe_meta = {}
         self.recipe_refusals = []
+        self.template_instances = {}
         try:
             _dispatch, self.recipe_meta, self.recipe_refusals, _overrides = \
                 _recipe_registry.build_dispatch(self.recipes)
             self.recipes = _dispatch
+            # LC-06: kind=template registry entries dispatch through the
+            # generic template runner, never through a code handler.
+            self.template_instances = _recipe_registry.template_instances(self.recipe_meta)
+            if self.template_instances:
+                self.log("recipe registry: %d template instance(s) registered"
+                         % len(self.template_instances))
             for _src, _tid, _reasons in self.recipe_refusals:
                 self.log("recipe registry: %s refused (%s): %s"
                          % (_tid or _src, _src, "; ".join(_reasons)))
@@ -125,6 +133,7 @@ class Reverifier:
         except Exception as _exc:  # a broken registry fails toward humans, never toward silence
             self.log("recipe registry failed to load (%s) — hand recipes held to NEEDS_HUMAN" % _exc)
             self.recipes = {}
+            self.template_instances = {}
         self.vision = VisionJudge(cfg, rec, log) if VisionJudge else None
         # repro_steps replay (repro.py). Injectable: tests pass a fake that never opens a browser.
         self.repro_runner = self._run_repro_live
@@ -173,14 +182,18 @@ class Reverifier:
         # ticket's fixer — a recipe the fixer wrote or reviewed never grades
         # the fix, even when it loaded (the fixer is only known per ticket).
         dispatch = self.recipes
+        templates = self.template_instances
         _fixer = t.get("fixed_by")
         if _fixer and tid in self.recipe_meta:
             _auth = _recipe_registry.check_authorship(self.recipe_meta[tid], _fixer)
             if _auth:
                 self.log("recipe registry: %s held for this ticket: %s" % (tid, "; ".join(_auth)))
                 dispatch = {k: v for k, v in self.recipes.items() if k != tid}
+                templates = {k: v for k, v in templates.items() if k != tid}
         if tid in dispatch:
             res = dispatch[tid](t)
+        elif tid in templates:
+            res = self._run_template_instance(t, templates[tid])
         else:
             res = self.generic(t)
         lw = self.smoke(lens)
@@ -189,7 +202,8 @@ class Reverifier:
         res["evidence"] = list(dict.fromkeys(e for e in (res.get("evidence") or []) if e))
         # Dutch, Nov 15: only a hand-written recipe can verify; a keyword-only
         # FIXED is capped at NEEDS_HUMAN (and so goes to the tester queue).
-        cap_verdict(tid, res, dispatch)
+        # LC-06: a dispatched template instance is a hand recipe too.
+        cap_verdict(tid, res, set(dispatch) | set(templates))
         self._apply_repro_steps(t, res)
         if res["verdict"] == HUMAN:
             self.rec.judgment(lens, "reverify", "%s: %s" % (tid, res.get("notes", "")), res.get("evidence"), ticket_id=tid)
@@ -232,6 +246,31 @@ class Reverifier:
                 drv.close()
             except Exception:
                 pass  # a page/context the browser already closed: nothing left to close
+
+    def _run_template_instance(self, t, inst):
+        """LC-06 generic runner: a registered kind=template instance is run
+        against a live driver for the ticket's lens, exactly like a code
+        recipe's own walk. Any failure to run is NEEDS_HUMAN, never a verdict
+        the run did not earn."""
+        lens = t["lens"]
+        try:
+            acct, admin = self.account_for(lens)
+            lw = LensWalk(self.b, self.cfg, self.rec, self.inv[lens], acct, self.log, admin=admin,
+                          inv_entry=self.inv[lens], phases=[])
+            ctx, page, cdp = lw.open()
+            drv = _repro.PlaywrightDriver(lw, ctx, page, cdp, lw.url)
+            try:
+                if acct:
+                    assert_account(ctx, self.cfg, acct, "template instance", self.log)
+                return _recipe_templates.make_instance(inst["template"], **inst["params"])(drv)
+            finally:
+                try:
+                    drv.close()
+                except Exception:
+                    pass
+        except Exception as exc:
+            return {"verdict": HUMAN, "method": "template:%s" % inst.get("template"),
+                    "notes": "template instance could not run: %s" % exc, "evidence": []}
 
     def _rewrite_index(self):
         if getattr(self, "_rw_index", None) is None:

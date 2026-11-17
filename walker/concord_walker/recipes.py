@@ -31,12 +31,14 @@ import json
 import os
 from datetime import date
 
+from . import recipe_templates as _templates
+
 # Reviewers of record for walker recipes (MST-W1-13): the founder and his desk.
 REVIEWERS = ("dutch", "zuko-desk")
 # Only Dutch may override a refusal (override_reason usable by Dutch only).
 OVERRIDERS = ("dutch",)
 STATUSES = ("active", "draft", "stale")
-KINDS = ("code", "repro-steps")
+KINDS = ("code", "repro-steps", "template")
 DEFAULT_MAX_AGE_DAYS = 90
 
 
@@ -92,6 +94,24 @@ def validate_recipe(raw, today=None, expect_sha=None):
         handler = raw.get("handler")
         if not isinstance(handler, str) or not handler:
             reasons.append("handler is required for kind=code (the walker method name)")
+    if kind == "template":
+        # LC-06: a template instance binds one of the IMM-14 templates with
+        # parameters from its declared list — nothing else is a recipe.
+        if raw.get("handler"):
+            reasons.append("handler must be omitted for kind=template")
+        tname = raw.get("template")
+        spec = _templates.TEMPLATES.get(tname) if isinstance(tname, str) else None
+        if spec is None:
+            reasons.append("template must be one of %s" % (", ".join(sorted(_templates.TEMPLATES))))
+        else:
+            params = raw.get("params") or {}
+            if not isinstance(params, dict):
+                reasons.append("params must be an object for kind=template")
+            else:
+                extra = sorted(set(params) - set(spec["params"]))
+                if extra:
+                    reasons.append("params %s are not %s template parameters (%s)"
+                                   % (extra, tname, ", ".join(spec["params"])))
     author = raw.get("author")
     if not isinstance(author, str) or not author:
         reasons.append("author is required")
@@ -242,3 +262,12 @@ def build_dispatch(handlers, recipes_dir=None, fixer_of=None, today=None, expect
             refusals.append(("(dispatch)", tid,
                              ["registered recipe has no code handler in the walker"]))
     return dispatch, registry, refusals, overrides
+
+
+def template_instances(registry):
+    """The kind=template entries of a loaded registry, as
+    {ticket_id: {"template": name, "params": {...}}} — the Reverifier runs
+    these through its generic template runner (LC-06). Draft and refused
+    entries never reach a loaded registry, so they never appear here."""
+    return {tid: {"template": r.get("template"), "params": dict(r.get("params") or {})}
+            for tid, r in registry.items() if r.get("kind") == "template"}

@@ -59,8 +59,13 @@ def refusal_text(refusals):
 def c_builtins_registered():
     registry, refusals, overrides = R.load_registry(
         os.path.join(ROOT, "recipes"), today=TODAY)
-    ok = set(registry) == BUILTINS and not refusals and not overrides
-    return ok, "registered=%s refusals=[%s]" % (sorted(registry), refusal_text(refusals))
+    # LC-06: the registry dir also carries generated template-instance
+    # DRAFTS; drafts are refused by design, so the only refusals allowed
+    # here are draft refusals — the 8 builtins still register entire.
+    drafts_only = all(rs == ["draft recipe — drafts are never loaded"]
+                      for _src, _tid, rs in refusals)
+    ok = set(registry) == BUILTINS and drafts_only and not overrides
+    return ok, "registered=%s refusals=%d (drafts only: %s)" % (sorted(registry), len(refusals), drafts_only)
 
 
 def _mk(name):
@@ -77,8 +82,10 @@ def c_builtin_dispatch():
                 "FIX-repos-002": _mk("_prod_reload"), "FIX-ingest-001": _mk("_prod_compare")}
     dispatch, _reg, refusals, _ov = R.build_dispatch(
         handlers, os.path.join(ROOT, "recipes"), today=TODAY)
-    return set(dispatch) == BUILTINS and not refusals, \
-        "dispatch=%s refusals=[%s]" % (sorted(dispatch), refusal_text(refusals))
+    drafts_only = all(rs == ["draft recipe — drafts are never loaded"]
+                      for _src, _tid, rs in refusals)
+    return set(dispatch) == BUILTINS and drafts_only, \
+        "dispatch=%s refusals=%d (drafts only: %s)" % (sorted(dispatch), len(refusals), drafts_only)
 
 
 # ------------------------------------------------------------ refusals
@@ -231,11 +238,12 @@ def c_reverify_consults_registry():
     with open(os.path.join(ROOT, "concord_walker", "reverify.py"), encoding="utf-8") as fh:
         src = fh.read()
     ok = "build_dispatch" in src and "check_authorship" in src \
-        and "cap_verdict(tid, res, dispatch)" in src
-    return ok, "reverify.py builds its dispatch from the registry and re-checks authorship per ticket"
+        and "cap_verdict(tid, res, set(dispatch) | set(templates))" in src \
+        and "template_instances" in src
+    return ok, "reverify.py builds its dispatch from the registry, re-checks authorship per ticket, and caps against code + template recipes (LC-06)"
 
 
-case("builtins: 8 registered, no refusals", c_builtins_registered)
+case("builtins: 8 registered, only LC-06 draft refusals beside them", c_builtins_registered)
 case("builtins: dispatch composes all 8 handlers", c_builtin_dispatch)
 case("draft refused", c_draft_refused)
 case("status-stale refused", c_status_stale_refused)
