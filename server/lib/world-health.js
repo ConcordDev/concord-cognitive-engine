@@ -28,8 +28,10 @@ export function detectPathologies(db, nowS = Math.floor(Date.now() / 1000)) {
   if (!db) return out;
 
   // ── economy: negative wallet balances (value corruption — ESCALATE) ──
-  // Concord Coin balances live in users.concordia_credits (migration 045); the
-  // guard must check that table, not the legacy user_wallets.
+  // The legacy concordia_credits balances live in users.concordia_credits
+  // (migration 045) — a balance separate from the economy-ledger Concord
+  // Coin (currency-map.js, SB-30); the guard must check that table, not
+  // the legacy user_wallets.
   if (tableExists(db, "users")) {
     try {
       for (const r of db.prepare(`SELECT id AS user_id, concordia_credits AS balance FROM users WHERE concordia_credits < 0 LIMIT 50`).all()) {

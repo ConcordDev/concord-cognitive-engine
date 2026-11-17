@@ -1,6 +1,9 @@
 // server/lib/currency.js
 // Dual-currency helpers. Sparks = gameplay-only, no real-world value.
-// CC (concordia_credits) = real money equivalent, NEVER awarded by gameplay.
+// CC (concordia_credits) is the RETIRED legacy column (migration 045): a
+// balance SEPARATE from the economy-ledger Concord Coin, never the coin
+// itself. Gameplay never earns the coin; sale proceeds settle in the
+// ledger. The map of record is lib/currency-map.js (SB-30, CI-01).
 
 import crypto from "crypto";
 
