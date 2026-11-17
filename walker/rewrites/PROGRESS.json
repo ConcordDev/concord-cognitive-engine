@@ -1,9 +1,32 @@
 {
  "001": {
+  "clauses_by_hand": 5,
   "committed_sha": null,
+  "human_by_reason": {
+   "code_read": 1,
+   "lighthouse": 2,
+   "other_with_note": 1
+  },
   "human_only": 4,
+  "needs_human_clause": 43,
+  "needs_human_step": 26,
   "original_sufficient": 35,
   "rewritten": 11,
+  "steps_by_hand": 15,
+  "tickets": 50
+ },
+ "002": {
+  "clauses_by_hand": 18,
+  "committed_sha": null,
+  "human_by_reason": {
+   "lighthouse": 2
+  },
+  "human_only": 2,
+  "needs_human_clause": 38,
+  "needs_human_step": 28,
+  "original_sufficient": 33,
+  "rewritten": 15,
+  "steps_by_hand": 6,
   "tickets": 50
  }
 }
