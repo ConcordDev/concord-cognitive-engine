@@ -1362,7 +1362,9 @@ class PlaywrightDriver:
         w, h = self._zoom_vp
         if abs(z - 1.0) < 1e-6:
             self.cdp.s.send("Emulation.clearDeviceMetricsOverride")
+            # clearing also drops Playwright's own viewport emulation and Playwright never re-applies it: restore the remembered size
             self._zoom_vp = None
+            self.page.set_viewport_size({"width": int(w), "height": int(h)})
             return
         self.cdp.s.send("Emulation.setDeviceMetricsOverride", {"width": max(1, round(w / z)), "height": max(1, round(h / z)),
                                                                 "deviceScaleFactor": z, "mobile": False})
@@ -1494,6 +1496,7 @@ class PlaywrightDriver:
         return False, trace
 
     def set_viewport(self, w, h):
+        self._zoom_vp = None  # an explicit size supersedes any remembered pre-zoom size; a later zoom bases on this one
         self.page.set_viewport_size({"width": int(w), "height": int(h)})
         try:
             self.page.wait_for_load_state("networkidle", timeout=4000)
