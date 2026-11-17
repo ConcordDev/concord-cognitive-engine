@@ -1,0 +1,12 @@
+{
+  "author": "muse-b5",
+  "authored_on": "2026-11-17",
+  "covers": "Template instance (contrast) for the music lens, generated from the LC-05 census: all visible text meets contrast 4.5. Reviewer: confirm the ticket is a contrast defect before activating.",
+  "id": "FIX-music-009",
+  "kind": "template",
+  "params": {},
+  "reviewer": "zuko-desk",
+  "status": "draft",
+  "template": "contrast",
+  "verified_against": null
+}
