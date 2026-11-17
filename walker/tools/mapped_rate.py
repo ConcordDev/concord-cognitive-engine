@@ -29,6 +29,7 @@ _EMPTY = {"controls": [], "texts": [], "dialogs": [], "errors": 0}
 _I = re.I
 CLASSES = [
     ("no_text", r"^\s*(see evidence|n/?a|none|x|-|tbd)\.?\s*$"),
+    ("evidence_pointer", r"^\s*see\b[^.]{0,40}\bevidence/"),   # a pointer to an evidence file, not a reproduction: nothing to replay
     ("guard_meta", r"(?:^|[.;,]\s*)(?:do not|don't|never|if\b|repeat|wait\b|until\b|unless)"),
     ("viewport_theme", r"\b\d{3,4}\s*[x×]\s*\d{3,4}\b|\b(mobile|viewport|device toolbar|desktop|dark theme|light theme|theme toggle|dark mode|light mode|zoom|reduced motion|offline)\b"),
     ("tooling_console_net_a11y", r"devtools|console|network|accessibility (?:tree|pane)|a11y|lighthouse|waterfall|screen ?reader|axe\b|performance"),

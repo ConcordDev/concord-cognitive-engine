@@ -52,6 +52,10 @@ _OPEN_FIRST_NOT = re.compile(r"(?i)\b(tab|menu|link|button|setting|settings|sett
 
 
 _FIELD_LIT = re.compile(r"(?i)^(?:set\s+)?(?P<f>(?!(?:open|click|select|go|view|tab|press|run|add|create|new|log|pledge|enter|type|use|toggle|switch|choose|pick|save|submit|delete|remove|reload|focus|expand)\b)[A-Za-z][A-Za-z ]{0,25}?)\s+" + _LITLIST + r"$")
+_FIELD_TO = re.compile(r"(?i)^set\s+(?:the\s+)?(?P<f>[A-Za-z][A-Za-z ]{0,25}?)\s+(?:to|=)\s+" + _LITLIST + r"$")
+_COMPOUND_SPLIT = re.compile(r"(?i)\s*(?:;|,|\s+then\s|\s+and\s)\s*(?=(?:type|enter|paste|set|leave|clear|submit|save|create|add|post|new)\b|[A-Za-z][A-Za-z ]{0,25}?\s+[-+]?\d|[-+]?\d)")
+_SUBMIT_OR = re.compile(r"(?i)^(submit|save|create|add|post)\s+or\s+[a-z]+$")
+_SUBMIT_EMPTY = re.compile(r"(?i)^submit\s+(?:with\s+)?(?:empty|blank)(?:\s+(?:fields?|form|values?))?$")
 _ADD_WITH = re.compile(r"(?i)^(?P<v>add|create|new)\s+(?:an?\s+)?(?P<thing>[A-Za-z][A-Za-z\-]*(?:\s+[A-Za-z\-]+)?)\s+with\s+(?:an?\s+)?(?:(?P<n>\d{2,5})\s*-?\s*char(?:acter)?s?\s+(?P<fn>name|title|label|description)|(?:empty|blank)\s+(?P<fe>name|title|label))$")
 
 
@@ -104,11 +108,99 @@ def _tv(fields, specs, raw, **extra):
     return [dict({"action": "type_value", "name": f, "specs": specs, "raw": raw}, **extra) for f in fields]
 
 
-def map_part(seg, raw, lens_names, prev=None):
+def map_part(seg, raw, lens_names, prev=None, _depth=0):
     """-> list[sub-step] | (None, reason) | NOT_MINE."""
     s = seg.strip().rstrip(".").strip()
     if not s:
         return NOT_MINE
+    got = _map_single(s, raw, lens_names, prev)
+    if got is not NOT_MINE or _depth:
+        return got
+    return _compound(s, raw, lens_names, prev)
+
+
+def _compound(s, raw, lens_names, prev):
+    """Pass 3: 'type -1 into Qty, submit' / 'Create form, leave note blank' / 'Duration -1, Quorum -1; Create'.
+    Split into clauses and map EACH through the single-clause grammar; the whole step maps only if EVERY clause does
+    (one unmapped clause -> NOT_MINE, the step stays unmapped: fail closed, never a partial guess)."""
+    parts = [x for x in _COMPOUND_SPLIT.split(s) if x and x.strip()]
+    if len(parts) < 2 or len(parts) > 6:
+        return NOT_MINE
+    out, cur = [], prev
+    for part in parts:
+        part = part.strip().rstrip(".").strip()
+        if _SUBMIT_EMPTY.match(part):
+            return NOT_MINE   # an empty submit needs the executor to NOT auto-label; unsupported -> stays unmapped
+        mo = _SUBMIT_OR.match(part)
+        if mo:
+            part = mo.group(1)
+        got = _map_single(part, raw, lens_names, cur)
+        if got is NOT_MINE or isinstance(got, tuple) or not got:
+            return NOT_MINE
+        out += got
+        cur = got[-1]
+    return out
+
+
+_MAKE_LEN = re.compile(r"(?i)^(?:create|add|make|new)\s+(?:an?\s+)?(?P<n>\d{2,5})\s*-?\s*char(?:acter)?s?\s+(?:long\s+)?(?P<f>name|title|label|description|text|note)$")
+_BARE_LIT = re.compile(r"^" + _LITLIST + r"$")
+
+
+_WITH_FIELDS = re.compile(r"(?i)^(?:[A-Z][A-Za-z ]{0,20}:\s+)?(?P<v>add|create|new|register)\s+(?:an?\s+)?(?:(?P<thing>[A-Za-z][A-Za-z\-]*(?:\s+[A-Za-z\-]+)?)\s+)?with\s+(?P<rest>.+)$")
+_WITH_ITEM_LEN = re.compile(r"(?i)^(?:an?\s+)?(?P<n>\d{2,5})\s*-?\s*char(?:acter)?s?\s+(?P<f>[A-Za-z][A-Za-z ]{0,20})$")
+_WITH_ITEM_EMPTY = re.compile(r"(?i)^(?:an?\s+)?(?:empty|blank)\s+(?P<f>[A-Za-z][A-Za-z ]{0,20})$")
+_WITH_ITEM_VAL = re.compile(r"(?i)^(?P<f>[A-Za-z][A-Za-z ]{0,20}?)\s+(?P<lit>[-+]?\d[\d,]*(?:\.\d+)?)$")
+
+
+def _with_fields(m, raw):
+    items = [x.strip() for x in re.split(r"\s*(?:/|,(?!\d))\s*", m.group("rest").rstrip(". ")) if x and x.strip()]
+    if not items or len(items) > 4:
+        return NOT_MINE
+    steps = []
+    for it in items:
+        mm = _WITH_ITEM_LEN.match(it)
+        if mm:
+            steps.append((mm.group("f").lower().strip(), {"kind": "length", "n": min(int(mm.group("n")), MAX_LEN)}))
+            continue
+        mm = _WITH_ITEM_EMPTY.match(it)
+        if mm:
+            steps.append((mm.group("f").lower().strip(), {"kind": "literal", "value": ""}))
+            continue
+        mm = _WITH_ITEM_VAL.match(it)
+        if mm:
+            sp = {"kind": "literal", "value": mm.group("lit")}
+            if _boundary(sp):
+                steps.append((mm.group("f").strip(), sp))
+                continue
+        return NOT_MINE          # any item that is not a recognised typed value -> the whole step stays unmapped
+    thing = (m.group("thing") or "").strip()
+    if _OPEN_FIRST_NOT.search(thing) or _CLEAR_NOT.search(thing):
+        return NOT_MINE
+    out = [{"action": "click", "name": ("%s %s" % (m.group("v").title(), thing)).strip(), "raw": raw, "create_opener": True}]
+    for f, sp in steps:
+        out += _tv([f], [sp], raw, hint=True, clear=(sp["kind"] == "literal" and sp["value"] == ""))
+    return out
+
+
+def _map_single(s, raw, lens_names, prev=None):
+    m = _WITH_FIELDS.match(s)
+    if m:
+        got = _with_fields(m, raw)
+        if got is not NOT_MINE:
+            return got
+    m = _MAKE_LEN.match(s)
+    if m:
+        return _tv([m.group("f").lower()], [{"kind": "length", "n": min(int(m.group("n")), MAX_LEN)}], raw, hint=True)
+    m = _BARE_LIT.match(s)     # 'Set tempo to 0, then 999': the next bare value goes into the SAME field as the previous typed value
+    if m and prev and prev.get("action") == "type_value" and prev.get("name"):
+        specs = literal_values(m.group("lits"))
+        if specs:
+            return _tv([prev["name"]], specs, raw)
+    m = _FIELD_TO.match(s)
+    if m and not _CLEAR_NOT.search(m.group("f")):
+        specs = literal_values(m.group("lits"))
+        if specs and all(_boundary(x) for x in specs) and len(m.group("f").split()) <= 3:
+            return _tv([m.group("f").strip()], specs, raw)
     m = _TYPE_IN.match(s)
     if m:
         specs = literal_values(m.group("lits"))
