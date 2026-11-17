@@ -6,6 +6,7 @@
   "discriminator": null,
   "id": "FIX-fractal-005",
   "kind": "template",
+  "packet_id": null,
   "params": {
     "declaration": null
   },

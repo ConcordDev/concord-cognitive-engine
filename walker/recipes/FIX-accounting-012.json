@@ -6,6 +6,7 @@
   "discriminator": null,
   "id": "FIX-accounting-012",
   "kind": "template",
+  "packet_id": null,
   "params": {
     "declaration": null
   },

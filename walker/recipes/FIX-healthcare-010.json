@@ -6,6 +6,7 @@
   "discriminator": null,
   "id": "FIX-healthcare-010",
   "kind": "template",
+  "packet_id": null,
   "params": {
     "declaration": null
   },

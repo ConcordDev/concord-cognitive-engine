@@ -6,6 +6,7 @@
   "discriminator": null,
   "id": "FIX-realestate-008",
   "kind": "template",
+  "packet_id": null,
   "params": {
     "declaration": null
   },

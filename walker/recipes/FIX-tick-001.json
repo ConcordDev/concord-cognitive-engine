@@ -6,6 +6,7 @@
   "discriminator": null,
   "id": "FIX-tick-001",
   "kind": "template",
+  "packet_id": null,
   "params": {
     "declaration": null
   },

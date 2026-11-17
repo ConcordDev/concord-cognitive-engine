@@ -6,6 +6,7 @@
   "discriminator": null,
   "id": "FIX-paper-007",
   "kind": "template",
+  "packet_id": null,
   "params": {
     "declaration": null
   },

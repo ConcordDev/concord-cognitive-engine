@@ -6,6 +6,7 @@
   "discriminator": null,
   "id": "FIX-code-quality-008",
   "kind": "template",
+  "packet_id": null,
   "params": {
     "declaration": null
   },

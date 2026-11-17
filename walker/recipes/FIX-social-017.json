@@ -6,6 +6,7 @@
   "discriminator": null,
   "id": "FIX-social-017",
   "kind": "template",
+  "packet_id": null,
   "params": {
     "declaration": null
   },

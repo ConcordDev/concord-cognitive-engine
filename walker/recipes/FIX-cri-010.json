@@ -6,6 +6,7 @@
   "discriminator": null,
   "id": "FIX-cri-010",
   "kind": "template",
+  "packet_id": null,
   "params": {
     "declaration": null
   },

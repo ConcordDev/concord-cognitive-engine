@@ -6,6 +6,7 @@
   "discriminator": null,
   "id": "FIX-bio-004",
   "kind": "template",
+  "packet_id": null,
   "params": {
     "declaration": null
   },
