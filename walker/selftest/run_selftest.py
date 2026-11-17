@@ -22,6 +22,9 @@ existing = [
      "expected": "closes", "actual": "stays open", "evidence_path": "x", "suspected_area": "x", "status": "FIXED_PENDING_VERIFY", "tester": "t", "ts": "x"},
     {"id": "FIX-demo-003", "lens": "demo", "severity": "medium", "title": "Escape doesn't close the 'Settings' dialog", "repro_steps": ["Click 'Settings'", "Press Escape"],
      "expected": "closes", "actual": "stays open", "evidence_path": "x", "suspected_area": "x", "status": "FIXED_PENDING_VERIFY", "tester": "t", "ts": "x"},
+    # genuinely vague expected ('works' has no machine-checkable predicate): keeps the keyword-capped NEEDS_HUMAN path covered
+    {"id": "FIX-demo-004", "lens": "demo", "severity": "medium", "title": "Escape doesn't close the 'Settings' dialog (vague expected)", "repro_steps": ["Click 'Settings'", "Press Escape"],
+     "expected": "works", "actual": "stays open", "evidence_path": "x", "suspected_area": "x", "status": "FIXED_PENDING_VERIFY", "tester": "t", "ts": "x"},
     {"id": "FIX-deities-002", "lens": "demo", "severity": "Medium", "title": "Mobile 390x844 reload crashed the tab", "repro_steps": "see evidence",
      "expected": "no crash", "actual": "crash", "evidence_path": "x", "suspected_area": "x", "status": "FIXED_PENDING_VERIFY", "ts": "x"},
     {"id": "FIX-007", "lens": "chat", "severity": "medium", "title": "Mobile chat input fill/click timeouts", "repro_steps": ["Open Chat at 390x844", "Focus composer and send a message"],
@@ -76,36 +79,45 @@ results["new_ticket_ids"] = [t["id"] for t in new]
 
 # --apply-status needs --expect-sha (WALK-01); the fixture /health serves FIXTURE_SHA.
 # --walked-run = the lens run above (demo only): chat/ghost tickets are NOT_ATTEMPTED.
-run("reverify", "FIX-demo-002", "FIX-demo-003", "FIX-deities-002", "FIX-007", "FIX-ghost-001", "FIX-nolens-001", "FIX-demo-009",
+run("reverify", "FIX-demo-002", "FIX-demo-003", "FIX-demo-004", "FIX-deities-002", "FIX-007", "FIX-ghost-001", "FIX-nolens-001", "FIX-demo-009",
     "--apply-status", "--expect-sha", FIXTURE_SHA, "--walked-run", rd)
 runs = sorted(os.listdir(RUNS))
 rvd = os.path.join(RUNS, runs[-1])
 rv = [json.loads(l) for l in open(os.path.join(rvd, "reverify.jsonl"))]
 results["reverify"] = {r["id"]: r["verdict"] for r in rv}
 rvby = {r["id"]: r for r in rv}
-results["demo003_capped"] = (rvby.get("FIX-demo-003", {}).get("coverage_basis") == "keyword" and rvby["FIX-demo-003"].get("capped") is True
-                             and rvby["FIX-demo-003"].get("uncapped_verdict") == "FIXED"
+def _kinds(r):
+    return [c.get("kinds") for c in (r.get("expected_check") or {}).get("clauses", [])]
+# 'closes' IS machine-checkable (popup_closed: 1 popup before Escape, 0 after) -> FIXED via the repro steps, not keyword-capped.
+results["demo003_fixed"] = (rvby.get("FIX-demo-003", {}).get("verdict") == "FIXED" and rvby["FIX-demo-003"].get("coverage_basis") == "repro-steps"
+                            and not rvby["FIX-demo-003"].get("capped")
+                            and [s.get("mapped") and s.get("executed") for s in rvby["FIX-demo-003"].get("steps", [])] == [True, True]
+                            and rvby["FIX-demo-003"].get("expected_check", {}).get("state") == "pass"
+                            and "popup_closed" in _kinds(rvby["FIX-demo-003"])
+                            and "1 popup(s) before, 0 after" in rvby["FIX-demo-003"]["notes"])
+results["demo004_capped"] = (rvby.get("FIX-demo-004", {}).get("coverage_basis") == "keyword" and rvby["FIX-demo-004"].get("capped") is True
+                             and rvby["FIX-demo-004"].get("uncapped_verdict") == "FIXED"
                              # Replay (2026-11-16): the ticket's own repro_steps now run FIRST (both steps map + execute) but
                              # its expected 'closes' has no machine-checkable predicate, so the repro-steps basis is
                              # NOT granted. The keyword result + cap stay intact and the notes carry both parts.
-                             and rvby["FIX-demo-003"]["notes"].startswith("repro-steps: all 2 step(s) mapped + executed, but the expected outcome is not machine-checkable")
-                             and "keyword check: no hand-written repro recipe; keyword match only (escape)" in rvby["FIX-demo-003"]["notes"]
-                             and [s.get("mapped") and s.get("executed") for s in rvby["FIX-demo-003"].get("steps", [])] == [True, True]
-                             and rvby["FIX-demo-003"].get("expected_check", {}).get("state") == "unchecked")
+                             and rvby["FIX-demo-004"]["notes"].startswith("repro-steps: all 2 step(s) mapped + executed, but the expected outcome is not machine-checkable")
+                             and "keyword check: no hand-written repro recipe; keyword match only (escape)" in rvby["FIX-demo-004"]["notes"]
+                             and [s.get("mapped") and s.get("executed") for s in rvby["FIX-demo-004"].get("steps", [])] == [True, True]
+                             and rvby["FIX-demo-004"].get("expected_check", {}).get("state") == "unchecked")
 results["deities_recipe_basis"] = (rvby.get("FIX-deities-002", {}).get("coverage_basis") == "recipe" and rvby["FIX-deities-002"].get("recipe_kind") == "per-ticket")
 ledger_p = os.path.join(cfg["records_dir"], "walker.jsonl")
 led = [json.loads(l) for l in open(ledger_p)] if os.path.exists(ledger_p) else []
 ledst = {r["id"]: r["status"] for r in led}
 results["ledger"] = ledst
 results["ledger_ok"] = (ledst.get("FIX-demo-002") == "REOPENED" and ledst.get("FIX-deities-002") == "VERIFIED"
-                        and "FIX-demo-003" not in ledst and all(r.get("live_sha") == FIXTURE_SHA for r in led))
+                        and ledst.get("FIX-demo-003") == "VERIFIED" and "FIX-demo-004" not in ledst and all(r.get("live_sha") == FIXTURE_SHA for r in led))
 covp = os.path.join(audit, "reverify_coverage.json")
 cov = json.load(open(covp)) if os.path.exists(covp) else {"rows": []}
 covby = {r["id"]: r for r in cov["rows"]}
 results["coverage_ids"] = sorted(covby)
 md = open(os.path.join(audit, "reverify_coverage.md")).read() if os.path.exists(os.path.join(audit, "reverify_coverage.md")) else ""
 results["coverage_ok"] = (
-    sorted(covby) == sorted(["FIX-demo-002", "FIX-demo-003", "FIX-deities-002", "FIX-007", "FIX-ghost-001", "FIX-nolens-001"])
+    sorted(covby) == sorted(["FIX-demo-002", "FIX-demo-003", "FIX-demo-004", "FIX-deities-002", "FIX-007", "FIX-ghost-001", "FIX-nolens-001"])
     and len(cov["rows"]) == len(covby)
     and all(r["reason"] for r in cov["rows"])
     and covby["FIX-ghost-001"]["verdict"] == "NOT_ATTEMPTED" and not covby["FIX-ghost-001"]["attempted"]
@@ -113,11 +125,12 @@ results["coverage_ok"] = (
     and covby["FIX-007"]["reason"].startswith("lens not walked this run")
     and covby["FIX-nolens-001"]["verdict"] == "NOT_ATTEMPTED" and covby["FIX-nolens-001"]["reason"].startswith("lens not in inventory")
     and covby["FIX-nolens-001"]["prior_status"] == "OPEN"
-    and covby["FIX-demo-003"]["verdict"] == "NEEDS_HUMAN" and covby["FIX-demo-003"]["attempted"]
+    and covby["FIX-demo-003"]["verdict"] == "FIXED" and covby["FIX-demo-003"]["attempted"] and covby["FIX-demo-003"]["coverage_basis"] == "repro-steps"
+    and covby["FIX-demo-004"]["verdict"] == "NEEDS_HUMAN" and covby["FIX-demo-004"]["attempted"]
     and covby["FIX-demo-002"]["verdict"] == "STILL_FAILING" and covby["FIX-deities-002"]["verdict"] == "FIXED"
     and "judge re-verify by the next run's NEEDS_HUMAN queue length" in md.split("## Summary")[0]
-    and covby["FIX-demo-003"]["coverage_basis"] == "keyword" and covby["FIX-demo-003"]["reason"].startswith("repro-steps: all 2 step(s) mapped + executed, but the expected outcome is not machine-checkable")
-    and "keyword match only (escape)" in covby["FIX-demo-003"]["reason"]
+    and covby["FIX-demo-004"]["coverage_basis"] == "keyword" and covby["FIX-demo-004"]["reason"].startswith("repro-steps: all 2 step(s) mapped + executed, but the expected outcome is not machine-checkable")
+    and "keyword match only (escape)" in covby["FIX-demo-004"]["reason"]
     and covby["FIX-deities-002"]["coverage_basis"] == "recipe" and covby["FIX-ghost-001"]["coverage_basis"] == "none"
     and covby["FIX-demo-002"]["coverage_basis"] == "keyword"
     and os.path.exists(os.path.join(rvd, "reverify_coverage.json")))
@@ -144,9 +157,9 @@ results["no_page_js_calls"] = not hits
 if hits: print("PAGE-JS CALLS FOUND:", hits)
 ok = (results["fix007_write"] == "FIXED" and results["fix007_leftover_logged"] and results["no_page_js_calls"] and not results["missing_expected"] and results["contrast_deduped"] and results["ticket_keys_ok"]
       and results["all_findings_have_evidence"] and results["fixture_deleted"]
-      and results["reverify"].get("FIX-demo-002") == "STILL_FAILING" and results["reverify"].get("FIX-demo-003") == "NEEDS_HUMAN"
+      and results["reverify"].get("FIX-demo-002") == "STILL_FAILING" and results["reverify"].get("FIX-demo-003") == "FIXED" and results["reverify"].get("FIX-demo-004") == "NEEDS_HUMAN"
       and results["reverify"].get("FIX-deities-002") == "FIXED" and "FIX-007" not in results["reverify"]
-      and results["demo003_capped"] and results["deities_recipe_basis"] and results["ledger_ok"]
+      and results["demo003_fixed"] and results["demo004_capped"] and results["deities_recipe_basis"] and results["ledger_ok"]
       and results["coverage_ok"] and results["filter_ok"])
 print(json.dumps(results, indent=1))
 print("SELFTEST", "PASS" if ok else "FAIL", "(tmp audit dir:", tmp, ")")
