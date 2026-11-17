@@ -64,7 +64,7 @@ UNMAPPED = [
     ("studio", "Open own Studio project", "no specific control"),
     ("chat", "Focus composer and send a message", "no specific control"),
     ("calendar", "Open event detail, press Escape", "no specific control"),
-    ("studio", "Set tempo to 0, then 999", "no recognised action"),
+    # "Set tempo to 0, then 999" now maps (pass 3 typed values; pinned in test_typed_values_pass3.py)
     ("global", "Tab to Schedules, ArrowRight; Ctrl+K, Esc", "no recognised action"),
     ("mental-health", "Mood > check in with note 'qa-zt1-mental-health-2026-11-10'", "check in"),
     ("wellness", "Log sleep 7.5 then 30; view Trend Sleep and Overview", ""),
