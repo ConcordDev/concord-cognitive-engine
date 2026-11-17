@@ -97,6 +97,7 @@ import "./orc/intent-parse.js";
 import "./orc/requirements.js";
 import "./orc/feasibility.js";
 import "./orc/solver-map.js";
+import "./orc/mass-bom.js";
 import "./cad/mass-properties-brep.js";
 import "./cad/mesh-generate.js";
 
