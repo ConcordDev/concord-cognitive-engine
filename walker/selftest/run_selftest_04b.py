@@ -143,10 +143,10 @@ rv = {k: r["verdict"] for k, r in rvrows.items()}
 _g = rvrows.get("FIX-good-900", {})
 R["crud_missing_fixed_on_good"] = (rv.get("FIX-good-900") == "NEEDS_HUMAN" and _g.get("uncapped_verdict") == "FIXED"
                                    and _g.get("capped") is True
-                                   # Replay (2026-11-16): FIX-good-900's prose repro step ('open lens') maps to no
-                                   # action, so the repro-steps basis is refused, naming the step; the keyword
-                                   # result is still reported and the cap still applies.
-                                   and str(_g.get("notes", "")).startswith("repro-steps: step 1 not mapped to an action: 'open lens'")
+                                   # Replay (#2377 breadcrumb mapper): FIX-good-900's prose step ('open lens') now
+                                   # maps + executes, but its expected outcome is prose, so the repro-steps basis is
+                                   # refused as not machine-checkable (naming it); keyword result still reported, cap applies.
+                                   and str(_g.get("notes", "")).startswith("repro-steps: all 1 step(s) mapped + executed, but the expected outcome is not machine-checkable: 'a delete control exists'")
                                    and "keyword check: no hand-written repro recipe; keyword match" in str(_g.get("notes", "")))
 R["crud_missing_still_on_ambig"] = rv.get("FIX-ambig-900") == "STILL_FAILING"
 
