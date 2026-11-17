@@ -36,7 +36,7 @@ FOLD_SHA = "272e62f41"
 DEFAULT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "rewrites")
 HUMAN_REASONS = ("lighthouse", "code_read", "cross_account", "visual", "other_with_note")
 DROP_REASONS = ("observe_moved_to_expected", "no_text")
-SRC_RE = re.compile(r"^(?:text|live:[a-z0-9][a-z0-9/_\-]*|manifest:[a-z0-9][a-z0-9/_.\-]*|alias|frontend:[A-Za-z0-9_@\[\]()/.\-]+:\d+)$")
+SRC_RE = re.compile(r"^(?:text|live:[a-z0-9][a-z0-9/_\-]*(?:@[A-Za-z0-9._\-]+:[0-9a-f]{7,40})?|manifest:[a-z0-9][a-z0-9/_.\-]*|alias|frontend:[A-Za-z0-9_@\[\]()/.\-]+:\d+)$")
 STATUSES = ("rewritten", "human_only", "original_sufficient")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _KEYS = {"Escape", "Enter", "Tab", "Shift+Tab", "ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Space", "Home", "End", "Backspace"}
@@ -405,8 +405,38 @@ def _step_literal_ok(s, orig, lens, labels):
 FIELD_NEVER_RE = _W.FIELD_NEVER
 
 
-def agree(ticket, rw, labels=None, manifest_text=None, frontend_repo=None):
-    """-> (ok, reasons). Deterministic, fail closed. `labels`: {lens: [live control names]} when available."""
+LIVE_PROV_RE = re.compile(r"^live:[a-z0-9][a-z0-9/_\-]*@(?P<run>[A-Za-z0-9._\-]+):(?P<sha>[0-9a-f]{7,40})$")
+
+
+def load_live_index(path_or_dict):
+    """A live labels index (the hand-captured live_labels_index.json OR a wiring-capture live_labels.json) ->
+    (labels {lens: [names]}, meta). meta = {run_id, fold_sha} for a wiring-capture index (REQUIRED to carry both: a
+    capture without provenance is refused, never trusted), None for a legacy hand index. Raises ValueError on a bad index."""
+    d = path_or_dict
+    if not isinstance(d, dict):
+        with open(path_or_dict) as f:
+            d = json.load(f)
+    if not isinstance(d, dict) or not isinstance(d.get("lenses"), dict):
+        raise ValueError("live index has no 'lenses' object")
+    prov = d.get("provenance")
+    meta = None
+    if prov is not None or str(d.get("source", "")).startswith("wiring-capture"):
+        if not (isinstance(prov, dict) and isinstance(prov.get("run_id"), str) and prov["run_id"]
+                and isinstance(prov.get("fold_sha"), str) and re.match(r"^[0-9a-f]{7,40}$", prov["fold_sha"])):
+            raise ValueError("wiring-capture live index needs provenance {run_id, fold_sha}")
+        meta = {"run_id": prov["run_id"], "fold_sha": prov["fold_sha"]}
+    labels = {}
+    for lens, v in d["lenses"].items():
+        if not isinstance(v, dict) or not all(isinstance(x, list) for x in (v.get("labels", []), v.get("tabs", []), v.get("inputs", []))):
+            raise ValueError("live index lens %r is malformed" % lens)
+        labels[lens] = sorted(set(v.get("labels", []) + v.get("tabs", []) + v.get("inputs", [])))
+    return labels, meta
+
+
+def agree(ticket, rw, labels=None, manifest_text=None, frontend_repo=None, live_meta=None):
+    """-> (ok, reasons). Deterministic, fail closed. `labels`: {lens: [live control names]} when available.
+    `live_meta`: provenance {run_id, fold_sha} of the live index (load_live_index); a step citing `live:<lens>@<run>:<sha>`
+    must match it exactly."""
     why = []
     bad = check_schema(rw)
     if bad:
@@ -456,6 +486,9 @@ def agree(ticket, rw, labels=None, manifest_text=None, frontend_repo=None):
             why.append("src_not_live: step %d %r is not literally at %s (fold %s)" % (k, s.get("target"), s["src"], FOLD_SHA))
         if s["op"] in ("click", "open_tab") and not re.match(r"^(?:live:|manifest:|alias$|frontend:)", s["src"]):
             why.append("src_not_live: step %d control %r has src %r; a control name must come from the live labels, the manifest or ALIASES" % (k, s.get("target"), s["src"]))
+        pm = LIVE_PROV_RE.match(s["src"])
+        if pm and not (live_meta and live_meta.get("run_id") == pm.group("run") and str(live_meta.get("fold_sha", "")).startswith(pm.group("sha")[:7])):
+            why.append("src_not_live: step %d cites %s but the live index %s" % (k, s["src"], ("is run %s at %s" % (live_meta["run_id"], live_meta["fold_sha"])) if live_meta else "carries no provenance"))
         if s["op"] in ("click", "open_tab") and s["src"].startswith("manifest:") and manifest_text is not None and (s.get("target") or "").lower() not in manifest_text:
             why.append("src_not_live: step %d %r is not in the manifest" % (k, s.get("target")))
         tg = s.get("target") or ""
@@ -579,13 +612,13 @@ def effective_ticket(ticket, rw):
     return t
 
 
-def prepare(ticket, index, labels=None):
+def prepare(ticket, index, labels=None, live_meta=None):
     """-> (ticket_to_replay, info). info: {source: original|rewrite|human_only|rewrite_disagrees, reason?, orig_hash?, author?, date?}.
     No record -> the original ticket, unchanged. human_only / disagreeing record -> ticket=None (NEEDS_HUMAN, never replayed)."""
     rw = (index or {}).get((ticket or {}).get("id"))
     if rw is None:
         return ticket, {"source": "original"}
-    ok, why = agree(ticket, rw, labels)
+    ok, why = agree(ticket, rw, labels, live_meta=live_meta)
     base = {"orig_hash": rw.get("orig_hash"), "author": rw.get("author"), "date": rw.get("date")}
     if rw.get("status") == "human_only" and check_schema(rw) is None and rw.get("ticket_id") == ticket.get("id"):
         return None, dict(base, source="human_only", reason=rw["human_only_reason"])

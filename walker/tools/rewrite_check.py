@@ -25,8 +25,7 @@ def pool_of(repo, sha):
 def load_labels(path):
     if not path or not os.path.exists(path):
         return None
-    d = json.load(open(path))
-    return {k: sorted(set(v.get("labels", []) + v.get("tabs", []) + v.get("inputs", []))) for k, v in d["lenses"].items()}
+    return R.load_live_index(path)[0]
 
 
 def batch_tickets(pool, n):
