@@ -165,9 +165,15 @@ export function compileDesignIR(ir) {
   }
   const design = { id: String(ir.design?.id || "design"), name: String(ir.design?.name || ir.design?.id || "Untitled design") };
 
+  const MATERIAL_OVERRIDE_KEYS = ["costPerKgUsd", "source"];
   const materialOverrides = {};
   for (const [id, o] of Object.entries(ir.materials || {})) {
     if (!getMaterial(id)) { errors.push(`materials.${id}: unknown material`); continue; }
+    // Never silently drop or replace a user input: the only material override the engine applies is cost. A supplied
+    // stiffness / strength / density (E, yield, ...) would otherwise be discarded and the library value used in its place.
+    for (const k of Object.keys(o && typeof o === "object" ? o : {})) {
+      if (!MATERIAL_OVERRIDE_KEYS.includes(k)) errors.push(`materials.${id}.${k}: not usable - only ${MATERIAL_OVERRIDE_KEYS.join(", ")} can be overridden, so the library value would silently replace yours; remove it or add the material as a library entry`);
+    }
     const entry = { source: o?.source ? String(o.source) : "user-supplied" };
     if (o?.costPerKgUsd != null) {
       const q = parseQuantity(o.costPerKgUsd, "price_per_mass");

@@ -36,6 +36,9 @@ test("steel supplies E when not given, and the assumption is disclosed", () => {
 test("never guesses: missing I, missing support, distributed loads, or non-beam text → null", () => {
   assert.equal(extractBeamQuestion("A simply supported steel beam 20 ft long carries 1000 lb at midspan. Deflection?"), null, "no I");
   assert.equal(extractBeamQuestion("A steel beam 20 ft long carries 1000 lb, I = 200 in^4. Deflection?"), null, "no support type");
-  assert.equal(extractBeamQuestion("A simply supported beam 20 ft long carries 50 lb/ft uniformly, I = 200 in^4, E = 29000 ksi. Deflection?"), null, "distributed");
+  // a distributed load is no longer refused: it is parsed as a UDL (closed form), see solver-input-integrity.test.js
+  const udl = extractBeamQuestion("A simply supported beam 20 ft long carries 50 lb/ft uniformly, I = 200 in^4, E = 29000 ksi. Deflection?");
+  assert.equal(udl.loadKind, "udl");
+  assert.ok(Math.abs(udl.wNPerM - 50 * 4.4482216152605 / 0.3048) < 1e-6);
   assert.equal(extractBeamQuestion("What is the deflection of public opinion?"), null);
 });

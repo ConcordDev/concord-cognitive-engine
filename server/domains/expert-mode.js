@@ -276,12 +276,12 @@ export default function registerExpertModeMacros(register) {
   register("expert_mode", "answer", async (ctx, input = {}) => {
     const db = ctx?.db;
     const userId = actorId(ctx);
-    const { query, slot, maxSources, maxTokens } = input || {};
+    const { query, slot, maxSources, maxTokens, solverDomain } = input || {};
     if (!db) return { ok: false, reason: "no_db" };
     if (!query) return { ok: false, reason: "missing_query" };
     return expertAnswer({
       db, userId, query,
-      opts: { slot, maxSources, maxTokens },
+      opts: { slot, maxSources, maxTokens, solverDomain },
     });
   }, { note: "Perplexity-style cited answer. Routes through brainChat() so the user's BYO key kicks in. Records cascade citations for every source actually referenced." });
 

@@ -112,6 +112,22 @@ export function reconcileGroundedAnswer(text) {
  * @param {boolean} [opts.includeUserPrivate=true]
  * @returns {Array<{id, title, snippet, minted_by_provider, minted_by_model, creator_id, scope}>}
  */
+/**
+ * DTU lens ids a solver result in each family may cite. A math / science / engineering answer must not cite a
+ * music or creative DTU just because a word matched: royalty provenance there would be wrong, and so would the claim.
+ */
+export const SOLVER_CITATION_DOMAINS = Object.freeze({
+  math: ["math", "mathematics", "algebra", "calculus", "geometry", "statistics", "probability", "numbers", "logic"],
+  science: ["physics", "chem", "chemistry", "bio", "biology", "astronomy", "geology", "earth", "materials", "mechanics", "thermodynamics", "science"],
+  engineering: ["engineering", "mechanics", "structural", "civil", "mechanical", "materials", "physics", "statics", "dynamics", "electrical", "manufacturing"],
+});
+
+/** Allowed DTU lens ids for a solver family, or null when no family was asked for (creative/music callers: unchanged). Unknown family -> [] (cites nothing). */
+export function citationDomainsFor(family) {
+  if (family === undefined || family === null || family === "") return null;
+  return SOLVER_CITATION_DOMAINS[String(family).toLowerCase()] || [];
+}
+
 export function gatherSourcesForQuery(db, opts = {}) {
   if (!db || !opts.query) return [];
   const q = String(opts.query).toLowerCase().slice(0, 200);
@@ -140,38 +156,43 @@ export function gatherSourcesForQuery(db, opts = {}) {
   const scoreArgs = terms.flatMap(t => [`%${t}%`, `%${t}%`]);
   const matchArgs = terms.flatMap(t => [`%${t}%`, `%${t}%`]);
 
+  const domains = Array.isArray(opts.domains) ? opts.domains : null;
+  if (domains && domains.length === 0) return [];
+  const domainSel = domains ? ", LOWER(COALESCE(lens_id, 'unknown')) AS lens_id" : "";
+  const domainWhere = domains ? ` AND LOWER(COALESCE(lens_id, 'unknown')) IN (${domains.map(() => "?").join(",")})` : "";
+  const domainArgs = domains ? domains.map((d) => String(d).toLowerCase()) : [];
   let sql, args;
   if (userId && opts.includeUserPrivate !== false) {
     sql = `
       SELECT id, title,
              SUBSTR(COALESCE(content, ''), 1, 240) AS snippet,
              minted_by_provider, minted_by_model,
-             creator_id, COALESCE(scope, 'personal') AS scope,
+             creator_id, COALESCE(scope, 'personal') AS scope${domainSel},
              ${scoreCases} AS score
       FROM dtus
       WHERE (
         (COALESCE(scope, 'personal') IN ('public', 'published', 'global'))
         OR creator_id = ?
       )
-      AND (${matchClauses})
+      AND (${matchClauses})${domainWhere}
       ORDER BY score DESC, created_at DESC
       LIMIT ?
     `;
-    args = [...scoreArgs, userId, ...matchArgs, limit];
+    args = [...scoreArgs, userId, ...matchArgs, ...domainArgs, limit];
   } else {
     sql = `
       SELECT id, title,
              SUBSTR(COALESCE(content, ''), 1, 240) AS snippet,
              minted_by_provider, minted_by_model,
-             creator_id, COALESCE(scope, 'personal') AS scope,
+             creator_id, COALESCE(scope, 'personal') AS scope${domainSel},
              ${scoreCases} AS score
       FROM dtus
       WHERE COALESCE(scope, 'personal') IN ('public', 'published', 'global')
-      AND (${matchClauses})
+      AND (${matchClauses})${domainWhere}
       ORDER BY score DESC, created_at DESC
       LIMIT ?
     `;
-    args = [...scoreArgs, ...matchArgs, limit];
+    args = [...scoreArgs, ...matchArgs, ...domainArgs, limit];
   }
 
   try {
@@ -221,10 +242,15 @@ export function composeExpertMessages(query, sources) {
 export async function expertAnswer({ db, userId, query, opts = {} }) {
   if (!query) return { ok: false, error: "missing_query" };
   const limit = Math.min(20, Math.max(1, Number(opts.maxSources) || 8));
-  const extras = (Array.isArray(opts.extraSources) ? opts.extraSources : []).slice(0, limit);
+  // Solver (math / science / engineering) answers cite only domain-matched DTUs; with none that clear the bar they cite none.
+  const domains = citationDomainsFor(opts.solverDomain);
+  const isWeb = (x) => x && (x.origin === "web" || x.scope === "web" || x.url);
+  const extras = (Array.isArray(opts.extraSources) ? opts.extraSources : [])
+    .filter((x) => domains === null || isWeb(x) || (x && domains.includes(String(x.lens_id || "").toLowerCase())))
+    .slice(0, limit);
   const dtuRoom = limit - extras.length;
   const gathered = dtuRoom > 0
-    ? gatherSourcesForQuery(db, { query, userId, limit: dtuRoom })
+    ? gatherSourcesForQuery(db, { query, userId, limit: dtuRoom, ...(domains !== null ? { domains } : {}) })
     : [];
   const sources = [...gathered, ...extras];
 

@@ -64,8 +64,36 @@ function canonical(v) {
   return JSON.stringify(v);
 }
 
+const REL_TOL = 1e-9;
+const numOf = (v) => (v && typeof v === "object" && "value" in v ? v.value : v);
+
+/**
+ * Generic no-substitution guard, applied to EVERY solver's raw answer. Returns a reason string or null.
+ *   supplied: { name: number | {value} }  values the user explicitly gave (same key as the solver's echoed `inputs`)
+ *   ignored:  string[]                     user inputs the engine cannot apply at all
+ *   raw.substitutions: [{ name, supplied, used }]  a solver declaring that it used something other than what it was given
+ * A solver echoing an input under a supplied name with a different value, or any ignored input, is never reported as computed.
+ */
+export function inputIntegrityViolation(raw, { supplied, ignored } = {}) {
+  if (Array.isArray(ignored) && ignored.length) return `input_not_used:${ignored.join(", ")}`;
+  for (const s of Array.isArray(raw?.substitutions) ? raw.substitutions : []) {
+    if (s && s.name && !(Number.isFinite(s.supplied) && Number.isFinite(s.used) && Math.abs(s.supplied - s.used) <= REL_TOL * Math.max(1, Math.abs(s.supplied)))) {
+      return `input_substituted:${s.name} (supplied ${s.supplied}, used ${s.used})`;
+    }
+  }
+  for (const [name, v] of Object.entries(supplied || {})) {
+    const want = Number(numOf(v));
+    const echoed = raw?.inputs && Object.prototype.hasOwnProperty.call(raw.inputs, name) ? Number(numOf(raw.inputs[name])) : undefined;
+    if (echoed === undefined || !Number.isFinite(want)) continue;
+    if (!Number.isFinite(echoed) || Math.abs(echoed - want) > REL_TOL * Math.max(1, Math.abs(want))) return `input_substituted:${name} (supplied ${want}, used ${echoed})`;
+  }
+  return null;
+}
+
 /** Wrap a solver's raw answer in the common envelope. */
-export function envelope(solver, target, raw, { runtimeMs, revision }) {
+export function envelope(solver, target, raw, { runtimeMs, revision, supplied, ignored }) {
+  const violation = raw && !raw.notComputed ? inputIntegrityViolation(raw, { supplied, ignored }) : null;
+  if (violation) raw = { ...raw, notComputed: violation, outputs: {}, margins: [] };
   const base = {
     runId: runId(solver.id, target),
     solver: { id: solver.id, version: solver.version, domain: solver.domain, domains: solver.domains || [solver.domain], fidelity: `L${solver.fidelity}`, method: solver.method, reference: solver.reference || null, ...declared(solver) },

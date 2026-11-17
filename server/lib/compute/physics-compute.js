@@ -130,6 +130,26 @@ export function momentOfInertia(shape, params = {}) {
 }
 
 /**
+ * Closed-form uniformly distributed load (SI). Simply supported: 5wL^4/384EI, wL^2/8; cantilever: wL^4/8EI, wL^2/2
+ * (at the root); fixed-fixed: wL^4/384EI, wL^2/12 (at the supports). Uses E and I exactly as given.
+ */
+export function beamUniformLoad({ wNPerM, lengthM, modulusPa, inertiaM4, supportType = "simple" }) {
+  const inputs = { wNPerM, lengthM, modulusPa, inertiaM4, supportType };
+  if (![wNPerM, lengthM, modulusPa, inertiaM4].every(isNum) || wNPerM <= 0 || lengthM <= 0 || modulusPa <= 0 || inertiaM4 <= 0) {
+    return err("wNPerM, lengthM, modulusPa, inertiaM4 must be positive numbers", inputs);
+  }
+  const t = {
+    simple: { k: 5 / 384, m: 1 / 8, fd: "δ = 5·w·L⁴ / (384·E·I)", fm: "M = w·L² / 8" },
+    cantilever: { k: 1 / 8, m: 1 / 2, fd: "δ = w·L⁴ / (8·E·I)", fm: "M = w·L² / 2" },
+    fixed: { k: 1 / 384, m: 1 / 12, fd: "δ = w·L⁴ / (384·E·I)", fm: "M = w·L² / 12" },
+  }[supportType];
+  if (!t) return err(`unknown supportType: ${supportType}`, inputs);
+  const deflectionM = (t.k * wNPerM * lengthM ** 4) / (modulusPa * inertiaM4);
+  const maxMomentNm = t.m * wNPerM * lengthM ** 2;
+  return { ok: true, value: deflectionM, unit: "m", deflectionM, deflectionMm: deflectionM * 1000, maxMomentNm, formula: t.fd, momentFormula: t.fm, inputs };
+}
+
+/**
  * Max deflection of a beam under a central point load (simple support)
  * or cantilever with end load. Imperial units (lbs, ft, psi, in⁴).
  */
@@ -392,6 +412,7 @@ export default {
   windLoad,
   momentOfInertia,
   beamDeflection,
+  beamUniformLoad,
   shearStress,
   bendingStress,
   idealGasLaw,
