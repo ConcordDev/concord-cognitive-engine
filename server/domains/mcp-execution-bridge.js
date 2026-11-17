@@ -60,6 +60,17 @@ export const MCP_EXECUTION_BRIDGE_CAPABILITIES = [
     mcp_tool_name: "conkay_solver_list",
   },
   {
+    capability: "conkay.engine_list",
+    owner: "mcp_execution_bridge",
+    risk: "read",
+    description: "List ConKay external engines from the engine framework manifest (id, pinned version, licence, link mode, present, ops).",
+    inputs: [],
+    outputs: ["engines", "total"],
+    dependencies: ["conkay_engine_framework"],
+    implementation: "mcp_builtin",
+    mcp_tool_name: "conkay_engine_list",
+  },
+  {
     capability: "conkay.ir_schema",
     owner: "mcp_execution_bridge",
     risk: "read",

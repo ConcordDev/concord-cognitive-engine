@@ -344,6 +344,35 @@ export async function conkaySolverListMcp(db, args = {}, STATE = null, callCtx =
 }
 
 /**
+ * conkay_engine_list — ConKay engine framework inventory (SXE-00).
+ * Serves the same engineListReport as GET /api/conkay/engines.
+ */
+export async function conkayEngineListMcp(db, args = {}, STATE = null, callCtx = null) {
+  const clean = stripInternalArgs(args);
+  const actor = actorFromCallCtx(callCtx, args);
+  const imp = rejectImpersonation(actor, clean);
+  if (!imp.ok) return { ok: false, ...imp };
+
+  const auth = authorizeBridgeCall({
+    actor,
+    tool: "conkay_engine_list",
+    risk: BRIDGE_RISK.READ,
+  });
+  if (!auth.ok) return { ok: false, ...auth };
+
+  const { engineListReport } = await import("./conkay/engines/index.js");
+  const report = engineListReport();
+  return {
+    ok: true,
+    total: report.total,
+    engines: report.engines,
+    actor_id: imp.actorId,
+    audited: true,
+    note: "present=false means the engine binary is not installed on this host; solvers that need it return NOT_COMPUTED engine_unavailable:<id>, never a fallback number",
+  };
+}
+
+/**
  * conkay_solve — run one registry solver against a design IR (or designId).
  */
 export async function conkaySolveMcp(db, args = {}, STATE = null, callCtx = null) {

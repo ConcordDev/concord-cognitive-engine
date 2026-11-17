@@ -115,6 +115,7 @@ export const TOOL_REQUIRED_PARAMS = {
   conkay_design:     ["text"],
   conkay_solve:      ["solver_id"],
   conkay_solver_list: [],
+  conkay_engine_list: [],
   conkay_ir_schema:  [],
   conkay_compile_brief: [],
   run_python:        ["code"],
@@ -331,6 +332,8 @@ Available tools (with one working example each):
   Example: [TOOL_CALL: {"tool": "conkay_ir_schema", "params": {}}]
 - conkay_solver_list: List ConKay solvers (id, domain, fidelity). Params: {"domain": "optional filter"}
   Example: [TOOL_CALL: {"tool": "conkay_solver_list", "params": {"domain": "mass"}}]
+- conkay_engine_list: List ConKay external engines (id, pinned version, licence, present on this host). An absent engine means its solver tiers return NOT_COMPUTED engine_unavailable. Params: {}
+  Example: [TOOL_CALL: {"tool": "conkay_engine_list", "params": {}}]
 - conkay_solve: Run one ConKay solver against a Design IR (same path as Concord MCP). Quantities need units (or bare SI); stated mass needs massSource (auto-filled if missing). Params: {"solver_id": "mass.budget", "ir": { ... }}
   Example: [TOOL_CALL: {"tool": "conkay_solve", "params": {"solver_id": "mass.budget", "ir": {"design":{"id":"d1"},"nodes":[{"id":"P1","kind":"Part","props":{"mass":"1.5 kg","massSource":"caller assumption"}}],"edges":[],"loadCases":[],"requirements":[]}}}]
 - conkay_compile_brief: Turn a short design sentence into Design IR so you do not invent node kinds. A robot brief becomes Joint, Actuator and Limb nodes. Missing foot width or link mass stays missing. Then pass ir to conkay_solve. Params: {"brief": "the design in words"} (text is an alias)
@@ -1463,6 +1466,23 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           ...(bridge?.ok ? {} : { error: String(bridge?.error || bridge?.reason || "conkay_solver_list failed") }),
         };
       }
+      case "conkay_engine_list": {
+        const { conkayEngineListMcp } = await import("./mcp-execution-bridge.js");
+        const actor = withAskGrant(ctx?.actor || (ctx?.userId ? { userId: ctx.userId, id: ctx.userId } : null));
+        const bridge = await conkayEngineListMcp(
+          ctx?.db || null,
+          {},
+          ctx?.STATE || ctx?.state || null,
+          { actor, req: ctx?.req || null },
+        );
+        return {
+          tool: call.tool,
+          ok: !!bridge?.ok,
+          ...(bridge || {}),
+          via: "mcp_execution_bridge",
+          ...(bridge?.ok ? {} : { error: String(bridge?.error || bridge?.reason || "conkay_engine_list failed") }),
+        };
+      }
       case "conkay_ir_schema": {
         const { conkayIrSchemaMcp } = await import("./mcp-execution-bridge.js");
         const actor = withAskGrant(ctx?.actor || (ctx?.userId ? { userId: ctx.userId, id: ctx.userId } : null));
@@ -2232,7 +2252,7 @@ export function formatToolResults(results) {
     if (r.tool === "conkay_compile_brief") {
       return `[TOOL_RESULT: conkay_compile_brief] architecture=${r.architecture || "?"}. Pass ir to conkay_solve. Do not invent missing sizes.\nwarnings: ${JSON.stringify(r.warnings || [])}\n${JSON.stringify(r.ir).slice(0, 8000)}`;
     }
-    if (r.tool === "conkay_solve" || r.tool === "conkay_ir_schema" || r.tool === "conkay_solver_list") {
+    if (r.tool === "conkay_solve" || r.tool === "conkay_ir_schema" || r.tool === "conkay_solver_list" || r.tool === "conkay_engine_list") {
       return `[TOOL_RESULT: ${r.tool}] ${JSON.stringify(r).slice(0, 6000)}`;
     }
     return `[TOOL_RESULT: ${r.tool}] ${JSON.stringify(r).slice(0, 2000)}`;

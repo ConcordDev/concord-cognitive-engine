@@ -258,6 +258,12 @@ export const MCP_TOOLS = [
     }),
   },
   {
+    name: "conkay_engine_list",
+    description:
+      "List ConKay external engines from the engine framework manifest (id, pinned version, licence, link mode, present on this host, ops). Engines back the L3/L4 solver tiers; an absent engine yields NOT_COMPUTED engine_unavailable, never a fallback number.",
+    inputSchema: jsonSchema({}),
+  },
+  {
     name: "conkay_solve",
     description:
       "Run one ConKay solver by id against a Design IR (or owned designId). Returns PASS/FAIL/WARN/NOT_COMPUTED envelopes with provenance (sourced/computed/estimated/assumed/unknown). screening ≠ validation; unknown stays unknown. " +
@@ -2728,7 +2734,7 @@ async function concordiaCall(db, args, STATE, toolName) {
 try {
   globalThis.__concordMcpBuiltinTools = new Set(
     MCP_TOOLS.filter((t) =>
-      ["run_lens_action", "list_lens_actions", "conkay_solve", "conkay_solver_list", "conkay_ir_schema", "conkay_compile_brief"].includes(t.name)
+      ["run_lens_action", "list_lens_actions", "conkay_solve", "conkay_solver_list", "conkay_engine_list", "conkay_ir_schema", "conkay_compile_brief"].includes(t.name)
     ).map((t) => t.name)
   );
 } catch { /* ignore */ }
@@ -2806,6 +2812,10 @@ export async function callMCPTool(db, toolName, args, STATE, callCtx = null) {
     case "conkay_solver_list": {
       const { conkaySolverListMcp } = await import("./mcp-execution-bridge.js");
       return conkaySolverListMcp(db, args, STATE, callCtx);
+    }
+    case "conkay_engine_list": {
+      const { conkayEngineListMcp } = await import("./mcp-execution-bridge.js");
+      return conkayEngineListMcp(db, args, STATE, callCtx);
     }
     case "conkay_solve": {
       const { conkaySolveMcp } = await import("./mcp-execution-bridge.js");

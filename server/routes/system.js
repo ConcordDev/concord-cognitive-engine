@@ -16,6 +16,7 @@ import { noteAdmittingTransition } from "../lib/request-admission.js";
 import { getHostIdentity } from "../lib/host-profile.js";
 import { getMemorySnapshot } from "../lib/heap-limit.js";
 import { resolveBuildSha } from "../lib/build-sha.js";
+import { engineListReport } from "../lib/conkay/engines/index.js";
 import { dtuMatchesQuery, shapePaginatedBody, dtuListedOwner, tagFilterTerms, dtuMatchesTagFilter } from "../lib/dtu-list-source.js";
 import { viewerIdFromCtx } from "../lib/dtu-read-access.js";
 import { filterVisibleSearchHits, searchCandidateLimit } from "../lib/dtu-search-hits.js";
@@ -625,6 +626,14 @@ export default function registerSystemRoutes(app, {
       abstraction: STATE.abstraction || {},
     };
     res.json({ ok:true, capabilities: cap });
+  });
+
+  // ---- ConKay Engines (SXE-00) ----
+  // The engine framework inventory; the MCP conkay_engine_list tool serves
+  // the same engineListReport, so REST and MCP can never drift.
+  app.get("/api/conkay/engines", (req, res) => {
+    const report = engineListReport();
+    res.json({ ok: true, engines: report.engines, total: report.total });
   });
 
   // ---- Stats (restructured: public count = knowledge + seed + mega + hyper) ----
