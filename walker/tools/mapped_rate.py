@@ -58,6 +58,17 @@ def step_mapped(raw, lens):
     return bool(repro.map_step(raw, lens)["mapped"])
 
 
+def step_state(raw, lens):
+    """(state, category) of an UNMAPPED step: its first unmapped part, classified by precap's deterministic rule table.
+    pending_capture = recognised, but needs a live label/endpoint name from the capture walk;
+    needs_post_capture_rewrite = prose a rewrite must restate (never guessed)."""
+    e = repro.expand_step(raw, lens)
+    for p in e.get("parts") or []:
+        if not p.get("mapped"):
+            return p.get("state") or "needs_post_capture_rewrite", p.get("category") or "unclassified"
+    return "needs_post_capture_rewrite", "unclassified"
+
+
 def expected_all_checkable(ticket):
     """(ok, n_clauses, n_unchecked). ok: >=1 clause and every clause has a machine-checkable kind
     (the ticket's `expected` plus, in the new mapper, the clauses its observe steps moved there)."""
@@ -82,6 +93,7 @@ def measure(tickets, with_reasons=False, rewrites=None, labels=None):
     blocked_expected = blocked_steps = blocked_both = 0
     clauses = clauses_unchecked = 0
     unmapped, by_class = {}, {}
+    states, state_cats, prose_table = {}, {}, {}
     rw_used = rw_rejected = orig_suff = 0
     rejected_by, human_by, eligible_rw, eligible_orig = {}, {}, 0, 0
     for t in tickets:
@@ -127,6 +139,12 @@ def measure(tickets, with_reasons=False, rewrites=None, labels=None):
             if not o:
                 c = classify_unmapped(r)
                 by_class[c] = by_class.get(c, 0) + 1
+                if hasattr(repro, "expand_step"):
+                    st, cat = step_state(r, t.get("lens"))
+                    states[st] = states.get(st, 0) + 1
+                    state_cats["%s/%s" % (st, cat)] = state_cats.get("%s/%s" % (st, cat), 0) + 1
+                    if c == "prose_other":
+                        prose_table["%s/%s" % (st, cat)] = prose_table.get("%s/%s" % (st, cat), 0) + 1
                 if with_reasons:
                     unmapped[r] = t.get("id")
     n = len(tickets)
@@ -140,6 +158,9 @@ def measure(tickets, with_reasons=False, rewrites=None, labels=None):
             "rewrites": {"rewrite_backed": rw_used, "original_only": n - rw_used, "original_sufficient": orig_suff, "rejected_by_agree": rw_rejected, "rejected_by_reason": rejected_by,
                          "human_only_by_reason": human_by, "eligible_rewrite_backed": eligible_rw, "eligible_original_only": eligible_orig} if rewrites else None,
             "unmapped_by_class": dict(sorted(by_class.items(), key=lambda kv: -kv[1])),
+            "unmapped_by_state": dict(sorted(states.items(), key=lambda kv: -kv[1])),
+            "unmapped_by_state_category": dict(sorted(state_cats.items(), key=lambda kv: -kv[1])),
+            "prose_other_classification": dict(sorted(prose_table.items(), key=lambda kv: -kv[1])),
             "unmapped_examples": unmapped}
 
 

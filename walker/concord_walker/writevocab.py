@@ -67,7 +67,12 @@ def _boundary(spec):
 
 
 def _split_fields(f):
-    return [x.strip() for x in re.split(r"\s*(?:/|,|\band\b)\s*", f) if x and x.strip()]
+    """'Qty / Price' -> ['Qty', 'Price']. A shorthand like 'plot x/z' (a bare letter that is not itself a field name)
+    is ambiguous: [] is returned so the caller leaves the step unmapped (fail closed) instead of typing into a guessed 'z'."""
+    out = [x.strip() for x in re.split(r"\s*(?:/|,|\band\b)\s*", f) if x and x.strip()]
+    if len(out) > 1 and any(len(x) < 2 for x in out):
+        return []
+    return out
 
 
 def literal_values(lits):
@@ -234,11 +239,15 @@ def _map_single(s, raw, lens_names, prev=None):
             return _tv([m.group("f").strip()], specs, raw)
     m = _CLEAR.match(s)
     if m and not _CLEAR_NOT.search(m.group("f")):
-        return _tv(_split_fields(m.group("f"))[:3], [{"kind": "literal", "value": ""}], raw, clear=True)
+        fl = _split_fields(m.group("f"))
+        return _tv(fl[:3], [{"kind": "literal", "value": ""}], raw, clear=True) if fl else NOT_MINE
     m = _LEAVE.match(s)
     if m:
-        return _tv(_split_fields(m.group("f"))[:3], [{"kind": "literal", "value": ""}], raw, clear=True)
+        fl = _split_fields(m.group("f"))
+        return _tv(fl[:3], [{"kind": "literal", "value": ""}], raw, clear=True) if fl else NOT_MINE
     m = _SUBMIT_WITH_EMPTY.match(s)
+    if m and not _split_fields(m.group("f")):
+        return NOT_MINE
     if m:
         return _tv(_split_fields(m.group("f"))[:2], [{"kind": "literal", "value": ""}], raw, clear=True) + [{"action": "submit_form", "verb": m.group("v").lower(), "raw": raw}]
     if _FILL.match(s):

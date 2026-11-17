@@ -28,6 +28,11 @@ from . import expected as _X
 from . import labels as _L
 from . import vocab as _V
 from . import writevocab as _W
+from . import precap as _P
+from . import observe as _O
+from . import viewport as _V2
+from . import domread as _DR
+from . import keyboard as _K
 from .matching import fuzzy_match
 from .safety import HARD_DENY, SWEEP_PAYMENT, is_tab_safe, is_close_safe, write_step_decision, CREATE_OPENER, CREATE_SUBMIT
 FIELD_NEVER_RX = _W.FIELD_NEVER
@@ -292,6 +297,31 @@ def _map_segment(seg, lens, lens_names, prev, in_crumb):
 
 
 def _map_core(s, seg, lens, lens_names, prev, in_crumb):
+    """Existing mapper first (unchanged); only a segment it left unmapped is offered to the pre-capture layer."""
+    got = _map_core_base(s, seg, lens, lens_names, prev, in_crumb)
+    if got[0] is None:
+        p = _P.map_part(s, seg.strip(), lens_names, prev)
+        if p is not _P.NOT_MINE:
+            if isinstance(p, tuple):
+                return got if p[1] is None else (None, p[1])
+            return [dict(x, raw=x.get("raw", seg.strip())) for x in p], None
+    if got[0] is None and not re.search(r"[\"'‘“]", s) and re.search(r",|;|\bthen\b", s):
+        # "Tab x10, Esc" / "Open Export, Esc x2" / "Focus X, Ctrl+K": every comma piece must map on its own, else the whole stays unmapped
+        pieces = [x for x in re.split(r"\s*(?:,|;|\bthen\b)\s*", s) if x.strip()]
+        if 2 <= len(pieces) <= 6:
+            out, pv = [], prev
+            for pc in pieces:
+                g = _map_core(pc, pc, lens, lens_names, pv, True)
+                if g[0] is None:
+                    break
+                out += g[0]
+                pv = next((x for x in reversed(g[0]) if x.get("action") != "noop"), pv)
+            else:
+                return [dict(x, raw=x.get("raw", seg.strip())) for x in out], None
+    return got
+
+
+def _map_core_base(s, seg, lens, lens_names, prev, in_crumb):
     # ---- walker vocabulary first (viewport / theme / keyboard / export / console / a11y / chat / guard / observe)
     v = _V.map_part(s, seg.strip(), lens_names, prev)
     if v is not _V.NOT_MINE:
@@ -429,6 +459,12 @@ def expand_step(raw, lens_slug=None, lens_title=None):
     parts are. An unmapped step carries substeps == [] (nothing is run) with the first reason."""
     s0 = (raw or "").strip()
     out = {"raw": s0, "mapped": False, "substeps": [], "reason": None, "parts": []}
+    kr = _K.map_part(s0, s0)
+    if isinstance(kr, tuple) and kr[0] is None and "destructive key" in (kr[1] or ""):
+        # "press Delete" is the KEYBOARD key (refused, never pressed) - never reinterpreted as the row-scoped Delete control
+        out["reason"] = kr[1]
+        out["parts"] = [{"raw": s0, "mapped": False, "reason": kr[1]}]
+        return out
     legacy = map_step(s0, lens_slug)
     trailing = legacy["mapped"] and legacy["action"] == "open" and re.search(r"(?i)(?:https?://\S+|/lenses/[a-z0-9\-/]+)\s*[.,;]?\s*\S", s0.split("://", 1)[-1] if False else s0) is not None \
         and not re.search(r"(?i)(?:https?://\S+|/lenses/[a-z0-9\-/]+)[.]?\s*$", s0)
@@ -506,7 +542,7 @@ def expand_step(raw, lens_slug=None, lens_title=None):
             if got is None:
                 if first_reason is None:
                     first_reason = "segment %r: %s" % (cr.strip()[:80], why)
-                parts.append({"raw": cr.strip(), "mapped": False, "reason": why})
+                parts.append(dict({"raw": cr.strip(), "mapped": False, "reason": why}, **_P.classify_part(cr, why)))
                 continue
             mapped_here = []
             for g in got:
@@ -694,6 +730,13 @@ def run_repro(ticket, driver, *, lens_slug, allow_fill=True, log=None, write=Non
         ev["step_windows"] = []          # per-step net-ledger windows (validation checks read the typed/submit steps')
     _cb = getattr(driver, "console_errors", None)
     console_base = _cb() if _cb else None
+    # generic observe predicates / network read-back need a per-step evidence window (before/after snapshot + console + responses)
+    _oc = [x.get("clause") for e in expanded for x in e["substeps"] if x.get("action") == "observe" and x.get("clause")]
+    _ok = {sp["kind"] for c in _X.split_clauses(ticket.get("expected")) + _oc for sp in (_X.classify_clause(c, _check_legacy) or [])}
+    want_obs = bool(_ok & (set(_O.KINDS) | {"g_net_readback", "g_net_status_class", "g_net_shape"})) and hasattr(driver, "snapshot")
+    if want_obs:
+        ev["obs"] = []
+        driver._obs_on = True
     gone = set()                         # own fixtures a ticket step already deleted (cleanup must not report them leftover)
 
     def write_ok(what):
@@ -754,6 +797,9 @@ def run_repro(ticket, driver, *, lens_slug, allow_fill=True, log=None, write=Non
             elif a == "delete_own" and not hasattr(driver, "delete_with_confirm"):
                 s, a = dict(s, action="click", name=s["verb"].title()), "click"
             mk = driver.net_mark() if "step_windows" in ev else None
+            om = ob0 = None
+            if want_obs and getattr(driver, "obs_mark", None):
+                om, ob0 = driver.obs_mark(), driver.snapshot()
             try:
                 if a == "noop":
                     rec(s, True, s.get("note") or "no-op")
@@ -796,6 +842,9 @@ def run_repro(ticket, driver, *, lens_slug, allow_fill=True, log=None, write=Non
                     snr = driver.snapshot()
                     ev["after_reload"] = {"texts": list(snr.get("durable") or snr.get("texts") or []), "names": [c["name"] for c in snr.get("controls") or [] if c.get("name")]}
                     rec(s, True, "reloaded")
+                elif a in _P.NEW_ACTIONS:
+                    rec(s, True, _P.execute(a, s, driver, ev, {"allow_write": bool(wr.get("allow_write")) and not wr.get("admin") and not wr.get("write_skip"),
+                                                               "send_key": send_key, "forbid_keys": forbid_keys}))
                 elif a == "set_viewport":
                     cap("set_viewport")(s["w"], s["h"])
                     ev["viewport"] = (s["w"], s["h"])
@@ -805,6 +854,9 @@ def run_repro(ticket, driver, *, lens_slug, allow_fill=True, log=None, write=Non
                     rec(s, True, "colour scheme emulated: %s" % s["scheme"])
                 elif a == "check_overflow":
                     ev["overflow"] = cap("measure_overflow")()
+                    _fl = getattr(driver, "measure_layout", None)
+                    if _fl:
+                        ev["layout"] = _V2.analyze_layout(_fl())
                     fn_t = getattr(driver, "measure_targets", None)
                     if fn_t:
                         ev["targets"] = fn_t()
@@ -1047,6 +1099,9 @@ def run_repro(ticket, driver, *, lens_slug, allow_fill=True, log=None, write=Non
                         rec(s, True, "typed %s into %r (not submitted)" % (("the literal %r" % s["literal"]) if s.get("literal") else "an own labelled qa-walker value", s["name"]))
                 if a in _SETTLE_ACTIONS and getattr(driver, "settle", None):
                     driver.settle()          # in-flight writes/renders after this step land BEFORE its net window closes and the snapshot is taken
+                if om is not None:
+                    od = driver.obs_since(om)
+                    ev["obs"].append(_O.window_from(ob0, driver.snapshot(), od.get("console_new"), od.get("net"), n=s["n"]))
                 if mk is not None:
                     ev["step_windows"].append({"n": s["n"], "action": a, "writes": driver.net_since(mk), "typed": s.get("_typed"), "submit": bool(s.get("_submit"))})
             except (_Refused, _NotFound) as e:
@@ -1104,6 +1159,8 @@ def _gather(driver, ev, ticket, extra_clauses, console_base):
     jobs = []
     if "ax_names" in kinds and "ax_unnamed" not in ev:
         jobs.append(("ax_check", lambda f: ev.update(zip(("ax_unnamed", "ax_total"), (lambda r: (r.get("unnamed"), r.get("total")))(f(None))))))
+    if "g_layout_clean" in kinds and "layout" not in ev:
+        jobs.append(("measure_layout", lambda f: ev.update(layout=_V2.analyze_layout(f()))))
     if "contrast" in kinds and "contrast" not in ev:
         jobs.append(("measure_contrast", lambda f: ev.update(contrast=f())))
     if "target_size" in kinds and "targets" not in ev:
@@ -1145,12 +1202,8 @@ def _cleanup(driver, created, wr, ticket, out, gone=()):
     out["fixtures"] = res
 
 
-class _Refused(Exception):
-    pass
-
-
-class _NotFound(Exception):
-    pass
+_Refused = _P.Refused
+_NotFound = _P.NotFound
 
 
 # --------------------------------------------------------------- Playwright adapter
@@ -1238,11 +1291,110 @@ class PlaywrightDriver:
             page.on("requestfailed", lambda r: setattr(self, "_inflight", max(0, self._inflight - 1)))
         except Exception:
             pass
+        self._resp = []
+        try:
+            page.on("response", self._on_resp)
+        except Exception:
+            pass
         try:
             page.on("request", lambda r: self._writes.append("%s %s" % (r.method, r.url.split("?")[0][-80:]))
                     if r.method in ("POST", "PUT", "PATCH", "DELETE") and "/api/" in r.url else None)
         except Exception:
             pass
+
+    # ---- pre-capture capabilities (precap.py / observe.py / netcheck.py)
+    _MAX_RESP = 400
+
+    def _on_resp(self, r):
+        """Record every /api/ response: method, templated path, status and (JSON only) the SHAPE of the body - never values."""
+        try:
+            if "/api/" not in r.url:
+                return
+            from urllib.parse import urlparse
+            from . import netledger as _N, netcheck as _NC
+            req = r.request
+            row = {"method": req.method, "path": _N.template_path(urlparse(r.url).path)[0], "raw_path": urlparse(r.url).path, "status": r.status, "t": time.monotonic()}
+            if "json" in ((r.headers or {}).get("content-type") or "") and int((r.headers or {}).get("content-length") or 0) < 200000:
+                try:
+                    body = r.json()
+                    row["shape"] = _NC.shape_of(body)
+                    row["ids"] = sorted(_NC.ids_of(body))
+                    row["leaf"] = sorted(_NC.leaf_hashes(body))
+                except Exception:
+                    pass
+            self._resp.append(row)
+            if len(self._resp) > self._MAX_RESP:
+                del self._resp[:100]
+        except Exception:
+            pass
+
+    def platform(self):
+        try:
+            ua = self.cdp.s.send("Browser.getVersion").get("userAgent") or ""
+            return "darwin" if "Macintosh" in ua or "Mac OS" in ua else "linux"
+        except Exception:
+            return "linux"
+
+    def obs_mark(self):
+        return (len(self.lw.console_errors) + len(self.lw.page_errors), len(self._resp), len(self._writes))
+
+    def obs_since(self, mark):
+        ce = (self.lw.console_errors + self.lw.page_errors)[mark[0]:]
+        return {"console_new": list(ce), "net": [dict(x) for x in self._resp[mark[1]:] if x]}
+
+    def resp_since(self, mark):
+        return [dict(x) for x in self._resp[mark[1]:]]
+
+    def set_reduced_motion(self, on):
+        self.page.emulate_media(reduced_motion="reduce" if on else "no-preference", **({"color_scheme": self._scheme} if self._scheme else {}))
+
+    def set_offline(self, offline):
+        self.ctx.set_offline(bool(offline))
+
+    _zoom_vp = None
+    _cdp_override = False
+
+    def set_zoom(self, z):
+        """Browser zoom == the page laying out in 1/z CSS px at z device px per CSS px; emulated with the CDP device-metrics override."""
+        z = float(z)
+        vp = self.page.viewport_size or {"width": 1280, "height": 800}
+        if self._zoom_vp is None:
+            self._zoom_vp = (vp["width"], vp["height"])
+        w, h = self._zoom_vp
+        if abs(z - 1.0) < 1e-6:
+            # Do NOT clear: clearing leaves the shrunk layout size, and Playwright caches its size so a same-size
+            # set_viewport_size no-ops. Re-send the override at the original size with deviceScaleFactor 0 (context default).
+            self._zoom_vp = None
+            self._cdp_override = True
+            self.cdp.s.send("Emulation.setDeviceMetricsOverride", {"width": int(w), "height": int(h),
+                                                                    "deviceScaleFactor": 0, "mobile": False})
+            return
+        self._cdp_override = True
+        self.cdp.s.send("Emulation.setDeviceMetricsOverride", {"width": max(1, round(w / z)), "height": max(1, round(h / z)),
+                                                                "deviceScaleFactor": z, "mobile": False})
+
+    def page_scheme(self):
+        return _DR.page_scheme(self.cdp.snapshot())
+
+    def nav_away_back(self):
+        self.page.goto(self._base + "/", wait_until="domcontentloaded")
+        self.page.goto(self.lens_url, wait_until="domcontentloaded")
+        try:
+            self.page.wait_for_load_state("networkidle", timeout=4000)
+        except Exception:
+            pass
+
+    def active_item(self):
+        """The active/selected item of the focused widget (accessibility tree): selected/current/checked, else the focused name."""
+        return _DR.active_item(self.cdp.ax())
+
+    def measure_layout(self):
+        lm = self.cdp.layout_metrics()
+        return _DR.layout(self.cdp.snapshot(), lm.get("viewport_w") or 0, lm.get("viewport_h") or 0)
+
+    def obs_state(self):
+        """Extra generic readings the base snapshot lacks: a visible loading indicator."""
+        return {"spinner": _DR.spinner(self.cdp.snapshot())}
 
     def open(self, target):
         # Only the PATH of a ticket's URL is used, joined onto this run's own base_url: a ticket
@@ -1348,7 +1500,12 @@ class PlaywrightDriver:
         return False, trace
 
     def set_viewport(self, w, h):
+        self._zoom_vp = None  # an explicit size supersedes any remembered pre-zoom size; a later zoom bases on this one
         self.page.set_viewport_size({"width": int(w), "height": int(h)})
+        if self._cdp_override:
+            # Playwright no-ops a same-size request while our CDP override is active: land the size via CDP too
+            self.cdp.s.send("Emulation.setDeviceMetricsOverride", {"width": int(w), "height": int(h),
+                                                                    "deviceScaleFactor": 0, "mobile": False})
         try:
             self.page.wait_for_load_state("networkidle", timeout=4000)
         except Exception:
@@ -1664,7 +1821,8 @@ class PlaywrightDriver:
         return {"controls": ctl, "texts": ax.texts(), "durable": ax.durable_texts(), "dialogs": [n.name or "dialog" for n in ax.dialogs()],
                 "alerts": alert_texts(ax),
                 "list_items": list(dict.fromkeys(items)),
-                "errors": len(self.lw.page_errors) + len(self.lw.console_errors), "url": self.page.url}
+                "errors": len(self.lw.page_errors) + len(self.lw.console_errors), "url": self.page.url,
+                **({"spinner": self.obs_state().get("spinner")} if getattr(self, "_obs_on", False) else {})}
 
     def screenshot(self, name):
         return self.lw.shot(self.page, name)
