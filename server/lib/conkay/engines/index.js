@@ -9,7 +9,7 @@
 import { getEngine, listEngines, defineEngine, validateManifestEntry } from "./manifest.js";
 import { runEngine, runProcessKernel, engineHealth, resolveEngineBinary, kernelHash } from "./run-engine.js";
 
-export { getEngine, listEngines, defineEngine, validateManifestEntry, runEngine, runProcessKernel, engineHealth };
+export { getEngine, listEngines, defineEngine, validateManifestEntry, runEngine, runProcessKernel, engineHealth, resolveEngineBinary };
 
 /**
  * One row per manifest entry. `engineDependent: true` on every row — the

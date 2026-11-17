@@ -324,6 +324,18 @@ export async function conkaySolverListMcp(db, args = {}, STATE = null, callCtx =
   // Side-effect import registers every solver on the registry
   const { listSolvers } = await import("./conkay/index.js");
   let solvers = listSolvers();
+  // SX-XC-01: annotate with the fidelity router's tier table — every
+  // solver is listed with its engineDependent flag and per-tier
+  // availability, so a caller can see an engine tier is out of reach
+  // before it asks for it.
+  const { listTieredSolvers } = await import("./conkay/select.js");
+  const tiered = new Map(listTieredSolvers().map((t) => [t.id, t]));
+  solvers = solvers.map((s) => {
+    const t = tiered.get(s.id);
+    return t
+      ? { ...s, engineDependent: t.engineDependent, tiers: t.tiers }
+      : { ...s, engineDependent: false };
+  });
   if (clean.domain) {
     const d = String(clean.domain);
     solvers = solvers.filter((s) => s.domain === d || (s.domains || []).includes(d));
