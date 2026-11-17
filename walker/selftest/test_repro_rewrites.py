@@ -236,5 +236,13 @@ d = tempfile.mkdtemp()
 open(os.path.join(d, "batch-001.jsonl"), "w").write(json.dumps(base()) + "\n{torn\n")
 check("a torn batch line never poisons the load", list(R.load_dir(d)) == ["X-1"])
 
+sys.path.insert(0, os.path.join(HERE, "tools"))
+import rewrite_draft as _D  # walk02 forbids the account literal in walker code; it lives only here
+check("cross-account mention still detected (t2)", bool(_D._CROSS.search("sign in as zuko_qa_t2")))
+check("plain step not cross-account", not _D._CROSS.search("plain single account step"))
+check("t1 prefix stripped (lens form)", _D._PFX.sub("", "On /lenses/chat as zuko_qa_t1, open the menu") == "open the menu")
+check("t1 prefix stripped (paren form)", _D._PFX.sub("", "on zuko_qa_t1 (admin), click Save") == "click Save")
+
 print("\n%d failed" % len(FAILS))
 sys.exit(1 if FAILS or len(H.FAILS) > HFAILS_BEFORE else 0)
+

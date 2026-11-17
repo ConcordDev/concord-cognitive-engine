@@ -18,7 +18,7 @@ import rewrite_check as RC
 AUTHOR = "sonnet"
 
 _CODE_READ = re.compile(r"(?i)code read|reports/SCOPE|read (?:the )?(?:source|code)|grep (?:the )?(?:built |frontend |server |source |repo )|source inspection|source code|in the (?:source|repo|code)")
-_CROSS = re.compile(r"(?i)(?:second|another|two|both) (?:test )?(?:account|accounts)|zuko_qa_t2|another user'?s (?:profile|private|data|record)|other user'?s (?:profile|private|data|record)|signed[- ]out|incognito|two (?:browser|session)s")
+_CROSS = re.compile(r"(?i)(?:second|another|two|both) (?:test )?(?:account|accounts)|\b[a-z0-9]+(?:_[a-z0-9]+)*_t2\b|another user'?s (?:profile|private|data|record)|other user'?s (?:profile|private|data|record)|signed[- ]out|incognito|two (?:browser|session)s")
 _VISUAL = re.compile(r"(?i)visual check|by eye|visually (?:inspect|check|compare|verify)|looks? (?:right|good|wrong|off|odd)|alignment|colou?r (?:taste|choice)|pixel")
 _EVIDENCE_ONLY = re.compile(r"(?i)^\s*see evidence\b\S*\s*$|^\s*see evidence/\S+\s*$")
 _SEG = re.compile(r"\s*(?:;|\.\s+|,\s*then\s+|\s+then\s+|\s>\s|\s→\s|\s->\s|,\s+(?=(?:open|click|press|reload|tab|select|type|set)\b))\s*", re.I)
@@ -35,7 +35,7 @@ def _lab(labels, lens):
     return (labels or {}).get(lens) or []
 
 
-_PFX = re.compile(r"(?i)^(?:on\s+(?:/lenses/[a-z0-9\-/]+\s+)?(?:as\s+)?zuko_qa_t1(?:\s*\([^)]*\))?\s*,\s*|on\s+(?:the\s+)?/lenses/[a-z0-9\-/]+\s*(?:as\s+zuko_qa_t1\s*(?:\([^)]*\))?)?\s*,\s*)")
+_PFX = re.compile(r"(?i)^(?:on\s+(?:/lenses/[a-z0-9\-/]+\s+)?(?:as\s+)?[a-z0-9]+(?:_[a-z0-9]+)*_t1(?:\s*\([^)]*\))?\s*,\s*|on\s+(?:the\s+)?/lenses/[a-z0-9\-/]+\s*(?:as\s+[a-z0-9]+(?:_[a-z0-9]+)*_t1\s*(?:\([^)]*\))?)?\s*,\s*)")
 _OPENLENS = re.compile(r"(?i)^(?:then\s+)?open\s+(?:https?://[^/\s]+)?(?P<u>/lenses/[a-z0-9\-/]+)(?P<rest>.*)$")
 _VPWORDS = re.compile(r"(?i)\b(?:in|with)?\s*(?:chrome\s+)?devtools\b|\bdevice\s+(?:toolbar|mode)\b|\bresponsive\b|\bset\b|\bat\b|\bdimensions:?|\bofficial\b|\bviewport\b|\b100%|\b390\s*[x×]\s*844\b|~|[(),.:]|\bmobile\b|\bwidth\b")
 _ARROWS = re.compile(r"(?i)^press\s+(?P<k>(?:left|right|up|down)(?:\s*(?:/|,|and)\s*(?:left|right|up|down))*)\s+arrow(?:\s+keys?)?$")
