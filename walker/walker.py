@@ -158,6 +158,18 @@ def cmd_walk(args, cfg, log):
         (run_deploy["backend_sha"] or "NONE")[:12], run_deploy["frontend_build_id"], (run_deploy["walker_sha"] or "?")[:12],
         run_deploy["sha_status"], (" (%s)" % run_deploy["sha_note"]) if run_deploy["sha_note"] else ""))
     manifest.data["deploy"] = run_deploy
+    # no-deploy guard: the build sha is polled at start and around every lens; a change mid-walk STOPS the sweep.
+    from concord_walker import longwalk as _LW
+    guard = _LW.DeployGuard(lambda: deploy_stamp(cfg["base_url"], None)["backend_sha"], log=log)
+    g_ok, g_why = guard.start(prior_sha=manifest.prior_sha, known=run_deploy.get("backend_sha"))
+    if not g_ok:
+        append_text(os.path.join(rec.run_dir, "ABORTED.txt"), "%s %s: %s\n" % (human_et(), _LW.DEPLOY, g_why))
+        manifest.finish("aborted", note="%s: %s" % (_LW.DEPLOY, g_why))
+        log("WALK ABORTED run %s: %s: %s" % (rid, _LW.DEPLOY, g_why))
+        raise WalkAborted(4)
+    if guard.active and not manifest.prior_sha:
+        manifest.data["build_sha"] = guard.sha
+        manifest.save()
     log("run %s: %d lens(es), phases=%s, write=%s, dry=%s, premap=%s" % (rid, len(lenses), phases, args.allow_write, dry, premap))
     summary = []
     from concord_walker.runstate import LensBudget, ReplayBudget
@@ -166,7 +178,7 @@ def cmd_walk(args, cfg, log):
     replay_budget = ReplayBudget.from_config(cfg, args)
     log("replay budget per lens: %s" % ("fixed %ss" % replay_budget.override_s if replay_budget.override_s is not None else
         "min(%ss cap, %ss base + %ss x tickets)" % (replay_budget.cap_s, replay_budget.base_s, replay_budget.per_ticket_s)))
-    abort = None
+    abort, abort_state, deploy_abort = None, None, False
     relaunches_left = int(getattr(args, "auto_resume", 2) or 0)
     replay = None
     if not no_replay:
@@ -215,6 +227,12 @@ def cmd_walk(args, cfg, log):
                 deploy = deploy_stamp(cfg["base_url"], cfg["_walker_dir"], expect_sha=expect, previous=run_deploy)
                 if deploy["sha_status"] != "ok":
                     log("  build stamp %s: %s" % (deploy["sha_status"], deploy["sha_note"]))
+                why = guard.check(slug, known=deploy.get("backend_sha"), phase="before")
+                if why:
+                    append_text(os.path.join(rec.run_dir, "ABORTED.txt"), "%s %s: %s %s\n" % (human_et(), slug, _LW.DEPLOY, why))
+                    manifest.lens(slug, "aborted", reason="%s: %s" % (_LW.DEPLOY, why), deploy=deploy, state=_LW.DEPLOY)
+                    abort, deploy_abort = (slug, "%s: %s" % (_LW.DEPLOY, why)), True
+                    break
                 lw, attempt = None, 0
                 while True:
                     try:
@@ -228,7 +246,7 @@ def cmd_walk(args, cfg, log):
                     except AccountMismatch as e:
                         log("ABORT: account check failed on %s: %s" % (slug, e))
                         append_text(os.path.join(rec.run_dir, "ABORTED.txt"), "%s %s: %s\n" % (human_et(), slug, e))
-                        abort = (slug, "account check failed: %s" % e)
+                        abort, abort_state = (slug, "account check failed: %s" % e), _LW.CRASHED
                         break
                     except Exception as e:
                         # WALKER-ISSUES auto-resume: a browser crash relaunches Chrome and retries the lens once
@@ -247,10 +265,18 @@ def cmd_walk(args, cfg, log):
                             continue
                         log("ABORT: %s on %s: %s" % (type(e).__name__, slug, str(e)[:200]))
                         append_text(os.path.join(rec.run_dir, "ABORTED.txt"), "%s %s: %s %s\n" % (human_et(), slug, type(e).__name__, str(e)[:200]))
-                        abort = (slug, "%s: %s" % (type(e).__name__, str(e)[:120]))
+                        abort, abort_state = (slug, "%s: %s" % (type(e).__name__, str(e)[:120])), _LW.state_for_exception(e)
                         break
                 if abort:
-                    manifest.lens(slug, "aborted", reason=abort[1], deploy=deploy)
+                    manifest.lens(slug, "aborted", reason=abort[1], deploy=deploy, state=abort_state or _LW.CRASHED)
+                    break
+                why = guard.check(slug, phase="after")
+                if why:
+                    # a lens that straddled a deploy mixes two builds: DISCARD it (no tickets filed, no record, not "walked")
+                    log("DEPLOY_DETECTED: %s; discarding the %s result" % (why, slug))
+                    append_text(os.path.join(rec.run_dir, "ABORTED.txt"), "%s %s: %s %s (lens result discarded)\n" % (human_et(), slug, _LW.DEPLOY, why))
+                    manifest.lens(slug, "aborted", reason="%s: %s (result discarded)" % (_LW.DEPLOY, why), deploy=deploy, state=_LW.DEPLOY)
+                    abort, deploy_abort = (slug, "%s: %s" % (_LW.DEPLOY, why)), True
                     break
                 filed = []
                 new, dups = file_findings(store, rec, lw.findings, dry, log, cfg["tester_name"], filed=filed)
@@ -262,10 +288,11 @@ def cmd_walk(args, cfg, log):
                 upgrade_record(res, deploy, filed, all_slugs, lw.screens, net_out, premap_findings=lw.premap_findings)
                 if wiring_col is not None and not gate:
                     wiring_col.add(slug, net_out[0], deploy.get("backend_sha"), {c: m.get("label_data") for c, m in lw.net.meta.items() if m.get("label_data")})
+                res["state"] = _LW.lens_state(res, gate=gate)
                 with open(lens_result_path(rec.run_dir, slug), "w") as f:
                     json.dump(res, f, indent=1)
                 manifest.lens(slug, "walked", reason="gate check (reach only)" if gate else None,
-                              checks_not_run=checks_not_run(res), deploy=deploy)
+                              checks_not_run=checks_not_run(res), deploy=deploy, state=res["state"])
                 summary.append(res)
                 write_root_causes(cfg["audit_dir"], log=log)
         finally:
@@ -279,7 +306,7 @@ def cmd_walk(args, cfg, log):
                     log("wiring capture: wrote %s" % (wiring_col.flush(),))
                 except Exception as e:  # capture must never break a walk
                     log("wiring capture FAILED to write: %s: %s" % (type(e).__name__, str(e)[:160]))
-            write_summary(rec, summary, left, dry)
+            write_summary(rec, summary, left, dry, manifest)
             write_root_causes(cfg["audit_dir"], log=log)
             if replay is not None:
                 _inv_slugs = {l.get("slug") for l in inv}
@@ -296,18 +323,29 @@ def cmd_walk(args, cfg, log):
         manifest.finish("aborted", note="aborted at %s: %s" % abort)
         log("WALK ABORTED run %s at %s: walked %d/%d lenses (%s). Resume: walker.py sweep --resume %s"
             % (rid, abort[0], walked, total, abort[1], rid))
+        if deploy_abort:
+            log("DEPLOY_DETECTED: the build changed mid-walk; --resume is refused unless /health reports the original build again")
+            raise WalkAborted(4)
         raise WalkAborted(3)
     manifest.finish("done")
     log("WALK DONE run %s: walked %d/%d lenses: %s" % (rid, walked, total, rec.run_dir))
 
 
-def write_summary(rec, summary, left, dry):
+def write_summary(rec, summary, left, dry, manifest=None):
     lines = ["# Lens walker run %s\n" % rec.rid, "Finished %s. %s\n\n" % (human_et(), "DRY-RUN (no tickets filed)" if dry else ""),
-             "| lens | account | checks (status) | new tickets | dups | s |\n|---|---|---|---|---|---|\n"]
+             "| lens | state | account | checks (status) | new tickets | dups | s |\n|---|---|---|---|---|---|---|\n"]
     for r in summary:
         cs = ", ".join("%s:%s" % (k, v.get("status")) for k, v in r["checks"].items())
-        lines.append("| %s | %s | %s | %s | %d | %s |\n" % (r["slug"], r["account"], cs, ", ".join(r.get("new_tickets", [])) or "-",
+        lines.append("| %s | %s | %s | %s | %s | %d | %s |\n" % (r["slug"], r.get("state") or "-", r["account"], cs, ", ".join(r.get("new_tickets", [])) or "-",
                                                          len(r.get("duplicates", [])), r.get("elapsed_s")))
+    if manifest is not None:
+        by = {}
+        for l in manifest.data["lenses"]:
+            by[l.get("state") or l["status"]] = by.get(l.get("state") or l["status"], 0) + 1
+        lines.append("\nPer-lens states: %s\n" % (", ".join("%s=%d" % kv for kv in sorted(by.items())) or "none"))
+        for l in manifest.data["lenses"]:
+            if l["status"] == "aborted":
+                lines.append("- %s: %s - %s\n" % (l["slug"], l.get("state") or "ABORTED", l.get("reason")))
     lines.append("\nLeftover fixtures: %s\n" % (", ".join(f["label"] for f in left) if left else "none"))
     with open(os.path.join(rec.run_dir, "SUMMARY.md"), "w") as f:
         f.write("".join(lines))

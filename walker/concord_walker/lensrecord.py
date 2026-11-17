@@ -171,12 +171,15 @@ class Manifest:
 
     def __init__(self, run_dir, rid, total):
         self.path = os.path.join(run_dir, "walk-manifest.json")
+        self.prior_sha = None
         self.data = {"run_id": rid, "schema_version": SCHEMA_VERSION, "deploy": None, "total": total,
                      "state": "running", "lenses": []}
         if os.path.exists(self.path):
             try:
                 old = json.load(open(self.path))
                 if old.get("run_id") == rid:
+                    self.prior_sha = old.get("build_sha")      # the build this run started on (resume must match it)
+                    self.data["build_sha"] = self.prior_sha
                     self.data["lenses"] = old.get("lenses", [])
                     self.data["resumes"] = old.get("resumes", 0) + 1
             except Exception:
@@ -185,9 +188,11 @@ class Manifest:
     def walked_slugs(self):
         return {l["slug"] for l in self.data["lenses"] if l["status"] == "walked"}
 
-    def lens(self, slug, status, reason=None, checks_not_run=None, deploy=None):
+    def lens(self, slug, status, reason=None, checks_not_run=None, deploy=None, state=None):
         self.data["lenses"] = [l for l in self.data["lenses"] if l["slug"] != slug]
         row = {"slug": slug, "status": status, "reason": reason, "checks_not_run": checks_not_run or []}
+        if state:
+            row["state"] = state          # DONE/PARTIAL/CRASHED/... ; `status` ("walked"/"aborted") stays what --resume + start.sh read
         if deploy:
             row.update(row_stamp(deploy))
             row["sha_status"] = deploy.get("sha_status")

@@ -95,6 +95,8 @@ class ReplayRun:
             done += 1
             block["counts"][res["verdict"]] = block["counts"].get(res["verdict"], 0) + 1
             block["ids"].setdefault(res["verdict"], []).append(tid)
+            if "PENDING_CAPTURE" in str(res.get("notes") or ""):
+                block["pending_capture"] = block.get("pending_capture", 0) + 1
         block["second_walks"] = self.rv.live_walk_count - walks_before
         self.blocks[slug] = block
         self.log("  replay %s: %s%s" % (slug, block["counts"] or "-", (" skipped %d" % len(block["skipped"])) if block["skipped"] else ""))

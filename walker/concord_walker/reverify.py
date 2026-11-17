@@ -221,6 +221,8 @@ class Reverifier:
         t_run, rwinfo = _rewrites.prepare(t, self._rewrite_index(), self._rewrite_labels())
         if t_run is None:
             res["rewrite"] = rwinfo
+            if rwinfo.get("source") == "human_only" and rwinfo.get("reason") in ("lighthouse", "cross_account", "visual"):
+                return self._automate_human_only(t, res, rwinfo)
             res["notes"] = ("repro-steps: " + _rewrites.human_note(rwinfo) + ("; keyword check: " + res["notes"] if res.get("notes") else ""))[:600]
             return res
         t = t_run
@@ -256,6 +258,74 @@ class Reverifier:
         else:
             # undecided: the first unmapped / unexecuted / unchecked step is the reason a tester sees
             res["notes"] = ("repro-steps: " + rr["notes"] + ("; keyword check: " + res["notes"] if res.get("notes") else ""))[:600]
+        return res
+
+    # ------------------------------------------------------------ automated formerly-human-only classes
+    ab_factory = None      # optional: callable(ticket) -> kwargs for automate.ab_isolation; None = no t1/t2 A/B runner on this run
+
+    def _theme_shot(self, lens, want):
+        """PNG bytes of the lens rendered under an emulated light/dark scheme, or None (never raises)."""
+        try:
+            acct, admin = self.account_for(lens)
+            if admin:
+                return None
+            lw = LensWalk(self.b, self.cfg, self.rec, self.inv[lens], acct, self.log, inv_entry=self.inv[lens], phases=[])
+            ctx, page, cdp = lw.open()
+            try:
+                page.emulate_media(color_scheme=want)
+                lw.nav(page, cdp)
+                return page.screenshot(type="png")
+            finally:
+                lw._close(ctx)
+        except Exception:
+            return None
+
+    def _automation_env(self, t, route):
+        from urllib.parse import urlparse
+        from . import automate as _A
+        lens = t["lens"]
+        url = (self.inv[lens].get("url") or "").strip() or ("%s/lenses/%s" % (self.cfg["base_url"].rstrip("/"), lens))
+        env = {"requested_path": urlparse(url).path}
+        if route == "lighthouse":
+            env["lighthouse"] = lambda ff: _A.run_lighthouse(url, ff)
+        elif route == "cross_account":
+            env["ab"] = self.ab_factory(t) if self.ab_factory else None
+        elif route == "visual":
+            blob = "%s %s" % (t.get("expected") or "", " ".join(t.get("repro_steps") or []) if isinstance(t.get("repro_steps"), list) else t.get("repro_steps") or "")
+            want = "dark" if re.search(r"(?i)\bdark\b", blob) and not re.search(r"(?i)\blight\b", blob) else "light" if re.search(r"(?i)\blight\b", blob) and not re.search(r"(?i)\bdark\b", blob) else None
+            env["want_theme"] = want
+            env["screenshot"] = self._theme_shot(lens, want) if want else None
+        return env
+
+    def _automate_human_only(self, t, res, rwinfo):
+        """A ticket the rewrite pass marked human_only for lighthouse / cross_account / visual is run through automate.dispatch.
+        PASS/FAIL stand only on tool evidence; a missing tool, session or capture is UNVERIFIED with its reason (NEEDS_HUMAN), never PASS.
+        No admin / payment / delete action exists in any of these routes."""
+        import json as _json, os as _os
+        from . import automate as _A
+        route = _A.classify_human_only(rwinfo.get("reason"), expected=t.get("expected") or "")
+        if route["route"] not in ("lighthouse", "cross_account", "visual"):
+            res["notes"] = ("human_only:%s - %s" % (rwinfo.get("reason"), route["why"]))[:600]
+            return res
+        try:
+            out = _A.dispatch(route["route"], t, self._automation_env(t, route["route"]))
+        except Exception as e:
+            out = {"state": "UNVERIFIED", "reason": "automation errored: %s" % type(e).__name__}
+        st, why = out.get("state"), str(out.get("reason") or "")
+        res["automation"] = {"route": route["route"], "state": st, "reason": why[:300]}
+        if st in ("PASS", "FAIL"):
+            try:
+                ev = _os.path.join(self.rec.run_dir, "automation-%s.json" % re.sub(r"[^A-Za-z0-9_.-]+", "-", str(t.get("id"))))
+                with open(ev, "w") as f:
+                    _json.dump({"id": t.get("id"), "route": route["route"], "state": st, "reason": why[:600]}, f, indent=1)
+                res["evidence"] = list(dict.fromkeys((res.get("evidence") or []) + [ev]))
+            except Exception:
+                pass
+            res.update(verdict=FIXED if st == "PASS" else STILL, coverage_basis="repro-steps", recipe_kind="repro-steps",
+                       method="automated-%s" % route["route"], notes=("automated %s: %s" % (route["route"], why))[:600])
+            res.pop("capped", None)
+        else:
+            res["notes"] = ("automated %s: %s - %s" % (route["route"], st, why))[:600]
         return res
 
     # ------------------------------------------------------------ generic

@@ -194,3 +194,69 @@ class LongWalk:
         return {"status": self.status, "stop_reason": self.stop_reason, "build_sha": self.sha, "counts": counts,
                 "lenses": {k: v for k, v in self.results.items()}, "total": len(self.lenses),
                 "not_walked": [l for l in self.lenses if l not in self.results]}
+
+
+# ------------------------------------------------------------------ sweep wiring (walker.py cmd_walk)
+class DeployGuard:
+    """No-deploy guard for the sweep. `fetch_sha()` -> the live /health buildSha (hex) or None; injected, so fakes test it.
+    start(): records the sha the walk runs against; refuses a resume onto a different build (prior_sha = the sha the run's
+    finished lenses were walked on). check(): called before and after each lens; returns a reason string when the walk must
+    STOP (DEPLOY_DETECTED), else None. With no readable sha at start the guard is OFF (logged) - the existing sha_status
+    stamping still records `missing` on every row; once a sha is known, an unreadable one later is NOT trusted."""
+
+    def __init__(self, fetch_sha, log=lambda *a: None):
+        self.fetch_sha, self.log, self.sha, self.active = fetch_sha, log, None, False
+
+    def _read(self):
+        for _ in range(2):
+            try:
+                s = self.fetch_sha()
+            except Exception:
+                s = None
+            if s:
+                return s
+        return None
+
+    def start(self, prior_sha=None, known=None):
+        """-> (ok, reason). `known`: a sha the caller already read this instant (avoids a second poll)."""
+        self.sha = known or self._read()
+        if not self.sha:
+            self.log("deploy guard OFF: /health reports no buildSha at start")
+            return True, None
+        self.active = True
+        if prior_sha and prior_sha != self.sha:
+            return False, "resume refused: this run was started on build %s but /health reports %s now - a run never mixes builds" % (prior_sha[:12], self.sha[:12])
+        return True, None
+
+    def check(self, lens, known=None, phase="before"):
+        if not self.active:
+            return None
+        now = known or self._read()
+        if now is None:
+            return "cannot read /health buildSha %s %s (twice): cannot prove no deploy happened" % (phase, lens)
+        if now != self.sha:
+            return "buildSha changed %s %s: %s -> %s" % (phase, lens, self.sha[:12], now[:12])
+        return None
+
+
+def lens_state(res, gate=False):
+    """Per-lens result state for the manifest + SUMMARY. Never DONE for a lens whose checks errored/were partial."""
+    if gate:
+        return UNSAFE
+    checks = (res or {}).get("checks") or {}
+    blk = (res or {}).get("replay") or {}
+    decided = (blk.get("counts") or {}).get("FIXED", 0) + (blk.get("counts") or {}).get("STILL_FAILING", 0)
+    if blk.get("pending_capture") and not decided:
+        return PENDING
+    if any((v or {}).get("status") in ("ERROR", "PARTIAL") for v in checks.values()):
+        return PARTIAL
+    return DONE
+
+
+def state_for_exception(e):
+    n, t = type(e).__name__, str(e)
+    if "429" in t or "rate" in t.lower() and "limit" in t.lower():
+        return RATE_LIMITED
+    if "Timeout" in n or "timeout" in t.lower()[:80]:
+        return TIMEOUT
+    return CRASHED

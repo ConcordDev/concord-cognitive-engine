@@ -14,6 +14,15 @@ import re
 
 BOUNDARY_TEXT = re.compile(r"(?i)something went wrong|application error|unexpected error|an error occurred|this page crashed|error boundary|failed to load (?:the )?(?:page|app)|\bchunkloaderror\b|\b(?:404|500)\b\s*[-–:]?\s*(?:page )?(?:not found|internal)")
 SPINNER_ROLES = ("progressbar",)
+def _norm_row(r):
+    p = r.get("path")
+    if isinstance(p, (tuple, list)):
+        r["path"] = p[0] if p else ""
+    elif p is not None and not isinstance(p, str):
+        r["path"] = ""
+    return r
+
+
 _TELEMETRY = re.compile(r"(?i)/(?:telemetry|analytics|metrics|vitals|beacon|log|events/track)\b")
 
 
@@ -23,7 +32,7 @@ def window_from(before, after, console_new=(), net=(), n=None):
     return {
         "n": n,
         "console_new": list(console_new or []),
-        "net": [dict(x) for x in (net or [])],
+        "net": [_norm_row(dict(x)) for x in (net or [])],
         "url_before": before.get("url"), "url_after": after.get("url"),
         "alerts_before": list(before.get("alerts") or []), "alerts_after": list(after.get("alerts") or []),
         "rows_before": len(before["list_items"]) if "list_items" in before else None,

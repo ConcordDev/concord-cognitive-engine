@@ -61,10 +61,23 @@ def status_class(code):
 
 
 # ------------------------------------------------------------------ checks
+def norm_row(r):
+    """A net row with `path` as a plain string. netledger.template_path() returns (path, query_keys); a row built from
+    that tuple (or a list) is normalised to its path, anything else non-string to ''. Never raises."""
+    if not isinstance(r, dict):
+        return r
+    p = r.get("path")
+    if isinstance(p, (tuple, list)):
+        p = p[0] if p else ""
+    if not isinstance(p, str):
+        p = ""
+    return r if p is r.get("path") else dict(r, path=p)
+
+
 def _rows(ev):
     out = []
     for w in (ev or {}).get("obs") or []:
-        out += [r for r in (w.get("net") or []) if isinstance(r, dict) and not _TELEMETRY.search(r.get("path") or "")]
+        out += [r for r in (norm_row(x) for x in (w.get("net") or [])) if isinstance(r, dict) and not _TELEMETRY.search(r.get("path") or "")]
     return out
 
 

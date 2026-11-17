@@ -31,6 +31,8 @@ from . import writevocab as _W
 from . import precap as _P
 from . import observe as _O
 from . import viewport as _V2
+from . import domread as _DR
+from . import keyboard as _K
 from .matching import fuzzy_match
 from .safety import HARD_DENY, SWEEP_PAYMENT, is_tab_safe, is_close_safe, write_step_decision, CREATE_OPENER, CREATE_SUBMIT
 FIELD_NEVER_RX = _W.FIELD_NEVER
@@ -457,6 +459,12 @@ def expand_step(raw, lens_slug=None, lens_title=None):
     parts are. An unmapped step carries substeps == [] (nothing is run) with the first reason."""
     s0 = (raw or "").strip()
     out = {"raw": s0, "mapped": False, "substeps": [], "reason": None, "parts": []}
+    kr = _K.map_part(s0, s0)
+    if isinstance(kr, tuple) and kr[0] is None and "destructive key" in (kr[1] or ""):
+        # "press Delete" is the KEYBOARD key (refused, never pressed) - never reinterpreted as the row-scoped Delete control
+        out["reason"] = kr[1]
+        out["parts"] = [{"raw": s0, "mapped": False, "reason": kr[1]}]
+        return out
     legacy = map_step(s0, lens_slug)
     trailing = legacy["mapped"] and legacy["action"] == "open" and re.search(r"(?i)(?:https?://\S+|/lenses/[a-z0-9\-/]+)\s*[.,;]?\s*\S", s0.split("://", 1)[-1] if False else s0) is not None \
         and not re.search(r"(?i)(?:https?://\S+|/lenses/[a-z0-9\-/]+)[.]?\s*$", s0)
@@ -1305,7 +1313,7 @@ class PlaywrightDriver:
             from urllib.parse import urlparse
             from . import netledger as _N, netcheck as _NC
             req = r.request
-            row = {"method": req.method, "path": _N.template_path(urlparse(r.url).path), "raw_path": urlparse(r.url).path, "status": r.status, "t": time.monotonic()}
+            row = {"method": req.method, "path": _N.template_path(urlparse(r.url).path)[0], "raw_path": urlparse(r.url).path, "status": r.status, "t": time.monotonic()}
             if "json" in ((r.headers or {}).get("content-type") or "") and int((r.headers or {}).get("content-length") or 0) < 200000:
                 try:
                     body = r.json()
@@ -1322,7 +1330,8 @@ class PlaywrightDriver:
 
     def platform(self):
         try:
-            return "darwin" if "Mac" in (self.page.evaluate("navigator.platform") or "") else "linux"
+            ua = self.cdp.s.send("Browser.getVersion").get("userAgent") or ""
+            return "darwin" if "Macintosh" in ua or "Mac OS" in ua else "linux"
         except Exception:
             return "linux"
 
@@ -1342,11 +1351,24 @@ class PlaywrightDriver:
     def set_offline(self, offline):
         self.ctx.set_offline(bool(offline))
 
+    _zoom_vp = None
+
     def set_zoom(self, z):
-        self.page.evaluate("z => { document.documentElement.style.zoom = String(z); }", float(z))
+        """Browser zoom == the page laying out in 1/z CSS px at z device px per CSS px; emulated with the CDP device-metrics override."""
+        z = float(z)
+        vp = self.page.viewport_size or {"width": 1280, "height": 800}
+        if self._zoom_vp is None:
+            self._zoom_vp = (vp["width"], vp["height"])
+        w, h = self._zoom_vp
+        if abs(z - 1.0) < 1e-6:
+            self.cdp.s.send("Emulation.clearDeviceMetricsOverride")
+            self._zoom_vp = None
+            return
+        self.cdp.s.send("Emulation.setDeviceMetricsOverride", {"width": max(1, round(w / z)), "height": max(1, round(h / z)),
+                                                                "deviceScaleFactor": z, "mobile": False})
 
     def page_scheme(self):
-        return self.page.evaluate("() => { const d = document.documentElement; const bg = getComputedStyle(document.body).backgroundColor; return (d.getAttribute('data-theme') || d.className || '') + '|' + bg; }")
+        return _DR.page_scheme(self.cdp.snapshot())
 
     def nav_away_back(self):
         self.page.goto(self._base + "/", wait_until="domcontentloaded")
@@ -1357,27 +1379,16 @@ class PlaywrightDriver:
             pass
 
     def active_item(self):
-        """The active/selected item of the focused widget: aria-selected / aria-current / roving tabindex, else the focused name."""
-        return self.page.evaluate("""() => { const a = document.activeElement; if (!a) return null;
-          const d = (e) => (e && ((e.getAttribute('aria-label') || e.textContent || '').trim().slice(0, 60))) || null;
-          const sel = a.closest('[role=tablist],[role=listbox],[role=menu],[role=grid],[role=radiogroup],[role=toolbar]');
-          if (sel) { const s = sel.querySelector('[aria-selected=true],[aria-current=true],[aria-checked=true]'); if (s) return d(s) + '#sel'; }
-          return d(a) + '#focus'; }""")
+        """The active/selected item of the focused widget (accessibility tree): selected/current/checked, else the focused name."""
+        return _DR.active_item(self.cdp.ax())
 
     def measure_layout(self):
-        return self.page.evaluate("""() => { const vw = innerWidth, vh = innerHeight; const de = document.documentElement;
-          const clipped = [], textOverflow = [];
-          for (const e of document.querySelectorAll('body *')) { const cs = getComputedStyle(e); if (cs.display === 'none' || cs.visibility === 'hidden') continue;
-            const r = e.getBoundingClientRect(); if (!r.width || !r.height) continue;
-            let anc = e.parentElement, scrolled = false; while (anc && anc !== document.body) { const o = getComputedStyle(anc).overflowX; if (o === 'auto' || o === 'scroll' || o === 'hidden') { scrolled = true; break; } anc = anc.parentElement; }
-            if (!scrolled && (r.right > vw + 2 || r.left < -2) && clipped.length < 8) clipped.push({sel: e.tagName.toLowerCase() + (e.id ? '#' + e.id : ''), left: Math.round(r.left), right: Math.round(r.right), w: Math.round(r.width)});
-            if (e.children.length === 0 && e.scrollWidth > e.clientWidth + 2 && cs.overflowX === 'visible' && e.textContent.trim() && textOverflow.length < 8) textOverflow.push(e.tagName.toLowerCase() + ':' + e.textContent.trim().slice(0, 30)); }
-          return {vw, vh, scrollW: de.scrollWidth, bodyScrollW: document.body.scrollWidth, clipped, textOverflow}; }""")
+        lm = self.cdp.layout_metrics()
+        return _DR.layout(self.cdp.snapshot(), lm.get("viewport_w") or 0, lm.get("viewport_h") or 0)
 
     def obs_state(self):
         """Extra generic readings the base snapshot lacks: a visible loading indicator."""
-        return self.page.evaluate("""() => { const q = (s) => Array.from(document.querySelectorAll(s)).filter(e => { const r = e.getBoundingClientRect(); return r.width && r.height; });
-          return {spinner: q('[role=progressbar],[aria-busy=true],.animate-spin,[class*=spinner],[class*=skeleton]').length > 0}; }""")
+        return {"spinner": _DR.spinner(self.cdp.snapshot())}
 
     def open(self, target):
         # Only the PATH of a ticket's URL is used, joined onto this run's own base_url: a ticket

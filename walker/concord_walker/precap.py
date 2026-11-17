@@ -15,12 +15,15 @@ from .safety import is_tab_safe
 NOT_MINE = K.NOT_MINE
 
 
-class Refused(Exception):
+class _Refused(Exception):
+    """Named _Refused/_NotFound (as the replay driver's exceptions always were) - repro aliases these, so the class name stays stable."""
+
+
+class _NotFound(Exception):
     pass
 
 
-class NotFound(Exception):
-    pass
+Refused, NotFound = _Refused, _NotFound
 
 
 PLATFORM = None      # Mod stays symbolic at map time; execute() resolves it from the BROWSER's platform (not this Mac)
@@ -53,7 +56,7 @@ _RULES = [
     # (state, category, regex on the segment, why)
     ("needs_post_capture_rewrite", "evidence_pointer", r"(?i)^see\s+evidence|evidence/[\w\-/.]+", "points at an evidence file, not an action"),
     ("needs_post_capture_rewrite", "no_text", r"(?i)^\s*(?:n/?a|none|x|-|tbd)?\s*$", "no actionable text"),
-    ("needs_post_capture_rewrite", "tester_context", r"(?i)\b(?:sign(?:ed)? in as|log(?:ged)? in as|as zuko_qa_t\d|confirm /api/auth/me|on zuko_qa_t\d)\b|^(?:sign in|login)\b", "account/session setup the walker already owns - restate as the action itself"),
+    ("needs_post_capture_rewrite", "tester_context", r"(?i)\b(?:sign(?:ed)? in as|log(?:ged)? in as|as [a-z]+_qa_t\d|confirm /api/auth/me|on [a-z]+_qa_t\d)\b|^(?:sign in|login)\b", "account/session setup the walker already owns - restate as the action itself"),
     ("needs_post_capture_rewrite", "fragment", r"^[^\"'‘“]*[\"'‘“][^\"'’”]*$|^[^()]*\([^)]*$|^[^()]*\)[^(]*$|^[\s'\"‘’“”,.;:)(\-]|[,(]\s*$", "text cut mid-quote/paren or mid-phrase"),
     ("needs_post_capture_rewrite", "bare_value", r"^(?:[\w.\-+/]{1,12}|\d[\d\s.,x×%/:\-]*)$", "a bare value with no verb or target"),
     ("pending_capture", "bad_input_value", r"(?i)\b(?:empty|blank|negative|invalid|\-\d+|\d{3,}\+?\s*-?char\w*|300\+|nonsense|too long|overlong|9{5,}|-1\b|\bmin/max\b|leave\b[^.]{0,30}\bempty)\b", "typed boundary value - needs the live field label (typed-values path)"),
@@ -136,6 +139,8 @@ def execute(a, s, driver, ev, ctx):
     if a == "enter_submit":
         if not ctx.get("allow_write"):
             raise Refused("Enter-to-submit is a write: needs --allow-write on a non-admin, non-write-skip lens")
+        if s.get("field") and not cap("focus_name")(s["field"]):
+            raise NotFound("no field matching %r to press Enter in" % s["field"])
         mk = cap("net_mark")()
         before = driver.snapshot()
         ctx["send_key"]("Enter")

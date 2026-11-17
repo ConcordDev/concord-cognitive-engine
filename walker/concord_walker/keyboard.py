@@ -149,7 +149,12 @@ def map_part(seg, raw, prev=None, platform=None):
     # --- Enter in a field submits
     m = _ENTER_SUBMIT.match(s)
     if m:
-        return [{"action": "enter_submit", "raw": raw}]
+        what = (m.group("what") or "").strip()
+        fm = re.match(r"(?i)^(?P<n>[A-Za-z0-9][A-Za-z0-9 \-_/]{0,40}?)\s+(?:field|input|box|textbox|text box)$", what)
+        step = {"action": "enter_submit", "raw": raw}
+        if fm:
+            step["field"] = fm.group("n").strip()   # the named field is focused first - Enter must land in it, not wherever focus drifted
+        return [step]
     m = _ESC_CLOSE.match(s)
     if m:
         return [{"action": "close_with_escape", "what": (m.group("what") or m.group("w2") or "popup").lower(), "raw": raw}]
