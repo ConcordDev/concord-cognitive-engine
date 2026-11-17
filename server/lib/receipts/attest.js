@@ -285,6 +285,18 @@ export function verifyAttestation(receipt, keys = null) {
   const verdict = verifySignature(receipt, keys);
   const schema = receiptSchemaOf(receipt);
   const out = { ...verdict, schema, outputsSigned: schema !== "v1" };
+  // /4 carries a signed referenceCheck; a /4 body without a well-formed one is not a /4 receipt, whatever its signature says.
+  if (verdict.valid && schema === "concord-calc-receipt/4") {
+    const rc = receipt.referenceCheck;
+    const wellFormed = rc && typeof rc === "object" && !Array.isArray(rc)
+      && (rc.status === "within_reference_envelope" || (rc.status === "outside_reference_envelope" && typeof rc.reason === "string" && rc.reason.trim()));
+    if (!wellFormed) return { ...out, valid: false, reason: "malformed_reference_check" };
+    out.referenceCheck = rc.status === "within_reference_envelope" ? { status: rc.status } : { status: rc.status, reason: rc.reason };
+  }
+  // Only the schemas this service has issued; an unknown concord-calc-receipt/N is refused, never waved through.
+  if (verdict.valid && /^concord-calc-receipt\//.test(schema) && !["concord-calc-receipt/2", "concord-calc-receipt/3", "concord-calc-receipt/4"].includes(schema)) {
+    return { ...out, valid: false, reason: "unsupported_schema" };
+  }
   if (schema === "v1") out.note = V1_RECEIPT_NOTE;
   return out;
 }

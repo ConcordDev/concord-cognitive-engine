@@ -132,7 +132,7 @@ describe("base URL comes from config, never the Host header", () => {
       const res = await request(srv.port, "GET", "/api/conkay/demo/beam?length=4000&height=300&flangeWidth=150&flangeThickness=12&webThickness=8&loadN=20000&support=simply-supported&material=steel-a992", { headers: { Host: "evil.example", "X-Forwarded-Host": "evil.example" } });
       assert.equal(res.status, 200);
       const r = res.body.result.calcReceipt;
-      assert.equal(r.receiptSchema, "concord-calc-receipt/3");
+      assert.equal(r.receiptSchema, "concord-calc-receipt/4");
       assert.equal(r.verification.verifyUrl, "https://receipts.example.test/api/receipts/verify");
       assert.ok(r.verification.fetchUrl.startsWith("https://receipts.example.test/api/receipts/rcpt_"));
       assert.equal(res.text.includes("evil.example"), false);
