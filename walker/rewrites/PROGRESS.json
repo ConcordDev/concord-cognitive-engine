@@ -227,5 +227,34 @@
   "rewritten": 17,
   "steps_by_hand": 21,
   "tickets": 50
+ },
+ "017": {
+  "clauses_by_hand": 13,
+  "committed_sha": null,
+  "human_by_reason": {
+   "code_read": 1,
+   "lighthouse": 3
+  },
+  "human_only": 4,
+  "needs_human_clause": 43,
+  "needs_human_step": 20,
+  "original_sufficient": 28,
+  "rewritten": 18,
+  "steps_by_hand": 21,
+  "tickets": 50
+ },
+ "018": {
+  "clauses_by_hand": 14,
+  "committed_sha": null,
+  "human_by_reason": {
+   "lighthouse": 4
+  },
+  "human_only": 4,
+  "needs_human_clause": 37,
+  "needs_human_step": 20,
+  "original_sufficient": 27,
+  "rewritten": 19,
+  "steps_by_hand": 19,
+  "tickets": 50
  }
 }
