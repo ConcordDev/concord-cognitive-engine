@@ -1,0 +1,20 @@
+{
+  "adversarial": [
+    "Plate with length 11 \u2192 expect NOT_COMPUTED out_of_envelope naming the bound."
+  ],
+  "author": "muse-b10",
+  "authored_on": "2026-11-17",
+  "case_source": "observed",
+  "discriminator": "Pre-fix failure transcript: at f4f1f77ff no cad.part-geometry exists in the registry; the acceptance suite fails at the registry leg. Post-fix: registered at L3 with declarations + engineDependent [sxe-06]; suite 9/9 green locally; CI is the build of record. Reference case: unit plate at declared density 6000 \u2192 volume exactly 1, mass 6000. Mixed BOM (plate + steel shaft + undeclared pipe + unobtanium ball): every line has a solid; the shaft's mass is volume \u00d7 7850 with materialSlot \"material library: steel\"; the pipe and ball stand massless with reasons; massCoverage {2, 2}; totalMassKg covers only the massed parts. Envelope: plate length 11 \u2192 out_of_envelope naming length and the (0, 10] bound.",
+  "id": "SX-CAD-05",
+  "kind": "repro-steps",
+  "notes": "Fix of record: commit d06629c07 on sx/core-loop (B3, fixer). Content supplied by the fixer in SX-CAD-05.check.md (shared quality folder); registered DRAFT by muse-b10 as author of record (CAD subgroup, CB-0823) in walker/recipes/ on v1/immune-p1-recipe, 2026-11-17 \u2014 registrar-only conversion, substance unchanged. Value-assertion provenance per the check file: INDEPENDENT for volumes/areas (closed-form geometry identities), SELF-REFERENCED for the engine-tier reason string. Activation is the reviewer of record's act (packet_id binds at activation).",
+  "packet_id": null,
+  "reviewer": "zuko-desk",
+  "status": "draft",
+  "steps": [
+    "Via MCP conkay_solve {solver_id: \"cad.part-geometry\", typed inputs from docs/conkay/solvers/cad.part-geometry.md's replay request} \u2192 expect envelope PASS (screening) with outputs.engineTier.reason == \"engine_unavailable:sxe-06\", outputs.parts[0].volumeM3 == 1, outputs.parts[1].materialSlot == null with materialNote naming unobtanium, massCoverage {1, 1}."
+  ],
+  "tier_proposed": 1,
+  "title": "cad.part-geometry: every part leaves with its exact analytic solid and a material slot resolved-with-source or empty-with-reason, never assumed, while the L3 OCC tier stands NOT_COMPUTED engine_unavailable:sxe-06"
+}
