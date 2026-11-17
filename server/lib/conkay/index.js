@@ -19,6 +19,7 @@ import "./physics/solvers/refdata-lookup.js";
 import "./physics/solvers/mesh-convergence.js";
 import "./physics/solvers/math-symbolic.js";
 import "./physics/solvers/units-dimensional.js";
+import "./physics/solvers/linsolve.js";
 import "./physics/solvers/bolted-joint.js";
 import "./physics/solvers/joint-governing-check.js";
 import "./physics/solvers/requirements.js";
