@@ -7,6 +7,19 @@
 // the writers, so both are excluded (the plan row's own exclusion).
 // Fails pristine (no map exists), passes with SB-30.
 
+// DISCRIMINATOR TRANSCRIPT (CB-0810) — this pin replayed against the pre-fix
+// build (pristine control tree: full server tree at the build head, pin present,
+// lib/currency-map.js absent). Replayed 2026-11-17 at B4; paths normalized to
+// the control tree's root. Result: FAIL (exit 1) —
+//   Error [ERR_MODULE_NOT_FOUND]: Cannot find module
+//     'sandbox-pristine/lib/currency-map.js' imported from
+//     'sandbox-pristine/tests/currency-map-complete.test.js'
+//       code: 'ERR_MODULE_NOT_FOUND'
+//   tests 1 · pass 0 · fail 1
+// Against the fixed tree the same pin passes 3/3 (all three tests below).
+// TIER: candidate Tier 1 (money-adjacent — currency classification) —
+// assigned at acceptance by the reviewer per CB-0810.
+
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync, statSync } from "node:fs";
