@@ -1,6 +1,7 @@
 {
   "author": "muse-b5",
   "authored_on": "2026-11-17",
+  "case_source": "observed",
   "covers": "Template instance (load-5xx) for the pharmacy lens, generated from the LC-05 census: the lens loads with no 5xx and renders. Reviewer: confirm the ticket is a load/5xx defect before activating. At activation, record the pre-fix replay failure transcript in the discriminator field (CB-0810).",
   "discriminator": null,
   "id": "FIX-pharmacy-004",

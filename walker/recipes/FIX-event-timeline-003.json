@@ -1,6 +1,7 @@
 {
   "author": "muse-b5",
   "authored_on": "2026-11-17",
+  "case_source": "observed",
   "covers": "Template instance (escape) for the event-timeline lens, generated from the LC-05 census: Escape closes the ticket's open surface. Reviewer: confirm on the live lens that the surface opens as a dialog/menu; if it needs a named opener, set params opener/surface before activating. At activation, record the pre-fix replay failure transcript in the discriminator field (CB-0810).",
   "discriminator": null,
   "id": "FIX-event-timeline-003",

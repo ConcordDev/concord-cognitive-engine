@@ -1,6 +1,7 @@
 {
   "author": "muse-b5",
   "authored_on": "2026-11-17",
+  "case_source": "observed",
   "covers": "Template instance (overflow-390) for the electrical lens, generated from the LC-05 census: no horizontal overflow at a 390px viewport. Reviewer: confirm the ticket is a 390/overflow defect before activating. At activation, record the pre-fix replay failure transcript in the discriminator field (CB-0810).",
   "discriminator": null,
   "id": "FIX-electrical-011",
