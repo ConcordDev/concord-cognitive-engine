@@ -272,6 +272,11 @@ class Reverifier:
                     # reports count observed and extrapolated cases
                     # separately, never summed.
                     out["case_source"] = inst["case_source"]
+                if inst.get("packet_id"):
+                    # Ruling #17: the verdict cites the packet it ran
+                    # against, so a re-captured map can never be confused
+                    # with the one the recipe meant.
+                    out["packet_id"] = inst["packet_id"]
                 return out
             finally:
                 try:

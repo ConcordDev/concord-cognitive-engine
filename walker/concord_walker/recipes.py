@@ -85,6 +85,7 @@ def validate_recipe(raw, today=None, expect_sha=None):
         return None, ["recipe file must contain one JSON object"]
     reasons = []
     _check_case_source(raw, reasons)
+    _check_packet_id(raw, reasons)
     rid = raw.get("id")
     if not isinstance(rid, str) or not rid:
         reasons.append("id is required (the ticket id this recipe verifies)")
@@ -133,6 +134,9 @@ def validate_recipe(raw, today=None, expect_sha=None):
             if raw.get("case_source") not in ("observed", "extrapolated"):
                 reasons.append("active template instance requires a case_source — "
                                "'observed' or 'extrapolated' (ruling #11)")
+            if not raw.get("packet_id"):
+                reasons.append("active template instance requires a packet_id — "
+                               "the packet (lens@build:vN) it was written against (ruling #17)")
     author = raw.get("author")
     if not isinstance(author, str) or not author:
         reasons.append("author is required")
@@ -175,6 +179,23 @@ def validate_recipe(raw, today=None, expect_sha=None):
     recipe.setdefault("status", "active")
     recipe.setdefault("max_age_days", max_age)
     return recipe, []
+
+
+import re as _re
+
+_PACKET_ID = _re.compile(r"^[^@\s]+@[^:\s]+:v\d+$")
+
+
+def _check_packet_id(raw, reasons):
+    """Packet identity (walk-2 gate amendment #10 / ruling #17): a recipe
+    references the PACKET ID it was written against — the canonical
+    lens@build:vN — never a bare control name on its own, so a control
+    name that survives a re-capture cannot silently change meaning under
+    a recipe. The packet registry itself is the walker desk's; this layer
+    validates the canonical shape wherever the field appears."""
+    pid = raw.get("packet_id")
+    if pid is not None and not (isinstance(pid, str) and _PACKET_ID.match(pid)):
+        reasons.append("packet_id must be the canonical packet id (lens@build:vN)")
 
 
 def _check_declaration(params, reasons):
@@ -327,7 +348,7 @@ def template_instances(registry):
     these through its generic template runner (LC-06). Draft and refused
     entries never reach a loaded registry, so they never appear here."""
     return {tid: {"template": r.get("template"), "params": dict(r.get("params") or {}),
-                  "case_source": r.get("case_source")}
+                  "case_source": r.get("case_source"), "packet_id": r.get("packet_id")}
             for tid, r in registry.items() if r.get("kind") == "template"}
 
 

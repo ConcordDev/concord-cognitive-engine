@@ -72,9 +72,14 @@ def instance_for(row):
         # shapes and fixture data the fleet already has — so every generated
         # case is born tagged OBSERVED.
         "case_source": "observed",
+        # Ruling #17: the packet this instance was written against is bound
+        # by the reviewer at activation from the desk's packet registry —
+        # the generator mints no packet ids.
+        "packet_id": None,
         "covers": COVERS[template].format(lens=row.get("lens") or "?")
                   + " At activation, record the pre-fix replay failure transcript "
-                    "in the discriminator field (CB-0810).",
+                    "in the discriminator field (CB-0810) and bind the packet_id of "
+                    "the capture map you conform against (ruling #17).",
         "author": AUTHOR,
         "reviewer": REVIEWER,
         "status": "draft",
@@ -98,6 +103,10 @@ def undeclared_for(row):
         "tier": _templates.TEMPLATES["value-assert"]["tier"],
         "discriminator": None,
         "case_source": "observed",
+        # Ruling #17: the packet this instance was written against is bound
+        # by the reviewer at activation from the desk's packet registry —
+        # the generator mints no packet ids.
+        "packet_id": None,
         "covers": "UNDECLARED filing (value-assert) for the %s lens, generated from the LC-05 "
                   "census: no declaration exists for this ticket's computed/displayed value, so "
                   "correctness is not checkable yet — this entry maps the gap in the open "

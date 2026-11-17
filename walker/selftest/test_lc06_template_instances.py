@@ -54,7 +54,7 @@ def c_valid_template_loads():
     with tempfile.TemporaryDirectory() as d:
         _write(d, "x.json", dict(BASE, id="LC06-T1", kind="template",
                                  template="overflow-390", params={},
-                                 tier=2, case_source="observed",
+                                 tier=2, case_source="observed", packet_id="alpha@f4f1f77ff:v1",
                                  discriminator="pre-fix replay: STILL_FAILING — scrollW 720 at 390px"))
         registry, refusals, _ov = R.load_registry(d)
         inst = R.template_instances(registry)
@@ -144,6 +144,7 @@ def c_generator_deterministic():
             and json.loads(snapshot["zz-001.json"])["tier"] == 2 \
             and json.loads(snapshot["zz-001.json"])["discriminator"] is None \
             and json.loads(snapshot["zz-001.json"])["case_source"] == "observed" \
+            and json.loads(snapshot["zz-001.json"])["packet_id"] is None \
             and json.loads(snapshot["zz-005.json"])["template"] == "value-assert" \
             and json.loads(snapshot["zz-005.json"])["params"]["declaration"] is None
         return ok, "first=%s second=%s files=%s" % (first, second, sorted(snapshot))
@@ -169,6 +170,7 @@ def c_undeclared_filing_loads():
     with tempfile.TemporaryDirectory() as d:
         _write(d, "x.json", dict(BASE, id="LC06-T11", kind="template", template="value-assert",
                                  params={"declaration": None}, tier=1, case_source="observed",
+                                 packet_id="epsilon@f4f1f77ff:v1",
                                  discriminator="pre-fix transcript: action renders, no declaration"))
         registry, refusals, _ov = R.load_registry(d)
         inst = R.template_instances(registry)
@@ -197,7 +199,22 @@ def c_case_counts_separate():
     return ok, "counts=%s" % counts
 
 
+def c_active_without_packet_refused():
+    raw = dict(BASE, id="LC06-T14", kind="template", template="escape", params={},
+               tier=2, case_source="observed", discriminator="pre-fix transcript")
+    _rec, reasons = R.validate_recipe(raw)
+    return any("packet_id" in r for r in reasons), "reasons=%s" % reasons
+
+
+def c_bare_name_packet_refused():
+    raw = dict(BASE, id="LC06-T15", kind="code", handler="reverify_x", packet_id="Save button")
+    _rec, reasons = R.validate_recipe(raw)
+    return any("packet_id" in r for r in reasons), "reasons=%s" % reasons
+
+
 case("valid template instance loads into template_instances", c_valid_template_loads)
+case("active instance without a packet_id refused (ruling #17)", c_active_without_packet_refused)
+case("a bare control name as packet_id refused (ruling #17)", c_bare_name_packet_refused)
 case("case_source outside observed/extrapolated refused (ruling #11)", c_bad_case_source_refused)
 case("active instance without a case_source refused (ruling #11)", c_active_without_case_source_refused)
 case("case counts stay separate, never summed (ruling #11)", c_case_counts_separate)
