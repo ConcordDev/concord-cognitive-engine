@@ -1048,6 +1048,19 @@ class PlaywrightDriver:
                 return None, res  # ambiguous: never fall through to a looser pool
         return None, res
 
+    _CONTAINER_ROLES = ("dialog", "alertdialog", "menu", "menubar", "listbox", "toolbar", "region", "navigation", "form",
+                        "group", "tabpanel", "tablist", "list", "grid", "table", "complementary", "main", "banner", "search")
+
+    def _resolve_container(self, name):
+        """-> (node|None, resolution|None). Container/landmark roles only, same label rules; closed menus/dialogs are
+        simply absent from the live AX tree, so they resolve ABSENT (never opened implicitly)."""
+        ax = self.cdp.ax()
+        pool = [n for n in ax.live() if n.name and n.role in self._CONTAINER_ROLES]
+        res = _L.resolve(name, [n.name for n in pool])
+        if res["status"] in (_L.EXACT, _L.ALIAS, _L.TOKEN):
+            return next(n for n in pool if n.name == res["label"]), res
+        return None, res
+
     def click(self, name, role=None):
         node, res = self._resolve_node(name, role)
         self.last_resolution = res
@@ -1061,8 +1074,12 @@ class PlaywrightDriver:
         return bool(node and node.backend is not None and self.cdp.focus(node.backend))
 
     def focused_name(self):
-        n = next((x for x in self.cdp.ax().live() if x.focused), None)
-        return n.name if n else None
+        # Chromium also marks the RootWebArea focused (and lists it first): take the deepest focused
+        # node and never report the document itself as the focused control.
+        n = self.cdp.ax().focused()
+        if n is None or n.role in ("RootWebArea", "WebArea") or not (n.name or "").strip():
+            return None
+        return n.name
 
     def tab_sweep(self, max_stops, from_top=False):
         if from_top:
@@ -1071,7 +1088,7 @@ class PlaywrightDriver:
         for _ in range(max_stops):
             self.page.keyboard.press("Tab")
             nm = self.focused_name()
-            if trace and nm == trace[0] and len(trace) > 1:
+            if nm and trace and nm == trace[0] and len(trace) > 1:
                 break
             trace.append(nm)
         return trace
@@ -1139,7 +1156,9 @@ class PlaywrightDriver:
         ax = self.cdp.ax()
         pool = [n for n in ax.nodes if n.role in ("button", "link", "textbox", "checkbox", "combobox", "tab", "menuitem", "switch", "radio") and not n.ignored]
         if scope:
-            node, res = self._resolve_node(scope)
+            node, res = self._resolve_container(scope)
+            if node is None and res["status"] == _L.ABSENT:
+                node, res = self._resolve_node(scope)   # fall back to actionable resolution
             self.last_resolution = res
             if node is None:
                 raise _NotFound(_L.describe(res))

@@ -141,13 +141,13 @@ rv = {k: r["verdict"] for k, r in rvrows.items()}
 # standard check, so its FIXED is capped at NEEDS_HUMAN; the check itself
 # still has to have passed (uncapped_verdict FIXED).
 _g = rvrows.get("FIX-good-900", {})
-R["crud_missing_fixed_on_good"] = (rv.get("FIX-good-900") == "NEEDS_HUMAN" and _g.get("uncapped_verdict") == "FIXED"
-                                   and _g.get("capped") is True
-                                   # Replay (#2377 breadcrumb mapper): FIX-good-900's prose step ('open lens') now
-                                   # maps + executes, but its expected outcome is prose, so the repro-steps basis is
-                                   # refused as not machine-checkable (naming it); keyword result still reported, cap applies.
-                                   and str(_g.get("notes", "")).startswith("repro-steps: all 1 step(s) mapped + executed, but the expected outcome is not machine-checkable: 'a delete control exists'")
-                                   and "keyword check: no hand-written repro recipe; keyword match" in str(_g.get("notes", "")))
+R["crud_missing_fixed_on_good"] = (rv.get("FIX-good-900") == "FIXED"
+                                   and _g.get("coverage_basis") == "repro-steps"
+                                   # #2378: the expected clause 'a delete control exists' is machine-checked now, so the
+                                   # repro-steps basis is accepted and the fix is legitimately FIXED (uncapped).
+                                   and "all 1 step(s) mapped + executed; expected outcome machine-checked" in str(_g.get("notes", ""))
+                                   and "control(s) present: ['delete']" in str(_g.get("notes", ""))
+                                   and (_g.get("expected_check") or {}).get("state") == "pass")
 R["crud_missing_still_on_ambig"] = rv.get("FIX-ambig-900") == "STILL_FAILING"
 
 # publate pins G2 (the pre-submit re-scan), which lands after B2's budget

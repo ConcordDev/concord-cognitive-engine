@@ -434,5 +434,135 @@ res = mr.measure(tk)
 check("mapped_rate: steps 2/3 mapped, eligible 1/3 (mapped AND checkable)", res["steps_mapped"] == 2 and res["verified_eligible_tickets"] == 1 and res["tickets_all_mapped"] == 2, res)
 check("mapped_rate: blocking reasons counted", res["blocked_by"] == {"expected_unchecked_only": 1, "steps_unmapped_only": 1, "both": 0}, res["blocked_by"])
 
+# ------------------------------------------------------------------------------------------ PlaywrightDriver on a fake AX tree
+from concord_walker import cdp as _cdp
+
+
+def _raw(i, role, name="", parent=None, children=(), focused=False, ignored=False, backend=None):
+    r = {"nodeId": str(i), "role": {"value": role}, "name": {"value": name}, "backendDOMNodeId": backend or i + 100,
+         "childIds": [str(c) for c in children], "ignored": ignored, "properties": []}
+    if parent is not None:
+        r["parentId"] = str(parent)
+    if focused:
+        r["properties"].append({"name": "focused", "value": {"value": True}})
+    return r
+
+
+class _FakeCdp:
+    def __init__(self, nodes):
+        self.nodes = nodes
+
+    def ax(self):
+        return _cdp.AXTree(self.nodes)
+
+
+class _FakeKb:
+    def __init__(self, drv, seq):
+        self.drv, self.seq, self.i = drv, seq, 0
+
+    def press(self, k):
+        if k == "Tab":
+            self.drv.cdp.nodes = self.seq[min(self.i, len(self.seq) - 1)]
+            self.i += 1
+
+
+class _FakePage:
+    keyboard = None
+
+
+def _drv(nodes, seq=None):
+    d = repro.PlaywrightDriver.__new__(repro.PlaywrightDriver)
+    d.cdp, d.last_resolution, d.page = _FakeCdp(nodes), None, _FakePage()
+    d.reload = lambda: None
+    if seq:
+        d.page.keyboard = _FakeKb(d, seq)
+    return d
+
+
+def _tree(focus_idx, extra_root_focused=True):
+    """RootWebArea (focused, listed FIRST, like Chromium) + three buttons; focus_idx picks the real control."""
+    names = ["Alpha", "Export", "Zeta"]
+    nodes = [_raw(1, "RootWebArea", "Driver fixture", children=[2, 3, 4], focused=extra_root_focused)]
+    for k, nm in enumerate(names):
+        nodes.append(_raw(2 + k, "button", nm, parent=1, focused=(k == focus_idx)))
+    return nodes
+
+
+d = _drv(_tree(1))
+check("focused_name: deepest focused control, not the RootWebArea title (root listed first)", d.focused_name() == "Export", d.focused_name())
+d = _drv(_tree(None))
+check("focused_name: ONLY the RootWebArea focused -> None (failure path)", d.focused_name() is None, d.focused_name())
+d = _drv(_tree(None, extra_root_focused=False))
+check("focused_name: nothing focused -> None", d.focused_name() is None)
+d = _drv([_raw(1, "RootWebArea", "Driver fixture", children=[2], focused=True), _raw(2, "button", "  ", parent=1, focused=True)])
+check("focused_name: focused control with blank name -> None, never the page title", d.focused_name() is None)
+
+seq = [_tree(0), _tree(1), _tree(2), _tree(0), _tree(1)]
+d = _drv(_tree(None), seq)
+tr = d.tab_sweep(6, from_top=True)
+check("tab_sweep: records real control names and stops on the loop", tr == ["Alpha", "Export", "Zeta"], tr)
+seq = [_tree(None), _tree(None), _tree(0), _tree(1)]
+d = _drv(_tree(None), seq)
+tr = d.tab_sweep(4)
+check("tab_sweep: repeated None name does not trip loop detection", tr == [None, None, "Alpha", "Export"], tr)
+d = _drv(_tree(None), [_tree(0), _tree(1), _tree(2)])
+ok_, tr = d.tab_to("Export", 5)
+check("tab_to: reaches 'Export' via real focus names", ok_ and tr == ["Alpha", "Export"], (ok_, tr))
+d = _drv(_tree(None), [_tree(0), _tree(2)])
+ok_, tr = d.tab_to("Export", 2)
+check("tab_to: absent control -> False (failure path)", not ok_, (ok_, tr))
+
+# Escape focus-return: the title-only evidence must NOT pass a focus_opener clause
+d = _drv(_tree(None))
+ev_bad = {"focus_after_escape": d.focused_name(), "opener": "Export"}
+res = X._spec_check({"kind": "focus_opener"}, {"evidence": ev_bad}, lambda *a: ("unchecked", ""))
+check("focus_opener over RootWebArea-only evidence does NOT pass", res[0] != "pass", res)
+d = _drv(_tree(1))
+ev_ok = {"focus_after_escape": d.focused_name(), "opener": "Export"}
+res = X._spec_check({"kind": "focus_opener"}, {"evidence": ev_ok}, lambda *a: ("unchecked", ""))
+check("focus_opener over the real focused control passes", res[0] == "pass", res)
+
+# ax_check container scope
+def _page_tree(menu_open=True):
+    n = [_raw(1, "RootWebArea", "App", children=[2, 3, 6, 8]),
+         _raw(2, "toolbar", "Toolbar", parent=1, children=[4, 5]),
+         _raw(4, "button", "Save", parent=2), _raw(5, "button", "", parent=2),
+         _raw(3, "navigation", "Main navigation", parent=1, children=[7]), _raw(7, "link", "Home", parent=3),
+         _raw(6, "region", "Panel", parent=1, children=[9]), _raw(9, "button", "Go", parent=6),
+         _raw(8, "region", "Panel two", parent=1, children=[10]), _raw(10, "button", "Stop", parent=8)]
+    if menu_open:
+        n[0]["childIds"].append("11")
+        n += [_raw(11, "menu", "Export menu", parent=1, children=[12]), _raw(12, "menuitem", "JSON", parent=11)]
+    return n
+
+
+d = _drv(_page_tree())
+r_ = d.ax_check("Toolbar")
+check("ax_check: container scope 'Toolbar' resolves, counts only inside it", r_ == {"unnamed": 1, "total": 2}, r_)
+check("ax_check: resolution recorded", d.last_resolution and d.last_resolution["status"] == repro._L.EXACT, d.last_resolution)
+check("ax_check: open menu scope resolves", d.ax_check("Export menu") == {"unnamed": 0, "total": 1})
+d = _drv(_page_tree(menu_open=False))
+try:
+    d.ax_check("Export menu")
+    ok_ = False
+except repro._NotFound:
+    ok_ = True
+check("ax_check: closed menu scope -> NotFound (not opened implicitly)", ok_)
+d = _drv(_page_tree())
+try:
+    d.ax_check("Panel")
+    ok_ = d.last_resolution["status"] == repro._L.EXACT
+except repro._NotFound:
+    ok_ = False
+check("ax_check: exact name wins over a longer token match", ok_, d.last_resolution)
+try:
+    d.ax_check("Nonexistent area")
+    ok_ = False
+except repro._NotFound:
+    ok_ = True
+check("ax_check: unknown scope -> NotFound", ok_)
+d = _drv(_page_tree())
+check("ax_check: actionable fallback still works ('Save' button scope)", d.ax_check("Save") == {"unnamed": 0, "total": 1}, d.ax_check("Save"))
+
 print("%d failure(s)" % len(FAILS))
 sys.exit(1 if FAILS else 0)
