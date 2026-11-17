@@ -372,6 +372,12 @@ export function applyEnvelopeDeclaration(env, { db, store, now } = {}) {
   }
 }
 
+function declaredSolverBlock(decl) {
+  const sv = decl && decl.solver;
+  if (!sv || typeof sv !== "object" || !nonEmpty(sv.id)) return null;
+  return { id: String(sv.id), version: sv.version != null ? String(sv.version) : "" };
+}
+
 function applyReceiptDeclarationCore({ domain, action, inputs, raw, db, store, now } = {}) {
   try {
     if (!raw || raw.ok === false || !raw.result || typeof raw.result !== "object" || Array.isArray(raw.result)) return raw;
@@ -394,9 +400,12 @@ function applyReceiptDeclarationCore({ domain, action, inputs, raw, db, store, n
     // The signed per-receipt reference check: a signature means "checked against the reference within its envelope".
     // Outside it the receipt still carries the numbers, says so inside the signed bytes, and cannot hold a PASS.
     const referenceCheck = checkReferenceEnvelope(decl, flat, parts);
+    // The receipt's solver identity comes from the DECLARATION (the registered solver the envelope gate and
+    // the reference check are bound to), never from a legacy label a pre-built body happens to carry.
+    const declaredSolver = declaredSolverBlock(decl);
     const built = parts && parts.prebuilt
-      ? attestReceipt({ ...parts.prebuilt, receiptSchema: CALC_RECEIPT_SCHEMA_V4, review, referenceCheck, verdict: demoteVerdict(parts.prebuilt.verdict, referenceCheck) }, now ? { now } : {})
-      : buildCalcReceipt({ ...parts, review, referenceCheck, verdict: demoteVerdict(parts.verdict, referenceCheck) }, now ? { now } : {});
+      ? attestReceipt({ ...parts.prebuilt, ...(declaredSolver ? { solver: declaredSolver } : {}), receiptSchema: CALC_RECEIPT_SCHEMA_V4, review, referenceCheck, verdict: demoteVerdict(parts.prebuilt.verdict, referenceCheck) }, now ? { now } : {})
+      : buildCalcReceipt({ ...parts, ...(declaredSolver ? { solver: declaredSolver } : {}), review, referenceCheck, verdict: demoteVerdict(parts.verdict, referenceCheck) }, now ? { now } : {});
     const issued = issueStoredReceipt(built, { db, store, now });
     if (!issued.receipt || !issued.receipt.signature || !issued.receipt.signature.signature) return unsigned(raw, "no_signing_key");
     const common = { signed: true, calcReceipt: issued.receipt, receipt: issued.receipt };

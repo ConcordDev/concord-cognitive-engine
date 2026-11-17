@@ -264,6 +264,37 @@ describe("engineering.beamStudy persists through the same path", () => {
     assert.ok(getStoredReceipt(db, out.result.receiptId));
   });
 
+  it("signed receipt carries the DECLARED solver id + version, not the legacy fea-solver label", () => {
+    const solved = solveBeamStudy(input);
+    assert.equal(solved.result.calcReceipt.solver.id, "fea-solver"); // the pre-built body still has the legacy label
+    const out = applyReceiptDeclaration({ domain: "engineering", action: "beamStudy", inputs: input, raw: { ok: true, result: solved.result }, db });
+    assert.equal(out.result.signed, true, out.result.signingReason);
+    const decl = getDeclaration("engineering", "beamStudy");
+    assert.equal(out.result.calcReceipt.solver.id, decl.solver.id);
+    assert.equal(out.result.calcReceipt.solver.version, decl.solver.version);
+    assert.equal(out.result.calcReceipt.solver.id, "beam.fea");
+    assert.equal(out.result.calcReceipt.solver.version, "1.0.0");
+    assert.equal(verifyAttestation(out.result.calcReceipt).valid, true);
+    assert.equal(out.result.calcReceipt.receiptSchema, "concord-calc-receipt/4");
+  });
+
+  it("an existing v3 receipt signed under the legacy fea-solver label still verifies", () => {
+    const solved = solveBeamStudy(input);
+    const legacy = solved.result.calcReceipt; // signed by buildBeamCalcReceipt, solver fea-solver@5.0.0, schema /3
+    assert.equal(legacy.solver.id, "fea-solver");
+    const v = verifyAttestation(legacy);
+    assert.equal(v.valid, true, v.reason);
+    assert.equal(v.schema, "concord-calc-receipt/3");
+  });
+
+  it("an action with no declaration is not signed and keeps its legacy body untouched", () => {
+    const solved = solveBeamStudy(input);
+    const out = applyReceiptDeclaration({ domain: "engineering", action: "noSuchAction", inputs: input, raw: { ok: true, result: solved.result }, db });
+    assert.notEqual(out.result.signed, true);
+    assert.equal(out.result.calcReceipt.solver.id, "fea-solver");
+    assert.equal(stored(), 0);
+  });
+
   it("out-of-envelope load: unsigned, the pre-built signature is stripped, nothing stored", () => {
     const solved = solveBeamStudy(input);
     const bad = { ...input, loadN: 5e10 };
