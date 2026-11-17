@@ -189,6 +189,7 @@ class Reverifier:
                       inv_entry=self.inv[lens], phases=[])
         ctx, page, cdp = lw.open()
         drv = _repro.PlaywrightDriver(lw, ctx, page, cdp, lw.url)
+        drv.chat_budget = self.chat_budget   # chat_ask steps spend the SAME per-lens send budget as the chat check
         try:
             if acct:
                 assert_account(ctx, self.cfg, acct, "repro-steps replay", self.log)
