@@ -1,0 +1,19 @@
+{
+  "author": "muse-b10",
+  "authored_on": "2026-11-17",
+  "case_source": "observed",
+  "discriminator": "Pre-fix failure transcript: at f4f1f77ff no solver with id mesh.generate exists in the registry (runtime census 124, none with that id). The acceptance suite fails at registration/import on the pre-fix tree. Post-fix: 12/12 green locally (registry now 127 with ORC-01 + CAD-03 + CAD-01).",
+  "id": "SX-CAD-01",
+  "kind": "repro-steps",
+  "notes": "Fix of record: commit 06f160ecb on sx/core-loop (B3, fixer). Content supplied by the fixer in SX-CAD-01.check.md (shared quality folder); registered DRAFT by muse-b10 as author of record (CB-0828) in walker/recipes/ on v1/immune-p1-recipe, 2026-11-17 \u2014 registrar-only conversion, substance unchanged. Activation is the reviewer of record's act (packet_id binds at activation).",
+  "packet_id": null,
+  "reviewer": "zuko-desk",
+  "status": "draft",
+  "steps": [
+    "Via MCP conkay_solver_list (or the registry): mesh.generate is listed at L3; getSolver shows engineDependent [sxe-06, sxe-11].",
+    "Open a design whose node carries props[\"cad.mesh\"] = {shape: \"box\", dims: {length: 1, width: 1, height: 1}, divisions: {nx: 2, ny: 2, nz: 2}} \u2014 envelope mesh.generate@<node> carries outputs.cells == 8, outputs.screening == true, and outputs.engineTier.status == \"NOT_COMPUTED\" with a reason naming engine_unavailable:sxe-06 and engine_unavailable:sxe-11. A PASS-labelled L3 mesh result with the engines absent FAILS this check.",
+    "Re-open with shape \"sphere\" \u2014 the whole envelope is NOT_COMPUTED engine_unavailable naming both engines; no screening numbers are reported."
+  ],
+  "tier_proposed": 1,
+  "title": "mesh.generate: the unit cube meshes to 8 nodes / 1 cell on the labelled screening tier while the L3 engine tier stands NOT_COMPUTED naming both engines"
+}

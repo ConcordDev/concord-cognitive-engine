@@ -1,0 +1,20 @@
+{
+  "author": "muse-b10",
+  "authored_on": "2026-11-17",
+  "case_source": "observed",
+  "discriminator": "Pre-fix failure transcript: at f4f1f77ff no solver with id cad.mass-properties-brep exists in the registry (runtime census: 124 solvers, none with that id; grep finds no mass-properties-brep under server/lib/conkay). The acceptance suite fails at registration/import on the pre-fix tree. Post-fix: 14/14 green locally (registry now 126 with ORC-01 + CAD-03).",
+  "id": "SX-CAD-03",
+  "kind": "repro-steps",
+  "notes": "Fix of record: commit 77c8fc8e8 on sx/core-loop (B3, fixer). Content supplied by the fixer in SX-CAD-03.check.md (shared quality folder); registered DRAFT by muse-b10 as author of record (CB-0828) in walker/recipes/ on v1/immune-p1-recipe, 2026-11-17 \u2014 registrar-only conversion, substance unchanged. Activation is the reviewer of record's act (packet_id binds at activation).",
+  "packet_id": null,
+  "reviewer": "zuko-desk",
+  "status": "draft",
+  "steps": [
+    "Via MCP conkay_solver_list (or the registry): cad.mass-properties-brep is listed at L2 with regime/units/tolerance declared and screening false.",
+    "Open a design whose node carries props[\"cad.massProperties\"] = {shape: \"box\", dims: {length: 1, width: 1, height: 1}, densityKgM3: 6000} \u2014 envelope cad.mass-properties-brep@<node> is PASS with outputs.massKg == 6000 and outputs.inertiaKgM2.Ixx == 1000 (the (1/6) m a^2 closed form, recomputed independently).",
+    "Re-open with shape \"freeform-sweep\" \u2014 the envelope is NOT_COMPUTED with a reason naming shape_not_in_exact_set and the OCC kernel path; no numeric mass property is reported.",
+    "Re-open the cube with material \"unobtanium\" and no density \u2014 NOT_COMPUTED naming the material; no density assumed."
+  ],
+  "tier_proposed": 1,
+  "title": "cad.mass-properties-brep: the unit cube at density 6000 returns mass 6000 and I = 1000 (the closed form), and a freeform shape is refused by name"
+}
