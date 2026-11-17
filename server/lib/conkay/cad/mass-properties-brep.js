@@ -128,6 +128,29 @@ const DIMS_FOR = {
   tube: ["outerRadius", "innerRadius", "height"],
 };
 
+/**
+ * The exact analytic solid for a shape + dims, without any density or
+ * mass: { volumeM3, areaM2, centroidM, inertia(m) }. Shared with
+ * cad.part-geometry (SX-CAD-05) so the closed forms live in exactly
+ * one place. Returns { error } with the same strings the solver's own
+ * validation produces.
+ */
+export function exactSolid(shape, dims = {}) {
+  if (!SHAPES.includes(shape)) {
+    return { error: `shape_not_in_exact_set: "${shape}" — the exact tier covers ${SHAPES.join(", ")}` };
+  }
+  const d = {};
+  for (const f of DIMS_FOR[shape]) {
+    const r = dim({ dims }, f);
+    if (r.error) return { error: r.error };
+    d[f] = r.value;
+  }
+  if (shape === "tube" && d.innerRadius >= d.outerRadius) {
+    return { error: "INVALID_INPUT: dims.innerRadius must be smaller than dims.outerRadius" };
+  }
+  return { solid: SOLIDS[shape](d), dims: d };
+}
+
 /** The pure solver function. Exported for direct testing. */
 export function massPropertiesBrep(props = {}) {
   const shape = props?.shape;
