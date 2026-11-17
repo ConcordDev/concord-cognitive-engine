@@ -65,7 +65,6 @@ UNMAPPED = [
     ("chat", "Focus composer and send a message", "no specific control"),
     ("calendar", "Open event detail, press Escape", "no specific control"),
     ("studio", "Set tempo to 0, then 999", "no recognised action"),
-    ("global", "Tab to Schedules, ArrowRight; Ctrl+K, Esc", "no recognised action"),
     ("mental-health", "Mood > check in with note 'qa-zt1-mental-health-2026-11-10'", "check in"),
     ("wellness", "Log sleep 7.5 then 30; view Trend Sleep and Overview", ""),
 ]
@@ -80,6 +79,8 @@ for lens, step, want in [
     ("ghost-tracker", "Open the lens and click Scan for residues", ["noop", "click"]),
     ("board", "Hard reload", ["reload"]),
     ("code", "Tab through, check the accessibility tree", ["tab_sweep", "check_ax"]),
+    # pre-capture: every comma piece is an explicit key / named target, so the whole step maps (was unmapped before the keyboard layer)
+    ("global", "Tab to Schedules, ArrowRight; Ctrl+K, Esc", ['tab_to', 'press', 'press', 'press']),
 ]:
     e = repro.expand_step(step, lens)
     check("now maps to walker vocab: %s | %s" % (lens, step[:50]), e["mapped"] and [x["action"] for x in e["substeps"]] == want, e)

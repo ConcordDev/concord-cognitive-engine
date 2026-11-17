@@ -16,6 +16,8 @@ X is visible, shows 'X', no errors) stay in repro.py; they are passed in as `leg
 (clause, snap) -> (state, detail)) so this module has no import cycle.
 """
 import re
+from . import observe as _OBS
+from . import netcheck as _NC
 
 EMPTY_SNAP = {"controls": [], "texts": [], "dialogs": [], "errors": 0, "evidence": {}}
 
@@ -101,6 +103,14 @@ _CTRL_PRESENT = re.compile(r"(?i)^has a control matching:\s*(.+)$")
 
 
 def classify_fragment(f, legacy):
+    """Base typed kinds first (unchanged), then the generic observe predicates (observe.py) for what the base left unclassified."""
+    sp = _classify_fragment_base(f, legacy)
+    if sp is None:
+        sp = _OBS.classify(f) or _NC.classify(f)
+    return sp
+
+
+def _classify_fragment_base(f, legacy):
     """One predicate -> a spec dict, or None. Never classifies vague wording."""
     f = f.strip()
     if not f or _VAGUE.search(f) or _IMPERATIVE.match(f):
@@ -208,6 +218,8 @@ EVIDENCE = {
     "control_present": ("snapshot.controls",),
     "legacy": ("snapshot",),
 }
+EVIDENCE.update(_OBS.EVIDENCE)
+EVIDENCE.update(_NC.EVIDENCE)
 AUTO_EVIDENCE = {"ax_names", "contrast", "target_size", "net_class", "no_console_error", "control_present", "text_phrase", "text_absent", "legacy"}
 _ERR_TEXT = re.compile(r"(?i)application error|something went wrong|unexpected error|failed to load|internal server error|\b50[0-4]\b")
 _MSG = re.compile(r"(?i)\b(invalid|required|must|cannot|can't|too (?:long|short|large|small)|at least|at most|not allowed|error|between|greater than|less than|out of range|maximum|minimum|limit)\b")
@@ -227,6 +239,10 @@ def _pool(snap):
 
 def _spec_check(sp, snap, legacy):
     k, ev = sp["kind"], _ev(snap)
+    if k in _OBS.KINDS:
+        return _OBS.check(sp, snap)
+    if k in _NC.KINDS:
+        return _NC.check(sp, snap)
     if k == "legacy":
         return legacy(sp["text"], snap)
     if k == "esc_closes":
