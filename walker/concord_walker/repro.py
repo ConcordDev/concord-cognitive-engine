@@ -1352,6 +1352,7 @@ class PlaywrightDriver:
         self.ctx.set_offline(bool(offline))
 
     _zoom_vp = None
+    _cdp_override = False
 
     def set_zoom(self, z):
         """Browser zoom == the page laying out in 1/z CSS px at z device px per CSS px; emulated with the CDP device-metrics override."""
@@ -1361,11 +1362,14 @@ class PlaywrightDriver:
             self._zoom_vp = (vp["width"], vp["height"])
         w, h = self._zoom_vp
         if abs(z - 1.0) < 1e-6:
-            self.cdp.s.send("Emulation.clearDeviceMetricsOverride")
-            # clearing also drops Playwright's own viewport emulation and Playwright never re-applies it: restore the remembered size
+            # Do NOT clear: clearing leaves the shrunk layout size, and Playwright caches its size so a same-size
+            # set_viewport_size no-ops. Re-send the override at the original size with deviceScaleFactor 0 (context default).
             self._zoom_vp = None
-            self.page.set_viewport_size({"width": int(w), "height": int(h)})
+            self._cdp_override = True
+            self.cdp.s.send("Emulation.setDeviceMetricsOverride", {"width": int(w), "height": int(h),
+                                                                    "deviceScaleFactor": 0, "mobile": False})
             return
+        self._cdp_override = True
         self.cdp.s.send("Emulation.setDeviceMetricsOverride", {"width": max(1, round(w / z)), "height": max(1, round(h / z)),
                                                                 "deviceScaleFactor": z, "mobile": False})
 
@@ -1498,6 +1502,10 @@ class PlaywrightDriver:
     def set_viewport(self, w, h):
         self._zoom_vp = None  # an explicit size supersedes any remembered pre-zoom size; a later zoom bases on this one
         self.page.set_viewport_size({"width": int(w), "height": int(h)})
+        if self._cdp_override:
+            # Playwright no-ops a same-size request while our CDP override is active: land the size via CDP too
+            self.cdp.s.send("Emulation.setDeviceMetricsOverride", {"width": int(w), "height": int(h),
+                                                                    "deviceScaleFactor": 0, "mobile": False})
         try:
             self.page.wait_for_load_state("networkidle", timeout=4000)
         except Exception:
