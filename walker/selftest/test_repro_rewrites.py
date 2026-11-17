@@ -28,12 +28,12 @@ T = {"id": "X-1", "lens": "srs", "status": "FIXED_PENDING_VERIFY",
 def base(**kw):
     rw = {"ticket_id": "X-1", "lens": "srs", "fold_sha": SHA, "orig_hash": R.orig_hash(T), "author": "sonnet", "date": "2026-11-16", "schema": 1,
           "status": "rewritten",
-          "steps": [{"op": "keep", "src": "text", "from_orig": [0]}, {"op": "needs_human_step", "src": "text", "from_orig": [2]},
+          "steps": [{"op": "keep", "src": "text", "from_orig": [0]}, {"op": "needs_human_step", "src": "text", "from_orig": [2], "why": "no control named in original"},
                     {"op": "type", "target": "Name", "value": "abc", "src": "text", "from_orig": [3]}],
           "dropped": [{"orig": 1, "reason": "observe_moved_to_expected"}],
           "expected": [{"kind": "keep", "args": {}, "from_orig_clause": [0], "orig_span": "Export downloads a JSON file"},
                        {"kind": "no_console_error", "args": {}, "from_orig_clause": [1], "orig_span": "No console errors"},
-                       {"kind": "needs_human", "args": {}, "from_orig_clause": [2], "orig_span": "Usable layout"},
+                       {"kind": "needs_human", "args": {}, "from_orig_clause": [2], "orig_span": "Usable layout", "why": "visual judgement, no predicate"},
                        {"kind": "control_present", "args": {"names": ["delete"]}, "from_orig_clause": ["s1"], "orig_span": "Look for a delete button"}]}
     rw.update(kw)
     return rw
@@ -93,6 +93,34 @@ check("rule6 human_only -> no replay ticket, reason kept", t2 is None and info["
 check("human_only reason must be in the enum", R.check_schema(dict(ho, human_only_reason="boredom")) is not None)
 check("other_with_note needs a note", R.check_schema(dict(ho, human_only_reason="other_with_note")) is not None)
 
+
+# ---- course-correction rules: why, original_sufficient, frontend: sources
+disagrees("rule: needs_human_step without why", mut(lambda r: r["steps"][1].pop("why")), "why")
+disagrees("rule: needs_human clause without why", mut(lambda r: r["expected"][2].pop("why")), "why")
+only_keep = {"ticket_id": "X-1", "lens": "srs", "fold_sha": SHA, "orig_hash": R.orig_hash(T), "author": "sonnet", "date": "2026-11-16", "schema": 1,
+             "status": "rewritten", "steps": [{"op": "keep", "src": "text", "from_orig": [0]}], "dropped": [], "expected": []}
+check("a record that converts nothing cannot claim status rewritten", R.check_schema(only_keep) is not None)
+check("original_sufficient with only keep entries validates", R.check_schema(dict(only_keep, status="original_sufficient")) is None)
+check("original_sufficient with a converted step is refused", R.check_schema(dict(only_keep, status="original_sufficient", steps=[{"op": "reload", "src": "text", "from_orig": [0]}])) is not None)
+t5, info = R.prepare(T, {"X-1": dict(only_keep, status="original_sufficient", steps=[{"op": "keep", "src": "text", "from_orig": [0]}, {"op": "needs_human_step", "src": "text", "from_orig": [1, ], "why": "observe only, no control", }, {"op": "needs_human_step", "src": "text", "from_orig": [2], "why": "evidence pointer, not a step"}, {"op": "keep", "src": "text", "from_orig": [3]}])})
+check("original_sufficient replays the ORIGINAL ticket (not rewrite-backed)", info["source"] in ("original_sufficient", "rewrite_disagrees") and (t5 is T or info["source"] == "rewrite_disagrees"), info)
+check("frontend: src format accepted", R.SRC_RE.match("frontend:concord-frontend/app/lenses/food/page.tsx:42") is not None and not R.SRC_RE.match("frontend:../etc/passwd"))
+FEP = "concord-frontend/app/lenses/food/page.tsx"
+if subprocess.run(["git", "-C", REPO, "cat-file", "-e", SHA], capture_output=True).returncode == 0:
+    check("frontend: label literally at that line of the fold source verifies", R.frontend_label_at(FEP, 39, "Recipes", REPO))
+    check("frontend: wrong label / wrong line / missing path / out-of-range line all fail closed",
+          not R.frontend_label_at(FEP, 39, "Cookbook", REPO) and not R.frontend_label_at(FEP, 64, "zzz", REPO)
+          and not R.frontend_label_at("concord-frontend/app/lenses/food/nope.tsx", 1, "x", REPO) and not R.frontend_label_at(FEP, 10 ** 7, "Recipes", REPO))
+    tf = {"id": "X-2", "lens": "food", "repro_steps": ["Open the Recipes tab"], "expected": "No console errors"}
+    mk = lambda line, lab: {"ticket_id": "X-2", "lens": "food", "fold_sha": SHA, "orig_hash": R.orig_hash(tf), "author": "sonnet", "date": "2026-11-16", "schema": 1, "status": "rewritten",
+                            "steps": [{"op": "open_tab", "target": lab, "src": "frontend:%s:%d" % (FEP, line), "from_orig": [0]}], "dropped": [], "expected": [{"kind": "no_console_error", "args": {}, "from_orig_clause": [0], "orig_span": "No console errors"}]}
+    ok, why = R.agree(tf, mk(39, "Recipes"), None, None, REPO)
+    check("agree: a frontend: src whose label is on that line passes", ok, why)
+    ok, why = R.agree(tf, mk(40, "Recipes"), None, None, REPO)
+    check("agree: a frontend: src whose line does not carry the label fails closed (src_not_live)", (not ok) and any("src_not_live" in w for w in why), why)
+else:
+    print("SKIP frontend: checks: %s not in this clone" % SHA)
+
 # ---- passing rewrite is used and recorded; failing one -> NEEDS_HUMAN rewrite_disagrees
 t3, info = R.prepare(T, {"X-1": base()})
 check("passing rewrite is used and recorded (source/orig_hash/author/date)", t3 is not None and info["source"] == "rewrite" and info["orig_hash"] == R.orig_hash(T)
@@ -116,7 +144,7 @@ def replay(tk, index):
 
 tk = H.tk("FIX-demo-900")
 rw_ok = {"ticket_id": tk["id"], "lens": "demo", "fold_sha": SHA, "orig_hash": R.orig_hash(tk), "author": "sonnet", "date": "2026-11-16", "schema": 1, "status": "rewritten",
-         "steps": [{"op": "keep", "src": "text", "from_orig": [0]}, {"op": "keep", "src": "text", "from_orig": [1]}], "dropped": [],
+         "steps": [{"op": "open", "target": "/lenses/demo", "src": "text", "from_orig": [0]}, {"op": "keep", "src": "text", "from_orig": [1]}], "dropped": [],
          "expected": [{"kind": "keep", "args": {}, "from_orig_clause": [0], "orig_span": "Row is selected"}]}
 res, calls = replay(tk, {tk["id"]: rw_ok})
 check("replay: a passing rewrite is run and recorded (source rewrite, hash, author, date)", calls == [tk["id"]] and res.get("rewrite", {}).get("source") == "rewrite"

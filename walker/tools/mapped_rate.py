@@ -81,7 +81,7 @@ def measure(tickets, with_reasons=False, rewrites=None, labels=None):
     blocked_expected = blocked_steps = blocked_both = 0
     clauses = clauses_unchecked = 0
     unmapped, by_class = {}, {}
-    rw_used = rw_rejected = 0
+    rw_used = rw_rejected = orig_suff = 0
     rejected_by, human_by, eligible_rw, eligible_orig = {}, {}, 0, 0
     for t in tickets:
         used_rw = False
@@ -90,6 +90,8 @@ def measure(tickets, with_reasons=False, rewrites=None, labels=None):
             if info["source"] == "rewrite":
                 t, used_rw = t2, True
                 rw_used += 1
+            elif info["source"] == "original_sufficient":
+                orig_suff += 1
             elif info["source"] == "rewrite_disagrees":
                 rw_rejected += 1
                 rejected_by[info["reason"]] = rejected_by.get(info["reason"], 0) + 1
@@ -134,7 +136,7 @@ def measure(tickets, with_reasons=False, rewrites=None, labels=None):
             "blocked_by": {"expected_unchecked_only": blocked_expected, "steps_unmapped_only": blocked_steps, "both": blocked_both},
             "clauses": clauses, "clauses_unchecked": clauses_unchecked,
             "all_mapped_but_expected_unchecked": blocked_expected,  # legacy key (kept for older callers)
-            "rewrites": {"rewrite_backed": rw_used, "original_only": n - rw_used, "rejected_by_agree": rw_rejected, "rejected_by_reason": rejected_by,
+            "rewrites": {"rewrite_backed": rw_used, "original_only": n - rw_used, "original_sufficient": orig_suff, "rejected_by_agree": rw_rejected, "rejected_by_reason": rejected_by,
                          "human_only_by_reason": human_by, "eligible_rewrite_backed": eligible_rw, "eligible_original_only": eligible_orig} if rewrites else None,
             "unmapped_by_class": dict(sorted(by_class.items(), key=lambda kv: -kv[1])),
             "unmapped_examples": unmapped}

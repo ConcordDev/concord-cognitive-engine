@@ -36,12 +36,41 @@ FOLD_SHA = "272e62f41"
 DEFAULT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "rewrites")
 HUMAN_REASONS = ("lighthouse", "code_read", "cross_account", "visual", "other_with_note")
 DROP_REASONS = ("observe_moved_to_expected", "no_text")
-SRC_RE = re.compile(r"^(?:text|live:[a-z0-9][a-z0-9/_\-]*|manifest:[a-z0-9][a-z0-9/_.\-]*|alias)$")
+SRC_RE = re.compile(r"^(?:text|live:[a-z0-9][a-z0-9/_\-]*|manifest:[a-z0-9][a-z0-9/_.\-]*|alias|frontend:[A-Za-z0-9_@\[\]()/.\-]+:\d+)$")
+STATUSES = ("rewritten", "human_only", "original_sufficient")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _KEYS = {"Escape", "Enter", "Tab", "Shift+Tab", "ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Space", "Home", "End", "Backspace"}
 _KEY_ANCHOR = {"Escape": r"esc", "Enter": r"enter|return", "Tab": r"\btab\b", "Shift+Tab": r"shift\s*\+?\s*tab", "ArrowDown": r"arrow\s*down|down arrow|\bdown\b",
                "ArrowUp": r"arrow\s*up|up arrow|\bup\b", "ArrowLeft": r"arrow\s*left|left arrow|\bleft\b", "ArrowRight": r"arrow\s*right|right arrow|\bright\b",
                "Space": r"space", "Home": r"\bhome\b", "End": r"\bend\b", "Backspace": r"backspace"}
+
+
+# ------------------------------------------------------------------ frontend source check (src "frontend:<path>:<line>")
+_FE_CACHE = {}
+
+
+def frontend_label_at(path, line, label, repo=None, sha=FOLD_SHA):
+    """True iff `path` exists at the fold sha and `label` literally appears (case-insens., whitespace-normalised) on that line
+    (+-0: the exact line). Fails closed (False) when git/the sha is unavailable."""
+    import subprocess
+    repo = repo or os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    key = (repo, sha, path)
+    if key not in _FE_CACHE:
+        try:
+            out = subprocess.run(["git", "-C", repo, "show", "%s:%s" % (sha, path)], capture_output=True, timeout=30)
+            _FE_CACHE[key] = out.stdout.decode("utf-8", "replace").splitlines() if out.returncode == 0 else None
+        except Exception:
+            _FE_CACHE[key] = None
+    lines = _FE_CACHE[key]
+    if not lines or not (1 <= line <= len(lines)):
+        return False
+    norm = lambda x: re.sub(r"\s+", " ", _qn(x or "")).strip().lower()
+    return bool(norm(label)) and norm(label) in norm(lines[line - 1])
+
+
+def _fe_ok(src, label, repo=None):
+    m = re.fullmatch(r"frontend:(.+):(\d+)", src or "")
+    return bool(m) and m.group(1).startswith("concord-frontend/") and frontend_label_at(m.group(1), int(m.group(2)), label, repo)
 
 
 # ------------------------------------------------------------------ provenance
@@ -268,8 +297,8 @@ def check_schema(rw):
         if rw["human_only_reason"] == "other_with_note" and not (rw.get("note") or "").strip():
             return "schema: other_with_note needs a note"
         return None
-    if st != "rewritten":
-        return "schema: status must be rewritten|human_only"
+    if st not in ("rewritten", "original_sufficient"):
+        return "schema: status must be rewritten|human_only|original_sufficient"
     if not isinstance(rw.get("steps"), list) or not isinstance(rw.get("expected"), list):
         return "schema: steps/expected must be lists"
     if not rw["steps"] and not rw["expected"]:
@@ -280,7 +309,9 @@ def check_schema(rw):
         if not isinstance(s.get("from_orig"), list) or not s["from_orig"] or not all(isinstance(i, int) for i in s["from_orig"]):
             return "added_step: step has no from_orig"
         if not isinstance(s.get("src"), str) or not SRC_RE.match(s["src"]):
-            return "schema: step src must be text|live:<lens>|manifest:<x>|alias"
+            return "schema: step src must be text|live:<lens>|manifest:<x>|alias|frontend:<path>:<line>"
+        if s["op"] == "needs_human_step" and not (isinstance(s.get("why"), str) and len(s["why"].strip()) >= 8):
+            return "schema: needs_human_step needs a one-line why naming the concrete blocker"
     for c in rw["expected"]:
         if not isinstance(c, dict) or c.get("kind") not in KINDS:
             return "schema: bad clause kind"
@@ -288,9 +319,17 @@ def check_schema(rw):
             return "added_clause: clause has no orig_span"
         if not isinstance(c.get("from_orig_clause"), list) or not c["from_orig_clause"]:
             return "added_clause: clause has no from_orig_clause"
+        if c["kind"] == "needs_human" and not (isinstance(c.get("why"), str) and len(c["why"].strip()) >= 8):
+            return "schema: needs_human clause needs a one-line why naming the concrete blocker"
     for d in rw.get("dropped") or []:
         if not isinstance(d, dict) or not isinstance(d.get("orig"), int) or d.get("reason") not in DROP_REASONS:
             return "schema: bad dropped entry"
+    verb = {"keep", "needs_human_step"}
+    converted = any(x["op"] not in verb for x in rw["steps"]) or any(c["kind"] not in VERBATIM_KINDS for c in rw["expected"])
+    if st == "rewritten" and not converted:
+        return "schema: a rewrite that converts nothing must be status original_sufficient"
+    if st == "original_sufficient" and (converted or rw.get("dropped")):
+        return "schema: original_sufficient may only hold keep / needs_human verbatim entries"
     return None
 
 
@@ -366,7 +405,7 @@ def _step_literal_ok(s, orig, lens, labels):
 FIELD_NEVER_RE = _W.FIELD_NEVER
 
 
-def agree(ticket, rw, labels=None, manifest_text=None):
+def agree(ticket, rw, labels=None, manifest_text=None, frontend_repo=None):
     """-> (ok, reasons). Deterministic, fail closed. `labels`: {lens: [live control names]} when available."""
     why = []
     bad = check_schema(rw)
@@ -378,6 +417,9 @@ def agree(ticket, rw, labels=None, manifest_text=None):
         return False, ["stale: orig_hash differs from the current original text"]
     if rw["status"] == "human_only":
         return False, ["human_only:%s" % rw["human_only_reason"]]
+    if rw["status"] == "original_sufficient":
+        # nothing hand-converted: validate the verbatim entries still hold, but the ORIGINAL path is what replays
+        pass
     raws = _R.split_steps(ticket)
     clauses = _clauses_of(ticket)
     lens = ticket.get("lens")
@@ -410,7 +452,9 @@ def agree(ticket, rw, labels=None, manifest_text=None):
         if not ok:
             why.append(("typed_value_not_in_original: " if "typed value" in (msg or "") else "literal_not_in_original: ") + "step %d %s" % (k, msg))
             continue
-        if s["op"] in ("click", "open_tab") and not re.match(r"^(?:live:|manifest:|alias$)", s["src"]):
+        if s["op"] in ("click", "open_tab", "type") and s["src"].startswith("frontend:") and not _fe_ok(s["src"], s.get("target"), frontend_repo):
+            why.append("src_not_live: step %d %r is not literally at %s (fold %s)" % (k, s.get("target"), s["src"], FOLD_SHA))
+        if s["op"] in ("click", "open_tab") and not re.match(r"^(?:live:|manifest:|alias$|frontend:)", s["src"]):
             why.append("src_not_live: step %d control %r has src %r; a control name must come from the live labels, the manifest or ALIASES" % (k, s.get("target"), s["src"]))
         if s["op"] in ("click", "open_tab") and s["src"].startswith("manifest:") and manifest_text is not None and (s.get("target") or "").lower() not in manifest_text:
             why.append("src_not_live: step %d %r is not in the manifest" % (k, s.get("target")))
@@ -541,6 +585,8 @@ def prepare(ticket, index, labels=None):
     base = {"orig_hash": rw.get("orig_hash"), "author": rw.get("author"), "date": rw.get("date")}
     if rw.get("status") == "human_only" and check_schema(rw) is None and rw.get("ticket_id") == ticket.get("id"):
         return None, dict(base, source="human_only", reason=rw["human_only_reason"])
+    if ok and rw.get("status") == "original_sufficient":
+        return ticket, dict(base, source="original_sufficient")
     if not ok:
         return None, dict(base, source="rewrite_disagrees", reason=why[0].split(":")[0], reasons=why[:6])
     return effective_ticket(ticket, rw), dict(base, source="rewrite")

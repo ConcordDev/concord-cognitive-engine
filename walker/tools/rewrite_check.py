@@ -5,7 +5,7 @@
   python3 tools/rewrite_check.py --all
 
 Exit 1 on any disagreement among status:"rewritten" (fix the record or downgrade it) or on a batch that is not
-exactly the 100 pool tickets (pool = tickets with repro_steps, ordered by id, at the pinned fold sha)."""
+exactly the 50 pool tickets (pool = tickets with repro_steps, ordered by id, at the pinned fold sha)."""
 import argparse, json, os, sys
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -13,7 +13,7 @@ sys.path.insert(0, HERE)
 from concord_walker import repro, rewrites as R
 from concord_walker.fold import extract_from_git
 
-BATCH = 100
+BATCH = 50
 DEFAULT_LABELS = os.path.expanduser("~/.zuko/cursor-runs/ulw-rewrite/live_labels_index.json")
 
 
@@ -38,7 +38,7 @@ def check_batch(n, pool, labels, rdir=None):
     path = os.path.join(rdir, "batch-%03d.jsonl" % n)
     want = {t["id"]: t for t in batch_tickets(pool, n)}
     recs = [json.loads(l) for l in open(path, encoding="utf-8") if l.strip()]
-    out = {"batch": n, "tickets": len(want), "records": len(recs), "rewritten": 0, "human_only": 0, "disagreements": [], "problems": [], "human_by_reason": {}}
+    out = {"batch": n, "tickets": len(want), "records": len(recs), "rewritten": 0, "original_sufficient": 0, "human_only": 0, "steps_by_hand": 0, "clauses_by_hand": 0, "needs_human_step": 0, "needs_human_clause": 0, "human_other_notes": 0, "disagreements": [], "problems": [], "human_by_reason": {}}
     seen = set()
     for rw in recs:
         tid = rw.get("ticket_id")
@@ -59,10 +59,16 @@ def check_batch(n, pool, labels, rdir=None):
         if rw["status"] == "human_only":
             out["human_only"] += 1
             out["human_by_reason"][rw["human_only_reason"]] = out["human_by_reason"].get(rw["human_only_reason"], 0) + 1
+            if rw["human_only_reason"] == "other_with_note":
+                out["human_other_notes"] += 1
             continue
         ok, why = R.agree(t, rw, labels)
         if ok:
-            out["rewritten"] += 1
+            out["rewritten" if rw["status"] == "rewritten" else "original_sufficient"] += 1
+            out["steps_by_hand"] += sum(1 for x in rw["steps"] if x["op"] not in ("keep", "needs_human_step"))
+            out["clauses_by_hand"] += sum(1 for c in rw["expected"] if c["kind"] not in ("keep", "needs_human"))
+            out["needs_human_step"] += sum(1 for x in rw["steps"] if x["op"] == "needs_human_step")
+            out["needs_human_clause"] += sum(1 for c in rw["expected"] if c["kind"] == "needs_human")
         else:
             out["disagreements"].append((tid, why))
     for tid in want:
