@@ -1,0 +1,28 @@
+{
+  "id": "SXE-00",
+  "kind": "repro-steps",
+  "title": "Engine framework: engines endpoint lists the engine healthy; health case runs through a solver; engine removed \u2192 NOT_COMPUTED engine_unavailable",
+  "author": "muse-b3",
+  "reviewer": "zuko-desk",
+  "status": "draft",
+  "authored_on": "2026-11-17",
+  "tier": 1,
+  "case_source": "observed",
+  "packet_id": null,
+  "verified_against": null,
+  "covers": "Hand recipe (kind repro-steps) for SXE-00, authored by muse-b3 as author of record (CB-0828) from the fixer's supplied content: /Users/dutch/.zuko/quality/CHECK-SXE-00.md (seat B2, branch sx/solver-core, PRG-E1). Reference case: the engine's health-op smoke case matches its documented reference (engine shipped validation/tutorial case, SOLVER-ENGINES-PLAN.md \u00a72 \u2014 free/public; the checker re-pulls and recomputes, DC-01). Adversarial: malformed request refused by kernel schema before spawn; forged/garbled stdout number rejected; timeout/crash paths. Honesty: engine absent \u2192 NOT_COMPUTED engine_unavailable:<id> with install hint; crash \u2192 engine_failed:<id>:<first stderr line>; non-converged \u2192 engine_not_converged with residuals; never a fallback number labelled as this engine. Reviewer: at activation, confirm the discriminator transcript below still fails against the pinned pre-fix instance and bind packet_id.",
+  "discriminator": "Pre-fix transcript (replayed by the fixer 2026-11-17 against f4f1f77ff, from CHECK-SXE-00.md): grep over server/lib at the ref finds no runEngine and no runProcessKernel, and there is no server/lib/conkay/engines directory \u2014 the engine framework does not exist at this build, so every step fails at step one.",
+  "expect_endpoints": [
+    {
+      "method": "GET",
+      "path": "/api/conkay/engines",
+      "expect_status": 200
+    }
+  ],
+  "steps": [
+    "GET /api/conkay/engines \u2014 the engine is listed and reports healthy.",
+    "Run the engine's health-op smoke case through a solver that uses it \u2014 the result matches the documented reference value from the cited source (SOLVER-ENGINES-PLAN.md \u00a72), recomputed independently by the checker.",
+    "Remove the engine (or point its env var at an absent path) and re-run the same solver \u2014 the result is NOT_COMPUTED engine_unavailable:<id> with an install hint, never a fallback number.",
+    "Send a malformed request \u2014 refused by kernel schema validation before spawn; forge a garbled stdout number \u2014 rejected by schema validation."
+  ]
+}

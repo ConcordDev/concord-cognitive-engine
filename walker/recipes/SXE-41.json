@@ -1,0 +1,28 @@
+{
+  "id": "SXE-41",
+  "kind": "repro-steps",
+  "title": "Reference-data store: provenance records with literal re-find; on-demand SSRF-guarded fetch; disk budget enforced",
+  "author": "muse-b3",
+  "reviewer": "zuko-desk",
+  "status": "draft",
+  "authored_on": "2026-11-17",
+  "tier": 1,
+  "case_source": "observed",
+  "packet_id": null,
+  "verified_against": null,
+  "covers": "Hand recipe (kind repro-steps) for SXE-41, authored by muse-b3 as author of record (CB-0828) from the fixer's supplied content: /Users/dutch/.zuko/quality/CHECK-SXE-41.md (seat B2, branch sx/solver-core, PRG-E2; depends on SXE-00). Scope: reference-data store \u2014 provenance records, literal re-find, on-demand SSRF-guarded fetch, disk budget. NOTE for the reviewer and the fixer: the supplied check file's done-criteria/behaviour sections are the SXE-00 engine-framework template text; the store-specific legs (literal re-find of a stored value, SSRF refusal on a guarded fetch, disk-budget refusal) should be sharpened by B2 at build and this draft updated before activation. Reference discipline as SXE-00: cited free/public source, checker re-pulls and recomputes (DC-01). Reviewer: at activation, confirm the discriminator transcript below still fails against the pinned pre-fix instance and bind packet_id.",
+  "discriminator": "Pre-fix transcript (replayed by the fixer 2026-11-17 against f4f1f77ff, from CHECK-SXE-41.md): grep over server/lib at the ref finds no occurrence of 'refdata' \u2014 the reference-data store does not exist at this build, so every step fails at step one.",
+  "expect_endpoints": [
+    {
+      "method": "GET",
+      "path": "/api/conkay/engines",
+      "expect_status": 200
+    }
+  ],
+  "steps": [
+    "Confirm the store exists at the ref: a 'refdata' module is present under server/lib and loads (pre-fix: absent).",
+    "Write a provenance record for a cited value, then literal-re-find it: the stored value + unit must be re-found verbatim in the stored excerpt (no paraphrase accepted).",
+    "Fetch on demand through the SSRF-guarded path: a private/loopback target is refused by the guard; a public source returns and is stored as an excerpt (\u2264 the store's excerpt discipline), never a full page as citation.",
+    "Exceed the disk budget with synthetic records \u2014 the write is refused honestly at the budget, existing records stay readable."
+  ]
+}

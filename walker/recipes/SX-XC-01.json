@@ -1,0 +1,21 @@
+{
+  "id": "SX-XC-01",
+  "kind": "repro-steps",
+  "title": "solver.select fidelity router: engine absent \u2192 top tier NOT_COMPUTED with the fast path labelled screening, never substituted",
+  "author": "muse-b3",
+  "reviewer": "zuko-desk",
+  "status": "draft",
+  "authored_on": "2026-11-17",
+  "tier": 1,
+  "case_source": "observed",
+  "packet_id": null,
+  "verified_against": null,
+  "covers": "Hand recipe (kind repro-steps) for SX-XC-01, authored by muse-b3 as author of record (CB-0828) from the fixer's supplied content: /Users/dutch/.zuko/quality/CHECK-SX-XC-01.md (seat B2, branch sx/solver-core, PRG-01). No numeric value assertion in the reference case (status/behaviour assertion only) \u2014 nothing to provenance. Foundation gating at f4f1f77ff (fixer's evidence): the solve.direct reachability leg is expected-fail until SC-00 is seated/built; the bare-number adversarial leg is expected-fail until the SC-04 refusal leg is built; the integrity pin runs the armed direct-envelope shape until the IR-path integrity arm is built. Reviewer: at activation, confirm the discriminator transcript below still fails against the pinned pre-fix instance and bind packet_id.",
+  "discriminator": "Pre-fix transcript (replayed by the fixer 2026-11-17 against f4f1f77ff, from CHECK-SX-XC-01.md): registry probe over the 124 solvers registered at the ref returns solver.select \u2192 ABSENT; conkay_solver_list does not list it and the reference case cannot run (catalogue row status: missing).",
+  "steps": [
+    "Replay via MCP conkay_solve {solver_id: the reference case's solver, typed inputs from the reference case} (or solve.direct once SC-00 lands): solver.select picks the highest tier whose engine is healthy and runs declared fast paths beside it, each labelled with its own tier and screening flag.",
+    "With the top-tier engine absent: the top tier returns NOT_COMPUTED and the fast path runs labelled screening:true \u2014 never a fallback number labelled as the engine result.",
+    "Check the envelope: status, outputs within the declared tolerance, inputs echo (inputs used == inputs submitted), provenance carrying engine id+version.",
+    "Adversarial: NaN / negative-where-physical-positive / 1e300 input \u2192 INVALID_INPUT with the field named; a substituted input \u2192 NOT_COMPUTED input_substituted; a bare number on a dimensional input \u2192 refused unless the unit is declared (SC-04 leg, expected-fail until built)."
+  ]
+}
