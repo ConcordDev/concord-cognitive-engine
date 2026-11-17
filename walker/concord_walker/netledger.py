@@ -235,20 +235,30 @@ class NetLedger:
         if cid in self.meta:
             self.meta[cid]["effect_hint"] = effect
 
+    def _accepts(self, w, t):
+        """Does window w contain a request that started at t? (mutates gap anchor on accept)"""
+        if w["sticky"]:
+            return w["closed_at"] is None or t <= w["closed_at"]
+        anchor = w["last"] if w["last"] is not None else w["t0"]
+        if t - w["t0"] <= WIN_CAP_S and t - anchor <= WIN_GAP_S:
+            w["last"] = max(t, w["last"] or t)
+            return True
+        return False
+
     def _assign(self, t):
-        """Window for a request that started at epoch t (seconds)."""
+        """Window for a request that started at epoch t (seconds).
+        A window that opened AFTER the request started must not steal it when an earlier
+        window actually contains t; the 0.05s clock-skew slack applies only otherwise."""
         for w in reversed(self.windows):
-            if w["t0"] > t + 0.05:
-                continue
-            if w["sticky"]:
-                if w["closed_at"] is None or t <= w["closed_at"]:
+            if w["t0"] <= t:
+                if self._accepts(w, t):
+                    return w, False
+                break
+        for w in reversed(self.windows):
+            if t < w["t0"] <= t + 0.05:
+                if self._accepts(w, t):
                     return w, False
                 return None, True
-            anchor = w["last"] if w["last"] is not None else w["t0"]
-            if t - w["t0"] <= WIN_CAP_S and t - anchor <= WIN_GAP_S:
-                w["last"] = max(t, w["last"] or t)
-                return w, False
-            return None, True
         return None, True
 
     # ---------------------------------------------------------------- hooks

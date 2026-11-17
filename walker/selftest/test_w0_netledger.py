@@ -216,6 +216,39 @@ def test_fp_telemetry_and_aborted():
     check("client cancels are aborted, real failures are not", NLm.is_aborted("net::ERR_ABORTED") and NLm.is_aborted("aborted")
           and not NLm.is_aborted("net::ERR_CONNECTION_RESET") and not NLm.is_aborted(None))
 
+def test_request_before_window_not_stolen():
+    c = Clock()
+    L = N.NetLedger(BASE, clock=c)
+    c.t = 1000.0
+    L.open_window("load", "page", "-", sticky=True, cid=N.LOAD_CONTROL)
+    c.t = 1000.12
+    L.close_window()
+    c.t = 1000.1258  # next window opens <50ms after load closed
+    cid = L.open_window("sweep", "button", "Add note")
+    # document request started at .1156, before the Add note window opened
+    fire(L, Req(BASE + "/", rtype="document", resp=Resp(200, "<html>", "text/html"), start=1000.1156))
+    fire(L, Req(BASE + "/api/notes", "POST", post="{}", resp=Resp(201, {"id": 1}), start=1000.2))
+    c.t = 1001.0
+    L.close_window()
+    controls, _e, _a, _s = L.build()
+    by = {x["control_id"]: x for x in controls}
+    add = [(q["method"], q["path"]) for q in by[cid]["requests"]]
+    check("pre-window request is NOT stolen by the next window", ("GET", "/") not in add and ("POST", "/api/notes") in add, add)
+    ld = by.get(N.LOAD_CONTROL)
+    check("pre-window GET / stays on load:page:-", ld is not None and ("GET", "/") in [(q["method"], q["path"]) for q in ld["requests"]], ld)
+    # slack still applies when no earlier window contains t
+    c2 = Clock()
+    L2 = N.NetLedger(BASE, clock=c2)
+    c2.t = 1000.0
+    cid2 = L2.open_window("sweep", "button", "Only")
+    fire(L2, Req(BASE + "/api/x", resp=Resp(200, {}), start=999.97))
+    c2.t = 1001.0
+    L2.close_window()
+    ctl, _e, _a, _s = L2.build()
+    b2 = {x["control_id"]: x for x in ctl}
+    check("skew slack kept when no earlier window contains t", cid2 in b2 and any(q["path"] == "/api/x" for q in b2[cid2]["requests"]), list(b2))
+
+
 if __name__ == "__main__":
     for fn in [v for k, v in sorted(globals().items()) if k.startswith("test_")]:
         fn()
