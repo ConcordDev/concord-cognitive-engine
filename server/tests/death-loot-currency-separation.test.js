@@ -7,9 +7,11 @@
 // Wired-call-site evidence (grep across server/, verified at authoring time):
 //   - dropCorpseOnDeath  — server.js:9737 (socket PvP `combat:attack` kill path,
 //     player targets only, skipped in training) + domains/player-corpse.js:24
-//     (explicit macro). Debits ONLY users.concordia_credits (Concord Coin,
-//     migration 045); a self-recoverable penalty — the coins return to the SAME
-//     player on corpse recovery; the killer never receives them.
+//     (explicit macro). Debits ONLY users.concordia_credits (the legacy
+//     column, migration 045 — classified GAMEPLAY in currency-map.js,
+//     SB-30, and renamed to Sparks by SB-33); a self-recoverable penalty —
+//     the amount returns to the SAME player on corpse recovery; the killer
+//     never receives it.
 //   - handlePlayerDeath  — routes/world.js:2283 ONLY (POST /api/world/combat/death;
 //     no wired client caller — 0 grep hits for combat/death in concord-frontend/).
 //     Debits ONLY users.sparks (migration 048, own sparks_ledger).
@@ -17,8 +19,9 @@
 //     route never calls dropCorpseOnDeath). Debits ONLY users.sparks.
 //
 // So each wired death event fires exactly ONE mechanic on ONE currency.
-// concordia_credits (real, USD-pegged Concord Coin) and sparks (gameplay-only,
-// zero real-world value, transferable killer reward) are separate by design.
+// concordia_credits (the legacy column; NOT the economy-ledger Concord
+// Coin — currency-map.js, SB-30) and sparks (gameplay-only, zero
+// real-world value, transferable killer reward) are separate by design.
 //
 // Run: node --test tests/death-loot-currency-separation.test.js
 

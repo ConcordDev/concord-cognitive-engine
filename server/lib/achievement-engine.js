@@ -230,8 +230,9 @@ export function unlockAchievement(db, userId, achievementId, ctx = {}) {
     `).run(userId, achievementId, cal.season_idx, cal.year_idx);
     if (r.changes === 0) return { unlocked: false, alreadyEarned: true };
 
-    // Gameplay rewards are SPARKS, never CC. CC (concordia_credits) is the
-    // real-money currency and must never be awarded for gameplay; sparks go to
+    // Gameplay rewards are SPARKS, never CC. The legacy concordia_credits
+    // column is a separate balance from the economy-ledger Concord Coin
+    // (currency-map.js, SB-30) and is retiring; gameplay awards go to
     // users.sparks + sparks_ledger via the canonical awardSparks helper.
     const rewardSparks = Number(a.rewardSparks ?? a.rewardCc) || 0;
     if (rewardSparks > 0) {

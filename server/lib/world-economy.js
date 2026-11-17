@@ -147,7 +147,9 @@ export function recordTransaction(db, worldId, resourceId, quantity, type) {
  * @param {import('better-sqlite3').Database} db
  * @param {string} worldId
  * @param {string} resourceId
- * @returns {number} price in concordia credits
+ * @returns {number} price in Sparks — the gameplay denomination (the world
+ * market settles on the legacy concordia_credits column until SB-32 moves
+ * it to Sparks; currency-map.js, SB-30)
  */
 export function getResourcePrice(db, worldId, resourceId) {
   const row = db.prepare(
