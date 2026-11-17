@@ -112,6 +112,8 @@ def validate_recipe(raw, today=None, expect_sha=None):
                 if extra:
                     reasons.append("params %s are not %s template parameters (%s)"
                                    % (extra, tname, ", ".join(spec["params"])))
+                if tname == "value-assert":
+                    _check_declaration(params, reasons)
         # CB-0810 (documentation standard, amendment #2): an ACTIVE template
         # instance carries its priority tier and its discriminator — the
         # failure transcript from replaying the recipe against the pre-fix
@@ -169,6 +171,31 @@ def validate_recipe(raw, today=None, expect_sha=None):
     recipe.setdefault("status", "active")
     recipe.setdefault("max_age_days", max_age)
     return recipe, []
+
+
+def _check_declaration(params, reasons):
+    """The value-assert declaration (corrections #8/#9): params must CARRY
+    the declaration key — null files the action UNDECLARED in the open; an
+    object must cite its reference, its validity range, and its review
+    source (independent = correctness check; self-referenced = drift
+    coverage only)."""
+    if "declaration" not in params:
+        reasons.append("value-assert params must carry a declaration "
+                       "(an object, or null to file the action UNDECLARED)")
+        return
+    decl = params.get("declaration")
+    if decl is None:
+        return
+    if not isinstance(decl, dict):
+        reasons.append("declaration must be an object or null")
+        return
+    if not isinstance(decl.get("reference"), str) or not decl.get("reference"):
+        reasons.append("declaration.reference is required (the cited source)")
+    vr = decl.get("validity_range")
+    if not (isinstance(vr, str) and vr) and not (isinstance(vr, list) and len(vr) == 2):
+        reasons.append("declaration.validity_range is required (text or [lo, hi])")
+    if decl.get("review_source") not in ("independent", "self-referenced"):
+        reasons.append("declaration.review_source must be 'independent' or 'self-referenced'")
 
 
 def check_authorship(recipe, fixer_id):

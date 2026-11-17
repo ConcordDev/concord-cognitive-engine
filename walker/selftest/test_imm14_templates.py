@@ -39,6 +39,11 @@ CALLS = {
     "export-file": lambda d: T.export_produces_file(d),
     "endpoint-hit": lambda d: T.endpoint_hit(d, control="Save", method="POST",
                                              path="/api/lens/run", action="lens.run"),
+    "value-assert": lambda d: T.value_assert(
+        d, control="Compute", inputs={"Side A": "3", "Side B": "4"}, expected=12,
+        tolerance=0.001, action="area",
+        declaration={"reference": "fixture geometry reference", "validity_range": "0..10000",
+                     "review_source": "independent"}),
 }
 EXPECT = {"buggy": T.STILL, "fixed": T.FIXED, "missing": T.HUMAN}
 
@@ -51,15 +56,34 @@ def make_case(template, variant):
     return run
 
 
-for template in ("escape", "overflow-390", "contrast", "load-5xx", "export-file", "endpoint-hit"):
+for template in ("escape", "overflow-390", "contrast", "load-5xx", "export-file", "endpoint-hit", "value-assert"):
     for variant in ("buggy", "fixed", "missing"):
         case("%s on %s fixture" % (template, variant), make_case(template, variant))
 
 
 def c_registry():
-    ok = set(T.TEMPLATES) == {"escape", "overflow-390", "contrast",
+    ok = set(T.TEMPLATES) == {"escape", "overflow-390", "contrast", "value-assert",
                               "load-5xx", "export-file", "endpoint-hit"}
     return ok, "templates=%s" % sorted(T.TEMPLATES)
+
+
+def c_value_self_referenced_is_drift_only():
+    d = driver_for("value-assert", "fixed")
+    res = T.value_assert(d, control="Compute", inputs={"Side A": "3", "Side B": "4"},
+                         expected=12, tolerance=0.001,
+                         declaration={"reference": "the lens's own docs", "validity_range": "0..10000",
+                                      "review_source": "self-referenced"})
+    ok = res["verdict"] == T.FIXED and "DRIFT COVERAGE ONLY" in res["notes"] \
+        and "drift coverage only" in res["evidence"][0].lower()
+    return ok, "notes=%s" % res["notes"][:90]
+
+
+def c_value_undeclared_filed_open():
+    d = driver_for("value-assert", "fixed")
+    res = T.value_assert(d, control="Compute", action="area", declaration=None)
+    ok = res["verdict"] == T.HUMAN and "UNDECLARED" in res["notes"] \
+        and any("undeclared" in e for e in res["evidence"])
+    return ok, "notes=%s" % res["notes"][:80]
 
 
 def c_instance_binds():
@@ -90,7 +114,9 @@ def c_templates_carry_tier_and_discriminator():
     return ok, "tiers=%s" % {k: v.get("tier") for k, v in T.TEMPLATES.items()}
 
 
-case("registry holds the six templates", c_registry)
+case("registry holds the seven templates", c_registry)
+case("value-assert: self-referenced declaration is labelled drift coverage only", c_value_self_referenced_is_drift_only)
+case("value-assert: no declaration files the action UNDECLARED in the open", c_value_undeclared_filed_open)
 case("every template carries a tier + fixture discriminator (CB-0810)", c_templates_carry_tier_and_discriminator)
 case("make_instance binds params into a recipe callable", c_instance_binds)
 case("escape works on an already-open surface", c_escape_no_opener_needed)

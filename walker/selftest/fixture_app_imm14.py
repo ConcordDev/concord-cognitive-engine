@@ -45,6 +45,10 @@ class FixtureDriver:
             self.dialogs = []
             self.controls = [c for c in self.controls if c["name"] != "Menu dialog"]
 
+    def type_into(self, name, value):
+        self.calls.append(("type", name, value))
+        return any(c["name"] == name for c in self.controls)
+
     def click(self, name, role=None):
         from concord_walker.matching import fuzzy_match
         pool = [c["name"] for c in self.controls if role is None or c.get("role") == role]
@@ -54,6 +58,8 @@ class FixtureDriver:
             return None
         effect = self._on_click.get(hit) or {}
         self.responses.extend(effect.get("responses") or [])
+        if effect.get("set_texts") is not None:
+            self.texts = list(effect["set_texts"])
         for d in effect.get("add_dialogs") or []:
             if d not in self.dialogs:
                 self.dialogs.append(d)
@@ -135,4 +141,11 @@ def driver_for(template, variant):
             if variant == "fixed" else []
         return FixtureDriver(controls=[_btn("Save")], texts=["Welcome"],
                              on_click={"Save": {"responses": resp}})
+    if template == "value-assert":
+        fields = [{"name": "Side A", "role": "textbox"}, {"name": "Side B", "role": "textbox"}]
+        if variant == "missing":
+            return FixtureDriver(controls=fields, texts=["Area calculator"])
+        result = "Area: 12" if variant == "fixed" else "Area: 13"
+        return FixtureDriver(controls=fields + [_btn("Compute")], texts=["Area calculator"],
+                             on_click={"Compute": {"set_texts": ["Area calculator", result]}})
     raise ValueError("unknown template %r" % template)

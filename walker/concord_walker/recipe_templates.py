@@ -1,6 +1,6 @@
 """Recipe template library (IMM-14 / MST-W1-15).
 
-Six parameterized verification shapes, derived from the IMM-13 recipe schema
+Seven parameterized verification shapes, derived from the IMM-13 recipe schema
 (walker/recipes/SCHEMA.md): a template is NOT a recipe — it becomes one when a
 per-ticket instance binds its parameters (control names, endpoints, expected
 statuses) and the instance is registered through the IMM-13 registry with a
@@ -28,6 +28,8 @@ and selftest/fixture_app_imm14.py satisfies it without a browser):
 Templates only read and replay; the walker's own click policy and write
 labelling are the driver's business, unchanged.
 """
+import re
+
 from . import colors
 
 FIXED, STILL, HUMAN = "FIXED", "STILL_FAILING", "NEEDS_HUMAN"
@@ -221,6 +223,62 @@ def endpoint_hit(driver, control, method="POST", path="/api/lens/run",
                 "%s %s hit with %s after clicking %r" % (method, hit.get("path"), status, control), ev)
 
 
+# ------------------------------------------------------------ value assertion
+def value_assert(driver, control="Compute", inputs=None, expected=None, tolerance=0.0,
+                 result_pattern=None, declaration=None, action=None):
+    """Assert a VALUE, not a rendering (founder correction #8: surface is not
+    correctness). Where the action HAS a declaration — a cited reference plus
+    a validity range — the recipe runs a declared reference case (known
+    inputs -> expected value) and compares the rendered value against it.
+    The declaration's review_source decides what a pass means, and the
+    result says so everywhere: "independent" expected values make this a
+    correctness check; "self-referenced" ones are drift coverage only
+    (correction #9). Where NO declaration exists, the action is filed
+    UNDECLARED in the open — NEEDS_HUMAN with the gap named, so the corpus
+    itself maps where correctness is not yet checkable."""
+    if declaration is None:
+        return _res(HUMAN, "template:value-assert",
+                    "UNDECLARED: no declaration for this action — correctness is "
+                    "not checked; the gap is filed in the open",
+                    ["undeclared: action=%s" % (action or control)])
+    source = declaration.get("review_source")
+    label = ("correctness check (independent declaration: %s)"
+             % declaration.get("reference")) if source == "independent" else \
+            ("DRIFT COVERAGE ONLY (self-referenced declaration: %s) — not a correctness check"
+             % declaration.get("reference"))
+    if not hasattr(driver, "type_into"):
+        return _res(HUMAN, "template:value-assert", "driver cannot fill inputs")
+    for field, value in (inputs or {}).items():
+        if not driver.type_into(field, value):
+            return _res(HUMAN, "template:value-assert", "input field %r not found" % field)
+    if driver.click(control) is None:
+        return _res(HUMAN, "template:value-assert", "compute control %r not found" % control)
+    snap, _names = _controls(driver)
+    texts = snap.get("texts") or []
+    pat = result_pattern or r"(-?\d+(?:\.\d+)?)"
+    actual = None
+    for text in texts:
+        found = re.findall(pat, text)
+        if found:
+            try:
+                actual = float(found[-1])
+            except (TypeError, ValueError):
+                continue
+    if actual is None:
+        return _res(HUMAN, "template:value-assert",
+                    "no result value rendered after %r — the case did not run" % control)
+    if expected is None:
+        return _res(HUMAN, "template:value-assert",
+                    "declaration present but the instance binds no expected value")
+    ev = ["value: inputs=%s expected=%s actual=%s tolerance=%s (%s)"
+          % (inputs or {}, expected, actual, tolerance, label)]
+    if abs(actual - float(expected)) <= float(tolerance):
+        return _res(FIXED, "template:value-assert",
+                    "value %s == expected %s within %s — %s" % (actual, expected, tolerance, label), ev)
+    return _res(STILL, "template:value-assert",
+                "value %s != expected %s (tolerance %s) — %s" % (actual, expected, tolerance, label), ev)
+
+
 TEMPLATES = {
     "escape": {"fn": escape_closes, "params": ("opener", "surface"),
                "tier": 2, "discriminator": "fixture buggy variant: verdict STILL_FAILING — 'Escape did not close \'Menu dialog\'' (surface still present after Escape)",
@@ -240,6 +298,9 @@ TEMPLATES = {
     "endpoint-hit": {"fn": endpoint_hit, "params": ("control", "method", "path", "expect_status", "action"),
                "tier": 1, "discriminator": "fixture buggy variant: verdict STILL_FAILING — 'clicked \'Save\'; POST /api/lens/run was not hit'",
                      "proves": "a named control hits its expected endpoint with the expected status"},
+    "value-assert": {"fn": value_assert, "params": ("control", "inputs", "expected", "tolerance", "result_pattern", "declaration", "action"),
+               "tier": 1, "discriminator": "fixture buggy variant: verdict STILL_FAILING — 'value 13.0 != expected 12 (tolerance 0.001)' on the declared reference case",
+                     "proves": "a declared reference case renders its expected VALUE (correctness when the declaration is independent, drift coverage when self-referenced); no declaration files the action UNDECLARED"},
 }
 
 

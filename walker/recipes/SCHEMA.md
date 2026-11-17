@@ -33,10 +33,10 @@ a new one.
 
 ## Template instances (kind = "template", LC-06)
 
-A template instance binds one of the six IMM-14 templates
+A template instance binds one of the seven IMM-14 templates
 (`concord_walker/recipe_templates.py`) to a ticket: `template` names one of
 `escape` · `overflow-390` · `contrast` · `load-5xx` · `export-file` ·
-`endpoint-hit`, `params` is an object whose keys stay within the template's
+`endpoint-hit` · `value-assert`, `params` is an object whose keys stay within the template's
 declared parameter list, and `handler` must be omitted — instances dispatch
 through the Reverifier's generic template runner, never a code handler.
 Every other rule in this schema applies unchanged (authorship, reviewers,
@@ -50,6 +50,27 @@ Two fields carry the documentation standard's corpus rules (CB-0810):
 |---|---|
 | `tier` | priority tier — 1: discriminating + safety/money-adjacent/persistence (always runs) · 2: adversarial (within the per-lens cap) · 3: extended regression (rotates). Generated instances are tiered at birth from their template's tier; the reviewer may re-tier at acceptance. An **active** template instance must carry one. |
 | `discriminator` | the failure transcript from replaying this recipe against the pre-fix shape, stored in the file — not a screenshot. The reviewer records it at activation; an **active** template instance without one is refused. The template-level fixture transcripts live in `recipe_templates.py` (`TEMPLATES[name]["discriminator"]`). |
+
+### The value-assertion form (corrections #8 + #9)
+
+Surface is not correctness: a `value-assert` instance asserts a VALUE for a
+declared reference case — known inputs → the expected value inside the
+declaration's validity range — never merely that the screen rendered. Its
+`params` must carry the `declaration` key:
+
+- `declaration: null` — the action is filed **UNDECLARED** in the open: the
+  entry loads as a corpus record of the correctness gap and its replay
+  returns NEEDS_HUMAN naming the gap. (Baseline of record at f4f1f77ff:
+  146 compute actions undeclared, 2 declared.)
+- `declaration: {reference, validity_range, review_source}` — `reference`
+  cites the source the expected value comes from, `validity_range` is text
+  or `[lo, hi]`, and `review_source` is `"independent"` (the expected value
+  comes from outside the system — a pass is a **correctness check**) or
+  `"self-referenced"` (the expected value comes from the system itself — a
+  pass is **drift coverage only**, and the verdict says so in its notes and
+  evidence, everywhere it is reported).
+
+Value assertions are Tier 1 wherever a declaration exists.
 
 ## Refusals (each carries its reasons, printed on the load report)
 

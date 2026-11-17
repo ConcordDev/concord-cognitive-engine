@@ -122,7 +122,8 @@ SAMPLE_CSV = ("id,lens,severity,walker_class,today_bucket,human_category,title\n
               "zz-001,alpha,low,overflow390,x,y,t\n"
               "zz-002,beta,low,escape,x,y,t\n"
               "zz-003,gamma,low,chat,x,y,t\n"
-              "zz-004,delta,low,contrast,x,y,t\n")
+              "zz-004,delta,low,contrast,x,y,t\n"
+              "zz-005,epsilon,low,,x,computed_or_displayed_value,t\n")
 
 
 def c_generator_deterministic():
@@ -136,15 +137,47 @@ def c_generator_deterministic():
         snapshot = {n: open(os.path.join(out, n), encoding="utf-8").read()
                     for n in sorted(os.listdir(out))}
         second = G.generate(csv_path, out)
-        ok = first["written"] == 3 and second["written"] == 0 and second["unchanged"] == 3 \
-            and set(snapshot) == {"zz-001.json", "zz-002.json", "zz-004.json"} \
+        ok = first["written"] == 4 and second["written"] == 0 and second["unchanged"] == 4 \
+            and set(snapshot) == {"zz-001.json", "zz-002.json", "zz-004.json", "zz-005.json"} \
             and json.loads(snapshot["zz-001.json"])["status"] == "draft" \
             and json.loads(snapshot["zz-001.json"])["tier"] == 2 \
-            and json.loads(snapshot["zz-001.json"])["discriminator"] is None
+            and json.loads(snapshot["zz-001.json"])["discriminator"] is None \
+            and json.loads(snapshot["zz-005.json"])["template"] == "value-assert" \
+            and json.loads(snapshot["zz-005.json"])["params"]["declaration"] is None
         return ok, "first=%s second=%s files=%s" % (first, second, sorted(snapshot))
 
 
+def c_declaration_missing_key_refused():
+    raw = dict(BASE, id="LC06-T9", kind="template", template="value-assert",
+               params={"control": "Compute"}, tier=1, discriminator="pre-fix transcript")
+    _rec, reasons = R.validate_recipe(raw)
+    return any("must carry a declaration" in r for r in reasons), "reasons=%s" % reasons
+
+
+def c_declaration_bad_source_refused():
+    raw = dict(BASE, id="LC06-T10", kind="template", template="value-assert", tier=1,
+               discriminator="pre-fix transcript",
+               params={"declaration": {"reference": "x", "validity_range": "0..1",
+                                       "review_source": "ourselves"}})
+    _rec, reasons = R.validate_recipe(raw)
+    return any("review_source" in r for r in reasons), "reasons=%s" % reasons
+
+
+def c_undeclared_filing_loads():
+    with tempfile.TemporaryDirectory() as d:
+        _write(d, "x.json", dict(BASE, id="LC06-T11", kind="template", template="value-assert",
+                                 params={"declaration": None}, tier=1,
+                                 discriminator="pre-fix transcript: action renders, no declaration"))
+        registry, refusals, _ov = R.load_registry(d)
+        inst = R.template_instances(registry)
+        ok = inst.get("LC06-T11", {}).get("template") == "value-assert" and not refusals
+        return ok, "instances=%s refusals=%s" % (inst, refusals)
+
+
 case("valid template instance loads into template_instances", c_valid_template_loads)
+case("value-assert without the declaration key refused", c_declaration_missing_key_refused)
+case("declaration with a bad review_source refused", c_declaration_bad_source_refused)
+case("UNDECLARED filing (declaration null) loads as a corpus entry", c_undeclared_filing_loads)
 case("active instance without a discriminator refused (CB-0810)", c_active_without_discriminator_refused)
 case("active instance without a tier refused (CB-0810)", c_active_without_tier_refused)
 case("tier outside 1..3 refused", c_bad_tier_refused)
