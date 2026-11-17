@@ -128,6 +128,34 @@ export function citationDomainsFor(family) {
   return SOLVER_CITATION_DOMAINS[String(family).toLowerCase()] || [];
 }
 
+/**
+ * Column-aware SQL fragments for the `dtus` table. Production's `dtus` has NO `scope` column (scope lives in
+ * the `data` JSON blob, same derivation as domains/dtus.js: data.scope -> data.meta.scope -> visibility), so the
+ * lookup derives it instead of selecting a column that is not there. A DB that does have a `scope` column
+ * (tests, older/newer schemas) uses it directly. Never throws: unknown shape falls back to safe defaults.
+ */
+function dtuColumnExprs(db) {
+  let cols;
+  try { cols = new Set(db.prepare("PRAGMA table_info(dtus)").all().map((c) => c.name)); } catch { cols = new Set(); }
+  const jsonOf = cols.has("data") ? "data" : cols.has("meta_json") ? "meta_json" : null;
+  const j = (path) => (jsonOf ? `(CASE WHEN json_valid(${jsonOf}) THEN json_extract(${jsonOf}, '${path}') END)` : "NULL");
+  const visScope = cols.has("visibility")
+    ? "(CASE LOWER(COALESCE(visibility, '')) WHEN 'public' THEN 'public' WHEN 'marketplace' THEN 'public' ELSE NULL END)"
+    : "NULL";
+  const scope = cols.has("scope")
+    ? "COALESCE(scope, 'personal')"
+    : `LOWER(COALESCE(${j("$.scope")}, ${j("$.meta.scope")}, ${visScope}, 'personal'))`;
+  const content = cols.has("content") ? "content" : `COALESCE(${j("$.content")}, ${j("$.human.summary")}, ${j("$.summary")}, '')`;
+  const creator = cols.has("creator_id") ? "creator_id" : cols.has("owner_user_id") ? "owner_user_id" : "NULL";
+  return {
+    scope, content, creator,
+    provider: cols.has("minted_by_provider") ? "minted_by_provider" : "NULL",
+    model: cols.has("minted_by_model") ? "minted_by_model" : "NULL",
+    lens: cols.has("lens_id") ? "LOWER(COALESCE(lens_id, 'unknown'))" : "'unknown'",
+    created: cols.has("created_at") ? "created_at" : "id",
+  };
+}
+
 export function gatherSourcesForQuery(db, opts = {}) {
   if (!db || !opts.query) return [];
   const q = String(opts.query).toLowerCase().slice(0, 200);
@@ -143,53 +171,51 @@ export function gatherSourcesForQuery(db, opts = {}) {
   ));
   if (terms.length === 0) return [];
 
+  const domains = Array.isArray(opts.domains) ? opts.domains : null;
+  if (domains && domains.length === 0) return [];
+  const x = dtuColumnExprs(db);
+
   // Build a CASE that scores rows by how many terms appear in title+content.
   // The same per-term clauses also gate the WHERE via OR-across-terms so we
   // never need a full table scan: at least one term must match for a row to
   // be considered, but no single term has to be "the first" one.
   const scoreCases = terms.map(() =>
-    `(CASE WHEN LOWER(title) LIKE ? OR LOWER(COALESCE(content, '')) LIKE ? THEN 1 ELSE 0 END)`
+    `(CASE WHEN LOWER(title) LIKE ? OR LOWER(${x.content}) LIKE ? THEN 1 ELSE 0 END)`
   ).join(" + ");
   const matchClauses = terms.map(() =>
-    `LOWER(title) LIKE ? OR LOWER(COALESCE(content, '')) LIKE ?`
+    `LOWER(title) LIKE ? OR LOWER(${x.content}) LIKE ?`
   ).join(" OR ");
   const scoreArgs = terms.flatMap(t => [`%${t}%`, `%${t}%`]);
   const matchArgs = terms.flatMap(t => [`%${t}%`, `%${t}%`]);
 
-  const domains = Array.isArray(opts.domains) ? opts.domains : null;
-  if (domains && domains.length === 0) return [];
-  const domainSel = domains ? ", LOWER(COALESCE(lens_id, 'unknown')) AS lens_id" : "";
-  const domainWhere = domains ? ` AND LOWER(COALESCE(lens_id, 'unknown')) IN (${domains.map(() => "?").join(",")})` : "";
+  const domainSel = domains ? `, ${x.lens} AS lens_id` : "";
+  const domainWhere = domains ? ` AND ${x.lens} IN (${domains.map(() => "?").join(",")})` : "";
   const domainArgs = domains ? domains.map((d) => String(d).toLowerCase()) : [];
+  const select = `SELECT id, title,
+             SUBSTR(COALESCE(${x.content}, ''), 1, 240) AS snippet,
+             ${x.provider} AS minted_by_provider, ${x.model} AS minted_by_model,
+             ${x.creator} AS creator_id, ${x.scope} AS scope${domainSel},
+             ${scoreCases} AS score
+      FROM dtus`;
   let sql, args;
   if (userId && opts.includeUserPrivate !== false) {
     sql = `
-      SELECT id, title,
-             SUBSTR(COALESCE(content, ''), 1, 240) AS snippet,
-             minted_by_provider, minted_by_model,
-             creator_id, COALESCE(scope, 'personal') AS scope${domainSel},
-             ${scoreCases} AS score
-      FROM dtus
+      ${select}
       WHERE (
-        (COALESCE(scope, 'personal') IN ('public', 'published', 'global'))
-        OR creator_id = ?
+        (${x.scope} IN ('public', 'published', 'global'))
+        OR ${x.creator} = ?
       )
       AND (${matchClauses})${domainWhere}
-      ORDER BY score DESC, created_at DESC
+      ORDER BY score DESC, ${x.created} DESC
       LIMIT ?
     `;
     args = [...scoreArgs, userId, ...matchArgs, ...domainArgs, limit];
   } else {
     sql = `
-      SELECT id, title,
-             SUBSTR(COALESCE(content, ''), 1, 240) AS snippet,
-             minted_by_provider, minted_by_model,
-             creator_id, COALESCE(scope, 'personal') AS scope${domainSel},
-             ${scoreCases} AS score
-      FROM dtus
-      WHERE COALESCE(scope, 'personal') IN ('public', 'published', 'global')
+      ${select}
+      WHERE ${x.scope} IN ('public', 'published', 'global')
       AND (${matchClauses})${domainWhere}
-      ORDER BY score DESC, created_at DESC
+      ORDER BY score DESC, ${x.created} DESC
       LIMIT ?
     `;
     args = [...scoreArgs, ...matchArgs, ...domainArgs, limit];

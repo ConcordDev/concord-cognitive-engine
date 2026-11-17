@@ -216,6 +216,33 @@ describe("citations: domain-matched for solver answers, creative/music unchanged
     assert.equal(gatherSourcesForQuery(bare, { query: "song beam", limit: 5 }).length, 1);
   });
 
+  // Production shape: `dtus` has NO scope column. Scope lives in the data blob (and the visibility column).
+  function setupProdShape() {
+    const db = new Database(":memory:");
+    db.exec("CREATE TABLE dtus (id TEXT PRIMARY KEY, title TEXT, content TEXT, creator_id TEXT, data TEXT, visibility TEXT DEFAULT 'private', lens_id TEXT, minted_by_provider TEXT, minted_by_model TEXT, created_at INTEGER NOT NULL DEFAULT (unixepoch()))");
+    const ins = db.prepare("INSERT INTO dtus (id, title, content, creator_id, data, visibility, lens_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
+    ins.run("m1", "Beam deflection of simply supported beams", "Euler-Bernoulli beam deflection under a distributed load", "c1", JSON.stringify({ scope: "public" }), "private", "mechanics");
+    ins.run("m2", "Moment of inertia of an I-section", "beam second moment of area deflection", "c2", "{}", "public", "engineering");
+    ins.run("m3", "Private beam notes", "beam deflection personal notes", "c9", JSON.stringify({ scope: "personal" }), "private", "mechanics");
+    ins.run("u1", "Beam of light: a pop song about deflection", "song lyrics about a beam and deflection of hearts", "c3", JSON.stringify({ meta: { scope: "public" } }), "private", "music");
+    ins.run("u2", "The beam story", "creative writing: a beam deflection metaphor", "c4", "not json {", "marketplace", "creative");
+    return db;
+  }
+
+  it("no scope column (prod schema): sources are non-empty, filtered AND unfiltered; personal rows stay out", () => {
+    const db = setupProdShape();
+    const all = gatherSourcesForQuery(db, { query: Q, userId: null, limit: 10 });
+    assert.deepEqual(all.map((r) => r.id).sort(), ["m1", "m2", "u1", "u2"], "creative/music unfiltered, personal excluded");
+    assert.ok(all.every((r) => r.scope === "public"));
+    const eng = gatherSourcesForQuery(db, { query: Q, userId: null, limit: 10, domains: citationDomainsFor("engineering") });
+    assert.deepEqual(eng.map((r) => r.id).sort(), ["m1", "m2"], "math/science/engineering filter still applies");
+    assert.deepEqual(gatherSourcesForQuery(db, { query: Q, limit: 10, domains: citationDomainsFor("math") }), []);
+    // the caller's own personal DTU is visible to them only
+    const own = gatherSourcesForQuery(db, { query: Q, userId: "c9", limit: 10 });
+    assert.ok(own.some((r) => r.id === "m3" && r.scope === "personal"));
+    assert.ok(!gatherSourcesForQuery(db, { query: Q, userId: "c1", limit: 10 }).some((r) => r.id === "m3"));
+  });
+
   it("an unknown family, or a family nothing matches, cites nothing", () => {
     const db = setup();
     assert.deepEqual(citationDomainsFor("astrology"), []);
