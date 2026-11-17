@@ -256,5 +256,31 @@
   "rewritten": 19,
   "steps_by_hand": 19,
   "tickets": 50
+ },
+ "019": {
+  "clauses_by_hand": 13,
+  "committed_sha": null,
+  "human_by_reason": {},
+  "human_only": 0,
+  "needs_human_clause": 42,
+  "needs_human_step": 32,
+  "original_sufficient": 30,
+  "rewritten": 20,
+  "steps_by_hand": 33,
+  "tickets": 50
+ },
+ "020": {
+  "clauses_by_hand": 7,
+  "committed_sha": null,
+  "human_by_reason": {
+   "lighthouse": 1
+  },
+  "human_only": 1,
+  "needs_human_clause": 42,
+  "needs_human_step": 25,
+  "original_sufficient": 38,
+  "rewritten": 11,
+  "steps_by_hand": 13,
+  "tickets": 50
  }
 }
