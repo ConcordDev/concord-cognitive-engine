@@ -4,6 +4,10 @@
 Concord's macros behave — grounded in the REAL `runMacro` path, not mocks. It plugs into the existing
 immune system (detectors, lens-wiring, schema-drift, param-schema) as a new ratcheted gate.
 
+**Doctrine note (IMM-01, 2026-11-17).** The invariant engine is a detection surface under
+`docs/IMMUNE_SYSTEM.md`. It proves contracts and reports violations; it never triggers a repair
+application, and a violation becomes a change only through the human-gated pipeline the doctrine names.
+
 ## Why
 With ~2,599 registered macros (and ~9,600 macro/lens-action pairs once dynamic + LENS_ACTIONS are
 counted), you can't hand-write a test per tool. Instead the engine **auto-derives a contract per macro**

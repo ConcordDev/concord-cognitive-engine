@@ -2,7 +2,9 @@
 
 This is how Concord prevents technical debt from re-accumulating.
 
-The detector substrate (Phase 0–9 of the May 2026 cleanup) shipped a baseline + diff loop, repair-cortex auto-fix routing, Reflex Cortex governance, and cartograph reasoning. It has since grown to **27 detectors** (run `npm run detectors:report` for the current roster). Phase 10 — *Permanence* — is the cognitive immune system that keeps it that way.
+The detector substrate (Phase 0–9 of the May 2026 cleanup) shipped a baseline + diff loop, repair-cortex proposal routing, Reflex Cortex governance, and cartograph reasoning. It has since grown to **27 detectors** (run `npm run detectors:report` for the current roster). Phase 10 — *Permanence* — is the cognitive immune system that keeps it that way.
+
+The repair layer operates under `docs/IMMUNE_SYSTEM.md`: it detects, diagnoses, and proposes — it does not apply fixes on its own authority. Earlier auto-fix language in this doc is superseded wherever it conflicts with that doctrine.
 
 ## The cycle
 
@@ -12,7 +14,7 @@ The detector substrate (Phase 0–9 of the May 2026 cleanup) shipped a baseline 
        ▼
   Baseline + history         (audit/detectors/{BASELINE,history.jsonl,BUDGET}.json)
        │
-       ├──→ Repair Cortex     (auto-fix safe patterns, council-route risky ones)
+       ├──→ Repair Cortex     (propose fixes for every pattern; the human gate decides)
        ├──→ Reflex Cortex     (4 governance handlers run on heartbeat)
        └──→ Concordia / HUD   (goddess prompt, world-health badge, EmergentEventFeed)
        │
@@ -61,7 +63,9 @@ The commit message convention `ack:` makes baseline updates easy to grep when re
 
 ## Registering a new repair-cortex fix
 
-Auto-fixes live under `server/lib/autofix/<name>.js` and register through `server/lib/autofix/index.js#registerFix`.
+> **Doctrine (`docs/IMMUNE_SYSTEM.md`):** a registered fix is a proposal, not an applicator. No fix applies itself at any risk tier; the tier sets the review depth a proposal needs, and a proposal becomes a change only through the human-gated pipeline.
+
+Fix proposals live under `server/lib/autofix/<name>.js` and register through `server/lib/autofix/index.js#registerFix`.
 
 Each fix has:
 
@@ -69,7 +73,7 @@ Each fix has:
 {
   id: "kebab-case-id",
   label: "Human description",
-  riskTier: "low" | "medium" | "high",  // only "low" runs in continuous loop
+  riskTier: "low" | "medium" | "high",  // sets review depth; no tier applies itself
   matchFinding(f),    // → boolean — does this fix apply to this finding?
   isApplicable(filePath, content, finding),  // → boolean — final guard
   apply(content, finding),  // → newContent | null (null means no change)
@@ -79,7 +83,7 @@ Each fix has:
 
 Hard refusals (paths under `server.js`, `migrations/`, `tests/`, `economy/`, `royalty`, `sovereign`, `refusal-field`, `invariant`) are enforced in `safeApply()` regardless of the fix's logic — third-rail paths can never be auto-rewritten.
 
-`riskTier: "high"` fixes never auto-apply; they always escalate to council via `auto-proposal.js`.
+No fix auto-applies at any tier. `riskTier: "high"` proposals always escalate to council via `auto-proposal.js`; every other tier escalates to the human gate `docs/IMMUNE_SYSTEM.md` names.
 
 ## How the budget is tracked
 
@@ -110,7 +114,7 @@ Bypass: `git commit --no-verify` or `git push --no-verify`. Bypass usage is inte
 
 ## Reflex Cortex's role
 
-`server/emergent/reflex-cortex.js` runs four governance heartbeats (architectural-drift, scaling-pressure, dependency-entropy, unsafe-expansion). When a critical finding lands, Reflex auto-posts a council proposal AND dispatches the matching repair-cortex task. Sovereign retains override at any point.
+`server/emergent/reflex-cortex.js` runs four governance heartbeats (architectural-drift, scaling-pressure, dependency-entropy, unsafe-expansion). When a critical finding lands, Reflex auto-posts a council proposal and queues a repair-cortex diagnosis. Under `docs/IMMUNE_SYSTEM.md` it never dispatches repair execution (enforcement: IMM-08). Sovereign retains override at any point.
 
 `CONCORD_REFLEX_GOVERNANCE=0` disables it (kill-switch only — default is ON).
 

@@ -49,3 +49,18 @@ Emergent-layer jobs (dream cycle, detectors' narrative passes) ride the
 contend with the user-facing conscious/ConKay slots. Anything emergent
 that needs deep reasoning escalates through the repair/conscious routes
 explicitly rather than borrowing a bigger slot by default.
+
+---
+
+## Superseded note — the repair brain proposes, it does not apply (IMM-01, 2026-11-17)
+
+The role → model map above stands, including the repair role
+(gpt-oss:120b-cloud, BR-01). What is superseded is any reading — in this
+doc's earlier form or anywhere else — of the repair brain as a component
+that applies fixes, hot-patches source, or writes on its own authority.
+Under `docs/IMMUNE_SYSTEM.md` the repair brain is a proposer: its output
+is a structured proposal in the remediation queue, and a proposal becomes
+a change only through the human-gated pipeline. The flag-gated apply path
+shipped with BR-01 is being retired under IMM-02 of the v1 work order;
+CONCORD_REPAIR_HOTPATCH stays unset. Nothing in this note changes model
+routing.
