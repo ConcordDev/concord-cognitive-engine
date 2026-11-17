@@ -233,3 +233,20 @@ describe("citations: domain-matched for solver answers, creative/music unchanged
     assert.match(r.answer, /do not address this question/);
   });
 });
+
+describe("design-intent layer (nlp-design-intent): a distributed load is never read as a point load", () => {
+  it("'10 kN/m' / UDL stops with a reason; point loads and bare forces behave as before; mixed is ambiguous", async () => {
+    const { parseDesignIntent } = await import("../lib/conkay/nlp-design-intent.js").then((m) => ({ parseDesignIntent: m.parseDesignIntent || m.parseIntent || Object.values(m).find((f) => typeof f === "function" && /^parse/i.test(f.name)) }));
+    assert.equal(typeof parseDesignIntent, "function");
+    const udl = parseDesignIntent("a 4 m simply supported steel beam carrying 10 kN/m");
+    assert.equal(udl.ok, false);
+    assert.equal(udl.code, "distributed_load_unsupported");
+    assert.match(udl.error, /not a point load/);
+    assert.equal(parseDesignIntent("a 4 m steel beam with a uniformly distributed load of 10 kN").code, "distributed_load_unsupported");
+    assert.equal(parseDesignIntent("a 4 m simply supported beam, 20 kN point load at midspan and 10 kN/m").code, "ambiguous_load");
+    const point = parseDesignIntent("a 4 m simply supported steel beam with a 20 kN point load at midspan");
+    assert.equal(point.ok, true);
+    assert.equal(point.intent.loads[0].forceN, -20000);
+    assert.equal(parseDesignIntent("a 4 m simply supported steel beam carrying 20 kN").ok, true, "a bare force keeps its documented point-load default, disclosed as before");
+  });
+});
