@@ -12,6 +12,7 @@ from .matching import fuzzy_match, match_any
 from . import colors
 from .coverage import cap_verdict
 from . import repro as _repro
+from . import rewrites as _rewrites
 from .ledger import VERIFIED as _VERIFIED
 
 try:
@@ -202,11 +203,27 @@ class Reverifier:
             except Exception:
                 pass  # a page/context the browser already closed: nothing left to close
 
+    def _rewrite_index(self):
+        if getattr(self, "_rw_index", None) is None:
+            self._rw_index = _rewrites.load_dir(getattr(self, "rewrites_dir", None))
+        return self._rw_index
+
+    def _rewrite_labels(self):
+        return getattr(self, "rewrite_labels", None)
+
     def _apply_repro_steps(self, t, res):
         """Run the ticket's own repro_steps when nothing stronger decided it.
         A hand-written recipe's verdict is final; a STILL_FAILING from any path stands."""
         if res.get("coverage_basis") == "recipe" or res["verdict"] == STILL:
             return res
+        # ULW rewrite pass: a structured rewrite BESIDE the verbatim text is used only when rewrites.agree() holds;
+        # human_only / disagreeing records are NEEDS_HUMAN and never fall back to anything looser.
+        t_run, rwinfo = _rewrites.prepare(t, self._rewrite_index(), self._rewrite_labels())
+        if t_run is None:
+            res["rewrite"] = rwinfo
+            res["notes"] = ("repro-steps: " + _rewrites.human_note(rwinfo) + ("; keyword check: " + res["notes"] if res.get("notes") else ""))[:600]
+            return res
+        t = t_run
         try:
             try:
                 rr = self.repro_runner(t)
@@ -222,6 +239,8 @@ class Reverifier:
             raise
         except Exception as e:
             rr = {"verdict": HUMAN, "steps": None, "evidence": [], "notes": "repro_steps replay errored: %s: %s" % (type(e).__name__, str(e)[:120])}
+        if rwinfo.get("source") == "rewrite":
+            res["rewrite"] = rwinfo
         if rr.get("steps") is not None:
             res["steps"] = rr["steps"]
         if rr.get("expected") is not None:

@@ -20,7 +20,7 @@ import argparse, json, os, random, re, sys
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, HERE)
-from concord_walker import repro
+from concord_walker import repro, rewrites as _rw
 from concord_walker.fold import extract_from_git
 
 _EMPTY = {"controls": [], "texts": [], "dialogs": [], "errors": 0}
@@ -76,12 +76,28 @@ def expected_all_checkable(ticket):
     return bool(clauses) and un == 0, len(clauses), un
 
 
-def measure(tickets, with_reasons=False):
+def measure(tickets, with_reasons=False, rewrites=None, labels=None):
     steps = mapped = full = eligible = 0
     blocked_expected = blocked_steps = blocked_both = 0
     clauses = clauses_unchecked = 0
     unmapped, by_class = {}, {}
+    rw_used = rw_rejected = orig_suff = 0
+    rejected_by, human_by, eligible_rw, eligible_orig = {}, {}, 0, 0
     for t in tickets:
+        used_rw = False
+        if rewrites:
+            t2, info = _rw.prepare(t, rewrites, labels)
+            if info["source"] == "rewrite":
+                t, used_rw = t2, True
+                rw_used += 1
+            elif info["source"] == "original_sufficient":
+                orig_suff += 1
+            elif info["source"] == "rewrite_disagrees":
+                rw_rejected += 1
+                rejected_by[info["reason"]] = rejected_by.get(info["reason"], 0) + 1
+            elif info["source"] == "human_only":
+                human_by[info["reason"]] = human_by.get(info["reason"], 0) + 1
+                t = dict(t, _human_only=True)   # never replayed from a rewrite: NEEDS_HUMAN, never eligible
         raws = repro.split_steps(t)
         ok = [step_mapped(r, t.get("lens")) for r in raws]
         steps += len(ok)
@@ -92,8 +108,14 @@ def measure(tickets, with_reasons=False):
         clauses_unchecked += nu
         if all_ok:
             full += 1
+        if t.get("_human_only"):
+            all_ok = exp_ok = False      # NEEDS_HUMAN: a human_only ticket is never eligible
         if all_ok and exp_ok:
             eligible += 1
+            if used_rw:
+                eligible_rw += 1
+            else:
+                eligible_orig += 1
         elif all_ok:
             blocked_expected += 1
         elif exp_ok:
@@ -114,6 +136,8 @@ def measure(tickets, with_reasons=False):
             "blocked_by": {"expected_unchecked_only": blocked_expected, "steps_unmapped_only": blocked_steps, "both": blocked_both},
             "clauses": clauses, "clauses_unchecked": clauses_unchecked,
             "all_mapped_but_expected_unchecked": blocked_expected,  # legacy key (kept for older callers)
+            "rewrites": {"rewrite_backed": rw_used, "original_only": n - rw_used, "original_sufficient": orig_suff, "rejected_by_agree": rw_rejected, "rejected_by_reason": rejected_by,
+                         "human_only_by_reason": human_by, "eligible_rewrite_backed": eligible_rw, "eligible_original_only": eligible_orig} if rewrites else None,
             "unmapped_by_class": dict(sorted(by_class.items(), key=lambda kv: -kv[1])),
             "unmapped_examples": unmapped}
 
@@ -125,6 +149,7 @@ def main():
     ap.add_argument("--n", type=int, default=200)
     ap.add_argument("--all", action="store_true", help="measure every ticket with repro_steps instead of a sample")
     ap.add_argument("--seed", type=int, default=20261116)
+    ap.add_argument("--rewrites", default=None, help="directory of batch-*.jsonl rewrites (default off: measures the original text only)")
     ap.add_argument("--show-unmapped", type=int, default=0)
     a = ap.parse_args()
     fold = extract_from_git(a.repo, a.sha)
@@ -134,7 +159,8 @@ def main():
         a.seed, a.sha, len(pool), len(sample), "all" if a.all else "sample",
         "expand_step" if hasattr(repro, "expand_step") else "map_step",
         "classify_expected" if hasattr(repro, "classify_expected") else "legacy"))
-    r = measure(sample, with_reasons=bool(a.show_unmapped))
+    rwi = _rw.load_dir(a.rewrites) if a.rewrites else None
+    r = measure(sample, with_reasons=bool(a.show_unmapped), rewrites=rwi)
     ex = r.pop("unmapped_examples")
     print(json.dumps(r, indent=1))
     for raw, tid in list(ex.items())[:a.show_unmapped]:
