@@ -112,6 +112,21 @@ def validate_recipe(raw, today=None, expect_sha=None):
                 if extra:
                     reasons.append("params %s are not %s template parameters (%s)"
                                    % (extra, tname, ", ".join(spec["params"])))
+        # CB-0810 (documentation standard, amendment #2): an ACTIVE template
+        # instance carries its priority tier and its discriminator — the
+        # failure transcript from replaying the recipe against the pre-fix
+        # shape, recorded in the file by the reviewer at acceptance. Drafts
+        # are refused anyway; this binds the flip to active.
+        if raw.get("status", "active") == "active":
+            tier = raw.get("tier")
+            if tier is not None and tier not in (1, 2, 3):
+                reasons.append("tier must be 1, 2 or 3")
+            if tier is None:
+                reasons.append("active template instance requires a tier (CB-0810)")
+            disc = raw.get("discriminator")
+            if not isinstance(disc, str) or not disc.strip():
+                reasons.append("active template instance requires a discriminator — "
+                               "the pre-fix failure transcript recorded in the file (CB-0810)")
     author = raw.get("author")
     if not isinstance(author, str) or not author:
         reasons.append("author is required")

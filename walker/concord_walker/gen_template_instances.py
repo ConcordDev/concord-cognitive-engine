@@ -19,6 +19,8 @@ import json
 import os
 import sys
 
+from . import recipe_templates as _templates
+
 CLASS_TO_TEMPLATE = {
     "escape": "escape",
     "export": "export-file",
@@ -61,7 +63,14 @@ def instance_for(row):
         "kind": "template",
         "template": template,
         "params": {},
-        "covers": COVERS[template].format(lens=row.get("lens") or "?"),
+        # CB-0810: tiered at birth from the template's tier; the per-ticket
+        # discriminator (pre-fix failure transcript) is recorded by the
+        # reviewer at activation — an active instance without one is refused.
+        "tier": _templates.TEMPLATES[template]["tier"],
+        "discriminator": None,
+        "covers": COVERS[template].format(lens=row.get("lens") or "?")
+                  + " At activation, record the pre-fix replay failure transcript "
+                    "in the discriminator field (CB-0810).",
         "author": AUTHOR,
         "reviewer": REVIEWER,
         "status": "draft",

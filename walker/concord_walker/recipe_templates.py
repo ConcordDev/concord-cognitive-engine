@@ -223,16 +223,22 @@ def endpoint_hit(driver, control, method="POST", path="/api/lens/run",
 
 TEMPLATES = {
     "escape": {"fn": escape_closes, "params": ("opener", "surface"),
+               "tier": 2, "discriminator": "fixture buggy variant: verdict STILL_FAILING — 'Escape did not close \'Menu dialog\'' (surface still present after Escape)",
                "proves": "a menu/dialog opened on the surface closes on Escape"},
     "overflow-390": {"fn": no_overflow_390, "params": ("width",),
+               "tier": 2, "discriminator": "fixture buggy variant: verdict STILL_FAILING — 'horizontal overflow at 390px: scrollW 720, 1 text-overflow node(s)'",
                      "proves": "no horizontal overflow at a 390px viewport"},
     "contrast": {"fn": contrast_ok, "params": ("min_ratio",),
+               "tier": 2, "discriminator": "fixture buggy variant: verdict STILL_FAILING — 'contrast 2.81 < 4.50 on \'Faint hint\''",
                  "proves": "all visible text meets the contrast floor"},
     "load-5xx": {"fn": loads_clean, "params": ("target",),
+               "tier": 1, "discriminator": "fixture buggy variant: verdict STILL_FAILING — '1 5xx response(s) on load; first POST /api/lens/run -> 503'",
                  "proves": "the surface loads with no 5xx and renders"},
     "export-file": {"fn": export_produces_file, "params": ("control", "path_hint", "expect_status"),
+               "tier": 1, "discriminator": "fixture buggy variant: verdict STILL_FAILING — 'export response GET /api/lens/export -> 500'",
                     "proves": "the export control produces the export file response"},
     "endpoint-hit": {"fn": endpoint_hit, "params": ("control", "method", "path", "expect_status", "action"),
+               "tier": 1, "discriminator": "fixture buggy variant: verdict STILL_FAILING — 'clicked \'Save\'; POST /api/lens/run was not hit'",
                      "proves": "a named control hits its expected endpoint with the expected status"},
 }
 

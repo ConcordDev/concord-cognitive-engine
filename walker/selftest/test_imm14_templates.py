@@ -84,7 +84,14 @@ def c_contrast_threshold_param():
     return res["verdict"] == T.FIXED, "min_ratio=2.0 -> %s (%s)" % (res["verdict"], res["notes"][:60])
 
 
+def c_templates_carry_tier_and_discriminator():
+    ok = all(spec.get("tier") in (1, 2, 3) and (spec.get("discriminator") or "").strip()
+             for spec in T.TEMPLATES.values())
+    return ok, "tiers=%s" % {k: v.get("tier") for k, v in T.TEMPLATES.items()}
+
+
 case("registry holds the six templates", c_registry)
+case("every template carries a tier + fixture discriminator (CB-0810)", c_templates_carry_tier_and_discriminator)
 case("make_instance binds params into a recipe callable", c_instance_binds)
 case("escape works on an already-open surface", c_escape_no_opener_needed)
 case("contrast honors the min_ratio parameter", c_contrast_threshold_param)

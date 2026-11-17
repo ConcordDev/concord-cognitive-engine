@@ -44,6 +44,13 @@ staleness, status). The LC-06 generator emits instances as **drafts** from
 the LC-05 census (`audit/reverify/RECIPE-GAPS.md`); a draft verifies
 nothing until a reviewer of record flips it to `active`.
 
+Two fields carry the documentation standard's corpus rules (CB-0810):
+
+| field | meaning |
+|---|---|
+| `tier` | priority tier — 1: discriminating + safety/money-adjacent/persistence (always runs) · 2: adversarial (within the per-lens cap) · 3: extended regression (rotates). Generated instances are tiered at birth from their template's tier; the reviewer may re-tier at acceptance. An **active** template instance must carry one. |
+| `discriminator` | the failure transcript from replaying this recipe against the pre-fix shape, stored in the file — not a screenshot. The reviewer records it at activation; an **active** template instance without one is refused. The template-level fixture transcripts live in `recipe_templates.py` (`TEMPLATES[name]["discriminator"]`). |
+
 ## Refusals (each carries its reasons, printed on the load report)
 
 - malformed file, missing/invalid fields, unknown `kind` or `status`

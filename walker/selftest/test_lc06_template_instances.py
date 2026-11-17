@@ -53,11 +53,32 @@ BASE = {"author": "muse-b2", "reviewer": "dutch", "status": "active",
 def c_valid_template_loads():
     with tempfile.TemporaryDirectory() as d:
         _write(d, "x.json", dict(BASE, id="LC06-T1", kind="template",
-                                 template="overflow-390", params={}))
+                                 template="overflow-390", params={},
+                                 tier=2, discriminator="pre-fix replay: STILL_FAILING — scrollW 720 at 390px"))
         registry, refusals, _ov = R.load_registry(d)
         inst = R.template_instances(registry)
         ok = inst.get("LC06-T1", {}).get("template") == "overflow-390" and not refusals
         return ok, "instances=%s refusals=%s" % (inst, refusals)
+
+
+def c_active_without_discriminator_refused():
+    raw = dict(BASE, id="LC06-T6", kind="template", template="escape", params={}, tier=2)
+    _rec, reasons = R.validate_recipe(raw)
+    return any("discriminator" in r for r in reasons), "reasons=%s" % reasons
+
+
+def c_active_without_tier_refused():
+    raw = dict(BASE, id="LC06-T7", kind="template", template="escape", params={},
+               discriminator="pre-fix replay: STILL_FAILING")
+    _rec, reasons = R.validate_recipe(raw)
+    return any("tier" in r for r in reasons), "reasons=%s" % reasons
+
+
+def c_bad_tier_refused():
+    raw = dict(BASE, id="LC06-T8", kind="template", template="escape", params={},
+               tier=5, discriminator="pre-fix replay: STILL_FAILING")
+    _rec, reasons = R.validate_recipe(raw)
+    return any("tier must be 1, 2 or 3" in r for r in reasons), "reasons=%s" % reasons
 
 
 def c_unknown_template_refused():
@@ -117,11 +138,16 @@ def c_generator_deterministic():
         second = G.generate(csv_path, out)
         ok = first["written"] == 3 and second["written"] == 0 and second["unchanged"] == 3 \
             and set(snapshot) == {"zz-001.json", "zz-002.json", "zz-004.json"} \
-            and json.loads(snapshot["zz-001.json"])["status"] == "draft"
+            and json.loads(snapshot["zz-001.json"])["status"] == "draft" \
+            and json.loads(snapshot["zz-001.json"])["tier"] == 2 \
+            and json.loads(snapshot["zz-001.json"])["discriminator"] is None
         return ok, "first=%s second=%s files=%s" % (first, second, sorted(snapshot))
 
 
 case("valid template instance loads into template_instances", c_valid_template_loads)
+case("active instance without a discriminator refused (CB-0810)", c_active_without_discriminator_refused)
+case("active instance without a tier refused (CB-0810)", c_active_without_tier_refused)
+case("tier outside 1..3 refused", c_bad_tier_refused)
 case("unknown template name refused", c_unknown_template_refused)
 case("params outside the template's list refused", c_params_outside_list_refused)
 case("handler on a template entry refused", c_handler_on_template_refused)
