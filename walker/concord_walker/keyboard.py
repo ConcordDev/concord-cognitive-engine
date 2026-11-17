@@ -123,6 +123,7 @@ def map_part(seg, raw, prev=None, platform=None):
     s = re.sub(r"(?i)^(?:then|and|also|try|now)\s+", "", seg.strip()).strip().rstrip(".,;")
     if not s:
         return NOT_MINE
+    s = re.sub(r"(?i)\s+(?:on|in|within)\s+the\s+(?:lens|page|app|editor|canvas)$", "", s) if re.search(r"(?i)\b(?:ctrl|cmd|alt|shift|meta|mod)\s*\+", s) else s
     # --- Tab x N / Shift+Tab x N with focus-order assertion
     m = _TABN.match(s)
     if m:

@@ -23,7 +23,7 @@ def migrate(fold, rewrites_dir):
             rec = json.loads(line)
             t = fold.base.get(rec.get("ticket_id"))
             before = len(changed)
-            if t is not None and rec.get("status") == "rewritten":
+            if t is not None and rec.get("status") in ("rewritten", "original_sufficient"):
                 clauses = R._X.split_clauses(t.get("expected")) if hasattr(R, "_X") else []
                 for c in rec.get("expected") or []:
                     if c.get("kind") != "needs_human":
@@ -36,7 +36,7 @@ def migrate(fold, rewrites_dir):
                         c["migrated_from"] = "needs_human: " + (old or "")[:120]
                         changed.append(rec["ticket_id"])
                 raws = R._R.split_steps(t)
-                for s in rec["steps"]:
+                for s in rec.get("steps") or []:
                     if s["op"] != "needs_human_step":
                         continue
                     text, _ = R.compile_step(dict(s, op="keep"), raws)

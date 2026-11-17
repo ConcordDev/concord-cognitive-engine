@@ -57,6 +57,7 @@ _RULES = [
     ("needs_post_capture_rewrite", "fragment", r"^[^\"'‘“]*[\"'‘“][^\"'’”]*$|^[^()]*\([^)]*$|^[^()]*\)[^(]*$|^[\s'\"‘’“”,.;:)(\-]|[,(]\s*$", "text cut mid-quote/paren or mid-phrase"),
     ("needs_post_capture_rewrite", "bare_value", r"^(?:[\w.\-+/]{1,12}|\d[\d\s.,x×%/:\-]*)$", "a bare value with no verb or target"),
     ("pending_capture", "bad_input_value", r"(?i)\b(?:empty|blank|negative|invalid|\-\d+|\d{3,}\+?\s*-?char\w*|300\+|nonsense|too long|overlong|9{5,}|-1\b|\bmin/max\b|leave\b[^.]{0,30}\bempty)\b", "typed boundary value - needs the live field label (typed-values path)"),
+    ("pending_capture", "generic_open_target", r"(?i)^(?:open|click|select|choose|view|go to)\s+(?:the\s+|an?\s+|own\s+|any\s+|each\s+)*[\w\- ]{1,40}$", "opens a generic/own item (no live label for it yet)"),
     ("pending_capture", "create_fill_flow", r"(?i)^(?:then\s+)?(?:try\s+to\s+)?" + _ACTION_VERB + r"\b", "a create/fill/run flow naming a control or form we have no live label for"),
     ("pending_capture", "named_control_path", r"[A-Za-z0-9][A-Za-z0-9 &'/+\-]{1,30}\s*>\s*[A-Za-z0-9]", "a named control path (A > B) - needs the captured control labels"),
     ("needs_post_capture_rewrite", "conditional_or_guard", r"(?i)^(?:if|unless|until|repeat|wait|do not|don't|never)\b|\b(?:if needed|if available|if present)\b", "conditional / guard prose"),

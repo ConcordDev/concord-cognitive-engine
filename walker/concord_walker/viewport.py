@@ -12,7 +12,7 @@ ZOOMS = (0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0)
 
 NOT_MINE = object()
 _DIM = re.compile(r"(?i)(?<![\d.])(\d{3,4})\s*(?:[x×]|by)\s*(\d{3,4})(?![\d])")
-_PXW = re.compile(r"(?i)(?:~|about\s+|at\s+)?(\d{3,4})\s*px\s*(?:wide|width)?")
+_PXW = re.compile(r"(?i)(?:~|about\s+|at\s+)?(\d{3,4})\s*(?:css\s*)?px\s*(?:wide|width)?")
 _PRESET = re.compile(r"(?i)\b(mobile|phone|tablet|ipad|desktop|laptop)\b")
 _ZOOM = re.compile(r"(?i)\bzoom(?:ed)?\s*(?:to|at|in to|=)?\s*(\d{2,3})\s*%|(\d{2,3})\s*%\s*zoom\b|\bdevice\s*pixel\s*ratio\s*(?:of|=)?\s*(\d(?:\.\d+)?)\b|\bdpr\s*(?:=|of)?\s*(\d(?:\.\d+)?)\b")
 _REDUCED = re.compile(r"(?i)\breduced[\s-]motion\b|\bprefers[\s-]reduced[\s-]motion\b")
@@ -81,7 +81,7 @@ def map_part(seg, raw, lens_names=()):
     vp = viewport_for(s)
     if vp is None and re.search(r"\b\d{3,4}\s*(?:[x×]|by)\s*\d{3,4}\b", s):
         return None, "viewport %r outside %d..%d - not guessed" % (_DIM.search(s).group(0), MIN_DIM, MAX_DIM)
-    if vp and re.fullmatch(r"(?i)(?:(?:view|open|at|on|in|set|resize|use|switch to)\s+)*(?:the\s+)?(?:(?:a|an)\s+)?(?:devtools\s+)?(?:device\s+(?:mode|toolbar)\s+)?(?:at\s+)?(?:~?\d{3,4}\s*(?:[x×]|by)\s*\d{3,4}|~?\d{3,4}\s*px(?:\s*(?:wide|width))?|mobile|phone|tablet|ipad|desktop|laptop)(?:\s*(?:viewport|size|width|layout|view))?", s):
+    if vp and re.fullmatch(r"(?i)(?:(?:view|open|at|on|in|set|resize|natively|use|switch to)\s+)*(?:(?:chrome|content|the\s+window|the\s+viewport|window|viewport)\s+)?(?:(?:to|at)\s+)?(?:about\s+|around\s+)?(?:the\s+)?(?:(?:a|an)\s+)?(?:devtools\s+)?(?:device\s+(?:mode|toolbar)\s+)?(?:at\s+)?(?:~?\d{3,4}\s*(?:[x×]|by)\s*\d{3,4}|~?\d{3,4}\s*px(?:\s*(?:wide|width))?|mobile|phone|tablet|ipad|desktop|laptop)(?:\s*(?:viewport|size|width|layout|view))?", s):
         return [{"action": "set_viewport", "w": vp[0], "h": vp[1], "name": vp[2], "raw": raw}]
     if _OVERFLOW.search(s) and re.match(r"(?i)^(?:check|inspect|look|verify|confirm|observe|scroll)\b", s):
         return [{"action": "check_layout", "raw": raw}]
