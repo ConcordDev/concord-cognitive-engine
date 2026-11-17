@@ -15,7 +15,7 @@
 // Pinned by tests/compute-router.test.js (+ a held-out phrasing set).
 
 import { evaluate, differentiate, integrate, stringify } from "../compute/symbolic-math.js";
-import { beamDeflection } from "../compute/physics-compute.js";
+import { beamDeflection, beamUniformLoad } from "../compute/physics-compute.js";
 import { columnBuckling, voltageDrop, pipeSize, pumpHead, heatLoadCalc } from "../compute/engineering-compute.js";
 import { molecularAnalysis } from "../compute/chemistry-compute.js";
 import { extractBeamQuestion, formatDeflection } from "../engineering-question-extract.js";
@@ -52,7 +52,23 @@ const ROUTES = [
   {
     id: "beam-deflection",
     detect: (t) => extractBeamQuestion(t),
-    run: (p) => { const r = beamDeflection(p); return r && r.ok !== false ? { value: r.value, text: formatDeflection(r.value, r.formula), assumed: p.assumed, engine: "physics.beamDeflection" } : null; },
+    run: (p) => {
+      // Ambiguous load kind: stop and ask. Never pick point vs distributed for the user.
+      if (p.ambiguous) return { value: null, text: p.ask, assumed: [], engine: "physics.beamDeflection", needsInput: true };
+      if (p.loadKind === "udl") {
+        const r = beamUniformLoad(p);
+        if (!r || r.error || r.ok === false) return null;
+        const mm = Number(r.deflectionMm.toPrecision(4)), kNm = Number((r.maxMomentNm / 1000).toPrecision(4));
+        return {
+          value: r.deflectionM, assumed: p.assumed, engine: "physics.beamUniformLoad",
+          used: { wNPerM: p.wNPerM, lengthM: p.lengthM, modulusPa: p.modulusPa, inertiaM4: p.inertiaM4, supportType: p.supportType },
+          deflectionMm: r.deflectionMm, maxMomentKNm: r.maxMomentNm / 1000,
+          text: `Uniformly distributed load w = ${Number((p.wNPerM / 1000).toPrecision(6))} kN/m on L = ${Number(p.lengthM.toPrecision(6))} m, using E = ${Number((p.modulusPa / 1e9).toPrecision(6))} GPa and I = ${Number(p.inertiaM4.toPrecision(6))} m⁴ exactly as given: maximum deflection δ = ${mm} mm (${r.formula}); maximum bending moment = ${kNm} kN·m (${r.momentFormula}).`,
+        };
+      }
+      const r = beamDeflection(p);
+      return r && r.ok !== false ? { value: r.value, text: formatDeflection(r.value, r.formula), assumed: p.assumed, engine: "physics.beamDeflection", used: { loadLbs: p.loadLbs, lengthFt: p.lengthFt, modulusE: p.modulusE, momentI: p.momentI } } : null;
+    },
   },
   {
     id: "column-buckling",
@@ -321,13 +337,14 @@ export function routeComputeQuestion(message) {
     if (!params) continue;
     let out;
     try { out = r.run(params); } catch { out = null; }
-    if (out) return { route: r.id, value: out.value, text: out.text, assumed: out.assumed || params.assumed || [], engine: out.engine };
+    if (out) return { route: r.id, value: out.value, text: out.text, assumed: out.assumed || params.assumed || [], engine: out.engine, ...(out.needsInput ? { needsInput: true } : {}), ...(out.used ? { used: out.used } : {}), ...(out.deflectionMm !== undefined ? { deflectionMm: out.deflectionMm, maxMomentKNm: out.maxMomentKNm } : {}) };
   }
   return null;
 }
 
 /** The user-facing reply for a routed answer, with any assumption disclosed. */
 export function composeRoutedReply(routed) {
+  if (routed.needsInput) return routed.text; // a question back to the user, not a computed answer
   const assumed = routed.assumed?.length ? ` Assumed: ${routed.assumed.join("; ")}.` : "";
   return `${routed.text}${assumed} (Computed by Concord's ${routed.engine} engine.)`;
 }

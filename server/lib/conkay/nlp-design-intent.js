@@ -291,6 +291,20 @@ export function parseDesignIntent(text) {
     assumptions.push("Support assumed simply supported (pinned + roller). The text did not say how it is held.");
   }
 
+  // A load per unit length ("10 kN/m", "UDL", "distributed", "per metre") is NOT a point load: FORCE_RE would read the
+  // "10 kN" of "10 kN/m" as a 10 kN point load and silently drop the span. The beam solver here takes point loads only,
+  // so a distributed or mixed description stops with a question instead of a wrong number.
+  const udlRate = /\d\s*(?:kN|MN|N|kips?|lbf|lbs?|pounds?)\s*(?:\/|per)\s*(?:m|meters?|metres?|ft|feet|foot)\b/i.test(raw);
+  const udlWord = /\b(?:uniform(?:ly)?(?:\s+distributed)?|distributed|udl|spread\s+(?:evenly|uniformly))\b/i.test(raw);
+  if (udlRate || udlWord) {
+    const pointWord = /\b(?:point\s+load|concentrated|at\s+(?:the\s+)?(?:mid-?span|mid-?point|center|centre|tip|free\s+end)|tip\s+load)\b/i.test(raw);
+    return {
+      ok: false, code: pointWord ? "ambiguous_load" : "distributed_load_unsupported",
+      error: pointWord
+        ? "the text describes both a point load and a distributed load; say which one (or both, as separate loads with their positions)"
+        : "a distributed load (kN/m, UDL) is not a point load; this solver takes point loads only, so it stops rather than treat 10 kN/m as 10 kN. Give a point load with its position, or use the closed-form beam calculator for a UDL with E and I",
+    };
+  }
   const loads = [];
   for (const fm of raw.matchAll(FORCE_RE)) {
     const forceN = forceToNewtons(fm[1], fm[2]);
