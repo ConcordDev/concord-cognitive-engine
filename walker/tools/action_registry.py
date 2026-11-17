@@ -120,6 +120,102 @@ def _in_comment(text, pos):
     return head.startswith(("//", "*", "/*")) or " // " in text[ls:pos]
 
 
+MW_KINDS = (  # first match wins; classification of a middleware by its NAME (static, never executed)
+    ("auth", re.compile(r"(?i)auth|jwt|session|login|token|bearer|apikey|passport|requireuser|requireadmin|isadmin|csrf")),
+    ("ownership", re.compile(r"(?i)owner|belongs|canaccess|canedit|permission|rbac|acl|requirerole|ownership")),
+    ("rate_limit", re.compile(r"(?i)rate|limit|throttle|slowdown|quota")),
+    ("validation", re.compile(r"(?i)valid|schema|zod|joi|sanitiz|parse|check|ensure|require(?!auth|user|admin|role)")),
+)
+SOLVER_ID_RE = re.compile(r"^\s*id:\s*([\"'`])([\w.\-]+)\1", re.M)
+
+
+def classify_mw(name):
+    for kind, rx in MW_KINDS:
+        if rx.search(name or ""):
+            return kind
+    return "other"
+
+
+def _split_args(text, start, limit=6000):
+    """Top-level comma split of a call's argument list beginning right AFTER the '(' at text[start-1].
+    Returns [arg text, ...] (strings/templates/brackets respected) or None when the call does not close in `limit` chars."""
+    depth, i, cur, args, q = 0, start, [], [], None
+    end = min(len(text), start + limit)
+    while i < end:
+        c = text[i]
+        if q:
+            cur.append(c)
+            if c == "\\":
+                i += 1
+                if i < end:
+                    cur.append(text[i])
+            elif c == q:
+                q = None
+        elif c in "\"'`":
+            q = c
+            cur.append(c)
+        elif c in "([{":
+            depth += 1
+            cur.append(c)
+        elif c in ")]}":
+            if depth == 0:
+                if "".join(cur).strip():
+                    args.append("".join(cur).strip())
+                return args
+            depth -= 1
+            cur.append(c)
+        elif c == "," and depth == 0:
+            args.append("".join(cur).strip())
+            cur = []
+        else:
+            cur.append(c)
+        i += 1
+    return None
+
+
+_IDENT_HEAD = re.compile(r"^(?:await\s+)?([A-Za-z_$][\w$.]*)")
+
+
+def route_middleware(text, call_end):
+    """[(name, kind), ...] for the args between the path and the handler of the route call whose path literal ends at call_end.
+    The LAST argument is the handler and is never listed; an arrow/function handler or a lone path -> []."""
+    args = _split_args(text, call_end + 1) if text[call_end:call_end + 1] == "," else None
+    if not args:
+        return []
+    out = []
+    for a in args[:-1]:
+        m = _IDENT_HEAD.match(a)
+        if m and not a.startswith(("async", "function", "(")):
+            out.append((m.group(1), classify_mw(m.group(1))))
+    return out
+
+
+def scan_global_mw(tree):
+    """app.use(<identifier>) with no path in server.js, in source order -> [(name, kind, line)]. Order is source order only."""
+    text = tree.read("server/server.js")
+    out = []
+    for m in re.finditer(r"^\s*app\.use\(\s*([A-Za-z_$][\w$.]*)\s*(?:\(|\))", text, re.M):
+        if _in_comment(text, m.start()):
+            continue
+        n = m.group(1)
+        if n in ("express", "express.json", "express.urlencoded"):
+            continue
+        out.append((n, classify_mw(n), _line(text, m.start())))
+    return out[:60]
+
+
+def scan_solvers(tree):
+    out = []
+    for path in tree.ls("server/lib/conkay/physics/solvers"):
+        if not path.endswith(".js"):
+            continue
+        text = tree.read(path)
+        m = SOLVER_ID_RE.search(text)
+        if m:
+            out.append({"id": m.group(2), "file": path, "line": _line(text, m.start())})
+    return sorted(out, key=lambda r: r["id"])
+
+
 def _file_rank(path, app_files):
     if path == "server/server.js":
         return 0
@@ -220,18 +316,20 @@ def scan_routes(tree, files=None):
                 continue
             ident, method, raw = m.group(1), m.group(2).upper(), m.group(4)
             line = _line(text, m.start())
+            mw = route_middleware(text, m.end())
+            extra = {"mw": [[n, k] for n, k in mw]} if mw else {}
             if ident == "app" or (path in app_files and ident == "app"):
-                routes.append({"method": method, "pattern": express_pattern(raw), "file": path, "line": line,
-                               "source": "express", "mount": ""})
+                routes.append(dict({"method": method, "pattern": express_pattern(raw), "file": path, "line": line,
+                                    "source": "express", "mount": ""}, **extra))
             elif ident in ("router", "r", "routes", "api") or ident.endswith("Router") or ident.endswith("router"):
                 pre = sorted(mounts.get(path, []))
                 if pre:
                     for p in pre:
-                        routes.append({"method": method, "pattern": express_pattern(p + raw), "file": path, "line": line,
-                                       "source": "express-router", "mount": p})
+                        routes.append(dict({"method": method, "pattern": express_pattern(p + raw), "file": path, "line": line,
+                                            "source": "express-router", "mount": p}, **extra))
                 else:
-                    routes.append({"method": method, "pattern": express_pattern(raw), "file": path, "line": line,
-                                   "source": "express-router", "mount": "runtime"})
+                    routes.append(dict({"method": method, "pattern": express_pattern(raw), "file": path, "line": line,
+                                        "source": "express-router", "mount": "runtime"}, **extra))
     for path in tree.ls("concord-frontend/app"):
         base = os.path.basename(path)
         rel = os.path.dirname(path)[len("concord-frontend/app"):] or "/"
@@ -266,7 +364,7 @@ def build(tree, sha):
     routes = scan_routes(tree, files)
     return {"sha": sha, "source": tree.desc, "counts": {"actions": len(rows), "routes": len(routes), "server_files": len(files),
                                                         "declarations": len(decls), "fe_call_sites": sum(len(v) for v in fe.values())},
-            "actions": rows, "routes": routes}
+            "actions": rows, "routes": routes, "global_mw": [list(x) for x in scan_global_mw(tree)], "solvers": scan_solvers(tree)}
 
 
 MAX_BYTES = 200 * 1024

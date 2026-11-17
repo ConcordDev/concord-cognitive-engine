@@ -136,6 +136,12 @@ def cmd_walk(args, cfg, log):
             f.write(fold.canonical_text())
     store = TicketStore(cfg["audit_dir"], fold=fold)
     premap = bool(getattr(args, "premap", False))
+    wiring_col = None
+    if getattr(args, "capture_wiring", False):
+        from concord_walker import wiring as _wiring
+        wiring_col = _wiring.Collector(os.path.join(rec.run_dir, "wiring"), rid, getattr(args, "deploy_sha", None),
+                                       registry=_wiring.load_registry(getattr(args, "wiring_registry", None), getattr(args, "from_repo", None), getattr(args, "deploy_sha", None), log))
+        log("wiring capture ON: shapes only (no values), registry %s" % (wiring_col.registry_desc,))
     phases = args.phases.split(",") if args.phases else READ_PHASES + (["write"] if args.allow_write else [])
     if premap and "sweep" not in phases:
         phases = phases + ["sweep"]
@@ -214,7 +220,7 @@ def cmd_walk(args, cfg, log):
                     try:
                         lw = LensWalk(browser, cfg, rec, lens, acct, log, allow_write=args.allow_write, admin=admin,
                                       phases=lphases, inv_entry=lens, gate_check=gate, budget=walk_budget, deploy=deploy,
-                                      premap=premap and not gate,
+                                      premap=premap and not gate, capture_wiring=wiring_col is not None and not gate,
                                       premap_budget_s=getattr(args, "premap_budget_s", None),
                                       two_account=bool(getattr(args, "two_account", False)) and not gate and not admin)
                         res = lw.run()
@@ -252,7 +258,10 @@ def cmd_walk(args, cfg, log):
                 res["duplicates"] = [{"title": f["title"], "dup_of": d} for f, d in dups]
                 # replay the original tickets for this lens on the SAME walk (no second walk)
                 res["replay"] = replay.replay_lens(slug, lw, admin_gate=gate)
-                upgrade_record(res, deploy, filed, all_slugs, lw.screens, lw.net.build(), premap_findings=lw.premap_findings)
+                net_out = lw.net.build()
+                upgrade_record(res, deploy, filed, all_slugs, lw.screens, net_out, premap_findings=lw.premap_findings)
+                if wiring_col is not None and not gate:
+                    wiring_col.add(slug, net_out[0], deploy.get("backend_sha"), {c: m.get("label_data") for c, m in lw.net.meta.items() if m.get("label_data")})
                 with open(lens_result_path(rec.run_dir, slug), "w") as f:
                     json.dump(res, f, indent=1)
                 manifest.lens(slug, "walked", reason="gate check (reach only)" if gate else None,
@@ -265,6 +274,11 @@ def cmd_walk(args, cfg, log):
             except Exception:
                 pass
             left = rec.flush_leftovers()
+            if wiring_col is not None:
+                try:
+                    log("wiring capture: wrote %s" % (wiring_col.flush(),))
+                except Exception as e:  # capture must never break a walk
+                    log("wiring capture FAILED to write: %s: %s" % (type(e).__name__, str(e)[:160]))
             write_summary(rec, summary, left, dry)
             write_root_causes(cfg["audit_dir"], log=log)
             if replay is not None:
@@ -573,6 +587,8 @@ def main():
         p.add_argument("--no-auth", action="store_true", help="signed-out smoke (implies --dry-run)")
         p.add_argument("--phases", help="comma list from: " + ",".join(READ_PHASES + ["write"]))
         p.add_argument("--base-url", help="override base url (selftest only)")
+        p.add_argument("--capture-wiring", action="store_true", help="record per-lens CONTROL->ENDPOINT->HANDLER wiring (request/response SHAPES only, values never stored) + a live labels index under <run>/wiring/. Off by default (the v4 walk passes it)")
+        p.add_argument("--wiring-registry", help="actions-<sha>.json.gz from tools/action_registry.py at the fold sha (default: built from --from-repo at --deploy-sha when given; else joins are 'unresolved:no_registry')")
         p.add_argument("--premap", action="store_true", help="MST-W0-03: add the control sweep (every named control: clicked once if sweep-safe, else a reason)")
         p.add_argument("--premap-budget-s", type=int, help="MST-W0-03: sweep budget per lens in seconds (default thresholds.premap_budget_s, else 600)")
         p.add_argument("--replay-budget-s", type=int, help="replay of original tickets: a FIXED per-lens budget in seconds on replay's own clock "

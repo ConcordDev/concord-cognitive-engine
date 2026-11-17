@@ -84,7 +84,7 @@ class LensWalk:
 
     def __init__(self, browser, cfg, rec, lens, account_key, log, allow_write=False, admin=False,
                  phases=None, inv_entry=None, url_override=None, gate_check=None, budget=None, deploy=None,
-                 premap=False, premap_budget_s=None, two_account=False):
+                 premap=False, premap_budget_s=None, two_account=False, capture_wiring=False):
         self.b, self.cfg, self.rec, self.lens, self.acct, self.log = browser, cfg, rec, lens, account_key, log
         self.slug, self.url = lens["slug"], lens["url"]
         # A gate check = a non-admin account opening an admin lens: the gate
@@ -117,7 +117,7 @@ class LensWalk:
         self.deploy = deploy
         self.screens = []
         self.net = NetLedger(cfg["base_url"], stamp=row_stamp(deploy), slow_ms=self.th.get("slow_call_ms", 3000),
-                             long_task_ms=self.th.get("long_task_ms", 1000))
+                             long_task_ms=self.th.get("long_task_ms", 1000), shapes=capture_wiring)
         self.premap_findings = []  # recorded in the lens record only; never filed as tickets in Wave 0
         self.two_account = two_account
         self._nav_cid = LOAD_CONTROL
