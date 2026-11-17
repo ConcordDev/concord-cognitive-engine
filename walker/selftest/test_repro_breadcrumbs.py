@@ -34,7 +34,8 @@ MAPPED = [
     ("global", "Explorer > Scatter", [("click", "Explorer", None), ("click", "Scatter", None)]),
     ("global", "Any sub-tab > Save view", [("open_any_tab", None, None), ("click", "Save view", None)]),
     ("global", "Tab to view tabs > ArrowRight", [("focus_tab_list", None, None), ("press", "ArrowRight", 1)]),
-    ("global", "Save view > Export > JSON", [("click", "Save view", None), ("click", "Export", None), ("click", "JSON", None)]),
+    # mapper-vocab: a terminal Export (+ format) is the walker's own export check, not three bare clicks
+    ("global", "Save view > Export > JSON", [("click", "Save view", None), ("export_check", None, None)]),
     ("council", "Council > New Proposal", [("noop", None, None), ("click", "New Proposal", None)]),
     ("council", "Open New Proposal", [("click", "New Proposal", None)]),
     ("council", "Press Esc", [("press", "Escape", None)]),
@@ -45,7 +46,7 @@ MAPPED = [
      [("click", "Share", None), ("press", "Tab", 9), ("click", "Export", None), ("press", "Tab", 1), ("press", "Escape", 1)]),
     ("courtship", "Open the Export menu and press Esc.", [("click", "Export", None), ("press", "Escape", 1)]),
     ("frontier", "https://concord-os.org/lenses/frontier: Export > JSON, then CSV",
-     [("open", None, None), ("click", "Export", None), ("click", "JSON", None), ("click", "CSV", None)]),
+     [("open", None, None), ("export_check", None, None)]),
     ("productivity", "Lens tools > Quick capture > Capture", [("click", "Lens tools", None), ("click", "Quick capture", None), ("click", "Capture", None)]),
     ("forestry", "Fire Watch > Load active fires; Show fire perimeter",
      [("click", "Fire Watch", None), ("click", "Load active fires", None), ("click", "Show fire perimeter", None)]),
@@ -59,18 +60,13 @@ for lens, step, want in MAPPED:
 
 # genuinely unmappable real prose: stays UNMAPPED, reason names the problem
 UNMAPPED = [
-    ("board", "Open Board at 390×844 device toolbar", "viewport"),
-    ("daily", "On /lenses/daily as zuko_qa_t1, resize the viewport to 390×844, open Today, and inspect the calendar", "viewport"),
     ("graph", "Click the parent row", "no specific control"),
     ("studio", "Open own Studio project", "no specific control"),
     ("chat", "Focus composer and send a message", "no specific control"),
     ("calendar", "Open event detail, press Escape", "no specific control"),
-    ("ghost-tracker", "Open the lens and click Scan for residues", "no specific control"),
     ("fractal", "Clear Center X > type 0 or -1", "typed value"),
     ("forge", "Domain Tables > type 'bad table!@#' > Add", "typed value"),
-    ("board", "Hard reload", "no recognised action"),
     ("studio", "Set tempo to 0, then 999", "no recognised action"),
-    ("code", "Tab through, check the accessibility tree", "tooling"),
     ("global", "Tab to Schedules, ArrowRight; Ctrl+K, Esc", "no recognised action"),
     ("mental-health", "Mood > check in with note 'qa-zt1-mental-health-2026-11-10'", "check in"),
     ("wellness", "Log sleep 7.5 then 30; view Trend Sleep and Overview", ""),
@@ -78,6 +74,17 @@ UNMAPPED = [
 for lens, step, why_sub in UNMAPPED:
     e = repro.expand_step(step, lens)
     check("unmapped: %s | %s" % (lens, step[:60]), (not e["mapped"]) and e["substeps"] == [] and why_sub in (e["reason"] or ""), e)
+
+# mapper-vocab: these used to be refused outright; they now map to the walker's own checks (see test_mapper_vocab.py)
+for lens, step, want in [
+    ("board", "Open Board at 390×844 device toolbar", ["set_viewport", "check_overflow"]),
+    ("daily", "On /lenses/daily as zuko_qa_t1, resize the viewport to 390×844, open Today, and inspect the calendar", ["set_viewport", "check_overflow", "click", "observe"]),
+    ("ghost-tracker", "Open the lens and click Scan for residues", ["noop", "click"]),
+    ("board", "Hard reload", ["reload"]),
+    ("code", "Tab through, check the accessibility tree", ["tab_sweep", "check_ax"]),
+]:
+    e = repro.expand_step(step, lens)
+    check("now maps to walker vocab: %s | %s" % (lens, step[:50]), e["mapped"] and [x["action"] for x in e["substeps"]] == want, e)
 
 # the lens-name crumb is a no-op, but ONLY the current lens's name
 ok, got, _ = acts("council", "Council > New Proposal")

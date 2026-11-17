@@ -1,18 +1,53 @@
 #!/usr/bin/env python3
-"""Mapped-step rate of the repro_steps mapper on a fixed, seeded random sample of tickets.
+"""Mapped-step rate + VERIFIED-eligible rate of the repro_steps mapper (backward compatible).
 
-  python3 tools/mapped_rate.py --repo .. --sha 272e62f41 --n 200 --seed 20261116
+  python3 tools/mapped_rate.py --repo .. --sha 272e62f41 --n 200 --seed 20261116      # seeded sample
+  python3 tools/mapped_rate.py --repo .. --sha 272e62f41 --all                        # every ticket with repro_steps
 
-Reports steps mapped / steps total and tickets with ALL steps mapped / tickets, plus (for the
-fully-mapped tickets) how many are blocked by an `expected` clause with no machine-checkable
-predicate. Uses repro.expand_step when present (breadcrumb mapper) else the legacy repro.map_step,
-so the same script measures BEFORE and AFTER."""
-import argparse, json, os, random, sys
+Reports
+  * steps mapped / steps total, tickets with ALL steps mapped / tickets;
+  * VERIFIED-eligible = tickets with every step mapped AND every `expected` clause in a
+    machine-checkable kind (a clause no machine check can read is `unchecked`), plus the counts
+    of the blocking reasons (steps only / expected only / both);
+  * per-class remaining unmapped step counts (regex classes from the 2026-11-16 mapping-gap diagnosis).
+Eligibility is NOT a verdict: a ticket still verifies only through the single VERIFIED gate
+(every step ran, every clause machine-checked on live evidence, run id + sha + evidence path).
+
+Uses repro.expand_step when present (breadcrumb mapper) else the legacy repro.map_step, and
+repro.classify_expected when present (typed clauses) else the legacy check_clause-on-an-empty-snapshot
+test, so the SAME script and definition measure BEFORE and AFTER."""
+import argparse, json, os, random, re, sys
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, HERE)
 from concord_walker import repro
 from concord_walker.fold import extract_from_git
+
+_EMPTY = {"controls": [], "texts": [], "dialogs": [], "errors": 0}
+
+# failure classes (diagnosis 2026-11-16), first match wins; applied to an unmapped step's raw text
+_I = re.I
+CLASSES = [
+    ("no_text", r"^\s*(see evidence|n/?a|none|x|-|tbd)\.?\s*$"),
+    ("guard_meta", r"(?:^|[.;,]\s*)(?:do not|don't|never|if\b|repeat|wait\b|until\b|unless)"),
+    ("viewport_theme", r"\b\d{3,4}\s*[x×]\s*\d{3,4}\b|\b(mobile|viewport|device toolbar|desktop|dark theme|light theme|theme toggle|dark mode|light mode|zoom|reduced motion|offline)\b"),
+    ("tooling_console_net_a11y", r"devtools|console|network|accessibility (?:tree|pane)|a11y|lighthouse|waterfall|screen ?reader|axe\b|performance"),
+    ("keyboard_prose", r"\b(?:tab|shift\+tab|arrow\w*|esc(?:ape)?|focus|blur|keyboard)\b"),
+    ("chat_ask", r"\bask\b|send question|lens tools|quick capture"),
+    ("observe_in_step", r"\b(?:inspect|observe|look for|check whether|record|whether)\b"),
+    ("bad_input_value", r"(?:-\d|\b0\b|\b9{5,}|\d{3}-?char|\bempty\b|\bblank\b|'[^']{0,25}'|\bnegative|\binvalid\b|\bpaste\b)"),
+    ("export_flow", r"\bexport\b|\bdownload\b|\b(?:json|csv)\b"),
+    ("delete_flow", r"\b(?:delete|remove|trash|revoke|archive|cancel)\b"),
+    ("create_fill_flow", r"\b(?:create|add|new|make|log|save|submit|schedule|import|fill|record|set|edit|rename|enter|type|upload|join|leave|run|start|apply|generate|send|post|publish)\b"),
+    ("generic_target", r"\b(?:a|an|any|each|every|some|first|one|another)\s+\w+"),
+]
+
+
+def classify_unmapped(raw):
+    for name, rx in CLASSES:
+        if re.search(rx, raw or "", _I):
+            return name
+    return "prose_other"
 
 
 def step_mapped(raw, lens):
@@ -22,27 +57,65 @@ def step_mapped(raw, lens):
     return bool(repro.map_step(raw, lens)["mapped"])
 
 
+def expected_all_checkable(ticket):
+    """(ok, n_clauses, n_unchecked). ok: >=1 clause and every clause has a machine-checkable kind
+    (the ticket's `expected` plus, in the new mapper, the clauses its observe steps moved there)."""
+    expected = ticket.get("expected")
+    tk = getattr(repro, "ticket_expected_kinds", None)
+    cl = getattr(repro, "classify_expected", None)
+    if tk:
+        kinds = tk(ticket)  # [(clause, kind|None)]
+        un = sum(1 for _, k in kinds if k is None)
+        return bool(kinds) and un == 0, len(kinds), un
+    if cl:
+        kinds = cl(expected)
+        un = sum(1 for _, k in kinds if k is None)
+        return bool(kinds) and un == 0, len(kinds), un
+    clauses = repro._clauses(expected)
+    un = sum(1 for c in clauses if repro.check_clause(c, _EMPTY)[0] == "unchecked")
+    return bool(clauses) and un == 0, len(clauses), un
+
+
 def measure(tickets, with_reasons=False):
-    steps = mapped = full = 0
-    blocked_expected = 0
-    unmapped = {}
+    steps = mapped = full = eligible = 0
+    blocked_expected = blocked_steps = blocked_both = 0
+    clauses = clauses_unchecked = 0
+    unmapped, by_class = {}, {}
     for t in tickets:
         raws = repro.split_steps(t)
         ok = [step_mapped(r, t.get("lens")) for r in raws]
         steps += len(ok)
         mapped += sum(ok)
-        if ok and all(ok):
+        all_ok = bool(ok) and all(ok)
+        exp_ok, nc, nu = expected_all_checkable(t)
+        clauses += nc
+        clauses_unchecked += nu
+        if all_ok:
             full += 1
-            exp = repro.check_expected(t.get("expected"), {"controls": [], "texts": [], "dialogs": [], "errors": 0})
-            if exp["state"] == "unchecked":
-                blocked_expected += 1
+        if all_ok and exp_ok:
+            eligible += 1
+        elif all_ok:
+            blocked_expected += 1
+        elif exp_ok:
+            blocked_steps += 1
+        else:
+            blocked_both += 1
         for r, o in zip(raws, ok):
-            if not o and with_reasons:
-                unmapped[r] = t.get("id")
-    return {"tickets": len(tickets), "steps": steps, "steps_mapped": mapped,
+            if not o:
+                c = classify_unmapped(r)
+                by_class[c] = by_class.get(c, 0) + 1
+                if with_reasons:
+                    unmapped[r] = t.get("id")
+    n = len(tickets)
+    return {"tickets": n, "steps": steps, "steps_mapped": mapped,
             "step_rate": round(mapped / steps, 4) if steps else 0.0,
-            "tickets_all_mapped": full, "ticket_rate": round(full / len(tickets), 4) if tickets else 0.0,
-            "all_mapped_but_expected_unchecked": blocked_expected, "unmapped_examples": unmapped}
+            "tickets_all_mapped": full, "ticket_rate": round(full / n, 4) if n else 0.0,
+            "verified_eligible_tickets": eligible, "verified_eligible_rate": round(eligible / n, 4) if n else 0.0,
+            "blocked_by": {"expected_unchecked_only": blocked_expected, "steps_unmapped_only": blocked_steps, "both": blocked_both},
+            "clauses": clauses, "clauses_unchecked": clauses_unchecked,
+            "all_mapped_but_expected_unchecked": blocked_expected,  # legacy key (kept for older callers)
+            "unmapped_by_class": dict(sorted(by_class.items(), key=lambda kv: -kv[1])),
+            "unmapped_examples": unmapped}
 
 
 def main():
@@ -50,14 +123,17 @@ def main():
     ap.add_argument("--repo", default="..")
     ap.add_argument("--sha", default="272e62f41")
     ap.add_argument("--n", type=int, default=200)
+    ap.add_argument("--all", action="store_true", help="measure every ticket with repro_steps instead of a sample")
     ap.add_argument("--seed", type=int, default=20261116)
     ap.add_argument("--show-unmapped", type=int, default=0)
     a = ap.parse_args()
     fold = extract_from_git(a.repo, a.sha)
     pool = sorted((t for t in fold.base.values() if repro.split_steps(t)), key=lambda t: t["id"])
-    sample = random.Random(a.seed).sample(pool, min(a.n, len(pool)))
-    print("seed=%d sha=%s pool=%d sample=%d mapper=%s" % (a.seed, a.sha, len(pool), len(sample),
-                                                         "expand_step" if hasattr(repro, "expand_step") else "map_step"))
+    sample = pool if a.all else random.Random(a.seed).sample(pool, min(a.n, len(pool)))
+    print("seed=%d sha=%s pool=%d measured=%d mode=%s mapper=%s expected=%s" % (
+        a.seed, a.sha, len(pool), len(sample), "all" if a.all else "sample",
+        "expand_step" if hasattr(repro, "expand_step") else "map_step",
+        "classify_expected" if hasattr(repro, "classify_expected") else "legacy"))
     r = measure(sample, with_reasons=bool(a.show_unmapped))
     ex = r.pop("unmapped_examples")
     print(json.dumps(r, indent=1))
