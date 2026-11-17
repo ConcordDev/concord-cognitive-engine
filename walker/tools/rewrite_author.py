@@ -45,15 +45,18 @@ def build(t, sp):
             dropped.append({"orig": i, "reason": e[1]})
         else:
             for d in (e if isinstance(e, list) else [e]):
-                steps.append(dict(d, from_orig=[i]))
+                steps.append(dict({"src": "text"}, **d, from_orig=[i]))
     assert len(sp["exp"]) == len(clauses), "%s: %d clause entries for %d original clauses (%r)" % (t["id"], len(sp["exp"]), len(clauses), clauses)
     for j, e in enumerate(sp["exp"]):
         if e == "keep":
             exp.append({"kind": "keep", "args": {}, "from_orig_clause": [j], "orig_span": clauses[j]})
         elif isinstance(e, tuple) and e[0] == "needs":
-            exp.append({"kind": "needs_human", "args": {}, "from_orig_clause": [j], "orig_span": clauses[j], "why": e[1]})
+            exp.append({"kind": "needs_human", "args": {}, "from_orig_clause": [j], "orig_span": e[2] if len(e) > 2 else clauses[j], "why": e[1]})
         else:
             for d in (e if isinstance(e, list) else [e]):
+                if isinstance(d, tuple):
+                    exp.append({"kind": "needs_human", "args": {}, "from_orig_clause": [j], "orig_span": d[2], "why": d[1]})
+                    continue
                 d = dict(d)
                 exp.append({"kind": d["kind"], "args": d.get("args", {}), "from_orig_clause": [j], "orig_span": d.get("span", clauses[j])})
     for si, d in (sp.get("sexp") or {}).items():

@@ -386,7 +386,7 @@ def _step_literal_ok(s, orig, lens, labels):
         return bool(re.search(_KEY_ANCHOR.get(t, "$^"), orig, re.I)), "key %s is not in the original" % t
     if op == "viewport":
         w = t.split("x")[0]
-        return bool(re.search(r"\b%s\b|mobile|phone|narrow|small screen|desktop|wide" % w, orig, re.I)), "viewport %s is not in the original" % t
+        return bool(re.search(r"(?<!\d)%s(?!\d)|mobile|phone|narrow|small screen|desktop|wide" % w, orig, re.I)), "viewport %s is not in the original" % t
     if op == "scheme":
         return bool(re.search(r"\b%s\b" % t, orig, re.I)), "theme %s is not in the original" % t
     if op == "export":

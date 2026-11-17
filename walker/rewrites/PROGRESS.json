@@ -1,1 +1,9 @@
-{}
+{
+ "001": {
+  "committed_sha": null,
+  "human_only": 4,
+  "original_sufficient": 35,
+  "rewritten": 11,
+  "tickets": 50
+ }
+}
