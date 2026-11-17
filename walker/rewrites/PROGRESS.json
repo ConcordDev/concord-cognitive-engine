@@ -116,5 +116,33 @@
   "rewritten": 16,
   "steps_by_hand": 21,
   "tickets": 50
+ },
+ "009": {
+  "clauses_by_hand": 20,
+  "committed_sha": null,
+  "human_by_reason": {
+   "cross_account": 1
+  },
+  "human_only": 1,
+  "needs_human_clause": 37,
+  "needs_human_step": 28,
+  "original_sufficient": 24,
+  "rewritten": 25,
+  "steps_by_hand": 30,
+  "tickets": 50
+ },
+ "010": {
+  "clauses_by_hand": 20,
+  "committed_sha": null,
+  "human_by_reason": {
+   "lighthouse": 2
+  },
+  "human_only": 2,
+  "needs_human_clause": 42,
+  "needs_human_step": 22,
+  "original_sufficient": 20,
+  "rewritten": 28,
+  "steps_by_hand": 30,
+  "tickets": 50
  }
 }
