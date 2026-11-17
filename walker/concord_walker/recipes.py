@@ -84,6 +84,7 @@ def validate_recipe(raw, today=None, expect_sha=None):
     if not isinstance(raw, dict):
         return None, ["recipe file must contain one JSON object"]
     reasons = []
+    _check_case_source(raw, reasons)
     rid = raw.get("id")
     if not isinstance(rid, str) or not rid:
         reasons.append("id is required (the ticket id this recipe verifies)")
@@ -129,6 +130,9 @@ def validate_recipe(raw, today=None, expect_sha=None):
             if not isinstance(disc, str) or not disc.strip():
                 reasons.append("active template instance requires a discriminator — "
                                "the pre-fix failure transcript recorded in the file (CB-0810)")
+            if raw.get("case_source") not in ("observed", "extrapolated"):
+                reasons.append("active template instance requires a case_source — "
+                               "'observed' or 'extrapolated' (ruling #11)")
     author = raw.get("author")
     if not isinstance(author, str) or not author:
         reasons.append("author is required")
@@ -196,6 +200,17 @@ def _check_declaration(params, reasons):
         reasons.append("declaration.validity_range is required (text or [lo, hi])")
     if decl.get("review_source") not in ("independent", "self-referenced"):
         reasons.append("declaration.review_source must be 'independent' or 'self-referenced'")
+
+
+def _check_case_source(raw, reasons):
+    """Case provenance (ruling #11): a generated case set's cases are tagged
+    per case — OBSERVED (from route shape + fixture data of record;
+    reachable, counts toward coverage) vs EXTRAPOLATED (enumerated from
+    imagination; speculative coverage only). The counts stay separate in
+    every report and are never summed."""
+    cs = raw.get("case_source")
+    if cs is not None and cs not in ("observed", "extrapolated"):
+        reasons.append("case_source must be 'observed' or 'extrapolated'")
 
 
 def check_authorship(recipe, fixer_id):
@@ -311,5 +326,17 @@ def template_instances(registry):
     {ticket_id: {"template": name, "params": {...}}} — the Reverifier runs
     these through its generic template runner (LC-06). Draft and refused
     entries never reach a loaded registry, so they never appear here."""
-    return {tid: {"template": r.get("template"), "params": dict(r.get("params") or {})}
+    return {tid: {"template": r.get("template"), "params": dict(r.get("params") or {}),
+                  "case_source": r.get("case_source")}
             for tid, r in registry.items() if r.get("kind") == "template"}
+
+
+def case_counts(registry):
+    """Per-case provenance counts (ruling #11): observed and extrapolated
+    counted SEPARATELY — the two are never summed into one coverage number."""
+    counts = {"observed": 0, "extrapolated": 0}
+    for rec in registry.values():
+        cs = rec.get("case_source")
+        if cs in counts:
+            counts[cs] += 1
+    return counts

@@ -68,6 +68,10 @@ def instance_for(row):
         # reviewer at activation — an active instance without one is refused.
         "tier": _templates.TEMPLATES[template]["tier"],
         "discriminator": None,
+        # Ruling #11: generated from the classification of record — route
+        # shapes and fixture data the fleet already has — so every generated
+        # case is born tagged OBSERVED.
+        "case_source": "observed",
         "covers": COVERS[template].format(lens=row.get("lens") or "?")
                   + " At activation, record the pre-fix replay failure transcript "
                     "in the discriminator field (CB-0810).",
@@ -93,6 +97,7 @@ def undeclared_for(row):
         "params": {"declaration": None},
         "tier": _templates.TEMPLATES["value-assert"]["tier"],
         "discriminator": None,
+        "case_source": "observed",
         "covers": "UNDECLARED filing (value-assert) for the %s lens, generated from the LC-05 "
                   "census: no declaration exists for this ticket's computed/displayed value, so "
                   "correctness is not checkable yet — this entry maps the gap in the open "

@@ -54,7 +54,8 @@ def c_valid_template_loads():
     with tempfile.TemporaryDirectory() as d:
         _write(d, "x.json", dict(BASE, id="LC06-T1", kind="template",
                                  template="overflow-390", params={},
-                                 tier=2, discriminator="pre-fix replay: STILL_FAILING — scrollW 720 at 390px"))
+                                 tier=2, case_source="observed",
+                                 discriminator="pre-fix replay: STILL_FAILING — scrollW 720 at 390px"))
         registry, refusals, _ov = R.load_registry(d)
         inst = R.template_instances(registry)
         ok = inst.get("LC06-T1", {}).get("template") == "overflow-390" and not refusals
@@ -142,6 +143,7 @@ def c_generator_deterministic():
             and json.loads(snapshot["zz-001.json"])["status"] == "draft" \
             and json.loads(snapshot["zz-001.json"])["tier"] == 2 \
             and json.loads(snapshot["zz-001.json"])["discriminator"] is None \
+            and json.loads(snapshot["zz-001.json"])["case_source"] == "observed" \
             and json.loads(snapshot["zz-005.json"])["template"] == "value-assert" \
             and json.loads(snapshot["zz-005.json"])["params"]["declaration"] is None
         return ok, "first=%s second=%s files=%s" % (first, second, sorted(snapshot))
@@ -166,7 +168,7 @@ def c_declaration_bad_source_refused():
 def c_undeclared_filing_loads():
     with tempfile.TemporaryDirectory() as d:
         _write(d, "x.json", dict(BASE, id="LC06-T11", kind="template", template="value-assert",
-                                 params={"declaration": None}, tier=1,
+                                 params={"declaration": None}, tier=1, case_source="observed",
                                  discriminator="pre-fix transcript: action renders, no declaration"))
         registry, refusals, _ov = R.load_registry(d)
         inst = R.template_instances(registry)
@@ -174,7 +176,31 @@ def c_undeclared_filing_loads():
         return ok, "instances=%s refusals=%s" % (inst, refusals)
 
 
+def c_bad_case_source_refused():
+    raw = dict(BASE, id="LC06-T12", kind="code", handler="reverify_x", case_source="imagined")
+    _rec, reasons = R.validate_recipe(raw)
+    return any("case_source" in r for r in reasons), "reasons=%s" % reasons
+
+
+def c_active_without_case_source_refused():
+    raw = dict(BASE, id="LC06-T13", kind="template", template="escape", params={},
+               tier=2, discriminator="pre-fix transcript")
+    _rec, reasons = R.validate_recipe(raw)
+    return any("case_source" in r for r in reasons), "reasons=%s" % reasons
+
+
+def c_case_counts_separate():
+    registry = {"a": {"case_source": "observed"}, "b": {"case_source": "observed"},
+                "c": {"case_source": "extrapolated"}, "d": {}}
+    counts = R.case_counts(registry)
+    ok = counts == {"observed": 2, "extrapolated": 1} and len(counts) == 2
+    return ok, "counts=%s" % counts
+
+
 case("valid template instance loads into template_instances", c_valid_template_loads)
+case("case_source outside observed/extrapolated refused (ruling #11)", c_bad_case_source_refused)
+case("active instance without a case_source refused (ruling #11)", c_active_without_case_source_refused)
+case("case counts stay separate, never summed (ruling #11)", c_case_counts_separate)
 case("value-assert without the declaration key refused", c_declaration_missing_key_refused)
 case("declaration with a bad review_source refused", c_declaration_bad_source_refused)
 case("UNDECLARED filing (declaration null) loads as a corpus entry", c_undeclared_filing_loads)

@@ -114,7 +114,29 @@ def c_templates_carry_tier_and_discriminator():
     return ok, "tiers=%s" % {k: v.get("tier") for k, v in T.TEMPLATES.items()}
 
 
+def c_readback_failed_weighted_first():
+    d = driver_for("load-5xx", "buggy")
+    res = T.loads_clean(d)
+    rows = (res.get("readback") or {}).get("rows") or []
+    ok = res["verdict"] == T.STILL and rows and rows[0]["status"] == 503 \
+        and rows[0]["weight"] == "high" and res["readback"]["failed"] == 1
+    return ok, "readback=%s" % (res.get("readback"),)
+
+
+def c_readback_dedupes_with_counts():
+    from fixture_app_imm14 import FixtureDriver
+    row = {"method": "GET", "path": "/api/lens/list", "status": 200, "shape": "array(2)"}
+    d = FixtureDriver(controls=[{"name": "Home", "role": "button"}], texts=["ok"],
+                      on_open=[dict(row), dict(row), dict(row)])
+    res = T.loads_clean(d)
+    rows = (res.get("readback") or {}).get("rows") or []
+    ok = len(rows) == 1 and rows[0]["occurrences"] == 3 and rows[0]["shape"] == "array(2)"
+    return ok, "rows=%s" % (rows,)
+
+
 case("registry holds the seven templates", c_registry)
+case("read-back: failed requests filed first at high weight (ruling #12)", c_readback_failed_weighted_first)
+case("read-back: identical rows dedupe with occurrence counts (ruling #12)", c_readback_dedupes_with_counts)
 case("value-assert: self-referenced declaration is labelled drift coverage only", c_value_self_referenced_is_drift_only)
 case("value-assert: no declaration files the action UNDECLARED in the open", c_value_undeclared_filed_open)
 case("every template carries a tier + fixture discriminator (CB-0810)", c_templates_carry_tier_and_discriminator)

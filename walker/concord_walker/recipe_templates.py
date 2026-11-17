@@ -41,6 +41,26 @@ def _res(verdict, method, notes, evidence=None):
             "recipe_kind": "template"}
 
 
+def _readback(obs):
+    """DevTools read-back (ruling #12): the endpoint + status + response
+    shape the run ACTUALLY captured, as first-class evidence — never
+    hand-typed. The walker's two filters apply: identical rows dedupe by
+    method/route/status with an occurrence count, and failed requests
+    (status >= 400) are filed first at the higher weight."""
+    rows = {}
+    for r in (obs or {}).get("net") or []:
+        key = (r.get("method"), r.get("path"), r.get("status"))
+        if key in rows:
+            rows[key]["occurrences"] += 1
+        else:
+            status = r.get("status") or 0
+            rows[key] = {"method": r.get("method"), "path": r.get("path"), "status": status,
+                         "shape": r.get("shape"), "occurrences": 1,
+                         "weight": "high" if status >= 400 else "normal"}
+    out = sorted(rows.values(), key=lambda x: (x["weight"] != "high", x["path"] or ""))
+    return {"rows": out, "failed": sum(1 for x in out if x["weight"] == "high")}
+
+
 def _controls(driver):
     snap = driver.snapshot()
     return snap, [c.get("name") for c in snap.get("controls") or []]
@@ -154,16 +174,19 @@ def loads_clean(driver, target=None):
     rendered = bool(names or (snap.get("texts") or []))
     if bad:
         first = bad[0]
-        return _res(STILL, "template:load-5xx",
-                    "%d 5xx response(s) on load; first %s %s -> %s"
-                    % (len(bad), first.get("method"), first.get("path"), first.get("status")),
-                    ["load: %s %s -> %s" % (first.get("method"), first.get("path"), first.get("status"))])
-    if not rendered:
-        return _res(HUMAN, "template:load-5xx",
-                    "surface rendered nothing (no controls, no text) — not judged")
-    return _res(FIXED, "template:load-5xx",
-                "loaded clean: %d response(s), no 5xx" % len(net),
-                ["load: %d net rows, 0 5xx" % len(net)])
+        res = _res(STILL, "template:load-5xx",
+                   "%d 5xx response(s) on load; first %s %s -> %s"
+                   % (len(bad), first.get("method"), first.get("path"), first.get("status")),
+                   ["load: %s %s -> %s" % (first.get("method"), first.get("path"), first.get("status"))])
+    elif not rendered:
+        res = _res(HUMAN, "template:load-5xx",
+                   "surface rendered nothing (no controls, no text) — not judged")
+    else:
+        res = _res(FIXED, "template:load-5xx",
+                   "loaded clean: %d response(s), no 5xx" % len(net),
+                   ["load: %d net rows, 0 5xx" % len(net)])
+    res["readback"] = _readback(obs)
+    return res
 
 
 # ------------------------------------------------------------ export file
@@ -178,19 +201,24 @@ def export_produces_file(driver, control="Export", path_hint="/export", expect_s
     obs = driver.obs_since(mark)
     hits = [r for r in (obs.get("net") or []) if path_hint in (r.get("path") or "")]
     if not hits:
-        return _res(STILL, "template:export-file",
-                    "clicked %r but no %r response followed" % (control, path_hint),
-                    ["export: no response with path containing %r" % path_hint])
+        res = _res(STILL, "template:export-file",
+                   "clicked %r but no %r response followed" % (control, path_hint),
+                   ["export: no response with path containing %r" % path_hint])
+        res["readback"] = _readback(obs)
+        return res
     hit = hits[-1]
     status = hit.get("status") or 0
     ok = (200 <= status < 300) if expect_status is None else status == expect_status
     if not ok:
-        return _res(STILL, "template:export-file",
-                    "export response %s %s -> %s" % (hit.get("method"), hit.get("path"), status),
-                    ["export: %s -> %s" % (hit.get("path"), status)])
-    return _res(FIXED, "template:export-file",
-                "export produced %s %s -> %s" % (hit.get("method"), hit.get("path"), status),
-                ["export: %s -> %s" % (hit.get("path"), status)])
+        res = _res(STILL, "template:export-file",
+                   "export response %s %s -> %s" % (hit.get("method"), hit.get("path"), status),
+                   ["export: %s -> %s" % (hit.get("path"), status)])
+    else:
+        res = _res(FIXED, "template:export-file",
+                   "export produced %s %s -> %s" % (hit.get("method"), hit.get("path"), status),
+                   ["export: %s -> %s" % (hit.get("path"), status)])
+    res["readback"] = _readback(obs)
+    return res
 
 
 # ------------------------------------------------------------ endpoint hit
@@ -210,17 +238,22 @@ def endpoint_hit(driver, control, method="POST", path="/api/lens/run",
             if (r.get("method") or "").upper() == method.upper() and path in (r.get("path") or "")]
     ev = ["endpoint: expect %s %s%s" % (method, path, (" action=%s" % action) if action else "")]
     if not hits:
-        return _res(STILL, "template:endpoint-hit",
-                    "clicked %r; %s %s was not hit" % (control, method, path), ev)
+        res = _res(STILL, "template:endpoint-hit",
+                   "clicked %r; %s %s was not hit" % (control, method, path), ev)
+        res["readback"] = _readback(obs)
+        return res
     hit = hits[-1]
     status = hit.get("status") or 0
     ok = (200 <= status < 300) if expect_status is None else status == expect_status
     ev.append("endpoint: %s %s -> %s" % (method, hit.get("path"), status))
     if not ok:
-        return _res(STILL, "template:endpoint-hit",
-                    "%s %s answered %s" % (method, hit.get("path"), status), ev)
-    return _res(FIXED, "template:endpoint-hit",
-                "%s %s hit with %s after clicking %r" % (method, hit.get("path"), status, control), ev)
+        res = _res(STILL, "template:endpoint-hit",
+                   "%s %s answered %s" % (method, hit.get("path"), status), ev)
+    else:
+        res = _res(FIXED, "template:endpoint-hit",
+                   "%s %s hit with %s after clicking %r" % (method, hit.get("path"), status, control), ev)
+    res["readback"] = _readback(obs)
+    return res
 
 
 # ------------------------------------------------------------ value assertion

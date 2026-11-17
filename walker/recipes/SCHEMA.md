@@ -72,6 +72,13 @@ declaration's validity range — never merely that the screen rendered. Its
 
 Value assertions are Tier 1 wherever a declaration exists.
 
+### Case provenance (ruling #11) and DevTools read-back (ruling #12)
+
+| field | meaning |
+|---|---|
+| `case_source` | per-case provenance: `"observed"` (generated from route shape + fixture data of record — reachable, counts toward coverage) or `"extrapolated"` (enumerated from imagination — speculative coverage only). The counts are reported separately and **never summed**. Generated instances are born tagged `observed`; an **active** template instance must carry the tag. A template verdict carries its instance's tag, so run reports keep the two apart. |
+| `readback` (result-side) | the endpoint + status + response shape the run **actually captured** (DevTools/observation, never hand-typed), attached to the net-observing templates' results (`load-5xx` · `export-file` · `endpoint-hit`). Rows dedupe by method/route/status with an `occurrences` count; failed requests (status ≥ 400) are filed first at `"weight": "high"`. The recipe's `expect_endpoints[]` / `expect_action` state the expectation; the read-back is the evidence it is judged against. |
+
 ## Refusals (each carries its reasons, printed on the load report)
 
 - malformed file, missing/invalid fields, unknown `kind` or `status`

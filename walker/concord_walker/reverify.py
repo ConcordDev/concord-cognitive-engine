@@ -122,6 +122,10 @@ class Reverifier:
             # LC-06: kind=template registry entries dispatch through the
             # generic template runner, never through a code handler.
             self.template_instances = _recipe_registry.template_instances(self.recipe_meta)
+            _cc = _recipe_registry.case_counts(self.recipe_meta)
+            if _cc["observed"] or _cc["extrapolated"]:
+                self.log("recipe cases by provenance (ruling #11, counted separately, never summed): "
+                         "%d observed · %d extrapolated" % (_cc["observed"], _cc["extrapolated"]))
             if self.template_instances:
                 self.log("recipe registry: %d template instance(s) registered"
                          % len(self.template_instances))
@@ -262,7 +266,13 @@ class Reverifier:
             try:
                 if acct:
                     assert_account(ctx, self.cfg, acct, "template instance", self.log)
-                return _recipe_templates.make_instance(inst["template"], **inst["params"])(drv)
+                out = _recipe_templates.make_instance(inst["template"], **inst["params"])(drv)
+                if inst.get("case_source"):
+                    # Ruling #11: the verdict carries its case provenance, so
+                    # reports count observed and extrapolated cases
+                    # separately, never summed.
+                    out["case_source"] = inst["case_source"]
+                return out
             finally:
                 try:
                     drv.close()
