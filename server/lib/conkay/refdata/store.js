@@ -226,5 +226,5 @@ export function createRefdataStore(opts = {}) {
     };
   }
 
-  return { put, get, refind, fetchAndStore, guardUrl, stats, dir };
+  return { put, get, refind, fetchAndStore, guardUrl, stats, dir, list: listRecords };
 }
