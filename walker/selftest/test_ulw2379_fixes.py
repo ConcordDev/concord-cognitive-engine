@@ -52,5 +52,43 @@ check("no write anywhere + inline alert -> pass", state(snap([typed, click_n], a
 check("no write, no message/invalid/disabled -> unchecked [failure path]", state(snap([typed, click_n])) == "unchecked")
 pre = {"n": 1, "action": "click", "writes": ["POST /api/boot"], "typed": None, "submit": False}
 check("a write BEFORE any typed/submit step is not blamed on the input", state(snap([pre, typed, click_n], alerts=["Amount must be greater than 0"])) == "pass")
+
+# ---- fix round 2: settle logic + row scoping + write-in-window with no message evidence
+class Clk:
+    def __init__(s): s.t = 0.0
+    def now(s): return s.t
+    def sleep(s, d): s.t += d
+c = Clk(); n = [3]
+def inflight_dec():
+    n[0] = max(0, n[0] - 1) if c.t > 0.1 else n[0]
+    return n[0]
+ok, w = repro.settle_loop(inflight_dec, c.sleep, c.now)
+check("settle: waits for in-flight to drain, then a quiet period", ok and w >= 180, (ok, w))
+c = Clk(); ok, w = repro.settle_loop(lambda: 0, c.sleep, c.now)
+check("settle: idle page settles after only the quiet period", ok and w <= 400, (ok, w))
+c = Clk(); ok, w = repro.settle_loop(lambda: 1, c.sleep, c.now, max_ms=500)
+check("settle: never-idle page is bounded, reports not settled [failure path]", (not ok) and w <= 600, (ok, w))
+c = Clk(); k = [0]
+def flappy():
+    k[0] += 1; return 1 if k[0] % 3 == 0 else 0
+ok, w = repro.settle_loop(flappy, c.sleep, c.now, max_ms=400)
+check("settle: a request mid-quiet resets the quiet window [failure path]", not ok, (ok, w))
+check("write in an after-typed window with NO message evidence is a definite fail, not unchecked",
+      state(snap([typed, click_w], alerts=[], texts=[])) == "fail")
+check("no write and no evidence stays unchecked [failure path]", state(snap([typed, click_n], alerts=[], texts=[])) == "unchecked")
+nodes = [node(1, "RootWebArea", children=[2]), node(2, "list", "Items", children=[3, 6, 9], parent=1),
+         node(3, "listitem", "", children=[4, 5], parent=2), node(4, "StaticText", "someone-elses-row", parent=3), node(5, "button", "Delete", parent=3),
+         node(6, "listitem", "", children=[7, 8], parent=2), node(7, "StaticText", "qa-walker-x-s2", parent=6), node(8, "button", "Delete", parent=6),
+         node(9, "listitem", "", children=[10], parent=2), node(10, "StaticText", "qa-walker-nobtn", parent=9)]
+class FakeCdp:
+    def __init__(s): s.clicked = []; s._ax = AXTree(nodes)
+    def ax(s): return s._ax
+    def click(s, b): s.clicked.append(b); return True
+d = repro.PlaywrightDriver.__new__(repro.PlaywrightDriver); d.cdp = FakeCdp()
+check("row scoping: Delete inside the row whose text holds the own label is the one clicked", d.click_in_row("Delete", "qa-walker-x-s2") == "Delete" and d.cdp.clicked == [8], d.cdp.clicked)
+d.cdp.clicked.clear()
+check("row scoping: a row with the label but no Delete control is refused [failure path]", d.click_in_row("Delete", "qa-walker-nobtn") is None and d.cdp.clicked == [])
+check("row scoping: label not on the page -> None, nothing clicked [failure path]", d.click_in_row("Delete", "qa-walker-missing") is None and d.cdp.clicked == [])
+check("row scoping: never clicks someone else's row's Delete for an own label", 5 not in d.cdp.clicked)
 print("%d check(s), %d failure(s)" % (N[0], len(FAILS)))
 sys.exit(1 if FAILS else 0)
