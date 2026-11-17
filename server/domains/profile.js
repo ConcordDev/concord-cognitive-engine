@@ -92,12 +92,6 @@ export default function registerProfileActions(registerLensAction) {
     }
   }
 
-  // The reputation domains the PlayerProfile radar renders.
-  const REPUTATION_DOMAINS = [
-    "structural", "materials", "infrastructure", "energy",
-    "architecture", "mentorship", "governance", "exploration",
-  ];
-
   // Resolve which user a call is about: an explicit `targetUserId` param
   // wins, falling back to the caller's own id exactly as before. Every
   // pre-existing caller (no targetUserId) is byte-for-byte unaffected.
@@ -277,9 +271,10 @@ export default function registerProfileActions(registerLensAction) {
   //   - totalRoyalties: completed economy_ledger royalty credits to the caller
   //     (null when the ledger is absent; peers get null, not a fake 0);
   //   - worldsOwned / metrics: player_world_metrics (four-axis) where present;
-  //   - reputation[]: per-domain 0..100 scores derived deterministically from
-  //     the user's real authored-DTU + citation activity (NOT random). Returns
-  //     all-zeros (and reputation: []) when there's no DB / no activity.
+  //   - reputation[]: one score per lens that is actually stored on the
+  //     user's DTUs (`lens_id`). A missing column, or rows whose lens was
+  //     never recorded, is reputation: [] plus reputationReason not_recorded.
+  //     It is not an index-weighted copy of the overall count.
   // `params.targetUserId` (optional): another user's reputation summary.
   // These are all aggregate counts (no content), so nothing here is
   // account-security-adjacent — but peer view still scopes the underlying
@@ -323,9 +318,10 @@ export default function registerProfileActions(registerLensAction) {
         }
         return { dtuCount: Number(countRow?.n) || 0, totalCitations };
       };
+      let ownerCol = "creator_id";
       let agg;
-      try { agg = aggregate("creator_id"); }
-      catch (_e) { agg = aggregate("owner_user_id"); }
+      try { agg = aggregate(ownerCol); }
+      catch (_e) { ownerCol = "owner_user_id"; agg = aggregate(ownerCol); }
 
       // Real four-axis world metrics where present.
       let worldsOwned = 0;
@@ -349,16 +345,37 @@ export default function registerProfileActions(registerLensAction) {
         };
       }
 
-      // Deterministic per-domain reputation from real activity. Each domain's
-      // score blends authored-DTU count + citations through a fixed weight, so
-      // the same activity always yields the same score (no randomness, no
-      // fabrication of values that aren't grounded in real counts).
-      const base = Math.min(100, agg.dtuCount * 8 + agg.totalCitations * 3);
-      const reputation = REPUTATION_DOMAINS.map((domain, i) => {
-        // Per-domain weight in [0.4, 1.0], fixed by domain index — deterministic.
-        const weight = 0.4 + ((i % REPUTATION_DOMAINS.length) / (REPUTATION_DOMAINS.length - 1)) * 0.6;
-        return { domain, score: Math.round(Math.min(100, base * weight)) };
-      });
+      // Per-lens counts. `lens_id` defaulted to "unknown" when the column
+      // was added, which means the lens was not recorded. Those rows do
+      // not become a domain. The 8×DTU + 3×citation scale is the same
+      // cap the old total used, applied to this lens's own rows.
+      let reputation = [];
+      let reputationReason = null;
+      try {
+        const vis = visibilityClause
+          ? visibilityClause.replace(/\bvisibility\b/g, "d.visibility")
+          : "";
+        const join = hasCitations ? "LEFT JOIN dtu_citations cit ON cit.dtu_id = d.id" : "";
+        const cites = hasCitations ? "COALESCE(SUM(cit.citation_count), 0)" : "0";
+        const rows = db.prepare(`
+          SELECT d.lens_id AS lens, COUNT(DISTINCT d.id) AS n, ${cites} AS c
+          FROM dtus d
+          ${join}
+          WHERE d.${ownerCol} = ? ${vis}
+          GROUP BY d.lens_id
+        `).all(userId);
+        reputation = rows.flatMap((row) => {
+          const domain = row.lens == null ? "" : String(row.lens).trim();
+          if (!domain || domain === "unknown") return [];
+          const n = Number(row.n) || 0;
+          const c = Number(row.c) || 0;
+          return [{ domain, score: Math.round(Math.min(100, n * 8 + c * 3)) }];
+        }).sort((a, b) => a.domain.localeCompare(b.domain));
+        if (!reputation.length) reputationReason = "not_recorded";
+      } catch (_e) {
+        reputation = [];
+        reputationReason = "not_recorded";
+      }
 
       return {
         ok: true,
@@ -368,6 +385,7 @@ export default function registerProfileActions(registerLensAction) {
           worldsOwned,
           dtuCount: agg.dtuCount,
           reputation,
+          reputationReason,
           isSelf,
         },
       };
