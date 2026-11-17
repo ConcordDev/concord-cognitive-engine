@@ -1161,6 +1161,36 @@ _ACTIONABLE = ("button", "link", "tab", "menuitem", "menuitemradio", "menuitemch
                "treeitem", "combobox", "textbox", "searchbox", "spinbutton")
 
 
+
+_GENERIC_SUBMIT_VERBS = ("submit", "save", "ok", "done", "apply", "confirm", "create", "add", "post")
+
+
+def pick_submit(buttons, verb):
+    """Pure submit discovery over [(name, disabled)]: the ONE enabled button whose name starts with `verb`; for a generic verb
+    ('submit', 'save', ...) any single enabled create/save-like button (the ticket says 'submit', the button reads 'Create').
+    None when there are 0 or 2+ distinct candidates."""
+    v = (verb or "").strip().lower()
+    live = [(n, d) for n, d in buttons if n and not d]
+    cands = [n for n, _ in live if re.match(r"(?i)^\s*" + re.escape(v) + r"\b", n)]
+    if not cands:
+        cands = [n for n, _ in live if CREATE_SUBMIT.search(n) and (v in n.lower() or v in _GENERIC_SUBMIT_VERBS)]
+    names = list(dict.fromkeys(cands))
+    return names[0] if len(names) == 1 else None
+
+
+def alert_texts(ax):
+    """Text of live alert/status regions. Such a region usually has NO accessible name of its own (name-from-author only):
+    its message is in the StaticText children, so fall back to those."""
+    out = []
+    for n in ax.live():
+        if n.role not in ("alert", "status"):
+            continue
+        t = n.name or " ".join(d.name for d in ax.descendants(n) if d.role in ("StaticText", "text") and d.name and not d.ignored)
+        if t and t.strip():
+            out.append(t.strip())
+    return out
+
+
 class PlaywrightDriver:
     """Adapts a LensWalk's page + CDP session. Requires a browser, so it is exercised on the
     walker box (selftest/test_replay_playwright.py skips where playwright is absent).
@@ -1532,11 +1562,7 @@ class PlaywrightDriver:
     def find_submit(self, verb):
         """The ONE enabled create/save control in the open dialog (else on the page) matching `verb`; None when 0 or 2+."""
         ax = self.cdp.ax()
-        cands = [n for n in self._form_scope(ax) if n.role == "button" and n.name and not n.disabled and re.match(r"(?i)^\s*" + re.escape(verb) + r"\b", n.name)]
-        if not cands:
-            cands = [n for n in self._form_scope(ax) if n.role == "button" and n.name and not n.disabled and CREATE_SUBMIT.search(n.name) and verb in n.name.lower()]
-        names = list(dict.fromkeys(n.name for n in cands))
-        return names[0] if len(names) == 1 else None
+        return pick_submit([(n.name, n.disabled) for n in self._form_scope(ax) if n.role == "button" and n.name], verb)
 
     def delete_with_confirm(self, label):
         """Click Delete/Remove/Trash scoped to the row of own fixture `label`, observe whether a confirm (in-page dialog or native
@@ -1596,7 +1622,7 @@ class PlaywrightDriver:
             items += [d.name for d in ax.descendants(ln) if d.role in ("StaticText", "text", "link", "heading") and d.name]
         items += [n.name for n in ax.live() if n.role in self._ITEM_ROLES and n.name]
         return {"controls": ctl, "texts": ax.texts(), "durable": ax.durable_texts(), "dialogs": [n.name or "dialog" for n in ax.dialogs()],
-                "alerts": [n.name for n in ax.live() if n.role in ("alert", "status") and n.name],
+                "alerts": alert_texts(ax),
                 "list_items": list(dict.fromkeys(items)),
                 "errors": len(self.lw.page_errors) + len(self.lw.console_errors), "url": self.page.url}
 

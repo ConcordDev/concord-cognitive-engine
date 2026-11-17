@@ -353,7 +353,9 @@ def _spec_check(sp, snap, legacy):
         rel = [x for x in wins if x.get("typed") is not None or x.get("submit")]
         if not rel:
             return "unchecked", "no typed-value or submit step in this replay, so no validation was exercised"
-        bad = [x for x in rel if x.get("writes")]
+        # a write in ANY window at/after the first typed-or-submit step counts: the create click is its own step window
+        first = next(i for i, x in enumerate(wins) if x.get("typed") is not None or x.get("submit"))
+        bad = [x for x in wins[first:] if x.get("writes")]
         if bad:
             return "fail", "invalid input reached the API: %s" % (bad[0]["writes"][:3],)
         pool = " ".join(snap.get("texts") or [])
