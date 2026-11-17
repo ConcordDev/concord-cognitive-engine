@@ -75,6 +75,10 @@ def convert_step(raw, lens, labels):
             out.append({"op": "press", "target": "Escape", "count": n, "src": "text"})
         elif _RELOAD.match(sg):
             out.append({"op": "reload", "src": "text"})
+        elif re.fullmatch(r"(?i)(?:then\s+)?(?:(?:hard\s+)?reload\s+)?(?:with\s+|check\s+|open\s+)?(?:the\s+)?(?:devtools\s+)?console(?:\s+open)?", sg):
+            out.append({"op": "console", "src": "text"})
+        elif re.fullmatch(r"(?i)(?:then\s+)?(?:(?:hard\s+)?reload\s+)?(?:with\s+|check\s+|open\s+)?(?:the\s+)?(?:devtools\s+)?network(?:\s+(?:tab|panel|log))?(?:\s+open)?", sg):
+            out.append({"op": "network", "src": "text"})
         elif _TABTOP.match(sg):
             out.append({"op": "tab_sweep", "src": "text"})
         elif _TYPE.match(sg):
@@ -87,6 +91,8 @@ def convert_step(raw, lens, labels):
             if not res or res["status"] not in (L.EXACT, L.ALIAS):
                 return None            # a control we cannot find on the live lens is never invented
             out.append({"op": "click", "target": res["label"], "src": "live:%s" % lens})
+        elif len(segs) > 1 and 1 <= len(sg) <= 40 and (L.resolve(sg, _lab(labels, lens))["status"] in (L.EXACT, L.ALIAS)):
+            out.append({"op": "click", "target": L.resolve(sg, _lab(labels, lens))["label"], "src": "live:%s" % lens})   # a crumb: a live label, exactly
         else:
             return None
     return out or None
@@ -95,6 +101,8 @@ def convert_step(raw, lens, labels):
 # whole-clause patterns -> (kind, args). The span is the WHOLE clause, so nothing in it is left unchecked.
 _CLAUSE_RULES = [
     (re.compile(r"(?i)^(?:keyboard\s+)?focus\s+(?:remains|stays)\s+(?:inside|within|in)\s+(?:the\s+)?(?:open\s+)?(?:modal|dialog|popover|drawer|menu)$"), "focus_trap", {}),
+    (re.compile(r"(?i)^focus\s+(?:is\s+)?trapped(?:\s+in\s+the\s+(?:dialog|modal|menu|popover|drawer))?$|^trapped$"), "focus_trap", {}),
+    (re.compile(r"(?i)^when\s+the\s+tablist\s+is\s+focused,?\s+left\s+and\s+right\s+arrows\s+move\s+(?:focus\s+)?between\s+tabs$"), "arrow_moves", {}),
     (re.compile(r"(?i)^(?:>=|≥)\s*4\.5\s*:\s*1$"), "contrast", {}),
     (re.compile(r"(?i)^(?:no|zero)\s+(?:new\s+)?console\s+errors?$"), "no_console_error", {}),
     (re.compile(r"(?i)^(?:the\s+)?(?:field|item|row|entry|record|task|event|note)\s+(?:is\s+)?listed\s+(?:immediately|right away)$|^(?:field|item|row|entry|record|task|event|note)\s+listed\s+immediately$"), "appears_in_list", {}),
@@ -208,6 +216,11 @@ def main():
         with open(os.path.join(R.DEFAULT_DIR, "batch-%03d.jsonl" % a.batch), "w", encoding="utf-8") as f:
             for r in out:
                 f.write(json.dumps(r, ensure_ascii=False, sort_keys=True) + "\n")
+        pp = os.path.join(R.DEFAULT_DIR, "PROGRESS.json")
+        prog = json.load(open(pp)) if os.path.exists(pp) else {}
+        prog["%03d" % a.batch] = {"tickets": len(out), "rewritten": sum(1 for r in out if r["status"] == "rewritten"),
+                                  "human_only": sum(1 for r in out if r["status"] == "human_only"), "committed_sha": None}
+        json.dump(prog, open(pp, "w"), indent=1, sort_keys=True)
 
 
 if __name__ == "__main__":

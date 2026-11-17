@@ -140,6 +140,9 @@ OPS = {
     "open_first": (_t_open_first, {"open_first"}, r"open|select|click|pick|choose|view|expand"),
     "wait": (_t_wait, {"wait"}, r"wait|second|\d+\s*s\b|\bms\b|settle|load"),
 }
+OPS["console"] = (lambda s: "Load the lens with Console open", {"check_console"}, r"console")
+OPS["network"] = (lambda s: "Load the lens with Network open", {"check_network"}, r"network")
+OPS["ax"] = (lambda s: "Open the a11y tree", {"check_ax"}, r"a11y|accessibility|screen ?reader|aria")
 OPS["keep"] = (None, None, None)              # the original step text, verbatim: it must map exactly as the original does
 OPS["needs_human_step"] = (None, None, None)  # the original step text, verbatim: it must stay UNMAPPED (a person runs it)
 _LITERAL_OPS = {"open_tab", "click", "type", "viewport", "scheme", "export", "press", "delete_own", "open_first"}
@@ -202,7 +205,7 @@ KIND_ANCHOR = {
     "net_status": r"\b\d{3}\b|status|error|request|network|http", "esc_closes": r"esc", "focus_opener": r"focus",
     "focus_trap": r"focus|trap|contain|stay", "arrow_moves": r"arrow", "tab_reaches": r"\btab",
     "confirm_before_delete": r"confirm|are you sure|prompt|dialog|ask", "export_file": r"export|download|file|json|csv",
-    "ax_names": r"accessible|aria|label|name", "contrast": r"contrast|wcag", "overflow_390": r"scroll|overflow|clip|fit|cut|wrap|off-?screen",
+    "ax_names": r"accessible|aria|label|name", "contrast": r"contrast|wcag|:\s*1\b", "overflow_390": r"scroll|overflow|clip|fit|cut|wrap|off-?screen",
     "target_size": r"\d{2}\s*(?:px|pt)|target|tap", "validation_block": r"reject|block|prevent|validat|error|invalid|required|not (?:saved|accept|allowed)|clamp|refus|inline|message|never (?:saved|stored)",
     "persisted": r"persist|reload|survive|saved|remain|still", "value_saved": r"persist|reload|saved|survive|stored|kept|remain|there",
     "item_created": r"creat|add|appear|new|saved|listed|row", "appears_in_list": r"list|appear|row|show|table|card|feed|visible|history",
@@ -363,7 +366,7 @@ def _step_literal_ok(s, orig, lens, labels):
 FIELD_NEVER_RE = _W.FIELD_NEVER
 
 
-def agree(ticket, rw, labels=None):
+def agree(ticket, rw, labels=None, manifest_text=None):
     """-> (ok, reasons). Deterministic, fail closed. `labels`: {lens: [live control names]} when available."""
     why = []
     bad = check_schema(rw)
@@ -407,9 +410,13 @@ def agree(ticket, rw, labels=None):
         if not ok:
             why.append(("typed_value_not_in_original: " if "typed value" in (msg or "") else "literal_not_in_original: ") + "step %d %s" % (k, msg))
             continue
+        if s["op"] in ("click", "open_tab") and not re.match(r"^(?:live:|manifest:|alias$)", s["src"]):
+            why.append("src_not_live: step %d control %r has src %r; a control name must come from the live labels, the manifest or ALIASES" % (k, s.get("target"), s["src"]))
+        if s["op"] in ("click", "open_tab") and s["src"].startswith("manifest:") and manifest_text is not None and (s.get("target") or "").lower() not in manifest_text:
+            why.append("src_not_live: step %d %r is not in the manifest" % (k, s.get("target")))
         if s["op"] in ("click", "open_tab", "type", "delete_own") and (HARD_DENY.search(s.get("target") or "") or WRITE_NEVER.search(s.get("target") or "")):
             why.append("safety: step %d target %r is auth/payment/admin/publish territory" % (k, s.get("target")))
-        if lab is not None and s["src"].startswith("live:") and s["op"] in ("click", "open_tab") and not _L.resolve(s["target"], lab)["label"]:
+        if lab is not None and s["src"].startswith("live:") and s["op"] in ("click", "open_tab") and _n(s["target"]) not in {_n(x) for x in lab}:
             why.append("src_not_live: step %d %r is not a live label of %s" % (k, s["target"], lens))
     dropped = {d["orig"]: d["reason"] for d in rw.get("dropped") or []}
     for d in dropped:
