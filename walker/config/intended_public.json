@@ -1,0 +1,12 @@
+{
+  "_doc": "Routes a product owner has decided any signed-in member may read for any user. The two-account check grades a matching call PUBLIC_INTENDED instead of OWNERSHIP_FAIL, files no ownership finding, and the packer never shows it as a bug. ':name' segments match any single path segment. Add entries only with a named decision.",
+  "routes": [
+    {
+      "method": "GET",
+      "route": "/api/ct/merit/:userId",
+      "reason": "Merit credit score is intentionally public to signed-in members (product decision). Sibling /api/ct/loan-eligibility/:userId is NOT public: owner-only fix in progress.",
+      "decided_by": "Dutch",
+      "date": "2026-11-16"
+    }
+  ]
+}

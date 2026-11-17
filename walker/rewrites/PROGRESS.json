@@ -1,0 +1,314 @@
+{
+ "001": {
+  "clauses_by_hand": 5,
+  "committed_sha": null,
+  "human_by_reason": {
+   "code_read": 1,
+   "lighthouse": 2,
+   "other_with_note": 1
+  },
+  "human_only": 4,
+  "needs_human_clause": 43,
+  "needs_human_step": 26,
+  "original_sufficient": 35,
+  "rewritten": 11,
+  "steps_by_hand": 15,
+  "tickets": 50
+ },
+ "002": {
+  "clauses_by_hand": 18,
+  "committed_sha": null,
+  "human_by_reason": {
+   "lighthouse": 2
+  },
+  "human_only": 2,
+  "needs_human_clause": 38,
+  "needs_human_step": 28,
+  "original_sufficient": 33,
+  "rewritten": 15,
+  "steps_by_hand": 6,
+  "tickets": 50
+ },
+ "003": {
+  "clauses_by_hand": 18,
+  "committed_sha": null,
+  "human_by_reason": {
+   "lighthouse": 1,
+   "visual": 1
+  },
+  "human_only": 2,
+  "needs_human_clause": 38,
+  "needs_human_step": 25,
+  "original_sufficient": 30,
+  "rewritten": 18,
+  "steps_by_hand": 9,
+  "tickets": 50
+ },
+ "004": {
+  "clauses_by_hand": 15,
+  "committed_sha": null,
+  "human_by_reason": {
+   "visual": 2
+  },
+  "human_only": 2,
+  "needs_human_clause": 39,
+  "needs_human_step": 23,
+  "original_sufficient": 32,
+  "rewritten": 16,
+  "steps_by_hand": 6,
+  "tickets": 50
+ },
+ "005": {
+  "clauses_by_hand": 20,
+  "committed_sha": null,
+  "human_by_reason": {
+   "lighthouse": 1,
+   "other_with_note": 1
+  },
+  "human_only": 2,
+  "needs_human_clause": 32,
+  "needs_human_step": 27,
+  "original_sufficient": 16,
+  "rewritten": 32,
+  "steps_by_hand": 32,
+  "tickets": 50
+ },
+ "006": {
+  "clauses_by_hand": 16,
+  "committed_sha": null,
+  "human_by_reason": {
+   "lighthouse": 1,
+   "other_with_note": 1
+  },
+  "human_only": 2,
+  "needs_human_clause": 39,
+  "needs_human_step": 28,
+  "original_sufficient": 22,
+  "rewritten": 26,
+  "steps_by_hand": 16,
+  "tickets": 50
+ },
+ "007": {
+  "clauses_by_hand": 11,
+  "committed_sha": null,
+  "human_by_reason": {
+   "code_read": 1,
+   "lighthouse": 2
+  },
+  "human_only": 3,
+  "needs_human_clause": 50,
+  "needs_human_step": 30,
+  "original_sufficient": 23,
+  "rewritten": 24,
+  "steps_by_hand": 37,
+  "tickets": 50
+ },
+ "008": {
+  "clauses_by_hand": 8,
+  "committed_sha": null,
+  "human_by_reason": {
+   "lighthouse": 2
+  },
+  "human_only": 2,
+  "needs_human_clause": 48,
+  "needs_human_step": 32,
+  "original_sufficient": 32,
+  "rewritten": 16,
+  "steps_by_hand": 21,
+  "tickets": 50
+ },
+ "009": {
+  "clauses_by_hand": 20,
+  "committed_sha": null,
+  "human_by_reason": {
+   "cross_account": 1
+  },
+  "human_only": 1,
+  "needs_human_clause": 37,
+  "needs_human_step": 28,
+  "original_sufficient": 24,
+  "rewritten": 25,
+  "steps_by_hand": 30,
+  "tickets": 50
+ },
+ "010": {
+  "clauses_by_hand": 20,
+  "committed_sha": null,
+  "human_by_reason": {
+   "lighthouse": 2
+  },
+  "human_only": 2,
+  "needs_human_clause": 42,
+  "needs_human_step": 22,
+  "original_sufficient": 20,
+  "rewritten": 28,
+  "steps_by_hand": 30,
+  "tickets": 50
+ },
+ "011": {
+  "clauses_by_hand": 20,
+  "committed_sha": null,
+  "human_by_reason": {},
+  "human_only": 0,
+  "needs_human_clause": 45,
+  "needs_human_step": 22,
+  "original_sufficient": 24,
+  "rewritten": 26,
+  "steps_by_hand": 36,
+  "tickets": 50
+ },
+ "012": {
+  "clauses_by_hand": 21,
+  "committed_sha": null,
+  "human_by_reason": {
+   "lighthouse": 2
+  },
+  "human_only": 2,
+  "needs_human_clause": 38,
+  "needs_human_step": 21,
+  "original_sufficient": 22,
+  "rewritten": 26,
+  "steps_by_hand": 23,
+  "tickets": 50
+ },
+ "013": {
+  "clauses_by_hand": 4,
+  "committed_sha": null,
+  "human_by_reason": {
+   "cross_account": 1
+  },
+  "human_only": 1,
+  "needs_human_clause": 37,
+  "needs_human_step": 24,
+  "original_sufficient": 34,
+  "rewritten": 15,
+  "steps_by_hand": 28,
+  "tickets": 50
+ },
+ "014": {
+  "clauses_by_hand": 16,
+  "committed_sha": null,
+  "human_by_reason": {
+   "lighthouse": 2,
+   "other_with_note": 1
+  },
+  "human_only": 3,
+  "needs_human_clause": 39,
+  "needs_human_step": 25,
+  "original_sufficient": 26,
+  "rewritten": 21,
+  "steps_by_hand": 32,
+  "tickets": 50
+ },
+ "015": {
+  "clauses_by_hand": 14,
+  "committed_sha": null,
+  "human_by_reason": {
+   "lighthouse": 2
+  },
+  "human_only": 2,
+  "needs_human_clause": 45,
+  "needs_human_step": 26,
+  "original_sufficient": 29,
+  "rewritten": 19,
+  "steps_by_hand": 30,
+  "tickets": 50
+ },
+ "016": {
+  "clauses_by_hand": 15,
+  "committed_sha": null,
+  "human_by_reason": {
+   "lighthouse": 2
+  },
+  "human_only": 2,
+  "needs_human_clause": 39,
+  "needs_human_step": 32,
+  "original_sufficient": 31,
+  "rewritten": 17,
+  "steps_by_hand": 21,
+  "tickets": 50
+ },
+ "017": {
+  "clauses_by_hand": 13,
+  "committed_sha": null,
+  "human_by_reason": {
+   "code_read": 1,
+   "lighthouse": 3
+  },
+  "human_only": 4,
+  "needs_human_clause": 43,
+  "needs_human_step": 20,
+  "original_sufficient": 28,
+  "rewritten": 18,
+  "steps_by_hand": 21,
+  "tickets": 50
+ },
+ "018": {
+  "clauses_by_hand": 14,
+  "committed_sha": null,
+  "human_by_reason": {
+   "lighthouse": 4
+  },
+  "human_only": 4,
+  "needs_human_clause": 37,
+  "needs_human_step": 20,
+  "original_sufficient": 27,
+  "rewritten": 19,
+  "steps_by_hand": 19,
+  "tickets": 50
+ },
+ "019": {
+  "clauses_by_hand": 13,
+  "committed_sha": null,
+  "human_by_reason": {},
+  "human_only": 0,
+  "needs_human_clause": 42,
+  "needs_human_step": 32,
+  "original_sufficient": 30,
+  "rewritten": 20,
+  "steps_by_hand": 33,
+  "tickets": 50
+ },
+ "020": {
+  "clauses_by_hand": 7,
+  "committed_sha": null,
+  "human_by_reason": {
+   "lighthouse": 1
+  },
+  "human_only": 1,
+  "needs_human_clause": 42,
+  "needs_human_step": 25,
+  "original_sufficient": 38,
+  "rewritten": 11,
+  "steps_by_hand": 13,
+  "tickets": 50
+ },
+ "021": {
+  "clauses_by_hand": 22,
+  "committed_sha": null,
+  "human_by_reason": {},
+  "human_only": 0,
+  "needs_human_clause": 37,
+  "needs_human_step": 21,
+  "original_sufficient": 25,
+  "rewritten": 25,
+  "steps_by_hand": 23,
+  "tickets": 50
+ },
+ "022": {
+  "clauses_by_hand": 8,
+  "committed_sha": null,
+  "human_by_reason": {
+   "code_read": 1,
+   "lighthouse": 1,
+   "visual": 1
+  },
+  "human_only": 3,
+  "needs_human_clause": 39,
+  "needs_human_step": 20,
+  "original_sufficient": 35,
+  "rewritten": 12,
+  "steps_by_hand": 12,
+  "tickets": 50
+ }
+}

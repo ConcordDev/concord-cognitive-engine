@@ -1,0 +1,1622 @@
+[
+ {
+  "slug": "global",
+  "url": "https://concord-os.org/global",
+  "category": "core",
+  "name": "Global"
+ },
+ {
+  "slug": "hub",
+  "url": "https://concord-os.org/hub",
+  "category": "core",
+  "name": "Lens Hub"
+ },
+ {
+  "slug": "chat",
+  "url": "https://concord-os.org/lenses/chat",
+  "category": "core",
+  "name": "Chat"
+ },
+ {
+  "slug": "board",
+  "url": "https://concord-os.org/lenses/board",
+  "category": "core",
+  "name": "Board"
+ },
+ {
+  "slug": "graph",
+  "url": "https://concord-os.org/lenses/graph",
+  "category": "core",
+  "name": "Graph"
+ },
+ {
+  "slug": "code",
+  "url": "https://concord-os.org/lenses/code",
+  "category": "core",
+  "name": "Code"
+ },
+ {
+  "slug": "studio",
+  "url": "https://concord-os.org/lenses/studio",
+  "category": "core",
+  "name": "Studio"
+ },
+ {
+  "slug": "dtus",
+  "url": "https://concord-os.org/lenses/dtus",
+  "category": "knowledge",
+  "name": "DTU Browser"
+ },
+ {
+  "slug": "literary",
+  "url": "https://concord-os.org/lenses/literary",
+  "category": "knowledge",
+  "name": "Literary"
+ },
+ {
+  "slug": "thread",
+  "url": "https://concord-os.org/lenses/thread",
+  "category": "core",
+  "name": "Threads"
+ },
+ {
+  "slug": "forum",
+  "url": "https://concord-os.org/lenses/forum",
+  "category": "knowledge",
+  "name": "Forum"
+ },
+ {
+  "slug": "daily",
+  "url": "https://concord-os.org/lenses/daily",
+  "category": "knowledge",
+  "name": "Daily"
+ },
+ {
+  "slug": "council",
+  "url": "https://concord-os.org/lenses/council",
+  "category": "governance",
+  "name": "Council"
+ },
+ {
+  "slug": "world-creator/anomalies",
+  "url": "https://concord-os.org/lenses/world-creator/anomalies",
+  "category": "governance",
+  "name": "Anomaly Review"
+ },
+ {
+  "slug": "anon",
+  "url": "https://concord-os.org/lenses/anon",
+  "category": "governance",
+  "name": "Anon"
+ },
+ {
+  "slug": "voice",
+  "url": "https://concord-os.org/lenses/voice",
+  "category": "specialized",
+  "name": "Voice"
+ },
+ {
+  "slug": "feed",
+  "url": "https://concord-os.org/lenses/feed",
+  "category": "knowledge",
+  "name": "Feed"
+ },
+ {
+  "slug": "news",
+  "url": "https://concord-os.org/lenses/news",
+  "category": "knowledge",
+  "name": "News"
+ },
+ {
+  "slug": "goals",
+  "url": "https://concord-os.org/lenses/goals",
+  "category": "knowledge",
+  "name": "Goals"
+ },
+ {
+  "slug": "calendar",
+  "url": "https://concord-os.org/lenses/calendar",
+  "category": "knowledge",
+  "name": "Calendar"
+ },
+ {
+  "slug": "timeline",
+  "url": "https://concord-os.org/lenses/timeline",
+  "category": "knowledge",
+  "name": "Timeline"
+ },
+ {
+  "slug": "srs",
+  "url": "https://concord-os.org/lenses/srs",
+  "category": "knowledge",
+  "name": "SRS"
+ },
+ {
+  "slug": "whiteboard",
+  "url": "https://concord-os.org/lenses/whiteboard",
+  "category": "knowledge",
+  "name": "Whiteboard"
+ },
+ {
+  "slug": "schema",
+  "url": "https://concord-os.org/lenses/schema",
+  "category": "system",
+  "name": "Schema"
+ },
+ {
+  "slug": "entity",
+  "url": "https://concord-os.org/lenses/entity",
+  "category": "specialized",
+  "name": "Entity"
+ },
+ {
+  "slug": "temporal",
+  "url": "https://concord-os.org/lenses/temporal",
+  "category": "specialized",
+  "name": "Temporal"
+ },
+ {
+  "slug": "eco",
+  "url": "https://concord-os.org/lenses/eco",
+  "category": "specialized",
+  "name": "Eco"
+ },
+ {
+  "slug": "meta",
+  "url": "https://concord-os.org/lenses/meta",
+  "category": "specialized",
+  "name": "Meta"
+ },
+ {
+  "slug": "debug",
+  "url": "https://concord-os.org/lenses/debug",
+  "category": "system",
+  "name": "Debug"
+ },
+ {
+  "slug": "database",
+  "url": "https://concord-os.org/lenses/database",
+  "category": "system",
+  "name": "Database"
+ },
+ {
+  "slug": "repos",
+  "url": "https://concord-os.org/lenses/repos",
+  "category": "knowledge",
+  "name": "Repos"
+ },
+ {
+  "slug": "music",
+  "url": "https://concord-os.org/lenses/music",
+  "category": "creative",
+  "name": "Music"
+ },
+ {
+  "slug": "art",
+  "url": "https://concord-os.org/lenses/art",
+  "category": "creative",
+  "name": "Art"
+ },
+ {
+  "slug": "fractal",
+  "url": "https://concord-os.org/lenses/fractal",
+  "category": "creative",
+  "name": "Fractal"
+ },
+ {
+  "slug": "game",
+  "url": "https://concord-os.org/lenses/game",
+  "category": "creative",
+  "name": "Game"
+ },
+ {
+  "slug": "sim",
+  "url": "https://concord-os.org/lenses/sim",
+  "category": "creative",
+  "name": "Sim"
+ },
+ {
+  "slug": "ar",
+  "url": "https://concord-os.org/lenses/ar",
+  "category": "creative",
+  "name": "AR"
+ },
+ {
+  "slug": "podcast",
+  "url": "https://concord-os.org/lenses/podcast",
+  "category": "creative",
+  "name": "Podcast"
+ },
+ {
+  "slug": "resonance",
+  "url": "https://concord-os.org/lenses/resonance",
+  "category": "core",
+  "name": "Resonance"
+ },
+ {
+  "slug": "docs",
+  "url": "https://concord-os.org/lenses/docs",
+  "category": "core",
+  "name": "Docs"
+ },
+ {
+  "slug": "paper",
+  "url": "https://concord-os.org/lenses/paper",
+  "category": "core",
+  "name": "Paper"
+ },
+ {
+  "slug": "platform",
+  "url": "https://concord-os.org/lenses/platform",
+  "category": "system",
+  "name": "Platform"
+ },
+ {
+  "slug": "admin",
+  "url": "https://concord-os.org/lenses/admin",
+  "category": "system",
+  "name": "Admin"
+ },
+ {
+  "slug": "audit",
+  "url": "https://concord-os.org/lenses/audit",
+  "category": "system",
+  "name": "Audit"
+ },
+ {
+  "slug": "integrations",
+  "url": "https://concord-os.org/lenses/integrations",
+  "category": "system",
+  "name": "Integrations"
+ },
+ {
+  "slug": "queue",
+  "url": "https://concord-os.org/lenses/queue",
+  "category": "system",
+  "name": "Queue"
+ },
+ {
+  "slug": "tick",
+  "url": "https://concord-os.org/lenses/tick",
+  "category": "system",
+  "name": "Tick"
+ },
+ {
+  "slug": "lock",
+  "url": "https://concord-os.org/lenses/lock",
+  "category": "system",
+  "name": "Lock"
+ },
+ {
+  "slug": "offline",
+  "url": "https://concord-os.org/lenses/offline",
+  "category": "system",
+  "name": "Offline"
+ },
+ {
+  "slug": "market",
+  "url": "https://concord-os.org/lenses/market",
+  "category": "governance",
+  "name": "Market"
+ },
+ {
+  "slug": "marketplace",
+  "url": "https://concord-os.org/lenses/marketplace",
+  "category": "governance",
+  "name": "Marketplace"
+ },
+ {
+  "slug": "questmarket",
+  "url": "https://concord-os.org/lenses/questmarket",
+  "category": "governance",
+  "name": "Questmarket"
+ },
+ {
+  "slug": "vote",
+  "url": "https://concord-os.org/lenses/vote",
+  "category": "governance",
+  "name": "Vote"
+ },
+ {
+  "slug": "ethics",
+  "url": "https://concord-os.org/lenses/ethics",
+  "category": "governance",
+  "name": "Ethics"
+ },
+ {
+  "slug": "alliance",
+  "url": "https://concord-os.org/lenses/alliance",
+  "category": "governance",
+  "name": "Alliance"
+ },
+ {
+  "slug": "billing",
+  "url": "https://concord-os.org/lenses/billing",
+  "category": "governance",
+  "name": "Billing"
+ },
+ {
+  "slug": "crypto",
+  "url": "https://concord-os.org/lenses/crypto",
+  "category": "governance",
+  "name": "Crypto"
+ },
+ {
+  "slug": "bio",
+  "url": "https://concord-os.org/lenses/bio",
+  "category": "science",
+  "name": "Bio"
+ },
+ {
+  "slug": "chem",
+  "url": "https://concord-os.org/lenses/chem",
+  "category": "science",
+  "name": "Chem"
+ },
+ {
+  "slug": "physics",
+  "url": "https://concord-os.org/lenses/physics",
+  "category": "science",
+  "name": "Physics"
+ },
+ {
+  "slug": "math",
+  "url": "https://concord-os.org/lenses/math",
+  "category": "science",
+  "name": "Math"
+ },
+ {
+  "slug": "root",
+  "url": "https://concord-os.org/lenses/root",
+  "category": "science",
+  "name": "Refusal Algebra"
+ },
+ {
+  "slug": "quantum",
+  "url": "https://concord-os.org/lenses/quantum",
+  "category": "science",
+  "name": "Quantum"
+ },
+ {
+  "slug": "neuro",
+  "url": "https://concord-os.org/lenses/neuro",
+  "category": "science",
+  "name": "Neuro"
+ },
+ {
+  "slug": "genesis",
+  "url": "https://concord-os.org/lenses/genesis",
+  "category": "ai",
+  "name": "Genesis"
+ },
+ {
+  "slug": "translation",
+  "url": "https://concord-os.org/lenses/translation",
+  "category": "ai",
+  "name": "Translation"
+ },
+ {
+  "slug": "ml",
+  "url": "https://concord-os.org/lenses/ml",
+  "category": "ai",
+  "name": "ML"
+ },
+ {
+  "slug": "agents",
+  "url": "https://concord-os.org/lenses/agents",
+  "category": "ai",
+  "name": "Agents"
+ },
+ {
+  "slug": "reasoning",
+  "url": "https://concord-os.org/lenses/reasoning",
+  "category": "ai",
+  "name": "Reasoning"
+ },
+ {
+  "slug": "hypothesis",
+  "url": "https://concord-os.org/lenses/hypothesis",
+  "category": "ai",
+  "name": "Hypothesis"
+ },
+ {
+  "slug": "research",
+  "url": "https://concord-os.org/lenses/research",
+  "category": "knowledge",
+  "name": "Research"
+ },
+ {
+  "slug": "answers",
+  "url": "https://concord-os.org/lenses/answers",
+  "category": "knowledge",
+  "name": "The Answers"
+ },
+ {
+  "slug": "cri",
+  "url": "https://concord-os.org/lenses/cri",
+  "category": "knowledge",
+  "name": "CRI"
+ },
+ {
+  "slug": "ingest",
+  "url": "https://concord-os.org/lenses/ingest",
+  "category": "specialized",
+  "name": "Ingest"
+ },
+ {
+  "slug": "inference",
+  "url": "https://concord-os.org/lenses/inference",
+  "category": "ai",
+  "name": "Inference"
+ },
+ {
+  "slug": "metacognition",
+  "url": "https://concord-os.org/lenses/metacognition",
+  "category": "ai",
+  "name": "Metacognition"
+ },
+ {
+  "slug": "metalearning",
+  "url": "https://concord-os.org/lenses/metalearning",
+  "category": "ai",
+  "name": "Metalearning"
+ },
+ {
+  "slug": "reflection",
+  "url": "https://concord-os.org/lenses/reflection",
+  "category": "ai",
+  "name": "Reflection"
+ },
+ {
+  "slug": "affect",
+  "url": "https://concord-os.org/lenses/affect",
+  "category": "ai",
+  "name": "Affect"
+ },
+ {
+  "slug": "attention",
+  "url": "https://concord-os.org/lenses/attention",
+  "category": "ai",
+  "name": "Attention"
+ },
+ {
+  "slug": "commonsense",
+  "url": "https://concord-os.org/lenses/commonsense",
+  "category": "ai",
+  "name": "Commonsense"
+ },
+ {
+  "slug": "transfer",
+  "url": "https://concord-os.org/lenses/transfer",
+  "category": "ai",
+  "name": "Transfer"
+ },
+ {
+  "slug": "grounding",
+  "url": "https://concord-os.org/lenses/grounding",
+  "category": "ai",
+  "name": "Grounding"
+ },
+ {
+  "slug": "experience",
+  "url": "https://concord-os.org/lenses/experience",
+  "category": "ai",
+  "name": "Experience"
+ },
+ {
+  "slug": "lab",
+  "url": "https://concord-os.org/lenses/lab",
+  "category": "specialized",
+  "name": "Lab"
+ },
+ {
+  "slug": "finance",
+  "url": "https://concord-os.org/lenses/finance",
+  "category": "specialized",
+  "name": "Finance"
+ },
+ {
+  "slug": "frontier",
+  "url": "https://concord-os.org/lenses/frontier",
+  "category": "specialized",
+  "name": "Frontier"
+ },
+ {
+  "slug": "collab",
+  "url": "https://concord-os.org/lenses/collab",
+  "category": "specialized",
+  "name": "Collab"
+ },
+ {
+  "slug": "suffering",
+  "url": "https://concord-os.org/lenses/suffering",
+  "category": "specialized",
+  "name": "Suffering"
+ },
+ {
+  "slug": "invariant",
+  "url": "https://concord-os.org/lenses/invariant",
+  "category": "specialized",
+  "name": "Invariant"
+ },
+ {
+  "slug": "fork",
+  "url": "https://concord-os.org/lenses/fork",
+  "category": "specialized",
+  "name": "Fork"
+ },
+ {
+  "slug": "law",
+  "url": "https://concord-os.org/lenses/law",
+  "category": "specialized",
+  "name": "Law"
+ },
+ {
+  "slug": "legacy",
+  "url": "https://concord-os.org/lenses/legacy",
+  "category": "specialized",
+  "name": "Legacy"
+ },
+ {
+  "slug": "organ",
+  "url": "https://concord-os.org/lenses/organ",
+  "category": "specialized",
+  "name": "Organ"
+ },
+ {
+  "slug": "export",
+  "url": "https://concord-os.org/lenses/export",
+  "category": "specialized",
+  "name": "Export"
+ },
+ {
+  "slug": "import",
+  "url": "https://concord-os.org/lenses/import",
+  "category": "specialized",
+  "name": "Import"
+ },
+ {
+  "slug": "custom",
+  "url": "https://concord-os.org/lenses/custom",
+  "category": "specialized",
+  "name": "Custom"
+ },
+ {
+  "slug": "healthcare",
+  "url": "https://concord-os.org/lenses/healthcare",
+  "category": "superlens",
+  "name": "Healthcare"
+ },
+ {
+  "slug": "trades",
+  "url": "https://concord-os.org/lenses/trades",
+  "category": "superlens",
+  "name": "Trades"
+ },
+ {
+  "slug": "food",
+  "url": "https://concord-os.org/lenses/food",
+  "category": "superlens",
+  "name": "Food"
+ },
+ {
+  "slug": "retail",
+  "url": "https://concord-os.org/lenses/retail",
+  "category": "superlens",
+  "name": "Retail"
+ },
+ {
+  "slug": "household",
+  "url": "https://concord-os.org/lenses/household",
+  "category": "superlens",
+  "name": "Household"
+ },
+ {
+  "slug": "accounting",
+  "url": "https://concord-os.org/lenses/accounting",
+  "category": "superlens",
+  "name": "Accounting"
+ },
+ {
+  "slug": "agriculture",
+  "url": "https://concord-os.org/lenses/agriculture",
+  "category": "superlens",
+  "name": "Agriculture"
+ },
+ {
+  "slug": "logistics",
+  "url": "https://concord-os.org/lenses/logistics",
+  "category": "superlens",
+  "name": "Logistics"
+ },
+ {
+  "slug": "education",
+  "url": "https://concord-os.org/lenses/education",
+  "category": "superlens",
+  "name": "Education"
+ },
+ {
+  "slug": "legal",
+  "url": "https://concord-os.org/lenses/legal",
+  "category": "superlens",
+  "name": "Legal"
+ },
+ {
+  "slug": "nonprofit",
+  "url": "https://concord-os.org/lenses/nonprofit",
+  "category": "superlens",
+  "name": "Nonprofit"
+ },
+ {
+  "slug": "realestate",
+  "url": "https://concord-os.org/lenses/realestate",
+  "category": "superlens",
+  "name": "Real Estate"
+ },
+ {
+  "slug": "fitness",
+  "url": "https://concord-os.org/lenses/fitness",
+  "category": "superlens",
+  "name": "Fitness"
+ },
+ {
+  "slug": "creative",
+  "url": "https://concord-os.org/lenses/creative",
+  "category": "superlens",
+  "name": "Creative Production"
+ },
+ {
+  "slug": "manufacturing",
+  "url": "https://concord-os.org/lenses/manufacturing",
+  "category": "superlens",
+  "name": "Manufacturing"
+ },
+ {
+  "slug": "environment",
+  "url": "https://concord-os.org/lenses/environment",
+  "category": "superlens",
+  "name": "Environment"
+ },
+ {
+  "slug": "government",
+  "url": "https://concord-os.org/lenses/government",
+  "category": "superlens",
+  "name": "Government"
+ },
+ {
+  "slug": "aviation",
+  "url": "https://concord-os.org/lenses/aviation",
+  "category": "superlens",
+  "name": "Aviation"
+ },
+ {
+  "slug": "events",
+  "url": "https://concord-os.org/lenses/events",
+  "category": "superlens",
+  "name": "Events"
+ },
+ {
+  "slug": "science",
+  "url": "https://concord-os.org/lenses/science",
+  "category": "superlens",
+  "name": "Science"
+ },
+ {
+  "slug": "security",
+  "url": "https://concord-os.org/lenses/security",
+  "category": "superlens",
+  "name": "Security"
+ },
+ {
+  "slug": "services",
+  "url": "https://concord-os.org/lenses/services",
+  "category": "superlens",
+  "name": "Services"
+ },
+ {
+  "slug": "insurance",
+  "url": "https://concord-os.org/lenses/insurance",
+  "category": "superlens",
+  "name": "Insurance"
+ },
+ {
+  "slug": "travel",
+  "url": "https://concord-os.org/lenses/travel",
+  "category": "superlens",
+  "name": "Travel"
+ },
+ {
+  "slug": "fashion",
+  "url": "https://concord-os.org/lenses/fashion",
+  "category": "superlens",
+  "name": "Fashion"
+ },
+ {
+  "slug": "cooking",
+  "url": "https://concord-os.org/lenses/cooking",
+  "category": "superlens",
+  "name": "Cooking"
+ },
+ {
+  "slug": "home-improvement",
+  "url": "https://concord-os.org/lenses/home-improvement",
+  "category": "superlens",
+  "name": "Home Improvement"
+ },
+ {
+  "slug": "parenting",
+  "url": "https://concord-os.org/lenses/parenting",
+  "category": "superlens",
+  "name": "Parenting"
+ },
+ {
+  "slug": "pets",
+  "url": "https://concord-os.org/lenses/pets",
+  "category": "superlens",
+  "name": "Pets"
+ },
+ {
+  "slug": "sports",
+  "url": "https://concord-os.org/lenses/sports",
+  "category": "superlens",
+  "name": "Sports"
+ },
+ {
+  "slug": "diy",
+  "url": "https://concord-os.org/lenses/diy",
+  "category": "superlens",
+  "name": "DIY"
+ },
+ {
+  "slug": "debate",
+  "url": "https://concord-os.org/lenses/debate",
+  "category": "governance",
+  "name": "Debate"
+ },
+ {
+  "slug": "mentorship",
+  "url": "https://concord-os.org/lenses/mentorship",
+  "category": "governance",
+  "name": "Mentorship"
+ },
+ {
+  "slug": "app-maker",
+  "url": "https://concord-os.org/lenses/app-maker",
+  "category": "system",
+  "name": "App Maker"
+ },
+ {
+  "slug": "analytics",
+  "url": "https://concord-os.org/lenses/analytics",
+  "category": "system",
+  "name": "Analytics"
+ },
+ {
+  "slug": "bridge",
+  "url": "https://concord-os.org/lenses/bridge",
+  "category": "system",
+  "name": "Bridge"
+ },
+ {
+  "slug": "disputes",
+  "url": "https://concord-os.org/lenses/disputes",
+  "category": "governance",
+  "name": "Disputes"
+ },
+ {
+  "slug": "privacy",
+  "url": "https://concord-os.org/lenses/privacy",
+  "category": "governance",
+  "name": "Privacy"
+ },
+ {
+  "slug": "wallet",
+  "url": "https://concord-os.org/lenses/wallet",
+  "category": "governance",
+  "name": "Wallet"
+ },
+ {
+  "slug": "world",
+  "url": "https://concord-os.org/lenses/world",
+  "category": "core",
+  "name": "World Lens"
+ },
+ {
+  "slug": "all",
+  "url": "https://concord-os.org/lenses/all",
+  "category": "system",
+  "name": "All DTUs"
+ },
+ {
+  "slug": "automotive",
+  "url": "https://concord-os.org/lenses/automotive",
+  "category": "superlens",
+  "name": "Automotive"
+ },
+ {
+  "slug": "carpentry",
+  "url": "https://concord-os.org/lenses/carpentry",
+  "category": "superlens",
+  "name": "Carpentry"
+ },
+ {
+  "slug": "construction",
+  "url": "https://concord-os.org/lenses/construction",
+  "category": "superlens",
+  "name": "Construction"
+ },
+ {
+  "slug": "consulting",
+  "url": "https://concord-os.org/lenses/consulting",
+  "category": "superlens",
+  "name": "Consulting"
+ },
+ {
+  "slug": "defense",
+  "url": "https://concord-os.org/lenses/defense",
+  "category": "superlens",
+  "name": "Defense"
+ },
+ {
+  "slug": "electrical",
+  "url": "https://concord-os.org/lenses/electrical",
+  "category": "superlens",
+  "name": "Electrical"
+ },
+ {
+  "slug": "emergency-services",
+  "url": "https://concord-os.org/lenses/emergency-services",
+  "category": "superlens",
+  "name": "Emergency Services"
+ },
+ {
+  "slug": "energy",
+  "url": "https://concord-os.org/lenses/energy",
+  "category": "superlens",
+  "name": "Energy"
+ },
+ {
+  "slug": "conkay",
+  "url": "https://concord-os.org/lenses/conkay",
+  "category": "core",
+  "name": "ConKay workspace"
+ },
+ {
+  "slug": "engineering",
+  "url": "https://concord-os.org/lenses/engineering",
+  "category": "superlens",
+  "name": "Engineering"
+ },
+ {
+  "slug": "forestry",
+  "url": "https://concord-os.org/lenses/forestry",
+  "category": "superlens",
+  "name": "Forestry"
+ },
+ {
+  "slug": "geology",
+  "url": "https://concord-os.org/lenses/geology",
+  "category": "superlens",
+  "name": "Geology"
+ },
+ {
+  "slug": "hr",
+  "url": "https://concord-os.org/lenses/hr",
+  "category": "superlens",
+  "name": "HR"
+ },
+ {
+  "slug": "hvac",
+  "url": "https://concord-os.org/lenses/hvac",
+  "category": "superlens",
+  "name": "HVAC"
+ },
+ {
+  "slug": "landscaping",
+  "url": "https://concord-os.org/lenses/landscaping",
+  "category": "superlens",
+  "name": "Landscaping"
+ },
+ {
+  "slug": "law-enforcement",
+  "url": "https://concord-os.org/lenses/law-enforcement",
+  "category": "superlens",
+  "name": "Law Enforcement"
+ },
+ {
+  "slug": "masonry",
+  "url": "https://concord-os.org/lenses/masonry",
+  "category": "superlens",
+  "name": "Masonry"
+ },
+ {
+  "slug": "materials",
+  "url": "https://concord-os.org/lenses/materials",
+  "category": "superlens",
+  "name": "Materials"
+ },
+ {
+  "slug": "mining",
+  "url": "https://concord-os.org/lenses/mining",
+  "category": "superlens",
+  "name": "Mining"
+ },
+ {
+  "slug": "ocean",
+  "url": "https://concord-os.org/lenses/ocean",
+  "category": "superlens",
+  "name": "Ocean"
+ },
+ {
+  "slug": "pharmacy",
+  "url": "https://concord-os.org/lenses/pharmacy",
+  "category": "superlens",
+  "name": "Pharmacy"
+ },
+ {
+  "slug": "plumbing",
+  "url": "https://concord-os.org/lenses/plumbing",
+  "category": "superlens",
+  "name": "Plumbing"
+ },
+ {
+  "slug": "supplychain",
+  "url": "https://concord-os.org/lenses/supplychain",
+  "category": "superlens",
+  "name": "Supply Chain"
+ },
+ {
+  "slug": "telecommunications",
+  "url": "https://concord-os.org/lenses/telecommunications",
+  "category": "superlens",
+  "name": "Telecom"
+ },
+ {
+  "slug": "urban-planning",
+  "url": "https://concord-os.org/lenses/urban-planning",
+  "category": "superlens",
+  "name": "Urban Planning"
+ },
+ {
+  "slug": "veterinary",
+  "url": "https://concord-os.org/lenses/veterinary",
+  "category": "superlens",
+  "name": "Veterinary"
+ },
+ {
+  "slug": "welding",
+  "url": "https://concord-os.org/lenses/welding",
+  "category": "superlens",
+  "name": "Welding"
+ },
+ {
+  "slug": "desert",
+  "url": "https://concord-os.org/lenses/desert",
+  "category": "superlens",
+  "name": "Desert"
+ },
+ {
+  "slug": "animation",
+  "url": "https://concord-os.org/lenses/animation",
+  "category": "creative",
+  "name": "Animation"
+ },
+ {
+  "slug": "artistry",
+  "url": "https://concord-os.org/lenses/artistry",
+  "category": "creative",
+  "name": "Artistry"
+ },
+ {
+  "slug": "creative-writing",
+  "url": "https://concord-os.org/lenses/creative-writing",
+  "category": "creative",
+  "name": "Creative Writing"
+ },
+ {
+  "slug": "film-studios",
+  "url": "https://concord-os.org/lenses/film-studios",
+  "category": "creative",
+  "name": "Film Studios"
+ },
+ {
+  "slug": "game-design",
+  "url": "https://concord-os.org/lenses/game-design",
+  "category": "creative",
+  "name": "Game Design"
+ },
+ {
+  "slug": "photography",
+  "url": "https://concord-os.org/lenses/photography",
+  "category": "creative",
+  "name": "Photography"
+ },
+ {
+  "slug": "poetry",
+  "url": "https://concord-os.org/lenses/poetry",
+  "category": "creative",
+  "name": "Poetry"
+ },
+ {
+  "slug": "astronomy",
+  "url": "https://concord-os.org/lenses/astronomy",
+  "category": "science",
+  "name": "Astronomy"
+ },
+ {
+  "slug": "atlas",
+  "url": "https://concord-os.org/lenses/atlas",
+  "category": "science",
+  "name": "Atlas"
+ },
+ {
+  "slug": "history",
+  "url": "https://concord-os.org/lenses/history",
+  "category": "knowledge",
+  "name": "History"
+ },
+ {
+  "slug": "linguistics",
+  "url": "https://concord-os.org/lenses/linguistics",
+  "category": "knowledge",
+  "name": "Linguistics"
+ },
+ {
+  "slug": "philosophy",
+  "url": "https://concord-os.org/lenses/philosophy",
+  "category": "knowledge",
+  "name": "Philosophy"
+ },
+ {
+  "slug": "robotics",
+  "url": "https://concord-os.org/lenses/robotics",
+  "category": "science",
+  "name": "Robotics"
+ },
+ {
+  "slug": "space",
+  "url": "https://concord-os.org/lenses/space",
+  "category": "science",
+  "name": "Space"
+ },
+ {
+  "slug": "marketing",
+  "url": "https://concord-os.org/lenses/marketing",
+  "category": "superlens",
+  "name": "Marketing"
+ },
+ {
+  "slug": "mental-health",
+  "url": "https://concord-os.org/lenses/mental-health",
+  "category": "superlens",
+  "name": "Mental Health"
+ },
+ {
+  "slug": "projects",
+  "url": "https://concord-os.org/lenses/projects",
+  "category": "superlens",
+  "name": "Projects"
+ },
+ {
+  "slug": "command-center",
+  "url": "https://concord-os.org/lenses/command-center",
+  "category": "system",
+  "name": "Command Center"
+ },
+ {
+  "slug": "crafting",
+  "url": "https://concord-os.org/lenses/crafting",
+  "category": "creative",
+  "name": "Crafting"
+ },
+ {
+  "slug": "understanding",
+  "url": "https://concord-os.org/lenses/understanding",
+  "category": "knowledge",
+  "name": "Understanding"
+ },
+ {
+  "slug": "message",
+  "url": "https://concord-os.org/lenses/message",
+  "category": "system",
+  "name": "Messages"
+ },
+ {
+  "slug": "ux-suite",
+  "url": "https://concord-os.org/lenses/ux-suite",
+  "category": "system",
+  "name": "UX Suite"
+ },
+ {
+  "slug": "ops-telemetry",
+  "url": "https://concord-os.org/lenses/ops-telemetry",
+  "category": "system",
+  "name": "Ops Telemetry"
+ },
+ {
+  "slug": "world-observatory",
+  "url": "https://concord-os.org/lenses/world-observatory",
+  "category": "system",
+  "name": "World Observatory"
+ },
+ {
+  "slug": "concord-link-frontier",
+  "url": "https://concord-os.org/lenses/concord-link-frontier",
+  "category": "system",
+  "name": "Concord Link Frontier"
+ },
+ {
+  "slug": "plugins",
+  "url": "https://concord-os.org/lenses/plugins",
+  "category": "system",
+  "name": "Plugin Gallery"
+ },
+ {
+  "slug": "quests",
+  "url": "https://concord-os.org/lenses/quests",
+  "category": "progression",
+  "name": "Quests"
+ },
+ {
+  "slug": "auction",
+  "url": "https://concord-os.org/lenses/auction",
+  "category": "economy",
+  "name": "Auction House"
+ },
+ {
+  "slug": "lfg",
+  "url": "https://concord-os.org/lenses/lfg",
+  "category": "social",
+  "name": "LFG"
+ },
+ {
+  "slug": "achievements",
+  "url": "https://concord-os.org/lenses/achievements",
+  "category": "progression",
+  "name": "Achievements"
+ },
+ {
+  "slug": "training-room",
+  "url": "https://concord-os.org/lenses/training-room",
+  "category": "progression",
+  "name": "Training Room"
+ },
+ {
+  "slug": "housing",
+  "url": "https://concord-os.org/lenses/housing",
+  "category": "world",
+  "name": "Housing"
+ },
+ {
+  "slug": "announcements",
+  "url": "https://concord-os.org/lenses/announcements",
+  "category": "system",
+  "name": "Announcements"
+ },
+ {
+  "slug": "detective",
+  "url": "https://concord-os.org/lenses/detective",
+  "category": "world",
+  "name": "Detective board"
+ },
+ {
+  "slug": "narrative-walk",
+  "url": "https://concord-os.org/lenses/narrative-walk",
+  "category": "creative",
+  "name": "Narrative trail"
+ },
+ {
+  "slug": "photos",
+  "url": "https://concord-os.org/lenses/photos",
+  "category": "creative",
+  "name": "Photos"
+ },
+ {
+  "slug": "mail",
+  "url": "https://concord-os.org/lenses/mail",
+  "category": "social",
+  "name": "Mail"
+ },
+ {
+  "slug": "spectate",
+  "url": "https://concord-os.org/lenses/spectate",
+  "category": "world",
+  "name": "Spectate"
+ },
+ {
+  "slug": "settings",
+  "url": "https://concord-os.org/lenses/settings",
+  "category": "system",
+  "name": "Settings"
+ },
+ {
+  "slug": "creator",
+  "url": "https://concord-os.org/lenses/creator",
+  "category": "system",
+  "name": "Creator"
+ },
+ {
+  "slug": "federation",
+  "url": "https://concord-os.org/lenses/federation",
+  "category": "governance",
+  "name": "Federation"
+ },
+ {
+  "slug": "black-market",
+  "url": "https://concord-os.org/lenses/black-market",
+  "category": "specialized",
+  "name": "Black Market"
+ },
+ {
+  "slug": "courtship",
+  "url": "https://concord-os.org/lenses/courtship",
+  "category": "specialized",
+  "name": "Courtship"
+ },
+ {
+  "slug": "fishing",
+  "url": "https://concord-os.org/lenses/fishing",
+  "category": "specialized",
+  "name": "Fishing"
+ },
+ {
+  "slug": "creatures",
+  "url": "https://concord-os.org/lenses/creatures",
+  "category": "specialized",
+  "name": "Creatures"
+ },
+ {
+  "slug": "garage",
+  "url": "https://concord-os.org/lenses/garage",
+  "category": "specialized",
+  "name": "Garage"
+ },
+ {
+  "slug": "repair-telemetry",
+  "url": "https://concord-os.org/lenses/repair-telemetry",
+  "category": "specialized",
+  "name": "Repair Telemetry"
+ },
+ {
+  "slug": "move-builder",
+  "url": "https://concord-os.org/lenses/move-builder",
+  "category": "specialized",
+  "name": "Move Builder"
+ },
+ {
+  "slug": "codex",
+  "url": "https://concord-os.org/lenses/codex",
+  "category": "knowledge",
+  "name": "Codex"
+ },
+ {
+  "slug": "reasoning-traces",
+  "url": "https://concord-os.org/lenses/reasoning/traces",
+  "category": "ai",
+  "name": "HLR Traces"
+ },
+ {
+  "slug": "civic-bonds",
+  "url": "https://concord-os.org/lenses/civic-bonds",
+  "category": "governance",
+  "name": "Civic Bonds"
+ },
+ {
+  "slug": "careers",
+  "url": "https://concord-os.org/lenses/careers",
+  "category": "economy",
+  "name": "Careers"
+ },
+ {
+  "slug": "bounties",
+  "url": "https://concord-os.org/lenses/bounties",
+  "category": "economy",
+  "name": "Bounties"
+ },
+ {
+  "slug": "byo-keys",
+  "url": "https://concord-os.org/lenses/byo-keys",
+  "category": "system",
+  "name": "API Keys"
+ },
+ {
+  "slug": "classroom",
+  "url": "https://concord-os.org/lenses/classroom",
+  "category": "knowledge",
+  "name": "Classroom"
+ },
+ {
+  "slug": "code-quality",
+  "url": "https://concord-os.org/lenses/code-quality",
+  "category": "system",
+  "name": "Code Quality"
+ },
+ {
+  "slug": "cognition",
+  "url": "https://concord-os.org/lenses/cognition",
+  "category": "ai",
+  "name": "Cognition"
+ },
+ {
+  "slug": "cognitive-replay",
+  "url": "https://concord-os.org/lenses/cognitive-replay",
+  "category": "ai",
+  "name": "Cognitive Replay"
+ },
+ {
+  "slug": "crisis-ops",
+  "url": "https://concord-os.org/lenses/crisis-ops",
+  "category": "governance",
+  "name": "Crisis Ops"
+ },
+ {
+  "slug": "death-insurance",
+  "url": "https://concord-os.org/lenses/death-insurance",
+  "category": "economy",
+  "name": "Death Insurance"
+ },
+ {
+  "slug": "deities",
+  "url": "https://concord-os.org/lenses/deities",
+  "category": "world",
+  "name": "Deities"
+ },
+ {
+  "slug": "dreams",
+  "url": "https://concord-os.org/lenses/dreams",
+  "category": "ai",
+  "name": "Dreams"
+ },
+ {
+  "slug": "dx-platform",
+  "url": "https://concord-os.org/lenses/dx-platform",
+  "category": "system",
+  "name": "DX Platform"
+ },
+ {
+  "slug": "event-timeline",
+  "url": "https://concord-os.org/lenses/event-timeline",
+  "category": "world",
+  "name": "Event Timeline"
+ },
+ {
+  "slug": "expedition-journal",
+  "url": "https://concord-os.org/lenses/expedition-journal",
+  "category": "world",
+  "name": "Expedition Journal"
+ },
+ {
+  "slug": "expert-mode",
+  "url": "https://concord-os.org/lenses/expert-mode",
+  "category": "ai",
+  "name": "Expert Mode"
+ },
+ {
+  "slug": "forecast",
+  "url": "https://concord-os.org/lenses/forecast",
+  "category": "knowledge",
+  "name": "Forecast"
+ },
+ {
+  "slug": "forge",
+  "url": "https://concord-os.org/lenses/forge",
+  "category": "ai",
+  "name": "Forge"
+ },
+ {
+  "slug": "ledger",
+  "url": "https://concord-os.org/lenses/ledger",
+  "category": "world",
+  "name": "Concordia world ledger (game world)"
+ },
+ {
+  "slug": "foundry",
+  "url": "https://concord-os.org/lenses/foundry",
+  "category": "world",
+  "name": "Foundry"
+ },
+ {
+  "slug": "gallery",
+  "url": "https://concord-os.org/lenses/gallery",
+  "category": "creative",
+  "name": "Gallery"
+ },
+ {
+  "slug": "ghost-tracker",
+  "url": "https://concord-os.org/lenses/ghost-tracker",
+  "category": "world",
+  "name": "Ghost Tracker"
+ },
+ {
+  "slug": "goddess",
+  "url": "https://concord-os.org/lenses/goddess",
+  "category": "world",
+  "name": "Goddess"
+ },
+ {
+  "slug": "inheritance",
+  "url": "https://concord-os.org/lenses/inheritance",
+  "category": "world",
+  "name": "Inheritance"
+ },
+ {
+  "slug": "kingdoms",
+  "url": "https://concord-os.org/lenses/kingdoms",
+  "category": "governance",
+  "name": "Kingdoms"
+ },
+ {
+  "slug": "lattice",
+  "url": "https://concord-os.org/lenses/lattice",
+  "category": "ai",
+  "name": "Lattice"
+ },
+ {
+  "slug": "maker",
+  "url": "https://concord-os.org/lenses/maker",
+  "category": "creative",
+  "name": "Maker"
+ },
+ {
+  "slug": "markets",
+  "url": "https://concord-os.org/lenses/markets",
+  "category": "economy",
+  "name": "Markets"
+ },
+ {
+  "slug": "meditation",
+  "url": "https://concord-os.org/lenses/meditation",
+  "category": "progression",
+  "name": "Meditation"
+ },
+ {
+  "slug": "mesh",
+  "url": "https://concord-os.org/lenses/mesh",
+  "category": "system",
+  "name": "Mesh"
+ },
+ {
+  "slug": "observe",
+  "url": "https://concord-os.org/lenses/observe",
+  "category": "system",
+  "name": "Observe"
+ },
+ {
+  "slug": "ops",
+  "url": "https://concord-os.org/lenses/ops",
+  "category": "system",
+  "name": "Ops"
+ },
+ {
+  "slug": "personas",
+  "url": "https://concord-os.org/lenses/personas",
+  "category": "ai",
+  "name": "Personas"
+ },
+ {
+  "slug": "productivity",
+  "url": "https://concord-os.org/lenses/productivity",
+  "category": "knowledge",
+  "name": "Productivity"
+ },
+ {
+  "slug": "psyops",
+  "url": "https://concord-os.org/lenses/psyops",
+  "category": "governance",
+  "name": "PsyOps"
+ },
+ {
+  "slug": "sandbox",
+  "url": "https://concord-os.org/lenses/sandbox",
+  "category": "system",
+  "name": "Sandbox"
+ },
+ {
+  "slug": "saved",
+  "url": "https://concord-os.org/lenses/saved",
+  "category": "core",
+  "name": "Saved"
+ },
+ {
+  "slug": "vault",
+  "url": "https://concord-os.org/lenses/vault",
+  "category": "creative",
+  "name": "TheVault"
+ },
+ {
+  "slug": "self",
+  "url": "https://concord-os.org/lenses/self",
+  "category": "progression",
+  "name": "Self"
+ },
+ {
+  "slug": "sentinel",
+  "url": "https://concord-os.org/lenses/sentinel",
+  "category": "system",
+  "name": "Sentinel"
+ },
+ {
+  "slug": "sessions",
+  "url": "https://concord-os.org/lenses/sessions",
+  "category": "system",
+  "name": "Sessions"
+ },
+ {
+  "slug": "social",
+  "url": "https://concord-os.org/lenses/social",
+  "category": "social",
+  "name": "Social"
+ },
+ {
+  "slug": "society",
+  "url": "https://concord-os.org/lenses/society",
+  "category": "social",
+  "name": "Society"
+ },
+ {
+  "slug": "sponsorship",
+  "url": "https://concord-os.org/lenses/sponsorship",
+  "category": "economy",
+  "name": "Sponsorship"
+ },
+ {
+  "slug": "staking",
+  "url": "https://concord-os.org/lenses/staking",
+  "category": "economy",
+  "name": "Staking"
+ },
+ {
+  "slug": "strategic-adds",
+  "url": "https://concord-os.org/lenses/strategic-adds",
+  "category": "system",
+  "name": "Strategic Adds"
+ },
+ {
+  "slug": "sub-worlds",
+  "url": "https://concord-os.org/lenses/sub-worlds",
+  "category": "world",
+  "name": "Sub-Worlds"
+ },
+ {
+  "slug": "sync",
+  "url": "https://concord-os.org/lenses/sync",
+  "category": "system",
+  "name": "Sync"
+ },
+ {
+  "slug": "system",
+  "url": "https://concord-os.org/lenses/system",
+  "category": "system",
+  "name": "System"
+ },
+ {
+  "slug": "tools",
+  "url": "https://concord-os.org/lenses/tools",
+  "category": "system",
+  "name": "Tools"
+ },
+ {
+  "slug": "tournaments",
+  "url": "https://concord-os.org/lenses/tournaments",
+  "category": "world",
+  "name": "Tournaments"
+ },
+ {
+  "slug": "wellness",
+  "url": "https://concord-os.org/lenses/wellness",
+  "category": "progression",
+  "name": "Wellness"
+ },
+ {
+  "slug": "world-creator",
+  "url": "https://concord-os.org/lenses/world-creator",
+  "category": "world",
+  "name": "World Creator"
+ },
+ {
+  "slug": "worldmodel",
+  "url": "https://concord-os.org/lenses/worldmodel",
+  "category": "ai",
+  "name": "World Model"
+ }
+]
