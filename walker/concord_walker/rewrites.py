@@ -458,7 +458,11 @@ def agree(ticket, rw, labels=None, manifest_text=None, frontend_repo=None):
             why.append("src_not_live: step %d control %r has src %r; a control name must come from the live labels, the manifest or ALIASES" % (k, s.get("target"), s["src"]))
         if s["op"] in ("click", "open_tab") and s["src"].startswith("manifest:") and manifest_text is not None and (s.get("target") or "").lower() not in manifest_text:
             why.append("src_not_live: step %d %r is not in the manifest" % (k, s.get("target")))
-        if s["op"] in ("click", "open_tab", "type", "delete_own") and (HARD_DENY.search(s.get("target") or "") or WRITE_NEVER.search(s.get("target") or "")):
+        tg = s.get("target") or ""
+        # an own-fixture create opener ("New page", "Add model") is allowed exactly as the original-text path allows it
+        # (writevocab._CREATE_OPENER); WRITE_NEVER (publish/share/auth/payment/admin/other users) is refused regardless.
+        create_ok = s["op"] == "click" and bool(_W._CREATE_OPENER.match(tg)) and not _W._CREATE_OPENER_NOT.search(_W._CREATE_OPENER.match(tg).group("thing"))
+        if s["op"] in ("click", "open_tab", "type", "delete_own") and (WRITE_NEVER.search(tg) or (HARD_DENY.search(tg) and not create_ok)):
             why.append("safety: step %d target %r is auth/payment/admin/publish territory" % (k, s.get("target")))
         if lab is not None and s["src"].startswith("live:") and s["op"] in ("click", "open_tab") and _n(s["target"]) not in {_n(x) for x in lab}:
             why.append("src_not_live: step %d %r is not a live label of %s" % (k, s["target"], lens))

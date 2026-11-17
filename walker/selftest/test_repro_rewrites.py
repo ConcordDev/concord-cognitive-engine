@@ -167,6 +167,16 @@ for nm, step, needle in [("type into a Password field", {"op": "type", "target":
     rw["steps"][2 if step["op"] == "type" else 0] = step
     ok5, why5 = R.agree(t5, rw)
     check("safety: %s is refused by agree() exactly as the mapper policy would" % nm, not ok5, why5)
+# own-fixture create openers are NOT refused just for being create controls; publish/share/other-user stay refused
+for nm, tgt, refused in [("own-fixture create opener 'New page'", "New page", False), ("own-fixture create opener 'Add model'", "Add model", False),
+                         ("publish control 'Share & Publish'", "Share & Publish", True), ("'New post' (post = sends to others)", "New post", True),
+                         ("'Start a piece' (HARD_DENY verb, not a create opener)", "Start a piece", True)]:
+    t6 = dict(T, repro_steps=["Open the Review tab, then click %s" % tgt, "x", "y", "z"])
+    rw = mut(lambda r: r.update(orig_hash=R.orig_hash(t6)))
+    rw["steps"][0] = {"op": "click", "target": tgt, "src": "text", "from_orig": [0]}
+    ok6, why6 = R.agree(t6, rw)
+    has_safety = any("safety" in w for w in why6)
+    check("safety: %s is %s by agree()" % (nm, "refused" if refused else "not refused"), has_safety == refused, why6)
 # the compiled text maps to the SAME sub-steps the original text would (no new verb, no widening)
 for step, orig in [({"op": "click", "target": "Export", "src": "text", "from_orig": [0]}, 'Click Export'), ({"op": "press", "target": "Escape", "src": "text", "from_orig": [0]}, "Press Escape"),
                    ({"op": "viewport", "target": "390x844", "src": "text", "from_orig": [0]}, "Set viewport 390x844")]:
