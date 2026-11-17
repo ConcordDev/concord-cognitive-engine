@@ -64,8 +64,6 @@ UNMAPPED = [
     ("studio", "Open own Studio project", "no specific control"),
     ("chat", "Focus composer and send a message", "no specific control"),
     ("calendar", "Open event detail, press Escape", "no specific control"),
-    ("fractal", "Clear Center X > type 0 or -1", "typed value"),
-    ("forge", "Domain Tables > type 'bad table!@#' > Add", "typed value"),
     ("studio", "Set tempo to 0, then 999", "no recognised action"),
     ("global", "Tab to Schedules, ArrowRight; Ctrl+K, Esc", "no recognised action"),
     ("mental-health", "Mood > check in with note 'qa-zt1-mental-health-2026-11-10'", "check in"),
@@ -96,7 +94,7 @@ ok, got, _ = acts("global", "Search view > type 'zzz'")
 e = repro.expand_step("Search view > type 'zzz'", "global")
 check("quoted literal into a search field is typed as that literal", e["substeps"][-1]["literal"] == "zzz", e)
 e = repro.expand_step("Title > type 'zzz'", "demo")
-check("quoted literal into a NON-search field is NOT reproduced (point-of-step)", not e["mapped"], e)
+check("quoted literal into a NON-search field maps to a typed test value (write mode only at run time)", e["mapped"] and e["substeps"][-1]["action"] == "type_value", e)
 
 
 # ------------------------------------------------------------------ executor

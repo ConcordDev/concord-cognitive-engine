@@ -89,10 +89,9 @@ for lens, step in [("studio", "Lighthouse accessibility"), ("security", "Lightho
     ok, got, e = acts(lens, step)
     check("Lighthouse stays unmapped: %s | %s" % (lens, step[:40]), (not ok) and "Lighthouse" in (e["reason"] or "") and e["substeps"] == [], e)
 
-# typed boundary values and write verbs stay exactly as unmapped as before (out of scope)
-for lens, step in [("fractal", "Clear Center X > type 0 or -1"), ("forge", "Domain Tables > type 'bad table!@#' > Add"), ("ocean", "Enter 300-char name > Spot"),
-                   ("calendar", "Also try blank title"), ("energy", "Select meter, submit 100 W, reload"), ("consulting", "Create engagement, log 1h, Invoices > Generate"),
-                   ("artistry", "New Project > fill > submit"), ("paper", "Save as DTU on own paper/manuscript."), ("ar", "Trash on any item")]:
+# write steps this vocabulary does NOT cover stay unmapped (typed boundary values / create / delete now map: see test_expected_write_pass2.py)
+for lens, step in [("calendar", "Also try blank title"), ("energy", "Select meter, submit 100 W, reload"), ("consulting", "Create engagement, log 1h, Invoices > Generate"),
+                   ("paper", "Save as DTU on own paper/manuscript.")]:
     ok, got, e = acts(lens, step)
     check("typed/write stays unmapped: %s | %s" % (lens, step[:45]), (not ok) and e["substeps"] == [], (got, e.get("reason")))
 
@@ -119,7 +118,7 @@ e = repro.expand_step("Click floating New listing", "marketplace")
 check("a leading descriptor is dropped from the label", e["substeps"][0]["name"] == "New listing", e)
 
 # garbage must still fail
-for lens, step in [("fashion", "Map press ArrowRight."), ("x", "Click Delete on a node"), ("board", "Click the parent row"),
+for lens, step in [("fashion", "Map press ArrowRight."), ("board", "Click the parent row"),
                    ("graph", "Click the parent row"), ("studio", "Open own Studio project"), ("a", "click each quick action")]:
     ok, got, e = acts(lens, step)
     check("garbage label stays unmapped: %s | %s" % (lens, step[:40]), not ok, (got, e.get("reason")))
@@ -203,7 +202,7 @@ for c in ["Usable", "Counts agree", "The page works", "Layout looks right", "Con
 
 # checkable kinds WITHOUT evidence -> unchecked, never pass
 KIND_EVIDENCE = [
-    ("Esc closes the dialog", "esc_closes", {"keys_sent": ["Escape"]}, "pass"),
+    ("Esc closes the dialog", "esc_closes", {"keys_sent": ["Escape"], "popups_before": 1, "popups_after": 0}, "pass"),
     ("Focus returns to the trigger", "focus_opener", {"focus_after_escape": "Share", "opener": "Share"}, "pass"),
     ("Arrow keys move focus between tabs", "arrow_moves", {"focus_trace": ["Overview", "Details"]}, "pass"),
     ("Export downloads a valid JSON file", "export_file", {"export": {"ok": True, "verdict": "PASS", "bytes": 12, "rows": 3, "parsed": True}}, "pass"),
@@ -225,7 +224,8 @@ check("fail: overflow measured -> fail", st("No horizontal overflow at 390 px", 
 check("fail: overflow measured at desktop -> unchecked", st("No horizontal overflow at 390 px", evidence={"overflow": {"viewport_w": 1280, "overflow_px": 0}}) == "unchecked")
 check("fail: unnamed controls -> fail", st("Every button has an accessible name", evidence={"ax_unnamed": 3, "ax_total": 9}) == "fail")
 check("fail: Esc never sent -> unchecked, not pass", st("Esc closes the dialog", evidence={"keys_sent": ["Tab"]}) == "unchecked")
-check("fail: Esc sent, dialog still open -> fail", st("Esc closes the dialog", dialogs=["x"], evidence={"keys_sent": ["Escape"]}) == "fail")
+check("fail: Esc sent, dialog still open -> fail", st("Esc closes the dialog", dialogs=["x"], evidence={"keys_sent": ["Escape"], "popups_before": 1}) == "fail")
+check("Esc with NOTHING open is unchecked, not a pass", st("Esc closes the dialog", evidence={"keys_sent": ["Escape"], "popups_before": 0, "popups_after": 0}) == "unchecked")
 check("fail: focus did not return -> fail", st("Focus returns to the trigger", evidence={"focus_after_escape": "Body", "opener": "Share"}) == "fail")
 check("fail: 5xx seen -> fail", st("No 5xx errors", evidence={"net_statuses": [500]}) == "fail")
 check("fail: export not ok -> fail", st("Export downloads a valid JSON file", evidence={"export": {"ok": False, "verdict": "FAIL"}}) == "fail")
@@ -286,7 +286,10 @@ class ResolvingDriver:
 
     def open(self, t): self.calls.append(("open", t))
     def reload(self): self.calls.append(("reload",))
-    def press(self, k): self.calls.append(("press", k))
+    def press(self, k):
+        self.calls.append(("press", k))
+        if k == "Escape":
+            self.kw["popups"] = 0          # Escape closes whatever was open
     def tab_names(self): return [c["name"] for c in self.controls if c.get("role") == "tab"]
     def set_viewport(self, w, h): self.calls.append(("viewport", w, h))
     def set_scheme(self, s): self.calls.append(("scheme", s))
@@ -302,6 +305,7 @@ class ResolvingDriver:
     def focused_name(self): return self.kw.get("focused")
     def export_check(self, formats): return self.kw.get("export", {"verdict": "PASS", "ok": True, "bytes": 99, "rows": 2, "parsed": True})
     def evidence(self): return {}
+    def popup_count(self): return self.kw.get("popups", 0)
 
     def click(self, name, role=None):
         pool = [c["name"] for c in self.controls if role is None or c.get("role") == role]
@@ -360,7 +364,7 @@ check("measured overflow -> STILL_FAILING", r["verdict"] == repro.STILL, r)
 d = ResolvingDriver(caps=False)
 r = repro.run_repro(T(["DevTools 390x844"], "No horizontal overflow at 390 px"), d, lens_slug="demo")
 check("driver cannot measure -> NEEDS_HUMAN (never a silent skip)", r["verdict"] == repro.HUMAN and "step 1" in r["notes"], r["notes"])
-d = ResolvingDriver([btn("Filters"), btn("Details")], texts=["x"], focused="Filters", dialogs=[])
+d = ResolvingDriver([btn("Filters"), btn("Details")], texts=["x"], focused="Filters", dialogs=[], popups=1)
 r = repro.run_repro(T(["Open Filters > Escape"], "Esc closes the dialog; focus returns to the trigger", lens="projects"), d, lens_slug="projects")
 check("Escape records the opener + focus-after-Escape evidence and both clauses pass", r["verdict"] == repro.FIXED, r)
 d = ResolvingDriver([btn("Filters")], focused="Body")

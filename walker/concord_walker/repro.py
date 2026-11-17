@@ -27,8 +27,10 @@ import time
 from . import expected as _X
 from . import labels as _L
 from . import vocab as _V
+from . import writevocab as _W
 from .matching import fuzzy_match
-from .safety import HARD_DENY, SWEEP_PAYMENT, is_tab_safe, write_step_decision, CREATE_OPENER
+from .safety import HARD_DENY, SWEEP_PAYMENT, is_tab_safe, is_close_safe, write_step_decision, CREATE_OPENER, CREATE_SUBMIT
+FIELD_NEVER_RX = _W.FIELD_NEVER
 
 FIXED, STILL, HUMAN = "FIXED", "STILL_FAILING", "NEEDS_HUMAN"
 
@@ -105,10 +107,10 @@ def map_step(raw, lens_slug=None):
     m = re.match(r"(?i)^(?:open|go to|navigate to|visit|load)\s+(?:the\s+)?([A-Za-z0-9 \-]{1,40}?)\s+(?:lens|page)\s*$", s)
     if m and lens_slug and re.sub(r"[^a-z0-9]+", "", m.group(1).lower()) == re.sub(r"[^a-z0-9]+", "", lens_slug.lower()):
         return dict(base, action="open", target=None, mapped=True)  # the lens root
-    m = re.match(r"(?i)^(?:then\s+)?(?:open|switch to|go to|select|click|choose|tap)\s+(?:on\s+)?(?:the\s+)?(?:" + _QNAME + r"|(?P<u>[A-Z][A-Za-z0-9'&.\- ]{0,40}?))\s+tab\b", s)
+    m = re.match(r"(?i)^(?:then\s+)?(?:open|switch to|go to|select|click|choose|tap)\s+(?:on\s+)?(?:the\s+)?(?:" + _QNAME + r"|(?P<u>(?-i:[A-Z])[A-Za-z0-9'&.\- ]{0,40}?))\s+tab\b", s)
     if m:
         return dict(base, action="open_tab", name=(m.group("q") or m.group("u") or "").strip(), mapped=True)
-    m = re.match(r"(?i)^(?:then\s+)?(?:type|enter|fill(?: in)?|input|write)\s+(?:" + _QNAME.replace("(?P<q>", "(?P<v>") + r"\s+)?(?:in|into|in to|to)\s+(?:the\s+)?(?:" + _QNAME + r"|(?P<u>[A-Z][A-Za-z0-9'&.\- ]{0,40}?))(?:\s+" + _NOUN + r")?\s*$", s)
+    m = re.match(r"(?i)^(?:then\s+)?(?:type|enter|fill(?: in)?|input|write)\s+(?:" + _QNAME.replace("(?P<q>", "(?P<v>") + r"\s+)?(?:in|into|in to|to)\s+(?:the\s+)?(?:" + _QNAME + r"|(?P<u>(?-i:[A-Z])[A-Za-z0-9'&.\- ]{0,40}?))(?:\s+" + _NOUN + r")?\s*$", s)
     if m:
         name = (m.group("q") or m.group("u") or "").strip()
         if name:
@@ -296,6 +298,11 @@ def _map_core(s, seg, lens, lens_names, prev, in_crumb):
         if isinstance(v, tuple):
             return v
         return [dict(x, raw=x.get("raw", seg.strip())) for x in v], None
+    w = _W.map_part(s, seg.strip(), lens_names, prev)
+    if w is not _W.NOT_MINE:
+        if isinstance(w, tuple):
+            return w
+        return [dict(x, raw=x.get("raw", seg.strip())) for x in w], None
     if _TOOLING.search(s) and not _KEYRUN.match(s):
         return None, "tooling/viewport instruction is not a supported step"
     if _norm(s) in lens_names or _LENS_ROOT.match(s):
@@ -552,7 +559,7 @@ def _check_legacy(clause, snap):
         bad = snap.get("errors") or 0
         bad_txt = [t for t in snap["texts"] if _ERR_TEXT.search(t)]
         return ("fail", "errors=%s error-text=%s" % (bad, bad_txt[:2])) if bad or bad_txt else ("pass", "no page errors, no error text")
-    m = re.search(r"(?i)(?:" + _QNAME + r"|(?P<u>[A-Z][A-Za-z0-9'&.\- ]{0,40}?))\s*(?:" + _NOUN + r")?\s+(?:is|are|becomes?|should be|gets?|stays?|remains?)\s+(?:now\s+)?(enabled|disabled)\b", c)
+    m = re.search(r"(?i)(?:" + _QNAME + r"|(?P<u>(?-i:[A-Z])[A-Za-z0-9'&.\- ]{0,40}?))\s*(?:" + _NOUN + r")?\s+(?:is|are|becomes?|should be|gets?|stays?|remains?)\s+(?:now\s+)?(enabled|disabled)\b", c)
     if m:
         name = (m.group("q") or m.group("u") or "").strip()
         node = _find(snap, name)
@@ -560,14 +567,14 @@ def _check_legacy(clause, snap):
             return "fail", "control %r not found" % name
         want = m.group(m.lastindex).lower() == "enabled"
         return ("pass" if bool(node.get("enabled", True)) == want else "fail"), "%r enabled=%s" % (node["name"], node.get("enabled", True))
-    m = re.search(r"(?i)(?:" + _QNAME + r"|(?P<u>[A-Z][A-Za-z0-9'&.\- ]{0,40}?))\s*(?:" + _NOUN + r")?\s+(?:is|are|becomes?|should be|gets?)\s+(selected|checked|expanded|pressed)\b", c)
+    m = re.search(r"(?i)(?:" + _QNAME + r"|(?P<u>(?-i:[A-Z])[A-Za-z0-9'&.\- ]{0,40}?))\s*(?:" + _NOUN + r")?\s+(?:is|are|becomes?|should be|gets?)\s+(selected|checked|expanded|pressed)\b", c)
     if m:
         name = (m.group("q") or m.group("u") or "").strip()
         node = _find(snap, name)
         if node is None:
             return "fail", "control %r not found" % name
         return ("pass" if (node.get("props") or {}).get(m.group(m.lastindex).lower()) in (True, "true") else "fail"), "%r props=%s" % (node["name"], node.get("props"))
-    m = re.search(r"(?i)focus\s+(?:returns?|goes|moves|is|stays|remains)\s+(?:back\s+)?(?:to|on)\s+(?:the\s+)?(?:" + _QNAME + r"|(?P<u>[A-Z][A-Za-z0-9'&.\- ]{0,40}?))(?:\s+" + _NOUN + r")?\s*$", c)
+    m = re.search(r"(?i)focus\s+(?:returns?|goes|moves|is|stays|remains)\s+(?:back\s+)?(?:to|on)\s+(?:the\s+)?(?:" + _QNAME + r"|(?P<u>(?-i:[A-Z])[A-Za-z0-9'&.\- ]{0,40}?))(?:\s+" + _NOUN + r")?\s*$", c)
     if m:
         name = (m.group("q") or m.group("u") or "").strip()
         foc = next((x for x in snap["controls"] if x.get("focused")), None)
@@ -575,14 +582,14 @@ def _check_legacy(clause, snap):
     if re.search(r"(?i)\b(dialog|modal|popup|drawer|menu|overlay)s?\b.*\b(closes?|is dismissed|dismisses|is closed|disappears?|is gone)\b|\bcloses?\s+(?:the\s+)?(dialog|modal|popup|drawer|menu|overlay)", c):
         n = len(snap.get("dialogs") or [])
         return ("pass" if n == 0 else "fail"), "%d dialog(s) open" % n
-    m = re.search(r"(?i)(?:" + _QNAME + r"|(?P<u>[A-Z][A-Za-z0-9'&.\- ]{0,40}?))\s*(?:" + _NOUN + r")?\s+(?:is|are|should be|becomes?|appears?|renders?|gets?)\s+(?:now\s+)?(?:visible|shown|displayed|present|listed|rendered)\b", c)
+    m = re.search(r"(?i)(?:" + _QNAME + r"|(?P<u>(?-i:[A-Z])[A-Za-z0-9'&.\- ]{0,40}?))\s*(?:" + _NOUN + r")?\s+(?:is|are|should be|becomes?|appears?|renders?|gets?)\s+(?:now\s+)?(?:visible|shown|displayed|present|listed|rendered)\b", c)
     if not m:
-        m = re.search(r"(?i)\b(?:shows?|displays?|reads?|says?|contains?|lists?)\s+(?:the\s+)?(?:" + _QNAME + r"|(?P<u>[A-Z][A-Za-z0-9'&.\- ]{0,40}))\s*$", c)
+        m = re.search(r"(?i)\b(?:shows?|displays?|reads?|says?|contains?|lists?)\s+(?:the\s+)?(?:" + _QNAME + r"|(?P<u>(?-i:[A-Z])[A-Za-z0-9'&.\- ]{0,40}))\s*$", c)
     if m:
         name = (m.group("q") or m.group("u") or "").strip()
         if name:
             return ("pass" if _text_present(snap, name) else "fail"), "%r %s" % (name, "present" if _text_present(snap, name) else "absent")
-    m = re.search(r"(?i)(?:" + _QNAME + r"|(?P<u>[A-Z][A-Za-z0-9'&.\- ]{0,40}?))\s*(?:" + _NOUN + r")?\s+(?:is|are)\s+(?:no longer|not)\s+(?:visible|shown|displayed|present)\b", c)
+    m = re.search(r"(?i)(?:" + _QNAME + r"|(?P<u>(?-i:[A-Z])[A-Za-z0-9'&.\- ]{0,40}?))\s*(?:" + _NOUN + r")?\s+(?:is|are)\s+(?:no longer|not)\s+(?:visible|shown|displayed|present)\b", c)
     if m:
         name = (m.group("q") or m.group("u") or "").strip()
         return ("fail" if _text_present(snap, name) else "pass"), "%r %s" % (name, "present" if _text_present(snap, name) else "absent")
@@ -626,8 +633,12 @@ def check_expected(expected, snap, extra=()):
         return {"state": "unchecked", "clauses": [], "why": "ticket has no `expected` text"}
     rows = []
     for c, src in clauses:
-        st, d = check_clause(c, snap)
-        rows.append({"clause": c, "state": st, "detail": d, "source": src})
+        specs = _X.classify_clause(c, _check_legacy)
+        if specs is None:
+            st, d, sub = "unchecked", "no machine-checkable predicate for this clause", []
+        else:
+            st, d, sub = _X.check_specs_detailed(specs, snap, _check_legacy)
+        rows.append({"clause": c, "state": st, "detail": d, "source": src, "kinds": "+".join(x["kind"] for x in sub), "specs": sub})
     state = "unchecked" if any(r["state"] == "unchecked" for r in rows) else ("fail" if any(r["state"] == "fail" for r in rows) else "pass")
     return {"state": state, "clauses": rows}
 
@@ -649,6 +660,10 @@ def run_repro(ticket, driver, *, lens_slug, allow_fill=True, log=None, write=Non
     for i, e in enumerate(expanded):
         for j, sub in enumerate(e["substeps"]):
             flat.append(dict(sub, mapped=True, step=i + 1, sub=j + 1, n=len(flat) + 1))
+
+    flat = _W.expand_fanout(flat)
+    for _i, _f in enumerate(flat):
+        _f["n"] = _i + 1
 
     def rec(st, executed, result, **extra):
         row = {"n": st["n"], "step": st.get("step"), "sub": st.get("sub"), "raw": st["raw"], "action": st.get("action"),
@@ -674,7 +689,27 @@ def run_repro(ticket, driver, *, lens_slug, allow_fill=True, log=None, write=Non
     created = []          # labels this ticket typed (own fixtures)
     created_clicked = set()
     live_labels = lambda: [l for l in (wr["fixtures"]() if callable(wr.get("fixtures")) else []) if l] + created
-    ev = {"keys_sent": [], "reloaded": False}      # evidence the expected-clause checks read
+    ev = {"keys_sent": [], "reloaded": False, "own_values": [], "typed_values": [], "submitted": False}      # evidence the expected-clause checks read
+    if getattr(driver, "net_mark", None):
+        ev["step_windows"] = []          # per-step net-ledger windows (validation checks read the typed/submit steps')
+    _cb = getattr(driver, "console_errors", None)
+    console_base = _cb() if _cb else None
+    gone = set()                         # own fixtures a ticket step already deleted (cleanup must not report them leftover)
+
+    def write_ok(what):
+        if not wr.get("allow_write"):
+            raise _Refused("write step needs --allow-write: %s writes only to the walker's own labelled fixtures" % what)
+        if wr.get("admin"):
+            raise _Refused("%s refused: admin lens stays look-only (no write step)" % what)
+        if wr.get("write_skip"):
+            raise _Refused("%s refused: write-skip lens stays read-only (no write step)" % what)
+
+    def register_label(label, note):
+        created.append(label)
+        if label not in ev["own_values"]:
+            ev["own_values"].append(label)
+        if wr.get("on_fixture"):
+            wr["on_fixture"](label, "never_created", "repro-steps replay %s: %s" % (ticket.get("id"), note))
     forbid_keys, forbid_repeat, forbid_verbs, click_counts, st = set(), set(), set(), {}, {"opener": None}
     observed = []
 
@@ -687,9 +722,21 @@ def run_repro(ticket, driver, *, lens_slug, allow_fill=True, log=None, write=Non
     def send_key(key):
         if key in forbid_keys:
             raise _Refused("constraint violated: the ticket says 'do not %s first' but this step sends %s first" % (key, key))
+        pc = getattr(driver, "popup_count", None)
+        before = pc() if pc else None
         driver.press(key)
         ev["keys_sent"].append(key)
         forbid_keys.clear()           # a 'first' guard only governs the first key sent after it
+        if key == "Escape" and before is not None:
+            if before >= 1 and not ev.get("_esc_open"):
+                ev["popups_before"], ev["_esc_open"] = before, True
+            elif "popups_before" not in ev:
+                ev["popups_before"] = before
+            ev["popups_after"], ev["closer"] = pc(), "Escape"
+        if key == "Tab" and before:
+            fip = getattr(driver, "focus_in_popup", None)
+            if fip:
+                ev.setdefault("focus_in_popup", []).append(bool(fip()))
         if key == "Escape":
             fn = getattr(driver, "focused_name", None)
             if fn and st["opener"]:
@@ -701,6 +748,12 @@ def run_repro(ticket, driver, *, lens_slug, allow_fill=True, log=None, write=Non
     try:
         for s in flat:
             a = s["action"]
+            # a driver that predates the form-scoped helpers keeps the pass-1 behaviour: a bare Create/Save/Delete is a named click
+            if a == "submit_form" and not hasattr(driver, "find_submit"):
+                s, a = dict(s, action="click", name=s["verb"].title()), "click"
+            elif a == "delete_own" and not hasattr(driver, "delete_with_confirm"):
+                s, a = dict(s, action="click", name=s["verb"].title()), "click"
+            mk = driver.net_mark() if "step_windows" in ev else None
             try:
                 if a == "noop":
                     rec(s, True, s.get("note") or "no-op")
@@ -740,6 +793,8 @@ def run_repro(ticket, driver, *, lens_slug, allow_fill=True, log=None, write=Non
                 elif a == "reload":
                     driver.reload()
                     ev["reloaded"] = True
+                    snr = driver.snapshot()
+                    ev["after_reload"] = {"texts": list(snr.get("durable") or snr.get("texts") or []), "names": [c["name"] for c in snr.get("controls") or [] if c.get("name")]}
                     rec(s, True, "reloaded")
                 elif a == "set_viewport":
                     cap("set_viewport")(s["w"], s["h"])
@@ -845,6 +900,7 @@ def run_repro(ticket, driver, *, lens_slug, allow_fill=True, log=None, write=Non
                     if vv:
                         raise _Refused("constraint violated: the ticket says do not %s, but this step clicks %r" % ("/".join(sorted(forbid_verbs)), nm))
                     kind = "read"
+                    pc_before = 0
                     if a == "click":
                         if wr.get("allow_write"):
                             ok, why, kind = write_step_decision(nm, admin=wr.get("admin", False), write_skip=wr.get("write_skip", False),
@@ -876,6 +932,8 @@ def run_repro(ticket, driver, *, lens_slug, allow_fill=True, log=None, write=Non
                                     created_clicked.add(l)
                                     if wr.get("on_fixture"):
                                         wr["on_fixture"](l, "create_clicked", "repro-steps replay: %s" % ticket.get("id"))
+                        _pc = getattr(driver, "popup_count", None)
+                        pc_before = _pc() if _pc else 0
                         hit = driver.click(nm, role="tab" if a == "open_tab" else None)
                     res = getattr(driver, "last_resolution", None)
                     if not hit:
@@ -883,9 +941,93 @@ def run_repro(ticket, driver, *, lens_slug, allow_fill=True, log=None, write=Non
                     if s.get("exact") and isinstance(hit, str) and _norm(hit) != _norm(nm) and not (res and res.get("status") == _L.ALIAS):
                         raise _NotFound("control %r matched only loosely (%r); a multi-word label must match exactly" % (nm, hit))
                     click_counts[_norm(nm)] = click_counts.get(_norm(nm), 0) + 1
+                    if kind == "create" and wr.get("allow_write") and CREATE_OPENER.search(nm) and not re.match(r"(?i)^\s*(?:save|submit|apply|confirm|ok|done|update|rename)\b", nm):
+                        st["form_open"] = True
+                    if pc_before and is_close_safe(nm):
+                        ev["popups_before"], ev["closer"] = pc_before, nm
+                        ev["popups_after"] = driver.popup_count()
                     st["opener"] = hit if isinstance(hit, str) else nm
                     rec(s, True, "clicked %r (matched %r)%s" % (nm, hit if isinstance(hit, str) else nm, "" if kind == "read" else " [write: %s on own fixture]" % kind),
                         resolution=dict(res) if res else None)
+                elif a == "type_value":
+                    why = _W.field_refusal(s["name"])
+                    if why:
+                        raise _Refused(why)
+                    write_ok("typing the test value into %r" % s["name"])
+                    if not (st.get("form_open") or created or live_labels()):
+                        raise _Refused("typed value refused: field %r is not on a form the walker opened in this ticket (no create opener clicked) or on its own fixture" % s["name"])
+                    label_base = "%s-s%d" % (wr.get("label_base") or "qa-walker-replay", s["n"])
+                    val = _W.build_value(s["specs"][0], label_base)
+                    if not cap("type_value")(s["name"], val):
+                        raise _NotFound("no field matching %r on the live page" % s["name"])
+                    s["_typed"] = val
+                    ev["typed_values"].append(val[:80])
+                    if label_base in val:
+                        register_label(label_base, "typed own label value into %r" % s["name"])
+                    rec(s, True, "typed %r (%d chars) into %r%s" % (val[:80], len(val), s["name"], (" [value %d of %d]" % (s["fan"], s["fan_of"])) if s.get("fan") else ""),
+                        typed=val[:80], typed_len=len(val))
+                elif a == "fill_label":
+                    write_ok("filling the form")
+                    if not st.get("form_open"):
+                        raise _Refused("fill refused: no create form was opened by this ticket, so the label would not go on a walker fixture")
+                    label = "%s-s%d" % (wr.get("label_base") or "qa-walker-replay", s["n"])
+                    got = cap("fill_label_field")(label, [x["name"] for x in flat if x.get("action") == "type_value"])
+                    if not got:
+                        raise _NotFound("no empty name/title field in the open form to hold the walker's own label")
+                    register_label(label, "typed own label into %r" % got)
+                    rec(s, True, "typed own labelled fixture value %r into %r (not submitted by this step)" % (label, got))
+                elif a == "submit_form":
+                    write_ok("submitting a form")
+                    if not created:
+                        if not st.get("form_open"):
+                            raise _Refused("submit refused: no create form was opened by this ticket")
+                        label = "%s-s%d" % (wr.get("label_base") or "qa-walker-replay", s["n"])
+                        got = cap("fill_label_field")(label, [x["name"] for x in flat if x.get("action") == "type_value"])
+                        if not got:
+                            raise _Refused("submit refused: no own labelled qa-walker value could be entered in this form, so it would not act on a walker fixture")
+                        register_label(label, "auto-labelled own fixture in %r before submit" % got)
+                    nm = cap("find_submit")(s["verb"])
+                    if not nm:
+                        raise _NotFound("no single enabled %r control in the open form" % s["verb"])
+                    ok, why, kind = write_step_decision(nm, admin=wr.get("admin", False), write_skip=wr.get("write_skip", False),
+                                                        allow_write=True, fixture_labels=live_labels())
+                    if not ok:
+                        raise _Refused(why)
+                    if kind != "create":
+                        raise _Refused("submit control %r is not a plain create/save action" % nm)
+                    s["_submit"] = True
+                    if not driver.click(nm):
+                        raise _NotFound("submit control %r could not be clicked" % nm)
+                    ev["submitted"] = True
+                    for l in created:
+                        if l not in created_clicked:
+                            created_clicked.add(l)
+                            if wr.get("on_fixture"):
+                                wr["on_fixture"](l, "create_clicked", "repro-steps replay: %s" % ticket.get("id"))
+                    rec(s, True, "submitted the form via %r (own fixture %s)" % (nm, created[-1] if created else "-"))
+                elif a == "delete_own":
+                    write_ok("delete")
+                    labels = [l for l in live_labels() if l and l not in gone]
+                    if not labels:
+                        raise _Refused("delete refused: no fixture created by this walker in this run to target (a delete is never run on anything not own-labelled)")
+                    r = None
+                    for l in reversed(labels):
+                        r = cap("delete_with_confirm")(l)
+                        if r and r.get("hit"):
+                            gone.add(l)
+                            break
+                    if not r or not r.get("hit"):
+                        raise _Refused("delete refused: no delete control scoped to an own fixture row")
+                    ev["confirm_seen"], ev["confirm_row_present"] = bool(r.get("confirm")), r.get("row_present")
+                    rec(s, True, "deleted own fixture %r via %r; confirm shown before removal=%s, row present until confirmed=%s, removed=%s" % (
+                        l, r.get("hit"), r.get("confirm"), r.get("row_present"), r.get("removed")))
+                elif a == "open_first":
+                    labels = [l for l in live_labels() if l]
+                    hit = driver.click(labels[-1]) if labels else cap("click_first")(s["thing"])
+                    if not hit:
+                        raise _NotFound("no own fixture and no first %r row/card on the live page to open (read-only first-of-role open)" % s["thing"])
+                    st["opener"] = hit if isinstance(hit, str) else labels[-1] if labels else s["thing"]
+                    rec(s, True, "opened %s %r (generic target %r)" % ("own fixture" if labels else "first-of-role", hit if isinstance(hit, str) else "", s["thing"]))
                 elif a == "fill":
                     if not allow_fill:
                         raise _Refused("fill refused: this lens is read-only here (write-skip or admin look-only)")
@@ -903,6 +1045,8 @@ def run_repro(ticket, driver, *, lens_slug, allow_fill=True, log=None, write=Non
                         rec(s, True, "typed own labelled fixture value %r into %r (not submitted by this step)" % (label, s["name"]))
                     else:
                         rec(s, True, "typed %s into %r (not submitted)" % (("the literal %r" % s["literal"]) if s.get("literal") else "an own labelled qa-walker value", s["name"]))
+                if mk is not None:
+                    ev["step_windows"].append({"n": s["n"], "action": a, "writes": driver.net_since(mk), "typed": s.get("_typed"), "submit": bool(s.get("_submit"))})
             except (_Refused, _NotFound) as e:
                 rec(s, False, str(e))
                 for rest in flat[s["n"]:]:
@@ -912,6 +1056,7 @@ def run_repro(ticket, driver, *, lens_slug, allow_fill=True, log=None, write=Non
                     out["notes"] = "step %d is a write step: write step needs --allow-write (%s)" % (s["step"], e)
                 out["evidence"] = [driver.screenshot("repro-stopped")]
                 return out
+        _gather(driver, ev, ticket, [o.get("clause") for o in observed], console_base)
         snap = dict(driver.snapshot())
         base_ev = {}
         fn_ev = getattr(driver, "evidence", None)
@@ -920,7 +1065,7 @@ def run_repro(ticket, driver, *, lens_slug, allow_fill=True, log=None, write=Non
         base_ev.update(ev)
         snap["evidence"] = base_ev
     finally:
-        _cleanup(driver, created, wr, ticket, out)
+        _cleanup(driver, created, wr, ticket, out, gone)
     chk = check_expected(ticket.get("expected"), snap, extra=[o.get("clause") for o in observed])
     out["expected"] = chk
     out["evidence"] = [e for e in (driver.screenshot("repro-final"),) if e]
@@ -940,12 +1085,49 @@ def run_repro(ticket, driver, *, lens_slug, allow_fill=True, log=None, write=Non
     return out
 
 
-def _cleanup(driver, created, wr, ticket, out):
+def _gather(driver, ev, ticket, extra_clauses, console_base):
+    """Read-only measurements the clauses need and the ticket's own steps did not produce (auto-gathered evidence:
+    console/page errors in THIS run, net ledger, AX names, contrast, tap targets). A driver without the capability
+    leaves the key unset, so the clause stays `unchecked`."""
+    kinds = set()
+    for c in _X.split_clauses(ticket.get("expected")) + [e for e in extra_clauses if e]:
+        for sp in (_X.classify_clause(c, _check_legacy) or []):
+            kinds.add(sp["kind"])
+    cb = getattr(driver, "console_errors", None)
+    if cb and console_base is not None:
+        try:
+            ev["console_new"] = max(0, cb() - console_base)
+        except Exception:
+            pass
+    jobs = []
+    if "ax_names" in kinds and "ax_unnamed" not in ev:
+        jobs.append(("ax_check", lambda f: ev.update(zip(("ax_unnamed", "ax_total"), (lambda r: (r.get("unnamed"), r.get("total")))(f(None))))))
+    if "contrast" in kinds and "contrast" not in ev:
+        jobs.append(("measure_contrast", lambda f: ev.update(contrast=f())))
+    if "target_size" in kinds and "targets" not in ev:
+        jobs.append(("measure_targets", lambda f: ev.update(targets=f())))
+    if kinds & {"net_class", "net_status"} and "net_statuses" not in ev:
+        jobs.append(("net_summary", lambda f: (lambda n: ev.update(net_statuses=n.get("statuses"), net_writes=n.get("writes")))(f())))
+    for name, run in jobs:
+        fn = getattr(driver, name, None)
+        if fn:
+            try:
+                run(fn)
+            except Exception:
+                pass
+
+
+def _cleanup(driver, created, wr, ticket, out, gone=()):
     """Every own fixture this ticket created is deleted (row-scoped to its label) or recorded as a leftover."""
     if not created:
         return
     res = {}
     for label in created:
+        if label in gone:
+            res[label] = "deleted"
+            if wr.get("on_fixture"):
+                wr["on_fixture"](label, "deleted", "repro-steps replay %s: deleted by the ticket's own delete step" % ticket.get("id"))
+            continue
         ok, why = False, "driver has no delete_fixture"
         fn = getattr(driver, "delete_fixture", None)
         if fn:
@@ -1282,11 +1464,140 @@ class PlaywrightDriver:
             if prior is not None:
                 self.lw.dialog_mode = prior
 
+    # ---- ULW pass 2: per-step net window, popups, typed values, create/fill/submit, delete-with-confirm, first-of-role
+    _LIST_ROLES = ("list", "listbox", "grid", "table", "treegrid", "tree", "feed", "rowgroup")
+    _ITEM_ROLES = ("listitem", "row", "gridcell", "cell", "treeitem", "option", "article")
+
+    def net_mark(self):
+        return len(self._writes)
+
+    def net_since(self, mark):
+        return list(self._writes[mark:])
+
+    def popup_count(self):
+        return len(self.cdp.ax().popups())
+
+    def focus_in_popup(self):
+        """True when keyboard focus sits inside an open dialog/menu (Tab did not leak out of it)."""
+        ax = self.cdp.ax()
+        f = ax.focused()
+        if f is None or f.role in ("RootWebArea", "WebArea"):
+            return False
+        for p in ax.popups():
+            if f.id == p.id or ax.is_inside(f, p):
+                return True
+        return False
+
+    def type_value(self, name, value):
+        """Type the ticket's literal into the field `name` (own-form policy is enforced by the executor, not here).
+        An empty value clears the field. False when no matching text field is on the page."""
+        ax = self.cdp.ax()
+        nodes = [n for n in ax.live() if n.role in _FIELD_ROLES and n.name]
+        hit = fuzzy_match(name, [n.name for n in nodes])
+        if not hit:
+            return False
+        node = next(n for n in nodes if n.name == hit)
+        if node.backend is None or not self.cdp.focus(node.backend):
+            return False
+        self.page.keyboard.press("Control+A")
+        if value == "":
+            self.page.keyboard.press("Backspace")
+        else:
+            self.page.keyboard.insert_text(value) if len(value) > 80 else self.page.keyboard.type(value)
+        return True
+
+    _LABELISH = re.compile(r"(?i)\b(name|title|label|subject|summary|topic|heading)\b")
+
+    def _form_scope(self, ax):
+        """Nodes of the open dialog when there is one, else the whole live tree."""
+        dlg = ax.dialogs()
+        return ax.descendants(dlg[-1]) if dlg else ax.live()
+
+    def fill_label_field(self, label, avoid=()):
+        """Type the walker's own label into ONE empty name/title-like field of the open form (never a field the ticket
+        itself typed a test value into). Falls back to any other empty text field. Returns the field name or None."""
+        ax = self.cdp.ax()
+        pool = [n for n in self._form_scope(ax) if n.role in ("textbox", "searchbox") and n.name and n.backend is not None and not n.disabled]
+        avoid_n = [a for a in avoid if a]
+        pool = [n for n in pool if not any(fuzzy_match(a, [n.name]) for a in avoid_n) and not (n.value or "").strip()]
+        pick = next((n for n in pool if self._LABELISH.search(n.name)), None) or (pool[0] if len(pool) == 1 else None)
+        if pick is None or FIELD_NEVER_RX.search(pick.name):
+            return None
+        if not self.cdp.focus(pick.backend):
+            return None
+        self.page.keyboard.press("Control+A")
+        self.page.keyboard.type(label)
+        return pick.name
+
+    def find_submit(self, verb):
+        """The ONE enabled create/save control in the open dialog (else on the page) matching `verb`; None when 0 or 2+."""
+        ax = self.cdp.ax()
+        cands = [n for n in self._form_scope(ax) if n.role == "button" and n.name and not n.disabled and re.match(r"(?i)^\s*" + re.escape(verb) + r"\b", n.name)]
+        if not cands:
+            cands = [n for n in self._form_scope(ax) if n.role == "button" and n.name and not n.disabled and CREATE_SUBMIT.search(n.name) and verb in n.name.lower()]
+        names = list(dict.fromkeys(n.name for n in cands))
+        return names[0] if len(names) == 1 else None
+
+    def delete_with_confirm(self, label):
+        """Click Delete/Remove/Trash scoped to the row of own fixture `label`, observe whether a confirm (in-page dialog or native
+        confirm()) appears BEFORE the row is gone, then confirm it. -> {hit, confirm, row_present, removed}."""
+        from .safety import CONFIRM_DELETE
+        prior = getattr(self.lw, "dialog_mode", None)
+        n_native = len(getattr(self.lw, "native_dialogs", []) or [])
+        try:
+            self.lw.dialog_mode = "dismiss"          # a native confirm() is observed, answered 'cancel': nothing is removed yet
+            hit = self.click_in_row("Delete", label) or self.click_in_row("Remove", label) or self.click_in_row("Trash", label)
+            if not hit:
+                return {"hit": None}
+            self.page.wait_for_timeout(700)
+            ax = self.cdp.ax()
+            native = len(getattr(self.lw, "native_dialogs", []) or []) > n_native
+            in_page = [d for d in ax.dialogs()] + [p for p in ax.popups() if p.role in ("dialog", "alertdialog")]
+            confirm = bool(native or in_page)
+            row_present = any(label in (n.name or "") for n in ax.live())
+            removed = False
+            if native:
+                self.lw.dialog_mode = "accept"       # replay the click so the (now accepted) native confirm completes the delete
+                self.click_in_row("Delete", label) or self.click_in_row("Remove", label) or self.click_in_row("Trash", label)
+                self.page.wait_for_timeout(700)
+            elif in_page:
+                btn = next((d for p in in_page for d in ax.descendants(p) if d.role == "button" and d.backend and CONFIRM_DELETE.search(d.name or "")), None)
+                if btn:
+                    self.cdp.click(btn.backend)
+                    self.page.wait_for_timeout(700)
+            removed = not any(label in (n.name or "") for n in self.cdp.ax().live())
+            return {"hit": hit, "confirm": confirm, "row_present": row_present, "removed": removed}
+        finally:
+            if prior is not None:
+                self.lw.dialog_mode = prior
+
+    _FIRST_ROLES = ("row", "listitem", "treeitem", "option", "gridcell", "article")
+
+    def click_first(self, thing):
+        """Read-only first-of-role open: the first visible row/list item/card whose accessible name passes the click policy
+        (never HARD_DENY / payment words) and, when `thing` names a noun, prefers one whose name contains it."""
+        ax = self.cdp.ax()
+        cands = [n for n in ax.live() if n.role in self._FIRST_ROLES and n.name and n.backend is not None and not n.disabled
+                 and not HARD_DENY.search(n.name) and not SWEEP_PAYMENT.search(n.name)]
+        word = (thing or "").split()[-1].lower() if thing else ""
+        pick = next((n for n in cands if word and word in n.name.lower()), None) or (cands[0] if cands else None)
+        if pick is None:
+            return None
+        return pick.name if self.cdp.click(pick.backend) else None
+
     def snapshot(self):
         ax = self.cdp.ax()
         ctl = [{"name": n.name, "role": n.role, "enabled": not n.disabled, "focused": n.focused, "props": dict(n.props)}
                for n in ax.live() if n.name and n.role in _INTERACTIVE]
-        return {"controls": ctl, "texts": ax.texts(), "dialogs": [n.name or "dialog" for n in ax.dialogs()],
+        lists = [n for n in ax.live() if n.role in self._LIST_ROLES]
+        items = []
+        for ln in lists:
+            items += [d.name for d in ax.descendants(ln) if d.role in self._ITEM_ROLES and d.name]
+            items += [d.name for d in ax.descendants(ln) if d.role in ("StaticText", "text", "link", "heading") and d.name]
+        items += [n.name for n in ax.live() if n.role in self._ITEM_ROLES and n.name]
+        return {"controls": ctl, "texts": ax.texts(), "durable": ax.durable_texts(), "dialogs": [n.name or "dialog" for n in ax.dialogs()],
+                "alerts": [n.name for n in ax.live() if n.role in ("alert", "status") and n.name],
+                "list_items": list(dict.fromkeys(items)),
                 "errors": len(self.lw.page_errors) + len(self.lw.console_errors), "url": self.page.url}
 
     def screenshot(self, name):
