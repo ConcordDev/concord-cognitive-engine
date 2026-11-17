@@ -53,8 +53,18 @@ export function buildVerificationBlock({ keyId = null, receiptId = null } = {}) 
 }
 
 export const CALC_RECEIPT_SCHEMA = "concord-calc-receipt/3";
-/** Schemas this module has issued. /2 receipts (no `verification` block) remain valid forever. */
-export const CALC_RECEIPT_SCHEMAS = ["concord-calc-receipt/2", "concord-calc-receipt/3"];
+/** /4 = /3 + a signed `referenceCheck` ({ status: within_reference_envelope | outside_reference_envelope, reason? }); issued only by the declaration gate. */
+export const CALC_RECEIPT_SCHEMA_V4 = "concord-calc-receipt/4";
+/** Schemas this module has issued. /2 receipts (no `verification` block) and /3 remain valid forever. */
+export const CALC_RECEIPT_SCHEMAS = ["concord-calc-receipt/2", "concord-calc-receipt/3", "concord-calc-receipt/4"];
+export const REFERENCE_CHECK_STATUSES = ["within_reference_envelope", "outside_reference_envelope"];
+
+/** A well-formed referenceCheck, else null. `reason` is required (non-empty) when outside, absent when within. */
+export function cleanReferenceCheck(rc) {
+  if (!rc || typeof rc !== "object" || Array.isArray(rc) || !REFERENCE_CHECK_STATUSES.includes(rc.status)) return null;
+  if (rc.status === "within_reference_envelope") return { status: rc.status };
+  return typeof rc.reason === "string" && rc.reason.trim() ? { status: rc.status, reason: rc.reason.trim().slice(0, 300) } : null;
+}
 export const CALC_RECEIPT_SERVICE = "concord-os.org";
 
 /** Round a finite number to `digits` decimals; anything else passes through as null/value unchanged. */
@@ -98,8 +108,10 @@ function cleanJob(job) {
  */
 export function buildCalcReceipt(parts = {}, opts = {}) {
   const key = loadSigningKey();
+  const referenceCheck = parts.referenceCheck === undefined ? undefined : cleanReferenceCheck(parts.referenceCheck);
+  if (parts.referenceCheck !== undefined && !referenceCheck) throw new Error("invalid referenceCheck");
   const body = {
-    receiptSchema: CALC_RECEIPT_SCHEMA,
+    receiptSchema: referenceCheck ? CALC_RECEIPT_SCHEMA_V4 : CALC_RECEIPT_SCHEMA,
     solver: solverBlock(parts.solver),
     inputs: parts.inputs ?? {},
     ...(parts.inputHash ? { inputHash: parts.inputHash } : {}),
@@ -113,6 +125,7 @@ export function buildCalcReceipt(parts = {}, opts = {}) {
     ...(parts.verdict ? { verdict: parts.verdict } : {}),
     ...(parts.reference ? { reference: parts.reference } : {}),
     ...(parts.review ? { review: parts.review } : {}),
+    ...(referenceCheck ? { referenceCheck } : {}),
     issuer: { service: CALC_RECEIPT_SERVICE, keyId: key && key.keyId ? key.keyId : null },
     verification: buildVerificationBlock({ keyId: key && key.keyId ? key.keyId : null }),
   };
