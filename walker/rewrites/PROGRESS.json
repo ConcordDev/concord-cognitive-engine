@@ -170,5 +170,34 @@
   "rewritten": 26,
   "steps_by_hand": 23,
   "tickets": 50
+ },
+ "013": {
+  "clauses_by_hand": 4,
+  "committed_sha": null,
+  "human_by_reason": {
+   "cross_account": 1
+  },
+  "human_only": 1,
+  "needs_human_clause": 37,
+  "needs_human_step": 24,
+  "original_sufficient": 34,
+  "rewritten": 15,
+  "steps_by_hand": 28,
+  "tickets": 50
+ },
+ "014": {
+  "clauses_by_hand": 16,
+  "committed_sha": null,
+  "human_by_reason": {
+   "lighthouse": 2,
+   "other_with_note": 1
+  },
+  "human_only": 3,
+  "needs_human_clause": 39,
+  "needs_human_step": 25,
+  "original_sufficient": 26,
+  "rewritten": 21,
+  "steps_by_hand": 32,
+  "tickets": 50
  }
 }
