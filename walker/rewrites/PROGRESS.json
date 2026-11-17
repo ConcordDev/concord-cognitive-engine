@@ -57,5 +57,35 @@
   "rewritten": 16,
   "steps_by_hand": 6,
   "tickets": 50
+ },
+ "005": {
+  "clauses_by_hand": 20,
+  "committed_sha": null,
+  "human_by_reason": {
+   "lighthouse": 1,
+   "other_with_note": 1
+  },
+  "human_only": 2,
+  "needs_human_clause": 32,
+  "needs_human_step": 27,
+  "original_sufficient": 16,
+  "rewritten": 32,
+  "steps_by_hand": 32,
+  "tickets": 50
+ },
+ "006": {
+  "clauses_by_hand": 16,
+  "committed_sha": null,
+  "human_by_reason": {
+   "lighthouse": 1,
+   "other_with_note": 1
+  },
+  "human_only": 2,
+  "needs_human_clause": 39,
+  "needs_human_step": 28,
+  "original_sufficient": 22,
+  "rewritten": 26,
+  "steps_by_hand": 16,
+  "tickets": 50
  }
 }
