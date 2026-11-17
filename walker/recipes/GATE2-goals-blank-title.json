@@ -1,0 +1,30 @@
+{
+  "adversarial": [
+    "Server bar independent of the panel: alignmentTree upsert with a whitespace title answers ok:false 'title required' and stores nothing (a client that skips the panel guard still cannot mint a blank objective).",
+    "A real padded title ('  Ship it  ') creates exactly one goal whose stored title is 'Ship it' (no double-create, no padding preserved)."
+  ],
+  "author": "muse-b6",
+  "authored_on": "2026-11-17",
+  "discriminator": "Pre-fix failure transcripts (fixture-level replays at the fixing seat, 2026-11-17; live-build transcripts recorded by the reviewer at activation): (1) FE pin tests/goals-create-title-bar.test.tsx against the pristine GoalsListPanel at f4f1f77ff \u2014 2/2 FAILED (Create enabled for a whitespace title; padded title submitted untrimmed); against the fixed panel 2/2 pass, goals-lifecycle still 4/4. (2) Hermetic harness against pristine server/domains/goals.js \u2014 the 2 whitespace assertions fail (whitespace title accepted and stored); fixed file 6/6.",
+  "expect_action": "goals.alignmentTree",
+  "expect_endpoints": [
+    {
+      "expect_status": 200,
+      "method": "POST",
+      "path": "/api/lens/run"
+    }
+  ],
+  "id": "GATE2-goals-blank-title",
+  "kind": "repro-steps",
+  "notes": "Fix of record: commit 2e48795f2 on v1/small-cleanups (deploys with the Gate 2 batch). Companion surfaces in the same fix: the DailyJournal / JournalStudio composers and the OKR 'Add Objective' button now show a one-line reason while their primary field is blank (previously the button disabled silently) \u2014 a reviewer may file those as a second recipe or fold them here. lens.create's lab/agents-only title bar was deliberately NOT widened (founder-era union resolution, office call). Control names from source at f4f1f77ff; bind to the post-fix capture map at re-capture. Corpus FIX id to be assigned from the reverify rows; the draft id stands until then. Registered DRAFT by muse-b6 as author of record (CB-0828) in walker/recipes/ on v1/immune-p1-recipe, 2026-11-17; activation is the reviewer of record's act.",
+  "reviewer": "zuko-desk",
+  "status": "draft",
+  "steps": [
+    "Signed in as the walker account, open the Goals lens list view and choose 'New goal'.",
+    "Type only spaces into the 'Goal title' field: the 'Create goal' button stays disabled and no goal is created.",
+    "Clear the field and type a title with surrounding spaces ('  Ship it  '), then Create: exactly one goal appears, titled 'Ship it' (trimmed), in the list.",
+    "Read back after a list refresh: the goal persists with the trimmed title; no blank-titled goal exists in the list."
+  ],
+  "tier_proposed": 1,
+  "title": "Goals: a whitespace-only title cannot create a goal (Create stays disabled); a padded real title is stored trimmed; no blank-title record exists on read-back"
+}

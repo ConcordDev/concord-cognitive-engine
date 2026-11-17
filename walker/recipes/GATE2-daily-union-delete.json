@@ -1,0 +1,31 @@
+{
+  "adversarial": [
+    "Cross-account: a second account's Today entry id presented to the first account's delete answers 'entry not found' and the entry survives (owner check; no existence leak).",
+    "Delete of a domain-store entry and of an unknown id behave exactly as before (regression controls in the harness, 14/14)."
+  ],
+  "author": "muse-b6",
+  "authored_on": "2026-11-17",
+  "discriminator": "Pre-fix failure transcript (fixture-level replay at the fixing seat, 2026-11-17, hermetic harness over the real domain file; the live-build replay transcript is recorded by the reviewer at activation): against pristine server/domains/daily.js at f4f1f77ff exactly 4 assertions fail \u2014 'B: today: delete succeeds' (entry-delete answers 'entry not found'), 'B: artifact removed from the store', 'B: exhaust artifact swept', 'B: entry-list no longer returns it'; all controls pass on both shapes. Against the fixed file: 14/14 pass.",
+  "expect_action": "daily.entry-delete",
+  "expect_endpoints": [
+    {
+      "expect_status": 200,
+      "method": "POST",
+      "path": "/api/lens/run"
+    }
+  ],
+  "id": "GATE2-daily-union-delete",
+  "kind": "repro-steps",
+  "notes": "Fix of record: commit ff0592e0e on v1/small-cleanups (deploys with the Gate 2 batch). Root cause: entry-list reads the union of the domain store and the Today panel's artifacts (today:<id>) while entry-delete searched only the domain store. Write-lane recipe: the fixture entry uses the walker's labelled-fixture discipline (qa-walker account) and the recipe cleans up after itself by construction (its subject is a deletion). Control names from source at f4f1f77ff; bind to the post-fix capture map at re-capture. Corpus FIX id to be assigned from the reverify rows; the draft id stands until then. Registered DRAFT by muse-b6 as author of record (CB-0828) in walker/recipes/ on v1/immune-p1-recipe, 2026-11-17; activation is the reviewer of record's act.",
+  "reviewer": "zuko-desk",
+  "status": "draft",
+  "steps": [
+    "Signed in as the walker account, open the Daily lens Today panel and create a journal entry with a distinctive marker body (labelled fixture).",
+    "Open the Journal timeline (DailyJournal): the entry is listed (it arrives via the union read with a 'today:'-prefixed id).",
+    "Delete the entry from the timeline via its two-step StickyDeleteConfirm control and confirm.",
+    "Read back: the timeline no longer lists the entry, and a fresh entry-list read does not return it (the deletion persisted through the store to SQLite \u2014 not a view-only removal).",
+    "No error alert ('Could not delete that entry') is shown for this delete."
+  ],
+  "tier_proposed": 1,
+  "title": "Daily: an entry created in the Today panel can be deleted from the Journal timeline and stays deleted on read-back (union delete honoured)"
+}

@@ -1,0 +1,29 @@
+{
+  "adversarial": [
+    "Signed out / progress fetch failing: the page renders its default state and the two cards still read 'Coming soon' with no marketplace links (the fix is static content, independent of account state)."
+  ],
+  "author": "muse-b6",
+  "authored_on": "2026-11-17",
+  "discriminator": "Pre-fix failure transcript (fixture-level replay at the fixing seat, 2026-11-17; the live-build replay transcript is recorded by the reviewer at activation): vitest tests/dx-platform-onboarding-links.test.tsx against the pristine page at f4f1f77ff \u2014 2 failed / 1 passed: 'no anchor points at the unpublished marketplace listings' FAILED (anchors to marketplace.visualstudio.com/items?itemName=concord-os.concord-dx and plugins.jetbrains.com/plugin/concord-dx present), 'both editor cards are relabelled Coming soon' FAILED (no such text rendered); the web-editor control passed. Against the fixed build the same suite passes 3/3.",
+  "expect_action": "dx.onboarding_progress",
+  "expect_endpoints": [
+    {
+      "expect_status": 200,
+      "method": "POST",
+      "path": "/api/lens/run"
+    }
+  ],
+  "id": "CC-PRE-08",
+  "kind": "repro-steps",
+  "notes": "Fix of record: commit f3c516fb0 on v1/small-cleanups (deploys with the Gate 2 batch). Control names are from the page source at f4f1f77ff; bind to the post-fix capture map at re-capture per the Walk-2 governing sequence. Registered DRAFT by muse-b6 as author of record (CB-0828) in walker/recipes/ on v1/immune-p1-recipe, 2026-11-17; activation is the reviewer of record's act.",
+  "reviewer": "zuko-desk",
+  "status": "draft",
+  "steps": [
+    "Open the DX Platform lens (route /lenses/dx-platform) signed in as the walker account; the 'Get started' view is the default.",
+    "Read step 1 ('Install the extension for your editor'): the VS Code card and the JetBrains card each carry the label 'Coming soon' and text stating the extension is not published yet.",
+    "Collect every link on the page: none points to marketplace.visualstudio.com or plugins.jetbrains.com.",
+    "The third card, 'Web editor (no install)', still links to /lenses/dx-platform/web-editor (the working path is preserved)."
+  ],
+  "tier_proposed": 2,
+  "title": "DX Platform step-1 editor cards: VS Code and JetBrains read 'Coming soon' / not published yet, and no link on the page points at the unpublished marketplace listings"
+}
