@@ -94,6 +94,7 @@ import "./physics/solvers/em-magnetostatic.js";
 import "./physics/solvers/long-term-limit-states.js";
 import "./safety-case/solvers.js";
 import "./orc/intent-parse.js";
+import "./cad/mass-properties-brep.js";
 
 export { listSolvers };
 
