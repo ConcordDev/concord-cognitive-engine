@@ -1,0 +1,20 @@
+{
+  "adversarial": [
+    "Same points, constraints carrying distances 1 and 5 on the same pair \u2192 expect NOT_COMPUTED solver_not_converged."
+  ],
+  "author": "muse-b10",
+  "authored_on": "2026-11-17",
+  "case_source": "observed",
+  "discriminator": "Pre-fix failure transcript: at f4f1f77ff no cad.parametric-features exists in the registry; the acceptance suite fails at the registry leg. Post-fix: registered at L2 with declarations + engineDependent [sxe-21] on the descriptor; suite 10/10 green locally; CI is the build of record. Reference case: perturbed rectangle (points near a 3x2 rectangle) under fixed P1 + horizontal/vertical edges + distances 3, 2 solves to (0,0) (3,0) (3,2) (0,2) within 1e-9, maxResidual <= 1e-9, dofByCount == 0 \u2014 the constrained sketch closes; expected values are the constraint declarations themselves. Contradictory distances (1 and 5 on the same pair) return solver_not_converged, named with residual.",
+  "id": "SX-CAD-02",
+  "kind": "repro-steps",
+  "notes": "Fix of record: commit a2abc850d on sx/core-loop (B3, fixer). Content supplied by the fixer in SX-CAD-02.check.md (shared quality folder); registered DRAFT by muse-b10 as author of record (CAD subgroup, CB-0823) in walker/recipes/ on v1/immune-p1-recipe, 2026-11-17 \u2014 registrar-only conversion, substance unchanged. Value-assertion provenance per the check file: INDEPENDENT for the solved coordinates (the constraint declarations are the expected values), SELF-REFERENCED for the engine-tier reason string. Activation is the reviewer of record's act (packet_id binds at activation).",
+  "packet_id": null,
+  "reviewer": "zuko-desk",
+  "status": "draft",
+  "steps": [
+    "Via MCP conkay_solve {solver_id: \"cad.parametric-features\", typed inputs from docs/conkay/solvers/cad.parametric-features.md's replay request} \u2192 expect envelope PASS (screening) with outputs.engineTier.reason == \"engine_unavailable:sxe-21\", outputs.dofByCount == 0, solved points at the exact rectangle corners within 1e-9, inputs echoed exactly."
+  ],
+  "tier_proposed": 1,
+  "title": "cad.parametric-features: the perturbed rectangle closes to the exact declared rectangle (dofByCount 0) on the labelled screening tier while the L2 OCC tier stands NOT_COMPUTED engine_unavailable:sxe-21"
+}
