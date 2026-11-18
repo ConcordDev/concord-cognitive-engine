@@ -53,6 +53,30 @@ test("asymptotic: Stirling at x = 10 matches the Lanczos value; the floor refuse
   assert.ok(refused.reason.startsWith("asymptotic_floor"), refused.reason);
 });
 
+test("adversarial: a NaN point is refused naming the field; an out-of-radius Taylor point is refused naming the bound (B10 Batch B check)", () => {
+  const nanT = run({ f: "exp(x)", order: 6, points: [Number.NaN] }, "taylor");
+  assert.equal(nanT.status, "NOT_COMPUTED");
+  assert.ok(nanT.reason.startsWith("invalid_input:points"), nanT.reason);
+  const nanP = run({ f: "exp(x)", m: 2, n: 2, points: [Number.NaN] }, "pade");
+  assert.equal(nanP.status, "NOT_COMPUTED");
+  assert.ok(nanP.reason.startsWith("invalid_input:points"), nanP.reason);
+  // log(1+x) has true radius 1 about 0; at x = 2 the partial
+  // sums diverge (the pre-fix code served -19.31... behind a
+  // boolean; log 3 = 1.0986)
+  const out = run({ f: "log(1+x)", order: 12, points: [2] }, "taylor");
+  assert.equal(out.status, "NOT_COMPUTED");
+  assert.ok(out.reason.startsWith("outside_declared_radius"), out.reason);
+  // the same series inside its radius still serves, accurately
+  const inside = run({ f: "log(1+x)", order: 12, points: [0.5] }, "taylor");
+  assert.equal(inside.status, "PASS", inside.reason || "");
+  assert.ok(Math.abs(inside.outputs.values[0].y - Math.log(1.5)) < 1e-3);
+  // a Pade pole is refused, never served as Infinity:
+  // [0/1] of 1/(1+x) has denominator 1 + x — pole at x = -1
+  const pole = run({ f: "1/(1+x)", m: 0, n: 1, points: [-1] }, "pade");
+  assert.equal(pole.status, "NOT_COMPUTED");
+  assert.ok(pole.reason.startsWith("pade_pole"), pole.reason);
+});
+
 test("accelerate: Aitken on the Leibniz series beats the raw partial sum, reported beside it", () => {
   // partial sums of 4 * SUM (-1)^k / (2k + 1) -> pi
   const seq = [];

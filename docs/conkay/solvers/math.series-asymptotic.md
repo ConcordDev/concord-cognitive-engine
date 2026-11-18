@@ -12,14 +12,21 @@ least term.
 - **taylor** — coefficients by exact symbolic differentiation
   (math.symbolic), evaluated at the centre. The result
   declares a radius estimate (root test over the last
-  coefficients, labelled an estimate) and marks each
-  evaluation point inside/outside it with the last-term
-  scale beside the value.
+  coefficients, labelled an estimate). Evaluation points
+  are validated finite (`invalid_input:points`); a point
+  outside the declared radius refuses the call with
+  `outside_declared_radius`, naming the point and the
+  bound — outside the radius the partial sums diverge
+  and no value is served (checker fix, B10's Batch B
+  check, 2026-11-18: the diverged sum at x = 2 for
+  log(1+x) was previously served behind a boolean).
 - **pade** — [m/n] Padé approximants from the Taylor
   coefficients via the Toeplitz system. The catalogue
   reference case is the Padé approximant of e^x: the [1/1]
   coefficients are the exact (1 + x/2)/(1 − x/2), and the
-  [5/5] tracks e^x to 1e-7 at x = 0.5.
+  [5/5] tracks e^x to 1e-7 at x = 0.5. A point on a pole
+  of the approximant refuses with `pade_pole`, naming
+  the point.
 - **asymptotic** — named divergent expansions summed to
   optimal truncation. Seated: Stirling for log Γ (Bernoulli
   coefficients, DLMF 5.11). The result ships termsUsed and

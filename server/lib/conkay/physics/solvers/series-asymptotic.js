@@ -28,6 +28,16 @@
 //               on a caller sequence, reported BESIDE the
 //               unaccelerated last term, never instead of it.
 //
+// Evaluation-point discipline (B10's Batch B checker
+// finding, 2026-11-18 — both legs were served defects):
+// points are validated finite before any evaluation (a
+// NaN point was served as a null-valued PASS), and a
+// Taylor point outside the declared radius is REFUSED
+// naming the bound (the diverged partial sum at x = 2
+// for log(1+x) was served as a value behind a boolean).
+// A Pade point on a pole of the approximant is refused
+// the same way.
+//
 // Perturbation problems are served by composition (the DAE /
 // BVP solvers with the small parameter swept), named in the
 // doc; Laurent series name the follow-on scope.
@@ -104,7 +114,16 @@ function runSeries(ctx, target) {
     }
     const radius = radiusEstimate(coeffs);
     const pts = inputs.points;
+    if (pts !== undefined && (!Array.isArray(pts) || !pts.every((v) => Number.isFinite(v)))) {
+      return { notComputed: "invalid_input:points (an array of finite evaluation points — a non-finite point has no series value)" };
+    }
     if (target === "taylor") {
+      if (Array.isArray(pts)) {
+        const outside = pts.find((x) => Math.abs(x - a) >= radius);
+        if (outside !== undefined) {
+          return { notComputed: `outside_declared_radius:point x = ${outside} lies outside the declared radius of convergence (root-test estimate ${radius}) about centre ${a} — outside the radius the partial sums diverge, so no value is served for this call (evaluate inside the radius, or use the pade target)` };
+        }
+      }
       const out = {
         coefficients: coeffs,
         center: a,
@@ -145,14 +164,19 @@ function runSeries(ctx, target) {
       Array.from({ length: Math.min(k, n) + 1 }, (_, j) => c(k - j) * q[j]).reduce((s, v) => s + v, 0));
     const out = { numerator: p, denominator: q, center: a, radiusEstimate: radius };
     if (Array.isArray(pts)) {
-      out.values = pts.map((x) => {
+      const values = [];
+      for (const x of pts) {
         const dx = x - a;
         let num = 0;
         let den = 0;
         for (let k = p.length - 1; k >= 0; k -= 1) num = num * dx + p[k];
         for (let k = q.length - 1; k >= 0; k -= 1) den = den * dx + q[k];
-        return { x, y: num / den, denominatorAtPoint: den };
-      });
+        if (den === 0 || !Number.isFinite(num / den)) {
+          return { notComputed: `pade_pole:the [${m}/${n}] approximant has a pole at x = ${x} (denominator zero there) — no value is served at a pole` };
+        }
+        values.push({ x, y: num / den, denominatorAtPoint: den });
+      }
+      out.values = values;
     }
     return { inputs: { m, n, center: a }, outputs: out, margins: [], covers: [target] };
   }
