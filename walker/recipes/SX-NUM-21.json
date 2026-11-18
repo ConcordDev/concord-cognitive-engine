@@ -1,0 +1,21 @@
+{
+  "id": "SX-NUM-21",
+  "kind": "repro-steps",
+  "title": "math.graph: combinatorial algorithms with certified answers — max-flow ships its min cut whose capacity equals the flow (CLRS: 23 = 12 + 7 + 4), a negative cycle is served as a named finding, never dressed as distances, and a disconnected graph returns its spanning forest labelled as one",
+  "author": "muse-b3",
+  "reviewer": "zuko-desk",
+  "status": "draft",
+  "authored_on": "2026-11-18",
+  "tier": 1,
+  "case_source": "observed",
+  "packet_id": null,
+  "verified_against": null,
+  "covers": "Hand recipe (kind repro-steps) for SX-NUM-21, authored by muse-b3 as author of record (standing Batch A/B authorship, CB-0820/CB-0823) from the fixer's supplied content: /Users/dutch/.zuko/quality/CHECK-SX-NUM-21.md (seat B2, branch sx/solver-core, PRG-01) and the shipped solver doc docs/conkay/solvers/math.graph.md, build 429e55ce0. Value-assertion provenance: INDEPENDENT — expected values from the cited source (closed-form small graphs; the reference case is the CLRS textbook flow network); the checker recomputes from the closed forms (DC-01); a SELF-REFERENCED value, if one is ever substituted, is drift coverage only and never correctness evidence. Foundation gating at f4f1f77ff (fixer's evidence): the solve.direct reachability leg is expected-fail until SC-00 is seated/built; the bare-number adversarial leg is expected-fail until the SC-04 refusal leg is built; the integrity pin runs the armed direct-envelope shape until the IR-path integrity arm is built. Reviewer: at activation, confirm the discriminator transcript below still fails against the pinned pre-fix instance and bind packet_id.",
+  "discriminator": "Pre-fix discriminator transcript (replayed 2026-11-17 against f4f1f77ff, from the ticket's CHECK file): registry probe over the 124 solvers registered at the ref returns math.graph → ABSENT; conkay_solver_list does not list it and the reference case cannot run. (Catalogue row status: needs-upgrade.) Foundation legs at the same ref (CHECK-SC-FOUNDATIONS-B2.md): solve.direct absent (conkay_solve requires an IR); a bare number on a dimensional field is silently accepted as SI; the input-integrity guard is unarmed on the IR path.",
+  "steps": [
+    "Replay via MCP conkay_solve {solver_id: math.graph, typed inputs from the reference case} (or solve.direct once SC-00 lands): the CLRS textbook flow network, target max-flow → PASS with maxFlow 23 AND minCut.capacity 23 — the result carries its min cut ({s,v1,v2,v4}|{v3,t}, capacity 12 + 7 + 4 = 23) whose capacity equals the flow value: the certificate a checker verifies without trusting the algorithm, never the flow number alone.",
+    "Named-finding leg: the three-node negative cycle, target bellman-ford → WARN with the cycle nodes listed — a reachable negative cycle is served as a named finding, never dressed as distances; Dijkstra's envelope is non-negative weights, and a negative edge refuses by name pointing at bellman-ford rather than answering wrongly. A disconnected graph under target mst returns its minimum spanning FOREST, labelled as a forest with its component count; a cyclic input under topo-sort names the unorderable remainder (WARN) beside the partial order; a matching edge crossing outside the declared bipartition refuses by name; spectral is capped at 64 nodes by the dense eigensolver, named in its refusal (the Laplacian spectrum via the stack's own Jacobi eigensolver, SX-NUM-04, with the Fiedler value and a connectivity verdict).",
+    "Envelope leg: explicit {nodes, edges} inputs to 5,000 nodes / 50,000 edges (spectral excepted, above); a node reference outside the declared set refuses with the edge index named; beyond the envelope → NOT_COMPUTED/WARN naming the violated bound.",
+    "Adversarial: NaN / 1e300 weights or malformed edge records → INVALID_INPUT with the field named; a missing required property → NOT_COMPUTED naming the field, no assumed value unless declared and echoed as defaulted (SC-03); a substituted input → NOT_COMPUTED input_substituted (inputs used == inputs submitted); with the engine absent the engine path shows NOT_COMPUTED engine_unavailable:sxe-01 with install hint, never a fallback number labelled as the engine result."
+  ]
+}
