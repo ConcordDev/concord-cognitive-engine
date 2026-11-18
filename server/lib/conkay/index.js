@@ -36,6 +36,7 @@ import "./physics/solvers/series-asymptotic.js";
 import "./physics/solvers/sde.js";
 import "./physics/solvers/dde.js";
 import "./physics/solvers/arbitrary-precision.js";
+import "./physics/solvers/number-theory.js";
 import "./physics/solvers/bolted-joint.js";
 import "./physics/solvers/joint-governing-check.js";
 import "./physics/solvers/requirements.js";
