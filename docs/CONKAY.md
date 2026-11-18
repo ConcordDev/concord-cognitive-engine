@@ -1,5 +1,21 @@
 # ConKay — Concord's JARVIS, as a voice-native Chat mode
 
+> **2026-11-18 — the Workshop.** ConKay is one app now
+> (`components/conkay/workshop/Workshop.tsx`): `/lenses/conkay`, `/conkay/demo`
+> (guest), `/conkay/designs[/id[/live]]` and `/conkay/workbench` all mount it.
+> Views: **table** (the study or an opened design on a hologram table),
+> **wall** (showcase designs, your models, kept DTUs), **under the hood** (the
+> solver's receipt, or a design's live build). The study is an open wireframe
+> that materialises when a real solve lands, with readouts anchored to the
+> governing member; Kay is a ring of light driven only by real state (mic
+> level, speech, an in-flight request) — the same ring in the ⌘J overlay.
+> Guest mode solves and sweeps through the public demo routes and stores
+> nothing. Logic lives in `useWorkshopController` (moved verbatim from the old
+> workspace); pinned by `tests/conkay-workspace.test.tsx` (32) and
+> `tests/conkay-workshop-guest.test.tsx` (8). Identity registered in
+> `docs/LENS_REDESIGN_PLAYBOOK.md`. The text below predates this and is kept as
+> design history.
+
 > *"It's not just fiction anymore."* — almost every J.A.R.V.I.S./F.R.I.D.A.Y.
 > capability now maps to buildable-now technology, and **Concord already ships the
 > substrate.** ConKay ("Kay") is the shipped identity; JARVIS/FRIDAY are the research

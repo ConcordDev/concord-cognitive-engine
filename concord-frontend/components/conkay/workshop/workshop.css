@@ -1,0 +1,186 @@
+/*
+ * The Workshop — ConKay's identity. Late night in a private lab: one open
+ * wireframe floating over a dark glass work table, arc-reactor light, and a
+ * calm voice. Every colour ConKay uses is a token here (var(--ws-*)).
+ * Motion is a function of real events only (mic level, an in-flight solve,
+ * a returned result) — see LENS_REDESIGN_PLAYBOOK + the honest-hologram rule.
+ */
+
+/* Tokens alone (no page background): the ⌘J overlay and Chat's ConKay mode
+   wear Kay's palette through .ws-tokens; the Workshop page adds .workshop. */
+.workshop,
+.ws-tokens {
+  --ws-void: #03060a;
+  --ws-deep: #060c13;
+  --ws-glass: rgba(9, 20, 31, 0.72);
+  --ws-glass-strong: rgba(7, 16, 26, 0.92);
+  --ws-line: rgba(110, 220, 255, 0.14);
+  --ws-line-strong: rgba(110, 220, 255, 0.32);
+  --ws-arc: #59e3ff;
+  --ws-arc-soft: rgba(89, 227, 255, 0.14);
+  --ws-arc-glow: rgba(89, 227, 255, 0.45);
+  --ws-ice: #d8f4ff;
+  --ws-text: #e7f7ff;
+  --ws-muted: #86a3b6;
+  --ws-faint: #4f687a;
+  --ws-amber: #ffb547;
+  --ws-amber-soft: rgba(255, 181, 71, 0.14);
+  --ws-red: #ff4f61;
+  --ws-red-soft: rgba(255, 79, 97, 0.14);
+  --ws-go: #7af5c4;
+  --ws-go-soft: rgba(122, 245, 196, 0.13);
+}
+
+.workshop {
+  background:
+    radial-gradient(1100px 520px at 50% 108%, rgba(89, 227, 255, 0.09), transparent 62%),
+    radial-gradient(900px 600px at 50% -20%, rgba(40, 90, 130, 0.12), transparent 60%),
+    var(--ws-void);
+  color: var(--ws-text);
+  font-family: var(--ws-font-hud), var(--font-dm-sans), system-ui, sans-serif;
+}
+
+/* Glass pane with HUD corner brackets. */
+.ws-glass {
+  position: relative;
+  background: var(--ws-glass);
+  border: 1px solid var(--ws-line);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+}
+.ws-corners::before,
+.ws-corners::after {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-color: var(--ws-arc);
+  opacity: 0.55;
+  pointer-events: none;
+}
+.ws-corners::before { top: -1px; left: -1px; border-top: 1.5px solid; border-left: 1.5px solid; }
+.ws-corners::after { bottom: -1px; right: -1px; border-bottom: 1.5px solid; border-right: 1.5px solid; }
+
+.ws-label {
+  font-family: var(--ws-font-hud), sans-serif;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 10.5px;
+  color: var(--ws-muted);
+}
+.ws-num { font-family: var(--font-jetbrains-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+.ws-glow-text { text-shadow: 0 0 12px var(--ws-arc-glow); }
+
+/* The hologram table: the space the model floats in. */
+.ws-table {
+  background:
+    radial-gradient(60% 45% at 50% 78%, rgba(89, 227, 255, 0.10), transparent 70%),
+    radial-gradient(80% 60% at 50% 40%, rgba(20, 50, 75, 0.35), transparent 75%),
+    var(--ws-deep);
+}
+
+/* An anchored readout: a callout tag the 3-D scene positions on the part. */
+.ws-callout {
+  font-family: var(--font-jetbrains-mono), ui-monospace, monospace;
+  font-size: 11px;
+  white-space: nowrap;
+  color: var(--ws-ice);
+  background: rgba(4, 12, 20, 0.82);
+  border: 1px solid var(--ws-line-strong);
+  border-left: 2px solid var(--ws-arc);
+  padding: 3px 7px 3px 6px;
+  box-shadow: 0 0 14px rgba(89, 227, 255, 0.18);
+}
+.ws-callout[data-tone='warn'] { border-left-color: var(--ws-amber); }
+.ws-callout[data-tone='fail'] { border-left-color: var(--ws-red); color: #ffd9de; }
+.ws-callout b { font-weight: 600; color: var(--ws-text); }
+
+@keyframes ws-rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.ws-rise { animation: ws-rise 260ms ease-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ws-rise { animation: none; }
+}
+[data-reduced-motion='true'] .ws-rise { animation: none; }
+
+/* ─────────────────────────────────────────────────────────────────────
+ * The Workshop hosts ConKay's existing macro-backed panels (nav, study
+ * cards, parameters, design builder, gallery, live build, workbench).
+ * Inside .workshop their slate/sky palette resolves to Workshop tokens.
+ * ───────────────────────────────────────────────────────────────────── */
+.workshop .bg-\[\#040a13\],
+.workshop .bg-\[\#050d18\] { background-color: transparent; }
+.workshop .bg-\[\#06101c\],
+.workshop .bg-\[\#06101c\]\/80,
+.workshop .bg-\[\#06101c\]\/85,
+.workshop .bg-\[\#060f1c\]\/90 { background-color: var(--ws-glass); backdrop-filter: blur(12px); }
+.workshop .bg-white\/\[0\.02\],
+.workshop .bg-white\/\[0\.03\],
+.workshop .bg-white\/5 { background-color: rgba(89, 227, 255, 0.035); }
+.workshop .bg-black\/20,
+.workshop .bg-black\/30,
+.workshop .bg-black\/40 { background-color: rgba(0, 0, 0, 0.32); }
+
+.workshop .border-white\/5,
+.workshop .border-white\/10,
+.workshop .border-sky-400\/15,
+.workshop .border-sky-400\/20 { border-color: var(--ws-line); }
+.workshop .border-sky-400\/30,
+.workshop .border-sky-400\/40,
+.workshop .hover\:border-sky-400\/40:hover,
+.workshop .focus\:border-sky-400\/50:focus,
+.workshop .focus\:border-sky-400\/60:focus { border-color: var(--ws-line-strong); }
+.workshop .divide-white\/5 > * + * { border-color: var(--ws-line); }
+
+.workshop .text-white,
+.workshop .text-slate-100,
+.workshop .text-slate-200,
+.workshop .hover\:text-white:hover,
+.workshop .hover\:text-slate-200:hover { color: var(--ws-text); }
+.workshop .text-slate-300,
+.workshop .text-slate-400 { color: var(--ws-muted); }
+.workshop .text-slate-500,
+.workshop .text-slate-600,
+.workshop .placeholder\:text-slate-500::placeholder { color: var(--ws-faint); }
+.workshop .text-sky-100,
+.workshop .text-sky-200,
+.workshop .text-sky-300,
+.workshop .hover\:text-sky-200:hover { color: var(--ws-arc); }
+
+.workshop .bg-sky-400\/10,
+.workshop .hover\:bg-sky-400\/10:hover,
+.workshop .bg-sky-400\/20,
+.workshop .hover\:bg-sky-400\/20:hover { background-color: var(--ws-arc-soft); }
+.workshop .bg-sky-500\/80,
+.workshop .bg-sky-500\/90,
+.workshop .bg-sky-700,
+.workshop .hover\:bg-sky-800:hover,
+.workshop .hover\:bg-sky-500:hover {
+  background-color: var(--ws-arc);
+  color: var(--ws-void);
+  box-shadow: 0 0 18px rgba(89, 227, 255, 0.35);
+}
+
+.workshop .text-emerald-200,
+.workshop .text-emerald-300 { color: var(--ws-go); }
+.workshop .text-amber-100,
+.workshop .text-amber-200,
+.workshop .text-amber-200\/90,
+.workshop .text-amber-300 { color: var(--ws-amber); }
+.workshop .border-amber-400\/30 { border-color: color-mix(in srgb, var(--ws-amber) 35%, transparent); }
+.workshop .text-rose-200,
+.workshop .text-rose-300 { color: var(--ws-red); }
+.workshop .bg-rose-400\/10,
+.workshop .bg-rose-400\/15,
+.workshop .hover\:bg-rose-400\/25:hover { background-color: var(--ws-red-soft); }
+.workshop .border-rose-400\/35 { border-color: color-mix(in srgb, var(--ws-red) 40%, transparent); }
+
+.workshop input:not([type='checkbox']):not([type='radio']):not([type='range']),
+.workshop select,
+.workshop textarea { caret-color: var(--ws-arc); }
+.workshop select option { background-color: var(--ws-deep); color: var(--ws-text); }
+.workshop input[type='range'],
+.workshop input[type='checkbox'] { accent-color: var(--ws-arc); }

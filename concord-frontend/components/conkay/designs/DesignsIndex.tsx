@@ -16,7 +16,7 @@ import { CHECK_LABEL, CHECK_STYLE } from './design-styles';
 
 const KIND_ICON: Record<string, typeof Car> = { vehicle: Car, robot: Bot, material: Layers, mixture: FlaskConical, nuclear: Atom };
 
-export function DesignsIndex() {
+export function DesignsIndex({ embedded = false, onOpen }: { embedded?: boolean; onOpen?: (id: string) => void } = {}) {
   const [designs, setDesigns] = useState<DesignSummary[] | null>(null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -32,10 +32,8 @@ export function DesignsIndex() {
     return () => { live = false; };
   }, []);
 
-  return (
-    <div className="flex min-h-screen flex-col bg-[#040a13] text-slate-100" data-lens-theme="conkay">
-      <DesignsHeader />
-      <main className="mx-auto w-full max-w-6xl flex-1 p-4 sm:p-6">
+  const body = (
+      <main className={embedded ? 'w-full' : 'mx-auto w-full max-w-6xl flex-1 p-4 sm:p-6'}>
         <h1 className="text-xl font-semibold tracking-tight">Showcase designs</h1>
         <p className="mt-1 max-w-3xl text-sm leading-relaxed text-slate-400">
           Each design was run once through ConKay&apos;s real pipeline and saved as a snapshot. Every check shows its
@@ -51,15 +49,21 @@ export function DesignsIndex() {
         )}
         {designs && (
           <ul className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {designs.map((d) => <DesignCard key={d.id} d={d} />)}
+            {designs.map((d) => <DesignCard key={d.id} d={d} onOpen={onOpen} />)}
           </ul>
         )}
       </main>
+  );
+  if (embedded) return body;
+  return (
+    <div className="flex min-h-screen flex-col bg-[#040a13] text-slate-100" data-lens-theme="conkay">
+      <DesignsHeader />
+      {body}
     </div>
   );
 }
 
-function DesignCard({ d }: { d: DesignSummary }) {
+function DesignCard({ d, onOpen }: { d: DesignSummary; onOpen?: (id: string) => void }) {
   const Icon = KIND_ICON[d.kind] || Box;
   if (!d.available) {
     return (
@@ -71,9 +75,10 @@ function DesignCard({ d }: { d: DesignSummary }) {
   }
   return (
     <li>
-      <Link
-        href={`/conkay/designs/${d.id}`}
-        className="group flex h-full flex-col rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.04] to-transparent p-4 transition-colors hover:border-sky-400/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60"
+      <CardLink
+        id={d.id}
+        onOpen={onOpen}
+        className="group flex h-full w-full flex-col rounded-2xl text-left border border-white/10 bg-gradient-to-b from-white/[0.04] to-transparent p-4 transition-colors hover:border-sky-400/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60"
       >
         <span className="flex items-center gap-2 text-sm font-medium text-slate-100">
           <Icon className="h-4 w-4 text-sky-300" aria-hidden /> {d.title}
@@ -88,7 +93,13 @@ function DesignCard({ d }: { d: DesignSummary }) {
           {d.hasDrawings && <span className="flex items-center gap-1 text-[10px] text-slate-400"><FileText className="h-3 w-3" aria-hidden /> drawings</span>}
           {d.hasModel3d && <span className="flex items-center gap-1 text-[10px] text-slate-400"><Box className="h-3 w-3" aria-hidden /> 3D</span>}
         </span>
-      </Link>
+      </CardLink>
     </li>
   );
+}
+
+/** A link to the design page, or — inside the Workshop — a button that opens it on the table. */
+function CardLink({ id, onOpen, className, children }: { id: string; onOpen?: (id: string) => void; className: string; children: React.ReactNode }) {
+  if (onOpen) return <button type="button" onClick={() => onOpen(id)} className={className}>{children}</button>;
+  return <Link href={`/conkay/designs/${id}`} className={className}>{children}</Link>;
 }

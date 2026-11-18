@@ -28,6 +28,12 @@ vi.mock('next/font/google', () => {
     Source_Serif_4: face('Source Serif 4'),
     Instrument_Serif: face('Instrument Serif'),
     Montserrat: face('Montserrat'),
+    // ConKay — the Workshop (components/conkay/workshop/workshopFonts.ts)
+    Chakra_Petch: face('Chakra Petch'),
+    // Retail — The Stall (components/retail/app/stallFonts.ts)
+    Permanent_Marker: face('Permanent Marker'),
+    Caveat: face('Caveat'),
+    Courier_Prime: face('Courier Prime'),
   };
 });
 

@@ -10,6 +10,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { fetchDemoMaterials, retryNotice, solveDemoBeam, sweepDemoBeam, type DemoRetry } from '@/lib/conkay/demo-api';
 import { dtuReadBackCall, dtuReadBackMatches, dtuRecordId } from '@/components/wallet/walletReceipt';
 import { beamReportDtuCall } from '@/lib/conkay/beam-report';
 import { currentModelFromStudy, nextModelName, preferredModelName, setConkayCurrentModel } from '@/lib/conkay/model-export';
@@ -82,7 +83,19 @@ export function inputsMatchResult(inputs: StudyInputs, r: BeamStudyResult | null
     && (inputs.requiredSafetyFactor ?? null) === (r.safetyCheck?.stated ? r.safetyCheck.requiredSafetyFactor : null);
 }
 
-export function useConKayWorkspace(workspaceId: string | null) {
+/** What a guest is told when they reach for something that stores. */
+export const GUEST_SIGNUP_LINE = 'That needs an account — sign up free to save models, keep studies as DTUs and talk it through with ConKay. Solving and sweeping work here without one.';
+
+export function useConKayWorkspace(workspaceId: string | null, opts: { guest?: boolean } = {}) {
+  // Guest (the public demo): solve + sweep through the public demo routes;
+  // nothing is read from or written to any account store.
+  const guest = Boolean(opts.guest);
+  /** Set only while a public-route request is being retried after a real 503. */
+  // Keyed by request, so one request finishing never clears another's notice.
+  const [noticeState, setNoticeState] = useState<{ key: 'materials' | 'solve' | 'sweep'; text: string } | null>(null);
+  const retryFor = useCallback((key: 'materials' | 'solve' | 'sweep') => (r: DemoRetry) => setNoticeState({ key, text: retryNotice(r) }), []);
+  const clearNotice = useCallback((key: 'materials' | 'solve' | 'sweep') => setNoticeState((n) => (n?.key === key ? null : n)), []);
+  const notice = noticeState?.text ?? null;
   const [inputs, setInputs] = useState<StudyInputs>(NEW_STUDY);
   const [result, setResult] = useState<BeamStudyResult | null>(null);
   const [previous, setPrevious] = useState<BeamStudyResult | null>(null);
@@ -107,13 +120,22 @@ export function useConKayWorkspace(workspaceId: string | null) {
 
   useEffect(() => {
     let live = true;
+    if (guest) {
+      void fetchDemoMaterials(retryFor('materials')).then((r) => { clearNotice('materials'); if (live && Array.isArray(r)) setMaterials(r); });
+      return () => { live = false; };
+    }
     void lensRun<{ materials: Material[] }>('engineering', 'materialLibrary', {}).then((r) => {
       if (live && Array.isArray(r.data?.result?.materials)) setMaterials(r.data.result.materials);
     });
     return () => { live = false; };
-  }, []);
+  }, [clearNotice, guest, retryFor]);
 
   const reload = useCallback(async () => {
+    if (guest) {
+      // Nothing stored for a guest: open on the start screen.
+      setFresh(true); setResult(null); setPrevious(null); setInputs(NEW_STUDY); setPartId(null); setStatus('idle'); setError('');
+      return null;
+    }
     setStatus('loading');
     setError('');
     const r = await lensRun<{ study: Record<string, unknown> | null }>(
@@ -153,7 +175,7 @@ export function useConKayWorkspace(workspaceId: string | null) {
       setPartId(null);
     }
     return study;
-  }, [workspaceId]);
+  }, [guest, workspaceId]);
 
   useEffect(() => { void reload(); }, [reload]);
 
@@ -163,6 +185,16 @@ export function useConKayWorkspace(workspaceId: string | null) {
     setStatus('solving');
     setFresh(false);
     setError('');
+    if (guest) {
+      const g = await solveDemoBeam(run, retryFor('solve'));
+      clearNotice('solve');
+      if ('error' in g) { setStatus('error'); setError(g.error); return { error: g.error }; }
+      setPrevious(resultRef.current);
+      resultRef.current = g;
+      setResult(g);
+      setStatus('idle');
+      return { result: g };
+    }
     const r = await lensRun<BeamStudyResult>('engineering', 'beamStudy', {
       name: run.name,
       dims: run.dims,
@@ -189,9 +221,14 @@ export function useConKayWorkspace(workspaceId: string | null) {
     setResult(full);
     setStatus('idle');
     return { result: full };
-  }, [inputs, workspaceId]);
+  }, [clearNotice, guest, inputs, retryFor, workspaceId]);
 
   const sweep = useCallback(async (param: keyof BeamDims | 'loadN', values: number[]): Promise<SweepResult | { error: string }> => {
+    if (guest) {
+      const g = await sweepDemoBeam(inputs, param, values, retryFor('sweep'));
+      clearNotice('sweep');
+      return 'error' in g ? g : { jobId: null, ...g };
+    }
     const r = await lensRun<SweepResult>('engineering', 'beamSweep', {
       dims: inputs.dims,
       loadN: inputs.loadN,
@@ -202,15 +239,16 @@ export function useConKayWorkspace(workspaceId: string | null) {
     });
     if (r.data?.ok === false || !r.data?.result) return { error: r.data?.error || 'The sweep returned nothing.' };
     return r.data.result;
-  }, [inputs]);
+  }, [clearNotice, guest, inputs, retryFor]);
 
   const suggestName = useCallback(async (current?: string): Promise<string> => {
+    if (guest) return preferredModelName(current ?? inputs.name, 'i-beam');
     const listed = await lensRun<{ parts: Array<{ name?: string }> }>('engineering', 'listParts', {});
     const existing = listed.data?.ok === false
       ? []
       : (listed.data?.result?.parts ?? []).map((p) => String(p?.name || ''));
     return nextModelName(preferredModelName(current ?? inputs.name, 'i-beam'), existing);
-  }, [inputs.name]);
+  }, [guest, inputs.name]);
 
   /**
    * Save the open study to Models. With a linked part (opened from Models,
@@ -220,6 +258,7 @@ export function useConKayWorkspace(workspaceId: string | null) {
    * incremented (ConKay F3). `asCopy` forces a new entry (Save as copy).
    */
   const saveModel = useCallback(async (nameOverride?: string, opts?: { asCopy?: boolean }): Promise<{ id: string; name: string } | { error: string }> => {
+    if (guest) return { error: GUEST_SIGNUP_LINE };
     const listed = await lensRun<{ parts: Array<{ id: string; name?: string }> }>('engineering', 'listParts', {});
     const existing = listed.data?.ok === false
       ? []
@@ -248,7 +287,7 @@ export function useConKayWorkspace(workspaceId: string | null) {
     if (r.data?.ok === false || !part?.id) return { error: r.data?.error || 'The part store refused this model.' };
     setPartId(part.id);
     return { id: part.id, name: part.name };
-  }, [inputs, partId]);
+  }, [guest, inputs, partId]);
 
   /** Start a fresh study in this workspace (ConKay F4): the template, unsolved, unlinked. */
   const resetStudy = useCallback(() => {
@@ -271,6 +310,7 @@ export function useConKayWorkspace(workspaceId: string | null) {
 
   /** Create the report DTU, read it back, then attach it to the study. */
   const keepAsDtu = useCallback(async (): Promise<{ dtuId: string } | { error: string }> => {
+    if (guest) return { error: GUEST_SIGNUP_LINE };
     const current = resultRef.current;
     const call = beamReportDtuCall(current);
     if (!call || !current?.jobId) return { error: 'Run the FEA first — a DTU must record a real solve.' };
@@ -287,12 +327,12 @@ export function useConKayWorkspace(workspaceId: string | null) {
     if (kept.data?.ok === false) return { error: kept.data.error || 'The study did not record the DTU.' };
     setResult((r) => (r && r.jobId === current.jobId ? { ...r, dtuId: id } : r));
     return { dtuId: id };
-  }, [workspaceId]);
+  }, [guest, workspaceId]);
 
   return {
     inputs, setInputs, result, previous, materials, status, error,
     solve, sweep, saveModel, suggestName, keepAsDtu, reload, resetStudy, openModel,
-    partId,
+    partId, guest, notice,
     fresh, startBeam,
     stale: Boolean(result) && !inputsMatchResult(inputs, result),
   };

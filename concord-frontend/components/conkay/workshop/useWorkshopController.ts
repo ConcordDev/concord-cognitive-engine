@@ -1,35 +1,26 @@
 'use client';
 
 /**
- * ConKayWorkspace — /lenses/conkay. ConKay's full engineering workspace:
- * left, the workspace rail (projects, models, simulations, data vault,
- * library, workspaces); centre, the 3-D study viewport with its parameters
- * and result cards; right, the ConKay conversation; bottom, voice + text.
+ * useWorkshopController — the ConKay Workshop's brain: the study, the
+ * conversation, the agent stream, new designs from the box, chips, saves,
+ * keeps and cross-lens handoffs. Moved verbatim out of the old
+ * ConKayWorkspace render so the Workshop UI (table / wall / under the hood)
+ * and guest mode share one controller. Every behaviour here is pinned by
+ * tests/conkay-workspace.test.tsx.
  *
- * Two paths answer a message. A study edit or action ("t_w = 8 mm and re-run",
- * "cantilever, 50 kN", "keep as DTU") is parsed deterministically and run
- * against engineering.beamStudy — the reply is composed from the solver's
- * numbers. Anything else goes to the ConKay agent (/api/chat-agent/stream)
- * with the study as context; if the agent re-solves the study through its
- * tools, the workspace reloads the stored result.
+ * Guest mode (the public demo): the study solves and sweeps through the
+ * public demo endpoints; anything that stores (save, keep, the agent, the
+ * workspace log, workspaces) is refused with a sign-up line, never faked.
  */
 
-import dynamic from 'next/dynamic';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Boxes, ChevronDown, ChevronUp, Eye, EyeOff, Loader2, MessageSquare, PanelLeft, Save, SlidersHorizontal,
-} from 'lucide-react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { api, lensRun } from '@/lib/api/client';
 import { detectNewDesign, type NewDesignIntent } from '@/lib/conkay/new-design-intent';
-import { DesignPane, StartScreen, type BriefClaim, type TrussAnswer, type WorkspaceDesign } from './DesignPane';
+import type { BriefClaim, TrussAnswer, WorkspaceDesign } from '../workspace/DesignPane';
 import { CONKAY_PERSONA_PROMPT } from '@/components/conkay/conkay-persona';
 import { agentFailure, artifactKey, streamConKayAgent, stripToolCallLeak } from '@/lib/conkay/agent-stream';
-import { RunCard } from '@/components/cockpit/RunCard';
-import LowConfidenceTag from '@/components/chat/LowConfidenceTag';
-import { ChatArtifacts, type ChatArtifact } from '@/components/chat/ChatArtifacts';
-import MessageRenderer from '@/components/chat/MessageRenderer';
-import { ConKayMessage } from '@/components/conkay/ConKayViz';
+import type { ChatArtifact } from '@/components/chat/ChatArtifacts';
 import {
   DIM_LABELS,
   applyWorkspaceCommand,
@@ -42,34 +33,16 @@ import {
   type BeamDims,
   type BeamStudyResult,
 } from '@/lib/conkay/workspace-commands';
-import { useConKayWorkspace, type StudyInputs, type SweepResult } from './useConKayWorkspace';
-import { WorkspaceNav, type NavSection, type WorkspaceSummary } from './WorkspaceNav';
-import { StudyCards } from './StudyCards';
-import { ParameterPanel, type ParameterPanelHandle } from './ParameterPanel';
-import { VoiceComposer } from './VoiceComposer';
-import { DISPLAY_LABELS, VIEW_LABELS, utilizationColor, type DisplayMode, type ViewPreset } from '@/lib/conkay/beam-view';
+import { useConKayWorkspace, type StudyInputs, type SweepResult } from '../workspace/useConKayWorkspace';
+import type { NavSection, WorkspaceSummary } from '../workspace/WorkspaceNav';
+import type { ParameterPanelHandle } from '../workspace/ParameterPanel';
+import type { DisplayMode, ViewPreset } from '@/lib/conkay/beam-view';
 
-const BeamViewport = dynamic(() => import('./BeamViewport'), {
-  ssr: false,
-  loading: () => (
-    <div className="flex h-full items-center justify-center text-sm text-slate-400">
-      <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> Loading viewport…
-    </div>
-  ),
-});
+export type { BeamStudyResult, SweepResult };
 
-const MeshArtifactView = dynamic(() => import('@/components/chat/MeshArtifactView'), {
-  ssr: false,
-  loading: () => (
-    <div className="flex h-full items-center justify-center text-sm text-slate-400">
-      <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> Loading model…
-    </div>
-  ),
-});
-
-type ChipKind = 'review' | 'sweep' | 'edit-tw' | 'apply' | 'defaults';
-interface Chip { kind: ChipKind; label: string; dims?: Partial<BeamDims>; brief?: string }
-interface WsMessage {
+export type ChipKind = 'review' | 'sweep' | 'edit-tw' | 'apply' | 'defaults';
+export interface Chip { kind: ChipKind; label: string; dims?: Partial<BeamDims>; brief?: string }
+export interface WsMessage {
   id: string;
   role: 'user' | 'assistant';
   text: string;
@@ -99,42 +72,12 @@ const clock = (iso: string) => {
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 };
 
-function SweepTable({ sweep }: { sweep: SweepResult }) {
-  const label = sweep.param === 'loadN' ? 'P (kN)' : `${DIM_LABELS[sweep.param as keyof BeamDims]?.symbol ?? sweep.param} (mm)`;
-  return (
-    <div className="mt-2 overflow-x-auto rounded-lg border border-white/10">
-      <table className="w-full text-left font-mono text-[11px]">
-        <thead className="bg-white/5 text-slate-400">
-          <tr><th className="px-2 py-1">{label}</th><th className="px-2 py-1">σ MPa</th><th className="px-2 py-1">δ mm</th><th className="px-2 py-1">util.</th><th className="px-2 py-1" /></tr>
-        </thead>
-        <tbody>
-          {sweep.rows.map((r) => (
-            <tr key={r.value} className={r.value === sweep.lightestPassing ? 'bg-emerald-400/10' : ''}>
-              <td className="px-2 py-1 text-slate-200">{sweep.param === 'loadN' ? r.value / 1000 : r.value}</td>
-              {r.ok ? (
-                <>
-                  <td className="px-2 py-1 text-slate-200">{r.maxStressMPa!.toFixed(1)}</td>
-                  <td className="px-2 py-1 text-slate-200">{r.maxDeflectionMm!.toFixed(3)}</td>
-                  <td className="px-2 py-1" style={{ color: utilizationColor(r.utilization!) }}>{(r.utilization! * 100).toFixed(1)}%</td>
-                  <td className={`px-2 py-1 ${r.pass ? 'text-emerald-300' : 'text-rose-300'}`}>{r.pass ? 'pass' : 'fail'}</td>
-                </>
-              ) : (
-                <td colSpan={4} className="px-2 py-1 text-rose-300">{r.error}</td>
-              )}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-export function ConKayWorkspace() {
+export function useWorkshopController({ guest = false, onDesigned }: { guest?: boolean; onDesigned?: (id: string) => void } = {}) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
   const workspaceId = params.get('ws');
-  const ws = useConKayWorkspace(workspaceId);
+  const ws = useConKayWorkspace(guest ? null : workspaceId, { guest });
   const { inputs, setInputs, result, materials, status } = ws;
 
   const [section, setSection] = useState<NavSection | null>(null);
@@ -152,9 +95,12 @@ export function ConKayWorkspace() {
   /** The "what the design solver builds" note is shown once, on the first brief handed to the agent. */
   const fallbackNoted = useRef(false);
   const [keeping, setKeeping] = useState(false);
+  /** The last real sweep, for the table's morph-through-results scrub. */
+  const [lastSweep, setLastSweep] = useState<SweepResult | null>(null);
   const [view, setView] = useState<ViewPreset>('isometric');
   const [display, setDisplay] = useState<DisplayMode>('wire-stress');
-  const [showDims, setShowDims] = useState(true);
+  // Dimension tags start on where there's room; on a phone they'd bury the readouts (the eye toggle shows them).
+  const [showDims, setShowDims] = useState(() => typeof window === 'undefined' || window.matchMedia('(min-width: 640px)').matches);
   // Open on wide screens; on a phone the card would cover the viewport.
   const [paramsOpen, setParamsOpen] = useState(() => typeof window === 'undefined' || window.matchMedia('(min-width: 640px)').matches);
   const [mobileTab, setMobileTab] = useState<'model' | 'chat' | 'browse'>('model');
@@ -173,6 +119,8 @@ export function ConKayWorkspace() {
   const persisted = useRef<Set<string>>(new Set());
   const [logLoaded, setLogLoaded] = useState<string | null | undefined>(undefined);
   useEffect(() => {
+    // A guest has no stored conversation: start empty, store nothing.
+    if (guest) { setLogLoaded(workspaceId); return; }
     let live = true;
     void lensRun<{ messages: WsMessage[] }>('engineering', 'workspaceLog-get', workspaceId ? { workspaceId } : {}).then((r) => {
       if (!live) return;
@@ -182,9 +130,9 @@ export function ConKayWorkspace() {
       setLogLoaded(workspaceId);
     });
     return () => { live = false; };
-  }, [workspaceId]);
+  }, [guest, workspaceId]);
   useEffect(() => {
-    if (logLoaded !== workspaceId) return;
+    if (guest || logLoaded !== workspaceId) return;
     const fresh = messages.filter((m) => !m.pending && !persisted.current.has(m.id));
     if (fresh.length === 0) return;
     for (const m of fresh) persisted.current.add(m.id);
@@ -198,16 +146,17 @@ export function ConKayWorkspace() {
       // Not stored: let the next change retry these.
       if (r.data?.ok === false) for (const m of fresh) persisted.current.delete(m.id);
     });
-  }, [logLoaded, messages, workspaceId]);
+  }, [guest, logLoaded, messages, workspaceId]);
 
   useEffect(() => { listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' }); }, [messages]);
 
   const loadWorkspaces = useCallback(async () => {
+    if (guest) { setWorkspaces([]); return; }
     const r = await lensRun<{ projects: Array<{ id: string; name: string }> }>('agent_projects', 'list', {});
     if (r.data?.ok === false) { setWorkspacesError(r.data.error || 'Could not load workspaces.'); return; }
     setWorkspacesError('');
     setWorkspaces((r.data?.result?.projects ?? []).map((p) => ({ id: p.id, name: p.name })));
-  }, []);
+  }, [guest]);
   useEffect(() => { void loadWorkspaces(); }, [loadWorkspaces]);
 
   const goWorkspace = useCallback((id: string | null) => {
@@ -219,13 +168,14 @@ export function ConKayWorkspace() {
   }, [params, pathname, router]);
 
   const createWorkspace = useCallback(async (name: string) => {
+    if (guest) return null;
     const r = await lensRun<{ project: { id: string; name: string } }>('agent_projects', 'create', { name });
     const p = r.data?.result?.project;
     if (r.data?.ok === false || !p?.id) return null;
     await loadWorkspaces();
     goWorkspace(p.id);
     return p.id;
-  }, [goWorkspace, loadWorkspaces]);
+  }, [goWorkspace, guest, loadWorkspaces]);
 
   const push = useCallback((m: Omit<WsMessage, 'id' | 'at'> & { id?: string }) => {
     const msg: WsMessage = { id: m.id || uid(), at: new Date().toISOString(), ...m };
@@ -298,6 +248,10 @@ export function ConKayWorkspace() {
   }, [push, reply, ws]);
 
   const askAgent = useCallback(async (text: string) => {
+    if (guest) {
+      reply(push({ role: 'assistant', text: '', pending: true }), 'Talking it through with ConKay needs an account — sign up free and I\u2019ll pick this up with you. In the demo I can solve the beam: try “t_w = 8 mm and re-run” or “make it lighter”.');
+      return;
+    }
     const id = push({ role: 'assistant', text: '', pending: true, tools: [] });
     const mat = materials.find((m) => m.id === inputs.materialId);
     const context = studyContext(
@@ -354,7 +308,7 @@ export function ConKayWorkspace() {
       reply(id, agentFailure(e instanceof Error ? e.message : 'network error'), { error: true, tools });
     }
     if (resolved) { await ws.reload(); setRefreshKey((k) => k + 1); }
-  }, [inputs, materials, patch, push, reply, result, workspaceId, ws]);
+  }, [guest, inputs, materials, patch, push, reply, result, workspaceId, ws]);
 
   // A new design from the box: a showcase result, or a brief for the workbench
   // (car -> the car pipeline and its workbench page; truss / bracket / part ->
@@ -402,7 +356,8 @@ export function ConKayWorkspace() {
     }
     if (data?.stage === 'designed' && typeof data.id === 'string') {
       reply(id, 'Designed. Opening it in the workbench, where you can move its knobs, lock variables and ask follow-ups.');
-      router.push(`/conkay/workbench/${data.id}`);
+      // In the Workshop the new design comes down onto the table in place.
+      if (onDesigned) onDesigned(data.id); else router.push(`/conkay/workbench/${data.id}`);
       return;
     }
     if (data?.stage === 'solved' && data.answer && typeof data.answer === 'object') {
@@ -421,7 +376,31 @@ export function ConKayWorkspace() {
       return;
     }
     reply(id, data?.stage === 'infeasible' ? 'No design met the brief within the search budget; see the workbench for what bound it.' : 'The design returned nothing to show.', { error: data?.stage !== 'infeasible' });
-  }, [askAgent, push, reply, router]);
+  }, [askAgent, onDesigned, push, reply, router]);
+
+  // Sweep the web thickness ±3 mm through the real solver (engineering.beamSweep)
+  // and offer the lightest passing section. Shared by the "Parameter sweep"
+  // chip and the spoken "make it lighter".
+  const sweepWeb = useCallback(async () => {
+    const tw = inputs.dims.webThickness;
+    const values = [-3, -2, -1, 0, 1, 2, 3]
+      .map((d) => Math.round((tw + d) * 100) / 100)
+      .filter((v) => v > 0 && v < inputs.dims.flangeWidth);
+    const id = push({ role: 'assistant', text: `Sweeping t_w over ${values.join(', ')} mm…`, pending: true });
+    const out = await ws.sweep('webThickness', values);
+    if ('error' in out) { reply(id, `The sweep did not run: ${out.error}`, { error: true }); return; }
+    setLastSweep(out);
+    const pass = out.rows.filter((r) => r.ok && r.pass).length;
+    const text = out.lightestPassing !== null
+      ? `Solved ${out.rows.length} web thicknesses in ${out.elapsedMs} ms; ${pass} pass. The lightest passing section is t_w = ${out.lightestPassing} mm.`
+      : `Solved ${out.rows.length} web thicknesses in ${out.elapsedMs} ms; none pass at this load.`;
+    const caveat = ' Pass here means bending stress within yield; web shear, local and lateral-torsional buckling are not checked.';
+    const chips: Chip[] = out.lightestPassing !== null && out.lightestPassing !== tw
+      ? [{ kind: 'apply', label: `Use t_w = ${out.lightestPassing} mm`, dims: { webThickness: out.lightestPassing } }]
+      : [];
+    reply(id, text + caveat, { sweep: out, chips, tools: [{ name: 'engineering.beamSweep', ok: true }] });
+    setRefreshKey((k) => k + 1);
+  }, [inputs.dims, push, reply, ws]);
 
   const send = useCallback(async (text: string) => {
     if (busy) return;
@@ -447,6 +426,12 @@ export function ConKayWorkspace() {
         const brief = `${pendingBrief.current}. ${text}`;
         pendingBrief.current = null;
         await startDesign({ kind: 'workbench', domain: 'truss', label: 'design' }, brief);
+        return;
+      }
+      // "Make it lighter": sweep the web through the solver and offer the
+      // lightest section that still passes — never a guessed number.
+      if (!design && !viewMesh && /\b(?:make (?:it|this) lighter|lighten (?:it|this)|lightest (?:section|beam))\b/i.test(text)) {
+        await sweepWeb();
         return;
       }
       const cmd = parseWorkspaceCommand(text, inputs.dims, materials, inputs.materialId);
@@ -480,7 +465,7 @@ export function ConKayWorkspace() {
     } finally {
       setBusy(false);
     }
-  }, [askAgent, busy, design, inputs, keep, materials, persistModel, push, reply, runStudy, startDesign]);
+  }, [askAgent, busy, design, inputs, keep, materials, persistModel, push, reply, runStudy, startDesign, sweepWeb, viewMesh]);
 
   // Open a DTU in the workspace: read it, and when it is a kept beam study,
   // load the exact inputs it recorded (results stay hidden until re-solved).
@@ -548,27 +533,9 @@ export function ConKayWorkspace() {
     if (chip.kind === 'sweep') {
       if (busy) return;
       setBusy(true);
-      try {
-        const tw = inputs.dims.webThickness;
-        const values = [-3, -2, -1, 0, 1, 2, 3]
-          .map((d) => Math.round((tw + d) * 100) / 100)
-          .filter((v) => v > 0 && v < inputs.dims.flangeWidth);
-        const id = push({ role: 'assistant', text: `Sweeping t_w over ${values.join(', ')} mm…`, pending: true });
-        const out = await ws.sweep('webThickness', values);
-        if ('error' in out) { reply(id, `The sweep did not run: ${out.error}`, { error: true }); return; }
-        const pass = out.rows.filter((r) => r.ok && r.pass).length;
-        const text = out.lightestPassing !== null
-          ? `Solved ${out.rows.length} web thicknesses in ${out.elapsedMs} ms; ${pass} pass. The lightest passing section is t_w = ${out.lightestPassing} mm.`
-          : `Solved ${out.rows.length} web thicknesses in ${out.elapsedMs} ms; none pass at this load.`;
-        const caveat = ' Pass here means bending stress within yield; web shear, local and lateral-torsional buckling are not checked.';
-        const chips: Chip[] = out.lightestPassing !== null && out.lightestPassing !== tw
-          ? [{ kind: 'apply', label: `Use t_w = ${out.lightestPassing} mm`, dims: { webThickness: out.lightestPassing } }]
-          : [];
-        reply(id, text + caveat, { sweep: out, chips, tools: [{ name: 'engineering.beamSweep', ok: true }] });
-        setRefreshKey((k) => k + 1);
-      } finally { setBusy(false); }
+      try { await sweepWeb(); } finally { setBusy(false); }
     }
-  }, [askAgent, busy, inputs, push, reply, runStudy, send, ws]);
+  }, [askAgent, busy, inputs, push, reply, runStudy, send, sweepWeb]);
 
   // Cross-lens handoff: /lenses/conkay?ask=… or ?dtu=<id>&title=… opens the
   // workspace and sends that request once.
@@ -596,307 +563,17 @@ export function ConKayWorkspace() {
 
   const workspaceName = workspaceId ? (workspaces.find((w) => w.id === workspaceId)?.name ?? 'Workspace') : 'My workspace';
 
-  const nav = (
-    <WorkspaceNav
-      section={section}
-      onSection={setSection}
-      workspaces={workspaces}
-      workspacesError={workspacesError}
-      workspaceId={workspaceId}
-      onWorkspace={goWorkspace}
-      onCreateWorkspace={createWorkspace}
-      materials={materials}
-      materialId={inputs.materialId}
-      onMaterial={(id) => { setInputs({ ...inputs, materialId: id }); setDesign(null); ws.startBeam(); setMobileTab('model'); }}
-      onOpenModel={(name, dims, materialId, partId) => { ws.openModel(name, dims, materialId, partId); setDesign(null); setViewMesh(null); setMobileTab('model'); }}
-      onNewStudy={() => { ws.resetStudy(); setDesign(null); setViewMesh(null); setMobileTab('model'); }}
-      onOpenShowcase={(id, label) => { setDesign({ kind: 'showcase', id, label }); setMobileTab('model'); }}
-      onAskAboutDtu={(d) => void openDtu(d.id, d.title)}
-      refreshKey={refreshKey}
-    />
-  );
-
-  const conversation = (
-    <section aria-label="ConKay conversation" className="flex h-full min-h-0 flex-col rounded-2xl border border-sky-400/15 bg-[#060f1c]/90">
-      <header className="flex items-start justify-between gap-2 border-b border-white/5 px-4 py-3">
-        <div>
-          <h2 className="text-base font-semibold text-slate-100">ConKay</h2>
-          <p className="text-[11px] text-slate-400">Structural · FEA · Materials · DTU</p>
-        </div>
-        {messages.length > 0 && (
-          clearArmed ? (
-            <span className="flex items-center gap-1">
-              <button type="button" onClick={() => void clearConversation()} disabled={busy} className="rounded-md bg-rose-400/15 px-2 py-1 text-[11px] text-rose-200 hover:bg-rose-400/25 disabled:opacity-50">
-                Confirm clear?
-              </button>
-              <button type="button" onClick={() => setClearArmed(false)} className="rounded-md px-2 py-1 text-[11px] text-slate-400 hover:bg-white/5 hover:text-slate-200">
-                Keep
-              </button>
-            </span>
-          ) : (
-            <button type="button" onClick={() => setClearArmed(true)} disabled={busy} className="rounded-md px-2 py-1 text-[11px] text-slate-400 hover:bg-white/5 hover:text-slate-200 disabled:opacity-50">
-              Clear
-            </button>
-          )
-        )}
-      </header>
-      <div ref={listRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3" aria-live="polite">
-        {messages.length === 0 && (
-          <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3 text-xs leading-relaxed text-slate-400">
-            <p className="mb-2 text-slate-300">Talk to the study. Edits re-run the solver; questions go to ConKay.</p>
-            <ul className="space-y-1 font-mono text-[11px] text-sky-200/80">
-              <li>t_w = 8 mm and re-run</li>
-              <li>cantilever, 50 kN, A36</li>
-              <li>length 2.4 m</li>
-              <li>save model · keep as DTU</li>
-            </ul>
-          </div>
-        )}
-        {messages.map((m) => (
-          <div key={m.id} className={`rounded-xl border px-3 py-2.5 text-sm ${m.role === 'user' ? 'ml-6 border-sky-400/20 bg-sky-400/[0.06]' : 'border-white/10 bg-white/[0.03]'}`}>
-            <div className="mb-1 flex items-center justify-between text-[11px]">
-              <span className="font-medium text-slate-200">{m.role === 'user' ? 'You' : 'ConKay'}</span>
-              <span className="text-slate-500">{clock(m.at)}</span>
-            </div>
-            {m.cockpitRunId && <RunCard runId={m.cockpitRunId} />}
-            {m.tools && m.tools.length > 0 && (
-              <ul className="mb-1.5 flex flex-wrap gap-1">
-                {m.tools.map((t, i) => (
-                  <li key={`${t.name}-${i}`} className={`rounded px-1.5 py-0.5 font-mono text-[10px] ${t.ok ? 'bg-sky-400/10 text-sky-200' : 'bg-rose-400/10 text-rose-200'}`}>
-                    ran {t.name}{t.ok ? '' : ' (failed)'}
-                  </li>
-                ))}
-              </ul>
-            )}
-            {m.role === 'assistant' && !m.error && m.text ? (
-              <div className="leading-relaxed text-slate-200"><ConKayMessage fields={{ content: m.text, ...(m.tools && m.tools.length > 0 ? { toolCalls: m.tools } : {}) }} renderProse={(t) => <MessageRenderer content={t} streaming={m.pending} />} /></div>
-            ) : (
-              <p className={`whitespace-pre-wrap leading-relaxed ${m.error ? 'text-rose-200' : 'text-slate-200'}`}>
-                {m.text || (m.pending ? 'Thinking…' : '')}
-              </p>
-            )}
-            {m.role === 'assistant' && <ChatArtifacts artifacts={m.artifacts} />}
-            {m.role === 'assistant' && <LowConfidenceTag confidence={m.confidence} reason={m.confidenceReason} />}
-            {m.pending && (
-              <div className="mt-2 h-1 overflow-hidden rounded bg-white/5" role="progressbar" aria-label="Working">
-                <div className="h-full w-1/3 animate-conkay-indeterminate motion-reduce:animate-none rounded bg-sky-400/70" />
-              </div>
-            )}
-            {m.sweep && <SweepTable sweep={m.sweep} />}
-            {m.chips && m.chips.length > 0 && !m.pending && (
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {m.chips.map((c) => (
-                  <button key={c.label} type="button" onClick={() => void onChip(c)} disabled={busy} className="rounded-md border border-white/10 px-2 py-1 text-[11px] text-slate-200 hover:border-sky-400/40 hover:bg-sky-400/10 disabled:opacity-50">
-                    {c.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-
-  const viewport = (
-    <section aria-label="Study viewport" className="flex h-full min-h-0 flex-col gap-2">
-      <div className="relative min-h-[320px] flex-1 overflow-hidden rounded-2xl border border-sky-400/15 bg-[radial-gradient(ellipse_at_center,#0b2340_0%,#050b14_70%)]">
-        <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between gap-2 px-3 py-2">
-          <div className="flex min-w-0 items-center gap-2">
-            <span className={`h-2 w-2 shrink-0 rounded-full ${status === 'solving' ? 'animate-pulse bg-amber-300' : result && !ws.stale ? 'bg-emerald-400' : 'bg-slate-500'}`} aria-hidden />
-            {viewMesh ? (
-              <span className="min-w-0 max-w-[16rem] truncate text-sm font-medium capitalize text-slate-100" data-testid="viewport-model-title">{viewMesh.title || 'ConKay model'}</span>
-            ) : (
-            <input
-              value={inputs.name}
-              onChange={(e) => setInputs({ ...inputs, name: e.target.value.slice(0, 80) })}
-              aria-label="Study name"
-              className="min-w-0 max-w-[16rem] truncate bg-transparent text-sm font-medium text-slate-100 focus:outline-none focus:ring-1 focus:ring-sky-400/40"
-            />
-            )}
-            <span className="hidden truncate text-[11px] text-slate-500 sm:inline">· {workspaceName} · mm / N / MPa</span>
-          </div>
-          <div className="flex shrink-0 items-center gap-1">
-            <button type="button" onClick={() => setShowDims((v) => !v)} aria-pressed={showDims} title={showDims ? 'Hide dimensions' : 'Show dimensions'} aria-label={showDims ? 'Hide dimensions' : 'Show dimensions'} className="rounded-md p-1.5 text-slate-300 hover:bg-white/10">
-              {showDims ? <Eye className="h-4 w-4" aria-hidden /> : <EyeOff className="h-4 w-4" aria-hidden />}
-            </button>
-            <button
-              type="button"
-              onClick={() => void openSave()}
-              disabled={busy}
-              title="Save model"
-              aria-label="Save model"
-              aria-expanded={saveOpen}
-              className="rounded-md p-1.5 text-slate-300 hover:bg-white/10 disabled:opacity-50"
-            >
-              <Save className="h-4 w-4" aria-hidden />
-            </button>
-          </div>
-        </div>
-        {saveOpen && (
-          <form
-            className="absolute inset-x-0 top-10 z-20 flex flex-wrap items-center gap-2 border-b border-white/10 bg-[#06101c]/95 px-3 py-2"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (busy || !saveName.trim()) return;
-              setBusy(true);
-              void persistModel(saveName).then((out) => {
-                if (!('error' in out)) setSaveOpen(false);
-              }).finally(() => setBusy(false));
-            }}
-          >
-            <label className="flex min-w-0 flex-1 items-center gap-2 text-xs text-slate-300">
-              Model name
-              <input
-                aria-label="Model name"
-                value={saveName}
-                maxLength={80}
-                onChange={(e) => { saveTouched.current = true; setSaveName(e.target.value.slice(0, 80)); }}
-                className="min-w-0 flex-1 rounded-md border border-white/10 bg-black/40 px-2 py-1 text-sm text-slate-100 focus:border-sky-400/50 focus:outline-none"
-              />
-            </label>
-            <button type="submit" disabled={busy || !saveName.trim()} className="rounded-md bg-sky-500/90 px-2.5 py-1 text-xs font-medium text-white disabled:opacity-50">
-              {busy ? 'Saving…' : ws.partId ? 'Save (update in place)' : 'Save'}
-            </button>
-            {ws.partId && (
-              <button
-                type="button"
-                disabled={busy || !saveName.trim()}
-                onClick={() => {
-                  setBusy(true);
-                  void persistModel(saveName, true).then((out) => {
-                    if (!('error' in out)) setSaveOpen(false);
-                  }).finally(() => setBusy(false));
-                }}
-                className="rounded-md border border-white/15 px-2.5 py-1 text-xs text-slate-200 hover:bg-white/5 disabled:opacity-50"
-              >
-                Save as copy
-              </button>
-            )}
-            <button type="button" onClick={() => setSaveOpen(false)} className="px-1 text-xs text-slate-400 hover:text-slate-200">Cancel</button>
-          </form>
-        )}
-
-        {design && <DesignPane design={design} onClose={() => setDesign(null)} />}
-        {!design && !viewMesh && ws.fresh && status !== 'loading' && (
-          <StartScreen busy={busy} onPick={(t) => void send(t)} onBeam={ws.startBeam} />
-        )}
-        {viewMesh && ((Array.isArray(viewMesh.positions) && Array.isArray(viewMesh.indices) && viewMesh.positions.length >= 9) || (typeof viewMesh.url === 'string' && /^\/api\/media\/[^/]+\/stream$/.test(viewMesh.url))) ? (
-          <>
-            <MeshArtifactView
-              positions={viewMesh.positions}
-              indices={viewMesh.indices}
-              url={viewMesh.url}
-              color={viewMesh.color}
-              title={viewMesh.title}
-              units={viewMesh.units}
-              geometryUnits={viewMesh.geometryUnits}
-              bbox_mm={viewMesh.bbox_mm}
-              scaleNote={viewMesh.scaleNote}
-              extents_mm={viewMesh.extents_mm}
-              partList={viewMesh.partList}
-              partRanges={viewMesh.partRanges}
-              engineering={viewMesh.engineering}
-              className="absolute inset-0"
-              testId="viewport-model"
-            />
-            <div className="absolute right-3 top-11 z-10 flex max-h-[calc(100%-4.5rem)] w-60 max-w-[calc(100%-1.5rem)] flex-col rounded-xl border border-white/10 bg-[#06101c]/85 backdrop-blur" data-testid="viewport-parts">
-              <div className="flex items-center justify-between gap-2 border-b border-white/5 px-3 py-2 text-xs font-medium text-slate-200">
-                <span className="flex items-center gap-1.5"><Boxes className="h-3.5 w-3.5" aria-hidden /> Parts{viewMesh.partList?.length ? ` (${viewMesh.partList.length})` : ''}</span>
-                <button type="button" onClick={() => setViewMesh(null)} className="rounded px-1.5 py-0.5 text-[11px] text-sky-300 hover:bg-white/10">Back to study</button>
-              </div>
-              {viewMesh.partList?.length ? (
-                <ul className="min-h-0 overflow-y-auto px-3 py-2 text-[11px] text-slate-300">
-                  {viewMesh.partList.map((pt, i) => (
-                    <li key={`${pt.name}-${i}`} className="flex justify-between gap-2 py-0.5">
-                      <span className="truncate capitalize">{pt.name}</span>
-                      {Array.isArray(pt.size_mm) && <span className="shrink-0 tabular-nums text-slate-500">{pt.size_mm.join('×')}</span>}
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-              <p className="border-t border-white/5 px-3 py-1.5 text-[10px] text-slate-500">
-                {viewMesh.bbox_mm ? `Overall ${viewMesh.bbox_mm.length}×${viewMesh.bbox_mm.height}×${viewMesh.bbox_mm.width} mm (L×H×W) · ` : ''}
-                {typeof viewMesh.triangleCount === 'number' ? `${viewMesh.triangleCount} triangles · ` : ''}drag to orbit
-              </p>
-            </div>
-          </>
-        ) : (
-          <BeamViewport dims={inputs.dims} support={inputs.support} utilization={utilization} view={view} display={display} showDims={showDims} leftInset={paramsOpen ? 0.22 : 0} onDimFocus={(key) => { setParamsOpen(true); setMobileTab('model'); setTimeout(() => paramRef.current?.focus(key), 50); }} />
-        )}
-
-        {!viewMesh && <div className="absolute left-3 top-11 z-10 w-48 max-w-[calc(100%-1.5rem)] rounded-xl border border-white/10 bg-[#06101c]/85 backdrop-blur">
-          <button type="button" onClick={() => setParamsOpen((v) => !v)} aria-expanded={paramsOpen} className="flex w-full items-center justify-between px-3 py-2 text-xs font-medium text-slate-200">
-            <span className="flex items-center gap-1.5"><SlidersHorizontal className="h-3.5 w-3.5" aria-hidden /> Parameters</span>
-            {paramsOpen ? <ChevronUp className="h-3.5 w-3.5" aria-hidden /> : <ChevronDown className="h-3.5 w-3.5" aria-hidden />}
-          </button>
-          {paramsOpen && (
-            <div className="border-t border-white/5 px-3 pb-3 pt-2">
-              <ParameterPanel ref={paramRef} inputs={inputs} materials={materials} onChange={setInputs} />
-              <button
-                type="button"
-                onClick={() => void send('run fea')}
-                disabled={busy}
-                className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg bg-sky-500/90 py-1.5 text-xs font-medium text-white hover:bg-sky-500 disabled:opacity-60"
-              >
-                {status === 'solving' && <Loader2 className="h-3 w-3 animate-spin" aria-hidden />} Run FEA
-              </button>
-            </div>
-          )}
-        </div>}
-
-        <div className={`absolute bottom-2 right-2 z-10 flex-wrap items-center justify-end gap-1.5 ${viewMesh ? 'hidden' : 'flex'}`}>
-          {utilization && (display === 'stress' || display === 'wire-stress') && (
-            <div className="flex items-center gap-1.5 rounded-md border border-white/10 bg-[#06101c]/85 px-2 py-1 text-[10px] text-slate-300">
-              Utilization
-              <span className="h-2 w-16 rounded" style={{ background: `linear-gradient(90deg, ${utilizationColor(0)}, ${utilizationColor(0.5)}, ${utilizationColor(0.8)}, ${utilizationColor(1)})` }} aria-hidden />
-              0–100%
-            </div>
-          )}
-          <label className="flex items-center gap-1 rounded-md border border-white/10 bg-[#06101c]/85 px-2 py-1 text-[11px] text-slate-300">
-            View:
-            <select value={view} onChange={(e) => setView(e.target.value as ViewPreset)} aria-label="View" className="bg-transparent text-slate-100 focus:outline-none">
-              {(Object.keys(VIEW_LABELS) as ViewPreset[]).map((v) => <option key={v} value={v} className="bg-[#06101c]">{VIEW_LABELS[v]}</option>)}
-            </select>
-          </label>
-          <label className="flex items-center gap-1 rounded-md border border-white/10 bg-[#06101c]/85 px-2 py-1 text-[11px] text-slate-300">
-            Display:
-            <select value={display} onChange={(e) => setDisplay(e.target.value as DisplayMode)} aria-label="Display" className="bg-transparent text-slate-100 focus:outline-none">
-              {(Object.keys(DISPLAY_LABELS) as DisplayMode[]).map((v) => <option key={v} value={v} className="bg-[#06101c]">{DISPLAY_LABELS[v]}</option>)}
-            </select>
-          </label>
-        </div>
-      </div>
-      {ws.error && status === 'error' && <p className="px-1 text-xs text-rose-300">{ws.error}</p>}
-      <StudyCards result={result} stale={ws.stale} status={status} onRun={() => void send('run fea')} onKeep={() => void keep()} keeping={keeping} />
-    </section>
-  );
-
-  return (
-    <div className="flex h-full min-h-0 flex-col gap-3 bg-[#040a13] p-2 sm:p-3">
-      {/* Phone / tablet tabs */}
-      <div role="tablist" aria-label="Workspace panels" className="flex gap-1 rounded-xl border border-white/10 bg-white/[0.02] p-1 lg:hidden">
-        {([['model', 'Model', Boxes], ['chat', 'ConKay', MessageSquare], ['browse', 'Browse', PanelLeft]] as const).map(([id, label, Icon]) => (
-          <button
-            key={id}
-            role="tab"
-            type="button"
-            aria-selected={mobileTab === id}
-            onClick={() => setMobileTab(id)}
-            className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-sm ${mobileTab === id ? 'bg-sky-400/15 text-sky-100' : 'text-slate-400'}`}
-          >
-            <Icon className="h-4 w-4" aria-hidden /> {label}
-          </button>
-        ))}
-      </div>
-
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-[220px_minmax(0,1fr)_340px] xl:grid-cols-[240px_minmax(0,1fr)_380px]">
-        <aside className={`${mobileTab === 'browse' ? 'flex' : 'hidden'} min-h-0 flex-col rounded-2xl border border-sky-400/15 bg-[#060f1c]/90 p-2 lg:flex`}>{nav}</aside>
-        <div className={`${mobileTab === 'model' ? 'flex' : 'hidden'} min-h-0 flex-col lg:flex`}>{viewport}</div>
-        <div className={`${mobileTab === 'chat' ? 'flex' : 'hidden'} min-h-0 flex-col lg:flex`}>{conversation}</div>
-      </div>
-
-      <VoiceComposer busy={busy} onSend={(t) => void send(t)} speakText={speak} />
-    </div>
-  );
+  return {
+    guest, router, pathname, params, workspaceId, workspaceName,
+    ws, inputs, setInputs, result, materials, status,
+    section, setSection, workspaces, workspacesError, goWorkspace, createWorkspace,
+    refreshKey, messages, busy, design, setDesign, viewMesh, setViewMesh,
+    keeping, view, setView, display, setDisplay, showDims, setShowDims,
+    paramsOpen, setParamsOpen, mobileTab, setMobileTab, speak,
+    saveOpen, setSaveOpen, saveName, setSaveName, saveTouched, setBusy,
+    paramRef, listRef, clearArmed, setClearArmed, clearConversation,
+    persistModel, openSave, keep, send, onChip, openDtu, utilization, lastSweep,
+  };
 }
+
+export type WorkshopController = ReturnType<typeof useWorkshopController>;

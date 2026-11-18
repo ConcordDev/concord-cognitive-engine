@@ -66,7 +66,7 @@ interface ChatMessage {
 
 const CHECK_ORDER: string[] = ['PASS', 'WARN', 'FAIL', 'NOT_COMPUTED', 'ERROR'];
 
-export function DesignBuilder({ id }: { id: string }) {
+export function DesignBuilder({ id, embedded = false, onBack }: { id: string; embedded?: boolean; onBack?: () => void }) {
   const router = useRouter();
   const [design, setDesign] = useState<DesignSnapshot | null>(null);
   const [notice, setNotice] = useState('');
@@ -205,13 +205,18 @@ export function DesignBuilder({ id }: { id: string }) {
     }
   };
 
-  return (
-    <div className="flex min-h-screen flex-col bg-[#040a13] text-slate-100" data-lens-theme="conkay">
-      <DesignsHeader crumb={{ label: design?.title || id }} />
-      <main className="mx-auto flex w-full max-w-[1500px] flex-1 flex-col gap-4 p-3 sm:p-5">
-        <Link href="/conkay/designs" className="flex w-fit items-center gap-1 text-xs text-slate-400 hover:text-slate-200">
-          <ArrowLeft className="h-3 w-3" aria-hidden /> All designs
-        </Link>
+  const back = onBack ? (
+    <button type="button" onClick={onBack} className="flex w-fit items-center gap-1 text-xs text-slate-400 hover:text-slate-200">
+      <ArrowLeft className="h-3 w-3" aria-hidden /> Back to the wall
+    </button>
+  ) : (
+    <Link href="/conkay/designs" className="flex w-fit items-center gap-1 text-xs text-slate-400 hover:text-slate-200">
+      <ArrowLeft className="h-3 w-3" aria-hidden /> All designs
+    </Link>
+  );
+  const main = (
+      <main className={embedded ? 'flex w-full flex-col gap-4' : 'mx-auto flex w-full max-w-[1500px] flex-1 flex-col gap-4 p-3 sm:p-5'}>
+        {back}
         {notice && <p role="status" className="flex items-center gap-1.5 text-xs text-amber-200"><Loader2 className="h-3 w-3 animate-spin" aria-hidden /> {notice}</p>}
         {error && <p role="alert" className="text-sm text-rose-300">{error}</p>}
         {!design && !wbView && !error && <div className="h-64 animate-pulse rounded-2xl border border-white/5 bg-white/[0.02]" aria-busy="true" />}
@@ -325,6 +330,12 @@ export function DesignBuilder({ id }: { id: string }) {
           </>
         )}
       </main>
+  );
+  if (embedded) return main;
+  return (
+    <div className="flex min-h-screen flex-col bg-[#040a13] text-slate-100" data-lens-theme="conkay">
+      <DesignsHeader crumb={{ label: design?.title || id }} />
+      {main}
     </div>
   );
 }

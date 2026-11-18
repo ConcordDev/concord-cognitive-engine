@@ -154,7 +154,7 @@ function refused(message: string): string {
   return message;
 }
 
-function ModelsPanel({ refreshKey, onOpenModel }: { refreshKey: number; onOpenModel: Props['onOpenModel'] }) {
+export function ModelsPanel({ refreshKey, onOpenModel }: { refreshKey: number; onOpenModel: Props['onOpenModel'] }) {
   const [revision, setRevision] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
@@ -336,7 +336,7 @@ function SimulationsPanel({ refreshKey }: { refreshKey: number }) {
   );
 }
 
-function VaultPanel({ refreshKey, onAsk }: { refreshKey: number; onAsk: Props['onAskAboutDtu'] }) {
+export function VaultPanel({ refreshKey, onAsk }: { refreshKey: number; onAsk: Props['onAskAboutDtu'] }) {
   const [q, setQ] = useState('');
   const [query, setQuery] = useState('');
   useEffect(() => {
