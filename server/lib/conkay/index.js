@@ -25,6 +25,7 @@ import "./physics/solvers/svd-lsq.js";
 import "./physics/solvers/roots.js";
 import "./physics/solvers/quadrature.js";
 import "./physics/solvers/dae.js";
+import "./physics/solvers/bvp.js";
 import "./physics/solvers/bolted-joint.js";
 import "./physics/solvers/joint-governing-check.js";
 import "./physics/solvers/requirements.js";
