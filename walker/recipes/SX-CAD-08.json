@@ -1,0 +1,21 @@
+{
+  "adversarial": [
+    "The purchased-kit tree \u2192 expect totalCost == 87 (no double count).",
+    "The unknown-material tree \u2192 expect totalMassKg == null with the leaf named in unmassedLines."
+  ],
+  "author": "muse-b10",
+  "authored_on": "2026-11-17",
+  "case_source": "observed",
+  "discriminator": "Pre-fix failure transcript: at f4f1f77ff no cad.bom-structure exists in the registry; BOMs exist only as the ERP-shaped export and the flat assembly-store grouping, with no multi-level roll-up tied to geometry. Post-fix: registered at L2 with declarations and no engine dependency; suite 10/10 green locally, stack 170/170; CI is the build of record. Reference case: base (2x 1 kg cube + 1x 1 kg box) + top line 3x cube at unitCost 5 \u2192 totalMassKg 6 (~1e-9 float tolerance), totalCost null, pricedSubtotal 15, unpriced lines named root-cause-first. Purchased kit (unitCost 40, priced child inside) \u2192 cost does NOT double-count: total 2x40 + 7 = 87; mass still rolls through the kit. Unknown-material leaf \u2192 leaf and ancestor unmassed, reason carried, total null.",
+  "id": "SX-CAD-08",
+  "kind": "repro-steps",
+  "notes": "Fix of record: commit 9d65e94f6 on sx/core-loop (B3, fixer). Content supplied by the fixer in SX-CAD-08.check.md (shared quality folder); registered DRAFT by muse-b10 as author of record (CAD subgroup, CB-0823) in walker/recipes/ on v1/immune-p1-recipe, 2026-11-17 \u2014 registrar-only conversion, substance unchanged. Value-assertion provenance per the check file: INDEPENDENT for the masses (analytic solids at declared density), SELF-REFERENCED for the cost rules (declared in the solver, drift coverage). Activation is the reviewer of record's act (packet_id binds at activation).",
+  "packet_id": null,
+  "reviewer": "zuko-desk",
+  "status": "draft",
+  "steps": [
+    "Via MCP conkay_solve {solver_id: \"cad.bom-structure\", typed inputs from docs/conkay/solvers/cad.bom-structure.md's replay request} \u2192 expect envelope PASS with totalMassKg within 1e-9 of 6, totalCost == null, pricedSubtotal == 15, line items [\"1\", \"1.1\", \"1.2\", \"2\"]."
+  ],
+  "tier_proposed": 1,
+  "title": "cad.bom-structure: the multi-level BOM rolls masses up through the tree while unpriced stays null and an unmassed leaf nulls the total with its reason carried"
+}
