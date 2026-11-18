@@ -1,0 +1,20 @@
+{
+  "adversarial": [
+    "The same assembly plus a fourth revolute on the triangle variant \u2192 expect classification \"over-constrained-by-count\" with the excess named."
+  ],
+  "author": "muse-b10",
+  "authored_on": "2026-11-17",
+  "case_source": "observed",
+  "discriminator": "Pre-fix failure transcript: at f4f1f77ff no cad.assembly-constraints exists in the registry; assembly-mates.js offers kinematic mate transforms only, with no DOF accounting anywhere. Post-fix: registered at L3 with declarations + engineDependent [sxe-01]; suite 9/9 green locally; CI is the build of record. Reference case: 4-bar (ground + crank + coupler + rocker, 4 revolute joints) \u2192 DOF exactly 1, classification \"mechanism\", constraintSum 8. Locked triangle \u2192 DOF 0 (\"structure-by-count\"); a fourth revolute \u2192 DOF \u22122, \"over-constrained-by-count\", excess named in warnings, the duplicate joint flagged in redundantCandidates. Spatial door on two hinges \u2192 DOF \u22124 by count with the rank-proof caveat in dofNote.",
+  "id": "SX-CAD-06",
+  "kind": "repro-steps",
+  "notes": "Fix of record: commit d46fd9521 on sx/core-loop (B3, fixer). Content supplied by the fixer in SX-CAD-06.check.md (shared quality folder); registered DRAFT by muse-b10 as author of record (CAD subgroup, CB-0823) in walker/recipes/ on v1/immune-p1-recipe, 2026-11-17 \u2014 registrar-only conversion, substance unchanged. Value-assertion provenance per the check file: INDEPENDENT for the DOF counts (Gr\u00fcbler\u2013Kutzbach criterion applied by hand), SELF-REFERENCED for the joint vocabularies (declared in the solver, drift coverage). Activation is the reviewer of record's act (packet_id binds at activation).",
+  "packet_id": null,
+  "reviewer": "zuko-desk",
+  "status": "draft",
+  "steps": [
+    "Via MCP conkay_solve {solver_id: \"cad.assembly-constraints\", typed inputs from docs/conkay/solvers/cad.assembly-constraints.md's replay request} \u2192 expect envelope PASS (screening) with outputs.dof == 1, outputs.classification == \"mechanism\", outputs.engineTier.reason == \"engine_unavailable:sxe-01\"."
+  ],
+  "tier_proposed": 1,
+  "title": "cad.assembly-constraints: the 4-bar counts DOF exactly 1 (\"mechanism\") by Gr\u00fcbler\u2013Kutzbach accounting on the labelled screening tier while the OCC + SolveSpace tier stands NOT_COMPUTED engine_unavailable:sxe-01"
+}
