@@ -40,6 +40,7 @@ import "./physics/solvers/number-theory.js";
 import "./physics/solvers/graph.js";
 import "./physics/solvers/logic-sat.js";
 import "./physics/solvers/geometry-comp.js";
+import "./physics/solvers/tensor-continuum.js";
 import "./physics/solvers/bolted-joint.js";
 import "./physics/solvers/joint-governing-check.js";
 import "./physics/solvers/requirements.js";
