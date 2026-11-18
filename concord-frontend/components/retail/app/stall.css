@@ -139,3 +139,166 @@
 [data-reduced-motion='true'] .stall-ink-in,
 [data-reduced-motion='true'] .stall-stamp-in,
 [data-reduced-motion='true'] .stall-bell-ring { animation: none; }
+
+/* ─────────────────────────────────────────────────────────────────────
+ * Stall pages — the section views (Products, Customers, Marketing, …)
+ * host the domain's existing macro-backed panels. Inside .stall-page the
+ * panels' neutral / action / state palette resolves to Stall tokens, so
+ * every section reads as the same shop without forking 25 components.
+ * Category hues (cyan, indigo, pink, sky, violet…) keep their meaning.
+ * ───────────────────────────────────────────────────────────────────── */
+
+/* Surfaces */
+.stall-page .bg-lattice-void,
+.stall-page .bg-zinc-950,
+.stall-page .bg-zinc-950\/40 { background-color: var(--stall-board); }
+.stall-page .bg-lattice-deep,
+.stall-page .bg-lattice-deep\/40,
+.stall-page .bg-lattice-deep\/60,
+.stall-page .bg-zinc-900,
+.stall-page .bg-zinc-900\/40 { background-color: var(--stall-board-2); }
+.stall-page .bg-lattice-surface,
+.stall-page .bg-lattice-surface\/40,
+.stall-page .bg-lattice-elevated { background-color: var(--stall-board-3); }
+.stall-page .hover\:bg-lattice-elevated\/60:hover,
+.stall-page .hover\:bg-zinc-800:hover,
+.stall-page .hover\:bg-zinc-900:hover { background-color: var(--stall-board-3); }
+
+/* Borders + dividers */
+.stall-page .border-lattice-border,
+.stall-page .border-white\/10,
+.stall-page .border-white\/5,
+.stall-page .border-zinc-700,
+.stall-page .border-zinc-800,
+.stall-page .border-gray-700,
+.stall-page .border-gray-500\/20,
+.stall-page .border-gray-500\/30 { border-color: var(--stall-line); }
+.stall-page .divide-white\/10 > * + *,
+.stall-page .divide-white\/5 > * + * { border-color: var(--stall-line); }
+
+/* Text */
+.stall-page .text-white,
+.stall-page .text-zinc-50,
+.stall-page .text-zinc-100,
+.stall-page .text-zinc-200,
+.stall-page .text-gray-100,
+.stall-page .text-gray-200 { color: var(--stall-chalk); }
+.stall-page .text-zinc-300,
+.stall-page .text-zinc-400,
+.stall-page .text-gray-300,
+.stall-page .text-gray-400 { color: var(--stall-chalk-dim); }
+.stall-page .text-zinc-500,
+.stall-page .text-gray-500,
+.stall-page .text-gray-600 { color: var(--stall-chalk-faint); }
+.stall-page .hover\:text-white:hover,
+.stall-page .hover\:text-gray-300:hover { color: var(--stall-chalk); }
+
+/* Action colour: emerald → leaf green (money / go) */
+.stall-page .bg-emerald-500,
+.stall-page .bg-emerald-400\/70,
+.stall-page .hover\:bg-emerald-400:hover,
+.stall-page .hover\:bg-emerald-500:hover { background-color: var(--stall-leaf); color: var(--stall-ink); }
+.stall-page .bg-emerald-500\/5,
+.stall-page .bg-emerald-500\/10,
+.stall-page .bg-emerald-500\/15,
+.stall-page .bg-emerald-500\/20,
+.stall-page .bg-emerald-500\/\[0\.06\],
+.stall-page .hover\:bg-emerald-500\/25:hover,
+.stall-page .hover\:bg-emerald-500\/30:hover { background-color: var(--stall-leaf-dim); }
+.stall-page .text-emerald-200,
+.stall-page .text-emerald-300,
+.stall-page .text-emerald-300\/80,
+.stall-page .text-emerald-400,
+.stall-page .text-emerald-500,
+.stall-page .hover\:text-emerald-300:hover { color: var(--stall-leaf); }
+.stall-page .border-emerald-400,
+.stall-page .border-emerald-500\/20,
+.stall-page .border-emerald-500\/30,
+.stall-page .border-emerald-500\/40,
+.stall-page .border-emerald-900\/30,
+.stall-page .focus\:border-emerald-500:focus { border-color: color-mix(in srgb, var(--stall-leaf) 45%, transparent); }
+
+/* Warning: amber → brass */
+.stall-page .text-amber-200,
+.stall-page .text-amber-300,
+.stall-page .text-amber-400,
+.stall-page .hover\:text-amber-300:hover { color: var(--stall-brass); }
+.stall-page .bg-amber-500,
+.stall-page .bg-amber-400,
+.stall-page .hover\:bg-amber-400:hover { background-color: var(--stall-brass); color: var(--stall-ink); }
+.stall-page .bg-amber-500\/5,
+.stall-page .bg-amber-500\/10,
+.stall-page .bg-amber-500\/15,
+.stall-page .bg-amber-500\/20,
+.stall-page .hover\:bg-amber-500\/30:hover { background-color: var(--stall-brass-dim); }
+.stall-page .border-amber-500\/20,
+.stall-page .border-amber-500\/30 { border-color: color-mix(in srgb, var(--stall-brass) 40%, transparent); }
+
+/* Danger: rose / red → tomato */
+.stall-page .text-rose-200,
+.stall-page .text-rose-300,
+.stall-page .text-rose-400,
+.stall-page .text-red-200,
+.stall-page .text-red-300,
+.stall-page .text-red-400,
+.stall-page .hover\:text-rose-300:hover,
+.stall-page .hover\:text-rose-400:hover { color: var(--stall-tomato); }
+.stall-page .bg-rose-500,
+.stall-page .bg-rose-500\/90,
+.stall-page .hover\:bg-rose-400:hover,
+.stall-page .hover\:bg-rose-500:hover { background-color: var(--stall-tomato); }
+.stall-page .bg-rose-500\/5,
+.stall-page .bg-rose-500\/10,
+.stall-page .bg-rose-500\/15,
+.stall-page .bg-rose-950\/30,
+.stall-page .bg-red-500\/5,
+.stall-page .bg-red-500\/10,
+.stall-page .hover\:bg-rose-500\/20:hover { background-color: var(--stall-tomato-dim); }
+.stall-page .border-rose-500\/10,
+.stall-page .border-rose-500\/20,
+.stall-page .border-rose-500\/30,
+.stall-page .border-rose-500\/40,
+.stall-page .border-rose-900\/40,
+.stall-page .border-red-500\/30 { border-color: color-mix(in srgb, var(--stall-tomato) 40%, transparent); }
+
+/* Form controls read as chalkboard fields */
+.stall-page input:not([type='checkbox']):not([type='radio']):not([type='range']),
+.stall-page select,
+.stall-page textarea {
+  background-color: rgba(0, 0, 0, 0.22);
+  border-color: var(--stall-line);
+  color: var(--stall-chalk);
+}
+.stall-page input::placeholder,
+.stall-page textarea::placeholder { color: var(--stall-chalk-faint); }
+.stall-page select option { background-color: var(--stall-board-2); color: var(--stall-chalk); }
+.stall-page input:focus,
+.stall-page select:focus,
+.stall-page textarea:focus { border-color: var(--stall-brass); outline: none; }
+.stall-page input[type='checkbox'],
+.stall-page input[type='radio'] { accent-color: var(--stall-leaf); }
+
+/* Panel headings are chalked, not typeset */
+.stall-page h2,
+.stall-page h3 {
+  font-family: var(--stall-font-hand), cursive;
+  font-size: 1.45em;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--stall-chalk);
+}
+
+/* Each panel's solid primary button (purple / orange / pink / blue /
+ * indigo submits) is the stall's one primary action colour: brass. The
+ * tinted chips (…-500/10, /20) keep their category hues. */
+.stall-page .bg-purple-500,
+.stall-page .bg-orange-500,
+.stall-page .bg-pink-500,
+.stall-page .bg-blue-500,
+.stall-page .bg-indigo-500,
+.stall-page .hover\:bg-purple-400:hover,
+.stall-page .hover\:bg-orange-400:hover,
+.stall-page .hover\:bg-pink-400:hover,
+.stall-page .hover\:bg-blue-400:hover,
+.stall-page .hover\:bg-indigo-400:hover { background-color: var(--stall-brass); color: var(--stall-ink); }

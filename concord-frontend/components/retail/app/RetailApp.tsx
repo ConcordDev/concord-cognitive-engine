@@ -18,7 +18,7 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { PipingProvider } from '@/components/panel-polish';
 import './stall.css';
 import { stallFontVars } from './stallFonts';
-import { SECTIONS, sectionById, defaultSub, type RetailSection } from './sections';
+import { SECTIONS, SECTION_COPY, sectionById, defaultSub, type RetailSection } from './sections';
 import { Register } from './Register';
 import { OrdersView } from './OrdersView';
 import { LowStockView } from './LowStockView';
@@ -130,49 +130,66 @@ export function RetailApp() {
   );
 }
 
-/** Existing panels carry their own card chrome; give them a consistent page gutter. */
-function Page({ children }: { children: React.ReactNode }) {
-  return <div className="mx-auto w-full max-w-[1400px] px-6 py-5">{children}</div>;
+/**
+ * A section view: the chalked header (SECTION_COPY) over the domain panel.
+ * `.stall-page` maps the panel's palette onto the Stall tokens (stall.css).
+ */
+function PageShell({ copyKey, children }: { copyKey: string; children: React.ReactNode }) {
+  const copy = SECTION_COPY[copyKey];
+  return (
+    <div className="stall-page mx-auto w-full max-w-[1400px] px-6 py-5">
+      {copy && (
+        <header className="mb-5">
+          <h2 className="!font-[family-name:var(--stall-font-marker)] !text-[28px] !font-normal leading-tight">{copy.title}</h2>
+          <p className="mt-0.5 font-[family-name:var(--stall-font-hand)] text-[19px] text-[color:var(--stall-chalk-dim)]">{copy.line}</p>
+        </header>
+      )}
+      {children}
+    </div>
+  );
 }
 
 function SectionBody({ section, sub, go }: { section: RetailSection; sub?: string; go: (s: RetailSection, sub?: string) => void }) {
+  // A plain helper (not a component defined in render) so panels keep their
+  // identity — and their state — across re-renders.
+  const page = (el: React.ReactNode) => <PageShell copyKey={`${section}:${sub ?? ''}`}>{el}</PageShell>;
   switch (section) {
     case 'register':
       return <Register onNavigate={go} />;
     case 'orders':
-      if (sub === 'returns') return <Page><ReturnsPanel /></Page>;
-      if (sub === 'refunds') return <Page><RefundsPanel /></Page>;
-      if (sub === 'abandoned') return <Page><AbandonedCartsPanel /></Page>;
-      return <OrdersView onOpenReturns={() => go('orders', 'returns')} />;
+      if (sub === 'returns') return page(<ReturnsPanel />);
+      if (sub === 'refunds') return page(<RefundsPanel />);
+      if (sub === 'abandoned') return page(<AbandonedCartsPanel />);
+      return <div className="stall-page h-full"><OrdersView onOpenReturns={() => go('orders', 'returns')} /></div>;
     case 'products':
-      if (sub === 'lowstock') return <LowStockView onEditCatalog={() => go('products', 'catalog')} />;
-      if (sub === 'collections') return <Page><CollectionsPanel /></Page>;
-      if (sub === 'transfers') return <Page><InventoryTransfers /></Page>;
-      return <Page><ProductCatalogPanel /></Page>;
+      if (sub === 'lowstock') return page(<LowStockView onEditCatalog={() => go('products', 'catalog')} />);
+      if (sub === 'collections') return page(<CollectionsPanel />);
+      if (sub === 'transfers') return page(<InventoryTransfers />);
+      return page(<ProductCatalogPanel />);
     case 'customers':
-      return <Page><CustomersPanel /></Page>;
+      return page(<CustomersPanel />);
     case 'fulfillment':
-      if (sub === 'labels') return <Page><ShippingLabelsPanel /></Page>;
-      if (sub === 'zones') return <Page><ShippingZonesEditor /></Page>;
-      return <Page><FulfillmentBoard /></Page>;
+      if (sub === 'labels') return page(<ShippingLabelsPanel />);
+      if (sub === 'zones') return page(<ShippingZonesEditor />);
+      return page(<FulfillmentBoard />);
     case 'marketing':
-      if (sub === 'campaigns') return <Page><CampaignsManager /></Page>;
-      if (sub === 'gift') return <Page><GiftCardsPanel /></Page>;
-      if (sub === 'displays') return <Page><DisplaysPanel /></Page>;
-      return <Page><DiscountsManager /></Page>;
+      if (sub === 'campaigns') return page(<CampaignsManager />);
+      if (sub === 'gift') return page(<GiftCardsPanel />);
+      if (sub === 'displays') return page(<DisplaysPanel />);
+      return page(<DiscountsManager />);
     case 'analytics':
-      if (sub === 'ops') return <Page><PipingProvider><RetailActionPanel /></PipingProvider></Page>;
+      if (sub === 'ops') return page(<PipingProvider><RetailActionPanel /></PipingProvider>);
       if (sub === 'market') return <MarketWire />;
-      return <Page><SalesAnalytics /></Page>;
+      return page(<SalesAnalytics />);
     case 'service':
-      if (sub === 'reviews') return <Page><ReviewsPanel /></Page>;
-      if (sub === 'pipeline') return <Page><PipelinePanel /></Page>;
-      return <Page><TicketQueuePanel /></Page>;
+      if (sub === 'reviews') return page(<ReviewsPanel />);
+      if (sub === 'pipeline') return page(<PipelinePanel />);
+      return page(<TicketQueuePanel />);
     case 'store':
-      if (sub === 'channels') return <Page><ChannelsPanel /></Page>;
-      if (sub === 'taxes') return <Page><TaxRatesPanel /></Page>;
-      if (sub === 'staff') return <Page><StaffPanel /></Page>;
-      return <Page><StorefrontManager /></Page>;
+      if (sub === 'channels') return page(<ChannelsPanel />);
+      if (sub === 'taxes') return page(<TaxRatesPanel />);
+      if (sub === 'staff') return page(<StaffPanel />);
+      return page(<StorefrontManager />);
     default:
       return null;
   }
@@ -182,7 +199,7 @@ function SectionBody({ section, sub, go }: { section: RetailSection; sub?: strin
 function MarketWire() {
   const { latestData, isLive, lastUpdated } = useRealtimeLens('retail');
   return (
-    <Page>
+    <PageShell copyKey="analytics:market">
       <LiveFeed
         articles={(latestData as { articles?: Array<Record<string, unknown>> } | null)?.articles as React.ComponentProps<typeof LiveFeed>['articles']}
         domain="retail"
@@ -190,9 +207,9 @@ function MarketWire() {
         lastUpdated={lastUpdated}
         limit={12}
       />
-      <div className="mt-6 flex items-center justify-between"><h2 className="text-[14px] font-medium text-zinc-100">Product feed</h2><LensFeedButton domain="retail" label="Pull products" /></div>
+      <div className="mt-6 flex items-center justify-between"><h2>Product feed</h2><LensFeedButton domain="retail" label="Pull products" /></div>
       <div className="mt-3"><FeedItemsPanel /></div>
-    </Page>
+    </PageShell>
   );
 }
 

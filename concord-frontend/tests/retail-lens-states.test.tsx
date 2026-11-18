@@ -165,6 +165,9 @@ describe('retail lens — redesigned app', () => {
     await screen.findByText('Stoneware Mug');
     fireEvent.click(screen.getByRole('button', { name: /Customers/ }));
     expect(screen.getByTestId('customers-panel')).toBeInTheDocument();
+    // Every section view wears the Stall: chalked header + the scoped theme.
+    expect(screen.getByRole('heading', { name: 'The regulars' })).toBeInTheDocument();
+    expect(screen.getByTestId('customers-panel').closest('.stall-page')).not.toBeNull();
     expect(screen.queryByText('Stoneware Mug')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Marketing/ }));
     expect(screen.getByTestId('discounts-panel')).toBeInTheDocument();

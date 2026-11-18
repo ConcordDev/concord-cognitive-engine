@@ -72,3 +72,37 @@ export const sectionById = (id: RetailSection) => SECTIONS.find((s) => s.id === 
 export function defaultSub(id: RetailSection): string | undefined {
   return sectionById(id).subs?.[0]?.id;
 }
+
+/**
+ * The chalked header over each section view: a stall-voice title and one
+ * line saying what the view does. Copy only — every view below it is the
+ * domain's real macro-backed panel.
+ */
+export const SECTION_COPY: Record<string, { title: string; line: string }> = {
+  'orders:all': { title: 'The order book', line: 'Every sale rung up — refund it or open a return from here.' },
+  'orders:returns': { title: 'Returns bench', line: 'Approve, receive and close returns. Money only moves as a refund.' },
+  'orders:refunds': { title: 'Refunds', line: 'What went back to customers, and why.' },
+  'orders:abandoned': { title: 'Left at the counter', line: "Carts customers walked away from — nudge them back." },
+  'products:catalog': { title: 'The stock room', line: 'Stock crates, set prices, track suppliers and variants.' },
+  'products:lowstock': { title: 'Running low', line: 'Crates at or under the reorder point.' },
+  'products:collections': { title: 'Collections', line: 'Group crates into shelves for the shop front.' },
+  'products:transfers': { title: 'Transfers', line: 'Move stock between locations and receive it in.' },
+  'customers:': { title: 'The regulars', line: 'Who shops here, what they spend, and who you haven’t seen in a while.' },
+  'fulfillment:queue': { title: 'Packing table', line: 'Online orders from picked to shipped.' },
+  'fulfillment:labels': { title: 'Shipping labels', line: 'Quote, buy and track carrier labels.' },
+  'fulfillment:zones': { title: 'Delivery zones', line: 'Where you ship and what it costs.' },
+  'marketing:discounts': { title: 'Specials board', line: 'Discount codes the register accepts — and how often they’re used.' },
+  'marketing:campaigns': { title: 'Campaigns', line: 'Send offers to your customers and see what converts.' },
+  'marketing:gift': { title: 'Gift cards', line: 'Issue cards and check balances. They’re a tender at the register.' },
+  'marketing:displays': { title: 'Window displays', line: 'Track displays and the sales they bring in.' },
+  'analytics:sales': { title: 'The ledger', line: 'Sales over time, top crates and order value — net of refunds.' },
+  'analytics:ops': { title: 'Back-office maths', line: 'Reorder points, pipeline value, customer lifetime value, SLAs.' },
+  'analytics:market': { title: 'Market wire', line: 'Retail news and a public product feed for ideas.' },
+  'service:tickets': { title: 'Help desk', line: 'Customer tickets with response-time targets.' },
+  'service:reviews': { title: 'Reviews', line: 'What customers say — moderate and reply.' },
+  'service:pipeline': { title: 'Trade deals', line: 'Wholesale and B2B deals by stage.' },
+  'store:storefront': { title: 'Online shop', line: 'Publish a public storefront from the same stock.' },
+  'store:channels': { title: 'Channels', line: 'Sell the same crates on other marketplaces.' },
+  'store:taxes': { title: 'Sales tax', line: 'The rate the register charges. Set a default.' },
+  'store:staff': { title: 'Staff', line: 'Who can work the till and what they can do.' },
+};

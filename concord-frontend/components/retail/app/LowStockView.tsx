@@ -19,7 +19,7 @@ export function LowStockView({ onEditCatalog }: { onEditCatalog: () => void }) {
   useEffect(() => { load(threshold); }, [load, threshold]);
 
   return (
-    <div className="px-6 py-5">
+    <div>
       <div className="flex flex-wrap items-center gap-3">
         <label className="flex items-center gap-2 text-[13px] text-[color:var(--stall-chalk-dim)]">
           Reorder point
