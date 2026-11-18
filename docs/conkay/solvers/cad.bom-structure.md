@@ -72,7 +72,9 @@ tolerance against the analytic forms' IEEE-754 rounding.
     { "id": "A", "qty": 3, "massProperties": { "shape": "box", "dims": { "length": 0.1, "width": 0.1, "height": 0.1 }, "densityKgM3": 1000 }, "unitCost": 5 } ] } }
 ```
 
-Expected envelope: status PASS with `outputs.totalMassKg` ≈ 6
+Expected envelope: status WARN (the unpriced assembly line rides
+as a warning — its total stays null beside the priced subtotal)
+with `outputs.totalMassKg` ≈ 6
 (±1e-9), `outputs.totalCost == null`, `outputs.pricedSubtotal
 == 15`, lines numbered ["1", "1.1", "1.2", "2"], inputs echoed
 exactly.

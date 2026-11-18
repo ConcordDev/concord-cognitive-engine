@@ -56,7 +56,9 @@ stopping the chain at parts-cad.
               "integration": { "power": { "suppliedW": 100, "consumedW": 90, "lossesW": 10 } } } }
 ```
 
-Expected envelope: status PASS with
+Expected envelope: status WARN (the chain's skipped steps —
+gaps undeclared in this variant, and the F10 fallback — ride as
+the envelope's warning; the receipt inside signs) with
 `outputs.chainReceipt.status == "SIGNED"` (the single-part
 variant of the golden chain), the fallback step present in
 `outputs.chainReceipt.skipped` with F10 named, inputs echoed

@@ -76,7 +76,8 @@ The Sentinel IR is a programmatic fixture; the replay form is:
 run the loop suite's golden case through `conkay_solve
 {solver_id: "orc.iterate"}` on a node whose `orc.iterate` props
 carry the Sentinel design + variables (as the test does) →
-expect envelope PASS with `outputs.converged == true`,
+expect envelope WARN (the kernel-settle tier's sxe-21
+NOT_COMPUTED notice rides as the envelope's warning) with `outputs.converged == true`,
 `outputs.finalFailures` empty, `outputs.engineTier.reason ==
 "engine_unavailable:sxe-21"`, `outputs.requirementsUnchanged
 == true`.

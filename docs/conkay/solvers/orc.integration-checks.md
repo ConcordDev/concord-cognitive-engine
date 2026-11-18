@@ -59,7 +59,9 @@ the catalogue's named case. Asserted in
               "interfaces": [ { "id": "bus", "kind": "voltage", "a": { "volts": 28 }, "b": { "volts": 24 } } ] } }
 ```
 
-Expected envelope: status PASS (the run computed) with
+Expected envelope: status WARN (the run computed — the envelope's
+WARN carries the failing interface and the not-run sections as
+notices; the verdict data below is the FAIL) with
 `outputs.verdict == "FAIL"`, the power-closure row PASS with
 residual 0, the interface:bus row FAIL naming both sides, and the
 undeclared sections listed in `outputs.notRun`.

@@ -68,7 +68,8 @@ taxonomy as its trade-study alternative. Asserted in
   "inputs": { "text": "a bipedal robot that weighs 20 kg, does 3 m/s, runs 4 hours on a charge" } }
 ```
 
-Expected envelope: status PASS with
+Expected envelope: status WARN (the engine tier's sxe-21
+NOT_COMPUTED notice rides as the envelope's warning) with
 `outputs.architecture.kind == "generic"`,
 `outputs.subsystemCount == 10`, every subsystem's
 `parentRequirement == "REQ-SYS-ROOT"`,

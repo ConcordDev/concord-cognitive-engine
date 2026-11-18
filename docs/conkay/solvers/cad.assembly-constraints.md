@@ -61,7 +61,8 @@ values are the criterion applied by hand.
               "joints": [{"type":"revolute","links":["ground","crank"]},{"type":"revolute","links":["crank","coupler"]},{"type":"revolute","links":["coupler","rocker"]},{"type":"revolute","links":["rocker","ground"]}] } }
 ```
 
-Expected envelope: status PASS (screening) with
+Expected envelope: status WARN (screening — the engine tier's
+sxe-01 NOT_COMPUTED notice rides as the envelope's warning) with
 `outputs.engineTier.reason == "engine_unavailable:sxe-01"`,
 `outputs.dof == 1`, `outputs.classification == "mechanism"`, inputs
 echoed exactly.

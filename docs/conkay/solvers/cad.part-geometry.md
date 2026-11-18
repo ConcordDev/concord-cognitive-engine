@@ -68,7 +68,8 @@ and ball stand massless with their reasons. Asserted in
     {"id": "knob", "template": "ball", "params": {"radius": 0.04}, "material": "unobtanium"} ] } }
 ```
 
-Expected envelope: status PASS (screening) with
+Expected envelope: status WARN (screening — the unmassed part's
+material note rides as the envelope's warning) with
 `outputs.engineTier.reason == "engine_unavailable:sxe-06"`,
 `outputs.parts[0].volumeM3 == 1`, `outputs.parts[1].materialSlot ==
 null` with a `materialNote` naming unobtanium, and

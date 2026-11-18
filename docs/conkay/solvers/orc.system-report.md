@@ -60,7 +60,9 @@ real upstream solvers rather than hand-shaped fixtures.
               "massBom": { "totalMassKg": 1, "parts": [ { "id": "block", "massKg": 1 } ], "cgM": [0, 0, 0.05], "cgNotComputed": null, "masslessParts": [] } } }
 ```
 
-Expected envelope: status PASS with `outputs.completeness ==
+Expected envelope: status WARN (the PARTIAL completeness rides as
+the envelope's warning — sections are named, never silently
+omitted) with `outputs.completeness ==
 "PARTIAL"` (four sections missing, named), the `mass.totalKg`
 claim valued 1 with receipt `{solver: "orc.mass-bom", evidence:
 "massBom.totalMassKg"}`, `outputs.unreceipted` empty.

@@ -63,7 +63,8 @@ the constraint declarations themselves. Asserted in
               "constraints": [{"type":"fixed","point":"P1","x":0,"y":0},{"type":"horizontal","a":"P1","b":"P2"},{"type":"vertical","a":"P2","b":"P3"},{"type":"horizontal","a":"P3","b":"P4"},{"type":"vertical","a":"P4","b":"P1"},{"type":"distance","a":"P1","b":"P2","value":3},{"type":"distance","a":"P2","b":"P3","value":2}] } }
 ```
 
-Expected envelope: status PASS (screening) with
+Expected envelope: status WARN (screening — the engine tier's
+sxe-21 NOT_COMPUTED notice rides as the envelope's warning) with
 `outputs.engineTier.reason == "engine_unavailable:sxe-21"`,
 `outputs.dofByCount == 0`, solved points at the exact rectangle
 corners within 1e-9, inputs echoed exactly.

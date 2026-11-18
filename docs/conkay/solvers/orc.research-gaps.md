@@ -50,7 +50,8 @@ anywhere in the output. Asserted in
   "inputs": { "needs": [ { "property": "allowableStress", "gapKind": "missing", "forSolver": "struct.beam-bending", "unit": "MPa", "sourceClass": "textbook" } ] } }
 ```
 
-Expected envelope: status PASS (queue formed) with
+Expected envelope: status WARN (queue formed — the warning is the
+research engine tier's NOT_COMPUTED notice, sxe-41) with
 `outputs.engineTier.reason == "engine_unavailable:sxe-41"`,
 `outputs.queueCount == 1`, the item's `valueStatus ==
 "NOT_COMPUTED"`, inputs echoed exactly.

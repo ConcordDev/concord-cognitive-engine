@@ -70,7 +70,8 @@ are the analytic extents computed by hand.
     { "id": "pin", "solid": { "shape": "cylinder", "dims": { "radius": 0.01, "height": 0.03 } }, "gdt": [{ "symbol": "cylindricity", "value": 0.01, "datum": "A" }] } ] } }
 ```
 
-Expected envelope: status PASS (plan) with
+Expected envelope: status WARN (plan — the rendered tier's
+sxe-06 NOT_COMPUTED notice rides as the envelope's warning) with
 `outputs.engineTier.reason == "engine_unavailable:sxe-06"`,
 `outputs.sheetCount == 2`, sheet 1 dimensions 100/50/20 mm,
 `outputs.discrepancies` empty, inputs echoed exactly.
