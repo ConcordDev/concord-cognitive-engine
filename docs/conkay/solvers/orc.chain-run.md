@@ -16,9 +16,11 @@ Steps: intent → requirements → architecture → per-part CAD
 (geometry + materials) → mass/BOM (its `budgetKg` input is
 **mapped from the requirements link's mass bound**) →
 integration checks → research gaps (optional) → iterate
-(optional) → **fallback (declared, never runs — SX-ORC-09 is
-BLOCKED on F10; recorded SKIPPED with F10 named in every
-receipt)** → system report (consuming the architecture,
+(optional) → **fallback (optional, declared `fallback` inputs —
+SX-ORC-09: runs when the chain is infeasible, on a stopped link
+or a violated seam, and computes the closest realistic version
+within the stated envelope; it never signs the original
+request)** → system report (consuming the architecture,
 mass-bom, BOM, integration, and gaps links' outputs).
 
 A link returning NOT_COMPUTED **stops the chain**: the receipt
@@ -31,7 +33,10 @@ holds.
 
 Inputs (node props under the literal key `orc.chainRun`):
 `{text, system: {id}, parts, bomItems, currency?, integration,
-needs?, iterateProps?}`.
+needs?, iterateProps?, fallback?}`. The fallback step is
+evaluated where its trigger is known — in place on a stopped
+link, and after the seams on a violated seam — and its link is
+recorded in the documented position before the report link.
 
 ## Reference case
 
@@ -57,12 +62,12 @@ stopping the chain at parts-cad.
 ```
 
 Expected envelope: status WARN (the chain's skipped steps —
-gaps undeclared in this variant, and the F10 fallback — ride as
+gaps and the fallback undeclared in this variant — ride as
 the envelope's warning; the receipt inside signs) with
 `outputs.chainReceipt.status == "SIGNED"` (the single-part
 variant of the golden chain), the fallback step present in
-`outputs.chainReceipt.skipped` with F10 named, inputs echoed
-exactly.
+`outputs.chainReceipt.skipped` as not declared in the chain
+input, inputs echoed exactly.
 
 ## Adversarial shape
 

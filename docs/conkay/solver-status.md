@@ -1,6 +1,6 @@
 # Solver status — buyer-facing, regenerated (SXC-20)
 
-Generated at branch head `f3c061bc5` by
+Generated at branch head `9e67d90b8` by
 `server/scripts/conkay-solver-status.mjs` from the live solver
 registry. Do not edit the pinned block by hand — regenerate it.
 The CI pin (server/tests/conkay-solver-status.test.js) fails if
@@ -19,7 +19,7 @@ hand-written:
   returns NOT_COMPUTED for that tier rather than a quiet
   downgrade.
 - **tested** — a ConKay suite file (server/tests/conkay-*.test.js,
-  158 files at generation) references the solver id.
+  160 files at generation) references the solver id.
   Suites outside that glob are not counted; the boundary is
   stated, not implied.
 - **signed** — an independent checker agent has re-pulled the
@@ -30,8 +30,8 @@ hand-written:
   signature it does not hold.
 
 <!-- STATUS:BEGIN -->
-Solvers registered: 143 · by tier: L0 30 · L1 84 · L2 16 · L3 12 · L4 1
-Engine-dependent: 8 · tested (ConKay suite corpus): 133 · signed (independent): 0 · screening fast paths: 58
+Solvers registered: 144 · by tier: L0 30 · L1 84 · L2 16 · L3 13 · L4 1
+Engine-dependent: 9 · tested (ConKay suite corpus): 134 · signed (independent): 0 · screening fast paths: 58
 
 | solver | domain | tier | engines | tested | signed |
 |---|---|---|---|---|---|
@@ -139,6 +139,7 @@ Engine-dependent: 8 · tested (ConKay suite corpus): 133 · signed (independent)
 | orc.intent-parse | orchestration | L1 SCREENING | — | yes | UNSIGNED |
 | orc.iterate | orchestration | L3 | sxe-21 | yes | UNSIGNED |
 | orc.mass-bom | orchestration | L2 | — | yes | UNSIGNED |
+| orc.realistic-fallback | orchestration | L3 | sxe-21 | yes | UNSIGNED |
 | orc.requirements | orchestration | L1 SCREENING | — | yes | UNSIGNED |
 | orc.research-gaps | orchestration | L1 | sxe-41 | yes | UNSIGNED |
 | orc.solver-map | orchestration | L1 SCREENING | — | yes | UNSIGNED |

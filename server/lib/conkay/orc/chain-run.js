@@ -19,12 +19,20 @@
 //   integration   orc.integration-checks  declared closures/interfaces
 //   gaps          orc.research-gaps       OPTIONAL (declared needs)
 //   iterate       orc.iterate             OPTIONAL (declared props)
-//   fallback      orc.realistic-fallback  NEVER RUNS in wave 0 —
-//                                         SX-ORC-09 is BLOCKED on
-//                                         question F10; the step is
-//                                         recorded SKIPPED with F10
-//                                         named, never a guessed
-//                                         fallback (CB-0835 rule 2)
+//   fallback      orc.realistic-fallback  OPTIONAL (declared
+//                                         fallback inputs): runs
+//                                         when the chain is
+//                                         infeasible — a stopped
+//                                         link or a violated
+//                                         seam — and computes
+//                                         the closest realistic
+//                                         version within the
+//                                         stated envelope
+//                                         (SX-ORC-09; F10 ruled
+//                                         2026-11-18). It never
+//                                         signs the original
+//                                         request: the receipt
+//                                         stands as computed.
 //   report        orc.system-report       consumes the architecture,
 //                                         mass-bom, bom, integration
 //                                         and gaps links' outputs
@@ -46,6 +54,7 @@ import { bomStructure } from "../cad/bom-structure.js";
 import { integrationChecks } from "./integration-checks.js";
 import { researchGaps } from "./research-gaps.js";
 import { iterate } from "./iterate.js";
+import { realisticFallback } from "./realistic-fallback.js";
 import { systemReport } from "./system-report.js";
 import { linkReceipt, buildChainReceipt } from "../chain/receipt.js";
 
@@ -67,7 +76,7 @@ function runPartsCad(parts) {
 
 /** The pure runner. Exported for direct testing. */
 export function chainRun(props = {}) {
-  const { text, system, parts, bomItems, currency, integration, needs, iterateProps } = props ?? {};
+  const { text, system, parts, bomItems, currency, integration, needs, iterateProps, fallback } = props ?? {};
   if (typeof text !== "string" || !text.trim()) return { notComputed: "missing_input:text (the brief)", inputs: {} };
   if (!system || typeof system.id !== "string" || !system.id) return { notComputed: "missing_input:system.id", inputs: {} };
   if (!Array.isArray(parts) || parts.length === 0) return { notComputed: "missing_input:parts", inputs: {} };
@@ -117,7 +126,27 @@ export function chainRun(props = {}) {
   if (iterateProps != null) step("iterate", "orc.iterate", iterateProps, iterate(iterateProps));
   else skipped.push({ step: "iterate", solver: "orc.iterate", reason: "not declared in the chain input (optional link)" });
 
-  skipped.push({ step: "fallback", solver: "orc.realistic-fallback", reason: "BLOCKED on question F10 (SX-ORC-09) — the infeasibility fallback is not seated; never a guessed fallback" });
+  // The fallback step (SX-ORC-09): declared fallback inputs +
+  // an infeasible chain (here: a stopped link; the seam trigger
+  // is evaluated after the seams, below) -> the relaxation runs
+  // and its link takes the documented position before report.
+  let fallbackRan = false;
+  const runFallback = () => {
+    const fb = realisticFallback(fallback);
+    if (fb.notComputed) {
+      skipped.push({ step: "fallback", solver: "orc.realistic-fallback", reason: `declared but NOT_COMPUTED: ${fb.notComputed}` });
+      return null;
+    }
+    outputs.fallback = fb.outputs;
+    fallbackRan = true;
+    return linkReceipt({ step: "fallback", solver: "orc.realistic-fallback", inputs: fallback, outputs: fb.outputs });
+  };
+  if (fallback != null && stopped) {
+    const link = runFallback();
+    if (link) links.push(link);
+  } else if (fallback == null) {
+    skipped.push({ step: "fallback", solver: "orc.realistic-fallback", reason: "not declared in the chain input (optional link)" });
+  }
 
   step("report", "orc.system-report",
     { system, architecture: outputs.architecture, massBom: outputs["mass-bom"], bom: outputs.bom, integration: outputs.integration, gaps: outputs.gaps },
@@ -172,10 +201,28 @@ export function chainRun(props = {}) {
     });
   }
 
+  // Seam trigger for the fallback step: declared + a violated
+  // seam (and no stop — the stop trigger ran above) -> the
+  // relaxation runs now; its link is inserted before the report
+  // link so the receipt keeps the documented step order.
+  if (fallback != null && !stopped && !fallbackRan) {
+    if (seams.some((s) => s.status === "VIOLATED")) {
+      const link = runFallback();
+      if (link) {
+        const ri = links.findIndex((l) => l.step === "report");
+        if (ri >= 0) links.splice(ri, 0, link);
+        else links.push(link);
+      }
+    } else {
+      skipped.push({ step: "fallback", solver: "orc.realistic-fallback", reason: "chain feasible as requested — the declared fallback was not needed" });
+    }
+  }
+
   const receipt = buildChainReceipt({ chainId: CHAIN_ID, links, seams, skipped, stopped });
   const warnings = [];
   if (receipt.status === "INCOMPLETE" && stopped) warnings.push(`chain STOPPED at ${stopped.step} (${stopped.solver}): ${stopped.reason} — receipt INCOMPLETE`);
   if (receipt.status === "SEAM_VIOLATION") warnings.push("chain completed every link but a SEAM is violated — receipt SEAM_VIOLATION, unsigned (SX-CHAIN-RECEIPT rule)");
+  if (fallbackRan) warnings.push("fallback ran: the closest realistic version within the stated envelope is in outputs.fallback (SX-ORC-09) — the original request's receipt stands as computed; the fallback never signs it");
   if (skipped.length) warnings.push(`${skipped.length} step(s) skipped and recorded in the receipt: ${skipped.map((s) => s.step).join(", ")}`);
 
   return {
@@ -184,6 +231,7 @@ export function chainRun(props = {}) {
       chainReceipt: receipt,
       stepsRun: links.map((l) => l.step),
       stoppedAt: stopped,
+      fallback: outputs.fallback ?? null,
       report: outputs.report ?? null,
     },
     assumptions: [],
@@ -224,7 +272,7 @@ registerSolver({
   method: "chain-run.system-chain",
   fidelity: 1,
   engineDependent: [],
-  regime: "the system chain over the landed wave-0 links (docs/conkay/chains/system-chain.md); the realistic-version fallback link is declared but not runnable while SX-ORC-09 is blocked on F10; kernel settle rides inside the iterate link's own tier declaration",
+  regime: "the system chain over the landed wave-0 links (docs/conkay/chains/system-chain.md); the fallback link runs its relaxation solver when the caller declares fallback inputs and the chain is infeasible (a stopped link or a violated seam), and never signs the original request; kernel settle rides inside the iterate link's own tier declaration",
   units: "inherited per link (mass in kilograms through the mass seams; costs in the BOM's declared currency); the runner introduces no quantities",
   tolerance: "mass seams compare within 1e-9 kg; the budget seam compares against the brief's declared bound exactly; verdict seams compare by equality",
   screening: false,

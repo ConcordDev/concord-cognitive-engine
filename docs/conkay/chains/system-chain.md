@@ -16,12 +16,18 @@ Definition source: `server/lib/conkay/orc/chain-run.js` (the step table is code,
 | 7 | integration | orc.integration-checks | L3 | declared closures/interfaces → per-check verdicts | JS |
 | 8 | gaps | orc.research-gaps | L1 | declared needs → research queue | JS (SXE-41 tier NOT_COMPUTED inside the link) |
 | 9 | iterate | orc.iterate | L3 | declared design + bounded variables → repaired design | JS (SXE-21 tier NOT_COMPUTED inside the link) |
-| 10 | fallback | orc.realistic-fallback (SX-ORC-09) | — | **MISSING — BLOCKED on question F10.** Recorded SKIPPED in every receipt with F10 named; never a guessed fallback (CB-0835 rule 2: the infeasibility answer ships its envelope or does not ship) | — |
+| 10 | fallback | orc.realistic-fallback (SX-ORC-09) | L3 (JS; SXE-21 tier NOT_COMPUTED inside the link) | declared fallback inputs (requirements + envelope constraints) → the closest realistic version within the stated envelope, shipped with its envelope (CB-0835 rule 2). Optional: runs only when the chain is infeasible — a stopped link or a violated seam — and **never signs the original request**; undeclared, or declared on a feasible chain, it records SKIPPED with the reason | JS (SXE-21 OPT tier declared) |
 | 11 | report | orc.system-report | L1 | links 3, 5, 6, 7, 8 outputs → the receipted system report | JS |
 
 Steps 8 and 9 are optional: absent from the chain input, they
 are recorded SKIPPED with the reason. Declared and failing,
-they stop the chain like any other link.
+they stop the chain like any other link. Step 10 is optional
+in a different way: it is the chain's infeasibility answer,
+evaluated where its trigger is known (in place on a stopped
+link, after the seams on a violated seam) and recorded in its
+documented position; a fallback that itself returns
+NOT_COMPUTED records SKIPPED with that reason and changes
+nothing else in the receipt.
 
 ## Seams (inside the signed receipt)
 
@@ -44,10 +50,11 @@ link).
 
 ## Exists vs missing
 
-Exists: all eleven step slots are defined; nine links run
-today (1–9 minus none), the report link runs, the receipt
-signs on the golden robot chain. Missing: the fallback link
-(F10, above) and any chain beyond this one — burner and beam
-proof chains and the car flagship chain are future chain
-definitions over the same runner pattern, not yet seated as
-chain inputs here.
+Exists: all eleven step slots are defined and runnable; the
+report link runs, the receipt signs on the golden robot
+chain, and the fallback link (SX-ORC-09, seated 2026-11-18
+after the founder's F10 ruling) computes the closest
+realistic version on infeasible chains. Missing: any chain
+beyond this one — burner and beam proof chains and the car
+flagship chain are future chain definitions over the same
+runner pattern, not yet seated as chain inputs here.

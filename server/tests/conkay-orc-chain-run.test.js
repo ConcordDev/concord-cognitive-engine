@@ -51,9 +51,10 @@ describe("SXC-26 — golden end-to-end (every link runs; ONE receipt, SIGNED)", 
     assert.equal(budget.status, "HOLDS");
     assert.ok(Math.abs(budget.toValue - 2) <= 1e-9, "two 1 kg cubes");
     assert.equal(budget.fromValue, 20, "the brief's mass bound, mapped through the requirements link");
-    // The fallback hole is IN the artifact, named — not hidden.
+    // The fallback step is IN the artifact, named — not hidden:
+    // undeclared in the golden input, so it records its skip.
     const fb = receipt.skipped.find((s) => s.step === "fallback");
-    assert.ok(fb && /F10/.test(fb.reason));
+    assert.ok(fb && /not declared in the chain input/.test(fb.reason));
     assert.equal(r.outputs.report.completeness, "COMPLETE");
   });
 
@@ -98,6 +99,54 @@ describe("SXC-26 — the receipt's edges", () => {
     const r = chainRun(heavy);
     assert.equal(r.outputs.chainReceipt.status, "SEAM_VIOLATION");
     assert.equal(r.outputs.chainReceipt.seams.find((s) => s.id === "mass-budget").status, "VIOLATED");
+  });
+
+  it("fallback (SX-ORC-09): a declared fallback runs on a violated seam — and never signs the original request", () => {
+    const heavy = structuredClone(GOLDEN);
+    heavy.text = "a bipedal robot that weighs 1 kg, does 3 m/s";
+    heavy.fallback = {
+      requirements: [{ metric: "mass", bound: { kind: "max", si: 1, unit: "kg" }, source: "weighs 1 kg" }],
+      constraints: [
+        { kind: "limit", metric: "mass", bound: { kind: "min", si: 2, unit: "kg" },
+          envelope: { solver: "cad.mass-properties-brep", citation: "the declared parts' mass properties total exactly 2 kg (two 0.1 m cubes at 1000 kg/m^3)" } },
+      ],
+    };
+    const r = chainRun(heavy);
+    assert.equal(r.outputs.chainReceipt.status, "SEAM_VIOLATION", "the fallback does not sign the original request");
+    assert.ok(r.outputs.stepsRun.includes("fallback"), "the fallback link ran");
+    assert.ok(r.outputs.stepsRun.indexOf("fallback") < r.outputs.stepsRun.indexOf("report"), "documented step order kept in the receipt");
+    assert.ok(!r.outputs.chainReceipt.skipped.some((s) => s.step === "fallback"), "a run fallback is not also recorded skipped");
+    assert.equal(r.outputs.fallback.verdict, "relaxed");
+    assert.equal(r.outputs.fallback.claim, "closest within the stated envelope");
+    assert.equal(r.outputs.fallback.realistic.mass.value, 2);
+    assert.equal(r.outputs.fallback.changes[0].forcedBy[0].solver, "cad.mass-properties-brep");
+  });
+
+  it("fallback (SX-ORC-09): a declared fallback also runs when a link stops the chain", () => {
+    const bad = structuredClone(GOLDEN);
+    bad.parts[0].massProperties = { shape: "box", dims: { length: 0.1, width: 0.1, height: 0.1 }, material: "unobtanium" };
+    bad.fallback = {
+      requirements: [{ metric: "mass", bound: { kind: "max", si: 1, unit: "kg" } }],
+      constraints: [
+        { kind: "limit", metric: "mass", bound: { kind: "min", si: 2, unit: "kg" },
+          envelope: { solver: "cad.mass-properties-brep", citation: "the declared parts' mass properties total exactly 2 kg" } },
+      ],
+    };
+    const r = chainRun(bad);
+    assert.equal(r.outputs.chainReceipt.status, "INCOMPLETE");
+    assert.ok(r.outputs.stepsRun.includes("fallback"));
+    assert.equal(r.outputs.fallback.realistic.mass.value, 2);
+    assert.equal(r.outputs.report, null, "the report link still never ran");
+  });
+
+  it("fallback (SX-ORC-09): declared but the chain is feasible — recorded skipped, not run", () => {
+    const ok = structuredClone(GOLDEN);
+    ok.fallback = { requirements: [{ metric: "mass", bound: { kind: "max", si: 20, unit: "kg" } }], constraints: [] };
+    const r = chainRun(ok);
+    assert.equal(r.outputs.chainReceipt.status, "SIGNED");
+    assert.equal(r.outputs.fallback, null);
+    const fb = r.outputs.chainReceipt.skipped.find((s) => s.step === "fallback");
+    assert.ok(fb && /feasible as requested/.test(fb.reason));
   });
 
   it("malformed chain inputs are NOT_COMPUTED, named (SC-05)", () => {
