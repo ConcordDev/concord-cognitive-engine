@@ -105,6 +105,7 @@ import "./orc/system-architecture.js";
 import "./cad/assembly-constraints.js";
 import "./cad/drawings-detail.js";
 import "./cad/bom-structure.js";
+import "./orc/integration-checks.js";
 import "./cad/mass-properties-brep.js";
 import "./cad/mesh-generate.js";
 
