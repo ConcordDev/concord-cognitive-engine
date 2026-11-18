@@ -108,6 +108,7 @@ import "./cad/bom-structure.js";
 import "./orc/integration-checks.js";
 import "./orc/research-gaps.js";
 import "./orc/system-report.js";
+import "./orc/iterate.js";
 import "./cad/mass-properties-brep.js";
 import "./cad/mesh-generate.js";
 
