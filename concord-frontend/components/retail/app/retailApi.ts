@@ -39,9 +39,11 @@ export interface Product {
   stock: number;
   category?: string;
   barcode?: string;
+  /** Owned image DTU linked by retail.product-set-image. */
+  imageDtuId?: string;
 }
 
-export interface CartLine { sku: string; name: string; unitPrice: number; qty: number }
+export interface CartLine { sku: string; name: string; unitPrice: number; qty: number; custom?: boolean }
 
 export interface Cart {
   id: string;
@@ -100,6 +102,99 @@ export interface Order {
   customerName?: string;
   stripePaymentIntentId?: string;
   paidVia?: string;
+  tillSessionId?: string;
+  /** Milestones the server stamped when this order was created. */
+  stamps?: Stamp[];
+}
+
+export interface Stamp { id: 'first_sale' | 'order_milestone' | 'goal_hit' | 'best_day' | 'streak' | string; label: string }
+
+export interface HourBucket { hour: number; revenue: number; orders: number }
+export interface Hourly {
+  salesBasis: string;
+  currentHour: number;
+  today: HourBucket[];
+  yesterday: HourBucket[];
+  todayTotal: number;
+  todayOrders: number;
+  yesterdayTotal: number;
+  yesterdaySameTime: number;
+  goal: number;
+  goalProgress: number | null;
+}
+
+export interface Insights {
+  customerId: string;
+  name: string;
+  visits: number;
+  totalSpent: number;
+  avgOrder: number;
+  favorite: { sku: string; name: string; qty: number; revenue: number } | null;
+  lastVisitAt: string | null;
+  daysSinceLastVisit: number | null;
+}
+
+export interface TillFigures {
+  orderCount: number;
+  grossSales: number;
+  cashIn: number;
+  changeGiven: number;
+  cashSales: number;
+  cardSales: number;
+  giftCardSales: number;
+  otherSales: number;
+  refundsOnSessionOrders: number;
+  expectedCash: number;
+}
+export interface TillSession {
+  id: string;
+  status: 'open' | 'closed';
+  float: number;
+  openedAt: string;
+  closedAt?: string;
+  countedCash?: number;
+  variance?: number;
+  note?: string;
+  figures?: TillFigures;
+  ledgerDtuId?: string;
+  ledgerMintError?: string;
+}
+export interface TillStatus { open: boolean; session: TillSession | null; figures: TillFigures | null; lastClosed: TillSession | null }
+
+export interface Storefront { name: string; tagline?: string; slug: string | null; published: boolean }
+
+/** Browser's UTC−local offset, which the day board and stamps bucket by. */
+export const tzOffsetMinutes = () => new Date().getTimezoneOffset();
+
+export const imageUrl = (dtuId: string) => `/api/artifact/${encodeURIComponent(dtuId)}/stream`;
+
+/**
+ * Upload a product photo through the platform's real upload route (type
+ * sniffing + storage quota, one owned DTU), then link it to the product.
+ */
+export async function uploadProductPhoto(sku: string, file: File): Promise<Envelope<{ product: Product }>> {
+  if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) return { ok: false, error: 'Use a PNG, JPEG or WebP photo.' };
+  if (file.size > 5 * 1024 * 1024) return { ok: false, error: 'Photos must be under 5 MB.' };
+  try {
+    const csrf = typeof document !== 'undefined' ? document.cookie.match(/csrf_token=([^;]+)/)?.[1] : undefined;
+    const res = await fetch('/api/artifact/upload', {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': file.type,
+        'X-Filename': encodeURIComponent(file.name),
+        'X-Title': encodeURIComponent(`Product photo — ${sku}`),
+        'X-Domain': 'retail',
+        ...(csrf ? { 'X-CSRF-Token': decodeURIComponent(csrf) } : {}),
+      },
+      body: file,
+    });
+    const body = (await res.json().catch(() => ({}))) as { ok?: boolean; dtuId?: string; error?: string };
+    if (!res.ok || !body.dtuId) return { ok: false, error: body.error || 'Photo upload failed.' };
+    return retail<{ product: Product }>('product-set-image', { sku, dtuId: body.dtuId });
+  } catch (e) {
+    return { ok: false, error: (e as Error)?.message || 'Photo upload failed.' };
+  }
 }
 
 export interface Customer {

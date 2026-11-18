@@ -16,6 +16,8 @@ import { cn } from '@/lib/utils';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { PipingProvider } from '@/components/panel-polish';
+import './stall.css';
+import { stallFontVars } from './stallFonts';
 import { SECTIONS, sectionById, defaultSub, type RetailSection } from './sections';
 import { Register } from './Register';
 import { OrdersView } from './OrdersView';
@@ -83,9 +85,9 @@ export function RetailApp() {
   const activeSub = sub && def.subs?.some((x) => x.id === sub) ? sub : defaultSub(section);
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-zinc-950 text-zinc-200 md:flex-row" data-lens-theme="retail">
-      {/* Section rail */}
-      <nav aria-label="Retail" className="flex flex-shrink-0 gap-0.5 overflow-x-auto border-b border-white/[0.06] px-2 py-1.5 md:w-[188px] md:flex-col md:overflow-visible md:border-b-0 md:border-r md:px-2 md:py-3">
+    <div className={cn('stall flex h-full min-h-0 flex-col md:flex-row', stallFontVars)} data-lens-theme="retail">
+      {/* Section rail — the stall's chalk list */}
+      <nav aria-label="Retail" className="flex flex-shrink-0 gap-0.5 overflow-x-auto border-b border-[color:var(--stall-line)] px-2 py-1.5 md:w-[180px] md:flex-col md:overflow-visible md:border-b-0 md:border-r md:px-2 md:py-3">
         {SECTIONS.map((s) => {
           const Icon = ICONS[s.id];
           const active = s.id === section;
@@ -96,13 +98,13 @@ export function RetailApp() {
               onClick={() => go(s.id)}
               aria-current={active ? 'page' : undefined}
               className={cn(
-                'group flex flex-shrink-0 items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] transition-colors',
-                active ? 'bg-white/[0.08] text-zinc-50' : 'text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-200',
+                'group flex flex-shrink-0 items-center gap-2.5 rounded-md px-2.5 py-1 font-[family-name:var(--stall-font-hand)] text-[19px] transition-colors',
+                active ? 'bg-white/[0.07] text-[color:var(--stall-chalk)]' : 'text-[color:var(--stall-chalk-dim)] hover:bg-white/[0.04] hover:text-[color:var(--stall-chalk)]',
               )}
             >
-              <Icon className={cn('h-4 w-4', active ? 'text-emerald-400' : 'text-zinc-500 group-hover:text-zinc-300')} />
-              <span className="flex-1 text-left">{s.label}</span>
-              <kbd className="hidden font-mono text-[10px] text-zinc-600 md:inline">{s.key}</kbd>
+              <Icon className={cn('h-4 w-4', active ? 'text-[color:var(--stall-brass)]' : 'text-[color:var(--stall-chalk-faint)] group-hover:text-[color:var(--stall-chalk-dim)]')} />
+              <span className={cn('flex-1 text-left', active && 'underline decoration-[color:var(--stall-brass)] decoration-2 underline-offset-4')}>{s.label}</span>
+              <kbd className="hidden font-mono text-[10px] text-[color:var(--stall-chalk-faint)] md:inline">{s.key}</kbd>
             </button>
           );
         })}
@@ -110,11 +112,11 @@ export function RetailApp() {
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         {def.subs && (
-          <div className="flex flex-shrink-0 items-center gap-1 overflow-x-auto border-b border-white/[0.06] px-4" role="tablist" aria-label={`${def.label} views`}>
-            <h1 className="mr-3 py-2.5 text-[14px] font-medium text-zinc-100">{def.label}</h1>
+          <div className="stall-board flex flex-shrink-0 items-center gap-1 overflow-x-auto border-b border-[color:var(--stall-line)] px-4" role="tablist" aria-label={`${def.label} views`}>
+            <h1 className="mr-3 py-2 font-[family-name:var(--stall-font-marker)] text-[20px] text-[color:var(--stall-chalk)]">{def.label}</h1>
             {def.subs.map((x) => (
               <button key={x.id} type="button" role="tab" aria-selected={x.id === activeSub} onClick={() => go(section, x.id)}
-                className={cn('-mb-px whitespace-nowrap border-b-2 px-2.5 py-2.5 text-[13px] transition-colors', x.id === activeSub ? 'border-emerald-400 text-zinc-50' : 'border-transparent text-zinc-500 hover:text-zinc-200')}>
+                className={cn('-mb-px whitespace-nowrap border-b-2 px-2.5 py-2 font-[family-name:var(--stall-font-hand)] text-[18px] transition-colors', x.id === activeSub ? 'border-[color:var(--stall-brass)] text-[color:var(--stall-chalk)]' : 'border-transparent text-[color:var(--stall-chalk-faint)] hover:text-[color:var(--stall-chalk)]')}>
                 {x.label}
               </button>
             ))}

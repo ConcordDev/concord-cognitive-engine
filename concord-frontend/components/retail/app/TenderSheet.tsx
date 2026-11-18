@@ -17,7 +17,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { X, Banknote, Gift, CreditCard, Loader2, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { StripePaymentForm } from '@/components/payment/StripePaymentForm';
-import { retail, money, round2, tenderLabel, type Cart, type CartTotals, type Order, type Tender } from './retailApi';
+import { retail, money, round2, tenderLabel, tzOffsetMinutes, type Cart, type CartTotals, type Order, type Tender } from './retailApi';
 
 type Mode = 'cash' | 'gift' | 'card';
 
@@ -87,7 +87,7 @@ export function TenderSheet({ cart, totals, onClose, onComplete }: {
   const complete = async () => {
     if (!covered || busy) return;
     setBusy(true); setError(null);
-    const r = await retail<{ order: Order }>('cart-tender', { cartId: cart.id, tenders });
+    const r = await retail<{ order: Order }>('cart-tender', { cartId: cart.id, tenders, tzOffsetMinutes: tzOffsetMinutes() });
     setBusy(false);
     if (r.ok && r.result) onComplete(r.result.order);
     else setError(r.error || 'The sale did not go through.');
@@ -103,7 +103,7 @@ export function TenderSheet({ cart, totals, onClose, onComplete }: {
 
   const onCardPaid = async ({ paymentIntentId }: { paymentIntentId: string }) => {
     setBusy(true); setError(null);
-    const r = await retail<{ order: Order }>('cart-confirm-paid-with-intent', { cartId: cart.id, paymentIntentId });
+    const r = await retail<{ order: Order }>('cart-confirm-paid-with-intent', { cartId: cart.id, paymentIntentId, tzOffsetMinutes: tzOffsetMinutes() });
     setBusy(false);
     if (r.ok && r.result) onComplete(r.result.order);
     else setError(r.error || 'Card was charged but the order could not be recorded — check Stripe before retrying.');
@@ -119,21 +119,21 @@ export function TenderSheet({ cart, totals, onClose, onComplete }: {
         role="dialog"
         aria-modal="true"
         aria-label="Take payment"
-        className="flex max-h-[92vh] w-full max-w-[720px] flex-col overflow-hidden rounded-t-2xl border border-white/10 bg-zinc-950 shadow-2xl focus:outline-none sm:rounded-2xl"
+        className="stall stall-board flex max-h-[92vh] w-full max-w-[720px] flex-col overflow-hidden rounded-t-2xl border border-[color:var(--stall-line)] shadow-2xl focus:outline-none sm:rounded-2xl"
       >
-        <header className="flex items-start justify-between border-b border-white/[0.06] px-6 py-5">
+        <header className="flex items-start justify-between border-b border-[color:var(--stall-line)] px-6 py-5">
           <div>
-            <div className="text-[12px] uppercase tracking-wider text-zinc-500">{paid > 0 ? (covered ? 'Covered' : 'Remaining') : 'Amount due'}</div>
-            <div className="mt-1 font-mono text-[36px] font-semibold leading-none tabular-nums text-zinc-50">{money(paid > 0 && !covered ? remaining : totals.total)}</div>
-            <div className="mt-2 text-[12px] text-zinc-500">
-              {totals.itemCount} item{totals.itemCount === 1 ? '' : 's'}{cart.customerName ? ` · ${cart.customerName}` : ''}{change > 0 ? <span className="text-emerald-300"> · change {money(change)}</span> : null}
+            <div className="text-[12px] uppercase tracking-wider text-[color:var(--stall-chalk-faint)]">{paid > 0 ? (covered ? 'Covered' : 'Remaining') : 'Amount due'}</div>
+            <div className="mt-1 font-[family-name:var(--stall-font-hand)] text-[48px] font-bold leading-none tabular-nums">{money(paid > 0 && !covered ? remaining : totals.total)}</div>
+            <div className="mt-2 text-[12px] text-[color:var(--stall-chalk-faint)]">
+              {totals.itemCount} item{totals.itemCount === 1 ? '' : 's'}{cart.customerName ? ` · ${cart.customerName}` : ''}{change > 0 ? <span className="text-[color:var(--stall-leaf)]"> · change {money(change)}</span> : null}
             </div>
           </div>
-          <button type="button" onClick={onClose} disabled={busy} className="rounded-md p-1.5 text-zinc-500 hover:bg-white/5 hover:text-zinc-200" aria-label="Close"><X className="h-5 w-5" /></button>
+          <button type="button" onClick={onClose} disabled={busy} className="rounded-md p-1.5 text-[color:var(--stall-chalk-faint)] hover:bg-white/5 hover:text-[color:var(--stall-chalk)]" aria-label="Close"><X className="h-5 w-5" /></button>
         </header>
 
         <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto sm:grid-cols-[180px_1fr]">
-          <nav className="flex gap-1 border-b border-white/[0.06] p-3 sm:flex-col sm:border-b-0 sm:border-r" aria-label="Payment method">
+          <nav className="flex gap-1 border-b border-[color:var(--stall-line)] p-3 sm:flex-col sm:border-b-0 sm:border-r" aria-label="Payment method">
             {([
               { id: 'cash', label: 'Cash', icon: Banknote },
               { id: 'gift', label: 'Gift card', icon: Gift },
@@ -144,7 +144,7 @@ export function TenderSheet({ cart, totals, onClose, onComplete }: {
                 type="button"
                 onClick={() => setMode(m.id)}
                 aria-pressed={mode === m.id}
-                className={cn('flex flex-1 items-center gap-2 rounded-lg px-3 py-2.5 text-[13px] transition-colors sm:flex-none', mode === m.id ? 'bg-white/[0.08] text-zinc-50' : 'text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-200')}
+                className={cn('flex flex-1 items-center gap-2 rounded-lg px-3 py-2.5 text-[13px] transition-colors sm:flex-none', mode === m.id ? 'bg-white/[0.08] text-[color:var(--stall-chalk)]' : 'text-[color:var(--stall-chalk-dim)] hover:bg-white/[0.04] hover:text-[color:var(--stall-chalk)]')}
               >
                 <m.icon className="h-4 w-4" /> {m.label}
               </button>
@@ -157,44 +157,44 @@ export function TenderSheet({ cart, totals, onClose, onComplete }: {
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                   {quick.map((v, i) => (
                     <button key={v} type="button" onClick={() => addCash(v)} disabled={remaining <= 0}
-                      className="h-14 rounded-lg border border-white/10 font-mono text-[16px] tabular-nums text-zinc-100 hover:border-emerald-500/40 hover:bg-emerald-500/[0.06] disabled:opacity-40">
-                      {i === 0 ? <span><span className="block font-sans text-[10px] uppercase tracking-wider text-zinc-500">Exact</span>{money(v)}</span> : money(v)}
+                      className="h-14 rounded-lg border border-[color:var(--stall-line)] font-[family-name:var(--stall-font-till)] text-[17px] font-bold tabular-nums text-[color:var(--stall-chalk)] hover:border-[color:var(--stall-leaf)] hover:bg-[color:var(--stall-leaf-dim)] disabled:opacity-40">
+                      {i === 0 ? <span><span className="block font-sans text-[10px] uppercase tracking-wider text-[color:var(--stall-chalk-faint)]">Exact</span>{money(v)}</span> : money(v)}
                     </button>
                   ))}
                 </div>
                 <form onSubmit={(e) => { e.preventDefault(); addCash(Number(cashInput)); }} className="mt-3 flex gap-2">
                   <input type="number" inputMode="decimal" min={0} step="0.01" value={cashInput} onChange={(e) => setCashInput(e.target.value)}
                     aria-label="Other cash amount" placeholder="Other amount"
-                    className="h-10 min-w-0 flex-1 rounded-lg border border-white/10 bg-transparent px-3 font-mono text-[14px] text-zinc-100 placeholder:font-sans placeholder:text-zinc-600 focus:border-white/25 focus:outline-none" />
-                  <button type="submit" disabled={!(Number(cashInput) > 0)} className="h-10 rounded-lg px-4 text-[13px] text-zinc-200 hover:bg-white/5 disabled:opacity-40">Add cash</button>
+                    className="h-10 min-w-0 flex-1 rounded-lg border border-[color:var(--stall-line)] bg-transparent px-3 font-mono text-[14px] text-[color:var(--stall-chalk)] placeholder:font-sans placeholder:text-[color:var(--stall-chalk-faint)] focus:border-white/25 focus:outline-none" />
+                  <button type="submit" disabled={!(Number(cashInput) > 0)} className="h-10 rounded-lg px-4 text-[13px] text-[color:var(--stall-chalk)] hover:bg-white/5 disabled:opacity-40">Add cash</button>
                 </form>
               </div>
             )}
 
             {mode === 'gift' && (
               <form onSubmit={(e) => { e.preventDefault(); addGift(); }}>
-                <label className="block text-[12px] text-zinc-400" htmlFor="tender-gift-code">Gift card code</label>
+                <label className="block text-[12px] text-[color:var(--stall-chalk-dim)]" htmlFor="tender-gift-code">Gift card code</label>
                 <div className="mt-1.5 flex gap-2">
                   <input id="tender-gift-code" value={giftCode} onChange={(e) => setGiftCode(e.target.value.toUpperCase())} placeholder="GC-XXXX-XXXX" autoFocus
-                    className="h-10 min-w-0 flex-1 rounded-lg border border-white/10 bg-transparent px-3 font-mono text-[14px] text-zinc-100 placeholder:text-zinc-600 focus:border-white/25 focus:outline-none" />
-                  <button type="submit" disabled={!giftCode.trim() || giftBusy || remaining <= 0} className="h-10 rounded-lg bg-white/[0.08] px-4 text-[13px] text-zinc-100 hover:bg-white/[0.12] disabled:opacity-40">
+                    className="h-10 min-w-0 flex-1 rounded-lg border border-[color:var(--stall-line)] bg-transparent px-3 font-mono text-[14px] text-[color:var(--stall-chalk)] placeholder:text-[color:var(--stall-chalk-faint)] focus:border-white/25 focus:outline-none" />
+                  <button type="submit" disabled={!giftCode.trim() || giftBusy || remaining <= 0} className="h-10 rounded-lg bg-white/[0.08] px-4 text-[13px] text-[color:var(--stall-chalk)] hover:bg-white/[0.12] disabled:opacity-40">
                     {giftBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
                   </button>
                 </div>
-                <p className="mt-2 text-[12px] text-zinc-500">Applies the card&rsquo;s balance up to what&rsquo;s left to pay. The balance is only spent when the sale completes.</p>
+                <p className="mt-2 text-[12px] text-[color:var(--stall-chalk-faint)]">Applies the card&rsquo;s balance up to what&rsquo;s left to pay. The balance is only spent when the sale completes.</p>
               </form>
             )}
 
             {mode === 'card' && (
               <div>
                 {cardBlocked ? (
-                  <p className="text-[13px] text-zinc-400">Card takes the whole sale. Remove the cash and gift card tenders to pay by card.</p>
+                  <p className="text-[13px] text-[color:var(--stall-chalk-dim)]">Card takes the whole sale. Remove the cash and gift card tenders to pay by card.</p>
                 ) : intent ? (
                   <StripePaymentForm clientSecret={intent.clientSecret} amountUsd={intent.total} description={`Sale #${cart.id.slice(-6)}`} onSuccess={onCardPaid} onCancel={() => setIntent(null)} />
                 ) : (
                   <>
-                    <p className="text-[13px] text-zinc-400">Charge {money(totals.total)} to a card through Stripe. The order is recorded only after Stripe confirms the payment.</p>
-                    <button type="button" onClick={startCard} disabled={busy} className="mt-3 inline-flex h-10 items-center gap-2 rounded-lg bg-white/[0.08] px-4 text-[13px] text-zinc-100 hover:bg-white/[0.12] disabled:opacity-40">
+                    <p className="text-[13px] text-[color:var(--stall-chalk-dim)]">Charge {money(totals.total)} to a card through Stripe. The order is recorded only after Stripe confirms the payment.</p>
+                    <button type="button" onClick={startCard} disabled={busy} className="mt-3 inline-flex h-10 items-center gap-2 rounded-lg bg-white/[0.08] px-4 text-[13px] text-[color:var(--stall-chalk)] hover:bg-white/[0.12] disabled:opacity-40">
                       {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />} Start card payment
                     </button>
                   </>
@@ -203,27 +203,27 @@ export function TenderSheet({ cart, totals, onClose, onComplete }: {
             )}
 
             {tenders.length > 0 && (
-              <ul className="mt-5 space-y-1 border-t border-white/[0.06] pt-4" aria-label="Tenders">
+              <ul className="mt-5 space-y-1 border-t border-[color:var(--stall-line)] pt-4" aria-label="Tenders">
                 {tenders.map((t, i) => (
                   <li key={i} className="flex items-center justify-between rounded-md px-2 py-1.5 text-[13px] hover:bg-white/[0.03]">
-                    <span className="text-zinc-300">{tenderLabel(t)}</span>
+                    <span className="text-[color:var(--stall-chalk-dim)]">{tenderLabel(t)}</span>
                     <span className="flex items-center gap-2">
-                      <span className="font-mono tabular-nums text-zinc-100">{money(t.amount)}</span>
-                      <button type="button" onClick={() => setTenders((ts) => ts.filter((_, j) => j !== i))} disabled={busy} className="rounded p-1 text-zinc-600 hover:text-rose-300" aria-label={`Remove ${tenderLabel(t)} tender`}><Trash2 className="h-3.5 w-3.5" /></button>
+                      <span className="font-mono tabular-nums text-[color:var(--stall-chalk)]">{money(t.amount)}</span>
+                      <button type="button" onClick={() => setTenders((ts) => ts.filter((_, j) => j !== i))} disabled={busy} className="rounded p-1 text-[color:var(--stall-chalk-faint)] hover:text-[color:var(--stall-tomato)]" aria-label={`Remove ${tenderLabel(t)} tender`}><Trash2 className="h-3.5 w-3.5" /></button>
                     </span>
                   </li>
                 ))}
               </ul>
             )}
 
-            {error && <div role="alert" className="mt-4 rounded-md bg-rose-500/10 px-3 py-2 text-[12px] text-rose-200">{error}</div>}
+            {error && <div role="alert" className="mt-4 rounded-md bg-[color:var(--stall-tomato-dim)] px-3 py-2 text-[12px] text-[color:var(--stall-tomato)]">{error}</div>}
           </div>
         </div>
 
         {mode !== 'card' && (
-          <footer className="border-t border-white/[0.06] px-6 py-4">
+          <footer className="border-t border-[color:var(--stall-line)] px-6 py-4">
             <button type="button" onClick={complete} disabled={!covered || busy}
-              className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 text-[14px] font-semibold text-zinc-950 hover:bg-emerald-400 disabled:bg-white/[0.06] disabled:text-zinc-600">
+              className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[color:var(--stall-leaf)] text-[14px] font-semibold text-[color:var(--stall-ink)] hover:brightness-105 disabled:bg-white/[0.06] disabled:text-[color:var(--stall-chalk-faint)]">
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               {covered ? (change > 0 ? `Complete sale · change ${money(change)}` : 'Complete sale') : `Add ${money(remaining)} more`}
             </button>

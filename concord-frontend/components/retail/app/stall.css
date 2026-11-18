@@ -1,0 +1,141 @@
+/*
+ * The Stall — retail lens identity. A market stall at dusk: chalkboard,
+ * warm wood, brass, a till roll of receipt paper. Every colour the lens
+ * uses is a token here; components reference var(--stall-*) only.
+ */
+
+.stall {
+  --stall-board: #18211d;
+  --stall-board-2: #1f2a25;
+  --stall-board-3: #27342e;
+  --stall-chalk: #efeadb;
+  --stall-chalk-dim: #a9b2a7;
+  --stall-chalk-faint: #6f7b72;
+  --stall-line: rgba(239, 234, 219, 0.1);
+  --stall-wood: #9a6234;
+  --stall-wood-dark: #5e3a1d;
+  --stall-wood-light: #c08552;
+  --stall-brass: #e2ac45;
+  --stall-brass-dim: rgba(226, 172, 69, 0.16);
+  --stall-tomato: #e5563f;
+  --stall-tomato-dim: rgba(229, 86, 63, 0.14);
+  --stall-leaf: #79c46a;
+  --stall-leaf-strong: #5fae51;
+  --stall-leaf-dim: rgba(121, 196, 106, 0.14);
+  --stall-paper: #f6eedb;
+  --stall-paper-2: #ece2c8;
+  --stall-ink: #2b2620;
+  --stall-ink-dim: #7a6f5e;
+
+  background: var(--stall-board);
+  color: var(--stall-chalk);
+}
+
+/* Chalkboard: faint smudge texture, no image assets. */
+.stall-board {
+  background:
+    radial-gradient(1200px 400px at 20% -10%, rgba(255, 255, 255, 0.035), transparent 60%),
+    radial-gradient(800px 300px at 90% 120%, rgba(255, 255, 255, 0.025), transparent 60%),
+    var(--stall-board-2);
+}
+
+/* Plank: the shop sign and crate rims. */
+.stall-wood {
+  background:
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.07) 0 2px, transparent 2px 23px),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 61px),
+    linear-gradient(180deg, var(--stall-wood-light), var(--stall-wood) 45%, var(--stall-wood-dark));
+}
+
+.stall-chalk-text {
+  color: var(--stall-chalk);
+  text-shadow: 0 0 1px rgba(239, 234, 219, 0.35);
+}
+
+/* A crate: slatted wooden frame around the product. */
+.stall-crate {
+  background: var(--stall-board-3);
+  border: 1px solid rgba(192, 133, 82, 0.28);
+  box-shadow: inset 0 -6px 0 rgba(94, 58, 29, 0.35);
+}
+.stall-crate[data-in-cart='true'] {
+  border-color: var(--stall-leaf);
+  box-shadow: inset 0 -6px 0 rgba(95, 174, 81, 0.35), 0 0 0 1px var(--stall-leaf);
+}
+
+/* A hanging price tag. */
+.stall-tag {
+  background: var(--stall-paper);
+  color: var(--stall-ink);
+  transform: rotate(-2.5deg);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+}
+.stall-tag::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  width: 5px;
+  height: 5px;
+  margin-top: -2.5px;
+  border-radius: 9999px;
+  background: var(--stall-board-3);
+}
+
+/* Till roll: receipt paper with a perforated top and torn bottom. */
+.stall-paper {
+  background:
+    repeating-linear-gradient(0deg, rgba(43, 38, 32, 0.025) 0 1px, transparent 1px 26px),
+    var(--stall-paper);
+  color: var(--stall-ink);
+}
+.stall-perf-top {
+  -webkit-mask: radial-gradient(circle 5px at 8px 0, transparent 98%, #000) -8px 0 / 16px 100% repeat-x;
+  mask: radial-gradient(circle 5px at 8px 0, transparent 98%, #000) -8px 0 / 16px 100% repeat-x;
+}
+.stall-torn-bottom {
+  -webkit-mask: conic-gradient(from -45deg at bottom, transparent, #000 1deg 89deg, transparent 90deg) 50% / 14px 100%;
+  mask: conic-gradient(from -45deg at bottom, transparent, #000 1deg 89deg, transparent 90deg) 50% / 14px 100%;
+}
+.stall-dashed {
+  border-top: 1px dashed rgba(43, 38, 32, 0.35);
+}
+
+/* Rubber stamp for milestones. */
+.stall-stamp {
+  color: var(--stall-tomato);
+  border: 2px solid var(--stall-tomato);
+  transform: rotate(-6deg);
+  mix-blend-mode: multiply;
+}
+
+/* Motion — every keyframe here is triggered by a confirmed server event. */
+@keyframes stall-ink-in {
+  from { opacity: 0; transform: translateY(-6px); filter: blur(0.6px); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+.stall-ink-in { animation: stall-ink-in 260ms ease-out both; }
+
+@keyframes stall-stamp-in {
+  0% { opacity: 0; transform: rotate(-6deg) scale(1.6); }
+  70% { opacity: 1; transform: rotate(-6deg) scale(0.94); }
+  100% { opacity: 1; transform: rotate(-6deg) scale(1); }
+}
+.stall-stamp-in { animation: stall-stamp-in 380ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
+
+@keyframes stall-bell {
+  0%, 100% { transform: rotate(0); }
+  20% { transform: rotate(18deg); }
+  40% { transform: rotate(-14deg); }
+  60% { transform: rotate(9deg); }
+  80% { transform: rotate(-4deg); }
+}
+.stall-bell-ring { animation: stall-bell 700ms ease-in-out; transform-origin: 50% 10%; }
+
+
+@media (prefers-reduced-motion: reduce) {
+  .stall-ink-in, .stall-stamp-in, .stall-bell-ring { animation: none; }
+}
+[data-reduced-motion='true'] .stall-ink-in,
+[data-reduced-motion='true'] .stall-stamp-in,
+[data-reduced-motion='true'] .stall-bell-ring { animation: none; }

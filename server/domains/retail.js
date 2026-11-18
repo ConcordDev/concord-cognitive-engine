@@ -4205,7 +4205,10 @@ export default function registerRetailActions(registerLensAction) {
       // the close — the session record above is the source of truth.
       if (ctx?.macro?.run) {
         const shop = ensureStorefront(s, userId).name || "the shop";
-        const title = `Till close — ${shop} — ${session.closedAt.slice(0, 10)}`;
+        // The DTU commit gate refuses an exact-title repeat across the whole
+        // store, so the title names this session (close time + session id):
+        // two closes — same shop, same day, same figures — are two ledgers.
+        const title = `Till close — ${shop} — ${session.closedAt.slice(0, 16).replace("T", " ")} UTC · ${session.id.slice(-6)}`;
         const varianceText = variance === 0 ? "drawer balanced" : variance > 0 ? `over by $${variance.toFixed(2)}` : `short by $${Math.abs(variance).toFixed(2)}`;
         const claims = [
           `Orders rung up: ${figures.orderCount}`,
@@ -4213,6 +4216,10 @@ export default function registerRetailActions(registerLensAction) {
           `Cash sales: $${figures.cashSales.toFixed(2)} · Card: $${figures.cardSales.toFixed(2)} · Gift card: $${figures.giftCardSales.toFixed(2)}`,
           `Float $${session.float.toFixed(2)} + cash in $${figures.cashIn.toFixed(2)} − change $${figures.changeGiven.toFixed(2)} = expected $${figures.expectedCash.toFixed(2)}`,
           `Counted $${session.countedCash.toFixed(2)}: ${varianceText}`,
+          // Each close is its own record: the session id + times make two
+          // closes with identical figures distinct (the DTU duplicate gate
+          // otherwise refuses the second ledger as a copy).
+          `Till session ${session.id} · opened ${session.openedAt} · closed ${session.closedAt}`,
         ];
         try {
           const mint = await ctx.macro.run("dtu", "create", {

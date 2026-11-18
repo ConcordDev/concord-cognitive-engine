@@ -55,18 +55,18 @@ export function OrdersView({ onOpenReturns }: { onOpenReturns: () => void }) {
 
   return (
     <div className="flex h-full min-h-0 flex-col lg:flex-row">
-      <section className="flex min-h-0 flex-1 flex-col border-white/[0.06] lg:max-w-[560px] lg:border-r" aria-label="Order list">
+      <section className="flex min-h-0 flex-1 flex-col border-[color:var(--stall-line)] lg:max-w-[560px] lg:border-r" aria-label="Order list">
         <div className="flex items-center gap-2 px-4 pt-3">
           <label className="relative flex-1">
             <span className="sr-only">Search orders</span>
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Order #, customer, SKU" className="h-9 w-full rounded-lg border border-white/10 bg-white/[0.03] pl-9 pr-3 text-[13px] text-zinc-100 placeholder:text-zinc-600 focus:border-white/25 focus:outline-none" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--stall-chalk-faint)]" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Order #, customer, SKU" className="h-9 w-full rounded-lg border border-[color:var(--stall-line)] bg-white/[0.03] pl-9 pr-3 text-[13px] text-[color:var(--stall-chalk)] placeholder:text-[color:var(--stall-chalk-faint)] focus:border-[color:var(--stall-brass)] focus:outline-none" />
           </label>
         </div>
         <div className="flex gap-1 overflow-x-auto px-4 py-2" role="tablist" aria-label="Order status">
           {([['all', 'All'], ['paid', 'Paid'], ['partially_refunded', 'Partly refunded'], ['refunded', 'Refunded']] as const).map(([id, label]) => (
             <button key={id} type="button" role="tab" aria-selected={filter === id} onClick={() => setFilter(id)}
-              className={cn('whitespace-nowrap rounded-md px-2.5 py-1 text-[12px]', filter === id ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200')}>
+              className={cn('whitespace-nowrap rounded-md px-2.5 py-1 text-[12px]', filter === id ? 'bg-[color:var(--stall-chalk)] text-[color:var(--stall-ink)]' : 'text-[color:var(--stall-chalk-dim)] hover:bg-white/5 hover:text-[color:var(--stall-chalk)]')}>
               {label} <span className="font-mono opacity-60">{counts[id]}</span>
             </button>
           ))}
@@ -76,14 +76,14 @@ export function OrdersView({ onOpenReturns }: { onOpenReturns: () => void }) {
           {state === 'loading' ? (
             <div className="space-y-1 px-4">{Array.from({ length: 8 }).map((_, i) => <div key={i} className="h-12 animate-pulse rounded bg-white/[0.03]" />)}</div>
           ) : state === 'error' ? (
-            <div role="alert" className="m-4 rounded-lg bg-rose-500/10 p-3 text-[13px] text-rose-200">{err} <button type="button" onClick={load} className="ml-2 underline">Retry</button></div>
+            <div role="alert" className="m-4 rounded-lg bg-[color:var(--stall-tomato-dim)] p-3 text-[13px] text-[color:var(--stall-tomato)]">{err} <button type="button" onClick={load} className="ml-2 underline">Retry</button></div>
           ) : orders.length === 0 ? (
-            <p className="px-4 py-12 text-center text-[13px] text-zinc-500">No orders yet. Sales rung up at the register land here.</p>
+            <p className="px-4 py-12 text-center text-[13px] text-[color:var(--stall-chalk-faint)]">No orders yet. Sales rung up at the register land here.</p>
           ) : visible.length === 0 ? (
-            <p className="px-4 py-12 text-center text-[13px] text-zinc-500">No orders match.</p>
+            <p className="px-4 py-12 text-center text-[13px] text-[color:var(--stall-chalk-faint)]">No orders match.</p>
           ) : (
             <table className="w-full text-[13px] tabular-nums">
-              <thead className="sticky top-0 bg-zinc-950 text-left text-[11px] text-zinc-500">
+              <thead className="sticky top-0 bg-[color:var(--stall-board)] text-left text-[11px] text-[color:var(--stall-chalk-faint)]">
                 <tr><th className="px-4 py-2 font-normal">Order</th><th className="px-2 py-2 font-normal">Customer</th><th className="px-2 py-2 font-normal">Status</th><th className="px-4 py-2 text-right font-normal">Total</th></tr>
               </thead>
               <tbody>
@@ -91,11 +91,11 @@ export function OrdersView({ onOpenReturns }: { onOpenReturns: () => void }) {
                   const st = orderStatusLabel(o);
                   return (
                     <tr key={o.id} onClick={() => setSelectedId(o.id)} onKeyDown={(e) => { if (e.key === 'Enter') setSelectedId(o.id); }} tabIndex={0} aria-selected={o.id === selectedId}
-                      className={cn('cursor-pointer border-t border-white/[0.04] outline-none focus-visible:bg-white/[0.05]', o.id === selectedId ? 'bg-white/[0.06]' : 'hover:bg-white/[0.03]')}>
-                      <td className="px-4 py-2.5"><div className="font-mono text-zinc-100">{o.number || `#${o.id.slice(-6)}`}</div><div className="text-[11px] text-zinc-500">{timeAgo(o.completedAt)}</div></td>
-                      <td className="max-w-[140px] truncate px-2 py-2.5 text-zinc-300">{o.customerName || <span className="text-zinc-600">Walk-in</span>}</td>
+                      className={cn('cursor-pointer border-t border-[color:var(--stall-line)] outline-none focus-visible:bg-white/[0.05]', o.id === selectedId ? 'bg-white/[0.06]' : 'hover:bg-white/[0.03]')}>
+                      <td className="px-4 py-2.5"><div className="font-mono text-[color:var(--stall-chalk)]">{o.number || `#${o.id.slice(-6)}`}</div><div className="text-[11px] text-[color:var(--stall-chalk-faint)]">{timeAgo(o.completedAt)}</div></td>
+                      <td className="max-w-[140px] truncate px-2 py-2.5 text-[color:var(--stall-chalk-dim)]">{o.customerName || <span className="text-[color:var(--stall-chalk-faint)]">Walk-in</span>}</td>
                       <td className="px-2 py-2.5"><StatusPill tone={st.tone}>{st.label}</StatusPill></td>
-                      <td className="px-4 py-2.5 text-right font-mono text-zinc-100">{money(o.total)}</td>
+                      <td className="px-4 py-2.5 text-right font-mono text-[color:var(--stall-chalk)]">{money(o.total)}</td>
                     </tr>
                   );
                 })}
@@ -107,7 +107,7 @@ export function OrdersView({ onOpenReturns }: { onOpenReturns: () => void }) {
 
       <section className="min-h-0 flex-1 overflow-y-auto" aria-label="Order detail">
         {selected ? <OrderDetail key={selected.id} order={selected} onChanged={load} onOpenReturns={onOpenReturns} /> : (
-          <p className="px-6 py-16 text-center text-[13px] text-zinc-600">{orders.length ? 'Select an order.' : ''}</p>
+          <p className="px-6 py-16 text-center text-[13px] text-[color:var(--stall-chalk-faint)]">{orders.length ? 'Select an order.' : ''}</p>
         )}
       </section>
     </div>
@@ -117,9 +117,9 @@ export function OrdersView({ onOpenReturns }: { onOpenReturns: () => void }) {
 function StatusPill({ tone, children }: { tone: 'ok' | 'warn' | 'muted'; children: React.ReactNode }) {
   return (
     <span className={cn('inline-block rounded px-1.5 py-0.5 text-[11px]',
-      tone === 'ok' && 'bg-emerald-500/10 text-emerald-300',
-      tone === 'warn' && 'bg-amber-500/10 text-amber-300',
-      tone === 'muted' && 'bg-white/[0.06] text-zinc-400')}>{children}</span>
+      tone === 'ok' && 'bg-[color:var(--stall-leaf-dim)] text-[color:var(--stall-leaf)]',
+      tone === 'warn' && 'bg-[color:var(--stall-brass-dim)] text-[color:var(--stall-brass)]',
+      tone === 'muted' && 'bg-white/[0.06] text-[color:var(--stall-chalk-dim)]')}>{children}</span>
   );
 }
 
@@ -163,21 +163,26 @@ function OrderDetail({ order, onChanged, onOpenReturns }: { order: Order; onChan
     <article className="px-6 py-5">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="font-mono text-[20px] text-zinc-50">{order.number || `#${order.id.slice(-6)}`}</h2>
-          <p className="mt-1 text-[12px] text-zinc-500">{new Date(order.completedAt).toLocaleString()} · {order.customerName || 'Walk-in'}</p>
+          <h2 className="font-[family-name:var(--stall-font-marker)] text-[24px] text-[color:var(--stall-chalk)]">{order.number || `#${order.id.slice(-6)}`}</h2>
+          <p className="mt-1 text-[12px] text-[color:var(--stall-chalk-faint)]">{new Date(order.completedAt).toLocaleString()} · {order.customerName || 'Walk-in'}</p>
         </div>
         <StatusPill tone={st.tone}>{st.label}</StatusPill>
       </header>
+      {!!order.stamps?.length && (
+        <div className="mt-3 flex flex-wrap gap-2" aria-label="Milestones">
+          {order.stamps.map((x) => <span key={x.id} className="stall-stamp rounded px-2 py-0.5 font-[family-name:var(--stall-font-marker)] text-[14px] uppercase mix-blend-normal">{x.label}</span>)}
+        </div>
+      )}
 
       <table className="mt-5 w-full text-[13px] tabular-nums">
-        <thead className="text-left text-[11px] text-zinc-500"><tr><th className="py-1.5 font-normal">Item</th><th className="py-1.5 text-right font-normal">Qty</th><th className="py-1.5 text-right font-normal">Price</th><th className="py-1.5 text-right font-normal">Total</th></tr></thead>
+        <thead className="text-left text-[11px] text-[color:var(--stall-chalk-faint)]"><tr><th className="py-1.5 font-normal">Item</th><th className="py-1.5 text-right font-normal">Qty</th><th className="py-1.5 text-right font-normal">Price</th><th className="py-1.5 text-right font-normal">Total</th></tr></thead>
         <tbody>
           {order.lines.map((l) => (
-            <tr key={l.sku} className="border-t border-white/[0.04]">
-              <td className="py-2"><div className="text-zinc-100">{l.name}</div><div className="font-mono text-[11px] text-zinc-500">{l.sku}</div></td>
-              <td className="py-2 text-right font-mono text-zinc-300">{l.qty}</td>
-              <td className="py-2 text-right font-mono text-zinc-300">{money(l.unitPrice)}</td>
-              <td className="py-2 text-right font-mono text-zinc-100">{money(l.qty * l.unitPrice)}</td>
+            <tr key={l.sku} className="border-t border-[color:var(--stall-line)]">
+              <td className="py-2"><div className="text-[color:var(--stall-chalk)]">{l.name}</div><div className="font-mono text-[11px] text-[color:var(--stall-chalk-faint)]">{l.sku}</div></td>
+              <td className="py-2 text-right font-mono text-[color:var(--stall-chalk-dim)]">{l.qty}</td>
+              <td className="py-2 text-right font-mono text-[color:var(--stall-chalk-dim)]">{money(l.unitPrice)}</td>
+              <td className="py-2 text-right font-mono text-[color:var(--stall-chalk)]">{money(l.qty * l.unitPrice)}</td>
             </tr>
           ))}
         </tbody>
@@ -192,42 +197,42 @@ function OrderDetail({ order, onChanged, onOpenReturns }: { order: Order; onChan
         {!!order.change && <Row k="Change given" v={money(order.change)} muted />}
         {!!order.refundedAmount && <Row k="Refunded" v={`−${money(order.refundedAmount)}`} warn />}
       </dl>
-      {order.stripePaymentIntentId && <p className="mt-2 text-right font-mono text-[11px] text-zinc-600">Stripe {order.stripePaymentIntentId}</p>}
+      {order.stripePaymentIntentId && <p className="mt-2 text-right font-mono text-[11px] text-[color:var(--stall-chalk-faint)]">Stripe {order.stripePaymentIntentId}</p>}
 
-      <div className="mt-6 flex flex-wrap gap-2 border-t border-white/[0.06] pt-4">
-        <button type="button" onClick={() => setRefundOpen((o) => !o)} disabled={refundable <= 0} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-white/[0.06] px-3 text-[13px] text-zinc-100 hover:bg-white/[0.1] disabled:opacity-40">
+      <div className="mt-6 flex flex-wrap gap-2 border-t border-[color:var(--stall-line)] pt-4">
+        <button type="button" onClick={() => setRefundOpen((o) => !o)} disabled={refundable <= 0} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-white/[0.06] px-3 text-[13px] text-[color:var(--stall-chalk)] hover:bg-white/[0.1] disabled:opacity-40">
           <Undo2 className="h-4 w-4" /> Refund
         </button>
-        <button type="button" onClick={startReturn} disabled={busy !== null} className="inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-[13px] text-zinc-300 hover:bg-white/5 disabled:opacity-40">
+        <button type="button" onClick={startReturn} disabled={busy !== null} className="inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-[13px] text-[color:var(--stall-chalk-dim)] hover:bg-white/5 disabled:opacity-40">
           {busy === 'return' ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />} Start return
         </button>
-        <button type="button" onClick={onOpenReturns} className="h-9 rounded-lg px-3 text-[13px] text-zinc-500 hover:bg-white/5 hover:text-zinc-300">Returns →</button>
+        <button type="button" onClick={onOpenReturns} className="h-9 rounded-lg px-3 text-[13px] text-[color:var(--stall-chalk-faint)] hover:bg-white/5 hover:text-[color:var(--stall-chalk-dim)]">Returns →</button>
       </div>
 
       {refundOpen && (
-        <form onSubmit={(e) => { e.preventDefault(); refund(); }} className="mt-3 grid max-w-md gap-3 rounded-lg border border-white/10 p-4">
-          <label className="grid gap-1 text-[12px] text-zinc-400">Amount (up to {money(refundable)})
-            <input type="number" min={0.01} step="0.01" max={refundable} value={amount} onChange={(e) => setAmount(e.target.value)} className="h-9 rounded-md border border-white/10 bg-transparent px-2.5 font-mono text-[14px] text-zinc-100 focus:border-white/25 focus:outline-none" />
+        <form onSubmit={(e) => { e.preventDefault(); refund(); }} className="mt-3 grid max-w-md gap-3 rounded-lg border border-[color:var(--stall-line)] p-4">
+          <label className="grid gap-1 text-[12px] text-[color:var(--stall-chalk-dim)]">Amount (up to {money(refundable)})
+            <input type="number" min={0.01} step="0.01" max={refundable} value={amount} onChange={(e) => setAmount(e.target.value)} className="h-9 rounded-md border border-[color:var(--stall-line)] bg-transparent px-2.5 font-mono text-[14px] text-[color:var(--stall-chalk)] focus:border-[color:var(--stall-brass)] focus:outline-none" />
           </label>
-          <label className="grid gap-1 text-[12px] text-zinc-400">Reason
-            <select value={reason} onChange={(e) => setReason(e.target.value)} className="h-9 rounded-md border border-white/10 bg-zinc-950 px-2 text-[13px] text-zinc-100">
+          <label className="grid gap-1 text-[12px] text-[color:var(--stall-chalk-dim)]">Reason
+            <select value={reason} onChange={(e) => setReason(e.target.value)} className="h-9 rounded-md border border-[color:var(--stall-line)] bg-[color:var(--stall-board)] px-2 text-[13px] text-[color:var(--stall-chalk)]">
               {REFUND_REASONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </select>
           </label>
-          <label className="flex items-center gap-2 text-[13px] text-zinc-300"><input type="checkbox" checked={restock} onChange={(e) => setRestock(e.target.checked)} /> Put items back in stock</label>
-          <button type="submit" disabled={busy !== null} className="h-9 rounded-lg bg-zinc-100 text-[13px] font-semibold text-zinc-900 hover:bg-white disabled:opacity-40">
+          <label className="flex items-center gap-2 text-[13px] text-[color:var(--stall-chalk-dim)]"><input type="checkbox" checked={restock} onChange={(e) => setRestock(e.target.checked)} /> Put items back in stock</label>
+          <button type="submit" disabled={busy !== null} className="h-9 rounded-lg bg-[color:var(--stall-chalk)] text-[13px] font-semibold text-[color:var(--stall-ink)] hover:brightness-105 disabled:opacity-40">
             {busy === 'refund' ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : `Refund ${money(Number(amount) || 0)}`}
           </button>
         </form>
       )}
-      {msg && <div role={msg.tone === 'error' ? 'alert' : 'status'} className={cn('mt-3 max-w-md rounded-md px-3 py-2 text-[12px]', msg.tone === 'error' ? 'bg-rose-500/10 text-rose-200' : 'bg-emerald-500/10 text-emerald-200')}>{msg.text}</div>}
+      {msg && <div role={msg.tone === 'error' ? 'alert' : 'status'} className={cn('mt-3 max-w-md rounded-md px-3 py-2 text-[12px]', msg.tone === 'error' ? 'bg-[color:var(--stall-tomato-dim)] text-[color:var(--stall-tomato)]' : 'bg-[color:var(--stall-leaf-dim)] text-[color:var(--stall-leaf)]')}>{msg.text}</div>}
     </article>
   );
 }
 
 function Row({ k, v, strong, muted, warn }: { k: string; v: string; strong?: boolean; muted?: boolean; warn?: boolean }) {
   return (
-    <div className={cn('flex justify-between', strong ? 'border-t border-white/[0.06] pt-1 font-semibold text-zinc-50' : muted ? 'text-zinc-500' : warn ? 'text-amber-300' : 'text-zinc-400')}>
+    <div className={cn('flex justify-between', strong ? 'border-t border-[color:var(--stall-line)] pt-1 font-semibold text-[color:var(--stall-chalk)]' : muted ? 'text-[color:var(--stall-chalk-faint)]' : warn ? 'text-[color:var(--stall-brass)]' : 'text-[color:var(--stall-chalk-dim)]')}>
       <dt>{k}</dt><dd className="font-mono">{v}</dd>
     </div>
   );

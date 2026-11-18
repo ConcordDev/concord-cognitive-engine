@@ -254,6 +254,17 @@ describe("retail stall — till sessions", () => {
     assert.equal(after.result.order.tillSessionId, undefined, "a sale after close is not tagged to the closed session");
   });
 
+  it("two closes with identical figures each mint their own ledger (no duplicate refusal)", async () => {
+    const a = await freshShop("till-dup-a");
+    await a.run("till-open", { float: 50 });
+    const c1 = await a.run("till-close", { countedCash: 50 });
+    await a.run("till-open", { float: 50 });
+    const c2 = await a.run("till-close", { countedCash: 50 });
+    assert.ok(c1.result.session.ledgerDtuId, c1.result.session.ledgerMintError);
+    assert.ok(c2.result.session.ledgerDtuId, c2.result.session.ledgerMintError);
+    assert.notEqual(c1.result.session.ledgerDtuId, c2.result.session.ledgerDtuId);
+  });
+
   it("can't close twice or close a till that was never opened; garbage amounts refuse", async () => {
     assert.match(errOf(await shop.run("till-close", { countedCash: 1 })), /not open/);
     for (const v of [-1, "1e999", "abc", 1000001, true]) assert.ok(refused(await shop.run("till-open", { float: v })), `float ${String(v)}`);
