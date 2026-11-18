@@ -51,6 +51,15 @@ test("advection: a sine profile survives a full period, error shrinking under th
   const r = run({ speed: 1, t: 1, mesh: 200, tol: 2e-2 }, "advection");
   assert.equal(r.status, "PASS", r.reason || "");
   assert.ok(r.outputs.l1ErrorVsExact < 0.015, `L1 ${r.outputs.l1ErrorVsExact}`);
+  // the doc's stability-honesty declaration: every hyperbolic run reports
+  // steps + maxCflUsed (B3 Batch A check note, 2026-11-18 — advection
+  // omitted both while sod carried them). The fine march (400 cells) takes
+  // round(1 / (0.9/400)) = 444 steps; the step-count rounding sets the
+  // used Courant number to (1/444) / (1/400) = 0.900900… — marginally
+  // above the declared 0.9, which is exactly what the field exists to
+  // make auditable.
+  assert.equal(r.outputs.steps, 444, `steps ${r.outputs.steps}`);
+  assert.ok(Math.abs(r.outputs.maxCflUsed - 0.9009009009009009) < 1e-12, `maxCflUsed ${r.outputs.maxCflUsed}`);
 });
 
 test("heat-cn: the sin mode decays at exactly exp(-alpha pi^2 t)", () => {

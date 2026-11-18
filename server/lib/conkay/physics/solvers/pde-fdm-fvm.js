@@ -245,24 +245,24 @@ function runFdmFvm(ctx, target) {
             : prev[i] + nu * (prev[(i + 1) % N] - prev[i]);
         }
       }
-      return u;
+      return { u, steps: nsteps, maxCfl: Math.abs(nu) };
     };
     const coarse = march(N0);
     const fine = march(2 * N0);
     let est = 0;
-    for (let i = 0; i < N0; i += 1) est += Math.abs(fine[2 * i] - coarse[i]);
+    for (let i = 0; i < N0; i += 1) est += Math.abs(fine.u[2 * i] - coarse.u[i]);
     est /= N0;
     if (est > tol) return { notComputed: `not_converged:mesh-doubling L1 estimate ${est} exceeds tol ${tol}` };
     let l1 = 0;
     for (let i = 0; i < 2 * N0; i += 1) {
       const x = (i + 0.5) / (2 * N0);
       const shifted = ((x - c * tEnd) % 1 + 1) % 1;
-      l1 += Math.abs(fine[i] - evaluateAst(profileAst, { x: shifted }));
+      l1 += Math.abs(fine.u[i] - evaluateAst(profileAst, { x: shifted }));
     }
     l1 /= (2 * N0);
     return {
       inputs: { speed: c, t: tEnd, cfl: cc.cfl, mesh: 2 * N0, tol },
-      outputs: { l1ErrorVsExact: l1, meshErrorEstimate: est },
+      outputs: { l1ErrorVsExact: l1, meshErrorEstimate: est, steps: fine.steps, maxCflUsed: fine.maxCfl },
       margins: [],
       covers: [target],
     };
