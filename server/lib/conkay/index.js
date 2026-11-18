@@ -45,6 +45,7 @@ import "./physics/solvers/verify-mms.js";
 import "./physics/solvers/uq-propagate.js";
 import "./physics/solvers/surrogate-build.js";
 import "./physics/solvers/cosim-fmi.js";
+import "./physics/solvers/multiphysics-couple.js";
 import "./physics/solvers/bolted-joint.js";
 import "./physics/solvers/joint-governing-check.js";
 import "./physics/solvers/requirements.js";
