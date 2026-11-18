@@ -7,6 +7,16 @@ written: **an answer ships only when its own error estimate
 meets the declared tolerance** (`tol` input, default 1e-10,
 always echoed). Otherwise NOT_COMPUTED
 `error_estimate_above_tolerance` with the estimate named.
+The tolerance is applied under each method's own estimate
+discipline, declared here because the two differ: tanh-sinh's
+level-to-level difference is tested **relatively** — estimate
+≤ tol · max(1, |value|) — while adaptive Simpson's accumulated
+leaf-estimate sum is tested **absolutely** — estimate ≤ tol.
+On the reference case below (∫₀¹ x^-1/2 dx = 2 at tol 1e-9)
+tanh-sinh's served estimate of 1.2525e-9 therefore ships: it
+exceeds tol absolutely but meets the relative bar of 2e-9 at
+|value| = 2. (Distinction surfaced by B3's Batch A check,
+2026-11-18.)
 Code: `server/lib/conkay/physics/solvers/quadrature.js`
 (registry solver, L3).
 
