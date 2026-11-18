@@ -42,6 +42,7 @@ import "./physics/solvers/logic-sat.js";
 import "./physics/solvers/geometry-comp.js";
 import "./physics/solvers/tensor-continuum.js";
 import "./physics/solvers/verify-mms.js";
+import "./physics/solvers/uq-propagate.js";
 import "./physics/solvers/bolted-joint.js";
 import "./physics/solvers/joint-governing-check.js";
 import "./physics/solvers/requirements.js";
