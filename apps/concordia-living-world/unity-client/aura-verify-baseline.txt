@@ -1,0 +1,16 @@
+# AuraVerify baseline — the known `[AuraVerify] … FAIL` lines for
+# the P0-19 PlayMode-log gate (scripts/gate-aura-verify.mjs).
+#
+# This file ships EMPTY of entries on purpose: every FAIL line is
+# "new" — and fails the gate — until a human records it here.
+#
+# To record a known failure:
+#   1. Paste the EXACT log line (the gate matches whole trimmed
+#      lines; a line whose text varies run to run must be made
+#      stable at its source first, not approximated here).
+#   2. Add the reason and the tracking ticket in
+#      docs/concordia/CI_GATES.md, in the same change.
+#   3. Remove the line the moment the failure is fixed — a stale
+#      baseline entry hides a regression class.
+#
+# Lines starting with # are comments. Blank lines are ignored.

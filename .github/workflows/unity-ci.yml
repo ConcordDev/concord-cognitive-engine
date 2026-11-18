@@ -146,6 +146,9 @@ jobs:
             -testResults "$GITHUB_WORKSPACE/test-results/playmode.xml" \
             -logFile "$GITHUB_WORKSPACE/test-results/playmode.log"
 
+      - name: Gate — no new [AuraVerify] FAIL in the PlayMode log (P0-19)
+        run: node scripts/gate-aura-verify.mjs "$GITHUB_WORKSPACE/test-results/playmode.log"
+
       - name: Build WebGL
         run: |
           set -euo pipefail
@@ -162,7 +165,13 @@ jobs:
             exit 1
           fi
 
-      - name: Build desktop (Linux standalone)
+      # Advisory under the §2.4 gate list (P0-19,
+      # docs/concordia/CI_GATES.md): the desktop build runs and
+      # reports, but its failure never blocks the job. The R2
+      # upload step below therefore treats the desktop output as
+      # best-effort.
+      - name: Build desktop (Linux standalone, advisory)
+        continue-on-error: true
         run: |
           set -euo pipefail
           # The project's standalone batch build: the Linux
@@ -177,6 +186,7 @@ jobs:
             echo "::error::Desktop build produced no ConcordiaHost.x86_64 at $CONCORD_SERVER_BUILD — see build-desktop.log."
             exit 1
           fi
+          echo "Desktop build: OK (advisory)" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload builds to R2 (builds/<target>/<sha>/)
         env:
@@ -202,9 +212,16 @@ jobs:
           aws s3 cp "$GITHUB_WORKSPACE/builds/webgl" \
             "s3://$R2_BUILDS_BUCKET/builds/webgl/$GITHUB_SHA/" \
             --recursive --endpoint-url "$R2_S3_ENDPOINT"
-          aws s3 cp "$GITHUB_WORKSPACE/builds/desktop-linux" \
-            "s3://$R2_BUILDS_BUCKET/builds/desktop-linux/$GITHUB_SHA/" \
-            --recursive --endpoint-url "$R2_S3_ENDPOINT"
+          # The desktop build is advisory (§2.4): upload its output
+          # when it exists, and say so when it does not — an absent
+          # desktop build must not fail this step.
+          if [ -d "$GITHUB_WORKSPACE/builds/desktop-linux" ]; then
+            aws s3 cp "$GITHUB_WORKSPACE/builds/desktop-linux" \
+              "s3://$R2_BUILDS_BUCKET/builds/desktop-linux/$GITHUB_SHA/" \
+              --recursive --endpoint-url "$R2_S3_ENDPOINT"
+          else
+            echo "No desktop build output to upload (the advisory desktop build did not produce one this run)."
+          fi
 
       - name: Size report (PF-07)
         if: ${{ hashFiles('scripts/assets/budget.mjs') != '' }}

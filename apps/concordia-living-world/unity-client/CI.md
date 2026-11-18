@@ -57,5 +57,6 @@ The workflow is authored and pin-tested. Its first live run is
 parked with the build-machine bring-up (P0-30): runner
 registration, the Unity install, and the R2 configuration above
 are that ticket's done-test. Merge gating on this workflow's
-results (EditMode green, PlayMode proofs green, WebGL build,
-asset budget) is P0-19.
+results is specified in `docs/concordia/CI_GATES.md` (P0-19),
+including the AuraVerify baseline discipline
+(`aura-verify-baseline.txt`, in this directory).
