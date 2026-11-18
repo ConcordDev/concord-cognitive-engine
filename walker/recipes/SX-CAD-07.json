@@ -1,0 +1,20 @@
+{
+  "adversarial": [
+    "The plate with claimed x = 99 \u2192 expect the discrepancy named in outputs.discrepancies (the run still returns the plan; the disagreement is data, not a refusal)."
+  ],
+  "author": "muse-b10",
+  "authored_on": "2026-11-17",
+  "case_source": "observed",
+  "discriminator": "Pre-fix failure transcript: at f4f1f77ff no cad.drawings-detail exists in the registry; drawings exist only as GA sheets and drafting overlays, with no per-part sheet plan and no re-measure check anywhere. Post-fix: registered at L2 with declarations + engineDependent [sxe-06]; suite 10/10 green locally; CI is the build of record. Reference case: plate (box 0.1 x 0.05 x 0.02 m, claimed 100/50/20 mm) + pin (cylinder r 0.01, h 0.03, cylindricity 0.01 mm datum A) \u2192 2 sheets, balloons 1\u20132, dimensions re-measured 100/50/20 and 20/20/30 mm, zero discrepancies, callout carried with glyph resolved. Claimed 99 mm against a 100 mm solid \u2192 discrepancy named {claimedMm: 99, measuredMm: 100} with a warning; the sheet keeps the measured value.",
+  "id": "SX-CAD-07",
+  "kind": "repro-steps",
+  "notes": "Fix of record: commit 873e86009 on sx/core-loop (B3, fixer). Content supplied by the fixer in SX-CAD-07.check.md (shared quality folder); registered DRAFT by muse-b10 as author of record (CAD subgroup, CB-0823) in walker/recipes/ on v1/immune-p1-recipe, 2026-11-17 \u2014 registrar-only conversion, substance unchanged. Value-assertion provenance per the check file: INDEPENDENT for the re-measured extents (analytic geometry of the declared dims), SELF-REFERENCED for the GD&T vocabulary (mirrors the drawing model's own table, drift coverage \u2014 with the ASME Y14.5 set as the outside anchor). Activation is the reviewer of record's act (packet_id binds at activation).",
+  "packet_id": null,
+  "reviewer": "zuko-desk",
+  "status": "draft",
+  "steps": [
+    "Via MCP conkay_solve {solver_id: \"cad.drawings-detail\", typed inputs from docs/conkay/solvers/cad.drawings-detail.md's replay request} \u2192 expect envelope PASS (plan) with outputs.sheetCount == 2, sheet 1 dimensions 100/50/20 mm, outputs.discrepancies empty, outputs.engineTier.reason == \"engine_unavailable:sxe-06\"."
+  ],
+  "tier_proposed": 1,
+  "title": "cad.drawings-detail: the sheet plan re-measures dimensions from each part's analytic solid and names every claimed-extent discrepancy, while the rendered-sheet tier stands NOT_COMPUTED engine_unavailable:sxe-06 (planOnly)"
+}
