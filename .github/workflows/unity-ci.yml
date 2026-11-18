@@ -1,0 +1,238 @@
+name: Unity CI
+
+# Added for P0-18 (Concordia plan §2.4): the Unity client had NO CI —
+# EditMode/PlayMode suites and the WebGL export were manual, one-off
+# runs on the editor machine, with nothing preventing regression.
+#
+# Runner discipline (the load-bearing property of this file):
+# every job runs ONLY on a self-hosted runner labelled
+# `concordia-build` — the dedicated build machine (P0-30). GitHub-
+# hosted runners cannot hold this project (Assets is ~14 GB and the
+# gitignored packs live on the R2 asset rail, P0-04), and this
+# workflow must never land on the owner's Mac: there is no schedule
+# trigger, and no job targets a generic or OS label that a Mac could
+# pick up. server/tests/unity-ci-workflow.test.js pins all of this.
+#
+# The editor is invoked directly, not through GameCI images: the
+# plan records the game-ci image for Unity 6000.5.9f1 as UNVERIFIED,
+# and the build machine holds the licensed editor (Q4: the existing
+# Unity licence). Editor resolution follows the codebase convention
+# (scripts/export-unity-web.mjs): $UNITY_EDITOR wins, then the
+# Unity Hub install for the pinned version.
+#
+# Pipeline (§2.4, in order): pull assets from the R2 rail (P0-04) →
+# EditMode tests → PlayMode tests (-batchmode, GPU available) →
+# batch builds (WebGL + desktop) → upload to R2 builds/<target>/<sha>/
+# → size report (PF-07) → AnimationCoverage report (AN-05). Steps
+# whose owning ticket has not landed yet say so in the log instead
+# of passing silently. Merge gating on these results is P0-19.
+#
+# Verification state: the live run is parked with the build-machine
+# bring-up (P0-30) — this file is authored and pin-tested, and its
+# first green run happens on the concordia-build runner.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/concordia-living-world/unity-client/**'
+      - 'scripts/assets/**'
+      - '.github/workflows/unity-ci.yml'
+  pull_request:
+    paths:
+      - 'apps/concordia-living-world/unity-client/**'
+      - 'scripts/assets/**'
+      - '.github/workflows/unity-ci.yml'
+  workflow_dispatch:
+
+# Least-privilege token scope: these jobs check out code and upload
+# workflow artifacts. The R2 upload uses the runner's own R2
+# credentials (below), never the GITHUB_TOKEN.
+permissions:
+  contents: read
+
+# One Unity pipeline per PR (or per ref otherwise): a 14 GB project
+# cannot afford two editor runs racing on one build machine. A newer
+# pull_request run cancels the older in-flight run; pushes and
+# manual dispatches finish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  UNITY_VERSION: '6000.5.9f1'
+  UNITY_PROJECT: apps/concordia-living-world/unity-client
+
+jobs:
+  unity-ci:
+    name: Pull assets, test, build, publish
+    runs-on: [self-hosted, concordia-build]
+    # The WebGL build alone is budgeted under an hour on the build
+    # machine (P0-30); the whole pipeline gets generous headroom.
+    timeout-minutes: 300
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          # Tracked binary assets are Git LFS in this project; the
+          # gitignored packs arrive via the asset rail (next steps).
+          lfs: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Resolve the Unity editor (pinned version)
+        run: |
+          set -euo pipefail
+          # The project file is the version of record; the workflow
+          # pin must agree with it or the run is meaningless.
+          project_version="$(sed -n 's/^m_EditorVersion: //p' "$UNITY_PROJECT/ProjectSettings/ProjectVersion.txt")"
+          if [ "$project_version" != "$UNITY_VERSION" ]; then
+            echo "::error::Unity version drift: workflow pins $UNITY_VERSION but ProjectVersion.txt says $project_version. Update both together."
+            exit 1
+          fi
+          if [ -n "${UNITY_EDITOR:-}" ] && [ -x "${UNITY_EDITOR:-}" ]; then
+            echo "Editor (from UNITY_EDITOR): $UNITY_EDITOR"
+          elif [ -x "/Applications/Unity/Hub/Editor/$UNITY_VERSION/Unity.app/Contents/MacOS/Unity" ]; then
+            UNITY_EDITOR="/Applications/Unity/Hub/Editor/$UNITY_VERSION/Unity.app/Contents/MacOS/Unity"
+          elif [ -x "$HOME/Unity/Hub/Editor/$UNITY_VERSION/Editor/Unity" ]; then
+            UNITY_EDITOR="$HOME/Unity/Hub/Editor/$UNITY_VERSION/Editor/Unity"
+          elif [ -x "/opt/unity/hub/Editor/$UNITY_VERSION/Editor/Unity" ]; then
+            UNITY_EDITOR="/opt/unity/hub/Editor/$UNITY_VERSION/Editor/Unity"
+          elif [ -x "C:/Program Files/Unity/Hub/Editor/$UNITY_VERSION/Editor/Unity.exe" ]; then
+            UNITY_EDITOR="C:/Program Files/Unity/Hub/Editor/$UNITY_VERSION/Editor/Unity.exe"
+          else
+            echo "::error::Unity $UNITY_VERSION not found on this runner. Install it via Unity Hub or set UNITY_EDITOR (see apps/concordia-living-world/unity-client/CI.md)."
+            exit 1
+          fi
+          echo "UNITY_EDITOR=$UNITY_EDITOR" >> "$GITHUB_ENV"
+          "$UNITY_EDITOR" -version
+
+      - name: Pull assets from the R2 rail (P0-04)
+        run: |
+          set -euo pipefail
+          if [ ! -f scripts/assets/pull-assets.mjs ]; then
+            echo "::error::P0-04 asset rail has not landed: scripts/assets/pull-assets.mjs is missing. P0-18 depends on P0-04; this step activates when the rail lands."
+            exit 1
+          fi
+          node scripts/assets/pull-assets.mjs
+
+      - name: EditMode tests
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/test-results"
+          # -runTests exits the editor when the run completes; the
+          # exit code is 0 only when every test passes. No -quit:
+          # it can cut the run short.
+          "$UNITY_EDITOR" -batchmode -nographics \
+            -projectPath "$UNITY_PROJECT" \
+            -runTests -testPlatform EditMode \
+            -testResults "$GITHUB_WORKSPACE/test-results/editmode.xml" \
+            -logFile "$GITHUB_WORKSPACE/test-results/editmode.log"
+
+      - name: PlayMode tests
+        run: |
+          set -euo pipefail
+          # No -nographics: the focused PlayMode proofs render, and
+          # the build machine provides the GPU (§2.4 step 3).
+          "$UNITY_EDITOR" -batchmode \
+            -projectPath "$UNITY_PROJECT" \
+            -runTests -testPlatform PlayMode \
+            -testResults "$GITHUB_WORKSPACE/test-results/playmode.xml" \
+            -logFile "$GITHUB_WORKSPACE/test-results/playmode.log"
+
+      - name: Build WebGL
+        run: |
+          set -euo pipefail
+          # The project's own batch export (the same entry point
+          # scripts/export-unity-web.mjs drives), staged into the
+          # CI builds dir instead of the frontend serving shape.
+          export CONCORD_UNITY_STAGING="$GITHUB_WORKSPACE/builds/webgl"
+          "$UNITY_EDITOR" -batchmode -nographics -quit \
+            -projectPath "$UNITY_PROJECT" \
+            -executeMethod Concordia.Editor.ConcordiaWebExport.Export \
+            -logFile "$GITHUB_WORKSPACE/test-results/build-webgl.log"
+          if [ ! -f "$CONCORD_UNITY_STAGING/index.html" ]; then
+            echo "::error::WebGL build produced no index.html at $CONCORD_UNITY_STAGING — see build-webgl.log."
+            exit 1
+          fi
+
+      - name: Build desktop (Linux standalone)
+        run: |
+          set -euo pipefail
+          # The project's standalone batch build: the Linux
+          # dedicated-server entry point (the only standalone
+          # BuildPlayer batch method the client ships).
+          export CONCORD_SERVER_BUILD="$GITHUB_WORKSPACE/builds/desktop-linux"
+          "$UNITY_EDITOR" -batchmode -nographics -quit \
+            -projectPath "$UNITY_PROJECT" \
+            -executeMethod Concordia.Editor.ConcordiaServerExport.BuildLinuxServer \
+            -logFile "$GITHUB_WORKSPACE/test-results/build-desktop.log"
+          if [ ! -f "$CONCORD_SERVER_BUILD/ConcordiaHost.x86_64" ]; then
+            echo "::error::Desktop build produced no ConcordiaHost.x86_64 at $CONCORD_SERVER_BUILD — see build-desktop.log."
+            exit 1
+          fi
+
+      - name: Upload builds to R2 (builds/<target>/<sha>/)
+        env:
+          R2_S3_ENDPOINT: ${{ vars.R2_S3_ENDPOINT }}
+          R2_BUILDS_BUCKET: ${{ vars.R2_BUILDS_BUCKET }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+        run: |
+          set -euo pipefail
+          # One rail: private R2 over its S3 API (plan §2.2). The
+          # endpoint, bucket and keys are the runner's configuration
+          # (CI.md); an unconfigured runner fails here by name
+          # rather than uploading nowhere silently.
+          if [ -z "${R2_S3_ENDPOINT:-}" ] || [ -z "${R2_BUILDS_BUCKET:-}" ] || [ -z "${AWS_ACCESS_KEY_ID:-}" ]; then
+            echo "::error::R2 upload is not configured on this runner: set the R2_S3_ENDPOINT and R2_BUILDS_BUCKET variables and the R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY secrets (see apps/concordia-living-world/unity-client/CI.md)."
+            exit 1
+          fi
+          if ! command -v aws >/dev/null 2>&1; then
+            echo "::error::The AWS CLI is not installed on this runner; the R2 upload speaks the S3 API through it."
+            exit 1
+          fi
+          aws s3 cp "$GITHUB_WORKSPACE/builds/webgl" \
+            "s3://$R2_BUILDS_BUCKET/builds/webgl/$GITHUB_SHA/" \
+            --recursive --endpoint-url "$R2_S3_ENDPOINT"
+          aws s3 cp "$GITHUB_WORKSPACE/builds/desktop-linux" \
+            "s3://$R2_BUILDS_BUCKET/builds/desktop-linux/$GITHUB_SHA/" \
+            --recursive --endpoint-url "$R2_S3_ENDPOINT"
+
+      - name: Size report (PF-07)
+        if: ${{ hashFiles('scripts/assets/budget.mjs') != '' }}
+        run: node scripts/assets/budget.mjs
+
+      - name: Size report — PF-07 not landed yet
+        if: ${{ hashFiles('scripts/assets/budget.mjs') == '' }}
+        run: echo "PF-07 (scripts/assets/budget.mjs) has not landed; the size report step activates automatically when it does."
+
+      - name: AnimationCoverage report (AN-05)
+        if: ${{ !cancelled() }}
+        run: |
+          # AN-05's coverage matrix is produced by the EditMode
+          # AnimationCoverageTests; surface whatever the run printed
+          # into the job summary. A report step never fails the job.
+          {
+            echo "## AnimationCoverage (AN-05)"
+            if grep -h 'AnimationCoverage' "$GITHUB_WORKSPACE/test-results/editmode.log" "$GITHUB_WORKSPACE/test-results/editmode.xml" 2>/dev/null | head -50; then
+              :
+            else
+              echo "No AnimationCoverage output in this run — AN-05's AnimationCoverageTests have not landed yet, or printed nothing."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload test results and logs
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: unity-ci-${{ github.sha }}
+          path: test-results/
+          if-no-files-found: warn
