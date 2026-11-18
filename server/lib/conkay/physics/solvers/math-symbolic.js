@@ -230,7 +230,10 @@ export function parse(src) {
     }
     if (/[A-Za-z]/.test(c)) {
       let j = i;
-      while (j < src.length && /[A-Za-z]/.test(src[j])) j += 1;
+      // identifiers are a letter followed by letters or digits, so
+      // indexed names (y0, z12, lambda2) are single variables —
+      // the reading every system in this family uses (SX-NUM-08).
+      while (j < src.length && /[A-Za-z0-9]/.test(src[j])) j += 1;
       tokens.push({ k: "id", v: src.slice(i, j), at: i });
       i = j; continue;
     }
