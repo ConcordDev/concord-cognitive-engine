@@ -1044,9 +1044,154 @@ export default function registerRetailActions(registerLensAction) {
     const existing = cart.lines.find((l) => l.sku === sku);
     if (existing) existing.qty += qty;
     else cart.lines.push({ sku, name: product.name, unitPrice: product.price, qty });
+    const discountNote = syncCartDiscount(s, userId, cart);
+    saveRetailState();
+    const lineQty = (existing ? existing.qty : qty);
+    return { ok: true, result: { cart, ...stockNote(product, lineQty), ...discountNote } };
+  });
+
+  // ── Register line editing, parked sales, customer attach ──────────
+  //
+  // A register has to be able to fix a mistake: change a quantity or take a
+  // line off. qty 0 removes the line. Every edit re-checks the applied
+  // discount against the new subtotal (syncCartDiscount), so a fixed-amount
+  // code keeps its real dollar value and a code whose minimum is no longer
+  // met is dropped AND reported — never silently kept.
+
+  // Fixed-amount codes are stored as a percent of the subtotal at apply time;
+  // re-derive it whenever the subtotal moves. Returns a note to merge into the
+  // response when the discount was dropped.
+  function syncCartDiscount(s, userId, cart) {
+    const code = cart?.appliedDiscountCode;
+    if (!code) return {};
+    const discount = ensureRetailBucket(s, "discounts", userId).find(d => d.code === code);
+    const subtotal = cart.lines.reduce((sum, l) => sum + l.qty * l.unitPrice, 0);
+    if (!discount || subtotal <= 0 || subtotal < (Number(discount.minSubtotal) || 0)) {
+      cart.discountPercent = 0;
+      cart.freeShipping = false;
+      delete cart.appliedDiscountCode;
+      return { discountDropped: code, discountDroppedReason: !discount ? "code no longer exists" : `minimum subtotal $${discount.minSubtotal} not met` };
+    }
+    if (discount.kind === "fixed_amount") {
+      cart.discountPercent = (Math.min(subtotal, discount.value) / subtotal) * 100;
+    } else if (discount.kind === "percentage") {
+      cart.discountPercent = discount.value;
+    }
+    return {};
+  }
+
+  // Selling past stock is allowed (stock clamps at 0 on tender, as before),
+  // but the register is told the truth about it.
+  function stockNote(product, lineQty) {
+    const stock = Number(product?.stock) || 0;
+    return lineQty > stock ? { stockWarning: `Only ${stock} of ${product.sku} in stock; this line has ${lineQty}.` } : {};
+  }
+
+  registerLensAction("retail", "cart-set-line-qty", (ctx, _artifact, params = {}) => {
+    const s = getRetailState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const cartId = String(params.cartId || "");
+    const sku = String(params.sku || "");
+    const qty = Number(params.qty);
+    if (!cartId || !sku) return { ok: false, error: "cartId and sku required" };
+    if (!Number.isInteger(qty) || qty < 0 || qty > 9999) return { ok: false, error: "qty must be a whole number from 0 to 9999" };
+    const cart = s.carts.get(userId)?.get(cartId);
+    if (!cart) return { ok: false, error: "cart not found" };
+    if (cart.pendingPaymentIntentId) return { ok: false, error: "a card payment is in progress for this cart; finish or void it before editing" };
+    const idx = cart.lines.findIndex((l) => l.sku === sku);
+    if (idx < 0) return { ok: false, error: `line not in cart: ${sku}` };
+    if (qty === 0) cart.lines.splice(idx, 1);
+    else cart.lines[idx].qty = qty;
+    const discountNote = syncCartDiscount(s, userId, cart);
+    saveRetailState();
+    const product = s.products.get(userId)?.get(sku);
+    return { ok: true, result: { cart, removed: qty === 0, ...(qty > 0 ? stockNote(product, qty) : {}), ...discountNote } };
+  });
+
+  // Open carts = parked sales. Newest first, with a cheap pre-tax subtotal so
+  // the register can show what each one holds without N cart-total calls.
+  registerLensAction("retail", "cart-list", (ctx, _artifact, _params = {}) => {
+    const s = getRetailState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const carts = Array.from(s.carts.get(userId)?.values() || [])
+      .map((c) => ({
+        id: c.id,
+        openedAt: c.openedAt,
+        lineCount: c.lines.length,
+        itemCount: c.lines.reduce((n, l) => n + l.qty, 0),
+        subtotal: Math.round(c.lines.reduce((sum, l) => sum + l.qty * l.unitPrice, 0) * 100) / 100,
+        customerId: c.customerId || null,
+        customerName: c.customerName || null,
+        appliedDiscountCode: c.appliedDiscountCode || null,
+        cardPending: Boolean(c.pendingPaymentIntentId),
+      }))
+      .sort((a, b) => String(b.openedAt).localeCompare(String(a.openedAt)));
+    return { ok: true, result: { carts } };
+  });
+
+  registerLensAction("retail", "cart-get", (ctx, _artifact, params = {}) => {
+    const s = getRetailState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const cart = s.carts.get(userId)?.get(String(params.cartId || ""));
+    if (!cart) return { ok: false, error: "cart not found" };
+    return { ok: true, result: { cart } };
+  });
+
+  // Voiding a sale discards the cart. Nothing was decremented or redeemed
+  // yet (that only happens at tender), so there is nothing to roll back —
+  // except a pending card intent, which blocks the void so a captured
+  // payment can never be orphaned from its order.
+  registerLensAction("retail", "cart-void", (ctx, _artifact, params = {}) => {
+    const s = getRetailState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const cartId = String(params.cartId || "");
+    const cart = s.carts.get(userId)?.get(cartId);
+    if (!cart) return { ok: false, error: "cart not found" };
+    if (cart.pendingPaymentIntentId && params.force !== true) {
+      return { ok: false, error: "a card payment was started for this cart; confirm it or pass force:true after checking Stripe" };
+    }
+    s.carts.get(userId).delete(cartId);
+    saveRetailState();
+    return { ok: true, result: { voided: cartId } };
+  });
+
+  // Attach (or detach, customerId:null) a customer to the sale. On tender the
+  // order carries the customer and the customer's real totals move.
+  registerLensAction("retail", "cart-set-customer", (ctx, _artifact, params = {}) => {
+    const s = getRetailState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const cart = s.carts.get(userId)?.get(String(params.cartId || ""));
+    if (!cart) return { ok: false, error: "cart not found" };
+    if (params.customerId == null || params.customerId === "") {
+      delete cart.customerId;
+      delete cart.customerName;
+      saveRetailState();
+      return { ok: true, result: { cart } };
+    }
+    const customer = ensureRetailBucket(s, "customers", userId).find(c => c.id === String(params.customerId));
+    if (!customer) return { ok: false, error: "customer not found" };
+    cart.customerId = customer.id;
+    cart.customerName = customer.name;
     saveRetailState();
     return { ok: true, result: { cart } };
   });
+
+  // Called by both tender paths once the order exists.
+  function linkOrderToCustomer(s, userId, cart, order) {
+    if (!cart?.customerId) return;
+    const customer = ensureRetailBucket(s, "customers", userId).find(c => c.id === cart.customerId);
+    if (!customer) return;
+    order.customerId = customer.id;
+    order.customerName = customer.name;
+    customer.totalSpent = Math.round(((Number(customer.totalSpent) || 0) + order.total) * 100) / 100;
+    customer.orderCount = (Number(customer.orderCount) || 0) + 1;
+    customer.lastOrderAt = order.completedAt;
+  }
 
   registerLensAction("retail", "cart-total", (ctx, _artifact, params = {}) => {
     const s = getRetailState();
@@ -1095,8 +1240,34 @@ export default function registerRetailActions(registerLensAction) {
     const subtotalAfter = subtotal - discount;
     const tax = subtotalAfter * (taxRate / 100);
     const total = Math.round((subtotalAfter + tax) * 100) / 100;
+    for (const t of tenders) {
+      const amt = Number(t?.amount);
+      if (!Number.isFinite(amt) || amt <= 0) return { ok: false, error: "every tender needs a finite amount > 0" };
+    }
     const tendered = tenders.reduce((s, t) => s + Number(t.amount || 0), 0);
     if (tendered < total - 0.01) return { ok: false, error: `insufficient tender: ${tendered.toFixed(2)} < ${total.toFixed(2)}` };
+    // Change is only ever given back from cash: a gift card can't overpay.
+    const nonCash = tenders.filter(t => t.kind !== "cash").reduce((s, t) => s + Number(t.amount), 0);
+    if (nonCash > total + 0.01) return { ok: false, error: `non-cash tenders ($${nonCash.toFixed(2)}) exceed the $${total.toFixed(2)} total; change can only come from cash` };
+    // Gift-card tenders are validated in full BEFORE anything is written, then
+    // redeemed in the same handler as the order — a sale can never spend a
+    // card's balance without producing its order, or vice versa.
+    const giftCards = ensureRetailBucket(s, "giftCards", userId);
+    const giftDebits = new Map();
+    for (const t of tenders) {
+      if (t.kind !== "gift_card") continue;
+      const code = String(t.code || "").trim().toUpperCase();
+      const card = giftCards.find(c => c.code === code);
+      if (!card) return { ok: false, error: `gift card not found: ${code || "(no code)"}` };
+      if (card.status !== "active") return { ok: false, error: `gift card ${code} is ${card.status}` };
+      const want = (giftDebits.get(card) || 0) + Number(t.amount);
+      if (!Number.isFinite(card.balance) || card.balance < want - 0.001) return { ok: false, error: `gift card ${code} has only $${Number(card.balance || 0).toFixed(2)}` };
+      giftDebits.set(card, want);
+    }
+    for (const [card, amt] of giftDebits) {
+      card.balance = Math.round((card.balance - amt) * 100) / 100;
+      if (card.balance === 0) card.status = "redeemed";
+    }
     const change = Math.round((tendered - total) * 100) / 100;
     // Decrement stock
     for (const line of cart.lines) {
@@ -1126,6 +1297,7 @@ export default function registerRetailActions(registerLensAction) {
     if (!s.orders.has(userId)) s.orders.set(userId, []);
     s.orders.get(userId).unshift(order);
     redeemAppliedDiscount(s, userId, cart);
+    linkOrderToCustomer(s, userId, cart, order);
     s.carts.get(userId).delete(cartId);
     saveRetailState();
     return { ok: true, result: { order } };
@@ -1340,6 +1512,7 @@ export default function registerRetailActions(registerLensAction) {
     if (!s.orders.has(userId)) s.orders.set(userId, []);
     s.orders.get(userId).unshift(order);
     redeemAppliedDiscount(s, userId, cart);
+    linkOrderToCustomer(s, userId, cart, order);
     s.carts.get(userId).delete(cartId);
     saveRetailState();
     return { ok: true, result: { order } };

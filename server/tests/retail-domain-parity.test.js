@@ -118,14 +118,18 @@ describe("retail — orders + low stock", () => {
 });
 
 describe("retail — Stripe PaymentIntent POS (real card tender)", () => {
-  it("cart-create-payment-intent returns error pointing to STRIPE_SECRET_KEY when not set", async () => {
+  // The refusal is product words (S1/F2, pinned in depth/retail-money-truth):
+  // it must say card is unavailable and cash still works, and must never leak
+  // the env var name or a raw provider error to the register.
+  it("cart-create-payment-intent refuses in product words when STRIPE_SECRET_KEY is not set", async () => {
     delete process.env.STRIPE_SECRET_KEY;
     call("product-upsert", ctxA, { sku: "P1", name: "x", price: 10, stock: 5 });
     const c = call("cart-open", ctxA);
     call("cart-add-line", ctxA, { cartId: c.result.cart.id, sku: "P1", qty: 1 });
     const r = await call("cart-create-payment-intent", ctxA, { cartId: c.result.cart.id });
     assert.equal(r.ok, false);
-    assert.match(r.error, /STRIPE_SECRET_KEY|Stripe not configured/);
+    assert.match(r.error, /Card payments aren't available/);
+    assert.doesNotMatch(r.error, /STRIPE_SECRET_KEY|sk_/);
   });
 
   it("cart-create-payment-intent rejects amount below Stripe minimum ($0.50)", async () => {
