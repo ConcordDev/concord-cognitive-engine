@@ -102,6 +102,7 @@ import "./orc/edit-commands.js";
 import "./cad/parametric-features.js";
 import "./cad/part-geometry.js";
 import "./orc/system-architecture.js";
+import "./cad/assembly-constraints.js";
 import "./cad/mass-properties-brep.js";
 import "./cad/mesh-generate.js";
 
