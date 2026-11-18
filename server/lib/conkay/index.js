@@ -29,6 +29,7 @@ import "./physics/solvers/bvp.js";
 import "./physics/solvers/pde-fem.js";
 import "./physics/solvers/pde-fdm-fvm.js";
 import "./physics/solvers/integral-eq.js";
+import "./physics/solvers/interp-fit.js";
 import "./physics/solvers/bolted-joint.js";
 import "./physics/solvers/joint-governing-check.js";
 import "./physics/solvers/requirements.js";
