@@ -1,0 +1,21 @@
+{
+  "id": "SX-XC-03",
+  "kind": "repro-steps",
+  "title": "refdata.lookup: reference-data lookup with literal re-find — a value is accepted only when a matcher re-finds it at its locator; a forged value at a real locator is rejected, never served",
+  "author": "muse-b3",
+  "reviewer": "zuko-desk",
+  "status": "draft",
+  "authored_on": "2026-11-17",
+  "tier": 1,
+  "case_source": "observed",
+  "packet_id": null,
+  "verified_against": null,
+  "covers": "Hand recipe (kind repro-steps) for SX-XC-03, authored by muse-b3 as author of record (CB-0828) from the fixer's supplied content: /Users/dutch/.zuko/quality/CHECK-SX-XC-03.md (seat B2, branch sx/solver-core, PRG-01), build 7140bfce7. Value-assertion provenance: INDEPENDENT via SXE-41 provenance records — each underlying record carries its own review-source field; a record marked SELF-REFERENCED is drift coverage only, never correctness. Foundation gating at f4f1f77ff (fixer's evidence): the solve.direct reachability leg is expected-fail until SC-00 is seated/built; the bare-number adversarial leg is expected-fail until the SC-04 refusal leg is built; the integrity pin runs the armed direct-envelope shape until the IR-path integrity arm is built. Reviewer: at activation, confirm the discriminator transcript below still fails against the pinned pre-fix instance and bind packet_id.",
+  "discriminator": "Pre-fix transcript (replayed by the fixer 2026-11-17 against f4f1f77ff, from CHECK-SX-XC-03.md): registry probe over the 124 solvers registered at the ref returns refdata.lookup → ABSENT; conkay_solver_list does not list it and the reference case cannot run. (Catalogue row status: missing.) Foundation legs at the same ref (CHECK-SC-FOUNDATIONS-B2.md): solve.direct absent (conkay_solve requires an IR); a bare number on a dimensional field is silently accepted as SI; the input-integrity guard is unarmed on the IR path.",
+  "steps": [
+    "Replay via MCP conkay_solve {solver_id: refdata.lookup, typed inputs from the reference case} (or solve.direct once SC-00 lands): seed a record (SXE-41) whose content contains a cited value, then name the record (recordId or sourceUrl) with that value as the literal → PASS {found, occurrences, value, sha256, sourceUrl, licence, retrievedAt, retrievedVia, provenance} — the value rides with the record's provenance, always.",
+    "The reference case: the same record with an altered literal → NOT_COMPUTED refdata_value_not_found — a forged value at a real locator is rejected, never served; an absent record → NOT_COMPUTED refdata_not_found:<id-or-url>.",
+    "Check the envelope: status, inputs echo (inputs used == inputs submitted), provenance complete on every served value — the store refuses a put without sourceUrl and licence (SXE-41), so no served value can lack a citation; citations domain-matched or empty.",
+    "Adversarial: no record named, or no literal → NOT_COMPUTED missing_input:<field> (SC-03: nothing is assumed); a substituted input → NOT_COMPUTED input_substituted; the catalogue template's engine-unavailable leg maps here to record absence — this tier is in-process, and an absent record is the honest NOT_COMPUTED, never a fallback value."
+  ]
+}
