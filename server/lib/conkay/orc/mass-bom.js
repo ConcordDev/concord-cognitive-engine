@@ -192,7 +192,7 @@ registerSolver({
   domains: ["orchestration"],
   method: "mass-bom.roll-up",
   fidelity: 2,
-  regime: "assemblies of analytic-solid parts (cad.mass-properties-brep shapes) with declared or library densities and translation positions",
+  regime: "assemblies of analytic-solid parts (the CAD-03 solver's shapes) with declared or library densities and translation positions",
   units: "SI: kg, m, kg m2; densities kg/m3 from declared inputs or the material library, always sourced in the output",
   tolerance: "exact closed-form per part; assembly sums asserted to 1e-9 relative",
   screening: false,
