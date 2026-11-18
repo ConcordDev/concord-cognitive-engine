@@ -1,0 +1,21 @@
+{
+  "id": "SX-NUM-03",
+  "kind": "repro-steps",
+  "title": "math.linsolve: dense LU/Cholesky with every solve verified by substitution — cond above 1e12 refused unless the caller declares acceptance (then WARN with the estimate named); QR/sparse/Krylov refused by name as the engine tier",
+  "author": "muse-b3",
+  "reviewer": "zuko-desk",
+  "status": "draft",
+  "authored_on": "2026-11-17",
+  "tier": 1,
+  "case_source": "observed",
+  "packet_id": null,
+  "verified_against": null,
+  "covers": "Hand recipe (kind repro-steps) for SX-NUM-03, authored by muse-b3 as author of record (CB-0828) from the fixer's supplied content: /Users/dutch/.zuko/quality/CHECK-SX-NUM-03.md (seat B2, branch sx/solver-core, PRG-01), build 428e4e9d4. Value-assertion provenance: INDEPENDENT — expected values from the cited source (NIST Matrix Market (math.nist.gov/MatrixMarket); Golub & Van Loan, Matrix Computations 4e); the checker re-pulls the source and recomputes (DC-01); a SELF-REFERENCED value, if one is ever substituted, is drift coverage only and never correctness evidence. Foundation gating at f4f1f77ff (fixer's evidence): the solve.direct reachability leg is expected-fail until SC-00 is seated/built; the bare-number adversarial leg is expected-fail until the SC-04 refusal leg is built; the integrity pin runs the armed direct-envelope shape until the IR-path integrity arm is built. Reviewer: at activation, confirm the discriminator transcript below still fails against the pinned pre-fix instance and bind packet_id.",
+  "discriminator": "Pre-fix transcript (replayed by the fixer 2026-11-17 against f4f1f77ff, from CHECK-SX-NUM-03.md): registry probe over the 124 solvers registered at the ref returns math.linsolve → ABSENT; conkay_solver_list does not list it and the reference case cannot run. (Catalogue row status: needs-upgrade.) Foundation legs at the same ref (CHECK-SC-FOUNDATIONS-B2.md): solve.direct absent (conkay_solve requires an IR); a bare number on a dimensional field is silently accepted as SI; the input-integrity guard is unarmed on the IR path.",
+  "steps": [
+    "Replay via MCP conkay_solve {solver_id: math.linsolve, typed inputs from the reference case} (or solve.direct once SC-00 lands): {A: [[2,1],[1,3]], b: [5,5]} target solve → PASS, x = [2, 1], residual ~0, determinant 5; the same call on a 10×10 Hilbert system → NOT_COMPUTED condition_above_envelope (cond₁(H₁₀) ≈ 3.5e13, the textbook constant — Golub & Van Loan; NIST Matrix Market for reference-case practice), never from the solver's output.",
+    "Declared-acceptance leg: the Hilbert system with acceptIllConditioned: true → WARN, the answer served with the condition estimate and the caller's declaration named in the warning — never silently, never upgraded to PASS.",
+    "Check the envelope: status, outputs within the declared tolerance, inputs echo (inputs used == inputs submitted); every solve is verified by substitution — ||Ax − b||∞ against 1e-8 · max(1, ||b||∞), a breach FAILs with the evidence instead of serving; a singular matrix → NOT_COMPUTED singular_matrix with the failing pivot; method cholesky on a non-SPD matrix is refused at its failing pivot, on a non-symmetric one by name; qr / sparse / iterative, and any dense system above n = 128 → NOT_COMPUTED requires_engine_tier:lapack-petsc.",
+    "Adversarial: NaN / 1e300 input → INVALID_INPUT with the field named; a missing A or b → NOT_COMPUTED naming the field; a substituted input → NOT_COMPUTED input_substituted; a bare number on a dimensional input → refused unless the unit is declared (SC-04 leg, expected-fail until built)."
+  ]
+}

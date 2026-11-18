@@ -1,0 +1,21 @@
+{
+  "id": "SX-NUM-10",
+  "kind": "repro-steps",
+  "title": "math.pde-fem: P1 finite elements under the MMS discipline as the answer contract — the mesh-doubling estimate gates every answer, and a declared manufactured solution's observed order must sit in the P1 band or the answer is refused",
+  "author": "muse-b3",
+  "reviewer": "zuko-desk",
+  "status": "draft",
+  "authored_on": "2026-11-17",
+  "tier": 1,
+  "case_source": "observed",
+  "packet_id": null,
+  "verified_against": null,
+  "covers": "Hand recipe (kind repro-steps) for SX-NUM-10, authored by muse-b3 as author of record (CB-0828, standing Batch A authorship) from the fixer's supplied content: /Users/dutch/.zuko/quality/CHECK-SX-NUM-10.md (seat B2, branch sx/solver-core, PRG-01), build 849c34af3. Value-assertion provenance: INDEPENDENT — expected values from the cited source (MMS (verify.mms) — the method-of-manufactured-solutions convergence discipline); the checker re-pulls the source and recomputes (DC-01); a SELF-REFERENCED value, if one is ever substituted, is drift coverage only and never correctness evidence. Foundation gating at f4f1f77ff (fixer's evidence): the solve.direct reachability leg is expected-fail until SC-00 is seated/built; the bare-number adversarial leg is expected-fail until the SC-04 refusal leg is built; the integrity pin runs the armed direct-envelope shape until the IR-path integrity arm is built. Reviewer: at activation, confirm the discriminator transcript below still fails against the pinned pre-fix instance and bind packet_id.",
+  "discriminator": "Pre-fix transcript (replayed by the fixer 2026-11-17 against f4f1f77ff, from CHECK-SX-NUM-10.md): registry probe over the 124 solvers registered at the ref returns math.pde-fem → ABSENT; conkay_solver_list does not list it and the reference case cannot run. (Catalogue row status: missing.) Foundation legs at the same ref (CHECK-SC-FOUNDATIONS-B2.md): solve.direct absent (conkay_solve requires an IR); a bare number on a dimensional field is silently accepted as SI; the input-integrity guard is unarmed on the IR path.",
+  "steps": [
+    "Replay via MCP conkay_solve {solver_id: math.pde-fem, typed inputs from the reference case} (or solve.direct once SC-00 lands): {f: \"9.869604401089358*sin(3.141592653589793*x)\", exact: \"sin(3.141592653589793*x)\", a: 0, b: 1, mesh: 32, tol: 1e-3} target poisson1d → PASS with observedOrder in [1.7, 2.3] (the P1 band, measured in the L2 norm) and the fine-mesh L2 error < 5e-4; the 2D case checks beside it (−Δu = 2π² sin(πx) sin(πy) on the unit square: center value 1 within 5e-3, order in band) — the MMS convergence standard, never the solver's own output.",
+    "Sabotage leg: the same call with exact declared as sin(6.283185307179586*x) → NOT_COMPUTED observed_order_outside_band — declaring the wrong exact solution trips the band; a discretization not converging at its element's rate is a defect, not a result.",
+    "Check the envelope: status, outputs within the declared tolerance, inputs echo (inputs used == inputs submitted); every solve runs at mesh N and 2N and the nodal difference (meshErrorEstimate) gates the answer — past the declared tol (default 1e-4) the call is NOT_COMPUTED and the coarse answer is not served; node caps 1,025 (1D) / 1,600 (2D) → mesh_too_large naming the FEniCSx engine tier; general weak forms (UFL), adaptivity, and MPI are that tier, refused by name rather than approximated.",
+    "Adversarial: NaN / 1e300 input → INVALID_INPUT with the field named; missing f, domain, or mesh → NOT_COMPUTED naming the field; a substituted input → NOT_COMPUTED input_substituted; a bare number on a dimensional input → refused unless the unit is declared (SC-04 leg, expected-fail until built)."
+  ]
+}

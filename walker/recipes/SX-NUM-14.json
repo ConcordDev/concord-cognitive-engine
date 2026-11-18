@@ -1,0 +1,21 @@
+{
+  "id": "SX-NUM-14",
+  "kind": "repro-steps",
+  "title": "math.transforms: every FFT carries round-trip and Parseval certificates computed on the call; inverse Laplace by Abate–Whitt against the DLMF pairs; s ≤ 0 refused as outside the certified envelope",
+  "author": "muse-b3",
+  "reviewer": "zuko-desk",
+  "status": "draft",
+  "authored_on": "2026-11-17",
+  "tier": 1,
+  "case_source": "observed",
+  "packet_id": null,
+  "verified_against": null,
+  "covers": "Hand recipe (kind repro-steps) for SX-NUM-14, authored by muse-b3 as author of record (CB-0828, standing authorship over B2's stack) from the fixer's supplied content: /Users/dutch/.zuko/quality/CHECK-SX-NUM-14.md (seat B2, branch sx/solver-core, PRG-01), build 9be5c7623. Value-assertion provenance: INDEPENDENT — expected values from the cited source (DLMF transform tables); the checker re-pulls the source and recomputes (DC-01); a SELF-REFERENCED value, if one is ever substituted, is drift coverage only and never correctness evidence. Foundation gating at f4f1f77ff (fixer's evidence): the solve.direct reachability leg is expected-fail until SC-00 is seated/built; the bare-number adversarial leg is expected-fail until the SC-04 refusal leg is built; the integrity pin runs the armed direct-envelope shape until the IR-path integrity arm is built. Reviewer: at activation, confirm the discriminator transcript below still fails against the pinned pre-fix instance and bind packet_id.",
+  "discriminator": "Pre-fix transcript (replayed by the fixer 2026-11-17 against f4f1f77ff, from CHECK-SX-NUM-14.md): registry probe over the 124 solvers registered at the ref returns math.transforms → ABSENT; conkay_solver_list does not list it and the reference case cannot run. (Catalogue row status: missing.) Foundation legs at the same ref (CHECK-SC-FOUNDATIONS-B2.md): solve.direct absent (conkay_solve requires an IR); a bare number on a dimensional field is silently accepted as SI; the input-integrity guard is unarmed on the IR path.",
+  "steps": [
+    "Replay via MCP conkay_solve {solver_id: math.transforms, typed inputs from the reference case} (or solve.direct once SC-00 lands): {F: \"1/(s+1)\", t: [0.5, 1, 2]} target inverse-laplace → PASS with e^{−t} at each t within 1e-6 (the build measures ~1e-12; 1/s → 1 and 1/(s²+1) → sin t are pinned beside it) — the DLMF transform pairs, never the solver's own output.",
+    "Envelope leg: {f: \"1\", s: [0]} target laplace → NOT_COMPUTED outside_envelope — s ≤ 0 is outside the certified envelope and refused by name; the forward transform integrates by three-level tanh–sinh quadrature on a window whose tail bound is computed from a sampled bound on |f| and reported in the result, and the three levels must settle or the call refuses.",
+    "Check the envelope: status, outputs within the declared tolerance, inputs echo (inputs used == inputs submitted); every FFT result carries two certificates computed on the call itself — the round-trip error and the Parseval relative error (CI pins both < 1e-11) — and the Haar DWT carries an exact reconstruction certificate (< 1e-12); non-power-of-two lengths beyond 512 name the FFTW tier and deeper wavelet families name the PyWavelets tier, rather than being approximated.",
+    "Adversarial: NaN / 1e300 input → INVALID_INPUT with the field named; missing F, f, t, or s → NOT_COMPUTED naming the field; a substituted input → NOT_COMPUTED input_substituted; a bare number on a dimensional input → refused unless the unit is declared (SC-04 leg, expected-fail until built)."
+  ]
+}

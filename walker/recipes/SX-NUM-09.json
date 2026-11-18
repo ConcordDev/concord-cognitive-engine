@@ -1,0 +1,21 @@
+{
+  "id": "SX-NUM-09",
+  "kind": "repro-steps",
+  "title": "math.bvp: two-point problems by implicit-midpoint collocation — every answer ships a mesh-doubling error estimate and is refused with the estimate named past tolerance; the resonant problem refused as singular, never fitted",
+  "author": "muse-b3",
+  "reviewer": "zuko-desk",
+  "status": "draft",
+  "authored_on": "2026-11-17",
+  "tier": 1,
+  "case_source": "observed",
+  "packet_id": null,
+  "verified_against": null,
+  "covers": "Hand recipe (kind repro-steps) for SX-NUM-09, authored by muse-b3 as author of record (CB-0828, standing Batch A authorship) from the fixer's supplied content: /Users/dutch/.zuko/quality/CHECK-SX-NUM-09.md (seat B2, branch sx/solver-core, PRG-01), build ab2db9960. Value-assertion provenance: INDEPENDENT — expected values from the cited source (Ascher, Mattheij & Russell, Numerical Solution of Boundary Value Problems for Ordinary Differential Equations — textbook problems); the checker re-pulls the source and recomputes (DC-01); a SELF-REFERENCED value, if one is ever substituted, is drift coverage only and never correctness evidence. Foundation gating at f4f1f77ff (fixer's evidence): the solve.direct reachability leg is expected-fail until SC-00 is seated/built; the bare-number adversarial leg is expected-fail until the SC-04 refusal leg is built; the integrity pin runs the armed direct-envelope shape until the IR-path integrity arm is built. Reviewer: at activation, confirm the discriminator transcript below still fails against the pinned pre-fix instance and bind packet_id.",
+  "discriminator": "Pre-fix transcript (replayed by the fixer 2026-11-17 against f4f1f77ff, from CHECK-SX-NUM-09.md): registry probe over the 124 solvers registered at the ref returns math.bvp → ABSENT; conkay_solver_list does not list it and the reference case cannot run. (Catalogue row status: missing.) Foundation legs at the same ref (CHECK-SC-FOUNDATIONS-B2.md): solve.direct absent (conkay_solve requires an IR); a bare number on a dimensional field is silently accepted as SI; the input-integrity guard is unarmed on the IR path.",
+  "steps": [
+    "Replay via MCP conkay_solve {solver_id: math.bvp, typed inputs from the reference case} (or solve.direct once SC-00 lands): {f: [\"y1\", \"-y0\"], bcLeft: [\"y0\"], bcRight: [\"y0 - 1\"], a: 0, b: 1.5707963267948966, mesh: 64, tol: 1e-4} target solve → PASS with nodes reproducing sin x and meshErrorEstimate within tol; {} target blasius → PASS, f''(0) = 0.332057 within 2e-4 (the Ascher–Mattheij–Russell constant 0.33205733621519630) — expected values from the cited source, never from the solver's output.",
+    "Resonance leg: y'' = −y with y(0) = 0, y(π) = 1 → refused (singular_collocation / not_converged) — the problem has no solution and is never fitted; a boundary-residual count that does not total exactly n for n state components is refused by name.",
+    "Check the envelope: status, outputs within the declared tolerance, inputs echo (inputs used == inputs submitted); every solve carries its mesh-doubling error estimate, and an estimate past the declared tol (default 1e-6) is NOT_COMPUTED not_converged with the estimate NAMED — the coarse answer is never served as a converged one; for blasius, ηMax is a declared input (default 10, range [4, 30]) so the truncated boundary is part of the record, not a hidden infinity; spectral (Chebyshev) collocation and adaptive mesh refinement are named follow-on scopes, unlisted rather than approximated.",
+    "Adversarial: NaN / 1e300 input → INVALID_INPUT with the field named; missing f, boundary residuals, or interval ends → NOT_COMPUTED naming the field; a substituted input → NOT_COMPUTED input_substituted; a bare number on a dimensional input → refused unless the unit is declared (SC-04 leg, expected-fail until built)."
+  ]
+}

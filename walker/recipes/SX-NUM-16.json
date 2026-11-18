@@ -1,0 +1,21 @@
+{
+  "id": "SX-NUM-16",
+  "kind": "repro-steps",
+  "title": "math.series-asymptotic: the radius of convergence declared with every series result, and an asymptotic answer that refuses with asymptotic_floor when its least term exceeds the declared tolerance — never a number it cannot certify",
+  "author": "muse-b3",
+  "reviewer": "zuko-desk",
+  "status": "draft",
+  "authored_on": "2026-11-17",
+  "tier": 1,
+  "case_source": "observed",
+  "packet_id": null,
+  "verified_against": null,
+  "covers": "Hand recipe (kind repro-steps) for SX-NUM-16, authored by muse-b3 as author of record (CB-0828, standing authorship over B2's stack) from the fixer's supplied content: /Users/dutch/.zuko/quality/CHECK-SX-NUM-16.md (seat B2, branch sx/solver-core, PRG-01), build 2b43e53bc. Value-assertion provenance: INDEPENDENT — expected values from the cited source (DLMF); the checker re-pulls the source and recomputes (DC-01); a SELF-REFERENCED value, if one is ever substituted, is drift coverage only and never correctness evidence. Foundation gating at f4f1f77ff (fixer's evidence): the solve.direct reachability leg is expected-fail until SC-00 is seated/built; the bare-number adversarial leg is expected-fail until the SC-04 refusal leg is built; the integrity pin runs the armed direct-envelope shape until the IR-path integrity arm is built. Reviewer: at activation, confirm the discriminator transcript below still fails against the pinned pre-fix instance and bind packet_id.",
+  "discriminator": "Pre-fix transcript (replayed by the fixer 2026-11-17 against f4f1f77ff, from CHECK-SX-NUM-16.md): registry probe over the 124 solvers registered at the ref returns math.series-asymptotic → ABSENT; conkay_solver_list does not list it and the reference case cannot run. (Catalogue row status: missing.) Foundation legs at the same ref (CHECK-SC-FOUNDATIONS-B2.md): solve.direct absent (conkay_solve requires an IR); a bare number on a dimensional field is silently accepted as SI; the input-integrity guard is unarmed on the IR path.",
+  "steps": [
+    "Replay via MCP conkay_solve {solver_id: math.series-asymptotic, typed inputs from the reference case} (or solve.direct once SC-00 lands): {f: \"exp(x)\", m: 1, n: 1} target pade → PASS with numerator [1, 0.5] and denominator [1, −0.5] — the [1/1] Padé of eˣ is the exact (1 + x/2)/(1 − x/2), and the [5/5] tracks e^0.5 to 1e-7 — expected values from the DLMF, never from the solver's output.",
+    "Floor leg: {name: \"log-gamma\", points: [2], tol: 1e-9} target asymptotic → NOT_COMPUTED asymptotic_floor — the Stirling expansion, summed to optimal truncation, ships its least term as the error scale (~1e-6 at x = 2), and when that floor exceeds the declared tolerance the call refuses naming the floor rather than serving a number it cannot certify (at x = 10 the floor is below 1e-10 and the value matches the independent Lanczos log-gamma to 1e-9).",
+    "Check the envelope: status, outputs within the declared tolerance, inputs echo (inputs used == inputs submitted); every Taylor result declares its radius estimate (labelled an estimate) and marks each evaluation point inside/outside it with the last-term scale beside the value; accelerated values (Aitken Δ² / Wynn epsilon) are reported BESIDE the unaccelerated last term, never instead of it; Laurent series are named follow-on scope, and perturbation problems are served by composition (the DAE/BVP solvers with the small parameter swept), not by a dedicated target here.",
+    "Adversarial: NaN / 1e300 input → INVALID_INPUT with the field named; missing f, m, n, name, or points → NOT_COMPUTED naming the field; a substituted input → NOT_COMPUTED input_substituted; a bare number on a dimensional input → refused unless the unit is declared (SC-04 leg, expected-fail until built)."
+  ]
+}

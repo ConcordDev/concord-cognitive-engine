@@ -1,7 +1,7 @@
 {
   "id": "SXE-41",
   "kind": "repro-steps",
-  "title": "Reference-data store: provenance records with literal re-find; on-demand SSRF-guarded fetch; disk budget enforced",
+  "title": "Reference-data store: provenance records with content-addressed ids, literal re-find, SSRF-guarded on-demand fetch, disk budget enforced by refusal — never silent eviction",
   "author": "muse-b3",
   "reviewer": "zuko-desk",
   "status": "draft",
@@ -10,19 +10,12 @@
   "case_source": "observed",
   "packet_id": null,
   "verified_against": null,
-  "covers": "Hand recipe (kind repro-steps) for SXE-41, authored by muse-b3 as author of record (CB-0828) from the fixer's supplied content: /Users/dutch/.zuko/quality/CHECK-SXE-41.md (seat B2, branch sx/solver-core, PRG-E2; depends on SXE-00). Scope: reference-data store \u2014 provenance records, literal re-find, on-demand SSRF-guarded fetch, disk budget. NOTE for the reviewer and the fixer: the supplied check file's done-criteria/behaviour sections are the SXE-00 engine-framework template text; the store-specific legs (literal re-find of a stored value, SSRF refusal on a guarded fetch, disk-budget refusal) should be sharpened by B2 at build and this draft updated before activation. Reference discipline as SXE-00: cited free/public source, checker re-pulls and recomputes (DC-01). Reviewer: at activation, confirm the discriminator transcript below still fails against the pinned pre-fix instance and bind packet_id.",
-  "discriminator": "Pre-fix transcript (replayed by the fixer 2026-11-17 against f4f1f77ff, from CHECK-SXE-41.md): grep over server/lib at the ref finds no occurrence of 'refdata' \u2014 the reference-data store does not exist at this build, so every step fails at step one.",
-  "expect_endpoints": [
-    {
-      "method": "GET",
-      "path": "/api/conkay/engines",
-      "expect_status": 200
-    }
-  ],
+  "covers": "Hand recipe (kind repro-steps) for SXE-41, authored by muse-b3 as author of record (CB-0828) from the fixer's supplied content: /Users/dutch/.zuko/quality/CHECK-SXE-41.md (seat B2, branch sx/solver-core, PRG-E2; depends on SXE-00), build 5877fc507. This draft SUPERSEDES the original draft @ 3c9a4cff1: that draft's covers named the defect that the supplied check file's body carried the SXE-00 engine-framework template text; B2's sharpened check file (2026-11-17; content note at its foot records the defect and the correction) supplies the store-specific legs this update is drawn from. Value-assertion provenance: INDEPENDENT — the store's records carry the provenance themselves (sourceUrl, licence, retrievedAt, sha256 of the content as fetched); the checker re-pulls the cited public source and recomputes the hash and the literal re-find (DC-01); a record whose source cannot be re-pulled is drift coverage only, never correctness evidence. Reviewer: at activation, confirm the discriminator transcript below still fails against the pinned pre-fix instance and bind packet_id.",
+  "discriminator": "Pre-fix transcript (replayed by the fixer 2026-11-17 against f4f1f77ff, from CHECK-SXE-41.md): grep over server/lib at the ref finds no occurrence of 'refdata' — the reference-data store does not exist at this build, so every check in this file fails at step one. Foundation legs at the same ref (CHECK-SC-FOUNDATIONS-B2.md): solve.direct absent (conkay_solve requires an IR); a bare number on a dimensional field is silently accepted as SI; the input-integrity guard is unarmed on the IR path.",
   "steps": [
-    "Confirm the store exists at the ref: a 'refdata' module is present under server/lib and loads (pre-fix: absent).",
-    "Write a provenance record for a cited value, then literal-re-find it: the stored value + unit must be re-found verbatim in the stored excerpt (no paraphrase accepted).",
-    "Fetch on demand through the SSRF-guarded path: a private/loopback target is refused by the guard; a public source returns and is stored as an excerpt (\u2264 the store's excerpt discipline), never a full page as citation.",
-    "Exceed the disk budget with synthetic records \u2014 the write is refused honestly at the budget, existing records stay readable."
+    "Reference case: store a document fetched from a cited public source — the provenance record is complete {id, sourceUrl, licence, retrievedAt, retrievedVia, sha256, bytes} and the id recomputes independently as sha256(sourceUrl + \"\\n\" + contentHash) truncated to 32 hex chars; then literal re-find: a literal known to occur in the stored document is found with its occurrence count and the record's sha256, and the same call through refdata.lookup (SX-XC-03) serves PASS with that provenance.",
+    "Provenance-mandatory leg: put without sourceUrl → refused refdata_provenance_missing:sourceUrl; put without licence → refused refdata_provenance_missing:licence — provenance is mandatory and a record is never created anonymously.",
+    "SSRF leg: fetch attempts on a loopback, RFC1918, link-local (including 169.254.169.254), multicast, TEST-NET, ::1, fe80::/10, or fc00::/7 target, a URL with embedded credentials, and a redirect chain whose later hop lands on a non-public address are each refused BEFORE any fetch (every hop re-guarded, max 3); a fetch whose body exceeds the 5 MB cap or the 10 s timeout is refused and writes no record.",
+    "Honesty + budget leg: re-find of an absent literal returns found: false with zero occurrences — a result, not an error and not a fabricated match; get of an unknown id returns null and get of a stored id returns {record, content} byte-identical to what was put; storing the same source + content twice returns the same id with deduplicated: true and writes nothing new; a write that would exceed the disk budget is refused refdata_budget_exceeded with existing records still readable — the store never evicts silently to make room, and no record is ever synthesized from a URL alone without the fetch and its hash."
   ]
 }

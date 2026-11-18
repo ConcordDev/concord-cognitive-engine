@@ -1,0 +1,21 @@
+{
+  "id": "SX-NUM-04",
+  "kind": "repro-steps",
+  "title": "math.eigen: symmetric spectrum by classical Jacobi, every returned pair verified against the original matrix before serving — the dominant pair served only when its own residual proves it; non-symmetric and sparse-generalized refused by name as the LAPACK/ARPACK tier",
+  "author": "muse-b3",
+  "reviewer": "zuko-desk",
+  "status": "draft",
+  "authored_on": "2026-11-17",
+  "tier": 1,
+  "case_source": "observed",
+  "packet_id": null,
+  "verified_against": null,
+  "covers": "Hand recipe (kind repro-steps) for SX-NUM-04, authored by muse-b3 as author of record (CB-0828) from the fixer's supplied content: /Users/dutch/.zuko/quality/CHECK-SX-NUM-04.md (seat B2, branch sx/solver-core, PRG-01), build cfb6e0484. Value-assertion provenance: INDEPENDENT — expected values from the cited source (Matrix Market eigen cases; Golub & Van Loan, Matrix Computations 4e); the checker re-pulls the source and recomputes (DC-01); a SELF-REFERENCED value, if one is ever substituted, is drift coverage only and never correctness evidence. Foundation gating at f4f1f77ff (fixer's evidence): the solve.direct reachability leg is expected-fail until SC-00 is seated/built; the bare-number adversarial leg is expected-fail until the SC-04 refusal leg is built; the integrity pin runs the armed direct-envelope shape until the IR-path integrity arm is built. Reviewer: at activation, confirm the discriminator transcript below still fails against the pinned pre-fix instance and bind packet_id.",
+  "discriminator": "Pre-fix transcript (replayed by the fixer 2026-11-17 against f4f1f77ff, from CHECK-SX-NUM-04.md): registry probe over the 124 solvers registered at the ref returns math.eigen → ABSENT; conkay_solver_list does not list it and the reference case cannot run. (Catalogue row status: missing.) Foundation legs at the same ref (CHECK-SC-FOUNDATIONS-B2.md): solve.direct absent (conkay_solve requires an IR); a bare number on a dimensional field is silently accepted as SI; the input-integrity guard is unarmed on the IR path.",
+  "steps": [
+    "Replay via MCP conkay_solve {solver_id: math.eigen, typed inputs from the reference case} (or solve.direct once SC-00 lands): {A: [[2,1],[1,2]]} target eig → PASS, eigenvalues [3, 1], pair residuals ~1e-16; the analytic anchors check beside it (the tridiagonal Toeplitz closed-form spectrum 2 − 2cos(kπ/4) = {2−√2, 2, 2+√2}; a diagonal matrix returns its diagonal) — expected values from Golub & Van Loan / the Matrix Market eigen cases, never from the solver's output.",
+    "Non-convergence leg: target dominant on the rotation [[0,1],[-1,0]] → NOT_COMPUTED not_converged with the residual named — a complex dominant pair lands there, never in an approximation; a general matrix's dominant pair is served only when its own residual proves it (≤ 1e-9 · ||A||∞).",
+    "Check the envelope: status, outputs within the declared tolerance, inputs echo (inputs used == inputs submitted); every returned pair carries its verification — the maximum pair residual ||A v − λ v||∞ and the orthonormality defect ||VᵀV − I||∞ computed against the ORIGINAL matrix, a defect beyond the declared tolerance FAILs with the evidence instead of serving; eigenvalues descending, unit eigenvectors under the canonical sign; the non-symmetric full spectrum and sparse generalized problems (the Matrix Market BCSSTK cases belong to that tier) → NOT_COMPUTED requires_engine_tier:lapack-arpack; dense cap n ≤ 64 at this tier.",
+    "Adversarial: NaN / 1e300 input → INVALID_INPUT with the field named; a missing A → NOT_COMPUTED naming the field; a substituted input → NOT_COMPUTED input_substituted; a bare number on a dimensional input → refused unless the unit is declared (SC-04 leg, expected-fail until built)."
+  ]
+}

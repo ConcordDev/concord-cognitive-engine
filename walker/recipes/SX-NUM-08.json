@@ -1,0 +1,21 @@
+{
+  "id": "SX-NUM-08",
+  "kind": "repro-steps",
+  "title": "math.dae: semi-explicit index-1 DAEs by SDIRK2 — consistent initialization solved from g = 0 and reported, never assumed; the index-3 pendulum decided through its reduced form with BOTH drift figures shipped in the output",
+  "author": "muse-b3",
+  "reviewer": "zuko-desk",
+  "status": "draft",
+  "authored_on": "2026-11-17",
+  "tier": 1,
+  "case_source": "observed",
+  "packet_id": null,
+  "verified_against": null,
+  "covers": "Hand recipe (kind repro-steps) for SX-NUM-08, authored by muse-b3 as author of record (CB-0828, standing Batch A authorship) from the fixer's supplied content: /Users/dutch/.zuko/quality/CHECK-SX-NUM-08.md (seat B2, branch sx/solver-core, PRG-01), build 56017814e. Value-assertion provenance: INDEPENDENT — expected values from the cited source (Hairer & Wanner test set (pendulum index-3); Solving Ordinary Differential Equations II — the Cartesian pendulum and the Robertson chemistry DAE); the checker re-pulls the source and recomputes (DC-01); a SELF-REFERENCED value, if one is ever substituted, is drift coverage only and never correctness evidence. Foundation gating at f4f1f77ff (fixer's evidence): the solve.direct reachability leg is expected-fail until SC-00 is seated/built; the bare-number adversarial leg is expected-fail until the SC-04 refusal leg is built; the integrity pin runs the armed direct-envelope shape until the IR-path integrity arm is built. Reviewer: at activation, confirm the discriminator transcript below still fails against the pinned pre-fix instance and bind packet_id.",
+  "discriminator": "Pre-fix transcript (replayed by the fixer 2026-11-17 against f4f1f77ff, from CHECK-SX-NUM-08.md): registry probe over the 124 solvers registered at the ref returns math.dae → ABSENT; conkay_solver_list does not list it and the reference case cannot run. (Catalogue row status: missing.) Foundation legs at the same ref (CHECK-SC-FOUNDATIONS-B2.md): solve.direct absent (conkay_solve requires an IR); a bare number on a dimensional field is silently accepted as SI; the input-integrity guard is unarmed on the IR path.",
+  "steps": [
+    "Replay via MCP conkay_solve {solver_id: math.dae, typed inputs from the reference case} (or solve.direct once SC-00 lands): {f: [\"z0\"], g: [\"z0 - cos(t)\"], y0: [0], t0: 0, t1: 1.5707963267948966, tol: 1e-10} target dae → PASS, y = 1 within 1e-8, with the inputs echo carrying the SOLVED z0 = 1 (consistency solved from g = 0, never assumed); the Robertson DAE at t = 0.4 checks beside it against the literature state (y ≈ 0.985172, 3.3862e-5, 0.014794) with mass conservation to 1e-9 — values from Hairer & Wanner, never from the solver's output.",
+    "Pendulum leg (the check file's reference case): {theta0: 0.5, omega0: 0, t1: 10, tol: 1e-7} target pendulum → PASS with BOTH drift figures in the output — the energy drift and the ORIGINAL constraint drift of the twice-differentiated reduction (measured 9.3e-7 and 1.5e-6 over the reference run) — shipped for the caller to see, never bounded away or hidden.",
+    "Check the envelope: status, outputs within the declared tolerance, inputs echo (inputs used == inputs submitted; a caller-supplied z0 that disagrees with g(t0, y0, z) = 0 is replaced by the solved value and the correction is NAMED in the record); a constraint whose Jacobian in z is singular → NOT_COMPUTED not_index_1_or_inconsistent; general index reduction (Pantelides) and IDA are the SUNDIALS engine tier, refused by name — the catalogue envelope (index ≤ 3 after reduction) is met only through the pendulum's declared analytic reduction.",
+    "Adversarial: NaN / 1e300 input → INVALID_INPUT with the field named; missing f, g, or y0 → NOT_COMPUTED naming the field; a substituted input → NOT_COMPUTED input_substituted; a bare number on a dimensional input → refused unless the unit is declared (SC-04 leg, expected-fail until built)."
+  ]
+}

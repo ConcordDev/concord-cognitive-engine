@@ -1,0 +1,21 @@
+{
+  "id": "SX-NUM-13",
+  "kind": "repro-steps",
+  "title": "math.interp-fit: the clamped spline reproduces x³ exactly; nothing extrapolates — evaluation outside the data hull is NOT_COMPUTED by name, and unsorted data is refused rather than silently sorted",
+  "author": "muse-b3",
+  "reviewer": "zuko-desk",
+  "status": "draft",
+  "authored_on": "2026-11-17",
+  "tier": 1,
+  "case_source": "observed",
+  "packet_id": null,
+  "verified_against": null,
+  "covers": "Hand recipe (kind repro-steps) for SX-NUM-13, authored by muse-b3 as author of record (CB-0828, standing authorship over B2's stack) from the fixer's supplied content: /Users/dutch/.zuko/quality/CHECK-SX-NUM-13.md (seat B2, branch sx/solver-core, PRG-01), build 3a212499d — Batch B's first registration. Value-assertion provenance: as declared in the check file — the reference values are closed-form exactness identities (a clamped spline carrying the cubic's own end derivatives reproduces the cubic exactly), so no external document is cited and none is needed: the checker's independent recompute of the identities is the DC-01 leg; a SELF-REFERENCED value, if one is ever substituted, is drift coverage only and never correctness evidence. Foundation gating at f4f1f77ff (fixer's evidence): the solve.direct reachability leg is expected-fail until SC-00 is seated/built; the bare-number adversarial leg is expected-fail until the SC-04 refusal leg is built; the integrity pin runs the armed direct-envelope shape until the IR-path integrity arm is built. Reviewer: at activation, confirm the discriminator transcript below still fails against the pinned pre-fix instance and bind packet_id.",
+  "discriminator": "Pre-fix transcript (replayed by the fixer 2026-11-17 against f4f1f77ff, from CHECK-SX-NUM-13.md): registry probe over the 124 solvers registered at the ref returns math.interp-fit → ABSENT; conkay_solver_list does not list it and the reference case cannot run. (Catalogue row status: missing.) Foundation legs at the same ref (CHECK-SC-FOUNDATIONS-B2.md): solve.direct absent (conkay_solve requires an IR); a bare number on a dimensional field is silently accepted as SI; the input-integrity guard is unarmed on the IR path.",
+  "steps": [
+    "Replay via MCP conkay_solve {solver_id: math.interp-fit, typed inputs from the reference case} (or solve.direct once SC-00 lands): {xs: [0, 0.5, 1, 1.5, 2], ys: [0, 0.125, 1, 3.375, 8], bc: {type: \"clamped\", da: 0, db: 12}, points: [0.25, 1.75]} target spline → PASS with 0.015625 and 5.359375 — x³ exactly (the clamped spline with the cubic's own end derivatives reproduces the cubic; CI asserts 1e-9 at the quarter points) — a closed-form identity, recomputed independently, never read off the solver's output.",
+    "Hull leg: {xs: [0, 1, 2], ys: [0, 1, 0], points: [2.5]} target spline → NOT_COMPUTED outside_data_hull — nothing in this solver extrapolates quietly; unsorted or duplicate abscissae are refused, never silently sorted or merged (sorting someone else's data is a substitution).",
+    "Check the envelope: status, outputs within the declared tolerance, inputs echo (inputs used == inputs submitted); clamped end derivatives are required inputs, never guessed; the pchip target reports its measured monotonicity violation (zero by construction, and asserted so); the chebyshev target carries a sampled max-error certificate (exp on [−1, 1] at degree 12: certificate < 1e-8); the rbf interpolation system is residual-verified after the solve (must be ≤ 1e-6 to serve) with evaluation bounded by the data bounding box; a fit with degree ≥ the point count is refused by name — that is interpolation, not a fit.",
+    "Adversarial: NaN / 1e300 input → INVALID_INPUT with the field named; missing xs, ys, or points → NOT_COMPUTED naming the field; a substituted input → NOT_COMPUTED input_substituted; a bare number on a dimensional input → refused unless the unit is declared (SC-04 leg, expected-fail until built)."
+  ]
+}

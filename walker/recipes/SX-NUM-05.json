@@ -1,0 +1,21 @@
+{
+  "id": "SX-NUM-05",
+  "kind": "repro-steps",
+  "title": "math.svd-lsq: one-sided Jacobi SVD reconstruction-verified on every call — least squares by pseudo-inverse with rank truncation declared in the output, never silent; Tikhonov lambda required, never assumed",
+  "author": "muse-b3",
+  "reviewer": "zuko-desk",
+  "status": "draft",
+  "authored_on": "2026-11-17",
+  "tier": 1,
+  "case_source": "observed",
+  "packet_id": null,
+  "verified_against": null,
+  "covers": "Hand recipe (kind repro-steps) for SX-NUM-05, authored by muse-b3 as author of record (CB-0828) from the fixer's supplied content: /Users/dutch/.zuko/quality/CHECK-SX-NUM-05.md (seat B2, branch sx/solver-core, PRG-01), build 75f12f3b5. Value-assertion provenance: INDEPENDENT — expected values from the cited source (NIST StRD linear regression sets; Golub & Van Loan, Matrix Computations 4e Ch. 5–6); the checker re-pulls the source and recomputes (DC-01); a SELF-REFERENCED value, if one is ever substituted, is drift coverage only and never correctness evidence. Foundation gating at f4f1f77ff (fixer's evidence): the solve.direct reachability leg is expected-fail until SC-00 is seated/built; the bare-number adversarial leg is expected-fail until the SC-04 refusal leg is built; the integrity pin runs the armed direct-envelope shape until the IR-path integrity arm is built. Reviewer: at activation, confirm the discriminator transcript below still fails against the pinned pre-fix instance and bind packet_id.",
+  "discriminator": "Pre-fix transcript (replayed by the fixer 2026-11-17 against f4f1f77ff, from CHECK-SX-NUM-05.md): registry probe over the 124 solvers registered at the ref returns math.svd-lsq → ABSENT; conkay_solver_list does not list it and the reference case cannot run. (Catalogue row status: missing.) Foundation legs at the same ref (CHECK-SC-FOUNDATIONS-B2.md): solve.direct absent (conkay_solve requires an IR); a bare number on a dimensional field is silently accepted as SI; the input-integrity guard is unarmed on the IR path.",
+  "steps": [
+    "Replay via MCP conkay_solve {solver_id: math.svd-lsq, typed inputs from the reference case} (or solve.direct once SC-00 lands): the NIST StRD Longley design (intercept column prepended) target lsq → PASS with the certified coefficients (the build agrees to 11.1–12.5 digits; the asserted bound is a conservative 1e-6 relative, RSS to 1e-9) and effectiveRank 7 — certified values re-pulled from NIST StRD, never from the solver's output.",
+    "Declared-truncation leg: {A: [[1,1],[1,1],[1,1]], b: [2,2,2]} target lsq → x = [1, 1] with truncatedSingularValues 1 DECLARED in the output (effectiveRank and the truncation ride every lsq result; the default rcond 1e-12 is declared in the inputs) — truncation is never silent; target tikhonov without lambda → NOT_COMPUTED naming the field, no regularization ever assumed.",
+    "Check the envelope: status, outputs within the declared tolerance, inputs echo (inputs used == inputs submitted); every svd is verified by reconstruction ||U S Vt − A||∞ on the call (a defect beyond 1e-9 · ||A|| FAILs with the evidence instead of serving); lsq optimality is verified by the normal-equation residual ||Aᵀ(Ax − b)||∞; tls with a ~0 last component → NOT_COMPUTED tls_no_finite_solution; sizes above 64×64 at this tier name the engine tier in the refusal.",
+    "Adversarial: NaN / 1e300 input → INVALID_INPUT with the field named; a missing A or b → NOT_COMPUTED naming the field; a substituted input → NOT_COMPUTED input_substituted; a bare number on a dimensional input → refused unless the unit is declared (SC-04 leg, expected-fail until built)."
+  ]
+}

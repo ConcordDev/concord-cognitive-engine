@@ -1,0 +1,21 @@
+{
+  "id": "SX-NUM-19",
+  "kind": "repro-steps",
+  "title": "math.arbitrary-precision: the checker's recompute tool — closed forms re-evaluated in BigInt decimal at a declared precision, results shipped as digit strings; 10^20 + 1 − 10^20 answered exactly 1 where binary doubles answer 0",
+  "author": "muse-b3",
+  "reviewer": "zuko-desk",
+  "status": "draft",
+  "authored_on": "2026-11-17",
+  "tier": 1,
+  "case_source": "observed",
+  "packet_id": null,
+  "verified_against": null,
+  "covers": "Hand recipe (kind repro-steps) for SX-NUM-19, authored by muse-b3 as author of record (CB-0828, standing authorship over B2's stack) from the fixer's supplied content: /Users/dutch/.zuko/quality/CHECK-SX-NUM-19.md (seat B2, branch sx/solver-core, PRG-01), build 68089420a. Value-assertion provenance: as declared in the check file — no external source is cited and none is needed: the reference constants are universal published constants (π's expansion is verifiable against any published source), and this solver is itself the DC-01 recompute instrument, so the checker's leg is verifying its digit strings against an independent high-precision evaluation; a SELF-REFERENCED value, if one is ever substituted, is drift coverage only and never correctness evidence. Foundation gating at f4f1f77ff (fixer's evidence): the solve.direct reachability leg is expected-fail until SC-00 is seated/built; the bare-number adversarial leg is expected-fail until the SC-04 refusal leg is built; the integrity pin runs the armed direct-envelope shape until the IR-path integrity arm is built. Reviewer: at activation, confirm the discriminator transcript below still fails against the pinned pre-fix instance and bind packet_id.",
+  "discriminator": "Pre-fix transcript (replayed by the fixer 2026-11-17 against f4f1f77ff, from CHECK-SX-NUM-19.md): registry probe over the 124 solvers registered at the ref returns math.arbitrary-precision → ABSENT; conkay_solver_list does not list it and the reference case cannot run. (Catalogue row status: missing.) Foundation legs at the same ref (CHECK-SC-FOUNDATIONS-B2.md): solve.direct absent (conkay_solve requires an IR); a bare number on a dimensional field is silently accepted as SI; the input-integrity guard is unarmed on the IR path.",
+  "steps": [
+    "Replay via MCP conkay_solve {solver_id: math.arbitrary-precision, typed inputs from the reference case} (or solve.direct once SC-00 lands): {expression: \"pi\", digits: 50} target eval → PASS with the digit string 3.1415926535897932384626433832795028841971693993751 — the universal published constant, asserted as a string (sqrt(2), e, ln 10, and sin(1) at 40 digits pinned beside it).",
+    "Cancellation leg: {expression: \"10^20 + 1 - 10^20\", digits: 30} → the digit string for exactly 1 — binary doubles answer 0 on this case; the BigInt decimal evaluation at declared + 12 guard digits, rounding once at the end (half-even), does not lose the 1.",
+    "Check the envelope: status, outputs, inputs echo (inputs used == inputs submitted); the declared precision is part of the contract — digits (10–200) echoed with the result along with the guard digits used (12) and the rounding mode (half-even) — and the value ships as a digit string at exactly the declared significant digits, never as a binary float, which would discard precisely what this solver exists to keep; general rational powers and unseated functions refuse by name as follow-on scope.",
+    "Adversarial: NaN / 1e300 input → INVALID_INPUT with the field named; missing expression or digits, or digits outside 10–200 → NOT_COMPUTED naming the field or bound; a substituted input → NOT_COMPUTED input_substituted; a bare number on a dimensional input → refused unless the unit is declared (SC-04 leg, expected-fail until built)."
+  ]
+}

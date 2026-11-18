@@ -1,0 +1,21 @@
+{
+  "id": "SX-NUM-12",
+  "kind": "repro-steps",
+  "title": "math.integral-eq: Nyström Fredholm verified by substitution at off-node points — the λ = 3 resonance refused and caught by the verification layer, never solved through; the sphere-capacitance BEM reference measures 1.004",
+  "author": "muse-b3",
+  "reviewer": "zuko-desk",
+  "status": "draft",
+  "authored_on": "2026-11-17",
+  "tier": 1,
+  "case_source": "observed",
+  "packet_id": null,
+  "verified_against": null,
+  "covers": "Hand recipe (kind repro-steps) for SX-NUM-12, authored by muse-b3 as author of record (CB-0828, standing Batch A authorship) from the fixer's supplied content: /Users/dutch/.zuko/quality/CHECK-SX-NUM-12.md (seat B2, branch sx/solver-core, PRG-01), build b0ee0a4ec — the fifteenth and last Batch A registration. Value-assertion provenance: INDEPENDENT — expected values from the cited source (Atkinson, The Numerical Solution of Integral Equations of the Second Kind); the checker re-pulls the source and recomputes (DC-01); a SELF-REFERENCED value, if one is ever substituted, is drift coverage only and never correctness evidence. Foundation gating at f4f1f77ff (fixer's evidence): the solve.direct reachability leg is expected-fail until SC-00 is seated/built; the bare-number adversarial leg is expected-fail until the SC-04 refusal leg is built; the integrity pin runs the armed direct-envelope shape until the IR-path integrity arm is built. Reviewer: at activation, confirm the discriminator transcript below still fails against the pinned pre-fix instance and bind packet_id.",
+  "discriminator": "Pre-fix transcript (replayed by the fixer 2026-11-17 against f4f1f77ff, from CHECK-SX-NUM-12.md): registry probe over the 124 solvers registered at the ref returns math.integral-eq → ABSENT; conkay_solver_list does not list it and the reference case cannot run. (Catalogue row status: missing.) Foundation legs at the same ref (CHECK-SC-FOUNDATIONS-B2.md): solve.direct absent (conkay_solve requires an IR); a bare number on a dimensional field is silently accepted as SI; the input-integrity guard is unarmed on the IR path.",
+  "steps": [
+    "Replay via MCP conkay_solve {solver_id: math.integral-eq, typed inputs from the reference case} (or solve.direct once SC-00 lands): {kernel: \"x*t\", f: \"1\", lambda: 1, a: 0, b: 1} target fredholm → PASS with u = 1 + 0.75x at the nodes (to 1e-8); {radius: 2} target sphere-capacitance → PASS, capacitanceRatio ≈ 1.004 against the exact 4πε₀R — expected values from Atkinson, never from the solver's output.",
+    "Resonance leg: the same fredholm call at lambda 3 → NOT_COMPUTED — λ sits on the rank-one kernel's eigenvalue (exactly 1/3) and the answer is refused; the discrete system is only near-singular, so the substitution verification at off-node points is the second catch layer (residual 2 in the reference case) — resonance is never solved through.",
+    "Check the envelope: status, outputs within the declared tolerance, inputs echo (inputs used == inputs submitted); every Fredholm answer is verified by substitution at points that are not quadrature nodes, a residual outside the declared band refusing the answer; the Volterra targets check beside it (K = 1 → eˣ and K = t → e^{x²/2}, both to 2e-5 at mesh 400; a vanishing diagonal refuses by name); caps are declared — Fredholm 400 unknowns, Volterra 4,000 steps, sphere grid 1,200 patches; the sphere density spread (0.27 on the default grid, dominated by polar patch clustering) is reported as-is with the equal-area grid named as the refinement; Galerkin BEM for general geometries is follow-on scope, named rather than approximated.",
+    "Adversarial: NaN / 1e300 input → INVALID_INPUT with the field named; missing kernel, f, lambda, or interval → NOT_COMPUTED naming the field; a substituted input → NOT_COMPUTED input_substituted; a bare number on a dimensional input → refused unless the unit is declared (SC-04 leg, expected-fail until built)."
+  ]
+}

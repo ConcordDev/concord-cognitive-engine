@@ -1,0 +1,21 @@
+{
+  "id": "SX-NUM-06",
+  "kind": "repro-steps",
+  "title": "math.roots: functions as data so derivatives are exact — Brent on a declared bracket (no sign change refused, never silently widened), every Durand–Kerner root residual-verified before serving; general systems refused by name as the MINPACK tier",
+  "author": "muse-b3",
+  "reviewer": "zuko-desk",
+  "status": "draft",
+  "authored_on": "2026-11-17",
+  "tier": 1,
+  "case_source": "observed",
+  "packet_id": null,
+  "verified_against": null,
+  "covers": "Hand recipe (kind repro-steps) for SX-NUM-06, authored by muse-b3 as author of record (CB-0828, standing Batch A authorship) from the fixer's supplied content: /Users/dutch/.zuko/quality/CHECK-SX-NUM-06.md (seat B2, branch sx/solver-core, PRG-01), build 683b92665. Value-assertion provenance: INDEPENDENT — expected values from the cited source (Numerical Recipes 3e (Press et al.); MINPACK test set (Moré, Garbow, Hillstrom, ANL-80-74, free)); the checker re-pulls the source and recomputes (DC-01); a SELF-REFERENCED value, if one is ever substituted, is drift coverage only and never correctness evidence. Foundation gating at f4f1f77ff (fixer's evidence): the solve.direct reachability leg is expected-fail until SC-00 is seated/built; the bare-number adversarial leg is expected-fail until the SC-04 refusal leg is built; the integrity pin runs the armed direct-envelope shape until the IR-path integrity arm is built. Reviewer: at activation, confirm the discriminator transcript below still fails against the pinned pre-fix instance and bind packet_id.",
+  "discriminator": "Pre-fix transcript (replayed by the fixer 2026-11-17 against f4f1f77ff, from CHECK-SX-NUM-06.md): registry probe over the 124 solvers registered at the ref returns math.roots → ABSENT; conkay_solver_list does not list it and the reference case cannot run. (Catalogue row status: needs-upgrade.) Foundation legs at the same ref (CHECK-SC-FOUNDATIONS-B2.md): solve.direct absent (conkay_solve requires an IR); a bare number on a dimensional field is silently accepted as SI; the input-integrity guard is unarmed on the IR path.",
+  "steps": [
+    "Replay via MCP conkay_solve {solver_id: math.roots, typed inputs from the reference case} (or solve.direct once SC-00 lands): {coefficients: [1, 0, -2], bracket: [1, 2]} target brent → PASS, root √2 with residual ~1e-16; the same polynomial under target newton from a declared start checks beside it, and the MINPACK Rosenbrock system from its standard start (−1.2, 1) → the known root (1, 1) — expected values from Numerical Recipes 3e / the MINPACK test set (ANL-80-74), never from the solver's output.",
+    "Bracket-honesty leg: {coefficients: [1, 0, -2], bracket: [2, 3]} → NOT_COMPUTED no_bracket_sign_change — the bracket is never widened or assumed; Newton's start is declared and echoed in the record (Newton is start-dependent and the record says so); a vanishing derivative or a divergence is NOT_COMPUTED, named.",
+    "Check the envelope: status, outputs within the declared tolerance, inputs echo (inputs used == inputs submitted); the full root set (degree ≤ 20, Durand–Kerner) serves only when EVERY root's residual |p(z)| ≤ 1e-8 · coefficient scale — otherwise NOT_COMPUTED naming the failure, with clustered or multiple roots beyond reach naming the companion-eigenvalue engine tier; system solves are verified by residual ≤ 1e-12 and a singular Jacobian mid-iteration is NOT_COMPUTED with the iterate named; Newton–Krylov / trust-region methods and general (non-polynomial) function inputs → requires_engine_tier:minpack.",
+    "Adversarial: NaN / 1e300 input → INVALID_INPUT with the field named; missing coefficients, bracket, or start → NOT_COMPUTED naming the field; a substituted input → NOT_COMPUTED input_substituted; a bare number on a dimensional input → refused unless the unit is declared (SC-04 leg, expected-fail until built)."
+  ]
+}
