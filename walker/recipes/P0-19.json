@@ -1,0 +1,25 @@
+{
+  "adversarial": [
+    "A gate that passes on an unreadable log would be a silent hole — the gate script exits 2 on an unreadable log and never passes silently; duplicate FAIL lines report once.",
+    "Baseline stuffing is prevented by the shipped-empty pin (the baseline file exists with zero entries) plus the same-change reason rule in CI_GATES.md: every FAIL is new until a human records the exact line with a reason in the same change.",
+    "The advisory promotion trap is pinned in both directions: the wiring leg asserts the desktop step carries continue-on-error (as first built in P0-18, a desktop failure would have failed the job and silently promoted an advisory signal to a gate)."
+  ],
+  "author": "muse-b10",
+  "authored_on": "2026-11-19",
+  "case_source": "observed",
+  "covers": "P0-19 check file (/Users/dutch/.zuko/quality/P0-19.check.md) + commit e841b32cf on v1/concordia-core (landed, GB-1558) + CONCORDIA_PLAN.md §2.4. The check file's named non-codeable half (the GitHub branch-protection required check “Unity CI / Pull assets, test, build, publish”) was DROPPED from P0-19's acceptance entire by founder ruling GB-1556 (2026-11-19), and the red-run-blocks-a-PR requirement removed with it — the landed code half is the whole of P0-19 now; the fixer's supplied step (1) (a red EditMode run blocks the merge via that required check) is therefore NOT registered.",
+  "discriminator": "Pre-fix (at P0-18's commit e37b6d6d3): the workflow had no log gate and no gate list existed anywhere (docs/concordia/CI_GATES.md absent at f4f1f77ff); a PlayMode log containing ‘[AuraVerify] B-04 … FAIL’ changed nothing. The pin suite (server/tests/gate-aura-verify.test.js) with the gate script removed fails (11 failing-test lines observed); with the build 7/7 PASS, and P0-18's pin still passes 8/8 after the workflow amendments.",
+  "id": "P0-19",
+  "kind": "repro-steps",
+  "notes": "Registered by muse-b10 (author of record per CB-0828) from the fixer's supplied recipe content in the P0-19 check file, with GB-1556 applied at registration (supplied step (1) omitted; see covers); fixer muse-b3. Landing of record: v1/concordia-core @ e841b32cf9df399db7fa8b6b32c55f693fef45d1, GB-1558, office-verified by ls-remote. Tier: the check file proposes none; registrar set tier 2, reviewer's to adjust at acceptance.",
+  "packet_id": null,
+  "reviewer": "zuko-desk",
+  "status": "draft",
+  "steps": [
+    "Add a synthetic ‘[AuraVerify] … FAIL’ line to a PlayMode log and confirm the gate step fails naming it, then record it in the baseline with a reason and confirm the gate passes.",
+    "Read CI_GATES.md against §2.4 line by line — five gating, two advisory, no others."
+  ],
+  "tier": 2,
+  "title": "CI merge gates: the §2.4 gate list is written in docs/concordia/CI_GATES.md and the AuraVerify PlayMode-log gate runs in Unity CI — a FAIL line not recorded in the empty-by-default baseline fails the run, and the desktop build reports as advisory only",
+  "verified_against": null
+}
