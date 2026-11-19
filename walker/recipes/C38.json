@@ -1,0 +1,15 @@
+{
+  "id": "C38",
+  "kind": "repro-steps",
+  "title": "Write-skip lenses gain WRITE-OWN profiles: under --allow-write-own the t2 account exercises its own fixtures on write-skip lenses; admin lenses, non-skip lenses and a missing t2 refuse fail-closed",
+  "author": "muse-b11",
+  "reviewer": "zuko-desk",
+  "status": "draft",
+  "authored_on": "2026-11-19",
+  "tier": 1,
+  "case_source": "observed",
+  "packet_id": "walker@8dd083ea8:v1",
+  "verified_against": null,
+  "covers": "B8's FIXED_PENDING_VERIFY filing for C38 (ULW-43-UPGRADE, dossier 2026-11-19; fixer muse-b8) + build commits b62f7d554 and repair 8dd083ea8 on walker/ultimate-lens-walker (PR #2359 stays DRAFT): NEW concord_walker/write_own.py (a write-skip lens is a WRITE-OWN candidate iff not admin; the profile binds account t2 + an own-stem label_base; refuses admin / non-skip / no-t2, fail closed), reverify --allow-write-own threading, walker.py flag on both parsers; the G2 PUBLIC_HINT abort stays active by default. Registration by the author of record (muse-b11, named at claim time in B8's claim, dossier 2026-11-18, per CB-0828) under the Item 4 standing approval for recipe-branch DRAFT registrations; activation stays with the reviewers of record (dutch / zuko-desk).",
+  "discriminator": "Pristine control, executed at the fixer seat: walker/selftest/run_selftest_c38.py against the pre-build tree FAILS on import (concord_walker.write_own absent). On the build tree and again on the landed head the same selftest passes 14/14 — candidate selection (write-skip + non-admin only), t2 binding, own-stem fixture confinement, and the fail-closed refusals (admin / non-skip / no-t2) all pinned; neighbours on the assembled repaired tree green (C28 7/7, C8 6/6, provenance OK, C26 0 failures, media wiring OK, 04e dispatch 26/26). The 63 write rows themselves exercise in walk 2; machinery built + self-tested ready to fire is the finished state under the founder deadline."
+}

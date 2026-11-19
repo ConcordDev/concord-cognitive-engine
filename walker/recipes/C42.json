@@ -1,0 +1,15 @@
+{
+  "id": "C42",
+  "kind": "repro-steps",
+  "title": "Money-row purchase legs run only against the SB-38 clone under a CloneGate permit: prod target, unconfigured gate, wrong target and marker mismatch refuse fail-closed; HARD money verbs refuse even on the clone",
+  "author": "muse-b11",
+  "reviewer": "zuko-desk",
+  "status": "draft",
+  "authored_on": "2026-11-19",
+  "tier": 1,
+  "case_source": "observed",
+  "packet_id": "walker@18170fde8:v1",
+  "verified_against": null,
+  "covers": "B8's FIXED_PENDING_VERIFY filing for C42 (ULW-43-UPGRADE, dossier 2026-11-19; fixer muse-b8) + build commit 18170fde8 on walker/ultimate-lens-walker (parent 8dd083ea8; PR #2359 stays DRAFT): NEW concord_walker/clone_legs.py (CloneGate issues a ClonePermit only when the target equals the configured clone base_url, is not the prod base_url, and the fetched /health matches every configured identity-marker key; clone_write_ctx confines fixtures to live -clone- stem labels; plan_clone_legs classifies the 27 payments/money rows), repro.py write-decision call sites routed through the permit-aware decision (base behaviour preserved exactly without a permit), reverify clone threading, walker.py --clone-legs aborting the run on any gate failure. Registration by the author of record (muse-b11, named at claim time in B8's claim, dossier 2026-11-18, per CB-0828) under the Item 4 standing approval for recipe-branch DRAFT registrations; activation stays with the reviewers of record (dutch / zuko-desk).",
+  "discriminator": "Executed at the fixer seat: walker/selftest/run_selftest_c42.py passes 20/20 on the assembled head tree and re-run on the landed head — the permit issues only for the configured clone with matching /health identity markers, and every refusal shape is pinned: unconfigured gate refuses, prod target refuses, wrong target refuses, marker mismatch refuses, admin refuses, and the HARD money verbs (transfer/withdraw/payout/mint/stake/tip/gift/donate) refuse EVEN under a permit, while the purchase family is allowed only under one. Neighbours on the landed tree green (C38 14/14, C28 7/7, C8 6/6, provenance OK, C26 0 failures, media wiring OK, 04e dispatch 26/26). The legs run clone-side in walk 2, never prod; config.json carries no clone block until the desk configures the SB-38 clone, and absent config the gate refuses."
+}
