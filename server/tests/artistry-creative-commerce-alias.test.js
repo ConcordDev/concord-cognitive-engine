@@ -245,7 +245,9 @@ describe("WAVE4 artistry alias — behavioral parity over real HTTP", () => {
   it("an asset created via /api/artistry is visible via /api/creative-commerce (same underlying STATE, not a lookalike copy)", async () => {
     const token = await ensureAuthToken();
     const created = await apiPost("/api/artistry/assets", {
-      type: "beat", title: "Alias Parity Probe A", ownerId: "alias_test_user",
+      // No ownerId: the server takes the owner from the session (naming another
+      // account is refused by lib/actor-identity.js).
+      type: "beat", title: "Alias Parity Probe A",
     }, token);
     assert.equal(created.status, 200);
     assert.equal(created.data.ok, true);
@@ -264,7 +266,7 @@ describe("WAVE4 artistry alias — behavioral parity over real HTTP", () => {
   it("an asset created via /api/creative-commerce is visible via /api/artistry (reverse direction — proves the mount is bidirectional-transparent, not a one-way proxy)", async () => {
     const token = await ensureAuthToken();
     const created = await apiPost("/api/creative-commerce/assets", {
-      type: "artwork", title: "Alias Parity Probe B", ownerId: "alias_test_user",
+      type: "artwork", title: "Alias Parity Probe B"
     }, token);
     assert.equal(created.status, 200);
     assert.equal(created.data.ok, true);

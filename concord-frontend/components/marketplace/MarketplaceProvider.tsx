@@ -576,7 +576,6 @@ export function MarketplaceProvider({ children }: { children: ReactNode }) {
           continue;
         }
         const resp = await apiHelpers.artistry.marketplace.purchase({
-          buyerId: user.id,
           listingId: ci.item.id,
           listingType,
           licenseType: ci.license,

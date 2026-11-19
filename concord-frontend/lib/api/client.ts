@@ -2133,7 +2133,9 @@ export const apiHelpers = {
         get: (id: string) => api.get(`/api/artistry/marketplace/splits/${id}`),
       },
       licenses: () => api.get('/api/artistry/marketplace/licenses'),
-      purchase: (data: { buyerId: string; listingId: string; listingType?: string; licenseType?: string }) =>
+      // The buyer is the signed-in account; the server ignores and the actor
+      // guard refuses a body buyerId naming anyone else.
+      purchase: (data: { listingId: string; listingType?: string; licenseType?: string }) =>
         api.post('/api/artistry/marketplace/purchase', data),
       // Buyer's own purchase history — real read of the purchase state
       // machine (server/economy/purchases.js), auth-scoped to the caller.
