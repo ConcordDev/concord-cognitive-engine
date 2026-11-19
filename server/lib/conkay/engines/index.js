@@ -8,8 +8,9 @@
 
 import { getEngine, listEngines, defineEngine, validateManifestEntry } from "./manifest.js";
 import { runEngine, runProcessKernel, engineHealth, resolveEngineBinary, kernelHash } from "./run-engine.js";
+import { runRemoteEngine, createEngineHost, resolveRpcEndpoint } from "./rpc.js";
 
-export { getEngine, listEngines, defineEngine, validateManifestEntry, runEngine, runProcessKernel, engineHealth, resolveEngineBinary };
+export { getEngine, listEngines, defineEngine, validateManifestEntry, runEngine, runProcessKernel, engineHealth, resolveEngineBinary, runRemoteEngine, createEngineHost, resolveRpcEndpoint };
 
 /**
  * One row per manifest entry. `engineDependent: true` on every row — the
