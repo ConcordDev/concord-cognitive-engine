@@ -15,6 +15,7 @@
 // so a blocking syscall that stalls the event loop is named (slow_sync_io / event_loop_block.syncIo).
 import { installSlowSyncIoOnce, installSlowNativeOnce, setSlowSyncIoReporter, slowSyncIoSince } from "./lib/slow-sync-io.js";
 import { persistToolCall as _persistToolCall } from "./lib/chat/tool-call-normalize.js";
+import { getBalance as ledgerBalanceOf } from "./economy/balances.js";
 installSlowSyncIoOnce();
 import expressRateLimit from "express-rate-limit";
 import { findActiveUserRowByEmail, emailsMatchIgnoreCase } from "./lib/user-email-lookup.js";
@@ -49349,8 +49350,9 @@ register("marketplace", "purchaseWithRoyalties", async (ctx, input) => {
     const buyerId = ctx?.actor?.userId || ctx?.actor?.id;
     if (!buyerId) return { ok: false, error: "authentication_required" };
     try { ensureEconomicState(); } catch { /* idempotent — best-effort init */ }
-    const buyerWallet = STATE.economic?.wallets?.get(buyerId);
-    const buyerBalance = buyerWallet?.balance || 0;
+    // The ledger is the balance (the number the wallet shows; coin purchases
+    // and every credit/debit bridge land there). getWallet syncs the cache.
+    const buyerBalance = getWallet(buyerId).balance || 0;
     if (buyerBalance < price) {
       return { ok: false, error: "insufficient_balance", balance: buyerBalance, price };
     }
@@ -49387,8 +49389,10 @@ register("marketplace", "purchaseWithRoyalties", async (ctx, input) => {
     const amount = Math.round(creatorPool * royalty.rate * 100) / 100;
     remainingPool -= amount;
 
-    // Check if recipient wallet exists — hold in escrow if not
-    const recipientWallet = STATE.economic?.wallets?.get(royalty.originalCreator);
+    // Hold in escrow only when the recipient is no account at all: a real user
+    // with no in-memory wallet entry yet is still paid (their balance lives on
+    // the ledger).
+    const recipientWallet = STATE.economic?.wallets?.get(royalty.originalCreator) || (isKnownAccount(royalty.originalCreator) ? getWallet(royalty.originalCreator) : null);
     const paymentTarget = recipientWallet ? royalty.originalCreator : "escrow";
     payments.push({
       recipient: paymentTarget,
@@ -88276,8 +88280,26 @@ function ensureEconomicState() {
 }
 
 // ---- Wallet Management ----
+// A real account (users table) — royalties to it are paid, not escrowed.
+function isKnownAccount(userId) {
+  if (!userId || !db) return false;
+  try { return !!db.prepare("SELECT 1 FROM users WHERE id = ?").get(String(userId)); } catch { return false; }
+}
+
 function getWallet(odId) {
   ensureEconomicState();
+  const synced = () => {
+    // economy_ledger is the source of truth for CC balances: Stripe coin
+    // purchases, the test credit and every creditWallet/debitWallet bridge
+    // write there. The in-memory wallet is a cache kept in step with it, so a
+    // balance check here sees the same number the wallet UI shows.
+    const w = STATE.economic.wallets.get(odId);
+    if (w && db) {
+      try { w.balance = ledgerBalanceOf(db, odId).balance; } catch { /* no ledger table yet: keep the cache */ }
+    }
+    return w;
+  };
+  if (STATE.economic.wallets.has(odId)) return synced();
   if (!STATE.economic.wallets.has(odId)) {
     STATE.economic.wallets.set(odId, {
       odId,
@@ -88291,7 +88313,7 @@ function getWallet(odId) {
       updatedAt: Date.now(),
     });
   }
-  return STATE.economic.wallets.get(odId);
+  return synced();
 }
 
 function creditWallet(odId, amount, reason = '', refId = null) {

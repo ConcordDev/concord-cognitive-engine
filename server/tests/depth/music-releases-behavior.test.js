@@ -4,6 +4,9 @@
 // the full stream. Behavioural (exact values, hand-worked) and adversarial
 // (other people's uploads, garbage numbers, double actions, drafts hidden,
 // refused calls write nothing).
+import { setLedgerBalance } from "../lib/ledger-fund.js";
+import { executePurchase } from "../../economy/transfer.js";
+import { getBalance } from "../../economy/balances.js";
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
 import { lensRun, depthCtx, load } from "./_harness.js";
@@ -18,16 +21,9 @@ function upload(authorId, title, { mediaType = "audio", duration = 180 } = {}) {
   assert.equal(r.ok, true, r.error);
   return r.mediaDTU.id;
 }
-const wallet = (id) => STATE.economic?.wallets?.get(id)?.balance ?? 0;
-function fund(id, balance) {
-  // Keep the real economic state shape (wallets + transactions log) so credit/debit run their ledger bridge.
-  STATE.economic = STATE.economic || {};
-  if (!(STATE.economic.wallets instanceof Map)) STATE.economic.wallets = new Map();
-  if (!Array.isArray(STATE.economic.transactions)) STATE.economic.transactions = [];
-  const w = STATE.economic.wallets.get(id);
-  if (w) w.balance = balance;
-  else STATE.economic.wallets.set(id, { odId: id, balance, tier: "free", tokensEarned: 0, tokensSpent: 0, createdAt: Date.now(), updatedAt: Date.now() });
-}
+const wallet = (id) => getBalance(STATE.db, id).balance;
+// Money arrives on the ledger, the balance the purchase path checks (tests/lib/ledger-fund.js).
+const fund = (id, balance) => setLedgerBalance(STATE.db, id, balance);
 
 describe("music releases — artist side", () => {
   let artist, other;
@@ -298,5 +294,24 @@ describe("music releases — publish, storefront, buy, own", () => {
     assert.match((await lensRun("music", "library-add-release-track", { params: { id: releaseId, mediaId: "media_nope" } }, fan)).result.error, /not on this release/);
     const page = await lensRun("music", "release-get", { params: { id: releaseId } }, fan);
     assert.deepEqual(page.result.release.remixes.map((x) => x.title), ["Paper Moons (Dusk Mix)"]);
+  });
+
+  it("a fan who bought CC through the real coin purchase can spend it (the ledger is the balance)", async () => {
+    // Regression: purchaseWithRoyalties used to check only an in-memory wallet map
+    // that coin purchases never touch, refusing a funded fan with balance 0.
+    const coinFan = await depthCtx("ln-coin-fan");
+    STATE.economic?.wallets?.delete("ln-coin-fan");
+    const bought = executePurchase(STATE.db, { userId: "ln-coin-fan", amount: 20, metadata: { source: "test" }, refId: `coin:${Date.now()}` });
+    assert.equal(bought.ok, true);
+    const funded = wallet("ln-coin-fan");
+    assert.ok(funded > 19 && funded <= 20, `funded ${funded}`);
+    const free = await lensRun("music", "release-create", { params: { title: "Coin Test", priceCC: 4 } }, artist);
+    await lensRun("music", "release-add-track", { params: { id: free.result.release.id, mediaId: upload("ln-seller", "Coin") } }, artist);
+    await lensRun("music", "release-publish", { params: { id: free.result.release.id } }, artist);
+    const sellerBefore = wallet("ln-seller");
+    const r = await lensRun("music", "release-buy", { params: { id: free.result.release.id } }, coinFan);
+    assert.equal(r.ok, true, JSON.stringify(r.result));
+    assert.equal(Math.round((funded - wallet("ln-coin-fan")) * 100) / 100, 4);
+    assert.equal(Math.round((wallet("ln-seller") - sellerBefore) * 100) / 100, 3.8);
   });
 });
