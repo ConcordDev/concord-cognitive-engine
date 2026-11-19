@@ -41,7 +41,7 @@ const SCAFFOLDING_TYPES = new Set(["domain_action"]);
  * state-backed notice is the honest one). The set is named and closed:
  * a domain joins it only on a verified no-store premise.
  */
-const NO_STORE_DOMAINS = new Set(["lattice", "narrative-walk", "frontier"]);
+const NO_STORE_DOMAINS = new Set(["lattice", "narrative-walk", "frontier", "ledger"]);
 
 export function isNoStoreDomain(domain) {
   return NO_STORE_DOMAINS.has(domain);
