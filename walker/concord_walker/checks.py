@@ -1,9 +1,9 @@
 """Standard per-lens checks. All DOM reads go through DevTools protocol (cdp.py); all
 interaction is native mouse/keyboard on controls that safety.py allows."""
 import json, os, re, time, csv, io
-from . import safety, colors, readback as _readback  # ULW C26: DevTools read-back evidence rows
+from . import safety, colors
 from .cdp import Cdp, wait_until
-from .auth import new_context, assert_account, AccountMismatch, whoami, expected_username
+from .auth import new_context, assert_account, AccountMismatch, whoami, expected_username, write_account_key
 from .util import control_label, scrub, human_et
 from .runstate import LensBudget  # WALK-05 budget hook: the run-shared per-lens tracker
 from .netledger import NetLedger, LOAD_CONTROL, stable_id, a11y_path, template_path, lens_action, WRITE_METHODS  # MST-W0-02
@@ -97,6 +97,9 @@ class LensWalk:
             # not just the lens root (reach rule in reverify.py).
             self.url = url_override
         self.allow_write = allow_write and not admin and self.slug not in cfg.get("write_skip_lenses", [])
+        # ULW C28: write work (the create/delete exercise) acts as the dedicated write
+        # account when one is configured — never as the account whose reads are evidence.
+        self.write_acct = write_account_key(cfg) or account_key
         self.admin = admin
         self.th = cfg["thresholds"]
         self.phases = phases or ["reach", "surface", "tabs", "keyboard", "openers", "export", "contrast", "mobile", "write"]
@@ -1310,7 +1313,11 @@ class LensWalk:
         """Create one labelled fixture, reload-verify, delete it (checking for a confirm), log leftovers."""
         from .util import now_et
         label = "%s-%s-%s-%s" % (self.cfg["fixture_prefix"], self.slug, now_et().strftime("%Y-%m-%d"), self.rec.rid[-6:])
-        ctx, page, cdp = self.open()
+        # ULW C28: the exercise opens its OWN context as the write account (its fixtures
+        # belong to that account, and the record names it) — never the walk's evidence
+        # account. With no write account configured this is self.acct, as before.
+        self.result["write_account"] = self.write_acct
+        ctx, page, cdp = self.open(account=self.write_acct)
         try:
             self.nav(page, cdp)
             ax = cdp.ax()
@@ -1319,7 +1326,7 @@ class LensWalk:
                 self.mark("create_delete", "NA", reason="no New/Create/Add control on main view")
                 return
             texts_before = set(ax.texts())
-            assert_account(ctx, self.cfg, self.acct, "create (open form)", self.log)
+            assert_account(ctx, self.cfg, self.write_acct, "create (open form)", self.log)
             before = {p.backend for p in ax.popups()}
             self.net.open_window("write", "button", control_label(opener.name))
             cdp.click(opener.backend)
@@ -1374,7 +1381,7 @@ class LensWalk:
                 page.keyboard.press("Escape")
                 self.mark("create_delete", "NOT_RUN", reason="create form mentions public/feed visibility (revealed after interaction); not written")
                 return
-            assert_account(ctx, self.cfg, self.acct, "create (submit)", self.log)
+            assert_account(ctx, self.cfg, self.write_acct, "create (submit)", self.log)
             self.rec.fixture(label, self.slug, "create_clicked", "via '%s' > '%s'" % (control_label(opener.name), control_label(submit.name)))
             wcid = self.net.open_window("write", "button", control_label(submit.name))
             t_submit = time.time()
@@ -1433,7 +1440,7 @@ class LensWalk:
             self.judge("delete_ambiguous", "Could not find a delete control tied unambiguously to fixture '%s'; delete by hand." % label, [ev])
             self.mark("create_delete", "PARTIAL", reason="delete control ambiguous")
             return
-        assert_account(ctx, self.cfg, self.acct, "delete", self.log)
+        assert_account(ctx, self.cfg, self.write_acct, "delete", self.log)
         ev_before = self.shot(page, "delete-before")
         self.native_dialogs.clear()
         self.dialog_mode = "accept"
@@ -1453,7 +1460,7 @@ class LensWalk:
                     btn = next((d for d in ax.descendants(p) if d.role == "button" and d.backend and safety.CONFIRM_DELETE.search(d.name)), None)
                     ev_confirm = self.shot(page, "delete-confirm")
                     if btn:
-                        assert_account(ctx, self.cfg, self.acct, "delete (confirm)", self.log)
+                        assert_account(ctx, self.cfg, self.write_acct, "delete (confirm)", self.log)
                         self.net.open_window("write", btn.role, control_label(btn.name))
                         cdp.click(btn.backend); time.sleep(1.0)
                     break
@@ -1487,10 +1494,6 @@ class LensWalk:
         self.result["console"] = {"console_errors": len(self.console_errors), "page_errors": len(self.page_errors),
                                   "http_5xx": sorted(set("%d %s" % r for r in five))[:10],
                                   "http_4xx": sorted(set("%d %s" % r for r in four))[:10]}
-        # ULW C26 (Gate §10 #12): the same captured streams as first-class read-back
-        # evidence rows — deduped by (type, route, message) with occurrences, failed
-        # requests weighted high and filed first — beside the counts above.
-        self.result["readback"] = _readback.build_readback(self.console_errors, self.page_errors, self.bad_responses)
         ev = self.result.get("initial_evidence")
         if self.page_errors and ev:
             self.finding("pageerror", "medium", "%d uncaught JavaScript error(s) while walking the lens" % len(self.page_errors),

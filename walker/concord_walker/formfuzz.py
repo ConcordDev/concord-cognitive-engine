@@ -22,7 +22,7 @@ leftover for a human -- never deleted by position.
 import re, time
 from . import safety
 from .cdp import wait_until
-from .auth import assert_account, AccountMismatch
+from .auth import assert_account, AccountMismatch, write_account_key
 from .util import control_label, scrub
 
 FIXED, STILL, HUMAN = "FIXED", "STILL_FAILING", "NEEDS_HUMAN"
@@ -151,7 +151,9 @@ class FormFuzz:
         from .checks import LensWalk
         self.rv, self.t = rv, t
         self.lens = t["lens"]
-        self.lw = LensWalk(rv.b, rv.cfg, rv.rec, rv.inv[self.lens], "t1", rv.log,
+        # ULW C28: form fuzz is write work — it runs as the dedicated write account
+        # when one is configured, never as the evidence account t1.
+        self.lw = LensWalk(rv.b, rv.cfg, rv.rec, rv.inv[self.lens], write_account_key(rv.cfg) or "t1", rv.log,
                            allow_write=True, inv_entry=rv.inv[self.lens])
         self.label = "%s-%s-%s" % (rv.cfg["fixture_prefix"], self.lens, rv.rec.rid[-6:])
         self.evidence = []

@@ -118,6 +118,48 @@ def assert_account(context, cfg, account_key, purpose, log=None):
     return me
 
 
+def write_account_key(cfg):
+    """ULW C28: the write lane's dedicated account key — cfg["write_account"] when it names a
+    configured account, else None (write work then rides the walk's own account, the pre-C28
+    behaviour). The write lane (create/delete exercise, form fuzz, repro write steps) runs as
+    THIS account, never as the primary evidence account t1: walker-created content must not
+    land on the account whose reads are the walk's evidence, and the isolation counterparty
+    t2 keeps its single job."""
+    key = cfg.get("write_account")
+    if key and key in (cfg.get("accounts") or {}):
+        return key
+    return None
+
+
+def write_account_proof(cfg):
+    """Browser-free proof legs for the write account (ULW C28): configured, distinct from the
+    primary (t1) and isolation (t2) accounts by expected username, a saved session present,
+    and its expected roles admissible (none forbidden). Returns a dict with a `problems`
+    list; empty problems = the machinery is ready to fire. The live leg — assert_account
+    on a real context — is the pre-flight's job (concord_walker.preflight, ULW C8)."""
+    key = write_account_key(cfg)
+    proof = {"key": key, "configured": bool(key), "username": None, "session_present": False,
+             "distinct_from_t1": False, "distinct_from_t2": False, "roles_ok": False, "problems": []}
+    if not key:
+        proof["problems"].append("no write_account configured (write lane rides the walk account)")
+        return proof
+    proof["username"] = expected_username(cfg, key)
+    proof["session_present"] = has_session(cfg, key)
+    if not proof["session_present"]:
+        proof["problems"].append("no saved session for write account %r (walker.py login --account %s)" % (key, key))
+    for other, field in (("t1", "distinct_from_t1"), ("t2", "distinct_from_t2")):
+        if other in (cfg.get("accounts") or {}):
+            proof[field] = proof["username"] != expected_username(cfg, other)
+            if not proof[field]:
+                proof["problems"].append("write account username equals %s's - not a separate account" % other)
+    roles = [str(r).lower() for r in (cfg["accounts"][key].get("expected_roles") or [])]
+    forbidden = [str(r).lower() for r in cfg.get("forbidden_roles", [])]
+    proof["roles_ok"] = bool(roles) and not any(r in forbidden for r in roles)
+    if not proof["roles_ok"]:
+        proof["problems"].append("write account expected_roles missing or carries a forbidden role")
+    return proof
+
+
 def storage_path(cfg, account_key):
     return os.path.join(cfg["_walker_dir"], cfg["accounts"][account_key]["storage_state"])
 
