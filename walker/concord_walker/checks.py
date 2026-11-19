@@ -389,13 +389,14 @@ class LensWalk:
             else:
                 self.mark("create_delete", "NOT_RUN", reason="read-only run" if not self.allow_write else "write-skip lens / admin / no session")
         self.console_network()
-        if self.two_account:
-            try:
-                self.cross_account()
-            except AccountMismatch as e:
-                self.result["two_account"] = {"status": "SKIPPED", "reason": "t2 account check failed: %s" % scrub(str(e), 120)}
-            except Exception as e:
-                self.result["two_account"] = {"status": "ERROR", "reason": scrub(repr(e), 160)}
+        try:
+            self.isolation_phase()
+        except AccountMismatch as e:
+            self.result["isolation"] = {"status": "SKIPPED", "reason": "t2 account check failed: %s" % scrub(str(e), 120),
+                                        "checks": 0, "findings": 0, "leaks": []}
+        except Exception as e:
+            self.result["isolation"] = {"status": "ERROR", "reason": scrub(repr(e), 160),
+                                        "checks": 0, "findings": 0, "leaks": []}
         self.result["finished"] = human_et()
         self.result["elapsed_s"] = int(time.time() - self.t_start)
         self._note_budget()
@@ -498,6 +499,48 @@ class LensWalk:
         self.net.close_window()
         self.mark("premap_sweep", "PASS", controls=len(cands), budget_s=self.premap_budget_s,
                   elapsed_s=int(time.time() - t0), **counts)
+
+    def isolation_phase(self):
+        """C16 (ULW-43, Gate section 14): the two-account isolation phase as a
+        STANDARD per-lens phase, not an opt-in. The plan (concord_walker.
+        isolation.phase_plan) runs it for every write-capable t1 member walk:
+        the write phase created under A; here the walk verifies under B —
+        cross_account replays A's object calls as t2, and when this walk's
+        write phase left a live labelled fixture, the WALK-04c foreign-row
+        probe (privacy_checks.probe_foreign_rows) checks the label's
+        invisibility to t2 + signed-out over the lens's recorded API paths.
+        The counted block lands in result["isolation"] (the packet) and the
+        run roll-up aggregates it. A phase that cannot run is SKIPPED with
+        its reason — reported, never silent."""
+        from . import isolation as _iso
+        from .auth import has_session
+        plan = _iso.phase_plan(acct=self.acct, admin=self.admin,
+                               allow_write=self.allow_write,
+                               has_t2=has_session(self.cfg, "t2"),
+                               two_account_flag=self.two_account)
+        if not plan["run"]:
+            self.result["isolation"] = {"status": "SKIPPED", "reason": plan["reason"],
+                                        "checks": 0, "findings": 0, "leaks": []}
+            return
+        self.cross_account()
+        label = None
+        for f in (self.rec.fixtures or {}).values():
+            if f.get("lens") == self.slug and f.get("state") not in ("deleted", "never_created"):
+                label = f.get("label")
+        paths = list(dict.fromkeys(r["path"] for r in self.net.replay if r.get("path")))
+        pp = _iso.probe_plan(fixture_label=label, api_paths=paths)
+        probe_row, probe_skip = None, None
+        if pp["run"] and not self.over_budget():
+            from . import privacy_checks as _pc
+            ctx, _page, _cdp = self.open()
+            try:
+                probe_row = _pc.probe_foreign_rows(self, ctx, label, paths, self.log)
+            finally:
+                self._close(ctx)
+        else:
+            probe_skip = pp["reason"] if not pp["run"] else "lens time budget exceeded"
+        self.result["isolation"] = _iso.packet_block(self.result.get("two_account"),
+                                                      probe_row, probe_skip)
 
     def cross_account(self):
         """Upgrade 3 (opt-in --two-account): replay t1's object calls (reads, and non-DELETE

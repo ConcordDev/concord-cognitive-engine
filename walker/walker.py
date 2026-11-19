@@ -384,6 +384,12 @@ def write_summary(rec, summary, left, dry, manifest=None):
         for l in manifest.data["lenses"]:
             if l["status"] == "aborted":
                 lines.append("- %s: %s - %s\n" % (l["slug"], l.get("state") or "ABORTED", l.get("reason")))
+    try:
+        from concord_walker import isolation as _iso
+        _counts = _iso.summarize([r.get("isolation") for r in summary])
+        lines.append("\n%s\n" % _iso.summary_line(_counts))
+    except Exception:
+        pass
     lines.append("\nLeftover fixtures: %s\n" % (", ".join(f["label"] for f in left) if left else "none"))
     with open(os.path.join(rec.run_dir, "SUMMARY.md"), "w") as f:
         f.write("".join(lines))
