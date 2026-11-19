@@ -55,3 +55,21 @@ node scripts/concordia/compile-activities.mjs --out manifests.json
 
 Tests: `server/tests/concordia-activity-density.test.js`
 (`cd server && node --test tests/concordia-activity-density.test.js`).
+
+## Wilderness POI list (CP-W26)
+
+`emit-poi-list.mjs` derives the per-land wilderness POI list from the
+compiler's manifests: the `majorPoi` + `minorPoi` placements, with the
+per-land counts CP-W26's acceptance checks ("POI list per land meets
+the targets", flag `cf.world.pois`). It is a pure view of the compiler
+output — no new placement logic — and carries its own FNV-1a checksum.
+Phase A totals: 78 major + 316 minor = 394 POIs across the ten lands.
+
+```
+node scripts/concordia/emit-poi-list.mjs                 # Phase A list (JSON)
+node scripts/concordia/emit-poi-list.mjs --phase B       # Phase B list
+node scripts/concordia/emit-poi-list.mjs --out poi-list.json
+```
+
+Tests: `server/tests/concordia-poi-list.test.js`
+(`cd server && node --test tests/concordia-poi-list.test.js`).
