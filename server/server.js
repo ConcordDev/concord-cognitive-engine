@@ -15869,6 +15869,10 @@ async function runMacro(domain, name, input, ctx) {
     // CONCORD_CIVIC_BONDS — these resolve only when the kill-switch is enabled.
     civic_bonds: new Set(["list", "get", "spillover", "ledger"]),
     sonic_glyph: new Set(["spell_to_chord"]),
+    // Music storefront reads (Liner Notes): published releases, artist pages by
+    // handle, new releases and search. Drafts stay owner-only inside the
+    // handlers; buy/follow/play/edit stay actor-gated.
+    music: new Set(["artist-page", "release-get", "releases-new", "catalog-search"]),
     // Phase 9.4 — economy primitives (auth-gated for write ops; reads here)
     sponsorship: new Set(["list_for_user"]),
     staking: new Set(["list_for_user"]),
