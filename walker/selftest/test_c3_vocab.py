@@ -107,6 +107,15 @@ check("map_step: press Enter parses (control)", m["mapped"] and m["action"] == "
 m = repro.map_step("type hello in the morning", "hub")
 check("map_step: prose tail stays unmapped", not m["mapped"], m)
 
+# ---- writevocab deference (the pass-2 reconciliation: map_step must not shadow type_value)
+m = repro.map_step("Type -5 in Amount", "fractal")
+check("map_step: value-spec form defers (unmapped here, as pre-C3)", not m["mapped"], m)
+e, s = subs("Type -5 in Amount")
+check("segment path: value-spec form rides as type_value with its specs",
+      e["mapped"] and s and s[0]["action"] == "type_value" and s[0].get("specs") == [{"kind": "literal", "value": "-5"}], e)
+m = repro.map_step("Type 0 or -1 in Amount", "fractal")
+check("map_step: literal-list spec defers too", not m["mapped"], m)
+
 # ---- neighbours untouched
 e, s = subs("click 'Filters'")
 check("quoted click unchanged", e["mapped"] and s and s[0]["action"] == "click" and s[0].get("name") == "Filters", e)

@@ -168,7 +168,11 @@ def map_step(raw, lens_slug=None):
     if m:
         return dict(base, action="open_tab", name=(m.group("q") or m.group("u") or "").strip(), mapped=True)
     tf = _type_in_field(s)
-    if tf:
+    if tf and not _W._TYPE_IN.match(s):
+        # writevocab owns the VALUE-SPEC forms ("Type -5 in Amount", length specs, literal
+        # lists): those ride the segment path as type_value with its own-form / allow-write
+        # safety shape. map_step claims only the prose forms writevocab does not, and falls
+        # through unmapped for the spec forms exactly as it did before C3.
         name, lit = tf
         out = dict(base, action="fill", name=name, mapped=True)
         if lit is not None:
