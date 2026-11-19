@@ -1174,6 +1174,33 @@ def _gather(driver, ev, ticket, extra_clauses, console_base):
                 run(fn)
             except Exception:
                 pass
+    # WALK-04f: media clauses are judged by the media probes (media_probes.py) against the walked lens as it
+    # stands at the end of the replay. A driver without the probe capabilities leaves the keys unset, so the
+    # clauses stay `unchecked` - never passed on missing evidence.
+    mspecs = []
+    for c in _X.split_clauses(ticket.get("expected")) + [e for e in extra_clauses if e]:
+        mspecs += [sp for sp in (_X.classify_clause(c, _check_legacy) or []) if sp["kind"] in ("media_canvas", "media_audio")]
+    if any(sp["kind"] == "media_canvas" for sp in mspecs) and "media_canvas" not in ev:
+        fn = getattr(driver, "media_canvas_probe", None)
+        if fn:
+            try:
+                want_drag = any(re.search(r"(?i)\b(?:drag|orbit|rotat|interact)", sp.get("text") or "")
+                                for sp in mspecs if sp["kind"] == "media_canvas")
+                r = fn(want_drag)
+                if r is not None:
+                    ev["media_canvas"] = r
+            except Exception:
+                pass
+    if any(sp["kind"] == "media_audio" for sp in mspecs) and "media_audio" not in ev:
+        fn = getattr(driver, "media_audio_probe", None)
+        if fn:
+            try:
+                surface = "export" if any(sp.get("surface") == "export" for sp in mspecs) else "live"
+                r = fn(surface, ev.get("export"))
+                if r is not None:
+                    ev["media_audio"] = r
+            except Exception:
+                pass
 
 
 def _cleanup(driver, created, wr, ticket, out, gone=()):
@@ -1296,6 +1323,7 @@ class PlaywrightDriver:
             page.on("response", self._on_resp)
         except Exception:
             pass
+        self._webaudio = self._attach_webaudio()
         try:
             page.on("request", lambda r: self._writes.append("%s %s" % (r.method, r.url.split("?")[0][-80:]))
                     if r.method in ("POST", "PUT", "PATCH", "DELETE") and "/api/" in r.url else None)
@@ -1551,6 +1579,41 @@ class PlaywrightDriver:
 
     def net_summary(self):
         return {"statuses": [s for s, _ in self.lw.bad_responses], "writes": list(self._writes)}
+
+    # ---- WALK-04f media probe capabilities (media_probes.py). _gather calls these at the end of a replay
+    # whose expected clauses carry media kinds. The WebAudio probe attaches at construction (before the
+    # replay navigates) so contexts created during the steps are captured; a session that cannot attach
+    # leaves the live surface unjudged (None -> the clause stays unchecked).
+    def _attach_webaudio(self):
+        try:
+            from .media_probes import WebAudioProbe
+            p = WebAudioProbe(self.cdp.s)
+            p.enable()
+            return p
+        except Exception:
+            return None
+
+    def media_canvas_probe(self, expect_interaction=False):
+        from . import media_probes
+        return dict(media_probes.probe_canvas(self.cdp, self.page, self.lw.console_errors, self.lw.page_errors,
+                                              expect_interaction=bool(expect_interaction)))
+
+    def media_audio_probe(self, surface, export=None):
+        from . import media_probes
+        if surface == "export":
+            f = (export or {}).get("file")
+            if not f:
+                return None
+            import os
+            try:
+                with open(os.path.join(self.lw.ev, f), "rb") as fh:
+                    data = fh.read(64 * 1024 * 1024)
+            except Exception:
+                return None
+            return dict(media_probes.probe_exported_audio(data, f))
+        if self._webaudio is None:
+            return None
+        return dict(media_probes.audio_draft(self._webaudio.summary()))
 
     def ax_check(self, scope=None):
         ax = self.cdp.ax()

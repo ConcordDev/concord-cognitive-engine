@@ -70,6 +70,15 @@ _KINDS = [
      lambda m: {"names": [x.strip() for x in re.split(r"\s*(?:/|,|\bor\b|\band\b)\s*", m.group(1)) if x.strip()]}),
     ("target_size", re.compile(r"(?i)(?:≥|>=|at least|minimum(?: of)?)\s*(\d{2})\s*(?:px|pt|css px)\b"), lambda m: {"px": int(m.group(1))}),
     # (kind, compiled regex, spec builder)
+    # WALK-04f: media outcome clauses. The evidence is a media_probes ProbeResult gathered by the executor at the
+    # end of the replay (repro._gather via the driver's probe capabilities); the regexes match only the FIXED-state
+    # direction (renders / not blank / audible / not silent) - quality wording stays unclassified (NEEDS_HUMAN).
+    ("media_canvas", re.compile(r"(?i)\b(?:canvas|webgl|3d\s+(?:view|scene|canvas)|scene\s+view)\b[^.]{0,60}?\b(?:renders?|rendering|draws?|displays?|shows?|paints?|is\s+not\s+blank|not\s+blank|non-?blank)\b"),
+     lambda m: {}),
+    ("media_audio", re.compile(r"(?i)\bexport(?:ed|s|ing)?\b[^.]{0,50}?\b(?:audio|track|song|sound|wav|mp3|recording)\b[^.]{0,40}?\b(?:audible|not\s+silent|non-?silent|has\s+sound|plays?)\b|\b(?:audio|track|song|recording)\s+export\b[^.]{0,40}?\b(?:audible|not\s+silent|has\s+sound|plays?)\b"),
+     lambda m: {"surface": "export"}),
+    ("media_audio", re.compile(r"(?i)\b(?:audio|sound|music|webaudio|playback)\b[^.]{0,40}?\b(?:plays?|playing|is\s+audible|audible|is\s+produced|is\s+heard)\b"),
+     lambda m: {"surface": "live"}),
     ("esc_closes", re.compile(r"(?i)\besc(?:ape)?\b.*\b(?:closes?|dismiss(?:es|ed)?|exits?)\b|\b(?:closes?|dismiss(?:es|ed)?)\b.*\b(?:on|with|by|when)\s+(?:pressing\s+)?esc(?:ape)?\b"), lambda m: {}),
     ("focus_opener", re.compile(r"(?i)\bfocus\s+(?:returns?|goes|moves|is\s+restored)\s+(?:back\s+)?to\s+(?:the\s+)?(?:[A-Za-z]+\s+)?(?:trigger|opener|opening|invoking|control that opened|button that opened|element that opened|menu button)|\breturns?\s+focus\s+to\s+(?:the\s+)?(?:[A-Za-z]+\s+)?(?:trigger|opener|invoking control|control that opened|button that opened)|^(?:the\s+)?focus\s+(?:returns?|is\s+restored|goes\s+back)\.?$|^returns?\s+focus\.?$"), lambda m: {}),
     ("arrow_moves", re.compile(r"(?i)\barrow(?:\s*keys?|(?:left|right|up|down)(?:\s*/\s*(?:left|right|up|down))?)?\b.*\b(?:moves?|changes?|cycles?|navigates?|shifts?)\s+(?:the\s+)?(?:keyboard\s+)?focus|\barrow keys?\s+(?:move|change|cycle|navigate)"), lambda m: {}),
@@ -91,6 +100,7 @@ _KINDS = [
 ]
 _EXTRA_PRED = re.compile(r"\b(?:uses?|shows?|displays?|returns?|closes?|opens?|stays?|remains?|keeps?|matches|moves?|gets?|becomes?|appears?|renders?|lists?|contains?|includes?|saves?|loads?|resets?|clears?|highlights?|updates?|reloads?|redirects?|blocks?|rejects?|prevents?|downloads?|exports?|persists?|scrolls?|clips?|overflows?|covers?|overlaps?)\b")
 _POS_ONLY = {"esc_closes", "focus_opener", "arrow_moves", "tab_reaches", "confirm_before_delete", "export_file", "focus_trap", "popup_closed", "item_created", "appears_in_list"}
+_MEDIA_FAILSTATE = re.compile(r"(?i)\b(?:is|stays?|remains?|goes?)\s+(?:blank|silent|empty)\b|\bdoes\s*n(?:o|')t\s+(?:render|play|draw|display|show)\b|\bfails?\s+to\s+(?:render|play|draw)\b|\bno\s+(?:sound|audio)\b")
 _PERSIST = re.compile(r"(?i)\bpersists?\b|survives?\s+(?:a\s+)?(?:hard\s+)?reload|(?:still|remains?)\s+(?:present|listed|there|visible|shown)\s+after\s+(?:a\s+)?(?:hard\s+)?reload|\bafter\s+(?:a\s+)?(?:hard\s+)?reload\b")
 _PNAME = re.compile(_Q + r"|\b([A-Z][A-Za-z0-9'&.\-]*(?:\s+[A-Z0-9][A-Za-z0-9'&.\-]*){0,4})\b")
 _PHRASE = re.compile(r"(?i)\b(?:shows?|displays?|lists?|renders?|contains?)\s+(?:an?\s+|the\s+|some\s+)?([a-z][a-z0-9 \-/']{4,40}?)\s*$")
@@ -126,6 +136,8 @@ def _classify_fragment_base(f, legacy):
             if _EXTRA_PRED.search(outside) or (kind not in ("control_present",) and _ALT.search(outside)):
                 return None       # a second predicate / an alternative outcome rides along; checking only the first would hide it
             spec = dict(build(m), kind=kind, text=f, neg=bool(_NEG.search(f)) or bool(build(m).get("force_neg")))
+            if kind in ("media_canvas", "media_audio") and _MEDIA_FAILSTATE.search(f):
+                return None       # the clause asserts the failure state itself ("canvas is blank"); the probes judge the fixed state - a human reads this one
             if kind == "contrast":
                 r = re.search(r"(\d(?:\.\d)?)\s*:\s*1", f)
                 spec["ratio"] = float(r.group(1)) if r else None
@@ -217,6 +229,8 @@ EVIDENCE = {
     "text_absent": ("snapshot.texts",),
     "control_present": ("snapshot.controls",),
     "legacy": ("snapshot",),
+    "media_canvas": ("media_canvas",),
+    "media_audio": ("media_audio",),
 }
 EVIDENCE.update(_OBS.EVIDENCE)
 EVIDENCE.update(_NC.EVIDENCE)
@@ -421,6 +435,33 @@ def _spec_check(sp, snap, legacy):
         pool = [c["name"] for c in snap.get("controls") or [] if c.get("name")]
         got = [n for n in sp["names"] if any(_norm(n) in _norm(x) for x in pool)]
         return ("pass", "control(s) present: %s" % got) if got else ("unchecked", "no control matching %s is visible (a fixture/state may be missing)" % sp["names"])
+    if k == "media_canvas":
+        # WALK-04f: the evidence is a media_probes ProbeResult ({probe, draft, evidence}) gathered at the end of
+        # the replay. The module's rule binds here: a probe draft never mints a verdict alone - FIXED_CANDIDATE
+        # passes the CLAUSE as repro-steps evidence (the run's verdict still goes through cap_verdict), STILL
+        # fails it, NEEDS_HUMAN leaves it unchecked for the tester.
+        pr = ev.get("media_canvas")
+        if not pr:
+            return "unchecked", "no canvas probe was run in this replay (driver has no media probe capability)"
+        d, pev = pr.get("draft"), pr.get("evidence") or {}
+        if d == "FIXED_CANDIDATE":
+            st = pev.get("stats") or {}
+            diff = "; interaction diff %s" % pev["interaction_diff"] if pev.get("interaction_diff") is not None else ""
+            return "pass", "canvas probe: varied render (%s unique colours, variance %s)%s" % (st.get("unique_colours"), st.get("variance"), diff)
+        if d == "STILL":
+            return "fail", "canvas probe: %s" % (pev.get("reason") or ("canvas %s" % pev.get("shape", "blank/uniform")))
+        return "unchecked", "canvas probe cannot judge this clause: %s" % (pev.get("reason") or d)
+    if k == "media_audio":
+        pr = ev.get("media_audio")
+        if not pr:
+            return "unchecked", "no audio probe was run in this replay (driver has no media probe capability)"
+        d, pev = pr.get("draft"), pr.get("evidence") or {}
+        if d == "FIXED_CANDIDATE":
+            bits = ["%s=%s" % (kk, pev[kk]) for kk in ("duration_s", "rms_fraction", "contexts", "any_running") if kk in pev]
+            return "pass", "audio probe (%s): sound present%s" % (pr.get("probe"), ("; " + ", ".join(bits)) if bits else "")
+        if d == "STILL":
+            return "fail", "audio probe (%s): %s" % (pr.get("probe"), pev.get("reason") or "silent / absent")
+        return "unchecked", "audio probe (%s) cannot judge this clause: %s" % (pr.get("probe"), pev.get("reason") or d)
     return "unchecked", "unknown spec kind %s" % k
 
 
