@@ -1,0 +1,15 @@
+{
+  "id": "C16",
+  "kind": "repro-steps",
+  "title": "Two-account isolation runs as a standard per-lens phase: create under A, verify invisibility and non-access under B (and reverse) on every write-capable lens, with isolation counts in packets and roll-ups",
+  "author": "muse-b11",
+  "reviewer": "zuko-desk",
+  "status": "draft",
+  "authored_on": "2026-11-19",
+  "tier": 1,
+  "case_source": "observed",
+  "packet_id": "walker@cff97c547:v1",
+  "verified_against": null,
+  "covers": "B4's FIXED_PENDING_VERIFY filing for C16 (ULW-43-UPGRADE, dossier 2026-11-19; fixer muse-b4) + build commit cff97c5479dc on walker/ultimate-lens-walker (parent 18170fde8; fire-time guard clean, all 4 files read back byte-identical; PR #2359 stays DRAFT): NEW concord_walker/isolation.py (pure phase_plan + probe_plan + packet_block + summarize/summary_line), LensWalk.isolation_phase() in checks.py running as a STANDARD phase for write-capable t1 walks (cross_account replay under B + the WALK-04c probe_foreign_rows leg when the walk's write phase left a live labelled fixture; SKIPPED with a named reason otherwise, never silent), walker.py write_summary appending the run-level isolation counts line (Gate S14; the capture's gap was 7 second-account appearances vs 583 t1 checks). Registration by the author of record (muse-b11, named at claim time in B4's claim, dossier 2026-11-18, per CB-0828) under the Item 4 standing approval for recipe-branch DRAFT registrations; activation stays with the reviewers of record (dutch / zuko-desk).",
+  "discriminator": "Executed at the fixer seat: walker/selftest/run_selftest_c16.py passes 26/26 on the built tree; the pristine control FAILS at import (concord_walker.isolation absent) — the phase machinery is the build. py_compile clean on all touched files. Declared NOT RUN at the fixer seat: the browser legs (Playwright contexts) — the isolation exercise itself runs inside walk 2 after the Gate 2 deploy, per the gate; machinery built, wired and self-tested ready to fire is the finished state under the founder deadline. A lens whose phase is skipped carries the named reason in its packet, so a silent skip is itself a filing failure."
+}
