@@ -21,8 +21,16 @@ ERROR_TEXT = re.compile(r"(?i)^\s*(something went wrong|application error|unhand
 STATUS_TEXT = re.compile(r"(?i)\b(404|500)\b[^a-z0-9]{0,4}(not found|internal server error|server error|error|failed)(?![\w-])"
                          r"|\b(error|status|http)\b[^a-z0-9]{0,4}(404|500)\b")
 NOTHING_TO_EXPORT = re.compile(r"(?i)nothing to export|no data to export|nothing selected")
+# The platform gate card's own wording belongs in the vocabulary: the card
+# reads "Admin access required" / "This operator surface needs one of:
+# <roles>", and neither phrase matched, so five held gates (admin, ops,
+# psyops, repair-telemetry, system) filed as "gate did not hold" failures
+# in the capture walk (H1, run 20261117-080754; CB-0872 item 2). The added
+# alternatives are the card's exact phrases, scoped to its shape: a benign
+# "needs one of" elsewhere in content does not match.
 NO_ACCESS_TEXT = re.compile(r"(?i)no access|access denied|not authorized|not authorised|forbidden|"
-                            r"admin(s|istrator)? only|requires admin|permission denied|insufficient permission")
+                            r"admin(s|istrator)? only|requires admin|permission denied|insufficient permission|"
+                            r"admin access required|operator surface needs one of")
 
 
 def gate_verdict(status, texts, signed_out):
