@@ -2150,9 +2150,9 @@ export const apiHelpers = {
           api.get('/api/artistry/collab/sessions', { params }),
         create: (data: { projectId: string; hostId?: string; maxParticipants?: number; mode?: string }) =>
           api.post('/api/artistry/collab/sessions', data),
-        join: (sessionId: string, data: { userId: string }) =>
+        join: (sessionId: string, data: { userId?: string } = {}) =>
           api.post(`/api/artistry/collab/sessions/${sessionId}/join`, data),
-        leave: (sessionId: string, data: { userId: string }) =>
+        leave: (sessionId: string, data: { userId?: string } = {}) =>
           api.post(`/api/artistry/collab/sessions/${sessionId}/leave`, data),
         action: (sessionId: string, data: { userId: string; action: string; data?: unknown }) =>
           api.post(`/api/artistry/collab/sessions/${sessionId}/action`, data),

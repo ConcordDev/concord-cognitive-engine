@@ -37,14 +37,31 @@ export const ACTOR_RULES = [
   { re: /^\/api\/(ct|connective-tissue)\/dtu\/purchase$/, fields: ["buyerId"] },
   { re: /^\/api\/(fabrication\/export|sensors\/devices|blockchain\/notarize|shell\/execute|notebooks|marketplace\/(listings|orders|reviews)|certificates\/(enroll|progress)|agents)$/, fields: ["userId"] },
   { re: /^\/api\/legal\/(disclaimers\/acknowledge|agreements)$/, fields: ["userId"] },
+  // One-tap purchase debits the ledger balance of body.userId (economy/lens-culture.js
+  // oneTapPurchase -> purchaseArtifact({ buyerId: userId })). The route also takes the
+  // buyer from the session now; this keeps a spoofed userId loud (403) rather than ignored.
+  { re: /^\/api\/lens-culture\/purchase$/, fields: ["userId"] },
 ];
+
+/**
+ * The path the rules are tested against. Express routes case-insensitively and
+ * ignores a trailing slash by default (server.js sets neither "case sensitive
+ * routing" nor "strict routing"), so `/api/Economic/marketplace/buy` and
+ * `/api/atlas/rights/transfer/` reach the same handlers as the canonical paths.
+ * Match on the same normalised form, or the guard can be bypassed by casing.
+ */
+export function normalisePath(path) {
+  const p = String(path || "").toLowerCase().replace(/\/+$/, "");
+  return p || "/";
+}
 
 /** The actor fields a request carries for its route, with the claimed values. */
 export function claimedActors(method, path, body, query) {
   if (!WRITE.has(String(method).toUpperCase())) return [];
   const out = [];
+  const p = normalisePath(path);
   for (const rule of ACTOR_RULES) {
-    if (!rule.re.test(path)) continue;
+    if (!rule.re.test(p)) continue;
     for (const f of rule.fields) {
       for (const [src, bag] of [["body", body], ["query", query]]) {
         const v = bag && typeof bag === "object" ? bag[f] : undefined;

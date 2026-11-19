@@ -8,7 +8,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import express from "express";
-import { actorIdentityGuard, claimedActors } from "../lib/actor-identity.js";
+import { actorIdentityGuard, claimedActors, normalisePath } from "../lib/actor-identity.js";
 
 function serve(authMode, user) {
   const app = express();
@@ -72,6 +72,44 @@ describe("actor identity — the payer is the signed-in account", () => {
       assert.equal((await call(s, "POST", "/api/lens/run", { userId: "bob" })).status, 200, "unlisted route");
     } finally { s.close(); }
     assert.deepEqual(claimedActors("POST", "/api/economic/marketplace/buy", { odId: "" }, {}), [], "an empty field claims nothing");
+  });
+
+  it("cannot be bypassed by casing or a trailing slash (Express routes both to the same handler)", async () => {
+    const s = await serve("hybrid", "alice");
+    try {
+      for (const [path, field] of [
+        ["/api/Economic/marketplace/buy", "odId"],
+        ["/API/economic/marketplace/buy", "odId"],
+        ["/api/economic/marketplace/buy/", "odId"],
+        ["/api/atlas/rights/transfer/", "fromUserId"],
+        ["/api/atlas/rights/Transfer", "fromUserId"],
+        ["/api/atlas/rights/transfer//", "fromUserId"],
+        ["/api/Artistry/marketplace/purchase", "buyerId"],
+        ["/api/canonical/X1/Rights/Transfer/", "fromUserId"],
+        ["/api/Lens-Culture/purchase/", "userId"],
+      ]) {
+        const r = await call(s, "POST", path, { [field]: "victim" });
+        assert.equal(r.status, 403, `${path} ${field} must be refused`);
+        assert.equal(r.body.error, "not_your_account");
+        assert.equal((await call(s, "POST", path, { [field]: "alice" })).status, 200, `${path} self`);
+      }
+      // the Stripe webhook exclusion survives normalisation (still not session-checked)
+      assert.equal((await call(s, "POST", "/api/Economic/Webhook/", { odId: "x" })).status, 200);
+    } finally { s.close(); }
+    assert.equal(normalisePath("/api/Atlas/Rights/Transfer///"), "/api/atlas/rights/transfer");
+    assert.equal(normalisePath("/"), "/");
+  });
+
+  it("covers one-tap purchase: POST /api/lens-culture/purchase userId is the payer", async () => {
+    const s = await serve("hybrid", "alice");
+    const out = await serve("hybrid", null);
+    try {
+      const spoof = await call(s, "POST", "/api/lens-culture/purchase", { userId: "victim", artifactId: "a1" });
+      assert.equal(spoof.status, 403);
+      assert.equal(spoof.body.error, "not_your_account");
+      assert.equal((await call(s, "POST", "/api/lens-culture/purchase", { userId: "alice", artifactId: "a1" })).status, 200);
+      assert.equal((await call(out, "POST", "/api/lens-culture/purchase", { userId: "victim", artifactId: "a1" })).status, 401);
+    } finally { s.close(); out.close(); }
   });
 
   it("is mounted in the real middleware chain, after auth and CSRF", () => {
