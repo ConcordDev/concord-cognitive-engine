@@ -52,6 +52,10 @@ export function artistKeyFor(userId) {
 
 export default function registerMusicReleases(registerLensAction, { getMusicState, saveMusicState, actorOf, newId }) {
   const STATE = () => globalThis._concordSTATE;
+  // Persist a changed DTU through the platform write path (upsertDTU → dtu_store).
+  const persistDtu = (dtu) => {
+    try { if (typeof globalThis._concordUpsertDTU === "function") globalThis._concordUpsertDTU(dtu); } catch { /* the in-memory copy still serves this process */ }
+  };
   const dbOf = (ctx) => ctx?.db || globalThis._concordSTATE?.db || globalThis._concordDB || null;
 
   function store() {
@@ -301,7 +305,7 @@ export default function registerMusicReleases(registerLensAction, { getMusicStat
     if (err) return { ok: false, error: err };
     if (r.status === "published" && params.priceCC != null && draft.priceCC !== r.priceCC) {
       const dtu = STATE()?.dtus?.get?.(r.dtuId);
-      if (dtu?.marketplace) dtu.marketplace.price = draft.priceCC;
+      if (dtu?.marketplace) { dtu.marketplace.price = draft.priceCC; persistDtu(dtu); }
     }
     Object.assign(r, draft, { updatedAt: nowIso() });
     if (r.status === "published" && (params.priceCC != null || params.streaming != null || params.previewSec != null)) {
@@ -402,7 +406,8 @@ export default function registerMusicReleases(registerLensAction, { getMusicStat
       lineage: { parents, citationType: parents.length ? "remix" : undefined },
     });
     if (!created?.ok || !created.dtu) return { ok: false, error: created?.error || created?.reason || "could not mint the release DTU" };
-    const dtu = created.dtu;
+    // Work on the stored record: over HTTP dtu.create may hand back a copy.
+    const dtu = STATE()?.dtus?.get?.(created.dtu.id) || created.dtu;
     dtu.scope = "personal";
     if (parents.length) dtu.lineage = { ...(dtu.lineage || {}), parents, citationType: "remix" };
     if (!(dtu.license?.scopes || []).includes("marketplace_sale")) {
@@ -423,8 +428,15 @@ export default function registerMusicReleases(registerLensAction, { getMusicStat
     }
     if (r.coverDtuId) {
       const cover = STATE()?.dtus?.get?.(r.coverDtuId);
-      if (cover) { cover.visibility = "public"; if (cover.scope === "user") cover.scope = "global"; if (cover.privacy === "private") cover.privacy = "public"; }
+      if (cover) {
+        cover.visibility = "public";
+        if (cover.scope === "user") cover.scope = "global";
+        if (cover.privacy === "private") cover.privacy = "public";
+        persistDtu(cover);
+      }
     }
+    // The release DTU's scope, licence and listing must survive a restart.
+    persistDtu(dtu);
     r.status = "published";
     r.dtuId = dtu.id;
     r.publishedAt = nowIso();

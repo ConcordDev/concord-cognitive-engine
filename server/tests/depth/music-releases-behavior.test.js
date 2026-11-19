@@ -314,4 +314,44 @@ describe("music releases — publish, storefront, buy, own", () => {
     assert.equal(Math.round((funded - wallet("ln-coin-fan")) * 100) / 100, 4);
     assert.equal(Math.round((wallet("ln-seller") - sellerBefore) * 100) / 100, 3.8);
   });
+
+  it("publishes for a real signed-in artist too (an HTTP-shaped, non-internal context)", async () => {
+    // Over HTTP, dtu.create returns a presentation copy; publish must license and list
+    // the STORED release DTU or marketplace.list refuses with license_scope_denied.
+    const { runMacro } = await load();
+    const base = await depthCtx("ln-http-artist");
+    const http = { ...base, internal: false, actor: { ...base.actor, internal: false, role: "member", scopes: [] } };
+    http.macro = { ...base.macro, run: (d, n, i) => runMacro(d, n, i, http) };
+    const created = await lensRun("music", "release-create", { params: { title: "Over The Wire", priceCC: 2 } }, http);
+    assert.equal(created.ok, true, JSON.stringify(created.result));
+    await lensRun("music", "release-add-track", { params: { id: created.result.release.id, mediaId: upload("ln-http-artist", "Wire") } }, http);
+    const pub = await lensRun("music", "release-publish", { params: { id: created.result.release.id } }, http);
+    assert.equal(pub.ok, true, JSON.stringify(pub.result));
+    const dtu = STATE.dtus.get(pub.result.release.dtuId);
+    assert.equal(dtu.marketplace.listed, true);
+    assert.equal(dtu.marketplace.price, 2);
+  });
+
+  it("publishing persists: the stored cover turns public and the stored release DTU keeps its listing", async () => {
+    // Regression: these were in-memory mutations only, so after a restart fans got
+    // 404 no_artifact for covers and the release lost its licence.
+    const owner = "ln-persist-artist";
+    const ctx = await depthCtx(owner);
+    const coverId = `artifact_persist_${Date.now().toString(36)}`;
+    const cover = { id: coverId, title: "Cover — Persist", tier: "regular", scope: "local", visibility: "private", ownerId: owner, createdBy: owner, meta: {}, human: { summary: "cover" }, artifact: { type: "image/png", sizeBytes: 2048, filename: "c.png" } };
+    STATE.dtus.set(coverId, cover);
+    globalThis._concordUpsertDTU(cover);
+    const r = await lensRun("music", "release-create", { params: { title: "Persisted", priceCC: 3, coverDtuId: coverId } }, ctx);
+    assert.equal(r.ok, true, JSON.stringify(r.result));
+    await lensRun("music", "release-add-track", { params: { id: r.result.release.id, mediaId: upload(owner, "Keep") } }, ctx);
+    const pub = await lensRun("music", "release-publish", { params: { id: r.result.release.id } }, ctx);
+    assert.equal(pub.ok, true, JSON.stringify(pub.result));
+    const coverRow = STATE.db.prepare("SELECT visibility FROM dtu_store WHERE id = ?").get(coverId);
+    assert.equal(coverRow?.visibility, "public");
+    const relRow = STATE.db.prepare("SELECT data FROM dtu_store WHERE id = ?").get(pub.result.release.dtuId);
+    const stored = JSON.parse(relRow.data);
+    assert.equal(stored.marketplace?.listed, true);
+    assert.equal(stored.marketplace?.price, 3);
+    assert.ok((stored.license?.scopes || []).includes("marketplace_sale"));
+  });
 });

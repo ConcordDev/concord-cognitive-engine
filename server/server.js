@@ -13753,6 +13753,10 @@ function saveStateDebounced() {
 // Eagerly expose so domain files loaded before saveStateDebounced first
 // runs can still trigger persistence (snippets, snapshots, etc.).
 globalThis._concordSaveStateDebounced = saveStateDebounced;
+// Domain code that changes an existing DTU's visibility or licence (e.g. a
+// music release publishing its cover) persists it through the normal DTU write
+// path instead of mutating STATE.dtus in memory only.
+globalThis._concordUpsertDTU = (dtu) => upsertDTU(dtu, { broadcast: false });
 
 /**
  * Synchronous state save — bypasses debounce entirely.
@@ -69486,7 +69490,10 @@ app.get("/api/economy/balance", requireAuth(), (req, res) => {
     }
     userId = requestedUserId;
   }
-  const wallet = STATE.economic?.wallets?.get(userId);
+  // getWallet keeps the cache in step with economy_ledger, so this is the same
+  // balance the marketplace spends from (a raw map read showed 0 for CC that
+  // arrived through a coin purchase).
+  const wallet = getWallet(userId);
   res.json({ ok: true, balance: wallet?.balance || 0, tier: wallet?.tier || "free" });
 });
 
