@@ -435,7 +435,7 @@ function MeterPicker({
                 <div className="space-y-2">
                   <p className="text-sm text-zinc-200">Delete {meter.name}? Readings logged on this meter are removed with it.</p>
                   <div className="flex gap-2">
-                    <button type="button" onClick={() => void confirmDelete(meter)} disabled={saving} className="rounded-lg bg-rose-500 px-3 py-2 text-xs font-medium text-white disabled:opacity-50">Delete meter</button>
+                    <button type="button" onClick={() => void confirmDelete(meter)} disabled={saving} className="rounded-lg bg-rose-600 px-3 py-2 text-xs font-medium text-white disabled:opacity-50">Delete meter</button>
                     <button type="button" onClick={() => setPendingDeleteId(null)} className="rounded-lg px-2 text-xs text-zinc-400">Cancel</button>
                   </div>
                 </div>

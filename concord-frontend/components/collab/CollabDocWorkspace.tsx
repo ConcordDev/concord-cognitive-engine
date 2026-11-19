@@ -1053,7 +1053,7 @@ function NotifBell({
         className="relative p-1.5 rounded hover:bg-zinc-800 text-zinc-400" aria-label="Notifications">
         <Bell className="w-4 h-4" />
         {unread > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] px-0.5 rounded-full bg-blue-500 text-white text-[9px] font-bold flex items-center justify-center">
+          <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] px-0.5 rounded-full bg-blue-600 text-white text-[9px] font-bold flex items-center justify-center">
             {unread > 9 ? '9+' : unread}
           </span>
         )}

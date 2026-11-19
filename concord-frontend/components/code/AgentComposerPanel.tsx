@@ -179,7 +179,7 @@ export function AgentComposerPanel({ projectId }: { projectId: string | null }) 
           rows={3}
           className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white"
         />
-        <button onClick={start} disabled={busy || !prompt.trim()} className="w-full px-2 py-1.5 text-xs rounded bg-blue-500 text-white font-bold hover:bg-blue-400 disabled:opacity-40 inline-flex items-center justify-center gap-1">
+        <button onClick={start} disabled={busy || !prompt.trim()} className="w-full px-2 py-1.5 text-xs rounded bg-blue-600 text-white font-bold hover:bg-blue-400 disabled:opacity-40 inline-flex items-center justify-center gap-1">
           {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}Compose
         </button>
       </div>

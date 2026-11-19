@@ -801,7 +801,7 @@ export function LiveDbClient() {
                     <button
                       onClick={(e) => { e.stopPropagation(); deleteConn(c.id); }}
                       onBlur={() => setArmedConnDelete((a) => (a === c.id ? null : a))}
-                      className={armedConnDelete === c.id ? 'px-1.5 py-0.5 rounded bg-rose-500 text-white text-[10px] font-semibold' : 'p-0.5 text-gray-400 hover:text-red-400'}
+                      className={armedConnDelete === c.id ? 'px-1.5 py-0.5 rounded bg-rose-600 text-white text-[10px] font-semibold' : 'p-0.5 text-gray-400 hover:text-red-400'}
                       aria-label={armedConnDelete === c.id ? `Confirm delete connection ${c.name}` : 'Delete connection'}
                     >
                       {armedConnDelete === c.id ? `Delete ${c.name}?` : <Trash2 className="w-3 h-3" />}
@@ -980,7 +980,7 @@ export function LiveDbClient() {
                     <button
                       onClick={() => deleteDataset(d.id)}
                       onBlur={() => setArmedDatasetDelete((a) => (a === d.id ? null : a))}
-                      className={armedDatasetDelete === d.id ? 'px-1.5 py-0.5 rounded bg-rose-500 text-white text-[10px] font-semibold' : 'p-0.5 text-gray-400 hover:text-red-400'}
+                      className={armedDatasetDelete === d.id ? 'px-1.5 py-0.5 rounded bg-rose-600 text-white text-[10px] font-semibold' : 'p-0.5 text-gray-400 hover:text-red-400'}
                       aria-label={armedDatasetDelete === d.id ? `Confirm delete dataset ${d.name}` : 'Delete dataset'}
                     >
                       {armedDatasetDelete === d.id ? `Delete ${d.name}?` : <Trash2 className="w-3 h-3" />}
@@ -1263,7 +1263,7 @@ export function LiveDbClient() {
                                       <button
                                         onClick={() => deleteResultRow(rid)}
                                         onBlur={() => setArmedRowDelete((a) => (a === rid ? null : a))}
-                                        className={armedRowDelete === rid ? 'text-[10px] px-1.5 py-0.5 rounded bg-rose-500 text-white font-semibold' : 'text-gray-400 hover:text-red-400'}
+                                        className={armedRowDelete === rid ? 'text-[10px] px-1.5 py-0.5 rounded bg-rose-600 text-white font-semibold' : 'text-gray-400 hover:text-red-400'}
                                         aria-label={armedRowDelete === rid ? 'Confirm delete row' : 'Delete row'}
                                       >
                                         {armedRowDelete === rid ? 'Confirm?' : <Trash2 className="w-3 h-3" />}

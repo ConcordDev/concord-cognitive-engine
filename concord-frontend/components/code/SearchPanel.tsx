@@ -180,7 +180,7 @@ export function SearchPanel({
               className="flex-1 px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
             <button type="button" onClick={() => (mode === 'text' ? runReplace() : runRename())}
               title={mode === 'text' ? 'Replace all' : 'Rename symbol'}
-              className="px-1.5 py-1 rounded bg-blue-500/80 text-white hover:bg-blue-400">
+              className="px-1.5 py-1 rounded bg-blue-600/80 text-white hover:bg-blue-400">
               <Check className="w-3 h-3" />
             </button>
           </div>
@@ -190,12 +190,12 @@ export function SearchPanel({
             {([['caseSensitive', CaseSensitive], ['wholeWord', WholeWord], ['regex', Regex]] as const).map(([k, Icon]) => (
               <button key={k} type="button" onClick={() => setOpts({ ...opts, [k]: !opts[k] })}
                 title={TOGGLE_LABELS[k]} aria-label={TOGGLE_LABELS[k]} aria-pressed={opts[k]}
-                className={cn('p-1 rounded border', opts[k] ? 'border-blue-500 bg-blue-500/15 text-blue-300' : 'border-white/10 text-gray-400 hover:text-white')}>
+                className={cn('p-1 rounded border', opts[k] ? 'border-blue-500 bg-blue-600/15 text-blue-300' : 'border-white/10 text-gray-400 hover:text-white')}>
                 <Icon className="w-3 h-3" />
               </button>
             ))}
             <button type="button" onClick={runSearch}
-              className="ml-auto px-2 py-1 text-[11px] rounded bg-blue-500 text-white font-bold hover:bg-blue-400 inline-flex items-center gap-1">
+              className="ml-auto px-2 py-1 text-[11px] rounded bg-blue-600 text-white font-bold hover:bg-blue-400 inline-flex items-center gap-1">
               <Search className="w-3 h-3" /> Find
             </button>
           </div>

@@ -1467,7 +1467,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: {
             type="button"
             onClick={() => { if (localRun || (!execOff && !execUnknown)) runScriptMutation.mutate(); }}
             disabled={runScriptMutation.isPending || (!localRun && (execOff || execUnknown))}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-green-600 hover:bg-green-500 text-white text-[13px] font-semibold transition-colors disabled:opacity-40"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-green-700 hover:bg-green-500 text-white text-[13px] font-semibold transition-colors disabled:opacity-40"
             title={localRun ? 'Run (⌘↵) — runs locally in your browser' : execOff ? execReason : execUnknown ? 'Checking whether live execution is enabled.' : 'Run (⌘↵)'}
           >
             {runScriptMutation.isPending ? (
@@ -2549,13 +2549,13 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: {
                       >Try again</button>
                       <button
                         onClick={applyAiEdit}
-                        className="px-4 py-1.5 text-xs font-bold rounded bg-green-600 hover:bg-green-500 text-white"
+                        className="px-4 py-1.5 text-xs font-bold rounded bg-green-700 hover:bg-green-500 text-white"
                       >Apply ⏎</button>
                     </>
                   ) : aiEditPending ? (
                     <button
                       onClick={cancelAiEdit}
-                      className="px-4 py-1.5 text-xs font-bold rounded bg-amber-600/80 hover:bg-amber-600 text-white flex items-center gap-2"
+                      className="px-4 py-1.5 text-xs font-bold rounded bg-amber-700/80 hover:bg-amber-700 text-white flex items-center gap-2"
                     >
                       <Loader2 className="w-3 h-3 animate-spin" />
                       Cancel · {aiEditElapsed.toFixed(1)}s
@@ -2691,7 +2691,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: {
               {aiChatPending ? (
                 <button
                   onClick={cancelAiChat}
-                  className="px-3 py-1 rounded bg-amber-600/80 hover:bg-amber-600 text-white text-[11px] font-bold flex items-center gap-1.5"
+                  className="px-3 py-1 rounded bg-amber-700/80 hover:bg-amber-700 text-white text-[11px] font-bold flex items-center gap-1.5"
                 >
                   <Loader2 className="w-3 h-3 animate-spin" />
                   Stop · {aiChatElapsed.toFixed(1)}s

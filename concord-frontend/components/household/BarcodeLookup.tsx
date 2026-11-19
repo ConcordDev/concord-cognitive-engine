@@ -36,7 +36,7 @@ async function callMacro<T>(action: string, input: Record<string, unknown>): Pro
 }
 
 const NUTRI_COLOR: Record<string, string> = {
-  a: 'bg-emerald-600 text-emerald-50',
+  a: 'bg-emerald-700 text-emerald-50',
   b: 'bg-lime-500 text-lime-950',
   c: 'bg-yellow-500 text-yellow-950',
   d: 'bg-orange-500 text-orange-950',

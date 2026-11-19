@@ -316,7 +316,7 @@ export function QueryEditorPanel({ seedSql, onSeedConsumed }: { seedSql?: string
                 <button
                   onClick={() => deleteSaved(item.id)}
                   onBlur={() => setArmedDeleteId(a => (a === item.id ? null : a))}
-                  className={armedDeleteId === item.id ? 'px-1.5 py-0.5 rounded bg-rose-500 text-white text-[10px] font-semibold' : 'p-1 text-lattice-muted hover:text-red-400'}
+                  className={armedDeleteId === item.id ? 'px-1.5 py-0.5 rounded bg-rose-600 text-white text-[10px] font-semibold' : 'p-1 text-lattice-muted hover:text-red-400'}
                   aria-label={armedDeleteId === item.id ? 'Confirm delete saved query' : `Delete saved query ${item.title}`}
                 >
                   {armedDeleteId === item.id ? 'Delete?' : <Trash2 className="w-3 h-3" />}

@@ -32,7 +32,7 @@ const FEATURE_TABS: { id: FeatureTab; label: string; icon: typeof Banknote }[] =
 ];
 
 const inp = 'w-full bg-black/40 border border-white/10 rounded px-2 py-1.5 text-xs text-gray-100';
-const btn = 'inline-flex items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-xs font-medium rounded px-3 py-1.5';
+const btn = 'inline-flex items-center justify-center gap-1 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 text-white text-xs font-medium rounded px-3 py-1.5';
 const btnGhost = 'inline-flex items-center gap-1 px-2.5 py-1 rounded border border-white/10 text-xs text-gray-300 hover:text-white hover:bg-white/5';
 
 function Spin() {

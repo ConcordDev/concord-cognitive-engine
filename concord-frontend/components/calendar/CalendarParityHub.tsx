@@ -271,7 +271,7 @@ function SyncPanel() {
                     <input type="datetime-local" value={pushForm.end} onChange={e => setPushForm(f => ({ ...f, end: e.target.value }))}
                       aria-label="Push event end" className="flex-1 bg-lattice-deep border border-lattice-border rounded px-2 py-1 text-xs text-white" />
                     <button onClick={() => pushEvent(a.id)} disabled={pushBusy}
-                      className="px-2 py-1 rounded text-[11px] bg-emerald-600 hover:bg-emerald-500 text-white font-semibold disabled:opacity-50 inline-flex items-center gap-1">
+                      className="px-2 py-1 rounded text-[11px] bg-emerald-700 hover:bg-emerald-600 text-white font-semibold disabled:opacity-50 inline-flex items-center gap-1">
                       {pushBusy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
                       Push
                     </button>

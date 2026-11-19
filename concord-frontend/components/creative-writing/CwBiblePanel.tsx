@@ -101,20 +101,20 @@ export function CwBiblePanel({ projectId }: { projectId: string }) {
           {KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
         </select>
         <button type="button" onClick={addEntry}
-          className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-amber-600 hover:bg-amber-500 text-white rounded-lg">
+          className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-amber-700 hover:bg-amber-500 text-white rounded-lg">
           <Plus className="w-3.5 h-3.5" /> Entry
         </button>
       </section>
 
       <div className="flex flex-wrap gap-1.5">
         <button type="button" onClick={() => setFilter('')}
-          className={cn('text-[11px] px-2.5 py-1 rounded-lg', filter === '' ? 'bg-amber-600 text-white' : 'bg-zinc-800 text-zinc-300')}>
+          className={cn('text-[11px] px-2.5 py-1 rounded-lg', filter === '' ? 'bg-amber-700 text-white' : 'bg-zinc-800 text-zinc-300')}>
           All ({entries.length})
         </button>
         {byKind.map((k) => (
           <button key={k.kind} type="button" onClick={() => setFilter(k.kind)}
             className={cn('text-[11px] px-2.5 py-1 rounded-lg capitalize',
-              filter === k.kind ? 'bg-amber-600 text-white' : 'bg-zinc-800 text-zinc-300')}>
+              filter === k.kind ? 'bg-amber-700 text-white' : 'bg-zinc-800 text-zinc-300')}>
             {k.kind} ({k.count})
           </button>
         ))}

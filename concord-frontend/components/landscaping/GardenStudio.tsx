@@ -674,7 +674,7 @@ function PhotoOverlay() {
                   />
                 ) : (
                   <span
-                    className="flex items-center justify-center rounded-full border-2 border-emerald-400/60 bg-emerald-600/70 text-[9px] text-white"
+                    className="flex items-center justify-center rounded-full border-2 border-emerald-400/60 bg-emerald-700/70 text-[9px] text-white"
                     style={{
                       width: `${p.scalePct * 0.5}px`,
                       height: `${p.scalePct * 0.5}px`,

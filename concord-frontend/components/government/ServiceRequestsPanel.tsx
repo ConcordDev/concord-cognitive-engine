@@ -22,7 +22,7 @@ interface Department { id: string; name: string }
 const CATEGORIES = ['pothole', 'streetlight_out', 'graffiti', 'trash_missed', 'tree_down', 'noise_complaint', 'abandoned_vehicle', 'sidewalk_damage', 'traffic_signal', 'water_leak', 'illegal_dumping', 'park_maintenance', 'animal_control', 'other'];
 const STATUSES = ['submitted', 'assigned', 'in_progress', 'needs_more_info', 'closed_resolved', 'closed_duplicate', 'closed_invalid'];
 const PRIORITY_COLOUR: Record<Request['priority'], string> = {
-  urgent: 'bg-rose-500 text-white',
+  urgent: 'bg-rose-600 text-white',
   high: 'bg-amber-500 text-black',
   medium: 'bg-cyan-500 text-black',
   low: 'bg-gray-500 text-gray-100',

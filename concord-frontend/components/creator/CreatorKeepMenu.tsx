@@ -111,7 +111,7 @@ export function CreatorKeepMenu({ item, platform = 'x' }: Props) {
           type="button"
           onClick={() => void save()}
           disabled={busy !== null}
-          className="rounded-md bg-rose-500/90 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-rose-500 disabled:opacity-50"
+          className="rounded-md bg-rose-600/90 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-rose-600 disabled:opacity-50"
         >
           {busy === 'save' ? 'Saving…' : 'Save content as DTU'}
         </button>

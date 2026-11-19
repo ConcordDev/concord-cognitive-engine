@@ -93,7 +93,7 @@ export function OrgKeysPanel() {
         <h2 className="text-sm font-semibold text-zinc-100">Org-shared key groups</h2>
         <button
           onClick={() => setCreating((c) => !c)}
-          className="px-2.5 py-1 rounded-md text-[11px] bg-amber-600/80 hover:bg-amber-600 text-amber-50"
+          className="px-2.5 py-1 rounded-md text-[11px] bg-amber-700/80 hover:bg-amber-700 text-amber-50"
         >
           {creating ? 'cancel' : 'new group'}
         </button>
@@ -124,7 +124,7 @@ export function OrgKeysPanel() {
           <button
             onClick={create}
             disabled={busy || !createForm.label.trim()}
-            className="px-3 py-1 rounded-md bg-amber-600 hover:bg-amber-500 text-amber-50 text-xs font-medium disabled:opacity-50"
+            className="px-3 py-1 rounded-md bg-amber-700 hover:bg-amber-500 text-amber-50 text-xs font-medium disabled:opacity-50"
           >
             create group
           </button>
@@ -221,7 +221,7 @@ export function OrgKeysPanel() {
                 <button
                   onClick={addMember}
                   disabled={busy || !memberForm.memberId.trim()}
-                  className="px-2.5 py-1 rounded-md bg-amber-600 hover:bg-amber-500 text-amber-50 text-[11px] font-medium disabled:opacity-50"
+                  className="px-2.5 py-1 rounded-md bg-amber-700 hover:bg-amber-500 text-amber-50 text-[11px] font-medium disabled:opacity-50"
                 >
                   add
                 </button>

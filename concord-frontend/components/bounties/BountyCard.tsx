@@ -432,7 +432,7 @@ export function BountyCard({ bounty, currentUserId, currentUserRole, onChanged, 
                 </select>
               )}
               <button onClick={submitWork} disabled={busy}
-                className="w-full flex items-center justify-center gap-1 text-xs bg-cyan-600 hover:bg-cyan-500 text-white py-1.5 rounded disabled:opacity-50">
+                className="w-full flex items-center justify-center gap-1 text-xs bg-cyan-700 hover:bg-cyan-500 text-white py-1.5 rounded disabled:opacity-50">
                 {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                 Submit
               </button>
@@ -485,7 +485,7 @@ export function BountyCard({ bounty, currentUserId, currentUserRole, onChanged, 
               </p>
               <div className="flex gap-2">
                 <button onClick={saveEdit} disabled={busy}
-                  className="flex-1 text-xs bg-amber-600 hover:bg-amber-500 text-white py-1.5 rounded disabled:opacity-50">
+                  className="flex-1 text-xs bg-amber-700 hover:bg-amber-500 text-white py-1.5 rounded disabled:opacity-50">
                   Save changes
                 </button>
                 <button onClick={() => setShowEdit(false)} disabled={busy}

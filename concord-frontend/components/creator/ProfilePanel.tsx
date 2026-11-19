@@ -120,7 +120,7 @@ function ProfileTab({
 
       <div className="mt-4 flex items-center gap-3">
         <button onClick={save} disabled={saving}
-          className="px-4 py-2 text-sm font-medium bg-amber-600 hover:bg-amber-500 disabled:bg-stone-800 disabled:text-gray-400 rounded text-white inline-flex items-center gap-1">
+          className="px-4 py-2 text-sm font-medium bg-amber-700 hover:bg-amber-500 disabled:bg-stone-800 disabled:text-gray-400 rounded text-white inline-flex items-center gap-1">
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           Save profile
         </button>

@@ -767,7 +767,7 @@ export function GitHubConnectPanel() {
                       disabled={committing || !commitMessage.trim() || !dirty}
                       onClick={commit}
                       title={!dirty ? 'No changes to commit' : undefined}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white font-bold"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-green-700 hover:bg-green-500 disabled:opacity-40 text-white font-bold"
                     >
                       {committing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <GitCommit className="w-3.5 h-3.5" />}
                       Commit &amp; Push

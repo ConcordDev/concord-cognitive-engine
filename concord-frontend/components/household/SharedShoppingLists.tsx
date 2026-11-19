@@ -116,7 +116,7 @@ export function SharedShoppingLists() {
                 <input value={itemForm.addedBy} onChange={e => setItemForm({ ...itemForm, addedBy: e.target.value })} placeholder="Who"
                   className="w-20 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
                 <button onClick={addItem} disabled={busy || !itemForm.name.trim()}
-                  className="px-2.5 py-1 text-xs rounded bg-emerald-600 hover:bg-emerald-500 text-white font-semibold disabled:opacity-40">Add</button>
+                  className="px-2.5 py-1 text-xs rounded bg-emerald-700 hover:bg-emerald-600 text-white font-semibold disabled:opacity-40">Add</button>
               </div>
               {active.items.length === 0 ? (
                 <p className="text-[11px] text-zinc-400 italic">No items yet.</p>

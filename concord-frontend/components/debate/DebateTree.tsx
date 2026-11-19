@@ -82,7 +82,7 @@ export function DebateTree() {
           placeholder="State a thesis to debate…"
           className="flex-1 bg-black/40 border border-white/15 rounded px-2 py-1.5 text-sm text-white" />
         <button onClick={create}
-          className="px-3 py-1.5 text-xs rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold">New debate</button>
+          className="px-3 py-1.5 text-xs rounded bg-cyan-700 hover:bg-cyan-500 text-white font-semibold">New debate</button>
       </div>
       {createError && <p role="alert" className="mb-3 text-xs text-rose-300">{createError}</p>}
 
@@ -173,7 +173,7 @@ function ClaimChildren({ claims, parentId, depth, onAdd, onVote, onDelete }: {
           placeholder={depth === 0 ? 'Add a claim…' : 'Add a counter-claim…'}
           className="flex-1 bg-black/40 border border-white/15 rounded px-1.5 py-0.5 text-[11px] text-white" />
         <button aria-label="Add" onClick={() => { if (draft.trim().length >= 4) { onAdd(parentId, stance, draft); setDraft(''); } }}
-          className="px-1.5 py-0.5 rounded bg-cyan-600 hover:bg-cyan-500 text-white"><Plus className="w-3 h-3" /></button>
+          className="px-1.5 py-0.5 rounded bg-cyan-700 hover:bg-cyan-500 text-white"><Plus className="w-3 h-3" /></button>
       </div>
     </div>
   );

@@ -185,7 +185,7 @@ function IntelliSenseTab({ projectId, files }: { projectId: string; files: FileR
         <button
           onClick={lookup}
           disabled={busy || !symbol.trim() || !path}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-40"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-cyan-700 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-40"
         >
           {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
           Resolve
@@ -391,7 +391,7 @@ function RemoteGitTab({ projectId, onPulled }: { projectId: string; onPulled: ()
           <input value={ref} onChange={(e) => setRef(e.target.value)} placeholder="branch (optional)"
             className="w-36 bg-[#0d1117] border border-white/10 rounded px-2 py-1.5 text-xs text-gray-200" />
           <button onClick={pull} disabled={busy !== null || !owner.trim() || !repo.trim()}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-40">
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-cyan-700 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-40">
             {busy === 'pull' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Github className="w-3.5 h-3.5" />}
             Pull
           </button>
@@ -411,7 +411,7 @@ function RemoteGitTab({ projectId, onPulled }: { projectId: string; onPulled: ()
             <input value={pushMsg} onChange={(e) => setPushMsg(e.target.value)} placeholder="Commit message for push"
               className="flex-1 bg-[#0d1117] border border-white/10 rounded px-2 py-1.5 text-xs text-gray-200" />
             <button onClick={push} disabled={busy !== null || !pushMsg.trim()}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-green-600 hover:bg-green-500 text-white text-xs font-bold disabled:opacity-40">
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-green-700 hover:bg-green-500 text-white text-xs font-bold disabled:opacity-40">
               {busy === 'push' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
               Push
             </button>
@@ -524,7 +524,7 @@ function CodebaseChatTab({ projectId, files }: { projectId: string; files: FileR
           className="flex-1 bg-[#161b22] border border-white/10 rounded px-3 py-2 text-xs text-gray-200"
         />
         <button onClick={send} disabled={busy || !draft.trim()}
-          className="flex items-center gap-1.5 px-3 py-2 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-40">
+          className="flex items-center gap-1.5 px-3 py-2 rounded bg-cyan-700 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-40">
           <Send className="w-3.5 h-3.5" /> Send
         </button>
       </div>
@@ -619,7 +619,7 @@ function ExtensionsTab() {
                 {e.effect && <p className="text-[10px] text-lattice-muted">{e.effect}</p>}
               </div>
               <button onClick={() => install(e.id)} disabled={busy === e.id}
-                className="flex items-center gap-1 px-2.5 py-1 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-[10px] font-bold disabled:opacity-40">
+                className="flex items-center gap-1 px-2.5 py-1 rounded bg-cyan-700 hover:bg-cyan-500 text-white text-[10px] font-bold disabled:opacity-40">
                 {busy === e.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
                 Install
               </button>
@@ -723,7 +723,7 @@ function SplitLayoutTab({ projectId, files }: { projectId: string; files: FileRo
       </div>
       <div className="flex items-center gap-2">
         <button onClick={save} disabled={busy}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-40">
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-cyan-700 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-40">
           {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Columns className="w-3.5 h-3.5" />}
           Save layout
         </button>
@@ -929,7 +929,7 @@ function LiveShareTab({ projectId, files }: { projectId: string; files: FileRow[
             <input value={sessionName} onChange={(e) => setSessionName(e.target.value)} placeholder="Session name (optional)"
               className="flex-1 bg-[#0d1117] border border-white/10 rounded px-2 py-1.5 text-xs text-gray-200" />
             <button onClick={start} disabled={busy}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-40">
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-cyan-700 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-40">
               {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Users className="w-3.5 h-3.5" />}
               Start
             </button>
@@ -941,7 +941,7 @@ function LiveShareTab({ projectId, files }: { projectId: string; files: FileRow[
             <input value={joinCode} onChange={(e) => setJoinCode(e.target.value.toUpperCase())} placeholder="Session code"
               className="flex-1 bg-[#0d1117] border border-white/10 rounded px-2 py-1.5 text-xs text-gray-200 font-mono uppercase" />
             <button onClick={join} disabled={busy || !joinCode.trim()}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-green-600 hover:bg-green-500 text-white text-xs font-bold disabled:opacity-40">
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-green-700 hover:bg-green-500 text-white text-xs font-bold disabled:opacity-40">
               {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
               Join
             </button>
@@ -1005,7 +1005,7 @@ function LiveShareTab({ projectId, files }: { projectId: string; files: FileRow[
               : <><span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400 mr-1.5" />CRDT connecting…</>}
           </p>
           <button onClick={broadcast} disabled={busy || !editPath.trim()}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-40"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-cyan-700 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-40"
             title="Snapshot the current text to the session op-log (CRDT sync happens automatically as you type)">
             <Send className="w-3.5 h-3.5" /> Snapshot to op-log
           </button>
@@ -1215,7 +1215,7 @@ export function SharedDebugTerminalTile({ code, onTerminalLine }: {
           className="flex-1 bg-[#0d1117] border border-white/10 rounded px-2 py-1.5 text-xs text-gray-200 font-mono"
         />
         <button onClick={sendInput} disabled={!terminalInput.trim()}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-green-600 hover:bg-green-500 text-white text-xs font-bold disabled:opacity-40">
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-green-700 hover:bg-green-500 text-white text-xs font-bold disabled:opacity-40">
           <Send className="w-3.5 h-3.5" /> Send
         </button>
       </div>

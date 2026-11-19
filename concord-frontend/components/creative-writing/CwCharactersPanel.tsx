@@ -125,7 +125,7 @@ export function CwCharactersPanel({ projectId, onChange }: { projectId: string; 
           <input placeholder="Character arc" value={form.arc} onChange={(e) => setForm({ ...form, arc: e.target.value })}
             className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <button type="button" onClick={addCharacter}
-            className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-amber-600 hover:bg-amber-500 text-white rounded-lg">
+            className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-amber-700 hover:bg-amber-500 text-white rounded-lg">
             <Plus className="w-3.5 h-3.5" /> Character
           </button>
         </div>
@@ -154,7 +154,7 @@ export function CwCharactersPanel({ projectId, onChange }: { projectId: string; 
                     className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
                   <div className="flex items-center gap-2">
                     <button type="button" onClick={saveEdit}
-                      className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-amber-600 hover:bg-amber-500 text-white rounded-lg">
+                      className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-amber-700 hover:bg-amber-500 text-white rounded-lg">
                       <Check className="w-3.5 h-3.5" /> Save
                     </button>
                     <button type="button" onClick={cancelEdit}
@@ -213,7 +213,7 @@ export function CwCharactersPanel({ projectId, onChange }: { projectId: string; 
               {characters.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
             <button type="button" onClick={addRelation}
-              className="px-3 py-1.5 text-xs font-medium bg-amber-600 hover:bg-amber-500 text-white rounded-lg">Relate</button>
+              className="px-3 py-1.5 text-xs font-medium bg-amber-700 hover:bg-amber-500 text-white rounded-lg">Relate</button>
           </div>
           {relationships.length > 0 && (
             <ul className="space-y-1">

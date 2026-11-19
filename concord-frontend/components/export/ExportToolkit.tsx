@@ -164,7 +164,7 @@ function ScheduledExports({ dtus }: { dtus: Dtu[] }) {
             <option value="json">json</option><option value="csv">csv</option><option value="markdown">markdown</option><option value="pdf">pdf</option>
           </select>
         </label>
-        <button onClick={create} disabled={busy} className="flex items-center gap-1 rounded bg-teal-600 px-2.5 py-1.5 text-xs text-white hover:bg-teal-500 disabled:opacity-40">
+        <button onClick={create} disabled={busy} className="flex items-center gap-1 rounded bg-teal-700 px-2.5 py-1.5 text-xs text-white hover:bg-teal-500 disabled:opacity-40">
           {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />} Create
         </button>
         <button onClick={runDue} className="flex items-center gap-1 rounded border border-zinc-700 px-2.5 py-1.5 text-xs text-zinc-300 hover:border-zinc-500">
@@ -238,7 +238,7 @@ export function IncrementalExport({ dtus }: { dtus: Dtu[] }) {
         <button onClick={() => pull(false)} disabled={busy} className="rounded border border-zinc-700 px-2.5 py-1.5 text-xs text-zinc-300 hover:border-zinc-500 disabled:opacity-40">
           Preview changes
         </button>
-        <button onClick={() => pull(true)} disabled={busy} className="flex items-center gap-1 rounded bg-teal-600 px-2.5 py-1.5 text-xs text-white hover:bg-teal-500 disabled:opacity-40">
+        <button onClick={() => pull(true)} disabled={busy} className="flex items-center gap-1 rounded bg-teal-700 px-2.5 py-1.5 text-xs text-white hover:bg-teal-500 disabled:opacity-40">
           {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />} Export delta + advance cursor
         </button>
         <button onClick={reset} className="rounded border border-zinc-700 px-2.5 py-1.5 text-xs text-zinc-400 hover:border-zinc-500">Reset cursor</button>
@@ -319,7 +319,7 @@ function SelectiveFields({ dtus }: { dtus: Dtu[] }) {
             })}
           </div>
           <button onClick={exportProjected} disabled={busy || picked.size === 0}
-            className="flex items-center gap-1 rounded bg-teal-600 px-2.5 py-1.5 text-xs text-white hover:bg-teal-500 disabled:opacity-40">
+            className="flex items-center gap-1 rounded bg-teal-700 px-2.5 py-1.5 text-xs text-white hover:bg-teal-500 disabled:opacity-40">
             {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
             Export {picked.size} field(s)
           </button>
@@ -361,7 +361,7 @@ export function PdfExport({ dtus }: { dtus: Dtu[] }) {
           <input value={title} onChange={(e) => setTitle(e.target.value)}
             className="w-56 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-white" />
         </label>
-        <button onClick={generate} disabled={busy} className="flex items-center gap-1 rounded bg-teal-600 px-2.5 py-1.5 text-xs text-white hover:bg-teal-500 disabled:opacity-40">
+        <button onClick={generate} disabled={busy} className="flex items-center gap-1 rounded bg-teal-700 px-2.5 py-1.5 text-xs text-white hover:bg-teal-500 disabled:opacity-40">
           {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileDown className="h-3 w-3" />} Generate PDF
         </button>
       </div>
@@ -406,7 +406,7 @@ export function EncryptedArchive({ dtus }: { dtus: Dtu[] }) {
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="min 4 chars"
             className="w-56 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-white" />
         </label>
-        <button onClick={encrypt} disabled={busy} className="flex items-center gap-1 rounded bg-teal-600 px-2.5 py-1.5 text-xs text-white hover:bg-teal-500 disabled:opacity-40">
+        <button onClick={encrypt} disabled={busy} className="flex items-center gap-1 rounded bg-teal-700 px-2.5 py-1.5 text-xs text-white hover:bg-teal-500 disabled:opacity-40">
           {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Lock className="h-3 w-3" />} Encrypt + download
         </button>
       </div>
@@ -474,7 +474,7 @@ export function DecryptedArchive() {
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="archive password"
             className="w-56 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-white" />
         </label>
-        <button onClick={decrypt} disabled={busy || !envelope} className="flex items-center gap-1 rounded bg-teal-600 px-2.5 py-1.5 text-xs text-white hover:bg-teal-500 disabled:opacity-40">
+        <button onClick={decrypt} disabled={busy || !envelope} className="flex items-center gap-1 rounded bg-teal-700 px-2.5 py-1.5 text-xs text-white hover:bg-teal-500 disabled:opacity-40">
           {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />} Decrypt + download
         </button>
       </div>
@@ -551,7 +551,7 @@ export function ImportDtuPanel() {
           <input type="text" value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="export"
             className="w-36 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-white" />
         </label>
-        <button onClick={importFile} disabled={busy || !bytes} className="flex items-center gap-1 rounded bg-teal-600 px-2.5 py-1.5 text-xs text-white hover:bg-teal-500 disabled:opacity-40">
+        <button onClick={importFile} disabled={busy || !bytes} className="flex items-center gap-1 rounded bg-teal-700 px-2.5 py-1.5 text-xs text-white hover:bg-teal-500 disabled:opacity-40">
           {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />} Import + validate
         </button>
       </div>
@@ -619,7 +619,7 @@ function CloudDestinations() {
           <input type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder="ya29...."
             className="w-52 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-white" />
         </label>
-        <button onClick={connect} disabled={busy} className="flex items-center gap-1 rounded bg-teal-600 px-2.5 py-1.5 text-xs text-white hover:bg-teal-500 disabled:opacity-40">
+        <button onClick={connect} disabled={busy} className="flex items-center gap-1 rounded bg-teal-700 px-2.5 py-1.5 text-xs text-white hover:bg-teal-500 disabled:opacity-40">
           {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />} Connect
         </button>
       </div>

@@ -53,7 +53,7 @@ export function WatchlistPanel() {
       </header>
       <form onSubmit={(e) => { e.preventDefault(); add(); }} className="p-3 border-b border-lattice-border flex items-center gap-2">
         <input value={draft} onChange={e => setDraft(e.target.value)} placeholder="CoinGecko id (e.g. bitcoin, ethereum, solana)" className="flex-1 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
-        <button type="submit" disabled={!draft.trim()} className="px-3 py-1.5 text-xs rounded bg-blue-500 text-white font-bold hover:bg-blue-400 disabled:opacity-40 inline-flex items-center gap-1"><Plus className="w-3 h-3" />Add</button>
+        <button type="submit" disabled={!draft.trim()} className="px-3 py-1.5 text-xs rounded bg-blue-600 text-white font-bold hover:bg-blue-400 disabled:opacity-40 inline-flex items-center gap-1"><Plus className="w-3 h-3" />Add</button>
       </form>
       {loading ? (
         <div className="p-3"><SkeletonTableRows rows={5} columns={3} /></div>
@@ -139,7 +139,7 @@ export function RecurringBuysPanel() {
         <button onClick={runDue} disabled={running} className="ml-auto px-2.5 py-1 text-xs rounded border border-amber-500/30 text-amber-300 hover:bg-amber-500/10 disabled:opacity-40 inline-flex items-center gap-1">
           {running ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}Run due
         </button>
-        <button onClick={() => setShowCreate(v => !v)} className="px-2.5 py-1 text-xs rounded bg-blue-500 text-white font-semibold hover:bg-blue-400 inline-flex items-center gap-1"><Plus className="w-3 h-3" />New</button>
+        <button onClick={() => setShowCreate(v => !v)} className="px-2.5 py-1 text-xs rounded bg-blue-600 text-white font-semibold hover:bg-blue-400 inline-flex items-center gap-1"><Plus className="w-3 h-3" />New</button>
       </header>
       {showCreate && (
         <div className="p-3 border-b border-lattice-border grid grid-cols-12 gap-2">
@@ -152,7 +152,7 @@ export function RecurringBuysPanel() {
           <select value={draft.chain} onChange={e => setDraft({ ...draft, chain: e.target.value })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
             {CHAINS.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
-          <button onClick={create} className="col-span-12 px-3 py-1.5 text-xs rounded bg-blue-500 text-white font-bold hover:bg-blue-400">Save DCA plan</button>
+          <button onClick={create} className="col-span-12 px-3 py-1.5 text-xs rounded bg-blue-600 text-white font-bold hover:bg-blue-400">Save DCA plan</button>
         </div>
       )}
       {loading ? <Loading /> : list.length === 0 ? <Empty label="No DCA plans set up. Run-due uses live CoinGecko prices to mint a lot at each cadence." /> : (
@@ -228,7 +228,7 @@ export function StakingPanel() {
         <Coins className="w-4 h-4 text-blue-400" />
         <span className="text-sm font-semibold text-gray-200">Staking</span>
         <span className="text-[10px] text-gray-400">{list.filter(p => p.active).length} active</span>
-        <button onClick={() => setShow(v => !v)} className="ml-auto px-2.5 py-1 text-xs rounded bg-blue-500 text-white font-semibold hover:bg-blue-400 inline-flex items-center gap-1"><Plus className="w-3 h-3" />Stake</button>
+        <button onClick={() => setShow(v => !v)} className="ml-auto px-2.5 py-1 text-xs rounded bg-blue-600 text-white font-semibold hover:bg-blue-400 inline-flex items-center gap-1"><Plus className="w-3 h-3" />Stake</button>
       </header>
       {show && (
         <div className="p-3 border-b border-lattice-border grid grid-cols-12 gap-2">
@@ -237,7 +237,7 @@ export function StakingPanel() {
           <input type="number" step="0.00000001" value={draft.qty} onChange={e => setDraft({ ...draft, qty: e.target.value })} placeholder="Qty *" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
           <input value={draft.validator} onChange={e => setDraft({ ...draft, validator: e.target.value })} placeholder="Validator" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <input type="number" step="0.1" value={draft.aprPct} onChange={e => setDraft({ ...draft, aprPct: e.target.value })} placeholder="APR %" className="col-span-1 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
-          <button onClick={stake} className="col-span-12 px-3 py-1.5 text-xs rounded bg-blue-500 text-white font-bold hover:bg-blue-400">Stake</button>
+          <button onClick={stake} className="col-span-12 px-3 py-1.5 text-xs rounded bg-blue-600 text-white font-bold hover:bg-blue-400">Stake</button>
         </div>
       )}
       {rewardFor && (
@@ -316,7 +316,7 @@ export function NFTsPanel() {
         <ImageIcon className="w-4 h-4 text-blue-400" />
         <span className="text-sm font-semibold text-gray-200">NFTs</span>
         <span className="text-[10px] text-gray-400">{list.length}</span>
-        <button onClick={() => setShow(v => !v)} className="ml-auto px-2.5 py-1 text-xs rounded bg-blue-500 text-white font-semibold hover:bg-blue-400 inline-flex items-center gap-1"><Plus className="w-3 h-3" />Add</button>
+        <button onClick={() => setShow(v => !v)} className="ml-auto px-2.5 py-1 text-xs rounded bg-blue-600 text-white font-semibold hover:bg-blue-400 inline-flex items-center gap-1"><Plus className="w-3 h-3" />Add</button>
       </header>
       {show && (
         <div className="p-3 border-b border-lattice-border grid grid-cols-12 gap-2">
@@ -327,7 +327,7 @@ export function NFTsPanel() {
           <input value={draft.tokenId} onChange={e => setDraft({ ...draft, tokenId: e.target.value })} placeholder="Token ID" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
           <input type="number" step="0.01" value={draft.costBasisUsd} onChange={e => setDraft({ ...draft, costBasisUsd: e.target.value })} placeholder="Cost USD" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
           <input value={draft.imageUrl} onChange={e => setDraft({ ...draft, imageUrl: e.target.value })} placeholder="Image URL" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <button onClick={add} className="col-span-12 px-3 py-1.5 text-xs rounded bg-blue-500 text-white font-bold hover:bg-blue-400">Add NFT</button>
+          <button onClick={add} className="col-span-12 px-3 py-1.5 text-xs rounded bg-blue-600 text-white font-bold hover:bg-blue-400">Add NFT</button>
         </div>
       )}
       {loading ? <Loading /> : list.length === 0 ? <Empty label="No NFTs tracked. Add real NFTs you own with contract + token ID." /> : (
@@ -446,7 +446,7 @@ export function ActivityPanel() {
           {recordError && <p className="text-[11px] text-rose-300">{recordError}</p>}
           <div className="flex items-center gap-2">
             <button type="button" onClick={record} disabled={!recForm.symbol.trim() || !recForm.qty || recording}
-              className="px-3 py-1 text-xs rounded bg-blue-500 text-white font-bold hover:bg-blue-400 disabled:opacity-40">
+              className="px-3 py-1 text-xs rounded bg-blue-600 text-white font-bold hover:bg-blue-400 disabled:opacity-40">
               {recording ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Record transaction'}
             </button>
             <button type="button" onClick={() => setShowRecord(false)}
@@ -594,7 +594,7 @@ export function InsightsPanel() {
       <header className="px-4 py-2.5 border-b border-lattice-border flex items-center gap-2">
         <Sparkles className="w-4 h-4 text-blue-400" />
         <span className="text-sm font-semibold text-gray-200">AI portfolio insight</span>
-        <button onClick={run} disabled={loading} className="ml-auto px-2.5 py-1 text-xs rounded bg-blue-500 text-white font-bold hover:bg-blue-400 disabled:opacity-40 inline-flex items-center gap-1">
+        <button onClick={run} disabled={loading} className="ml-auto px-2.5 py-1 text-xs rounded bg-blue-600 text-white font-bold hover:bg-blue-400 disabled:opacity-40 inline-flex items-center gap-1">
           {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}Analyze
         </button>
       </header>

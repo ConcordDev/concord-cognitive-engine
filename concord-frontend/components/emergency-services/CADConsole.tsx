@@ -557,7 +557,7 @@ export function CADConsole() {
             <input value={uLat} onChange={(e) => setULat(e.target.value)} placeholder="Lat (map)" className="rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white" />
             <input value={uLng} onChange={(e) => setULng(e.target.value)} placeholder="Lng (map)" className="rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white" />
           </div>
-          <button onClick={addUnit} disabled={busy} className="w-full rounded bg-emerald-600 py-1.5 text-xs font-medium text-white hover:bg-emerald-500 disabled:opacity-40">
+          <button onClick={addUnit} disabled={busy} className="w-full rounded bg-emerald-700 py-1.5 text-xs font-medium text-white hover:bg-emerald-600 disabled:opacity-40">
             Add to Roster
           </button>
         </div>
@@ -666,7 +666,7 @@ export function CADConsole() {
                   <button
                     onClick={() => dispatch(selectedIncident.id, u.id)}
                     disabled={busy}
-                    className="flex items-center gap-1 rounded bg-cyan-600 px-2 py-0.5 text-[10px] font-medium text-white hover:bg-cyan-500 disabled:opacity-40"
+                    className="flex items-center gap-1 rounded bg-cyan-700 px-2 py-0.5 text-[10px] font-medium text-white hover:bg-cyan-500 disabled:opacity-40"
                   >
                     Dispatch <ArrowRight className="h-3 w-3" />
                   </button>
@@ -783,7 +783,7 @@ export function CADConsole() {
                       <button
                         onClick={() => void saveEdit(u.id)}
                         disabled={busy}
-                        className="rounded bg-emerald-600 px-2 py-1 text-[11px] font-medium text-white hover:bg-emerald-500 disabled:opacity-40"
+                        className="rounded bg-emerald-700 px-2 py-1 text-[11px] font-medium text-white hover:bg-emerald-600 disabled:opacity-40"
                       >
                         Save changes
                       </button>

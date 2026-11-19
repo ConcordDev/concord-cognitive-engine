@@ -255,7 +255,7 @@ export function SportsCareerPanel() {
                     <button
                       onClick={() => void advance()} disabled={busy === 'advance'}
                       aria-label="Advance to the next career stage"
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-600/70 hover:bg-emerald-600 text-emerald-50 disabled:opacity-50"
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-700/70 hover:bg-emerald-700 text-emerald-50 disabled:opacity-50"
                     >Advance stage</button>
                     <button
                       onClick={() => void retire()} disabled={busy === 'retire'}

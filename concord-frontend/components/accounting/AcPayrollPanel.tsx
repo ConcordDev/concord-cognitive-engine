@@ -111,7 +111,7 @@ export function AcPayrollPanel() {
                   </select>
                   <input value={editDraft.rate} onChange={(ev) => setEditDraft({ ...editDraft, rate: ev.target.value })} inputMode="decimal" placeholder={editDraft.payType === 'hourly' ? 'Rate/hr' : 'Annual'} className={inp} />
                   <div className="flex gap-1">
-                    <button type="button" onClick={() => saveEditEmp(e.id)} className="flex-1 inline-flex items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded" aria-label={`Save changes to ${e.name || 'employee'}`}><Check className="w-3.5 h-3.5" aria-hidden="true" /></button>
+                    <button type="button" onClick={() => saveEditEmp(e.id)} className="flex-1 inline-flex items-center justify-center gap-1 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-medium rounded" aria-label={`Save changes to ${e.name || 'employee'}`}><Check className="w-3.5 h-3.5" aria-hidden="true" /></button>
                     <button type="button" onClick={() => setEditingId(null)} className="flex-1 inline-flex items-center justify-center gap-1 border border-white/15 text-gray-300 hover:bg-white/5 text-xs font-medium rounded" aria-label="Cancel editing"><X className="w-3.5 h-3.5" aria-hidden="true" /></button>
                   </div>
                 </li>
@@ -183,7 +183,7 @@ export function AcPayrollPanel() {
 }
 
 const inp = 'bg-black/40 border border-white/10 rounded px-2 py-1.5 text-xs text-gray-100';
-const btn = 'flex items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded';
+const btn = 'flex items-center justify-center gap-1 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-medium rounded';
 function Spin() { return <div className="flex items-center justify-center py-10 text-gray-400"><Loader2 className="w-5 h-5 animate-spin" /></div>; }
 function Empty({ text }: { text: string }) {
   return <EmptyState compact title={text} description="This book has no saved rows yet. Add one above and it will show up here." />;

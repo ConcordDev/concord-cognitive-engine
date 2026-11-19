@@ -76,7 +76,7 @@ export function DeepZoomViewer() {
         />
         <button
           type="button" onClick={load} disabled={loading}
-          className="rounded bg-cyan-600/80 hover:bg-cyan-600 px-3 py-1.5 text-[12px] font-semibold text-white disabled:opacity-40"
+          className="rounded bg-cyan-700/80 hover:bg-cyan-700 px-3 py-1.5 text-[12px] font-semibold text-white disabled:opacity-40"
         >
           {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Load'}
         </button>

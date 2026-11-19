@@ -379,7 +379,7 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
                 focusMode && 'text-base leading-loose border-transparent bg-transparent focus:outline-none')} />
             <div className="flex items-center gap-2">
               <button type="button" onClick={saveScene} disabled={!dirty || saving}
-                className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white rounded-lg">
+                className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-amber-700 hover:bg-amber-500 disabled:opacity-40 text-white rounded-lg">
                 {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                 {dirty ? 'Save scene' : 'Saved'}
               </button>
@@ -486,10 +486,10 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
           <div className="flex gap-1">
             <button type="button" onClick={() => setRefMode('scene')}
               className={cn('flex-1 text-[11px] px-2 py-1 rounded-lg',
-                refMode === 'scene' ? 'bg-amber-600 text-white' : 'bg-zinc-800 text-zinc-300')}>Scene</button>
+                refMode === 'scene' ? 'bg-amber-700 text-white' : 'bg-zinc-800 text-zinc-300')}>Scene</button>
             <button type="button" onClick={() => setRefMode('note')}
               className={cn('flex-1 text-[11px] px-2 py-1 rounded-lg',
-                refMode === 'note' ? 'bg-amber-600 text-white' : 'bg-zinc-800 text-zinc-300')}>Note</button>
+                refMode === 'note' ? 'bg-amber-700 text-white' : 'bg-zinc-800 text-zinc-300')}>Note</button>
           </div>
           {refMode === 'scene' ? (
             <>

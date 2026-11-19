@@ -146,7 +146,7 @@ export function FileExplorer({
             placeholder="src/new-file.ts"
             className="flex-1 px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono"
           />
-          <button onClick={create} className="px-2 py-1 text-xs rounded bg-blue-500 text-white font-bold hover:bg-blue-400">Add</button>
+          <button onClick={create} className="px-2 py-1 text-xs rounded bg-blue-600 text-white font-bold hover:bg-blue-400">Add</button>
         </div>
       )}
       <ul className="flex-1 overflow-y-auto">
@@ -160,7 +160,7 @@ export function FileExplorer({
             onClick={() => renamingPath !== f.path && onOpen(f.path)}
             className={cn(
               'group px-3 py-1 cursor-pointer flex items-center gap-1.5 hover:bg-white/[0.04] text-xs',
-              activePath === f.path && 'bg-blue-500/15 text-white',
+              activePath === f.path && 'bg-blue-600/15 text-white',
             )}
           >
             <File className="w-3 h-3 text-gray-400 flex-shrink-0" />

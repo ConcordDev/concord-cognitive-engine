@@ -106,7 +106,7 @@ export function InspectionChecklists() {
           <label className="flex-1 min-w-[160px]"><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Job name</span>
             <input value={jobName} onChange={(e) => setJobName(e.target.value)} placeholder="e.g. 123 Oak St — Rough-In" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white" />
           </label>
-          <button type="button" onClick={() => createChecklist.mutate()} disabled={createChecklist.isPending} className="rounded bg-rose-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-400 disabled:opacity-50">
+          <button type="button" onClick={() => createChecklist.mutate()} disabled={createChecklist.isPending} className="rounded bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-400 disabled:opacity-50">
             {createChecklist.isPending ? <Loader2 className="mx-auto h-3.5 w-3.5 animate-spin" /> : 'Create checklist'}
           </button>
           {formError && <p role="alert" className="w-full text-xs text-rose-300">{formError}</p>}
@@ -115,7 +115,7 @@ export function InspectionChecklists() {
         {checklists.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {checklists.map((c) => (
-              <button key={c.id} type="button" onClick={() => setActiveId(c.id)} className={`rounded px-2.5 py-1 text-xs ${activeId === c.id ? 'bg-rose-500/20 text-rose-200 border border-rose-500/40' : 'border border-zinc-800 text-zinc-400 hover:text-white'}`}>
+              <button key={c.id} type="button" onClick={() => setActiveId(c.id)} className={`rounded px-2.5 py-1 text-xs ${activeId === c.id ? 'bg-rose-600/20 text-rose-200 border border-rose-500/40' : 'border border-zinc-800 text-zinc-400 hover:text-white'}`}>
                 {c.jobName}
               </button>
             ))}
@@ -144,7 +144,7 @@ export function InspectionChecklists() {
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
                     <button type="button" onClick={() => setItem.mutate({ itemId: it.id, passed: true })} className={`rounded px-1.5 py-0.5 text-[10px] ${it.passed === true ? 'bg-emerald-500 text-black' : 'border border-zinc-700 text-zinc-400 hover:text-emerald-300'}`}>Pass</button>
-                    <button type="button" onClick={() => setItem.mutate({ itemId: it.id, passed: false })} className={`rounded px-1.5 py-0.5 text-[10px] ${it.passed === false ? 'bg-rose-500 text-white' : 'border border-zinc-700 text-zinc-400 hover:text-rose-300'}`}>Fail</button>
+                    <button type="button" onClick={() => setItem.mutate({ itemId: it.id, passed: false })} className={`rounded px-1.5 py-0.5 text-[10px] ${it.passed === false ? 'bg-rose-600 text-white' : 'border border-zinc-700 text-zinc-400 hover:text-rose-300'}`}>Fail</button>
                     <label className="flex items-center gap-1 rounded border border-zinc-700 px-1 py-0.5 text-[10px] text-rose-300">
                       <input type="checkbox" checked={it.critical} onChange={(e) => setItem.mutate({ itemId: it.id, critical: e.target.checked })} />Crit
                     </label>

@@ -58,9 +58,9 @@ function badgeColor(category: string): string {
   return (
     {
       Combat: 'bg-red-500/80 text-red-50',
-      Quest: 'bg-emerald-500/80 text-emerald-50',
-      NPC: 'bg-blue-500/80 text-blue-50',
-      World: 'bg-amber-500/80 text-amber-50',
+      Quest: 'bg-emerald-700/80 text-emerald-50',
+      NPC: 'bg-blue-600/80 text-blue-50',
+      World: 'bg-amber-700/80 text-amber-50',
       Cross: 'bg-fuchsia-500/80 text-fuchsia-50',
       Cognition: 'bg-purple-500/80 text-purple-50',
       Other: 'bg-zinc-600/80 text-zinc-50',

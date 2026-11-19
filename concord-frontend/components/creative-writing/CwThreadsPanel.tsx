@@ -93,7 +93,7 @@ export function CwThreadsPanel({ projectId, onChange }: { projectId: string; onC
             ))}
           </div>
           <button type="button" onClick={addThread}
-            className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-amber-600 hover:bg-amber-500 text-white rounded-lg">
+            className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-amber-700 hover:bg-amber-500 text-white rounded-lg">
             <Plus className="w-3.5 h-3.5" /> Thread
           </button>
         </div>

@@ -144,7 +144,7 @@ export function GitPanel({ projectId, onChanged, onDiscarded }: {
                 className="w-full px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
               <div className="flex items-center gap-1">
                 <button onClick={commit} disabled={!message.trim() || status.staged.length === 0}
-                  className="flex-1 px-2 py-1 text-xs rounded bg-blue-500 text-white font-bold hover:bg-blue-400 disabled:opacity-40 inline-flex items-center justify-center gap-1">
+                  className="flex-1 px-2 py-1 text-xs rounded bg-blue-600 text-white font-bold hover:bg-blue-400 disabled:opacity-40 inline-flex items-center justify-center gap-1">
                   <Check className="w-3 h-3" />Commit {status.staged.length > 0 ? `(${status.staged.length})` : ''}
                 </button>
                 <button onClick={stashAll} disabled={status.clean} title="Stash all changes"

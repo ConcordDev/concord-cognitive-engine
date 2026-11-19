@@ -119,7 +119,7 @@ export function AIScribePanel({
             <div className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Encounter transcript / dictation</div>
             <button
               onClick={recording ? stopVoice : startVoice}
-              className={`px-2 py-1 text-xs rounded inline-flex items-center gap-1 ${recording ? 'bg-rose-500 text-white animate-pulse' : 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/25'}`}
+              className={`px-2 py-1 text-xs rounded inline-flex items-center gap-1 ${recording ? 'bg-rose-600 text-white animate-pulse' : 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/25'}`}
             >
               <Mic className="w-3 h-3" />{recording ? 'Stop' : 'Voice dictate'}
             </button>

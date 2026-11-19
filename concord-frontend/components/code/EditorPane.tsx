@@ -453,7 +453,7 @@ export function EditorPane({
               <Fingerprint className="w-3 h-3" />Provenance
             </button>
             <button onClick={format} className="px-1.5 py-0.5 rounded border border-white/15 text-gray-300 hover:bg-white/[0.05]" title="Format file">format</button>
-            <button onClick={save} disabled={!active.modified} className="px-1.5 py-0.5 rounded bg-blue-500 text-white font-bold hover:bg-blue-400 disabled:opacity-40 inline-flex items-center gap-1" title="Save (⌘S)">
+            <button onClick={save} disabled={!active.modified} className="px-1.5 py-0.5 rounded bg-blue-600 text-white font-bold hover:bg-blue-400 disabled:opacity-40 inline-flex items-center gap-1" title="Save (⌘S)">
               <Save className="w-3 h-3" />Save
             </button>
           </div>
@@ -501,7 +501,7 @@ export function EditorPane({
                   className="flex-1 px-2 py-1 text-xs bg-lattice-deep border border-blue-500/30 rounded text-white"
                 />
                 <span className="text-[10px] text-gray-400 shrink-0">{selection.length} chars selected</span>
-                <button onClick={runInlineEdit} disabled={inlineLoading || !inlineInstruction.trim()} className="px-2 py-1 text-xs rounded bg-blue-500 text-white font-bold hover:bg-blue-400 disabled:opacity-40 inline-flex items-center gap-1">
+                <button onClick={runInlineEdit} disabled={inlineLoading || !inlineInstruction.trim()} className="px-2 py-1 text-xs rounded bg-blue-600 text-white font-bold hover:bg-blue-400 disabled:opacity-40 inline-flex items-center gap-1">
                   {inlineLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}Propose edit
                 </button>
                 <button onClick={() => { setShowInlineEdit(false); setInlineProposal(null); setInlineError(''); }} className="text-gray-400 hover:text-white text-[10px]">esc</button>
@@ -515,7 +515,7 @@ export function EditorPane({
                   <pre className="px-2 py-1.5 text-[11px] font-mono whitespace-pre-wrap bg-rose-500/[0.07] text-rose-200 line-through decoration-rose-400/50">{inlineProposal.original}</pre>
                   <pre className="px-2 py-1.5 text-[11px] font-mono whitespace-pre-wrap bg-emerald-500/[0.07] text-emerald-200">{inlineProposal.edited}</pre>
                   <div className="px-2 py-1.5 flex items-center gap-1.5 bg-white/[0.02] border-t border-white/10">
-                    <button onClick={acceptInlineEdit} className="px-2 py-0.5 text-[11px] rounded bg-emerald-500/80 text-white font-semibold hover:bg-emerald-400">Accept</button>
+                    <button onClick={acceptInlineEdit} className="px-2 py-0.5 text-[11px] rounded bg-emerald-700/80 text-white font-semibold hover:bg-emerald-400">Accept</button>
                     <button onClick={rejectInlineEdit} className="px-2 py-0.5 text-[11px] rounded bg-white/10 text-gray-200 hover:bg-white/15">Reject</button>
                     <span className="text-[10px] text-lattice-muted">Reject leaves the file exactly as it is.</span>
                   </div>
@@ -558,7 +558,7 @@ export function EditorPane({
                   </div>
                   <pre className="max-h-48 overflow-auto p-2 rounded bg-black/40 font-mono text-[11px] text-emerald-200 whitespace-pre-wrap">{testGenResult.tests}</pre>
                   <div className="mt-2 flex items-center gap-2">
-                    <button onClick={saveGeneratedTests} disabled={!projectId} className="px-2 py-1 rounded bg-emerald-600 text-white font-bold hover:bg-emerald-500 disabled:opacity-40">
+                    <button onClick={saveGeneratedTests} disabled={!projectId} className="px-2 py-1 rounded bg-emerald-700 text-white font-bold hover:bg-emerald-600 disabled:opacity-40">
                       Save as {testGenResult.suggestedPath}
                     </button>
                     <button onClick={runGenerated} disabled={testRun?.running} className="px-2 py-1 rounded bg-blue-600 text-white font-bold hover:bg-blue-500 disabled:opacity-40 inline-flex items-center gap-1">

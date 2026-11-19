@@ -154,7 +154,7 @@ export function PeerPolicyPanel() {
           type="button"
           onClick={submit}
           disabled={busy || !domain.trim()}
-          className="px-3 py-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-40 rounded text-white text-sm inline-flex items-center gap-1"
+          className="px-3 py-2 bg-amber-700 hover:bg-amber-500 disabled:opacity-40 rounded text-white text-sm inline-flex items-center gap-1"
         >
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
           Set

@@ -65,7 +65,7 @@ export interface CityGovShellProps {
 }
 
 const PRIORITY_COLOUR: Record<GovServiceRequest['priority'], string> = {
-  urgent: 'bg-rose-500 text-white',
+  urgent: 'bg-rose-600 text-white',
   high: 'bg-amber-500 text-black',
   medium: 'bg-cyan-500 text-black',
   low: 'bg-gray-500 text-gray-100',

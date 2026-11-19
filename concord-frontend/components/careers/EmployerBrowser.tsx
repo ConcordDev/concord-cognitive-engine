@@ -152,7 +152,7 @@ export function EmployerBrowser({ trackId, gateTier = null, onContractProposed }
                     onClick={() => void propose(npc)}
                     disabled={busy === npc.npcId}
                     aria-label={`Send contract offer to ${npc.name}`}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-600/70 hover:bg-emerald-600 text-emerald-50 disabled:opacity-50"
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-700/70 hover:bg-emerald-700 text-emerald-50 disabled:opacity-50"
                   ><Send className="w-3 h-3" aria-hidden="true" /> {busy === npc.npcId ? 'Sending…' : 'Send offer'}</button>
                   <button onClick={() => setProposingFor(null)} aria-label="Cancel proposing a contract" className="text-lattice-muted hover:text-gray-300">cancel</button>
                 </div>
@@ -160,7 +160,7 @@ export function EmployerBrowser({ trackId, gateTier = null, onContractProposed }
                 <button
                   onClick={() => setProposingFor(npc.npcId)}
                   aria-label={`Propose a contract to ${npc.name}`}
-                  className="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-600/70 hover:bg-amber-600 text-amber-50"
+                  className="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-700/70 hover:bg-amber-700 text-amber-50"
                 ><Send className="w-3 h-3" aria-hidden="true" /> Propose contract</button>
               )}
             </li>

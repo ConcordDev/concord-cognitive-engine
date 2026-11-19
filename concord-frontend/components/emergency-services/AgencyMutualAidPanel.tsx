@@ -304,7 +304,7 @@ function MutualAidView({
         </div>
         {canToggleConsent && (
           <button onClick={() => toggleConsent(!data.mutualAidEnabled)} disabled={busy}
-            className={cn(BTN, data.mutualAidEnabled ? 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700' : 'bg-emerald-600 text-white hover:bg-emerald-500')}>
+            className={cn(BTN, data.mutualAidEnabled ? 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700' : 'bg-emerald-700 text-white hover:bg-emerald-600')}>
             {data.mutualAidEnabled ? 'Turn off' : 'Turn on'}
           </button>
         )}
@@ -660,7 +660,7 @@ function AgencyWorkspace({
               {canWrite && (
                 <div className="flex gap-1.5 mb-1.5">
                   <input className={INPUT} value={newUnitName} onChange={(e) => setNewUnitName(e.target.value)} placeholder="New unit call-sign" />
-                  <button onClick={addUnit} disabled={busy} className={cn(BTN, 'bg-emerald-600 text-white hover:bg-emerald-500 whitespace-nowrap')}>
+                  <button onClick={addUnit} disabled={busy} className={cn(BTN, 'bg-emerald-700 text-white hover:bg-emerald-600 whitespace-nowrap')}>
                     <Plus className="w-3.5 h-3.5" /> Add
                   </button>
                 </div>

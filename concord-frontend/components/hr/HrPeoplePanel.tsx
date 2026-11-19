@@ -215,7 +215,7 @@ export function HrPeoplePanel({ onChange }: { onChange: () => void }) {
               </select>
               <div className="flex gap-1.5">
                 <button type="button" onClick={() => saveEdit(selected)}
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded-lg px-2 py-1.5">Save changes</button>
+                  className="flex-1 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-medium rounded-lg px-2 py-1.5">Save changes</button>
                 <button type="button" onClick={() => setEditing(false)}
                   className="px-2 py-1.5 text-xs text-zinc-400 hover:text-zinc-200">Cancel</button>
               </div>
@@ -250,7 +250,7 @@ export function HrPeoplePanel({ onChange }: { onChange: () => void }) {
             <input value={taskInput} onChange={(e) => setTaskInput(e.target.value)} placeholder="Add onboarding task…"
               className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
             <button type="button" onClick={addTask}
-              className="px-2.5 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg">Add</button>
+              className="px-2.5 py-1.5 text-xs bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg">Add</button>
           </div>
           {onboarding.length > 0 && (
             <ul className="space-y-1">
@@ -274,7 +274,7 @@ export function HrPeoplePanel({ onChange }: { onChange: () => void }) {
             <input value={docInput} onChange={(e) => setDocInput(e.target.value)} placeholder="Add document…"
               className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
             <button type="button" onClick={addDoc}
-              className="px-2.5 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg">Add</button>
+              className="px-2.5 py-1.5 text-xs bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg">Add</button>
           </div>
           {docs.length > 0 && (
             <ul className="flex flex-wrap gap-1.5">
@@ -312,7 +312,7 @@ export function HrPeoplePanel({ onChange }: { onChange: () => void }) {
           </button>
         </div>
         <button type="button" onClick={() => setShowAdd((v) => !v)}
-          className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg">
+          className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg">
           <Plus className="w-3.5 h-3.5" /> Add
         </button>
       </div>
@@ -335,7 +335,7 @@ export function HrPeoplePanel({ onChange }: { onChange: () => void }) {
             {employees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
           </select>
           <button type="button" onClick={addEmp}
-            className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded-lg px-2 py-1.5">Add employee</button>
+            className="bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-medium rounded-lg px-2 py-1.5">Add employee</button>
         </div>
       )}
 

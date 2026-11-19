@@ -170,7 +170,7 @@ export function CreativeWritingSection() {
                 onChange={(e) => setForm({ ...form, targetWords: e.target.value })}
                 className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
               <button type="button" onClick={addProject}
-                className="flex items-center justify-center gap-1 bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium rounded-lg">
+                className="flex items-center justify-center gap-1 bg-amber-700 hover:bg-amber-500 text-white text-xs font-medium rounded-lg">
                 <Plus className="w-3.5 h-3.5" /> Manuscript
               </button>
             </div>
@@ -196,7 +196,7 @@ export function CreativeWritingSection() {
                   </div>
                   <div className="flex items-center gap-2">
                     <button type="button" onClick={saveSettings}
-                      className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-amber-600 hover:bg-amber-500 text-white rounded-lg">
+                      className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-amber-700 hover:bg-amber-500 text-white rounded-lg">
                       <Check className="w-3.5 h-3.5" /> Save
                     </button>
                     <button type="button" onClick={() => setEditingSettings(false)}

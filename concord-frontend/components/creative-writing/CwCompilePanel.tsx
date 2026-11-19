@@ -77,7 +77,7 @@ export function CwCompilePanel({ projectId }: { projectId: string }) {
             {FORMATS.map((f) => (
               <button key={f.id} type="button" onClick={() => setFormat(f.id)}
                 className={cn('text-[11px] px-2.5 py-1 rounded-lg',
-                  format === f.id ? 'bg-amber-600 text-white' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700')}>
+                  format === f.id ? 'bg-amber-700 text-white' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700')}>
                 {f.label}
               </button>
             ))}
@@ -89,7 +89,7 @@ export function CwCompilePanel({ projectId }: { projectId: string }) {
             {PRESETS.map((p) => (
               <button key={p.id} type="button" onClick={() => setPreset(p.id)} title={p.hint}
                 className={cn('text-[11px] px-2.5 py-1 rounded-lg',
-                  preset === p.id ? 'bg-amber-600 text-white' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700')}>
+                  preset === p.id ? 'bg-amber-700 text-white' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700')}>
                 {p.label}
               </button>
             ))}
@@ -107,7 +107,7 @@ export function CwCompilePanel({ projectId }: { projectId: string }) {
           </label>
         </div>
         <button type="button" onClick={compile} disabled={busy}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white rounded-lg">
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-amber-700 hover:bg-amber-500 disabled:opacity-40 text-white rounded-lg">
           {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
           Compile manuscript
         </button>
@@ -124,7 +124,7 @@ export function CwCompilePanel({ projectId }: { projectId: string }) {
               </p>
             </div>
             <button type="button" onClick={download}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg">
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg">
               <FileDown className="w-3.5 h-3.5" /> Download
             </button>
           </div>

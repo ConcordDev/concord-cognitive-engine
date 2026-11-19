@@ -176,7 +176,7 @@ export function StandManager() {
         <input value={form.treesPerAcre} onChange={e => setForm({ ...form, treesPerAcre: e.target.value })} placeholder="trees/ac"
           className="w-20 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
         <button onClick={addStand}
-          className="px-2.5 py-1 text-xs rounded bg-emerald-600 hover:bg-emerald-500 text-white font-semibold">Add stand</button>
+          className="px-2.5 py-1 text-xs rounded bg-emerald-700 hover:bg-emerald-600 text-white font-semibold">Add stand</button>
       </div>
       {formError && <p role="alert" className="mb-3 text-xs text-rose-300">{formError}</p>}
 
@@ -213,7 +213,7 @@ export function StandManager() {
                   className="w-16 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
                 <input value={editForm.treesPerAcre} onChange={(e) => setEditForm({ ...editForm, treesPerAcre: e.target.value })} aria-label="Trees per acre"
                   className="w-20 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
-                <button type="button" onClick={() => void saveEdit(st.id)} className="px-2 py-1 text-[11px] rounded bg-emerald-600 hover:bg-emerald-500 text-white font-semibold">Save</button>
+                <button type="button" onClick={() => void saveEdit(st.id)} className="px-2 py-1 text-[11px] rounded bg-emerald-700 hover:bg-emerald-600 text-white font-semibold">Save</button>
                 <button type="button" onClick={() => { setEditing(null); setEditError(null); }} className="px-2 py-1 text-[11px] rounded bg-zinc-800 text-zinc-300">Cancel</button>
                 {editError && <p role="alert" className="w-full text-[11px] text-rose-300">{editError}</p>}
               </div>

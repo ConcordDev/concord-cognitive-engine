@@ -569,7 +569,7 @@ export function AnswersQA() {
                 <button
                   onClick={() => accept(a.id)}
                   title={a.accepted ? 'Accepted — click to un-accept' : 'Accept this answer'}
-                  className={cn('p-1 rounded-full', a.accepted ? 'bg-emerald-600 text-white' : 'text-zinc-600 hover:text-emerald-400 hover:bg-emerald-900/30')}
+                  className={cn('p-1 rounded-full', a.accepted ? 'bg-emerald-700 text-white' : 'text-zinc-600 hover:text-emerald-400 hover:bg-emerald-900/30')}
                 >
                   <Check className="w-4 h-4" />
                 </button>

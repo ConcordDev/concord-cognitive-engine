@@ -94,7 +94,7 @@ export function CwSnapshotDiffPanel({ projectId }: { projectId: string }) {
             {scenes.map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}
           </select>
           <button type="button" onClick={takeSnapshot} disabled={busy || !sceneId}
-            className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white rounded-lg">
+            className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] bg-amber-700 hover:bg-amber-500 disabled:opacity-40 text-white rounded-lg">
             <Camera className="w-3.5 h-3.5" /> Take snapshot
           </button>
         </div>

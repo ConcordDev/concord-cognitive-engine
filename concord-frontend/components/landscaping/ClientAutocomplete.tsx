@@ -244,7 +244,7 @@ export function ClientAutocomplete({
                   {rowErr && <p className="col-span-2 text-[10px] text-rose-300">{rowErr}</p>}
                   <div className="col-span-2 flex gap-1">
                     <button type="button" onClick={() => void saveClient(c.id)} disabled={rowBusy === c.id}
-                      className="rounded bg-emerald-600 px-2 py-1 text-[11px] text-white">Save</button>
+                      className="rounded bg-emerald-700 px-2 py-1 text-[11px] text-white">Save</button>
                     <button type="button" onClick={() => setEditingId(null)}
                       className="rounded bg-zinc-800 px-2 py-1 text-[11px] text-zinc-300">Cancel</button>
                   </div>

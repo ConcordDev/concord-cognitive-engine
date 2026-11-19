@@ -114,7 +114,7 @@ export function HrLearningPanel() {
                 Mandatory
               </label>
               <button type="button" onClick={addCourse}
-                className="col-span-4 flex items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded-lg px-2 py-1.5">
+                className="col-span-4 flex items-center justify-center gap-1 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-medium rounded-lg px-2 py-1.5">
                 <Plus className="w-3.5 h-3.5" /> Add course
               </button>
             </div>
@@ -157,7 +157,7 @@ export function HrLearningPanel() {
               <input type="date" value={assignForm.dueDate} onChange={(e) => setAssignForm({ ...assignForm, dueDate: e.target.value })}
                 className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
               <button type="button" onClick={assign}
-                className="flex items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded-lg px-2 py-1.5">
+                className="flex items-center justify-center gap-1 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-medium rounded-lg px-2 py-1.5">
                 <Plus className="w-3.5 h-3.5" /> Assign
               </button>
             </div>

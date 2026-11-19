@@ -1054,7 +1054,7 @@ function OffersTab({ c, offers, busy, run, closed }: { c: PublicCase; offers: Se
                   {o.status === 'pending' && (
                     <div className="flex gap-1">
                       <button
-                        className="text-[11px] px-2 py-0.5 rounded bg-green-600 hover:bg-green-500 text-white disabled:opacity-40"
+                        className="text-[11px] px-2 py-0.5 rounded bg-green-700 hover:bg-green-500 text-white disabled:opacity-40"
                         disabled={busy === 'offer-respond'}
                         onClick={() => run('offer-respond', { caseId: c.id, offerId: o.id, decision: 'accept' }, 'offer-respond')}
                       >Accept</button>

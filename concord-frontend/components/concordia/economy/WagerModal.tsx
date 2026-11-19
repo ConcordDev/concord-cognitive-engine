@@ -84,7 +84,7 @@ export function WagerModal({ opponentId, opponentName, worldId, onClose, onPropo
                 </button>
                 <button
                   onClick={() => setCurrency('cc')}
-                  className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all border ${currency === 'cc' ? 'border-blue-500 bg-blue-500/10 text-blue-400' : 'border-white/10 text-white/40 hover:border-white/20'}`}
+                  className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all border ${currency === 'cc' ? 'border-blue-500 bg-blue-600/10 text-blue-400' : 'border-white/10 text-white/40 hover:border-white/20'}`}
                 >
                   💎 CC
                 </button>

@@ -105,7 +105,7 @@ export function IndexesPanel() {
                       await deleteIndex(idx.connectionId, idx.id);
                     }}
                     onBlur={() => setArmedDelete((a) => (a === idx.id ? null : a))}
-                    className={armedDelete === idx.id ? 'px-1.5 py-0.5 rounded bg-rose-500 text-white text-[10px] font-semibold' : 'text-gray-400 hover:text-red-400'}
+                    className={armedDelete === idx.id ? 'px-1.5 py-0.5 rounded bg-rose-600 text-white text-[10px] font-semibold' : 'text-gray-400 hover:text-red-400'}
                     aria-label={armedDelete === idx.id ? `Confirm delete index ${idx.name}` : `Delete index ${idx.name}`}
                   >
                     {armedDelete === idx.id ? 'Delete?' : <Trash2 className="w-3 h-3" />}

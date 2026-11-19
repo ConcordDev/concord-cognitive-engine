@@ -1045,7 +1045,7 @@ function DeliverableTab() {
                 <div className="space-y-2">
                   <textarea className={INPUT} rows={2} placeholder="Decision note (optional)" value={decisionNote} onChange={(e) => setDecisionNote(e.target.value)} />
                   <div className="flex gap-2">
-                    <button onClick={() => decide('approved')} className={`${BTN} bg-emerald-600 hover:bg-emerald-500 text-white`}>
+                    <button onClick={() => decide('approved')} className={`${BTN} bg-emerald-700 hover:bg-emerald-600 text-white`}>
                       <CheckCircle2 className="w-3.5 h-3.5" /> Approve
                     </button>
                     <button onClick={() => decide('changes_requested')} className={`${BTN} bg-orange-600 hover:bg-orange-500 text-white`}>

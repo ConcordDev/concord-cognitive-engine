@@ -459,7 +459,7 @@ export default function CareersLens() {
                           onClick={() => negotiate('accept', c.id)}
                           disabled={negBusy === c.id}
                           aria-label={`Accept contract ${c.id}`}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-600/70 hover:bg-emerald-600 text-emerald-50 disabled:opacity-50"
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-700/70 hover:bg-emerald-700 text-emerald-50 disabled:opacity-50"
                         ><Check className="w-3 h-3" aria-hidden="true" /> accept</button>
                         <input
                           type="number" min={0}
@@ -487,7 +487,7 @@ export default function CareersLens() {
                           }}
                           disabled={negBusy === c.id}
                           aria-label={`Send counter-offer for contract ${c.id}`}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-600/70 hover:bg-amber-600 text-amber-50 disabled:opacity-50"
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-700/70 hover:bg-amber-700 text-amber-50 disabled:opacity-50"
                         ><ArrowLeftRight className="w-3 h-3" aria-hidden="true" /> counter</button>
                         <button
                           onClick={() => negotiate('reject', c.id)}

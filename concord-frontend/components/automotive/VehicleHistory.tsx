@@ -136,7 +136,7 @@ export function VehicleHistory() {
               <input type="number" min={0} value={odometer} onChange={(e) => setOdometer(Math.max(0, Number(e.target.value) || 0))} className="w-20 bg-transparent text-right text-xs text-white font-mono focus:outline-none" />
               <span className="text-[10px] text-zinc-400">mi</span>
             </label>
-            <button type="button" onClick={() => pull.mutate()} disabled={pull.isPending || vin.trim().length < 11} className="rounded bg-blue-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-400 disabled:opacity-50">
+            <button type="button" onClick={() => pull.mutate()} disabled={pull.isPending || vin.trim().length < 11} className="rounded bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-400 disabled:opacity-50">
               {pull.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Pull report'}
             </button>
             {(vinData || recalls.length > 0 || schedule) && (
@@ -215,7 +215,7 @@ export function VehicleHistory() {
                 const expanded = expandedRecall === id;
                 return (
                   <div key={id} className="relative">
-                    <span className="absolute -left-[19px] top-2 grid h-4 w-4 place-items-center rounded-full border-2 border-zinc-950 bg-rose-500"><AlertTriangle className="h-2.5 w-2.5 text-white" /></span>
+                    <span className="absolute -left-[19px] top-2 grid h-4 w-4 place-items-center rounded-full border-2 border-zinc-950 bg-rose-600"><AlertTriangle className="h-2.5 w-2.5 text-white" /></span>
                     <button type="button" onClick={() => setExpandedRecall(expanded ? null : id)} className="block w-full rounded-lg border border-rose-500/30 bg-rose-500/5 px-3 py-2 text-left hover:bg-rose-500/10">
                       <div className="flex items-center justify-between gap-2">
                         <div className="min-w-0 flex-1">

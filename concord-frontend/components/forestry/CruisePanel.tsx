@@ -100,7 +100,7 @@ export function CruisePanel() {
         placeholder={'Tallied trees, one per line — species, dbh in, height ft:\noak, 14, 70\noak, 16, 75'}
         className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs font-mono text-zinc-200 mb-2" />
       <button onClick={addPlot} disabled={busy}
-        className="px-3 py-1.5 text-xs rounded bg-amber-600 hover:bg-amber-500 text-white font-semibold disabled:opacity-40 inline-flex items-center gap-1.5">
+        className="px-3 py-1.5 text-xs rounded bg-amber-700 hover:bg-amber-500 text-white font-semibold disabled:opacity-40 inline-flex items-center gap-1.5">
         {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />} Add plot
       </button>
       {err && <p className="text-xs text-rose-400 mt-2">{err}</p>}

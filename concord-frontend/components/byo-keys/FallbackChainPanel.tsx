@@ -154,7 +154,7 @@ export function FallbackChainPanel() {
                   <button
                     onClick={() => save(slot)}
                     disabled={busy}
-                    className="mt-3 px-3 py-1 rounded-md bg-amber-600 hover:bg-amber-500 text-amber-50 text-xs font-medium disabled:opacity-50"
+                    className="mt-3 px-3 py-1 rounded-md bg-amber-700 hover:bg-amber-500 text-amber-50 text-xs font-medium disabled:opacity-50"
                   >
                     {confirmClear === slot && draft.length === 0 ? 'confirm clear chain' : 'save chain'}
                   </button>

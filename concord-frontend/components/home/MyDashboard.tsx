@@ -276,7 +276,7 @@ function MessagesCard() {
                     <span className="block truncate text-[12px] font-medium text-gray-200">{c.withName || c.otherName || c.displayName || 'Direct message'}</span>
                     <span className="block truncate text-xs text-gray-500">{c.lastMessage || c.preview || '—'}</span>
                   </span>
-                  {!!c.unread && <span className="shrink-0 rounded-full bg-rose-500/80 px-1.5 text-xs font-semibold text-white">{c.unread}</span>}
+                  {!!c.unread && <span className="shrink-0 rounded-full bg-rose-600/80 px-1.5 text-xs font-semibold text-white">{c.unread}</span>}
                 </Link>
               </li>
             ))}

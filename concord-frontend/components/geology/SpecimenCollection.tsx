@@ -101,17 +101,17 @@ export function SpecimenCollection() {
           placeholder="Locality"
           className="w-28 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
         <button onClick={add} disabled={!form.name.trim()}
-          className="px-3 py-1 text-xs rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold disabled:opacity-40 inline-flex items-center gap-1">
+          className="px-3 py-1 text-xs rounded bg-cyan-700 hover:bg-cyan-500 text-white font-semibold disabled:opacity-40 inline-flex items-center gap-1">
           <Plus className="w-3 h-3" />Add
         </button>
       </div>
 
       <div className="flex gap-1 mb-2">
         <button onClick={() => setFilter('all')}
-          className={cn('px-2 py-0.5 text-[11px] rounded', filter === 'all' ? 'bg-cyan-600 text-white' : 'text-zinc-400')}>All</button>
+          className={cn('px-2 py-0.5 text-[11px] rounded', filter === 'all' ? 'bg-cyan-700 text-white' : 'text-zinc-400')}>All</button>
         {KINDS.map((k) => (
           <button key={k} onClick={() => setFilter(k)}
-            className={cn('px-2 py-0.5 text-[11px] rounded capitalize', filter === k ? 'bg-cyan-600 text-white' : 'text-zinc-400')}>
+            className={cn('px-2 py-0.5 text-[11px] rounded capitalize', filter === k ? 'bg-cyan-700 text-white' : 'text-zinc-400')}>
             {k}{byKind[k] ? ` ${byKind[k]}` : ''}
           </button>
         ))}
