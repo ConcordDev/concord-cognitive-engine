@@ -10,8 +10,16 @@ from .netledger import NetLedger, LOAD_CONTROL, stable_id, a11y_path, template_p
 from .lensrecord import shot_kind, row_stamp  # MST-W0-01 screenshots[] kinds + build stamp
 
 ERROR_TEXT = re.compile(r"(?i)^\s*(something went wrong|application error|unhandled runtime error|"
-                        r"this page could not be found|404|page not found|failed to load( lens)?|error loading|"
-                        r"chunkloaderror|internal server error|500|an unexpected error occurred|oops)\b")
+                        r"this page could not be found|page not found|failed to load( lens)?|error loading|"
+                        r"chunkloaderror|internal server error|an unexpected error occurred|oops)\b")
+# A bare status number is content, not an error: achievements/wallet render a
+# "500" figure and staking a "404.5" figure, and the unscoped 404|500
+# alternatives filed those lenses as failing to load (H2/H3/H4, capture run
+# 20261117-080754). A status code counts as error text only with error
+# vocabulary adjacent in the same text ("404 not found", "500 internal server
+# error", "error 500"); a purely numeric text never matches.
+STATUS_TEXT = re.compile(r"(?i)\b(404|500)\b[^a-z0-9]{0,4}(not found|internal server error|server error|error|failed)(?![\w-])"
+                         r"|\b(error|status|http)\b[^a-z0-9]{0,4}(404|500)\b")
 NOTHING_TO_EXPORT = re.compile(r"(?i)nothing to export|no data to export|nothing selected")
 NO_ACCESS_TEXT = re.compile(r"(?i)no access|access denied|not authorized|not authorised|forbidden|"
                             r"admin(s|istrator)? only|requires admin|permission denied|insufficient permission")
@@ -321,7 +329,7 @@ class LensWalk:
                 "visually_stable": stable, "error": err, "final_url": page.url}
 
     def error_texts(self, ax):
-        return [t for t in ax.texts() if len(t) < 90 and ERROR_TEXT.search(t)]
+        return [t for t in ax.texts() if len(t) < 90 and (ERROR_TEXT.search(t) or STATUS_TEXT.search(t))]
 
     def signed_out(self, page):
         return "/login" in page.url
