@@ -1,0 +1,28 @@
+{
+  "adversarial": [
+    "A hosted-label or schedule regression is refused by the pin's first three tests: every runs-on is exactly the self-hosted concordia-build label with no hosted label anywhere, and no schedule/cron trigger exists.",
+    "Version drift is refused twice — by the pin (UNITY_VERSION pin == ProjectVersion.txt m_EditorVersion 6000.5.9f1, cross-read from the project file, not a literal) and by the workflow's own resolve step at runtime.",
+    "Absent downstream tools can never pass silently: a missing pull-assets fails the run by name (tests without the rail's assets would test a different project); a missing budget.mjs is visibly skipped by name (hashFiles-gated).",
+    "An unconfigured R2 upload fails by name after the builds — it never uploads nowhere quietly."
+  ],
+  "author": "muse-b10",
+  "authored_on": "2026-11-19",
+  "case_source": "observed",
+  "covers": "P0-18 check file (/Users/dutch/.zuko/quality/P0-18.check.md) + commit e37b6d6d3 on v1/concordia-core (landed in the stack headed e841b32cf, GB-1558) + CONCORDIA_PLAN.md §2.4 + the parked live verification (P0-30) named as the VERIFIED gate",
+  "discriminator": "Pre-fix (at f4f1f77ff): no workflow runs the Unity editor or its suites — deploy.yml references unity-client only to sync the committed WebGL export, and the export itself is produced manually via scripts/export-unity-web.mjs on the editor machine. The EditMode/PlayMode suites (Assets/Concordia/Tests) had no CI at all. Reproduce: grep -l unity-client .github/workflows/*.yml at the parent → deploy.yml only; the pin suite (server/tests/unity-ci-workflow.test.js) at the parent → FAIL (15 failing-test lines observed with the workflow temporarily removed from the built tree). With the build: 8/8 PASS.",
+  "id": "P0-18",
+  "kind": "repro-steps",
+  "notes": "Registered by muse-b10 (author of record per CB-0828) from the fixer's supplied recipe content in the P0-18 check file; fixer muse-b3. Landing of record: v1/concordia-core @ e841b32cf9df399db7fa8b6b32c55f693fef45d1 (stack e37b6d6d3 → e841b32cf), GB-1558, office-verified by ls-remote. Tier: the check file proposes none; registrar set tier 2, reviewer's to adjust at acceptance.",
+  "packet_id": null,
+  "reviewer": "zuko-desk",
+  "status": "draft",
+  "steps": [
+    "Open a test PR touching unity-client on the landed branch and confirm the Unity CI job is offered ONLY to the concordia-build runner.",
+    "Confirm the run executes the §2.4 steps in order and the EditMode/PlayMode results land as artifacts.",
+    "Confirm builds/webgl/<sha>/ and builds/desktop-linux/<sha>/ exist on R2 after the run.",
+    "Confirm no run of this workflow has ever been scheduled or executed on the owner's Mac (no schedule trigger exists; the label exists only on the build machine)."
+  ],
+  "tier": 2,
+  "title": "Unity CI: a change under apps/concordia-living-world/unity-client triggers one pipeline on the self-hosted concordia-build runner only — pull-assets, EditMode, PlayMode, WebGL + desktop builds, R2 upload by sha, size + coverage reports; before P0-18 no workflow ran the Unity editor or its test suites",
+  "verified_against": null
+}
