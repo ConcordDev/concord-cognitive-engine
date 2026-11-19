@@ -39,6 +39,21 @@ CATEGORY_WORDS = {
     "crud_missing": r"(no|missing|without|can'?t|cannot|unable to|nowhere to|no way to)\b.{0,30}(delete|remove|edit|archive|create|add)\b|(delete|remove|edit|archive).{0,24}(is |are )?(missing|not available|no button|no option|does ?n'?t exist|unavailable)",
     # WALK-04h: chat / LLM-output tickets (the recipe lives in chatcheck.py).
     "chat": r"\b(chat|composer|chatbot|assistant|llm)\b|ai (reply|response|answer|output)|model (reply|response)",
+    # WALK-04e: click-sends-request tickets (the recipes live in
+    # clickpersist.py, dispatched from reverify.generic). Narrow phrases:
+    # a click that fires nothing, named as such — never a bare "click".
+    "dead_click": r"dead click|click(ing|s|ed)? (does|did) nothing|button (does|did) nothing|"
+                  r"nothing happens (when|on) click|no request (is )?(fired|sent)|sends? no request|"
+                  r"click.{0,24}(no|never sends?|doesn'?t send) (a )?request|"
+                  r"does nothing when clicked|unresponsive (button|control)",
+    # WALK-04e: computed-value tickets — the lens displays a value that
+    # disagrees with the value the ticket expects (amounts, dates).
+    "computed": r"wrong (total|amount|sum|balance|price|value|date|count|calculation)|"
+                r"incorrect (total|amount|sum|balance|date|calculation)|miscalculat|"
+                r"total (is|shows|reads) (wrong|incorrect)|date (is|shows) (wrong|incorrect|off)|"
+                r"off by one day",
+    # WALK-04e: upload tickets (file input, attach, upload flows).
+    "upload": r"upload|attach(ing)? (a |the )?file|file (input|picker|upload)|image upload|photo upload",
     # WALK-04g: hidden text / test data on live (the scanner lives in hiddentext.py).
     "hidden_text": r"hidden (text|content|data|element)|invisible (text|content|data)|ai[- ]directed|prompt injection|test data (on|in|visible|shown|leak)|seeded (demo )?data (shown|visible|on)|harness (data|text|string|value|mentor|transaction)",
 }

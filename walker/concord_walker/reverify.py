@@ -21,13 +21,14 @@ except Exception:  # WALK-04d is additive; its absence never breaks the walker
     VisionJudge = None
     wants_visual = lambda t: False
 from . import hiddentext
+from . import clickpersist
 from . import privacy_checks as _pc
 
 FIXED, STILL, HUMAN = "FIXED", "STILL_FAILING", "NEEDS_HUMAN"
 ORDER = ["crash", "hotkey", "delete_confirm", "crud_missing", "escape", "focus_return", "focus_trap", "focus_visible", "export",
          "contrast", "overflow390", "unnamed", "keyboard", "timing", "chat", "validation", "hidden_text", "tab_error", "reach", "pageerror", "http", "persistence",
-         "privacy"]
-WRITE_CATS = {"hotkey", "delete_confirm", "persistence", "chat", "validation", "crud_missing"}
+         "privacy", "dead_click", "computed", "upload"]
+WRITE_CATS = {"hotkey", "delete_confirm", "persistence", "chat", "validation", "crud_missing", "dead_click", "upload"}
 
 
 def ticket_text(t):
@@ -365,6 +366,16 @@ class Reverifier:
         if cat == "privacy":
             # WALK-04c: the two-account privacy probe drives its own contexts.
             return self._privacy(t)
+        if cat in ("dead_click", "computed", "upload"):
+            # WALK-04e: the clickpersist recipes drive their own walk.
+            return clickpersist.run_clickpersist_check(self, t, cat)
+        if cat == "persistence":
+            # WALK-04e: when the ticket names the created fixture, the
+            # recipe's reload + new-context read-back decides; a ticket
+            # naming no label falls through to the smoke path below.
+            res = clickpersist.run_persistence_check(self, t)
+            if res is not None:
+                return res
         lw = self.smoke(t["lens"], write=(cat in WRITE_CATS))
         same = [f for f in lw.findings if f["check"] == cat or (cat in ("escape", "focus_return", "focus_trap") and f["check"] in ("escape", "focus_return", "focus_trap"))]
         ev = [e for f in same for e in f["evidence"]][:4] or [lw.result.get("initial_evidence")]

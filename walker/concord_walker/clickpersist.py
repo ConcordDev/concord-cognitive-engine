@@ -1,6 +1,8 @@
 """WALK-04e — click-sends-request + reload persistence recipes (GB-1544, seat B10).
 
-Self-contained slice module: no shared-core files are edited. Recipes operate on a
+Self-contained slice module at build; the dispatch driver at the bottom of
+this file is the WALK-04e wiring leg that routes reverify categories into
+the recipes. Recipes operate on a
 page + Cdp pair (as produced by LensWalk.open in checks.py) and return
 reverify-shaped result dicts {verdict, method, category, evidence, notes}.
 
@@ -422,3 +424,115 @@ def upload_recipe(walk, page, cdp, *, fixture_path, fixture_name, timeout=6.0):
         verdict, why = FIXED, "upload fired (%s), file name reads back, surface renders content" % (statuses or ["2xx"])
     return {"verdict": verdict, "method": "CDP upload (DOM.setFileInputFiles)", "category": "upload",
             "evidence": [_shot(walk, page, "upload-after")], "notes": why}
+
+
+# --------------------------------------------------------------------------
+# Reverify dispatch (WALK-04e wiring)
+#
+# reverify.generic() routes the dead_click / computed / upload categories
+# here, and persistence tickets that name their fixture. The driver opens
+# its own LensWalk in the standing driver pattern (cf. chatcheck's
+# run_chat_check and reverify's _hidden_text) and hands the walk to the
+# recipes above. Heavy imports are function-level on purpose: this module
+# stays importable standalone (its selftest loads it without the walker
+# core), and reverify imports this module at its own top level.
+# --------------------------------------------------------------------------
+
+def _fixture_png_bytes():
+    """A tiny deterministic PNG with varied pixels (never a uniform blank),
+    built from zlib/struct so the upload fixture needs no shipped binary."""
+    import struct
+
+    def chunk(tag, data):
+        c = struct.pack(">I", len(data)) + tag + data
+        return c + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF)
+
+    w, h = 8, 8
+    raw = b""
+    for y in range(h):
+        raw += b"\x00" + bytes(v for x in range(w)
+                               for v in ((x * 31 + y * 17) % 256, (x * 7 + y * 41) % 256,
+                                         (x * 13 + y * 3) % 256))
+    ihdr = struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0)
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", ihdr)
+            + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b""))
+
+
+def _open_driver_walk(rv, t, label):
+    """Open this driver's own LensWalk on the ticket's lens and account,
+    assert the account, and navigate. Returns (lw, ctx, page, cdp)."""
+    from .checks import LensWalk
+    from .auth import assert_account
+    lens = t["lens"]
+    acct, admin = rv.account_for(lens)
+    lw = LensWalk(rv.b, rv.cfg, rv.rec, rv.inv[lens], acct, rv.log,
+                  admin=admin, inv_entry=rv.inv[lens])
+    ctx, page, cdp = lw.open()
+    if acct:
+        assert_account(ctx, rv.cfg, acct, label, rv.log)
+    lw.nav(page, cdp)
+    return lw, ctx, page, cdp
+
+
+def run_clickpersist_check(rv, t, cat):
+    """Drive one dead_click / computed / upload ticket. rv is the
+    Reverifier (browser, cfg, rec, inv, account_for). Returns the standing
+    verdict dict shape, from the recipes above."""
+    from .reverify import elements, ticket_text
+    lw, ctx, page, cdp = _open_driver_walk(rv, t, "clickpersist %s check" % cat)
+    try:
+        if cat == "dead_click":
+            elems = elements(t)
+            if not elems:
+                return {"verdict": HUMAN, "method": "click + network tap",
+                        "category": "dead_click",
+                        "evidence": [_shot(lw, page, "click-no-element")],
+                        "notes": "ticket names no control to click; an unnamed click cannot be judged"}
+            label = elems[1] if len(elems) > 1 else None
+            return click_recipe(lw, page, cdp, element_name=elems[0], label=label)
+        if cat == "computed":
+            return computed_recipe(lw, page, cdp, ticket_text_value=ticket_text(t))
+        # upload: a fresh named fixture per run, so the read-back name is
+        # this run's own and never a previous run's leftover.
+        import os, tempfile
+        fixture_name = "%s-upload-%s.png" % (rv.cfg["fixture_prefix"], rv.rec.rid)
+        fixture_path = os.path.join(tempfile.mkdtemp(prefix="walk04e-"), fixture_name)
+        with open(fixture_path, "wb") as f:
+            f.write(_fixture_png_bytes())
+        try:
+            return upload_recipe(lw, page, cdp, fixture_path=fixture_path,
+                                 fixture_name=fixture_name)
+        finally:
+            try:
+                os.unlink(fixture_path)
+            except Exception:
+                pass
+    finally:
+        lw._close(ctx)
+
+
+def run_persistence_check(rv, t):
+    """Drive the persistence recipe for a ticket that names its created
+    fixture. Returns None when the ticket names no label — the caller's
+    smoke path then keeps its standing decision."""
+    from .reverify import elements
+    from .auth import new_context
+    from .cdp import Cdp
+    elems = elements(t)
+    if not elems:
+        return None
+    label = elems[0]
+    lw, ctx, page, cdp = _open_driver_walk(rv, t, "clickpersist persistence check")
+
+    def open_fresh():
+        acct, _admin = rv.account_for(t["lens"])
+        ctx2 = new_context(rv.b, rv.cfg, acct, rv.cfg["viewport_desktop"])
+        page2 = ctx2.new_page()
+        page2.goto(lw.url, wait_until="load", timeout=45000)
+        return ctx2, page2, Cdp(ctx2, page2)
+
+    try:
+        return persistence_recipe(lw, page, cdp, label=label, open_fresh=open_fresh,
+                                  close_ctx=lambda c: c.close())
+    finally:
+        lw._close(ctx)
