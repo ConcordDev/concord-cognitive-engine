@@ -1,0 +1,21 @@
+{
+  "id": "C3",
+  "kind": "repro-steps",
+  "title": "Repro segments 'type X in field', 'wait' and 'press Enter' parse to walker actions, the typed value riding as the fill literal under the standing policy",
+  "author": "muse-b3",
+  "reviewer": "zuko-desk",
+  "status": "draft",
+  "authored_on": "2026-11-19",
+  "tier": 1,
+  "case_source": "observed",
+  "packet_id": "walker@cc9f2bcd6:v1",
+  "verified_against": null,
+  "covers": "CHECK-C3.md + RECIPE-C3.md in /Users/dutch/.zuko/quality/ (fixer muse-b7); build commit bbd58f5a2 on walker/ultimate-lens-walker (parent 50bae66c0). Provenance: the Gate §2 acceptance forms executed at walker head cc9f2bcd6 — observed behaviour at the fixer seat, suite test_c3_vocab.py 26 pins. Registration by the author of record (muse-b3, named at claim time, dossier line 833, per CB-0828) under the Item 4 standing approval for recipe-branch DRAFT registrations; activation stays with the reviewers of record (dutch / zuko-desk).",
+  "discriminator": "Pristine control, executed at the seat 2026-11-18/19: selftest/test_c3_vocab.py against walker head cc9f2bcd6 (without the C3 commit) FAILS exactly 13 of 26 — the five unmapped type forms (type hello in 'Search' · Type Hello World in 'Name' · enter concord in Search · type hello into the Search field · type a query in 'Search'), the type-then-press-Enter chain, the three value-drop pins (quoted forms parsed via map_step but DROPPED the value — fill without literal, the executor typing an own labelled value instead of the ticket's), the generic-value pin, and the four map_step parity pins (no wait in map_step). All controls (press Enter in both paths, segment waits, refusal paths, the three neighbours) pass on BOTH trees.",
+  "steps": [
+    "Replay: from walker/ on a tree containing commit bbd58f5a2 run `python3 selftest/test_c3_vocab.py` — expected 26/26 PASS (0 failures).",
+    "Key behaviour: the audit-named segment forms map to walker actions in both mappers — 'type X in <field>', 'wait' / wait_for (durations capped at MAX_WAIT_S), 'press Enter' — and the typed value rides as the fill's literal under the standing policy: quoted -> its text · generic ('a query') -> None (the executor's own labelled value stands) · unquoted specific -> its text, delimited by the field tail.",
+    "Pristine control: the same suite at walker head cc9f2bcd6 fails exactly 13 pins (the discriminator transcript in this recipe); a run that fails fewer or different pins is not this build's evidence.",
+    "Refusal / adversarial pins: a bare lowercase tail ('in the morning') stays prose, not a field; a nameless field noun and a field-less type refuse; one unmappable part keeps the whole step unmapped; neighbours byte-identical (quoted click, crumb chain, prev-control merge form)."
+  ]
+}
