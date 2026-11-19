@@ -11,7 +11,7 @@ vi.mock('@/lib/guest', async (importOriginal) => ({
 }));
 vi.mock('@/lib/api/client', () => ({ api: { get: (...a: unknown[]) => apiGet(...a) } }));
 vi.mock('next/link', () => ({ default: ({ children, href, ...rest }: { children: React.ReactNode; href: string }) => <a href={href} {...rest}>{children}</a> }));
-vi.mock('@/components/music/MusicWorkspace', () => ({ MusicWorkspace: () => <div data-testid="member-music-workspace" /> }));
+vi.mock('@/components/music/liner/LinerNotesApp', () => ({ LinerNotesApp: () => <div data-testid="member-music-workspace" /> }));
 vi.mock('@/components/market/MarketListingsPanel', () => ({ MarketListingsPanel: () => null }));
 
 import { SignedOutMusicBrowse } from '@/components/public/SignedOutMusicBrowse';

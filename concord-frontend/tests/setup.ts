@@ -38,6 +38,10 @@ vi.mock('next/font/google', () => {
     Bebas_Neue: face('Bebas Neue'),
     Gochi_Hand: face('Gochi Hand'),
     Share_Tech_Mono: face('Share Tech Mono'),
+    // Music — Liner Notes (components/music/liner/linerFonts.ts)
+    Fraunces: face('Fraunces'),
+    Inter_Tight: face('Inter Tight'),
+    IBM_Plex_Mono: face('IBM Plex Mono'),
   };
 });
 

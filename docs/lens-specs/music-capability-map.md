@@ -1,5 +1,43 @@
 # Music lens — capability map (backfill, 2026-07-11)
 
+> **Liner Notes redesign (2026-11-19, `docs/LENS_REDESIGN_PLAYBOOK.md`).**
+> Newest truth; everything below is history.
+>
+> - **A real indie music platform.** Artists upload songs (each measured in
+>   the browser: tempo `lib/music/analyze.ts`, key, BS.1770 loudness, or left
+>   blank), gather them into a single / EP / album with cover, liner note,
+>   credits and a Concord Coin price, and publish
+>   (`server/domains/music-releases.js`). Publishing mints a release DTU and
+>   lists it through `marketplace.list`; buying runs the unchanged
+>   `marketplace.purchaseWithRoyalties` (95% creator pool, 5% platform,
+>   royalties up the remix lineage) and entitles the fan to every track's
+>   full stream through the existing paywall. Artists can stream in full or
+>   preview-until-bought.
+> - **Artist pages** are public by username (or an opaque key, never a raw
+>   account id): follow, top songs by real plays, discography with prices,
+>   bio and links. Listen Now (new from followed artists, new on Concord, a
+>   daily mix), Search (catalogue plus "from the open web" ingestion),
+>   Library (purchases, saved songs, playlists, recently played, Replay,
+>   Sound: EQ and karaoke) and For Artists (releases, editor, earnings,
+>   profile).
+> - **Playback** runs on the platform's single player (the global Now
+>   Playing bar), so music continues across lenses; each start is counted
+>   once per listener per 30 s (`release-play`).
+> - **Money fixes found on the way (owner-approved):** the marketplace
+>   purchase path now reads the ledger balance (coin-purchased CC was refused
+>   as balance 0), royalties to real accounts are paid not escrowed, and the
+>   wallet balance endpoint reads the ledger too. Publishing persists the
+>   cover's public flip and the release DTU's licence (they were in-memory
+>   only and broke after a restart).
+> - **Retired:** the 2,500-line `MusicWorkspace` and its welded panels
+>   (session view, arrangement sketch mount, parity wall, upload flow that
+>   stamped fake BPM 128 / key "Am" / -14 LUFS and artist "You"). Still
+>   mounted elsewhere: `NowPlayingBar` (shell), `MusicLibraryPanel` and
+>   `MusicRadioPanel` (panel registry). Macros not surfaced in the lens are
+>   listed in the follow-up issue.
+> - **Grades:** `grade-ux-polish --honest` music = polished, 0
+>   anti-patterns; `detect-lens-stacking` music = 0 (was heavy).
+
 ## What this lens actually is
 
 An Apple-Music/Spotify-parity streaming app over the `music` domain

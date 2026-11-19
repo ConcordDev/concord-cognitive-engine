@@ -63,7 +63,7 @@ describe('Sprint 15 — LensAgentPanel reusable', () => {
 const LENS_SOURCE_OVERRIDE: Record<string, string> = {
   studio: 'components/studio/StudioDawWorkspace.tsx',
   code: 'components/code/CodeEditorWorkspacePanel.tsx',
-  music: 'components/music/MusicWorkspace.tsx',
+  music: 'components/music/liner/LinerNotesApp.tsx',
   marketplace: 'components/marketplace/MarketplaceApp.tsx',
 };
 
