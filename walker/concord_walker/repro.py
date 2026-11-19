@@ -88,8 +88,44 @@ def _name_from(m, text_after):
     return None
 
 
+_TYPE_IN_FIELD = re.compile(
+    r"(?i)^(?:then\s+)?(?:type|enter|fill(?: in)?|input|write)\s+(?P<v>.+?)\s+(?:in|into|in to|to)\s+(?:the\s+)?"
+    r"(?:" + _QNAME + r"|(?P<u>[A-Za-z][A-Za-z0-9'&.\- ]{0,40}?))(?:\s+(?P<noun>" + _NOUN + r"))?\s*$")
+
+
+def _fill_literal(v):
+    """A type/fill step's value -> the literal the executor types, or None for an own labelled value.
+
+    Quoted text is a literal of record. A generic value ('a query', 'something') is not the point
+    of the step, so the executor's own labelled value stands (the _TYPE branch's standing policy).
+    An unquoted specific value is delimited unambiguously by the field tail and rides as the literal."""
+    v = (v or "").strip()
+    q = re.match(r"^[\"'‘“](?P<t>.{1,60})[\"'’”]$", v)
+    if q:
+        return q.group("t").strip() or None
+    if _GENERIC_VALUE.match(v):
+        return None
+    return v or None
+
+
+def _type_in_field(s):
+    """'type X in <field>' -> (field name, literal | None), or None when the tail is not a field.
+
+    The field is a quoted name, a capitalised name, or any name carrying a field noun
+    (field/input/box/...); a bare lowercase tail ('in the morning') is prose, not a field."""
+    m = _TYPE_IN_FIELD.match(s)
+    if not m:
+        return None
+    name = (m.group("q") or m.group("u") or "").strip()
+    if not name or not (m.group("q") or m.group("noun") or name[:1].isupper()):
+        return None
+    if len(m.group("v").strip()) > 80:
+        return None
+    return name, _fill_literal(m.group("v"))
+
+
 def map_step(raw, lens_slug=None):
-    """One prose step -> {raw, action, mapped, ...}. action in open|click|open_tab|fill|press|reload|observe."""
+    """One prose step -> {raw, action, mapped, ...}. action in open|click|open_tab|fill|press|reload|observe|wait|wait_for."""
     s = (raw or "").strip()
     low = s.lower()
     base = {"raw": s, "mapped": False, "action": None}
@@ -99,6 +135,22 @@ def map_step(raw, lens_slug=None):
         return dict(base, reason="viewport/mobile change is not a supported step")
     if re.match(r"(?i)^(observe|verify|check|confirm|note|notice|see|look|watch|expect|ensure|inspect|read|compare)\b", s):
         return dict(base, action="observe", mapped=True)
+    mw = re.match(r"(?i)^(?:then\s+)?wait(?:\s*[-:]\s*for)?\b\s*(?P<rest>.*)$", s)
+    if mw:
+        got = _V._wait(mw.group("rest"), s)  # vocab parity: durations, wait-for text, the settle forms
+        if isinstance(got, tuple):
+            return dict(base, reason=got[1])
+        if len(got) == 1 and got[0].get("action") in ("wait", "wait_for"):
+            w = got[0]
+            out = dict(base, action=w["action"], mapped=True)
+            if w["action"] == "wait":
+                out["seconds"] = w["seconds"]
+                if w.get("capped"):
+                    out["capped"] = True
+            else:
+                out["text"] = w["text"]
+            return out
+        # a wait carrying a second step (a constraint) is the segment mapper's, not this one's
     if re.fullmatch(r"(?i)(?:then\s+)?(?:a\s+)?hard\s+(?:reload|refresh)(?:\s+once)?", s):
         return dict(base, action="reload", mapped=True)
     if re.search(r"(?i)\b(reload|refresh)\b", s) and re.match(r"(?i)^(reload|refresh|then|and|hit|press|click)\b", s):
@@ -115,11 +167,13 @@ def map_step(raw, lens_slug=None):
     m = re.match(r"(?i)^(?:then\s+)?(?:open|switch to|go to|select|click|choose|tap)\s+(?:on\s+)?(?:the\s+)?(?:" + _QNAME + r"|(?P<u>(?-i:[A-Z])[A-Za-z0-9'&.\- ]{0,40}?))\s+tab\b", s)
     if m:
         return dict(base, action="open_tab", name=(m.group("q") or m.group("u") or "").strip(), mapped=True)
-    m = re.match(r"(?i)^(?:then\s+)?(?:type|enter|fill(?: in)?|input|write)\s+(?:" + _QNAME.replace("(?P<q>", "(?P<v>") + r"\s+)?(?:in|into|in to|to)\s+(?:the\s+)?(?:" + _QNAME + r"|(?P<u>(?-i:[A-Z])[A-Za-z0-9'&.\- ]{0,40}?))(?:\s+" + _NOUN + r")?\s*$", s)
-    if m:
-        name = (m.group("q") or m.group("u") or "").strip()
-        if name:
-            return dict(base, action="fill", name=name, mapped=True)
+    tf = _type_in_field(s)
+    if tf:
+        name, lit = tf
+        out = dict(base, action="fill", name=name, mapped=True)
+        if lit is not None:
+            out["literal"] = lit
+        return out
     m = re.match(r"(?i)^(?:then\s+)?(?:click|tap|select|choose|activate|toggle|expand|focus|check)\s+(?:on\s+)?(?:the\s+)?(?:" + _QNAME + r"|(?P<rest>.+))$", s)
     if m:
         name = (m.group("q") or "").strip() or _name_from(m, m.group("rest") or "")
@@ -347,6 +401,11 @@ def _map_core_base(s, seg, lens, lens_names, prev, in_crumb):
         return [{"action": "focus_tab_list", "raw": seg.strip()}], None
     if _ANY_TAB.match(s):
         return [{"action": "open_any_tab", "raw": seg.strip()}], None
+    tf = _type_in_field(s)
+    if tf:
+        # 'type X in <field>' names its field in the same segment (the branch below serves the
+        # prev-control form and deliberately excludes this one); the value rides as the literal
+        return [{"action": "fill", "name": tf[0], "literal": tf[1], "raw": seg.strip()}], None
     m = _TYPE.match(s)
     if m and not re.search(r"(?i)\b(?:in|into|to)\s+(?:the\s+)?\S", m.group("v")):
         if not prev or prev.get("action") not in ("click", "open_tab", "fill"):
