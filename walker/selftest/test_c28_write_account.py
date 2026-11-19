@@ -111,6 +111,12 @@ def t_formfuzz_account():
     rv.inv = {"goals": {"slug": "goals", "url": cfg["base_url"] + "/lenses/goals"}}
     ff = FormFuzz(rv, {"lens": "goals", "id": "FIX-goals-000"})
     assert ff.lw.acct == "tw", ff.lw.acct
+    # the fuzz asserts the account of the context it opened (lw.acct) — a
+    # hardcoded "t1" assert against a tw context would abort every fuzz run
+    src = open(os.path.join(WALKER, "concord_walker", "formfuzz.py")).read()
+    assert 'assert_account(self._ctx, self.rv.cfg, "t1"' not in src
+    assert 'assert_account(ctx, rv.cfg, "t1"' not in src
+    assert "self.lw.acct" in src
 
 
 def t_write_ctx_labelling():
