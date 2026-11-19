@@ -49,10 +49,10 @@ function AttachmentChip({ messageId, a }: { messageId: string; a: MailAttachment
   return (
     <button type="button" onClick={() => void download()} title={`Download ${a.filename}`}
       className={cn('flex items-center gap-2 rounded-xl border px-3 py-2 text-left text-[12px] transition-colors', failed ? 'border-rose-500/40 text-rose-300' : 'border-white/10 bg-white/[0.03] text-zinc-300 hover:border-white/25')}>
-      <Paperclip className="h-3.5 w-3.5 shrink-0 text-zinc-500" />
+      <Paperclip className="h-3.5 w-3.5 shrink-0 text-lattice-muted" />
       <span className="max-w-[14rem] truncate">{a.filename}</span>
-      <span className="text-zinc-500">{fmtSize(a.size)}</span>
-      {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5 text-zinc-500" />}
+      <span className="text-lattice-muted">{fmtSize(a.size)}</span>
+      {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5 text-lattice-muted" />}
     </button>
   );
 }
@@ -72,11 +72,11 @@ function MessageCard({ m, expanded, onToggle, onReply, showImages, onShowImages 
         <span className="min-w-0 flex-1">
           <span className="flex items-baseline gap-2">
             <span className={cn('truncate text-[13px]', m.unread ? 'font-semibold text-zinc-50' : 'font-medium text-zinc-200')}>{senderName(m.from)}</span>
-            <span className="ml-auto shrink-0 text-[11px] text-zinc-500">{fmtFullDate(m.internalDate, m.date)}</span>
+            <span className="ml-auto shrink-0 text-[11px] text-lattice-muted">{fmtFullDate(m.internalDate, m.date)}</span>
           </span>
           {expanded
-            ? <span className="block truncate text-[11px] text-zinc-500">to {m.to}{m.cc ? `, cc ${m.cc}` : ''}</span>
-            : <span className="block truncate text-[12px] text-zinc-500">{m.snippet}</span>}
+            ? <span className="block truncate text-[11px] text-lattice-muted">to {m.to}{m.cc ? `, cc ${m.cc}` : ''}</span>
+            : <span className="block truncate text-[12px] text-lattice-muted">{m.snippet}</span>}
         </span>
       </button>
       {expanded && (
@@ -137,7 +137,7 @@ export function ThreadView({ threadId, folder, labels, onBack, onAction, onReply
   }, [load, reloadKey]);
 
   if (error) return <p role="alert" className="p-6 text-sm text-rose-300">Could not open this conversation ({error.replace(/_/g, ' ')}).</p>;
-  if (!messages) return <div role="status" aria-busy="true" className="flex items-center gap-2 p-6 text-sm text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Opening conversation…</div>;
+  if (!messages) return <div role="status" aria-busy="true" className="flex items-center gap-2 p-6 text-sm text-lattice-muted"><Loader2 className="h-4 w-4 animate-spin" /> Opening conversation…</div>;
 
   const labelIds = new Set(messages.flatMap((m) => m.labelIds));
   const starred = labelIds.has('STARRED');
@@ -166,7 +166,7 @@ export function ThreadView({ threadId, folder, labels, onBack, onAction, onReply
           <button type="button" aria-label="Labels" aria-expanded={labelMenu} onClick={() => setLabelMenu((v) => !v)} className={tool}><Tag className="h-4 w-4" /></button>
           {labelMenu && (
             <div role="menu" className="absolute left-0 top-10 z-20 w-56 rounded-xl border border-white/10 bg-[#18181b] p-1.5 shadow-xl">
-              {userLabels.length === 0 && <p className="px-2 py-1.5 text-[12px] text-zinc-500">No labels yet. Create one in the sidebar.</p>}
+              {userLabels.length === 0 && <p className="px-2 py-1.5 text-[12px] text-lattice-muted">No labels yet. Create one in the sidebar.</p>}
               {userLabels.map((l) => {
                 const on = labelIds.has(l.id);
                 return (

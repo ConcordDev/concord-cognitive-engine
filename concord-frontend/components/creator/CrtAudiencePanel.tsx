@@ -118,7 +118,7 @@ export function CrtAudiencePanel({ onChange }: { onChange: () => void }) {
                     {p.growth > 0 ? '+' : ''}{p.growth.toLocaleString()}
                   </span>
                 )}
-                <button aria-label="Delete" type="button" onClick={() => delPlatform(p.platformId)} className="text-zinc-600 hover:text-rose-400">
+                <button aria-label="Delete" type="button" onClick={() => delPlatform(p.platformId)} className="text-lattice-muted hover:text-rose-400">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -138,8 +138,8 @@ export function CrtAudiencePanel({ onChange }: { onChange: () => void }) {
                     <ResponsiveContainer width="100%" height={130}>
                       <LineChart data={history.map((h) => ({ date: h.date.slice(5), followers: h.followers }))}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-                        <XAxis dataKey="date" tick={{ fontSize: 9, fill: '#71717a' }} />
-                        <YAxis tick={{ fontSize: 9, fill: '#71717a' }} width={36} />
+                        <XAxis dataKey="date" tick={{ fontSize: 9, fill: '#a1a1aa' }} />
+                        <YAxis tick={{ fontSize: 9, fill: '#a1a1aa' }} width={36} />
                         <Tooltip contentStyle={{ background: '#18181b', border: '1px solid #3f3f46', borderRadius: 8, fontSize: 11 }} />
                         <Line type="monotone" dataKey="followers" stroke="#f87171" strokeWidth={2} dot={{ r: 2 }} />
                       </LineChart>

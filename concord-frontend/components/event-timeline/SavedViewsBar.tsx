@@ -147,7 +147,7 @@ export function SavedViewsBar({
           ) : (
             <button
               onClick={() => remove(v)}
-              className="text-zinc-600 hover:text-red-400"
+              className="text-lattice-muted hover:text-red-400"
               aria-label={`Delete view ${v.name}`}
             >
               <X className="h-3 w-3" />

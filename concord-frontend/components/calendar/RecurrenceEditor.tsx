@@ -141,7 +141,7 @@ export function RecurrenceEditor({ value, start, onChange }: {
           )}
         </div>
       )}
-      {value && <p className="mt-2 text-[11px] text-gray-500">{describeRecurrence(value, start)}</p>}
+      {value && <p className="mt-2 text-[11px] text-lattice-muted">{describeRecurrence(value, start)}</p>}
     </div>
   );
 }

@@ -309,7 +309,7 @@ export function CalendarActionPanel() {
             {optResult.proposals.length === 0 && <div className="text-[10px] text-gray-400 mt-1">No open unblocked tasks to place.</div>}
             {optResult.proposals.map((p) => (
               <div key={p.taskId} className="flex items-center gap-2 text-[11px] text-gray-200 mt-1">
-                <span className="flex-1 truncate">→ {p.title} <span className="text-gray-500">({p.priority} · {p.estimateMin}m)</span></span>
+                <span className="flex-1 truncate">→ {p.title} <span className="text-lattice-muted">({p.priority} · {p.estimateMin}m)</span></span>
                 <span className="font-mono tabular-nums text-gray-400">{fmtTime(p.proposedStart)}–{fmtTime(p.proposedEnd)}</span>
                 {committed.has(p.taskId)
                   ? <span className="text-emerald-300 inline-flex items-center gap-1"><Check className="w-3 h-3" />Blocked</span>

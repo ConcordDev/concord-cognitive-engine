@@ -30,9 +30,9 @@ export function PurchasesPanel() {
                 <p className="font-medium text-sm truncate">{p.item.title}</p>
                 <div className="flex items-center gap-2 text-xs text-gray-400">
                   <span>{p.item.creator.name}</span>
-                  <span className="text-gray-600">|</span>
+                  <span className="text-lattice-muted">|</span>
                   <span className={tier?.color}>{tier?.name} License</span>
-                  <span className="text-gray-600">|</span>
+                  <span className="text-lattice-muted">|</span>
                   <span>{new Date(p.purchasedAt).toLocaleDateString()}</span>
                 </div>
               </div>

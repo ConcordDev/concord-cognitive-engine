@@ -382,7 +382,7 @@ export function PjCollabPanel({ projectId, onChange, onJumpToProject, onOpenTask
                     {i.enabled ? 'on' : 'off'}
                   </button>
                   <button aria-label="Delete" type="button" onClick={() => lensRun('projects', 'integration-delete', { id: i.id }).then(refresh)}
-                    className="text-gray-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                    className="text-lattice-muted hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
                 </li>
               );
             })}
@@ -457,7 +457,7 @@ export function PjCollabPanel({ projectId, onChange, onJumpToProject, onOpenTask
                   {p.priority} issues respond within <span className="text-rose-300 tabular-nums">{p.responseDays}d</span>, escalate to <span className="text-rose-300">{p.escalateTo}</span>
                 </span>
                 <button aria-label="Delete" type="button" onClick={() => lensRun('projects', 'sla-policy-delete', { id: p.id }).then(refresh)}
-                  className="text-gray-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                  className="text-lattice-muted hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </li>
             ))}
           </ul>
@@ -617,7 +617,7 @@ function Empty({ text }: { text: string }) {
 function cssColor(c: string): string {
   const map: Record<string, string> = {
     red: '#dc2626', orange: '#ea580c', amber: '#d97706', lime: '#65a30d', emerald: '#059669',
-    teal: '#0d9488', sky: '#0284c7', indigo: '#4f46e5', violet: '#7c3aed', pink: '#db2777', zinc: '#52525b',
+    teal: '#0d9488', sky: '#0284c7', indigo: '#4f46e5', violet: '#7c3aed', pink: '#db2777', zinc: '#a1a1aa',
   };
   return map[c] || '#4f46e5';
 }

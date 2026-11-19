@@ -136,7 +136,7 @@ export function PhotoLightboxModal({ photoId, photoIds = [], onClose, onSelect }
               >
                 <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" /> Previous
               </button>
-              <span className="text-[11px] text-zinc-500">{index + 1} / {photoIds.length}</span>
+              <span className="text-[11px] text-lattice-muted">{index + 1} / {photoIds.length}</span>
               <button
                 type="button"
                 onClick={() => nextId && onSelect(nextId)}

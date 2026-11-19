@@ -190,7 +190,7 @@ export function CrtScheduledPanel() {
                   type="button"
                   onClick={() => cancelItem(q.id)}
                   title="Cancel scheduled release"
-                  className="text-zinc-600 hover:text-rose-400"
+                  className="text-lattice-muted hover:text-rose-400"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>

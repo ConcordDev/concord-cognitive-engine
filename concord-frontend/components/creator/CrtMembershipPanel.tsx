@@ -161,7 +161,7 @@ export function CrtMembershipPanel({ onChange }: { onChange: () => void }) {
                   <p className="text-lg font-bold text-emerald-300">${t.priceMonthly.toLocaleString()}<span className="text-[10px] text-zinc-400">/mo</span></p>
                 </div>
                 <button type="button" onClick={() => deleteTier(t.id)} title="Delete tier"
-                  className="text-zinc-600 hover:text-rose-400">
+                  className="text-lattice-muted hover:text-rose-400">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -220,7 +220,7 @@ export function CrtMembershipPanel({ onChange }: { onChange: () => void }) {
                 <span className="text-xs text-emerald-300">${sub.priceMonthly}/mo</span>
                 {sub.status === 'active' ? (
                   <button type="button" onClick={() => cancelSub(sub.id)} title="Cancel subscription"
-                    className="text-zinc-600 hover:text-rose-400">
+                    className="text-lattice-muted hover:text-rose-400">
                     <UserMinus className="w-3.5 h-3.5" />
                   </button>
                 ) : (

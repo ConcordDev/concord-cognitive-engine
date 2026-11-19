@@ -368,7 +368,7 @@ export function ProjectsSection() {
                       </button>
                     ))}
                   </div>
-                  {starter && <p className="text-[11px] text-gray-500">Starts with example issues already in it — one is already done, so goals and progress have something true to count.</p>}
+                  {starter && <p className="text-[11px] text-lattice-muted">Starts with example issues already in it — one is already done, so goals and progress have something true to count.</p>}
                   <input ref={nameInputRef} aria-label="New project name" placeholder="New project name" value={form.name} onChange={(e) => { setForm({ ...form, name: e.target.value }); setDupNameWarn(false); }}
                     className="w-full bg-lattice-void border border-lattice-border rounded-lg px-2 py-1.5 text-xs text-white" />
                   <input aria-label="Project key" placeholder="KEY" value={form.key} onChange={(e) => { setForm({ ...form, key: e.target.value }); setDupNameWarn(false); }}
@@ -421,7 +421,7 @@ export function ProjectsSection() {
                     Open the sample project
                   </button>
                 </div>
-                <p className="text-[11px] text-gray-500">The sample is a real project with example issues — edit or delete it freely.</p>
+                <p className="text-[11px] text-lattice-muted">The sample is a real project with example issues — edit or delete it freely.</p>
               </div>
             ) : (
               <p className="text-[11px] text-gray-400 italic px-4 py-8 text-center">No project open. Reopen one from the Closed row above, or start a new project.</p>
@@ -491,7 +491,7 @@ export function ProjectsSection() {
                     <button key={t.id} type="button" onClick={() => setTab(t.id)}
                       aria-current={active ? 'page' : undefined}
                       className={cn('inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400',
-                        active ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200')}>
+                        active ? 'bg-white/10 text-zinc-50' : 'text-lattice-muted hover:text-zinc-200')}>
                       <Icon className="h-3.5 w-3.5" /> {t.label}
                     </button>
                   );

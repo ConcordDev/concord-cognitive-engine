@@ -235,7 +235,7 @@ export function QueryEditorPanel({ seedSql, onSeedConsumed }: { seedSql?: string
                     <tr key={ri} className="border-b border-lattice-border/40 hover:bg-lattice-surface/60 transition-colors">
                       {queryResult.columns.map(col => (
                         <td key={col} className="px-3 py-2 text-gray-300 max-w-[300px] truncate font-mono text-xs">
-                          {row[col] === null ? <span className="text-gray-600 italic">NULL</span> : String(row[col])}
+                          {row[col] === null ? <span className="text-lattice-muted italic">NULL</span> : String(row[col])}
                         </td>
                       ))}
                     </tr>
@@ -307,7 +307,7 @@ export function QueryEditorPanel({ seedSql, onSeedConsumed }: { seedSql?: string
                 ) : (
                   <button
                     onClick={() => { setRenamingId(item.id); setRenameDraft(item.title); }}
-                    className="p-1 text-gray-500 hover:text-gray-300"
+                    className="p-1 text-lattice-muted hover:text-gray-300"
                     aria-label={`Rename saved query ${item.title}`}
                   >
                     <Pencil className="w-3 h-3" />
@@ -316,7 +316,7 @@ export function QueryEditorPanel({ seedSql, onSeedConsumed }: { seedSql?: string
                 <button
                   onClick={() => deleteSaved(item.id)}
                   onBlur={() => setArmedDeleteId(a => (a === item.id ? null : a))}
-                  className={armedDeleteId === item.id ? 'px-1.5 py-0.5 rounded bg-rose-500 text-white text-[10px] font-semibold' : 'p-1 text-gray-500 hover:text-red-400'}
+                  className={armedDeleteId === item.id ? 'px-1.5 py-0.5 rounded bg-rose-500 text-white text-[10px] font-semibold' : 'p-1 text-lattice-muted hover:text-red-400'}
                   aria-label={armedDeleteId === item.id ? 'Confirm delete saved query' : `Delete saved query ${item.title}`}
                 >
                   {armedDeleteId === item.id ? 'Delete?' : <Trash2 className="w-3 h-3" />}

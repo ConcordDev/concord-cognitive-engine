@@ -151,7 +151,7 @@ export function LaunchCountdown() {
       )}
 
       {error && data?.found && (
-        <p className="text-[11px] text-zinc-500">Couldn’t refresh the countdown: {error}</p>
+        <p className="text-[11px] text-lattice-muted">Couldn’t refresh the countdown: {error}</p>
       )}
 
       {data && data.found && (

@@ -270,7 +270,7 @@ export function PodcastStreamPlayer({
             )}
           </p>
         </div>
-        <button type="button" onClick={onClose} className="text-zinc-600 hover:text-zinc-300 shrink-0" aria-label="Close player">
+        <button type="button" onClick={onClose} className="text-lattice-muted hover:text-zinc-300 shrink-0" aria-label="Close player">
           <X className="w-4 h-4" />
         </button>
       </div>
@@ -378,7 +378,7 @@ export function PodcastStreamPlayer({
             onBlur={(e) => void saveSkipIntro(Math.max(0, Math.min(300, Number(e.target.value) || 0)))}
             className="w-12 bg-zinc-950 border border-zinc-700 rounded px-1 py-0.5 text-zinc-100 text-center"
           />
-          <span className="text-zinc-600">s{savingSkipIntro && '…'}</span>
+          <span className="text-lattice-muted">s{savingSkipIntro && '…'}</span>
         </div>
       </div>
 
@@ -396,7 +396,7 @@ export function PodcastStreamPlayer({
                   className={cn('w-full flex items-center gap-2 px-2 py-1 rounded text-[11px] text-left',
                     i === activeChapterIdx ? 'bg-amber-500/15 text-amber-200' : 'text-zinc-400 hover:bg-zinc-900')}
                 >
-                  <span className="font-mono text-zinc-600 w-12 shrink-0">{fmtClock(c.startSec)}</span>
+                  <span className="font-mono text-lattice-muted w-12 shrink-0">{fmtClock(c.startSec)}</span>
                   <span className="truncate">{c.title}</span>
                 </button>
               </li>

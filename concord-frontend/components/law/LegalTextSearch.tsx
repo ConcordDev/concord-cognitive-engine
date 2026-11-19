@@ -129,7 +129,7 @@ export function LegalTextSearch() {
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-xs font-semibold text-blue-300">{m.section}</span>
                   {m.exactPhraseMatch && <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-400/15 text-emerald-300">exact phrase</span>}
-                  <span className="ml-auto text-[9px] text-gray-500 font-mono">score {m.relevanceScore} · {m.keywordHits} hit{m.keywordHits === 1 ? '' : 's'}</span>
+                  <span className="ml-auto text-[9px] text-lattice-muted font-mono">score {m.relevanceScore} · {m.keywordHits} hit{m.keywordHits === 1 ? '' : 's'}</span>
                 </div>
                 <p className="text-[11px] text-gray-300">{m.snippet}</p>
               </div>

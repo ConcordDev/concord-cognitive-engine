@@ -116,7 +116,7 @@ export function MyOnThisDay() {
                 <div className="min-w-0 flex-1">
                   <p className="text-[12px] text-zinc-100">{e.title || e.kind || 'Untitled'}</p>
                   {e.preview && <p className="mt-0.5 text-[11px] text-zinc-400">{e.preview}</p>}
-                  <p className="mt-0.5 text-[10px] text-zinc-500">
+                  <p className="mt-0.5 text-[10px] text-lattice-muted">
                     {formatDate(e.createdAt)}
                     {e.kind ? ` · ${e.kind}` : ''}
                   </p>
@@ -125,7 +125,7 @@ export function MyOnThisDay() {
             </li>
           ))}
           {result?.truncated && (
-            <li className="text-center text-[10px] text-zinc-500">
+            <li className="text-center text-[10px] text-lattice-muted">
               More entries exist for this date — showing the most recent.
             </li>
           )}

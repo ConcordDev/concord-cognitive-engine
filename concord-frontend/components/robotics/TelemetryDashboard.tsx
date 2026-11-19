@@ -34,8 +34,8 @@ function sensorValue(sensors: Record<string, number> | null, key: string): numbe
 function Unavailable({ reason }: { reason: string }) {
   return (
     <>
-      <span className="block text-sm font-semibold text-gray-500">Not available</span>
-      <span className="block text-[10px] text-gray-500">{reason}</span>
+      <span className="block text-sm font-semibold text-lattice-muted">Not available</span>
+      <span className="block text-[10px] text-lattice-muted">{reason}</span>
     </>
   );
 }

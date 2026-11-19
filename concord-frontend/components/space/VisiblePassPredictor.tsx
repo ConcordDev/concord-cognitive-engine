@@ -136,7 +136,7 @@ export function VisiblePassPredictor() {
                 </p>
                 <p className="text-[10px] text-zinc-400">start</p>
               </div>
-              <ArrowUpRight className="w-4 h-4 text-zinc-600 shrink-0" />
+              <ArrowUpRight className="w-4 h-4 text-lattice-muted shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-zinc-300">
                   Peak {fmtTime(p.peakUtc)} · {Math.round(p.durationSeconds / 60)} min visible

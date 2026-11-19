@@ -361,7 +361,7 @@ export function GCalSection() {
           </div>
           {showCalForm && (
             <div className="mb-2 space-y-1.5 rounded border border-white/10 bg-white/[0.03] p-2">
-              <input aria-label="New calendar name" value={calName} onChange={e => setCalName(e.target.value)} placeholder="Calendar name" className="w-full bg-lattice-deep rounded px-2 py-1 text-xs text-white placeholder:text-gray-500 outline-none" />
+              <input aria-label="New calendar name" value={calName} onChange={e => setCalName(e.target.value)} placeholder="Calendar name" className="w-full bg-lattice-deep rounded px-2 py-1 text-xs text-white placeholder:text-lattice-muted outline-none" />
               <div className="flex items-center gap-1">
                 {['#4285f4', '#ea4335', '#34a853', '#fbbc04', '#a142f4', '#24c1e0', '#f538a0', '#f6911e'].map(c => (
                   <button key={c} type="button" aria-label={`Colour ${c}`} onClick={() => setCalColor(c)} className={cn('w-4 h-4 rounded-full border-2', calColor === c ? 'border-white' : 'border-transparent')} style={{ backgroundColor: c }} />
@@ -388,7 +388,7 @@ export function GCalSection() {
                       onClick={() => setConfirmCalId(c.id)}
                       aria-label={`Delete calendar ${c.name}`}
                       title="Delete calendar (its events are removed too)"
-                      className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-rose-400 px-1"
+                      className="opacity-0 group-hover:opacity-100 text-lattice-muted hover:text-rose-400 px-1"
                     ><Trash2 className="w-3 h-3" /></button>
                   )
                 )}
@@ -409,7 +409,7 @@ export function GCalSection() {
             <>
               {showTaskForm && (
                 <div className="mb-1.5 space-y-1.5 rounded border border-white/10 bg-white/[0.03] p-2">
-                  <input aria-label="New task title" value={taskTitle} onChange={e => setTaskTitle(e.target.value)} placeholder="Task title" className="w-full bg-lattice-deep rounded px-2 py-1 text-[11px] text-white placeholder:text-gray-500 outline-none" />
+                  <input aria-label="New task title" value={taskTitle} onChange={e => setTaskTitle(e.target.value)} placeholder="Task title" className="w-full bg-lattice-deep rounded px-2 py-1 text-[11px] text-white placeholder:text-lattice-muted outline-none" />
                   <div className="flex items-center gap-1.5">
                     <label className="text-[10px] text-gray-400">Minutes
                       <input aria-label="Estimate minutes" type="number" min={5} step={5} value={taskEstimate} onChange={e => setTaskEstimate(Math.max(0, Number(e.target.value) || 0))} className="ml-1 w-14 bg-lattice-deep rounded px-1 py-0.5 text-[11px] text-white outline-none" />
@@ -599,7 +599,7 @@ function MonthGrid({ grid, cursor, today, eventsForDay, calById, onDayClick, onE
         const dayEvents = eventsForDay(d);
         return (
           <div key={i} onClick={() => onDayClick(d)} className={cn('border-r border-b border-white/5 p-1 overflow-hidden cursor-pointer hover:bg-white/[0.02]', !inMonth && 'bg-lattice-deep/30')} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
-            <div className={cn('text-[11px] font-mono tabular-nums mb-0.5 w-5 h-5 flex items-center justify-center rounded-full', isToday ? 'bg-blue-500 text-white' : inMonth ? 'text-gray-300' : 'text-gray-600')}>{d.getDate()}</div>
+            <div className={cn('text-[11px] font-mono tabular-nums mb-0.5 w-5 h-5 flex items-center justify-center rounded-full', isToday ? 'bg-blue-500 text-white' : inMonth ? 'text-gray-300' : 'text-lattice-muted')}>{d.getDate()}</div>
             <div className="space-y-0.5">
               {dayEvents.slice(0, 4).map(e => {
                 const cal = calById.get(e.calendarId);

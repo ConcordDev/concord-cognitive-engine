@@ -220,7 +220,7 @@ export function ConsensusPanel({ engine }: { engine: FrontierEngineDef }) {
         runDisabled={runDisabled}
         hotkey="⌘+Enter"
       >
-        <div className={cn(ds.monoXs, 'flex flex-wrap gap-x-4 gap-y-1 text-gray-500 border-b border-lattice-border pb-3')}>
+        <div className={cn(ds.monoXs, 'flex flex-wrap gap-x-4 gap-y-1 text-lattice-muted border-b border-lattice-border pb-3')}>
           {myStatus ? (
             <>
               <span>node <span className="text-gray-300">{short(myStatus.nodeId)}</span></span>
@@ -328,7 +328,7 @@ function HistoryRow({ index, entry }: { index: number; entry: HistoryEntry }) {
   if (entry.kind === 'append') {
     return (
       <div className="border-l-2 border-l-lattice-border pl-2">
-        <div className="text-gray-500">[{index}] consensusAppend({entry.input.key} = {entry.input.value})</div>
+        <div className="text-lattice-muted">[{index}] consensusAppend({entry.input.key} = {entry.input.value})</div>
         <div className="text-emerald-400">
           → new head {short(entry.output.record.hash)}, parents [{entry.output.record.parents.map(short).join(', ') || 'none — genesis'}], DAG size {entry.output.size}
         </div>
@@ -340,7 +340,7 @@ function HistoryRow({ index, entry }: { index: number; entry: HistoryEntry }) {
     const rejected = m.ok === false && !!m.error;
     return (
       <div className="border-l-2 border-l-lattice-border pl-2">
-        <div className="text-gray-500">
+        <div className="text-lattice-muted">
           [{index}] consensusMergeRemote({short(entry.input.sourceHash)}{entry.input.tampered ? ', value tampered' : ''})
         </div>
         {rejected ? (
@@ -363,7 +363,7 @@ function HistoryRow({ index, entry }: { index: number; entry: HistoryEntry }) {
   if (entry.kind === 'state') {
     return (
       <div className="border-l-2 border-l-lattice-border pl-2">
-        <div className="text-gray-500">[{index}] consensusState()</div>
+        <div className="text-lattice-muted">[{index}] consensusState()</div>
         <div className="text-gray-300">order (git-log-style, oldest→newest): {entry.output.order.map(short).join(' → ') || '(empty)'}</div>
         <pre className="mt-1 p-2 rounded border border-lattice-border bg-lattice-surface overflow-x-auto">
           {JSON.stringify(entry.output.state, null, 2)}
@@ -374,7 +374,7 @@ function HistoryRow({ index, entry }: { index: number; entry: HistoryEntry }) {
   // equivocation
   return (
     <div className="border-l-2 border-l-lattice-border pl-2">
-      <div className="text-gray-500">[{index}] consensusEquivocation()</div>
+      <div className="text-lattice-muted">[{index}] consensusEquivocation()</div>
       {entry.output.count === 0 ? (
         <div className="text-emerald-400">
           → 0 evidence. Every message in this replica came from a real appendUpdate off the then-current heads (or was

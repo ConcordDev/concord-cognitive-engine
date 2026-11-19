@@ -93,7 +93,7 @@ export function LiveAffectStream() {
                 <div className="flex items-center gap-3 font-mono text-[10px]">
                   <span className="text-zinc-400">i={inten.toFixed(2)}</span>
                   <span className={polClass}>p={pol > 0 ? '+' : ''}{pol.toFixed(2)}</span>
-                  <span className="text-zinc-600">{ts ? new Date(ts).toLocaleTimeString() : ''}</span>
+                  <span className="text-lattice-muted">{ts ? new Date(ts).toLocaleTimeString() : ''}</span>
                 </div>
               </div>
             );

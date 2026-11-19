@@ -217,7 +217,7 @@ export function CreativeWritingSection() {
                       <Stat label="Threads" value={dash.threads} />
                     </div>
                     <button aria-label="Manuscript settings" type="button" onClick={openSettings}
-                      className="text-zinc-500 hover:text-amber-300 shrink-0" title="Edit manuscript settings">
+                      className="text-lattice-muted hover:text-amber-300 shrink-0" title="Edit manuscript settings">
                       <Settings2 className="w-4 h-4" />
                     </button>
                   </div>

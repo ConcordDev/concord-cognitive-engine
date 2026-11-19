@@ -195,9 +195,9 @@ export function SchemaDesigner() {
               <>
                 <button onClick={() => open(sc.id)}
                   className={cn('px-2.5 py-1 text-xs rounded-lg border', active?.id === sc.id ? 'bg-emerald-600/15 border-emerald-700/50 text-emerald-200' : 'bg-zinc-900/60 border-zinc-800 text-zinc-300 hover:border-zinc-700')}>
-                  {sc.name} <span className="text-zinc-600">{sc.tableCount}t</span>
+                  {sc.name} <span className="text-lattice-muted">{sc.tableCount}t</span>
                 </button>
-                <button aria-label={`Rename schema ${sc.name}`} onClick={() => startRename('schema', sc.id, sc.name)} className="text-zinc-500 hover:text-zinc-300">
+                <button aria-label={`Rename schema ${sc.name}`} onClick={() => startRename('schema', sc.id, sc.name)} className="text-lattice-muted hover:text-zinc-300">
                   <Pencil className="w-3 h-3" />
                 </button>
               </>
@@ -235,7 +235,7 @@ export function SchemaDesigner() {
                   {renaming?.kind === 'table' && renaming.id === t.id ? renameInput(t.name) : (
                     <>
                       <span className="text-xs font-bold text-zinc-100 flex-1">{t.name}</span>
-                      <button aria-label={`Rename table ${t.name}`} onClick={() => startRename('table', t.id, t.name)} className="text-zinc-500 hover:text-zinc-300">
+                      <button aria-label={`Rename table ${t.name}`} onClick={() => startRename('table', t.id, t.name)} className="text-lattice-muted hover:text-zinc-300">
                         <Pencil className="w-3 h-3" />
                       </button>
                     </>
@@ -251,7 +251,7 @@ export function SchemaDesigner() {
                     {renaming?.kind === 'column' && renaming.id === c.id ? renameInput(c.name) : (
                       <>
                         <span className="text-zinc-200 font-mono">{c.name}</span>
-                        <button aria-label={`Rename column ${c.name}`} onClick={() => startRename('column', c.id, c.name, t.id)} className="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-zinc-300">
+                        <button aria-label={`Rename column ${c.name}`} onClick={() => startRename('column', c.id, c.name, t.id)} className="opacity-0 group-hover:opacity-100 text-lattice-muted hover:text-zinc-300">
                           <Pencil className="w-2.5 h-2.5" />
                         </button>
                       </>
@@ -290,7 +290,7 @@ export function SchemaDesigner() {
             </div>
           )}
           {active.tables.length === 1 && (
-            <p className="text-[11px] text-zinc-500">Add a second table to draw relations between tables.</p>
+            <p className="text-[11px] text-lattice-muted">Add a second table to draw relations between tables.</p>
           )}
           {active.tables.length >= 2 && (
             <div className="flex gap-1.5">

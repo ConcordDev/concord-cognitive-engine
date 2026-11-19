@@ -310,13 +310,13 @@ export function MailFolderPanel({
       <div className={cn(ds.panelBare, 'p-2')} aria-busy={loading}>
         <div className="mb-2 space-y-1.5 px-0.5">
           <div className="relative">
-            <Search className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-500" />
+            <Search className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-lattice-muted" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search subject, body, sender…"
               aria-label="Search mail"
-              className="w-full rounded-md border border-lattice-border bg-lattice-void/60 py-1 pl-6 pr-2 text-[11px] text-gray-100 placeholder:text-gray-500 outline-none transition-colors focus:border-neon-blue"
+              className="w-full rounded-md border border-lattice-border bg-lattice-void/60 py-1 pl-6 pr-2 text-[11px] text-gray-100 placeholder:text-lattice-muted outline-none transition-colors focus:border-neon-blue"
             />
           </div>
           {folder === 'inbox' && (
@@ -445,12 +445,12 @@ export function MailFolderPanel({
                           {otherLabel}
                         </span>
                       </span>
-                      <span className="shrink-0 font-mono text-[10px] tabular-nums text-gray-500">
+                      <span className="shrink-0 font-mono text-[10px] tabular-nums text-lattice-muted">
                         {new Date(m.sentAt * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                       </span>
                     </div>
                     <div className={cn('mt-0.5 truncate text-[12px]', isUnread ? 'font-semibold text-white' : 'text-gray-300')}>
-                      {depth > 0 && <span className="mr-1 text-gray-500" title="Reply in a thread">↳</span>}
+                      {depth > 0 && <span className="mr-1 text-lattice-muted" title="Reply in a thread">↳</span>}
                       {m.subject}
                     </div>
                     <div className="mt-0.5 truncate text-[10px] text-emerald-200/90">{mailRecordSentence(m, folder)}</div>
@@ -514,7 +514,7 @@ export function MailFolderPanel({
             <MailKeepMenu key={selected.id} mail={selected} />
             {(threadParent || threadReplies.length > 0) && (
               <div className="mt-3 rounded-md border border-lattice-border bg-lattice-void/50 p-2.5 text-[11px]">
-                <h3 className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-gray-500">Thread</h3>
+                <h3 className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-lattice-muted">Thread</h3>
                 {threadParent && (
                   <p className="text-gray-300">
                     In reply to{' '}
@@ -528,8 +528,8 @@ export function MailFolderPanel({
                     {threadReplies.map((r) => (
                       <li key={r.id}>
                         <button type="button" onClick={() => setSelected(r)} className="text-left text-gray-300 hover:text-white">
-                          <span className="mr-1 text-gray-500">↳</span>{r.subject}
-                          <span className="ml-2 text-[10px] text-gray-500">
+                          <span className="mr-1 text-lattice-muted">↳</span>{r.subject}
+                          <span className="ml-2 text-[10px] text-lattice-muted">
                             {mailPartyLabel(r.fromName, r.fromHandle)} · {new Date(r.sentAt * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                           </span>
                         </button>
@@ -660,7 +660,7 @@ export function MailFolderPanel({
 
             {(selected.attachmentCc > 0 || selected.attachment_dtu_ids?.length > 0 || selected.codCc > 0) && (
               <div className="mt-4 rounded-md border border-lattice-border bg-lattice-void/50 p-2.5 text-[11px]">
-                <h3 className="mb-1.5 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest text-gray-500">
+                <h3 className="mb-1.5 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest text-lattice-muted">
                   <Paperclip className="h-3 w-3" /> Attachments
                 </h3>
                 {selected.attachmentCc > 0 && (

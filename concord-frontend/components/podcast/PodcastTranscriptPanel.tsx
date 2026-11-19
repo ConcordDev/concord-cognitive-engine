@@ -154,7 +154,7 @@ export function PodcastTranscriptPanel({
                     onClick={() => onJump?.(seg.startSec)}
                     className="w-full flex items-start gap-2 px-2 py-1 rounded text-left text-[11px] text-zinc-400 hover:bg-zinc-900"
                   >
-                    <span className="font-mono text-zinc-600 shrink-0">{fmtClock(seg.startSec)}</span>
+                    <span className="font-mono text-lattice-muted shrink-0">{fmtClock(seg.startSec)}</span>
                     <span>{seg.text}</span>
                   </button>
                 </li>

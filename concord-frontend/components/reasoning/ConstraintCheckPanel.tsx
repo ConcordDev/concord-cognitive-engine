@@ -178,7 +178,7 @@ export function ConstraintCheckPanel() {
           {phase === 'running' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
           Run constraint check
         </button>
-        <p className="text-[10px] text-zinc-500">
+        <p className="text-[10px] text-lattice-muted">
           logicValidate + fallacyDetect always run on the premises. HLR <code className="text-violet-300">constraint_check</code> is
           the same POST DriftAlertToast uses — if the engine rejects the mode, that rejection is shown.
         </p>
@@ -188,7 +188,7 @@ export function ConstraintCheckPanel() {
         {phase === 'idle' && (
           <EmptyState
             compact
-            icon={<Scale className="h-5 w-5 text-zinc-600" />}
+            icon={<Scale className="h-5 w-5 text-lattice-muted" />}
             title="No check run"
             description="Enter premises and a conclusion. The inspector will show contradictions, unsupported terms, and any HLR trace the engine actually records."
           />
@@ -211,7 +211,7 @@ export function ConstraintCheckPanel() {
               </span>
               <span className="text-zinc-400">{validate?.validity || '—'}</span>
               <span className="text-zinc-400">termSupport {validate?.termSupport ?? '—'}</span>
-              <span className={fallacyCount ? 'text-amber-300' : 'text-zinc-500'}>{fallacyCount} fallacy hit{fallacyCount === 1 ? '' : 's'}</span>
+              <span className={fallacyCount ? 'text-amber-300' : 'text-lattice-muted'}>{fallacyCount} fallacy hit{fallacyCount === 1 ? '' : 's'}</span>
             </div>
             {validate?.recommendation && <p className="text-zinc-300">{validate.recommendation}</p>}
             {validate?.contradictions?.map((c, i) => (

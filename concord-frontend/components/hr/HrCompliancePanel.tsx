@@ -206,7 +206,7 @@ export function HrCompliancePanel() {
           {orgStatus.pct == null ? '—' : `${orgStatus.pct}%`}
         </p>
         <p className="text-[10px] text-zinc-400 uppercase tracking-wide">Org-wide acknowledgement</p>
-        <p className="text-[10px] text-zinc-500">
+        <p className="text-[10px] text-lattice-muted">
           {orgStatus.required > 0
             ? `${orgStatus.acknowledged} of ${orgStatus.required} acknowledgements`
             : 'No documents or employees to measure yet'}
@@ -318,7 +318,7 @@ export function HrCompliancePanel() {
                 {i9Summary.compliancePct == null ? '—' : `${i9Summary.compliancePct}%`}
               </p>
               <p className="text-[9px] text-zinc-400 uppercase tracking-wide">Verified</p>
-              <p className="text-[9px] text-zinc-500">{i9Summary.verified} of {i9Summary.activeEmployees}</p>
+              <p className="text-[9px] text-lattice-muted">{i9Summary.verified} of {i9Summary.activeEmployees}</p>
             </div>
             <div className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-2 text-center">
               <p className="text-base font-bold text-zinc-200">{i9Summary.pending ?? 0}</p>

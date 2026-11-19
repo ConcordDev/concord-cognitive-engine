@@ -239,7 +239,7 @@ export default function NarrativeWalkLensPage() {
           className="flex min-h-[22rem] flex-col justify-center rounded-2xl border border-white/10 bg-zinc-950 px-6 py-16"
         >
           {phase === 'loading' && (
-            <p data-testid="narrative-loading" role="status" aria-busy="true" className="text-[14px] text-zinc-500">
+            <p data-testid="narrative-loading" role="status" aria-busy="true" className="text-[14px] text-lattice-muted">
               Opening the trail.
             </p>
           )}
@@ -253,7 +253,7 @@ export default function NarrativeWalkLensPage() {
           )}
           {phase === 'ready' && !open && (
             <div data-testid="narrative-empty">
-              <p className="text-[14px] text-zinc-500">No walk open.</p>
+              <p className="text-[14px] text-lattice-muted">No walk open.</p>
               <p className="mt-3 max-w-xl text-[14px] leading-relaxed text-zinc-400">
                 Eleven authored story beats from the turning points of Concordia. Walk them in
                 order — you can step back at any point, and when the trail ends you can walk it again.
@@ -265,13 +265,13 @@ export default function NarrativeWalkLensPage() {
           {phase === 'ready' && open && (
             <div data-testid="narrative-step">
               {setLabel(open) ? (
-                <p className="mb-2 text-[11px] uppercase tracking-[0.18em] text-zinc-500">{setLabel(open)}</p>
+                <p className="mb-2 text-[11px] uppercase tracking-[0.18em] text-lattice-muted">{setLabel(open)}</p>
               ) : null}
               <h2 className="font-vault text-[1.5rem] text-zinc-100">{open.name}</h2>
               {open.summary ? (
                 <p className="mt-3 max-w-xl text-[14px] leading-relaxed text-zinc-400">{open.summary}</p>
               ) : null}
-              <p data-testid="narrative-progress" className="mt-6 text-[13px] tabular-nums text-zinc-500">
+              <p data-testid="narrative-progress" className="mt-6 text-[13px] tabular-nums text-lattice-muted">
                 Step {openIndex + 1} of {catalog.length} · {watchedCount} walked
               </p>
               {atEnd && (

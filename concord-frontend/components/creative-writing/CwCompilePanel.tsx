@@ -132,7 +132,7 @@ export function CwCompilePanel({ projectId }: { projectId: string }) {
             <ul className="flex flex-wrap gap-1.5">
               {result.chapters.map((c, i) => (
                 <li key={i} className="text-[10px] text-zinc-400 bg-zinc-950/60 rounded px-2 py-0.5">
-                  {c.heading} <span className="text-zinc-600">· {c.scenes}</span>
+                  {c.heading} <span className="text-lattice-muted">· {c.scenes}</span>
                 </li>
               ))}
             </ul>

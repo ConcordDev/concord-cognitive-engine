@@ -148,7 +148,7 @@ export function FrontierEngineTabs({
             title={engine.name}
             className={cn(
               'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
-              isActive ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+              isActive ? 'bg-white/10 text-zinc-50' : 'text-lattice-muted hover:text-zinc-200',
             )}
           >
             <Icon className="h-3.5 w-3.5" aria-hidden="true" />
@@ -208,7 +208,7 @@ function NotebookCell({
     >
       <div className="flex items-baseline justify-between gap-3 mb-2">
         <div className="flex items-baseline gap-2">
-          <span className={cn(ds.monoXs, 'text-gray-500 select-none')}>
+          <span className={cn(ds.monoXs, 'text-lattice-muted select-none')}>
             {PROMPT_LABEL[kind]} [{cellNumber}]:
           </span>
           <h3 className={cn(ds.heading3, 'text-sm')}>{title}</h3>
@@ -252,7 +252,7 @@ export function ComputeCell({
       kind="compute"
       cellNumber={cellNumber}
       title="Compute"
-      headerRight={<span className={cn(ds.monoXs, 'text-gray-500')}>{macroLabel}</span>}
+      headerRight={<span className={cn(ds.monoXs, 'text-lattice-muted')}>{macroLabel}</span>}
     >
       <div className="space-y-4">{children}</div>
       <div className="mt-4 flex items-center gap-3">
@@ -273,7 +273,7 @@ export function ComputeCell({
           <kbd
             className={cn(
               ds.monoXs,
-              'px-1.5 py-0.5 rounded border border-lattice-border text-gray-500 bg-lattice-elevated',
+              'px-1.5 py-0.5 rounded border border-lattice-border text-lattice-muted bg-lattice-elevated',
             )}
           >
             {hotkey}
@@ -352,7 +352,7 @@ export function BoundaryCell({
   return (
     <NotebookCell kind="boundary" cellNumber={cellNumber} title="Honest boundary">
       <p className={cn(ds.textBody, 'text-sm leading-relaxed')}>{text}</p>
-      <p className={cn(ds.monoXs, 'text-gray-500 mt-2')}>Source: {source}</p>
+      <p className={cn(ds.monoXs, 'text-lattice-muted mt-2')}>Source: {source}</p>
     </NotebookCell>
   );
 }

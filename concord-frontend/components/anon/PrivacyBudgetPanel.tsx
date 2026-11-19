@@ -185,7 +185,7 @@ export function PrivacyBudgetPanel({ refreshKey }: PrivacyBudgetPanelProps) {
                 style={{ width: `${Math.min(100, status.percentUsed)}%` }}
               />
             </div>
-            <p className="text-[10px] text-gray-500">
+            <p className="text-[10px] text-lattice-muted">
               {status.totalSpent.toFixed(2)} / {status.totalBudget.toFixed(2)} ε used (
               {status.percentUsed.toFixed(1)}%)
               {status.exhausted && (

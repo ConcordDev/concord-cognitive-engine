@@ -97,11 +97,11 @@ export function PjReportsPanel({
           <ResponsiveContainer width="100%" height={170}>
             <BarChart data={velocity.series}>
               <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-              <XAxis dataKey="sprint" tick={{ fontSize: 9, fill: '#71717a' }} />
-              <YAxis tick={{ fontSize: 9, fill: '#71717a' }} width={28} />
+              <XAxis dataKey="sprint" tick={{ fontSize: 9, fill: '#a1a1aa' }} />
+              <YAxis tick={{ fontSize: 9, fill: '#a1a1aa' }} width={28} />
               <Tooltip contentStyle={tooltipCss} />
               <Legend wrapperStyle={{ fontSize: 10 }} />
-              <Bar dataKey="committed" fill="#52525b" radius={[2, 2, 0, 0]} name="Committed" />
+              <Bar dataKey="committed" fill="#a1a1aa" radius={[2, 2, 0, 0]} name="Committed" />
               <Bar dataKey="completed" fill="#818cf8" radius={[2, 2, 0, 0]} name="Completed" />
             </BarChart>
           </ResponsiveContainer>
@@ -117,11 +117,11 @@ export function PjReportsPanel({
           <ResponsiveContainer width="100%" height={170}>
             <LineChart data={flow.series.map((p) => ({ date: p.date.slice(5), created: p.created, completed: p.completed, open: p.open }))}>
               <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-              <XAxis dataKey="date" tick={{ fontSize: 9, fill: '#71717a' }} />
-              <YAxis tick={{ fontSize: 9, fill: '#71717a' }} width={28} />
+              <XAxis dataKey="date" tick={{ fontSize: 9, fill: '#a1a1aa' }} />
+              <YAxis tick={{ fontSize: 9, fill: '#a1a1aa' }} width={28} />
               <Tooltip contentStyle={tooltipCss} />
               <Legend wrapperStyle={{ fontSize: 10 }} />
-              <Line type="monotone" dataKey="created" stroke="#71717a" strokeWidth={1.5} dot={false} name="Created" />
+              <Line type="monotone" dataKey="created" stroke="#a1a1aa" strokeWidth={1.5} dot={false} name="Created" />
               <Line type="monotone" dataKey="open" stroke="#f59e0b" strokeWidth={2} dot={false} name="Open" />
               <Line type="monotone" dataKey="completed" stroke="#34d399" strokeWidth={2} dot={false} name="Completed" />
             </LineChart>

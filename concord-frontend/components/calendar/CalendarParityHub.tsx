@@ -1048,7 +1048,7 @@ function TrashPanel() {
         <ul className="space-y-1.5">
           {items.map((e) => (
             <li key={e.id} className="flex items-center gap-2 bg-lattice-elevated/50 border border-lattice-border rounded-lg px-3 py-2">
-              <Trash2 className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+              <Trash2 className="w-3.5 h-3.5 text-lattice-muted shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold text-white truncate">{e.title}</p>
                 <p className="text-[10px] text-gray-400 tabular-nums">

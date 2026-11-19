@@ -254,7 +254,7 @@ export function GitPanel({ projectId, onChanged, onDiscarded }: {
                 <div key={i} className={cn('px-3 py-0.5 whitespace-pre-wrap',
                   h.type === 'add' ? 'bg-emerald-500/10 text-emerald-300'
                     : h.type === 'del' ? 'bg-rose-500/10 text-rose-300' : 'text-gray-400')}>
-                  <span className="select-none mr-2 text-gray-600">{h.type === 'add' ? '+' : h.type === 'del' ? '−' : ' '}</span>
+                  <span className="select-none mr-2 text-lattice-muted">{h.type === 'add' ? '+' : h.type === 'del' ? '−' : ' '}</span>
                   {h.text || ' '}
                 </div>
               ))}

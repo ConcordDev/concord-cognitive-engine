@@ -193,9 +193,9 @@ export function FleetManager({ onSelect, selectedId, onFleetChange }: { onSelect
         </div>
       ) : robots.length === 0 ? (
         <div className="panel p-4 text-center space-y-1.5 py-6">
-          <Bot className="w-6 h-6 mx-auto text-gray-500" />
+          <Bot className="w-6 h-6 mx-auto text-lattice-muted" />
           <p className="text-gray-400 text-sm">No robots registered yet.</p>
-          <p className="text-[11px] text-gray-500">Register your first robot above to start managing a fleet.</p>
+          <p className="text-[11px] text-lattice-muted">Register your first robot above to start managing a fleet.</p>
         </div>
       ) : (
         <div className="space-y-2">

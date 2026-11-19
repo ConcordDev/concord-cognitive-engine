@@ -158,9 +158,9 @@ export function EventDetailPanel({
                       >
                         <span className="font-mono text-zinc-400">{nb.channel}</span>
                         {nb.actor_id && (
-                          <span className="text-zinc-600">{nb.actor_kind || '?'}:{nb.actor_id}</span>
+                          <span className="text-lattice-muted">{nb.actor_kind || '?'}:{nb.actor_id}</span>
                         )}
-                        <span className="ml-auto text-zinc-600">
+                        <span className="ml-auto text-lattice-muted">
                           {new Date(nb.created_at * 1000).toLocaleTimeString()}
                         </span>
                       </button>

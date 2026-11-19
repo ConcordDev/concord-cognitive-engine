@@ -370,7 +370,7 @@ export function WellnessSection() {
                       </span>
                       <span className="text-[10px] text-gray-400 font-mono w-20 flex-shrink-0">{m.date}</span>
                       <span className="flex-1 text-white font-mono">{m.value}</span>
-                      {m.source && <span className="text-[9px] text-gray-500 font-mono flex-shrink-0">{m.source.replace(/_/g, ' ')}</span>}
+                      {m.source && <span className="text-[9px] text-lattice-muted font-mono flex-shrink-0">{m.source.replace(/_/g, ' ')}</span>}
                       <button aria-label={`Edit ${METRIC_TYPE_LABELS[m.type] || m.type} entry`} onClick={() => editMetric(m)} className="p-1 text-gray-400 hover:text-cyan-300 flex-shrink-0"><Pencil className="w-3 h-3" /></button>
                       <button aria-label={`Delete ${METRIC_TYPE_LABELS[m.type] || m.type} entry`} onClick={() => delMetric(m)} className="p-1 text-gray-400 hover:text-rose-300 flex-shrink-0"><Trash2 className="w-3 h-3" /></button>
                     </li>
@@ -405,7 +405,7 @@ export function WellnessSection() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-xs font-mono inline-flex items-center gap-1" style={{ color: h.streak > 0 ? h.color : '#6b7280' }}>
+                        <div className="text-xs font-mono inline-flex items-center gap-1" style={{ color: h.streak > 0 ? h.color : '#a1a1aa' }}>
                           <Flame className="w-3 h-3" />{h.streak}
                         </div>
                         <div className="text-[9px] text-gray-400">best {h.longestStreak}</div>

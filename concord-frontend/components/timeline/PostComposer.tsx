@@ -191,7 +191,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void }) {
       </div>
 
       {hasDraft && (
-        <p className="text-[11px] text-gray-500 flex items-center gap-2">
+        <p className="text-[11px] text-lattice-muted flex items-center gap-2">
           <span>{draftRestored ? 'Draft restored. ' : ''}Your draft is kept on this device until you post it.</span>
           <button onClick={discardDraft} className="text-gray-400 hover:text-red-400 underline">
             Discard draft
@@ -247,7 +247,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void }) {
               onKeyDown={(e) => e.key === 'Enter' && addMedia()}
               placeholder="Media URL"
               autoFocus
-              className="flex-1 bg-[#3a3b3c] rounded px-3 py-1.5 text-sm text-white placeholder-gray-500 outline-none focus:ring-1 focus:ring-blue-500"
+              className="flex-1 bg-[#3a3b3c] rounded px-3 py-1.5 text-sm text-white placeholder:text-lattice-muted outline-none focus:ring-1 focus:ring-blue-500"
             />
             <button onClick={addMedia} className="px-3 py-1.5 rounded bg-blue-600 text-white text-xs">Add</button>
             <button
@@ -269,7 +269,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void }) {
               }}
             />
           </div>
-          <p className="text-[11px] text-gray-500">Images (JPEG, PNG, GIF, WebP, SVG) or video (MP4, WebM), up to 10 MB — or paste a link; links are checked before they attach.</p>
+          <p className="text-[11px] text-lattice-muted">Images (JPEG, PNG, GIF, WebP, SVG) or video (MP4, WebM), up to 10 MB — or paste a link; links are checked before they attach.</p>
           {mediaError && <p className="text-[11px] text-rose-300">{mediaError}</p>}
         </div>
       )}
@@ -283,7 +283,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void }) {
             onKeyDown={(e) => e.key === 'Enter' && addTag()}
             placeholder="Tag a user by id"
             autoFocus
-            className="flex-1 bg-[#3a3b3c] rounded px-3 py-1.5 text-sm text-white placeholder-gray-500 outline-none focus:ring-1 focus:ring-blue-500"
+            className="flex-1 bg-[#3a3b3c] rounded px-3 py-1.5 text-sm text-white placeholder:text-lattice-muted outline-none focus:ring-1 focus:ring-blue-500"
           />
           <button onClick={addTag} className="px-3 py-1.5 rounded bg-blue-600 text-white text-xs">Add</button>
         </div>
@@ -358,7 +358,7 @@ export function PostComposer({ onPosted }: { onPosted?: () => void }) {
           </button>
         ))}
         {replyGate === 'mentioned' && (
-          <span className="text-[11px] text-gray-500">People you tag in this post.</span>
+          <span className="text-[11px] text-lattice-muted">People you tag in this post.</span>
         )}
       </div>
     </div>

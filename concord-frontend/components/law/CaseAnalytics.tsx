@@ -48,7 +48,7 @@ const PRIORITY_STYLE: Record<string, string> = {
   urgent: 'text-amber-300',
   warning: 'text-yellow-300',
   on_track: 'text-emerald-300',
-  completed: 'text-gray-500',
+  completed: 'text-lattice-muted',
   unknown: 'text-gray-400',
 };
 

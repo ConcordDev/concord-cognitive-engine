@@ -340,7 +340,7 @@ export function CodeActionPanel() {
           <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1">Results — kept per action</div>
           <ul className="space-y-0.5">
             {keptActivity.map(a => (
-              <li key={a.id} className="text-[11px] text-zinc-300"><span className="text-zinc-500 font-mono mr-1.5">{a.id}</span>{a.text}</li>
+              <li key={a.id} className="text-[11px] text-zinc-300"><span className="text-lattice-muted font-mono mr-1.5">{a.id}</span>{a.text}</li>
             ))}
           </ul>
         </div>

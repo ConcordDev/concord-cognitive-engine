@@ -307,7 +307,7 @@ function DebuggerTab({ projectId, files }: { projectId: string; files: FileRow[]
                   <tr key={lineNo} className="hover:bg-white/[0.03]">
                     <td
                       onClick={() => toggleBp(lineNo)}
-                      className="w-12 select-none cursor-pointer text-right pr-2 text-gray-600 align-top"
+                      className="w-12 select-none cursor-pointer text-right pr-2 text-lattice-muted align-top"
                     >
                       {isBp ? <span className="text-red-500">●</span> : lineNo}
                     </td>
@@ -587,14 +587,14 @@ function ExtensionsTab() {
           <ul className="space-y-1.5">
             {installed.map((e) => (
               <li key={e.id} className="flex items-center gap-2 rounded border border-white/10 bg-[#161b22] p-2.5">
-                <Puzzle className={`w-4 h-4 ${e.enabled ? 'text-cyan-400' : 'text-gray-600'}`} />
+                <Puzzle className={`w-4 h-4 ${e.enabled ? 'text-cyan-400' : 'text-lattice-muted'}`} />
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-gray-200 truncate">{e.name}</p>
                   <p className="text-[10px] text-gray-400">{e.kind}</p>
-                  {e.effect && <p className="text-[10px] text-gray-500">{e.effect}</p>}
+                  {e.effect && <p className="text-[10px] text-lattice-muted">{e.effect}</p>}
                 </div>
                 <button onClick={() => toggle(e.id, !e.enabled)} disabled={busy === e.id}
-                  className={`p-1.5 rounded ${e.enabled ? 'text-green-400 hover:bg-green-500/10' : 'text-gray-600 hover:bg-white/5'}`}
+                  className={`p-1.5 rounded ${e.enabled ? 'text-green-400 hover:bg-green-500/10' : 'text-lattice-muted hover:bg-white/5'}`}
                   title={e.enabled ? 'Disable' : 'Enable'}>
                   <Power className="w-3.5 h-3.5" />
                 </button>
@@ -616,7 +616,7 @@ function ExtensionsTab() {
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-gray-200 truncate">{e.name}</p>
                 <p className="text-[10px] text-gray-400 truncate">{e.description}</p>
-                {e.effect && <p className="text-[10px] text-gray-500">{e.effect}</p>}
+                {e.effect && <p className="text-[10px] text-lattice-muted">{e.effect}</p>}
               </div>
               <button onClick={() => install(e.id)} disabled={busy === e.id}
                 className="flex items-center gap-1 px-2.5 py-1 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-[10px] font-bold disabled:opacity-40">
@@ -1024,11 +1024,11 @@ function LiveShareTab({ projectId, files }: { projectId: string; files: FileRow[
                   <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: c.color }} />
                   <span className="font-medium">{c.displayName}</span>
                   {c.cursor && c.cursor.path && !samefile ? (
-                    <span className="text-gray-500 font-mono truncate">editing {c.cursor.path}</span>
+                    <span className="text-lattice-muted font-mono truncate">editing {c.cursor.path}</span>
                   ) : pos ? (
-                    <span className="text-gray-500 font-mono">line {pos.line}, col {pos.col}</span>
+                    <span className="text-lattice-muted font-mono">line {pos.line}, col {pos.col}</span>
                   ) : (
-                    <span className="text-gray-500">viewing</span>
+                    <span className="text-lattice-muted">viewing</span>
                   )}
                 </div>
               );
@@ -1201,7 +1201,7 @@ export function SharedDebugTerminalTile({ code, onTerminalLine }: {
             <div key={i} className={line.kind === 'in' ? 'text-cyan-300' : 'text-gray-200'}>
               <span className="text-gray-400 mr-1">{line.kind === 'in' ? '›' : '·'}</span>
               <span>{line.data.replace(/\n$/, '')}</span>
-              <span className="text-gray-500 ml-2 text-[9px]">{line.from}</span>
+              <span className="text-lattice-muted ml-2 text-[9px]">{line.from}</span>
             </div>
           ))
         )}

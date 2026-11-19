@@ -1356,7 +1356,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: {
         >
           Project
         </button>
-        <span className="ml-auto text-[10px] text-gray-500 font-mono">⌘⇧N scratch · ⌘⇧E project</span>
+        <span className="ml-auto text-[10px] text-lattice-muted font-mono">⌘⇧N scratch · ⌘⇧E project</span>
       </div>
       )}
       {workspaceKind === 'project' ? (
@@ -1431,7 +1431,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: {
                   className={`p-2 rounded-md transition-colors ${
                     activeScriptType === stype.id
                       ? 'bg-green-900/30 ' + stype.color
-                      : 'text-gray-600 hover:text-gray-400'
+                      : 'text-lattice-muted hover:text-gray-400'
                   }`}
                   title={`${stype.name}: ${stype.description}`}
                 >
@@ -1767,7 +1767,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: {
                       <span className="text-xs font-semibold text-green-500 uppercase font-mono tracking-wider">Saved scripts ({savedScripts.length})</span>
                       {scriptNotice && <p role="note" className="text-[11px] text-amber-300">{scriptNotice}</p>}
                       {savedScripts.length === 0 ? (
-                        <p className="text-[11px] text-gray-500">None yet — Save puts the current tab here, under its tab name.</p>
+                        <p className="text-[11px] text-lattice-muted">None yet — Save puts the current tab here, under its tab name.</p>
                       ) : savedScripts.map((s) => {
                         const title = (s as { title?: string }).title || 'untitled';
                         return (
@@ -2422,7 +2422,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: {
                 onChange={(e) => setFindQuery(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Escape') setFindOpen(false); }}
                 placeholder="Find in tabs and saved scripts…"
-                className="flex-1 bg-transparent text-sm text-white placeholder-gray-500 focus:outline-none font-mono"
+                className="flex-1 bg-transparent text-sm text-white placeholder:text-lattice-muted focus:outline-none font-mono"
                 autoFocus
               />
               <kbd className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-gray-400">esc</kbd>
@@ -2514,7 +2514,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: {
                   if (e.key === 'Escape') { setAiEditOpen(false); setAiEditResult(null); }
                 }}
                 placeholder="Describe the change… e.g. add error handling, convert to async, extract to function"
-                className="w-full px-3 py-2.5 bg-lattice-deep border border-lattice-border rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan/60"
+                className="w-full px-3 py-2.5 bg-lattice-deep border border-lattice-border rounded-lg text-sm text-white placeholder:text-lattice-muted focus:outline-none focus:border-neon-cyan/60"
                 autoFocus
               />
               {aiEditError && (
@@ -2684,7 +2684,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: {
               rows={2}
               placeholder="Message AI pair · ⏎ send · ⇧⏎ newline"
               disabled={aiChatPending}
-              className="w-full px-3 py-2 bg-lattice-deep border border-lattice-border rounded text-xs text-white placeholder-gray-500 focus:outline-none focus:border-neon-purple/60 resize-none"
+              className="w-full px-3 py-2 bg-lattice-deep border border-lattice-border rounded text-xs text-white placeholder:text-lattice-muted focus:outline-none focus:border-neon-purple/60 resize-none"
             />
             <div className="flex items-center justify-between text-[10px] text-gray-400">
               <span>{aiChatHistory.length} message{aiChatHistory.length === 1 ? '' : 's'}</span>

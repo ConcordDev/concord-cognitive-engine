@@ -649,10 +649,10 @@ function TemporalPanel() {
                       {r.untilHolds !== undefined ? ` · until ${r.untilHolds ? 'holds' : 'fails'}` : ''}
                     </span>
                     {r.state && (
-                      <span className="block font-mono text-gray-500 truncate">{JSON.stringify(r.state)}</span>
+                      <span className="block font-mono text-lattice-muted truncate">{JSON.stringify(r.state)}</span>
                     )}
                   </span>
-                  {r.at && <span className="text-gray-500">{new Date(r.at).toLocaleString()}</span>}
+                  {r.at && <span className="text-lattice-muted">{new Date(r.at).toLocaleString()}</span>}
                 </li>
               ))}
             </ol>
@@ -829,7 +829,7 @@ function ViolationHistoryPanel() {
                 </button>
               )}
               <button onClick={() => deleteViolation(v)}
-                className={confirmDeleteId === v.id ? 'text-[10px] text-rose-300 underline' : 'text-[10px] text-gray-500 underline hover:text-gray-300'}>
+                className={confirmDeleteId === v.id ? 'text-[10px] text-rose-300 underline' : 'text-[10px] text-lattice-muted underline hover:text-gray-300'}>
                 {confirmDeleteId === v.id ? `Delete this record? Click again` : 'Delete'}
               </button>
             </div>

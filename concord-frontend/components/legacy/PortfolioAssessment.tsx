@@ -184,7 +184,7 @@ export function PortfolioAssessment() {
               <Field label="Dependency age (yrs)"><input type="number" value={m.dependencyAgeYears} onChange={(e) => setDebtModules((p) => p.map((x, j) => j === i ? { ...x, dependencyAgeYears: e.target.value } : x))} placeholder="3" className="in" /></Field>
               <Field label="Duplicate code %"><input type="number" value={m.duplicateRatio} onChange={(e) => setDebtModules((p) => p.map((x, j) => j === i ? { ...x, duplicateRatio: e.target.value } : x))} placeholder="8" className="in" /></Field>
               <Field label="Last modified (days ago)"><input type="number" value={m.lastModifiedDaysAgo} onChange={(e) => setDebtModules((p) => p.map((x, j) => j === i ? { ...x, lastModifiedDaysAgo: e.target.value } : x))} placeholder="400" className="in" /></Field>
-              <button onClick={() => setDebtModules((p) => p.filter((_, j) => j !== i))} className="col-span-2 md:col-span-4 flex items-center justify-center gap-1 text-[10px] text-zinc-500 hover:text-rose-400 py-1"><Trash2 className="w-3 h-3" /> Remove module</button>
+              <button onClick={() => setDebtModules((p) => p.filter((_, j) => j !== i))} className="col-span-2 md:col-span-4 flex items-center justify-center gap-1 text-[10px] text-lattice-muted hover:text-rose-400 py-1"><Trash2 className="w-3 h-3" /> Remove module</button>
             </div>
           ))}
           <div className="flex items-center gap-2">
@@ -208,7 +208,7 @@ export function PortfolioAssessment() {
               <label className="flex items-center gap-1.5 text-[11px] text-zinc-400 mt-4">
                 <input type="checkbox" checked={m.storePortable} onChange={(e) => setMigModules((p) => p.map((x, j) => j === i ? { ...x, storePortable: e.target.checked } : x))} /> Store is portable
               </label>
-              <button onClick={() => setMigModules((p) => p.filter((_, j) => j !== i))} className="col-span-2 md:col-span-4 flex items-center justify-center gap-1 text-[10px] text-zinc-500 hover:text-rose-400 py-1"><Trash2 className="w-3 h-3" /> Remove module</button>
+              <button onClick={() => setMigModules((p) => p.filter((_, j) => j !== i))} className="col-span-2 md:col-span-4 flex items-center justify-center gap-1 text-[10px] text-lattice-muted hover:text-rose-400 py-1"><Trash2 className="w-3 h-3" /> Remove module</button>
             </div>
           ))}
           <div className="flex items-center gap-2">
@@ -227,7 +227,7 @@ export function PortfolioAssessment() {
               <Field label="Criticality (1-5)"><input type="number" min={1} max={5} value={c.criticality} onChange={(e) => setRiskComponents((p) => p.map((x, j) => j === i ? { ...x, criticality: e.target.value } : x))} className="in" /></Field>
               <Field label="Knowledge holders (comma names)"><input value={c.knowledgeHolders} onChange={(e) => setRiskComponents((p) => p.map((x, j) => j === i ? { ...x, knowledgeHolders: e.target.value } : x))} placeholder="alice, bob" className="in" /></Field>
               <Field label="Failures — date:severity(1-5), comma-separated"><input value={c.failures} onChange={(e) => setRiskComponents((p) => p.map((x, j) => j === i ? { ...x, failures: e.target.value } : x))} placeholder="2025-01-10:4, 2025-06-02:2" className="in" /></Field>
-              <button onClick={() => setRiskComponents((p) => p.filter((_, j) => j !== i))} className="col-span-2 md:col-span-4 flex items-center justify-center gap-1 text-[10px] text-zinc-500 hover:text-rose-400 py-1"><Trash2 className="w-3 h-3" /> Remove component</button>
+              <button onClick={() => setRiskComponents((p) => p.filter((_, j) => j !== i))} className="col-span-2 md:col-span-4 flex items-center justify-center gap-1 text-[10px] text-lattice-muted hover:text-rose-400 py-1"><Trash2 className="w-3 h-3" /> Remove component</button>
             </div>
           ))}
           <div className="flex items-center gap-2">
@@ -269,7 +269,7 @@ function DebtResult({ r }: { r: any }) {
         <Stat label="Remediation (hrs)" value={s.totalRemediationHours} />
       </div>
       {defaultedCoverage.length > 0 && (
-        <p className="text-[10px] text-zinc-500">
+        <p className="text-[10px] text-lattice-muted">
           Test coverage defaulted to 50% (not measured) for:{' '}
           {defaultedCoverage.map((m: any) => m.name).join(', ')}.
         </p>

@@ -355,7 +355,7 @@ export function PjTaskDetail({
                 {t.startDate && (
                   <button type="button" aria-label="Clear start date" title="Clear start date"
                     onClick={() => { setDateDrafts((prev) => { const next = { ...prev }; delete next.startDate; return next; }); void patch({ startDate: '' }); }}
-                    className="text-gray-500 hover:text-gray-200 text-xs px-1">×</button>
+                    className="text-lattice-muted hover:text-gray-200 text-xs px-1">×</button>
                 )}
               </span>
             </Field>
@@ -367,7 +367,7 @@ export function PjTaskDetail({
                 {t.dueDate && (
                   <button type="button" aria-label="Clear due date" title="Clear due date"
                     onClick={() => { setDateDrafts((prev) => { const next = { ...prev }; delete next.dueDate; return next; }); void patch({ dueDate: '' }); }}
-                    className="text-gray-500 hover:text-gray-200 text-xs px-1">×</button>
+                    className="text-lattice-muted hover:text-gray-200 text-xs px-1">×</button>
                 )}
               </span>
             </Field>
@@ -423,7 +423,7 @@ export function PjTaskDetail({
                       {!!t.customFields[f.id] && (
                         <button type="button" aria-label={`Clear ${f.name}`} title={`Clear ${f.name}`}
                           onClick={() => void setField(f.id, '')}
-                          className="text-gray-500 hover:text-gray-200 text-xs px-1">×</button>
+                          className="text-lattice-muted hover:text-gray-200 text-xs px-1">×</button>
                       )}
                     </span>
                   ) : (
@@ -465,7 +465,7 @@ export function PjTaskDetail({
                   <span className="text-indigo-400 w-20">{r.kind.replace(/_/g, ' ')}</span>
                   <span className="flex-1 truncate text-gray-300">{r.task ? `${r.task.ref} ${r.task.title}` : '—'}</span>
                   <button aria-label="Delete" type="button" onClick={() => lensRun('projects', 'relation-delete', { id: r.id }).then(refresh)}
-                    className="text-gray-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                    className="text-lattice-muted hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
                 </li>
               ))}
             </ul>
@@ -517,7 +517,7 @@ export function PjTaskDetail({
                       </>
                     )}
                     <button aria-label="Delete" type="button" onClick={() => lensRun('projects', 'attachment-delete', { id: a.id }).then(refresh)}
-                      className="text-gray-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                      className="text-lattice-muted hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
                   </li>
                 );
               })}
@@ -642,9 +642,9 @@ function cssColor(c: string): string {
     red: '#dc2626', rose: '#e11d48', orange: '#ea580c', amber: '#d97706', yellow: '#ca8a04',
     lime: '#65a30d', green: '#16a34a', emerald: '#059669', teal: '#0d9488', cyan: '#0891b2',
     sky: '#0284c7', blue: '#2563eb', indigo: '#4f46e5', violet: '#7c3aed', purple: '#9333ea',
-    fuchsia: '#c026d3', pink: '#db2777', zinc: '#52525b',
+    fuchsia: '#c026d3', pink: '#db2777', zinc: '#a1a1aa',
   };
-  return map[c] || '#52525b';
+  return map[c] || '#a1a1aa';
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {

@@ -384,10 +384,10 @@ export function HrPeoplePanel({ onChange }: { onChange: () => void }) {
             {terminated.map((e) => (
               <li key={e.id} className="flex items-center justify-between bg-zinc-900/40 border border-zinc-800/70 rounded-xl p-3">
                 <button type="button" onClick={() => openEmp(e)} className="flex items-center gap-2 text-left">
-                  <UserRound className="w-4 h-4 text-zinc-500 shrink-0" />
+                  <UserRound className="w-4 h-4 text-lattice-muted shrink-0" />
                   <span>
                     <span className="block text-sm font-semibold text-zinc-300">{e.name}</span>
-                    <span className="block text-[11px] text-zinc-500">
+                    <span className="block text-[11px] text-lattice-muted">
                       {e.title || 'No title'} · {e.department}
                       {e.terminationDate ? ` · terminated ${e.terminationDate}` : ''}
                     </span>

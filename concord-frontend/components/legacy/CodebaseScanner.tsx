@@ -243,7 +243,7 @@ export function CodebaseScanner() {
                 <span className="text-[10px] text-zinc-400">{cb.summary.fileCount}f · {cb.summary.totalLinesOfCode} LOC</span>
                 <StickyDeleteConfirm
                   onConfirm={() => deleteCodebase(cb.id)}
-                  className="text-zinc-600 hover:text-rose-400"
+                  className="text-lattice-muted hover:text-rose-400"
                   armLabel={<Trash2 className="w-3 h-3" />}
                   armAriaLabel={`Delete ${cb.name}`}
                   confirmLabel={`Delete "${cb.name}"?`}
@@ -558,7 +558,7 @@ function RoiPanel({ result }: { result: any }) {
         kind="bar"
         data={modules.slice(0, 12).map((m) => ({ name: m.name.split('/').pop(), Rewrite: m.costs.rewrite, Refactor: m.costs.refactor, Retire: m.costs.retire }))}
         xKey="name"
-        series={[{ key: 'Rewrite', color: '#ef4444' }, { key: 'Refactor', color: '#f59e0b' }, { key: 'Retire', color: '#71717a' }]}
+        series={[{ key: 'Rewrite', color: '#ef4444' }, { key: 'Refactor', color: '#f59e0b' }, { key: 'Retire', color: '#a1a1aa' }]}
         height={220}
       />
       <div className="space-y-1">

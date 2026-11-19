@@ -95,7 +95,7 @@ export function ChannelTrends({
         </div>
       </div>
 
-      <p className="mb-3 text-[11px] text-zinc-500">
+      <p className="mb-3 text-[11px] text-lattice-muted">
         Computed over {selectedChannels.length ? 'the selected channels' : 'all channels'}
         {worldId ? ' in the current world' : ''} for the window above. The search text and
         the custom time range do not narrow these trends.

@@ -48,7 +48,7 @@ function MoreMenu({ onPick }: { onPick: (v: CalendarView) => void }) {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="text-[14px] text-zinc-500 transition-colors hover:text-zinc-200"
+        className="text-[14px] text-lattice-muted transition-colors hover:text-zinc-200"
         aria-haspopup="menu"
         aria-expanded={open}
       >
@@ -65,7 +65,7 @@ function MoreMenu({ onPick }: { onPick: (v: CalendarView) => void }) {
               className="flex w-full items-center rounded-md px-2.5 py-1.5 text-left text-[13px] text-zinc-300 hover:bg-white/[0.06] hover:text-zinc-50"
             >
               <span className="flex-1">{v.label}</span>
-              {v.key && <kbd className="font-mono text-[11px] text-zinc-500">{v.key}</kbd>}
+              {v.key && <kbd className="font-mono text-[11px] text-lattice-muted">{v.key}</kbd>}
             </button>
           ))}
         </div>
@@ -102,7 +102,7 @@ export default function CalendarLensPage() {
             <button
               type="button"
               onClick={() => setActive('calendar')}
-              className="inline-flex items-center gap-1.5 text-[14px] text-zinc-500 transition-colors hover:text-zinc-200"
+              className="inline-flex items-center gap-1.5 text-[14px] text-lattice-muted transition-colors hover:text-zinc-200"
             >
               <ArrowLeft className="h-4 w-4" />
               Calendar

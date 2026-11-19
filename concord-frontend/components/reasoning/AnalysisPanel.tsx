@@ -319,7 +319,7 @@ export function AnalysisPanel() {
                           {cfg.label}
                         </span>
                         {angle.schemeName && (
-                          <span className="text-xs text-gray-500">{angle.schemeName}</span>
+                          <span className="text-xs text-lattice-muted">{angle.schemeName}</span>
                         )}
                       </div>
                       <p className="text-sm text-gray-300">{angle.detail}</p>

@@ -153,7 +153,7 @@ export function MonitoringPanel() {
             )}
           </>
         ) : (
-          <p className="text-sm text-gray-500">Migrations and sync are admin-only.</p>
+          <p className="text-sm text-lattice-muted">Migrations and sync are admin-only.</p>
         )}
       </div>
     </div>

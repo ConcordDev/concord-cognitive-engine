@@ -1208,7 +1208,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
         )}
         <div className="grid grid-cols-7 border-b border-white/[0.06]">
           {DAY_NAMES.map((day) => (
-            <div key={day} className="py-3 text-center text-[12px] uppercase tracking-[0.12em] text-zinc-500">
+            <div key={day} className="py-3 text-center text-[12px] uppercase tracking-[0.12em] text-lattice-muted">
               {day}
             </div>
           ))}
@@ -1242,7 +1242,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                 <span
                   className={cn(
                     'font-vault text-[20px] leading-8 tabular-nums',
-                    today ? 'text-violet-300 [text-shadow:0_0_18px_rgba(167,139,250,0.7)]' : isCurrentMonth ? 'text-zinc-200' : 'text-zinc-600',
+                    today ? 'text-violet-300 [text-shadow:0_0_18px_rgba(167,139,250,0.7)]' : isCurrentMonth ? 'text-zinc-200' : 'text-lattice-muted',
                   )}
                 >
                   {date.getDate()}
@@ -1280,7 +1280,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                         <span className="truncate">{event.title}</span>
                       </span>
                       {!event.allDay && (
-                        <span className="block truncate pl-3 text-[11px] tabular-nums text-zinc-500">
+                        <span className="block truncate pl-3 text-[11px] tabular-nums text-lattice-muted">
                           {formatTime(new Date(event.startDate))} – {formatTime(new Date(event.endDate))}
                         </span>
                       )}
@@ -1290,7 +1290,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); setSelectedDate(date); setCurrentDate(date); setViewMode('day'); }}
-                      className="block w-full text-center text-[11px] tabular-nums text-zinc-500 transition-colors hover:text-zinc-100"
+                      className="block w-full text-center text-[11px] tabular-nums text-lattice-muted transition-colors hover:text-zinc-100"
                     >
                       +{dayEvents.length - 2} more
                     </button>
@@ -1894,7 +1894,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                       confirmDeleteCalId === cal.id ? (
                         <button onClick={() => void deleteCalendar(cal)} aria-label={`Confirm delete calendar ${cal.name}`} className="px-2 py-1 text-[11px] rounded bg-rose-500/15 text-rose-300">Delete?</button>
                       ) : (
-                        <button onClick={() => setConfirmDeleteCalId(cal.id)} aria-label={`Delete calendar ${cal.name}`} title="Delete calendar (its events are removed too)" className="opacity-0 group-hover:opacity-100 p-1 text-gray-500 hover:text-rose-300"><Trash2 className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => setConfirmDeleteCalId(cal.id)} aria-label={`Delete calendar ${cal.name}`} title="Delete calendar (its events are removed too)" className="opacity-0 group-hover:opacity-100 p-1 text-lattice-muted hover:text-rose-300"><Trash2 className="w-3.5 h-3.5" /></button>
                       )
                     )}
                   </div>
@@ -2049,7 +2049,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
             <button
               type="button"
               onClick={() => { if (viewMode === 'month') navigateMonth(-1); else if (viewMode === 'week') navigateWeek(-1); else navigateDay(-1); }}
-              className="rounded-md p-1 text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-200"
+              className="rounded-md p-1 text-lattice-muted hover:bg-white/[0.06] hover:text-zinc-200"
               aria-label="Previous"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -2062,12 +2062,12 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
             <button
               type="button"
               onClick={() => { if (viewMode === 'month') navigateMonth(1); else if (viewMode === 'week') navigateWeek(1); else navigateDay(1); }}
-              className="rounded-md p-1 text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-200"
+              className="rounded-md p-1 text-lattice-muted hover:bg-white/[0.06] hover:text-zinc-200"
               aria-label="Next"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
-            <button type="button" onClick={goToToday} className="ml-2 rounded-md px-2 py-0.5 text-[13px] text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-200">
+            <button type="button" onClick={goToToday} className="ml-2 rounded-md px-2 py-0.5 text-[13px] text-lattice-muted hover:bg-white/[0.06] hover:text-zinc-200">
               Today
             </button>
           </div>
@@ -2079,7 +2079,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
             <div className="mt-2 flex items-center gap-2 rounded-lg border border-white/10 bg-lattice-elevated px-3 py-1.5 text-[13px] text-zinc-300" role="status">
               <span className="flex-1 truncate">Deleted “{lastDeleted.title}”.</span>
               <button onClick={() => void undoDelete()} className="shrink-0 rounded px-2 py-0.5 text-[11px] font-semibold bg-white/[0.08] hover:bg-white/[0.16] text-white">Undo</button>
-              <button onClick={() => setLastDeleted(null)} className="shrink-0 rounded px-1.5 py-0.5 text-[11px] text-zinc-500 hover:text-zinc-300" aria-label="Dismiss">✕</button>
+              <button onClick={() => setLastDeleted(null)} className="shrink-0 rounded px-1.5 py-0.5 text-[11px] text-lattice-muted hover:text-zinc-300" aria-label="Dismiss">✕</button>
             </div>
           )}
           {dueReminders.length > 0 && (
@@ -2108,7 +2108,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
           <button
             type="button"
             onClick={() => setShowSidebar(!showSidebar)}
-            className={cn('text-[14px] transition-colors', showSidebar ? 'text-zinc-100' : 'text-zinc-500 hover:text-zinc-200')}
+            className={cn('text-[14px] transition-colors', showSidebar ? 'text-zinc-100' : 'text-lattice-muted hover:text-zinc-200')}
             aria-pressed={showSidebar}
           >
             Calendars
@@ -2122,7 +2122,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                 aria-current={viewMode === mode ? 'true' : undefined}
                 className={cn(
                   'border-b pb-1 text-[15px] capitalize transition-colors',
-                  viewMode === mode ? 'border-zinc-100 text-zinc-100' : 'border-transparent text-zinc-500 hover:text-zinc-200',
+                  viewMode === mode ? 'border-zinc-100 text-zinc-100' : 'border-transparent text-lattice-muted hover:text-zinc-200',
                 )}
               >
                 {mode}
@@ -2145,7 +2145,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
 
           <div className="pointer-events-none flex flex-col items-center gap-2 py-5">
             {events.length === 0 && (
-              <p className="text-[13px] text-zinc-500">No events scheduled yet. Double-click a day, or press N.</p>
+              <p className="text-[13px] text-lattice-muted">No events scheduled yet. Double-click a day, or press N.</p>
             )}
             <button
               type="button"
@@ -2227,7 +2227,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                       {formatDateRange(new Date(selectedEvent.startDate), new Date(selectedEvent.endDate), selectedEvent.allDay)}
                     </p>
                     {selectedEvent.tz && selectedEvent.tz !== browserTimeZone() && (
-                      <p className="text-xs text-gray-500 tabular-nums">
+                      <p className="text-xs text-lattice-muted tabular-nums">
                         {new Date(selectedEvent.startDate).toLocaleTimeString('en-US', { timeZone: selectedEvent.tz, hour: 'numeric', minute: '2-digit' })} {zoneAbbrev(selectedEvent.tz, new Date(selectedEvent.startDate))} in {zoneCityLabel(selectedEvent.tz)} · {new Date(selectedEvent.startDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} your time
                       </p>
                     )}
@@ -2411,7 +2411,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                     value={newEvent.title || ''}
                     onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
                     placeholder="Add title"
-                    className="w-full bg-transparent text-xl font-semibold focus:outline-none placeholder-gray-500"
+                    className="w-full bg-transparent text-xl font-semibold focus:outline-none placeholder:text-lattice-muted"
                   />
                 </div>
 

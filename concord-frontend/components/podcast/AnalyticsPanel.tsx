@@ -97,7 +97,7 @@ export function AnalyticsPanel() {
       {!dtusLoading && domainDTUs.length > 0 && (
         <div className="mt-6">
           <h3 className="text-sm font-semibold text-gray-400 uppercase mb-1">Data Transfer Units</h3>
-          <p className="text-xs text-gray-500 mb-3">
+          <p className="text-xs text-lattice-muted mb-3">
             Your DTUs in the Podcast lens — episodes, transcripts and Studio outputs you have minted here, counted by tier.
           </p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

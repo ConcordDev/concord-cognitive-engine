@@ -137,7 +137,7 @@ export function PermitReferencePanel() {
                   )}
                 </div>
                 <p className="mt-1.5 text-xs leading-relaxed text-gray-300">{e.summary}</p>
-                <p className="mt-1.5 text-[10px] italic leading-relaxed text-zinc-500">{e.disclaimer}</p>
+                <p className="mt-1.5 text-[10px] italic leading-relaxed text-lattice-muted">{e.disclaimer}</p>
               </li>
             ))}
           </ul>

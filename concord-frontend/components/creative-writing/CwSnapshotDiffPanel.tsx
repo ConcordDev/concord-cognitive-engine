@@ -129,7 +129,7 @@ export function CwSnapshotDiffPanel({ projectId }: { projectId: string }) {
         <section className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-2">
           <div className="flex flex-wrap items-center gap-2 text-[11px]">
             <span className="text-zinc-300 font-medium">{diff.fromLabel}</span>
-            <span className="text-zinc-600">→</span>
+            <span className="text-lattice-muted">→</span>
             <span className="text-zinc-300 font-medium">{diff.toLabel}</span>
             <span className="ml-auto flex gap-2">
               <span className="text-emerald-400">+{diff.addedLines}</span>
@@ -143,7 +143,7 @@ export function CwSnapshotDiffPanel({ projectId }: { projectId: string }) {
           <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-2 max-h-80 overflow-auto font-mono text-[11px] leading-relaxed">
             {diff.diff.map((l, i) => (
               <div key={i} className={cn('whitespace-pre-wrap px-1 rounded', LINE_STYLE[l.type])}>
-                <span className="select-none text-zinc-600 mr-1.5">{LINE_MARK[l.type]}</span>
+                <span className="select-none text-lattice-muted mr-1.5">{LINE_MARK[l.type]}</span>
                 {l.text || ' '}
               </div>
             ))}

@@ -97,7 +97,7 @@ export function PortfolioBalanceHero({
                 </span>
               )}
             </div>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-lattice-muted mt-1">
               {chainCount} chain{chainCount === 1 ? '' : 's'} &middot; {walletCount} wallet{walletCount === 1 ? '' : 's'}
             </p>
           </>

@@ -227,7 +227,7 @@ export function AgentComposerPanel({ projectId }: { projectId: string | null }) 
                 {t.status === 'completed' && t.changeReceipts && t.changeReceipts.length > 0 ? (
                   <div className="mt-1 text-[10px] text-gray-400">
                     <div>Files changed (verified against the task-start record): {t.changeReceipts.map(c => c.path).join(', ')}</div>
-                    <div className="font-mono text-[9px] text-gray-500">
+                    <div className="font-mono text-[9px] text-lattice-muted">
                       {t.changeReceipts.map(c => `${c.path}: ${c.before ?? 'new'} → ${c.after ?? 'deleted'}`).join(' · ')}
                     </div>
                   </div>

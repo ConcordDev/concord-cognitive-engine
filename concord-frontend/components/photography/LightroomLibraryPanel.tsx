@@ -136,7 +136,7 @@ export function LightroomLibraryPanel({ onChange }: { onChange: () => void }) {
       {/* Catalog search — real photo-search macro, title/filename/keyword/camera match */}
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-lattice-muted" />
           <input value={query} onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') runSearch(); if (e.key === 'Escape') { setQuery(''); setSearchResults(null); } }}
             placeholder="Search catalog — title, filename, camera, keyword…"
@@ -155,13 +155,13 @@ export function LightroomLibraryPanel({ onChange }: { onChange: () => void }) {
       {/* Keyword cloud — real keyword-list macro, click to filter the library */}
       {keywordCloud.length > 0 && (
         <div className="flex flex-wrap items-center gap-1">
-          <Tag className="w-3 h-3 text-zinc-600" />
+          <Tag className="w-3 h-3 text-lattice-muted" />
           {keywordCloud.slice(0, 20).map((k) => (
             <button key={k.keyword} type="button"
               onClick={() => setFilter((f) => ({ ...(f.flag ? { flag: f.flag } : {}), keyword: f.keyword === k.keyword ? undefined : k.keyword }))}
               className={cn('text-[10px] px-1.5 py-0.5 rounded-full border',
                 filter.keyword === k.keyword ? 'border-indigo-700/50 bg-indigo-950/40 text-indigo-300' : 'border-zinc-700 text-zinc-400 hover:text-zinc-200')}>
-              {k.keyword} <span className="text-zinc-500">· {k.count}</span>
+              {k.keyword} <span className="text-lattice-muted">· {k.count}</span>
             </button>
           ))}
         </div>
@@ -224,10 +224,10 @@ export function LightroomLibraryPanel({ onChange }: { onChange: () => void }) {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button aria-label="Edit metadata" type="button" onClick={() => startEdit(p)} className="text-zinc-600 hover:text-indigo-400">
+                  <button aria-label="Edit metadata" type="button" onClick={() => startEdit(p)} className="text-lattice-muted hover:text-indigo-400">
                     <Pencil className="w-3.5 h-3.5" />
                   </button>
-                  <button aria-label="Delete" type="button" onClick={() => del(p.id)} className="text-zinc-600 hover:text-rose-400">
+                  <button aria-label="Delete" type="button" onClick={() => del(p.id)} className="text-lattice-muted hover:text-rose-400">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -245,11 +245,11 @@ export function LightroomLibraryPanel({ onChange }: { onChange: () => void }) {
                 </span>
                 {/* flags */}
                 <button aria-label="Confirm" type="button" onClick={() => flag(p, 'pick')}
-                  className={cn('p-1 rounded', p.flag === 'pick' ? 'bg-emerald-700/30 text-emerald-300' : 'text-zinc-600 hover:text-emerald-400')}>
+                  className={cn('p-1 rounded', p.flag === 'pick' ? 'bg-emerald-700/30 text-emerald-300' : 'text-lattice-muted hover:text-emerald-400')}>
                   <Check className="w-3.5 h-3.5" />
                 </button>
                 <button aria-label="Close" type="button" onClick={() => flag(p, 'reject')}
-                  className={cn('p-1 rounded', p.flag === 'reject' ? 'bg-rose-700/30 text-rose-300' : 'text-zinc-600 hover:text-rose-400')}>
+                  className={cn('p-1 rounded', p.flag === 'reject' ? 'bg-rose-700/30 text-rose-300' : 'text-lattice-muted hover:text-rose-400')}>
                   <X className="w-3.5 h-3.5" />
                 </button>
                 {/* colour labels */}

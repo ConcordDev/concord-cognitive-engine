@@ -95,7 +95,7 @@ export function ComplianceScreener() {
             <span className={cn('text-sm font-semibold', result.passed ? 'text-emerald-300' : 'text-rose-300')}>
               {result.passed ? 'No rule matched' : `${result.violations.length} rule(s) matched`}
             </span>
-            <span className="ml-auto text-[10px] text-gray-500 font-mono">{new Date(result.checkedAt).toLocaleTimeString()}</span>
+            <span className="ml-auto text-[10px] text-lattice-muted font-mono">{new Date(result.checkedAt).toLocaleTimeString()}</span>
           </div>
           {result.violations.length > 0 && (
             <ul className="text-xs space-y-1">

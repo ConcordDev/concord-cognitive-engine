@@ -54,7 +54,7 @@ interface ClientAutocompleteProps {
 }
 
 const inputCls =
-  'w-full rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 text-sm text-white placeholder:text-zinc-500 outline-none focus:border-emerald-500/40';
+  'w-full rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 text-sm text-white placeholder:text-lattice-muted outline-none focus:border-emerald-500/40';
 
 export function ClientAutocomplete({
   clients, value, clientId, onSelect, onCreated, onUpdated, onDeleted, placeholder = 'Client name', className, disabled,
@@ -179,7 +179,7 @@ export function ClientAutocomplete({
   return (
     <div className={`relative ${className || ''}`} ref={boxRef}>
       <div className="relative">
-        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" aria-hidden="true" />
+        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-lattice-muted" aria-hidden="true" />
         <input
           className={`${inputCls} pl-8 ${clientId ? 'pr-8' : ''}`}
           placeholder={placeholder}
@@ -231,7 +231,7 @@ export function ClientAutocomplete({
                     className="p-0.5 text-zinc-400 hover:text-rose-300" armLabel={<span className="text-[10px]">Delete</span>} />
                 </span>
               </div>
-              <span className="text-[10px] text-zinc-500">
+              <span className="text-[10px] text-lattice-muted">
                 {[c.phone, c.email, c.address].filter(Boolean).join(' · ') || 'No contact info yet'}
                 {typeof c.jobsCount === 'number' && c.jobsCount > 0 ? ` · ${c.jobsCount} job${c.jobsCount === 1 ? '' : 's'}` : ''}
               </span>

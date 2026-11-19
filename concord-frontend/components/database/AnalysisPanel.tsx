@@ -152,7 +152,7 @@ export function AnalysisPanel() {
               <p key={i} className="text-[11px] text-gray-300 truncate">
                 <span className={h.success ? 'text-emerald-400' : 'text-rose-400'}>{h.success ? '✓' : '✗'}</span>{' '}
                 <span className="font-mono">{h.sql}</span>{' '}
-                <span className="text-gray-500">· {h.durationMs}ms{h.connectionName ? ` · ${h.connectionName}` : ''}</span>
+                <span className="text-lattice-muted">· {h.durationMs}ms{h.connectionName ? ` · ${h.connectionName}` : ''}</span>
               </p>
             ))}
           </div>
@@ -168,14 +168,14 @@ export function AnalysisPanel() {
               <Play className="w-3.5 h-3.5" /> Analyze {tables.length} table(s)
             </button>
           </div>
-          {schemaRes === undefined && <p className="text-xs text-gray-500">Runs over your actual workspace tables.</p>}
+          {schemaRes === undefined && <p className="text-xs text-lattice-muted">Runs over your actual workspace tables.</p>}
           {schemaRes?.message && <p className="text-xs text-gray-400">{schemaRes.message}</p>}
           {schemaRes?.tables && (
             <div className="space-y-2 text-xs">
               <p>Health score <span className="font-bold text-neon-cyan">{schemaRes.healthScore}/100</span> · {schemaRes.totalIssues} issue(s) · {schemaRes.normalizationTip}</p>
               {schemaRes.tables.map((t) => (
                 <div key={t.table} className="bg-lattice-surface rounded p-2">
-                  <p className="font-mono font-semibold">{t.table} <span className="text-gray-500 font-normal">· {t.columns} columns · PK {t.hasPrimaryKey ? 'yes' : 'no'} · {t.indexedColumns} indexed</span></p>
+                  <p className="font-mono font-semibold">{t.table} <span className="text-lattice-muted font-normal">· {t.columns} columns · PK {t.hasPrimaryKey ? 'yes' : 'no'} · {t.indexedColumns} indexed</span></p>
                   {t.issues.map((iss) => <p key={iss} className="text-amber-300">⚠ {iss}</p>)}
                 </div>
               ))}
@@ -204,7 +204,7 @@ export function AnalysisPanel() {
             <div className="space-y-1.5 text-xs">
               <p>Grade <span className="font-bold text-neon-cyan">{optRes.grade}</span> · {optRes.issueCount} issue(s)</p>
               {optRes.issues.map((iss, i) => (
-                <p key={i}><span className="text-amber-300">{iss.issue}</span> <span className="text-gray-500">({iss.severity})</span> — {iss.fix}</p>
+                <p key={i}><span className="text-amber-300">{iss.issue}</span> <span className="text-lattice-muted">({iss.severity})</span> — {iss.fix}</p>
               ))}
               {optRes.issues.length === 0 && <p className="text-emerald-300">No issues found.</p>}
             </div>
@@ -238,7 +238,7 @@ export function AnalysisPanel() {
             <div className="space-y-1.5 text-xs">
               <p className={migRes.highRiskChanges ? 'text-amber-300' : 'text-emerald-300'}>{migRes.recommendation} · downtime: {migRes.estimatedDowntime}</p>
               {migRes.steps.map((s) => (
-                <p key={s.step}>{s.step}. <span className="font-mono">{s.operation} {s.table}{s.column ? `.${s.column}` : ''}</span> — {s.description} <span className="text-gray-500">(risk {s.risk}, rollback: {s.rollback})</span></p>
+                <p key={s.step}>{s.step}. <span className="font-mono">{s.operation} {s.table}{s.column ? `.${s.column}` : ''}</span> — {s.description} <span className="text-lattice-muted">(risk {s.risk}, rollback: {s.rollback})</span></p>
               ))}
             </div>
           )}
@@ -252,7 +252,7 @@ export function AnalysisPanel() {
               <Play className="w-3.5 h-3.5" /> Analyze {history.length} quer{history.length === 1 ? 'y' : 'ies'}
             </button>
           </div>
-          {history.length === 0 && <p className="text-xs text-gray-500">Run some queries first — recommendations are derived from your actual query history.</p>}
+          {history.length === 0 && <p className="text-xs text-lattice-muted">Run some queries first — recommendations are derived from your actual query history.</p>}
           {recRes?.recommendations && (
             <div className="space-y-1.5 text-xs">
               <p className="text-gray-400">{recRes.suggestedIndexes} suggestion(s) · estimated {recRes.estimatedSpeedup}</p>
@@ -268,7 +268,7 @@ export function AnalysisPanel() {
                     ) : target ? (
                       <button onClick={() => applyRec(r.column)} disabled={ws.busy} className="btn-neon text-[11px] disabled:opacity-40">Apply</button>
                     ) : (
-                      <span className="text-gray-500">no table has this column</span>
+                      <span className="text-lattice-muted">no table has this column</span>
                     )}
                   </div>
                 );

@@ -255,7 +255,7 @@ export function PostCard({ post, viewerId }: { post: FeedPost; viewerId: string 
             onChange={(e) => setDraftContent(e.target.value)}
             rows={4}
             autoFocus
-            className="w-full bg-[#3a3b3c] rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full bg-[#3a3b3c] rounded-lg px-3 py-2 text-sm text-white placeholder:text-lattice-muted outline-none focus:ring-1 focus:ring-blue-500"
             placeholder="What's on your mind?"
           />
           <div className="flex items-center gap-2">
@@ -298,7 +298,7 @@ export function PostCard({ post, viewerId }: { post: FeedPost; viewerId: string 
               Save
             </button>
           </div>
-          <p className="text-[11px] text-gray-500">The version you replace stays in the post's edit history — nothing is silently rewritten.</p>
+          <p className="text-[11px] text-lattice-muted">The version you replace stays in the post's edit history — nothing is silently rewritten.</p>
         </div>
       ) : post.content ? (
         <div className="px-4 py-2">
@@ -312,7 +312,7 @@ export function PostCard({ post, viewerId }: { post: FeedPost; viewerId: string 
           <p className="text-xs font-semibold text-gray-300">Edit history</p>
           {[...post.editHistory].reverse().map((v, i) => (
             <div key={`${v.editedAt}-${i}`} className="border-t border-gray-800 pt-2 first:border-0 first:pt-0">
-              <p className="text-[11px] text-gray-500">
+              <p className="text-[11px] text-lattice-muted">
                 Replaced {new Date(v.editedAt).toLocaleString()} · audience: {v.privacy}
                 {v.media?.length ? ` · ${v.media.length} media` : ''}
               </p>
@@ -361,7 +361,7 @@ export function PostCard({ post, viewerId }: { post: FeedPost; viewerId: string 
       {/* S-TL-8: a limited reply gate is stated on the card, not
           discovered by failing to comment. */}
       {post.replyGate && post.replyGate !== 'anyone' && (
-        <div className="px-4 pb-1 text-[11px] text-gray-500 inline-flex items-center gap-1">
+        <div className="px-4 pb-1 text-[11px] text-lattice-muted inline-flex items-center gap-1">
           <Lock className="w-3 h-3" />
           {post.replyGate === 'friends' && 'Replies limited to friends'}
           {post.replyGate === 'mentioned' && 'Replies limited to people mentioned in this post'}

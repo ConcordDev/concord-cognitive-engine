@@ -526,12 +526,12 @@ function ToneCurveTab({ photos, onChange }: { photos: Photo[]; onChange: () => v
           <ul className="space-y-1">
             {savedCurves.map((c) => (
               <li key={c.id} className="flex items-center gap-2 bg-zinc-950/60 border border-zinc-800 rounded-lg px-2.5 py-1.5">
-                <span className="text-xs text-zinc-200 flex-1">{c.name} <span className="text-[10px] text-zinc-500">· {c.channel}</span></span>
+                <span className="text-xs text-zinc-200 flex-1">{c.name} <span className="text-[10px] text-lattice-muted">· {c.channel}</span></span>
                 <button type="button" onClick={() => loadCurveIntoEditor(c)}
                   className="text-[10px] px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded">edit</button>
                 <button type="button" onClick={() => applySavedCurve(c.id)} disabled={busy}
                   className="text-[10px] px-2 py-0.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white rounded">apply</button>
-                <button aria-label="Delete curve" type="button" onClick={() => deleteSavedCurve(c.id)} className="text-zinc-600 hover:text-rose-400">
+                <button aria-label="Delete curve" type="button" onClick={() => deleteSavedCurve(c.id)} className="text-lattice-muted hover:text-rose-400">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </li>
@@ -639,7 +639,7 @@ function MaskingTab({ photos, onChange }: { photos: Photo[]; onChange: () => voi
                 <p className="text-xs font-semibold text-zinc-200">
                   {m.name} <span className="text-[10px] text-zinc-400">· {m.kind}</span>
                 </p>
-                <button aria-label="Delete" type="button" onClick={() => deleteMask(m.id)} className="text-zinc-600 hover:text-rose-400">
+                <button aria-label="Delete" type="button" onClick={() => deleteMask(m.id)} className="text-lattice-muted hover:text-rose-400">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -900,7 +900,7 @@ function SmartCollectionsTab({ photos, onChange }: { photos: Photo[]; onChange: 
               className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-100" />
             {rules.length > 1 && (
               <button aria-label="Delete" type="button" onClick={() => setRules((p) => p.filter((_, j) => j !== i))}
-                className="text-zinc-600 hover:text-rose-400">
+                className="text-lattice-muted hover:text-rose-400">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             )}
@@ -928,7 +928,7 @@ function SmartCollectionsTab({ photos, onChange }: { photos: Photo[]; onChange: 
                 className="ml-auto text-[10px] px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded">
                 evaluate
               </button>
-              <button aria-label="Delete" type="button" onClick={() => deleteCollection(c.id)} className="text-zinc-600 hover:text-rose-400">
+              <button aria-label="Delete" type="button" onClick={() => deleteCollection(c.id)} className="text-lattice-muted hover:text-rose-400">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </li>

@@ -217,12 +217,12 @@ export function EnergyActionStack() {
       </div>
 
       <section aria-label="Not energy actions" className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-2">
-        <h4 className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Not on this lens</h4>
+        <h4 className="text-[10px] uppercase tracking-wider text-lattice-muted font-semibold">Not on this lens</h4>
         <ul className="mt-1 space-y-1">
           {ABSENT_ENERGY_SHARE_ACTIONS.map((a) => (
             <li key={a.id} className="flex items-baseline justify-between gap-3 rounded px-1 py-1">
               <span className="text-[12px] text-zinc-300">{a.label}</span>
-              <span className="text-[10px] text-zinc-500 text-right">{a.reason}</span>
+              <span className="text-[10px] text-lattice-muted text-right">{a.reason}</span>
             </li>
           ))}
         </ul>

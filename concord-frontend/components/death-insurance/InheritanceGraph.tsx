@@ -18,7 +18,7 @@ interface InheritanceGraphProps {
 const STATUS_COLOR: Record<Pact['status'], string> = {
   active: '#34d399',
   expired: '#fbbf24',
-  revoked: '#71717a',
+  revoked: '#a1a1aa',
   fired: '#fb7185',
 };
 

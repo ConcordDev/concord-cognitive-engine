@@ -137,7 +137,7 @@ function ProfileTab({
             {broadcasts.data.artifacts.slice(0, 5).map((a) => (
               <li key={a.id} className="text-gray-400">
                 <span className="text-gray-200">{a.title}</span>
-                <span className="text-gray-600 ml-2">
+                <span className="text-lattice-muted ml-2">
                   {new Date((a.data as { at?: string })?.at ?? a.createdAt).toLocaleString()}
                 </span>
               </li>

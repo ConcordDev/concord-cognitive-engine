@@ -128,7 +128,7 @@ export function getListingVerification(listing?: ListingLike | null): ListingVer
 const STATE_STYLE: Record<ListingVerificationState, { icon: typeof BadgeCheck; text: string }> = {
   fea_verified: { icon: BadgeCheck, text: 'text-emerald-400' },
   fea_failed: { icon: XOctagon, text: 'text-rose-400' },
-  no_data: { icon: HelpCircle, text: 'text-zinc-500' },
+  no_data: { icon: HelpCircle, text: 'text-lattice-muted' },
 };
 
 export interface ListingVerificationBadgeProps {

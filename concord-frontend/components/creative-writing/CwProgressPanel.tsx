@@ -103,7 +103,7 @@ export function CwProgressPanel({ projectId }: { projectId: string }) {
           <ResponsiveContainer width="100%" height={Math.max(120, stats.byChapter.length * 32)}>
             <BarChart layout="vertical" data={stats.byChapter} margin={{ left: 8, right: 8 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#27272a" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 9, fill: '#71717a' }} />
+              <XAxis type="number" tick={{ fontSize: 9, fill: '#a1a1aa' }} />
               <YAxis type="category" dataKey="title" width={90} tick={{ fontSize: 9, fill: '#a1a1aa' }} />
               <Tooltip contentStyle={{ background: '#18181b', border: '1px solid #3f3f46', borderRadius: 8, fontSize: 11 }} />
               <Bar dataKey="words" fill="#f59e0b" radius={[0, 3, 3, 0]} />

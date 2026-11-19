@@ -194,7 +194,7 @@ export function BountyCard({ bounty, currentUserId, currentUserRole, onChanged, 
                 </span>
               )}
             </div>
-            <p className="mt-1 text-[10px] text-zinc-500">
+            <p className="mt-1 text-[10px] text-lattice-muted">
               Posted by <span className="text-zinc-300">{bounty.ownerName || bounty.ownerId}</span>
             </p>
           </div>
@@ -404,7 +404,7 @@ export function BountyCard({ bounty, currentUserId, currentUserRole, onChanged, 
             )}
           </div>
           {isOwner && (bounty.status === 'open' || bounty.status === 'claimed') && (
-            <p role="note" className="text-[10px] leading-relaxed text-zinc-500">
+            <p role="note" className="text-[10px] leading-relaxed text-lattice-muted">
               Cancelling closes the bounty to new submissions. No CC was taken when you posted it,
               so there is nothing to refund — the posted reward was never escrowed.
             </p>
@@ -480,7 +480,7 @@ export function BountyCard({ bounty, currentUserId, currentUserRole, onChanged, 
               <input value={editTags} onChange={(e) => setEditTags(e.target.value)}
                 aria-label="Edit bounty tags" placeholder="Tags, comma separated"
                 className="w-full bg-zinc-950 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-100 focus:ring-2 focus:ring-amber-500 focus:outline-none" />
-              <p role="note" className="text-[10px] leading-relaxed text-zinc-500">
+              <p role="note" className="text-[10px] leading-relaxed text-lattice-muted">
                 The reward and milestones are the posted terms — cancel and repost to change them.
               </p>
               <div className="flex gap-2">

@@ -634,7 +634,7 @@ export function PortfolioWorkbench() {
                 </span>
                 <span className="capitalize text-gray-400">{s.chain}</span>
                 <span className="font-mono tabular-nums text-gray-200">{s.balance} {s.nativeTicker}</span>
-                <span className="text-gray-600">{new Date(s.syncedAt).toLocaleString()}</span>
+                <span className="text-lattice-muted">{new Date(s.syncedAt).toLocaleString()}</span>
               </div>
             ))}
           </div>
@@ -743,7 +743,7 @@ export function PortfolioWorkbench() {
                     <span className="font-mono font-bold text-gray-100">{r.ticker}</span>
                     <span className="font-mono tabular-nums text-gray-400">{fmtUsd(r.deltaUsd)}</span>
                     <span className="font-mono tabular-nums text-gray-400">{r.deltaQty} units</span>
-                    <span className="font-mono tabular-nums text-gray-600">{r.currentPct}% → {r.targetPct}%</span>
+                    <span className="font-mono tabular-nums text-lattice-muted">{r.currentPct}% → {r.targetPct}%</span>
                   </div>
                 ))}
               </div>
@@ -846,7 +846,7 @@ export function PortfolioWorkbench() {
                   d.read ? 'bg-lattice-deep' : 'bg-yellow-500/10 border border-yellow-500/20')}
               >
                 <span className="text-gray-200">{d.message}</span>
-                <span className="text-gray-600">{new Date(d.deliveredAt).toLocaleString()}</span>
+                <span className="text-lattice-muted">{new Date(d.deliveredAt).toLocaleString()}</span>
               </div>
             ))}
           </div>

@@ -213,7 +213,7 @@ export function SnippetsLibrary({ onInsert, currentLanguage, currentSelection }:
             {snippets.length === 0 ? (
               <>
                 <p>No snippets yet.</p>
-                <p className="mt-1 text-gray-600">Select code → Save as Snippet.</p>
+                <p className="mt-1 text-lattice-muted">Select code → Save as Snippet.</p>
               </>
             ) : (
               'No matches.'

@@ -317,7 +317,7 @@ export function BrowsePanel() {
           <div className="text-center py-16 text-gray-400">
             <Search className="w-10 h-10 mx-auto mb-3 opacity-40" />
             <p className="mb-1 font-medium text-gray-400">No items match your filters</p>
-            <p className="text-sm mb-5 text-gray-600">
+            <p className="text-sm mb-5 text-lattice-muted">
               Try broader filters or be the first to list something
             </p>
             <button

@@ -128,7 +128,7 @@ export function IncidentReportPanel({ crisisId }: { crisisId?: string }) {
               type="button"
               onClick={() => setConfirmDeleteId(r.id)}
               aria-label={`Delete report ${r.title}`}
-              className="text-gray-500 hover:text-rose-300"
+              className="text-lattice-muted hover:text-rose-300"
             >
               <Trash2 className="h-3.5 w-3.5" />
             </button>
@@ -174,7 +174,7 @@ export function IncidentReportPanel({ crisisId }: { crisisId?: string }) {
             maxLength={120}
             className="w-full rounded border border-white/10 bg-black/30 px-2 py-1 text-xs text-gray-100"
           />
-          {title.length > 90 && <span className="text-[10px] text-zinc-500">{title.length}/120</span>}
+          {title.length > 90 && <span className="text-[10px] text-lattice-muted">{title.length}/120</span>}
           <select
             value={severity}
             onChange={(e) => setSeverity(e.target.value)}

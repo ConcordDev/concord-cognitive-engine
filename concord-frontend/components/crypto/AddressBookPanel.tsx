@@ -84,7 +84,7 @@ export function AddressBookPanel({ className }: { className?: string }) {
       <div className="flex items-center gap-2 mb-3">
         <BookUser className="w-4 h-4 text-neon-cyan" />
         <h3 className="text-sm font-semibold text-gray-100">Address Book</h3>
-        {loading && <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-500" />}
+        {loading && <Loader2 className="w-3.5 h-3.5 animate-spin text-lattice-muted" />}
       </div>
 
       {error && (
@@ -95,11 +95,11 @@ export function AddressBookPanel({ className }: { className?: string }) {
 
       <div className="space-y-1.5 mb-3">
         {entries.length === 0 && !loading && (
-          <p className="text-xs text-gray-500">No saved addresses yet.</p>
+          <p className="text-xs text-lattice-muted">No saved addresses yet.</p>
         )}
         {entries.map((e) => (
           <div key={e.id} className="flex items-center gap-2 group">
-            <span className="text-[10px] uppercase tracking-wider text-gray-500 w-16 shrink-0">{e.chain || 'eth'}</span>
+            <span className="text-[10px] uppercase tracking-wider text-lattice-muted w-16 shrink-0">{e.chain || 'eth'}</span>
             <span className="text-xs text-gray-200 font-medium w-24 shrink-0 truncate">{e.label}</span>
             <span className="text-xs text-gray-400 font-mono flex-1 truncate">{e.address}</span>
             <button

@@ -337,7 +337,7 @@ function NashView({ r }: { r: MixedNashSuccess }) {
       <div className="overflow-x-auto">
         <table className={cn(ds.monoXs, 'w-full border-collapse')}>
           <thead>
-            <tr className="text-left text-gray-500 border-b border-lattice-border">
+            <tr className="text-left text-lattice-muted border-b border-lattice-border">
               <th className="py-1 pr-4">#</th>
               <th className="py-1 pr-4">Support 1</th>
               <th className="py-1 pr-4">p (player 1)</th>

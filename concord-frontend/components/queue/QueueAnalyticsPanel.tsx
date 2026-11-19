@@ -185,7 +185,7 @@ export function QueueAnalyticsPanel({
           {theoryResult && (
             <div className="grid grid-cols-1 gap-3 rounded-lg border border-white/10 bg-black/30 p-3 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <p className="text-[10px] uppercase tracking-wide text-zinc-500">Rates &amp; utilization</p>
+                <p className="text-[10px] uppercase tracking-wide text-lattice-muted">Rates &amp; utilization</p>
                 <StatRow label="Arrival rate (λ)" value={`${String((theoryResult.rates as Record<string, unknown>)?.arrivalRate ?? '—')}/s`} />
                 <StatRow label="Service rate (μ)" value={`${String((theoryResult.rates as Record<string, unknown>)?.serviceRate ?? '—')}/s`} />
                 <StatRow
@@ -196,12 +196,12 @@ export function QueueAnalyticsPanel({
                 <StatRow label="Status" value={String((theoryResult.utilization as Record<string, unknown>)?.status ?? '—')} />
               </div>
               <div className="space-y-1.5">
-                <p className="text-[10px] uppercase tracking-wide text-zinc-500">
+                <p className="text-[10px] uppercase tracking-wide text-lattice-muted">
                   {serverCount > 1 ? 'M/M/c model' : 'M/M/1 model'}
                 </p>
                 {(() => {
                   const model = (serverCount > 1 ? theoryResult.mmcModel : theoryResult.mm1Model) as Record<string, unknown> | undefined;
-                  if (!model || 'note' in model) return <p className="text-xs text-zinc-500">{String(model?.note ?? 'Not applicable')}</p>;
+                  if (!model || 'note' in model) return <p className="text-xs text-lattice-muted">{String(model?.note ?? 'Not applicable')}</p>;
                   return (
                     <>
                       <StatRow label="Avg wait (Wq)" value={`${String(model.avgWaitTimeSeconds ?? model.avgWaitTime ?? '—')}s`} />
@@ -213,7 +213,7 @@ export function QueueAnalyticsPanel({
               </div>
               {!!theoryResult.serviceTimeDistribution && typeof theoryResult.serviceTimeDistribution === 'object' && (
                 <div className="col-span-full space-y-1.5 border-t border-white/10 pt-2">
-                  <p className="text-[10px] uppercase tracking-wide text-zinc-500">Service time distribution</p>
+                  <p className="text-[10px] uppercase tracking-wide text-lattice-muted">Service time distribution</p>
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-300">
                     {Object.entries(theoryResult.serviceTimeDistribution as Record<string, unknown>).map(([k, v]) => (
                       <span key={k}>
@@ -275,7 +275,7 @@ export function QueueAnalyticsPanel({
                   <div className="space-y-1">
                     {(scheduleResult.schedule as Array<Record<string, unknown>> | undefined)?.slice(0, 8).map((row, i) => (
                       <div key={i} className="flex items-center gap-3 rounded bg-black/40 px-2 py-1 text-[11px]">
-                        <span className="w-6 text-zinc-500">#{String(row.order)}</span>
+                        <span className="w-6 text-lattice-muted">#{String(row.order)}</span>
                         <span className="flex-1 truncate font-mono text-zinc-300">{String(row.id)}</span>
                         <span className="text-zinc-400">wait {String(row.waitTime)}ms</span>
                         {row.meetsDeadline === false && <span className="text-rose-400">deadline missed</span>}
@@ -329,7 +329,7 @@ export function QueueAnalyticsPanel({
           {bpResult && (
             <div className="grid grid-cols-1 gap-3 rounded-lg border border-white/10 bg-black/30 p-3 sm:grid-cols-3">
               <div className="space-y-1.5">
-                <p className="text-[10px] uppercase tracking-wide text-zinc-500">Current state</p>
+                <p className="text-[10px] uppercase tracking-wide text-lattice-muted">Current state</p>
                 <StatRow label="Fill ratio" value={`${String((bpResult.currentState as Record<string, unknown>)?.fillRatio ?? '—')}%`} />
                 <StatRow
                   label="Health"
@@ -344,14 +344,14 @@ export function QueueAnalyticsPanel({
                 />
               </div>
               <div className="space-y-1.5">
-                <p className="text-[10px] uppercase tracking-wide text-zinc-500 flex items-center gap-1">
+                <p className="text-[10px] uppercase tracking-wide text-lattice-muted flex items-center gap-1">
                   <GaugeCircle className="h-3 w-3" /> Backpressure
                 </p>
                 <StatRow label="Signal" value={String((bpResult.backpressure as Record<string, unknown>)?.signal ?? '—')} />
                 <StatRow label="Level" value={String((bpResult.backpressure as Record<string, unknown>)?.level ?? '—')} />
               </div>
               <div className="space-y-1.5">
-                <p className="text-[10px] uppercase tracking-wide text-zinc-500">Throttling</p>
+                <p className="text-[10px] uppercase tracking-wide text-lattice-muted">Throttling</p>
                 <StatRow label="Active tier" value={String((bpResult.throttling as Record<string, unknown>)?.activeTier ?? '—')} />
                 <StatRow label="Recommended ingress" value={String((bpResult.throttling as Record<string, unknown>)?.recommendedIngressRate ?? '—')} />
               </div>

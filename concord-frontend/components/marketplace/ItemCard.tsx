@@ -19,7 +19,7 @@ export function starRating(rating: number) {
       key={i}
       className={cn(
         'w-3 h-3',
-        i < Math.round(rating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-600'
+        i < Math.round(rating) ? 'fill-yellow-400 text-yellow-400' : 'text-lattice-muted'
       )}
     />
   ));
@@ -119,13 +119,13 @@ export function ItemCard({
             {item.creator.verified && <Check className="w-3 h-3 text-neon-cyan" />}
             {item.genre && (
               <>
-                <span className="text-gray-600">|</span>
+                <span className="text-lattice-muted">|</span>
                 <span>{item.genre}</span>
               </>
             )}
             {item.version && (
               <>
-                <span className="text-gray-600">|</span>
+                <span className="text-lattice-muted">|</span>
                 <span>v{item.version}</span>
               </>
             )}
@@ -179,7 +179,7 @@ export function ItemCard({
             <WaveformBars playing={isPlaying} />
           </div>
         ) : (
-          <Icon className="w-12 h-12 text-gray-600" />
+          <Icon className="w-12 h-12 text-lattice-muted" />
         )}
         {audio && (
           <button

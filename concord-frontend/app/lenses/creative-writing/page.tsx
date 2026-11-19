@@ -136,7 +136,7 @@ async function readPages(): Promise<PageRow[]> {
 function LineNumbers({ lines }: { lines: number }) {
   const n = Math.max(1, lines);
   return (
-    <ol className="w-10 shrink-0 select-none border-r border-white/10 py-4 text-right font-mono text-[13px] text-zinc-600">
+    <ol className="w-10 shrink-0 select-none border-r border-white/10 py-4 text-right font-mono text-[13px] text-lattice-muted">
       {Array.from({ length: n }, (_, i) => i + 1).map((num) => (
         <li key={num} className="h-7 px-2 leading-7">{num}</li>
       ))}
@@ -326,7 +326,7 @@ export default function CreativeWritingPage() {
     <LensShell lensId="creative-writing" asMain={false}>
       <div data-lens-theme="creative-writing" className="relative min-h-full bg-black px-8 pb-28 pt-6">
         <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Creative Writing</h1>
-        <p data-testid="creative-writing-trail-note" className="mb-5 -mt-3 font-mono text-[12px] text-zinc-600">
+        <p data-testid="creative-writing-trail-note" className="mb-5 -mt-3 font-mono text-[12px] text-lattice-muted">
           Narrative trail (above) is a separate, authored story walk — pages written here do not appear there.
         </p>
 
@@ -338,7 +338,7 @@ export default function CreativeWritingPage() {
             {phase === 'ready' && composing && <LineNumbers lines={bodyLineCount} />}
             <div className="min-w-0 flex-1 py-4 pl-4 pr-6">
               {phase === 'loading' && (
-                <p data-testid="creative-writing-loading" role="status" aria-busy="true" className="font-mono text-[14px] leading-7 text-zinc-500">
+                <p data-testid="creative-writing-loading" role="status" aria-busy="true" className="font-mono text-[14px] leading-7 text-lattice-muted">
                   Opening the page.
                 </p>
               )}
@@ -366,9 +366,9 @@ export default function CreativeWritingPage() {
                           </pre>
                         </div>
                       ) : (
-                        <p className="mt-1 font-mono text-[13px] text-zinc-600">{'// no body yet.'}</p>
+                        <p className="mt-1 font-mono text-[13px] text-lattice-muted">{'// no body yet.'}</p>
                       )}
-                      <span className="flex shrink-0 gap-3 font-mono text-[12px] text-zinc-500">
+                      <span className="flex shrink-0 gap-3 font-mono text-[12px] text-lattice-muted">
                         <button
                           type="button"
                           data-testid={`export-json-${item.id}`}
@@ -457,7 +457,7 @@ export default function CreativeWritingPage() {
                     />
                   </label>
                   {pages.length > 0 && (
-                    <button type="button" onClick={cancelCompose} className="self-start text-[13px] text-zinc-500 underline">
+                    <button type="button" onClick={cancelCompose} className="self-start text-[13px] text-lattice-muted underline">
                       Cancel
                     </button>
                   )}

@@ -205,7 +205,7 @@ export function EpisodesPanel() {
                   {episode.coverArtUrl ? (
                     <Image src={episode.coverArtUrl} alt={episode.title} fill className="object-cover" unoptimized />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-600">
+                    <div className="w-full h-full flex items-center justify-center text-lattice-muted">
                       <Headphones className="w-6 h-6" />
                     </div>
                   )}
@@ -270,7 +270,7 @@ export function EpisodesPanel() {
                   <>
                     <button
                       onClick={() => startEdit(episode)}
-                      className="p-1.5 rounded-lg text-gray-600 hover:text-violet-300 hover:bg-violet-500/10 opacity-0 group-hover:opacity-100 transition-all"
+                      className="p-1.5 rounded-lg text-lattice-muted hover:text-violet-300 hover:bg-violet-500/10 opacity-0 group-hover:opacity-100 transition-all"
                       title="Edit episode"
                       aria-label="Edit episode"
                     >
@@ -279,7 +279,7 @@ export function EpisodesPanel() {
 
                     <button
                       onClick={() => { void setEpisodeStatus(episode.id, episode.status === 'published' ? 'draft' : 'published').then(() => notifyPodcastChanged()); }}
-                      className="p-1.5 rounded-lg text-gray-600 hover:text-green-400 hover:bg-green-500/10 opacity-0 group-hover:opacity-100 transition-all"
+                      className="p-1.5 rounded-lg text-lattice-muted hover:text-green-400 hover:bg-green-500/10 opacity-0 group-hover:opacity-100 transition-all"
                       title={episode.status === 'published' ? 'Unpublish' : 'Publish'}
                     >
                       <Check className="w-4 h-4" />
@@ -287,7 +287,7 @@ export function EpisodesPanel() {
 
                     <button
                       onClick={() => setConfirmDeleteId(episode.id)}
-                      className="p-1.5 rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"
+                      className="p-1.5 rounded-lg text-lattice-muted hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"
                       aria-label="Delete"
                     >
                       <Trash2 className="w-4 h-4" />

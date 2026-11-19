@@ -224,7 +224,7 @@ export default function GarageLensPage() {
       sortable: true,
       accessor: (v) => v.name
         ? <span className="text-gray-100">{v.name}</span>
-        : <span className="text-gray-500 italic">unnamed</span>,
+        : <span className="text-lattice-muted italic">unnamed</span>,
       sortValue: (v) => v.name || '',
     },
     {

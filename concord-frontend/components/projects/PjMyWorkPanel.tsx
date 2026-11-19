@@ -78,7 +78,7 @@ export function PjMyWorkPanel({ onOpenTask }: { onOpenTask: (projectId: string, 
         <div className="text-center py-8">
           <CheckCircle2 className="w-8 h-8 text-teal-400 mx-auto mb-2" />
           <p className="text-sm text-zinc-200 font-medium">Nothing assigned to you right now.</p>
-          <p className="text-[11px] text-gray-500 mt-1">Work assigned to your account — by you or by a project owner who added you — lands here.</p>
+          <p className="text-[11px] text-lattice-muted mt-1">Work assigned to your account — by you or by a project owner who added you — lands here.</p>
         </div>
       ) : (
         GROUPS.map((g) => {
@@ -91,12 +91,12 @@ export function PjMyWorkPanel({ onOpenTask }: { onOpenTask: (projectId: string, 
                 {rows.map((t) => (
                   <li key={t.id} className="flex items-center gap-3 bg-lattice-surface/70 border border-lattice-border rounded-lg px-3 py-2">
                     <button type="button" aria-label={`Complete ${t.ref}`} onClick={() => void complete(t)}
-                      className="text-gray-500 hover:text-teal-300 shrink-0">
+                      className="text-lattice-muted hover:text-teal-300 shrink-0">
                       <Circle className="w-4 h-4" />
                     </button>
                     <button type="button" onClick={() => onOpenTask(t.projectId, t.id)} className="flex-1 min-w-0 text-left">
                       <span className="text-xs font-medium text-white block truncate">{t.title}</span>
-                      <span className="text-[10px] text-gray-500">{t.ref} · {t.projectName || t.projectKey || 'Project'}{t.dueDate ? ` · due ${t.dueDate}` : ''}</span>
+                      <span className="text-[10px] text-lattice-muted">{t.ref} · {t.projectName || t.projectKey || 'Project'}{t.dueDate ? ` · due ${t.dueDate}` : ''}</span>
                     </button>
                     {t.priority !== 'none' && (
                       <span className={`text-[9px] uppercase tracking-wide ${t.priority === 'urgent' || t.priority === 'high' ? 'text-rose-300' : 'text-gray-400'}`}>{t.priority}</span>
@@ -119,7 +119,7 @@ export function PjMyWorkPanel({ onOpenTask }: { onOpenTask: (projectId: string, 
               <li key={p.projectId} className="flex items-center gap-3 bg-lattice-surface/70 border border-lattice-border rounded-lg px-3 py-2">
                 <div className="flex-1 min-w-0">
                   <span className="text-xs font-medium text-white block truncate">{p.name || 'A project'}</span>
-                  <span className="text-[10px] text-gray-500">{p.ownerName ? `by ${p.ownerName} · ` : ''}{p.level === 'edit' ? 'Can edit' : 'Can view'}</span>
+                  <span className="text-[10px] text-lattice-muted">{p.ownerName ? `by ${p.ownerName} · ` : ''}{p.level === 'edit' ? 'Can edit' : 'Can view'}</span>
                 </div>
               </li>
             ))}
