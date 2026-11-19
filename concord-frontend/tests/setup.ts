@@ -55,6 +55,10 @@ vi.mock('next/font/google', () => {
     // Art — The Atelier (components/art/atelier/atelierFonts.ts)
     Young_Serif: face('Young Serif'),
     Work_Sans: face('Work Sans'),
+    // Chat — The Notebook (components/chat/notebook/notebookFonts.ts)
+    Newsreader: face('Newsreader'),
+    Instrument_Sans: face('Instrument Sans'),
+    Kalam: face('Kalam'),
   };
 });
 

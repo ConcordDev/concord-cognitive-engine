@@ -59,15 +59,15 @@ export function ReasoningIndicator({ sessionId }: ReasoningIndicatorProps) {
   if (!session || session.status === 'complete' || session.status === 'failed') return null;
 
   return (
-    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-neon-cyan/5 border border-neon-cyan/20 text-xs">
+    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--nb-blue-soft,rgba(0,255,247,0.05))] border border-[color:var(--nb-blue,rgba(0,255,247,0.2))] text-xs">
       <div className="relative flex-shrink-0">
-        <Brain className="w-3.5 h-3.5 text-neon-cyan animate-pulse" />
+        <Brain className="w-3.5 h-3.5 text-[color:var(--nb-blue,#00fff7)] animate-pulse" />
       </div>
-      <span className="text-neon-cyan/80 font-medium">
+      <span className="text-[color:var(--nb-blue,rgba(0,255,247,0.8))] font-medium">
         {session.status === 'synthesizing' ? 'Synthesizing response…' : 'Reasoning in depth'}
       </span>
       {session.shadowCount > 0 && (
-        <span className="flex items-center gap-1 text-gray-400">
+        <span className="flex items-center gap-1 text-[color:var(--nb-muted,#9ca3af)]">
           <Layers className="w-3 h-3" />
           {session.shadowCount} {session.shadowCount === 1 ? 'shadow' : 'shadows'}
         </span>

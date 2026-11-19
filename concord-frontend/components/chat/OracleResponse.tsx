@@ -99,35 +99,35 @@ function confidenceTone(c: number): {
   if (pct >= 85) {
     return {
       label: 'High',
-      bar: 'from-emerald-400 via-neon-cyan to-emerald-300',
-      text: 'text-emerald-300',
-      ring: 'ring-emerald-400/40',
+      bar: 'from-[var(--nb-green-soft,#34d399)] via-[var(--nb-blue-soft,#00fff7)] to-[var(--nb-green-soft,#6ee7b7)]',
+      text: 'text-[color:var(--nb-green,#6ee7b7)]',
+      ring: 'ring-[color:var(--nb-green,rgba(52,211,153,0.4))]',
       glow: 'shadow-[0_0_20px_rgba(34,197,94,0.35)]',
     };
   }
   if (pct >= 60) {
     return {
       label: 'Solid',
-      bar: 'from-neon-cyan via-sky-400 to-neon-blue',
-      text: 'text-neon-cyan',
-      ring: 'ring-neon-cyan/40',
+      bar: 'from-[var(--nb-blue-soft,#00fff7)] via-[var(--nb-blue-soft,#38bdf8)] to-[var(--nb-blue-soft,#00d4ff)]',
+      text: 'text-[color:var(--nb-blue,#00fff7)]',
+      ring: 'ring-[color:var(--nb-blue,rgba(0,255,247,0.4))]',
       glow: 'shadow-[0_0_20px_rgba(0,212,255,0.35)]',
     };
   }
   if (pct >= 35) {
     return {
       label: 'Tentative',
-      bar: 'from-amber-400 via-orange-400 to-amber-300',
-      text: 'text-amber-300',
-      ring: 'ring-amber-400/40',
+      bar: 'from-[var(--nb-hl,#fbbf24)] via-[var(--nb-hl,#fb923c)] to-[var(--nb-hl,#fcd34d)]',
+      text: 'text-[color:var(--nb-ochre,#fcd34d)]',
+      ring: 'ring-[color:var(--nb-ochre,rgba(251,191,36,0.4))]',
       glow: 'shadow-[0_0_20px_rgba(245,158,11,0.35)]',
     };
   }
   return {
     label: 'Low',
-    bar: 'from-rose-500 via-pink-500 to-rose-400',
-    text: 'text-rose-300',
-    ring: 'ring-rose-400/40',
+    bar: 'from-[var(--nb-red-soft,#f43f5e)] via-[var(--nb-red-soft,#ec4899)] to-[var(--nb-red-soft,#fb7185)]',
+    text: 'text-[color:var(--nb-red,#fda4af)]',
+    ring: 'ring-[color:var(--nb-red,rgba(251,113,133,0.4))]',
     glow: 'shadow-[0_0_20px_rgba(244,63,94,0.35)]',
   };
 }
@@ -143,20 +143,20 @@ function domainFromDtuId(id: string): string {
 }
 
 const DOMAIN_PALETTE: Record<string, string> = {
-  math: 'text-neon-cyan bg-neon-cyan/10 border-neon-cyan/30',
-  physics: 'text-sky-300 bg-sky-400/10 border-sky-400/30',
-  biology: 'text-emerald-300 bg-emerald-400/10 border-emerald-400/30',
-  chemistry: 'text-lime-300 bg-lime-400/10 border-lime-400/30',
-  history: 'text-amber-300 bg-amber-400/10 border-amber-400/30',
-  philosophy: 'text-fuchsia-300 bg-fuchsia-400/10 border-fuchsia-400/30',
-  economics: 'text-yellow-300 bg-yellow-400/10 border-yellow-400/30',
-  code: 'text-neon-purple bg-neon-purple/10 border-neon-purple/30',
-  core: 'text-gray-300 bg-white/5 border-white/15',
+  math: 'text-[color:var(--nb-blue,#00fff7)] bg-[var(--nb-blue-soft,rgba(0,255,247,0.1))] border-[color:var(--nb-blue,rgba(0,255,247,0.3))]',
+  physics: 'text-[color:var(--nb-blue,#7dd3fc)] bg-[var(--nb-blue-soft,rgba(56,189,248,0.1))] border-[color:var(--nb-blue,rgba(56,189,248,0.3))]',
+  biology: 'text-[color:var(--nb-green,#6ee7b7)] bg-[var(--nb-green-soft,rgba(52,211,153,0.1))] border-[color:var(--nb-green,rgba(52,211,153,0.3))]',
+  chemistry: 'text-[color:var(--nb-green,#bef264)] bg-[var(--nb-green-soft,rgba(163,230,53,0.1))] border-[color:var(--nb-green,rgba(163,230,53,0.3))]',
+  history: 'text-[color:var(--nb-ochre,#fcd34d)] bg-[var(--nb-hl,rgba(251,191,36,0.1))] border-[color:var(--nb-ochre,rgba(251,191,36,0.3))]',
+  philosophy: 'text-[color:var(--nb-red,#f0abfc)] bg-[var(--nb-red-soft,rgba(232,121,249,0.1))] border-[color:var(--nb-red,rgba(232,121,249,0.3))]',
+  economics: 'text-[color:var(--nb-ochre,#fde047)] bg-[var(--nb-hl,rgba(250,204,21,0.1))] border-[color:var(--nb-ochre,rgba(250,204,21,0.3))]',
+  code: 'text-[color:var(--nb-red,#a855f7)] bg-[var(--nb-red-soft,rgba(168,85,247,0.1))] border-[color:var(--nb-red,rgba(168,85,247,0.3))]',
+  core: 'text-[color:var(--nb-ink-2,#d1d5db)] bg-[var(--nb-wash,rgba(255,255,255,0.05))] border-[color:var(--nb-rule,rgba(255,255,255,0.15))]',
 };
 
 function domainBadgeClasses(domain: string): string {
   const key = domain.toLowerCase();
-  return DOMAIN_PALETTE[key] || 'text-neon-pink bg-neon-pink/10 border-neon-pink/30';
+  return DOMAIN_PALETTE[key] || 'text-[color:var(--nb-red,#ec4899)] bg-[var(--nb-red-soft,rgba(236,72,153,0.1))] border-[color:var(--nb-red,rgba(236,72,153,0.3))]';
 }
 
 // ──────────────────────────────────────────────
@@ -169,11 +169,11 @@ function ConfidenceMeter({ confidence }: { confidence: number }) {
   return (
     <div className="flex items-center gap-3 min-w-[200px]">
       <div className="flex-1">
-        <div className="flex items-center justify-between text-[10px] uppercase tracking-wider text-gray-400 mb-1">
+        <div className="flex items-center justify-between text-[10px] uppercase tracking-wider text-[color:var(--nb-muted,#9ca3af)] mb-1">
           <span>Confidence</span>
           <span className={cn('font-mono font-semibold', tone.text)}>{pct}%</span>
         </div>
-        <div className="relative h-2 rounded-full bg-lattice-bg overflow-hidden border border-lattice-border">
+        <div className="relative h-2 rounded-full bg-[var(--nb-paper,rgb(var(--lattice-bg-rgb)))] overflow-hidden border border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))]">
           <motion.div
             className={cn(
               'absolute inset-y-0 left-0 rounded-full bg-gradient-to-r',
@@ -187,7 +187,7 @@ function ConfidenceMeter({ confidence }: { confidence: number }) {
       </div>
       <span
         className={cn(
-          'px-2 py-0.5 rounded-full text-[10px] font-medium border bg-black/30',
+          'px-2 py-0.5 rounded-full text-[10px] font-medium border bg-[var(--nb-paper,rgba(0,0,0,0.3))]',
           tone.text,
           tone.ring,
           'ring-1'
@@ -207,11 +207,11 @@ function RoyaltyChip({
   recipients: number;
 }) {
   return (
-    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-amber-400/30 bg-amber-400/10 text-amber-200 text-xs">
+    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-[color:var(--nb-ochre,rgba(251,191,36,0.3))] bg-[var(--nb-hl,rgba(251,191,36,0.1))] text-[color:var(--nb-ochre,#fde68a)] text-xs">
       <Coins className="w-3.5 h-3.5" />
       <span className="font-mono font-semibold">{total.toLocaleString()}</span>
-      <span className="text-amber-200/70">royalties</span>
-      <span className="mx-1 text-amber-300/40">·</span>
+      <span className="text-[color:var(--nb-ochre,rgba(253,230,138,0.7))]">royalties</span>
+      <span className="mx-1 text-[color:var(--nb-ochre,rgba(252,211,77,0.4))]">·</span>
       <Users className="w-3 h-3 opacity-70" />
       <span className="font-mono">{recipients}</span>
     </div>
@@ -242,7 +242,7 @@ function DtuChip({
       onClick={onClick}
       className={cn(
         'group flex items-center gap-2 px-3 py-2 rounded-xl border text-left transition-all',
-        'bg-lattice-bg hover:bg-lattice-elevated border-lattice-border hover:border-neon-cyan/40',
+        'bg-[var(--nb-paper,rgb(var(--lattice-bg-rgb)))] hover:bg-[var(--nb-wash,rgb(var(--lattice-elevated-rgb)))] border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))] hover:border-[color:var(--nb-blue,rgba(0,255,247,0.4))]',
         'hover:shadow-[0_0_18px_rgba(0,212,255,0.2)]'
       )}
       title={`Open DTU ${id}`}
@@ -255,10 +255,10 @@ function DtuChip({
       >
         {domain}
       </span>
-      <span className="font-mono text-xs text-gray-200 group-hover:text-white truncate max-w-[180px]">
+      <span className="font-mono text-xs text-[color:var(--nb-ink,#e5e7eb)] group-hover:text-[color:var(--nb-ink,#ffffff)] truncate max-w-[180px]">
         {id}
       </span>
-      <Hash className="w-3 h-3 text-gray-400 group-hover:text-neon-cyan ml-auto" />
+      <Hash className="w-3 h-3 text-[color:var(--nb-muted,#9ca3af)] group-hover:text-[color:var(--nb-blue,#00fff7)] ml-auto" />
     </button>
   );
 }
@@ -271,40 +271,40 @@ function ComputationRow({ comp, index }: { comp: OracleComputation; index: numbe
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.04 }}
-      className="rounded-xl border border-lattice-border bg-lattice-bg overflow-hidden"
+      className="rounded-xl border border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))] bg-[var(--nb-paper,rgb(var(--lattice-bg-rgb)))] overflow-hidden"
     >
       <button
         type="button"
         onClick={() => hasProof && setExpanded((v) => !v)}
         className={cn(
           'w-full flex items-start gap-3 p-3 text-left',
-          hasProof && 'hover:bg-lattice-elevated cursor-pointer'
+          hasProof && 'hover:bg-[var(--nb-wash,rgb(var(--lattice-elevated-rgb)))] cursor-pointer'
         )}
         disabled={!hasProof}
       >
-        <div className="mt-0.5 w-8 h-8 rounded-lg bg-neon-purple/15 border border-neon-purple/30 flex items-center justify-center flex-shrink-0">
-          <Cpu className="w-4 h-4 text-neon-purple" />
+        <div className="mt-0.5 w-8 h-8 rounded-lg bg-[var(--nb-red-soft,rgba(168,85,247,0.15))] border border-[color:var(--nb-red,rgba(168,85,247,0.3))] flex items-center justify-center flex-shrink-0">
+          <Cpu className="w-4 h-4 text-[color:var(--nb-red,#a855f7)]" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-[10px] uppercase tracking-wider text-neon-purple font-semibold">
+            <span className="text-[10px] uppercase tracking-wider text-[color:var(--nb-red,#a855f7)] font-semibold">
               {comp.module}
             </span>
             {hasProof && (
-              <span className="inline-flex items-center gap-1 text-[10px] text-emerald-300/80">
+              <span className="inline-flex items-center gap-1 text-[10px] text-[color:var(--nb-green,rgba(110,231,183,0.8))]">
                 <BadgeCheck className="w-3 h-3" /> proof available
               </span>
             )}
           </div>
-          <div className="text-sm text-gray-200 font-mono break-words">
+          <div className="text-sm text-[color:var(--nb-ink,#e5e7eb)] font-mono break-words">
             {comp.result}
           </div>
         </div>
         {hasProof && (
           <ChevronDown
             className={cn(
-              'w-4 h-4 text-gray-400 mt-1 transition-transform',
-              expanded && 'rotate-180 text-neon-cyan'
+              'w-4 h-4 text-[color:var(--nb-muted,#9ca3af)] mt-1 transition-transform',
+              expanded && 'rotate-180 text-[color:var(--nb-blue,#00fff7)]'
             )}
           />
         )}
@@ -318,11 +318,11 @@ function ComputationRow({ comp, index }: { comp: OracleComputation; index: numbe
             transition={{ duration: 0.2 }}
           >
             <div className="px-3 pb-3">
-              <div className="rounded-lg border border-neon-purple/20 bg-black/40 p-3">
-                <div className="text-[10px] uppercase tracking-wider text-neon-purple/80 mb-1.5 flex items-center gap-1">
+              <div className="rounded-lg border border-[color:var(--nb-red,rgba(168,85,247,0.2))] bg-[var(--nb-paper,rgba(0,0,0,0.4))] p-3">
+                <div className="text-[10px] uppercase tracking-wider text-[color:var(--nb-red,rgba(168,85,247,0.8))] mb-1.5 flex items-center gap-1">
                   <Scale className="w-3 h-3" /> Proof
                 </div>
-                <pre className="text-xs text-gray-200 font-mono whitespace-pre-wrap break-words leading-relaxed">
+                <pre className="text-xs text-[color:var(--nb-ink,#e5e7eb)] font-mono whitespace-pre-wrap break-words leading-relaxed">
                   {comp.proof}
                 </pre>
               </div>
@@ -346,17 +346,17 @@ function ConnectionCard({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05 }}
-      className="relative rounded-xl border border-neon-pink/25 bg-gradient-to-br from-neon-pink/10 via-lattice-bg to-neon-purple/10 p-4 overflow-hidden"
+      className="relative rounded-xl border border-[color:var(--nb-red,rgba(236,72,153,0.25))] bg-gradient-to-br from-[var(--nb-red-soft,rgba(236,72,153,0.1))] via-[var(--nb-paper,rgb(var(--lattice-bg-rgb)))] to-[var(--nb-red-soft,rgba(168,85,247,0.1))] p-4 overflow-hidden"
     >
       <div className="absolute inset-0 pointer-events-none opacity-20 bg-[radial-gradient(circle_at_top_right,rgba(236,72,153,0.35),transparent_60%)]" />
       <div className="relative">
         <div className="flex items-center gap-2 mb-2">
-          <Network className="w-4 h-4 text-neon-pink" />
-          <span className="text-[10px] uppercase tracking-wider text-neon-pink font-semibold">
+          <Network className="w-4 h-4 text-[color:var(--nb-red,#ec4899)]" />
+          <span className="text-[10px] uppercase tracking-wider text-[color:var(--nb-red,#ec4899)] font-semibold">
             {connection.domain}
           </span>
         </div>
-        <p className="text-sm text-gray-100 leading-relaxed">{connection.insight}</p>
+        <p className="text-sm text-[color:var(--nb-ink,#f3f4f6)] leading-relaxed">{connection.insight}</p>
       </div>
     </motion.div>
   );
@@ -368,30 +368,30 @@ const EPISTEMIC_STYLES: Record<
 > = {
   known: {
     label: 'Known',
-    border: 'border-emerald-400/40',
-    text: 'text-emerald-300',
-    bg: 'bg-emerald-400/5',
+    border: 'border-[color:var(--nb-green,rgba(52,211,153,0.4))]',
+    text: 'text-[color:var(--nb-green,#6ee7b7)]',
+    bg: 'bg-[var(--nb-green-soft,rgba(52,211,153,0.05))]',
     icon: BadgeCheck,
   },
   probable: {
     label: 'Probable',
-    border: 'border-neon-cyan/40',
-    text: 'text-neon-cyan',
-    bg: 'bg-neon-cyan/5',
+    border: 'border-[color:var(--nb-blue,rgba(0,255,247,0.4))]',
+    text: 'text-[color:var(--nb-blue,#00fff7)]',
+    bg: 'bg-[var(--nb-blue-soft,rgba(0,255,247,0.05))]',
     icon: Activity,
   },
   uncertain: {
     label: 'Uncertain',
-    border: 'border-amber-400/40',
-    text: 'text-amber-300',
-    bg: 'bg-amber-400/5',
+    border: 'border-[color:var(--nb-ochre,rgba(251,191,36,0.4))]',
+    text: 'text-[color:var(--nb-ochre,#fcd34d)]',
+    bg: 'bg-[var(--nb-hl,rgba(251,191,36,0.05))]',
     icon: HelpCircle,
   },
   unknown: {
     label: 'Unknown',
-    border: 'border-rose-500/40',
-    text: 'text-rose-300',
-    bg: 'bg-rose-500/5',
+    border: 'border-[color:var(--nb-red,rgba(244,63,94,0.4))]',
+    text: 'text-[color:var(--nb-red,#fda4af)]',
+    bg: 'bg-[var(--nb-red-soft,rgba(244,63,94,0.05))]',
     icon: ShieldAlert,
   },
 };
@@ -423,18 +423,18 @@ function EpistemicSection({
         >
           {style.label}
         </span>
-        <span className="ml-auto text-[10px] font-mono text-gray-400">
+        <span className="ml-auto text-[10px] font-mono text-[color:var(--nb-muted,#9ca3af)]">
           {items.length}
         </span>
       </div>
       {items.length === 0 ? (
-        <p className="text-xs text-gray-400 italic">Nothing in this bucket.</p>
+        <p className="text-xs text-[color:var(--nb-muted,#9ca3af)] italic">Nothing in this bucket.</p>
       ) : (
         <ul className="space-y-1.5">
           {items.map((item, i) => (
             <li
               key={i}
-              className="flex items-start gap-2 text-sm text-gray-200 leading-snug"
+              className="flex items-start gap-2 text-sm text-[color:var(--nb-ink,#e5e7eb)] leading-snug"
             >
               <span
                 className={cn('mt-1.5 w-1 h-1 rounded-full flex-shrink-0', style.text.replace('text-', 'bg-'))}
@@ -474,21 +474,21 @@ function PhaseRow({
       initial={{ opacity: 0, x: -8 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.05 }}
-      className="rounded-xl border border-lattice-border bg-lattice-bg overflow-hidden"
+      className="rounded-xl border border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))] bg-[var(--nb-paper,rgb(var(--lattice-bg-rgb)))] overflow-hidden"
     >
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-3 p-3 text-left hover:bg-lattice-elevated transition-colors"
+        className="w-full flex items-center gap-3 p-3 text-left hover:bg-[var(--nb-wash,rgb(var(--lattice-elevated-rgb)))] transition-colors"
       >
-        <div className="w-7 h-7 rounded-lg bg-neon-cyan/10 border border-neon-cyan/30 flex items-center justify-center flex-shrink-0">
-          <span className="text-[10px] font-mono text-neon-cyan font-bold">
+        <div className="w-7 h-7 rounded-lg bg-[var(--nb-blue-soft,rgba(0,255,247,0.1))] border border-[color:var(--nb-blue,rgba(0,255,247,0.3))] flex items-center justify-center flex-shrink-0">
+          <span className="text-[10px] font-mono text-[color:var(--nb-blue,#00fff7)] font-bold">
             {String(index + 1).padStart(2, '0')}
           </span>
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-sm text-gray-100 capitalize font-medium">{name}</div>
-          <div className="flex gap-3 text-[10px] text-gray-400 font-mono mt-0.5">
+          <div className="text-sm text-[color:var(--nb-ink,#f3f4f6)] capitalize font-medium">{name}</div>
+          <div className="flex gap-3 text-[10px] text-[color:var(--nb-muted,#9ca3af)] font-mono mt-0.5">
             {duration && <span>⏱ {duration}</span>}
             {items && <span>▦ {items}</span>}
             {conf && <span>⦿ {conf}</span>}
@@ -496,8 +496,8 @@ function PhaseRow({
         </div>
         <ChevronRight
           className={cn(
-            'w-4 h-4 text-gray-400 transition-transform',
-            open && 'rotate-90 text-neon-cyan'
+            'w-4 h-4 text-[color:var(--nb-muted,#9ca3af)] transition-transform',
+            open && 'rotate-90 text-[color:var(--nb-blue,#00fff7)]'
           )}
         />
       </button>
@@ -510,9 +510,9 @@ function PhaseRow({
             transition={{ duration: 0.18 }}
           >
             <div className="px-3 pb-3">
-              <div className="rounded-lg border border-lattice-border bg-black/30 p-3 space-y-1.5">
+              <div className="rounded-lg border border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))] bg-[var(--nb-paper,rgba(0,0,0,0.3))] p-3 space-y-1.5">
                 {stats.notes && (
-                  <p className="text-xs text-gray-300 leading-relaxed">
+                  <p className="text-xs text-[color:var(--nb-ink-2,#d1d5db)] leading-relaxed">
                     {stats.notes}
                   </p>
                 )}
@@ -521,12 +521,12 @@ function PhaseRow({
                     {extraKeys.map((k) => (
                       <div
                         key={k}
-                        className="rounded-md border border-lattice-border/60 bg-lattice-bg px-2 py-1 text-[11px]"
+                        className="rounded-md border border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)/0.6))] bg-[var(--nb-paper,rgb(var(--lattice-bg-rgb)))] px-2 py-1 text-[11px]"
                       >
-                        <div className="text-[9px] uppercase tracking-wider text-gray-400">
+                        <div className="text-[9px] uppercase tracking-wider text-[color:var(--nb-muted,#9ca3af)]">
                           {k}
                         </div>
-                        <div className="font-mono text-gray-200 truncate">
+                        <div className="font-mono text-[color:var(--nb-ink,#e5e7eb)] truncate">
                           {typeof stats[k] === 'object'
                             ? JSON.stringify(stats[k])
                             : String(stats[k])}
@@ -536,7 +536,7 @@ function PhaseRow({
                   </div>
                 )}
                 {!stats.notes && extraKeys.length === 0 && (
-                  <p className="text-[11px] text-gray-400 italic">
+                  <p className="text-[11px] text-[color:var(--nb-muted,#9ca3af)] italic">
                     No additional telemetry for this phase.
                   </p>
                 )}
@@ -689,7 +689,7 @@ export default function OracleResponse({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: 'easeOut' }}
       className={cn(
-        'relative rounded-2xl border border-lattice-border bg-lattice-surface overflow-hidden',
+        'relative rounded-2xl border border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))] bg-[var(--nb-sheet,rgb(var(--lattice-surface-rgb)))] overflow-hidden',
         'shadow-[0_0_40px_rgba(168,85,247,0.08)]',
         className
       )}
@@ -706,7 +706,7 @@ export default function OracleResponse({
             <motion.div
               initial={{ opacity: 0, y: -6 }}
               animate={{ opacity: 1, y: 0 }}
-              className="flex items-start gap-3 rounded-xl border border-amber-400/40 bg-amber-400/10 p-3 text-amber-200"
+              className="flex items-start gap-3 rounded-xl border border-[color:var(--nb-ochre,rgba(251,191,36,0.4))] bg-[var(--nb-hl,rgba(251,191,36,0.1))] p-3 text-[color:var(--nb-ochre,#fde68a)]"
             >
               <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
               <div className="flex-1 min-w-0">
@@ -729,8 +729,8 @@ export default function OracleResponse({
             <div
               className={cn(
                 'flex items-center gap-1.5 px-2.5 py-1 rounded-full border',
-                'border-neon-purple/40 bg-neon-purple/10 text-neon-purple',
-                'ring-1 ring-neon-purple/20',
+                'border-[color:var(--nb-red,rgba(168,85,247,0.4))] bg-[var(--nb-red-soft,rgba(168,85,247,0.1))] text-[color:var(--nb-red,#a855f7)]',
+                'ring-1 ring-[color:var(--nb-red,rgba(168,85,247,0.2))]',
                 tone.glow
               )}
             >
@@ -740,7 +740,7 @@ export default function OracleResponse({
               </span>
             </div>
             {dtuId && (
-              <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-neon-cyan/30 bg-neon-cyan/10 text-neon-cyan text-[11px] font-mono">
+              <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-[color:var(--nb-blue,rgba(0,255,247,0.3))] bg-[var(--nb-blue-soft,rgba(0,255,247,0.1))] text-[color:var(--nb-blue,#00fff7)] text-[11px] font-mono">
                 <Hash className="w-3 h-3" />
                 {dtuId}
               </div>
@@ -756,13 +756,13 @@ export default function OracleResponse({
 
         {/* Main answer */}
         <div className="px-5 pb-4">
-          <div className="rounded-xl border border-lattice-border bg-lattice-bg/60 p-4 text-gray-100">
+          <div className="rounded-xl border border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))] bg-[var(--nb-paper,rgb(var(--lattice-bg-rgb)/0.6))] p-4 text-[color:var(--nb-ink,#f3f4f6)]">
             <MessageRenderer content={answer} />
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="border-t border-lattice-border bg-lattice-bg/30">
+        <div className="border-t border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))] bg-[var(--nb-paper,rgb(var(--lattice-bg-rgb)/0.3))]">
           <div className="px-2 pt-2 flex flex-wrap gap-1 overflow-x-auto">
             {tabs.map((tab) => {
               const Icon = tab.icon;
@@ -776,9 +776,9 @@ export default function OracleResponse({
                   className={cn(
                     'relative flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg transition-all',
                     tab.available
-                      ? 'text-gray-400 hover:text-white hover:bg-white/5 cursor-pointer'
-                      : 'text-gray-600 cursor-not-allowed opacity-50',
-                    isActive && tab.available && 'text-neon-cyan bg-neon-cyan/10'
+                      ? 'text-[color:var(--nb-muted,#9ca3af)] hover:text-[color:var(--nb-ink,#ffffff)] hover:bg-[var(--nb-wash,rgba(255,255,255,0.05))] cursor-pointer'
+                      : 'text-[color:var(--nb-faint,#4b5563)] cursor-not-allowed opacity-50',
+                    isActive && tab.available && 'text-[color:var(--nb-blue,#00fff7)] bg-[var(--nb-blue-soft,rgba(0,255,247,0.1))]'
                   )}
                 >
                   <Icon className="w-3.5 h-3.5" />
@@ -788,8 +788,8 @@ export default function OracleResponse({
                       className={cn(
                         'px-1.5 py-0.5 rounded-full text-[9px] font-mono',
                         isActive
-                          ? 'bg-neon-cyan/20 text-neon-cyan'
-                          : 'bg-white/5 text-gray-400'
+                          ? 'bg-[var(--nb-blue-soft,rgba(0,255,247,0.2))] text-[color:var(--nb-blue,#00fff7)]'
+                          : 'bg-[var(--nb-wash,rgba(255,255,255,0.05))] text-[color:var(--nb-muted,#9ca3af)]'
                       )}
                     >
                       {tab.count}
@@ -798,7 +798,7 @@ export default function OracleResponse({
                   {isActive && (
                     <motion.div
                       layoutId="oracle-tab-underline"
-                      className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-gradient-to-r from-neon-purple via-neon-cyan to-neon-pink"
+                      className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-gradient-to-r from-[var(--nb-red-soft,#a855f7)] via-[var(--nb-blue-soft,#00fff7)] to-[var(--nb-red-soft,#ec4899)]"
                     />
                   )}
                 </button>
@@ -835,11 +835,11 @@ export default function OracleResponse({
         </div>
 
         {/* Action bar */}
-        <div className="border-t border-lattice-border px-5 py-3 flex flex-wrap items-center gap-2 bg-lattice-bg/40">
+        <div className="border-t border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))] px-5 py-3 flex flex-wrap items-center gap-2 bg-[var(--nb-paper,rgb(var(--lattice-bg-rgb)/0.4))]">
           <button
             type="button"
             onClick={handleCite}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-neon-cyan border border-neon-cyan/30 bg-neon-cyan/10 hover:bg-neon-cyan/20 transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-[color:var(--nb-blue,#00fff7)] border border-[color:var(--nb-blue,rgba(0,255,247,0.3))] bg-[var(--nb-blue-soft,rgba(0,255,247,0.1))] hover:bg-[var(--nb-blue-soft,rgba(0,255,247,0.2))] transition-colors"
           >
             {copied ? <Check className="w-3.5 h-3.5" /> : <Quote className="w-3.5 h-3.5" />}
             <span>{copied ? 'Copied' : 'Cite this answer'}</span>
@@ -847,7 +847,7 @@ export default function OracleResponse({
           <button
             type="button"
             onClick={handleShare}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-gray-300 border border-lattice-border hover:bg-white/5 hover:text-white transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-[color:var(--nb-ink-2,#d1d5db)] border border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))] hover:bg-[var(--nb-wash,rgba(255,255,255,0.05))] hover:text-[color:var(--nb-ink,#ffffff)] transition-colors"
           >
             <Share2 className="w-3.5 h-3.5" />
             <span>Share</span>
@@ -855,12 +855,12 @@ export default function OracleResponse({
           <button
             type="button"
             onClick={handleDownload}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-neon-purple border border-neon-purple/30 bg-neon-purple/10 hover:bg-neon-purple/20 transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-[color:var(--nb-red,#a855f7)] border border-[color:var(--nb-red,rgba(168,85,247,0.3))] bg-[var(--nb-red-soft,rgba(168,85,247,0.1))] hover:bg-[var(--nb-red-soft,rgba(168,85,247,0.2))] transition-colors"
           >
             <Download className="w-3.5 h-3.5" />
             <span>Download as DTU</span>
           </button>
-          <div className="ml-auto text-[10px] text-gray-400 font-mono">
+          <div className="ml-auto text-[10px] text-[color:var(--nb-muted,#9ca3af)] font-mono">
             Oracle Engine · 6-phase pipeline
           </div>
         </div>
@@ -882,14 +882,14 @@ function SourcesTab({
 }) {
   if (sources.length === 0) {
     return (
-      <div className="text-xs text-gray-400 italic py-6 text-center">
+      <div className="text-xs text-[color:var(--nb-muted,#9ca3af)] italic py-6 text-center">
         No sources were cited for this answer.
       </div>
     );
   }
   return (
     <div>
-      <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-3">
+      <div className="text-[10px] uppercase tracking-wider text-[color:var(--nb-muted,#9ca3af)] mb-3">
         {sources.length} cited DTU{sources.length === 1 ? '' : 's'}
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -904,7 +904,7 @@ function SourcesTab({
 function ComputationsTab({ computations }: { computations: OracleComputation[] }) {
   if (computations.length === 0) {
     return (
-      <div className="text-xs text-gray-400 italic py-6 text-center">
+      <div className="text-xs text-[color:var(--nb-muted,#9ca3af)] italic py-6 text-center">
         No compute modules were invoked.
       </div>
     );
@@ -921,7 +921,7 @@ function ComputationsTab({ computations }: { computations: OracleComputation[] }
 function ConnectionsTab({ connections }: { connections: OracleConnection[] }) {
   if (connections.length === 0) {
     return (
-      <div className="text-xs text-gray-400 italic py-6 text-center">
+      <div className="text-xs text-[color:var(--nb-muted,#9ca3af)] italic py-6 text-center">
         No cross-domain connections were surfaced.
       </div>
     );
@@ -942,7 +942,7 @@ function EpistemicTab({
 }) {
   if (!breakdown) {
     return (
-      <div className="text-xs text-gray-400 italic py-6 text-center">
+      <div className="text-xs text-[color:var(--nb-muted,#9ca3af)] italic py-6 text-center">
         No epistemic breakdown available.
       </div>
     );
@@ -969,7 +969,7 @@ function EpistemicTab({
 function PhasesTab({ phases }: { phases?: OraclePhases }) {
   if (!phases) {
     return (
-      <div className="text-xs text-gray-400 italic py-6 text-center">
+      <div className="text-xs text-[color:var(--nb-muted,#9ca3af)] italic py-6 text-center">
         No phase telemetry available.
       </div>
     );
@@ -996,7 +996,7 @@ function PhasesTab({ phases }: { phases?: OraclePhases }) {
   });
   if (present.length === 0) {
     return (
-      <div className="text-xs text-gray-400 italic py-6 text-center">
+      <div className="text-xs text-[color:var(--nb-muted,#9ca3af)] italic py-6 text-center">
         No phase telemetry available.
       </div>
     );

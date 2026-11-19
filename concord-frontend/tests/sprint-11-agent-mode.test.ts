@@ -83,8 +83,9 @@ describe('Sprint 11B — Chat lens mounts both', () => {
     expect(CHAT_SRC).toContain('InitiativeBell');
   });
 
-  test('Agent Mode launcher button is bottom-right', () => {
-    expect(CHAT_SRC).toMatch(/sm:bottom-6 sm:right-6/);
+  test('Agent Mode is launched from the composer + menu', () => {
+    expect(CHAT_SRC).toMatch(/setAgentPanelOpen\(true\); setComposerPlusOpen\(false\)/);
+    expect(CHAT_SRC).toContain('>Agent Mode</button>');
   });
 
   test('agentPanelOpen state controls panel visibility', () => {
@@ -92,7 +93,7 @@ describe('Sprint 11B — Chat lens mounts both', () => {
     expect(CHAT_SRC).toContain('setAgentPanelOpen');
   });
 
-  test('InitiativeBell mounted in top-right', () => {
-    expect(CHAT_SRC).toMatch(/top-4 right-20/);
+  test('InitiativeBell mounted in the top strip', () => {
+    expect(CHAT_SRC).toMatch(/data-testid="nb-strip"[\s\S]*<InitiativeBell \/>[\s\S]*<\/header>/);
   });
 });

@@ -102,7 +102,6 @@ vi.mock('@/components/chat/ToolCallCard', () => ({
 vi.mock('@/components/chat/ComputeBadge', () => ({ default: () => null }));
 vi.mock('@/components/chat/CitationChips', () => ({ default: () => null }));
 vi.mock('@/components/chat/AnonNudge', () => ({ default: () => null }));
-vi.mock('@/components/chat/BranchForkButton', () => ({ default: () => null }));
 vi.mock('@/components/chat/BYOKeyDrawer', () => ({ default: () => null }));
 vi.mock('@/components/chat/ReasoningIndicator', () => ({ ReasoningIndicator: () => null }));
 vi.mock('@/components/chat/MessageContinuationMarker', () => ({ MessageContinuationMarker: () => null }));
@@ -166,30 +165,32 @@ describe('Chat lens — choosing ConKay opens the ConKay lens', () => {
     await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/lenses/conkay'));
     expect(pushMock).toHaveBeenCalledTimes(1);
     // Chat did not switch into a ConKay mode or send anything to the chat API.
-    expect(screen.getByLabelText('Choose mode')).not.toHaveAttribute('title', 'Mode: ConKay');
+    expect(screen.getByTestId('nb-answer-as')).not.toHaveTextContent('ConKay');
     expect(apiPostMock).not.toHaveBeenCalled();
   });
 
-  it('choosing ConKay from the mode menu carries the composer draft as `ask`', async () => {
+  it('choosing "Open ConKay" in Answer as carries the composer draft as `ask`', async () => {
     const input = await openChat();
     fireEvent.change(input, { target: { value: 'size a steel beam for 4 m' } });
 
-    const menuToggle = screen.getByLabelText('Choose mode');
-    fireEvent.click(menuToggle);
-    const menu = menuToggle.closest('[data-chat-menu]') as HTMLElement;
-    fireEvent.click(await within(menu).findByRole('button', { name: 'ConKay' }));
+    fireEvent.click(screen.getByTestId('nb-answer-as'));
+    const menu = screen.getByRole('menu', { name: 'Answer as' });
+    // ConKay is its own lens, not a way of answering here.
+    expect(within(menu).queryByRole('menuitemradio', { name: /ConKay/ })).toBeNull();
+    fireEvent.click(within(menu).getByRole('menuitem', { name: /Open ConKay/ }));
 
     expect(pushMock).toHaveBeenCalledTimes(1);
     const href = pushMock.mock.calls[0][0] as string;
     const url = new URL(href, 'http://x');
     expect(url.pathname).toBe('/lenses/conkay');
     expect(url.searchParams.get('ask')).toBe('size a steel beam for 4 m');
-    expect(screen.getByLabelText('Choose mode')).not.toHaveAttribute('title', 'Mode: ConKay');
+    expect(screen.getByTestId('nb-answer-as')).not.toHaveTextContent('ConKay');
   });
 
-  it('the empty-state mic button opens ConKay', async () => {
+  it('"Open ConKay" with an empty page opens the ConKay lens with nothing to ask', async () => {
     await openChat();
-    fireEvent.click(screen.getByLabelText('Open ConKay'));
+    fireEvent.click(screen.getByTestId('nb-answer-as'));
+    fireEvent.click(screen.getByRole('menuitem', { name: /Open ConKay/ }));
     expect(pushMock).toHaveBeenCalledWith('/lenses/conkay');
   });
 

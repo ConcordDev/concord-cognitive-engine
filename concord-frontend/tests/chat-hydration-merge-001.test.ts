@@ -58,7 +58,7 @@ describe("mergeHydratedThread", () => {
 describe("panel wiring", () => {
   const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../components/chat/ChatWorkspacePanel.tsx"), "utf8");
   it("hydration goes through the merge; the wholesale replace is gone", () => {
-    assert.ok(src.includes("mergeHydratedThread(hydrated, prev, baseIds)"));
+    assert.ok(/mergeHydratedThread\(hydrated, prev[^;]*, baseIds\)/.test(src));
     assert.ok(!src.includes("setLocalMessages(hydrated)"));
   });
 });

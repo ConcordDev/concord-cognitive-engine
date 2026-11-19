@@ -1,5 +1,33 @@
 # Chat Lens — Capability Map (Frontend Rebuild Program, Wave 3)
 
+> **2026-11-19: The Notebook redesign (supersedes the branch notes below).**
+> - **The server is the record when signed in.** The conversation list is the
+>   server's (`/api/chat/sessions`), threads paint from the device cache and
+>   then from `/api/chat/messages`, rename is `PATCH /api/chat/sessions/:id`,
+>   and **Branch from here** is `POST /api/chat/sessions/:id/fork { uptoId }`,
+>   which copies the saved rows into a new owner-checked session
+>   (`forkChatSession`, `server/tests/chat-session-fork-rename.test.js`).
+>   Signed out, everything stays on the device.
+> - **The branch trio (`branch-fork` / `branches-list` / `branch-delete`) is
+>   superseded** for this lens: it kept a second, parallel store of "branches"
+>   beside the real sessions. `BranchForkButton.tsx` and
+>   `SyncedBranchesSection.tsx` were removed; the macros remain on the server.
+>   Branches users made with the old macros are still in that table but are no
+>   longer listed in Chat (not migrated).
+> - **Four mode systems became one "Answer as" picker** (rail modes, AI-mode
+>   menu, persona picker, separately-activated custom assistants). The rail
+>   modes were only canned prompts; their prompts are now the blank page's
+>   starter cards.
+> - **The real header was hidden.** A `cleanEmpty` constant was always true, so
+>   the header holding the domain-context chip, active project, mood chip,
+>   session history and the full options menu (search all chats, export JSON /
+>   Markdown, copy transcript, hand-off, new, delete) rendered with `hidden`
+>   and none of it was reachable. All of it is in the Notebook's top strip now;
+>   the dead branches were deleted.
+> - The cognitive-status stats strip (episodes / patterns / threads) lived only
+>   in that hidden header and was retired, not resurfaced.
+
+
 > **Re-verified 2026-10-28 (HANDOFF-3 Workstream B, batch L1 — audit/gap
 > pass, not a restyle).** Every row below was re-checked against main
 > 4c964675. What changed since the Wave 3 edition:

@@ -57296,6 +57296,41 @@ app.delete("/api/chat/sessions/:id", requireAuth(), async (req, res) => {
   }
 });
 
+// Rename one of the signed-in user's conversations. Owner-only.
+app.patch("/api/chat/sessions/:id", requireAuth(), async (req, res) => {
+  try {
+    const userId = req.user?.id || req.actor?.userId;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+    const { renameChatSession } = await import("./lib/chat-session-store.js");
+    const r = renameChatSession(STATE.db, String(req.params.id || "").slice(0, 200), userId, req.body?.title);
+    if (!r.ok) return res.status(r.error === "not_found" ? 404 : r.error === "forbidden" ? 403 : 400).json(r);
+    res.json(r);
+  } catch (err) {
+    res.status(500).json({ ok: false, error: String(err?.message || err) });
+  }
+});
+
+// "Branch from here": copy the owner's thread up to one message into a new
+// session on the server, so the branch follows the user to every device and
+// the model sees exactly that history on its next turn.
+app.post("/api/chat/sessions/:id/fork", requireAuth(), async (req, res) => {
+  try {
+    const userId = req.user?.id || req.actor?.userId;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+    const { forkChatSession } = await import("./lib/chat-session-store.js");
+    const r = forkChatSession(STATE.db, {
+      sessionId: String(req.params.id || "").slice(0, 200),
+      ownerId: userId,
+      uptoId: req.body?.uptoId,
+      newSessionId: `chat-${crypto.randomUUID()}`,
+    });
+    if (!r.ok) return res.status(r.error === "not_found" || r.error === "message_not_in_session" ? 404 : r.error === "forbidden" ? 403 : 400).json(r);
+    res.json(r);
+  } catch (err) {
+    res.status(500).json({ ok: false, error: String(err?.message || err) });
+  }
+});
+
 // Persist a single chat turn from any lens (used by the code lens
 // AI chat for example, where llm.local doesn't auto-persist the way
 // chat.respond does). Owner-gated by stamping ownerId on session

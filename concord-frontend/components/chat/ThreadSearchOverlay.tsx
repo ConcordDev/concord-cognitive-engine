@@ -118,11 +118,11 @@ export function ThreadSearchOverlay({ open, onClose, onSelect, projectId }: Prop
   // Mobile: render as a bottom sheet (full-width, ~85vh, swipeable).
   // Desktop: keep the centered overlay with click-outside dismiss.
   const containerClasses = useSheet
-    ? 'fixed inset-x-0 bottom-0 z-50 px-0 bg-black/60 backdrop-blur-sm flex items-end'
-    : 'fixed inset-0 z-50 flex items-start justify-center pt-[10vh] px-4 bg-black/60 backdrop-blur-sm';
+    ? 'fixed inset-x-0 bottom-0 z-50 px-0 bg-[var(--nb-scrim,rgba(0,0,0,0.6))] backdrop-blur-sm flex items-end'
+    : 'fixed inset-0 z-50 flex items-start justify-center pt-[10vh] px-4 bg-[var(--nb-scrim,rgba(0,0,0,0.6))] backdrop-blur-sm';
   const panelClasses = useSheet
-    ? 'w-full max-h-[85vh] bg-[#0d1117] border-t border-cyan-500/30 rounded-t-2xl shadow-2xl overflow-hidden flex flex-col'
-    : 'w-full max-w-[640px] bg-[#0d1117] border border-cyan-500/30 rounded-xl shadow-2xl overflow-hidden flex flex-col';
+    ? 'w-full max-h-[85vh] bg-[var(--nb-sheet,#0d1117)] border-t border-[color:var(--nb-blue,rgba(6,182,212,0.3))] rounded-t-2xl shadow-2xl overflow-hidden flex flex-col'
+    : 'w-full max-w-[640px] bg-[var(--nb-sheet,#0d1117)] border border-[color:var(--nb-blue,rgba(6,182,212,0.3))] rounded-xl shadow-2xl overflow-hidden flex flex-col';
 
   return (
     <div
@@ -133,21 +133,21 @@ export function ThreadSearchOverlay({ open, onClose, onSelect, projectId }: Prop
         onClick={(e) => e.stopPropagation()}
         onKeyDown={onKey}
       >
-        <div className="px-4 py-3 border-b border-white/10 flex items-center gap-2">
-          <Search className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+        <div className="px-4 py-3 border-b border-[color:var(--nb-rule,rgba(255,255,255,0.1))] flex items-center gap-2">
+          <Search className="w-4 h-4 text-[color:var(--nb-blue,#22d3ee)] flex-shrink-0" />
           <input
             ref={inputRef}
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={projectId ? 'Search this project…' : 'Search all conversations…'}
-            className="flex-1 bg-transparent text-sm text-gray-100 placeholder-gray-500 focus:outline-none"
+            className="flex-1 bg-transparent text-sm text-[color:var(--nb-ink,#f3f4f6)] placeholder:text-[color:var(--nb-faint,#6b7280)] focus:outline-none"
           />
-          {loading && <Loader2 className="w-3 h-3 animate-spin text-cyan-400" />}
+          {loading && <Loader2 className="w-3 h-3 animate-spin text-[color:var(--nb-blue,#22d3ee)]" />}
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded-md hover:bg-white/5 text-gray-400"
+            className="p-1 rounded-md hover:bg-[var(--nb-wash,rgba(255,255,255,0.05))] text-[color:var(--nb-muted,#9ca3af)]"
             aria-label="Close search"
           >
             <X className="w-4 h-4" />
@@ -157,22 +157,22 @@ export function ThreadSearchOverlay({ open, onClose, onSelect, projectId }: Prop
         <div className="max-h-[60vh] overflow-y-auto">
           {query.trim().length < 2 ? (
             <div className="px-4 py-12 text-center">
-              <Search className="w-8 h-8 mx-auto text-gray-700 mb-2" />
-              <p className="text-xs text-gray-400">Start typing to search</p>
-              <p className="text-[10px] text-gray-400 mt-1">
+              <Search className="w-8 h-8 mx-auto text-[color:var(--nb-faint,#374151)] mb-2" />
+              <p className="text-xs text-[color:var(--nb-muted,#9ca3af)]">Start typing to search</p>
+              <p className="text-[10px] text-[color:var(--nb-muted,#9ca3af)] mt-1">
                 {totalIndexed} thread{totalIndexed === 1 ? '' : 's'} indexed
               </p>
             </div>
           ) : hits.length === 0 && !loading ? (
             <div className="px-4 py-12 text-center">
-              <MessageSquare className="w-8 h-8 mx-auto text-gray-700 mb-2" />
-              <p className="text-xs text-gray-400">No matches</p>
-              <p className="text-[10px] text-gray-400 mt-1">
+              <MessageSquare className="w-8 h-8 mx-auto text-[color:var(--nb-faint,#374151)] mb-2" />
+              <p className="text-xs text-[color:var(--nb-muted,#9ca3af)]">No matches</p>
+              <p className="text-[10px] text-[color:var(--nb-muted,#9ca3af)] mt-1">
                 Try different keywords. Searching across {totalIndexed} threads.
               </p>
             </div>
           ) : (
-            <ul className="divide-y divide-white/5">
+            <ul className="divide-y divide-[color:var(--nb-rule,rgba(255,255,255,0.05))]">
               {hits.map((h, i) => (
                 <li key={h.threadId}>
                   <button
@@ -184,22 +184,22 @@ export function ThreadSearchOverlay({ open, onClose, onSelect, projectId }: Prop
                     onMouseEnter={() => setActiveIdx(i)}
                     className={cn(
                       'w-full text-left px-4 py-3 transition',
-                      i === activeIdx ? 'bg-cyan-500/10' : 'hover:bg-white/5',
+                      i === activeIdx ? 'bg-[var(--nb-blue-soft,rgba(6,182,212,0.1))]' : 'hover:bg-[var(--nb-wash,rgba(255,255,255,0.05))]',
                     )}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <MessageSquare className="w-3 h-3 text-cyan-400 flex-shrink-0" />
-                          <span className="text-sm font-medium text-gray-100 truncate">
+                          <MessageSquare className="w-3 h-3 text-[color:var(--nb-blue,#22d3ee)] flex-shrink-0" />
+                          <span className="text-sm font-medium text-[color:var(--nb-ink,#f3f4f6)] truncate">
                             {h.title || 'Untitled conversation'}
                           </span>
                         </div>
-                        <p className="text-[11px] text-gray-400 mt-1 line-clamp-2">{h.snippet}</p>
+                        <p className="text-[11px] text-[color:var(--nb-muted,#9ca3af)] mt-1 line-clamp-2">{h.snippet}</p>
                       </div>
                       <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                        <span className="text-[10px] text-cyan-400 font-mono">×{h.score}</span>
-                        <span className="text-[10px] text-gray-400 inline-flex items-center gap-1">
+                        <span className="text-[10px] text-[color:var(--nb-blue,#22d3ee)] font-mono">×{h.score}</span>
+                        <span className="text-[10px] text-[color:var(--nb-muted,#9ca3af)] inline-flex items-center gap-1">
                           <Clock className="w-2.5 h-2.5" />
                           {relativeTime(h.lastMsgAt)}
                         </span>
@@ -212,11 +212,11 @@ export function ThreadSearchOverlay({ open, onClose, onSelect, projectId }: Prop
           )}
         </div>
 
-        <div className="px-4 py-2 border-t border-white/10 flex items-center justify-between text-[10px] text-gray-400 bg-black/40">
+        <div className="px-4 py-2 border-t border-[color:var(--nb-rule,rgba(255,255,255,0.1))] flex items-center justify-between text-[10px] text-[color:var(--nb-muted,#9ca3af)] bg-[var(--nb-paper,rgba(0,0,0,0.4))]">
           <div className="flex items-center gap-3">
-            <span><kbd className="px-1 py-0.5 rounded border border-white/10 bg-white/5">↑↓</kbd> navigate</span>
-            <span><kbd className="px-1 py-0.5 rounded border border-white/10 bg-white/5">↵</kbd> open</span>
-            <span><kbd className="px-1 py-0.5 rounded border border-white/10 bg-white/5">esc</kbd> close</span>
+            <span><kbd className="px-1 py-0.5 rounded border border-[color:var(--nb-rule,rgba(255,255,255,0.1))] bg-[var(--nb-wash,rgba(255,255,255,0.05))]">↑↓</kbd> navigate</span>
+            <span><kbd className="px-1 py-0.5 rounded border border-[color:var(--nb-rule,rgba(255,255,255,0.1))] bg-[var(--nb-wash,rgba(255,255,255,0.05))]">↵</kbd> open</span>
+            <span><kbd className="px-1 py-0.5 rounded border border-[color:var(--nb-rule,rgba(255,255,255,0.1))] bg-[var(--nb-wash,rgba(255,255,255,0.05))]">esc</kbd> close</span>
           </div>
           {hits.length > 0 && <span>{hits.length} result{hits.length === 1 ? '' : 's'}</span>}
         </div>

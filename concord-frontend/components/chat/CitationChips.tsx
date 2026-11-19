@@ -26,9 +26,9 @@ interface CitationChipsProps {
 }
 
 const TIER_COLOR: Record<string, string> = {
-  hyper:   'border-fuchsia-400/30 text-fuchsia-300 bg-fuchsia-500/10 hover:bg-fuchsia-500/15',
-  mega:    'border-amber-400/30 text-amber-300 bg-amber-500/10 hover:bg-amber-500/15',
-  regular: 'border-cyan-400/30 text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/15',
+  hyper:   'border-[color:var(--nb-red,rgba(232,121,249,0.3))] text-[color:var(--nb-red,#f0abfc)] bg-[var(--nb-red-soft,rgba(217,70,239,0.1))] hover:bg-[var(--nb-red-soft,rgba(217,70,239,0.15))]',
+  mega:    'border-[color:var(--nb-ochre,rgba(251,191,36,0.3))] text-[color:var(--nb-ochre,#fcd34d)] bg-[var(--nb-hl,rgba(245,158,11,0.1))] hover:bg-[var(--nb-hl,rgba(245,158,11,0.15))]',
+  regular: 'border-[color:var(--nb-blue,rgba(34,211,238,0.3))] text-[color:var(--nb-blue,#67e8f9)] bg-[var(--nb-blue-soft,rgba(6,182,212,0.1))] hover:bg-[var(--nb-blue-soft,rgba(6,182,212,0.15))]',
 };
 
 export default function CitationChips({ dtuRefs, surfaceFromLens = 'chat' }: CitationChipsProps) {
@@ -55,7 +55,7 @@ export default function CitationChips({ dtuRefs, surfaceFromLens = 'chat' }: Cit
   if (!dtuRefs || dtuRefs.length === 0) return null;
   return (
     <div className="mt-2 flex flex-wrap items-center gap-1.5">
-      <span className="text-[10px] uppercase tracking-wide text-gray-400 mr-1">Sources:</span>
+      <span className="text-[10px] uppercase tracking-wide text-[color:var(--nb-muted,#9ca3af)] mr-1">Sources:</span>
       {dtuRefs.map((ref) => {
         const colorCls = TIER_COLOR[ref.tier || 'regular'] || TIER_COLOR.regular;
         const label = ref.title || ref.id;

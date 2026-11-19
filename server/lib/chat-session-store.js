@@ -276,3 +276,57 @@ export function deleteChatSession(db, sessionId, ownerId) {
     return { ok: false, error: String(e?.message || e) };
   }
 }
+
+/**
+ * Rename one of the owner's sessions. The title is trimmed and capped; an
+ * empty title is refused rather than silently kept.
+ * @returns {{ok:true, title:string} | {ok:false, error:"not_found"|"forbidden"|"invalid_title"|string}}
+ */
+export function renameChatSession(db, sessionId, ownerId, title) {
+  if (!db || !sessionId || !ownerId) return { ok: false, error: "bad_request" };
+  const t = String(title ?? "").replace(/\s+/g, " ").trim().slice(0, TITLE_MAX_LEN);
+  if (!t) return { ok: false, error: "invalid_title" };
+  try {
+    const row = db.prepare(`SELECT owner_id FROM chat_sessions WHERE session_id = ?`).get(sessionId);
+    if (!row) return { ok: false, error: "not_found" };
+    if (!row.owner_id || row.owner_id !== ownerId) return { ok: false, error: "forbidden" };
+    db.prepare(`UPDATE chat_sessions SET title = ? WHERE session_id = ?`).run(t, sessionId);
+    return { ok: true, title: t };
+  } catch (e) {
+    return { ok: false, error: String(e?.message || e) };
+  }
+}
+
+/**
+ * "Branch from here": a new session holding a copy of the owner's thread up
+ * to and including one message (by its row id), in one transaction. The
+ * history comes from the server's own rows, never from the client, so the
+ * branch carries exactly what was said; hydrateSession then gives the model
+ * that history on the branch's next turn.
+ * @returns {{ok:true, sessionId:string, title:string, copied:number} | {ok:false, error:string}}
+ */
+export function forkChatSession(db, { sessionId, ownerId, uptoId, newSessionId }) {
+  if (!db || !sessionId || !ownerId || !newSessionId) return { ok: false, error: "bad_request" };
+  const upto = Number(uptoId);
+  if (!Number.isInteger(upto) || upto <= 0) return { ok: false, error: "invalid_message" };
+  try {
+    const src = db.prepare(`SELECT owner_id, title, last_lens FROM chat_sessions WHERE session_id = ?`).get(sessionId);
+    if (!src) return { ok: false, error: "not_found" };
+    if (!src.owner_id || src.owner_id !== ownerId) return { ok: false, error: "forbidden" };
+    const at = db.prepare(`SELECT id FROM chat_messages WHERE session_id = ? AND id = ?`).get(sessionId, upto);
+    if (!at) return { ok: false, error: "message_not_in_session" };
+    if (db.prepare(`SELECT 1 FROM chat_sessions WHERE session_id = ?`).get(newSessionId)) return { ok: false, error: "session_exists" };
+    const rows = db.prepare(`SELECT role, content, ts, meta_json FROM chat_messages WHERE session_id = ? AND id <= ? ORDER BY id ASC`).all(sessionId, upto);
+    const title = `↳ ${src.title || "Conversation"}`.slice(0, TITLE_MAX_LEN);
+    const now = _now();
+    db.transaction(() => {
+      db.prepare(`INSERT INTO chat_sessions (session_id, owner_id, title, last_lens, created_at, updated_at, msg_count) VALUES (?, ?, ?, ?, ?, ?, ?)`)
+        .run(newSessionId, ownerId, title, src.last_lens || null, now, now, rows.length);
+      const ins = db.prepare(`INSERT INTO chat_messages (session_id, role, content, ts, meta_json) VALUES (?, ?, ?, ?, ?)`);
+      for (const r of rows) ins.run(newSessionId, r.role, r.content, r.ts, r.meta_json);
+    })();
+    return { ok: true, sessionId: newSessionId, title, copied: rows.length };
+  } catch (e) {
+    return { ok: false, error: String(e?.message || e) };
+  }
+}

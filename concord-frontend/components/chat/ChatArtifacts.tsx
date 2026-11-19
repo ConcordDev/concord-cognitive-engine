@@ -17,7 +17,7 @@ import { SongArtifactPlayer } from './SongArtifactPlayer';
 // three.js only loads when a reply actually carries a 3D model.
 const MeshArtifactView = dynamic(() => import('./MeshArtifactView'), {
   ssr: false,
-  loading: () => <div className="h-56 w-full animate-pulse rounded-lg bg-white/5" />,
+  loading: () => <div className="h-56 w-full animate-pulse rounded-lg bg-[var(--nb-wash,rgba(255,255,255,0.05))]" />,
 });
 
 export interface ChatArtifact {
@@ -96,11 +96,11 @@ export function ChatArtifacts({ artifacts }: { artifacts?: ChatArtifact[] }) {
         }
         if (kind === 'audio' && SAFE_SRC.test(src)) {
           return (
-            <div key={i} className="rounded-lg ring-1 ring-zinc-800 bg-zinc-900/50 p-3 space-y-2">
+            <div key={i} className="rounded-lg ring-1 ring-[color:var(--nb-rule,#27272a)] bg-[var(--nb-sheet,rgba(24,24,27,0.5))] p-3 space-y-2">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="text-sm font-medium text-zinc-100 truncate">{a.title || 'Audio'}</div>
-                  {a.artist && <div className="text-[11px] text-zinc-400">{a.artist}</div>}
+                  <div className="text-sm font-medium text-[color:var(--nb-ink,#f4f4f5)] truncate">{a.title || 'Audio'}</div>
+                  {a.artist && <div className="text-[11px] text-[color:var(--nb-muted,#a1a1aa)]">{a.artist}</div>}
                 </div>
                 <button
                   type="button"
@@ -111,7 +111,7 @@ export function ChatArtifacts({ artifacts }: { artifacts?: ChatArtifact[] }) {
                     artist: a.artist || 'Concord',
                     lens: 'chat',
                   })}
-                  className="flex items-center gap-1 px-2 py-1 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 text-xs"
+                  className="flex items-center gap-1 px-2 py-1 rounded bg-[var(--nb-hl,rgba(245,158,11,0.2))] hover:bg-[var(--nb-hl,rgba(245,158,11,0.3))] text-[color:var(--nb-ochre,#fbbf24)] text-xs"
                   title="Play in mini-player"
                 >
                   <Play className="w-3 h-3" />
@@ -124,12 +124,12 @@ export function ChatArtifacts({ artifacts }: { artifacts?: ChatArtifact[] }) {
         }
         if (kind === 'image' && (SAFE_SRC.test(src) || a.image_b64)) {
           return (
-            <div key={i} className="rounded-lg overflow-hidden ring-1 ring-zinc-800 max-w-md">
+            <div key={i} className="rounded-lg overflow-hidden ring-1 ring-[color:var(--nb-rule,#27272a)] max-w-md">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={src || `data:image/png;base64,${a.image_b64}`} alt={a.prompt || a.title || 'Generated image'} className="w-full h-auto" />
-              {a.prompt && <div className="px-3 py-1.5 text-[11px] text-zinc-400 bg-zinc-900">{a.prompt}</div>}
+              {a.prompt && <div className="px-3 py-1.5 text-[11px] text-[color:var(--nb-muted,#a1a1aa)] bg-[var(--nb-sheet,#18181b)]">{a.prompt}</div>}
               {typeof a.href === 'string' && /^\/lenses\/[\w-]+(?:[/?][\w\-=&%./?]*)?$/.test(a.href) && (
-                <a href={a.href} className="block px-3 py-1.5 text-[11px] font-medium text-sky-300 hover:text-sky-200 bg-zinc-900 border-t border-zinc-800">
+                <a href={a.href} className="block px-3 py-1.5 text-[11px] font-medium text-[color:var(--nb-blue,#7dd3fc)] hover:text-[color:var(--nb-blue,#bae6fd)] bg-[var(--nb-sheet,#18181b)] border-t border-[color:var(--nb-rule,#27272a)]">
                   Open in Art lens →
                 </a>
               )}
@@ -156,7 +156,7 @@ export function ChatArtifacts({ artifacts }: { artifacts?: ChatArtifact[] }) {
                 partRanges={a.partRanges}
                 engineering={a.engineering}
               />
-              <div className="text-[11px] text-zinc-400">
+              <div className="text-[11px] text-[color:var(--nb-muted,#a1a1aa)]">
                 {a.title || '3D model'}
                 {typeof a.triangleCount === 'number' ? ` · ${a.triangleCount} triangles` : ''}
                 {a.pass === true ? ' · passes' : a.pass === false ? ' · fails the check' : ''}

@@ -30,6 +30,7 @@ const apiGet = vi.fn();
 const apiPost = vi.fn();
 const apiPut = vi.fn();
 const apiDelete = vi.fn();
+const apiPatch = vi.fn();
 const feedbackFn = vi.fn();
 const forgeFn = vi.fn();
 const lensDeleteFn = vi.fn();
@@ -46,6 +47,7 @@ vi.mock('@/lib/api/client', () => ({
     post: (...a: unknown[]) => apiPost(...a),
     put: (...a: unknown[]) => apiPut(...a),
     delete: (...a: unknown[]) => apiDelete(...a),
+    patch: (...a: unknown[]) => apiPatch(...a),
   },
   apiHelpers: {
     cognitive: { status: () => cogStatusFn() },
@@ -210,14 +212,6 @@ vi.mock('@/components/chat/AnonNudge', () => ({
     </div>
   ),
 }));
-vi.mock('@/components/chat/BranchForkButton', () => ({
-  default: ({ onForked, onError }: { onForked: () => void; onError: () => void }) => (
-    <span>
-      <button onClick={onForked}>sync-fork</button>
-      <button onClick={onError}>sync-fork-fail</button>
-    </span>
-  ),
-}));
 vi.mock('@/components/chat/BYOKeyDrawer', () => ({
   default: ({ open }: { open: boolean }) => (open ? <div data-testid="byo-drawer" /> : null),
 }));
@@ -379,24 +373,6 @@ vi.mock('@/components/chat/ChatHandoffMenu', () => ({
     <button onClick={() => onNote('Handed off to mail draft.')}>handoff</button>
   ),
 }));
-vi.mock('@/components/chat/SyncedBranchesSection', () => ({
-  SyncedBranchesSection: ({ onOpen }: { onOpen: (b: unknown) => void }) => (
-    <button
-      onClick={() =>
-        onOpen({
-          id: 'sb1', sourceThreadId: 'conv-a', atMessageIdx: 1, note: 'Laptop fork',
-          seededMessages: [
-            { role: 'user', content: 'seed question' },
-            { role: 'assistant', content: 'seed answer', ts: '2026-01-01T00:00:00Z' },
-          ],
-          createdAt: '2026-01-01T00:00:00Z',
-        })
-      }
-    >
-      open-synced-branch
-    </button>
-  ),
-}));
 vi.mock('@/components/chat/ToolTraceBlock', () => ({
   ToolTraceBlock: ({ trace }: { trace: { domain: string; action: string } }) => (
     <div data-testid="tool-trace">{`${trace.domain}.${trace.action}`}</div>
@@ -455,7 +431,7 @@ function sseResponse(events: Array<Record<string, unknown>>) {
 }
 
 function seedConversations(
-  convs: Array<{ id: string; title: string; lastMessage?: string; messageCount?: number; updatedAt?: string }>,
+  convs: Array<{ id: string; title: string; lastMessage?: string; messageCount?: number; updatedAt?: string; lensContext?: string }>,
 ) {
   window.localStorage.setItem(
     CONV_KEY,
@@ -527,6 +503,7 @@ beforeEach(() => {
   });
   apiPost.mockReset().mockResolvedValue({ data: {} });
   apiPut.mockReset().mockResolvedValue({ data: {} });
+  apiPatch.mockReset().mockResolvedValue({ data: { ok: true } });
   feedbackFn.mockReset().mockResolvedValue({ data: {} });
   forgeFn.mockReset().mockResolvedValue({ data: { dtu: { id: 'dtu-9', title: 'Forged insight' } } });
   vi.mocked(lensRun).mockReset().mockResolvedValue({ data: { ok: true, result: {} } });
@@ -567,20 +544,22 @@ afterEach(() => {
 // ── tests ──────────────────────────────────────────────────────────────────
 
 describe('ChatWorkspacePanel — empty state', () => {
-  it('greets with a time-of-day line, the north-star subtitle and starter prompts', async () => {
+  it('opens on a blank dated page: a time-of-day greeting, the Notebook line and four starter cards', async () => {
     authState.user = { username: 'ada' };
     renderPanel();
-    expect(screen.getByText('How can I help you think today?')).toBeInTheDocument();
+    expect(screen.getByTestId('nb-blank-page')).toBeInTheDocument();
+    expect(screen.getByText(/A fresh page\. Ask anything/)).toBeInTheDocument();
+    expect(within(screen.getByTestId('nb-starters')).getAllByRole('button')).toHaveLength(4);
     expect(screen.getByRole('heading', { name: /(Good (morning|afternoon|evening), Ada|Up late, Ada\?)/ })).toBeInTheDocument();
     expect(composer().placeholder).toBe('Message Concord');
     // Send is disabled with nothing typed
     expect(screen.getByLabelText('Send message')).toBeDisabled();
   });
 
-  it('a starter chip fills the composer but does not send it', async () => {
+  it('a starter card fills the composer but does not send it', async () => {
     renderPanel();
-    fireEvent.click(screen.getByRole('button', { name: 'Help me outline a plan' }));
-    expect(composer().value).toBe('Help me outline a plan');
+    fireEvent.click(screen.getByRole('button', { name: /Cross-domain links/ }));
+    expect(composer().value).toBe('Show me the most interesting cross-domain connections in my knowledge base');
     expect(fetch).not.toHaveBeenCalledWith('/api/chat/stream', expect.anything());
   });
 
@@ -588,21 +567,6 @@ describe('ChatWorkspacePanel — empty state', () => {
     cogStatusFn.mockResolvedValue({ data: { llm: { enabled: false } } });
     renderPanel();
     expect(await screen.findByText(/Language model is offline/)).toBeInTheDocument();
-  });
-
-  it('renders cognitive status stats when present', async () => {
-    cogStatusFn.mockResolvedValue({
-      data: {
-        llm: { enabled: true },
-        experience: { episodes: 4, patterns: 12 },
-        attention: { activeThreads: 3 },
-        reflection: { calibration: 0.8, strengths: ['recall'] },
-      },
-    });
-    renderPanel();
-    expect(await screen.findByText('12 patterns')).toBeInTheDocument();
-    expect(screen.getByText('3 threads')).toBeInTheDocument();
-    expect(screen.getByText('80%')).toBeInTheDocument();
   });
 
   it('consumes ?context=<domain> from the URL into the domain badge', async () => {
@@ -923,7 +887,8 @@ describe('ChatWorkspacePanel — sending', () => {
   });
 
   it('sends with the selected persona as system prompt and a quoted message prefix', async () => {
-    seedConversations([{ id: 'conv-a', title: 'Alpha' }]);
+    // ?context=law opens the law thread (resolveAskThread), so conv-a is one.
+    seedConversations([{ id: 'conv-a', title: 'Alpha', lensContext: 'law' }]);
     window.localStorage.setItem(SESSION_KEY, 'conv-a');
     seedMessages('conv-a', [
       { id: 'm1', role: 'user', content: 'first q', timestamp: '2026-10-01T10:00:00Z' },
@@ -933,10 +898,10 @@ describe('ChatWorkspacePanel — sending', () => {
     renderPanel();
     expect(await screen.findByText('first answer')).toBeInTheDocument();
 
-    // pick a persona from the (header) persona picker
-    fireEvent.click(screen.getByTitle('Select persona'));
-    fireEvent.click(screen.getByRole('button', { name: /Socratic/i }));
-    expect(await screen.findByText(/Persona switched to:/)).toBeInTheDocument();
+    // pick a voice from the one "Answer as" picker
+    fireEvent.click(screen.getByTestId('nb-answer-as'));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: /Socratic/i }));
+    expect(screen.getByTestId('nb-answer-as')).toHaveTextContent(/Answer as\s*Socratic/);
 
     // quote the assistant answer
     fireEvent.click(screen.getAllByLabelText('Quote and reply')[1]);
@@ -1054,6 +1019,25 @@ describe('ChatWorkspacePanel — conversation drawer', () => {
     expect(screen.queryByDisplayValue('nope')).not.toBeInTheDocument();
   });
 
+  it('signed in, a rename is saved to the server; signed out it stays on this device', () => {
+    authState.isAuthenticated = true;
+    renderPanel();
+    fireEvent.click(screen.getByLabelText('Rename conversation: Alpha plans'));
+    const input = screen.getByDisplayValue('Alpha plans');
+    fireEvent.change(input, { target: { value: 'Alpha — final' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(apiPatch).toHaveBeenCalledWith('/api/chat/sessions/conv-a', { title: 'Alpha — final' });
+    cleanup();
+    apiPatch.mockClear();
+    authState.isAuthenticated = false;
+    renderPanel();
+    fireEvent.click(screen.getByLabelText('Rename conversation: Beta notes'));
+    const input2 = screen.getByDisplayValue('Beta notes');
+    fireEvent.change(input2, { target: { value: 'Beta two' } });
+    fireEvent.keyDown(input2, { key: 'Enter' });
+    expect(apiPatch).not.toHaveBeenCalled();
+  });
+
   it('deletes a conversation (server best-effort) and clears the open thread if it was selected', async () => {
     window.localStorage.setItem(SESSION_KEY, 'conv-a');
     apiDelete.mockRejectedValue(new Error('404'));
@@ -1071,7 +1055,7 @@ describe('ChatWorkspacePanel — conversation drawer', () => {
     expect(apiDelete).toHaveBeenCalledWith('/api/chat/sessions/conv-a');
     expect(window.localStorage.getItem(MSGS_PREFIX + 'conv-a')).toBeNull();
     expect(screen.queryByText('alpha message body')).not.toBeInTheDocument();
-    expect(screen.getByText('How can I help you think today?')).toBeInTheDocument();
+    expect(screen.getByTestId('nb-blank-page')).toBeInTheDocument();
   });
 
   it('New Chat resets to the empty canvas; backdrop click closes the drawer', async () => {
@@ -1080,7 +1064,7 @@ describe('ChatWorkspacePanel — conversation drawer', () => {
     await screen.findByText('alpha message body');
     fireEvent.click(screen.getByLabelText('Open conversations'));
     fireEvent.click(screen.getByRole('button', { name: 'New Chat' }));
-    expect(screen.getByText('How can I help you think today?')).toBeInTheDocument();
+    expect(screen.getByTestId('nb-blank-page')).toBeInTheDocument();
     expect(window.localStorage.getItem(SESSION_KEY)).toBeNull();
 
     fireEvent.click(screen.getByLabelText('Open conversations'));
@@ -1161,14 +1145,26 @@ describe('ChatWorkspacePanel — conversation drawer', () => {
     expect(cached).toHaveLength(2);
   });
 
-  it('authenticated users get BYO keys and synced branches in the drawer', () => {
+  it('authenticated users get BYO keys in the drawer', () => {
     authState.isAuthenticated = true;
     renderPanel();
     fireEvent.click(screen.getByLabelText('BYO API keys'));
     expect(screen.getByTestId('byo-drawer')).toBeInTheDocument();
-    fireEvent.click(screen.getByText('open-synced-branch'));
-    expect(within(thread()).getByText('seed answer')).toBeInTheDocument();
-    expect(screen.getByText('↳ Laptop fork')).toBeInTheDocument();
+  });
+
+  it('signed in, the server is the record: its session list replaces the device list', async () => {
+    authState.isAuthenticated = true;
+    seedConversations([{ id: 'conv-stale', title: 'Only on this device' }]);
+    fetchHandler = async (url) => {
+      if (url.startsWith('/api/chat/sessions')) {
+        return jsonResponse({ ok: true, sessions: [{ id: 'conv-srv', title: 'From the server', lens: 'chat', updated_at: Date.parse('2026-10-05T00:00:00Z'), created_at: 0, msg_count: 2 }] });
+      }
+      return jsonResponse({ ok: false });
+    };
+    renderPanel();
+    fireEvent.click(screen.getByLabelText('Open conversations'));
+    expect(await screen.findByText('From the server')).toBeInTheDocument();
+    expect(screen.queryByText('Only on this device')).not.toBeInTheDocument();
   });
 
   it('indexes the open thread for server-side search after a quiet period', async () => {
@@ -1370,15 +1366,40 @@ describe('ChatWorkspacePanel — message actions', () => {
     addToast.mockRestore();
   });
 
-  it('authenticated users can save a synced branch (success + failure toasts)', async () => {
+  it('signed in, branch-from-here forks on the server from the matching saved row', async () => {
     authState.isAuthenticated = true;
     const addToast = vi.spyOn(useUIStore.getState(), 'addToast');
+    apiGet.mockImplementation(async (url: string) => {
+      if (url.startsWith('/api/chat/messages')) return { data: { ok: true, messages: [
+        { id: 41, role: 'user', content: 'what is two plus two' },
+        { id: 42, role: 'assistant', content: 'It is four.' },
+      ] } };
+      return { data: {} };
+    });
+    apiPost.mockImplementation(async (url: string) => (url === '/api/chat/sessions/conv-a/fork'
+      ? { data: { ok: true, sessionId: 'chat-fork-1', title: '↳ Alpha plans', copied: 2 } }
+      : { data: {} }));
     renderPanel();
     await screen.findByText('It is four.');
-    fireEvent.click(screen.getByText('sync-fork'));
-    expect(addToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
-    fireEvent.click(screen.getByText('sync-fork-fail'));
-    expect(addToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+    fireEvent.click(screen.getAllByLabelText('Branch from here')[0]);
+    await waitFor(() => expect(apiPost).toHaveBeenCalledWith('/api/chat/sessions/conv-a/fork', { uptoId: 42 }));
+    await waitFor(() => expect(window.localStorage.getItem(SESSION_KEY)).toBe('chat-fork-1'));
+    expect(addToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'success', message: expect.stringMatching(/2 entries copied/) }));
+    addToast.mockRestore();
+  });
+
+  it('signed in, a message the server does not hold is not branched: an honest error, no fork call', async () => {
+    authState.isAuthenticated = true;
+    const addToast = vi.spyOn(useUIStore.getState(), 'addToast');
+    // The server's copy differs from what is on screen, so there is no row to branch from.
+    apiGet.mockImplementation(async (url: string) => (url.startsWith('/api/chat/messages')
+      ? { data: { ok: true, messages: [{ id: 41, role: 'user', content: 'something else' }, { id: 42, role: 'assistant', content: 'another answer' }] } }
+      : { data: {} }));
+    renderPanel();
+    await screen.findByText('It is four.');
+    fireEvent.click(screen.getAllByLabelText('Branch from here')[0]);
+    await waitFor(() => expect(addToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'error', message: expect.stringMatching(/not saved to your account yet/) })));
+    expect(apiPost).not.toHaveBeenCalledWith(expect.stringMatching(/\/fork$/), expect.anything());
     addToast.mockRestore();
   });
 });
@@ -1604,25 +1625,36 @@ describe('ChatWorkspacePanel — workspace menu + header', () => {
     expect(screen.getAllByTestId('tool-trace')).toHaveLength(2);
   });
 
-  it('header mode picker switches the AI mode used for sends', async () => {
+  it('the Answer-as picker switches the AI mode used for sends', async () => {
     renderPanel();
-    fireEvent.click(screen.getByLabelText('Choose mode'));
-    const menus = screen.getAllByRole('button', { name: /Code/ });
-    fireEvent.click(menus[menus.length - 1]);
-    expect(screen.getByLabelText('Choose mode')).toHaveAttribute('title', 'Mode: Code');
+    fireEvent.click(screen.getByTestId('nb-answer-as'));
+    const menu = screen.getByRole('menu', { name: 'Answer as' });
+    expect(within(menu).getByText('Ways of answering')).toBeInTheDocument();
+    expect(within(menu).getByText('Voices')).toBeInTheDocument();
+    fireEvent.click(within(menu).getAllByRole('menuitemradio', { name: /^Code/ })[0]);
+    expect(screen.getByTestId('nb-answer-as')).toHaveTextContent(/Answer as\s*Code/);
     send('fix my loop');
     await within(thread()).findByText('Hello there!');
     const streamCall = (fetch as ReturnType<typeof vi.fn>).mock.calls.find((c) => c[0] === '/api/chat/stream');
     expect(JSON.parse((streamCall![1] as RequestInit).body as string).mode).toBe('code');
   });
 
-  it('the classic header mode dropdown also switches the mode', () => {
+  it('your own assistants come first in Answer as, and picking one answers with its instructions', async () => {
+    vi.mocked(lensRun).mockImplementation(async (_d: string, action: string) => (action === 'assistants-list'
+      ? { data: { ok: true, result: { assistants: [{ id: 'a7', name: 'Tax helper', description: 'Mine', instructions: 'You answer tax questions.', model: 'research' }] } } }
+      : { data: { ok: true, result: {} } }) as never);
     renderPanel();
-    // the dense header button shows the current mode name ("Chat")
-    const headerBtn = screen.getAllByRole('button', { name: /^Chat$/ })[0];
-    fireEvent.click(headerBtn);
-    fireEvent.click(screen.getByRole('button', { name: /Research Research mode with citations/ }));
-    expect(screen.getByLabelText('Choose mode')).toHaveAttribute('title', 'Mode: Research');
+    fireEvent.click(screen.getByTestId('nb-answer-as'));
+    const mine = await screen.findByRole('menuitemradio', { name: /Tax helper/ });
+    const first = screen.getAllByRole('menuitemradio')[0];
+    expect(first).toBe(mine);
+    fireEvent.click(first);
+    send('my return');
+    await within(thread()).findByText('Hello there!');
+    const streamCall = (fetch as ReturnType<typeof vi.fn>).mock.calls.find((c) => c[0] === '/api/chat/stream');
+    const body = JSON.parse((streamCall![1] as RequestInit).body as string);
+    expect(body.mode).toBe('research');
+    expect(body.systemPrompt).toContain('You answer tax questions.');
   });
 });
 
@@ -1714,14 +1746,14 @@ describe('ChatWorkspacePanel — chat options menu (export / transcript / handof
 
     openOptions();
     fireEvent.click(screen.getByRole('button', { name: /New Conversation/ }));
-    expect(screen.getByText('How can I help you think today?')).toBeInTheDocument();
+    expect(screen.getByTestId('nb-blank-page')).toBeInTheDocument();
   });
 
   it('the header "+" starts a new conversation', async () => {
     renderPanel();
     await screen.findByText('exported answer');
     fireEvent.click(screen.getByLabelText('New conversation'));
-    expect(screen.getByText('How can I help you think today?')).toBeInTheDocument();
+    expect(screen.getByTestId('nb-blank-page')).toBeInTheDocument();
   });
 });
 
@@ -1850,8 +1882,8 @@ describe('ChatWorkspacePanel — slash commands', () => {
     send('/mode banana');
     expect(await screen.findByText(/Unknown mode "banana"/)).toBeInTheDocument();
     send('/mode');
-    // bare /mode opens the mode picker
-    expect(screen.getByLabelText('Choose mode')).toHaveAttribute('aria-expanded', 'true');
+    // bare /mode opens the Answer-as picker
+    expect(screen.getByTestId('nb-answer-as')).toHaveAttribute('aria-expanded', 'true');
   });
 
   it('/forge with no assistant reply says so; with one it forges the last reply', async () => {
@@ -1878,7 +1910,7 @@ describe('ChatWorkspacePanel — slash commands', () => {
     await screen.findByText('old stuff');
     send('/clear');
     expect(screen.queryByText('old stuff')).not.toBeInTheDocument();
-    expect(screen.getByText('How can I help you think today?')).toBeInTheDocument();
+    expect(screen.getByTestId('nb-blank-page')).toBeInTheDocument();
   });
 
   it('/export downloads the transcript', async () => {

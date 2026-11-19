@@ -119,26 +119,26 @@ function ToolCallCard({ call }: { call: ToolCall }) {
     <div className={`flex items-start gap-2.5 px-3 py-2 rounded-lg ring-1 ${
       call.ok ? 'bg-zinc-900/70 ring-zinc-800' : 'bg-red-950/30 ring-red-900/50'
     }`}>
-      <Icon className="w-4 h-4 mt-0.5 shrink-0 text-zinc-400" />
+      <Icon className="w-4 h-4 mt-0.5 shrink-0 text-[color:var(--nb-muted,#a1a1aa)]" />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-mono text-zinc-300">{call.tool}</span>
+          <span className="text-xs font-mono text-[color:var(--nb-ink-2,#d4d4d8)]">{call.tool}</span>
           {call.ok
-            ? <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
-            : <XCircle className="w-3 h-3 text-red-500 shrink-0" />}
+            ? <CheckCircle2 className="w-3 h-3 text-[color:var(--nb-green,#10b981)] shrink-0" />
+            : <XCircle className="w-3 h-3 text-[color:var(--nb-red,#ef4444)] shrink-0" />}
         </div>
         {summary && (
-          <div className="text-xs text-zinc-400 truncate" title={summary}>
+          <div className="text-xs text-[color:var(--nb-muted,#a1a1aa)] truncate" title={summary}>
             {summary}
           </div>
         )}
         {call.error && (
-          <div className="text-[11px] text-red-400 mt-0.5">{call.error}</div>
+          <div className="text-[11px] text-[color:var(--nb-red,#f87171)] mt-0.5">{call.error}</div>
         )}
         {call.dtuId && (
           <a
             href={`/dtu/${encodeURIComponent(call.dtuId)}`}
-            className="inline-flex items-center gap-1 text-[11px] text-amber-400 hover:text-amber-300 mt-0.5"
+            className="inline-flex items-center gap-1 text-[11px] text-[color:var(--nb-ochre,#fbbf24)] hover:text-[color:var(--nb-ochre,#fcd34d)] mt-0.5"
           >
             open DTU <ExternalLink className="w-3 h-3" />
           </a>
@@ -150,17 +150,17 @@ function ToolCallCard({ call }: { call: ToolCall }) {
 
 function providerBadge(provider: string | undefined, model: string | undefined): { label: string; color: string } | null {
   if (!provider || provider === 'concord_default') {
-    return { label: 'Concord (free Ollama)', color: 'bg-zinc-700 text-zinc-200' };
+    return { label: 'Concord (free Ollama)', color: 'bg-[var(--nb-wash-2,#3f3f46)] text-[color:var(--nb-ink,#e4e4e7)]' };
   }
   const labels: Record<string, string> = { anthropic: 'Claude', openai: 'GPT', xai: 'Grok', google: 'Gemini' };
   const colors: Record<string, string> = {
-    anthropic: 'bg-orange-600/85 text-orange-50',
-    openai: 'bg-emerald-600/85 text-emerald-50',
-    xai: 'bg-zinc-700 text-zinc-100',
-    google: 'bg-blue-600/85 text-blue-50',
+    anthropic: 'bg-[var(--nb-ochre,rgba(234,88,12,0.85))] text-[color:var(--nb-ochre,#fff7ed)]',
+    openai: 'bg-[var(--nb-green,rgba(5,150,105,0.85))] text-[color:var(--nb-green,#ecfdf5)]',
+    xai: 'bg-[var(--nb-wash-2,#3f3f46)] text-[color:var(--nb-ink,#f4f4f5)]',
+    google: 'bg-[var(--nb-blue,rgba(37,99,235,0.85))] text-[color:var(--nb-blue,#eff6ff)]',
   };
   const short = model?.replace(/^(claude|gpt|grok|gemini)-?/i, '') || '';
-  return { label: `${labels[provider] || provider}${short ? ` · ${short}` : ''}`, color: colors[provider] || 'bg-zinc-700' };
+  return { label: `${labels[provider] || provider}${short ? ` · ${short}` : ''}`, color: colors[provider] || 'bg-[var(--nb-wash-2,#3f3f46)]' };
 }
 
 interface AgentModePanelProps {
@@ -252,21 +252,21 @@ export default function AgentModePanel({ open, onClose }: AgentModePanelProps) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-y-0 right-0 z-40 w-[480px] max-w-[100vw] bg-zinc-950/97 backdrop-blur-md border-l border-zinc-800 shadow-2xl flex flex-col">
-      <header className="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
+    <div className="fixed inset-y-0 right-0 z-40 w-[480px] max-w-[100vw] bg-[var(--nb-paper,rgba(9,9,11,0.97))] backdrop-blur-md border-l border-[color:var(--nb-rule,#27272a)] shadow-2xl flex flex-col">
+      <header className="flex items-center justify-between px-5 py-4 border-b border-[color:var(--nb-rule,#27272a)]">
         <div className="flex items-center gap-2.5">
-          <Bot className="w-5 h-5 text-amber-400" />
+          <Bot className="w-5 h-5 text-[color:var(--nb-ochre,#fbbf24)]" />
           <div>
-            <h2 className="text-sm font-semibold text-zinc-100">Agent Mode</h2>
-            <p className="text-[11px] text-zinc-400">Tool-using assistant — 200+ apps, web, compute, citations</p>
+            <h2 className="text-sm font-semibold text-[color:var(--nb-ink,#f4f4f5)]">Agent Mode</h2>
+            <p className="text-[11px] text-[color:var(--nb-muted,#a1a1aa)]">Tool-using assistant — 200+ apps, web, compute, citations</p>
           </div>
         </div>
-        <button onClick={onClose} className="p-1.5 rounded-md text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800" aria-label="Close">
+        <button onClick={onClose} className="p-1.5 rounded-md text-[color:var(--nb-muted,#a1a1aa)] hover:text-[color:var(--nb-ink,#f4f4f5)] hover:bg-[var(--nb-wash,#27272a)]" aria-label="Close">
           <X className="w-4 h-4" />
         </button>
       </header>
 
-      <div className="flex border-b border-zinc-800 bg-zinc-900/40">
+      <div className="flex border-b border-[color:var(--nb-rule,#27272a)] bg-[var(--nb-sheet,rgba(24,24,27,0.4))]">
         <button
           onClick={() => setTab('quick')}
           className={`flex items-center gap-1.5 px-4 py-2 text-xs font-medium border-b-2 ${
@@ -289,13 +289,13 @@ export default function AgentModePanel({ open, onClose }: AgentModePanelProps) {
       <>
       <div className="flex-1 overflow-y-auto px-5 py-4 space-y-6">
         {conversation.length === 0 && (
-          <div className="text-center text-sm text-zinc-400 mt-12 px-4">
+          <div className="text-center text-sm text-[color:var(--nb-muted,#a1a1aa)] mt-12 px-4">
             <p className="mb-3">
               Tell Concord to do something. It can call web search, any of the 200+ lens domain
               actions (legal, finance, music, code, atlas, world…), run physics/math/chemistry
               compute, browse pages, mint cited DTUs.
             </p>
-            <p className="text-xs text-zinc-400">
+            <p className="text-xs text-[color:var(--nb-muted,#a1a1aa)]">
               Try: <span className="font-mono">&quot;Find the latest research on transformer
               attention, summarize cited, save as a DTU.&quot;</span>
             </p>
@@ -305,33 +305,33 @@ export default function AgentModePanel({ open, onClose }: AgentModePanelProps) {
           const badge = providerBadge(turn.agent.provider, turn.agent.model);
           return (
             <div key={i} className="space-y-3">
-              <div className="text-sm text-zinc-100 bg-amber-500/10 ring-1 ring-amber-700/30 px-3 py-2 rounded-lg">
+              <div className="text-sm text-[color:var(--nb-ink,#f4f4f5)] bg-[var(--nb-hl,rgba(245,158,11,0.1))] ring-1 ring-[color:var(--nb-ochre,rgba(180,83,9,0.3))] px-3 py-2 rounded-lg">
                 {turn.user}
               </div>
               {!turn.agent.ok && !busy && (
-                <div className="text-xs text-red-400 px-3">
+                <div className="text-xs text-[color:var(--nb-red,#f87171)] px-3">
                   {turn.agent.error || 'Agent failed.'}
                 </div>
               )}
               {(turn.agent.toolCalls || []).length > 0 && (
-                <div className="space-y-1.5 ml-2 border-l-2 border-zinc-800 pl-3">
+                <div className="space-y-1.5 ml-2 border-l-2 border-[color:var(--nb-rule,#27272a)] pl-3">
                   {turn.agent.toolCalls!.map((c, ci) => (
                     <ToolCallCard key={ci} call={c} />
                   ))}
                 </div>
               )}
               {turn.agent.answer && (
-                <div className="text-sm text-zinc-100 leading-relaxed whitespace-pre-wrap px-1">
+                <div className="text-sm text-[color:var(--nb-ink,#f4f4f5)] leading-relaxed whitespace-pre-wrap px-1">
                   {turn.agent.answer}
                 </div>
               )}
               {(turn.agent.artifacts || []).length > 0 && (
                 <div className="space-y-2 px-1">
-                  <span className="text-[10px] uppercase tracking-wide text-zinc-400">Artifacts</span>
+                  <span className="text-[10px] uppercase tracking-wide text-[color:var(--nb-muted,#a1a1aa)]">Artifacts</span>
                   {turn.agent.artifacts!.map((a, ai) => {
                     if (a.kind === 'image' && (a.url || a.image_b64)) {
                       return (
-                        <div key={ai} className="rounded-lg overflow-hidden ring-1 ring-zinc-800">
+                        <div key={ai} className="rounded-lg overflow-hidden ring-1 ring-[color:var(--nb-rule,#27272a)]">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={a.url || `data:image/png;base64,${a.image_b64}`}
@@ -339,9 +339,9 @@ export default function AgentModePanel({ open, onClose }: AgentModePanelProps) {
                             className="w-full h-auto"
                           />
                           {a.prompt && (
-                            <div className="px-3 py-1.5 text-[11px] text-zinc-400 bg-zinc-900">
+                            <div className="px-3 py-1.5 text-[11px] text-[color:var(--nb-muted,#a1a1aa)] bg-[var(--nb-sheet,#18181b)]">
                               {a.prompt}
-                              {a.source && <span className="ml-2 text-zinc-600">via {a.source}</span>}
+                              {a.source && <span className="ml-2 text-[color:var(--nb-faint,#52525b)]">via {a.source}</span>}
                             </div>
                           )}
                         </div>
@@ -349,18 +349,18 @@ export default function AgentModePanel({ open, onClose }: AgentModePanelProps) {
                     }
                     if (a.kind === 'video') {
                       return (
-                        <div key={ai} className="rounded-lg overflow-hidden ring-1 ring-zinc-800 bg-zinc-900">
+                        <div key={ai} className="rounded-lg overflow-hidden ring-1 ring-[color:var(--nb-rule,#27272a)] bg-[var(--nb-sheet,#18181b)]">
                           {a.url ? (
                             <video src={a.url} controls className="w-full h-auto" />
                           ) : (
-                            <div className="px-3 py-4 text-xs text-zinc-400 flex items-center gap-2">
+                            <div className="px-3 py-4 text-xs text-[color:var(--nb-muted,#a1a1aa)] flex items-center gap-2">
                               <Loader2 className="w-3 h-3 animate-spin" />
                               video generating (job {a.jobId})… polls auto-update
                             </div>
                           )}
                           {a.prompt && (
-                            <div className="px-3 py-1.5 text-[11px] text-zinc-400">
-                              {a.prompt}{a.source && <span className="ml-2 text-zinc-600">via {a.source}</span>}
+                            <div className="px-3 py-1.5 text-[11px] text-[color:var(--nb-muted,#a1a1aa)]">
+                              {a.prompt}{a.source && <span className="ml-2 text-[color:var(--nb-faint,#52525b)]">via {a.source}</span>}
                             </div>
                           )}
                         </div>
@@ -384,14 +384,14 @@ export default function AgentModePanel({ open, onClose }: AgentModePanelProps) {
                     }
                     if (a.kind === 'audio' && a.url) {
                       return (
-                        <div key={ai} className="rounded-lg ring-1 ring-zinc-800 bg-zinc-900/50 p-3 space-y-2">
+                        <div key={ai} className="rounded-lg ring-1 ring-[color:var(--nb-rule,#27272a)] bg-[var(--nb-sheet,rgba(24,24,27,0.5))] p-3 space-y-2">
                           <div className="flex items-center justify-between gap-3">
                             <div className="min-w-0">
-                              <div className="text-sm font-medium text-zinc-100 truncate">
+                              <div className="text-sm font-medium text-[color:var(--nb-ink,#f4f4f5)] truncate">
                                 {a.title || 'Audio'}
                               </div>
                               {a.artist && (
-                                <div className="text-[11px] text-zinc-400">{a.artist}</div>
+                                <div className="text-[11px] text-[color:var(--nb-muted,#a1a1aa)]">{a.artist}</div>
                               )}
                             </div>
                             <button
@@ -402,7 +402,7 @@ export default function AgentModePanel({ open, onClose }: AgentModePanelProps) {
                                 artist: a.artist || 'Concord',
                                 lens: 'chat',
                               })}
-                              className="flex items-center gap-1 px-2 py-1 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 text-xs"
+                              className="flex items-center gap-1 px-2 py-1 rounded bg-[var(--nb-hl,rgba(245,158,11,0.2))] hover:bg-[var(--nb-hl,rgba(245,158,11,0.3))] text-[color:var(--nb-ochre,#fbbf24)] text-xs"
                               title="Play in mini-player"
                             >
                               <Play className="w-3 h-3" />
@@ -418,7 +418,7 @@ export default function AgentModePanel({ open, onClose }: AgentModePanelProps) {
                         <a
                           key={ai}
                           href={`/lenses/${a.kind === 'dtu' ? 'dtu' : 'world'}?id=${encodeURIComponent(a.id)}`}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 mr-1 rounded bg-zinc-800 hover:bg-zinc-700 text-amber-400 text-xs"
+                          className="inline-flex items-center gap-1 px-2 py-0.5 mr-1 rounded bg-[var(--nb-wash,#27272a)] hover:bg-[var(--nb-wash-2,#3f3f46)] text-[color:var(--nb-ochre,#fbbf24)] text-xs"
                         >
                           <FileText className="w-3 h-3" />
                           {a.title || a.id}
@@ -430,7 +430,7 @@ export default function AgentModePanel({ open, onClose }: AgentModePanelProps) {
                 </div>
               )}
               {(badge || turn.agent.turns) && turn.agent.ok && (
-                <div className="flex items-center gap-2 text-[10px] text-zinc-400 px-1">
+                <div className="flex items-center gap-2 text-[10px] text-[color:var(--nb-muted,#a1a1aa)] px-1">
                   {badge && (
                     <span className={`px-1.5 py-0.5 rounded ${badge.color}`}>{badge.label}</span>
                   )}
@@ -443,21 +443,21 @@ export default function AgentModePanel({ open, onClose }: AgentModePanelProps) {
           );
         })}
         {busy && (
-          <div className="flex items-center gap-2 text-xs text-zinc-400 px-1">
+          <div className="flex items-center gap-2 text-xs text-[color:var(--nb-muted,#a1a1aa)] px-1">
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
             agent working…
           </div>
         )}
       </div>
 
-      <footer className="border-t border-zinc-800 px-5 py-4 space-y-2">
-        <div className="flex items-center gap-2 text-[10px] text-zinc-400">
+      <footer className="border-t border-[color:var(--nb-rule,#27272a)] px-5 py-4 space-y-2">
+        <div className="flex items-center gap-2 text-[10px] text-[color:var(--nb-muted,#a1a1aa)]">
           <Cpu className="w-3 h-3" />
           <span>brain slot:</span>
           <select
             value={slot}
             onChange={e => setSlot(e.target.value)}
-            className="bg-zinc-900 text-zinc-200 ring-1 ring-zinc-800 rounded px-1.5 py-0.5 text-[11px] focus:ring-amber-500 focus:outline-none"
+            className="bg-[var(--nb-sheet,#18181b)] text-[color:var(--nb-ink,#e4e4e7)] ring-1 ring-[color:var(--nb-rule,#27272a)] rounded px-1.5 py-0.5 text-[11px] focus:ring-[color:var(--nb-ochre,#f59e0b)] focus:outline-none"
             title="Which brain slot to use — your BYO key for that slot routes inference; otherwise Concord default Ollama"
           >
             <option value="conscious">conscious (default)</option>
@@ -466,7 +466,7 @@ export default function AgentModePanel({ open, onClose }: AgentModePanelProps) {
             <option value="repair">repair</option>
             <option value="vision">vision (image input)</option>
           </select>
-          <Link href="/lenses/byo-keys" className="ml-auto text-amber-400 hover:text-amber-300">configure keys</Link>
+          <Link href="/lenses/byo-keys" className="ml-auto text-[color:var(--nb-ochre,#fbbf24)] hover:text-[color:var(--nb-ochre,#fcd34d)]">configure keys</Link>
         </div>
         <div className="flex items-end gap-2">
           <textarea
@@ -477,7 +477,7 @@ export default function AgentModePanel({ open, onClose }: AgentModePanelProps) {
             }}
             placeholder="Tell Concord to do something… (⌘↵ to send)"
             rows={2}
-            className="flex-1 px-3 py-2 rounded-lg bg-zinc-900 text-zinc-100 text-sm ring-1 ring-zinc-800 focus:ring-amber-500 focus:outline-none resize-none"
+            className="flex-1 px-3 py-2 rounded-lg bg-[var(--nb-sheet,#18181b)] text-[color:var(--nb-ink,#f4f4f5)] text-sm ring-1 ring-[color:var(--nb-rule,#27272a)] focus:ring-[color:var(--nb-ochre,#f59e0b)] focus:outline-none resize-none"
           />
           <button
             onClick={listening ? stopListening : startListening}
@@ -491,7 +491,7 @@ export default function AgentModePanel({ open, onClose }: AgentModePanelProps) {
           <button
             onClick={submit}
             disabled={busy || !prompt.trim()}
-            className="p-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-amber-50 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+            className="p-2 rounded-lg bg-[var(--nb-ochre,#f59e0b)] hover:bg-[var(--nb-ochre,#fbbf24)] text-[color:var(--nb-ochre,#fffbeb)] disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
             title="Send (⌘↵)"
           >
             <Send className="w-4 h-4" />

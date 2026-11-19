@@ -5,20 +5,13 @@
  *
  * Owns thread state, composer, and ONE `overlay` union for
  * secondary panels (projects / prompts / tools / search / studio / …).
- * Page.tsx is the thin shell that owns the ONE view-state machine (`active`).
+ * The Notebook (Chat lens). Page.tsx is a thin shell; this panel is the app.
  */
 
 import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import Image from 'next/image';
-import { HackerNewsReference } from '@/components/chat/HackerNewsReference';
-import { ExternalReferenceLocale } from '@/components/lens/ExternalReferenceLocale';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useTilePush } from '@/hooks/useTilePush';
-import { MobileTabBar } from '@/components/mobile/MobileTabBar';
-import {
-  Bot as MTabChat, MessageSquare as MTabConvos, Search as MTabSearch,
-  Command as MTabTools, Clock as MTabSched, Folder as MTabProj,
-} from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
@@ -31,7 +24,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Send,
   Paperclip,
-  Smile,
+
   Pencil,
   MoreVertical,
   Search,
@@ -44,13 +37,10 @@ import {
   ThumbsUp,
   ThumbsDown,
   FileText,
-  Brain,
-  ChevronDown,
+
   MessageSquare,
   Zap,
-  Eye,
-  Activity,
-  CheckCircle2,
+
   Pin,
   Quote,
   X,
@@ -58,7 +48,7 @@ import {
   Globe,
   Trash2,
   Download,
-  Users,
+
   Check,
   ExternalLink,
   Layers,
@@ -73,17 +63,11 @@ import { cn } from '@/lib/utils';
 // ConKay is its own lens (/lenses/conkay); choosing it here routes there.
 import { useRouter } from 'next/navigation';
 import { conkayWorkspaceHref } from '@/lib/conkay/workspace-link';
-import { SessionContextBadge } from '@/components/conkay/SessionContextBadge';
 import { formatBytes } from '@/lib/utils';
-import { useLensDTUs } from '@/hooks/useLensDTUs';
-import { LensContextPanel } from '@/components/lens/LensContextPanel';
-import { ArtifactUploader } from '@/components/artifact/ArtifactUploader';
-import { FeedbackWidget } from '@/components/feedback/FeedbackWidget';
 import { DTUDetailView } from '@/components/dtu/DTUDetailView';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import MessageRenderer from '@/components/chat/MessageRenderer';
-import { SyncedBranchesSection, type SyncedBranch } from '@/components/chat/SyncedBranchesSection';
 import { ChatHandoffMenu } from '@/components/chat/ChatHandoffMenu';
 import OracleResponse from '@/components/chat/OracleResponse';
 import { ToolCallCard } from '@/components/chat/ToolCallCard';
@@ -93,7 +77,6 @@ import ComputeBadge from '@/components/chat/ComputeBadge';
 import LowConfidenceTag from '@/components/chat/LowConfidenceTag';
 import CitationChips from '@/components/chat/CitationChips';
 import AnonNudge from '@/components/chat/AnonNudge';
-import BranchForkButton from '@/components/chat/BranchForkButton';
 import BYOKeyDrawer from '@/components/chat/BYOKeyDrawer';
 import { useAuth } from '@/hooks/useAuth';
 import { ReasoningIndicator } from '@/components/chat/ReasoningIndicator';
@@ -105,20 +88,10 @@ import PromptsLibrary from '@/components/chat/PromptsLibrary';
 import ThreadSearchOverlay from '@/components/chat/ThreadSearchOverlay';
 import ScheduledTasksPanel from '@/components/chat/ScheduledTasksPanel';
 import ChatStudioPanel, { type StudioMessage } from '@/components/chat/ChatStudioPanel';
-import {
-  WelcomePanel,
-  AssistPanel,
-  ExplorePanel,
-  ConnectPanel,
-  ModeSelector,
-  ChatPanel as ChatModePanel,
-} from '@/components/chat/ChatModePanels';
 import ChatRouteOverlay from '@/components/chat/ChatRouteOverlay';
 import { ContextOverlay } from '@/components/chat/ContextOverlay';
 import ForgeCard from '@/components/chat/ForgeCard';
-import FoundationCard from '@/components/chat/FoundationCard';
 import { SessionSidebar } from '@/components/chat/SessionSidebar';
-import { BrainModePanel } from '@/components/byo-keys/BrainModePanel';
 // ── Systems panels ─────────────────────────────────────────────
 // These five panels round-trip through the /api/chat cognitive
 // pipeline and surface system-level context alongside the
@@ -148,9 +121,21 @@ import {
 } from '@/components/chat/chatLocalStore';
 import { chatFailure, streamResult } from '@/components/chat/chatStreamResult';
 import { AI_MODES, PERSONAS, SLASH_COMMANDS } from '@/components/chat/ChatModeConfig';
+import { notebookFontVars } from '@/components/chat/notebook/notebookFonts';
+import { AnswerAsPicker } from '@/components/chat/notebook/AnswerAsPicker';
+import '@/components/chat/notebook/notebook.css';
+
+/** Starter cards on an empty page: the prompts the old Assist / Explore / Welcome rail held. */
 import { ToolTraceBlock } from '@/components/chat/ToolTraceBlock';
-import type { ChatMode } from '@/components/chat/ChatModeTypes';
 import { getTimeOfDayGreeting } from '@/components/chat/claudeCleanGreeting';
+
+/** The blank page's starters: the old rail modes' real prompts. */
+const STARTERS: { kind: string; title: string; prompt: string }[] = [
+  { kind: 'Catch up', title: 'What’s new?', prompt: 'What’s new in my substrate since my last visit?' },
+  { kind: 'Find', title: 'Search my knowledge', prompt: 'Search my knowledge base. What would you like to find?' },
+  { kind: 'Connect', title: 'Cross-domain links', prompt: 'Show me the most interesting cross-domain connections in my knowledge base' },
+  { kind: 'Fill gaps', title: 'Knowledge gaps', prompt: 'What knowledge gaps exist in my substrate that I should consider filling?' },
+];
 
 import { AssistantMoodChip } from '@/components/chat/AssistantMoodChip';
 import { ToolPalette } from '@/components/chat/ToolPalette';
@@ -192,6 +177,8 @@ interface Attachment {
 
 interface Message {
   id: string;
+  /** chat_messages row id when the message came from the server (what a branch points at). */
+  serverId?: number;
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: string;
@@ -316,10 +303,6 @@ interface SlashCommand {
 // Component
 // ──────────────────────────────────────────────
 
-export interface ChatWorkspacePanelProps {
-  active: ChatMode;
-  onActiveChange: (mode: ChatMode) => void;
-}
 
 /**
  * Streaming / thinking indicators ride inside the Virtuoso scroller as its
@@ -332,27 +315,25 @@ function ChatThreadFooter({ context }: { context?: { footer: React.ReactNode } }
   return <>{context?.footer ?? null}</>;
 }
 
-export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePanelProps) {
+/** The Notebook owns its own state, so it takes no props. */
+export type ChatWorkspacePanelProps = Record<string, never>;
+
+export function ChatWorkspacePanel(_props: ChatWorkspacePanelProps = {}) {
   // Phase 12 (Item 8 cont.) — flash on chat completion + multi-device
   // message saves. Excludes chat:token / chat:status because those fire
   // once per streamed token and would strobe the surface.
   useTilePush({ lensId: 'chat', events: ['chat:complete', 'message:saved'] });
   const queryClient = useQueryClient();
 
-  const {
-    hyperDTUs,
-    megaDTUs,
-    regularDTUs,
-    tierDistribution,
-    publishToMarketplace,
-    refetch: refetchDTUs,
-  } = useLensDTUs({ lens: 'chat' });
 
   // Existing state
   const [input, setInput] = useState('');
   const [selectedConversation, setSelectedConversation] = useState<string | null>(() =>
     loadSessionId()
   );
+  // Signed in, the server is the record (owner decision 2026-11-19): conversations,
+  // messages, titles and branches live there; this device keeps only a cache.
+  const { isAuthenticated, user } = useAuth();
   const [aiMode, setAiMode] = useState<AIMode>(AI_MODES[0]);
   const router = useRouter();
   // ConKay is its own lens: choosing it here opens /lenses/conkay (carrying
@@ -491,7 +472,6 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
   // so the header reads as a chat app, not a cockpit. Primary controls (AI mode,
   // persona, domain badge, mood) stay inline.
   const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
-  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
   const [renamingConversation, setRenamingConversation] = useState<string | null>(null);
@@ -513,32 +493,32 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
         if (!res.ok) return;
         const json = await res.json() as { ok: boolean; sessions?: Array<{ id: string; title: string | null; lens: string | null; updated_at: number; created_at: number; msg_count: number }> };
         if (cancelled || !json.ok || !Array.isArray(json.sessions)) return;
+        // The server is the record: its list replaces the device's (a
+        // conversation deleted on another device does not come back from
+        // this one's cache). Local previews fill in what the list omits.
         setStoredConversations((prev) => {
           const localById = new Map(prev.map((c) => [c.id, c]));
-          for (const s of json.sessions!) {
+          const next: Conversation[] = json.sessions!.map((s) => {
             const existing = localById.get(s.id);
-            const remote: Conversation = {
+            return {
               id: s.id,
-              title: existing?.title || s.title || 'New conversation',
+              title: s.title || existing?.title || 'New conversation',
               lastMessage: existing?.lastMessage || '',
               updatedAt: new Date(s.updated_at).toISOString(),
-              messageCount: s.msg_count || existing?.messageCount || 0,
+              messageCount: s.msg_count || 0,
             };
-            localById.set(s.id, remote);
-          }
-          return Array.from(localById.values()).sort((a, b) =>
-            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-          );
+          });
+          saveConversations(next);
+          return next;
         });
       } catch { /* anon or offline — sidebar stays localStorage-only */ }
     })();
     return () => { cancelled = true; };
   // Re-fetch when auth flips (login → cross-device sessions appear).
-  }, []);
+  }, [isAuthenticated]);
 
   // New state — Persona picker
   const [selectedPersona, setSelectedPersona] = useState<Persona>(PERSONAS[0]);
-  const [personaPickerOpen, setPersonaPickerOpen] = useState(false);
 
   // New state — Slash commands
   const [slashMenuOpen, setSlashMenuOpen] = useState(false);
@@ -787,15 +767,17 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
     if (saved.length > 0) {
       setLocalMessages(saved);
       setThreadLoading(false);
-      return;
+      // Signed out, this device is the record. Signed in, the cache only
+      // paints first; the server's copy below is the one that counts.
+      if (!isAuthenticated) return;
     }
     // FIX-chat-001: the ids the thread holds as the fetch starts belong
     // to the previous selection; a send completing mid-fetch appends to
     // the live thread, and hydration must merge around those appends
     // (see mergeHydratedThread), never replace them away.
-    const baseIds = new Set(localMessages.map((m) => m.id));
+    const baseIds = new Set([...localMessages, ...saved].map((m) => m.id));
     let cancelled = false;
-    setThreadLoading(true);
+    if (!saved.length) setThreadLoading(true);
     (async () => {
       try {
         const res = await fetch(
@@ -803,7 +785,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
           { credentials: 'include' }
         );
         if (!res.ok || cancelled) return;
-        const json = await res.json() as { ok: boolean; messages?: Array<{ role: string; content: string; ts: string; meta?: Record<string, unknown> }> };
+        const json = await res.json() as { ok: boolean; messages?: Array<{ id?: number; role: string; content: string; ts: string; meta?: Record<string, unknown> }> };
         if (cancelled || !json.ok || !Array.isArray(json.messages)) return;
         // Hydrate into Message[] shape; meta carries computed/dtuRefs/toolCalls
         // we previously persisted so chip + badge surfaces re-render identically.
@@ -811,6 +793,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
           const meta = (m.meta || {}) as Record<string, unknown>;
           return {
             id: `hyd-${selectedConversation}-${i}-${m.ts}`,
+            serverId: typeof m.id === 'number' ? m.id : undefined,
             role: meta.code === "ai_unavailable"
               ? "system"
               : ((m.role === 'assistant' || m.role === 'system') ? m.role : 'user'),
@@ -828,14 +811,15 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
             confidenceReason: typeof meta.answerConfidenceReason === 'string' ? meta.answerConfidenceReason : undefined,
           };
         });
-        setLocalMessages((prev) => mergeHydratedThread(hydrated, prev, baseIds));
+        setLocalMessages((prev) => mergeHydratedThread(hydrated, prev.filter((m) => !saved.some((x) => x.id === m.id)), baseIds));
         // Backfill localStorage so the next open is hot-path again.
         try { saveMessagesForSession(selectedConversation, hydrated as ChatMessageLike[]); } catch { /* private mode */ }
       } catch { /* anon, offline, or 403 — leave empty */ }
       finally { if (!cancelled) setThreadLoading(false); }
     })();
     return () => { cancelled = true; };
-  }, [selectedConversation]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedConversation, isAuthenticated]);
 
   // Persist messages whenever they change (debounced via the conversation id)
   useEffect(() => {
@@ -934,7 +918,6 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
     try { return typeof window !== 'undefined' && localStorage.getItem('concord_anon_nudge_dismissed') === '1'; }
     catch { return false; }
   });
-  const { isAuthenticated, user } = useAuth();
 
   // Chat storage is per browser: when a different account signs in, drop the
   // previous account's session so the first send is not refused.
@@ -1885,7 +1868,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${title.replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().slice(0, 10)}.md`;
+    a.download = `${title.replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'conversation'}-${new Date().toISOString().slice(0, 10)}.md`;
     a.click();
     URL.revokeObjectURL(url);
     setMoreMenuOpen(false);
@@ -1912,9 +1895,44 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
   // continue from there.  Mirrors Claude.ai's edit-rewind / ChatGPT's
   // "fork from here" behaviour, but as an explicit user action so the
   // original thread is preserved.
-  const handleBranchFromMessage = useCallback((messageId: string) => {
+  const handleBranchFromMessage = useCallback(async (messageId: string) => {
     const idx = messages.findIndex((m) => m.id === messageId);
     if (idx === -1) return;
+    if (isAuthenticated && selectedConversation) {
+      // Signed in: the branch is a real conversation on the server, copied from
+      // the server's own rows. A message sent this session has no row id yet,
+      // so read the thread back and take the row at the same position, but only
+      // if it is the same message (same role and text).
+      const target = messages[idx];
+      let rowId = target.serverId;
+      if (!rowId) {
+        try {
+          const r = await api.get(`/api/chat/messages?sessionId=${encodeURIComponent(selectedConversation)}&limit=500`);
+          const rows = (r.data?.messages || []) as Array<{ id?: number; role: string; content: string }>;
+          const convo = messages.filter((m) => m.role === 'user' || m.role === 'assistant');
+          const pos = convo.findIndex((m) => m.id === messageId);
+          const row = pos >= 0 ? rows.filter((x) => x.role === 'user' || x.role === 'assistant')[pos] : undefined;
+          if (row && row.role === target.role && row.content === target.content) rowId = row.id;
+        } catch { /* fall through to the message below */ }
+      }
+      if (!rowId) {
+        useUIStore.getState().addToast({ type: 'error', message: 'That message is not saved to your account yet, so there is nothing to branch from. Try again in a moment.' });
+        return;
+      }
+      try {
+        const r = await api.post(`/api/chat/sessions/${encodeURIComponent(selectedConversation)}/fork`, { uptoId: rowId });
+        const forked = r.data as { ok?: boolean; sessionId?: string; title?: string; copied?: number };
+        if (!forked?.ok || !forked.sessionId) throw new Error('fork failed');
+        const newConv: Conversation = { id: forked.sessionId, title: forked.title || 'Branch', lastMessage: target.content.slice(0, 100), updatedAt: new Date().toISOString(), messageCount: forked.copied || idx + 1 };
+        setStoredConversations((prev) => { const next = [newConv, ...prev]; saveConversations(next); return next; });
+        setSelectedConversation(forked.sessionId);
+        setMoreMenuOpen(false);
+        useUIStore.getState().addToast({ type: 'success', message: `Branched: ${forked.copied} entries copied into a new conversation.` });
+      } catch {
+        useUIStore.getState().addToast({ type: 'error', message: 'The branch could not be made on the server.' });
+      }
+      return;
+    }
     const slice = messages.slice(0, idx + 1).map((m) => ({ ...m, id: `${m.id}-b${Date.now().toString(36)}` }));
     const newId = generateUUID();
     const sourceTitle = conversations.find((c) => c.id === selectedConversation)?.title || 'Conversation';
@@ -1934,32 +1952,8 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
     setSelectedConversation(newId);
     setLocalMessages(slice);
     setMoreMenuOpen(false);
-  }, [messages, conversations, selectedConversation]);
+  }, [messages, conversations, selectedConversation, isAuthenticated]);
 
-  const openSyncedBranch = useCallback((branch: SyncedBranch) => {
-    const stamp = Date.now().toString(36);
-    const slice: Message[] = branch.seededMessages.map((m, i) => ({
-      id: `${branch.id}-${i}-${stamp}`, role: m.role, content: m.content, timestamp: m.ts || branch.createdAt,
-    }));
-    const sourceTitle = conversations.find((c) => c.id === branch.sourceThreadId)?.title || 'Synced branch';
-    const newId = generateUUID();
-    const newConv: Conversation = {
-      id: newId,
-      title: `↳ ${branch.note || sourceTitle}`,
-      lastMessage: slice[slice.length - 1]?.content?.slice(0, 100) || '',
-      updatedAt: new Date().toISOString(),
-      messageCount: slice.length,
-    };
-    setStoredConversations((prev) => {
-      const next = [newConv, ...prev];
-      saveConversations(next);
-      return next;
-    });
-    saveMessagesForSession(newId, slice as ChatMessageLike[]);
-    setSelectedConversation(newId);
-    setLocalMessages(slice);
-  }, [conversations]);
-  const [syncedBranchesKey, setSyncedBranchesKey] = useState(0);
 
   // Global message search — scans every conversation in localStorage,
   // not just the current one.  Closes the gap with Claude.ai/ChatGPT
@@ -2003,8 +1997,8 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
     requestAnimationFrame(() => {
       const el = document.getElementById(`msg-${messageId}`);
       el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      el?.classList.add('ring-2', 'ring-neon-cyan');
-      setTimeout(() => el?.classList.remove('ring-2', 'ring-neon-cyan'), 1500);
+      el?.classList.add('ring-2', 'ring-[color:var(--nb-blue,#00fff7)]');
+      setTimeout(() => el?.classList.remove('ring-2', 'ring-[color:var(--nb-blue,#00fff7)]'), 1500);
     });
   }, []);
 
@@ -2288,6 +2282,13 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
 
   const saveRenameConversation = useCallback(() => {
     if (!renamingConversation || !renameValue.trim()) return;
+    if (isAuthenticated) {
+      const id = renamingConversation;
+      const title = renameValue.trim();
+      void api.patch(`/api/chat/sessions/${encodeURIComponent(id)}`, { title }).catch(() => {
+        useUIStore.getState().addToast({ type: 'error', message: 'The new name was not saved to your account.' });
+      });
+    }
     setStoredConversations((prev) => {
       const next = prev.map((c) =>
         c.id === renamingConversation ? { ...c, title: renameValue.trim() } : c
@@ -2297,11 +2298,8 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
     });
     setRenamingConversation(null);
     setRenameValue('');
-  }, [renamingConversation, renameValue]);
+  }, [renamingConversation, renameValue, isAuthenticated]);
 
-  const exp = cogStatus?.experience;
-  const attn = cogStatus?.attention;
-  const refl = cogStatus?.reflection;
 
   // ──────────────────────────────────────────────
   // Message renderer
@@ -2377,8 +2375,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
         : '';
       // Real index within the flat `messages` array (NOT `msgIdx`, which is
       // an index into the mixed thread-item list that also carries
-      // initiative chips / tool traces) — this is what the server-side
-      // `chat.branch-fork` macro needs to slice history up to this point.
+      // initiative chips / tool traces): the entry's number in the margin.
       const forkIdx = messages.findIndex((m) => m.id === message.id);
 
       return (
@@ -2387,16 +2384,18 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.25, ease: 'easeOut' }}
+          data-role={message.role}
           className={cn(
-            'flex gap-4 px-4 lg:px-6 py-3 group relative rounded transition-all w-full max-w-4xl mx-auto',
-            message.role === 'user' ? 'flex-row-reverse' : '',
-            isPinned && 'bg-yellow-500/5 border-l-2 border-l-yellow-500/50'
+            'nb-entry flex gap-4 py-3 group relative transition-all w-full',
+            isPinned && 'bg-[var(--nb-hl,rgba(234,179,8,0.05))] border-l-2 border-l-yellow-500/50'
           )}
         >
-          <div className={cn('flex-1 max-w-2xl', message.role === 'user' ? 'text-right' : '')}>
+          {forkIdx >= 0 && <span className="nb-entry-no" aria-hidden>{forkIdx + 1}</span>}
+          <div className="flex-1 min-w-0">
+            {message.role === 'user' && <span className="nb-you">you</span>}
             {/* Pinned indicator */}
             {isPinned && (
-              <div className="flex items-center gap-1 text-yellow-500/80 text-xs mb-1">
+              <div className="flex items-center gap-1 text-[color:var(--nb-ochre,rgba(234,179,8,0.8))] text-xs mb-1">
                 <Pin className="w-3 h-3" />
                 <span>Pinned</span>
               </div>
@@ -2406,13 +2405,13 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
             {message.quotedContent && (
               <div
                 className={cn(
-                  'mb-2 p-2 rounded-lg border text-xs text-gray-400 max-w-sm',
+                  'mb-2 p-2 rounded-lg border text-xs text-[color:var(--nb-muted,#9ca3af)] max-w-sm',
                   message.role === 'user'
-                    ? 'bg-white/5 border-white/10 ml-auto'
-                    : 'bg-lattice-bg border-lattice-border'
+                    ? 'bg-[var(--nb-wash,rgba(255,255,255,0.05))] border-[color:var(--nb-rule,rgba(255,255,255,0.1))] ml-auto'
+                    : 'bg-[var(--nb-paper,rgb(var(--lattice-bg-rgb)))] border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))]'
                 )}
               >
-                <div className="flex items-center gap-1 mb-1 text-gray-400">
+                <div className="flex items-center gap-1 mb-1 text-[color:var(--nb-muted,#9ca3af)]">
                   <Quote className="w-3 h-3" />
                   <span>Replying to</span>
                 </div>
@@ -2424,17 +2423,17 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
               <div
                 role="status"
                 data-testid="ai-unavailable-notice"
-                className="w-full max-w-xl rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-amber-100"
+                className="w-full max-w-xl rounded-xl border border-[color:var(--nb-ochre,rgba(245,158,11,0.3))] bg-[var(--nb-hl,rgba(245,158,11,0.1))] px-4 py-3 text-[color:var(--nb-ochre,#fef3c7)]"
               >
                 <p className="text-sm leading-snug">{message.content}</p>
                 {message.retrieval?.items && message.retrieval.items.length > 0 && (
-                  <div className="mt-3 border-t border-amber-500/20 pt-2">
-                    <p className="text-[11px] uppercase tracking-wide text-amber-200/70">
+                  <div className="mt-3 border-t border-[color:var(--nb-ochre,rgba(245,158,11,0.2))] pt-2">
+                    <p className="text-[11px] uppercase tracking-wide text-[color:var(--nb-ochre,rgba(253,230,138,0.7))]">
                       {message.retrieval.label || "Stored notes"}
                     </p>
                     <ul className="mt-1 space-y-1">
                       {message.retrieval.items.slice(0, 5).map((item, i) => (
-                        <li key={i} className="text-xs text-amber-50/80 leading-snug">
+                        <li key={i} className="text-xs text-[color:var(--nb-ochre,rgba(255,251,235,0.8))] leading-snug">
                           {item}
                         </li>
                       ))}
@@ -2448,17 +2447,16 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                   response={message.oracleResponse}
                   onOpenDTU={(id) => setInspectingDtuId(id)}
                 />
-                {timeStr && <p className="text-[10px] text-gray-400 mt-1 select-none">{timeStr}</p>}
+                {timeStr && <p className="text-[10px] text-[color:var(--nb-muted,#9ca3af)] mt-1 select-none">{timeStr}</p>}
               </div>
             ) : (
               <div
                 className={cn(
-                  'inline-block p-4 rounded-2xl shadow-sm',
                   message.role === 'user'
-                    ? 'bg-[#262626] text-white rounded-br-md'
+                    ? 'nb-body'
                     : message.role === 'system'
-                      ? 'bg-red-500/10 border border-red-500/30 text-red-300 rounded-bl-md'
-                      : 'bg-[#141414] border border-white/10 text-gray-200 rounded-bl-md'
+                      ? 'inline-block p-3 rounded-md bg-[var(--nb-red-soft,rgba(239,68,68,0.1))] border border-[color:var(--nb-red,rgba(239,68,68,0.3))] text-[color:var(--nb-red,#fca5a5)]'
+                      : 'nb-body nb-reply'
                 )}
               >
                 {editingMessageId === message.id ? (
@@ -2466,7 +2464,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                     <textarea
                       value={editContent}
                       onChange={(e) => setEditContent(e.target.value)}
-                      className="w-full bg-black/20 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-neon-cyan resize-none"
+                      className="w-full bg-[var(--nb-paper,rgba(0,0,0,0.2))] rounded-lg px-3 py-2 text-sm text-[color:var(--nb-ink,#ffffff)] focus:outline-none focus:ring-1 focus:ring-[color:var(--nb-blue,#00fff7)] resize-none"
                       rows={3}
                       autoFocus
                       onKeyDown={(e) => {
@@ -2480,13 +2478,13 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                     <div className="flex gap-2">
                       <button
                         onClick={saveEditMessage}
-                        className="px-3 py-1 text-xs bg-neon-cyan/20 text-neon-cyan rounded-lg hover:bg-neon-cyan/30 transition-colors"
+                        className="px-3 py-1 text-xs bg-[var(--nb-blue-soft,rgba(0,255,247,0.2))] text-[color:var(--nb-blue,#00fff7)] rounded-lg hover:bg-[var(--nb-blue-soft,rgba(0,255,247,0.3))] transition-colors"
                       >
                         Save
                       </button>
                       <button
                         onClick={cancelEditMessage}
-                        className="px-3 py-1 text-xs text-gray-400 hover:text-white transition-colors"
+                        className="px-3 py-1 text-xs text-[color:var(--nb-muted,#9ca3af)] hover:text-[color:var(--nb-ink,#ffffff)] transition-colors"
                       >
                         Cancel
                       </button>
@@ -2496,40 +2494,95 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                   <MessageRenderer content={message.content} />
                 )}
                 {timeStr && editingMessageId !== message.id && (
-                  <p className="text-[10px] text-gray-400 mt-1 select-none">{timeStr}</p>
+                  <p className="text-[10px] text-[color:var(--nb-muted,#9ca3af)] mt-1 select-none">{timeStr}</p>
                 )}
 
-                {/* Attachment chips on user messages */}
-                {message.attachments && message.attachments.length > 0 && (
-                  <div className="mt-2 pt-2 border-t border-white/10 flex flex-wrap gap-1.5">
-                    {message.attachments.map((att, i) => (
-                      <span
-                        key={i}
-                        className="inline-flex items-center gap-1.5 px-2 py-1 bg-white/10 rounded text-xs"
-                      >
-                        <Paperclip className="w-3 h-3" />
-                        <span className="truncate max-w-[120px]">{att.name}</span>
-                        <span className="text-white/50">{formatBytes(att.size)}</span>
-                      </span>
-                    ))}
-                  </div>
-                )}
-
+                {/* Margin evidence: what backs this entry — referenced DTUs, tool runs,
+                    computed numbers, citations and web sources — pinned in red ink beside
+                    the reply on a wide page, under it on a narrow one. */}
+                {(message.refs?.length || message.toolCalls?.length || message.computed || message.dtuRefs?.length || message.sources?.length) ? (
+                  <aside className="nb-evidence nb-ev mt-3 space-y-2" aria-label="Evidence for this entry" data-testid="nb-evidence">
+                    <p className="nb-label">Evidence</p>
                 {message.refs && message.refs.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-lattice-border/50">
-                    <p className="text-xs text-gray-400 mb-2">Referenced DTUs:</p>
+                  <div className="mt-3 pt-3 border-t border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)/0.5))]">
+                    <p className="text-xs text-[color:var(--nb-muted,#9ca3af)] mb-2">Referenced DTUs:</p>
                     <div className="flex flex-wrap gap-1">
                       {message.refs.slice(0, 5).map((ref) => (
                         <button
                           key={ref.id}
                           onClick={() => setInspectingDtuId(ref.id)}
-                          className="text-xs px-2 py-1 bg-neon-purple/20 text-neon-purple rounded cursor-pointer hover:bg-neon-purple/30 transition-colors"
+                          className="text-xs px-2 py-1 bg-[var(--nb-red-soft,rgba(168,85,247,0.2))] text-[color:var(--nb-red,#a855f7)] rounded cursor-pointer hover:bg-[var(--nb-red-soft,rgba(168,85,247,0.3))] transition-colors"
                           title={`View DTU: ${ref.id}`}
                         >
                           {ref.title}
                         </button>
                       ))}
                     </div>
+                  </div>
+                )}
+
+                {/* Tool call results */}
+                {message.toolCalls && message.toolCalls.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)/0.5))] space-y-1.5">
+                    {message.toolCalls.map((call, i) => (
+                      <ToolCallCard key={i} call={call} />
+                    ))}
+                  </div>
+                )}
+
+                {/* Compute provenance (compute-preflight ground truth) */}
+                {message.role === 'assistant' && message.computed && (
+                  <ComputeBadge computed={message.computed} />
+                )}
+
+                {/* DTU citation chips (surgical refs the brain grounded in) */}
+                {message.role === 'assistant' && message.dtuRefs && message.dtuRefs.length > 0 && (
+                  <CitationChips dtuRefs={message.dtuRefs} />
+                )}
+
+                {/* Web sources panel */}
+                {message.sources && message.sources.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)/0.5))]">
+                    <div className="flex items-center gap-1.5 text-xs text-[color:var(--nb-blue,rgba(0,255,247,0.8))] mb-2">
+                      <Globe className="w-3 h-3" />
+                      <span>Web Sources</span>
+                    </div>
+                    <div className="space-y-1.5">
+                      {message.sources.map((src, i) => (
+                        <a
+                          key={`${src.url}-${i}`}
+                          href={src.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-start gap-2 p-1.5 rounded bg-[var(--nb-blue-soft,rgba(0,255,247,0.05))] hover:bg-[var(--nb-blue-soft,rgba(0,255,247,0.1))] transition-colors group/src"
+                        >
+                          <ExternalLink className="w-3 h-3 mt-0.5 text-[color:var(--nb-blue,rgba(0,255,247,0.6))] flex-shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs text-[color:var(--nb-blue,rgba(0,255,247,0.9))] truncate group-hover/src:text-[color:var(--nb-blue,#00fff7)]">
+                              {src.title}
+                            </p>
+                            <p className="text-[10px] text-[color:var(--nb-muted,#9ca3af)] truncate">{src.source}</p>
+                          </div>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                  </aside>
+                ) : null}
+                {/* Attachment chips on user messages */}
+                {message.attachments && message.attachments.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-[color:var(--nb-rule,rgba(255,255,255,0.1))] flex flex-wrap gap-1.5">
+                    {message.attachments.map((att, i) => (
+                      <span
+                        key={i}
+                        className="inline-flex items-center gap-1.5 px-2 py-1 bg-[var(--nb-wash,rgba(255,255,255,0.1))] rounded text-xs"
+                      >
+                        <Paperclip className="w-3 h-3" />
+                        <span className="truncate max-w-[120px]">{att.name}</span>
+                        <span className="text-[color:var(--nb-muted,rgba(255,255,255,0.5))]">{formatBytes(att.size)}</span>
+                      </span>
+                    ))}
                   </div>
                 )}
 
@@ -2549,23 +2602,9 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
 
                 {message.cockpitRunId && <RunCard runId={message.cockpitRunId} onFinished={handleRunFinished} />}
 
-                {/* Tool call results */}
-                {message.toolCalls && message.toolCalls.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-lattice-border/50 space-y-1.5">
-                    {message.toolCalls.map((call, i) => (
-                      <ToolCallCard key={i} call={call} />
-                    ))}
-                  </div>
-                )}
-
                 {/* Songs, previews and images the tools returned (INC-128) */}
                 {message.role === 'assistant' && message.artifacts && message.artifacts.length > 0 && (
                   <ChatArtifacts artifacts={message.artifacts} />
-                )}
-
-                {/* Compute provenance (compute-preflight ground truth) */}
-                {message.role === 'assistant' && message.computed && (
-                  <ComputeBadge computed={message.computed} />
                 )}
 
                 {/* Backup-model answer (GPU brain offline) */}
@@ -2573,39 +2612,6 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                   <LowConfidenceTag confidence={message.confidence} reason={message.confidenceReason} />
                 )}
 
-                {/* DTU citation chips (surgical refs the brain grounded in) */}
-                {message.role === 'assistant' && message.dtuRefs && message.dtuRefs.length > 0 && (
-                  <CitationChips dtuRefs={message.dtuRefs} />
-                )}
-
-                {/* Web sources panel */}
-                {message.sources && message.sources.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-lattice-border/50">
-                    <div className="flex items-center gap-1.5 text-xs text-neon-cyan/80 mb-2">
-                      <Globe className="w-3 h-3" />
-                      <span>Web Sources</span>
-                    </div>
-                    <div className="space-y-1.5">
-                      {message.sources.map((src, i) => (
-                        <a
-                          key={`${src.url}-${i}`}
-                          href={src.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-start gap-2 p-1.5 rounded bg-neon-cyan/5 hover:bg-neon-cyan/10 transition-colors group/src"
-                        >
-                          <ExternalLink className="w-3 h-3 mt-0.5 text-neon-cyan/60 flex-shrink-0" />
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs text-neon-cyan/90 truncate group-hover/src:text-neon-cyan">
-                              {src.title}
-                            </p>
-                            <p className="text-[10px] text-gray-400 truncate">{src.source}</p>
-                          </div>
-                        </a>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 
@@ -2614,20 +2620,19 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                 An availability notice is not a message to rate or quote. */}
             {!message.aiUnavailable && <div
               className={cn(
-                'flex items-center gap-2 mt-2 text-xs text-gray-400 transition-opacity',
+                'flex items-center gap-2 mt-2 text-xs text-[color:var(--nb-muted,#9ca3af)] transition-opacity',
                 'sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100',
-                message.role === 'user' ? 'justify-end' : ''
               )}
             >
               {/* Copy button — available on ALL messages */}
               <button
                 onClick={() => copyToClipboard(message.content, message.id)}
-                className="hover:text-white transition-colors"
+                className="hover:text-[color:var(--nb-ink,#ffffff)] transition-colors"
                 title="Copy to clipboard"
                 aria-label="Copy message"
               >
                 {copiedMessageId === message.id ? (
-                  <Check className="w-3 h-3 text-neon-green" />
+                  <Check className="w-3 h-3 text-[color:var(--nb-green,#22c55e)]" />
                 ) : (
                   <Copy className="w-3 h-3" />
                 )}
@@ -2640,7 +2645,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                 speakingId === message.id ? (
                   <button
                     onClick={() => stopSpeaking()}
-                    className="text-neon-cyan transition-colors"
+                    className="text-[color:var(--nb-blue,#00fff7)] transition-colors"
                     title="Stop reading"
                     aria-label="Stop reading aloud"
                     aria-pressed="true"
@@ -2650,7 +2655,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                 ) : (
                   <button
                     onClick={() => speakText(message.content, message.id)}
-                    className="hover:text-white transition-colors"
+                    className="hover:text-[color:var(--nb-ink,#ffffff)] transition-colors"
                     title="Read aloud"
                     aria-label="Read message aloud"
                     aria-pressed="false"
@@ -2665,7 +2670,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                 onClick={() => togglePin(message.id)}
                 className={cn(
                   'transition-colors',
-                  isPinned ? 'text-yellow-500' : 'hover:text-yellow-500'
+                  isPinned ? 'text-[color:var(--nb-ochre,#eab308)]' : 'hover:text-[color:var(--nb-ochre,#eab308)]'
                 )}
                 title={isPinned ? 'Unpin message' : 'Pin message'}
                 aria-label={isPinned ? 'Unpin message' : 'Pin message'}
@@ -2676,7 +2681,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
               {/* Quote / Reply button — available on ALL messages */}
               <button
                 onClick={() => quoteMessage(message)}
-                className="hover:text-neon-cyan transition-colors"
+                className="hover:text-[color:var(--nb-blue,#00fff7)] transition-colors"
                 title="Reply to this message"
                 aria-label="Quote and reply"
               >
@@ -2689,7 +2694,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                   <span>·</span>
                   <button
                     onClick={() => startEditMessage(message)}
-                    className="hover:text-white transition-colors"
+                    className="hover:text-[color:var(--nb-ink,#ffffff)] transition-colors"
                     title="Edit message"
                     aria-label="Edit message"
                   >
@@ -2697,7 +2702,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                   </button>
                   <button
                     onClick={() => deleteMessage(message.id)}
-                    className="hover:text-red-400 transition-colors"
+                    className="hover:text-[color:var(--nb-red,#f87171)] transition-colors"
                     title="Delete message"
                     aria-label="Delete message"
                   >
@@ -2720,7 +2725,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                     }
                     className={cn(
                       'transition-colors',
-                      feedbackState[message.id] === 'up' ? 'text-green-400' : 'hover:text-green-400'
+                      feedbackState[message.id] === 'up' ? 'text-[color:var(--nb-green,#4ade80)]' : 'hover:text-[color:var(--nb-green,#4ade80)]'
                     )}
                     title="Good response"
                     aria-label="Thumbs up"
@@ -2743,7 +2748,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                     }
                     className={cn(
                       'transition-colors',
-                      feedbackState[message.id] === 'down' ? 'text-red-400' : 'hover:text-red-400'
+                      feedbackState[message.id] === 'down' ? 'text-[color:var(--nb-red,#f87171)]' : 'hover:text-[color:var(--nb-red,#f87171)]'
                     )}
                     title="Bad response"
                     aria-label="Thumbs down"
@@ -2757,7 +2762,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                     />
                   </button>
                   {feedbackState[message.id] && (
-                    <span role="status" className="text-zinc-400">
+                    <span role="status" className="text-[color:var(--nb-muted,#a1a1aa)]">
                       Thanks — feedback recorded
                     </span>
                   )}
@@ -2765,7 +2770,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                     onClick={handleRegenerate}
                     disabled={regenerateMutation.isPending}
                     className={cn(
-                      'hover:text-white transition-colors',
+                      'hover:text-[color:var(--nb-ink,#ffffff)] transition-colors',
                       regenerateMutation.isPending && 'animate-spin'
                     )}
                     title="Regenerate response"
@@ -2774,45 +2779,19 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                     <RefreshCw className="w-3 h-3" />
                   </button>
                   <button
-                    onClick={() => handleBranchFromMessage(message.id)}
-                    className="hover:text-neon-purple transition-colors"
-                    title="Branch a new conversation from this message (local, instant)"
+                    onClick={() => void handleBranchFromMessage(message.id)}
+                    className="hover:text-[color:var(--nb-red,#a855f7)] transition-colors"
+                    title={isAuthenticated ? 'Branch from here: a new conversation in your account with everything up to this entry' : 'Branch from here: a new conversation on this device'}
                     aria-label="Branch from here"
                   >
                     <GitBranch className="w-3 h-3" />
                   </button>
-                  {isAuthenticated && selectedConversation && forkIdx !== -1 && (
-                    <BranchForkButton
-                      sourceThreadId={selectedConversation}
-                      atMessageIdx={forkIdx}
-                      messages={messages
-                        .slice(0, forkIdx + 1)
-                        .map((m) => ({ role: m.role, content: m.content, ts: m.timestamp }))}
-                      label="Sync"
-                      doneLabel="Synced"
-                      title="Save a synced branch to your account (persists across devices, separate from the local branch above)"
-                      ariaLabel="Save a server-synced branch from this message"
-                      onForked={() => {
-                        setSyncedBranchesKey((k) => k + 1);
-                        useUIStore.getState().addToast({
-                          type: 'success',
-                          message: 'Synced branch saved to your account.',
-                        });
-                      }}
-                      onError={() =>
-                        useUIStore.getState().addToast({
-                          type: 'error',
-                          message: 'Could not save the synced branch. Please try again.',
-                        })
-                      }
-                    />
-                  )}
                   <span>·</span>
                   <button
                     onClick={() => forgeMutation.mutate({ content: message.content, messageId: message.id })}
                     disabled={forgeMutation.isPending}
                     className={cn(
-                      'hover:text-neon-cyan transition-colors flex items-center gap-1',
+                      'hover:text-[color:var(--nb-blue,#00fff7)] transition-colors flex items-center gap-1',
                       forgeMutation.isPending && 'opacity-50'
                     )}
                     title="Forge this response into a DTU"
@@ -2885,7 +2864,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                     const title = item.message.slice(0, 80);
                     window.location.href = `/lenses/maker?compose=quest&title=${encodeURIComponent(title)}&seedFromInitiative=${encodeURIComponent(item.id)}`;
                   }}
-                  className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded border border-amber-500/30 bg-amber-500/10 text-amber-200 hover:bg-amber-500/20"
+                  className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded border border-[color:var(--nb-ochre,rgba(245,158,11,0.3))] bg-[var(--nb-hl,rgba(245,158,11,0.1))] text-[color:var(--nb-ochre,#fde68a)] hover:bg-[var(--nb-hl,rgba(245,158,11,0.2))]"
                 >
                   <Plus className="w-3 h-3" /> Create quest from this
                 </button>
@@ -2923,7 +2902,9 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
   // message can't tank the whole thread.
   const renderThreadItem = useCallback(
     (idx: number, item: ThreadItem) => (
-      <SafeCard label={`Message ${item.__kind}`}>{renderThreadItemInner(idx, item)}</SafeCard>
+      <div className="nb-row">
+        <SafeCard label={`Message ${item.__kind}`}>{renderThreadItemInner(idx, item)}</SafeCard>
+      </div>
     ),
     [renderThreadItemInner],
   );
@@ -2938,7 +2919,6 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
   // Prior bug: cleanEmpty was messages.length === 0, so after send the stacked
   // workspace chrome (mode rail, dense header, docked sidebar, Agent M, HN) returned.
   const isEmptyThread = messages.length === 0;
-  const cleanEmpty = true; // keep Claude chrome after first message
   const greeting = getTimeOfDayGreeting(user?.username);
   const chatWithLabel = selectedPersona.id !== 'default'
     ? selectedPersona.name
@@ -2951,11 +2931,11 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
       {/* Streaming indicator */}
       {streamActive && streamingContent && (
         <div className="flex gap-4 px-4 lg:px-6 pb-2">
-          <div className="w-10 h-10 rounded-lg bg-neon-cyan/20 flex items-center justify-center flex-shrink-0">
-            <Bot className="w-5 h-5 text-neon-cyan animate-pulse" />
+          <div className="w-10 h-10 rounded-lg bg-[var(--nb-blue-soft,rgba(0,255,247,0.2))] flex items-center justify-center flex-shrink-0">
+            <Bot className="w-5 h-5 text-[color:var(--nb-blue,#00fff7)] animate-pulse" />
           </div>
           <div className="flex-1 max-w-2xl">
-            <div className="inline-block p-4 rounded-2xl rounded-bl-md bg-lattice-surface border border-neon-cyan/30 text-gray-200">
+            <div className="inline-block p-4 rounded-2xl rounded-bl-md bg-[var(--nb-sheet,rgb(var(--lattice-surface-rgb)))] border border-[color:var(--nb-blue,rgba(0,255,247,0.3))] text-[color:var(--nb-ink,#e5e7eb)]">
               <MessageRenderer content={streamingContent} streaming />
             </div>
           </div>
@@ -2971,22 +2951,22 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
           role="status"
           aria-label="AI is thinking"
         >
-          <div className="w-10 h-10 rounded-lg bg-neon-cyan/20 flex items-center justify-center flex-shrink-0">
-            <Bot className="w-5 h-5 text-neon-cyan animate-pulse" />
+          <div className="w-10 h-10 rounded-lg bg-[var(--nb-blue-soft,rgba(0,255,247,0.2))] flex items-center justify-center flex-shrink-0">
+            <Bot className="w-5 h-5 text-[color:var(--nb-blue,#00fff7)] animate-pulse" />
           </div>
           <div className="flex-1 max-w-2xl">
-            <div className="inline-block p-4 rounded-2xl rounded-bl-md bg-lattice-surface border border-lattice-border">
-              <div className="flex items-center gap-2 text-gray-400">
+            <div className="inline-block p-4 rounded-2xl rounded-bl-md bg-[var(--nb-sheet,rgb(var(--lattice-surface-rgb)))] border border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))]">
+              <div className="flex items-center gap-2 text-[color:var(--nb-muted,#9ca3af)]">
                 <div
-                  className="w-2 h-2 bg-neon-cyan rounded-full animate-bounce"
+                  className="w-2 h-2 bg-[var(--nb-blue,#00fff7)] rounded-full animate-bounce"
                   style={{ animationDelay: '0ms' }}
                 />
                 <div
-                  className="w-2 h-2 bg-neon-cyan rounded-full animate-bounce"
+                  className="w-2 h-2 bg-[var(--nb-blue,#00fff7)] rounded-full animate-bounce"
                   style={{ animationDelay: '150ms' }}
                 />
                 <div
-                  className="w-2 h-2 bg-neon-cyan rounded-full animate-bounce"
+                  className="w-2 h-2 bg-[var(--nb-blue,#00fff7)] rounded-full animate-bounce"
                   style={{ animationDelay: '300ms' }}
                 />
               </div>
@@ -3004,9 +2984,9 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
 
   return (
     <>
-    <div data-lens-theme="chat" className={cn('relative h-full min-h-0 overflow-hidden flex flex-col', cleanEmpty ? 'bg-black' : 'bg-lattice-bg')}>
+    <div data-lens-theme="chat" className={cn('nb relative h-full min-h-0 overflow-hidden flex flex-col', notebookFontVars)} data-testid="nb-app">
       {modelOffline && (
-        <div className="px-4 py-2 text-xs bg-amber-500/10 border-b border-amber-500/30 text-amber-200">
+        <div className="px-4 py-2 text-xs bg-[var(--nb-hl,rgba(245,158,11,0.1))] border-b border-[color:var(--nb-ochre,rgba(245,158,11,0.3))] text-[color:var(--nb-ochre,#fde68a)]">
           Language model is offline — you can still type. Replies may not generate.
         </div>
       )}
@@ -3014,43 +2994,40 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
         {/* Mobile sidebar backdrop */}
         {chatSidebarOpen && (
           <div
-            className={cn('absolute inset-0 bg-black/50 z-30', !cleanEmpty && 'lg:hidden')}
+            className={cn('absolute inset-0 bg-[var(--nb-scrim,rgba(0,0,0,0.5))] z-30')}
             onClick={() => setChatSidebarOpen(false)} tabIndex={0} onKeyDown={activateOnEnterOrSpace} />
         )}
 
         {/* Sidebar — always a drawer under Claude-clean (never a second always-docked chat column) */}
         <aside
           className={cn(
-            'w-80 border-r border-lattice-border flex flex-col bg-lattice-surface z-40 transition-transform duration-200',
+            'w-80 border-r border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))] flex flex-col bg-[var(--nb-sheet,rgb(var(--lattice-surface-rgb)))] z-40 transition-transform duration-200',
             // Anchored to the chat area, not the viewport, so the app rail never covers it.
             'absolute inset-y-0 left-0',
-            !cleanEmpty && 'lg:relative lg:translate-x-0',
-            cleanEmpty
-              ? (chatSidebarOpen ? 'translate-x-0' : '-translate-x-full')
-              : (chatSidebarOpen ? 'translate-x-0' : '-translate-x-full')
+            (chatSidebarOpen ? 'translate-x-0' : '-translate-x-full')
           )}
           role="complementary"
           aria-label="Conversation list"
         >
-          <div className="p-4 border-b border-lattice-border">
+          <div className="p-4 border-b border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))]">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                <Bot className="w-6 h-6 text-neon-cyan" />
+              <h2 className="text-xl font-bold text-[color:var(--nb-ink,#ffffff)] flex items-center gap-2">
+                <Bot className="w-6 h-6 text-[color:var(--nb-blue,#00fff7)]" />
                 Chat
               </h2>
               <div className="flex items-center gap-1">
                 {isAuthenticated && (
                   <button
-                    className="p-2 hover:bg-lattice-bg rounded-lg transition-colors"
+                    className="p-2 hover:bg-[var(--nb-paper,rgb(var(--lattice-bg-rgb)))] rounded-lg transition-colors"
                     aria-label="BYO API keys"
                     title="Plug your own API key into a brain slot"
                     onClick={() => setByoOpen(true)}
                   >
-                    <Key className="w-5 h-5 text-gray-400 hover:text-neon-cyan" />
+                    <Key className="w-5 h-5 text-[color:var(--nb-muted,#9ca3af)] hover:text-[color:var(--nb-blue,#00fff7)]" />
                   </button>
                 )}
                 <button
-                  className="p-2 hover:bg-lattice-bg rounded-lg transition-colors"
+                  className="p-2 hover:bg-[var(--nb-paper,rgb(var(--lattice-bg-rgb)))] rounded-lg transition-colors"
                   aria-label="Chat settings"
                   title="Voice, custom assistants and memory"
                   onClick={() => {
@@ -3058,7 +3035,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                     setStudioOpen(true);
                   }}
                 >
-                  <Settings className="w-5 h-5 text-gray-400" />
+                  <Settings className="w-5 h-5 text-[color:var(--nb-muted,#9ca3af)]" />
                 </button>
               </div>
             </div>
@@ -3067,54 +3044,33 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                 startNewChat();
                 setChatSidebarOpen(false);
               }}
-              className="w-full flex items-center justify-center gap-2 py-2.5 border border-white/10 text-white/90 font-medium rounded-lg hover:bg-white/5 transition-colors"
+              className="w-full flex items-center justify-center gap-2 py-2.5 border border-[color:var(--nb-rule,rgba(255,255,255,0.1))] text-[color:var(--nb-ink,rgba(255,255,255,0.9))] font-medium rounded-lg hover:bg-[var(--nb-wash,rgba(255,255,255,0.05))] transition-colors"
             >
-              <Plus className="w-4 h-4 text-teal-400" />
+              <Plus className="w-4 h-4 text-[color:var(--nb-blue,#2dd4bf)]" />
               New Chat
             </button>
           </div>
 
           {/* DTU mega dock — hidden under Claude-clean; drawer stays conversations-only */}
-          {!cleanEmpty && (
-          <div className="p-3 border-t border-white/10 space-y-3">
-            <ArtifactUploader
-              lens="chat"
-              acceptTypes="*/*"
-              multi
-              compact
-              onUploadComplete={() => refetchDTUs()}
-            />
-            <LensContextPanel
-              hyperDTUs={hyperDTUs}
-              megaDTUs={megaDTUs}
-              regularDTUs={regularDTUs}
-              tierDistribution={tierDistribution}
-              onPublish={(dtu) => publishToMarketplace({ dtuId: dtu.id })}
-              title="Chat DTUs"
-              className="!bg-transparent !border-0 !p-0"
-            />
-            <FeedbackWidget targetType="lens" targetId="chat" />
-            <FoundationCard type="status" />
-          </div>
-          )}
+          
 
           <div className="p-4">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[color:var(--nb-muted,#9ca3af)]" />
               <input
                 type="text"
                 value={conversationSearch}
                 onChange={(e) => setConversationSearch(e.target.value)}
                 placeholder="Search conversations..."
                 aria-label="Search conversations"
-                className="w-full pl-10 pr-4 py-2 bg-lattice-bg border border-lattice-border rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan"
+                className="w-full pl-10 pr-4 py-2 bg-[var(--nb-paper,rgb(var(--lattice-bg-rgb)))] border border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))] rounded-lg text-sm text-[color:var(--nb-ink,#ffffff)] placeholder:text-[color:var(--nb-faint,#6b7280)] focus:outline-none focus:border-[color:var(--nb-blue,#00fff7)]"
               />
             </div>
           </div>
 
           <div className="flex-1 overflow-y-auto" role="list" aria-label="Conversations">
             {filteredConversations.length === 0 && (
-              <div className="p-6 text-center text-gray-400 text-sm">
+              <div className="p-6 text-center text-[color:var(--nb-muted,#9ca3af)] text-sm">
                 {conversationSearch
                   ? 'No matching conversations'
                   : 'No conversations yet. Start a new chat!'}
@@ -3124,9 +3080,9 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
               <div
                 key={conv.id}
                 className={cn(
-                  'group relative w-full p-4 text-left hover:bg-lattice-bg transition-colors border-b border-lattice-border/50 cursor-pointer',
+                  'group relative w-full p-4 text-left hover:bg-[var(--nb-paper,rgb(var(--lattice-bg-rgb)))] transition-colors border-b border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)/0.5))] cursor-pointer',
                   selectedConversation === conv.id &&
-                    'bg-neon-cyan/10 border-l-2 border-l-neon-cyan'
+                    'bg-[var(--nb-blue-soft,rgba(0,255,247,0.1))] border-l-2 border-l-neon-cyan'
                 )}
                 role="listitem"
                 aria-current={selectedConversation === conv.id ? 'true' : undefined}
@@ -3138,13 +3094,13 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                   <div
                     className={cn(
                       'w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0',
-                      selectedConversation === conv.id ? 'bg-neon-cyan/20' : 'bg-lattice-bg'
+                      selectedConversation === conv.id ? 'bg-[var(--nb-blue-soft,rgba(0,255,247,0.2))]' : 'bg-[var(--nb-paper,rgb(var(--lattice-bg-rgb)))]'
                     )}
                   >
                     <MessageSquare
                       className={cn(
                         'w-5 h-5',
-                        selectedConversation === conv.id ? 'text-neon-cyan' : 'text-gray-400'
+                        selectedConversation === conv.id ? 'text-[color:var(--nb-blue,#00fff7)]' : 'text-[color:var(--nb-muted,#9ca3af)]'
                       )}
                     />
                   </div>
@@ -3166,23 +3122,23 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                           }}
                           onBlur={saveRenameConversation}
                           onClick={(e) => e.stopPropagation()}
-                          className="flex-1 bg-lattice-bg border border-neon-cyan/50 rounded px-2 py-0.5 text-sm text-white focus:outline-none"
+                          className="flex-1 bg-[var(--nb-paper,rgb(var(--lattice-bg-rgb)))] border border-[color:var(--nb-blue,rgba(0,255,247,0.5))] rounded px-2 py-0.5 text-sm text-[color:var(--nb-ink,#ffffff)] focus:outline-none"
                           autoFocus
                         />
                       ) : (
-                        <h3 className="font-medium text-white truncate text-sm">{conv.title}</h3>
+                        <h3 className="font-medium text-[color:var(--nb-ink,#ffffff)] truncate text-sm">{conv.title}</h3>
                       )}
-                      <span className="text-[10px] text-gray-400 whitespace-nowrap flex-shrink-0">
+                      <span className="text-[10px] text-[color:var(--nb-muted,#9ca3af)] whitespace-nowrap flex-shrink-0">
                         {formatRelativeTime(conv.updatedAt)}
                       </span>
                     </div>
                     {(conv.messageCount === 0 || conv.lastMessage) && (
-                      <p className="text-xs text-gray-400 truncate mt-0.5">
+                      <p className="text-xs text-[color:var(--nb-muted,#9ca3af)] truncate mt-0.5">
                         {conv.messageCount === 0 ? 'No messages' : conv.lastMessage}
                       </p>
                     )}
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[10px] text-gray-400">
+                      <span className="text-[10px] text-[color:var(--nb-muted,#9ca3af)]">
                         {conv.messageCount} message{conv.messageCount !== 1 ? 's' : ''}
                       </span>
                     </div>
@@ -3195,7 +3151,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                       e.stopPropagation();
                       startRenameConversation(conv);
                     }}
-                    className="p-1.5 rounded-md hover:bg-lattice-bg text-gray-400 hover:text-white transition-colors"
+                    className="p-1.5 rounded-md hover:bg-[var(--nb-paper,rgb(var(--lattice-bg-rgb)))] text-[color:var(--nb-muted,#9ca3af)] hover:text-[color:var(--nb-ink,#ffffff)] transition-colors"
                     title="Rename conversation"
                     aria-label={`Rename conversation: ${conv.title}`}
                   >
@@ -3204,7 +3160,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                   <StickyDeleteConfirm
                     onConfirm={() => deleteConversationMutation.mutate(conv.id)}
                     disabled={deleteConversationMutation.isPending}
-                    className="p-1.5 rounded-md hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition-colors"
+                    className="p-1.5 rounded-md hover:bg-[var(--nb-red-soft,rgba(239,68,68,0.2))] text-[color:var(--nb-muted,#9ca3af)] hover:text-[color:var(--nb-red,#f87171)] transition-colors"
                     armAriaLabel={`Delete conversation: ${conv.title}`}
                     confirmLabel={`Delete “${conv.title}”?`}
                     confirmAriaLabel={`Confirm delete conversation: ${conv.title}`}
@@ -3214,473 +3170,116 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
               </div>
             ))}
           </div>
-          {isAuthenticated && <SyncedBranchesSection onOpen={openSyncedBranch} refreshKey={syncedBranchesKey} />}
         </aside>
 
         {/* Main Chat Area */}
-        <main className={cn('flex-1 flex flex-col relative min-h-0', cleanEmpty && 'bg-black')} aria-label="Chat messages">
+        <main className={'flex-1 flex flex-col relative min-h-0'} aria-label="Chat messages">
           {/* Light conversations / new-chat header — drawer trigger, not a second chat column */}
-          {cleanEmpty && (
-            <header className="absolute top-0 inset-x-0 z-20 flex items-center justify-between px-2 py-2 bg-transparent">
-              <button
-                type="button"
-                onClick={() => setChatSidebarOpen(true)}
-                className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/5 transition-colors"
-                aria-label="Open conversations"
-              >
-                <MessageSquare className="w-5 h-5" />
+          {(
+            <header className="nb-strip absolute top-0 inset-x-0 z-20 flex items-center gap-1.5 px-2 py-2" data-testid="nb-strip">
+              <button type="button" onClick={() => setChatSidebarOpen(true)} className="rounded-md p-2 text-[color:var(--nb-ink-2,#d4d4d8)] hover:bg-[var(--nb-wash,#262626)]" aria-label="Open conversations" title="Your conversations">
+                <MessageSquare className="h-5 w-5" />
               </button>
-              <div className="flex items-center">
-                <div className="relative" data-chat-menu>
-                  <button
-                    type="button"
-                    onClick={() => setMoreMenuOpen((v) => !v)}
-                    className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/5 transition-colors"
-                    aria-label="Chat options"
-                    aria-expanded={moreMenuOpen}
-                  >
-                    <MoreVertical className="w-5 h-5" />
-                  </button>
-                  <AnimatePresence>
-                    {moreMenuOpen && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -8 }}
-                        className="absolute top-full right-0 mt-2 w-72 bg-[#1c1c1c] border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden"
-                      >
-                        <ChatHandoffMenu
-                          messages={messages.map((m) => ({ role: m.role, content: m.content || '' }))}
-                          sessionId={selectedConversation}
-                          title={conversations.find((c) => c.id === selectedConversation)?.title || 'Chat transcript'}
-                          onNote={(text) => {
-                            setLocalMessages((prev) => [...prev, {
-                              id: `handoff-${Date.now()}`,
-                              role: 'system',
-                              content: text,
-                              timestamp: new Date().toISOString(),
-                            }]);
-                          }}
-                        />
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => startNewChat()}
-                  className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/5 transition-colors"
-                  aria-label="New conversation"
-                >
-                  <Plus className="w-5 h-5" />
-                </button>
-              </div>
-            </header>
-          )}
-          <header className={cn(
-            'px-4 lg:px-6 py-4 border-b border-lattice-border flex flex-wrap items-center justify-between gap-y-2',
-            cleanEmpty && 'hidden',
-            'bg-lattice-surface',
-          )}>
-            {/* Toolbar row wraps instead of clipping when the secondary pills
-                (Context/Tools/Systems/Projects/Prompts/Schedule/Studio) overflow. */}
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 lg:gap-x-4 min-w-0">
-              {/* Mobile: toggle conversation sidebar */}
-              <button
-                onClick={() => setChatSidebarOpen(true)}
-                className="lg:hidden p-2 -ml-2 rounded-lg hover:bg-lattice-bg text-gray-400 hover:text-white transition-colors"
-                aria-label="Open conversation list"
-              >
-                <MessageSquare className="w-5 h-5" />
-              </button>
-
-              {/* Brain Mode Pill — Private ↔ High Power, in-chat toggle.
-                  compact: full disclosure wall stays in Settings / byo-keys. */}
-              <BrainModePanel compact />
-
-              {/* System health now lives in the global Topbar
-                  (<SovereignHealthRibbon />) on a PUBLIC endpoint — the old
-                  CycleTelemetryRibbon here polled /api/admin/heartbeat-stats,
-                  which 403s for every non-admin and rendered a permanent
-                  "Health: unreachable" + a false permission toast. */}
-
-              {/* Session Context Badge — honest-by-construction "X
-                  turns · Y% full" chip. Reads the real
-                  /api/chat/context-budget/:sessionId endpoint. Six
-                  states (unreachable/empty/green/yellow/red/over). When
-                  85%+ full, says "say 'compress'" — and 'compress' is
-                  a real conkay skill (skill id 'compress') wired to
-                  the same /api/chat/summary macro that the auto-trigger
-                  uses. The badge NEVER fakes a recommendation. */}
-              <SessionContextBadge sessionId={
-                typeof window !== 'undefined'
-                  ? window.localStorage?.getItem('concord:activeSessionId') || null
-                  : null
-              } />
-
-              {/* AI Mode selector */}
-              <div className="relative">
-                <button
-                  onClick={() => setModeSelectOpen(!modeSelectOpen)}
-                  className="flex items-center gap-2 px-4 py-2 bg-lattice-bg border border-lattice-border rounded-lg hover:border-gray-500 transition-colors"
-                >
-                  <aiMode.icon className="w-4 h-4 text-neon-cyan" />
-                  <span className="text-white text-sm font-medium">{aiMode.name}</span>
-                  <ChevronDown className="w-4 h-4 text-gray-400" />
-                </button>
-
-                <AnimatePresence>
-                  {modeSelectOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="absolute top-full left-0 mt-2 w-64 bg-lattice-surface border border-lattice-border rounded-lg shadow-xl z-50 overflow-hidden"
-                    >
-                      {AI_MODES.map((mode) => (
-                        <button
-                          key={mode.id}
-                          onClick={() => {
-                            selectAiMode(mode);
-                            setModeSelectOpen(false);
-                          }}
-                          className={cn(
-                            'w-full flex items-start gap-3 p-3 hover:bg-lattice-bg transition-colors',
-                            aiMode.id === mode.id && 'bg-neon-cyan/10'
-                          )}
-                        >
-                          <mode.icon
-                            className={cn(
-                              'w-5 h-5 mt-0.5',
-                              aiMode.id === mode.id ? 'text-neon-cyan' : 'text-gray-400'
-                            )}
-                          />
-                          <div className="text-left">
-                            <p className="font-medium text-white">{mode.name}</p>
-                            <p className="text-xs text-gray-300">{mode.description}</p>
-                          </div>
-                        </button>
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              {/* Persona Picker */}
-              <div className="relative">
-                <button
-                  onClick={() => setPersonaPickerOpen(!personaPickerOpen)}
-                  className="flex items-center gap-2 px-3 py-2 bg-lattice-bg border border-lattice-border rounded-lg hover:border-gray-500 transition-colors"
-                  title="Select persona"
-                >
-                  <Users className="w-4 h-4 text-neon-purple" />
-                  <span className="text-white text-sm font-medium hidden sm:inline">
-                    {selectedPersona.name}
-                  </span>
-                  <ChevronDown className="w-4 h-4 text-gray-400" />
-                </button>
-
-                <AnimatePresence>
-                  {personaPickerOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="absolute top-full left-0 mt-2 w-72 bg-lattice-surface border border-lattice-border rounded-lg shadow-xl z-50 overflow-hidden"
-                    >
-                      <div className="p-3 border-b border-lattice-border">
-                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                          Persona
-                        </p>
-                      </div>
-                      {PERSONAS.map((persona) => (
-                        <button
-                          key={persona.id}
-                          onClick={() => {
-                            setSelectedPersona(persona);
-                            setPersonaPickerOpen(false);
-                            // Announce the change
-                            if (persona.id !== selectedPersona.id) {
-                              const sysMsg: Message = {
-                                id: `sys-${Date.now()}`,
-                                role: 'system',
-                                content: `Persona switched to: ${persona.name} — ${persona.description}`,
-                                timestamp: new Date().toISOString(),
-                              };
-                              setLocalMessages((prev) => [...prev, sysMsg]);
-                            }
-                          }}
-                          className={cn(
-                            'w-full flex items-start gap-3 p-3 hover:bg-lattice-bg transition-colors',
-                            selectedPersona.id === persona.id && 'bg-neon-purple/10'
-                          )}
-                        >
-                          <persona.icon
-                            className={cn(
-                              'w-5 h-5 mt-0.5',
-                              selectedPersona.id === persona.id
-                                ? 'text-neon-purple'
-                                : 'text-gray-400'
-                            )}
-                          />
-                          <div className="text-left">
-                            <p className="font-medium text-white">{persona.name}</p>
-                            <p className="text-xs text-gray-300">{persona.description}</p>
-                          </div>
-                          {selectedPersona.id === persona.id && (
-                            <Check className="w-4 h-4 text-neon-purple ml-auto mt-0.5 flex-shrink-0" />
-                          )}
-                        </button>
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              {/* Domain context badge */}
+              {/* What changes the answer, said out loud: the domain context and the active project. */}
               {domainContext && (
-                <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-neon-cyan/10 border border-neon-cyan/30 rounded-full text-xs text-neon-cyan">
-                  <Hash className="w-3 h-3" />
+                <span className="hidden items-center gap-1.5 rounded-full border border-[color:var(--nb-blue,#00fff7)] px-2.5 py-1 text-xs text-[color:var(--nb-blue,#00fff7)] sm:inline-flex" data-testid="nb-context-chip">
+                  <Hash className="h-3 w-3" />
                   <span>{domainContext}</span>
-                  <button
-                    onClick={() => setDomainContext('')}
-                    className="ml-0.5 hover:text-white transition-colors"
-                    title="Clear domain context"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
+                  <button type="button" onClick={() => setDomainContext('')} title="Clear domain context" aria-label="Clear domain context"><X className="h-3 w-3" /></button>
+                </span>
               )}
-
-              {/* Living chat / Layer 4b — the assistant's felt state (a qualeOf mood
-                  label), surfaced honestly as a correlate. Renders only when lit. */}
-              <AssistantMoodChip />
-
-              {/* Active-project chip — surfaced inline only when one is active, so the
-                  user sees their working space without opening the menu. */}
               {activeProject && (
-                <button
-                  type="button"
-                  onClick={() => setProjectsPanelOpen(true)}
-                  className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 bg-cyan-500/10 border border-cyan-500/50 rounded-full text-xs text-cyan-300 hover:border-cyan-400 transition-colors"
-                  title="Open active project"
-                >
-                  <FolderOpen className="w-3 h-3" />
+                <button type="button" onClick={() => setProjectsPanelOpen(true)} title="Open active project" className="hidden items-center gap-1.5 rounded-full border border-[color:var(--nb-rule-2,#52525b)] px-2.5 py-1 text-xs sm:inline-flex">
+                  <FolderOpen className="h-3 w-3" />
                   <span>{activeProject.name.slice(0, 14)}</span>
                 </button>
               )}
-
-              <ChatWorkspaceMenu
-                open={workspaceMenuOpen}
-                onOpenChange={setWorkspaceMenuOpen}
-                initiativesPaused={initiativesPaused}
-                systemsPanelOpen={systemsPanelOpen}
-                toolsPanelOpen={toolsPanelOpen}
-                activeProject={activeProject}
-                studioOpen={studioOpen}
-                onViewContext={() => setContextOverlayOpen(true)}
-                onToolPalette={() => setToolPaletteOpen(true)}
-                onSearchChats={() => setThreadSearchOpen(true)}
-                onProjects={() => setProjectsPanelOpen(true)}
-                onPrompts={() => setPromptsPanelOpen(true)}
-                onSchedule={() => setScheduledPanelOpen(true)}
-                onStudio={() => setStudioOpen(true)}
-                onToggleAnalysis={() => setToolsPanelOpen((v) => !v)}
-                onToggleSystems={() => setSystemsPanelOpen((v) => !v)}
-                onToggleInitiativesPaused={toggleInitiativesPaused}
-              />
-
-            </div>
-
-            {/* Cognitive Status Bar */}
-            {cogStatus && (
-              <div className="hidden md:flex items-center gap-4 text-xs">
-                {exp && (
-                  <div
-                    className="flex items-center gap-1.5 text-gray-400"
-                    title={`${exp.episodes} episodes, ${exp.patterns} patterns learned`}
-                  >
-                    <Brain className="w-3.5 h-3.5 text-neon-purple" />
-                    <span>{exp.patterns} patterns</span>
-                  </div>
-                )}
-                {attn && (
-                  <div
-                    className="flex items-center gap-1.5 text-gray-400"
-                    title={`${attn.activeThreads} active threads`}
-                  >
-                    <Eye className="w-3.5 h-3.5 text-neon-cyan" />
-                    <span>{attn.activeThreads} threads</span>
-                  </div>
-                )}
-                {refl && (
-                  <div
-                    className="flex items-center gap-1.5"
-                    title={`Self-calibration: ${((refl.calibration || 0) * 100).toFixed(0)}%`}
-                  >
-                    <Activity
-                      className={`w-3.5 h-3.5 ${(refl.calibration || 0) > 0.6 ? 'text-neon-green' : 'text-yellow-400'}`}
-                    />
-                    <span
-                      className={`${(refl.calibration || 0) > 0.6 ? 'text-neon-green' : 'text-yellow-400'}`}
-                    >
-                      {((refl.calibration || 0) * 100).toFixed(0)}%
-                    </span>
-                  </div>
-                )}
-                {refl?.strengths?.length > 0 && (
-                  <div
-                    className="flex items-center gap-1 text-neon-green"
-                    title={`Strengths: ${refl.strengths.join(', ')}`}
-                  >
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                  </div>
-                )}
+              <AssistantMoodChip />
+              <span className="flex-1" />
+              <InitiativeBell />
+              <button type="button" onClick={() => setSessionSidebarOpen(true)} className="rounded-md p-2 text-[color:var(--nb-ink-2,#d4d4d8)] hover:bg-[var(--nb-wash,#262626)]" aria-label="Session history" title="Session history">
+                <Layers className="h-5 w-5" />
+              </button>
+              <div className="relative">
+                <ChatWorkspaceMenu
+                    open={workspaceMenuOpen}
+                    onOpenChange={setWorkspaceMenuOpen}
+                    initiativesPaused={initiativesPaused}
+                    systemsPanelOpen={systemsPanelOpen}
+                    toolsPanelOpen={toolsPanelOpen}
+                    activeProject={activeProject}
+                    studioOpen={studioOpen}
+                    onViewContext={() => setContextOverlayOpen(true)}
+                    onToolPalette={() => setToolPaletteOpen(true)}
+                    onSearchChats={() => setThreadSearchOpen(true)}
+                    onProjects={() => setProjectsPanelOpen(true)}
+                    onPrompts={() => setPromptsPanelOpen(true)}
+                    onSchedule={() => setScheduledPanelOpen(true)}
+                    onStudio={() => setStudioOpen(true)}
+                    onToggleAnalysis={() => setToolsPanelOpen((v) => !v)}
+                    onToggleSystems={() => setSystemsPanelOpen((v) => !v)}
+                    onToggleInitiativesPaused={toggleInitiativesPaused}
+                  />
               </div>
-            )}
-
-            <div className="flex items-center gap-2 relative">
-              <button
-                onClick={() => setSessionSidebarOpen(true)}
-                className="p-2 hover:bg-lattice-bg rounded-lg transition-colors"
-                aria-label="Session history"
-                title="Session history"
-              >
-                <Layers className="w-5 h-5 text-gray-400" />
-              </button>
-              <button
-                onClick={() => setMoreMenuOpen(!moreMenuOpen)}
-                className="p-2 hover:bg-lattice-bg rounded-lg transition-colors"
-                aria-label="Chat options"
-              >
-                <MoreVertical className="w-5 h-5 text-gray-400" />
-              </button>
-              <AnimatePresence>
-                {moreMenuOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className="absolute top-full right-0 mt-2 w-72 bg-lattice-surface border border-lattice-border rounded-lg shadow-xl z-50 overflow-hidden"
-                  >
-                    <button
-                      onClick={() => {
-                        openGlobalSearch();
-                        setMoreMenuOpen(false);
-                      }}
-                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-200 hover:bg-lattice-bg transition-colors"
-                      title="Search across every conversation"
-                    >
-                      <Search className="w-4 h-4" />
-                      Search all chats
-                      <kbd className="ml-auto text-[10px] text-gray-400">⌘⇧F</kbd>
-                    </button>
-                    <button
-                      onClick={handleExportChat}
-                      disabled={messages.length === 0}
-                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-200 hover:bg-lattice-bg transition-colors disabled:opacity-50"
-                    >
-                      <Download className="w-4 h-4" />
-                      Export JSON
-                    </button>
-                    <button
-                      onClick={handleExportMarkdown}
-                      disabled={messages.length === 0}
-                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-200 hover:bg-lattice-bg transition-colors disabled:opacity-50"
-                    >
-                      <FileText className="w-4 h-4" />
-                      Export Markdown
-                    </button>
-                    <button
-                      onClick={handleCopyTranscript}
-                      disabled={messages.length === 0}
-                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-200 hover:bg-lattice-bg transition-colors disabled:opacity-50"
-                    >
-                      <Copy className="w-4 h-4" />
-                      Copy transcript
-                    </button>
-                    <ChatHandoffMenu
-                      messages={messages.map((m) => ({ role: m.role, content: m.content || '' }))}
-                      sessionId={selectedConversation}
-                      title={conversations.find((c) => c.id === selectedConversation)?.title || 'Chat transcript'}
-                      onNote={(text) => {
-                        setLocalMessages((prev) => [...prev, {
-                          id: `handoff-${Date.now()}`,
-                          role: 'system',
-                          content: text,
-                          timestamp: new Date().toISOString(),
-                        }]);
-                      }}
-                    />
-                    <button
-                      onClick={() => {
-                        startNewChat();
-                        setMoreMenuOpen(false);
-                      }}
-                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-200 hover:bg-lattice-bg transition-colors border-t border-lattice-border"
-                    >
-                      <Plus className="w-4 h-4" />
-                      New Conversation
-                    </button>
-                    {selectedConversation && (
-                      <StickyDeleteConfirm
-                        onConfirm={() => {
-                          deleteConversationMutation.mutate(selectedConversation);
-                          setMoreMenuOpen(false);
+              <div className="relative" data-chat-menu>
+                <button type="button" onClick={() => setMoreMenuOpen((v) => !v)} className="rounded-md p-2 text-[color:var(--nb-ink-2,#d4d4d8)] hover:bg-[var(--nb-wash,#262626)]" aria-label="Chat options" aria-expanded={moreMenuOpen}>
+                  <MoreVertical className="h-5 w-5" />
+                </button>
+                <AnimatePresence>
+                  {moreMenuOpen && (
+                    <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} className="nb-menu absolute right-0 top-full z-50 mt-2 w-72 overflow-hidden">
+                      <button onClick={() => { openGlobalSearch(); setMoreMenuOpen(false); }} className="flex w-full items-center gap-2 px-4 py-2.5 text-sm hover:bg-[var(--nb-wash,#262626)]" title="Search across every conversation">
+                        <Search className="h-4 w-4" /> Search all chats <kbd className="ml-auto text-[10px] text-[color:var(--nb-muted,#9ca3af)]">⌘⇧F</kbd>
+                      </button>
+                      <button onClick={handleExportChat} disabled={messages.length === 0} className="flex w-full items-center gap-2 px-4 py-2.5 text-sm hover:bg-[var(--nb-wash,#262626)] disabled:opacity-50">
+                        <Download className="h-4 w-4" /> Export JSON
+                      </button>
+                      <button onClick={handleExportMarkdown} disabled={messages.length === 0} className="flex w-full items-center gap-2 px-4 py-2.5 text-sm hover:bg-[var(--nb-wash,#262626)] disabled:opacity-50">
+                        <FileText className="h-4 w-4" /> Export Markdown
+                      </button>
+                      <button onClick={handleCopyTranscript} disabled={messages.length === 0} className="flex w-full items-center gap-2 px-4 py-2.5 text-sm hover:bg-[var(--nb-wash,#262626)] disabled:opacity-50">
+                        <Copy className="h-4 w-4" /> Copy transcript
+                      </button>
+                      <ChatHandoffMenu
+                        messages={messages.map((m) => ({ role: m.role, content: m.content || '' }))}
+                        sessionId={selectedConversation}
+                        title={conversations.find((c) => c.id === selectedConversation)?.title || 'Chat transcript'}
+                        onNote={(text) => {
+                          setLocalMessages((prev) => [...prev, { id: `handoff-${Date.now()}`, role: 'system', content: text, timestamp: new Date().toISOString() }]);
                         }}
-                        disabled={deleteConversationMutation.isPending}
-                        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors border-t border-lattice-border disabled:opacity-50 disabled:cursor-not-allowed"
-                        armAriaLabel="Delete Conversation"
-                        confirmLabel={`Delete “${conversations.find((c) => c.id === selectedConversation)?.title || 'Conversation'}”?`}
-                        confirmAriaLabel="Confirm delete conversation"
-                        armLabel={<><Trash2 className="w-4 h-4" /> Delete Conversation</>}
                       />
-                    )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </header>
-
-          {/* Chat Mode Selector Rail — ONE nav primitive (`active`). Hidden on the empty canvas. */}
-          {!cleanEmpty && (
-          <div>
-            <ModeSelector activeMode={active} onModeChange={onActiveChange} />
-          </div>
+                      <button onClick={() => { startNewChat(); setMoreMenuOpen(false); }} className="flex w-full items-center gap-2 border-t border-[color:var(--nb-rule,#3f3f46)] px-4 py-2.5 text-sm hover:bg-[var(--nb-wash,#262626)]">
+                        <Plus className="h-4 w-4" /> New Conversation
+                      </button>
+                      {selectedConversation && (
+                        <StickyDeleteConfirm
+                          onConfirm={() => { deleteConversationMutation.mutate(selectedConversation); setMoreMenuOpen(false); }}
+                          disabled={deleteConversationMutation.isPending}
+                          className="flex w-full items-center gap-2 border-t border-[color:var(--nb-rule,#3f3f46)] px-4 py-2.5 text-sm text-[color:var(--nb-red,#f87171)] hover:bg-[var(--nb-red-soft,rgba(239,68,68,0.1))] disabled:opacity-50"
+                          armAriaLabel="Delete Conversation"
+                          confirmLabel={`Delete “${conversations.find((c) => c.id === selectedConversation)?.title || 'Conversation'}”?`}
+                          confirmAriaLabel="Confirm delete conversation"
+                          armLabel={<><Trash2 className="h-4 w-4" /> Delete Conversation</>}
+                        />
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+              <button type="button" onClick={() => startNewChat()} className="rounded-md p-2 text-[color:var(--nb-ink-2,#d4d4d8)] hover:bg-[var(--nb-wash,#262626)]" aria-label="New conversation" title="New page">
+                <Plus className="h-5 w-5" />
+              </button>
+            </header>
           )}
+
+          
 
           {/* Mode surfaces — assist/explore/connect were unreachable before */}
-          {!cleanEmpty && active === 'assist' && (
-            <div className="px-4 py-2 border-b border-lattice-border/30">
-              <AssistPanel currentLens="chat" onSendMessage={(msg) => setInput(msg)} />
-            </div>
-          )}
-          {!cleanEmpty && active === 'explore' && (
-            <div className="px-4 py-2 border-b border-lattice-border/30">
-              <ExplorePanel currentLens="chat" onSendMessage={(msg) => setInput(msg)} />
-            </div>
-          )}
-          {!cleanEmpty && active === 'connect' && (
-            <div className="px-4 py-2 border-b border-lattice-border/30">
-              <ConnectPanel currentLens="chat" onSendMessage={(msg) => setInput(msg)} />
-            </div>
-          )}
-          {!cleanEmpty && active === 'welcome' && messages.length === 0 && (
-            <div className="px-4 py-2 border-b border-lattice-border/30">
-              <WelcomePanel currentLens="chat" onSendMessage={(msg) => setInput(msg)} />
-            </div>
-          )}
-          {/* ChatModePanel was a nested chat strip on active threads — hide under Claude-clean. */}
-          {!cleanEmpty && active === 'chat' && messages.length > 0 && (
-            <div className="px-4 py-2 border-b border-lattice-border/30">
-              <ChatModePanel
-                currentLens="chat"
-                onSendMessage={(msg) => {
-                  setInput(msg);
-                }}
-              />
-            </div>
-          )}
+          
+          
+          
+          
+          
 
           {/* Messages */}
           <div
@@ -3690,43 +3289,43 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
               // pb-28/pb-32 is the pre-measure fallback; the measured composer height wins.
               !isEmptyThread && 'pb-28 sm:pb-32',
               // The conversations / new-chat header floats over the top edge.
-              cleanEmpty && !isEmptyThread && 'pt-12',
+              !isEmptyThread && 'pt-12',
             )}
-            style={cleanEmpty && !isEmptyThread && composerHeight > 0 ? { paddingBottom: composerHeight + 8 } : undefined}
+            style={!isEmptyThread && composerHeight > 0 ? { paddingBottom: composerHeight + 8 } : undefined}
             data-testid="chat-thread"
             role="log"
             aria-label="Chat messages"
             aria-live="polite"
           >
             {messages.length === 0 && (
-              <div className="flex-1 flex flex-col items-center justify-center text-center px-6 pb-36 bg-black">
-                <motion.h2
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.08, duration: 0.35 }}
-                  className="font-vault text-[1.75rem] sm:text-4xl font-normal text-[#f4f1ea] tracking-tight"
-                >
-                  {greeting}
-                </motion.h2>
-                {/* North star (docs/lens-northstar/02-chat): subtitle + a few
-                    starter prompts. A chip only fills the composer — the user
-                    still sends it. */}
-                <p className="mt-3 text-[15px] text-zinc-500">How can I help you think today?</p>
-                <div className="mt-6 flex flex-wrap justify-center gap-2">
-                  {[
-                    'Summarize what’s new in my lattice',
-                    'Help me outline a plan',
-                    'Explain a concept simply',
-                  ].map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => { setInput(s); inputRef.current?.focus(); }}
-                      className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[13px] text-zinc-300 transition-colors hover:border-white/20 hover:text-zinc-100"
-                    >
-                      {s}
-                    </button>
-                  ))}
+              <div className="flex-1 overflow-y-auto px-6 pb-40 pt-16 sm:pt-24" data-testid="nb-blank-page">
+                <div className="mx-auto max-w-[760px]">
+                  <p className="nb-hand text-[15px] text-[color:var(--nb-red,#c23a2e)]">{new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+                  <motion.h2
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.05, duration: 0.3 }}
+                    className="nb-serif mt-1 text-[30px] font-medium leading-tight sm:text-[38px]"
+                  >
+                    {greeting}
+                  </motion.h2>
+                  <p className="mt-2 text-[15px] text-[color:var(--nb-muted,#71717a)]">A fresh page. Ask anything; every reply is an entry, and what backs it is pinned in the margin.</p>
+                  {/* Starters: the old rail modes' real prompts, as index cards. A card only
+                      fills the composer — you still read it and send it. */}
+                  <div className="mt-8 grid gap-3 sm:grid-cols-2" data-testid="nb-starters">
+                    {STARTERS.map((st) => (
+                      <button
+                        key={st.title}
+                        type="button"
+                        className="nb-card p-4"
+                        onClick={() => { setInput(st.prompt); inputRef.current?.focus(); }}
+                      >
+                        <span className="nb-label block">{st.kind}</span>
+                        <span className="nb-serif mt-1 block text-[17px] leading-snug">{st.title}</span>
+                        <span className="mt-1 block text-[12.5px] text-[color:var(--nb-muted,#71717a)]">{st.prompt}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
@@ -3734,7 +3333,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
             {threadItems.length > 0 && (
               <>
                 {!selectedConversation && unreadInitiativesCount > 0 && (
-                  <div className="mx-4 lg:mx-6 mb-2 inline-flex items-center gap-2 self-start rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs text-amber-200">
+                  <div className="mx-4 lg:mx-6 mb-2 inline-flex items-center gap-2 self-start rounded-full border border-[color:var(--nb-ochre,rgba(245,158,11,0.4))] bg-[var(--nb-hl,rgba(245,158,11,0.1))] px-3 py-1 text-xs text-[color:var(--nb-ochre,#fde68a)]">
                     <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
                     Concord wrote you {unreadInitiativesCount} time{unreadInitiativesCount === 1 ? '' : 's'} while you were away.
                   </div>
@@ -3751,7 +3350,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
               </>
             )}
             {threadItems.length === 0 && (threadLoading && selectedConversation ? (
-              <div className="flex-1 flex items-center justify-center text-sm text-zinc-500" role="status">
+              <div className="flex-1 flex items-center justify-center text-sm text-[color:var(--nb-muted,#71717a)]" role="status">
                 Loading conversation…
               </div>
             ) : threadFooter)}
@@ -3760,30 +3359,28 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
 
           {/* Input Area — floating Claude composer for empty and active threads */}
           <div ref={composerRef} data-testid="chat-composer" className={cn(
-            cleanEmpty
-              ? 'absolute bottom-0 inset-x-0 z-20 px-3 pb-4 sm:px-6 sm:pb-8 pointer-events-none'
-              : 'p-4 border-t border-lattice-border bg-lattice-surface',
+            'absolute bottom-0 inset-x-0 z-20 px-3 pb-4 sm:px-6 sm:pb-8 pointer-events-none',
           )}>
             <div className={cn(
               'max-w-3xl mx-auto pointer-events-auto',
-              cleanEmpty && 'rounded-2xl border border-white/10 bg-[#161616] shadow-[0_12px_40px_rgba(0,0,0,0.55)] px-3 pt-3 pb-2',
+              'rounded-2xl border border-[color:var(--nb-rule,rgba(255,255,255,0.1))] bg-[var(--nb-sheet,#161616)] shadow-[0_12px_40px_rgba(0,0,0,0.55)] px-3 pt-3 pb-2',
             )}>
               {/* Quoted message indicator */}
               {quotedMessage && (
-                <div className="flex items-center gap-2 mb-2 p-2 bg-lattice-bg border border-lattice-border rounded-lg">
-                  <Quote className="w-4 h-4 text-neon-cyan flex-shrink-0" />
+                <div className="flex items-center gap-2 mb-2 p-2 bg-[var(--nb-paper,rgb(var(--lattice-bg-rgb)))] border border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))] rounded-lg">
+                  <Quote className="w-4 h-4 text-[color:var(--nb-blue,#00fff7)] flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-gray-400 mb-0.5">
+                    <p className="text-xs text-[color:var(--nb-muted,#9ca3af)] mb-0.5">
                       Replying to {quotedMessage.role === 'user' ? 'yourself' : 'assistant'}
                     </p>
-                    <p className="text-sm text-gray-300 truncate">{quotedMessage.content}</p>
+                    <p className="text-sm text-[color:var(--nb-ink-2,#d1d5db)] truncate">{quotedMessage.content}</p>
                   </div>
                   <button
                     onClick={() => setQuotedMessage(null)}
-                    className="p-1 hover:bg-lattice-surface rounded transition-colors flex-shrink-0"
+                    className="p-1 hover:bg-[var(--nb-sheet,rgb(var(--lattice-surface-rgb)))] rounded transition-colors flex-shrink-0"
                     aria-label="Cancel reply"
                   >
-                    <X className="w-4 h-4 text-gray-400" />
+                    <X className="w-4 h-4 text-[color:var(--nb-muted,#9ca3af)]" />
                   </button>
                 </div>
               )}
@@ -3794,7 +3391,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                   {attachments.map((att) => (
                     <div
                       key={att.id}
-                      className="flex items-center gap-2 px-3 py-1.5 bg-lattice-bg border border-lattice-border rounded-lg text-sm"
+                      className="flex items-center gap-2 px-3 py-1.5 bg-[var(--nb-paper,rgb(var(--lattice-bg-rgb)))] border border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))] rounded-lg text-sm"
                     >
                       {att.preview ? (
                         <Image
@@ -3805,16 +3402,16 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                           className="w-6 h-6 rounded object-cover"
                         />
                       ) : (
-                        <FileText className="w-4 h-4 text-gray-400" />
+                        <FileText className="w-4 h-4 text-[color:var(--nb-muted,#9ca3af)]" />
                       )}
-                      <span className="text-gray-300 truncate max-w-[150px]">{att.name}</span>
-                      <span className="text-gray-400 text-xs">{formatBytes(att.size)}</span>
+                      <span className="text-[color:var(--nb-ink-2,#d1d5db)] truncate max-w-[150px]">{att.name}</span>
+                      <span className="text-[color:var(--nb-muted,#9ca3af)] text-xs">{formatBytes(att.size)}</span>
                       <button
                         onClick={() => removeAttachment(att.id)}
-                        className="p-0.5 hover:bg-lattice-surface rounded transition-colors"
+                        className="p-0.5 hover:bg-[var(--nb-sheet,rgb(var(--lattice-surface-rgb)))] rounded transition-colors"
                         aria-label={`Remove ${att.name}`}
                       >
-                        <X className="w-3.5 h-3.5 text-gray-400 hover:text-red-400" />
+                        <X className="w-3.5 h-3.5 text-[color:var(--nb-muted,#9ca3af)] hover:text-[color:var(--nb-red,#f87171)]" />
                       </button>
                     </div>
                   ))}
@@ -3829,10 +3426,10 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 10 }}
-                      className="absolute bottom-full left-0 mb-2 w-72 bg-lattice-surface border border-lattice-border rounded-lg shadow-xl z-50 overflow-hidden"
+                      className="absolute bottom-full left-0 mb-2 w-72 bg-[var(--nb-sheet,rgb(var(--lattice-surface-rgb)))] border border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))] rounded-lg shadow-xl z-50 overflow-hidden"
                     >
-                      <div className="p-2 border-b border-lattice-border">
-                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                      <div className="p-2 border-b border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))]">
+                        <p className="text-xs font-semibold text-[color:var(--nb-muted,#9ca3af)] uppercase tracking-wider">
                           Commands
                         </p>
                       </div>
@@ -3844,35 +3441,35 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                             onMouseEnter={() => setSlashSelectedIndex(idx)}
                             className={cn(
                               'w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors',
-                              idx === slashSelectedIndex ? 'bg-neon-cyan/10' : 'hover:bg-lattice-bg'
+                              idx === slashSelectedIndex ? 'bg-[var(--nb-blue-soft,rgba(0,255,247,0.1))]' : 'hover:bg-[var(--nb-paper,rgb(var(--lattice-bg-rgb)))]'
                             )}
                           >
                             <cmd.icon
                               className={cn(
                                 'w-4 h-4 flex-shrink-0',
-                                idx === slashSelectedIndex ? 'text-neon-cyan' : 'text-gray-400'
+                                idx === slashSelectedIndex ? 'text-[color:var(--nb-blue,#00fff7)]' : 'text-[color:var(--nb-muted,#9ca3af)]'
                               )}
                             />
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-mono text-white">{cmd.label}</p>
-                              <p className="text-xs text-gray-300">{cmd.description}</p>
+                              <p className="text-sm font-mono text-[color:var(--nb-ink,#ffffff)]">{cmd.label}</p>
+                              <p className="text-xs text-[color:var(--nb-ink-2,#d1d5db)]">{cmd.description}</p>
                             </div>
                           </button>
                         ))}
                       </div>
-                      <div className="p-2 border-t border-lattice-border text-xs text-gray-400 flex items-center gap-3">
+                      <div className="p-2 border-t border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))] text-xs text-[color:var(--nb-muted,#9ca3af)] flex items-center gap-3">
                         <span>
-                          <kbd className="px-1 py-0.5 bg-lattice-bg rounded text-gray-400">Tab</kbd>{' '}
+                          <kbd className="px-1 py-0.5 bg-[var(--nb-paper,rgb(var(--lattice-bg-rgb)))] rounded text-[color:var(--nb-muted,#9ca3af)]">Tab</kbd>{' '}
                           select
                         </span>
                         <span>
-                          <kbd className="px-1 py-0.5 bg-lattice-bg rounded text-gray-400">
+                          <kbd className="px-1 py-0.5 bg-[var(--nb-paper,rgb(var(--lattice-bg-rgb)))] rounded text-[color:var(--nb-muted,#9ca3af)]">
                             Enter
                           </kbd>{' '}
                           confirm
                         </span>
                         <span>
-                          <kbd className="px-1 py-0.5 bg-lattice-bg rounded text-gray-400">Esc</kbd>{' '}
+                          <kbd className="px-1 py-0.5 bg-[var(--nb-paper,rgb(var(--lattice-bg-rgb)))] rounded text-[color:var(--nb-muted,#9ca3af)]">Esc</kbd>{' '}
                           dismiss
                         </span>
                       </div>
@@ -3880,10 +3477,10 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                   )}
                 </AnimatePresence>
 
-                <div className={cn('flex items-end', cleanEmpty ? 'gap-2' : 'gap-4')}>
+                <div className={cn('flex items-end', 'gap-2')}>
                   <div className={cn(
                     'flex-1 min-w-0 flex items-end rounded-2xl p-2',
-                    cleanEmpty ? 'bg-black/50 border border-white/10' : 'bg-lattice-bg border border-lattice-border',
+                    'bg-[var(--nb-paper,rgba(0,0,0,0.5))] border border-[color:var(--nb-rule,rgba(255,255,255,0.1))]',
                   )}>
                     {/* Hidden file input */}
                     <input
@@ -3895,12 +3492,12 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                       className="hidden"
                       aria-label="Attach files"
                     />
-                    {cleanEmpty ? (
+                    {(
                       <div className="relative" data-chat-menu>
                         <button
                           type="button"
                           onClick={() => setComposerPlusOpen((v) => !v)}
-                          className="flex h-11 w-11 items-center justify-center text-white/70 hover:text-white transition-colors"
+                          className="flex h-11 w-11 items-center justify-center text-[color:var(--nb-ink-2,rgba(255,255,255,0.7))] hover:text-[color:var(--nb-ink,#ffffff)] transition-colors"
                           title="Attachments and tools"
                           aria-label="Attachments and tools"
                           aria-expanded={composerPlusOpen}
@@ -3913,154 +3510,40 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                               initial={{ opacity: 0, y: 8 }}
                               animate={{ opacity: 1, y: 0 }}
                               exit={{ opacity: 0, y: 8 }}
-                              className="absolute bottom-full left-0 mb-2 w-52 rounded-xl border border-white/10 bg-[#1c1c1c] shadow-xl z-50 overflow-hidden"
+                              className="absolute bottom-full left-0 mb-2 w-52 rounded-xl border border-[color:var(--nb-rule,rgba(255,255,255,0.1))] bg-[var(--nb-sheet,#1c1c1c)] shadow-xl z-50 overflow-hidden"
                             >
-                              <button type="button" onClick={() => { fileInputRef.current?.click(); setComposerPlusOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm text-white/80 hover:bg-white/5">Attach file</button>
-                              <button type="button" onClick={() => { setToolsPanelOpen(true); setComposerPlusOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm text-white/80 hover:bg-white/5">Tools</button>
-                              <button type="button" onClick={() => { setProjectsPanelOpen(true); setComposerPlusOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm text-white/80 hover:bg-white/5">Projects</button>
-                              <button type="button" onClick={() => { setPromptsPanelOpen(true); setComposerPlusOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm text-white/80 hover:bg-white/5">Prompts</button>
-                              <button type="button" onClick={() => { setScheduledPanelOpen(true); setComposerPlusOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm text-white/80 hover:bg-white/5">Schedule</button>
-                              <button type="button" onClick={() => { setStudioOpen(true); setComposerPlusOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm text-white/80 hover:bg-white/5">Studio</button>
-                              <button type="button" onClick={() => { setAgentPanelOpen(true); setComposerPlusOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm text-white/80 hover:bg-white/5">Agent Mode</button>
+                              <button type="button" onClick={() => { fileInputRef.current?.click(); setComposerPlusOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm text-[color:var(--nb-ink-2,rgba(255,255,255,0.8))] hover:bg-[var(--nb-wash,rgba(255,255,255,0.05))]">Attach file</button>
+                              <button type="button" onClick={() => { setToolsPanelOpen(true); setComposerPlusOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm text-[color:var(--nb-ink-2,rgba(255,255,255,0.8))] hover:bg-[var(--nb-wash,rgba(255,255,255,0.05))]">Tools</button>
+                              <button type="button" onClick={() => { setProjectsPanelOpen(true); setComposerPlusOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm text-[color:var(--nb-ink-2,rgba(255,255,255,0.8))] hover:bg-[var(--nb-wash,rgba(255,255,255,0.05))]">Projects</button>
+                              <button type="button" onClick={() => { setPromptsPanelOpen(true); setComposerPlusOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm text-[color:var(--nb-ink-2,rgba(255,255,255,0.8))] hover:bg-[var(--nb-wash,rgba(255,255,255,0.05))]">Prompts</button>
+                              <button type="button" onClick={() => { setScheduledPanelOpen(true); setComposerPlusOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm text-[color:var(--nb-ink-2,rgba(255,255,255,0.8))] hover:bg-[var(--nb-wash,rgba(255,255,255,0.05))]">Schedule</button>
+                              <button type="button" onClick={() => { setStudioOpen(true); setComposerPlusOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm text-[color:var(--nb-ink-2,rgba(255,255,255,0.8))] hover:bg-[var(--nb-wash,rgba(255,255,255,0.05))]">Studio</button>
+                              <button type="button" onClick={() => { setAgentPanelOpen(true); setComposerPlusOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm text-[color:var(--nb-ink-2,rgba(255,255,255,0.8))] hover:bg-[var(--nb-wash,rgba(255,255,255,0.05))]">Agent Mode</button>
                             </motion.div>
                           )}
                         </AnimatePresence>
                       </div>
-                    ) : (
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className="p-2 text-gray-400 hover:text-white transition-colors"
-                      title="Attach files"
-                      aria-label="Attach files"
-                    >
-                      <Paperclip className="w-5 h-5" />
-                    </button>
                     )}
                     <textarea
                       ref={inputRef}
                       value={input}
                       onChange={handleInputChange}
                       onKeyDown={handleKeyDown}
-                      placeholder={cleanEmpty ? `Message ${chatWithLabel}` : `Message ${aiMode.name} mode${selectedPersona.id !== 'default' ? ` as ${selectedPersona.name}` : ''}... (/ for commands)`}
+                      placeholder={`Message ${chatWithLabel}`}
                       rows={1}
-                      className="flex-1 min-w-0 px-2 py-2 bg-transparent text-white placeholder-gray-500 resize-none focus:outline-none max-h-32"
+                      className="flex-1 min-w-0 px-2 py-2 bg-transparent text-[color:var(--nb-ink,#ffffff)] placeholder:text-[color:var(--nb-faint,#6b7280)] resize-none focus:outline-none max-h-32"
                       style={{ minHeight: '24px' }}
                       disabled={sendMutation.isPending}
                     />
-                    {cleanEmpty && (
-                      <div className="relative" data-chat-menu>
-                        <button
-                          type="button"
-                          onClick={() => setModeSelectOpen((v) => !v)}
-                          className="mx-1 mb-1 inline-flex min-h-11 items-center gap-1 rounded-full border border-white/15 px-3 py-1 text-[11px] text-white/70 hover:text-white hover:border-white/30"
-                          aria-label="Choose mode"
-                          title={`Mode: ${aiMode.name}`}
-                          aria-expanded={modeSelectOpen}
-                        >
-                          <aiMode.icon className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline">{aiMode.name}</span>
-                          <ChevronDown className="w-3 h-3 text-white/50" />
-                        </button>
-                        <AnimatePresence>
-                          {modeSelectOpen && (
-                            <motion.div
-                              initial={{ opacity: 0, y: 8 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, y: 8 }}
-                              className="absolute bottom-full right-0 mb-2 w-56 rounded-xl border border-white/10 bg-[#1c1c1c] shadow-xl z-50 overflow-hidden"
-                            >
-                              {AI_MODES.map((mode) => (
-                                <button
-                                  key={mode.id}
-                                  type="button"
-                                  onClick={() => { selectAiMode(mode); setModeSelectOpen(false); }}
-                                  className={cn(
-                                    'w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-white/5',
-                                    aiMode.id === mode.id ? 'text-white' : 'text-white/70',
-                                  )}
-                                >
-                                  <mode.icon className="w-4 h-4" />
-                                  {mode.name}
-                                </button>
-                              ))}
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </div>
-                    )}
-                    {cleanEmpty && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const kay = AI_MODES.find((m) => m.id === 'conkay');
-                          if (kay) selectAiMode(kay);
-                        }}
-                        className="px-2 py-1 text-xs text-white/70 hover:text-white transition-colors"
-                        title="Open ConKay"
-                        aria-label="Open ConKay"
-                      >
-                        ConKay
-                      </button>
-                    )}
-                    {!cleanEmpty && (
-                    <div className="relative">
-                      <button
-                        onClick={() => setEmojiPickerOpen((prev) => !prev)}
-                        className="p-2 text-gray-400 hover:text-white transition-colors"
-                        title="Add emoji"
-                      >
-                        <Smile className="w-5 h-5" />
-                      </button>
-                      <AnimatePresence>
-                        {emojiPickerOpen && (
-                          <motion.div
-                            initial={{ opacity: 0, y: 8 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: 8 }}
-                            className="absolute bottom-full right-0 mb-2 p-2 bg-lattice-surface border border-lattice-border rounded-xl shadow-xl z-50 grid grid-cols-8 gap-1 w-72"
-                          >
-                            {[
-                              '👍',
-                              '👎',
-                              '❤️',
-                              '😂',
-                              '🔥',
-                              '💡',
-                              '✅',
-                              '❌',
-                              '🎯',
-                              '🚀',
-                              '💪',
-                              '🤔',
-                              '👀',
-                              '⭐',
-                              '💬',
-                              '🙏',
-                              '📌',
-                              '🎉',
-                              '👏',
-                              '💯',
-                              '⚡',
-                              '🧠',
-                              '📝',
-                              '🔗',
-                            ].map((emoji) => (
-                              <button
-                                key={emoji}
-                                onClick={() => {
-                                  setInput((prev) => prev + emoji);
-                                  setEmojiPickerOpen(false);
-                                }}
-                                className="w-8 h-8 flex items-center justify-center text-lg hover:bg-lattice-bg rounded-lg transition-colors"
-                              >
-                                {emoji}
-                              </button>
-                            ))}
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                    )}
+                    <AnswerAsPicker
+                      mode={aiMode}
+                      persona={selectedPersona}
+                      open={modeSelectOpen}
+                      onOpenChange={setModeSelectOpen}
+                      onPick={({ mode, persona }) => { selectAiMode(mode); setSelectedPersona(persona); }}
+                      onConKay={() => { const kay = AI_MODES.find((m) => m.id === 'conkay'); if (kay) selectAiMode(kay); }}
+                    />
+                    
                   </div>
                   {/* Send / Stop toggle — when streaming, swap to a stop
                       button (ChatGPT / Claude pattern). Aborts in-flight
@@ -4071,7 +3554,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                         chatAbortControllerRef.current?.abort();
                         setStreamActive(false);
                       }}
-                      className="p-4 bg-rose-500 text-white rounded-2xl hover:bg-rose-400 transition-colors animate-pulse"
+                      className="p-4 bg-[var(--nb-red,#f43f5e)] text-[color:var(--nb-on-ink,#ffffff)] rounded-2xl hover:bg-[var(--nb-red,#fb7185)] transition-colors animate-pulse"
                       title="Stop generating (Esc)"
                       aria-label="Stop generating"
                     >
@@ -4083,9 +3566,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                       disabled={!input.trim() && attachments.length === 0}
                       className={cn(
                         'rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed transition-colors',
-                        cleanEmpty
-                          ? 'p-3 bg-teal-400 text-black hover:bg-teal-300'
-                          : 'p-4 bg-neon-cyan text-black hover:bg-neon-cyan/90',
+                        'p-3 bg-[var(--nb-blue,#2dd4bf)] text-[color:var(--nb-ink,#000000)] hover:bg-[var(--nb-blue,#5eead4)]',
                       )}
                       title="Send (⌘ Enter)"
                       aria-label="Send message"
@@ -4105,22 +3586,6 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                   chip names a shortcut genuinely registered via
                   useLensCommand above (send / focus-input / thread-search),
                   not decorative text. */}
-              <div className={cn('flex flex-wrap items-center justify-center gap-x-3 gap-y-1 mt-2 text-[10px] text-gray-500', cleanEmpty && 'hidden')}>
-                <span className="inline-flex items-center gap-1">
-                  <kbd className="px-1 py-0.5 bg-lattice-bg rounded text-gray-400">Enter</kbd> send
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <kbd className="px-1 py-0.5 bg-lattice-bg rounded text-gray-400">Shift+Enter</kbd> new line
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <kbd className="px-1 py-0.5 bg-lattice-bg rounded text-gray-400">/</kbd> commands
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <kbd className="px-1 py-0.5 bg-lattice-bg rounded text-gray-400">⌘K</kbd> search chats
-                </span>
-                <span className="text-gray-600">·</span>
-                <span>Saved as DTUs in your lattice</span>
-              </div>
             </div>
           </div>
         </main>
@@ -4201,16 +3666,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
       {/* Sprint 11B — Agent Mode floating action button (bottom-right) +
           slide-over panel + initiative bell. All three are self-contained;
           they don't touch existing chat state. */}
-      {!cleanEmpty && <button
-        onClick={() => setAgentPanelOpen(true)}
-        className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-30 flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2.5 rounded-full bg-amber-500 hover:bg-amber-400 text-amber-50 shadow-2xl ring-2 ring-amber-700/30 text-sm font-medium"
-        title="Agent Mode — give Concord a task. It will use any of 200+ apps + web + compute to complete it."
-      >
-        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M12 8V4H8M4 8h4v4M16 4v4h4M20 16h-4v4" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-        <span className="hidden sm:inline">Agent Mode</span>
-      </button>}
+      
       <AgentModePanel open={agentPanelOpen} onClose={() => setAgentPanelOpen(false)} />
       <ProjectsPanel
         open={projectsPanelOpen}
@@ -4277,11 +3733,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
           setLocalMessages((prev) => [...prev, sysMsg]);
         }}
       />
-      {!cleanEmpty && (
-      <div className="fixed top-4 right-20 z-30">
-        <InitiativeBell />
-      </div>
-      )}
+      
 
       <ToolPalette
         open={toolPaletteOpen}
@@ -4313,7 +3765,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-start justify-center pt-24 px-4 bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-start justify-center pt-24 px-4 bg-[var(--nb-scrim,rgba(0,0,0,0.6))] backdrop-blur-sm"
             onClick={() => setGlobalSearchOpen(false)}
           >
             <motion.div
@@ -4321,11 +3773,11 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: -16, opacity: 0 }}
               transition={{ duration: 0.15 }}
-              className="w-full max-w-2xl bg-[#0d1117] rounded-xl border border-neon-cyan/30 shadow-2xl shadow-neon-cyan/10 overflow-hidden"
+              className="w-full max-w-2xl bg-[var(--nb-sheet,#0d1117)] rounded-xl border border-[color:var(--nb-blue,rgba(0,255,247,0.3))] shadow-2xl shadow-neon-cyan/10 overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center gap-2 px-4 py-3 border-b border-lattice-border">
-                <Search className="w-4 h-4 text-neon-cyan" />
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))]">
+                <Search className="w-4 h-4 text-[color:var(--nb-blue,#00fff7)]" />
                 <input
                   ref={globalSearchInputRef}
                   type="text"
@@ -4333,19 +3785,19 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                   onChange={(e) => setGlobalSearchQuery(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Escape') setGlobalSearchOpen(false); }}
                   placeholder="Search every message in every conversation…"
-                  className="flex-1 bg-transparent text-sm text-white placeholder-gray-500 focus:outline-none"
+                  className="flex-1 bg-transparent text-sm text-[color:var(--nb-ink,#ffffff)] placeholder:text-[color:var(--nb-faint,#6b7280)] focus:outline-none"
                   autoFocus
                 />
-                <kbd className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-gray-400">esc</kbd>
+                <kbd className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--nb-wash,rgba(255,255,255,0.05))] border border-[color:var(--nb-rule,rgba(255,255,255,0.1))] text-[color:var(--nb-muted,#9ca3af)]">esc</kbd>
               </div>
               <div className="max-h-96 overflow-y-auto">
                 {globalSearchQuery.trim().length < 2 && (
-                  <div className="px-4 py-8 text-center text-xs text-gray-400">
+                  <div className="px-4 py-8 text-center text-xs text-[color:var(--nb-muted,#9ca3af)]">
                     Type at least 2 characters to search
                   </div>
                 )}
                 {globalSearchQuery.trim().length >= 2 && globalSearchResults.length === 0 && (
-                  <div className="px-4 py-8 text-center text-xs text-gray-400">
+                  <div className="px-4 py-8 text-center text-xs text-[color:var(--nb-muted,#9ca3af)]">
                     No matches across {conversations.length} conversation{conversations.length === 1 ? '' : 's'}
                   </div>
                 )}
@@ -4359,11 +3811,11 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                     <button
                       key={`${r.convId}-${r.message.id}-${i}`}
                       onClick={() => jumpToSearchResult(r.convId, r.message.id)}
-                      className="w-full text-left px-4 py-3 border-b border-lattice-border hover:bg-lattice-elevated transition-colors group"
+                      className="w-full text-left px-4 py-3 border-b border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))] hover:bg-[var(--nb-wash,rgb(var(--lattice-elevated-rgb)))] transition-colors group"
                     >
-                      <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-gray-400 mb-1">
+                      <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-[color:var(--nb-muted,#9ca3af)] mb-1">
                         <MessageSquare className="w-3 h-3" />
-                        <span className="text-neon-cyan/80">{r.convTitle}</span>
+                        <span className="text-[color:var(--nb-blue,rgba(0,255,247,0.8))]">{r.convTitle}</span>
                         <span>·</span>
                         <span>{r.message.role}</span>
                         {r.message.timestamp && (
@@ -4373,9 +3825,9 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                           </>
                         )}
                       </div>
-                      <div className="text-xs text-gray-300 leading-relaxed">
+                      <div className="text-xs text-[color:var(--nb-ink-2,#d1d5db)] leading-relaxed">
                         {before}
-                        <mark className="bg-neon-cyan/30 text-white px-0.5 rounded">{match}</mark>
+                        <mark className="bg-[var(--nb-blue-soft,rgba(0,255,247,0.3))] text-[color:var(--nb-ink,#ffffff)] px-0.5 rounded">{match}</mark>
                         {after}
                       </div>
                     </button>
@@ -4383,7 +3835,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                 })}
               </div>
               {globalSearchResults.length > 0 && (
-                <div className="px-4 py-2 border-t border-lattice-border text-[10px] text-gray-400 flex justify-between">
+                <div className="px-4 py-2 border-t border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))] text-[10px] text-[color:var(--nb-muted,#9ca3af)] flex justify-between">
                   <span>{globalSearchResults.length} match{globalSearchResults.length === 1 ? '' : 'es'}</span>
                   <span>scanning {conversations.length} conversation{conversations.length === 1 ? '' : 's'}</span>
                 </div>
@@ -4392,42 +3844,14 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
           </motion.div>
         )}
       </AnimatePresence>
-      {!cleanEmpty && (
-      <ExternalReferenceLocale label="Hacker News" source="hn.algolia.com" className="mt-6">
-        <HackerNewsReference />
-      </ExternalReferenceLocale>
-      )}
+      
     </div>
     {/* Phase 12 (C4) — mobile pane switcher. Chat has multiple overlays
         (sidebar, thread-search, tool-palette, scheduled, projects) that
         each ship their own desktop affordance; mobile users only need
         one tappable surface that opens each panel. The "active" tab
         here is best-effort — these panels close themselves on action. */}
-    {!cleanEmpty && <MobileTabBar
-      tabs={[
-        { id: 'chat',      label: 'Chat',    icon: MTabChat },
-        { id: 'convos',    label: 'Convos',  icon: MTabConvos },
-        { id: 'projects',  label: 'Projects',icon: MTabProj },
-        { id: 'threads',   label: 'Find',    icon: MTabSearch },
-        { id: 'tools',     label: 'Tools',   icon: MTabTools },
-        { id: 'scheduled', label: 'Sched',   icon: MTabSched },
-      ]}
-      active={
-        threadSearchOpen ? 'threads'
-        : toolPaletteOpen ? 'tools'
-        : scheduledPanelOpen ? 'scheduled'
-        : chatSidebarOpen ? 'convos'
-        : 'chat'
-      }
-      onSelect={(id) => {
-        // ONE overlay primitive — mobile tabs map onto it.
-        if (id === 'convos' || id === 'projects') setOverlay('convos');
-        else if (id === 'threads') setOverlay('thread-search');
-        else if (id === 'tools') setOverlay('tool-palette');
-        else if (id === 'scheduled') setOverlay('scheduled');
-        else setOverlay(null); // 'chat' restores focus to the thread
-      }}
-    />}
+    
     </>
   );
 }

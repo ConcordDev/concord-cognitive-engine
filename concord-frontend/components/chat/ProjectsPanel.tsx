@@ -115,25 +115,25 @@ export function ProjectsPanel({ open, onClose, onSelectProject, activeProjectId 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-y-0 right-0 w-[420px] max-w-[100vw] z-40 bg-[#0d1117] border-l border-cyan-500/20 shadow-2xl overflow-hidden flex flex-col">
-      <header className="px-4 py-3 border-b border-white/10 flex items-center justify-between bg-gradient-to-r from-cyan-950/40 to-transparent">
+    <div className="fixed inset-y-0 right-0 w-[420px] max-w-[100vw] z-40 bg-[var(--nb-sheet,#0d1117)] border-l border-[color:var(--nb-blue,rgba(6,182,212,0.2))] shadow-2xl overflow-hidden flex flex-col">
+      <header className="px-4 py-3 border-b border-[color:var(--nb-rule,rgba(255,255,255,0.1))] flex items-center justify-between bg-gradient-to-r from-[var(--nb-blue-soft,rgba(8,51,68,0.4))] to-transparent">
         <div className="flex items-center gap-2">
-          <FolderOpen className="w-4 h-4 text-cyan-400" />
-          <span className="text-sm font-semibold text-gray-200">Projects</span>
-          <span className="text-[10px] text-gray-400 ml-1">{projects.length}</span>
+          <FolderOpen className="w-4 h-4 text-[color:var(--nb-blue,#22d3ee)]" />
+          <span className="text-sm font-semibold text-[color:var(--nb-ink,#e5e7eb)]">Projects</span>
+          <span className="text-[10px] text-[color:var(--nb-muted,#9ca3af)] ml-1">{projects.length}</span>
         </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={startCreate}
-            className="inline-flex items-center gap-1 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-2 py-1 text-xs text-cyan-200 hover:brightness-110"
+            className="inline-flex items-center gap-1 rounded-md border border-[color:var(--nb-blue,rgba(6,182,212,0.3))] bg-[var(--nb-blue-soft,rgba(6,182,212,0.1))] px-2 py-1 text-xs text-[color:var(--nb-blue,#a5f3fc)] hover:brightness-110"
           >
             <Plus className="w-3 h-3" /> New
           </button>
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded-md hover:bg-white/5 text-gray-400"
+            className="p-1 rounded-md hover:bg-[var(--nb-wash,rgba(255,255,255,0.05))] text-[color:var(--nb-muted,#9ca3af)]"
             aria-label="Close projects panel"
           >
             <X className="w-4 h-4" />
@@ -143,14 +143,14 @@ export function ProjectsPanel({ open, onClose, onSelectProject, activeProjectId 
 
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
         {(creating || editingId) && (
-          <div className="rounded-md border border-cyan-500/30 bg-cyan-500/5 p-3 space-y-2">
+          <div className="rounded-md border border-[color:var(--nb-blue,rgba(6,182,212,0.3))] bg-[var(--nb-blue-soft,rgba(6,182,212,0.05))] p-3 space-y-2">
             <input
               type="text"
               value={draft.name}
               onChange={(e) => setDraft({ ...draft, name: e.target.value })}
               placeholder="Project name"
               maxLength={80}
-              className="w-full px-2 py-1.5 text-sm bg-black/40 border border-white/10 rounded text-gray-100 placeholder-gray-500 focus:border-cyan-500/50 focus:outline-none"
+              className="w-full px-2 py-1.5 text-sm bg-[var(--nb-paper,rgba(0,0,0,0.4))] border border-[color:var(--nb-rule,rgba(255,255,255,0.1))] rounded text-[color:var(--nb-ink,#f3f4f6)] placeholder:text-[color:var(--nb-faint,#6b7280)] focus:border-[color:var(--nb-blue,rgba(6,182,212,0.5))] focus:outline-none"
             />
             <textarea
               value={draft.systemPrompt}
@@ -158,7 +158,7 @@ export function ProjectsPanel({ open, onClose, onSelectProject, activeProjectId 
               placeholder="System prompt for this project (optional)"
               maxLength={4000}
               rows={4}
-              className="w-full px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 placeholder-gray-500 focus:border-cyan-500/50 focus:outline-none resize-none"
+              className="w-full px-2 py-1.5 text-xs bg-[var(--nb-paper,rgba(0,0,0,0.4))] border border-[color:var(--nb-rule,rgba(255,255,255,0.1))] rounded text-[color:var(--nb-ink,#f3f4f6)] placeholder:text-[color:var(--nb-faint,#6b7280)] focus:border-[color:var(--nb-blue,rgba(6,182,212,0.5))] focus:outline-none resize-none"
             />
             <div className="flex items-center gap-1.5">
               {COLORS.map((c) => (
@@ -168,13 +168,13 @@ export function ProjectsPanel({ open, onClose, onSelectProject, activeProjectId 
                   onClick={() => setDraft({ ...draft, color: c })}
                   className={cn(
                     'w-5 h-5 rounded-full border-2 transition',
-                    draft.color === c ? 'border-white scale-110' : 'border-transparent',
-                    c === 'cyan' && 'bg-cyan-500',
-                    c === 'emerald' && 'bg-emerald-500',
-                    c === 'amber' && 'bg-amber-500',
-                    c === 'rose' && 'bg-rose-500',
-                    c === 'violet' && 'bg-violet-500',
-                    c === 'sky' && 'bg-sky-500',
+                    draft.color === c ? 'border-[color:var(--nb-rule-2,#ffffff)] scale-110' : 'border-transparent',
+                    c === 'cyan' && 'bg-[var(--nb-blue,#06b6d4)]',
+                    c === 'emerald' && 'bg-[var(--nb-green,#10b981)]',
+                    c === 'amber' && 'bg-[var(--nb-ochre,#f59e0b)]',
+                    c === 'rose' && 'bg-[var(--nb-red,#f43f5e)]',
+                    c === 'violet' && 'bg-[var(--nb-red,#8b5cf6)]',
+                    c === 'sky' && 'bg-[var(--nb-blue,#0ea5e9)]',
                   )}
                   aria-label={`Color ${c}`}
                 />
@@ -185,7 +185,7 @@ export function ProjectsPanel({ open, onClose, onSelectProject, activeProjectId 
                 type="button"
                 onClick={save}
                 disabled={saving || !draft.name.trim()}
-                className="inline-flex items-center gap-1 rounded-md border border-cyan-500/40 bg-cyan-500/15 px-3 py-1 text-xs text-cyan-100 hover:brightness-110 disabled:opacity-40"
+                className="inline-flex items-center gap-1 rounded-md border border-[color:var(--nb-blue,rgba(6,182,212,0.4))] bg-[var(--nb-blue-soft,rgba(6,182,212,0.15))] px-3 py-1 text-xs text-[color:var(--nb-blue,#cffafe)] hover:brightness-110 disabled:opacity-40"
               >
                 {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
                 {creating ? 'Create' : 'Save'}
@@ -193,7 +193,7 @@ export function ProjectsPanel({ open, onClose, onSelectProject, activeProjectId 
               <button
                 type="button"
                 onClick={cancelEdit}
-                className="px-3 py-1 text-xs text-gray-400 hover:text-gray-200"
+                className="px-3 py-1 text-xs text-[color:var(--nb-muted,#9ca3af)] hover:text-[color:var(--nb-ink,#e5e7eb)]"
               >
                 Cancel
               </button>
@@ -202,14 +202,14 @@ export function ProjectsPanel({ open, onClose, onSelectProject, activeProjectId 
         )}
 
         {loading ? (
-          <div className="flex items-center justify-center py-8 text-xs text-gray-400">
+          <div className="flex items-center justify-center py-8 text-xs text-[color:var(--nb-muted,#9ca3af)]">
             <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading projects…
           </div>
         ) : projects.length === 0 && !creating ? (
           <div className="text-center py-8 px-4">
-            <Folder className="w-8 h-8 mx-auto text-gray-600 mb-2" />
-            <p className="text-xs text-gray-400">No projects yet</p>
-            <p className="text-[10px] text-gray-400 mt-1">
+            <Folder className="w-8 h-8 mx-auto text-[color:var(--nb-faint,#4b5563)] mb-2" />
+            <p className="text-xs text-[color:var(--nb-muted,#9ca3af)]">No projects yet</p>
+            <p className="text-[10px] text-[color:var(--nb-muted,#9ca3af)] mt-1">
               Group related chats with a shared system prompt and attached DTUs.
             </p>
           </div>
@@ -218,10 +218,10 @@ export function ProjectsPanel({ open, onClose, onSelectProject, activeProjectId 
             <div
               key={p.id}
               className={cn(
-                'rounded-md border p-3 transition hover:bg-white/5',
+                'rounded-md border p-3 transition hover:bg-[var(--nb-wash,rgba(255,255,255,0.05))]',
                 activeProjectId === p.id
-                  ? 'border-cyan-500/50 bg-cyan-500/10'
-                  : 'border-white/10 bg-black/20',
+                  ? 'border-[color:var(--nb-blue,rgba(6,182,212,0.5))] bg-[var(--nb-blue-soft,rgba(6,182,212,0.1))]'
+                  : 'border-[color:var(--nb-rule,rgba(255,255,255,0.1))] bg-[var(--nb-paper,rgba(0,0,0,0.2))]',
               )}
             >
               <div className="flex items-start justify-between gap-2">
@@ -234,20 +234,20 @@ export function ProjectsPanel({ open, onClose, onSelectProject, activeProjectId 
                     <span
                       className={cn(
                         'w-2 h-2 rounded-full',
-                        p.color === 'cyan' && 'bg-cyan-400',
-                        p.color === 'emerald' && 'bg-emerald-400',
-                        p.color === 'amber' && 'bg-amber-400',
-                        p.color === 'rose' && 'bg-rose-400',
-                        p.color === 'violet' && 'bg-violet-400',
-                        p.color === 'sky' && 'bg-sky-400',
+                        p.color === 'cyan' && 'bg-[var(--nb-blue,#22d3ee)]',
+                        p.color === 'emerald' && 'bg-[var(--nb-green,#34d399)]',
+                        p.color === 'amber' && 'bg-[var(--nb-ochre,#fbbf24)]',
+                        p.color === 'rose' && 'bg-[var(--nb-red,#fb7185)]',
+                        p.color === 'violet' && 'bg-[var(--nb-red,#a78bfa)]',
+                        p.color === 'sky' && 'bg-[var(--nb-blue,#38bdf8)]',
                       )}
                     />
-                    <span className="text-sm font-medium text-gray-100 truncate">{p.name}</span>
+                    <span className="text-sm font-medium text-[color:var(--nb-ink,#f3f4f6)] truncate">{p.name}</span>
                   </div>
                   {p.systemPrompt && (
-                    <p className="text-[11px] text-gray-400 mt-1 line-clamp-2">{p.systemPrompt}</p>
+                    <p className="text-[11px] text-[color:var(--nb-muted,#9ca3af)] mt-1 line-clamp-2">{p.systemPrompt}</p>
                   )}
-                  <div className="flex items-center gap-3 mt-1.5 text-[10px] text-gray-400">
+                  <div className="flex items-center gap-3 mt-1.5 text-[10px] text-[color:var(--nb-muted,#9ca3af)]">
                     <span>{p.threadIds.length} chats</span>
                     <span>{p.attachedDtuIds.length} DTUs</span>
                   </div>
@@ -256,7 +256,7 @@ export function ProjectsPanel({ open, onClose, onSelectProject, activeProjectId 
                   <button
                     type="button"
                     onClick={() => startEdit(p)}
-                    className="p-1 text-gray-400 hover:text-cyan-300"
+                    className="p-1 text-[color:var(--nb-muted,#9ca3af)] hover:text-[color:var(--nb-blue,#67e8f9)]"
                     aria-label="Edit project"
                   >
                     <Edit3 className="w-3 h-3" />
@@ -264,7 +264,7 @@ export function ProjectsPanel({ open, onClose, onSelectProject, activeProjectId 
                   <button
                     type="button"
                     onClick={() => remove(p.id)}
-                    className="p-1 text-gray-400 hover:text-rose-300"
+                    className="p-1 text-[color:var(--nb-muted,#9ca3af)] hover:text-[color:var(--nb-red,#fda4af)]"
                     aria-label="Delete project"
                   >
                     <Trash2 className="w-3 h-3" />
