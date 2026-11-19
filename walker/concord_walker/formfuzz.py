@@ -161,8 +161,6 @@ class FormFuzz:
         from .checks import LensWalk
         self.rv, self.t = rv, t
         self.lens = t["lens"]
-        # ULW C28: form fuzz is write work — it runs as the dedicated write account
-        # when one is configured, never as the evidence account t1.
         self.lw = LensWalk(rv.b, rv.cfg, rv.rec, rv.inv[self.lens], write_account_key(rv.cfg) or "t1", rv.log,
                            allow_write=True, inv_entry=rv.inv[self.lens])
         self.label = "%s-%s-%s" % (rv.cfg["fixture_prefix"], self.lens, rv.rec.rid[-6:])
@@ -252,7 +250,7 @@ class FormFuzz:
         submit_now, _ax = self._submit_now(cdp, container)
         if submit_now is None or submit_now.disabled:
             return ("refused", "submit %s after bad input" % ("disabled" if submit_now else "absent"))
-        assert_account(self._ctx, self.rv.cfg, "t1", "validation submit (%s)" % case_name, self.rv.log)
+        assert_account(self._ctx, self.rv.cfg, self.lw.acct, "validation submit (%s)" % case_name, self.rv.log)
         mark = rec_net.mark()
         cdp.click(submit_now.backend)
         _wait_net(page, rec_net, mark)
@@ -274,7 +272,7 @@ class FormFuzz:
         submit_now, _ax = self._submit_now(cdp, container)
         if submit_now is None or submit_now.disabled:
             return ("refused", "submit disabled with end before start")
-        assert_account(self._ctx, self.rv.cfg, "t1", "validation submit (reversed-dates)", self.rv.log)
+        assert_account(self._ctx, self.rv.cfg, self.lw.acct, "validation submit (reversed-dates)", self.rv.log)
         mark = rec_net.mark()
         cdp.click(submit_now.backend)
         _wait_net(page, rec_net, mark)
@@ -350,7 +348,7 @@ class FormFuzz:
         ctx, page, cdp = self.lw.open()
         self._ctx = ctx
         try:
-            assert_account(ctx, rv.cfg, "t1", "validation recipe", rv.log)
+            assert_account(ctx, rv.cfg, self.lw.acct, "validation recipe", rv.log)
             self.lw.nav(page, cdp)
             if self.lw.signed_out(page):
                 return {"verdict": HUMAN, "method": "form bad-input recipe", "category": "validation",
