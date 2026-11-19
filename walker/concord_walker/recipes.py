@@ -137,6 +137,15 @@ def validate_recipe(raw, today=None, expect_sha=None):
             if not raw.get("packet_id"):
                 reasons.append("active template instance requires a packet_id — "
                                "the packet (lens@build:vN) it was written against (ruling #17)")
+    # ULW C31 (gate §16, ruling #17): the packet citation binds EVERY kind at
+    # active, not only template instances — a code or repro-steps recipe that
+    # goes active without a packet_id cites bare control names, the exact
+    # failure the ruling retires. Drafts are refused at load regardless; the
+    # requirement binds the flip to active (the CB-0810 pattern).
+    if raw.get("status", "active") == "active" and kind in ("code", "repro-steps"):
+        if not raw.get("packet_id"):
+            reasons.append("active %s recipe requires a packet_id — "
+                           "the packet (lens@build:vN) it was written against (ruling #17)" % kind)
     author = raw.get("author")
     if not isinstance(author, str) or not author:
         reasons.append("author is required")
