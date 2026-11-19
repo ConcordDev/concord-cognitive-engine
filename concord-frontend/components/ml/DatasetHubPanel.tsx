@@ -110,7 +110,7 @@ export function DatasetHubPanel() {
             <option value="likes">Most liked</option>
             <option value="lastModified">Recently updated</option>
           </select>
-          <button onClick={loadHub} disabled={loading} className="btn-neon small purple disabled:opacity-50">
+          <button onClick={loadHub} disabled={loading} className="btn-neon small purple disabled:opacity-50" aria-label="Refresh datasets" title="Refresh datasets">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
           </button>
         </div>

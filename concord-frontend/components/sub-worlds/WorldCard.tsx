@@ -137,6 +137,8 @@ export function WorldCard({
             <button
               type="button"
               onClick={onManage}
+              aria-label={paused ? 'Resume world' : 'Pause world'}
+              title={paused ? 'Resume world' : 'Pause world'}
               className="rounded-lg border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-xs text-zinc-300 hover:text-cyan-300 focus:outline-none focus:ring-2 focus:ring-amber-500"
             >
               {paused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}

@@ -862,7 +862,7 @@ export function FractalRenderer() {
                 maxLength={120}
                 onChange={e => setPresetName(e.target.value)}
               />
-              <button onClick={savePreset} disabled={busy === 'save'} className={btn}>
+              <button onClick={savePreset} disabled={busy === 'save'} className={btn} aria-label="Save preset" title="Save preset">
                 {busy === 'save' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
               </button>
             </div>

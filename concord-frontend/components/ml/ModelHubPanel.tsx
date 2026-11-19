@@ -130,7 +130,7 @@ export function ModelHubPanel({ onUseInPlayground }: { onUseInPlayground?: (mode
           <option value="likes">Most liked</option>
           <option value="lastModified">Recently updated</option>
         </select>
-        <button onClick={load} disabled={loading} className="btn-neon small purple disabled:opacity-50">
+        <button onClick={load} disabled={loading} className="btn-neon small purple disabled:opacity-50" aria-label="Refresh models" title="Refresh models">
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
         </button>
       </div>
