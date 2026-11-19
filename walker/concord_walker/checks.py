@@ -1,7 +1,7 @@
 """Standard per-lens checks. All DOM reads go through DevTools protocol (cdp.py); all
 interaction is native mouse/keyboard on controls that safety.py allows."""
 import json, os, re, time, csv, io
-from . import safety, colors
+from . import safety, colors, readback as _readback  # ULW C26: DevTools read-back evidence rows
 from .cdp import Cdp, wait_until
 from .auth import new_context, assert_account, AccountMismatch, whoami, expected_username, write_account_key
 from .util import control_label, scrub, human_et
@@ -1494,6 +1494,10 @@ class LensWalk:
         self.result["console"] = {"console_errors": len(self.console_errors), "page_errors": len(self.page_errors),
                                   "http_5xx": sorted(set("%d %s" % r for r in five))[:10],
                                   "http_4xx": sorted(set("%d %s" % r for r in four))[:10]}
+        # ULW C26 (Gate §10 #12): the same captured streams as first-class read-back
+        # evidence rows — deduped by (type, route, message) with occurrences, failed
+        # requests weighted high and filed first — beside the counts above.
+        self.result["readback"] = _readback.build_readback(self.console_errors, self.page_errors, self.bad_responses)
         ev = self.result.get("initial_evidence")
         if self.page_errors and ev:
             self.finding("pageerror", "medium", "%d uncaught JavaScript error(s) while walking the lens" % len(self.page_errors),
