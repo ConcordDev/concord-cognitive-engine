@@ -8,8 +8,11 @@
  * ngspice (SXE-16), curaengine + prusaslicer (SXE-38),
  * openradioss (SXE-13), elmer (SXE-10), su2 (SXE-12),
  * code-aster (SXE-08), control + casadi + acados (SXE-20),
- * pybamm (SXE-25). Later engine programmes (SXE-54) append
- * their imports here; engines/index.js imports this module
+ * pybamm (SXE-25). SXE-54 (breadth) appends in batches —
+ * batch 1: meep + mpb (SXE-18), quantlib (SXE-23),
+ * pycalphad + phreeqc (SXE-24), plasmapy + warpx (SXE-31),
+ * qutip (SXE-32). Later engine programmes append their
+ * imports here; engines/index.js imports this module
  * exactly once.
  */
 import "./mpi.js";
@@ -31,3 +34,11 @@ import "./control.js";
 import "./casadi.js";
 import "./acados.js";
 import "./pybamm.js";
+import "./quantlib.js";
+import "./qutip.js";
+import "./plasmapy.js";
+import "./warpx.js";
+import "./meep.js";
+import "./mpb.js";
+import "./pycalphad.js";
+import "./phreeqc.js";
