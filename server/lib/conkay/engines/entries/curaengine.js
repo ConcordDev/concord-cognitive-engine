@@ -1,0 +1,46 @@
+/**
+ * Engine entry — curaengine (SXE-38, CuraEngine additive slicer).
+ *
+ * Registered on import; server/lib/conkay/engines/entries/index.js
+ * is the single import point. The "binary" the SXE-00 framework
+ * resolves is this engine's driver-env Python: the env exists only
+ * when the engine is provisioned on a host, so presence tracks
+ * provisioning.
+ *
+ * CuraEngine additive-manufacturing slicer. AGPL-3: runs UNMODIFIED as a separate process (founder F7 rule; the manifest validator enforces unmodified: true on AGPL entries) — the kernel only ever invokes the stock binary.
+ *
+ * Licence as catalogued for the pinned release (CuraEngine additive slicer
+ * 5.9.0, AGPL-3.0-only) at registration time, 2026-11-19.
+ */
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { defineEngine } from "../manifest.js";
+
+const KERNEL = join(dirname(fileURLToPath(import.meta.url)), "..", "kernels", "kernel-curaengine.py");
+
+defineEngine({
+  id: "curaengine",
+  version: "5.9.0",
+  licence: "AGPL-3.0-only",
+  linkMode: "process",
+  unmodified: true,
+  envVar: "CONKAY_ENGINE_CURAENGINE_BIN",
+  defaultPath: "/opt/concord-engines/curaengine/bin/python",
+  healthOp: "health",
+  ops: ["health", "slice"],
+  kernel: KERNEL,
+  installHint:
+    "CuraEngine not provisioned on this host: install the unmodified CuraEngine 5.9.0 + its fdmprinter definition JSON and provision the driver env at /opt/concord-engines/curaengine (see docs/conkay/engines/curaengine.md). Until then slicing tiers are NOT_COMPUTED engine_unavailable:curaengine.",
+  footprint: { diskMb: 512, memoryMb: 1024, threads: 4 },
+  timeoutMs: 600000,
+  opSchemas: {
+    "health": {
+      request: {},
+      result: { timeS: "number", layers: "number" },
+    },
+    "slice": {
+      request: { sizeMm: "number", layerHeightMm: "number", infillPct: "number" },
+      result: { timeS: "number", layers: "number" },
+    }
+  },
+});

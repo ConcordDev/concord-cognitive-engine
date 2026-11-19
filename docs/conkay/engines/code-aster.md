@@ -1,0 +1,46 @@
+# Engine: code-aster — Code_Aster (container) · SXE-08
+
+Built in the CI-only scope of the founder F1 ruling
+(2026-11-18) under SXE-53 (the car-chain engine programme);
+the H2 host these engines will run on is that programme's
+deferred-open remainder — nothing is installed on any host
+by this ticket.
+
+## Manifest entry
+
+`server/lib/conkay/engines/entries/code-aster.js` — id `code-aster`,
+version pin **17.4.0**, licence **GPL-3.0-only**
+(as catalogued for the pinned release at registration,
+2026-11-19), link mode **process**. The framework resolves
+the engine's driver-env Python via `CONKAY_ENGINE_CODE_ASTER_BIN` (default
+`/opt/concord-engines/code-aster/bin/python`): the env exists
+only where provisioned, so the report's `present` tracks
+provisioning. Ops: `health`, `tension`. Kernel:
+`server/lib/conkay/engines/kernels/kernel-code-aster.py`.
+
+## Install (host provisioning, H2)
+
+Provision the Code_Aster 17.4.0 container env so its runner (`run_aster` / `codeaster`) is on PATH inside the env, with the driver Python at `/opt/concord-engines/code-aster`. Footprint: ~4 GB disk, 4 GB memory, 4 threads.
+
+## Health
+
+`health` runs a single-HEXA8 uniaxial tension case (ASTER mesh + MECA_STATIQUE) and serves the loaded-face displacement beside the exact closed form delta = PL/(EA) = 1e-3 m for the canonical numbers; band **1e-3**. Named substitution: the plan's SSLV-family case reduced to the member with an exact reference — the same shape as SXE-07's CalculiX substitution.
+
+## Absent behaviour
+
+- Driver env unprovisioned → NOT_COMPUTED
+  `engine_unavailable:code-aster` with the install hint.
+- Env provisioned but the runner missing → FAIL `engine_failed:code-aster:Code_Aster runner … not found …`.
+- A request that fails the op schema → FAIL
+  `engine_request_invalid:code-aster` before spawn; an unknown
+  op → FAIL `engine_unknown_op:code-aster:<op>`.
+
+## Tests
+
+`server/tests/conkay/engines/code-aster.test.js` — registration
+and manifest validity, the absence answer, schema and
+unknown-op refusals, and the kernel's provisioning-defect
+leg run locally. The value legs run only in the CI lane
+(`.github/workflows/conkay-engine-code-aster.yml`, manual
+dispatch per F8), which installs the pinned engine, sets
+`CONKAY_ENGINE_CODE_ASTER_BIN`, and fails if any test skips.
