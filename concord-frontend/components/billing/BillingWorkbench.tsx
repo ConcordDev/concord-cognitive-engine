@@ -276,7 +276,7 @@ export function BillingWorkbench({ tab }: { tab: BillingView }) {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {[
           { icon: Coins, color: 'bg-neon-cyan/20', iconColor: 'text-neon-cyan', label: 'Token Balance', value: walletLoading ? '...' : `${(wallet?.balance || 0).toLocaleString()} CT` },
-          { icon: Crown, color: 'bg-neon-purple/20', iconColor: 'text-neon-purple', label: 'Current Tier', value: walletLoading ? '...' : (wallet?.tier || 'free'), capitalize: true },
+          { icon: Crown, color: 'bg-neon-purple/20', iconColor: 'text-neon-purple-bright', label: 'Current Tier', value: walletLoading ? '...' : (wallet?.tier || 'free'), capitalize: true },
           { icon: Zap, color: 'bg-neon-green/20', iconColor: 'text-neon-green', label: 'Daily Ingest', value: walletLoading ? '...' : (wallet?.ingestStatus?.limit === -1 ? 'Unlimited' : `${wallet?.ingestStatus?.remaining || 0}/${wallet?.ingestStatus?.limit || 10}`) },
           { icon: Receipt, color: 'bg-amber-500/20', iconColor: 'text-amber-400', label: 'Transactions', value: `${transactions.length}` },
         ].map((stat, i) => (
@@ -483,10 +483,10 @@ export function BillingWorkbench({ tab }: { tab: BillingView }) {
                   const typeColors: Record<string, string> = {
                     purchase: 'bg-neon-green/20 text-neon-green',
                     credit: 'bg-neon-cyan/20 text-neon-cyan',
-                    usage: 'bg-neon-pink/20 text-neon-pink',
-                    spend: 'bg-neon-pink/20 text-neon-pink',
-                    debit: 'bg-neon-pink/20 text-neon-pink',
-                    transfer: 'bg-neon-purple/20 text-neon-purple',
+                    usage: 'bg-neon-pink/20 text-neon-pink-bright',
+                    spend: 'bg-neon-pink/20 text-neon-pink-bright',
+                    debit: 'bg-neon-pink/20 text-neon-pink-bright',
+                    transfer: 'bg-neon-purple/20 text-neon-purple-bright',
                   };
                   return (
                     <div key={tx.id} className="grid grid-cols-12 gap-4 px-4 py-3 text-sm hover:bg-lattice-elevated/50 transition-colors">

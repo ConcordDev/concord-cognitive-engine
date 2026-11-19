@@ -67,7 +67,7 @@ export function MarketPanel({ initialItemId = '' }: { initialItemId?: string }) 
           <div className="rounded-xl border border-amber-500/20 bg-zinc-950/60 p-3">
             <h3 className="mb-2 text-[11px] uppercase tracking-wider text-amber-300/60">Price history — {marketItemId}</h3>
             {!marketData.stats ? (
-              <p className="py-6 text-center text-[12px] text-slate-500">No completed sales for this item yet.</p>
+              <p className="py-6 text-center text-[12px] text-slate-400">No completed sales for this item yet.</p>
             ) : (
               <>
                 <div className="mb-2 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[11px] text-slate-300">
@@ -78,7 +78,7 @@ export function MarketPanel({ initialItemId = '' }: { initialItemId?: string }) 
                     {marketData.stats.changePct >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                     {marketData.stats.changePct >= 0 ? '+' : ''}{marketData.stats.changePct}%
                   </span>
-                  <span className="text-slate-500">{marketData.stats.count} sale{marketData.stats.count === 1 ? '' : 's'}</span>
+                  <span className="text-slate-400">{marketData.stats.count} sale{marketData.stats.count === 1 ? '' : 's'}</span>
                 </div>
                 <div className="flex h-14 items-end gap-[2px]" aria-hidden="true">
                   {marketData.points.map((p, i) => {
@@ -98,19 +98,19 @@ export function MarketPanel({ initialItemId = '' }: { initialItemId?: string }) 
               )}
             </div>
             {marketData.asks.length === 0 && marketData.bids.length === 0 ? (
-              <p className="py-6 text-center text-[12px] text-slate-500">No active asks or buy orders for this item.</p>
+              <p className="py-6 text-center text-[12px] text-slate-400">No active asks or buy orders for this item.</p>
             ) : (
               <div className="grid grid-cols-2 gap-2 text-[11px]">
                 <div>
                   <p className="mb-1 text-rose-300/80">Asks (sell)</p>
-                  {marketData.asks.length === 0 ? <p className="text-slate-500">—</p> : marketData.asks.map((l, i) => (
-                    <div key={i} className="flex justify-between text-slate-300"><span>{l.price} CC</span><span className="text-slate-500">×{l.qty}</span></div>
+                  {marketData.asks.length === 0 ? <p className="text-slate-400">—</p> : marketData.asks.map((l, i) => (
+                    <div key={i} className="flex justify-between text-slate-300"><span>{l.price} CC</span><span className="text-slate-400">×{l.qty}</span></div>
                   ))}
                 </div>
                 <div>
                   <p className="mb-1 text-emerald-300/80">Bids (buy orders)</p>
-                  {marketData.bids.length === 0 ? <p className="text-slate-500">—</p> : marketData.bids.map((l, i) => (
-                    <div key={i} className="flex justify-between text-slate-300"><span>{l.price} CC</span><span className="text-slate-500">×{l.qty}</span></div>
+                  {marketData.bids.length === 0 ? <p className="text-slate-400">—</p> : marketData.bids.map((l, i) => (
+                    <div key={i} className="flex justify-between text-slate-300"><span>{l.price} CC</span><span className="text-slate-400">×{l.qty}</span></div>
                   ))}
                 </div>
               </div>

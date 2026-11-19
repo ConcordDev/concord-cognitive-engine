@@ -83,7 +83,7 @@ export function EntityCard({ entity, onClick, className = '' }: EntityCardProps)
           {dtus} DTUs
         </span>
         {mastery > 0 && (
-          <span className="px-2 py-0.5 rounded text-xs bg-neon-purple/10 text-neon-purple">
+          <span className="px-2 py-0.5 rounded text-xs bg-neon-purple/10 text-neon-purple-bright">
             {Math.round(mastery * 100)}% mastery
           </span>
         )}

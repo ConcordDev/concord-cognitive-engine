@@ -436,7 +436,7 @@ export function ProjectStudio() {
                   )}
                   {detail.project.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
-                      {detail.project.tags.map((t) => <span key={t} className="text-[11px] px-2 py-0.5 bg-neon-pink/10 border border-neon-pink/20 rounded-full text-neon-pink">#{t}</span>)}
+                      {detail.project.tags.map((t) => <span key={t} className="text-[11px] px-2 py-0.5 bg-neon-pink/10 border border-neon-pink/20 rounded-full text-neon-pink-bright">#{t}</span>)}
                     </div>
                   )}
 

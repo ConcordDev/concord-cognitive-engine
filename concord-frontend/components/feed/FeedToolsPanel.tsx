@@ -336,7 +336,7 @@ function ThreadNodeView({
             className={cn(
               'rounded px-1.5 py-0.5 font-semibold uppercase',
               node.kind === 'quote'
-                ? 'bg-neon-purple/15 text-neon-purple'
+                ? 'bg-neon-purple/15 text-neon-purple-bright'
                 : node.kind === 'reply'
                   ? 'bg-neon-cyan/15 text-neon-cyan'
                   : 'bg-white/5 text-gray-400'
@@ -999,7 +999,7 @@ function SavedTool({ candidates }: { candidates: CandidatePost[] }) {
                   <Search className="w-3.5 h-3.5 text-neon-purple" />
                   <span className="text-sm text-white">{s.query}</span>
                   {s.alert && (
-                    <span className="rounded bg-neon-purple/15 px-1.5 py-0.5 text-[10px] text-neon-purple">
+                    <span className="rounded bg-neon-purple/15 px-1.5 py-0.5 text-[10px] text-neon-purple-bright">
                       alerts on
                     </span>
                   )}

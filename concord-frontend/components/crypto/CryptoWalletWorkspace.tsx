@@ -918,7 +918,7 @@ export function CryptoWalletWorkspace() {
                       <button
                         onClick={handleSpend}
                         disabled={transacting || !selectedChainData || (selectedChainData?.balance ?? 0) < 5}
-                        className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm bg-neon-pink/20 text-neon-pink border border-neon-pink/30 hover:bg-neon-pink/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm bg-neon-pink/20 text-neon-pink-bright border border-neon-pink/30 hover:bg-neon-pink/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
                         <ArrowUpRight className="w-4 h-4" />
                         Spend 5 {selectedChainData?.symbol || 'CC'}
@@ -1186,7 +1186,7 @@ export function CryptoWalletWorkspace() {
                           </button>
                           <button
                             onClick={() => handleDeleteWallet(wallet.id)}
-                            className={`p-2 transition-colors rounded-lg ${confirmDeleteWalletId === wallet.id ? 'text-rose-200 bg-rose-500/25' : 'text-gray-400 hover:text-neon-pink hover:bg-neon-pink/10'}`}
+                            className={`p-2 transition-colors rounded-lg ${confirmDeleteWalletId === wallet.id ? 'text-rose-200 bg-rose-500/25' : 'text-gray-400 hover:text-neon-pink-bright hover:bg-neon-pink/10'}`}
                             type="button"
                             aria-label={confirmDeleteWalletId === wallet.id ? 'Confirm remove wallet' : 'Remove wallet'}
                             title={confirmDeleteWalletId === wallet.id ? 'Click again to confirm removal' : 'Remove wallet'}

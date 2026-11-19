@@ -150,8 +150,8 @@ export function HealthcareActionPanel() {
     { id: 'find' as ActionId, label: 'Find MD', desc: 'CMS NPI registry', icon: Search, accent: '#3b82f6', handler: actFind },
     { id: 'meds' as ActionId, label: 'Meds', desc: 'medications-list', icon: Pill, accent: '#22c55e', handler: actMeds },
     { id: 'rx' as ActionId, label: 'Rx price', desc: 'rx-price-compare', icon: DollarSign, accent: '#f59e0b', handler: actRx },
-    { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private visit DTU', icon: Sparkles, accent: '#a855f7', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send to caregiver', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private visit DTU', icon: Sparkles, accent: '#c084fc', handler: actMint },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send to caregiver', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public directory', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Questions', desc: 'Agent: top 3 to ask', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

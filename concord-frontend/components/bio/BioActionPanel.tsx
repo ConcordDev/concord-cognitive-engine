@@ -162,10 +162,10 @@ export function BioActionPanel() {
   const actions = [
     { id: 'analyze' as ActionId, label: 'Analyze', desc: 'GC% / Tm / ORFs', icon: Microscope, accent: '#22c55e', handler: actAnalyze },
     { id: 'primer' as ActionId, label: 'Primers', desc: 'F+R 18-28 bp', icon: GitMerge, accent: '#06b6d4', handler: actPrimer },
-    { id: 'align' as ActionId, label: 'Align', desc: 'Needleman-Wunsch', icon: Dna, accent: '#a855f7', handler: actAlign },
+    { id: 'align' as ActionId, label: 'Align', desc: 'Needleman-Wunsch', icon: Dna, accent: '#c084fc', handler: actAlign },
     { id: 'restrict' as ActionId, label: 'Restrict', desc: `restriction-map ${enzyme}`, icon: Scissors, accent: '#f59e0b', handler: actRestrict },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? mintedDtuId : 'Private seq DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send bench results', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send bench results', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? publishedDtuId : 'Public seq profile', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Brief', desc: 'Agent: purpose + opt', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

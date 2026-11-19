@@ -293,7 +293,7 @@ export function DecisionToolkit({
             className={cn(
               'flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors',
               tab === t.id
-                ? 'bg-neon-purple/20 text-neon-purple'
+                ? 'bg-neon-purple/20 text-neon-purple-bright'
                 : 'text-gray-400 hover:text-white hover:bg-lattice-elevated',
             )}
           >
@@ -1343,7 +1343,7 @@ function CaseLibraryPanel() {
           {c.tags.length > 0 && (
             <div className="flex flex-wrap gap-1">
               {c.tags.map((t) => (
-                <span key={t} className="text-xs px-2 py-0.5 rounded-full bg-neon-purple/20 text-neon-purple">
+                <span key={t} className="text-xs px-2 py-0.5 rounded-full bg-neon-purple/20 text-neon-purple-bright">
                   {t}
                 </span>
               ))}
@@ -1545,7 +1545,7 @@ function FrameworkAnalysisPanel() {
                     {Object.entries(f.details.virtueScores as Record<string, number>)
                       .filter(([, v]) => v > 0)
                       .map(([vk, vv]) => (
-                        <span key={vk} className="text-[10px] px-1.5 py-0.5 rounded bg-neon-purple/10 text-neon-purple">
+                        <span key={vk} className="text-[10px] px-1.5 py-0.5 rounded bg-neon-purple/10 text-neon-purple-bright">
                           {vk}: {vv}
                         </span>
                       ))}

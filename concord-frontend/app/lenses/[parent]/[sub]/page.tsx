@@ -207,7 +207,7 @@ export default function SubLensPage() {
 
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="flex items-start gap-3 min-w-0">
-            <div className="p-2 rounded-lg bg-neon-purple/10 border border-neon-purple/30 text-neon-purple">
+            <div className="p-2 rounded-lg bg-neon-purple/10 border border-neon-purple/30 text-neon-purple-bright">
               <Layers className="w-6 h-6" />
             </div>
             <div className="min-w-0">
@@ -232,7 +232,7 @@ export default function SubLensPage() {
             </Link>
             <button
               onClick={handleAskOracle}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-neon-purple/20 border border-neon-purple/40 text-neon-purple hover:bg-neon-purple/30 transition-colors text-sm font-medium"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-neon-purple/20 border border-neon-purple/40 text-neon-purple-bright hover:bg-neon-purple/30 transition-colors text-sm font-medium"
             >
               <Sparkles className="w-4 h-4" />
               Ask the Oracle

@@ -245,9 +245,9 @@ export function CollabActionPanel() {
     { id: 'session' as ActionId, label: 'Session', desc: 'sessionAnalytics + Gini', icon: Users, accent: '#3b82f6', handler: actSession },
     { id: 'contrib' as ActionId, label: 'Score', desc: 'contributionScore', icon: Trophy, accent: '#f59e0b', handler: actContrib },
     { id: 'consensus' as ActionId, label: 'Consensus', desc: 'detectConsensus', icon: Vote, accent: '#22c55e', handler: actConsensus },
-    { id: 'load' as ActionId, label: 'Workload', desc: 'balanceWorkload', icon: Scale, accent: '#a855f7', handler: actLoad },
+    { id: 'load' as ActionId, label: 'Workload', desc: 'balanceWorkload', icon: Scale, accent: '#c084fc', handler: actLoad },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private team DTU', icon: Sparkles, accent: '#06b6d4', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send team brief', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send team brief', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Anon health card', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Facilitate', desc: 'Agent: next move', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

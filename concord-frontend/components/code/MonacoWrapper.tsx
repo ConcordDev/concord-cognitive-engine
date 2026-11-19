@@ -90,7 +90,7 @@ const CONCORD_DARK_THEME: editor.IStandaloneThemeData = {
     'editor.selectionBackground': '#00e5ff30',
     'editor.inactiveSelectionBackground': '#00e5ff15',
     'editorCursor.foreground': '#00e5ff',
-    'editorLineNumber.foreground': '#475569',
+    'editorLineNumber.foreground': '#94a3b8',
     'editorLineNumber.activeForeground': '#94a3b8',
     'editor.selectionHighlightBackground': '#00e5ff15',
     'editorIndentGuide.background': '#1e293b',

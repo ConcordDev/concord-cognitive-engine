@@ -656,7 +656,7 @@ export function ConKayWorkspace() {
           <div key={m.id} className={`rounded-xl border px-3 py-2.5 text-sm ${m.role === 'user' ? 'ml-6 border-sky-400/20 bg-sky-400/[0.06]' : 'border-white/10 bg-white/[0.03]'}`}>
             <div className="mb-1 flex items-center justify-between text-[11px]">
               <span className="font-medium text-slate-200">{m.role === 'user' ? 'You' : 'ConKay'}</span>
-              <span className="text-slate-500">{clock(m.at)}</span>
+              <span className="text-slate-400">{clock(m.at)}</span>
             </div>
             {m.cockpitRunId && <RunCard runId={m.cockpitRunId} />}
             {m.tools && m.tools.length > 0 && (
@@ -714,7 +714,7 @@ export function ConKayWorkspace() {
               className="min-w-0 max-w-[16rem] truncate bg-transparent text-sm font-medium text-slate-100 focus:outline-none focus:ring-1 focus:ring-sky-400/40"
             />
             )}
-            <span className="hidden truncate text-[11px] text-slate-500 sm:inline">· {workspaceName} · mm / N / MPa</span>
+            <span className="hidden truncate text-[11px] text-slate-400 sm:inline">· {workspaceName} · mm / N / MPa</span>
           </div>
           <div className="flex shrink-0 items-center gap-1">
             <button type="button" onClick={() => setShowDims((v) => !v)} aria-pressed={showDims} title={showDims ? 'Hide dimensions' : 'Show dimensions'} aria-label={showDims ? 'Hide dimensions' : 'Show dimensions'} className="rounded-md p-1.5 text-slate-300 hover:bg-white/10">
@@ -810,12 +810,12 @@ export function ConKayWorkspace() {
                   {viewMesh.partList.map((pt, i) => (
                     <li key={`${pt.name}-${i}`} className="flex justify-between gap-2 py-0.5">
                       <span className="truncate capitalize">{pt.name}</span>
-                      {Array.isArray(pt.size_mm) && <span className="shrink-0 tabular-nums text-slate-500">{pt.size_mm.join('×')}</span>}
+                      {Array.isArray(pt.size_mm) && <span className="shrink-0 tabular-nums text-slate-400">{pt.size_mm.join('×')}</span>}
                     </li>
                   ))}
                 </ul>
               ) : null}
-              <p className="border-t border-white/5 px-3 py-1.5 text-[10px] text-slate-500">
+              <p className="border-t border-white/5 px-3 py-1.5 text-[10px] text-slate-400">
                 {viewMesh.bbox_mm ? `Overall ${viewMesh.bbox_mm.length}×${viewMesh.bbox_mm.height}×${viewMesh.bbox_mm.width} mm (L×H×W) · ` : ''}
                 {typeof viewMesh.triangleCount === 'number' ? `${viewMesh.triangleCount} triangles · ` : ''}drag to orbit
               </p>

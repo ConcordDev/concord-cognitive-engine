@@ -190,10 +190,10 @@ export function AccountingActionPanel() {
     { id: 'tb' as ActionId, label: 'Trial bal', desc: 'trialBalance', icon: Scale, accent: '#3b82f6', handler: actTb },
     { id: 'pl' as ActionId, label: 'P&L', desc: 'profitLoss', icon: TrendingUp, accent: '#22c55e', handler: actPl },
     { id: 'aging' as ActionId, label: 'AR aging', desc: 'invoiceAging', icon: FileText, accent: '#f59e0b', handler: actAging },
-    { id: 'var' as ActionId, label: 'Variance', desc: 'budgetVariance', icon: Calculator, accent: '#a855f7', handler: actVar },
+    { id: 'var' as ActionId, label: 'Variance', desc: 'budgetVariance', icon: Calculator, accent: '#c084fc', handler: actVar },
     { id: 'validate' as ActionId, label: 'Validate', desc: 'validate-ledger', icon: ShieldCheck, accent: '#14b8a6', handler: actValidate },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private books DTU', icon: Sparkles, accent: '#06b6d4', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send to CFO', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send to CFO', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Anon P&L card', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Brief', desc: 'Agent: cash lever', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

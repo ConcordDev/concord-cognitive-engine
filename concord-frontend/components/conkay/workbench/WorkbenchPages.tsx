@@ -62,7 +62,7 @@ function SolvedAnswer({ domain, answer, claims }: { domain: string; answer: Beam
       )}
       {answer.note && <p className="mt-2 text-xs text-amber-200/90">{answer.note}</p>}
       {defaults.length > 0 && (
-        <p className="mt-1 text-[11px] text-slate-500">Assumed: {defaults.map((c) => `${c.label} = ${c.display ?? String(c.value)} (${c.note || c.source || 'default'})`).join('; ')}</p>
+        <p className="mt-1 text-[11px] text-slate-400">Assumed: {defaults.map((c) => `${c.label} = ${c.display ?? String(c.value)} (${c.note || c.source || 'default'})`).join('; ')}</p>
       )}
     </section>
   );
@@ -119,7 +119,7 @@ export function WorkbenchStart() {
       <form className={`${PANEL} flex flex-col gap-2`} onSubmit={(e) => { e.preventDefault(); if (prompt.trim()) { void submit(prompt.trim()); setPrompt(''); } }}>
         <label htmlFor="wb-prompt" className="text-xs text-slate-400">{continuing ? 'Add the missing detail — it joins the same brief' : 'Describe the design (the solve runs on the real pipeline; a car\'s CAD body takes minutes)'}</label>
         <input id="wb-prompt" value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder={continuing ? 'e.g. 100 mm wide' : 'Design a four-seat electric car that holds 180 mph'}
-          className="rounded-md border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-sky-400/50 focus:outline-none" />
+          className="rounded-md border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-slate-100 placeholder:text-slate-400 focus:border-sky-400/50 focus:outline-none" />
         <button type="submit" disabled={busy} className="inline-flex w-fit items-center gap-1 rounded-md bg-sky-500/80 px-3 py-1.5 text-sm text-white hover:bg-sky-500 disabled:opacity-40">
           {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />} {continuing ? 'Continue' : 'Design it'}
         </button>

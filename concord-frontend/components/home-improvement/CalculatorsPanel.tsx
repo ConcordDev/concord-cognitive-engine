@@ -207,7 +207,7 @@ export function CalculatorsPanel() {
                   <p className="text-xs text-gray-400 mb-2">Inspections Required</p>
                   <div className="flex flex-wrap gap-2">
                     {d.inspectionsRequired.map((ins, i) => (
-                      <span key={i} className="text-xs px-2 py-1 bg-neon-purple/10 text-neon-purple rounded border border-neon-purple/20">{ins}</span>
+                      <span key={i} className="text-xs px-2 py-1 bg-neon-purple/10 text-neon-purple-bright rounded border border-neon-purple/20">{ins}</span>
                     ))}
                   </div>
                 </div>

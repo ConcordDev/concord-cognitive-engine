@@ -151,9 +151,9 @@ export function AutomotiveActionPanel() {
     { id: 'vin' as ActionId, label: 'VIN', desc: 'NHTSA vPIC decode', icon: Car, accent: '#3b82f6', handler: actVin },
     { id: 'recall' as ActionId, label: 'Recalls', desc: 'NHTSA recall search', icon: AlertOctagon, accent: '#ef4444', handler: actRecall },
     { id: 'maint' as ActionId, label: 'Maint', desc: 'service schedule', icon: Wrench, accent: '#f59e0b', handler: actMaint },
-    { id: 'diag' as ActionId, label: 'OBD-II', desc: 'diagnosticLookup', icon: Search, accent: '#a855f7', handler: actDiag },
+    { id: 'diag' as ActionId, label: 'OBD-II', desc: 'diagnosticLookup', icon: Search, accent: '#c084fc', handler: actDiag },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private vehicle DTU', icon: Sparkles, accent: '#22c55e', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send vehicle brief', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send vehicle brief', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public reference', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Advise', desc: 'Agent: top action', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

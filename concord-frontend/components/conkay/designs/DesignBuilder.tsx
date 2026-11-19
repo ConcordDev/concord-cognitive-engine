@@ -233,7 +233,7 @@ export function DesignBuilder({ id }: { id: string }) {
                     <div className="mt-2 h-[46vh] min-h-[280px] overflow-hidden rounded-xl border border-white/10 bg-[#050d18]">
                       <StlViewer url={liveFileUrl(id, liveSnap.file)} />
                     </div>
-                    <p className="mt-1 font-mono text-[10px] text-slate-500" data-testid="builder-live-body">
+                    <p className="mt-1 font-mono text-[10px] text-slate-400" data-testid="builder-live-body">
                       cad.body solid · {liveSnap.triangles ?? '?'} triangles · sha256 {liveSnap.sha256?.slice(0, 12) ?? '—'}
                     </p>
                   </section>
@@ -259,7 +259,7 @@ export function DesignBuilder({ id }: { id: string }) {
                 {feaArtifact && (
                   <section className={PANEL} aria-label="FEA frame" data-testid="builder-fea-frame">
                     <h2 className="text-sm font-semibold">FEA frame · case {wbView?.feaFrame?.case}</h2>
-                    <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+                    <p className="mt-1 text-[11px] leading-relaxed text-slate-400">
                       The frame this session solved ({wbView?.feaFrame?.runId}), colored by the solver&apos;s own utilization. Say a structural change in the viewer&apos;s Iterate bar — it re-runs the real solver; the numbers come back from it, never predicted.
                     </p>
                     <div className="mt-2" data-testid="builder-fea-viewer">
@@ -274,7 +274,7 @@ export function DesignBuilder({ id }: { id: string }) {
                     <h2 className="text-sm font-semibold">ConKay</h2>
                     {wbId && <span className="rounded-full border border-sky-400/30 bg-sky-400/10 px-2 py-0.5 font-mono text-[10px] text-sky-200" data-testid="builder-session">{wbId.slice(0, 8)}</span>}
                   </div>
-                  <p className="text-[11px] leading-relaxed text-slate-500">
+                  <p className="text-[11px] leading-relaxed text-slate-400">
                     {wbId
                       ? 'Ask for a change — each reply reports the fields that moved, the checks that flipped, and the pass/fail counts from the runs it recomputed.'
                       : 'Describe the design you want. Your first message starts a workbench session on the real pipeline (a car body takes minutes).'}
@@ -290,7 +290,7 @@ export function DesignBuilder({ id }: { id: string }) {
                       value={text}
                       onChange={(e) => setText(e.target.value)}
                       placeholder={wbId ? 'What if…' : 'Describe the design'}
-                      className="flex-1 rounded-md border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-sky-400/50 focus:outline-none"
+                      className="flex-1 rounded-md border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-slate-100 placeholder:text-slate-400 focus:border-sky-400/50 focus:outline-none"
                     />
                     <button type="submit" disabled={sending || !text.trim()} className="inline-flex items-center gap-1 rounded-md bg-sky-500/80 px-3 py-1.5 text-sm text-white hover:bg-sky-500 disabled:opacity-40">
                       {sending ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : <Send className="h-3.5 w-3.5" aria-hidden />} Send
@@ -312,7 +312,7 @@ export function DesignBuilder({ id }: { id: string }) {
                     </button>
                     {wbOpen && (wbView
                       ? <div className="mt-3"><Workbench key={`${wbView.revision}:${wbView.receipt}`} id={wbId} initialView={wbView} /></div>
-                      : <p className="mt-2 text-xs text-slate-500">Loading the workbench…</p>)}
+                      : <p className="mt-2 text-xs text-slate-400">Loading the workbench…</p>)}
                   </section>
                 )}
               </div>
@@ -350,7 +350,7 @@ function MessageItem({ m }: { m: ChatMessage }) {
 /** Real counts and margins from the server's view — 'not computed' when absent, never a made-up number. */
 function ChecksSummary({ checks }: { checks: WorkbenchCheck[] }) {
   if (!checks || checks.length === 0) {
-    return <p className="text-xs text-slate-500" data-testid="builder-checks">Checks: not computed.</p>;
+    return <p className="text-xs text-slate-400" data-testid="builder-checks">Checks: not computed.</p>;
   }
   const counts = new Map<string, number>();
   for (const c of checks) counts.set(c.status, (counts.get(c.status) || 0) + 1);

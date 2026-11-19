@@ -188,7 +188,7 @@ export function AnswerCard({
                   onClick={handleAskOracle}
                   className={cn(
                     'inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium',
-                    'bg-neon-pink/15 text-neon-pink border border-neon-pink/40',
+                    'bg-neon-pink/15 text-neon-pink-bright border border-neon-pink/40',
                     'hover:bg-neon-pink/25 transition-colors',
                   )}
                 >

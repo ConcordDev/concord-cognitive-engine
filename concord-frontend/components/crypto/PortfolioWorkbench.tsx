@@ -618,7 +618,7 @@ export function PortfolioWorkbench() {
           <button
             onClick={runSync}
             disabled={syncing}
-            className="px-3 py-1.5 bg-neon-purple/20 text-neon-purple border border-neon-purple/30 rounded text-xs font-medium hover:bg-neon-purple/30 disabled:opacity-50 flex items-center gap-1.5"
+            className="px-3 py-1.5 bg-neon-purple/20 text-neon-purple-bright border border-neon-purple/30 rounded text-xs font-medium hover:bg-neon-purple/30 disabled:opacity-50 flex items-center gap-1.5"
           >
             {syncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
             Sync
@@ -681,7 +681,7 @@ export function PortfolioWorkbench() {
                 {p.active ? (
                   <button
                     onClick={() => unstake(p.id)}
-                    className="px-2 py-0.5 rounded bg-neon-pink/15 text-neon-pink text-[10px] hover:bg-neon-pink/25"
+                    className="px-2 py-0.5 rounded bg-neon-pink/15 text-neon-pink-bright text-[10px] hover:bg-neon-pink/25"
                   >
                     Unstake
                   </button>
@@ -737,7 +737,7 @@ export function PortfolioWorkbench() {
                     <span className={cn('px-2 py-0.5 rounded text-[10px] font-bold uppercase',
                       r.action === 'buy'
                         ? 'bg-neon-green/20 text-neon-green'
-                        : 'bg-neon-pink/20 text-neon-pink')}>
+                        : 'bg-neon-pink/20 text-neon-pink-bright')}>
                       {r.action}
                     </span>
                     <span className="font-mono font-bold text-gray-100">{r.ticker}</span>

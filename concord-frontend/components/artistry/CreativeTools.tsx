@@ -377,7 +377,7 @@ export function CreativeTools() {
           <button
             key={t.id}
             onClick={() => setActive(t.id)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs transition-colors ${active === t.id ? 'bg-neon-pink/20 text-neon-pink' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs transition-colors ${active === t.id ? 'bg-neon-pink/20 text-neon-pink-bright' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
           >
             <t.icon className="w-3.5 h-3.5" /> {t.label}
           </button>

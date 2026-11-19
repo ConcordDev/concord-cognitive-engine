@@ -127,7 +127,7 @@ export function Collections() {
                   onClick={() => toggleSave(boardCollection.id, op.id)}
                   className={`text-[11px] px-2 py-1 rounded-full border transition-colors ${
                     savedSet.has(op.id)
-                      ? 'bg-neon-pink/20 border-neon-pink/30 text-neon-pink'
+                      ? 'bg-neon-pink/20 border-neon-pink/30 text-neon-pink-bright'
                       : 'bg-white/5 border-white/10 text-gray-400 hover:border-neon-pink/30'
                   }`}
                 >

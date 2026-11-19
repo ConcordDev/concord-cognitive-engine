@@ -1131,7 +1131,7 @@ export function LiveDbClient() {
                             className="w-full flex items-center justify-between px-2 py-1 text-xs hover:bg-lattice-surface text-left"
                           >
                             <span className="font-mono text-gray-200">{s.value}</span>
-                            <span className={`text-[9px] px-1 rounded ${s.kind === 'keyword' ? 'bg-neon-purple/20 text-neon-purple'
+                            <span className={`text-[9px] px-1 rounded ${s.kind === 'keyword' ? 'bg-neon-purple/20 text-neon-purple-bright'
                               : s.kind === 'table' ? 'bg-neon-cyan/20 text-neon-cyan'
                               : 'bg-neon-green/20 text-neon-green'}`}>
                               {s.kind}{s.type ? `:${s.type}` : ''}

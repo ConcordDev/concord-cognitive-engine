@@ -92,7 +92,7 @@ export function StudyCards({ result, stale, status, onRun, onKeep, keeping, keep
         </div>
       </div>
       <div className={card}>
-        <FileCheck2 className={`h-6 w-6 shrink-0 ${result.dtuId ? 'text-teal-300' : 'text-slate-500'}`} aria-hidden />
+        <FileCheck2 className={`h-6 w-6 shrink-0 ${result.dtuId ? 'text-teal-300' : 'text-slate-400'}`} aria-hidden />
         <div className="min-w-0">
           {result.dtuId ? (
             <>
@@ -125,7 +125,7 @@ export function StudyCards({ result, stale, status, onRun, onKeep, keeping, keep
             <p className="truncate font-mono text-[11px] text-slate-300">
               {result.analysisReceipt.solver} · {result.analysisReceipt.units} · {result.analysisReceipt.inputHash.slice(0, 12)}…
             </p>
-            <p className="truncate text-[10px] text-slate-500">
+            <p className="truncate text-[10px] text-slate-400">
               {(result.analysisReceipt.assumptions || []).slice(0, 3).join(' · ')}
             </p>
           </div>

@@ -238,10 +238,10 @@ export function CalendarActionPanel() {
   const actions = [
     { id: 'conf' as ActionId, label: 'Conflicts', desc: 'This week, real events', icon: AlertOctagon, accent: '#ef4444', handler: actConf },
     { id: 'avail' as ActionId, label: 'Free time', desc: 'Today, your work hours', icon: Clock, accent: '#22c55e', handler: actAvail },
-    { id: 'opt' as ActionId, label: 'Optimize', desc: 'Place open tasks', icon: ListChecks, accent: '#a855f7', handler: actOpt },
+    { id: 'opt' as ActionId, label: 'Optimize', desc: 'Place open tasks', icon: ListChecks, accent: '#c084fc', handler: actOpt },
     { id: 'ical' as ActionId, label: 'ICS', desc: 'Export real events', icon: Download, accent: '#06b6d4', handler: actIcal },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private plan DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send day plan', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send day plan', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public template', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Plan', desc: 'Agent: top change', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

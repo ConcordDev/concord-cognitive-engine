@@ -132,13 +132,13 @@ export const STATUS_STYLES: Record<SessionStatus, string> = {
   open: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
   'in-progress': 'bg-neon-blue/20 text-neon-blue border-neon-blue/30',
   full: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-  private: 'bg-neon-purple/20 text-neon-purple border-neon-purple/30',
+  private: 'bg-neon-purple/20 text-neon-purple-bright border-neon-purple/30',
 };
 
 export const ROLE_BADGE: Record<ParticipantRole, { label: string; color: string }> = {
   host: { label: 'Host', color: 'bg-amber-500/20 text-amber-400' },
   developer: { label: 'Developer', color: 'bg-neon-blue/20 text-neon-blue' },
-  designer: { label: 'Designer', color: 'bg-neon-purple/20 text-neon-purple' },
+  designer: { label: 'Designer', color: 'bg-neon-purple/20 text-neon-purple-bright' },
   reviewer: { label: 'Reviewer', color: 'bg-neon-cyan/20 text-neon-cyan' },
   creator: { label: 'Creator', color: 'bg-amber-400/20 text-amber-400' },
   writer: { label: 'Writer', color: 'bg-emerald-400/20 text-emerald-400' },

@@ -80,7 +80,7 @@ function ShowcaseView({ id, label }: { id: ShowcaseId; label: string }) {
         </Link>
       </div>
       <p className="text-xs leading-relaxed text-slate-400">{design.brief}</p>
-      <p className="text-[11px] text-slate-500">A precomputed showcase result (nothing was re-solved for this message).</p>
+      <p className="text-[11px] text-slate-400">A precomputed showcase result (nothing was re-solved for this message).</p>
       <DrawingsPanel designId={design.id} drawings={design.drawings} model3d={design.model3d} assembly={design.assembly} />
     </div>
   );
@@ -110,7 +110,7 @@ export function TrussView({ answer }: { answer: TrussAnswer }) {
           const a = view.by.get(f.i), b = view.by.get(f.j);
           if (!a || !b) return null;
           const k = Math.abs(f.N) / view.maxN;
-          return <line key={f.id} x1={a.x} y1={sy(a.y)} x2={b.x} y2={sy(b.y)} stroke={f.N > 1e-6 ? '#38bdf8' : f.N < -1e-6 ? '#fb7185' : '#64748b'} strokeWidth={view.w * (0.002 + 0.006 * k)} strokeLinecap="round"><title>{`${f.id}: ${(f.N / 1000).toFixed(2)} kN ${f.sense}`}</title></line>;
+          return <line key={f.id} x1={a.x} y1={sy(a.y)} x2={b.x} y2={sy(b.y)} stroke={f.N > 1e-6 ? '#38bdf8' : f.N < -1e-6 ? '#fb7185' : '#94a3b8'} strokeWidth={view.w * (0.002 + 0.006 * k)} strokeLinecap="round"><title>{`${f.id}: ${(f.N / 1000).toFixed(2)} kN ${f.sense}`}</title></line>;
         })}
         {answer.geometry.joints.map((j) => <circle key={j.id} cx={j.x} cy={sy(j.y)} r={view.w * 0.006} fill="#e2e8f0" />)}
       </svg>
@@ -120,7 +120,7 @@ export function TrussView({ answer }: { answer: TrussAnswer }) {
         <li className={PANEL}>Reactions<br /><span className="font-mono">{answer.reactions.map((r) => `${r.joint} ${(r.Ry / 1000).toFixed(2)} kN`).join(' · ')}</span></li>
         <li className={PANEL}>Max displacement<br /><span className="font-mono">{answer.maxDisplacementM != null ? `${(answer.maxDisplacementM * 1000).toFixed(2)} mm` : '—'}</span></li>
       </ul>
-      {answer.note && <p className="text-[11px] text-slate-500">{answer.note}{answer.validity ? `. Valid for: ${answer.validity}.` : ''}</p>}
+      {answer.note && <p className="text-[11px] text-slate-400">{answer.note}{answer.validity ? `. Valid for: ${answer.validity}.` : ''}</p>}
     </div>
   );
 }
@@ -141,7 +141,7 @@ function SolvedView({ d }: { d: Extract<WorkspaceDesign, { kind: 'solved' }> }) 
       {truss ? <TrussView answer={d.answer as unknown as TrussAnswer} /> : (
         <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
           {scalars.map(([k, v]) => (
-            <Fragment key={k}><dt className="text-slate-500">{k}</dt><dd className="font-mono text-slate-200">{String(v)}</dd></Fragment>
+            <Fragment key={k}><dt className="text-slate-400">{k}</dt><dd className="font-mono text-slate-200">{String(v)}</dd></Fragment>
           ))}
         </dl>
       )}

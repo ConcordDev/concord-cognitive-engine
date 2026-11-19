@@ -169,7 +169,7 @@ export default function ForkLensPage() {
           }`}
         >
           {level > 0 && <GitBranch className="w-4 h-4 text-gray-400" />}
-          {level === 0 && <GitFork className="w-4 h-4 text-neon-purple" />}
+          {level === 0 && <GitFork className="w-4 h-4 text-neon-purple-bright" />}
           <div className="flex-1 text-left">
             <p className="font-medium">{fork.workspace}</p>
             <p className="text-xs text-gray-400">{fork.entityName}</p>
@@ -299,13 +299,13 @@ export default function ForkLensPage() {
           </select>
           <button
             onClick={() => setLayout('tree')}
-            className={`rounded-full px-3 py-1.5 text-sm ${layout === 'tree' ? 'bg-neon-purple/20 text-neon-purple' : 'bg-white/[0.03] text-gray-400'}`}
+            className={`rounded-full px-3 py-1.5 text-sm ${layout === 'tree' ? 'bg-neon-purple/20 text-neon-purple-bright' : 'bg-white/[0.03] text-gray-400'}`}
           >
             Tree
           </button>
           <button
             onClick={() => setLayout('list')}
-            className={`rounded-full px-3 py-1.5 text-sm ${layout === 'list' ? 'bg-neon-purple/20 text-neon-purple' : 'bg-white/[0.03] text-gray-400'}`}
+            className={`rounded-full px-3 py-1.5 text-sm ${layout === 'list' ? 'bg-neon-purple/20 text-neon-purple-bright' : 'bg-white/[0.03] text-gray-400'}`}
           >
             List
           </button>

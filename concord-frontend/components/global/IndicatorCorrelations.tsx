@@ -117,7 +117,7 @@ export function IndicatorCorrelations() {
                 disabled={disabled}
                 className={cn(
                   'truncate rounded border px-2.5 py-1.5 text-left text-xs transition-colors',
-                  on ? 'border-neon-purple/40 bg-neon-purple/10 text-neon-purple' : 'border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-white',
+                  on ? 'border-neon-purple/40 bg-neon-purple/10 text-neon-purple-bright' : 'border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-white',
                   disabled && 'opacity-30',
                 )}
               >
@@ -130,7 +130,7 @@ export function IndicatorCorrelations() {
           type="button"
           onClick={() => void run()}
           disabled={loading || selected.length < 2}
-          className="flex items-center gap-1.5 rounded-md bg-neon-purple/15 px-3 py-1.5 text-sm font-medium text-neon-purple transition-colors hover:bg-neon-purple/25 disabled:opacity-50"
+          className="flex items-center gap-1.5 rounded-md bg-neon-purple/15 px-3 py-1.5 text-sm font-medium text-neon-purple-bright transition-colors hover:bg-neon-purple/25 disabled:opacity-50"
         >
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <GitBranch className="h-4 w-4" />}
           Compute correlations ({selected.length} indicators)

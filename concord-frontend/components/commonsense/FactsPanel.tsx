@@ -206,7 +206,7 @@ export function FactsPanel() {
         <button
           onClick={() => setShowAddForm((s) => !s)}
           className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm transition-colors ${
-            showAddForm ? 'bg-neon-purple/20 text-neon-purple' : 'bg-lattice-surface text-gray-400 hover:text-white'
+            showAddForm ? 'bg-neon-purple/20 text-neon-purple-bright' : 'bg-lattice-surface text-gray-400 hover:text-white'
           }`}
         >
           <Plus className="w-4 h-4" />

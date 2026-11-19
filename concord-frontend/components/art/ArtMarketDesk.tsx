@@ -563,7 +563,7 @@ export function ArtMarketDesk({ mode }: { mode: 'gallery' | 'canvas' | 'marketpl
         <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={() => setSelectedStyle(null)}
-            className={cn('px-3 py-1.5 rounded-full text-xs whitespace-nowrap', !selectedStyle ? 'bg-neon-pink/20 text-neon-pink' : 'bg-white/5 text-gray-400 hover:text-white')}
+            className={cn('px-3 py-1.5 rounded-full text-xs whitespace-nowrap', !selectedStyle ? 'bg-neon-pink/20 text-neon-pink-bright' : 'bg-white/5 text-gray-400 hover:text-white')}
           >
             All
           </button>
@@ -571,7 +571,7 @@ export function ArtMarketDesk({ mode }: { mode: 'gallery' | 'canvas' | 'marketpl
             <button
               key={style}
               onClick={() => setSelectedStyle(selectedStyle === style ? null : style)}
-              className={cn('px-3 py-1.5 rounded-full text-xs whitespace-nowrap', selectedStyle === style ? 'bg-neon-pink/20 text-neon-pink' : 'bg-white/5 text-gray-400 hover:text-white')}
+              className={cn('px-3 py-1.5 rounded-full text-xs whitespace-nowrap', selectedStyle === style ? 'bg-neon-pink/20 text-neon-pink-bright' : 'bg-white/5 text-gray-400 hover:text-white')}
             >
               {style}
             </button>
@@ -665,7 +665,7 @@ export function ArtMarketDesk({ mode }: { mode: 'gallery' | 'canvas' | 'marketpl
               title={tool.label}
               className={cn(
                 'w-10 h-10 rounded-lg flex items-center justify-center transition-colors',
-                canvasTool === tool.id ? 'bg-neon-pink/20 text-neon-pink' : 'text-gray-400 hover:text-white hover:bg-white/10'
+                canvasTool === tool.id ? 'bg-neon-pink/20 text-neon-pink-bright' : 'text-gray-400 hover:text-white hover:bg-white/10'
               )}
             >
               <tool.icon className="w-5 h-5" />
@@ -695,7 +695,7 @@ export function ArtMarketDesk({ mode }: { mode: 'gallery' | 'canvas' | 'marketpl
                 <span className="text-xs text-gray-400 w-10 text-center">{canvasZoom}%</span>
                 <button onClick={() => setCanvasZoom(Math.min(400, canvasZoom + 25))} className="p-1 text-gray-400 hover:text-white" aria-label="Zoom in"><ZoomIn className="w-4 h-4" /></button>
               </div>
-              <button onClick={handleCanvasSave} className="flex items-center gap-1.5 px-3 py-1.5 bg-neon-pink/20 text-neon-pink rounded text-xs hover:bg-neon-pink/30">
+              <button onClick={handleCanvasSave} className="flex items-center gap-1.5 px-3 py-1.5 bg-neon-pink/20 text-neon-pink-bright rounded text-xs hover:bg-neon-pink/30">
                 <Save className="w-3.5 h-3.5" />
                 Save
               </button>
@@ -837,7 +837,7 @@ export function ArtMarketDesk({ mode }: { mode: 'gallery' | 'canvas' | 'marketpl
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold">Art Marketplace</h2>
-        <button onClick={() => setShowCreateListing(true)} className="flex items-center gap-2 px-4 py-2 bg-neon-pink/20 text-neon-pink rounded-lg text-sm">
+        <button onClick={() => setShowCreateListing(true)} className="flex items-center gap-2 px-4 py-2 bg-neon-pink/20 text-neon-pink-bright rounded-lg text-sm">
           <ShoppingBag className="w-4 h-4" />
           List Artwork
         </button>
@@ -845,7 +845,7 @@ export function ArtMarketDesk({ mode }: { mode: 'gallery' | 'canvas' | 'marketpl
 
       <div className="flex gap-3 flex-wrap pb-2">
         {ART_TYPES.map(type => (
-          <button key={type} onClick={() => setArtTypeFilter(artTypeFilter === type ? null : type)} className={cn('px-3 py-1.5 rounded-full text-xs whitespace-nowrap capitalize', artTypeFilter === type ? 'bg-neon-pink/20 text-neon-pink' : 'bg-white/5 text-gray-400 hover:text-white')}>
+          <button key={type} onClick={() => setArtTypeFilter(artTypeFilter === type ? null : type)} className={cn('px-3 py-1.5 rounded-full text-xs whitespace-nowrap capitalize', artTypeFilter === type ? 'bg-neon-pink/20 text-neon-pink-bright' : 'bg-white/5 text-gray-400 hover:text-white')}>
             {type.replace('-', ' ')}
           </button>
         ))}
@@ -864,7 +864,7 @@ export function ArtMarketDesk({ mode }: { mode: 'gallery' | 'canvas' | 'marketpl
                 <span className="text-neon-green font-bold">${listing.price}</span>
                 <span className="text-xs text-gray-400">{listing.totalSales} sold</span>
               </div>
-              <button onClick={() => purchaseMutation.mutate(listing.id)} disabled={purchaseMutation.isPending} className="w-full mt-3 px-4 py-2 bg-neon-pink/20 text-neon-pink rounded-lg text-sm hover:bg-neon-pink/30 disabled:opacity-50">
+              <button onClick={() => purchaseMutation.mutate(listing.id)} disabled={purchaseMutation.isPending} className="w-full mt-3 px-4 py-2 bg-neon-pink/20 text-neon-pink-bright rounded-lg text-sm hover:bg-neon-pink/30 disabled:opacity-50">
                 {purchaseMutation.isPending ? 'Processing...' : 'Purchase'}
               </button>
             </div>

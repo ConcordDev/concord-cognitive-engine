@@ -145,7 +145,7 @@ export function ForgeSharedView() {
                     >
                       <FileCode className="h-3.5 w-3.5 shrink-0 text-emerald-400/70" />
                       <span className="truncate font-mono">{f.path}</span>
-                      <span className="ml-auto text-[10px] text-slate-500">{f.lines}</span>
+                      <span className="ml-auto text-[10px] text-slate-400">{f.lines}</span>
                     </li>
                   ))}
                 </ul>

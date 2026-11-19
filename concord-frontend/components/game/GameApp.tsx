@@ -183,7 +183,7 @@ const rarityColor: Record<string, string> = {
 const difficultyStyle: Record<string, string> = {
   easy: 'bg-neon-green/20 text-neon-green',
   medium: 'bg-neon-blue/20 text-neon-blue',
-  hard: 'bg-neon-pink/20 text-neon-pink',
+  hard: 'bg-neon-pink/20 text-neon-pink-bright',
 };
 
 function _xpForLevel(lv: number) {
@@ -1100,7 +1100,7 @@ export default function GameApp() {
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex gap-1">
               {(['all', 'daily', 'weekly', 'challenge'] as const).map((f) => (
-                <button key={f} onClick={() => setQuestFilter(f)} className={cn('px-3 py-1.5 rounded text-xs font-medium transition-colors', questFilter === f ? 'bg-neon-purple/20 text-neon-purple' : 'text-gray-400 hover:text-white')}>
+                <button key={f} onClick={() => setQuestFilter(f)} className={cn('px-3 py-1.5 rounded text-xs font-medium transition-colors', questFilter === f ? 'bg-neon-purple/20 text-neon-purple-bright' : 'text-gray-400 hover:text-white')}>
                   {f.charAt(0).toUpperCase() + f.slice(1)}
                 </button>
               ))}
@@ -1132,7 +1132,7 @@ export default function GameApp() {
                     {quest.difficulty && (
                       <span className={cn('text-xs px-2 py-0.5 rounded', difficultyStyle[quest.difficulty])}>{quest.difficulty}</span>
                     )}
-                    <span className={cn('text-xs px-2 py-0.5 rounded', quest.type === 'daily' ? 'bg-neon-cyan/15 text-neon-cyan' : quest.type === 'weekly' ? 'bg-neon-purple/15 text-neon-purple' : 'bg-neon-yellow/15 text-neon-yellow')}>
+                    <span className={cn('text-xs px-2 py-0.5 rounded', quest.type === 'daily' ? 'bg-neon-cyan/15 text-neon-cyan' : quest.type === 'weekly' ? 'bg-neon-purple/15 text-neon-purple-bright' : 'bg-neon-yellow/15 text-neon-yellow')}>
                       {quest.type}
                     </span>
                   </div>
@@ -1247,7 +1247,7 @@ export default function GameApp() {
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
           <div className="flex gap-2">
             {(['weekly', 'monthly', 'alltime'] as LeaderboardPeriod[]).map((p) => (
-              <button key={p} onClick={() => setLbPeriod(p)} className={cn('px-4 py-1.5 rounded text-sm transition-colors', lbPeriod === p ? 'bg-neon-purple/20 text-neon-purple' : 'text-gray-400 hover:text-white')}>
+              <button key={p} onClick={() => setLbPeriod(p)} className={cn('px-4 py-1.5 rounded text-sm transition-colors', lbPeriod === p ? 'bg-neon-purple/20 text-neon-purple-bright' : 'text-gray-400 hover:text-white')}>
                 {p === 'alltime' ? 'All Time' : p.charAt(0).toUpperCase() + p.slice(1)}
               </button>
             ))}

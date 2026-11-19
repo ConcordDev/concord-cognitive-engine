@@ -239,11 +239,11 @@ export function ConstructionActionPanel() {
 
   const actions = [
     { id: 'takeoff' as ActionId, label: 'Takeoff', desc: 'takeoffEstimate', icon: Hammer, accent: '#f59e0b', handler: actTakeoff },
-    { id: 'cpm' as ActionId, label: 'CPM', desc: 'criticalPath (CPM)', icon: GitBranch, accent: '#a855f7', handler: actCpm },
+    { id: 'cpm' as ActionId, label: 'CPM', desc: 'criticalPath (CPM)', icon: GitBranch, accent: '#c084fc', handler: actCpm },
     { id: 'safety' as ActionId, label: 'Safety', desc: 'OSHA TRIR', icon: ShieldCheck, accent: '#ef4444', handler: actSafety },
     { id: 'progress' as ActionId, label: 'Progress', desc: 'plan vs actual', icon: TrendingUp, accent: '#22c55e', handler: actProgress },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private job DTU', icon: Sparkles, accent: '#06b6d4', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send jobsite brief', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send jobsite brief', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Anon cost benchmark', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'PM brief', desc: 'Agent: weekly action', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

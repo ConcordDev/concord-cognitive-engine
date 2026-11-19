@@ -7,7 +7,7 @@ import { useLensData } from '@/lib/hooks/use-lens-data';
 import type { Compound } from './types';
 
 const typeColors = {
-  catalyst: 'bg-neon-purple/20 text-neon-purple border-neon-purple/30',
+  catalyst: 'bg-neon-purple/20 text-neon-purple-bright border-neon-purple/30',
   reagent: 'bg-neon-blue/20 text-neon-blue border-neon-blue/30',
   product: 'bg-neon-green/20 text-neon-green border-neon-green/30',
 };

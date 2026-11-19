@@ -147,7 +147,7 @@ export function GalleryActionPanel() {
     { id: 'siSearch' as ActionId, label: 'Smithsonian', desc: 'si-search Smithsonian Open Access', icon: Building, accent: '#22c55e', handler: actSiSearch },
     { id: 'depts' as ActionId, label: 'Depts', desc: 'cma-departments browse', icon: Layers, accent: '#f97316', handler: actDepts },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private gallery DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send artwork to friend', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send artwork to friend', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Curated gallery DTU + federation', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Wall text', desc: 'Agent: 2-paragraph interpretation', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

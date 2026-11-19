@@ -100,7 +100,7 @@ export function XpActivityFeed() {
               onClick={() => setSourceFilter(f.id)}
               className={cn(
                 'px-2 py-1 rounded border transition-colors',
-                sourceFilter === f.id ? 'bg-neon-purple/20 text-neon-purple border-neon-purple/40' : 'text-gray-400 border-gray-600 hover:text-white',
+                sourceFilter === f.id ? 'bg-neon-purple/20 text-neon-purple-bright border-neon-purple/40' : 'text-gray-400 border-gray-600 hover:text-white',
               )}
             >
               {f.label}

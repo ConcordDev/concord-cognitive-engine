@@ -94,7 +94,7 @@ export function ArtistryFeed({
               onClick={() => onFeedModeChange('discovery')}
               className={cn(
                 'flex items-center gap-1 px-3 py-1.5 rounded text-xs transition-colors',
-                feedMode === 'discovery' ? 'bg-neon-purple/20 text-neon-purple' : 'text-gray-400 hover:text-white',
+                feedMode === 'discovery' ? 'bg-neon-purple/20 text-neon-purple-bright' : 'text-gray-400 hover:text-white',
               )}
             >
               <Sparkles className="w-3 h-3" /> Discover
@@ -169,7 +169,7 @@ export function ArtistryFeed({
                   className={cn(
                     'px-2.5 py-1 rounded-full text-xs capitalize transition-colors border',
                     filters.lenses.includes(lens)
-                      ? 'bg-neon-purple/10 text-neon-purple border-neon-purple/20'
+                      ? 'bg-neon-purple/10 text-neon-purple-bright border-neon-purple/20'
                       : 'text-gray-400 hover:text-white border-white/5 hover:border-white/10',
                   )}
                 >

@@ -149,9 +149,9 @@ export function ForumActionPanel() {
     { id: 'thread' as ActionId, label: 'Thread', desc: 'threadAnalysis', icon: MessageCircle, accent: '#3b82f6', handler: actThread },
     { id: 'mod' as ActionId, label: 'Mod queue', desc: 'moderationQueue', icon: Shield, accent: '#ef4444', handler: actMod },
     { id: 'health' as ActionId, label: 'Health', desc: 'communityHealth', icon: Activity, accent: '#22c55e', handler: actHealth },
-    { id: 'topic' as ActionId, label: 'Topics', desc: 'topicClustering', icon: Hash, accent: '#a855f7', handler: actTopic },
+    { id: 'topic' as ActionId, label: 'Topics', desc: 'topicClustering', icon: Hash, accent: '#c084fc', handler: actTopic },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private community DTU', icon: Sparkles, accent: '#06b6d4', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send brief', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send brief', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Anon health card', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Action', desc: 'Agent: weekly action', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

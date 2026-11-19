@@ -43,7 +43,7 @@ const eventConfig: Record<EventType, { icon: React.ComponentType<{ className?: s
   create: { icon: Brain, color: 'text-green-400', bgColor: 'bg-green-500/20' },
   update: { icon: RefreshCw, color: 'text-blue-400', bgColor: 'bg-blue-500/20' },
   connect: { icon: GitBranch, color: 'text-neon-cyan', bgColor: 'bg-neon-cyan/20' },
-  synthesis: { icon: Sparkles, color: 'text-neon-purple', bgColor: 'bg-neon-purple/20' },
+  synthesis: { icon: Sparkles, color: 'text-neon-purple-bright', bgColor: 'bg-neon-purple/20' },
   ai: { icon: Zap, color: 'text-yellow-400', bgColor: 'bg-yellow-500/20' },
   alert: { icon: AlertTriangle, color: 'text-red-400', bgColor: 'bg-red-500/20' },
   consolidate: { icon: CheckCircle, color: 'text-emerald-400', bgColor: 'bg-emerald-500/20' }

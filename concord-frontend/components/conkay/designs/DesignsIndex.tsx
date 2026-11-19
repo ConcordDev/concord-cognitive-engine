@@ -63,7 +63,7 @@ function DesignCard({ d }: { d: DesignSummary }) {
   const Icon = KIND_ICON[d.kind] || Box;
   if (!d.available) {
     return (
-      <li className="rounded-2xl border border-dashed border-white/10 p-4 text-sm text-slate-500">
+      <li className="rounded-2xl border border-dashed border-white/10 p-4 text-sm text-slate-400">
         <p className="flex items-center gap-2 font-medium text-slate-300"><Icon className="h-4 w-4" aria-hidden /> {d.title}</p>
         <p className="mt-2 text-xs">Snapshot not built on this server.</p>
       </li>

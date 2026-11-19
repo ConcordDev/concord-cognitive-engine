@@ -218,7 +218,7 @@ export function ConKayDemo() {
             {sweepError && <p role="alert" className="mt-2 text-xs text-rose-300">{sweepError}</p>}
             {sweep && (
               <table className="mt-2 w-full text-left font-mono text-[11px]">
-                <thead className="text-slate-500">
+                <thead className="text-slate-400">
                   <tr><th className="py-1 font-normal">D mm</th><th className="font-normal">σ MPa</th><th className="font-normal">util.</th><th className="font-normal" /></tr>
                 </thead>
                 <tbody>

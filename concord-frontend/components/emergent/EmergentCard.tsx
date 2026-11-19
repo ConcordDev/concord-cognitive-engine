@@ -42,7 +42,7 @@ function getStateLabel(state?: string): { label: string; colorClass: string } {
     case 'thinking':
       return { label: 'Thinking', colorClass: 'text-neon-cyan bg-neon-cyan/20' };
     case 'governing':
-      return { label: 'Governing', colorClass: 'text-neon-purple bg-neon-purple/20' };
+      return { label: 'Governing', colorClass: 'text-neon-purple-bright bg-neon-purple/20' };
     case 'idle':
       return { label: 'Idle', colorClass: 'text-gray-400 bg-gray-500/20' };
     default:

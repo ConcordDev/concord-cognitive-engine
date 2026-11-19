@@ -104,8 +104,8 @@ export function BookmarkFolderPicker({ postId }: { postId: string }) {
       <button
         onClick={() => setOpen((o) => !o)}
         className={cn(
-          'p-1.5 rounded-full hover:bg-neon-purple/15 hover:text-neon-purple hover:scale-110 transition-all duration-200',
-          open && 'bg-neon-purple/15 text-neon-purple'
+          'p-1.5 rounded-full hover:bg-neon-purple/15 hover:text-neon-purple-bright hover:scale-110 transition-all duration-200',
+          open && 'bg-neon-purple/15 text-neon-purple-bright'
         )}
         aria-label="Save to folder"
         aria-haspopup="menu"

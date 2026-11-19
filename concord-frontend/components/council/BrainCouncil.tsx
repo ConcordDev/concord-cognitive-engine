@@ -124,7 +124,7 @@ function BrainCouncil({ className }: { className?: string }) {
           <button
             onClick={() => question.trim() && deliberate.mutate(question.trim())}
             disabled={!question.trim() || deliberate.isPending}
-            className="px-3 py-2 bg-neon-purple/20 text-neon-purple rounded-lg hover:bg-neon-purple/30 transition-colors disabled:opacity-50"
+            className="px-3 py-2 bg-neon-purple/20 text-neon-purple-bright rounded-lg hover:bg-neon-purple/30 transition-colors disabled:opacity-50"
           >
             {deliberate.isPending ? (
               <Loader2 className="w-4 h-4 animate-spin" />

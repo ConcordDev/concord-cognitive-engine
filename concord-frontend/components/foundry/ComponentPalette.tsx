@@ -81,7 +81,7 @@ export function ComponentPalette({ categories, selectedIds, onAdd }: ComponentPa
               >
                 {isCollapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                 {group.label}
-                <span className="ml-auto font-mono text-slate-600">{systems.length}</span>
+                <span className="ml-auto font-mono text-slate-400">{systems.length}</span>
               </button>
               {!isCollapsed && (
                 <div className="space-y-1 py-1">

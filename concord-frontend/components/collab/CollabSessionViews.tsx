@@ -142,7 +142,7 @@ export function SessionCard({ session, onJoin }: { session: CollabSession; onJoi
             session.status === 'full'
               ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
               : isPrivate
-                ? 'bg-neon-purple/20 text-neon-purple hover:bg-neon-purple/30'
+                ? 'bg-neon-purple/20 text-neon-purple-bright hover:bg-neon-purple/30'
                 : 'bg-neon-blue/20 text-neon-blue hover:bg-neon-blue/30'
           )}
           disabled={session.status === 'full'}

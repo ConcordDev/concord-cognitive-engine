@@ -189,7 +189,7 @@ export function AnswerActionPanel({ query, answer, sources, provider, model }: A
   const actions: Array<{ id: ActionId; label: string; desc: string; icon: React.ComponentType<{ className?: string }>; accent: string; handler: () => void; disabled?: boolean }> = [
     { id: 'save',     label: savedDtuId      ? 'Saved'     : 'Save Q+A',         desc: savedDtuId      ? `DTU ${savedDtuId.slice(0, 8)}…`      : 'Private DTU lineaging from cited sources',         icon: Sparkles, accent: '#06b6d4', handler: actSave,     disabled: !!savedDtuId },
     { id: 'extract',  label: 'Extract chips', desc: 'Run expert_mode.extract_citations',                                                       icon: Quote,    accent: '#8b5cf6', handler: actExtract },
-    { id: 'dm',       label: 'DM colleague', desc: 'Send full answer + source list',                                                            icon: Send,     accent: '#ec4899', handler: actDm },
+    { id: 'dm',       label: 'DM colleague', desc: 'Send full answer + source list',                                                            icon: Send,     accent: '#f472b6', handler: actDm },
     { id: 'publish',  label: publishedDtuId ? 'Published' : 'Publish answer',   desc: publishedDtuId ? `DTU ${publishedDtuId.slice(0, 8)}…` : 'Public DTU + federation pickup',                  icon: Globe,    accent: '#22c55e', handler: actPublish,  disabled: !!publishedDtuId },
     { id: 'followup', label: 'Follow-up',     desc: 'Agent proposes the next-best question',                                                    icon: Wand2,    accent: '#eab308', handler: actFollowup },
   ];

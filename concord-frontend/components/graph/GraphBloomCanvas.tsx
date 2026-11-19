@@ -1437,7 +1437,7 @@ export function GraphBloomCanvas({ interactive = true }: { interactive?: boolean
           <button onClick={() => setIsSimulating(!isSimulating)} className={cn('p-2 backdrop-blur border border-lattice-border rounded-lg', isSimulating ? 'bg-neon-green/20 text-neon-green' : 'bg-lattice-surface/90 text-gray-400')} title="Toggle Simulation">
             {isSimulating ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
           </button>
-          <button onClick={() => setShowPathfinder(!showPathfinder)} className={cn('p-2 backdrop-blur border border-lattice-border rounded-lg', showPathfinder ? 'bg-neon-purple/20 text-neon-purple' : 'bg-lattice-surface/90 text-gray-400')} title="Path Finder">
+          <button onClick={() => setShowPathfinder(!showPathfinder)} className={cn('p-2 backdrop-blur border border-lattice-border rounded-lg', showPathfinder ? 'bg-neon-purple/20 text-neon-purple-bright' : 'bg-lattice-surface/90 text-gray-400')} title="Path Finder">
             <GitBranch className="w-5 h-5" />
           </button>
 
