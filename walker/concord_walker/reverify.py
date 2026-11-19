@@ -5,7 +5,7 @@ import re, time
 from .checks import LensWalk
 from .formfuzz import run_validation_recipe
 from .cdp import wait_until
-from .auth import assert_account, AccountMismatch
+from .auth import assert_account, AccountMismatch, write_account_key
 from .tickets import CATEGORY_WORDS
 from .util import scrub, ts_et, control_label
 from .matching import fuzzy_match, match_any
@@ -174,7 +174,8 @@ class Reverifier:
     def _write_ctx(self, t, acct, admin, readonly):
         """repro.run_repro's write context. None unless the run has --allow-write AND this lens is
         neither admin nor write-skip: replay writes only on the walker's OWN labelled fixtures, as the
-        account that is replaying (t1 here; a t2 label never counts as t1's own).
+        account that is replaying (the dedicated write account when one is configured — ULW C28 —
+        else t1; a t2 label never counts as the replaying account's own).
 
         ULW C38 exception: on a write-skip lens, when the run enables
         WRITE-OWN (--allow-write-own) and the replay session is t2, the ctx
@@ -212,8 +213,17 @@ class Reverifier:
     def _run_repro_live(self, t):
         lens = t["lens"]
         acct, admin = self.account_for(lens)
-        # ULW C38: a WRITE-OWN row replays as t2 — the session itself must be
-        # the second account, not a t1 session carrying t2 labels.
+        # ULW C28: a write-bearing replay runs ENTIRELY as the dedicated write account
+        # when one is configured (reads included — both are member accounts, and a write
+        # step must never execute under the evidence account's session while carrying
+        # the write account's label). Read-only replays keep the account_for account.
+        if self.allow_write and not admin and lens not in self.cfg.get("write_skip_lenses", []) \
+                and lens not in self.cfg.get("admin_lenses", []):
+            acct = write_account_key(self.cfg) or acct
+        # ULW C38: a WRITE-OWN row (write-skip lens, --allow-write-own) replays
+        # as t2 — the session itself must be the second account, not a t1/tw
+        # session carrying t2 labels. Mutually exclusive with the C28 block
+        # above (non-skip lenses) by the write_skip condition.
         if (self.allow_write and self.allow_write_own and not admin
                 and lens in self.cfg.get("write_skip_lenses", [])
                 and lens not in self.cfg.get("admin_lenses", [])):
@@ -600,12 +610,6 @@ class Reverifier:
         scoped view could be measured / attributed."""
         lens = t["lens"]
         acct, admin = self.account_for(lens)
-        # ULW C38: a WRITE-OWN row replays as t2 — the session itself must be
-        # the second account, not a t1 session carrying t2 labels.
-        if (self.allow_write and self.allow_write_own and not admin
-                and lens in self.cfg.get("write_skip_lenses", [])
-                and lens not in self.cfg.get("admin_lenses", [])):
-            acct = "t2"
         lw = LensWalk(self.b, self.cfg, self.rec, self.inv[lens], acct, self.log, admin=admin,
                       inv_entry=self.inv[lens], phases=[])
         ctx, page, cdp = lw.open()
@@ -636,12 +640,6 @@ class Reverifier:
     def _crash_loop(self, t, mobile=True, n=10):
         lens = t["lens"]
         acct, admin = self.account_for(lens)
-        # ULW C38: a WRITE-OWN row replays as t2 — the session itself must be
-        # the second account, not a t1 session carrying t2 labels.
-        if (self.allow_write and self.allow_write_own and not admin
-                and lens in self.cfg.get("write_skip_lenses", [])
-                and lens not in self.cfg.get("admin_lenses", [])):
-            acct = "t2"
         lw = LensWalk(self.b, self.cfg, self.rec, self.inv[lens], acct, self.log, admin=admin, inv_entry=self.inv[lens])
         crashes, evid, loads = 0, [], []
         for i in range(n):
@@ -681,12 +679,6 @@ class Reverifier:
         FIXED; no snapshot -> NEEDS_HUMAN, never a pass."""
         lens = t["lens"]
         acct, admin = self.account_for(lens)
-        # ULW C38: a WRITE-OWN row replays as t2 — the session itself must be
-        # the second account, not a t1 session carrying t2 labels.
-        if (self.allow_write and self.allow_write_own and not admin
-                and lens in self.cfg.get("write_skip_lenses", [])
-                and lens not in self.cfg.get("admin_lenses", [])):
-            acct = "t2"
         lw = LensWalk(self.b, self.cfg, self.rec, self.inv[lens], acct, self.log, admin=admin, inv_entry=self.inv[lens])
         ctx, page, cdp = lw.open()
         try:
@@ -758,12 +750,6 @@ class Reverifier:
         needle = elems[0]
         lens = t["lens"]
         acct, admin = self.account_for(lens)
-        # ULW C38: a WRITE-OWN row replays as t2 — the session itself must be
-        # the second account, not a t1 session carrying t2 labels.
-        if (self.allow_write and self.allow_write_own and not admin
-                and lens in self.cfg.get("write_skip_lenses", [])
-                and lens not in self.cfg.get("admin_lenses", [])):
-            acct = "t2"
         lw = LensWalk(self.b, self.cfg, self.rec, self.inv[lens], acct, self.log, admin=admin, inv_entry=self.inv[lens])
         ctx, page, cdp = lw.open()
         try:
