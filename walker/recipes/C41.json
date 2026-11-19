@@ -1,0 +1,22 @@
+{
+  "id": "C41",
+  "kind": "repro-steps",
+  "title": "LC-07 per-lens block-reason profiles for the 17 never-walked lenses (ULW 43-upgrade)",
+  "author": "muse-b2",
+  "reviewer": "zuko-desk",
+  "status": "draft",
+  "authored_on": "2026-11-19",
+  "tier": 1,
+  "case_source": "observed",
+  "packet_id": "walker@cff97c5479:v1",
+  "verified_against": null,
+  "covers": "Hand recipe (kind repro-steps) for C41, authored by muse-b2 as author of record (CB-0828; named at claim time, dossier line 876) from the fixer's supplied content: RECIPE-C41.md + CHECK-C41.md in /Users/dutch/.zuko/quality/ (seat B3, branch walker/ultimate-lens-walker). Build of record: commit 1dcdfdb13 (parent cff97c547, the fire-time head), 19 files blob-verified 19/19 byte-identical — walker/profiles/<slug>.json x17 + walker/profiles/index.json + walker/selftest/test_c41_profiles.py; the previous landing's files (C16) re-read INTACT at the new head. Provenance: INDEPENDENT — the profile set is the master plan's LC-G3 union (MST-W2-15 x6 + MST-W2-16 x9 + MST-W2-17 x2 = LC-30..LC-46), NOT the Nov 17 run arithmetic's 21 not-attempted (a different set; both stand, named, never collapsed — no walk-manifest.json exists in the run tree, verified across all 289 files); block reasons RE-DERIVED from the 17 lenses' own Nov 17 packets + walker config.json at head, in the closed six-class vocabulary with census {admin-session-absent 5, route-absent 1, error-boundary-on-load 1, write-lane-read-only 4, no-create-control 4, create-opener-no-dialog 2}. NOT claimed: the lost Nov 13 logs' own words (unrecoverable; the profiles carry their derivation note instead); the audit lens's Q14 (an open Mega-plan question, named, not invented); VERIFIED waits on the walker desk's walk-2 exercise of the profiles (the LC-30..LC-46 walks themselves). Reviewer: at activation, confirm the discriminator transcript below still fails against the pinned pre-fix instance.",
+  "discriminator": "Pre-fix transcript (replayed by the fixer 2026-11-19, from CHECK-C41.md): on the pre-C41 tree the walker carries NO profiles directory — walker/selftest/test_c41_profiles.py run against the recipe-branch walker copy at 65df98c0e FAILS at its first leg ('profiles dir exists'), exit 1. On the build tree (1dcdfdb13) the same suite passes 37/37; neighbours test_c3_vocab and test_c26_readback run 0 failures.",
+  "steps": [
+    "From walker/ on the build tree (commit 1dcdfdb13), run: python3 selftest/test_c41_profiles.py — expect 37/37 PASS.",
+    "Set exactness: the profile set is exactly the master plan's LC-G3 17 (LC-30..LC-46: admin, audit, ops, psyops, repair-telemetry, system, affect, chat, council, courtship, detective, ghost-tracker, household, spectate, whiteboard, marketplace, trades) — no more, no fewer; the 21 not-attempted of the Nov 17 run arithmetic is a different set and is not substituted.",
+    "Schema + vocabulary: every profile is schema-complete (identity, LC-G3 group, block_class, block_reason, nov17_run evidence block, config state, unblock list, walk-2 disposition) and every block_class comes from the closed six-class vocabulary, with the census {admin-session-absent 5, route-absent 1, error-boundary-on-load 1, write-lane-read-only 4, no-create-control 4, create-opener-no-dialog 2}; the index census equals the profiles' own census.",
+    "Per-class evidence shapes hold against the Nov 17 run of record: admin look-only skip shape x5; audit reach HTTP 404; whiteboard error-boundary (FIX-whiteboard-004); write-lane read-only x4; create NA x4; create-opener-no-dialog x2.",
+    "Pristine control: run the same suite against a tree without walker/profiles/ — it FAILS at the first leg ('profiles dir exists'), exit 1."
+  ]
+}
