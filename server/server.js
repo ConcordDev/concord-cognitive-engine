@@ -40234,6 +40234,7 @@ configureMiddleware(app, {
   productionWriteAuthMiddleware,
   csrfMiddleware,
   NODE_ENV,
+  AUTH_MODE,
 });
 
 // One hub id (lib/world-ids.js). Older clients and saved state still send the
@@ -89842,7 +89843,10 @@ function createAsset({ type, title, description, tags, genre, subGenre, bpm, key
 
 app.post('/api/artistry/assets', (req, res) => {
   try {
-    const asset = createAsset(req.body);
+    // The owner is the signed-in account (lib/actor-identity.js refuses a body
+    // ownerId that names anyone else); a body ownerId is only honoured with no
+    // session, i.e. AUTH_MODE=public single-user mode.
+    const asset = createAsset({ ...req.body, ownerId: req.user?.id || req.body?.ownerId });
     res.json({ ok: true, asset });
   } catch (e) {
     serverError(res, e, 400);
@@ -90357,8 +90361,11 @@ const LICENSE_TYPES = Object.freeze({
 app.post('/api/artistry/marketplace/beats', (req, res) => {
   try {
     const art = ensureArtistryState();
-    const { title, assetId, bpm, key, genre, tags, licenses, ownerId, previewAssetId } = req.body;
-    if (!ownerId) return res.status(400).json({ error: 'Missing ownerId' });
+    const { title, assetId, bpm, key, genre, tags, licenses, previewAssetId } = req.body;
+    // The seller is the signed-in account, never a body field (a body ownerId let
+    // anyone list under someone else's name).
+    const ownerId = req.user?.id;
+    if (!ownerId) return res.status(401).json({ error: 'auth_required' });
     const listingId = `beat_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const listing = {
       id: listingId, type: 'beat', title: title || 'Untitled Beat', assetId,
@@ -90399,8 +90406,9 @@ app.get('/api/artistry/marketplace/beats', (req, res) => {
 app.post('/api/artistry/marketplace/stems', (req, res) => {
   try {
     const art = ensureArtistryState();
-    const { title, assetIds, parentTrackId, genre, tags, price, ownerId } = req.body;
-    if (!ownerId) return res.status(400).json({ error: 'Missing ownerId' });
+    const { title, assetIds, parentTrackId, genre, tags, price } = req.body;
+    const ownerId = req.user?.id; // the signed-in seller, never a body field
+    if (!ownerId) return res.status(401).json({ error: 'auth_required' });
     if (price != null && (typeof price !== 'number' || price < 0)) return res.status(400).json({ error: 'Invalid price' });
     const listingId = `stem_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     art.stemStore.set(listingId, {
@@ -90425,8 +90433,9 @@ app.get('/api/artistry/marketplace/stems', (req, res) => {
 app.post('/api/artistry/marketplace/samples', (req, res) => {
   try {
     const art = ensureArtistryState();
-    const { title, assetIds, sampleCount, genre, tags, price, description, ownerId } = req.body;
-    if (!ownerId) return res.status(400).json({ error: 'Missing ownerId' });
+    const { title, assetIds, sampleCount, genre, tags, price, description } = req.body;
+    const ownerId = req.user?.id; // the signed-in seller, never a body field
+    if (!ownerId) return res.status(401).json({ error: 'auth_required' });
     if (price != null && (typeof price !== 'number' || price < 0)) return res.status(400).json({ error: 'Invalid price' });
     const listingId = `samp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     art.sampleStore.set(listingId, {
@@ -90451,8 +90460,9 @@ app.get('/api/artistry/marketplace/samples', (req, res) => {
 app.post('/api/artistry/marketplace/art', (req, res) => {
   try {
     const art = ensureArtistryState();
-    const { title, assetId, artType, style, tags, price, description, ownerId, dimensions } = req.body;
-    if (!ownerId) return res.status(400).json({ error: 'Missing ownerId' });
+    const { title, assetId, artType, style, tags, price, description, dimensions } = req.body;
+    const ownerId = req.user?.id; // the signed-in seller, never a body field
+    if (!ownerId) return res.status(401).json({ error: 'auth_required' });
     if (price != null && (typeof price !== 'number' || price < 0)) return res.status(400).json({ error: 'Invalid price' });
     const listingId = `art_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     art.artStore.set(listingId, {
@@ -90598,8 +90608,13 @@ function computeCitationRoyaltyRate(usageCount) {
 app.post('/api/artistry/marketplace/purchase', (req, res) => {
   try {
     const art = ensureArtistryState();
-    const { buyerId, listingId, listingType, licenseType, purchaseId: clientPurchaseId } = req.body;
-    if (!buyerId || !listingId) return res.status(400).json({ error: 'Missing buyerId or listingId' });
+    const { listingId, listingType, licenseType, purchaseId: clientPurchaseId } = req.body;
+    // SECURITY: the buyer is the signed-in account. This used to read buyerId
+    // from the body, so any signed-in user could debit ANOTHER user's balance
+    // to buy their own listing. A body buyerId is ignored.
+    const buyerId = req.user?.id;
+    if (!buyerId) return res.status(401).json({ error: 'auth_required' });
+    if (!listingId) return res.status(400).json({ error: 'Missing listingId' });
 
     // ── Deterministic purchaseId ────────────────────────────────────────
     // Client can send a purchaseId for idempotency; otherwise server generates one.

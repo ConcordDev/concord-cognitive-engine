@@ -8,6 +8,7 @@
  * cookie parsing, auth, write-auth, and CSRF.
  */
 
+import { actorIdentityGuard } from '../lib/actor-identity.js';
 import crypto from "crypto";
 import securityHeaders from './security-headers.js';
 import apiKeyAuth from './api-key-auth.js';
@@ -114,6 +115,7 @@ export default function configureMiddleware(app, deps) {
     productionWriteAuthMiddleware,
     csrfMiddleware,
     NODE_ENV,
+    AUTH_MODE,
   } = deps;
 
   // ---- Security Headers (standalone, runs before Helmet) ----
@@ -337,5 +339,6 @@ export default function configureMiddleware(app, deps) {
   app.use(authMiddleware);                  // Authentication (JWT/cookie)
   app.use(productionWriteAuthMiddleware);   // Enforce auth on all writes in production
   app.use(csrfMiddleware);                  // CSRF protection after auth
+  app.use(actorIdentityGuard({ authMode: AUTH_MODE })); // acting account = signed-in account (lib/actor-identity.js)
   app.use(dbMacroHttpGuard);                // db.query / migrate / syncToPostgres: admin or internal owner only
 }
