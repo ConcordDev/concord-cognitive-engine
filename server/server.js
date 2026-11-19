@@ -8897,6 +8897,10 @@ function authMiddleware(req, res, next) {
   if (req.method === "POST" && /^\/api\/spectate\/[^/]+\/subscribe$/.test(req.path)) return next();
   if (req.method === "POST" && req.path === "/api/spectate/heartbeat") return next();
   if (req.method === "GET" && /^\/api\/spectate\/[^/]+\/feed$/.test(req.path)) return next();
+  // The Auction House (Market lens) public window: GET-only, read handlers
+  // only (domains/market-house.js PUBLIC_READS — catalogue, lot, trending,
+  // showcase, pay board), run with no actor. Nothing here can write.
+  if (req.method === "GET" && /^\/api\/market\/house\/public\/[a-z-]{3,40}$/.test(req.path)) return next();
   // No-login ConKay demo: GET-only, compute-only beam FEA, plus the results
   // page's precomputed showcase snapshots (routes/conkay-demo.js).
   // Nothing under this prefix reads or writes user data.

@@ -41,6 +41,7 @@ import {
   delistListing, updateListingPrice, checkWashTrading,
 } from "./marketplace-service.js";
 import { mountStudioMarketplaceRoutes } from "./studio-publish.js";
+import { mountMarketHousePublicRoutes } from "../domains/market-house.js";
 import { distributeFee, getFeeSplitBalances, getFeeDistributions } from "./fee-split.js";
 import { runTreasuryReconciliation, getReconciliationHistory } from "./treasury-reconciliation.js";
 import { getSystemBalanceSummary } from "./balances.js";
@@ -1508,6 +1509,7 @@ export function registerEconomyRoutes(app, db, opts = {}) {
   // ═══════════════════════════════════════════════════════════════════════════
 
   mountStudioMarketplaceRoutes(app, db);
+  mountMarketHousePublicRoutes(app, db);
 
   app.post("/api/economy/marketplace/list", (req, res) => {
     try {

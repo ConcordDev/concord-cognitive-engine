@@ -49,6 +49,9 @@ vi.mock('next/font/google', () => {
     Barlow: face('Barlow'),
     Barlow_Condensed: face('Barlow Condensed'),
     Azeret_Mono: face('Azeret Mono'),
+    // Market — The Auction House (components/market/house/houseFonts.ts)
+    Cormorant_Garamond: face('Cormorant Garamond'),
+    Jost: face('Jost'),
   };
 });
 

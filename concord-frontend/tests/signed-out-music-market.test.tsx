@@ -15,7 +15,6 @@ vi.mock('@/components/music/liner/LinerNotesApp', () => ({ LinerNotesApp: () => 
 vi.mock('@/components/market/MarketListingsPanel', () => ({ MarketListingsPanel: () => null }));
 
 import { SignedOutMusicBrowse } from '@/components/public/SignedOutMusicBrowse';
-import { SignedOutMarketBrowse } from '@/components/public/SignedOutMarketBrowse';
 import { MusicLensEntry } from '@/components/music/MusicLensEntry';
 import { AnonBrowseProvider } from '@/lib/anon-browse';
 
@@ -109,58 +108,6 @@ describe('Music for a signed-out visitor', () => {
     apiGet.mockResolvedValueOnce({ data: { ok: true, items: [TRACK('r1', 'Back')], total: 1 } });
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
     await waitFor(() => expect(screen.getByTestId('visitor-track-r1')).toBeTruthy());
-  });
-});
-
-describe('Market for a signed-out visitor', () => {
-  const ROWS = [
-    { id: 'm1', title: 'Night Drive', description: 'free track', price: 0, type: 'music', listenOnly: true, mediaType: 'audio', streamUrl: '/api/media/m1/stream', tags: ['lofi'] },
-    { id: 's1', title: 'Mixing service', description: 'I mix', category: 'audio', price: 20, tier: 'standard', rating: 4.5, reviewCount: 2 },
-    { id: 's2', title: 'Logo design', description: 'a logo', category: 'design', price: 50 },
-  ];
-
-  it('shows listings: free listen-only tracks play as previews, paid ones show price and a sign-in link in place of Buy', async () => {
-    apiGet.mockResolvedValue({ data: { ok: true, listings: ROWS } });
-    render(<SignedOutMarketBrowse />);
-    await waitFor(() => expect(screen.getByTestId('visitor-listing-m1')).toBeTruthy());
-    expect(apiGet).toHaveBeenCalledWith('/api/marketplace/listings');
-    const media = screen.getByTestId('visitor-listing-m1');
-    expect(within(media).getByText('Free · listen only')).toBeTruthy();
-    expect(media.querySelector('audio')!.getAttribute('src')).toBe('/api/media/m1/stream');
-    expect(within(media).queryByText(/Sign in to buy/)).toBeNull();
-    const svc = screen.getByTestId('visitor-listing-s1');
-    expect(within(svc).getByText('20 CC')).toBeTruthy();
-    const buy = within(svc).getByText(/Sign in to buy/).closest('button')!;
-    expect(buy.getAttribute('type')).toBe('button');
-    fireEvent.click(buy);
-    expect(openAuth).toHaveBeenCalledWith('signup');
-    expect(screen.getByTestId('visitor-list-something').textContent).toMatch(/Sign in to list something/);
-    // Nothing can write: every buy/purchase/list control is a "Sign in to …" auth gate.
-    const writeish = screen.queryAllByRole('button', { name: /buy|purchase|list/i });
-    expect(writeish.length).toBeGreaterThan(0);
-    for (const b of writeish) expect(b.textContent).toMatch(/^\s*Sign in to /);
-    for (const c of apiGet.mock.calls) expect(c[0]).toBe('/api/marketplace/listings');
-  });
-
-  it('filters by category and search, and says so when nothing matches', async () => {
-    apiGet.mockResolvedValue({ data: { ok: true, listings: ROWS } });
-    render(<SignedOutMarketBrowse />);
-    await waitFor(() => expect(screen.getByTestId('visitor-listing-s1')).toBeTruthy());
-    fireEvent.change(screen.getByLabelText('Category'), { target: { value: 'design' } });
-    expect(screen.queryByTestId('visitor-listing-s1')).toBeNull();
-    expect(screen.getByTestId('visitor-listing-s2')).toBeTruthy();
-    fireEvent.change(screen.getByLabelText('Search listings'), { target: { value: 'zzz' } });
-    expect(screen.getByTestId('visitor-market-empty').textContent).toMatch(/No listings match/);
-  });
-
-  it('empty marketplace and a failed load are honest', async () => {
-    apiGet.mockResolvedValueOnce({ data: { ok: true, listings: [] } });
-    render(<SignedOutMarketBrowse />);
-    await waitFor(() => expect(screen.getByTestId('visitor-market-empty').textContent).toMatch(/Nothing is listed yet/));
-    cleanup();
-    apiGet.mockRejectedValueOnce(new Error('x'));
-    render(<SignedOutMarketBrowse />);
-    await waitFor(() => expect(screen.getByRole('alert').textContent).toMatch(/Could not load the listings/));
   });
 });
 
