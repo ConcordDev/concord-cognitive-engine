@@ -1,0 +1,25 @@
+{
+ "adversarial": [
+  "A lens whose page carries other bare-number shapes \u2014 a grouped figure '1,500', a version string, a price \u2014 yields no error texts; only a status code with error vocabulary adjacent in the same text counts.",
+  "The vocabulary-first form 'Error 500' is caught by the fixed matcher (STATUS_TEXT's second alternative) and was MISSED by the pristine one \u2014 the scoping is a coverage gain, not only a narrowing; a replay that loses it has regressed.",
+  "A genuinely broken lens (a real '500 Internal Server Error' or '404 Not Found' text) still FAILs reach after the fix \u2014 the scoping must never be widened into suppressing true error texts."
+ ],
+ "author": "muse-b7",
+ "authored_on": "2026-11-19",
+ "case_source": "observed",
+ "covers": "MATCHER-SCOPING \u2014 the walker matcher's ERROR_TEXT bare-numeric scoping (fixer muse-b9; author of record muse-b7, named in the fixer's premise of record before the office ticketed the fix). Origin: the H2/H3/H4 false-positive genus from capture run 20261117-080754 \u2014 checks.py's ERROR_TEXT carried bare 404|500 alternatives anchored at text start, so any short a11y text beginning with those digits filed its lens as failing to load. The record pairs (premises executed by B3 for H2 and B9 for H3/H4, dossier lines 923 + the H3/H4 NOTEs): achievements (FIX-achievements-006 desktop + FIX-achievements-013 390px) \u2014 navigation 200, no http_5xx, no page errors, load calls 200; the only failure signal was two text nodes reading '500' (a stat/reward figure). Wallet (H2) \u2014 a '500 CC' Buy-CC amount tile. Staking (FIX-staking-016) \u2014 one text node reading '404.5', a staking figure; desktop reach PASS on the same record. The same genus later closed B9's E4 pair (FIX-social-023/024, 'Error text: 500', console clean) as FALSE POSITIVE. All three lenses were healthy; the defect was the walker's. THE FIX (landed on walker/ultimate-lens-walker @ 5c51ef99d4, parent b2f067fc5, under GB-1554 / the desk's CB-0872 confirm-back; fire-time guard passed, neighbour re-read intact): walker/concord_walker/checks.py (blob bbb12383b9) \u2014 ERROR_TEXT loses the bare 404|500 alternatives; a NEW STATUS_TEXT pattern counts a status code as error text only with error vocabulary adjacent in the same text ('404 not found', '500 internal server error', 'error 500'); LensWalk.error_texts consults both patterns. Plus the new selftest walker/selftest/test_matcher_scoping.py (blob 420254ec0d, 15 legs). No lens code changed; nothing enters the Gate 2 batch from this item. NOT CLAIMED: lenses whose findings rest on other signals are untouched by this recipe; the achievements/staking lenses' other findings (e.g. the shared 390px offscreen chrome, filed under overflow.offscreen_390) stand on their own rows.",
+ "discriminator": "Bidirectional selftest transcript (fixer's run 2026-11-19, re-run first-hand by the author at registration): on the fixed tree walker/selftest/test_matcher_scoping.py passes 15/15 (ALL PASS). On the pristine matcher (pre-fix checks.py) exactly 7 legs FAIL: achievements '500' figure \u00b7 achievements pair '500; 500' \u00b7 wallet '500 CC' tile \u00b7 staking '404.5' figure \u00b7 '500 error-free plays' \u00b7 the mixed-content page (pristine returns ['500', '404.5'] as error texts) \u00b7 and the control 'Error 500', which the pristine matcher MISSES and the fix catches \u2014 the scoping gains coverage while narrowing. The 8 true-error controls ('Internal Server Error', '500 Internal Server Error', '404 Not Found', 'This page could not be found', 'Failed to load', 'Something went wrong', 'Application error', and in the fixed tree 'Error 500') match in both trees except as noted. Capture-side discriminator of record: run 20261117-080754's lens records for achievements/wallet/staking, whose only failure signal is the numeric text node against an otherwise-clean record (200s, no 5xx, no page errors).",
+ "id": "MATCHER-SCOPING",
+ "kind": "repro-steps",
+ "packet_id": "walker@5c51ef99d4:v1",
+ "reviewer": "zuko-desk",
+ "status": "draft",
+ "steps": [
+  "On the walker build carrying the fix (walker/ultimate-lens-walker @ 5c51ef99d4 or a descendant), run walker/selftest/test_matcher_scoping.py \u2014 expected ALL PASS (15/15).",
+  "Re-walk achievements, wallet and staking (the re-capture form): each lens's record shows no error-text finding on its numeric content (the '500' figure/tile, the '404.5' figure) and reach PASSes \u2014 the H2/H3/H4 findings do not re-file.",
+  "Control: a lens (or fixture page) rendering a true error text \u2014 '500 Internal Server Error', '404 Not Found', 'Error 500' \u2014 still FAILs reach with the error text named in the record."
+ ],
+ "tier": 1,
+ "title": "Walker matcher: a bare status number in page content is not an error text \u2014 achievements, wallet and staking PASS reach on numeric content while true error texts still FAIL",
+ "verified_against": null
+}
