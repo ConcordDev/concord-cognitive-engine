@@ -8,12 +8,31 @@ and Delete on its OWN fixture (identified by label, never position).
 """
 import re
 
+# ------------------------------------------------------------ ULW C40 (§6 deny list)
+# UPGRADE-PLAN-20261114 §6 names thirteen money verbs that are never clicked
+# ANYWHERE: transfer, withdraw, payout, mint, stake, tip, gift, donate,
+# subscribe, checkout, buy, purchase, pay. This tuple is the canonical set;
+# every deny list below carries all thirteen, and selftest/test_c40_safety.py
+# pins each verb against every click-decision surface (sweep_decision,
+# write_step_decision, is_opener_safe, is_tab_safe). Add a verb HERE and to
+# the lists in the same change — the selftest fails otherwise.
+MONEY_VERBS = ("transfer", "withdraw", "payout", "mint", "stake", "tip", "gift",
+               "donate", "subscribe", "checkout", "buy", "purchase", "pay")
+MONEY_DENY = re.compile(r"(?i)\b(transfer|withdraw|payouts?|mint|stake|tip|gift|donate|"
+                        r"subscri\w*|checkout|buy|purchase|pay)\b")
+
+
+def money_deny(name):
+    """True when a control name carries a §6 money verb (ULW C40)."""
+    return bool(MONEY_DENY.search(name or ""))
+
+
 # Never clicked in any mode (substring/word match, case-insensitive).
 HARD_DENY = re.compile(r"(?i)\b(restore|roll\s*back|rollback|revert|reset|replay|undo|redo|re-?run|rerun|"
                        r"publish|unpublish|share|send|post|broadcast|announce|invite|dm|message all|"
                        r"approve|reject|deny|vote|sign(?!\s*in)|e-?sign|mint|deploy|launch|execute|run|trigger|"
                        r"page|paging|ingest|alert|notify|notification|escalate|ack|acknowledge|resolve|"
-                       r"pay|buy|purchase|checkout|order|donate|fund|tip|transfer|withdraw|deposit|bid|sell|trade|swap|stake|claim|"
+                       r"pay|payout|buy|purchase|checkout|order|donate|gift|fund|tip|transfer|withdraw|deposit|bid|sell|trade|swap|stake|claim|"
                        r"import|sync|archive|unarchive|purge|wipe|clear|flush|drop|truncate|seed|migrate|reindex|rebuild|"
                        r"install|uninstall|enable|disable|connect|disconnect|revoke|grant|promote|demote|ban|kick|block|mute|"
                        r"follow|subscribe|join|leave|like|upvote|downvote|report|flag|accept|decline|"
@@ -48,6 +67,8 @@ def is_tab_safe(name, admin=False):
     if admin and ADMIN_EXTRA_DENY.search(name or ""):
         return False
     # Tabs are navigation; still refuse obviously-actiony tab labels.
+    if money_deny(name):
+        return False  # ULW C40: a §6 money verb is never clicked, even as a tab
     return not re.search(r"(?i)\b(restore|rollback|revert|reset|replay|delete|publish|send|pay|trigger|page)\b", name or "")
 
 
@@ -87,8 +108,8 @@ def is_close_safe(name):
 # HARD_DENY: they hit POST /api/lens/run, which is exactly the endpoint the
 # premap must record. They are still refused on write-skip lenses, and any
 # bulk/all qualifier refuses them everywhere.
-SWEEP_DENY = re.compile(r"(?i)\b(delete|remove|clear|reset|publish|share|send|pay|buy|purchase|withdraw|transfer|"
-                        r"mint|approve|reject|accept|sign\s*out|log\s*out|logout|theme|dark mode|light mode|"
+SWEEP_DENY = re.compile(r"(?i)\b(delete|remove|clear|reset|publish|share|send|pay|payout|buy|purchase|checkout|withdraw|transfer|"
+                        r"mint|tip|gift|donate|stake|subscribe|approve|reject|accept|sign\s*out|log\s*out|logout|theme|dark mode|light mode|"
                         r"notifications?|inbox|language|locale|mark (all )?(as )?read|dismiss all|unsubscribe|destroy|purge|wipe|trash)\b")
 DESTRUCTIVE = re.compile(r"(?i)\b(delete|remove|clear|reset|purge|wipe|destroy|trash|drop|truncate|revoke|ban)\b")
 SWEEP_COMPUTE = re.compile(r"(?i)^\s*(run|calc|calculate|compute|balance|solve|analy[sz]e|check|validate|preview|"
@@ -148,7 +169,7 @@ def is_sweep_safe(name, admin=False, read_only=False):
 # that publishes or sends to other people. Anything in HARD_DENY that is not a plain create/edit verb
 # or a delete of the walker's own fixture stays refused exactly as in read-only mode.
 WRITE_NEVER = re.compile(r"(?i)\b(pay|payment|payments|buy|purchase|checkout|billing|invoice|subscri\w*|upgrade|plans?|pricing|"
-                         r"withdraw|transfer|deposit|donate|fund|tip|stake|sell|trade|swap|bid|mint|refund|payout|wallet|credits?|"
+                         r"withdraw|transfer|deposit|donate|gift|fund|tip|stake|sell|trade|swap|bid|mint|refund|payout|wallet|credits?|"
                          r"roles?|permissions?|grant|revoke|promote|demote|ban|kick|impersonate|admin\w*|sudo|"
                          r"account|log\s*out|logout|sign\s*out|deactivate|"
                          r"publish|unpublish|share|send|post|broadcast|announce|invite|dm|"
