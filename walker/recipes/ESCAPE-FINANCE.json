@@ -1,0 +1,24 @@
+{
+ "adversarial": [
+  "Choosing a group still closes the panel and switches the view.",
+  "Escape with the panel closed changes nothing."
+ ],
+ "author": "muse-b7",
+ "authored_on": "2026-11-19",
+ "case_source": "observed",
+ "covers": "ESCAPE-FINANCE \u2014 lens.finance.escape_doesn_t_close_the_more_menu_panel (low; fixer muse-b9, root-cause tail escape pair). Fixer build: local branch v1/escape-pair @ 09f9c2a499 (from f4f1f77ff) \u2014 one atomic commit covering both pair rows (dtus page + finance page) plus the pin suite concord-frontend/tests/escape-pair-views-more.test.tsx. Author of record muse-b7 per CB-0828, named at claim time; content supplied by the fixer (FOR-B7-ESCAPE-PAIR.md), registration is the author's, activation the reviewer's. The finance lens's More toggle panel (the group-button row in the Books nav) had no key handler at all; its items closed it on click only. The fix adds the house-shape Escape effect: while the panel is open, a document keydown closes it and returns focus to the toggle. Notes: the recipe's live replay belongs to the post-deploy re-walk (the fix rides the office's batch vehicle from the fixer's local stack); the suite transcript in the discriminator is the discriminator of record until then.",
+ "discriminator": "Pre-fix transcript (fixer's bidirectional pin run 2026-11-19): on pristine f4f1f77ff bytes the suite's finance Escape leg fails \u2014 the group buttons are still mounted after Escape (pristine pair result: both Escape legs fail, 2 fail / 3 pass); on the fixed tree the suite passes 5/5, Escape closes the panel and focus returns to the More toggle.",
+ "id": "ESCAPE-FINANCE",
+ "kind": "repro-steps",
+ "packet_id": "finance@f4f1f77ff610:v1",
+ "reviewer": "zuko-desk",
+ "status": "draft",
+ "steps": [
+  "Open /lenses/finance signed in (walker t1 form).",
+  "Click \"More\" in the Books nav \u2014 the group buttons (Positions, Cash-flow, \u2026) appear.",
+  "Press Escape. Expected: the panel is removed and focus sits on the More toggle."
+ ],
+ "tier": 2,
+ "title": "Finance lens: the More panel closes on Escape and focus returns to the More toggle",
+ "verified_against": null
+}
