@@ -1,0 +1,31 @@
+# CI lane for the calculix engine (SXE-07, built under SXE-52).
+#
+# Heavy-engine lane: MANUAL DISPATCH ONLY per the founder F8
+# ruling (2026-11-18) — no automatic schedule until the founder
+# approves one as a spend decision. Lands via the desk git route
+# (the GitHub connector cannot write workflow files).
+name: conkay-engine-calculix
+
+on:
+  workflow_dispatch:
+
+jobs:
+  engine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install CalculiX 2.23 (ccx) + driver env
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y calculix-ccx
+          which ccx
+          python3 -m venv /opt/concord-engines/calculix
+      - name: Run engine tests (skips fail the lane)
+        env:
+          CONKAY_ENGINE_CALCULIX_BIN: /opt/concord-engines/calculix/bin/python
+        run: |
+          node --test server/tests/conkay/engines/calculix.test.js 2>&1 | tee /tmp/engine-tests.log
+          grep -q "ℹ skipped 0" /tmp/engine-tests.log

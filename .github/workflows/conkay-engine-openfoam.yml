@@ -1,0 +1,38 @@
+# CI lane for the openfoam engine (SXE-11, built under SXE-52).
+#
+# Heavy-engine lane: MANUAL DISPATCH ONLY per the founder F8
+# ruling (2026-11-18) — no automatic schedule until the founder
+# approves one as a spend decision (the plan's nightly wording
+# is overridden by F8). Lands via the desk git route (the
+# GitHub connector cannot write workflow files).
+#
+# Distribution: OpenFOAM v2406, the ESI (openfoam.com) line —
+# the F3 safe default recorded in the manifest entry, pending
+# the founder's express F3 ruling.
+name: conkay-engine-openfoam
+
+on:
+  workflow_dispatch:
+
+jobs:
+  engine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install OpenFOAM v2406 (ESI apt repo, pinned line) + driver env
+        run: |
+          sudo sh -c "wget -O - https://dl.openfoam.com/add-debian-repo.sh | bash"
+          sudo apt-get update
+          sudo apt-get install -y openfoam2406
+          python3 -m venv /opt/concord-engines/openfoam
+      - name: Run engine tests (skips fail the lane)
+        env:
+          CONKAY_ENGINE_OPENFOAM_BIN: /opt/concord-engines/openfoam/bin/python
+        run: |
+          source /opt/openfoam2406/etc/bashrc || source /usr/lib/openfoam/openfoam2406/etc/bashrc
+          which blockMesh icoFoam postProcess
+          node --test server/tests/conkay/engines/openfoam.test.js 2>&1 | tee /tmp/engine-tests.log
+          grep -q "ℹ skipped 0" /tmp/engine-tests.log

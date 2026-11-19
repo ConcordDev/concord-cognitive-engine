@@ -1,0 +1,35 @@
+# CI lane for the petsc engine (SXE-03, built under SXE-52).
+#
+# Heavy-engine lane: MANUAL DISPATCH ONLY per the founder F8
+# ruling (2026-11-18) — no automatic schedule until the founder
+# approves one as a spend decision. Lands via the desk git route
+# (the GitHub connector cannot write workflow files).
+#
+# PETSc installs into the FEniCSx env (SOLVER-ENGINES-PLAN.md
+# section 2), so this lane provisions that env with petsc4py +
+# slepc4py added; it runs only the petsc suite.
+name: conkay-engine-petsc
+
+on:
+  workflow_dispatch:
+
+jobs:
+  engine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install PETSc 3.24 + SLEPc 3.24 into the fenicsx env (conda-forge, pinned)
+        run: |
+          curl -sL https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh -o /tmp/miniforge.sh
+          bash /tmp/miniforge.sh -b -p /opt/miniforge
+          /opt/miniforge/bin/conda create -y -p /opt/concord-engines/fenicsx -c conda-forge fenics-dolfinx=0.11.0 petsc4py=3.24 slepc4py=3.24
+          /opt/concord-engines/fenicsx/bin/python -c "import petsc4py, slepc4py; print(petsc4py.__version__)"
+      - name: Run engine tests (skips fail the lane)
+        env:
+          CONKAY_ENGINE_PETSC_BIN: /opt/concord-engines/fenicsx/bin/python
+        run: |
+          node --test server/tests/conkay/engines/petsc.test.js 2>&1 | tee /tmp/engine-tests.log
+          grep -q "ℹ skipped 0" /tmp/engine-tests.log

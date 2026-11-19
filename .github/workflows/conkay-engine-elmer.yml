@@ -1,0 +1,32 @@
+# CI lane for the elmer engine (SXE-10, built under SXE-53).
+#
+# Heavy-engine lane: MANUAL DISPATCH ONLY per the founder F8
+# ruling (2026-11-18) — no automatic schedule until the founder
+# approves one as a spend decision. Lands via the desk git route
+# (the GitHub connector cannot write workflow files).
+name: conkay-engine-elmer
+
+on:
+  workflow_dispatch:
+
+jobs:
+  engine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install Elmer 9.0 (pinned) + test tree + driver env
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y elmerfem || echo "build/install Elmer 9.0 per docs/conkay/engines/elmer.md"
+          which ElmerSolver
+          python3 -m venv /opt/concord-engines/elmer
+      - name: Run engine tests (skips fail the lane)
+        env:
+          CONKAY_ENGINE_ELMER_BIN: /opt/concord-engines/elmer/bin/python
+          CONKAY_ELMER_TESTS: /usr/share/elmerfem/tests
+        run: |
+          node --test server/tests/conkay/engines/elmer.test.js 2>&1 | tee /tmp/engine-tests.log
+          grep -q "ℹ skipped 0" /tmp/engine-tests.log

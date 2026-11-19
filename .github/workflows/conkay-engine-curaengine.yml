@@ -1,0 +1,32 @@
+# CI lane for the curaengine engine (SXE-38, built under SXE-53).
+#
+# Heavy-engine lane: MANUAL DISPATCH ONLY per the founder F8
+# ruling (2026-11-18) — no automatic schedule until the founder
+# approves one as a spend decision. Lands via the desk git route
+# (the GitHub connector cannot write workflow files).
+name: conkay-engine-curaengine
+
+on:
+  workflow_dispatch:
+
+jobs:
+  engine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install CuraEngine 5.9.0 (unmodified release) + definition + driver env
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cura-engine || echo "install the unmodified CuraEngine 5.9.0 release per docs/conkay/engines/curaengine.md"
+          which CuraEngine
+          python3 -m venv /opt/concord-engines/curaengine
+      - name: Run engine tests (skips fail the lane)
+        env:
+          CONKAY_ENGINE_CURAENGINE_BIN: /opt/concord-engines/curaengine/bin/python
+          CONKAY_CURAENGINE_DEFJSON: /usr/share/cura/resources/definitions/fdmprinter.def.json
+        run: |
+          node --test server/tests/conkay/engines/curaengine.test.js 2>&1 | tee /tmp/engine-tests.log
+          grep -q "ℹ skipped 0" /tmp/engine-tests.log

@@ -1,0 +1,31 @@
+# CI lane for the fenicsx engine (SXE-09, built under SXE-52).
+#
+# Heavy-engine lane: MANUAL DISPATCH ONLY per the founder F8
+# ruling (2026-11-18) — no automatic schedule until the founder
+# approves one as a spend decision. Lands via the desk git route
+# (the GitHub connector cannot write workflow files).
+name: conkay-engine-fenicsx
+
+on:
+  workflow_dispatch:
+
+jobs:
+  engine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install FEniCSx / DOLFINx 0.11.0 (conda-forge, pinned)
+        run: |
+          curl -sL https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh -o /tmp/miniforge.sh
+          bash /tmp/miniforge.sh -b -p /opt/miniforge
+          /opt/miniforge/bin/conda create -y -p /opt/concord-engines/fenicsx -c conda-forge fenics-dolfinx=0.11.0
+          /opt/concord-engines/fenicsx/bin/python -c "import dolfinx; print(dolfinx.__version__)"
+      - name: Run engine tests (skips fail the lane)
+        env:
+          CONKAY_ENGINE_FENICSX_BIN: /opt/concord-engines/fenicsx/bin/python
+        run: |
+          node --test server/tests/conkay/engines/fenicsx.test.js 2>&1 | tee /tmp/engine-tests.log
+          grep -q "ℹ skipped 0" /tmp/engine-tests.log

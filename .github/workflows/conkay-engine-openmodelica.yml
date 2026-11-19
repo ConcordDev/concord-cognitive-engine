@@ -1,0 +1,33 @@
+# CI lane for the openmodelica engine (SXE-15, built under SXE-53).
+#
+# Heavy-engine lane: MANUAL DISPATCH ONLY per the founder F8
+# ruling (2026-11-18) — no automatic schedule until the founder
+# approves one as a spend decision. Lands via the desk git route
+# (the GitHub connector cannot write workflow files).
+name: conkay-engine-openmodelica
+
+on:
+  workflow_dispatch:
+
+jobs:
+  engine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install OpenModelica 1.25.0 (pinned release) + driver env
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ca-certificates curl gnupg
+          curl -fsSL https://build.openmodelica.org/omc/builds/linux/releases/1.25.0/ | head -1 || true
+          sudo apt-get install -y openmodelica || echo "install via the OpenModelica apt repository per docs/conkay/engines/openmodelica.md"
+          which omc
+          python3 -m venv /opt/concord-engines/openmodelica
+      - name: Run engine tests (skips fail the lane)
+        env:
+          CONKAY_ENGINE_OPENMODELICA_BIN: /opt/concord-engines/openmodelica/bin/python
+        run: |
+          node --test server/tests/conkay/engines/openmodelica.test.js 2>&1 | tee /tmp/engine-tests.log
+          grep -q "ℹ skipped 0" /tmp/engine-tests.log
