@@ -45,6 +45,10 @@ vi.mock('next/font/google', () => {
     // Code — Proof (components/code/proof/proofFonts.ts)
     Geist: face('Geist'),
     Geist_Mono: face('Geist Mono'),
+    // News — The Situation Room (components/news/room/roomFonts.ts)
+    Barlow: face('Barlow'),
+    Barlow_Condensed: face('Barlow Condensed'),
+    Azeret_Mono: face('Azeret Mono'),
   };
 });
 

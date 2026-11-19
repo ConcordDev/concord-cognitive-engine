@@ -9,12 +9,17 @@ import { lensRun } from '@/lib/api/client';
 export type Envelope<T> = { ok: true; result: T } | { ok: false; error: string; message: string };
 
 export async function code<T>(action: string, input: Record<string, unknown> = {}): Promise<Envelope<T>> {
-  return call<T>('code', action, input);
+  return settle<T>(() => lensRun<T>('code', action, input));
 }
 
+/** Other domains the editor reads (github connect/repos, trending repos). */
 export async function call<T>(domain: string, action: string, input: Record<string, unknown> = {}): Promise<Envelope<T>> {
+  return settle<T>(() => lensRun<T>(domain, action, input));
+}
+
+async function settle<T>(run: () => ReturnType<typeof lensRun<T>>): Promise<Envelope<T>> {
   try {
-    const r = await lensRun<T>(domain, action, input);
+    const r = await run();
     const d = r.data;
     if (!d?.ok) {
       const error = String(d?.error || 'failed');
