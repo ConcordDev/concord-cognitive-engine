@@ -79,7 +79,7 @@ export function ComplianceScreener() {
         <button
           onClick={check}
           disabled={busy || !proposal.trim()}
-          className="px-3 py-1.5 text-xs rounded bg-neon-purple/20 text-neon-purple hover:bg-neon-purple/30 border border-neon-purple/40 disabled:opacity-50 inline-flex items-center gap-1.5"
+          className="px-3 py-1.5 text-xs rounded bg-neon-purple/20 text-neon-purple-bright hover:bg-neon-purple/30 border border-neon-purple/40 disabled:opacity-50 inline-flex items-center gap-1.5"
         >
           {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
           Screen

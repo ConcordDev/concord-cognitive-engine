@@ -152,7 +152,7 @@ export function TrackCard({
 
           {/* Lineage badge */}
           {showLineage && track.lineageDepth > 0 && (
-            <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-neon-purple/20 text-neon-purple text-[9px] font-medium backdrop-blur-sm">
+            <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-neon-purple/20 text-neon-purple-bright text-[9px] font-medium backdrop-blur-sm">
               Remix {track.parentTitle ? `of "${track.parentTitle}"` : ''}
             </div>
           )}
@@ -181,7 +181,7 @@ export function TrackCard({
                 </span>
               )}
               {track.bpm != null && (
-                <span className="inline-flex items-center gap-0.5 px-1.5 py-px rounded-full bg-neon-purple/10 text-neon-purple font-medium">
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-px rounded-full bg-neon-purple/10 text-neon-purple-bright font-medium">
                   <Activity className="w-2.5 h-2.5" /> {track.bpm}
                 </span>
               )}
@@ -293,7 +293,7 @@ export function TrackCard({
 
         {/* Lineage */}
         {showLineage && track.lineageDepth > 0 && (
-          <span className="px-1.5 py-0.5 rounded text-[8px] bg-neon-purple/10 text-neon-purple flex-shrink-0">
+          <span className="px-1.5 py-0.5 rounded text-[8px] bg-neon-purple/10 text-neon-purple-bright flex-shrink-0">
             Remix
           </span>
         )}
@@ -310,7 +310,7 @@ export function TrackCard({
 
         {/* BPM badge */}
         {track.bpm != null && (
-          <span className="flex-shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-neon-purple/10 text-neon-purple text-[10px] font-medium">
+          <span className="flex-shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-neon-purple/10 text-neon-purple-bright text-[10px] font-medium">
             <Activity className="w-2.5 h-2.5" /> {track.bpm}
           </span>
         )}

@@ -257,7 +257,7 @@ export function DilemmaPanel() {
   const actions: Array<{ id: ActionId; label: string; desc: string; icon: React.ComponentType<{ className?: string }>; accent: string; handler: () => void }> = [
     { id: 'argument',   label: 'Argument map',     desc: 'Premises → conclusion (form is checked)',      icon: GitFork,    accent: '#06b6d4', handler: actArg },
     { id: 'experiment', label: 'Thought exp.',     desc: 'Variables + permutations + framework prompts', icon: Brain,      accent: '#8b5cf6', handler: actExperiment },
-    { id: 'dialectic',  label: 'Dialectic',        desc: 'Hegelian thesis/antithesis/synthesis steps',   icon: GitFork,    accent: '#ec4899', handler: actDialectic },
+    { id: 'dialectic',  label: 'Dialectic',        desc: 'Hegelian thesis/antithesis/synthesis steps',   icon: GitFork,    accent: '#f472b6', handler: actDialectic },
     { id: 'ethics',     label: 'Ethics 6-pack',    desc: '6 schools’ principles, as reference',          icon: Scale,      accent: '#f97316', handler: actEthics },
     { id: 'mint',       label: mintDtuId      ? 'Saved'     : 'Mint',      desc: mintDtuId      ? `DTU ${mintDtuId.slice(0, 8)}…`      : 'Private DTU of dilemma + analysis',            icon: Sparkles,   accent: '#3b82f6', handler: actMint },
     { id: 'dm',         label: 'DM for debate',    desc: 'Structured dilemma to another user',           icon: Send,       accent: '#22c55e', handler: actDm },

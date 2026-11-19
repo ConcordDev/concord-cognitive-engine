@@ -140,7 +140,7 @@ export function QueueAnalyticsPanel({
               key={t.key}
               onClick={() => setSub(t.key)}
               className={`rounded px-2.5 py-1 transition-colors ${
-                sub === t.key ? 'bg-neon-purple/20 text-neon-purple' : 'text-zinc-400 hover:text-white'
+                sub === t.key ? 'bg-neon-purple/20 text-neon-purple-bright' : 'text-zinc-400 hover:text-white'
               }`}
             >
               {t.label}
@@ -172,7 +172,7 @@ export function QueueAnalyticsPanel({
             <button
               onClick={runTheory}
               disabled={busy || (arrivals.length < 2 && completions.length < 2)}
-              className="flex min-h-11 items-center gap-1.5 rounded-lg bg-neon-purple/20 px-3 py-1.5 text-xs text-neon-purple hover:bg-neon-purple/30 disabled:opacity-40"
+              className="flex min-h-11 items-center gap-1.5 rounded-lg bg-neon-purple/20 px-3 py-1.5 text-xs text-neon-purple-bright hover:bg-neon-purple/30 disabled:opacity-40"
             >
               {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />} Analyze
             </button>
@@ -248,7 +248,7 @@ export function QueueAnalyticsPanel({
             <button
               onClick={runSchedule}
               disabled={busy || pendingJobs.length === 0}
-              className="flex items-center gap-1.5 rounded-lg bg-neon-purple/20 px-3 py-1.5 text-xs text-neon-purple hover:bg-neon-purple/30 disabled:opacity-40"
+              className="flex items-center gap-1.5 rounded-lg bg-neon-purple/20 px-3 py-1.5 text-xs text-neon-purple-bright hover:bg-neon-purple/30 disabled:opacity-40"
             >
               {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />} Simulate
             </button>
@@ -321,7 +321,7 @@ export function QueueAnalyticsPanel({
             <button
               onClick={runBackpressure}
               disabled={busy}
-              className="flex items-center gap-1.5 rounded-lg bg-neon-purple/20 px-3 py-1.5 text-xs text-neon-purple hover:bg-neon-purple/30 disabled:opacity-40"
+              className="flex items-center gap-1.5 rounded-lg bg-neon-purple/20 px-3 py-1.5 text-xs text-neon-purple-bright hover:bg-neon-purple/30 disabled:opacity-40"
             >
               {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wind className="h-3.5 w-3.5" />} Compute
             </button>

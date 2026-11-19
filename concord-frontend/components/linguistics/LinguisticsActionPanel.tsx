@@ -161,7 +161,7 @@ export function LinguisticsActionPanel() {
     { id: 'sentiment' as ActionId, label: 'Sentiment', desc: 'pos / neg / neutral', icon: Smile, accent: '#f59e0b', handler: actSentiment },
     { id: 'frequency' as ActionId, label: 'Frequency', desc: 'Zipf + hapax legomena', icon: ListOrdered, accent: '#06b6d4', handler: actFrequency },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private lex DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send definition + word play', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send definition + word play', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public lexicon entry', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Mnemonic', desc: 'Agent: etymology + use', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

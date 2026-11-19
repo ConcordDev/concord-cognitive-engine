@@ -203,7 +203,7 @@ export function NewsActionPanel() {
     { id: 'narrative' as ActionId, label: 'Narrative', desc: 'narrativeTracking + shift detection', icon: TrendingUp, accent: '#8b5cf6', handler: actNarrative },
     { id: 'briefing' as ActionId, label: 'Briefing', desc: 'daily-briefing top headlines', icon: RadioTower, accent: '#eab308', handler: actBriefing },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private news DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send literacy brief', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send literacy brief', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public literacy DTU + federation', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Cross-spec', desc: 'Agent: 3 cross-spectrum sources', icon: Wand2, accent: '#f97316', handler: actAgent },
   ];

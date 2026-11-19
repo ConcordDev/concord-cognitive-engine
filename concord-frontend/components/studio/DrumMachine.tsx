@@ -72,7 +72,7 @@ export function DrumMachine({
 
         <div className="flex-1" />
 
-        <button onClick={onRandomize} className="text-[10px] px-2 py-0.5 rounded bg-neon-purple/10 text-neon-purple hover:bg-neon-purple/20">
+        <button onClick={onRandomize} className="text-[10px] px-2 py-0.5 rounded bg-neon-purple/10 text-neon-purple-bright hover:bg-neon-purple/20">
           Randomize
         </button>
         <button onClick={onClearPattern} className="text-[10px] px-2 py-0.5 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20">

@@ -72,7 +72,7 @@ export function StrategyLibrary() {
             key={c}
             onClick={() => setCategory(c)}
             className={`px-3 py-1 text-xs rounded-full capitalize transition-colors ${
-              category === c ? 'bg-neon-purple/20 text-neon-purple' : 'text-gray-400 hover:text-gray-200'
+              category === c ? 'bg-neon-purple/20 text-neon-purple-bright' : 'text-gray-400 hover:text-gray-200'
             }`}
           >
             {c}
@@ -90,7 +90,7 @@ export function StrategyLibrary() {
                 onClick={() => setExpanded(isExp ? null : s.id)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-200">{s.name}</p>
-                  <span className="inline-block text-xs bg-neon-purple/10 text-neon-purple px-2 py-0.5 rounded mt-1 capitalize">
+                  <span className="inline-block text-xs bg-neon-purple/10 text-neon-purple-bright px-2 py-0.5 rounded mt-1 capitalize">
                     {s.category}
                   </span>
                 </div>

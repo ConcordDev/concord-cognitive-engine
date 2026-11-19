@@ -177,7 +177,7 @@ export function RealEstateActionPanel() {
     { id: 'afford' as ActionId, label: 'Afford', desc: 'calc-affordability max price', icon: Wallet, accent: '#8b5cf6', handler: actAfford },
     { id: 'rentBuy' as ActionId, label: 'Rent v buy', desc: 'calc-rent-vs-buy break-even', icon: Scale, accent: '#f97316', handler: actRentBuy },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private property DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send property analysis', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send property analysis', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Anonymized analysis + federation', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Negotiate', desc: 'Agent: best negotiation lever', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

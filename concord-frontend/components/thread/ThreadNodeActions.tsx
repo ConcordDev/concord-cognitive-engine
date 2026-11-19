@@ -216,7 +216,7 @@ export function ThreadNodeActions({ node, threadName, threadId, threadFullConten
   const actions: Array<{ id: ActionId; label: string; icon: React.ComponentType<{ className?: string }>; accent: string; handler: () => void; disabled?: boolean; sub?: string }> = [
     { id: 'pin',        label: pinDtuId ? 'Pinned' : 'Pin',                 icon: Pin,       accent: '#06b6d4', handler: actPin,       disabled: !!pinDtuId, sub: pinDtuId ?? undefined },
     { id: 'branch',     label: branchDtuId ? 'Branched' : 'Branch DTU',     icon: GitBranch, accent: '#8b5cf6', handler: actBranch,    disabled: !!branchDtuId, sub: branchDtuId ?? undefined },
-    { id: 'dm',         label: 'DM node',                                    icon: Send,      accent: '#ec4899', handler: () => setShowDm(s => !s) },
+    { id: 'dm',         label: 'DM node',                                    icon: Send,      accent: '#f472b6', handler: () => setShowDm(s => !s) },
     { id: 'publish',    label: publishedDtuId ? 'Published' : 'Publish',    icon: Globe,     accent: '#22c55e', handler: actPublish,   disabled: !!publishedDtuId, sub: publishedDtuId ?? undefined },
     { id: 'synthesize', label: 'Synthesize',                                 icon: Wand2,     accent: '#eab308', handler: actSynthesize },
   ];

@@ -150,7 +150,7 @@ export function CaseAnalytics({ cases }: { cases: CaseFileSummary[] }) {
         <button
           onClick={runBoth}
           disabled={busy}
-          className="ml-auto px-3 py-1.5 text-xs rounded bg-neon-purple/20 text-neon-purple hover:bg-neon-purple/30 disabled:opacity-50 inline-flex items-center gap-1.5"
+          className="ml-auto px-3 py-1.5 text-xs rounded bg-neon-purple/20 text-neon-purple-bright hover:bg-neon-purple/30 disabled:opacity-50 inline-flex items-center gap-1.5"
         >
           {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
           {busy ? 'Computing…' : 'Run analysis'}

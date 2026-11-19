@@ -132,7 +132,7 @@ export function RulesPanel() {
                 statusFilter === s
                   ? s === 'enforced' ? 'border-neon-green/40 bg-neon-green/15 text-neon-green'
                   : s === 'warning'  ? 'border-yellow-500/40 bg-yellow-500/15 text-yellow-400'
-                  : s === 'violated' ? 'border-neon-pink/40 bg-neon-pink/15 text-neon-pink'
+                  : s === 'violated' ? 'border-neon-pink/40 bg-neon-pink/15 text-neon-pink-bright'
                   : 'border-neon-blue/40 bg-neon-blue/15 text-neon-blue'
                   : 'border-white/10 bg-white/5 text-gray-400 hover:text-white'
               }`}

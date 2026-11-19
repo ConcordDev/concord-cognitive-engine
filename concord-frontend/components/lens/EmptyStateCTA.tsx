@@ -56,8 +56,8 @@ const ACCENTS: Record<EmptyStateAccent, { icon: string; btn: string }> = {
   fuchsia: { icon: 'text-fuchsia-300', btn: 'bg-fuchsia-500/15 text-fuchsia-200 border-fuchsia-500/30 hover:bg-fuchsia-500/25 focus:ring-fuchsia-500/40' },
   emerald: { icon: 'text-emerald-300', btn: 'bg-emerald-500/15 text-emerald-200 border-emerald-500/30 hover:bg-emerald-500/25 focus:ring-emerald-500/40' },
   amber: { icon: 'text-amber-300', btn: 'bg-amber-500/15 text-amber-200 border-amber-500/30 hover:bg-amber-500/25 focus:ring-amber-500/40' },
-  purple: { icon: 'text-neon-purple', btn: 'bg-neon-purple/15 text-fuchsia-200 border-neon-purple/30 hover:bg-neon-purple/25 focus:ring-neon-purple/40' },
-  pink: { icon: 'text-neon-pink', btn: 'bg-neon-pink/15 text-neon-pink border-neon-pink/30 hover:bg-neon-pink/25 focus:ring-neon-pink/40' },
+  purple: { icon: 'text-neon-purple-bright', btn: 'bg-neon-purple/15 text-fuchsia-200 border-neon-purple/30 hover:bg-neon-purple/25 focus:ring-neon-purple/40' },
+  pink: { icon: 'text-neon-pink-bright', btn: 'bg-neon-pink/15 text-neon-pink-bright border-neon-pink/30 hover:bg-neon-pink/25 focus:ring-neon-pink/40' },
   sky: { icon: 'text-sky-300', btn: 'bg-sky-500/15 text-sky-200 border-sky-500/30 hover:bg-sky-500/25 focus:ring-sky-500/40' },
 };
 

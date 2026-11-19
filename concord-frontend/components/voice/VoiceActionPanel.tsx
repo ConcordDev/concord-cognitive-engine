@@ -218,9 +218,9 @@ export function VoiceActionPanel() {
     { id: 'analyze' as ActionId, label: 'Analyze', desc: 'transcriptAnalyze', icon: Mic, accent: '#22c55e', handler: actAnalyze },
     { id: 'diarize' as ActionId, label: 'Diarize', desc: 'speakerDiarize stats', icon: Users, accent: '#06b6d4', handler: actDiarize },
     { id: 'sentiment' as ActionId, label: 'Sentiment', desc: 'sentimentScore arc', icon: Smile, accent: '#f59e0b', handler: actSentiment },
-    { id: 'keyword' as ActionId, label: 'Keywords', desc: 'keywordSpot density', icon: Search, accent: '#a855f7', handler: actKeyword },
+    { id: 'keyword' as ActionId, label: 'Keywords', desc: 'keywordSpot density', icon: Search, accent: '#c084fc', handler: actKeyword },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private transcript DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send transcript brief', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send transcript brief', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public speech report', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Coach', desc: 'Agent: coaching note', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

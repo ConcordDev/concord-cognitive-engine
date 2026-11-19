@@ -258,7 +258,7 @@ export default function EntityLifecycleViz({ entities: entitiesProp, className }
             <div className="flex items-center gap-2 mb-1">
               <span className="w-2.5 h-2.5 rounded-full" style={{ background: EVENT_COLORS[tooltip.event.type] || '#22d3ee' }} />
               <span className="text-xs font-bold text-white capitalize">{tooltip.event.type}</span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-neon-purple/10 text-neon-purple border border-neon-purple/20">
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-neon-purple/10 text-neon-purple-bright border border-neon-purple/20">
                 {tooltip.event.domain}
               </span>
             </div>

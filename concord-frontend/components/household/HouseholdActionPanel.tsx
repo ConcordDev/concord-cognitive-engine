@@ -184,7 +184,7 @@ export function HouseholdActionPanel() {
     { id: 'maintenance' as ActionId, label: 'Maintain', desc: 'maintenanceDue overdue tasks', icon: Wrench, accent: '#f97316', handler: actMaintenance },
     { id: 'summary' as ActionId, label: 'Summary', desc: 'weeklySummary metrics', icon: Calendar, accent: '#06b6d4', handler: actSummary },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private week DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send week brief', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send week brief', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public routine DTU + federation', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Meeting', desc: 'Agent: weekly meeting topic', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

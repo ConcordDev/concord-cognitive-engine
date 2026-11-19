@@ -221,7 +221,7 @@ export function AnalysisPanel() {
                   <p className="text-[11px] text-gray-400 uppercase tracking-wider">Shared skills</p>
                   <div className="flex flex-wrap gap-1">
                     {(actionResult.sharedSkills as string[]).map((c, i) => (
-                      <span key={i} className="text-xs bg-neon-purple/10 border border-neon-purple/20 rounded px-2 py-0.5 text-neon-purple">{c}</span>
+                      <span key={i} className="text-xs bg-neon-purple/10 border border-neon-purple/20 rounded px-2 py-0.5 text-neon-purple-bright">{c}</span>
                     ))}
                   </div>
                 </div>

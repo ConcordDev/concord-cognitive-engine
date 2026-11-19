@@ -68,7 +68,7 @@ export function PreviewPane({
               key={p.id}
               onClick={() => render(p.id)}
               className={`rounded px-2 py-0.5 text-[10px] ${
-                activePage === p.id ? 'bg-pink-700/50 text-pink-100' : 'bg-pink-950/40 text-pink-500 hover:text-pink-300'
+                activePage === p.id ? 'bg-pink-700/50 text-pink-100' : 'bg-pink-950/40 text-pink-400 hover:text-pink-300'
               }`}
             >
               {p.name}

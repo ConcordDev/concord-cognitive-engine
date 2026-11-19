@@ -151,7 +151,7 @@ export function PharmacyActionPanel() {
     { id: 'adverse' as ActionId, label: 'FAERS', desc: 'adverse events', icon: AlertTriangle, accent: '#f97316', handler: actAdverse },
     { id: 'dose' as ActionId, label: 'Dose', desc: 'mg/kg calculator', icon: Calculator, accent: '#22c55e', handler: actDose },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private Rx DTU', icon: Sparkles, accent: '#8b5cf6', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send Rx note', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send Rx note', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public drug brief', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Counsel', desc: 'Agent: pt counseling', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

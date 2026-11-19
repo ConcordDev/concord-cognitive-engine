@@ -315,7 +315,7 @@ export function MineHousesPanel({
             </button>
           </div>
         ) : myHouses.length === 0 ? (
-          <div className="py-4 text-center text-[12px] text-slate-500" data-testid="housing-mine-empty">
+          <div className="py-4 text-center text-[12px] text-slate-400" data-testid="housing-mine-empty">
             <p>No houses yet.</p>
             <button onClick={() => setShowClaimPanel(true)} className="mt-1 text-emerald-300 underline decoration-dotted hover:text-emerald-200">
               Claim a building on your land as a house →
@@ -328,7 +328,7 @@ export function MineHousesPanel({
                 <button onClick={() => loadHouseDetail(h.id)}
                   className={`w-full rounded px-2 py-1 text-left text-[12px] ${selectedHouse?.id === h.id ? 'bg-emerald-500/20 text-emerald-100' : 'text-slate-300 hover:bg-slate-800/50'}`}>
                   {h.name || 'Unnamed'}
-                  <span className="ml-2 text-[10px] text-slate-500">{h.visibility}</span>
+                  <span className="ml-2 text-[10px] text-slate-400">{h.visibility}</span>
                 </button>
               </li>
             ))}
@@ -345,7 +345,7 @@ export function MineHousesPanel({
             ) : claimsState === 'error' ? (
               <p className="text-[11px] text-rose-300">Couldn&apos;t load your land claims.</p>
             ) : myClaims.length === 0 ? (
-              <p className="text-[11px] text-slate-500">No active land claims yet — claim your first plot below.</p>
+              <p className="text-[11px] text-slate-400">No active land claims yet — claim your first plot below.</p>
             ) : (
               <>
                 <select
@@ -368,7 +368,7 @@ export function MineHousesPanel({
                 ) : (
                   <ul className="max-h-40 space-y-1 overflow-y-auto" data-testid="housing-claim-buildings">
                     {claimBuildings.filter(b => !housedBuildingIds.has(b.id)).length === 0 ? (
-                      <p className="py-2 text-[11px] text-slate-500">No unclaimed buildings on this plot yet. Buildings rise in the world itself — or claim a plot around an existing building below.</p>
+                      <p className="py-2 text-[11px] text-slate-400">No unclaimed buildings on this plot yet. Buildings rise in the world itself — or claim a plot around an existing building below.</p>
                     ) : claimBuildings.filter(b => !housedBuildingIds.has(b.id)).map(b => (
                       <li key={b.id}>
                         <button
@@ -408,7 +408,7 @@ export function MineHousesPanel({
                         onClick={() => submitClaim(b.x, b.z)}
                         disabled={claimingLand}
                         className="flex w-full items-center justify-between rounded border border-slate-700 bg-slate-900/50 px-2 py-1 text-left text-[11px] text-slate-200 hover:border-emerald-500/40 hover:bg-emerald-500/10 disabled:opacity-50">
-                        <span className="flex items-center gap-1.5"><Building2 className="h-3 w-3 text-emerald-400" />{b.name || b.building_type || b.id} <span className="text-[10px] text-slate-500">@({Math.round(b.x)}, {Math.round(b.z)})</span></span>
+                        <span className="flex items-center gap-1.5"><Building2 className="h-3 w-3 text-emerald-400" />{b.name || b.building_type || b.id} <span className="text-[10px] text-slate-400">@({Math.round(b.x)}, {Math.round(b.z)})</span></span>
                         <span className="text-[10px] text-emerald-300">claim land here</span>
                       </button>
                     </li>
@@ -442,7 +442,7 @@ export function MineHousesPanel({
 
       <div className="lg:col-span-2 rounded-xl border border-emerald-500/20 bg-zinc-950/60 p-4">
         {!selectedHouse ? (
-          <div className="py-12 text-center text-[12px] text-slate-500">Select a house to manage it, or use &quot;Claim&quot; on the left to turn a building on your land into a house.</div>
+          <div className="py-12 text-center text-[12px] text-slate-400">Select a house to manage it, or use &quot;Claim&quot; on the left to turn a building on your land into a house.</div>
         ) : (
           <>
             <header className="mb-3 flex items-baseline justify-between gap-2">

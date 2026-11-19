@@ -285,9 +285,9 @@ export function StudioActionPanel() {
     { id: 'render',    label: 'Render',     desc: 'renderEstimate size + minutes',                 icon: Headphones,  accent: '#eab308', handler: actRender,      disabled: !currentProjectId },
     { id: 'timeline',  label: 'Timeline',   desc: 'projectTimeline milestones',                    icon: Clock,       accent: '#f97316', handler: actTimeline,    disabled: !currentProjectId },
     { id: 'mint',      label: mintedDtuId      ? 'Saved'     : 'Mint',         desc: mintedDtuId      ? `DTU ${mintedDtuId.slice(0, 8)}…`     : 'Private project DTU',                                  icon: Sparkles,    accent: '#3b82f6', handler: actMint },
-    { id: 'dm',        label: 'DM',         desc: 'Send project brief',                            icon: Send,        accent: '#ec4899', handler: actDm },
+    { id: 'dm',        label: 'DM',         desc: 'Send project brief',                            icon: Send,        accent: '#f472b6', handler: actDm },
     { id: 'publish',   label: publishedDtuId ? 'Published' : 'Publish',  desc: publishedDtuId ? `DTU ${publishedDtuId.slice(0, 8)}…` : 'Public release DTU + federation',          icon: Globe,       accent: '#15803d', handler: actPublish,     disabled: !currentProjectId },
-    { id: 'agent',     label: 'Mix moves',  desc: 'Agent: 3 mix-finalization moves',               icon: Wand2,       accent: '#a855f7', handler: actAgent },
+    { id: 'agent',     label: 'Mix moves',  desc: 'Agent: 3 mix-finalization moves',               icon: Wand2,       accent: '#c084fc', handler: actAgent },
   ];
 
   return (

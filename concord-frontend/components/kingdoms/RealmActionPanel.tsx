@@ -383,14 +383,14 @@ export function RealmActionPanel() {
     { id: 'list',        label: 'Realms',     desc: 'List all realms on the map',           icon: Map,        accent: '#06b6d4', handler: actList },
     { id: 'mine',        label: 'My realm',   desc: 'Current realm status',                 icon: Crown,      accent: '#eab308', handler: actMine },
     { id: 'decree',      label: 'Decree',     desc: 'Propose a regional decree',            icon: Scroll,     accent: '#8b5cf6', handler: actDecree },
-    { id: 'loyalty',     label: 'Loyalty',    desc: 'Recompute realm loyalty',              icon: Heart,      accent: '#ec4899', handler: actLoyalty },
+    { id: 'loyalty',     label: 'Loyalty',    desc: 'Recompute realm loyalty',              icon: Heart,      accent: '#f472b6', handler: actLoyalty },
     { id: 'conquest',    label: 'Conquest',   desc: 'Takeover via conquest',                icon: Sword,      accent: '#ef4444', handler: () => actTakeover('conquest') },
     { id: 'inheritance', label: 'Inheritance', desc: 'Takeover via inheritance',            icon: FileText,   accent: '#22c55e', handler: () => actTakeover('inheritance') },
     { id: 'election',    label: 'Election',   desc: 'Takeover via election',                icon: Vote,       accent: '#06b6d4', handler: () => actTakeover('election') },
     { id: 'mint',        label: mintedDtuId      ? 'Saved'     : 'Mint snapshot',  desc: mintedDtuId      ? `DTU ${mintedDtuId.slice(0, 8)}…`     : 'Private realm-state DTU',                icon: Sparkles, accent: '#3b82f6', handler: actMint },
     { id: 'dm',          label: 'DM ally',    desc: 'Send realm dispatch to ally',          icon: Send,       accent: '#f97316', handler: actDm },
     { id: 'publish',     label: publishedDtuId ? 'Published' : 'Publish decree', desc: publishedDtuId ? `DTU ${publishedDtuId.slice(0, 8)}…` : 'Public decree DTU + federation',          icon: Globe,    accent: '#15803d', handler: actPublish, disabled: !decreeResult },
-    { id: 'agent',       label: 'Council',    desc: 'Agent in the voice of a CK3 council',  icon: Wand2,      accent: '#a855f7', handler: actAgent },
+    { id: 'agent',       label: 'Council',    desc: 'Agent in the voice of a CK3 council',  icon: Wand2,      accent: '#c084fc', handler: actAgent },
   ];
 
   return (

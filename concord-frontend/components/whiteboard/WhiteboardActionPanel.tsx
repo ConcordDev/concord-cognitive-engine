@@ -393,9 +393,9 @@ export function WhiteboardActionPanel() {
     { id: 'tally',    label: 'Tally',    desc: 'vote-tally winner + breakdown',          icon: Layout,      accent: '#eab308', handler: actTally },
     { id: 'share',    label: 'Share', desc: accessGrants ? (accessGrants.length ? `${accessGrants.length} ${accessGrants.length === 1 ? 'person has' : 'people have'} access` : 'only you — invite by name') : 'invite by name · view or edit', icon: Share2, accent: '#f97316', handler: actShareFocus, disabled: !savedBoardId },
     { id: 'mint',     label: mintedDtuId      ? 'Saved'     : 'Mint',         desc: mintedDtuId      ? `DTU ${mintedDtuId.slice(0, 8)}…`     : 'Private board DTU',                       icon: Sparkles, accent: '#3b82f6', handler: actMint },
-    { id: 'dm',       label: 'DM',       desc: 'Send board + tally to user',             icon: Send,        accent: '#ec4899', handler: actDm },
+    { id: 'dm',       label: 'DM',       desc: 'Send board + tally to user',             icon: Send,        accent: '#f472b6', handler: actDm },
     { id: 'publish',  label: publishedDtuId ? 'Published' : 'Publish',  desc: publishedDtuId ? `DTU ${publishedDtuId.slice(0, 8)}…` : 'Public board DTU + federation',          icon: Globe,    accent: '#15803d', handler: actPublish },
-    { id: 'agent',    label: 'Retro',    desc: 'Agent: 3-sentence session retro',        icon: Wand2,       accent: '#a855f7', handler: actAgent },
+    { id: 'agent',    label: 'Retro',    desc: 'Agent: 3-sentence session retro',        icon: Wand2,       accent: '#c084fc', handler: actAgent },
   ];
 
   return (

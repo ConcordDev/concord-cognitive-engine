@@ -261,7 +261,7 @@ export function TravelActionPanel() {
     { id: 'jetlag' as ActionId, label: 'Jet lag', desc: 'jetlagCalc from hour offset', icon: Clock, accent: '#06b6d4', handler: actJetlag },
     { id: 'visa' as ActionId, label: 'Visa', desc: 'visaCheck bilateral tables', icon: FileBadge, accent: '#f97316', handler: actVisa },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private trip DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send trip brief', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send trip brief', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public travel guide + federation', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Local tip', desc: 'Agent: off-the-beaten-path pick', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

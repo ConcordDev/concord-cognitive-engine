@@ -264,7 +264,7 @@ function MonitorPanel({ templateSeed, onConsumeTemplate }: {
         )}
       </div>
 
-      {err && <div className="text-xs text-neon-pink bg-neon-pink/10 rounded px-2 py-1">{err}</div>}
+      {err && <div className="text-xs text-neon-pink-bright bg-neon-pink/10 rounded px-2 py-1">{err}</div>}
       {notice && <div className="text-xs text-gray-300 bg-white/5 rounded px-2 py-1">{notice}</div>}
 
       <div className="space-y-2">
@@ -356,7 +356,7 @@ function CounterexamplePanel() {
         </button>
       </div>
 
-      {err && <div className="text-xs text-neon-pink bg-neon-pink/10 rounded px-2 py-1">{err}</div>}
+      {err && <div className="text-xs text-neon-pink-bright bg-neon-pink/10 rounded px-2 py-1">{err}</div>}
 
       {result && (
         <div className="bg-lattice-deep rounded-lg p-3 space-y-3 border border-white/5">
@@ -467,7 +467,7 @@ function TemplatesPanel({ onUse }: { onUse: (t: { name: string; expression: stri
         {busy && <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-400" />}
       </div>
 
-      {err && <div className="text-xs text-neon-pink bg-neon-pink/10 rounded px-2 py-1">{err}</div>}
+      {err && <div className="text-xs text-neon-pink-bright bg-neon-pink/10 rounded px-2 py-1">{err}</div>}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
         {templates.map((t) => (
@@ -612,7 +612,7 @@ function TemporalPanel() {
         </button>
       </div>
 
-      {err && <div className="text-xs text-neon-pink bg-neon-pink/10 rounded px-2 py-1">{err}</div>}
+      {err && <div className="text-xs text-neon-pink-bright bg-neon-pink/10 rounded px-2 py-1">{err}</div>}
 
       {result && (
         <div className="bg-lattice-deep rounded-lg p-3 space-y-3 border border-white/5">
@@ -771,7 +771,7 @@ function ViolationHistoryPanel() {
         {busy && <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-400" />}
       </div>
 
-      {err && <div className="text-xs text-neon-pink bg-neon-pink/10 rounded px-2 py-1">{err}</div>}
+      {err && <div className="text-xs text-neon-pink-bright bg-neon-pink/10 rounded px-2 py-1">{err}</div>}
 
       {timelineEvents.length > 0 && (
         <div className="bg-lattice-deep rounded-lg p-3 border border-white/5">
@@ -889,7 +889,7 @@ function QuantifiedPanel() {
         </button>
       </div>
 
-      {err && <div className="text-xs text-neon-pink bg-neon-pink/10 rounded px-2 py-1">{err}</div>}
+      {err && <div className="text-xs text-neon-pink-bright bg-neon-pink/10 rounded px-2 py-1">{err}</div>}
 
       {result && (
         <div className="bg-lattice-deep rounded-lg p-3 space-y-3 border border-white/5">

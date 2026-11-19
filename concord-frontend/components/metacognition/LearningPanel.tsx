@@ -187,7 +187,7 @@ export function LearningPanel() {
                         </p>
                       )}
                       {!!pattern.category && (
-                        <span className="inline-block text-xs bg-neon-purple/10 text-neon-purple px-2 py-0.5 rounded mt-1">
+                        <span className="inline-block text-xs bg-neon-purple/10 text-neon-purple-bright px-2 py-0.5 rounded mt-1">
                           {String(pattern.category)}
                         </span>
                       )}

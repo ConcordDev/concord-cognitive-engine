@@ -48,10 +48,10 @@ function formatTimeAgo(dateStr: string): string {
 }
 
 const TYPE_COLORS: Record<string, string> = {
-  MESH_BEACON: 'bg-neon-purple/20 text-neon-purple',
+  MESH_BEACON: 'bg-neon-purple/20 text-neon-purple-bright',
   'meta-derivation': 'bg-neon-cyan/20 text-neon-cyan',
   synthesis: 'bg-neon-blue/20 text-neon-blue',
-  dream: 'bg-neon-pink/20 text-neon-pink',
+  dream: 'bg-neon-pink/20 text-neon-pink-bright',
   capture: 'bg-emerald-500/20 text-emerald-400',
 };
 

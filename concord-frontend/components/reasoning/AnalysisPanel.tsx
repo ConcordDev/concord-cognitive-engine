@@ -203,7 +203,7 @@ export function AnalysisPanel() {
                     </button>
                   </td>
                   <td className="py-1.5 px-3">
-                    <span className="text-[10px] px-2 py-0.5 rounded bg-neon-purple/20 text-neon-purple">{chain.type || 'deductive'}</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded bg-neon-purple/20 text-neon-purple-bright">{chain.type || 'deductive'}</span>
                   </td>
                   <td className="py-1.5 px-3 text-gray-400">{chain.stepCount ?? chain.steps?.length ?? 0}</td>
                   <td className="py-1.5 px-3">
@@ -268,7 +268,7 @@ export function AnalysisPanel() {
           <button
             onClick={() => handleAnalysisAction('deepAnalysis')}
             disabled={!!analysisRunning}
-            className={cn(ds.btnSmall, 'bg-neon-purple/10 text-neon-purple border border-neon-purple/30 hover:bg-neon-purple/20 disabled:opacity-50 disabled:cursor-not-allowed')}
+            className={cn(ds.btnSmall, 'bg-neon-purple/10 text-neon-purple-bright border border-neon-purple/30 hover:bg-neon-purple/20 disabled:opacity-50 disabled:cursor-not-allowed')}
           >
             {analysisRunning === 'deepAnalysis' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
             Deep Analysis
@@ -276,7 +276,7 @@ export function AnalysisPanel() {
           <button
             onClick={() => handleAnalysisAction('counterArgumentGen')}
             disabled={!!analysisRunning}
-            className={cn(ds.btnSmall, 'bg-neon-purple/10 text-neon-purple border border-neon-purple/30 hover:bg-neon-purple/20 disabled:opacity-50 disabled:cursor-not-allowed')}
+            className={cn(ds.btnSmall, 'bg-neon-purple/10 text-neon-purple-bright border border-neon-purple/30 hover:bg-neon-purple/20 disabled:opacity-50 disabled:cursor-not-allowed')}
           >
             {analysisRunning === 'counterArgumentGen' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
             Generate Counter-Arguments
@@ -284,7 +284,7 @@ export function AnalysisPanel() {
           <button
             onClick={() => handleAnalysisAction('strengthAssessment')}
             disabled={!!analysisRunning}
-            className={cn(ds.btnSmall, 'bg-neon-purple/10 text-neon-purple border border-neon-purple/30 hover:bg-neon-purple/20 disabled:opacity-50 disabled:cursor-not-allowed')}
+            className={cn(ds.btnSmall, 'bg-neon-purple/10 text-neon-purple-bright border border-neon-purple/30 hover:bg-neon-purple/20 disabled:opacity-50 disabled:cursor-not-allowed')}
           >
             {analysisRunning === 'strengthAssessment' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
             Full Strength Assessment
@@ -299,7 +299,7 @@ export function AnalysisPanel() {
                 {(typeof analysisResult.validity === 'string' || typeof analysisResult.recommendation === 'string') && (
                   <div className="flex flex-wrap items-center gap-2 pb-3 border-b border-lattice-border/50">
                     {typeof analysisResult.validity === 'string' && (
-                      <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full', 'bg-neon-purple/20 text-neon-purple')}>
+                      <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full', 'bg-neon-purple/20 text-neon-purple-bright')}>
                         {analysisResult.validity}
                       </span>
                     )}

@@ -135,7 +135,7 @@ export function WorkersPanel({
         </h2>
         <button
           onClick={onRegister}
-          className="flex items-center gap-1 rounded bg-neon-purple/20 px-2 py-1 text-xs text-neon-purple hover:bg-neon-purple/30"
+          className="flex items-center gap-1 rounded bg-neon-purple/20 px-2 py-1 text-xs text-neon-purple-bright hover:bg-neon-purple/30"
         >
           <Server className="h-3 w-3" /> Register worker
         </button>

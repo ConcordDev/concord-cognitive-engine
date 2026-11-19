@@ -168,7 +168,7 @@ function EmpiricalGatesPanel() {
               }
             }}
             disabled={!convertValue || !convertFrom || !convertTo || convertMutation.isPending}
-            className="px-4 py-2 bg-neon-purple/10 text-neon-purple border border-neon-purple/20 rounded-lg text-sm hover:bg-neon-purple/20 disabled:opacity-50 transition-colors"
+            className="px-4 py-2 bg-neon-purple/10 text-neon-purple-bright border border-neon-purple/20 rounded-lg text-sm hover:bg-neon-purple/20 disabled:opacity-50 transition-colors"
           >
             Convert
           </button>

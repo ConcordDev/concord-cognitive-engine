@@ -116,7 +116,7 @@ export const TYPE_BADGE_COLORS: Record<string, string> = {
   string: 'bg-gray-500/10 text-gray-300',
   integer: 'bg-neon-cyan/10 text-neon-cyan',
   number: 'bg-sky-500/10 text-sky-400',
-  boolean: 'bg-neon-purple/10 text-neon-purple',
+  boolean: 'bg-neon-purple/10 text-neon-purple-bright',
   date: 'bg-neon-green/10 text-neon-green',
   object: 'bg-amber-400/10 text-amber-400',
   null: 'bg-gray-600/10 text-gray-500',

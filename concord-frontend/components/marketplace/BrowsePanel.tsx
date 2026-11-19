@@ -244,7 +244,7 @@ export function BrowsePanel() {
               onClick={() => m.setViewMode('grid')}
               className={cn(
                 'p-2 rounded-l-lg transition-colors',
-                m.viewMode === 'grid' ? 'bg-neon-purple/20 text-neon-purple' : 'text-gray-400 hover:text-white'
+                m.viewMode === 'grid' ? 'bg-neon-purple/20 text-neon-purple-bright' : 'text-gray-400 hover:text-white'
               )}
               aria-label="Grid3 x3"
             >
@@ -254,7 +254,7 @@ export function BrowsePanel() {
               onClick={() => m.setViewMode('list')}
               className={cn(
                 'p-2 rounded-r-lg transition-colors',
-                m.viewMode === 'list' ? 'bg-neon-purple/20 text-neon-purple' : 'text-gray-400 hover:text-white'
+                m.viewMode === 'list' ? 'bg-neon-purple/20 text-neon-purple-bright' : 'text-gray-400 hover:text-white'
               )}
               aria-label="List view"
             >

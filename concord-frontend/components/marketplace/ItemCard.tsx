@@ -307,7 +307,7 @@ export function AudioPreviewBar({
       <div className="max-w-5xl mx-auto flex items-center gap-4">
         <button
           onClick={onToggle}
-          className="p-2 rounded-full bg-neon-purple/20 text-neon-purple hover:bg-neon-purple/30 transition-colors"
+          className="p-2 rounded-full bg-neon-purple/20 text-neon-purple-bright hover:bg-neon-purple/30 transition-colors"
         >
           {playing ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
         </button>

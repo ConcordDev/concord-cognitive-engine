@@ -155,7 +155,7 @@ export function AutomationView({
 
         <button
           onClick={() => setShowAddParam(!showAddParam)}
-          className="flex items-center gap-1 text-[10px] px-2 py-0.5 bg-neon-purple/10 text-neon-purple rounded hover:bg-neon-purple/20"
+          className="flex items-center gap-1 text-[10px] px-2 py-0.5 bg-neon-purple/10 text-neon-purple-bright rounded hover:bg-neon-purple/20"
         >
           <Plus className="w-3 h-3" /> Add Parameter
         </button>

@@ -164,11 +164,11 @@ export function NeuroActionPanel() {
 
   const actions = [
     { id: 'freq' as ActionId, label: 'FFT bands', desc: 'frequencyAnalysis', icon: Activity, accent: '#22c55e', handler: actFreq },
-    { id: 'conn' as ActionId, label: 'Connectivity', desc: 'cross-channel corr', icon: Network, accent: '#a855f7', handler: actConn },
+    { id: 'conn' as ActionId, label: 'Connectivity', desc: 'cross-channel corr', icon: Network, accent: '#c084fc', handler: actConn },
     { id: 'erp' as ActionId, label: 'ERP', desc: 'event-related potential', icon: Zap, accent: '#f59e0b', handler: actErp },
     { id: 'sim' as ActionId, label: 'Sim signal', desc: 'generate channels', icon: Brain, accent: '#06b6d4', handler: actSim },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? mintedDtuId : 'Private EEG DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send EEG brief', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send EEG brief', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public dataset', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Interpret', desc: 'Agent: cognitive state', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

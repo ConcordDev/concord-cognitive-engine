@@ -204,7 +204,7 @@ export function ThemeSelector({
                 className={cn(
                   'flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors',
                   systemPreference === option.id
-                    ? 'bg-neon-purple/20 border-neon-purple text-neon-purple'
+                    ? 'bg-neon-purple/20 border-neon-purple text-neon-purple-bright'
                     : 'border-lattice-border text-gray-400 hover:text-white'
                 )}
               >

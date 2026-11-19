@@ -171,7 +171,7 @@ export function MasteringPanel({
             <span className="text-xs font-semibold text-gray-400">Multiband Comp</span>
             <button
               onClick={() => updateEffect('multibandCompressor', { ...chain.multibandCompressor, enabled: !chain.multibandCompressor.enabled })}
-              className={cn('text-[10px] px-2 py-0.5 rounded', chain.multibandCompressor.enabled ? 'bg-neon-purple/20 text-neon-purple' : 'bg-white/10 text-gray-400')}
+              className={cn('text-[10px] px-2 py-0.5 rounded', chain.multibandCompressor.enabled ? 'bg-neon-purple/20 text-neon-purple-bright' : 'bg-white/10 text-gray-400')}
             >
               {chain.multibandCompressor.enabled ? 'On' : 'Off'}
             </button>
@@ -201,7 +201,7 @@ export function MasteringPanel({
             <span className="text-xs font-semibold text-gray-400">Stereo Width</span>
             <button
               onClick={() => updateEffect('stereoWidener', { ...chain.stereoWidener, enabled: !chain.stereoWidener.enabled })}
-              className={cn('text-[10px] px-2 py-0.5 rounded', chain.stereoWidener.enabled ? 'bg-neon-pink/20 text-neon-pink' : 'bg-white/10 text-gray-400')}
+              className={cn('text-[10px] px-2 py-0.5 rounded', chain.stereoWidener.enabled ? 'bg-neon-pink/20 text-neon-pink-bright' : 'bg-white/10 text-gray-400')}
             >
               {chain.stereoWidener.enabled ? 'On' : 'Off'}
             </button>

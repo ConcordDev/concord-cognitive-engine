@@ -153,7 +153,7 @@ export function PoetryActionPanel() {
     { id: 'form' as ActionId, label: 'Form guide', desc: 'formGuide structure rules', icon: BookOpen, accent: '#22c55e', handler: actForm },
     { id: 'frequency' as ActionId, label: 'Words', desc: 'wordFrequency key images', icon: ScanSearch, accent: '#f97316', handler: actFreq },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private poem DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send poem to reader', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send poem to reader', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public poem DTU + federation', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Reading', desc: 'Agent: one-paragraph close reading', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

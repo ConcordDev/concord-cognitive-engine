@@ -156,10 +156,10 @@ export function SocietyActionPanel() {
   const actions = [
     { id: 'indicator' as ActionId, label: 'Indicator', desc: 'wb-indicator series', icon: BarChart3, accent: '#3b82f6', handler: actIndicator },
     { id: 'country' as ActionId, label: 'Country', desc: 'wb-country profile', icon: Globe2, accent: '#22c55e', handler: actCountry },
-    { id: 'compare' as ActionId, label: 'Compare', desc: 'wb-compare multi', icon: GitCompareArrows, accent: '#a855f7', handler: actCompare },
+    { id: 'compare' as ActionId, label: 'Compare', desc: 'wb-compare multi', icon: GitCompareArrows, accent: '#c084fc', handler: actCompare },
     { id: 'catalog' as ActionId, label: 'Catalog', desc: 'indicator aliases', icon: BookOpen, accent: '#f59e0b', handler: actCatalog },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private WB DTU', icon: Sparkles, accent: '#06b6d4', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send data brief', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send data brief', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public viz', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Insight', desc: 'Agent: trend + policy', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

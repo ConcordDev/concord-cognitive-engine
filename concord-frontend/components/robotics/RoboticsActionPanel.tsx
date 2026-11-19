@@ -156,11 +156,11 @@ export function RoboticsActionPanel() {
 
   const actions = [
     { id: 'kin' as ActionId, label: 'Kinematics', desc: 'DOF + workspace', icon: Bot, accent: '#3b82f6', handler: actKin },
-    { id: 'path' as ActionId, label: 'Path plan', desc: 'multi-waypoint length', icon: GitBranch, accent: '#a855f7', handler: actPath },
+    { id: 'path' as ActionId, label: 'Path plan', desc: 'multi-waypoint length', icon: GitBranch, accent: '#c084fc', handler: actPath },
     { id: 'fuse' as ActionId, label: 'Sensor fusion', desc: 'weighted-avg estimator', icon: Cpu, accent: '#06b6d4', handler: actFuse },
     { id: 'bat' as ActionId, label: 'Battery', desc: 'runtime + safe budget', icon: BatteryFull, accent: '#22c55e', handler: actBat },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private robot DTU', icon: Sparkles, accent: '#f97316', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send spec brief', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send spec brief', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public robot spec', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Review', desc: 'Agent: deployment + risk', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

@@ -258,7 +258,7 @@ export function ChainProofPanel() {
           <button
             onClick={handleAssessStrength}
             disabled={!selectedChain || chainPremises.length === 0 || actionRunning}
-            className={cn(ds.btnSmall, 'bg-neon-purple/10 text-neon-purple border border-neon-purple/30 hover:bg-neon-purple/20')}
+            className={cn(ds.btnSmall, 'bg-neon-purple/10 text-neon-purple-bright border border-neon-purple/30 hover:bg-neon-purple/20')}
           >
             <Zap className="w-3.5 h-3.5" /> Assess Strength
           </button>

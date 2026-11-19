@@ -247,7 +247,7 @@ export function Soundboard({
                 </div>
                 <button
                   onClick={(e) => { e.stopPropagation(); handleLoadItem(item.type, item.data); }}
-                  className="opacity-0 group-hover:opacity-100 text-[10px] px-2 py-0.5 bg-neon-purple/10 text-neon-purple rounded"
+                  className="opacity-0 group-hover:opacity-100 text-[10px] px-2 py-0.5 bg-neon-purple/10 text-neon-purple-bright rounded"
                 >
                   Load
                 </button>

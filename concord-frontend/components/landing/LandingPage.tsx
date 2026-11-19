@@ -58,7 +58,7 @@ export function LandingPage(_props: LandingPageProps) {
 
       {/* Hero Section */}
       <section className="relative z-10 px-8 pt-20 pb-32 max-w-6xl mx-auto text-center">
-        <div className="inline-flex items-center gap-2 px-4 py-2 bg-neon-purple/20 border border-neon-purple/30 rounded-full text-sm text-neon-purple mb-8">
+        <div className="inline-flex items-center gap-2 px-4 py-2 bg-neon-purple/20 border border-neon-purple/30 rounded-full text-sm text-neon-purple-bright mb-8">
           <Zap className="w-4 h-4" />
           <span>Engineering first: checked answers, not guesses</span>
         </div>
@@ -88,7 +88,7 @@ export function LandingPage(_props: LandingPageProps) {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm font-semibold">
             <span className="px-4 py-2 rounded-lg bg-neon-cyan/10 border border-neon-cyan/20 text-neon-cyan text-center">No ads. Ever.</span>
             <span className="px-4 py-2 rounded-lg bg-neon-blue/10 border border-neon-blue/20 text-neon-blue text-center">No subscriptions.</span>
-            <span className="px-4 py-2 rounded-lg bg-neon-purple/10 border border-neon-purple/20 text-neon-purple text-center">No data extraction.</span>
+            <span className="px-4 py-2 rounded-lg bg-neon-purple/10 border border-neon-purple/20 text-neon-purple-bright text-center">No data extraction.</span>
             <span className="px-4 py-2 rounded-lg bg-neon-green/10 border border-neon-green/20 text-neon-green text-center">Free for all services.</span>
           </div>
         </div>
@@ -313,8 +313,8 @@ function FeatureCard({
   const colorClasses = {
     cyan: 'border-neon-cyan/30 bg-neon-cyan/10 text-neon-cyan',
     blue: 'border-neon-blue/30 bg-neon-blue/10 text-neon-blue',
-    purple: 'border-neon-purple/30 bg-neon-purple/10 text-neon-purple',
-    pink: 'border-neon-pink/30 bg-neon-pink/10 text-neon-pink',
+    purple: 'border-neon-purple/30 bg-neon-purple/10 text-neon-purple-bright',
+    pink: 'border-neon-pink/30 bg-neon-pink/10 text-neon-pink-bright',
     green: 'border-neon-green/30 bg-neon-green/10 text-neon-green',
     orange: 'border-neon-orange/30 bg-neon-orange/10 text-neon-orange',
   };

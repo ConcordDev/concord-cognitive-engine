@@ -234,7 +234,7 @@ export function OpsActionPanel() {
   }
 
   const actions: Array<{ id: ActionId; label: string; desc: string; icon: React.ComponentType<{ className?: string }>; accent: string; handler: () => void; disabled?: boolean }> = [
-    { id: 'oncall',     label: 'On-call',     desc: 'pageOnCall current slot',           icon: Phone,        accent: '#ec4899', handler: actOnCall },
+    { id: 'oncall',     label: 'On-call',     desc: 'pageOnCall current slot',           icon: Phone,        accent: '#f472b6', handler: actOnCall },
     { id: 'runbook',    label: 'Runbook',     desc: 'runbookLookup match by alert',      icon: BookOpen,     accent: '#06b6d4', handler: actRunbook },
     { id: 'escalation', label: 'Escalation',  desc: 'escalationCheck threshold breach',  icon: AlertOctagon, accent: '#ef4444', handler: actEscalation },
     { id: 'postmortem', label: 'Post-mortem', desc: 'postmortemDraft 5-section skeleton', icon: FileText,    accent: '#8b5cf6', handler: actPostmortem },

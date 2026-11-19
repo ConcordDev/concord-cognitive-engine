@@ -308,7 +308,7 @@ export function EtlWorkbench() {
                 <div key={c.id} className="lens-card text-xs space-y-1">
                   <div className="flex items-center justify-between">
                     <span className="font-medium flex items-center gap-1.5">
-                      <span className={`px-1 rounded text-[9px] uppercase ${c.role === 'source' ? 'bg-neon-cyan/15 text-neon-cyan' : 'bg-neon-purple/15 text-neon-purple'}`}>{c.role}</span>
+                      <span className={`px-1 rounded text-[9px] uppercase ${c.role === 'source' ? 'bg-neon-cyan/15 text-neon-cyan' : 'bg-neon-purple/15 text-neon-purple-bright'}`}>{c.role}</span>
                       {c.name}
                     </span>
                     <div className="flex items-center gap-1">
@@ -411,7 +411,7 @@ export function EtlWorkbench() {
                   <button onClick={(e) => { e.stopPropagation(); runSync(p.id); }} disabled={busy === 'sync:' + p.id} className="px-2 py-0.5 rounded bg-neon-green/10 text-neon-green border border-neon-green/30 flex items-center gap-1">
                     <Play className="w-3 h-3" /> {busy === 'sync:' + p.id ? 'Syncing…' : 'Run sync'}
                   </button>
-                  <button onClick={(e) => { e.stopPropagation(); runSync(p.id, 'incremental'); }} disabled={busy === 'sync:' + p.id} className="px-2 py-0.5 rounded bg-neon-purple/10 text-neon-purple border border-neon-purple/30 flex items-center gap-1">
+                  <button onClick={(e) => { e.stopPropagation(); runSync(p.id, 'incremental'); }} disabled={busy === 'sync:' + p.id} className="px-2 py-0.5 rounded bg-neon-purple/10 text-neon-purple-bright border border-neon-purple/30 flex items-center gap-1">
                     <RefreshCw className="w-3 h-3" /> Incremental
                   </button>
                 </div>

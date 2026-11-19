@@ -258,8 +258,8 @@ export function SupplyChainActionPanel() {
   }
 
   const bonusActions = [
-    { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint DTU', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private ops record', icon: Sparkles, accent: '#a855f7', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM brief', desc: 'Send ops brief', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint DTU', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private ops record', icon: Sparkles, accent: '#c084fc', handler: actMint },
+    { id: 'dm' as ActionId, label: 'DM brief', desc: 'Send ops brief', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Anon benchmark', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Risk review', desc: 'Agent: resilience', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

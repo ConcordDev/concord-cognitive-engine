@@ -168,7 +168,7 @@ function DTUCard({
                 })
               }
               disabled={promoteMutation.isPending}
-              className="p-1.5 rounded hover:bg-neon-purple/10 text-gray-400 hover:text-neon-purple transition-colors"
+              className="p-1.5 rounded hover:bg-neon-purple/10 text-gray-400 hover:text-neon-purple-bright transition-colors"
               title="Promote to Marketplace"
             >
               <ArrowUpCircle className="w-4 h-4" />

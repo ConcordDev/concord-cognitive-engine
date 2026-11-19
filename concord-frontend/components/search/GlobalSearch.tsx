@@ -368,7 +368,7 @@ export function GlobalSearch({ isOpen, onClose, onSelect }: GlobalSearchProps) {
                             <span className={cn(
                               'text-xs px-1.5 py-0.5 rounded',
                               result.tier === 'mega' ? 'bg-neon-cyan/20 text-neon-cyan' :
-                              result.tier === 'hyper' ? 'bg-neon-purple/20 text-neon-purple' :
+                              result.tier === 'hyper' ? 'bg-neon-purple/20 text-neon-purple-bright' :
                               'bg-gray-500/20 text-gray-400'
                             )}>
                               {result.tier}

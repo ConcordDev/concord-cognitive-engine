@@ -420,7 +420,7 @@ export function SellPanel() {
                             {dtu.title || dtu.id.slice(0, 12)}
                           </span>
                           {dtu.tier && dtu.tier !== 'regular' && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-neon-purple/20 text-neon-purple">
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-neon-purple/20 text-neon-purple-bright">
                               {dtu.tier}
                             </span>
                           )}

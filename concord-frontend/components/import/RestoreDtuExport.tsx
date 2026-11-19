@@ -96,13 +96,13 @@ export function RestoreDtuExport() {
         <div className="flex rounded-lg border border-lattice-border overflow-hidden">
           <button
             onClick={() => setFormat('json')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs ${format === 'json' ? 'bg-neon-purple/20 text-neon-purple' : 'text-gray-400 hover:text-white'}`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs ${format === 'json' ? 'bg-neon-purple/20 text-neon-purple-bright' : 'text-gray-400 hover:text-white'}`}
           >
             <FileJson className="w-3.5 h-3.5" /> JSON
           </button>
           <button
             onClick={() => setFormat('markdown')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs border-l border-lattice-border ${format === 'markdown' ? 'bg-neon-purple/20 text-neon-purple' : 'text-gray-400 hover:text-white'}`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs border-l border-lattice-border ${format === 'markdown' ? 'bg-neon-purple/20 text-neon-purple-bright' : 'text-gray-400 hover:text-white'}`}
           >
             <FileText className="w-3.5 h-3.5" /> Markdown
           </button>

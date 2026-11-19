@@ -103,7 +103,7 @@ export function VersionHistory({
             }}
             className={cn(
               'px-3 py-1 text-xs rounded transition-colors',
-              compareMode ? 'bg-neon-purple/20 text-neon-purple' : 'text-gray-400 hover:text-white'
+              compareMode ? 'bg-neon-purple/20 text-neon-purple-bright' : 'text-gray-400 hover:text-white'
             )}
           >
             <Diff className="w-3 h-3 inline mr-1" />

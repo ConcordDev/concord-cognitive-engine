@@ -319,13 +319,13 @@ export function typeIcon(type: MarketplaceItem['type']) {
 export function typeBadgeColor(type: MarketplaceItem['type']) {
   switch (type) {
     case 'template':
-      return 'bg-neon-purple/20 text-neon-purple';
+      return 'bg-neon-purple/20 text-neon-purple-bright';
     case 'component':
       return 'bg-neon-cyan/20 text-neon-cyan';
     case 'dataset':
       return 'bg-neon-green/20 text-neon-green';
     case 'artwork':
-      return 'bg-neon-pink/20 text-neon-pink';
+      return 'bg-neon-pink/20 text-neon-pink-bright';
     case 'plugin':
       return 'bg-blue-500/20 text-blue-400';
     case 'preset':

@@ -175,7 +175,7 @@ export function PianoRoll({
 
         <button
           onClick={() => setShowVelocity(!showVelocity)}
-          className={cn('text-[10px] px-2 py-0.5 rounded', showVelocity ? 'bg-neon-purple/20 text-neon-purple' : 'text-gray-400 hover:text-white')}
+          className={cn('text-[10px] px-2 py-0.5 rounded', showVelocity ? 'bg-neon-purple/20 text-neon-purple-bright' : 'text-gray-400 hover:text-white')}
         >
           Velocity
         </button>

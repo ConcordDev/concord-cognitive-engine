@@ -577,7 +577,7 @@ export function CaseFiles({ onCasesChange }: { onCasesChange?: (cases: CaseFileS
                                 onClick={() => addDraft(item)}
                                 disabled={!draftTitle.trim() || lawActionBusy === 'draft'}
                                 aria-label="Add draft"
-                                className="px-1.5 rounded bg-neon-purple/15 text-neon-purple hover:bg-neon-purple/25 disabled:opacity-40 shrink-0"
+                                className="px-1.5 rounded bg-neon-purple/15 text-neon-purple-bright hover:bg-neon-purple/25 disabled:opacity-40 shrink-0"
                               >
                                 {lawActionBusy === 'draft' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
                               </button>
