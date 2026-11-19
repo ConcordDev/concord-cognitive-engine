@@ -135,6 +135,24 @@ class LensWalk:
         # MST-W0-03: premap sweep (opt-in) with its own budget
         self.premap = premap
         self.premap_budget_s = premap_budget_s or self.th.get("premap_budget_s", 600)
+        # ULW C5: per-lens SETTLE cap + per-CHECK budgets. Settle time (the
+        # networkidle waits in _nav) accumulates across every navigation of
+        # this walk; once the lens's settle budget is spent, later navs skip
+        # the idle wait instead of burning up to settle_ms_judgment apiece —
+        # the ~727s settle burn the ULW audit cites. Per-check budgets give
+        # every phase its own slice (thresholds.check_budgets_s per phase,
+        # thresholds.check_budget_s the default): loop-level phases stop
+        # early on their own slice and every phase's spend is stamped on its
+        # check row, so a slow early phase's cost is accounted to THAT check
+        # instead of silently starving the later ones.
+        self.settle_budget_s = float(self.th.get("settle_budget_s", 60))
+        self.settle_spent_s = 0.0
+        self.settle_capped = False
+        self.check_budgets_s = dict(self.th.get("check_budgets_s", {}) or {})
+        self.check_budget_default_s = float(self.th.get("check_budget_s", 90))
+        self.check_spent_s = {}
+        self._phase_t0 = None
+        self._phase_name = None
 
     # ---------------------------------------------------------------- infra
     def over_budget(self):
@@ -165,6 +183,49 @@ class LensWalk:
                                   "spent_s": int(self.budget.spent(self.slug)) if self.budget is not None else int(elapsed)}
         if aborted:
             self.result["budget_aborted"] = aborted
+
+    # ------------------------------------------------------------ ULW C5
+    def settle_allowance_ms(self):
+        """Milliseconds this navigation may spend waiting for network idle:
+        the judgment timeout bounded by the lens's remaining settle budget
+        (0 once the budget is spent — the wait is skipped, never negative)."""
+        remaining = self.settle_budget_s - self.settle_spent_s
+        if remaining <= 0:
+            return 0
+        return int(min(float(self.th["settle_ms_judgment"]), remaining * 1000))
+
+    def _note_settle(self, seconds):
+        self.settle_spent_s += max(0.0, float(seconds))
+        if self.settle_spent_s >= self.settle_budget_s:
+            self.settle_capped = True
+
+    def check_budget_for(self, phase):
+        return float(self.check_budgets_s.get(phase, self.check_budget_default_s))
+
+    def phase_over(self, phase=None):
+        """True when the CURRENT phase has spent past its own per-check budget."""
+        ph = phase or self._phase_name
+        if ph is None or self._phase_t0 is None:
+            return False
+        return (time.time() - self._phase_t0) > self.check_budget_for(ph)
+
+    _CHECK_KEY = {"write": "create_delete", "mobile": "mobile_390"}
+
+    def _begin_phase(self, phase):
+        self._phase_name, self._phase_t0 = phase, time.time()
+
+    def _end_phase(self, phase):
+        if self._phase_t0 is None:
+            return
+        elapsed = time.time() - self._phase_t0
+        self._phase_name, self._phase_t0 = None, None
+        self.check_spent_s[phase] = self.check_spent_s.get(phase, 0.0) + elapsed
+        d = self.result["checks"].get(self._CHECK_KEY.get(phase, phase))
+        if isinstance(d, dict):
+            d["elapsed_s"] = int(elapsed)
+            d["budget_s"] = int(self.check_budget_for(phase))
+            if elapsed > self.check_budget_for(phase):
+                d["over_check_budget"] = True
 
     def attach(self, page):
         def on_console(m):
@@ -302,12 +363,23 @@ class LensWalk:
                 time.sleep(self.th.get("gateway_backoff_s", 5) * (attempt + 1))
                 continue
             break
-        try:
-            page.wait_for_load_state("networkidle", timeout=self.th["settle_ms_judgment"])
-            settled = True
-        except Exception:
+        # ULW C5 settle cap: the idle wait is bounded by the lens's remaining
+        # settle budget; once spent, the wait is skipped (settled=False,
+        # settle_capped=True) instead of burning the full judgment timeout
+        # on every navigation.
+        allowance = self.settle_allowance_ms()
+        settle_capped = allowance <= 0
+        if allowance > 0:
+            try:
+                page.wait_for_load_state("networkidle", timeout=allowance)
+                settled = True
+            except Exception:
+                settled = False
+            settle_capped = allowance < int(self.th["settle_ms_judgment"])
+        else:
             settled = False
         t_settle = time.time() - t0
+        self._note_settle(max(0.0, t_settle - t_load))
         # Visual readiness: Concord shows an animated splash for a few seconds after load. Wait until two
         # consecutive low-res screenshots are identical (or 15 s), so checks run on the real UI.
         last, same, stable = None, 0, False
@@ -326,7 +398,7 @@ class LensWalk:
         t_ready = time.time() - t0
         return {"status": resp.status if resp else None, "dcl_ms": int(t_dcl * 1000), "load_ms": int(t_load * 1000),
                 "settle_ms": int(t_settle * 1000), "settled": settled, "ready_ms": int(t_ready * 1000),
-                "visually_stable": stable, "error": err, "final_url": page.url}
+                "settle_capped": settle_capped, "visually_stable": stable, "error": err, "final_url": page.url}
 
     def error_texts(self, ax):
         return [t for t in ax.texts() if len(t) < 90 and (ERROR_TEXT.search(t) or STATUS_TEXT.search(t))]
@@ -371,28 +443,40 @@ class LensWalk:
                         break
                     try:
                         self.reset_page(page, cdp)
+                        self._begin_phase(ph)
                         fn(page, cdp)
                     except AccountMismatch:
+                        self._end_phase(ph)
                         raise
                     except Exception as e:
+                        self._end_phase(ph)
                         self.log("  phase %s error: %s" % (ph, scrub(repr(e), 200)))
                         self.mark(ph, "ERROR", error=scrub(repr(e), 200))
+                    self._end_phase(ph)
         finally:
             self._close(ctx)
         if "mobile" in self.phases and not self.over_budget():
             try:
+                self._begin_phase("mobile")
                 self.mobile()
+                self._end_phase("mobile")
             except AccountMismatch:
+                self._end_phase("mobile")
                 raise
             except Exception as e:
+                self._end_phase("mobile")
                 self.mark("mobile_390", "ERROR", error=scrub(repr(e), 200))
         if "write" in self.phases:
             if self.allow_write and self.acct and not self.over_budget():
                 try:
+                    self._begin_phase("write")
                     self.write_flow()
+                    self._end_phase("write")
                 except AccountMismatch:
+                    self._end_phase("write")
                     raise
                 except Exception as e:
+                    self._end_phase("write")
                     self.mark("create_delete", "ERROR", error=scrub(repr(e), 200))
             else:
                 self.mark("create_delete", "NOT_RUN", reason="read-only run" if not self.allow_write else "write-skip lens / admin / no session")
@@ -407,6 +491,13 @@ class LensWalk:
                                         "checks": 0, "findings": 0, "leaks": []}
         self.result["finished"] = human_et()
         self.result["elapsed_s"] = int(time.time() - self.t_start)
+        # ULW C5 stamps: settle spend vs its cap + per-check spend vs budgets.
+        self.result["settle"] = {"spent_s": int(self.settle_spent_s), "budget_s": int(self.settle_budget_s),
+                                 "capped": self.settle_capped}
+        if self.check_spent_s:
+            self.result["check_budgets"] = {ph: {"spent_s": int(s), "budget_s": int(self.check_budget_for(ph)),
+                                                 "over": s > self.check_budget_for(ph)}
+                                            for ph, s in sorted(self.check_spent_s.items())}
         self._note_budget()
         return self.result
 
@@ -833,7 +924,10 @@ class LensWalk:
                          "Load %d ms, DOMContentLoaded %d ms, network settled %s at %d ms, visually ready at %d ms" % (t["load_ms"], t["dcl_ms"], t["settled"], t["settle_ms"], t["ready_ms"]),
                          [ev], area="%s/perf" % self.slug)
         if not t["settled"]:
-            self.judge("timing", "Network never went idle within %d s (polling or stuck request?)" % (self.th["settle_ms_judgment"] / 1000), [ev])
+            if t.get("settle_capped"):
+                self.judge("timing", "Network idle wait stopped by the per-lens settle cap (ULW C5: %ds budget, %ds spent) — settle not observed, not a lens judgment" % (int(self.settle_budget_s), int(self.settle_spent_s)), [ev])
+            else:
+                self.judge("timing", "Network never went idle within %d s (polling or stuck request?)" % (self.th["settle_ms_judgment"] / 1000), [ev])
         self.result["perf_metrics"] = {k: v for k, v in cdp.perf_metrics().items()
                                        if k in ("JSHeapUsedSize", "Nodes", "LayoutCount", "RecalcStyleCount", "ScriptDuration", "TaskDuration")}
         return True
@@ -886,7 +980,7 @@ class LensWalk:
         out, status = [], "PASS" if tabs else "NA"
         names = [n.name for n in tabs]
         for name in names:
-            if self.over_budget() or self.crashes:
+            if self.over_budget() or self.crashes or self.phase_over():
                 break
             ax = cdp.ax()
             node = next((n for n in ax.by_role("tab") if n.name == name and n.backend), None)
@@ -1002,7 +1096,7 @@ class LensWalk:
                  and safety.is_opener_safe(n.name, self.admin) and not safety.EXPORT.search(n.name)]
         seen, rows, status = set(), [], "NA"
         for n in cands:
-            if len(rows) >= self.th["max_openers_per_lens"] or self.over_budget():
+            if len(rows) >= self.th["max_openers_per_lens"] or self.over_budget() or self.phase_over():
                 break
             key = control_label(n.name)
             if key in seen:
