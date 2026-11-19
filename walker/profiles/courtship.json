@@ -1,0 +1,55 @@
+{
+  "slug": "courtship",
+  "name": "Courtship",
+  "url": "https://concord-os.org/lenses/courtship",
+  "category": "specialized",
+  "group": {
+    "master_parent": "MST-W2-16",
+    "walk_ticket": "LC-39",
+    "fpv_tickets": 7,
+    "milestone": "LC-G3: The 17 lenses never walked"
+  },
+  "block_class": "no-create-control",
+  "block_reason": "The lens's main view exposes no New/Create/Add control to the walker's opener search: create_delete is NA ('no New/Create/Add control on main view'), so the create/delete phase can never exercise, and its replay population is NEEDS_HUMAN-dominated (judgement-shaped and two-party checks). The read phases walk normally; the block is the write/exercise leg only.",
+  "nov17_run": {
+    "run_id": "20261117-080754",
+    "live_sha": "f4f1f77ff610252fba82f35ec0b83da0829d53c6",
+    "account": "t1",
+    "elapsed_s": 90,
+    "reach": {
+      "status": "PASS",
+      "gate": null,
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://concord-os.org/lenses/courtship"
+    },
+    "phases_not_exercised": [
+      "create_delete",
+      "tabs_reachable"
+    ],
+    "create_delete": {
+      "status": "NA",
+      "reason": "no New/Create/Add control on main view"
+    },
+    "replay": {
+      "tickets": 7,
+      "counts": {
+        "STILL_FAILING": 2,
+        "NEEDS_HUMAN": 5
+      },
+      "skipped": 0
+    },
+    "findings": 8,
+    "high_findings": [],
+    "packet": "runs/20261117-080754/lens-courtship.json (Mac walker-runs/capture-20261117)"
+  },
+  "config_state": {
+    "admin_lens": false,
+    "write_skip": false
+  },
+  "unblock": [
+    "No walker build is owed: NA is the honest disposition while the surface exposes no create control. If the lens gains a create surface, the create/delete phase arms automatically on the next walk.",
+    "Its NEEDS_HUMAN replay rows ride the C2 rewrite pass (C3 vocabulary + the C16 two-account isolation phase)."
+  ],
+  "walk2_disposition": "Read walk proceeds; create/delete NA stands."
+}

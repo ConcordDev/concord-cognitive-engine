@@ -1,0 +1,59 @@
+{
+  "slug": "psyops",
+  "name": "PsyOps",
+  "url": "https://concord-os.org/lenses/psyops",
+  "category": "governance",
+  "group": {
+    "master_parent": "MST-W2-15",
+    "walk_ticket": "LC-32",
+    "fpv_tickets": 2,
+    "milestone": "LC-G3: The 17 lenses never walked"
+  },
+  "block_class": "admin-session-absent",
+  "block_reason": "The walk's account set carries member accounts only (t1/t2); this lens sits in the walker's admin_lenses config, so the run performs the look-only gate check and stops: every phase NOT_RUN and every replay ticket skipped 'admin lens without an admin session (look-only gate check only)'. The page itself loads for the member account (HTTP 200, reach gate 'admin', reason 'gate did not hold') — the platform's admin gate not holding is the run's HIGH finding on this lens, and it is also why no substantive walk exists: there is no admin session to walk with.",
+  "nov17_run": {
+    "run_id": "20261117-080754",
+    "live_sha": "f4f1f77ff610252fba82f35ec0b83da0829d53c6",
+    "account": "t1",
+    "elapsed_s": 7,
+    "reach": {
+      "status": "FAIL",
+      "gate": "admin",
+      "reason": "gate did not hold",
+      "http_status": 200,
+      "final_url": "https://concord-os.org/lenses/psyops"
+    },
+    "phases_not_exercised": [
+      "contrast",
+      "export",
+      "keyboard",
+      "openers",
+      "surface",
+      "tabs"
+    ],
+    "create_delete": {
+      "status": null,
+      "reason": null
+    },
+    "replay": {
+      "tickets": 2,
+      "counts": {},
+      "skipped": 2
+    },
+    "findings": 1,
+    "high_findings": [
+      "FIX-psyops-003"
+    ],
+    "packet": "runs/20261117-080754/lens-psyops.json (Mac walker-runs/capture-20261117)"
+  },
+  "config_state": {
+    "admin_lens": true,
+    "write_skip": true
+  },
+  "unblock": [
+    "Seat the admin account in the walk's account set (the LC-02 accounts leg: zukoqadmin) so walk 2 runs this lens with an admin session.",
+    "Run the UPGRADE-PLAN U6 look-only protocol for the admin set: with the admin session the surface phases execute; the member account's 403/no-access words count as PASS once the platform gate holds.",
+    "The gate-did-not-hold HIGH finding is the platform fix's own ticket (named in this profile's nov17_run.high_findings); the walk re-checks the gate first on the post-fix build."
+  ],
+  "walk2_disposition": "Walk with the admin session under the look-only protocol; gate re-check first."
+}
