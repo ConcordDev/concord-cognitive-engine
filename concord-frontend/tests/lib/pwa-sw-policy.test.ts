@@ -52,6 +52,13 @@ describe('service worker routing policy', () => {
     expect(policy.decide({ url: '/', method: 'POST', mode: 'navigate' })).toBe('passthrough');
   });
 
+  it('never answers a web worker script itself (a worker loaded through respondWith never started)', () => {
+    expect(policy.decide(req('/_next/static/chunks/turbopack-worker-abc.js#params=[]', { destination: 'worker' }))).toBe('passthrough');
+    expect(policy.decide(req('/_next/static/chunks/shared.js', { destination: 'sharedworker' }))).toBe('passthrough');
+    // The same file as an ordinary script is still shell, cache-first.
+    expect(policy.decide(req('/_next/static/chunks/turbopack-worker-abc.js', { destination: 'script' }))).toBe('static');
+  });
+
   it('serves a navigation offline fallback and cache-first shell assets', () => {
     expect(policy.decide(req('/', { mode: 'navigate' }))).toBe('navigation');
     expect(policy.decide(req('/lenses/studio', { mode: 'navigate' }))).toBe('navigation');

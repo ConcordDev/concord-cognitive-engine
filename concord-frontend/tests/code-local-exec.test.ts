@@ -4,6 +4,7 @@ import {
   localRunUnsupportedReason,
   resetPythonSessionForTests,
   runLocalScript,
+  toPlainJs,
 } from '@/components/code/localExec';
 
 /**
@@ -15,6 +16,10 @@ import {
  */
 class FakeWorker {
   static instances: FakeWorker[] = [];
+  /** How long the fake takes to load before it announces worker-ready. */
+  static loadMs = 0;
+  /** How many freshly constructed JS workers stay silent (never announce worker-ready). */
+  static silentStarts = 0;
   onmessage: ((ev: { data: unknown }) => void) | null = null;
   onerror: ((ev: { message: string }) => void) | null = null;
   terminated = false;
@@ -22,15 +27,30 @@ class FakeWorker {
   url = '';
   private listeners = new Map<string, Set<(ev: { data: unknown }) => void>>();
 
+  /** Messages posted before the worker announced worker-ready (a real module worker would drop them). */
+  earlyPosts = 0;
+  readySent = false;
+
   constructor(url?: URL | string) {
     this.url = String(url || '');
     FakeWorker.instances.push(this);
+    // Like local-exec.worker.ts: announce the handler once the module has run.
+    if (!this.url.includes('python-exec') && FakeWorker.silentStarts > 0) { FakeWorker.silentStarts -= 1; return; }
+    if (!this.url.includes('python-exec')) {
+      const announce = () => { this.readySent = true; this.dispatch({ type: 'worker-ready' }); };
+      if (FakeWorker.loadMs > 0) setTimeout(announce, FakeWorker.loadMs); else queueMicrotask(announce);
+    }
+  }
+
+  private dispatch(data: unknown) {
+    this.onmessage?.({ data });
+    for (const fn of this.listeners.get('message') || []) fn({ data });
   }
 
   addEventListener(type: string, fn: (ev: { data: unknown }) => void) {
     if (!this.listeners.has(type)) this.listeners.set(type, new Set());
     this.listeners.get(type)!.add(fn);
-    if (type === 'message') this.onmessage = fn;
+    if (type === 'message' && this.isPython) this.onmessage = fn;
   }
   removeEventListener(type: string, fn: (ev: { data: unknown }) => void) {
     this.listeners.get(type)?.delete(fn);
@@ -42,7 +62,8 @@ class FakeWorker {
   postMessage(msg: { type: string; id: number; code: string }) {
     this.postedCode = msg.code;
     const id = msg.id;
-    const emit = (data: unknown) => queueMicrotask(() => this.onmessage?.({ data }));
+    if (!this.isPython && !this.readySent) this.earlyPosts += 1;
+    const emit = (data: unknown) => queueMicrotask(() => (this.isPython ? this.onmessage?.({ data }) : this.dispatch(data)));
     if (this.isPython) {
       if (!this.pyReady) {
         emit({ type: 'loading', id });
@@ -115,6 +136,39 @@ describe('runLocalScript', () => {
     expect(FakeWorker.instances[0].terminated).toBe(true); // per-run worker is disposed
   });
 
+  it('sends the program only after the worker says its handler is installed (no lost first message)', async () => {
+    const outcome = await runLocalScript({ code: 'GOOD console.log("hello")', language: 'javascript' });
+    const w = FakeWorker.instances[FakeWorker.instances.length - 1];
+    expect(w.earlyPosts).toBe(0);
+    expect(w.postedCode).toContain('GOOD');
+    expect(outcome.result.stdout).toBe('hello\n');
+  });
+
+  it('a slow-loading runner is not the code timing out: the clock starts when the program is sent', async () => {
+    FakeWorker.loadMs = 1500;
+    try {
+      const outcome = await runLocalScript({ code: 'GOOD console.log("hello")', language: 'javascript', timeoutMs: 1000 });
+      expect(outcome.timedOut).toBe(false);
+      expect(outcome.result.exitCode).toBe(0);
+      expect(outcome.result.stdout).toBe('hello\n');
+      expect(outcome.elapsedMs).toBeLessThan(1000); // run time, not load time
+    } finally {
+      FakeWorker.loadMs = 0;
+    }
+  });
+
+  it('replaces a runner that never says it is listening, and runs on the next one', async () => {
+    FakeWorker.silentStarts = 1;
+    const before = FakeWorker.instances.length;
+    const outcome = await runLocalScript({ code: 'GOOD console.log("hello")', language: 'javascript' });
+    const made = FakeWorker.instances.slice(before);
+    expect(made.length).toBe(2);
+    expect(made[0].terminated).toBe(true);
+    expect(made[0].postedCode).toBe(''); // nothing was ever sent to the silent one
+    expect(outcome.result.stdout).toBe('hello\n');
+    expect(outcome.timedOut).toBe(false);
+  }, 15000);
+
   it('reports a thrown error as exit 1 with its stderr, never as success', async () => {
     const outcome = await runLocalScript({ code: 'THROW', language: 'javascript' });
     expect(outcome.result.exitCode).toBe(1);
@@ -134,6 +188,24 @@ describe('runLocalScript', () => {
     const outcome = await runLocalScript({ code: 'GOOD const x: number = 1;', language: 'typescript' });
     expect(outcome.result.exitCode).toBe(0);
     expect(FakeWorker.instances[0].postedCode).not.toContain(': number');
+  });
+
+  it('gives a module its own exports, so a file with `export` runs instead of failing on `exports is not defined`', async () => {
+    const plain = await toPlainJs('export function sum(a: number, b: number) { return a + b; }\nconsole.log(sum(2, 3));', 'typescript');
+    // Evaluate the compiled program the way the worker does: as a function body.
+    const logs: unknown[] = [];
+    new Function('console', plain)({ log: (...a: unknown[]) => logs.push(a.join(' ')) });
+    expect(logs).toEqual(['5']);
+    const js = await toPlainJs('export const x = 1; console.log(x);', 'javascript');
+    expect(js).toContain('var exports = {}');
+    expect(js).not.toMatch(/^export /m);
+    // A plain script with no module syntax is left exactly as written.
+    expect(await toPlainJs('console.log(1)', 'javascript')).toBe('console.log(1)');
+  });
+
+  it('says plainly that importing another project file cannot work in a one-file run', async () => {
+    const plain = await toPlainJs("import { sum } from './sum';\nconsole.log(sum(1, 2));", 'typescript');
+    expect(() => new Function('console', plain)({ log: () => {} })).toThrow(/Cannot import "\.\/sum" here/);
   });
 
   it('loads the Python runtime once, reports the load, then reuses the warm worker', async () => {
@@ -163,3 +235,15 @@ describe('runLocalScript', () => {
     expect(outcome.result.stderr).toContain('ValueError');
   });
 });
+
+describe('runner worker construction', () => {
+  it('starts the JS runner as a classic worker: a bundler bootstrap that uses importScripts crashes module workers', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { resolve } = await import('node:path');
+    const src = readFileSync(resolve(__dirname, '../components/code/localExec.ts'), 'utf8');
+    const ctors = src.match(/new Worker\(new URL\('\.\/local-exec\.worker\.ts', import\.meta\.url\)[^;]*;/g) || [];
+    expect(ctors.length).toBe(1); // one start path (startRunnerWorker), shared by runs and tests
+    for (const c of ctors) expect(c).not.toMatch(/type:\s*'module'/);
+  });
+});
+

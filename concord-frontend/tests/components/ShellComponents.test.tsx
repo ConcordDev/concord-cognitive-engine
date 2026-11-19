@@ -18,49 +18,10 @@ vi.mock('lucide-react', async (importOriginal) => {
   return { ...actual, ...o };
 });
 
-import { CodeEditorShell, type FileTreeNode, type OpenTab } from '@/components/code/CodeEditorShell';
 import { WalletShell, type WalletAsset, type WalletTx } from '@/components/crypto/WalletShell';
 import { DocsShell, type DocNode } from '@/components/legal/DocsShell';
 import { WhiteboardCanvas } from '@/components/whiteboard/WhiteboardCanvas';
 import { EHRShell, type EHRPatient, type VitalSet } from '@/components/healthcare/EHRShell';
-
-describe('CodeEditorShell', () => {
-  const files: FileTreeNode[] = [
-    { id: 'a', name: 'app.tsx', kind: 'file' },
-    { id: 'b', name: 'lib', kind: 'folder', children: [
-      { id: 'b1', name: 'util.ts', kind: 'file' },
-    ] },
-  ];
-  const openTabs: OpenTab[] = [
-    { id: 'a', label: 'app.tsx' },
-    { id: 'b1', label: 'util.ts', modified: true },
-  ];
-
-  it('renders open tabs and editor children', () => {
-    render(
-      <CodeEditorShell files={files} openTabs={openTabs} activeTabId="a">
-        <div data-testid="editor">code goes here</div>
-      </CodeEditorShell>
-    );
-    expect(screen.getAllByText('app.tsx').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('util.ts').length).toBeGreaterThan(0);
-    expect(screen.getByTestId('editor')).toBeInTheDocument();
-  });
-
-  it('calls onSelectTab when a tab strip entry is clicked', () => {
-    const onSelectTab = vi.fn();
-    render(
-      <CodeEditorShell files={files} openTabs={openTabs} activeTabId="a" onSelectTab={onSelectTab}>
-        <div />
-      </CodeEditorShell>
-    );
-    // Tab strip entry is a clickable div (not a button) — find it via the close-button aria.
-    const closeBtn = screen.getByLabelText('Close util.ts');
-    const tabRow = closeBtn.parentElement!;
-    fireEvent.click(tabRow);
-    expect(onSelectTab).toHaveBeenCalledWith(expect.objectContaining({ id: 'b1' }));
-  });
-});
 
 describe('WalletShell', () => {
   const assets: WalletAsset[] = [

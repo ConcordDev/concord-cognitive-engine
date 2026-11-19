@@ -42,6 +42,9 @@ vi.mock('next/font/google', () => {
     Fraunces: face('Fraunces'),
     Inter_Tight: face('Inter Tight'),
     IBM_Plex_Mono: face('IBM Plex Mono'),
+    // Code — Proof (components/code/proof/proofFonts.ts)
+    Geist: face('Geist'),
+    Geist_Mono: face('Geist Mono'),
   };
 });
 

@@ -62,7 +62,7 @@ describe('Sprint 15 — LensAgentPanel reusable', () => {
 // mounts in the extracted workspace component, not page.tsx itself.
 const LENS_SOURCE_OVERRIDE: Record<string, string> = {
   studio: 'components/studio/StudioDawWorkspace.tsx',
-  code: 'components/code/CodeEditorWorkspacePanel.tsx',
+  code: 'components/code/proof/ProofApp.tsx',
   music: 'components/music/liner/LinerNotesApp.tsx',
   marketplace: 'components/marketplace/MarketplaceApp.tsx',
 };

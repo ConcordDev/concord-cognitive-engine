@@ -1,0 +1,150 @@
+/*
+ * Proof — the Code lens identity. A calm, fast editor in deep ink-graphite:
+ * hairline rules, crisp mono type, no shadows, no gradients, and exactly one
+ * colour that means something — lime, "proved". Lime is never decoration: it
+ * appears only where a check really passed, and on the push control when the
+ * whole proof is green. Every colour is a token here (var(--pf-*)).
+ */
+
+.pf {
+  --pf-ink: #0c0e11;
+  --pf-ink-2: #111419;
+  --pf-ink-3: #171b21;
+  --pf-ink-4: #1e232b;
+  --pf-line: #22272f;
+  --pf-line-2: #2e3440;
+  --pf-text: #e4e7eb;
+  --pf-text-2: #b9bfc8;
+  --pf-muted: #848c99;
+  --pf-faint: #555d6a;
+  --pf-proved: #b6f03c;
+  --pf-proved-ink: #0c0e11;
+  --pf-proved-soft: rgba(182, 240, 60, 0.11);
+  --pf-proved-line: rgba(182, 240, 60, 0.35);
+  --pf-fail: #ff6a5c;
+  --pf-fail-soft: rgba(255, 106, 92, 0.11);
+  --pf-stale: #e6b54a;
+  --pf-stale-soft: rgba(230, 181, 74, 0.11);
+  --pf-add: #8fd14f;
+  --pf-del: #ff8073;
+  --pf-sel: rgba(182, 240, 60, 0.14);
+  --pf-focus: rgba(182, 240, 60, 0.55);
+
+  background: var(--pf-ink);
+  color: var(--pf-text);
+  font-family: var(--pf-font-ui), system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+.pf ::selection { background: var(--pf-sel); }
+.pf :focus-visible { outline: 1px solid var(--pf-focus); outline-offset: 1px; }
+
+.pf-mono { font-family: var(--pf-font-mono), ui-monospace, monospace; font-feature-settings: 'zero' 1; }
+.pf-num { font-family: var(--pf-font-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+
+/* Surfaces */
+.pf-panel { background: var(--pf-ink-2); }
+.pf-raised { background: var(--pf-ink-3); }
+.pf-rule { border-color: var(--pf-line); }
+.pf-rule-2 { border-color: var(--pf-line-2); }
+.pf-muted { color: var(--pf-muted); }
+.pf-faint { color: var(--pf-faint); }
+.pf-text-2 { color: var(--pf-text-2); }
+
+/* Text-only buttons and rows: quiet until hovered, never coloured unless meaningful */
+.pf-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 26px; padding: 0 10px; border-radius: 4px;
+  border: 1px solid var(--pf-line-2); background: var(--pf-ink-3); color: var(--pf-text);
+  font-size: 12px; white-space: nowrap; transition: background-color 80ms, border-color 80ms;
+}
+.pf-btn:hover:not(:disabled) { background: var(--pf-ink-4); border-color: var(--pf-faint); }
+.pf-btn:disabled { color: var(--pf-faint); cursor: not-allowed; }
+.pf-btn-ghost { border-color: transparent; background: transparent; }
+.pf-btn-ghost:hover:not(:disabled) { background: var(--pf-ink-3); border-color: transparent; }
+.pf-btn-go { background: var(--pf-proved); border-color: var(--pf-proved); color: var(--pf-proved-ink); font-weight: 600; }
+.pf-btn-go:hover:not(:disabled) { background: var(--pf-proved); border-color: var(--pf-proved); filter: brightness(1.06); }
+.pf-btn-go:disabled { background: var(--pf-ink-3); border-color: var(--pf-line-2); color: var(--pf-faint); font-weight: 500; filter: none; }
+.pf-btn-danger:hover:not(:disabled) { color: var(--pf-fail); border-color: var(--pf-fail); }
+
+.pf-input {
+  height: 28px; width: 100%; padding: 0 8px; border-radius: 4px;
+  border: 1px solid var(--pf-line-2); background: var(--pf-ink); color: var(--pf-text); font-size: 12px;
+}
+.pf-input::placeholder { color: var(--pf-faint); }
+.pf-input:focus { outline: none; border-color: var(--pf-focus); }
+textarea.pf-input { height: auto; padding: 6px 8px; resize: vertical; }
+
+.pf-row { display: flex; align-items: center; gap: 6px; width: 100%; padding: 3px 10px; text-align: left; color: var(--pf-text-2); }
+.pf-row:hover { background: var(--pf-ink-3); color: var(--pf-text); }
+.pf-row[data-active='true'] { background: var(--pf-ink-4); color: var(--pf-text); box-shadow: inset 2px 0 0 var(--pf-text-2); }
+
+.pf-kbd {
+  display: inline-flex; align-items: center; height: 16px; padding: 0 4px; border-radius: 3px;
+  border: 1px solid var(--pf-line-2); color: var(--pf-muted); font-size: 10px; line-height: 1;
+  font-family: var(--pf-font-mono), ui-monospace, monospace;
+}
+.pf-label { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--pf-faint); font-weight: 600; }
+
+/* Activity rail */
+.pf-rail-btn { display: flex; height: 40px; width: 44px; align-items: center; justify-content: center; color: var(--pf-faint); }
+.pf-rail-btn:hover { color: var(--pf-text-2); }
+.pf-rail-btn[data-active='true'] { color: var(--pf-text); box-shadow: inset 2px 0 0 var(--pf-text); }
+
+/* Editor tabs */
+.pf-tab { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; border-right: 1px solid var(--pf-line); color: var(--pf-muted); font-size: 12px; }
+.pf-tab[data-active='true'] { background: var(--pf-ink); color: var(--pf-text); box-shadow: inset 0 1px 0 var(--pf-text-2); }
+
+/* Proof states — the only coloured marks in the lens */
+.pf-state { display: inline-flex; height: 14px; width: 14px; flex-shrink: 0; align-items: center; justify-content: center; border-radius: 999px; }
+.pf-state[data-s='proved'] { background: var(--pf-proved); color: var(--pf-proved-ink); }
+.pf-state[data-s='failed'] { background: var(--pf-fail); color: var(--pf-ink); }
+.pf-state[data-s='stale'] { border: 1.5px solid var(--pf-stale); color: var(--pf-stale); }
+.pf-state[data-s='not_run'], .pf-state[data-s='unavailable'] { border: 1.5px dashed var(--pf-faint); }
+.pf-state[data-s='not_applicable'] { border: 1px solid var(--pf-line-2); opacity: 0.6; }
+.pf-state[data-s='running'] { border: 1.5px solid var(--pf-text-2); border-right-color: transparent; animation: pf-spin 700ms linear infinite; }
+@keyframes pf-spin { to { transform: rotate(360deg); } }
+
+.pf-check { border-bottom: 1px solid var(--pf-line); }
+.pf-check[data-s='proved'] .pf-check-name { color: var(--pf-text); }
+.pf-check[data-s='failed'] { background: linear-gradient(90deg, var(--pf-fail-soft), transparent 70%); }
+.pf-check[data-s='stale'] { background: linear-gradient(90deg, var(--pf-stale-soft), transparent 70%); }
+.pf-fail { color: var(--pf-fail); }
+.pf-stale { color: var(--pf-stale); }
+.pf-ok { color: var(--pf-proved); }
+.pf-add { color: var(--pf-add); }
+.pf-del { color: var(--pf-del); }
+
+/* The seal at the top of the strip */
+.pf-seal { border: 1px solid var(--pf-line-2); border-radius: 4px; }
+.pf-seal[data-green='true'] { border-color: var(--pf-proved-line); background: var(--pf-proved-soft); }
+.pf-seal-bar { display: flex; gap: 2px; height: 3px; }
+.pf-seal-bar > span { flex: 1; border-radius: 1px; background: var(--pf-line-2); transition: background-color 180ms; }
+.pf-seal-bar > span[data-s='proved'], .pf-seal-bar > span[data-s='not_applicable'] { background: var(--pf-proved); }
+.pf-seal-bar > span[data-s='not_applicable'] { opacity: 0.35; }
+.pf-seal-bar > span[data-s='failed'] { background: var(--pf-fail); }
+.pf-seal-bar > span[data-s='stale'] { background: var(--pf-stale); }
+
+/* A check that just turned proved */
+@keyframes pf-land { from { transform: scale(0.4); } 60% { transform: scale(1.15); } to { transform: scale(1); } }
+.pf-state[data-landed='true'] { animation: pf-land 260ms cubic-bezier(.2,.8,.2,1); }
+
+/* Diff lines in proposals and review */
+.pf-diff { font-family: var(--pf-font-mono), ui-monospace, monospace; font-size: 12px; line-height: 1.55; }
+.pf-diff [data-t='add'] { background: rgba(143, 209, 79, 0.09); color: var(--pf-text); }
+.pf-diff [data-t='del'] { background: rgba(255, 128, 115, 0.09); color: var(--pf-text-2); }
+.pf-diff [data-t='context'] { color: var(--pf-muted); }
+
+/* Command palette */
+.pf-scrim { background: rgba(5, 6, 8, 0.6); }
+.pf-palette { background: var(--pf-ink-2); border: 1px solid var(--pf-line-2); border-radius: 6px; }
+
+.pf-scroll { scrollbar-width: thin; scrollbar-color: var(--pf-line-2) transparent; }
+.pf-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+.pf-scroll::-webkit-scrollbar-thumb { background: var(--pf-line-2); border-radius: 4px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pf-state[data-landed='true'], .pf-state[data-s='running'] { animation: none; }
+}

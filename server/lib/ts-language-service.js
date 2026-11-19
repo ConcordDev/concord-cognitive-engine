@@ -101,14 +101,26 @@ function getService(files) {
     lib: ["lib.es2020.d.ts", "lib.dom.d.ts"],
   };
 
+  // Project paths are stored relative ("src/a.ts") while the service works
+  // from "/", so module resolution asks for "/src/a.ts". Map those back, or
+  // every relative import between project files reads as "Cannot find module".
+  const key = (f) => (files.has(f) ? f : (typeof f === "string" && f.startsWith("/") && files.has(f.slice(1)) ? f.slice(1) : f));
+  const isVirtualDir = (d) => {
+    const dir = String(d || "").replace(/^\/+/, "").replace(/\/+$/, "");
+    if (!dir) return true;
+    for (const p of files.keys()) if (p.startsWith(dir + "/")) return true;
+    return false;
+  };
   const host = {
     getScriptFileNames: () => [...files.keys()].filter(isTsLike),
-    getScriptVersion: (fileName) => {
+    getScriptVersion: (rawName) => {
+      const fileName = key(rawName);
       const blob = files.get(fileName);
       const content = blob ? blob.content : T.sys.readFile(fileName);
       return fingerprint(content);
     },
-    getScriptSnapshot: (fileName) => {
+    getScriptSnapshot: (rawName) => {
+      const fileName = key(rawName);
       const blob = files.get(fileName);
       const content = blob ? blob.content : T.sys.readFile(fileName);
       return content == null ? undefined : T.ScriptSnapshot.fromString(content);
@@ -116,10 +128,10 @@ function getService(files) {
     getCurrentDirectory: () => "/",
     getCompilationSettings: () => compilerOptions,
     getDefaultLibFileName: (o) => T.getDefaultLibFilePath(o),
-    fileExists: (f) => files.has(f) || T.sys.fileExists(f),
-    readFile: (f) => (files.has(f) ? files.get(f).content : T.sys.readFile(f)),
+    fileExists: (f) => files.has(key(f)) || T.sys.fileExists(f),
+    readFile: (f) => (files.has(key(f)) ? files.get(key(f)).content : T.sys.readFile(f)),
     readDirectory: T.sys.readDirectory,
-    directoryExists: T.sys.directoryExists,
+    directoryExists: (d) => isVirtualDir(d) || T.sys.directoryExists(d),
     getDirectories: T.sys.getDirectories,
   };
 
