@@ -90,6 +90,34 @@ def pick_lenses(inv, args):
     return lenses
 
 
+def _clone_permit(args, cfg, log):
+    """ULW C42: build the clone permit for --clone-legs runs. Fetches the
+    clone's /health and asks CloneGate to verify it against the configured
+    clone identity; ANY failure aborts the run (WalkAborted) — a refused
+    gate must never silently degrade into a prod run without the legs."""
+    if not getattr(args, "clone_legs", False):
+        return None
+    import json as _json
+    import urllib.request as _u
+    from concord_walker.clone_legs import CloneGate, CloneRefused
+    clone_cfg = (cfg.get("clone") or {})
+    url = (clone_cfg.get("base_url") or "").rstrip("/")
+    if not url:
+        raise WalkAborted("clone legs requested but cfg.clone.base_url is not configured — refusing to run")
+    try:
+        req = _u.Request(url + "/health", headers={"User-Agent": "concord-walker-clone-gate"})
+        with _u.urlopen(req, timeout=15) as resp:
+            health = _json.loads(resp.read().decode("utf-8", "replace"))
+    except Exception as e:
+        raise WalkAborted("clone health fetch failed (%s) — refusing to run clone legs" % e)
+    try:
+        permit = CloneGate(cfg).permit(url, health)
+    except CloneRefused as e:
+        raise WalkAborted("clone gate refused: %s" % e)
+    log("clone legs: permit granted for %s (health marker verified)" % url)
+    return permit
+
+
 class WalkAborted(SystemExit):
     pass
 
@@ -199,7 +227,8 @@ def cmd_walk(args, cfg, log):
         browser = launch()
         if not no_replay:
             rv = Reverifier(browser, cfg, rec, store, log, inv, allow_write=args.allow_write,
-                            allow_write_own=getattr(args, "allow_write_own", False))
+                            allow_write_own=getattr(args, "allow_write_own", False),
+                            clone_permit=_clone_permit(args, cfg, log))
             replay = ReplayRun(rv, store, ledger, live_sha=live, run_id=rid, walker_version=run_deploy.get("walker_sha"),
                                run_dir=rec.run_dir, tester=cfg["tester_name"], log=log, budget=walk_budget, replay_budget=replay_budget)
         else:
@@ -463,7 +492,8 @@ def cmd_reverify(args, cfg, log):
         browser = pw.chromium.launch(channel="chrome", headless=True, args=["--disable-dev-shm-usage"])
         try:
             rv = Reverifier(browser, cfg, rec, store, log, inv, allow_write=args.allow_write,
-                            allow_write_own=getattr(args, "allow_write_own", False))
+                            allow_write_own=getattr(args, "allow_write_own", False),
+                            clone_permit=_clone_permit(args, cfg, log))
             # MST-W0-01: every verdict says which build it ran against and whether that
             # build contains the ticket's fix commit (git merge-base --is-ancestor; 'unknown' otherwise)
             from concord_walker.lensrecord import deploy_stamp, build_verdict, contains_commit
@@ -664,6 +694,7 @@ def main():
     def walk_opts(p):
         p.add_argument("--allow-write", action="store_true", help="create+delete ONE own labelled fixture per lens (never admin/write-skip lenses)")
         p.add_argument("--allow-write-own", action="store_true", help="ULW C38: on write-skip lenses, replay write rows as t2 against t2's OWN labelled fixtures (WRITE-OWN profiles)")
+        p.add_argument("--clone-legs", action="store_true", help="ULW C42: run money-row verification legs against the SB-38 DB clone (permit-gated; aborts if the clone identity cannot be verified)")
         p.add_argument("--admin", action="store_true", help="walk the admin lenses with the admin account (look-only) if auth/admin.json exists")
         p.add_argument("--dry-run", action="store_true", help="don't append tickets / queue / leftovers to the shared audit files")
         p.add_argument("--no-auth", action="store_true", help="signed-out smoke (implies --dry-run)")
@@ -707,6 +738,7 @@ def main():
     p.add_argument("--lens-budget-s", type=int, help="WALK-05: per-lens time budget in seconds (default from config thresholds, else 900)")
     p.add_argument("--allow-write", action="store_true")
     p.add_argument("--allow-write-own", action="store_true", help="ULW C38: WRITE-OWN profiles for write rows on write-skip lenses (t2, own fixtures only)")
+    p.add_argument("--clone-legs", action="store_true", help="ULW C42: money-row verification legs on the SB-38 DB clone (permit-gated)")
     p.add_argument("--walked-run", action="append", help="coverage: run dir (or run id under runs_dir) of the sweep(s) this reverify grades; repeatable / comma list. Tickets on lenses with no lens-*.json there are NOT_ATTEMPTED 'lens not walked this run' and are not replayed")
     p.add_argument("--only-lens", help="coverage: comma list of lens slugs to replay; other in-scope tickets are NOT_ATTEMPTED 'excluded by filter'")
     p.add_argument("--apply-status", action="store_true", help="write verdict rows (VERIFIED/REOPENED/OPEN) to records/walker.jsonl")

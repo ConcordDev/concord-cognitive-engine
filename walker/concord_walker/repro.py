@@ -52,6 +52,20 @@ MAX_KEY_REPEAT = 25
 MAX_TAB_STOPS = _V.MAX_TAB_STOPS
 
 
+def _step_decision(wr, nm, labels):
+    """ULW C42: under a clone permit, payment-family steps route through the
+    clone gate (clone_legs.clone_step_decision); everywhere else the base
+    write_step_decision applies with the call sites' own arguments."""
+    permit = wr.get("clone_permit") if isinstance(wr, dict) else None
+    if permit is not None:
+        from . import clone_legs as _cl
+        return _cl.clone_step_decision(nm, permit, admin=wr.get("admin", False),
+                                       fixture_labels=labels)
+    return write_step_decision(nm, admin=wr.get("admin", False),
+                               write_skip=wr.get("write_skip", False),
+                               allow_write=True, fixture_labels=labels)
+
+
 def _sleep(sec):
     """Indirection so tests never really wait."""
     time.sleep(max(0.0, min(float(sec), _V.MAX_WAIT_S)))
@@ -1018,8 +1032,7 @@ def run_repro(ticket, driver, *, lens_slug, allow_fill=True, log=None, write=Non
                     pc_before = 0
                     if a == "click":
                         if wr.get("allow_write"):
-                            ok, why, kind = write_step_decision(nm, admin=wr.get("admin", False), write_skip=wr.get("write_skip", False),
-                                                                allow_write=True, fixture_labels=live_labels())
+                            ok, why, kind = _step_decision(wr, nm, live_labels())
                             if not ok:
                                 raise _Refused(why)
                             # a bare Create/Add/Save/Submit... is the form's SUBMIT; "New X" / "Add lesson" / "+" open a form
@@ -1104,8 +1117,7 @@ def run_repro(ticket, driver, *, lens_slug, allow_fill=True, log=None, write=Non
                     nm = cap("find_submit")(s["verb"])
                     if not nm:
                         raise _NotFound("no single enabled %r control in the open form" % s["verb"])
-                    ok, why, kind = write_step_decision(nm, admin=wr.get("admin", False), write_skip=wr.get("write_skip", False),
-                                                        allow_write=True, fixture_labels=live_labels())
+                    ok, why, kind = _step_decision(wr, nm, live_labels())
                     if not ok:
                         raise _Refused(why)
                     if kind != "create":

@@ -96,13 +96,16 @@ def wants_mobile(t):
 
 class Reverifier:
     def __init__(self, browser, cfg, rec, store, log, inventory, allow_write=False,
-                 allow_write_own=False):
+                 allow_write_own=False, clone_permit=None):
         self.b, self.cfg, self.rec, self.store, self.log = browser, cfg, rec, store, log
         self.inv = {l["slug"]: l for l in inventory}
         self.allow_write = allow_write
         # ULW C38: WRITE-OWN profiles let t2 exercise write rows on write-skip
         # lenses against its own labelled fixtures (write_own.py).
         self.allow_write_own = allow_write_own
+        # ULW C42: a ClonePermit (clone_legs.CloneGate) when the run targets
+        # the SB-38 DB clone with --clone-legs; None on every normal run.
+        self.clone_permit = clone_permit
         self.walks = {}
         self.recipes = {"FIX-007": self.r_fix007, "FIX-deities-002": self.r_deities_002,
                         # WALK-04g prod rows — POST-DEPLOY ONLY (GB-1544):
@@ -238,6 +241,17 @@ class Reverifier:
                 assert_account(ctx, self.cfg, acct, "repro-steps replay", self.log)
             readonly = admin or lens in self.cfg.get("write_skip_lenses", []) or lens in self.cfg.get("admin_lenses", [])
             wr = self._write_ctx(t, acct, admin, readonly)
+            if self.clone_permit is not None:
+                # ULW C42: under a clone permit, a money row's ctx becomes
+                # the clone ctx (clone-stemmed fixtures, permit attached);
+                # a refusal leaves the base ctx, whose decision refuses
+                # payment steps — fail closed either way.
+                from . import clone_legs as _cl
+                if _cl.is_money_row(t):
+                    try:
+                        wr = _cl.clone_write_ctx(self.cfg, self.rec, t, self.clone_permit)
+                    except _cl.CloneRefused:
+                        pass
             fill = (not readonly) or bool(wr and wr.get("write_own"))
             return _repro.run_repro(t, drv, lens_slug=lens, allow_fill=fill, log=self.log,
                                     write=wr, lens_title=self.inv[lens].get("name") or self.inv[lens].get("title"))
