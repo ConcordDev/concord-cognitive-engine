@@ -431,6 +431,8 @@ export function registerMarketHouse(registerLensAction) {
         hasFile: !!f.file,
         fileType: f.file?.type || null,
         license,
+        // The Art lens piece this lot was painted in, when consigned from Art.
+        sourceArtworkId: typeof params.sourceArtworkId === "string" && /^[\w:-]{1,80}$/.test(params.sourceArtworkId) ? params.sourceArtworkId : null,
       },
       royaltyChain: ancestors.map((a) => a.contentId),
     });
@@ -529,6 +531,23 @@ export function registerMarketHouse(registerLensAction) {
       royalties = round2(db.prepare("SELECT COALESCE(SUM(net), 0) AS r FROM economy_ledger WHERE to_user_id = ? AND type = 'ROYALTY_PAYOUT' AND status = 'complete'").get(me).r);
     } catch { /* */ }
     return { ok: true, result: { lots: cards, sales: earned.sales, gross: earned.gross, sellerNet: round2(earned.gross - calculateFee("MARKETPLACE_PURCHASE", earned.gross).fee), royalties, balance: getBalance(db, me).balance } };
+  });
+
+  /** The caller's lots consigned from one Art piece, with their sales. */
+  registerLensAction("market", "house-lots-for-piece", (ctx, _a, params = {}) => {
+    const n = need(ctx); if (n) return n;
+    const db = ctx.db;
+    const me = actorOf(ctx);
+    if (!me) return { ok: false, error: "auth_required" };
+    const piece = String(params.sourceArtworkId || "");
+    if (!piece) return { ok: false, error: "missing_piece" };
+    let rows = [];
+    try {
+      rows = db.prepare("SELECT id FROM marketplace_economy_listings WHERE seller_id = ? AND json_extract(preview_data, '$.sourceArtworkId') = ? ORDER BY created_at DESC LIMIT 20").all(me, piece);
+    } catch { /* */ }
+    const listings = rows.map((r) => getListing(db, r.id)).filter(Boolean);
+    const cards = cardsFor(db, listings).map((c, i) => ({ ...c, revenue: round2(listings[i].totalRevenue || 0) }));
+    return { ok: true, result: { lots: cards } };
   });
 
   /** What the caller bought, and commissions delivered to them. */

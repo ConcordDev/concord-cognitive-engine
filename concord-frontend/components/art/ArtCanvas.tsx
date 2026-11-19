@@ -8,6 +8,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type React from 'react';
 import {
   Loader2, Undo2, Redo2, Plus, Eye, EyeOff, Trash2, ChevronUp, ChevronDown, ArrowLeft,
   Eraser, Brush, PaintBucket, Square, Circle, Minus, Type, Pipette, BoxSelect,
@@ -136,7 +137,20 @@ function elBBox(el: El, w: number, h: number): [number, number, number, number] 
   return [x, y, Math.max(...xs) - x, Math.max(...ys) - y];
 }
 
-export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: () => void }) {
+export type SideTab = 'layers' | 'refs' | 'colour' | 'pro' | 'notes';
+
+/**
+ * The easel. `onExit` returns to the pieces; the Atelier also passes a
+ * sell action and the reference / colour / notes panels for the side
+ * column, plus a way to take a colour from those panels into the brush.
+ */
+export function ArtCanvas({ artworkId, onExit, onSell, side, colourIn }: {
+  artworkId: string;
+  onExit: () => void;
+  onSell?: (canvas: HTMLCanvasElement | null, artwork: { id: string; title: string }) => void;
+  side?: Partial<Record<'refs' | 'colour' | 'notes', React.ReactNode>>;
+  colourIn?: { color: string; seq: number } | null;
+}) {
   const [artwork, setArtwork] = useState<Artwork | null>(null);
   // FIX-art-009: stroke commits are fire-and-forget async — a layer-clear
   // issued while a commit was still in flight reached the server first,
@@ -162,7 +176,7 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
   const [fontSize, setFontSize] = useState(36);
   const [shapeFilled, setShapeFilled] = useState(true);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [panel, setPanel] = useState<'none' | 'transform' | 'adjust' | 'canvas' | 'pro'>('none');
+  const [sideTab, setSideTab] = useState<SideTab>('layers');
   const [publishOpen, setPublishOpen] = useState(false);
   const [conceptOpen, setConceptOpen] = useState(false);
   const [adjust, setAdjust] = useState({ hueShift: 0, satScale: 1, lightScale: 1 });
@@ -267,7 +281,7 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
     if (selectedIds.size) {
       const layer = artwork.layers.find((l) => l.id === activeLayer);
       ctx.save();
-      ctx.strokeStyle = '#a78bfa';
+      ctx.strokeStyle = '#e2611c';
       ctx.lineWidth = 1.5;
       ctx.setLineDash([5, 4]);
       for (const el of layer?.strokes || []) {
@@ -343,7 +357,7 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
     if (!ctx) return;
     ctx.save();
     ctx.globalAlpha = kind === 'select' ? 0.9 : opacity;
-    ctx.strokeStyle = kind === 'select' ? '#a78bfa' : color;
+    ctx.strokeStyle = kind === 'select' ? '#e2611c' : color;
     ctx.fillStyle = color;
     ctx.lineWidth = kind === 'select' ? 1.5 : size;
     if (kind === 'select') ctx.setLineDash([5, 4]);
@@ -424,7 +438,7 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
       if (cv && ctx && layer) {
         ctx.save();
         ctx.setLineDash([5, 4]);
-        ctx.lineWidth = 1.5; ctx.strokeStyle = '#a78bfa'; ctx.globalAlpha = 0.9;
+        ctx.lineWidth = 1.5; ctx.strokeStyle = '#e2611c'; ctx.globalAlpha = 0.9;
         for (const el of layer.strokes) {
           if (!el.id || !selectedIds.has(el.id)) continue;
           const [bx, by, bw, bh] = elBBox(el, cv.width, cv.height);
@@ -449,7 +463,7 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
           ctx.save();
           ctx.setLineDash([5, 4]);
           ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-          ctx.lineWidth = 1.5; ctx.strokeStyle = '#a78bfa'; ctx.globalAlpha = 0.9;
+          ctx.lineWidth = 1.5; ctx.strokeStyle = '#e2611c'; ctx.globalAlpha = 0.9;
           ctx.beginPath(); ctx.moveTo(last[0], last[1]); ctx.lineTo(p[0], p[1]); ctx.stroke();
           ctx.restore();
         }
@@ -720,164 +734,218 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
     onExit();
   };
 
+  // A colour chosen on the Colour panel loads onto the brush.
+  useEffect(() => { if (colourIn?.color) setColor(colourIn.color); }, [colourIn]);
+
+  // Painter's keys: B brush, E eraser, V select, L lasso, G fill, I eyedropper,
+  // T text, R/O/N shapes, [ and ] brush size, ⌘Z undo, ⇧⌘Z redo.
+  const keysRef = useRef({ undo, redo });
+  keysRef.current = { undo, redo };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); void (e.shiftKey ? keysRef.current.redo() : keysRef.current.undo()); return; }
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const map: Record<string, string> = { b: 'ink', e: 'eraser', v: 'select', l: 'lasso', g: 'fill', i: 'pick', t: 'text', r: 'rect', o: 'ellipse', n: 'line' };
+      const k = e.key.toLowerCase();
+      if (map[k]) { e.preventDefault(); setTool(map[k]); if (k !== 'v' && k !== 'l') setSelectedIds(new Set()); return; }
+      if (e.key === '[') setSize((v) => Math.max(1, v - 2));
+      if (e.key === ']') setSize((v) => Math.min(120, v + 2));
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   if (loading || !artwork) {
-    return <div className="flex items-center justify-center py-12 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="at-easel min-h-[60vh]" role="status" aria-label="Loading the piece"><Loader2 className="h-5 w-5 animate-spin text-[color:var(--at-muted)]" /></div>;
   }
 
-  const TOOLS: { id: string; icon: typeof Brush; label: string }[] = [
-    { id: 'select', icon: BoxSelect, label: 'Select' },
-    { id: 'lasso', icon: Lasso, label: 'Lasso' },
-    { id: 'fill', icon: PaintBucket, label: 'Fill' },
-    { id: 'rect', icon: Square, label: 'Rectangle' },
-    { id: 'ellipse', icon: Circle, label: 'Ellipse' },
-    { id: 'line', icon: Minus, label: 'Line' },
-    { id: 'text', icon: Type, label: 'Text' },
-    { id: 'pick', icon: Pipette, label: 'Eyedropper' },
-    { id: 'eraser', icon: Eraser, label: 'Eraser' },
+  const TOOLS: { id: string; icon: typeof Brush; label: string; key: string }[] = [
+    { id: 'select', icon: BoxSelect, label: 'Select', key: 'V' },
+    { id: 'lasso', icon: Lasso, label: 'Lasso', key: 'L' },
+    { id: 'fill', icon: PaintBucket, label: 'Fill', key: 'G' },
+    { id: 'rect', icon: Square, label: 'Rectangle', key: 'R' },
+    { id: 'ellipse', icon: Circle, label: 'Ellipse', key: 'O' },
+    { id: 'line', icon: Minus, label: 'Line', key: 'N' },
+    { id: 'text', icon: Type, label: 'Text', key: 'T' },
+    { id: 'pick', icon: Pipette, label: 'Eyedropper', key: 'I' },
+    { id: 'eraser', icon: Eraser, label: 'Eraser', key: 'E' },
   ];
+  const SIDE: { id: SideTab; label: string }[] = [
+    { id: 'layers', label: 'Layers' },
+    { id: 'refs', label: 'Refs' },
+    { id: 'colour', label: 'Colour' },
+    { id: 'pro', label: 'Tools' },
+    { id: 'notes', label: 'Notes' },
+  ];
+  const strokes = artwork.layers.reduce((n, l) => n + l.strokes.length, 0);
 
   return (
-    <div className="space-y-3">
-      {/* Top bar */}
+    <div className="space-y-3" data-testid="art-canvas">
+      {/* The piece: its name, the hand tools and what you can do with it */}
       <div className="flex flex-wrap items-center gap-2">
-        <button type="button" onClick={exit} className={topBtn}><ArrowLeft className="w-3.5 h-3.5" /> Gallery</button>
+        <button type="button" onClick={exit} className="at-btn at-btn-quiet" title="Your pieces"><ArrowLeft className="h-3.5 w-3.5" /> Pieces</button>
         {renaming ? (
-          <span className="flex-1 flex items-center gap-1 min-w-[120px]">
-            <input
-              autoFocus
-              value={titleDraft}
-              onChange={(e) => setTitleDraft(e.target.value)}
-              maxLength={200}
-              onKeyDown={(e) => { if (e.key === 'Enter') void saveRename(); if (e.key === 'Escape') setRenaming(false); }}
-              onBlur={saveRename}
-              className="flex-1 bg-zinc-900 border border-violet-600 rounded px-2 py-1 text-sm text-zinc-100 min-w-0"
-            />
-          </span>
+          <input
+            autoFocus
+            value={titleDraft}
+            onChange={(e) => setTitleDraft(e.target.value)}
+            maxLength={200}
+            onKeyDown={(e) => { if (e.key === 'Enter') void saveRename(); if (e.key === 'Escape') setRenaming(false); }}
+            onBlur={saveRename}
+            className="at-input max-w-[360px]"
+            aria-label="Name this piece"
+          />
         ) : (
-          <button
-            type="button"
-            onClick={startRename}
-            title="Rename artwork"
-            className="flex-1 flex items-center gap-1.5 min-w-0 text-left text-sm font-semibold text-zinc-100 hover:text-violet-300 group"
-          >
-            <span className="truncate">{artwork.title}</span>
-            <Pencil className="w-3 h-3 text-zinc-500 group-hover:text-violet-300 shrink-0" />
+          <button type="button" onClick={startRename} title="Rename this piece" className="group flex min-w-0 items-baseline gap-2 text-left">
+            <span className="at-display truncate text-[22px] leading-none" data-testid="at-title">{artwork.title}</span>
+            <Pencil className="h-3 w-3 shrink-0 text-[color:var(--at-faint)] group-hover:text-[color:var(--at-accent)]" />
           </button>
         )}
-        <button type="button" onClick={undo} className={topBtn}><Undo2 className="w-3.5 h-3.5" /> Undo</button>
-        <button type="button" onClick={redo} className={topBtn}><Redo2 className="w-3.5 h-3.5" /> Redo</button>
-        <button
-          type="button"
-          onClick={() => void pasteClipboard()}
-          disabled={!clipboard.length}
-          title="Paste the copied strokes into the active layer, offset so you can see them land"
-          className={cn(topBtn, 'disabled:opacity-40')}
-        >
-          <ClipboardPaste className="w-3.5 h-3.5" /> Paste{clipboard.length ? ` (${clipboard.length})` : ''}
+        <span className="at-label at-num hidden sm:inline">{artwork.width}×{artwork.height} · {artwork.layers.length} layers · {strokes} marks</span>
+        <span className="flex-1" />
+        <button type="button" onClick={undo} className="at-btn at-btn-quiet" title="Undo (⌘Z)"><Undo2 className="h-3.5 w-3.5" /> Undo</button>
+        <button type="button" onClick={redo} className="at-btn at-btn-quiet" title="Redo (⇧⌘Z)"><Redo2 className="h-3.5 w-3.5" /> Redo</button>
+        <button type="button" onClick={() => void pasteClipboard()} disabled={!clipboard.length} className="at-btn at-btn-quiet"
+          title="Paste the copied marks into the active layer, offset so you can see them land">
+          <ClipboardPaste className="h-3.5 w-3.5" /> Paste{clipboard.length ? ` (${clipboard.length})` : ''}
         </button>
-        <button type="button" onClick={exportPNG} className={topBtn}><Download className="w-3.5 h-3.5" /> PNG</button>
-        <button
-          type="button"
-          onClick={runCritique}
-          disabled={critiquing}
-          className={topBtn}
-          title="Snapshot the canvas and ask the vision brain for a real critique"
-        >
-          {critiquing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />} AI Critique
+        <button type="button" onClick={exportPNG} className="at-btn at-btn-quiet" title="Download as PNG"><Download className="h-3.5 w-3.5" /> PNG</button>
+        <button type="button" onClick={runCritique} disabled={critiquing} className="at-btn" title="Snapshot the canvas and ask the vision brain for a critique">
+          {critiquing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} Critique
         </button>
-        <button
-          type="button"
-          onClick={() => setPublishOpen(true)}
-          className={topBtn}
-          title="Publish as a Concordia material texture — flows through evo_assets → pbr-loader → procedural-buildings"
-        >
-          <Upload className="w-3.5 h-3.5" /> Publish material
+        <button type="button" onClick={() => setPublishOpen(true)} className="at-btn"
+          title="Publish as a Concordia material texture — flows through evo_assets → pbr-loader → procedural-buildings">
+          <Upload className="h-3.5 w-3.5" /> Material
         </button>
-        <button
-          type="button"
-          onClick={() => setConceptOpen(true)}
-          className={topBtn}
-          title="Publish as concept art — mints a real, citable DTU other asset macros (e.g. a building blueprint) can cite as their origin"
-        >
-          <Upload className="w-3.5 h-3.5" /> Publish as concept
+        <button type="button" onClick={() => setConceptOpen(true)} className="at-btn"
+          title="Publish as concept art — mints a citable DTU other asset macros (e.g. a building blueprint) can cite as their origin">
+          <Upload className="h-3.5 w-3.5" /> Concept
         </button>
+        {onSell && (
+          <button type="button" onClick={() => onSell(canvasRef.current, { id: artwork.id, title: artwork.title })} className="at-btn at-btn-paint" data-testid="at-sell">
+            Put on sale
+          </button>
+        )}
       </div>
 
       {critique && (
-        <div className="rounded-lg border border-violet-900/50 bg-violet-950/20 p-3 flex items-start gap-2">
-          <Sparkles className="w-4 h-4 text-violet-300 shrink-0 mt-0.5" />
-          <p className="text-xs text-zinc-200 leading-relaxed flex-1">{critique}</p>
-          <button type="button" onClick={() => setCritique(null)} aria-label="Dismiss critique" className="text-zinc-500 hover:text-zinc-300 shrink-0"><X className="w-3.5 h-3.5" /></button>
+        <div className="at-note at-rise flex items-start gap-2">
+          <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--at-accent)]" />
+          <p className="flex-1 leading-relaxed">{critique}</p>
+          <button type="button" onClick={() => setCritique(null)} aria-label="Dismiss critique" className="text-[color:var(--at-muted)]"><X className="h-3.5 w-3.5" /></button>
         </div>
       )}
+      {toolsError && <ErrorState variant="inline" message={toolsError} onRetry={() => void reloadBrushes()} />}
 
-      {toolsError && (
-        <ErrorState variant="inline" message={toolsError} onRetry={() => void reloadBrushes()} />
-      )}
-
-      {/* Tool palette */}
-      <div className="flex flex-wrap gap-1.5">
-        {brushes.filter((b) => BRUSH_TOOLS.includes(b.tool)).map((b) => (
-          <span key={b.id} className="relative group inline-flex">
-            <button type="button"
-              onClick={() => { setTool(b.tool); setSize(b.size); setOpacity(b.opacity); setSelectedIds(new Set()); }}
-              className={cn(toolBtn, tool === b.tool && size === b.size ? on : off)}>
-              <Brush className="w-3 h-3" />{b.name}
-            </button>
-            {b.custom && (
-              <button type="button" onClick={() => void deleteBrush(b.id)} aria-label={`Delete brush ${b.name}`}
-                className="absolute -top-1 -right-1 hidden group-hover:flex items-center justify-center w-3.5 h-3.5 rounded-full bg-rose-600 text-white text-[8px] leading-none">×</button>
-            )}
-          </span>
-        ))}
-        <button type="button" onClick={() => void saveBrush()} title="Save the current tool, size, and opacity as a brush preset. The artwork itself saves on its own."
-          className={cn(toolBtn, off)}>
-          <Brush className="w-3 h-3" />Save brush
-        </button>
-        {TOOLS.map((t) => {
-          const Icon = t.icon;
-          return (
-            <button key={t.id} type="button" aria-label={t.label} onClick={() => { setTool(t.id); if (t.id !== 'select' && t.id !== 'lasso') setSelectedIds(new Set()); }}
-              className={cn(toolBtn, tool === t.id ? on : off)}>
-              <Icon className="w-3 h-3" />{t.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Selection toolbar */}
+      {/* Selection */}
       {selectedIds.size > 0 && (
-        <div className="flex flex-wrap items-center gap-2 bg-violet-950/40 border border-violet-900/50 rounded-lg px-3 py-1.5">
-          <span className="text-[11px] text-violet-200">{selectedIds.size} selected</span>
-          {/* FIX-art-008: the selected marks are listed, not just counted —
-              each chip names the mark and can drop it from the selection. */}
+        <div className="at-tray at-rise flex flex-wrap items-center gap-2 px-3 py-1.5">
+          <span className="text-[12px] font-medium">{selectedIds.size} selected</span>
           <span className="flex flex-wrap items-center gap-1">
             {(artwork.layers.find((l) => l.id === activeLayer)?.strokes || [])
               .filter((el) => el.id && selectedIds.has(el.id))
               .map((el) => {
                 const label = el.kind === 'text' ? `text “${(el.content || '').slice(0, 16)}”` : (el.tool || el.kind || 'mark');
                 return (
-                  <span key={el.id} className="flex items-center gap-1 rounded bg-violet-900/50 px-1.5 py-0.5 text-[10px] text-violet-100">
+                  <span key={el.id} className="flex items-center gap-1 rounded bg-[var(--at-accent-soft)] px-1.5 py-0.5 text-[11px]">
                     {label}
                     <button type="button" aria-label={`Remove ${label} from selection`}
                       onClick={() => setSelectedIds((prev) => { const next = new Set(prev); next.delete(el.id!); return next; })}
-                      className="text-violet-300 hover:text-white">×</button>
+                      className="text-[color:var(--at-accent-text)]">×</button>
                   </span>
                 );
               })}
           </span>
-          <button type="button" onClick={copySelection} className="flex items-center gap-1 text-[11px] px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded">
-            <ClipboardCopy className="w-3 h-3" /> Copy
-          </button>
-          <button type="button" onClick={deleteSelection} className="text-[11px] px-2 py-0.5 bg-zinc-800 hover:bg-rose-900 text-zinc-200 rounded">Delete</button>
-          <span className="text-[10px] text-zinc-400">Drag selected marks on the canvas to move them. Transform panel applies to the selection.</span>
-          <button type="button" onClick={() => setSelectedIds(new Set())} className="text-[11px] text-zinc-400 ml-auto">Clear</button>
+          <button type="button" onClick={copySelection} className="at-btn h-7 px-2"><ClipboardCopy className="h-3 w-3" /> Copy</button>
+          <button type="button" onClick={deleteSelection} className="at-btn h-7 px-2">Delete</button>
+          <span className="text-[11px] text-[color:var(--at-muted)]">Drag selected marks on the canvas to move them.</span>
+          <button type="button" onClick={() => setSelectedIds(new Set())} className="ml-auto text-[12px] text-[color:var(--at-muted)]">Clear</button>
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_220px] gap-3">
-        {/* Canvas */}
-        <div className="bg-[repeating-conic-gradient(#3f3f46_0%_25%,#27272a_0%_50%)] bg-[length:16px_16px] rounded-xl p-2 flex items-center justify-center overflow-hidden">
+      <div className="grid gap-3 lg:grid-cols-[208px_minmax(0,1fr)_300px]">
+        {/* The brush tray and the mixing slab */}
+        <aside className="order-2 min-w-0 space-y-3 lg:order-none" aria-label="Brushes and colour">
+          <div className="at-tray p-2">
+            <p className="at-label px-1 pb-1.5">Brushes</p>
+            <div className="at-scroll flex gap-1 overflow-x-auto lg:block lg:space-y-0.5">
+              {brushes.filter((b) => BRUSH_TOOLS.includes(b.tool)).map((b) => (
+                <span key={b.id} className="group relative block shrink-0 lg:shrink">
+                  <button type="button" aria-pressed={tool === b.tool && size === b.size}
+                    onClick={() => { setTool(b.tool); setSize(b.size); setOpacity(b.opacity); setSelectedIds(new Set()); }}
+                    className="at-tool">
+                    <Brush className="h-3.5 w-3.5" />{b.name}<span className="ml-auto text-[10.5px] text-[color:var(--at-faint)] at-num">{b.size}px</span>
+                  </button>
+                  {b.custom && (
+                    <button type="button" onClick={() => void deleteBrush(b.id)} aria-label={`Delete brush ${b.name}`}
+                      className="absolute right-1 top-1 hidden h-4 w-4 items-center justify-center rounded-full bg-[var(--at-bad)] text-[9px] text-[color:var(--at-accent-ink)] group-hover:flex">×</button>
+                  )}
+                </span>
+              ))}
+              <button type="button" onClick={() => void saveBrush()} className="at-tool text-[color:var(--at-muted)]"
+                title="Keep the current tool, size and opacity as a brush. The piece itself saves on its own.">
+                <Plus className="h-3.5 w-3.5" />Save brush
+              </button>
+            </div>
+            <p className="at-label px-1 pb-1.5 pt-3">Tools</p>
+            <div className="at-scroll flex gap-1 overflow-x-auto lg:block lg:space-y-0.5">
+              {TOOLS.map((t) => {
+                const Icon = t.icon;
+                return (
+                  <button key={t.id} type="button" aria-label={t.label} aria-pressed={tool === t.id}
+                    onClick={() => { setTool(t.id); if (t.id !== 'select' && t.id !== 'lasso') setSelectedIds(new Set()); }}
+                    className="at-tool">
+                    <Icon className="h-3.5 w-3.5" />{t.label}<kbd className="ml-auto text-[10px] text-[color:var(--at-faint)]">{t.key}</kbd>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="at-slab space-y-2.5" aria-label="Colour">
+            <div className="flex items-center gap-3">
+              <label className="relative" title="Mix a colour">
+                <span className="at-loaded block" style={{ background: color }} data-testid="at-loaded" />
+                <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="absolute inset-0 cursor-pointer opacity-0" aria-label="Brush colour" />
+              </label>
+              <div className="min-w-0">
+                <p className="at-label">On the brush</p>
+                <p className="at-num text-[12px] uppercase">{color}</p>
+              </div>
+            </div>
+            {swatches.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {swatches.map((c) => (
+                  <button key={c} type="button" onClick={() => setColor(c)} className="at-dab" aria-pressed={c.toLowerCase() === color.toLowerCase()} style={{ background: c }} title={c} aria-label={`Load ${c}`} />
+                ))}
+              </div>
+            )}
+            <label className="block text-[12px]">
+              <span className="flex justify-between"><span>Size</span><span className="at-num text-[color:var(--at-muted)]">{size}px</span></span>
+              <input type="range" min={1} max={120} value={size} onChange={(e) => setSize(Number(e.target.value))} className="at-range" />
+            </label>
+            <label className="block text-[12px]">
+              <span className="flex justify-between"><span>Opacity</span><span className="at-num text-[color:var(--at-muted)]">{Math.round(opacity * 100)}%</span></span>
+              <input type="range" min={0.05} max={1} step={0.05} value={opacity} onChange={(e) => setOpacity(Number(e.target.value))} className="at-range" />
+            </label>
+            {tool === 'text' && (
+              <label className="block text-[12px]">
+                <span className="flex justify-between"><span>Font</span><span className="at-num text-[color:var(--at-muted)]">{fontSize}</span></span>
+                <input type="range" min={8} max={200} value={fontSize} onChange={(e) => setFontSize(Number(e.target.value))} className="at-range" />
+              </label>
+            )}
+            {(tool === 'rect' || tool === 'ellipse') && (
+              <label className="flex items-center gap-2 text-[12px]">
+                <input type="checkbox" checked={shapeFilled} onChange={(e) => setShapeFilled(e.target.checked)} className="accent-[color:var(--at-accent)]" /> Filled
+              </label>
+            )}
+          </div>
+        </aside>
+
+        {/* The easel */}
+        <div className="at-easel order-1 min-h-[42vh] p-3 sm:p-8 lg:order-none lg:min-h-[56vh]">
           <canvas
             ref={canvasRef}
             width={artwork.width}
@@ -886,174 +954,120 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
             onPointerLeave={onPointerUp}
-            className="rounded shadow-lg cursor-crosshair"
-            style={{ maxWidth: '100%', maxHeight: '60vh', touchAction: 'none' }}
+            className="cursor-crosshair"
+            style={{ maxWidth: '100%', maxHeight: '64vh', touchAction: 'none' }}
+            aria-label={`Canvas: ${artwork.title}`}
           />
+          <div className="at-ledge" aria-hidden />
         </div>
 
-        {/* Layers */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-semibold text-zinc-300">Layers</h3>
-            <button type="button" onClick={addLayer} aria-label="Add layer" className="text-zinc-400 hover:text-violet-300"><Plus className="w-4 h-4" /></button>
+        {/* The studio wall: layers, references, colour, tools, notes */}
+        <aside className="order-3 min-w-0 lg:order-none" aria-label="Studio wall">
+          <div className="at-scroll flex gap-0.5 overflow-x-auto" role="tablist" aria-label="Side panels">
+            {SIDE.filter((t) => t.id === 'layers' || t.id === 'pro' || side?.[t.id as 'refs' | 'colour' | 'notes']).map((t) => (
+              <button key={t.id} type="button" role="tab" aria-selected={sideTab === t.id} className="at-tab" onClick={() => setSideTab(t.id)}>{t.label}</button>
+            ))}
           </div>
-          <ul className="space-y-1.5">
-            {[...artwork.layers].reverse().map((l) => (
-              <li key={l.id}
-                className={cn('rounded-lg border p-2', activeLayer === l.id ? 'border-violet-600 bg-violet-950/30' : 'border-zinc-800 bg-zinc-900/70')}>
-                <div className="flex items-center gap-1">
-                  <button type="button" onClick={() => updateLayer(l.id, { visible: !l.visible })} aria-label={l.visible ? `Hide layer ${l.name}` : `Show layer ${l.name}`} className="text-zinc-400 hover:text-zinc-200">
-                    {l.visible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-                  </button>
-                  <button type="button" onClick={() => { setActiveLayer(l.id); setSelectedIds(new Set()); }}
-                    className="flex-1 text-left text-xs text-zinc-200 truncate">{l.name}</button>
-                  <button type="button" onClick={() => updateLayer(l.id, { locked: !l.locked })} aria-label={l.locked ? `Unlock layer ${l.name}` : `Lock layer ${l.name}`} className="text-zinc-400 hover:text-zinc-300">
-                    {l.locked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
-                  </button>
-                  <button type="button" onClick={() => reorderLayer(l.id, 'up')} aria-label={`Move layer ${l.name} up`} className="text-zinc-400 hover:text-zinc-300"><ChevronUp className="w-3.5 h-3.5" /></button>
-                  <button type="button" onClick={() => reorderLayer(l.id, 'down')} aria-label={`Move layer ${l.name} down`} className="text-zinc-400 hover:text-zinc-300"><ChevronDown className="w-3.5 h-3.5" /></button>
-                  <button type="button" onClick={() => deleteLayer(l.id)} aria-label={`Delete layer ${l.name}`} className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+          <div className="at-tray at-scroll max-h-[72vh] overflow-y-auto rounded-tl-none p-2.5">
+            {sideTab === 'layers' && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="at-label">Layers · top first</p>
+                  <button type="button" onClick={addLayer} aria-label="Add layer" className="at-btn h-7 px-2"><Plus className="h-3.5 w-3.5" /> Add</button>
                 </div>
-                {activeLayer === l.id && (
-                  <div className="mt-1.5 space-y-1.5">
-                    <select value={l.blendMode} onChange={(e) => updateLayer(l.id, { blendMode: e.target.value })}
-                      className="w-full bg-zinc-950 border border-zinc-700 rounded px-1.5 py-1 text-[10px] text-zinc-100 capitalize">
-                      {blendModes.map((m) => <option key={m} value={m}>{m.replace(/-/g, ' ')}</option>)}
-                    </select>
-                    <input type="range" min={0} max={1} step={0.05} value={l.opacity}
-                      onChange={(e) => updateLayer(l.id, { opacity: Number(e.target.value) })} className="w-full accent-violet-500" />
-                    <div className="flex flex-wrap gap-1">
-                      <button type="button" onClick={() => duplicateLayer(l.id)} className={miniBtn}><Copy className="w-3 h-3" /> Dup</button>
-                      <button type="button" onClick={() => mergeDown(l.id)} className={miniBtn}><LayersIcon className="w-3 h-3" /> Merge</button>
-                      <button type="button" onClick={() => updateLayer(l.id, { clipped: !l.clipped })}
-                        className={cn(miniBtn, l.clipped && 'bg-violet-700 text-white')}>Clip</button>
-                      <button type="button" onClick={() => clearLayer(l.id)} disabled={!l.strokes.length}
-                        className={cn(miniBtn, 'disabled:opacity-40')} title="Erase every stroke on this layer">
-                        <Eraser className="w-3 h-3" /> Clear
-                      </button>
-                    </div>
+                <ul className="space-y-1.5">
+                  {[...artwork.layers].reverse().map((l) => (
+                    <li key={l.id} className="at-layer p-2" data-active={activeLayer === l.id}>
+                      <div className="flex items-center gap-1">
+                        <button type="button" onClick={() => updateLayer(l.id, { visible: !l.visible })} aria-label={l.visible ? `Hide layer ${l.name}` : `Show layer ${l.name}`} className="text-[color:var(--at-muted)]">
+                          {l.visible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                        </button>
+                        <button type="button" onClick={() => { setActiveLayer(l.id); setSelectedIds(new Set()); }} className="flex-1 truncate text-left text-[12.5px]">
+                          {l.name} <span className="text-[10.5px] text-[color:var(--at-faint)] at-num">{l.strokes.length}</span>
+                        </button>
+                        <button type="button" onClick={() => updateLayer(l.id, { locked: !l.locked })} aria-label={l.locked ? `Unlock layer ${l.name}` : `Lock layer ${l.name}`} className="text-[color:var(--at-muted)]">
+                          {l.locked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+                        </button>
+                        <button type="button" onClick={() => reorderLayer(l.id, 'up')} aria-label={`Move layer ${l.name} up`} className="text-[color:var(--at-muted)]"><ChevronUp className="h-3.5 w-3.5" /></button>
+                        <button type="button" onClick={() => reorderLayer(l.id, 'down')} aria-label={`Move layer ${l.name} down`} className="text-[color:var(--at-muted)]"><ChevronDown className="h-3.5 w-3.5" /></button>
+                        <button type="button" onClick={() => deleteLayer(l.id)} aria-label={`Delete layer ${l.name}`} className="text-[color:var(--at-faint)] hover:text-[color:var(--at-bad)]"><Trash2 className="h-3.5 w-3.5" /></button>
+                      </div>
+                      {activeLayer === l.id && (
+                        <div className="mt-2 space-y-1.5">
+                          <select value={l.blendMode} onChange={(e) => updateLayer(l.id, { blendMode: e.target.value })} className="at-input h-7 capitalize" aria-label="Blend mode">
+                            {blendModes.map((m) => <option key={m} value={m}>{m.replace(/-/g, ' ')}</option>)}
+                          </select>
+                          <label className="block text-[11.5px]">
+                            <span className="flex justify-between"><span>Layer opacity</span><span className="at-num">{Math.round(l.opacity * 100)}%</span></span>
+                            <input type="range" min={0} max={1} step={0.05} value={l.opacity} onChange={(e) => updateLayer(l.id, { opacity: Number(e.target.value) })} className="at-range" />
+                          </label>
+                          <div className="flex flex-wrap gap-1">
+                            <button type="button" onClick={() => duplicateLayer(l.id)} className="at-btn h-7 px-2 text-[11.5px]"><Copy className="h-3 w-3" /> Dup</button>
+                            <button type="button" onClick={() => mergeDown(l.id)} className="at-btn h-7 px-2 text-[11.5px]"><LayersIcon className="h-3 w-3" /> Merge</button>
+                            <button type="button" onClick={() => updateLayer(l.id, { clipped: !l.clipped })} aria-pressed={!!l.clipped} className={cn('at-btn h-7 px-2 text-[11.5px]', l.clipped && 'at-btn-paint')}>Clip</button>
+                            <button type="button" onClick={() => clearLayer(l.id)} disabled={!l.strokes.length} className="at-btn h-7 px-2 text-[11.5px]" title="Erase every mark on this layer">Clear</button>
+                          </div>
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {sideTab === 'pro' && (
+              <div className="space-y-4">
+                <section>
+                  <p className="at-label mb-1.5">Move · {selectedIds.size ? 'the selection' : 'the layer'}</p>
+                  <div className="flex flex-wrap gap-1">
+                    <button type="button" onClick={() => doTransform('layer-transform', { dx: -20, dy: 0, scale: 1 })} className="at-btn h-7 px-2" aria-label="Move left">←</button>
+                    <button type="button" onClick={() => doTransform('layer-transform', { dx: 20, dy: 0, scale: 1 })} className="at-btn h-7 px-2" aria-label="Move right">→</button>
+                    <button type="button" onClick={() => doTransform('layer-transform', { dx: 0, dy: -20, scale: 1 })} className="at-btn h-7 px-2" aria-label="Move up">↑</button>
+                    <button type="button" onClick={() => doTransform('layer-transform', { dx: 0, dy: 20, scale: 1 })} className="at-btn h-7 px-2" aria-label="Move down">↓</button>
+                    <button type="button" onClick={() => doTransform('layer-transform', { dx: 0, dy: 0, scale: 1.2 })} className="at-btn h-7 px-2">Larger</button>
+                    <button type="button" onClick={() => doTransform('layer-transform', { dx: 0, dy: 0, scale: 0.83 })} className="at-btn h-7 px-2">Smaller</button>
+                    <button type="button" onClick={() => doTransform('layer-flip', { axis: 'horizontal' })} className="at-btn h-7 px-2">Flip ↔</button>
+                    <button type="button" onClick={() => doTransform('layer-flip', { axis: 'vertical' })} className="at-btn h-7 px-2">Flip ↕</button>
+                    <button type="button" onClick={() => doTransform('layer-rotate90', { direction: 'cw' })} className="at-btn h-7 px-2">Turn 90°</button>
                   </div>
+                </section>
+                <section>
+                  <p className="at-label mb-1.5">Adjust the layer's colour</p>
+                  <div className="space-y-1">
+                    <label className="block text-[11.5px]"><span className="flex justify-between"><span>Hue</span><span className="at-num">{adjust.hueShift}°</span></span>
+                      <input type="range" min={-180} max={180} value={adjust.hueShift} onChange={(e) => setAdjust({ ...adjust, hueShift: Number(e.target.value) })} className="at-range" /></label>
+                    <label className="block text-[11.5px]"><span className="flex justify-between"><span>Saturation</span><span className="at-num">{adjust.satScale.toFixed(2)}</span></span>
+                      <input type="range" min={0} max={2} step={0.05} value={adjust.satScale} onChange={(e) => setAdjust({ ...adjust, satScale: Number(e.target.value) })} className="at-range" /></label>
+                    <label className="block text-[11.5px]"><span className="flex justify-between"><span>Lightness</span><span className="at-num">{adjust.lightScale.toFixed(2)}</span></span>
+                      <input type="range" min={0} max={2} step={0.05} value={adjust.lightScale} onChange={(e) => setAdjust({ ...adjust, lightScale: Number(e.target.value) })} className="at-range" /></label>
+                    <button type="button" onClick={applyAdjust} className="at-btn at-btn-paint h-7 px-2">Apply to layer</button>
+                  </div>
+                </section>
+                <section>
+                  <p className="at-label mb-1.5">Canvas · <span className="at-num">{artwork.width}×{artwork.height}</span></p>
+                  <div className="flex flex-wrap gap-1">
+                    <button type="button" onClick={() => flipCanvas('horizontal')} className="at-btn h-7 px-2"><FlipHorizontal2 className="h-3 w-3" /> Flip ↔</button>
+                    <button type="button" onClick={() => flipCanvas('vertical')} className="at-btn h-7 px-2">Flip ↕</button>
+                    <button type="button" onClick={() => resizeCanvas(artwork.width + 200, artwork.height)} className="at-btn h-7 px-2">Wider</button>
+                    <button type="button" onClick={() => resizeCanvas(artwork.width, artwork.height + 200)} className="at-btn h-7 px-2">Taller</button>
+                  </div>
+                </section>
+                {activeLayer && (
+                  <ProStudioPanel artworkId={artwork.id} layerId={activeLayer} selectedIds={[...selectedIds]} onApplied={reload}
+                    canvas={canvasRef.current} guides={guides} onGuidesChange={setGuides} />
                 )}
-              </li>
-            ))}
-          </ul>
-        </div>
+              </div>
+            )}
+
+            {sideTab === 'refs' && side?.refs}
+            {sideTab === 'colour' && side?.colour}
+            {sideTab === 'notes' && side?.notes}
+          </div>
+        </aside>
       </div>
 
-      {/* Brush settings */}
-      <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-2.5">
-        <div className="flex flex-wrap items-center gap-3">
-          <label className="flex items-center gap-1.5 text-[11px] text-zinc-400">
-            Color <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="w-8 h-8 bg-transparent cursor-pointer" />
-          </label>
-          <label className="flex items-center gap-1.5 text-[11px] text-zinc-400">
-            Size {size}
-            <input type="range" min={1} max={120} value={size} onChange={(e) => setSize(Number(e.target.value))} className="w-24 accent-violet-500" />
-          </label>
-          <label className="flex items-center gap-1.5 text-[11px] text-zinc-400">
-            Opacity {Math.round(opacity * 100)}%
-            <input type="range" min={0.05} max={1} step={0.05} value={opacity} onChange={(e) => setOpacity(Number(e.target.value))} className="w-24 accent-violet-500" />
-          </label>
-          {tool === 'text' && (
-            <label className="flex items-center gap-1.5 text-[11px] text-zinc-400">
-              Font {fontSize}
-              <input type="range" min={8} max={200} value={fontSize} onChange={(e) => setFontSize(Number(e.target.value))} className="w-20 accent-violet-500" />
-            </label>
-          )}
-          {(tool === 'rect' || tool === 'ellipse') && (
-            <label className="flex items-center gap-1 text-[11px] text-zinc-400">
-              <input type="checkbox" checked={shapeFilled} onChange={(e) => setShapeFilled(e.target.checked)} className="accent-violet-500" /> Filled
-            </label>
-          )}
-        </div>
-        {swatches.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {swatches.map((c) => (
-              <button key={c} type="button" onClick={() => setColor(c)} className="w-5 h-5 rounded border border-zinc-700" style={{ background: c }} title={c} />
-            ))}
-          </div>
-        )}
-        {/* Panel toggles */}
-        <div className="flex flex-wrap gap-1.5 pt-1 border-t border-zinc-800">
-          {(['transform', 'adjust', 'canvas', 'pro'] as const).map((p) => (
-            <button key={p} type="button" onClick={() => setPanel(panel === p ? 'none' : p)}
-              className={cn(miniBtn, panel === p && 'bg-violet-700 text-white')}>
-              {p === 'pro' ? 'pro studio' : p}
-            </button>
-          ))}
-        </div>
-        {panel === 'transform' && (
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-[10px] text-zinc-400">{selectedIds.size ? 'selection' : 'layer'}:</span>
-            <button type="button" onClick={() => doTransform('layer-transform', { dx: -20, dy: 0, scale: 1 })} className={miniBtn}>← move</button>
-            <button type="button" onClick={() => doTransform('layer-transform', { dx: 20, dy: 0, scale: 1 })} className={miniBtn}>move →</button>
-            <button type="button" onClick={() => doTransform('layer-transform', { dx: 0, dy: -20, scale: 1 })} className={miniBtn}>↑</button>
-            <button type="button" onClick={() => doTransform('layer-transform', { dx: 0, dy: 20, scale: 1 })} className={miniBtn}>↓</button>
-            <button type="button" onClick={() => doTransform('layer-transform', { dx: 0, dy: 0, scale: 1.2 })} className={miniBtn}>scale +</button>
-            <button type="button" onClick={() => doTransform('layer-transform', { dx: 0, dy: 0, scale: 0.83 })} className={miniBtn}>scale −</button>
-            <button type="button" onClick={() => doTransform('layer-flip', { axis: 'horizontal' })} className={miniBtn}>flip H</button>
-            <button type="button" onClick={() => doTransform('layer-flip', { axis: 'vertical' })} className={miniBtn}>flip V</button>
-            <button type="button" onClick={() => doTransform('layer-rotate90', { direction: 'cw' })} className={miniBtn}>rotate 90°</button>
-          </div>
-        )}
-        {panel === 'adjust' && (
-          <div className="flex flex-wrap items-center gap-3">
-            <label className="flex items-center gap-1 text-[10px] text-zinc-400">Hue {adjust.hueShift}°
-              <input type="range" min={-180} max={180} value={adjust.hueShift}
-                onChange={(e) => setAdjust({ ...adjust, hueShift: Number(e.target.value) })} className="w-20 accent-violet-500" /></label>
-            <label className="flex items-center gap-1 text-[10px] text-zinc-400">Sat {adjust.satScale.toFixed(2)}
-              <input type="range" min={0} max={2} step={0.05} value={adjust.satScale}
-                onChange={(e) => setAdjust({ ...adjust, satScale: Number(e.target.value) })} className="w-20 accent-violet-500" /></label>
-            <label className="flex items-center gap-1 text-[10px] text-zinc-400">Light {adjust.lightScale.toFixed(2)}
-              <input type="range" min={0} max={2} step={0.05} value={adjust.lightScale}
-                onChange={(e) => setAdjust({ ...adjust, lightScale: Number(e.target.value) })} className="w-20 accent-violet-500" /></label>
-            <button type="button" onClick={applyAdjust} className={cn(miniBtn, 'bg-violet-600 text-white')}>Apply to layer</button>
-          </div>
-        )}
-        {panel === 'canvas' && (
-          <div className="flex flex-wrap items-center gap-1.5">
-            <button type="button" onClick={() => flipCanvas('horizontal')} className={miniBtn}><FlipHorizontal2 className="w-3 h-3" /> Flip H</button>
-            <button type="button" onClick={() => flipCanvas('vertical')} className={miniBtn}>Flip V</button>
-            <button type="button" onClick={() => resizeCanvas(artwork.width + 200, artwork.height)} className={miniBtn}>Wider</button>
-            <button type="button" onClick={() => resizeCanvas(artwork.width, artwork.height + 200)} className={miniBtn}>Taller</button>
-            <span className="text-[10px] text-zinc-400">{artwork.width}×{artwork.height}</span>
-          </div>
-        )}
-      </div>
-
-      {/* Pro Studio — Procreate / Krita parity tools */}
-      {panel === 'pro' && activeLayer && (
-        <ProStudioPanel
-          artworkId={artwork.id}
-          layerId={activeLayer}
-          selectedIds={[...selectedIds]}
-          onApplied={reload}
-          canvas={canvasRef.current}
-          guides={guides}
-          onGuidesChange={setGuides}
-        />
-      )}
-      {publishOpen && (
-        <PublishAsTextureDialog
-          canvas={canvasRef.current}
-          artworkId={artwork?.id}
-          onClose={() => setPublishOpen(false)}
-        />
-      )}
-      {conceptOpen && (
-        <PublishAsConceptDialog
-          canvas={canvasRef.current}
-          artworkId={artwork?.id}
-          artworkTitle={artwork?.title}
-          onClose={() => setConceptOpen(false)}
-        />
-      )}
+      {publishOpen && <PublishAsTextureDialog canvas={canvasRef.current} artworkId={artwork?.id} onClose={() => setPublishOpen(false)} />}
+      {conceptOpen && <PublishAsConceptDialog canvas={canvasRef.current} artworkId={artwork?.id} artworkTitle={artwork?.title} onClose={() => setConceptOpen(false)} />}
     </div>
   );
 }
-
-const topBtn = 'flex min-h-11 items-center gap-1 rounded-lg bg-zinc-800 px-2.5 py-1.5 text-xs text-zinc-200 hover:bg-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300';
-const toolBtn = 'flex min-h-11 items-center gap-1 rounded-lg px-2 py-1 text-[11px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300';
-const miniBtn = 'flex items-center gap-1 px-2 py-0.5 text-[10px] bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded capitalize';
-const on = 'bg-violet-600 text-white';
-const off = 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700';

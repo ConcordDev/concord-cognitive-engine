@@ -339,6 +339,23 @@ describe("market — the commission pay board holds the reward in escrow", () =>
   });
 });
 
+describe("market — lots consigned from an Art piece", () => {
+  it("records the piece and lists only the caller's lots for it", async () => {
+    const painter = await depthCtx("mh-painter");
+    const other = await depthCtx("mh-painter-other");
+    const id = await makeDtu(painter, { title: "Harbour at dusk" });
+    const c = await house("house-consign", { dtuId: id, price: 8, sourceArtworkId: "art_abc123" }, painter);
+    assert.equal(c.ok, true, JSON.stringify(c));
+    const mine = await house("house-lots-for-piece", { sourceArtworkId: "art_abc123" }, painter);
+    assert.deepEqual(mine.result.lots.map((l) => l.id), [c.result.lot.id]);
+    assert.equal((await house("house-lots-for-piece", { sourceArtworkId: "art_abc123" }, other)).result.lots.length, 0, "another account sees none of them");
+    const id2 = await makeDtu(painter, { title: "Bad source id" });
+    const bad = await house("house-consign", { dtuId: id2, price: 2, sourceArtworkId: "x'); DROP TABLE users; --" }, painter);
+    assert.equal(bad.ok, true);
+    assert.equal((await house("house-lots-for-piece", { sourceArtworkId: "x'); DROP TABLE users; --" }, painter)).result.lots.length, 0, "a malformed piece id is not stored");
+  });
+});
+
 describe("economy/commission-service — escrow pays out what it holds", () => {
   it("hold then approve leaves the shared escrow account where it started", async () => {
     const cs = await import("../../economy/commission-service.js");

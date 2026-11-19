@@ -52,6 +52,9 @@ vi.mock('next/font/google', () => {
     // Market — The Auction House (components/market/house/houseFonts.ts)
     Cormorant_Garamond: face('Cormorant Garamond'),
     Jost: face('Jost'),
+    // Art — The Atelier (components/art/atelier/atelierFonts.ts)
+    Young_Serif: face('Young Serif'),
+    Work_Sans: face('Work Sans'),
   };
 });
 

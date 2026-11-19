@@ -114,22 +114,22 @@ export function ArtExplorer() {
 
   return (
     <div className="space-y-4">
-      <header className="flex items-center justify-between gap-3 border-b border-cyan-500/15 pb-3">
+      <header className="flex items-center justify-between gap-3 border-b border-[color:var(--at-blue)] pb-3">
         <div className="flex items-center gap-2">
-          <Palette className="h-5 w-5 text-cyan-400" />
-          <h2 className="text-sm font-semibold text-white">Art Explorer</h2>
-          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">
+          <Palette className="h-5 w-5 text-[color:var(--at-blue)]" />
+          <h2 className="text-sm font-semibold text-[color:var(--at-ink)]">Art Explorer</h2>
+          <span className="rounded bg-[var(--at-raised)] px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-[color:var(--at-muted)]">
             met + art-institute-of-chicago
           </span>
         </div>
-        <div className="flex items-center gap-1 rounded-md border border-zinc-800 bg-zinc-950 p-0.5">
+        <div className="flex items-center gap-1 rounded-md border border-[color:var(--at-rule)] bg-[var(--at-sunk)] p-0.5">
           {(['met', 'aic'] as const).map((s) => (
             <button
               key={s}
               type="button"
               onClick={() => { setSource(s); setSelected(null); }}
               className={`rounded px-2.5 py-1 text-[11px] font-medium uppercase tracking-wider transition-colors ${
-                source === s ? 'bg-cyan-500/15 text-cyan-300' : 'text-zinc-400 hover:text-zinc-300'
+                source === s ? 'bg-[var(--at-blue)] text-[color:var(--at-blue)]' : 'text-[color:var(--at-muted)] hover:text-[color:var(--at-ink-2)]'
               }`}
             >
               {s === 'met' ? 'Met' : 'Art Inst.'}
@@ -141,19 +141,19 @@ export function ArtExplorer() {
       {!selected && (
         <form onSubmit={submit} className="flex items-center gap-2">
           <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[color:var(--at-muted)]" />
             <input
               type="text"
               value={queryInput}
               onChange={(e) => setQueryInput(e.target.value)}
               placeholder="Search — van gogh, sunflowers, ukiyo-e, mary cassatt…"
-              className="w-full rounded-md border border-zinc-800 bg-zinc-950 py-1.5 pl-8 pr-3 text-sm text-white placeholder-zinc-600 focus:border-cyan-500/40 focus:outline-none"
+              className="w-full rounded-md border border-[color:var(--at-rule)] bg-[var(--at-sunk)] py-1.5 pl-8 pr-3 text-sm text-[color:var(--at-ink)] placeholder:text-[color:var(--at-faint)] focus:border-[color:var(--at-blue)] focus:outline-none"
             />
           </div>
           <button
             type="submit"
             disabled={queryInput.trim().length < 2 || isPending}
-            className="inline-flex items-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-200 transition-colors hover:bg-cyan-500/20 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-md border border-[color:var(--at-blue)] bg-[var(--at-blue)] px-3 py-1.5 text-xs font-medium text-[color:var(--at-blue)] transition-colors hover:bg-[var(--at-blue)] disabled:opacity-50"
           >
             {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
             Search
@@ -162,20 +162,20 @@ export function ArtExplorer() {
       )}
 
       {errorMsg && !hasResults && !selected && (
-        <div className="rounded-md border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">
+        <div className="rounded-md border border-[color:var(--at-bad)] bg-[var(--at-bad)] px-3 py-2 text-xs text-[color:var(--at-bad)]">
           {errorMsg}
         </div>
       )}
 
       {!hasResults && !isPending && !errorMsg && !selected && (
-        <div className="rounded-md border border-dashed border-zinc-800 bg-zinc-950/40 px-3 py-8 text-center text-xs text-zinc-400">
+        <div className="rounded-md border border-dashed border-[color:var(--at-rule)] bg-[var(--at-sunk)] px-3 py-8 text-center text-xs text-[color:var(--at-muted)]">
           Browse 500k+ Met objects (492k public-domain) and 113k Art Institute artworks
           (~52k CC0). Click any cover to expand into the detail card with Save-as-DTU.
         </div>
       )}
 
       {hasResults && !selected && (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2">
           {(source === 'met' ? metObjects : aicResults).map((a) => (
             <CoverCard
               key={`${source}-${'objectId' in a ? a.objectId : a.id}`}
@@ -210,9 +210,9 @@ function CoverCard({ source, art, onSelect }: { source: Source; art: MetObject |
     <button
       type="button"
       onClick={onSelect}
-      className="group flex flex-col overflow-hidden rounded-md border border-zinc-800 bg-zinc-950/40 text-left transition-colors hover:border-cyan-500/30"
+      className="group flex flex-col overflow-hidden rounded-md border border-[color:var(--at-rule)] bg-[var(--at-sunk)] text-left transition-colors hover:border-[color:var(--at-blue)]"
     >
-      <div className="relative aspect-square w-full overflow-hidden bg-zinc-900">
+      <div className="relative aspect-square w-full overflow-hidden bg-[var(--at-gesso)]">
         {img ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -223,18 +223,18 @@ function CoverCard({ source, art, onSelect }: { source: Source; art: MetObject |
           />
         ) : (
           <div className="flex h-full items-center justify-center">
-            <Palette className="h-8 w-8 text-zinc-700" />
+            <Palette className="h-8 w-8 text-[color:var(--at-faint)]" />
           </div>
         )}
         {pd && (
-          <span className="absolute right-1 top-1 rounded bg-emerald-500/20 px-1.5 py-0.5 text-[9px] font-bold uppercase text-emerald-300">
+          <span className="absolute right-1 top-1 rounded bg-[var(--at-good)] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[color:var(--at-good)]">
             CC0
           </span>
         )}
       </div>
       <div className="space-y-0.5 p-2">
-        <div className="line-clamp-2 text-xs text-white">{title}</div>
-        {artist && <div className="line-clamp-1 text-[10px] text-zinc-400">{artist}</div>}
+        <div className="line-clamp-2 text-xs text-[color:var(--at-ink)]">{title}</div>
+        {artist && <div className="line-clamp-1 text-[10px] text-[color:var(--at-muted)]">{artist}</div>}
       </div>
     </button>
   );
@@ -286,13 +286,13 @@ function DetailCard({ kind, data, onClose }: { kind: Source; data: MetObject | A
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -6 }}
       transition={{ duration: 0.18 }}
-      className="space-y-3 rounded-lg border border-cyan-500/20 bg-zinc-950/60 p-3"
+      className="space-y-3 rounded-lg border border-[color:var(--at-blue)] bg-[var(--at-sunk)] p-3"
     >
       <div className="flex items-center justify-between gap-3">
         <button
           type="button"
           onClick={onClose}
-          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
+          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-[color:var(--at-muted)] transition-colors hover:bg-[var(--at-raised)] hover:text-[color:var(--at-ink)]"
         >
           <ArrowLeft className="h-3 w-3" /> Back to results
         </button>
@@ -307,11 +307,11 @@ function DetailCard({ kind, data, onClose }: { kind: Source; data: MetObject | A
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4">
         <div className="md:col-span-2">
           {img ? (
             <div
-              className="relative overflow-hidden rounded-md border border-zinc-800 bg-zinc-950"
+              className="relative overflow-hidden rounded-md border border-[color:var(--at-rule)] bg-[var(--at-sunk)]"
               onMouseMove={handleMouseMove}
               onMouseLeave={() => setLensPos(null)}
             >
@@ -324,7 +324,7 @@ function DetailCard({ kind, data, onClose }: { kind: Source; data: MetObject | A
               />
               {lensPos && (
                 <div
-                  className="pointer-events-none absolute h-32 w-32 rounded-full border-2 border-cyan-500/60 bg-no-repeat shadow-xl"
+                  className="pointer-events-none absolute h-32 w-32 rounded-full border-2 border-[color:var(--at-blue)] bg-no-repeat shadow-xl"
                   style={{
                     left: `calc(${lensPos.x}% - 64px)`,
                     top: `calc(${lensPos.y}% - 64px)`,
@@ -336,19 +336,19 @@ function DetailCard({ kind, data, onClose }: { kind: Source; data: MetObject | A
               )}
             </div>
           ) : (
-            <div className="flex aspect-video items-center justify-center rounded-md border border-zinc-800 bg-zinc-950 text-zinc-400">
+            <div className="flex aspect-video items-center justify-center rounded-md border border-[color:var(--at-rule)] bg-[var(--at-sunk)] text-[color:var(--at-muted)]">
               No image available
             </div>
           )}
         </div>
         <aside className="space-y-2">
           <div>
-            <h3 className="text-lg font-semibold text-white">{title}</h3>
-            {artist && <p className="mt-1 text-sm text-cyan-300/90">{artist}</p>}
-            {isMet && met?.artistBio && <p className="text-[11px] italic text-zinc-400">{met.artistBio}</p>}
+            <h3 className="text-lg font-semibold text-[color:var(--at-ink)]">{title}</h3>
+            {artist && <p className="mt-1 text-sm text-[color:var(--at-blue)]">{artist}</p>}
+            {isMet && met?.artistBio && <p className="text-[11px] italic text-[color:var(--at-muted)]">{met.artistBio}</p>}
           </div>
 
-          <dl className="space-y-1.5 rounded-md border border-cyan-500/15 bg-cyan-500/5 p-2.5 text-xs">
+          <dl className="space-y-1.5 rounded-md border border-[color:var(--at-blue)] bg-[var(--at-blue)] p-2.5 text-xs">
             {dated && <Row label="Date" value={dated} />}
             {medium && <Row label="Medium" value={medium} />}
             {dimensions && <Row label="Dimensions" value={dimensions} />}
@@ -369,7 +369,7 @@ function DetailCard({ kind, data, onClose }: { kind: Source; data: MetObject | A
               href={externalUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex w-full items-center justify-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-2 py-1.5 text-[11px] font-medium text-cyan-200 transition-colors hover:bg-cyan-500/20"
+              className="flex w-full items-center justify-center gap-1.5 rounded-md border border-[color:var(--at-blue)] bg-[var(--at-blue)] px-2 py-1.5 text-[11px] font-medium text-[color:var(--at-blue)] transition-colors hover:bg-[var(--at-blue)]"
             >
               <ExternalLink className="h-3 w-3" />
               {isMet ? 'Open on Metmuseum.org' : 'Open on Artic.edu'}
@@ -384,8 +384,8 @@ function DetailCard({ kind, data, onClose }: { kind: Source; data: MetObject | A
 function Row({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
     <div className="flex justify-between gap-2">
-      <dt className="shrink-0 text-zinc-400">{label}</dt>
-      <dd className={`text-right text-zinc-200 ${mono ? 'font-mono text-[10px]' : ''}`}>{value}</dd>
+      <dt className="shrink-0 text-[color:var(--at-muted)]">{label}</dt>
+      <dd className={`text-right text-[color:var(--at-ink)] ${mono ? 'font-mono text-[10px]' : ''}`}>{value}</dd>
     </div>
   );
 }

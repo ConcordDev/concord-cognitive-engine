@@ -79,44 +79,44 @@ export function MetMuseumPanel({ domain = 'art', className, onSelect }: MetMuseu
   };
 
   return (
-    <section className={cn('rounded-lg border border-zinc-800 bg-zinc-950/80 overflow-hidden', className)}>
-      <header className="flex items-center gap-2 px-3 py-2 border-b border-zinc-800/80 bg-zinc-900/40">
-        <Palette className="w-4 h-4 text-rose-300" aria-hidden="true" />
-        <h3 className="text-sm font-medium text-zinc-100 flex-1">MET Museum · Open Access</h3>
-        <span className="text-[10px] text-emerald-400 font-mono">REAL data · CC0</span>
+    <section className={cn('rounded-lg border border-[color:var(--at-rule)] bg-[var(--at-sunk)] overflow-hidden', className)}>
+      <header className="flex items-center gap-2 px-3 py-2 border-b border-[color:var(--at-rule)] bg-[var(--at-gesso)]">
+        <Palette className="w-4 h-4 text-[color:var(--at-bad)]" aria-hidden="true" />
+        <h3 className="text-sm font-medium text-[color:var(--at-ink)] flex-1">MET Museum · Open Access</h3>
+        <span className="text-[10px] text-[color:var(--at-good)] font-mono">REAL data · CC0</span>
         {total > 0 && (
-          <span className="text-[10px] text-zinc-400 font-mono">{works.length} / {total}</span>
+          <span className="text-[10px] text-[color:var(--at-muted)] font-mono">{works.length} / {total}</span>
         )}
       </header>
 
-      <div className="p-3 border-b border-zinc-800/40 relative">
-        <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" aria-hidden="true" />
+      <div className="p-3 border-b border-[color:var(--at-rule)] relative">
+        <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[color:var(--at-muted)]" aria-hidden="true" />
         <input
           type="search"
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
           placeholder="Search the collection (artist / object / period / culture)…"
-          className="w-full pl-8 pr-8 py-1.5 text-xs bg-zinc-900 border border-zinc-700 rounded text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-rose-500/40"
+          className="w-full pl-8 pr-8 py-1.5 text-xs bg-[var(--at-gesso)] border border-[color:var(--at-rule-2)] rounded text-[color:var(--at-ink)] placeholder:text-[color:var(--at-faint)] focus:outline-none focus:ring-1 focus:ring-[color:var(--at-bad)]"
         />
-        {loading && <Loader2 className="absolute right-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 animate-spin text-zinc-400" aria-hidden="true" />}
+        {loading && <Loader2 className="absolute right-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 animate-spin text-[color:var(--at-muted)]" aria-hidden="true" />}
       </div>
 
       {error && (
-        <div className="px-3 py-3 text-xs text-rose-300/80">
+        <div className="px-3 py-3 text-xs text-[color:var(--at-bad)]">
           <AlertTriangle className="inline w-3.5 h-3.5 mr-1" aria-hidden="true" />MET unreachable ({error})
         </div>
       )}
 
       {!error && works.length === 0 && query.trim().length >= 2 && !loading && (
-        <div className="px-3 py-6 text-xs text-zinc-400 italic text-center">No works in MET for &ldquo;{query.trim()}&rdquo;.</div>
+        <div className="px-3 py-6 text-xs text-[color:var(--at-muted)] italic text-center">No works in MET for &ldquo;{query.trim()}&rdquo;.</div>
       )}
 
       {!error && works.length === 0 && query.trim().length < 2 && (
-        <div className="px-3 py-6 text-xs text-zinc-400 italic text-center">Type 2+ characters to search 470,000+ works.</div>
+        <div className="px-3 py-6 text-xs text-[color:var(--at-muted)] italic text-center">Type 2+ characters to search 470,000+ works.</div>
       )}
 
       {works.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 p-3 max-h-[700px] overflow-y-auto">
+        <div className="grid grid-cols-2 gap-2 p-3 max-h-[700px] overflow-y-auto">
           {works.map((w) => {
             const inner = (
               <div className="group">
@@ -126,16 +126,16 @@ export function MetMuseumPanel({ domain = 'art', className, onSelect }: MetMuseu
                     src={w.primaryImage}
                     alt={w.title}
                     loading="lazy"
-                    className="w-full h-32 object-cover rounded border border-zinc-800 group-hover:border-rose-500/40 transition-colors"
+                    className="w-full h-32 object-cover rounded border border-[color:var(--at-rule)] group-hover:border-[color:var(--at-bad)] transition-colors"
                   />
                 ) : (
-                  <div className="w-full h-32 rounded border border-zinc-800 bg-zinc-900 flex items-center justify-center text-zinc-600 text-[10px]">
+                  <div className="w-full h-32 rounded border border-[color:var(--at-rule)] bg-[var(--at-gesso)] flex items-center justify-center text-[color:var(--at-faint)] text-[10px]">
                     No image
                   </div>
                 )}
                 <div className="mt-1.5">
-                  <div className="text-[11px] text-zinc-200 font-medium leading-snug line-clamp-2">{w.title}</div>
-                  <div className="text-[10px] text-zinc-400 truncate mt-0.5">
+                  <div className="text-[11px] text-[color:var(--at-ink)] font-medium leading-snug line-clamp-2">{w.title}</div>
+                  <div className="text-[10px] text-[color:var(--at-muted)] truncate mt-0.5">
                     {w.artist || w.culture || '—'}{w.objectDate ? ` · ${w.objectDate}` : ''}
                   </div>
                 </div>
@@ -148,7 +148,7 @@ export function MetMuseumPanel({ domain = 'art', className, onSelect }: MetMuseu
             ) : w.objectUrl ? (
               <a key={w.objectId} href={w.objectUrl} target="_blank" rel="noopener noreferrer" className="text-left block">
                 {inner}
-                <div className="text-[10px] text-zinc-400 hover:text-rose-300 mt-0.5 flex items-center gap-0.5">
+                <div className="text-[10px] text-[color:var(--at-muted)] hover:text-[color:var(--at-bad)] mt-0.5 flex items-center gap-0.5">
                   <ExternalLink className="w-2.5 h-2.5" />metmuseum.org
                 </div>
               </a>
@@ -159,7 +159,7 @@ export function MetMuseumPanel({ domain = 'art', className, onSelect }: MetMuseu
         </div>
       )}
 
-      <footer className="px-3 py-1.5 text-[10px] text-zinc-400 border-t border-zinc-800/40">
+      <footer className="px-3 py-1.5 text-[10px] text-[color:var(--at-muted)] border-t border-[color:var(--at-rule)]">
         Source: MET Museum Open Access · ~470,000 works · CC0
       </footer>
     </section>

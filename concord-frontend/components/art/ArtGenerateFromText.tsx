@@ -114,11 +114,11 @@ export function ArtGenerateFromText({ compact = false }: { compact?: boolean }) 
   }, [prompt, busy]);
 
   return (
-    <div className={compact ? 'space-y-2' : 'space-y-3 rounded-xl border border-white/10 bg-black/40 p-4'}>
+    <div className={compact ? 'space-y-2' : 'space-y-3 rounded-xl border border-[color:var(--at-rule)] bg-[var(--at-sunk)] p-4'}>
       {!compact && (
         <div>
-          <h3 className="text-sm font-semibold text-white">Generate from Text</h3>
-          <p className="text-xs text-gray-400 mt-0.5">Local GPU image. The picture renders here when the service returns one.</p>
+          <h3 className="text-sm font-semibold text-[color:var(--at-ink)]">Generate from Text</h3>
+          <p className="text-xs text-[color:var(--at-muted)] mt-0.5">Local GPU image. The picture renders here when the service returns one.</p>
         </div>
       )}
       <input
@@ -128,27 +128,27 @@ export function ArtGenerateFromText({ compact = false }: { compact?: boolean }) 
         onKeyDown={(e) => { if (e.key === 'Enter') void generate(); }}
         placeholder="Describe artwork to generate..."
         aria-label="Artwork prompt"
-        className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none focus:border-violet-400/50"
+        className="w-full px-3 py-2 bg-[var(--at-gesso)] border border-[color:var(--at-rule-2)] rounded-lg text-xs text-[color:var(--at-ink)] placeholder:text-[color:var(--at-faint)] focus:outline-none focus:border-[color:var(--at-accent)]"
       />
       <button
         type="button"
         onClick={() => void generate()}
         disabled={busy || !prompt.trim()}
-        className="w-full flex items-center gap-2 px-3 py-2 bg-violet-500/15 text-violet-200 rounded-lg text-xs hover:bg-violet-500/25 disabled:opacity-50"
+        className="w-full flex items-center gap-2 px-3 py-2 bg-[var(--at-accent)] text-[color:var(--at-accent-text)] rounded-lg text-xs hover:bg-[var(--at-accent)] disabled:opacity-50"
       >
         {busy ? (
-          <span className="w-4 h-4 border-2 border-violet-300 border-t-transparent rounded-full animate-spin" />
+          <span className="w-4 h-4 border-2 border-[color:var(--at-accent)] border-t-transparent rounded-full animate-spin" />
         ) : (
           <Wand2 className="w-4 h-4" />
         )}
         {busy ? 'Generating...' : 'Generate from Text'}
       </button>
-      {error && <p className="text-xs text-red-400 px-1">{error}</p>}
+      {error && <p className="text-xs text-[color:var(--at-bad)] px-1">{error}</p>}
       {art?.url && (
-        <div className="p-2 rounded-lg bg-violet-500/5 border border-violet-400/20 space-y-2">
+        <div className="p-2 rounded-lg bg-[var(--at-accent)] border border-[color:var(--at-accent)] space-y-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={art.url} alt="Generated art" className="w-full rounded-md border border-white/10" />
-          <p className="text-[10px] text-gray-400">
+          <img src={art.url} alt="Generated art" className="w-full rounded-md border border-[color:var(--at-rule-2)]" />
+          <p className="text-[10px] text-[color:var(--at-muted)]">
             {art.provider || 'image'}
             {art.watermark === false ? ' · watermark false' : art.watermark === true ? ' · watermark true' : ''}
           </p>
@@ -160,7 +160,7 @@ export function ArtGenerateFromText({ compact = false }: { compact?: boolean }) 
               a.download = 'ai-art.png';
               a.click();
             }}
-            className="flex items-center gap-1 px-2 py-1 text-xs text-violet-200 hover:bg-violet-500/10 rounded"
+            className="flex items-center gap-1 px-2 py-1 text-xs text-[color:var(--at-accent-text)] hover:bg-[var(--at-accent)] rounded"
           >
             <Download className="w-3 h-3" /> Download
           </button>
