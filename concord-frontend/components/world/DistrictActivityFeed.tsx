@@ -102,7 +102,7 @@ export function DistrictActivityFeed({
           />
           <span>District Activity</span>
           {actionCount > 0 && (
-            <span className="bg-emerald-500/80 text-white text-[9px] font-bold rounded-full px-1.5 py-0.5 leading-none">
+            <span className="bg-emerald-700/80 text-white text-[9px] font-bold rounded-full px-1.5 py-0.5 leading-none">
               {actionCount}
             </span>
           )}

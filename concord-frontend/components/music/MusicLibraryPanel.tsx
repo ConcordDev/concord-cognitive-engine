@@ -170,7 +170,7 @@ export function MusicLibraryPanel({ onChange }: { onChange: () => void }) {
             <Users className="w-3.5 h-3.5 text-zinc-400" /> Collaborative
           </label>
           <button type="button" onClick={createPlaylist}
-            className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg">
+            className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg">
             <Plus className="w-3.5 h-3.5" /> Create
           </button>
         </div>
@@ -251,7 +251,7 @@ export function MusicLibraryPanel({ onChange }: { onChange: () => void }) {
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search tracks…"
             className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-100" />
           <button type="button" onClick={() => setShowAdd((v) => !v)}
-            className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg">
+            className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg">
             <Plus className="w-3.5 h-3.5" /> Add
           </button>
         </div>
@@ -269,7 +269,7 @@ export function MusicLibraryPanel({ onChange }: { onChange: () => void }) {
             <input placeholder="Genre" value={form.genre} onChange={(e) => setForm({ ...form, genre: e.target.value })}
               className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
             <button type="button" onClick={add}
-              className="col-span-3 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded-lg px-2 py-1.5">Add to library</button>
+              className="col-span-3 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-medium rounded-lg px-2 py-1.5">Add to library</button>
           </div>
         )}
 
@@ -344,7 +344,7 @@ export function MusicLibraryPanel({ onChange }: { onChange: () => void }) {
             </dl>
             <div className="flex gap-2">
               <button type="button" onClick={() => { void play(detail.id); setDetail(null); }}
-                className="flex-1 flex items-center justify-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg"><Play className="w-3.5 h-3.5" /> Play</button>
+                className="flex-1 flex items-center justify-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg"><Play className="w-3.5 h-3.5" /> Play</button>
               <button type="button" onClick={() => { void queueNext(detail.id); setDetail(null); }}
                 className="flex-1 flex items-center justify-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-100 rounded-lg"><ListStart className="w-3.5 h-3.5" /> Play next</button>
             </div>

@@ -65,7 +65,7 @@ export function LensFeedButton({ domain, label, compact = false, errorText }: { 
           <p className="text-[10px] text-zinc-400">Ingests real items from a free public source as DTUs — saved to My Vault.</p>
         </div>
         <button onClick={pull} disabled={busy}
-          className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-50 inline-flex items-center gap-1">
+          className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white disabled:opacity-50 inline-flex items-center gap-1">
           {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Rss className="w-3.5 h-3.5" />}
           Pull feed
         </button>

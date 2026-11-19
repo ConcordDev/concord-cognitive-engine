@@ -478,7 +478,7 @@ export function SOCConsole() {
                   <Plus className="h-3.5 w-3.5" /> Add Rule
                 </button>
               )}
-              <button className={cn(btn, 'bg-emerald-600 text-white hover:bg-emerald-500')} onClick={evaluateRules} disabled={busy}>
+              <button className={cn(btn, 'bg-emerald-700 text-white hover:bg-emerald-600')} onClick={evaluateRules} disabled={busy}>
                 {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />} Evaluate All
               </button>
             </div>

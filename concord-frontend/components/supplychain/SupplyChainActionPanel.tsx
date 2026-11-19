@@ -288,7 +288,7 @@ export function SupplyChainActionPanel() {
           <label className={cn(FIELD_LABEL, 'text-green-400')}>Inventory — <span className="normal-case text-zinc-400">name | dailyDemand | leadTimeDays | currentStock | orderCost | holdingCost</span></label>
           <textarea value={invText} onChange={(e) => setInvText(e.target.value)} rows={4} className={AREA} />
           <ExampleBlock lines={'Widget A | 12 | 7 | 40 | 50 | 5\nWidget B | 6 | 5 | 90 | 60 | 4'} onLoad={() => setInvText('Widget A | 12 | 7 | 40 | 50 | 5\nWidget B | 6 | 5 | 90 | 60 | 4')} />
-          <button onClick={actInv} disabled={busy !== null} className="flex items-center gap-1.5 rounded bg-green-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-green-500 disabled:opacity-50">
+          <button onClick={actInv} disabled={busy !== null} className="flex items-center gap-1.5 rounded bg-green-700 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-green-500 disabled:opacity-50">
             {busy === 'inv' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Package className="w-3.5 h-3.5" />} Optimize (EOQ)
           </button>
         </div>
@@ -296,7 +296,7 @@ export function SupplyChainActionPanel() {
           <label className={cn(FIELD_LABEL, 'text-amber-400')}>Suppliers — <span className="normal-case text-zinc-400">name | qualityScore | onTimePercent | priceCompetitiveness | responsiveness</span></label>
           <textarea value={supText} onChange={(e) => setSupText(e.target.value)} rows={4} className={AREA} />
           <ExampleBlock lines={'Acme Corp | 45 | 55\nGlobex | 80 | 92 | 70 | 85'} onLoad={() => setSupText('Acme Corp | 45 | 55\nGlobex | 80 | 92 | 70 | 85')} />
-          <button onClick={actSup} disabled={busy !== null} className="flex items-center gap-1.5 rounded bg-amber-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-amber-500 disabled:opacity-50">
+          <button onClick={actSup} disabled={busy !== null} className="flex items-center gap-1.5 rounded bg-amber-700 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-amber-500 disabled:opacity-50">
             {busy === 'sup' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Star className="w-3.5 h-3.5" />} Score suppliers
           </button>
         </div>
@@ -310,7 +310,7 @@ export function SupplyChainActionPanel() {
               className="w-20 bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white" />
             <span className="text-[10px] text-zinc-400">higher α follows recent demand faster</span>
           </div>
-          <button onClick={actFore} disabled={busy !== null} className="flex items-center gap-1.5 rounded bg-cyan-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-cyan-500 disabled:opacity-50">
+          <button onClick={actFore} disabled={busy !== null} className="flex items-center gap-1.5 rounded bg-cyan-700 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-cyan-500 disabled:opacity-50">
             {busy === 'fore' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <TrendingUp className="w-3.5 h-3.5" />} Forecast demand
           </button>
         </div>

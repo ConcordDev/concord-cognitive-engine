@@ -197,7 +197,7 @@ export function NewsOfflineSync() {
                         type="button"
                         disabled={busy === a.id}
                         onClick={() => void toggleSync(a.id)}
-                        className="flex items-center gap-1 px-2.5 py-1 text-[11px] rounded-lg bg-teal-600 hover:bg-teal-500 text-white disabled:opacity-40"
+                        className="flex items-center gap-1 px-2.5 py-1 text-[11px] rounded-lg bg-teal-700 hover:bg-teal-500 text-white disabled:opacity-40"
                       >
                         <Download className="w-3 h-3" /> Sync
                       </button>

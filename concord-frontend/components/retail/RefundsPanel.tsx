@@ -65,7 +65,7 @@ export function RefundsPanel() {
           <option value="shipping_damaged">Damaged in transit</option>
           <option value="other">Other</option>
         </select>
-        <button onClick={create} className="px-3 py-1.5 text-xs rounded bg-rose-500 text-white font-bold hover:bg-rose-400">Refund</button>
+        <button onClick={create} className="px-3 py-1.5 text-xs rounded bg-rose-600 text-white font-bold hover:bg-rose-400">Refund</button>
         <label className="col-span-5 inline-flex items-center gap-1.5 text-[11px] text-gray-300">
           <input id="retail-field-3" name="field-3" type="checkbox" checked={form.restock} onChange={e => setForm({ ...form, restock: e.target.checked })} className="accent-emerald-500" />
           Restock inventory

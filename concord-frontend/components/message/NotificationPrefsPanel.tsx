@@ -163,7 +163,7 @@ export function NotificationPrefsPanel({ channels }: { channels: ChannelLite[] }
             placeholder="Add a keyword…"
             className="flex-1 px-2 py-1 text-[11px] bg-black/40 border border-white/10 rounded text-white"
           />
-          <button onClick={addKeyword} className="px-2 py-1 text-[10px] rounded bg-amber-600 hover:bg-amber-500 text-white inline-flex items-center gap-0.5">
+          <button onClick={addKeyword} className="px-2 py-1 text-[10px] rounded bg-amber-700 hover:bg-amber-500 text-white inline-flex items-center gap-0.5">
             <Plus className="w-3 h-3" /> Add
           </button>
         </div>

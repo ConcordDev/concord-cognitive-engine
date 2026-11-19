@@ -233,7 +233,7 @@ export function VoiceChat() {
             {state === 'speaking' && (
               <button
                 onClick={handleBargeIn}
-                className="flex items-center gap-2 px-3 py-2 bg-amber-600/80 hover:bg-amber-600 text-white text-sm rounded-lg transition-colors"
+                className="flex items-center gap-2 px-3 py-2 bg-amber-700/80 hover:bg-amber-700 text-white text-sm rounded-lg transition-colors"
               >
                 <Mic className="w-4 h-4" />
                 Interrupt

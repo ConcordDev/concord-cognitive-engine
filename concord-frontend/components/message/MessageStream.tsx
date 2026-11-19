@@ -500,7 +500,7 @@ export function MessageStream({
             <button
               onClick={recording ? stopRecording : startRecording}
               disabled={transcribing}
-              className={cn('p-2 rounded inline-flex items-center gap-1', recording ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse' : 'text-gray-400 hover:text-white')}
+              className={cn('p-2 rounded inline-flex items-center gap-1', recording ? 'bg-rose-600/20 text-rose-300 border border-rose-500/40 animate-pulse' : 'text-gray-400 hover:text-white')}
               title={recording ? 'Stop recording' : 'Record a voice message'}
             >
               {transcribing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : recording ? <Square className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}

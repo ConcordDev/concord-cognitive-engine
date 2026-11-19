@@ -29,7 +29,7 @@ export function TournamentListPanel({
             key={s}
             onClick={() => onFilter(s)}
             className={`rounded px-2.5 py-1 text-xs ${
-              statusFilter === s ? 'bg-amber-600 text-amber-50' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+              statusFilter === s ? 'bg-amber-700 text-amber-50' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
             }`}
           >
             {s === 'all' ? 'All' : STATUS_LABELS[s]}

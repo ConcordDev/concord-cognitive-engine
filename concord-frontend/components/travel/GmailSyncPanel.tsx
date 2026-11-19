@@ -81,7 +81,7 @@ export function GmailSyncPanel({ tripId, onImported }: { tripId: string; onImpor
         parse into a real booking — no manual paste.
       </p>
       <button type="button" data-testid="gmail-sync-btn" onClick={() => void sync()} disabled={busy}
-        className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white rounded-lg">
+        className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 text-white rounded-lg">
         {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />} Sync from Gmail
       </button>
 

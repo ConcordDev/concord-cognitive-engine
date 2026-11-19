@@ -126,7 +126,7 @@ export function BreathingVisual({ onPractice }: { onPractice?: () => void }) {
       <div className="flex flex-wrap gap-1.5 mb-3">
         {PATTERNS.map((p) => (
           <button key={p.id} type="button" onClick={() => setPattern(p.id)}
-            className={cn('px-2.5 py-1 text-[11px] rounded', pattern === p.id ? 'bg-emerald-600 text-white' : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200')}>
+            className={cn('px-2.5 py-1 text-[11px] rounded', pattern === p.id ? 'bg-emerald-700 text-white' : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200')}>
             {p.label}
           </button>
         ))}
@@ -184,7 +184,7 @@ export function BreathingVisual({ onPractice }: { onPractice?: () => void }) {
           {logged
             ? <span className="text-xs text-emerald-300">Breathwork logged — {spec.totalSeconds}s of practice, exactly what you did.</span>
             : <button type="button" onClick={logSession}
-                className="px-3 py-1.5 text-xs rounded bg-emerald-600 hover:bg-emerald-500 text-white">
+                className="px-3 py-1.5 text-xs rounded bg-emerald-700 hover:bg-emerald-600 text-white">
                 Log this session
               </button>}
         </div>

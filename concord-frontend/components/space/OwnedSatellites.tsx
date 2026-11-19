@@ -228,7 +228,7 @@ export function OwnedSatellites() {
             <MapPin className="w-3 h-3" />My location
           </button>
           <button data-testid="sat-passes-find" onClick={submitObserver} disabled={passLoading || !selectedId}
-            className="px-2.5 py-1.5 text-xs rounded bg-amber-600 hover:bg-amber-500 text-white disabled:opacity-40 inline-flex items-center gap-1">
+            className="px-2.5 py-1.5 text-xs rounded bg-amber-700 hover:bg-amber-500 text-white disabled:opacity-40 inline-flex items-center gap-1">
             {passLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Radar className="w-3 h-3" />}Find passes
           </button>
         </div>

@@ -642,7 +642,7 @@ function AnalyticsTab({ drafts, onChange }: { drafts: DraftMeta[]; onChange: () 
             <option value="">— account —</option>
             {accounts.map(a => <option key={a.id} value={a.id}>@{a.handle} · {a.platform}{a.publishMode === 'api' ? '' : ' (copy & paste)'}</option>)}
           </select>
-          <button onClick={publish} disabled={busy} className="px-2 py-1 text-xs rounded bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white inline-flex items-center gap-1">
+          <button onClick={publish} disabled={busy} className="px-2 py-1 text-xs rounded bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white inline-flex items-center gap-1">
             {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}{accounts.find(a => a.id === accountId)?.publishMode === 'api' ? 'Post thread' : 'Prepare'}
           </button>
         </div>
@@ -713,7 +713,7 @@ function AnalyticsTab({ drafts, onChange }: { drafts: DraftMeta[]; onChange: () 
                   <div className="flex flex-wrap items-center gap-1.5 pt-1">
                     <input value={postedUrl} onChange={e => setPostedUrl(e.target.value)} placeholder="Link to the first post (optional)" aria-label="Posted thread URL"
                       className="flex-1 min-w-[160px] bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1 text-xs text-zinc-200" />
-                    <button onClick={() => markPosted(t.publishId)} className="px-2 py-1 text-xs rounded bg-emerald-600 hover:bg-emerald-500 text-white">I posted it</button>
+                    <button onClick={() => markPosted(t.publishId)} className="px-2 py-1 text-xs rounded bg-emerald-700 hover:bg-emerald-600 text-white">I posted it</button>
                   </div>
                 </div>
               )}

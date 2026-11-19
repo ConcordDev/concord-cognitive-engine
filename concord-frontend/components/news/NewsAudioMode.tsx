@@ -127,7 +127,7 @@ export function NewsAudioMode() {
               type="button"
               disabled={!supported}
               onClick={() => (playing ? togglePause() : void loadAndPlay(script.articleId))}
-              className="flex items-center gap-1 px-3 py-1.5 text-[11px] rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-40"
+              className="flex items-center gap-1 px-3 py-1.5 text-[11px] rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white disabled:opacity-40"
             >
               {playing && !paused ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
               {playing ? (paused ? 'Resume' : 'Pause') : 'Play'}

@@ -75,7 +75,7 @@ export function LaunchWatchlist() {
             <li key={i.id} className="group flex items-center gap-2 bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2">
               <button aria-label="Confirm" onClick={() => toggleWatched(i.id)}
                 className={cn('w-5 h-5 rounded-full flex items-center justify-center shrink-0',
-                  i.watched ? 'bg-emerald-600 text-white' : 'border border-zinc-600 text-transparent hover:border-emerald-500')}>
+                  i.watched ? 'bg-emerald-700 text-white' : 'border border-zinc-600 text-transparent hover:border-emerald-500')}>
                 <Check className="w-3 h-3" />
               </button>
               <div className="min-w-0 flex-1">

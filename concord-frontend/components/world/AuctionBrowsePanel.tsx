@@ -301,7 +301,7 @@ export function AuctionBrowsePanel({ worldId, onClose }: Props) {
                 type="button"
                 onClick={placeBid}
                 disabled={bidding || totalCost <= 0}
-                className="w-full rounded-lg bg-amber-600/80 py-2 text-sm font-semibold text-white transition-colors hover:bg-amber-500 disabled:opacity-40"
+                className="w-full rounded-lg bg-amber-700/80 py-2 text-sm font-semibold text-white transition-colors hover:bg-amber-500 disabled:opacity-40"
               >
                 {bidding ? 'Placing bid…' : `Bid ${totalCost} CC`}
               </button>

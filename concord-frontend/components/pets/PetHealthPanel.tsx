@@ -111,7 +111,7 @@ export function PetHealthPanel({ petId, onChange }: { petId: string; onChange: (
           <input type="date" title="Next due" value={vac.nextDueDate} onChange={(e) => setVac({ ...vac, nextDueDate: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <button type="button" onClick={addVaccine}
-            className="flex items-center justify-center gap-1 bg-teal-600 hover:bg-teal-500 text-white text-xs font-medium rounded-lg">
+            className="flex items-center justify-center gap-1 bg-teal-700 hover:bg-teal-500 text-white text-xs font-medium rounded-lg">
             <Plus className="w-3.5 h-3.5" /> Record
           </button>
         </div>
@@ -154,7 +154,7 @@ export function PetHealthPanel({ petId, onChange }: { petId: string; onChange: (
           <input placeholder="Frequency" value={med.frequency} onChange={(e) => setMed({ ...med, frequency: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <button type="button" onClick={addMed}
-            className="flex items-center justify-center gap-1 bg-teal-600 hover:bg-teal-500 text-white text-xs font-medium rounded-lg">
+            className="flex items-center justify-center gap-1 bg-teal-700 hover:bg-teal-500 text-white text-xs font-medium rounded-lg">
             <Plus className="w-3.5 h-3.5" /> Add
           </button>
         </div>
@@ -191,7 +191,7 @@ export function PetHealthPanel({ petId, onChange }: { petId: string; onChange: (
           <input placeholder="Cost ($)" inputMode="decimal" value={visit.cost} onChange={(e) => setVisit({ ...visit, cost: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <button type="button" onClick={addVisit}
-            className="flex items-center justify-center gap-1 bg-teal-600 hover:bg-teal-500 text-white text-xs font-medium rounded-lg">
+            className="flex items-center justify-center gap-1 bg-teal-700 hover:bg-teal-500 text-white text-xs font-medium rounded-lg">
             <Plus className="w-3.5 h-3.5" /> Log
           </button>
         </div>

@@ -148,7 +148,7 @@ export function SocialActionPanel({ myUserId, nearbyPlayers }: SocialActionPanel
       {/* Floating button */}
       <button
         onClick={() => setOpen((v) => !v)}
-        className="fixed bottom-4 right-4 z-30 pointer-events-auto bg-cyan-600 hover:bg-cyan-500 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg"
+        className="fixed bottom-4 right-4 z-30 pointer-events-auto bg-cyan-700 hover:bg-cyan-500 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg"
         title={open ? 'Close social panel' : 'Open social panel'}
         aria-label="Social actions"
       >

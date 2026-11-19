@@ -112,7 +112,7 @@ export function SpotLog() {
           className="w-16 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
         {spotError && <p role="alert" className="w-full text-xs text-rose-300">{spotError}</p>}
         <button onClick={addSpot} disabled={!spotForm.name.trim()}
-          className="px-2.5 py-1 text-xs rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold disabled:opacity-40 inline-flex items-center gap-1">
+          className="px-2.5 py-1 text-xs rounded bg-cyan-700 hover:bg-cyan-500 text-white font-semibold disabled:opacity-40 inline-flex items-center gap-1">
           <Plus className="w-3 h-3" />Spot
         </button>
       </div>
@@ -154,7 +154,7 @@ export function SpotLog() {
                   </div>
                   <div className="flex gap-1.5">
                     <button onClick={() => void saveSpotEdit(sp.id)} disabled={!editSpotForm.name.trim()}
-                      className="px-2.5 py-1 text-xs rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold disabled:opacity-40">Save</button>
+                      className="px-2.5 py-1 text-xs rounded bg-cyan-700 hover:bg-cyan-500 text-white font-semibold disabled:opacity-40">Save</button>
                     <button onClick={() => setEditSpotId(null)} className="px-2.5 py-1 text-xs rounded bg-zinc-800 text-zinc-300">Cancel</button>
                   </div>
                 </div>
@@ -176,7 +176,7 @@ export function SpotLog() {
                 className="bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1 text-xs text-zinc-200">
                 {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}★</option>)}
               </select>
-              <button onClick={logSession} className="px-2.5 py-1 text-xs rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold">Log session</button>
+              <button onClick={logSession} className="px-2.5 py-1 text-xs rounded bg-cyan-700 hover:bg-cyan-500 text-white font-semibold">Log session</button>
             </div>
           )}
           <ul className="space-y-1 max-h-72 overflow-y-auto">

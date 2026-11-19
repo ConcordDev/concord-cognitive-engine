@@ -167,7 +167,7 @@ export function PartyCombatHUD() {
         <div className="mb-2 grid grid-cols-4 gap-1">
           <button
             onClick={() => setTimeScale(0)}
-            className={['rounded px-1 py-1 text-[10px]', isPaused ? 'bg-rose-500/50 text-rose-50' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'].join(' ')}
+            className={['rounded px-1 py-1 text-[10px]', isPaused ? 'bg-rose-600/50 text-rose-50' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'].join(' ')}
             title="Pause"
           ><Pause size={11} /></button>
           <button onClick={() => setTimeScale(0.25)} className="rounded bg-zinc-800 px-1 py-1 text-[10px] text-zinc-300 hover:bg-zinc-700" title="Slow-mo">¼×</button>

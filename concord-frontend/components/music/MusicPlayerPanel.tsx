@@ -151,7 +151,7 @@ export function MusicPlayerPanel({ onChange }: { onChange: () => void }) {
                 placeholder={'Plain lines, or timed lines like [0:12.50] First line'}
                 className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 font-mono text-xs text-zinc-100" />
               <div className="flex items-center gap-2">
-                <button type="button" onClick={() => void saveLyrics()} className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-[11px] transition-colors hover:bg-emerald-500">Save lyrics</button>
+                <button type="button" onClick={() => void saveLyrics()} className="px-2.5 py-1 rounded-lg bg-emerald-700 text-white text-[11px] transition-colors hover:bg-emerald-600">Save lyrics</button>
                 <button type="button" onClick={() => setLyricsDraft(null)} className="text-[11px] text-zinc-400 hover:text-zinc-200">Cancel</button>
                 <span className="text-[10px] text-zinc-400">Stamp every line with [m:ss] to sync them to playback.</span>
               </div>

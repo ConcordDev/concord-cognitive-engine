@@ -111,7 +111,7 @@ export function RxPricePanel() {
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
         </div>
         <button type="button" onClick={recordPrice}
-          className="mt-2 flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-amber-600 hover:bg-amber-500 text-white rounded-lg">
+          className="mt-2 flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-amber-700 hover:bg-amber-500 text-white rounded-lg">
           <Plus className="w-3.5 h-3.5" /> Record price
         </button>
       </section>
@@ -166,7 +166,7 @@ export function RxPricePanel() {
             <Ticket className="w-3.5 h-3.5 text-amber-400" /> Saved coupons
           </h3>
           <button type="button" onClick={() => setShowCouponForm((v) => !v)}
-            className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-amber-600 hover:bg-amber-500 text-white rounded-lg">
+            className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-amber-700 hover:bg-amber-500 text-white rounded-lg">
             <Plus className="w-3.5 h-3.5" /> Save coupon
           </button>
         </div>
@@ -181,7 +181,7 @@ export function RxPricePanel() {
             <input placeholder="Code (optional)" value={couponForm.code} onChange={(e) => setCouponForm({ ...couponForm, code: e.target.value })}
               className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
             <button type="button" onClick={saveCoupon}
-              className="col-span-4 bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium rounded-lg px-2 py-1.5">Save coupon</button>
+              className="col-span-4 bg-amber-700 hover:bg-amber-500 text-white text-xs font-medium rounded-lg px-2 py-1.5">Save coupon</button>
           </div>
         )}
         {coupons.length === 0 ? (

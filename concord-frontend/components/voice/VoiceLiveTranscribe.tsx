@@ -286,7 +286,7 @@ export function VoiceLiveTranscribe({ onFinalized }: { onFinalized?: () => void 
         )}
         {session && (
           <button onClick={finalize} disabled={busy}
-            className="px-3 py-1.5 text-xs font-semibold rounded bg-emerald-600 hover:bg-emerald-500 text-white inline-flex items-center gap-1 disabled:opacity-40">
+            className="px-3 py-1.5 text-xs font-semibold rounded bg-emerald-700 hover:bg-emerald-600 text-white inline-flex items-center gap-1 disabled:opacity-40">
             <FileCheck2 className="w-3 h-3" />Save recording
           </button>
         )}

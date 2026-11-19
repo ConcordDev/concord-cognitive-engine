@@ -469,7 +469,7 @@ export function ProjectsSection() {
                 <div className="flex flex-wrap items-center gap-2 px-4 py-2 border-b border-lattice-border">
                   <span className="text-[11px] text-amber-200">Archive “{project.name}”? It leaves the switcher; you can restore it from Portfolio.</span>
                   <button type="button" onClick={archiveProject}
-                    className="px-2 py-1 text-[11px] font-medium bg-amber-600 hover:bg-amber-500 text-white rounded-lg">Archive project</button>
+                    className="px-2 py-1 text-[11px] font-medium bg-amber-700 hover:bg-amber-500 text-white rounded-lg">Archive project</button>
                   <button type="button" onClick={() => setConfirming(null)}
                     className="px-2 py-1 text-[11px] text-zinc-300">Cancel</button>
                 </div>

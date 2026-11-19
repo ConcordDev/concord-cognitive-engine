@@ -120,7 +120,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 const inputCls = 'rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder-zinc-600';
-const runBtnCls = 'inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-xs text-white hover:bg-emerald-500 disabled:opacity-50';
+const runBtnCls = 'inline-flex items-center gap-1.5 rounded-md bg-emerald-700 px-3 py-1.5 text-xs text-white hover:bg-emerald-600 disabled:opacity-50';
 const errCls = 'rounded border border-red-500/20 bg-red-500/5 px-2 py-1.5 text-xs text-red-300';
 const resultCardCls = 'rounded-lg border border-emerald-500/20 bg-zinc-950/60 p-3';
 

@@ -371,7 +371,7 @@ function DecksTab({
               placeholder="tag:hard / is:due / is:new"
               className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
             <button aria-label="Add" onClick={createFiltered} disabled={busy || !filterName.trim()}
-              className="px-2 py-1 rounded bg-amber-600 hover:bg-amber-500 text-white disabled:opacity-40">
+              className="px-2 py-1 rounded bg-amber-700 hover:bg-amber-500 text-white disabled:opacity-40">
               <Plus className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -1108,7 +1108,7 @@ function BrowseTab({ decks, flash }: { decks: Deck[]; flash: (m: string) => void
         <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-purple-700/40 bg-purple-600/10 p-2">
           <span className="text-[11px] text-purple-200 font-semibold">{selected.size} selected</span>
           <button onClick={() => bulkSuspend(true)}
-            className="inline-flex items-center gap-1 px-2 py-1 text-[11px] rounded bg-amber-600 hover:bg-amber-500 text-white">
+            className="inline-flex items-center gap-1 px-2 py-1 text-[11px] rounded bg-amber-700 hover:bg-amber-500 text-white">
             <Ban className="w-3 h-3" />Suspend
           </button>
           <button onClick={() => bulkSuspend(false)}
@@ -1856,7 +1856,7 @@ function TransferTab({
           {decks.filter(d => !d.filtered).map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
         </select>
         <button onClick={doExport} disabled={busy || !exportDeck}
-          className="w-full px-2 py-1.5 text-xs rounded bg-emerald-600 hover:bg-emerald-500 text-white font-semibold disabled:opacity-40 inline-flex items-center justify-center gap-1.5">
+          className="w-full px-2 py-1.5 text-xs rounded bg-emerald-700 hover:bg-emerald-600 text-white font-semibold disabled:opacity-40 inline-flex items-center justify-center gap-1.5">
           <Download className="w-3.5 h-3.5" />Download .srs.json bundle
         </button>
         <p className="text-[10px] text-zinc-400">

@@ -184,7 +184,7 @@ export function MusicRadioPanel({ onChange }: { onChange: () => void }) {
             placeholder="Seed a station by genre (e.g. pop)"
             className="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
           <button type="button" onClick={startRadio} disabled={radioBusy || !radioSeed.trim()}
-            className="px-3 py-2 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-50">
+            className="px-3 py-2 text-xs font-semibold rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white disabled:opacity-50">
             {radioBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Tune in'}
           </button>
         </div>

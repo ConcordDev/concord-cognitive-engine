@@ -199,7 +199,7 @@ export function LaunchCountdown() {
                 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs',
                 reminderSet
                   ? 'bg-emerald-600/20 text-emerald-400'
-                  : 'bg-amber-600 hover:bg-amber-500 text-white disabled:opacity-50',
+                  : 'bg-amber-700 hover:bg-amber-500 text-white disabled:opacity-50',
               )}
             >
               {reminderSet ? <BellRing className="w-3.5 h-3.5" /> : <Bell className="w-3.5 h-3.5" />}

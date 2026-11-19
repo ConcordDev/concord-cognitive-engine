@@ -195,7 +195,7 @@ export function VoiceMeetings({ onRecorded }: { onRecorded?: () => void }) {
                 )}
                 {m.botStatus === 'joined' && activeBot === m.id && (
                   <button onClick={() => stopBot(m)} disabled={busy}
-                    className="px-2 py-1 text-[11px] rounded bg-emerald-600 hover:bg-emerald-500 text-white inline-flex items-center gap-1 disabled:opacity-40">
+                    className="px-2 py-1 text-[11px] rounded bg-emerald-700 hover:bg-emerald-600 text-white inline-flex items-center gap-1 disabled:opacity-40">
                     {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileCheck2 className="w-3 h-3" />}End &amp; save
                   </button>
                 )}

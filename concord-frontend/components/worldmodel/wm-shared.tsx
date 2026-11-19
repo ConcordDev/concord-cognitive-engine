@@ -52,7 +52,7 @@ export async function wmRun<T = any>(action: string, input: Record<string, unkno
 
 export const card = 'rounded-lg border border-emerald-900/40 bg-emerald-950/10 p-4';
 export const input = 'rounded border border-emerald-900/40 bg-black/40 px-2 py-1.5 font-mono text-sm text-emerald-100 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500';
-export const btn = 'inline-flex items-center gap-1.5 rounded bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-emerald-400';
+export const btn = 'inline-flex items-center gap-1.5 rounded bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-600 disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-emerald-400';
 export const btnGhost = 'inline-flex items-center gap-1 rounded border border-emerald-900/40 px-2 py-1 text-xs text-emerald-400 hover:bg-emerald-900/30';
 
 export const WM_QUERY_KEYS = {

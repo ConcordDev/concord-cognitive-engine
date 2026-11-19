@@ -227,7 +227,7 @@ export function ConcordRepoWorkspace() {
           <button
             onClick={createRepo}
             disabled={busy === 'create-repo' || !!repoNameProblem}
-            className="flex items-center gap-1 rounded bg-green-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50"
+            className="flex items-center gap-1 rounded bg-green-700 px-2.5 py-1 text-xs font-medium text-white hover:bg-green-800 disabled:opacity-50"
           >
             {busy === 'create-repo' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
             New repo
@@ -515,7 +515,7 @@ function CodeTab({ repoId, branch, onBranchChange }: {
                 placeholder="src/new-file.ts"
                 className="w-full min-w-0 rounded border border-zinc-800 bg-zinc-900 px-1.5 py-0.5 font-mono text-[10px] text-white"
               />
-              <button onClick={startNewFile} disabled={!newPath.trim()} className="shrink-0 rounded bg-green-600 px-1.5 py-0.5 text-[10px] text-white disabled:opacity-50">New</button>
+              <button onClick={startNewFile} disabled={!newPath.trim()} className="shrink-0 rounded bg-green-700 px-1.5 py-0.5 text-[10px] text-white disabled:opacity-50">New</button>
             </div>
             <p className="mt-1 text-[9px] text-lattice-muted">Opens an editor; your first Commit creates the file on {branch}.</p>
           </div>
@@ -540,7 +540,7 @@ function CodeTab({ repoId, branch, onBranchChange }: {
                         placeholder="commit message"
                         className="rounded border border-zinc-800 bg-zinc-900 px-1.5 py-0.5 text-[10px] text-white"
                       />
-                      <button onClick={saveFile} disabled={busy} className="rounded bg-green-600 px-2 py-0.5 text-[10px] text-white disabled:opacity-50">
+                      <button onClick={saveFile} disabled={busy} className="rounded bg-green-700 px-2 py-0.5 text-[10px] text-white disabled:opacity-50">
                         {busy ? 'Committing…' : confirmEmptyArmed ? 'Commit (confirm empty)' : 'Commit'}
                       </button>
                       <button onClick={() => { setEditing(false); setDraft(file.content); setConfirmEmptyArmed(false); }} className="text-[10px] text-zinc-400 hover:text-white">Cancel</button>
@@ -673,7 +673,7 @@ function BranchesTab({ repoId, onCheckout }: { repoId: string; onCheckout: (name
             <h3 className="text-xs font-semibold text-white">Branches</h3>
             <div className="flex gap-1">
               <input value={newBranch} onChange={(e) => setNewBranch(e.target.value)} placeholder="branch" className="w-24 rounded border border-zinc-800 bg-zinc-900 px-1.5 py-0.5 text-[10px] text-white" />
-              <button onClick={createBranch} disabled={busy === 'branch'} className="rounded bg-green-600 px-1.5 py-0.5 text-[10px] text-white disabled:opacity-50">+</button>
+              <button onClick={createBranch} disabled={busy === 'branch'} className="rounded bg-green-700 px-1.5 py-0.5 text-[10px] text-white disabled:opacity-50">+</button>
             </div>
           </div>
           {branches.map((b) => (
@@ -698,7 +698,7 @@ function BranchesTab({ repoId, onCheckout }: { repoId: string; onCheckout: (name
             <h3 className="text-xs font-semibold text-white">Tags</h3>
             <div className="flex gap-1">
               <input value={newTag} onChange={(e) => setNewTag(e.target.value)} placeholder="v1.0.0" className="w-24 rounded border border-zinc-800 bg-zinc-900 px-1.5 py-0.5 text-[10px] text-white" />
-              <button onClick={createTag} disabled={busy === 'tag'} className="rounded bg-green-600 px-1.5 py-0.5 text-[10px] text-white disabled:opacity-50">+</button>
+              <button onClick={createTag} disabled={busy === 'tag'} className="rounded bg-green-700 px-1.5 py-0.5 text-[10px] text-white disabled:opacity-50">+</button>
             </div>
           </div>
           {tagNote && (
@@ -832,7 +832,7 @@ function IssuesTab({ repoId }: { repoId: string }) {
             <h3 className="text-sm font-semibold text-white">#{detail.number} {detail.title}</h3>
             <p className="mt-0.5 text-[10px] text-zinc-400">opened by {detail.author}</p>
           </div>
-          <button onClick={toggleState} disabled={busy === 'state'} className={`rounded px-2 py-1 text-[10px] ${detail.state === 'open' ? 'bg-purple-600' : 'bg-green-600'} text-white disabled:opacity-50`}>
+          <button onClick={toggleState} disabled={busy === 'state'} className={`rounded px-2 py-1 text-[10px] ${detail.state === 'open' ? 'bg-purple-600' : 'bg-green-700'} text-white disabled:opacity-50`}>
             {detail.state === 'open' ? 'Close issue' : 'Reopen'}
           </button>
         </div>
@@ -858,7 +858,7 @@ function IssuesTab({ repoId }: { repoId: string }) {
         </div>
         <div className="mt-3 flex gap-2">
           <input value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Add a comment…" className="flex-1 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] text-white" />
-          <button onClick={addComment} disabled={busy === 'comment' || !comment.trim()} className="rounded bg-green-600 px-2.5 py-1 text-[11px] text-white disabled:opacity-50">Comment</button>
+          <button onClick={addComment} disabled={busy === 'comment' || !comment.trim()} className="rounded bg-green-700 px-2.5 py-1 text-[11px] text-white disabled:opacity-50">Comment</button>
         </div>
       </div>
     );
@@ -872,7 +872,7 @@ function IssuesTab({ repoId }: { repoId: string }) {
         <div className="flex flex-col gap-2 sm:flex-row">
           <input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Issue title" className="flex-1 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] text-white" />
           <input value={newBody} onChange={(e) => setNewBody(e.target.value)} placeholder="Description (optional)" className="flex-1 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] text-white" />
-          <button onClick={createIssue} disabled={busy === 'create' || !newTitle.trim()} className="rounded bg-green-600 px-2.5 py-1 text-[11px] text-white disabled:opacity-50">Create</button>
+          <button onClick={createIssue} disabled={busy === 'create' || !newTitle.trim()} className="rounded bg-green-700 px-2.5 py-1 text-[11px] text-white disabled:opacity-50">Create</button>
         </div>
         {!newTitle.trim() && busy !== 'create' && (
           <p role="note" className="mt-1.5 text-[10px] text-lattice-muted">Give the issue a title — Create unlocks once it has one.</p>
@@ -880,7 +880,7 @@ function IssuesTab({ repoId }: { repoId: string }) {
       </div>
       <div className="flex gap-1">
         {(['all', 'open', 'closed'] as const).map((s) => (
-          <button key={s} onClick={() => setStateFilter(s)} className={`rounded px-2 py-0.5 text-[10px] ${stateFilter === s ? 'bg-cyan-600 text-white' : 'bg-zinc-800 text-zinc-400'}`}>{s}</button>
+          <button key={s} onClick={() => setStateFilter(s)} className={`rounded px-2 py-0.5 text-[10px] ${stateFilter === s ? 'bg-cyan-700 text-white' : 'bg-zinc-800 text-zinc-400'}`}>{s}</button>
         ))}
       </div>
       <div className="rounded-lg border border-zinc-800 bg-zinc-950">
@@ -1023,7 +1023,7 @@ function PullsTab({ repoId }: { repoId: string }) {
               #{detail.pull.number} {detail.pull.title}
               {/* S10: the merged state gets a visual identity, not a lowercase word (F14). */}
               {detail.pull.state === 'merged' && <span className="rounded-full bg-purple-600 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-white">Merged</span>}
-              {detail.pull.state === 'open' && <span className="rounded-full bg-green-600 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-white">Open</span>}
+              {detail.pull.state === 'open' && <span className="rounded-full bg-green-700 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-white">Open</span>}
               {detail.pull.state === 'closed' && <span className="rounded-full bg-zinc-600 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-white">Closed</span>}
             </h3>
             <p className="mt-0.5 text-[10px] text-zinc-400">
@@ -1159,7 +1159,7 @@ function PullsTab({ repoId }: { repoId: string }) {
                             placeholder={`Comment on ${f.path}:${lineDraft.line}…`}
                             className="flex-1 rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-[10px] text-white"
                           />
-                          <button onClick={postLineComment} disabled={busy === 'line-comment' || !lineBody.trim()} className="rounded bg-cyan-600 px-2 py-1 text-[10px] text-white disabled:opacity-50">Post</button>
+                          <button onClick={postLineComment} disabled={busy === 'line-comment' || !lineBody.trim()} className="rounded bg-cyan-700 px-2 py-1 text-[10px] text-white disabled:opacity-50">Post</button>
                           <button onClick={() => setLineDraft(null)} className="text-[10px] text-zinc-400 hover:text-white">Cancel</button>
                         </div>
                       )}
@@ -1200,7 +1200,7 @@ function PullsTab({ repoId }: { repoId: string }) {
             </div>
             <input value={reviewBody} onChange={(e) => setReviewBody(e.target.value)} placeholder="Review summary (optional)…" className="w-full rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] text-white" />
             <div className="flex gap-2">
-              <button onClick={() => submitReview('approve')} disabled={busy === 'review'} className="rounded bg-green-600 px-2 py-1 text-[10px] text-white disabled:opacity-50">Approve</button>
+              <button onClick={() => submitReview('approve')} disabled={busy === 'review'} className="rounded bg-green-700 px-2 py-1 text-[10px] text-white disabled:opacity-50">Approve</button>
               <button onClick={() => submitReview('request-changes')} disabled={busy === 'review'} className="rounded bg-rose-600 px-2 py-1 text-[10px] text-white disabled:opacity-50">Request changes</button>
               <button onClick={() => submitReview('comment')} disabled={busy === 'review'} className="rounded bg-zinc-700 px-2 py-1 text-[10px] text-white disabled:opacity-50">Comment as review</button>
             </div>
@@ -1225,7 +1225,7 @@ function PullsTab({ repoId }: { repoId: string }) {
             <option value="">head branch…</option>
             {branches.map((b) => <option key={b} value={b}>{b}</option>)}
           </select>
-          <button onClick={createPull} disabled={busy === 'create'} className="rounded bg-green-600 px-2.5 py-1 text-[11px] text-white disabled:opacity-50">Create PR</button>
+          <button onClick={createPull} disabled={busy === 'create'} className="rounded bg-green-700 px-2.5 py-1 text-[11px] text-white disabled:opacity-50">Create PR</button>
         </div>
         {err && <p className="mt-1.5 text-[10px] text-rose-400">{err}</p>}
       </div>
@@ -1236,7 +1236,7 @@ function PullsTab({ repoId }: { repoId: string }) {
             <GitPullRequest className={`h-3.5 w-3.5 ${p.state === 'merged' ? 'text-purple-500' : p.state === 'open' ? 'text-green-500' : 'text-zinc-400'}`} />
             <span className="flex-1 text-zinc-200">{p.title}</span>
             {p.state === 'merged' && <span className="rounded-full bg-purple-600 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wider text-white">Merged</span>}
-            {p.state === 'open' && <span className="rounded-full bg-green-600/80 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wider text-white">Open</span>}
+            {p.state === 'open' && <span className="rounded-full bg-green-700/80 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wider text-white">Open</span>}
             <span className="font-mono text-lattice-muted">{p.head}→{p.base}</span>
             <span className="text-lattice-muted">#{p.number} · {p.reviews} reviews</span>
           </button>
@@ -1277,7 +1277,7 @@ function ActionsTab({ repoId }: { repoId: string }) {
       <ErrorBanner err={err} />
       <div className="flex items-center justify-between">
         <h3 className="text-xs font-semibold text-white">Workflow runs</h3>
-        <button onClick={triggerRun} disabled={busy} className="flex items-center gap-1 rounded bg-green-600 px-2.5 py-1 text-[11px] text-white disabled:opacity-50">
+        <button onClick={triggerRun} disabled={busy} className="flex items-center gap-1 rounded bg-green-700 px-2.5 py-1 text-[11px] text-white disabled:opacity-50">
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />} Run checks
         </button>
       </div>
@@ -1362,7 +1362,7 @@ function SecurityTab({ repoId }: { repoId: string }) {
       <ErrorBanner err={err} />
       <div className="flex items-center justify-between">
         <h3 className="text-xs font-semibold text-white">Security overview</h3>
-        <button onClick={scan} disabled={busy} className="flex items-center gap-1 rounded bg-green-600 px-2.5 py-1 text-[11px] text-white disabled:opacity-50">
+        <button onClick={scan} disabled={busy} className="flex items-center gap-1 rounded bg-green-700 px-2.5 py-1 text-[11px] text-white disabled:opacity-50">
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Shield className="h-3.5 w-3.5" />} Run scan
         </button>
       </div>
@@ -1553,7 +1553,7 @@ function SettingsTab({ repo, onUpdated, onDeleted, onNotice }: {
           Private — visible only in your account
           <span className="text-[10px] text-lattice-muted">(sharing with other accounts rides Concord&apos;s platform access grants, not a per-repo switch)</span>
         </label>
-        <button onClick={save} disabled={busy === 'save' || !name.trim()} className="rounded bg-green-600 px-2.5 py-1 text-[11px] text-white disabled:opacity-50">
+        <button onClick={save} disabled={busy === 'save' || !name.trim()} className="rounded bg-green-700 px-2.5 py-1 text-[11px] text-white disabled:opacity-50">
           {busy === 'save' ? 'Saving…' : 'Save changes'}
         </button>
       </div>
@@ -1768,7 +1768,7 @@ function AnalysisTab({ repoId }: { repoId: string }) {
           <h3 className="text-xs font-semibold text-white">Static analysis</h3>
           <p className="text-[10px] text-zinc-400">Complexity, commit patterns and dependency health — computed live from this repo&apos;s real files, commits and package.json.</p>
         </div>
-        <button onClick={runAnalysis} disabled={busy} className="flex items-center gap-1 rounded bg-green-600 px-2.5 py-1 text-[11px] text-white disabled:opacity-50">
+        <button onClick={runAnalysis} disabled={busy} className="flex items-center gap-1 rounded bg-green-700 px-2.5 py-1 text-[11px] text-white disabled:opacity-50">
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Activity className="h-3.5 w-3.5" />} Run analysis
         </button>
       </div>

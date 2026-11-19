@@ -182,7 +182,7 @@ export function LabPanel() {
           <button
             onClick={attach}
             disabled={busy || !patientName.trim()}
-            className="flex flex-1 items-center justify-center gap-2 rounded bg-cyan-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-cyan-500 disabled:opacity-50"
+            className="flex flex-1 items-center justify-center gap-2 rounded bg-cyan-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-cyan-500 disabled:opacity-50"
           >
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
             {fulfillingOrderId ? 'Record result for this order' : 'Attach lab/imaging result'}
@@ -210,7 +210,7 @@ export function LabPanel() {
                 <p className="text-xs text-zinc-400">{o.patientName} · {o.kind}{o.date ? ` · ${o.date}` : ''}</p>
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={() => beginFulfill(o)} className="rounded bg-cyan-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-cyan-500">Record result</button>
+                <button onClick={() => beginFulfill(o)} className="rounded bg-cyan-700 px-2.5 py-1 text-xs font-medium text-white hover:bg-cyan-500">Record result</button>
                 <button onClick={() => void del(o.id)} aria-label={`Cancel order ${o.title}`} className="rounded border border-zinc-700 p-1.5 text-zinc-400 hover:text-rose-300"><Trash2 className="h-3.5 w-3.5" /></button>
               </div>
             </div>

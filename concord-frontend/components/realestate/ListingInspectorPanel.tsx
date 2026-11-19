@@ -167,7 +167,7 @@ export function ListingInspectorPanel({
             <div className="aspect-video bg-gradient-to-br from-emerald-900/40 to-cyan-900/30 relative flex items-center justify-center">
               <MapPin className="w-16 h-16 text-cyan-500/30" />
               {hot && hot.score >= 65 && (
-                <span className="absolute top-3 left-3 inline-flex items-center gap-1 px-2 py-1 rounded bg-rose-500 text-white text-xs font-bold uppercase">
+                <span className="absolute top-3 left-3 inline-flex items-center gap-1 px-2 py-1 rounded bg-rose-600 text-white text-xs font-bold uppercase">
                   <Flame className="w-3 h-3" /> {hot.tag} · {hot.score}
                 </span>
               )}

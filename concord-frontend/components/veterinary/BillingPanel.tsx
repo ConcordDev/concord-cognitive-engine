@@ -191,7 +191,7 @@ export function BillingPanel({ onChanged }: { onChanged?: () => void }) {
         <button
           onClick={createInvoice}
           disabled={busy || !patientName.trim()}
-          className="flex w-full items-center justify-center gap-2 rounded bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
+          className="flex w-full items-center justify-center gap-2 rounded bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-600 disabled:opacity-50"
         >
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
           Create invoice
@@ -281,7 +281,7 @@ export function BillingPanel({ onChanged }: { onChanged?: () => void }) {
                     </select>
                     <button
                       onClick={() => pay(inv.id)}
-                      className="rounded bg-emerald-600 px-2 py-1 text-xs text-white hover:bg-emerald-500"
+                      className="rounded bg-emerald-700 px-2 py-1 text-xs text-white hover:bg-emerald-600"
                     >
                       Apply
                     </button>

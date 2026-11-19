@@ -169,7 +169,7 @@ function CreateOrJoin({ notify, onDone }: { notify: (f: Feedback) => void; onDon
               <option value="department">Department</option>
             </select>
           </div>
-          <button onClick={create} disabled={busy} className={cn(BTN, 'bg-teal-600 text-white hover:bg-teal-500 self-end justify-center')}>
+          <button onClick={create} disabled={busy} className={cn(BTN, 'bg-teal-700 text-white hover:bg-teal-500 self-end justify-center')}>
             {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />} Create
           </button>
         </div>
@@ -391,7 +391,7 @@ function OrgWorkspace({
               <div key={p.userId} className="flex items-center justify-between gap-2 rounded bg-zinc-900/50 px-2 py-1">
                 <span className="text-[10px] font-mono text-zinc-300 truncate">{p.userId}</span>
                 <button onClick={() => approveRequest(p.userId)} disabled={busy}
-                  className={cn(BTN, 'bg-amber-600 text-white hover:bg-amber-500')}
+                  className={cn(BTN, 'bg-amber-700 text-white hover:bg-amber-500')}
                   aria-label={`Approve ${p.userId}`}>
                   <Check className="w-3.5 h-3.5" /> Approve as analyst
                 </button>
@@ -461,7 +461,7 @@ function OrgWorkspace({
             <div className="space-y-1.5 mb-1.5">
               <div className="flex gap-1.5">
                 <input className={INPUT} value={newPo} onChange={(e) => setNewPo(e.target.value)} placeholder="New PO item" />
-                <button onClick={addWorkOrder} disabled={busy} className={cn(BTN, 'bg-amber-600 text-white hover:bg-amber-500 whitespace-nowrap')}>
+                <button onClick={addWorkOrder} disabled={busy} className={cn(BTN, 'bg-amber-700 text-white hover:bg-amber-500 whitespace-nowrap')}>
                   <Plus className="w-3.5 h-3.5" /> Raise PO
                 </button>
               </div>

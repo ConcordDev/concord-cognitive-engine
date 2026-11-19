@@ -60,7 +60,7 @@ const STATUS_COLOUR: Record<DispatchTech['status'], string> = {
 };
 
 const PRIORITY_COLOUR: Record<NonNullable<DispatchJob['priority']>, string> = {
-  emergency: 'bg-rose-500 text-white',
+  emergency: 'bg-rose-600 text-white',
   high: 'bg-amber-500 text-black',
   normal: 'bg-cyan-500 text-black',
   low: 'bg-gray-500 text-gray-100',

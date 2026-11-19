@@ -254,7 +254,7 @@ export function PetRecordsPanel({
             <CalendarClock className="w-3.5 h-3.5 text-teal-400" /> Vaccine due dates
           </h3>
           <button type="button" onClick={exportIcs} disabled={vaccineEvents.length === 0}
-            className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg bg-teal-600 hover:bg-teal-500 disabled:bg-zinc-800 disabled:text-zinc-400 text-white font-medium">
+            className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg bg-teal-700 hover:bg-teal-500 disabled:bg-zinc-800 disabled:text-zinc-400 text-white font-medium">
             <Download className="w-3 h-3" /> Calendar (.ics)
           </button>
         </div>
@@ -282,7 +282,7 @@ export function PetRecordsPanel({
           Export a portable record (vaccines, medications, vet visits, weights, symptoms) for a vet or boarding facility.
         </p>
         <button type="button" onClick={exportRecord} disabled={busy === 'record'}
-          className="flex items-center gap-1.5 text-[11px] px-2.5 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white font-medium">
+          className="flex items-center gap-1.5 text-[11px] px-2.5 py-1.5 rounded-lg bg-teal-700 hover:bg-teal-500 text-white font-medium">
           {busy === 'record' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
           Export record (JSON + text)
         </button>
@@ -311,7 +311,7 @@ export function PetRecordsPanel({
             {ACCESS_ROLES.map((r) => <option key={r} value={r}>{r.replace(/_/g, ' ')}</option>)}
           </select>
           <button type="button" onClick={grantAccess} disabled={busy === 'grant'}
-            className="flex items-center justify-center gap-1 bg-teal-600 hover:bg-teal-500 text-white text-xs font-medium rounded-lg">
+            className="flex items-center justify-center gap-1 bg-teal-700 hover:bg-teal-500 text-white text-xs font-medium rounded-lg">
             {busy === 'grant' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />} Grant
           </button>
         </div>
@@ -356,7 +356,7 @@ export function PetRecordsPanel({
           <input placeholder="Caption (optional)" value={photoForm.caption} onChange={(e) => setPhotoForm({ ...photoForm, caption: e.target.value })}
             className="col-span-3 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <button type="button" onClick={addPhoto} disabled={busy === 'photo'}
-            className="flex items-center justify-center gap-1 bg-teal-600 hover:bg-teal-500 text-white text-xs font-medium rounded-lg">
+            className="flex items-center justify-center gap-1 bg-teal-700 hover:bg-teal-500 text-white text-xs font-medium rounded-lg">
             {busy === 'photo' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />} Add
           </button>
         </div>
@@ -413,7 +413,7 @@ export function PetRecordsPanel({
           <input placeholder="Vet" value={apptForm.vet} onChange={(e) => setApptForm({ ...apptForm, vet: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <button type="button" onClick={bookAppointment} disabled={busy === 'appt'}
-            className="flex items-center justify-center gap-1 bg-teal-600 hover:bg-teal-500 text-white text-xs font-medium rounded-lg">
+            className="flex items-center justify-center gap-1 bg-teal-700 hover:bg-teal-500 text-white text-xs font-medium rounded-lg">
             {busy === 'appt' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />} Book
           </button>
         </div>
@@ -451,7 +451,7 @@ export function PetRecordsPanel({
             <ShieldAlert className="w-3.5 h-3.5 text-teal-400" /> Breed-specific care guidance
           </h3>
           <button type="button" onClick={loadGuidance} disabled={busy === 'guidance' || !breed}
-            className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg bg-teal-600 hover:bg-teal-500 disabled:bg-zinc-800 disabled:text-zinc-400 text-white font-medium">
+            className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg bg-teal-700 hover:bg-teal-500 disabled:bg-zinc-800 disabled:text-zinc-400 text-white font-medium">
             {busy === 'guidance' ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />} Analyse
           </button>
         </div>
@@ -559,7 +559,7 @@ export function PetRecordsPanel({
               onChange={(e) => setLostForm({ ...lostForm, notes: e.target.value })}
               className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
             <button type="button" onClick={publishLostCard} disabled={busy === 'lost'}
-              className="flex items-center gap-1.5 text-[11px] px-2.5 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white font-medium">
+              className="flex items-center gap-1.5 text-[11px] px-2.5 py-1.5 rounded-lg bg-teal-700 hover:bg-teal-500 text-white font-medium">
               {busy === 'lost' ? <Loader2 className="w-3 h-3 animate-spin" /> : <BadgeAlert className="w-3 h-3" />}
               Publish ID card
             </button>

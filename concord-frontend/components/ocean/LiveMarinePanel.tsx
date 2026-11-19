@@ -89,7 +89,7 @@ const SUB_TABS: { key: SubTab; label: string; icon: typeof Waves }[] = [
 const inputCls =
   'w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder-zinc-600 focus:border-cyan-500/50 focus:outline-none';
 const btnCls =
-  'inline-flex items-center justify-center gap-1.5 rounded bg-cyan-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-500 disabled:opacity-40';
+  'inline-flex items-center justify-center gap-1.5 rounded bg-cyan-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-500 disabled:opacity-40';
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -320,8 +320,8 @@ function SurfTab({ spots }: { spots: Spot[] }) {
   return (
     <div className="space-y-3">
       <div className="flex gap-1 text-[11px]">
-        <button onClick={() => setMode('spot')} className={cn('rounded px-2 py-1', mode === 'spot' ? 'bg-cyan-600 text-white' : 'bg-zinc-900 text-zinc-400')}>Saved spot</button>
-        <button onClick={() => setMode('coords')} className={cn('rounded px-2 py-1', mode === 'coords' ? 'bg-cyan-600 text-white' : 'bg-zinc-900 text-zinc-400')}>Coordinates</button>
+        <button onClick={() => setMode('spot')} className={cn('rounded px-2 py-1', mode === 'spot' ? 'bg-cyan-700 text-white' : 'bg-zinc-900 text-zinc-400')}>Saved spot</button>
+        <button onClick={() => setMode('coords')} className={cn('rounded px-2 py-1', mode === 'coords' ? 'bg-cyan-700 text-white' : 'bg-zinc-900 text-zinc-400')}>Coordinates</button>
       </div>
       {mode === 'spot' ? (
         <Field label="Geolocated spot">

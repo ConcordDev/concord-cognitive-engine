@@ -343,7 +343,7 @@ export function PetActionDrawer({ pet, onClose, onChange }: PetActionDrawerProps
               )}
               <div className="flex items-center gap-2">
                 <button type="button" onClick={actDmRecord} disabled={!selectedRecordKey || !!busy}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-blue-500 text-white text-xs font-semibold hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed">
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed">
                   {busy === 'record' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />} DM record to vet
                 </button>
                 <button type="button" onClick={() => { setActiveAction(null); setSelectedRecordKey(''); }} className="text-xs text-gray-400 hover:text-gray-200">Cancel</button>
@@ -361,7 +361,7 @@ export function PetActionDrawer({ pet, onClose, onChange }: PetActionDrawerProps
               <p className="text-[10px] text-gray-400">Add color, last-seen location and a reward from the Records tab.</p>
               <div className="flex items-center gap-2">
                 <button type="button" onClick={actReportLost} disabled={busy === 'lost'}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed">
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-emerald-700 text-white text-xs font-semibold hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed">
                   {busy === 'lost' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Globe className="w-3 h-3" />} Publish
                 </button>
                 <button type="button" onClick={() => setActiveAction(null)} className="text-xs text-gray-400 hover:text-gray-200">Cancel</button>

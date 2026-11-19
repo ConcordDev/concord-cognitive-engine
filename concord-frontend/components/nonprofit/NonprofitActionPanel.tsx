@@ -246,7 +246,7 @@ export function NonprofitActionPanel() {
           <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-300"><Users className="w-3.5 h-3.5" /> Donor retention (cohort, live donor-list)</div>
           <div className="flex gap-1.5">
             <input type="text" value={retentionYear} onChange={(e) => setRetentionYear(e.target.value.replace(/\D/g, ''))} className={cn(inp, 'w-24')} placeholder="year" />
-            <button onClick={actRetention} disabled={!!busy} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white rounded text-[12px]">{busyIcon('retention', Users)} Analyze</button>
+            <button onClick={actRetention} disabled={!!busy} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 text-white rounded text-[12px]">{busyIcon('retention', Users)} Analyze</button>
           </div>
           {retentionResult && (
             <div className="text-[11px] text-zinc-300">
@@ -309,7 +309,7 @@ export function NonprofitActionPanel() {
             ))}
           </div>
         </div>
-        <button onClick={actGrant} disabled={!!busy} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 text-white rounded text-[12px]">{busyIcon('grant', FileBarChart)} Analyze grant</button>
+        <button onClick={actGrant} disabled={!!busy} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-cyan-700 hover:bg-cyan-500 disabled:opacity-40 text-white rounded text-[12px]">{busyIcon('grant', FileBarChart)} Analyze grant</button>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           {grantResult && (
             <div className="rounded border border-cyan-500/30 bg-cyan-500/5 p-2 text-[11px] text-zinc-300">

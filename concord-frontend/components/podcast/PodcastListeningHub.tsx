@@ -426,7 +426,7 @@ export function PodcastListeningHub() {
                 <p className="text-[11px] text-zinc-400">Auto-download the newest episodes of chosen shows.</p>
                 <button
                   type="button" onClick={runRules} disabled={busy === 'runRules' || rules.length === 0}
-                  className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white rounded-lg"
+                  className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 text-white rounded-lg"
                 >
                   {busy === 'runRules' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <DownloadCloud className="w-3.5 h-3.5" />}
                   Run rules now

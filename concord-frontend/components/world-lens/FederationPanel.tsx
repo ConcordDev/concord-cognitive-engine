@@ -415,7 +415,7 @@ export default function FederationPanel() {
                     onClick={() => setAutoInterval(opt)}
                     className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
                       autoInterval === opt
-                        ? 'bg-cyan-600 text-white'
+                        ? 'bg-cyan-700 text-white'
                         : 'bg-white/5 text-white/40 hover:text-white/60'
                     }`}
                   >

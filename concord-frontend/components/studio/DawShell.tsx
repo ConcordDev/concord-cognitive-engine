@@ -119,7 +119,7 @@ export function DawShell({
                   <div className="mt-1 flex items-center gap-0.5">
                     <button aria-label="Mute track" onClick={onToggleMute ? () => onToggleMute(t.id) : undefined} disabled={!onToggleMute} className={cn('w-5 h-4 rounded text-[9px] font-bold', t.muted ? 'bg-amber-500 text-black' : 'bg-white/5 text-gray-400', !onToggleMute && 'opacity-40 cursor-not-allowed')}>M</button>
                     <button aria-label="Solo track" onClick={onToggleSolo ? () => onToggleSolo(t.id) : undefined} disabled={!onToggleSolo} className={cn('w-5 h-4 rounded text-[9px] font-bold', t.solo ? 'bg-yellow-500 text-black' : 'bg-white/5 text-gray-400', !onToggleSolo && 'opacity-40 cursor-not-allowed')}>S</button>
-                    <button aria-label="Arm track for recording" onClick={onToggleArm ? () => onToggleArm(t.id) : undefined} disabled={!onToggleArm} className={cn('w-5 h-4 rounded text-[9px] font-bold', t.armed ? 'bg-rose-500 text-white animate-pulse' : 'bg-white/5 text-gray-400', !onToggleArm && 'opacity-40 cursor-not-allowed')}>R</button>
+                    <button aria-label="Arm track for recording" onClick={onToggleArm ? () => onToggleArm(t.id) : undefined} disabled={!onToggleArm} className={cn('w-5 h-4 rounded text-[9px] font-bold', t.armed ? 'bg-rose-600 text-white animate-pulse' : 'bg-white/5 text-gray-400', !onToggleArm && 'opacity-40 cursor-not-allowed')}>R</button>
                   </div>
                 </li>
               );

@@ -116,7 +116,7 @@ export function PgTimersPanel({ childId }: { childId: string }) {
                 </div>
                 <div className="flex gap-2 mt-2">
                   <button type="button" onClick={() => stop(t.id)}
-                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg">
+                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg">
                     <Square className="w-3 h-3" /> Stop &amp; log
                   </button>
                   <button type="button" onClick={() => cancel(t.id)}

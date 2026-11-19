@@ -181,7 +181,7 @@ function CatalogTab({ onChange }: { onChange: () => void }) {
             placeholder={`Search ${source} for tracks to ingest…`}
             className="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
           <button type="button" onClick={ingest} disabled={busy || !term.trim()}
-            className="px-3 py-2 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-50">
+            className="px-3 py-2 text-xs font-semibold rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white disabled:opacity-50">
             {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Ingest'}
           </button>
         </div>
@@ -369,7 +369,7 @@ function EngineTab() {
             {['web', 'phone', 'desktop', 'tablet', 'speaker', 'tv'].map((k) => <option key={k} value={k}>{k}</option>)}
           </select>
           <button type="button" onClick={registerDevice}
-            className="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white">Add</button>
+            className="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white">Add</button>
         </div>
         {devices.length === 0 ? (
           <Empty text="No registered devices." />
@@ -499,7 +499,7 @@ function DiscoverTab({ onChange }: { onChange: () => void }) {
             placeholder="e.g. upbeat focus music for deep work"
             className="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
           <button type="button" onClick={runAiPlaylist} disabled={aiBusy || !aiPrompt.trim()}
-            className="px-3 py-2 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-50">
+            className="px-3 py-2 text-xs font-semibold rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white disabled:opacity-50">
             {aiBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Generate'}
           </button>
         </div>
@@ -721,7 +721,7 @@ function SocialTab({ onChange }: { onChange: () => void }) {
           </select>
         </div>
         <button type="button" onClick={collabEdit} disabled={!collabPlaylist || !collabTrack}
-          className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-50">
+          className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white disabled:opacity-50">
           Add to playlist
         </button>
         {collabMsg && <p className="mt-2 text-[11px] text-emerald-300">{collabMsg}</p>}
@@ -873,7 +873,7 @@ function ArtistTab({ onChange }: { onChange: () => void }) {
           {pickTracks.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
         </select>
         <button type="button" onClick={saveProfile}
-          className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white">Save profile</button>
+          className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white">Save profile</button>
         {profileMsg && <p className="mt-2 text-[11px] text-emerald-300">{profileMsg}</p>}
         {profile?.canvasUrl && (
           <p className="mt-2 text-[10px] text-zinc-400 truncate">Canvas: {profile.canvasUrl}</p>
@@ -889,7 +889,7 @@ function ArtistTab({ onChange }: { onChange: () => void }) {
             placeholder="Artist name…"
             className="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
           <button type="button" onClick={lookupConcerts} disabled={concertBusy || !concertArtist.trim()}
-            className="px-3 py-2 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-50">
+            className="px-3 py-2 text-xs font-semibold rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white disabled:opacity-50">
             {concertBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Find shows'}
           </button>
         </div>

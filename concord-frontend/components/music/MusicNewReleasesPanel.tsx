@@ -59,7 +59,7 @@ export function MusicNewReleasesPanel() {
           <span className="text-[10px] text-zinc-400">Apple Music top albums</span>
         </div>
         <button type="button" onClick={fetchLatest} disabled={fetching}
-          className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-50">
+          className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white disabled:opacity-50">
           {fetching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
           Fetch latest from Apple Music
         </button>

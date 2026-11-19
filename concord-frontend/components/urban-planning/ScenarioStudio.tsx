@@ -271,7 +271,7 @@ export function ScenarioStudio({ onDataChanged }: { onDataChanged?: () => void }
           <button
             onClick={create}
             disabled={busy}
-            className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-xs text-white hover:bg-emerald-500 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-md bg-emerald-700 px-3 py-1.5 text-xs text-white hover:bg-emerald-600 disabled:opacity-50"
           >
             {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
             Add Scenario
@@ -455,7 +455,7 @@ export function ScenarioStudio({ onDataChanged }: { onDataChanged?: () => void }
                         if (r.data.ok) { setEditingScenario(null); setCompare(null); await refresh(); onDataChanged?.(); }
                         else setError(r.data.error || 'update failed');
                       }}
-                      className="rounded bg-emerald-600 px-2.5 py-1 text-[11px] text-white hover:bg-emerald-500 disabled:opacity-40">Save changes</button>
+                      className="rounded bg-emerald-700 px-2.5 py-1 text-[11px] text-white hover:bg-emerald-600 disabled:opacity-40">Save changes</button>
                     <button type="button" onClick={() => setEditingScenario(null)}
                       className="rounded border border-zinc-700 px-2.5 py-1 text-[11px] text-zinc-300 hover:bg-zinc-800">Cancel</button>
                   </div>

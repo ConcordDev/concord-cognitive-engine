@@ -79,7 +79,7 @@ export function PreviewPane({
           <button
             onClick={deploy}
             disabled={deploying}
-            className="inline-flex items-center gap-1 rounded bg-emerald-600 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-emerald-500 disabled:opacity-40"
+            className="inline-flex items-center gap-1 rounded bg-emerald-700 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-emerald-600 disabled:opacity-40"
           >
             {deploying ? <Loader2 className="h-3 w-3 animate-spin" /> : <Rocket className="h-3 w-3" />} Deploy
           </button>

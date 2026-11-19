@@ -290,7 +290,7 @@ export function ComposerPanel() {
           </span>
           <span className="ml-auto flex gap-1.5">
             <button onClick={doNewCircuit}
-              className="px-2.5 py-1 rounded bg-amber-500/80 text-white font-semibold hover:bg-amber-500">
+              className="px-2.5 py-1 rounded bg-amber-700/80 text-white font-semibold hover:bg-amber-500">
               Start new
             </button>
             <button onClick={() => setConfirmNew(false)}
@@ -621,7 +621,7 @@ export function ComposerPanel() {
                     <input value={renameText} onChange={(e) => setRenameText(e.target.value)} maxLength={120}
                       className="w-36 rounded border border-zinc-600 bg-zinc-900 px-2 py-1 text-xs text-zinc-100" aria-label="New circuit name" autoFocus />
                     <button onClick={handleRename} disabled={!renameText.trim()}
-                      className="px-2 py-1 rounded bg-emerald-600 text-white font-semibold hover:bg-emerald-500 disabled:opacity-40">
+                      className="px-2 py-1 rounded bg-emerald-700 text-white font-semibold hover:bg-emerald-600 disabled:opacity-40">
                       Save
                     </button>
                     <button onClick={() => setRenaming(null)}

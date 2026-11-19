@@ -400,7 +400,7 @@ export default function ServiceMarketplace() {
             <div className="flex flex-col items-center">
               <div
                 className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold ${
-                  i <= currentIdx ? 'bg-emerald-500/80 text-white' : 'bg-white/10 text-white/30'
+                  i <= currentIdx ? 'bg-emerald-700/80 text-white' : 'bg-white/10 text-white/30'
                 }`}
               >
                 {i < currentIdx ? '\u2713' : i + 1}

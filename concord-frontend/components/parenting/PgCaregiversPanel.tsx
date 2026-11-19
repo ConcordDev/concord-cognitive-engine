@@ -117,7 +117,7 @@ export function PgCaregiversPanel({ childId }: { childId: string }) {
             onChange={(e) => setRedeemCode(e.target.value.toUpperCase())}
             className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100 font-mono tracking-widest uppercase" />
           <button type="button" onClick={redeem}
-            className="px-3 py-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg">Join</button>
+            className="px-3 py-1.5 text-xs font-medium bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg">Join</button>
         </div>
         {redeemMsg && <p className="text-[11px] text-zinc-400">{redeemMsg}</p>}
       </section>

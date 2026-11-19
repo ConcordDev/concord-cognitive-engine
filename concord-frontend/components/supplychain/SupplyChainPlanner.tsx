@@ -443,7 +443,7 @@ function EchelonPanel({ notify }: { notify: (f: Feedback) => void }) {
         />
         <div className="flex items-center gap-2">
           <div className="w-40"><div className={LABEL}>Service-level Z (1.65 ≈ 95%)</div><input className={INPUT} type="number" step="0.01" value={zText} onChange={(e) => setZText(e.target.value)} /></div>
-          <button onClick={optimize} disabled={busy} className={cn(BTN, 'bg-emerald-600 text-white hover:bg-emerald-500 mt-3')}>
+          <button onClick={optimize} disabled={busy} className={cn(BTN, 'bg-emerald-700 text-white hover:bg-emerald-600 mt-3')}>
             {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Layers className="w-3.5 h-3.5" />} Optimize network
           </button>
         </div>
@@ -650,7 +650,7 @@ function ForecastPanel({ notify }: { notify: (f: Feedback) => void }) {
         <div className="flex items-center gap-2">
           <div className="w-32"><div className={LABEL}>Season length</div><input className={INPUT} type="number" value={season} onChange={(e) => setSeason(e.target.value)} /></div>
           <div className="w-32"><div className={LABEL}>Horizon</div><input className={INPUT} type="number" value={horizon} onChange={(e) => setHorizon(e.target.value)} /></div>
-          <button onClick={forecast} disabled={busy} className={cn(BTN, 'bg-cyan-600 text-white hover:bg-cyan-500 mt-3')}>
+          <button onClick={forecast} disabled={busy} className={cn(BTN, 'bg-cyan-700 text-white hover:bg-cyan-500 mt-3')}>
             {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <TrendingUp className="w-3.5 h-3.5" />} Forecast
           </button>
         </div>
@@ -811,7 +811,7 @@ function WorkOrdersPanel({ notify }: { notify: (f: Feedback) => void }) {
         <div><div className={LABEL}>Quantity</div><input className={INPUT} type="number" value={qty} onChange={(e) => setQty(e.target.value)} /></div>
         <div><div className={LABEL}>Unit cost</div><input className={INPUT} type="number" value={cost} onChange={(e) => setCost(e.target.value)} /></div>
         <div><div className={LABEL}>Lead time (days)</div><input className={INPUT} type="number" value={lead} onChange={(e) => setLead(e.target.value)} /></div>
-        <button onClick={create} disabled={busy} className={cn(BTN, 'bg-teal-600 text-white hover:bg-teal-500 col-span-2 md:col-span-3 justify-center')}>
+        <button onClick={create} disabled={busy} className={cn(BTN, 'bg-teal-700 text-white hover:bg-teal-500 col-span-2 md:col-span-3 justify-center')}>
           {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />} New requisition
         </button>
       </div>
@@ -921,7 +921,7 @@ function SpendPanel({ notify }: { notify: (f: Feedback) => void }) {
           lines={'Acme Corp | raw materials | 500 | 4.20\nGlobex | packaging | 1200 | 0.85\nAcme Corp | raw materials | 300 | 4.50'}
           onLoad={() => setText('Acme Corp | raw materials | 500 | 4.20\nGlobex | packaging | 1200 | 0.85\nAcme Corp | raw materials | 300 | 4.50')}
         />
-        <button onClick={analyze} disabled={busy} className={cn(BTN, 'bg-amber-600 text-white hover:bg-amber-500')}>
+        <button onClick={analyze} disabled={busy} className={cn(BTN, 'bg-amber-700 text-white hover:bg-amber-500')}>
           {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <DollarSign className="w-3.5 h-3.5" />} Analyze spend
         </button>
       </div>

@@ -166,7 +166,7 @@ function Section({
                 <ChannelIcon kind={c.kind} isPrivate={c.isPrivate} className={cn('w-3 h-3 flex-shrink-0', active ? 'text-violet-300' : 'text-gray-400')} />
                 <span className="truncate flex-1">{c.name}</span>
                 {c.unread > 0 && (
-                  <span className="px-1.5 py-0.5 rounded-full bg-rose-500 text-white text-[9px] font-mono">{c.unread}</span>
+                  <span className="px-1.5 py-0.5 rounded-full bg-rose-600 text-white text-[9px] font-mono">{c.unread}</span>
                 )}
               </button>
               {onArchive && (
