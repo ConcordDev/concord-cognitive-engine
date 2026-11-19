@@ -2150,7 +2150,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
             <button
               type="button"
               onClick={() => openCreateFor(selectedDate)}
-              className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-teal-500/90 px-8 py-3 text-[15px] font-medium text-white shadow-[0_8px_32px_rgba(45,212,191,0.2)] transition-colors hover:bg-teal-400"
+              className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-teal-700/90 px-8 py-3 text-[15px] font-medium text-white shadow-[0_8px_32px_rgba(45,212,191,0.2)] transition-colors hover:bg-teal-600"
               title="New event (N)"
             >
               <Plus className="h-4 w-4" />

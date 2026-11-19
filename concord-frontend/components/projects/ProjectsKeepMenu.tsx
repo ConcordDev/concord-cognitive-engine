@@ -127,7 +127,7 @@ export function ProjectsKeepMenu({ project }: { project: KeptProject | null }) {
           type="button"
           onClick={() => void save()}
           disabled={busy !== null}
-          className="rounded-md bg-teal-500/90 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-teal-500 disabled:opacity-50"
+          className="rounded-md bg-teal-700/90 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-teal-600 disabled:opacity-50"
         >
           {busy === 'save' ? 'Saving…' : 'Save project as DTU'}
         </button>
