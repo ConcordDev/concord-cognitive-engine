@@ -27,6 +27,7 @@ import re
 
 from . import expected as _X
 from . import labels as _L
+from . import provenance as _P
 from . import repro as _R
 from . import writevocab as _W
 from .safety import HARD_DENY, WRITE_NEVER
@@ -299,6 +300,9 @@ def check_schema(rw):
         return None
     if st not in ("rewritten", "original_sufficient"):
         return "schema: status must be rewritten|human_only|original_sufficient"
+    cs = rw.get("case_source")
+    if cs is not None and cs not in _P.CASE_SOURCES:
+        return "schema: case_source must be observed|extrapolated (C25)" 
     if not isinstance(rw.get("steps"), list) or not isinstance(rw.get("expected"), list):
         return "schema: steps/expected must be lists"
     if not rw["steps"] and not rw["expected"]:
@@ -433,6 +437,15 @@ def load_live_index(path_or_dict):
     return labels, meta
 
 
+def stamp_case_source(rw):
+    """C25: return a copy of a rewrite record carrying the case_source tag its
+    own step grounding derives (provenance.classify_rewrite). The generator's
+    door: new records are stamped here, and agree() re-derives and compares."""
+    out = dict(rw)
+    out["case_source"] = _P.classify_rewrite(rw)
+    return out
+
+
 def agree(ticket, rw, labels=None, manifest_text=None, frontend_repo=None, live_meta=None):
     """-> (ok, reasons). Deterministic, fail closed. `labels`: {lens: [live control names]} when available.
     `live_meta`: provenance {run_id, fold_sha} of the live index (load_live_index); a step citing `live:<lens>@<run>:<sha>`
@@ -450,6 +463,15 @@ def agree(ticket, rw, labels=None, manifest_text=None, frontend_repo=None, live_
     if rw["status"] == "original_sufficient":
         # nothing hand-converted: validate the verbatim entries still hold, but the ORIGINAL path is what replays
         pass
+    # C25 (Gate S10 #11): a DECLARED case_source is checked against the record's own
+    # step grounding, never trusted blind -- a mismatch fails closed here, before any
+    # step is mapped. An absent tag is legacy (pre-C25 records) and is not failed;
+    # generators stamp new records via stamp_case_source().
+    declared = rw.get("case_source")
+    if declared is not None:
+        derived = _P.classify_rewrite(rw)
+        if declared != derived:
+            return False, ["case_source_mismatch: declared %r but the record's step grounding derives %r (C25)" % (declared, derived)]
     raws = _R.split_steps(ticket)
     clauses = _clauses_of(ticket)
     lens = ticket.get("lens")

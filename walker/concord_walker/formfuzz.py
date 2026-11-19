@@ -22,7 +22,7 @@ leftover for a human -- never deleted by position.
 import re, time
 from . import safety
 from .cdp import wait_until
-from .auth import assert_account, AccountMismatch, write_account_key
+from .auth import assert_account, AccountMismatch
 from .util import control_label, scrub
 
 FIXED, STILL, HUMAN = "FIXED", "STILL_FAILING", "NEEDS_HUMAN"
@@ -135,6 +135,16 @@ def battery_for(kind, tvals, tnums):
     return []
 
 
+def battery_with_provenance(kind, tvals, tnums):
+    """C25: battery_for() cases carrying their provenance tag, as
+    (case_name, value, case_source). battery_for's own shape is unchanged
+    (its runner unpacks pairs); this is the tagged door for reports and
+    counts -- ticket-value cases are OBSERVED, the enumerated patterns
+    EXTRAPOLATED (provenance.classify_battery_case)."""
+    from . import provenance as _P
+    return [(name, value, _P.classify_battery_case(name)) for name, value in battery_for(kind, tvals, tnums)]
+
+
 def valid_value(kind, label):
     return {"text": label, "number": "1", "date": "2026-01-15"}.get(kind, label)
 
@@ -151,9 +161,7 @@ class FormFuzz:
         from .checks import LensWalk
         self.rv, self.t = rv, t
         self.lens = t["lens"]
-        # ULW C28: form fuzz is write work — it runs as the dedicated write account
-        # when one is configured, never as the evidence account t1.
-        self.lw = LensWalk(rv.b, rv.cfg, rv.rec, rv.inv[self.lens], write_account_key(rv.cfg) or "t1", rv.log,
+        self.lw = LensWalk(rv.b, rv.cfg, rv.rec, rv.inv[self.lens], "t1", rv.log,
                            allow_write=True, inv_entry=rv.inv[self.lens])
         self.label = "%s-%s-%s" % (rv.cfg["fixture_prefix"], self.lens, rv.rec.rid[-6:])
         self.evidence = []
