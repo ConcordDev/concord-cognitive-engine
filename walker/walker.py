@@ -134,6 +134,7 @@ def cmd_walk(args, cfg, log):
     from playwright.sync_api import sync_playwright
     from concord_walker.lensrecord import deploy_stamp, upgrade_record, Manifest, checks_not_run, load_lens_record
     from concord_walker.replay import ReplayRun
+    from concord_walker.carryover import CarryoverQueue
     inv = load_inventory(cfg)
     lenses = pick_lenses(inv, args)
     all_slugs = [l["slug"] for l in inv]
@@ -200,6 +201,7 @@ def cmd_walk(args, cfg, log):
         manifest.save()
     log("run %s: %d lens(es), phases=%s, write=%s, dry=%s, premap=%s" % (rid, len(lenses), phases, args.allow_write, dry, premap))
     summary = []
+    carryover = CarryoverQueue()  # ULW C7: every NOT_RUN check queues for a run-end revisit
     from concord_walker.runstate import LensBudget, ReplayBudget
     walk_budget = LensBudget(cfg["thresholds"]["lens_budget_s"])  # WALK-05 hook: one run-shared per-lens budget
     # replay's OWN per-lens budget (base + per_ticket x n_tickets, capped), on its own clock: never the sweep's spent time
@@ -332,7 +334,35 @@ def cmd_walk(args, cfg, log):
                 manifest.lens(slug, "walked", reason="gate check (reach only)" if gate else None,
                               checks_not_run=checks_not_run(res), deploy=deploy, state=res["state"])
                 summary.append(res)
+                carryover.add_from_result(res)
                 write_root_causes(cfg["audit_dir"], log=log)
+            # ULW C7: run-end revisit — every queued NOT_RUN check gets ONE
+            # fresh single-phase walk; what is still NOT_RUN stays queued
+            # with its outcome recorded in carryover.json. Never dropped.
+            if carryover.pending() and not abort:
+                log("carry-over: %d NOT_RUN check(s) queued; revisiting once at run end" % len(carryover.pending()))
+                _phase_for = {"create_delete": "write", "mobile_390": "mobile"}
+                _revisitable = ("reach", "surface", "tabs", "keyboard", "openers", "export", "contrast", "mobile", "write", "sweep")
+
+                def _revisit(it):
+                    ph = _phase_for.get(it["check"], it["check"])
+                    if ph not in _revisitable:
+                        return ("NOT_RUN", "no phase mapping for check %r; stays queued" % it["check"])
+                    if it["slug"] in cfg["admin_lenses"]:
+                        return ("NOT_RUN", "admin/gate lens: not revisited in this pass")
+                    lens = next((l for l in lenses if l["slug"] == it["slug"]), None)
+                    if lens is None:
+                        return ("NOT_RUN", "lens not in this run")
+                    lw2 = LensWalk(browser, cfg, rec, lens, None if args.no_auth else "t1", log,
+                                   allow_write=args.allow_write, phases=[ph], inv_entry=lens,
+                                   budget=walk_budget, deploy=run_deploy)
+                    r2 = lw2.run()
+                    d = (r2.get("checks") or {}).get(it["check"]) or {}
+                    return (d.get("status", "NOT_RUN"), d.get("reason"))
+
+                carryover.drain(_revisit)
+                carryover.write(rec.run_dir)
+                log("carry-over: %d check(s) still NOT_RUN after revisit (see carryover.json)" % len(carryover.remaining()))
         finally:
             try:
                 browser.close()
@@ -405,6 +435,7 @@ def cmd_reverify(args, cfg, log):
     from concord_walker import sha_gate
     from concord_walker.ledger import WalkerLedger
     from concord_walker.runstate import Journal, Heartbeat, LensBudget
+    from concord_walker.crashretry import run_with_relaunch, CrashExhausted
     from concord_walker import results as results_mod
     inv = load_inventory(cfg)
     rid = args.resume if getattr(args, "resume", None) else run_id() + "-reverify"
@@ -533,8 +564,22 @@ def cmd_reverify(args, cfg, log):
                     with open(os.path.join(rec.run_dir, "reverify.jsonl"), "a") as f:
                         f.write(json.dumps(res) + "\n")
                     continue
+                def _relaunch():
+                    nonlocal browser
+                    try:
+                        browser.close()
+                    except Exception:
+                        pass
+                    browser = pw.chromium.launch(channel="chrome", headless=True, args=["--disable-dev-shm-usage"])
+                    rv.b = browser
+
                 try:
-                    res = rv.run(tid)
+                    # ULW C9: a browser crash relaunches and re-runs THIS
+                    # ticket; only a second crash fails the ticket (alone).
+                    res, _relaunched = run_with_relaunch(tid, lambda: rv.run(tid), _relaunch,
+                                                         _is_browser_crash, max_relaunches=1, log=log)
+                    if _relaunched:
+                        journal.record("reverify", tid, "relaunched", "browser crash; relaunched and re-ran")
                     _t = store.get(tid) or {}
                     _fix = fix_map.get(tid) or _t.get("fix_sha") or _t.get("fix_commit") or _t.get("merged_sha")
                     res["build"] = {"backend_sha": rv_deploy["backend_sha"], "sha_status": rv_deploy["sha_status"],
@@ -542,6 +587,13 @@ def cmd_reverify(args, cfg, log):
                                     "contains_fix": contains_commit(contain_repo, rv_deploy["backend_sha"], _fix) if _fix else "unknown",
                                     "line": build_verdict(contain_repo, rv_deploy, _fix)}
                     journal.record("reverify", tid, "done", res["verdict"])
+                except CrashExhausted as ce:
+                    # ULW C9: the ticket crashed again after its relaunch —
+                    # it fails ALONE; the run continues with the next ticket.
+                    journal.record("reverify", tid, "failed", "browser crash after relaunch: %s" % ce.last_error)
+                    cov_skip[tid] = "crashed: browser crash after relaunch (%s)" % type(ce.last_error).__name__
+                    log("  => %s CRASHED after relaunch; continuing with the next ticket" % tid)
+                    continue
                 except AccountMismatch as e:
                     journal.record("reverify", tid, "failed", "account mismatch: %s" % e)
                     log("ABORT: account check failed during %s: %s" % (tid, e))
@@ -692,6 +744,22 @@ def cmd_whoami(args, cfg, log):
         b.close()
 
 
+def cmd_merge_runs(args, cfg, log):
+    """ULW C14 (machinery only): merge two instances' record files by
+    ticket ID with a conflict report. Activation of a second instance is
+    not this command's act; a lens overlap is reported, not hidden."""
+    from concord_walker.merge import merge_files
+    la = [x.strip() for x in (args.lenses_a or "").split(",") if x.strip()]
+    lb = [x.strip() for x in (args.lenses_b or "").split(",") if x.strip()]
+    report = merge_files(args.a, args.b, args.out, args.report, lenses_a=la, lenses_b=lb)
+    log("merge: %s -> %s (report %s)" % (report["stats"], args.out, args.report))
+    if report["lens_overlap"]:
+        log("merge: LENS OVERLAP %s — a second instance on these lenses is NOT activatable (Gate s.6)" % report["lens_overlap"])
+    if report["conflicts"]:
+        log("merge: %d conflict(s); contested ids are EXCLUDED from %s and listed in %s"
+            % (len(report["conflicts"]), args.out, args.report))
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--config")
@@ -751,6 +819,13 @@ def main():
     p.add_argument("--fix-commit", action="append", help="MST-W0-01: TICKET=SHA (repeatable): say whether the live build contains that fix commit")
     p.add_argument("--containment-repo", help="MST-W0-01: git checkout used for merge-base --is-ancestor (defaults to --from-repo); without one the answer is 'unknown'")
     p.add_argument("--dry-run", action="store_true")
+    p = sub.add_parser("merge-runs", help="ULW C14: merge two walker instances' record files by ticket ID, with a conflict report (machinery only)")
+    p.add_argument("--a", required=True, help="first instance's records file (walker.jsonl / human.jsonl union schema)")
+    p.add_argument("--b", required=True, help="second instance's records file")
+    p.add_argument("--out", required=True, help="merged records output path")
+    p.add_argument("--report", required=True, help="conflict report output path (JSON)")
+    p.add_argument("--lenses-a", help="comma list of lenses instance A walked (disjointness check)")
+    p.add_argument("--lenses-b", help="comma list of lenses instance B walked (disjointness check)")
     p = sub.add_parser("preflight", help="ULW C8: verify sessions + write-lane labelling, publish write-skip list + create/delete coverage (before lens 1)")
     p.add_argument("--no-live", action="store_true", help="config/filesystem legs only (no browser session assertions)")
     p = sub.add_parser("login", help="save a session for a QA account")
@@ -778,6 +853,8 @@ def main():
             raise SystemExit("give ticket ids (e.g. FIX-007 FIX-deities-002) or --from-status FIXED_PENDING_VERIFY")
         else:
             cmd_reverify(args, cfg, log)
+    elif args.cmd == "merge-runs":
+        cmd_merge_runs(args, cfg, log)
     elif args.cmd == "preflight":
         cmd_preflight(args, cfg, log)
     elif args.cmd == "login":
