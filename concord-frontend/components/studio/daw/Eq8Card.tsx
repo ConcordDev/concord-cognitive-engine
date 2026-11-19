@@ -21,7 +21,7 @@ export function Eq8Card({ fx, onChange, onRemove, onMove }: {
   const bands = readEqBands(fx.params);
   const set = (next: EqBand[], key: string) => onChange({ ...fx, params: eq8Params(next) }, key);
   return (
-    <div className={cn('flex w-72 flex-shrink-0 flex-col rounded-lg border bg-[#17171f] p-2', fx.enabled ? 'border-white/10' : 'border-white/5 opacity-50')} data-testid="studio-eq8">
+    <div className={cn('flex w-72 flex-shrink-0 flex-col rounded-lg border bg-[var(--bo-panel)] p-2', fx.enabled ? 'border-white/10' : 'border-white/5 opacity-50')} data-testid="studio-eq8">
       <div className="mb-1 flex items-center gap-1">
         <button type="button" onClick={() => onChange({ ...fx, enabled: !fx.enabled })} className={cn('rounded p-0.5', fx.enabled ? 'text-emerald-400' : 'text-zinc-600')} title="Bypass" aria-label="Bypass 8-band EQ"><Power className="h-3 w-3" /></button>
         <span className="flex-1 truncate text-[11px] font-medium text-zinc-200">{fx.name}</span>

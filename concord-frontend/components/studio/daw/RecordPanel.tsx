@@ -6,6 +6,7 @@ import type { InputRecorderApi } from './useInputRecorder';
 import { useBeatFrame } from './engine-hooks';
 import type { ChannelMode } from '@/lib/daw/input-devices';
 import type { TransportConfig } from '@/lib/daw/types';
+import { meterZone } from '../booth/tokens';
 
 export function InputMeter({ api }: { api: InputRecorderApi }) {
   const bar = useRef<HTMLDivElement>(null);
@@ -15,20 +16,20 @@ export function InputMeter({ api }: { api: InputRecorderApi }) {
   useBeatFrame(() => {
     const l = api.getLevel();
     const pct = (db: number) => `${Math.max(0, Math.min(100, ((db + 60) / 60) * 100))}%`;
-    if (bar.current) { bar.current.style.width = pct(l.peakDb); bar.current.style.background = l.peakDb > -3 ? '#ef4444' : l.peakDb > -12 ? '#f59e0b' : '#22c55e'; }
+    if (bar.current) { bar.current.style.width = pct(l.peakDb); bar.current.dataset.zone = meterZone(l.peakDb, -12, -3); }
     if (rms.current) rms.current.style.width = pct(l.rmsDb);
-    if (clip.current) clip.current.style.background = l.clipped ? '#ef4444' : 'rgba(255,255,255,0.08)';
+    if (clip.current) clip.current.dataset.on = l.clipped ? 'true' : 'false';
     if (label.current) label.current.textContent = l.peakDb <= -60 ? '-∞' : `${l.peakDb.toFixed(1)} dB`;
   });
   return (
     <div className="flex items-center gap-2">
       <div className="relative h-3 flex-1 overflow-hidden rounded bg-black/60">
         <div ref={rms} className="absolute inset-y-0 left-0 bg-white/20" />
-        <div ref={bar} className="absolute inset-y-0 left-0 opacity-80" />
+        <div ref={bar} className="bo-meter-fill absolute inset-y-0 left-0 opacity-80" />
         {[-18, -12, -6].map((db) => <div key={db} className="absolute inset-y-0 w-px bg-white/20" style={{ left: `${((db + 60) / 60) * 100}%` }} />)}
       </div>
       <span ref={label} className="w-14 text-right text-[10px] tabular-nums text-zinc-400" />
-      <button ref={clip} onClick={api.resetClip} className="h-3 w-6 rounded text-[8px] font-bold text-white" title="Clip indicator — click to reset" data-testid="studio-clip-led">CLIP</button>
+      <button ref={clip} onClick={api.resetClip} className="bo-clip-led h-3 w-6 rounded text-[8px] font-bold text-white" title="Clip indicator — click to reset" data-testid="studio-clip-led">CLIP</button>
     </div>
   );
 }

@@ -28,6 +28,6 @@ describe('Studio Opener greeting', () => {
     expect(greeting.textContent).toBe('What are we making, ramaj');
     expect(greeting.className).toContain('font-vault');
     // The real empty state still renders under the greeting.
-    expect(await screen.findByText('No projects yet. Pick a template above.')).toBeTruthy();
+    expect(await screen.findByText('No sessions yet. Start one above.')).toBeTruthy();
   });
 });

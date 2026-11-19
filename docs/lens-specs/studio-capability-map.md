@@ -1,5 +1,52 @@
 # Studio lens — capability map (Wave 3 audit, 2026-07-11)
 
+> **The Booth redesign (2026-11-19, `docs/LENS_REDESIGN_PLAYBOOK.md`).**
+> Newest truth; everything below is history.
+>
+> - **One app, three rooms over one song.** `StudioDawWorkspace` mounts
+>   only the DAW (`daw/StudioApp` → Opener → `daw/Editor`). The editor is
+>   now **Write** (record, comp, tune, song sections, session/keep),
+>   **Produce** (browser, arrange/session, piano roll, devices, groove,
+>   saved chains, Ask producer) and **Mix** (full-height console, inserts,
+>   master VU + live LUFS/true peak, mastering, MIDI learn, Score a world),
+>   switched with keys 1 · 2 · 3 and kept in `?room=`. Identity tokens:
+>   `components/studio/booth/booth.css` (`--bo-*`).
+> - **The "Parity workbench" tab is gone, and why.** Its ~18 panels edited
+>   the parity store (`project.tracks`/`clips`/`midiNotes`/…), a second
+>   copy of the song the audio engine never plays (the DAW plays
+>   `project.daw`). Every one of those jobs is native in a room now:
+>   clips/clip edit/piano roll/quantize → Arrange + piano roll; automation
+>   → mixer volume lanes; recording/takes → Write; bounce/stems → Export;
+>   tempo → tempo lane; sends/scenes → mixer returns + Session grid; drum
+>   rack → drum tracks + step grid; presets → synth presets. Four were
+>   rebuilt as native Booth features on the **real** project id:
+>   markers-* → **song sections** (`booth/SongSections`), midi-map-* →
+>   **MIDI learn** (`booth/MidiLearn`, Web MIDI CC → fader/pan/master),
+>   fx-rack-* → **saved chains** (`booth/ChainShelf`, now accepts every
+>   DAW device type), groove-list → **feel** (`booth/GroovePicker`).
+>   `publish-as-adaptive-music` moved to Mix as **Score a world**
+>   (renders the real mix, not the parity store), and the Keep menu
+>   (DTU + Thread draft) and CollabPanel moved to Write. The parity-store
+>   macros themselves stay registered (agent/MCP/Music lens), with no
+>   Studio UI — follow-up issue decides retire vs bridge.
+> - **Pitch correction, measured.** `lib/daw/tune-vocal.ts`: one tap puts
+>   Pitch Correct first on the vocal in the song key (detecting the key
+>   from the take when the song has none, picking the singer range from
+>   the take), then renders the take through the export path and reports
+>   cents off key before/after. `tests/lib/studio-tune-vocal.test.ts`
+>   measures an off-key A-minor line (20–40 ¢ off) landing within 6 ¢
+>   (natural) / 5 ¢ (hard) with YIN. Browser drive: an imported take read
+>   31 ¢ → 4 ¢.
+> - **Dead code removed.** 48 files: the workbench
+>   panels, ~18 pre-rebuild components behind an unused barrel, the parity
+>   render lib, and their tests. The
+>   stale clip-colour bug the deleted `ArrangementView` test pinned was
+>   live in the DAW too; fixed in `daw/ArrangeView` + `daw/SessionGrid`
+>   and re-pinned there.
+> - **Grades:** `grade-ux-polish --honest` studio = polished, 0
+>   anti-patterns (was functional, 6 clickable divs); `detect-lens-stacking`
+>   studio = 0 (was heavy).
+
 > **Re-verification (HANDOFF-3 batch L5, 2026-10-28, against main 31ac4719):**
 > The Wave-3 findings below are kept as history; the lens has since been
 > REBUILT and several rows are stale. Current truth:

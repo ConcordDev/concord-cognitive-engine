@@ -6,6 +6,7 @@ import type { AutomationCurve, DAWProject, DAWTrack } from '@/lib/daw/types';
 import { newId } from '@/lib/daw/project';
 import { getStudioEngine } from '@/lib/daw/playback-engine';
 import { useBeatFrame } from './engine-hooks';
+import { meterZone } from '../booth/tokens';
 
 export const MASTER_ID = '__master__';
 
@@ -18,6 +19,8 @@ export interface MixerPanelProps {
   onToggleMastering: () => void;
   onAddReturn: (kind: 'reverb' | 'delay' | 'vca') => void;
   onAutomation: (mode: 'read' | 'off') => void;
+  /** 'console' is the Mix room's full-height desk; 'compact' fits a bottom pane. */
+  size?: 'compact' | 'console';
 }
 
 const dbLabel = (v: number) => (Number.isFinite(v) ? `${v > 0 ? '+' : ''}${v.toFixed(1)}` : '-∞');
@@ -40,12 +43,12 @@ export function MixerPanel(p: MixerPanelProps) {
       const meter = id === MASTER_ID ? null : eng.trackMeter(id);
       const db = id === MASTER_ID ? eng.masterPeakDb() : meter!.peak;
       el.style.height = `${Math.max(0, Math.min(100, ((db + 60) / 66) * 100))}%`;
-      el.style.background = db > -0.3 ? '#ef4444' : db > -6 ? '#f59e0b' : '#22c55e';
+      el.dataset.zone = meterZone(db, -6, -0.3);
       const h = hold.current.get(id);
       if (!h || db > h.db || now - h.at > 1500) hold.current.set(id, { db, at: now });
       const lab = peaks.current.get(id);
       const hv = hold.current.get(id)!.db;
-      if (lab) { lab.textContent = hv <= -60 ? '' : hv.toFixed(1); lab.style.color = hv > -0.3 ? '#f87171' : '#a1a1aa'; }
+      if (lab) { lab.textContent = hv <= -60 ? '' : hv.toFixed(1); lab.dataset.zone = meterZone(hv, -6, -0.3); }
       const rmsEl = rms.current.get(id);
       if (rmsEl) rmsEl.textContent = meter && meter.rms > -60 ? meter.rms.toFixed(0) : '';
       const corrEl = corr.current.get(id);
@@ -56,30 +59,31 @@ export function MixerPanel(p: MixerPanelProps) {
     if (tp.current) tp.current.textContent = Number.isFinite(loud.truePeakDbtp) ? `${loud.truePeakDbtp.toFixed(1)} dBTP` : '';
   });
   const selected = tracks.find((t) => t.id === p.selectedTrackId) || null;
+  const big = p.size === 'console';
   const strip = (id: string, name: string, color: string, vol: number, onVol: (v: number) => void, extra?: ReactNode, t?: DAWTrack) => (
-    <div key={id} onClick={() => p.onSelectTrack(id)} className={cn('flex w-20 flex-shrink-0 flex-col items-center gap-1 rounded-lg border p-1.5', p.selectedTrackId === id ? 'border-white/30 bg-white/[0.06]' : 'border-white/5 bg-[#15151c]')} data-testid="studio-mixer-strip">
+    <div key={id} className={cn('bo-metal flex flex-shrink-0 flex-col items-center gap-1 rounded-md border p-1.5', big ? 'w-24' : 'w-20', p.selectedTrackId === id && 'ring-1 ring-[var(--bo-amber)]')} data-testid="studio-mixer-strip">
       <div className="h-1 w-full rounded" style={{ background: color }} />
-      <div className="w-full truncate text-center text-[10px] text-zinc-300">{name}</div>
+      <button type="button" onClick={() => p.onSelectTrack(id)} aria-pressed={p.selectedTrackId === id} aria-label={`Select ${name}`} className="bo-scribble w-full truncate px-1 text-center text-sm leading-5" title={`${name}: select to edit its inserts`}>{name}</button>
       {t && !t.vca && (
         <input type="range" min={-1} max={1} step={0.01} value={t.pan} onChange={(e) => p.onTrack(t.id, { pan: Number(e.target.value) }, `pan-${t.id}`)} onDoubleClick={() => p.onTrack(t.id, { pan: 0 })} className="h-1 w-full accent-zinc-300" aria-label={`${name} pan`} />
       )}
-      <div className="flex h-28 items-end gap-1">
+      <div className={cn('flex items-end gap-1', big ? 'h-56' : 'h-28')}>
         <input
           type="range" min={-60} max={6} step={0.1}
           value={Number.isFinite(vol) ? Math.max(-60, vol) : -60}
           onChange={(e) => { const v = Number(e.target.value); onVol(v <= -60 ? -Infinity : v); }}
           onDoubleClick={() => onVol(0)}
-          className="h-28 w-4 accent-zinc-200"
+          className={cn('w-4 accent-zinc-200', big ? 'h-56' : 'h-28')}
           style={{ writingMode: 'vertical-lr', direction: 'rtl' }}
           aria-label={`${name} volume`}
         />
-        <div className="relative h-28 w-2 overflow-hidden rounded-sm bg-black/60">
-          <div ref={(el) => { if (el) meters.current.set(id, el); else meters.current.delete(id); }} className="absolute bottom-0 w-full" />
+        <div className={cn('bo-well relative overflow-hidden rounded-sm', big ? 'h-56 w-2.5' : 'h-28 w-2')}>
+          <div ref={(el) => { if (el) meters.current.set(id, el); else meters.current.delete(id); }} className="bo-meter-fill absolute bottom-0 w-full" />
         </div>
       </div>
       <div className="flex w-full justify-between text-[9px] tabular-nums text-zinc-400">
         <span>{dbLabel(vol)}</span>
-        <span ref={(el) => { if (el) peaks.current.set(id, el); else peaks.current.delete(id); }} />
+        <span className="bo-peak" ref={(el) => { if (el) peaks.current.set(id, el); else peaks.current.delete(id); }} />
       </div>
       {t && !t.vca && (
         <div className="flex w-full justify-between text-[8px] tabular-nums text-zinc-500">
@@ -100,7 +104,7 @@ export function MixerPanel(p: MixerPanelProps) {
           </div>
         ), t))}
         <div className="mx-1 w-px bg-white/10" />
-        {strip(MASTER_ID, 'Master', '#e4e4e7', p.project.masterBus.volume, p.onMasterVolume, (
+        {strip(MASTER_ID, 'Master', 'var(--bo-cream)', p.project.masterBus.volume, p.onMasterVolume, (
           <div className="flex w-full flex-col items-center gap-0.5">
             <button type="button" onClick={(e) => { e.stopPropagation(); p.onToggleMastering(); }} className={cn('w-full rounded px-1 py-0.5 text-[9px]', p.project.masteringChain.enabled ? 'bg-violet-500/30 text-violet-100' : 'bg-white/5 text-zinc-500')} title="Mastering chain on/off">
               {p.project.masteringChain.enabled ? 'Mastering on' : 'Mastering off'}

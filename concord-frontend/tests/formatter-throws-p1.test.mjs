@@ -42,7 +42,6 @@ const ROWS = [
   ["components/lens/IndicatorChart.tsx", "function formatValue(v"],
   ["components/lens/IndicatorChart.tsx", "function formatValueShort(v"],
   ["components/tick/TickStreamContext.tsx", "const formatMs = useCallback"],
-  ["components/studio/EffectsPanel.tsx", "function formatParamValue(key"],
 ];
 
 test("P1: every THROWS formatter carries the absence guard idiom", () => {

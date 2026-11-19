@@ -121,7 +121,7 @@ export function DeviceCard({ fx, onChange, onRemove, onMove, tracks, trackId }: 
   if (!s) {
     // Saved by an older Studio version; the engine does not process this type.
     return (
-      <div className="flex w-48 flex-shrink-0 flex-col rounded-lg border border-amber-500/20 bg-[#17171f] p-2 opacity-70" data-testid="studio-device-unsupported">
+      <div className="flex w-48 flex-shrink-0 flex-col rounded-lg border border-amber-500/20 bg-[var(--bo-panel)] p-2 opacity-70" data-testid="studio-device-unsupported">
         <div className="mb-1 flex items-center gap-1">
           <span className="flex-1 truncate text-[11px] font-medium text-zinc-300">{fx.name}</span>
           {onRemove && <button onClick={onRemove} className="text-zinc-500 hover:text-red-400" title="Remove"><X className="h-3 w-3" /></button>}
@@ -132,7 +132,7 @@ export function DeviceCard({ fx, onChange, onRemove, onMove, tracks, trackId }: 
   }
   const hasWet = ['reverb', 'delay', 'pingPongDelay', 'chorus', 'flanger', 'distortion', 'overdrive'].includes(fx.type);
   return (
-    <div className={cn('flex w-48 flex-shrink-0 flex-col rounded-lg border bg-[#17171f] p-2', fx.enabled ? 'border-white/10' : 'border-white/5 opacity-50')} data-testid="studio-device">
+    <div className={cn('flex w-48 flex-shrink-0 flex-col rounded-lg border bg-[var(--bo-panel)] p-2', fx.enabled ? 'border-white/10' : 'border-white/5 opacity-50')} data-testid="studio-device">
       <div className="mb-1 flex items-center gap-1">
         <button onClick={() => onChange({ ...fx, enabled: !fx.enabled })} className={cn('rounded p-0.5', fx.enabled ? 'text-emerald-400' : 'text-zinc-600')} title="Bypass"><Power className="h-3 w-3" /></button>
         <span className="flex-1 truncate text-[11px] font-medium text-zinc-200">{fx.name}</span>
@@ -223,7 +223,7 @@ function InstrumentCard({ project, track, sample, onTrack, onPreset }: {
     onTrack({ slices: slices.map((s, n) => n === i ? { ...s, ...patch } : s) });
   };
   return (
-    <div className="flex w-56 flex-shrink-0 flex-col rounded-lg border border-violet-400/20 bg-[#1a1724] p-2">
+    <div className="flex w-56 flex-shrink-0 flex-col rounded-lg border border-violet-400/20 bg-[var(--bo-panel-hi)] p-2">
       <div className="mb-1 text-[11px] font-medium text-violet-200">Instrument</div>
       <select value={track.instrumentId || ''} onChange={(e) => onTrack({ instrumentId: e.target.value })} className="mb-2 rounded bg-black/40 px-1 py-1 text-xs text-zinc-100" data-testid="studio-instrument-select">
         {['bass', 'keys', 'lead', 'pad', 'pluck', 'strings', 'drums'].map((cat) => {
@@ -320,7 +320,7 @@ export function DevicePanel({ project, track, sample, onTrack, onEffects, onPres
           <Plus className="h-4 w-4" /> Add device
         </button>
         {menu && (
-          <div className="absolute left-0 top-0 z-20 w-40 rounded-lg border border-white/10 bg-[#1b1b24] p-1 shadow-xl">
+          <div className="absolute left-0 top-0 z-20 w-40 rounded-lg border border-white/10 bg-[var(--bo-panel-hi)] p-1 shadow-xl">
             {DEVICE_SPECS.map((s) => (
               <button key={s.type} onClick={() => { onEffects([...fxs, newDevice(s.type)]); setMenu(false); }} className="block w-full rounded px-2 py-1 text-left text-xs text-zinc-200 hover:bg-white/10">{s.name}</button>
             ))}

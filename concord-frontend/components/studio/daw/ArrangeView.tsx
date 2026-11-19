@@ -11,6 +11,7 @@ import { getStudioEngine } from '@/lib/daw/playback-engine';
 import { useBeatFrame } from './engine-hooks';
 import { MidiThumb, WaveThumb } from './ClipShapes';
 import { TakesLanes } from './TakesLanes';
+import { meterZone } from '../booth/tokens';
 
 export const HEADER_W = 208;
 export const RULER_H = 26;
@@ -62,18 +63,17 @@ const TrackMeter = memo(function TrackMeter({ trackId }: { trackId: string }) {
     const pct = Math.max(0, Math.min(100, ((db + 60) / 60) * 100));
     if (ref.current) {
       ref.current.style.height = `${pct}%`;
-      ref.current.style.background = db > -0.5 ? '#ef4444' : db > -6 ? '#f59e0b' : '#22c55e';
+      ref.current.dataset.zone = meterZone(db);
     }
   });
-  return <div className="relative h-10 w-1.5 overflow-hidden rounded-sm bg-black/50"><div ref={ref} className="absolute bottom-0 w-full" /></div>;
+  return <div className="relative h-10 w-1.5 overflow-hidden rounded-sm bg-black/50"><div ref={ref} className="bo-meter-fill absolute bottom-0 w-full" /></div>;
 });
 
 function TrackHeader({ t, selected, recording, takesOpen, onToggleTakes, onSelect, onChange }: { t: DAWTrack; selected: boolean; recording: boolean; takesOpen: boolean; onToggleTakes: () => void; onSelect: () => void; onChange: (patch: Partial<DAWTrack>, key?: string) => void }) {
   const [editing, setEditing] = useState(false);
   return (
     <div
-      onClick={onSelect}
-      className={cn('flex items-stretch border-b border-white/5', selected ? 'bg-white/[0.07]' : 'bg-[#14141b] hover:bg-white/[0.04]')}
+      className={cn('flex items-stretch border-b border-white/5', selected ? 'bg-white/[0.07]' : 'bg-[var(--bo-panel)] hover:bg-white/[0.04]')}
       style={{ height: TRACK_H }}
       data-testid="studio-track-header"
     >
@@ -90,7 +90,19 @@ function TrackHeader({ t, selected, recording, takesOpen, onToggleTakes, onSelec
               className="min-w-0 flex-1 rounded bg-black/40 px-1 text-xs text-white outline-none"
             />
           ) : (
-            <span onDoubleClick={() => setEditing(true)} className="truncate text-xs font-medium text-zinc-200">{t.name}</span>
+            <button
+              type="button"
+              onClick={onSelect}
+              onDoubleClick={() => setEditing(true)}
+              onKeyDown={(e) => { if (e.key === 'F2') { e.preventDefault(); setEditing(true); } }}
+              aria-pressed={selected}
+              aria-label={`Select ${t.name}`}
+              title="Select (double-click or F2 to rename)"
+              className="bo-scribble min-w-0 truncate px-1.5 text-left text-sm leading-5"
+              data-testid="studio-track-name"
+            >
+              {t.name}
+            </button>
           )}
         </div>
         <div className="flex items-center gap-1">
@@ -256,11 +268,11 @@ export function ArrangeView(p: ArrangeViewProps) {
   const bars = Math.ceil(endBeat / bpb);
 
   return (
-    <div ref={scrollRef} className="relative h-full overflow-auto bg-[#0e0e13]" onWheel={onWheel} data-testid="studio-arrange">
+    <div ref={scrollRef} className="relative h-full overflow-auto bg-[var(--bo-room)]" onWheel={onWheel} data-testid="studio-arrange">
       <div style={{ width: width + HEADER_W, minHeight: '100%' }} className="relative">
         {/* Ruler */}
         <div className="sticky top-0 z-20 flex" style={{ height: RULER_H }}>
-          <div className="sticky left-0 z-30 flex items-center gap-1 border-b border-r border-white/5 bg-[#101016] px-2 text-[10px] text-zinc-500" style={{ width: HEADER_W }}>
+          <div className="sticky left-0 z-30 flex items-center gap-1 border-b border-r border-white/5 bg-[var(--bo-console)] px-2 text-[10px] text-zinc-500" style={{ width: HEADER_W }}>
             <select aria-label="Snap" value={grid} onChange={(e) => setGrid(Number(e.target.value))} className="rounded bg-white/5 px-1 py-0.5 text-[10px] text-zinc-300" title="Alt-drag a clip to slip the audio. Shift-drag the ruler to loop.">
               <option value={bpb}>Bar</option>
               <option value={1}>Beat</option>
@@ -268,7 +280,7 @@ export function ArrangeView(p: ArrangeViewProps) {
               <option value={0.25}>1/16</option>
             </select>
           </div>
-          <div className="relative cursor-pointer border-b border-white/5 bg-[#101016]" style={{ width }} onPointerDown={onRulerDown}>
+          <div className="relative cursor-pointer border-b border-white/5 bg-[var(--bo-console)]" style={{ width }} onPointerDown={onRulerDown}>
             {Array.from({ length: bars }, (_, i) => (
               <div key={i} className="absolute top-0 h-full border-l border-white/10 pl-1 text-[10px] leading-[26px] text-zinc-500" style={{ left: i * bpb * bw }}>{i + 1}</div>
             ))}
@@ -303,7 +315,7 @@ export function ArrangeView(p: ArrangeViewProps) {
                 if (t.type === 'audio') return;
                 p.onCreateClip(t.id, Math.floor(beatFromClientX(e.clientX) / bpb) * bpb);
               }}
-              onClick={() => { p.onSelectTrack(t.id); p.onSelectClip(null); }}
+              onPointerDown={(e) => { if (e.target === e.currentTarget) { p.onSelectTrack(t.id); p.onSelectClip(null); } }}
               onDragOver={(e) => e.preventDefault()}
               onDrop={(e) => onLaneDrop(e, t.id)}
               title={t.type === 'audio' ? 'Arm and record, or drop audio files here' : 'Double-click to create a MIDI clip'}
@@ -321,8 +333,12 @@ export function ArrangeView(p: ArrangeViewProps) {
                     onPointerDown={(e) => startDrag(e, c, ti, 'move')}
                     onDoubleClick={(e) => { e.stopPropagation(); p.onSelectClip(c.id); }}
                     onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); p.onSelectClip(c.id); } }}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`${c.name}, bar ${Math.floor(start / bpb) + 1}. Enter opens it; arrows move it once open.`}
                     className={cn('absolute top-1 cursor-grab overflow-hidden rounded-md border text-[10px] active:cursor-grabbing', sel ? 'border-white ring-1 ring-white/60' : 'border-black/30', isDrag && 'z-10 opacity-80')}
-                    style={{ left: start * bw, width: w, height: TRACK_H - 8, transform: `translateY(${dy}px)`, background: `${c.color || t.color}cc` }}
+                    style={{ left: start * bw, width: w, height: TRACK_H - 8, transform: `translateY(${dy}px)`, background: `${t.color}cc` }}
                     data-testid="studio-clip"
                   >
                     {c.type === 'audio'
@@ -361,7 +377,7 @@ export function ArrangeView(p: ArrangeViewProps) {
 
         {/* Add track — always visible under the last track */}
         <div className="flex">
-          <div className="sticky left-0 z-10 border-r border-white/5 bg-[#101016] p-2" style={{ width: HEADER_W }}>
+          <div className="sticky left-0 z-10 border-r border-white/5 bg-[var(--bo-console)] p-2" style={{ width: HEADER_W }}>
             {addOpen ? (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-1">
                 {([['audio', 'Audio', Mic], ['instrument', 'Instrument', Piano], ['drums', 'Drums', Drum]] as const).map(([k, label, Icon]) => (
@@ -430,7 +446,7 @@ function TempoLane({
   const poly = tempoPolyline(points, beatWidth, yFor);
   return (
     <div className="flex border-b border-white/5" style={{ height: TEMPO_H }} data-testid="studio-tempo-lane">
-      <div className="sticky left-0 z-30 flex flex-col justify-center gap-1 border-r border-white/5 bg-[#101016] px-2" style={{ width: HEADER_W }}>
+      <div className="sticky left-0 z-30 flex flex-col justify-center gap-1 border-r border-white/5 bg-[var(--bo-console)] px-2" style={{ width: HEADER_W }}>
         <div className="flex items-center justify-between text-[10px] text-zinc-500">
           <span>Tempo</span>
           <span className="font-mono text-zinc-300">{Math.round(bpmAt(points, sel.beat))} BPM</span>
@@ -470,7 +486,7 @@ function TempoLane({
         </div>
       </div>
       <div
-        className="relative cursor-crosshair bg-[#0c0c12]"
+        className="relative cursor-crosshair bg-[var(--bo-room)]"
         style={{ width }}
         title="Double-click to add a tempo point (20–999 BPM). Drag a point to move it. Alt snaps to quarter beats."
         onDoubleClick={(e) => {

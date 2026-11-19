@@ -173,14 +173,15 @@ export function PublishAsAdaptiveMusicDialog({
             />
           </label>
 
-          <label className="block">
-            <span className="block text-[10px] uppercase tracking-wider text-zinc-400 mb-1">Region</span>
+          <div role="group" aria-label="Region" className="block">
+            <span className="block text-[10px] uppercase tracking-wider text-zinc-400 mb-1" aria-hidden>Region</span>
             <div className="grid grid-cols-5 gap-1">
               {REGIONS.map((r) => (
                 <button
                   key={r}
                   type="button"
                   onClick={() => setRegion(r)}
+                  aria-pressed={region === r}
                   className={
                     'rounded px-2 py-1.5 text-xs border ' +
                     (region === r
@@ -192,16 +193,17 @@ export function PublishAsAdaptiveMusicDialog({
                 </button>
               ))}
             </div>
-          </label>
+          </div>
 
-          <label className="block">
-            <span className="block text-[10px] uppercase tracking-wider text-zinc-400 mb-1">Intensity</span>
+          <div role="group" aria-label="Intensity" className="block">
+            <span className="block text-[10px] uppercase tracking-wider text-zinc-400 mb-1" aria-hidden>Intensity</span>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-1">
               {INTENSITIES.map((i) => (
                 <button
                   key={i}
                   type="button"
                   onClick={() => setIntensity(i)}
+                  aria-pressed={intensity === i}
                   className={
                     'rounded px-2 py-1.5 text-xs border ' +
                     (intensity === i
@@ -213,7 +215,7 @@ export function PublishAsAdaptiveMusicDialog({
                 </button>
               ))}
             </div>
-          </label>
+          </div>
 
           <label className="block">
             <span className="block text-[10px] uppercase tracking-wider text-zinc-400 mb-1">Mood tags (comma-separated, optional)</span>

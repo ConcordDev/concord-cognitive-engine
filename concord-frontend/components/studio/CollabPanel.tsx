@@ -98,7 +98,7 @@ export function CollabPanel({ projectId }: { projectId?: string }) {
   }
 
   return (
-    <div className="bg-[#0d1117] border border-violet-500/20 rounded-lg overflow-hidden">
+    <div className="bg-[var(--bo-panel)] border border-violet-500/20 rounded-lg overflow-hidden">
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Users className="w-4 h-4 text-violet-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Real-time collaboration</span>

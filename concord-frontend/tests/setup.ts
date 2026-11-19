@@ -34,6 +34,10 @@ vi.mock('next/font/google', () => {
     Permanent_Marker: face('Permanent Marker'),
     Caveat: face('Caveat'),
     Courier_Prime: face('Courier Prime'),
+    // Studio — The Booth (components/studio/booth/boothFonts.ts)
+    Bebas_Neue: face('Bebas Neue'),
+    Gochi_Hand: face('Gochi Hand'),
+    Share_Tech_Mono: face('Share Tech Mono'),
   };
 });
 
