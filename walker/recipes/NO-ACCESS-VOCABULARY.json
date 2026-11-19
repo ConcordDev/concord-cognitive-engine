@@ -1,0 +1,25 @@
+{
+ "adversarial": [
+  "A benign 'needs one of' in ordinary content ('This recipe needs one of: butter, oil') does NOT convert \u2014 only the card's exact scoped phrase 'operator surface needs one of' matches; a widening that converts benign content has regressed.",
+  "A bare 'Admin' navigation label falls through (no verdict) \u2014 the vocabulary names the gate card, not the word admin.",
+  "A true failure page ('Internal Server Error', status 500) still falls through to the failure filing, and a genuinely UNGUARDED admin surface \u2014 one that renders member content to a non-admin \u2014 still files the HIGH; the fix must never become a blanket pass for admin lenses."
+ ],
+ "author": "muse-b7",
+ "authored_on": "2026-11-19",
+ "case_source": "observed",
+ "covers": "GB-1560 GAP SET ITEM 1 \u2014 the NO_ACCESS_TEXT vocabulary fix (CB-0872 item 2; fixer muse-b9, the matcher-genus owner; author of record muse-b7, as on MATCHER-SCOPING). Origin: the H1 genus from capture run 20261117-080754 \u2014 five HELD gates (admin, ops, psyops, repair-telemetry, system) filed as HIGH 'gate did not hold' findings because the platform gate card matched none of the walker's no-access vocabulary: checks.gate_verdict returns PASS for a held gate when signed out, on status 403, or when any page text matches NO_ACCESS_TEXT, and otherwise falls through to the failure filing \u2014 and the card's own wording ('Admin access required' / 'This operator surface needs one of: admin, operator') contains neither 'requires admin' nor 'no access' nor any other alternative the pattern carried. The gates were holding; the detector could not see them. THE FIX (landed on walker/ultimate-lens-walker @ dcf886f2de, parent 300897e7a): walker/concord_walker/checks.py (blob b78beed7bb) \u2014 NO_ACCESS_TEXT gains the card's two exact phrases, 'admin access required' and 'operator surface needs one of', scoped to the card's shape so a benign 'needs one of' elsewhere in content does not convert; plus the new selftest walker/selftest/test_no_access_vocabulary.py (blob 911c54a209, 12 legs). Landing note of record: the fire-time guard caught the branch head moving mid-flight (B2's C7+C9+C14 landing @ 300897e7a, whose checks.py hunks \u2014 the C5 budget legs \u2014 are disjoint from the NO_ACCESS region); the fix was re-derived onto the new parent and the discriminator re-run there before the single re-fire (a first push attempt killed by a service restart was verified NOT landed by read-back before re-firing). Collateral on the re-derived tree: matcher scoping ALL PASS, packet identity 0 failures, B2's three selftests 0 failures. Founder context: GB-1560 (Ramaj first-hand 2026-11-19 ~16:44 ET, 'These gotta get done asap') \u2014 all four gap items due before walk 2 runs; none blocks the Gate 2 freeze or deploy. NOT CLAIMED: the gates' own correctness is not this recipe's subject \u2014 a surface that renders member content to a non-admin still files its HIGH (the fall-through legs pin exactly that); the remaining GB-1560 items are their own rows at their own seats.",
+ "discriminator": "Premise by execution (fixer's probe against the pre-fix walker @ 5c51ef99d4, premise of record ~/workspace/ulw/noaccess/PREMISE.md): gate_verdict returned None for the gate card in all three forms (heading 'Admin access required' \u00b7 body 'This operator surface needs one of: admin, operator' \u00b7 the full card) while the controls behaved \u2014 'Access denied' PASS \u00b7 status 403 PASS \u00b7 signed-out PASS \u00b7 true 500 page None \u00b7 ordinary member content None. Selftest transcript (fixer's runs, re-run first-hand by the author at registration against the true parent blob 300897e7a): on the fixed tree walker/selftest/test_no_access_vocabulary.py passes 12/12 (ALL PASS); on the pristine parent exactly the 3 gate-card legs FAIL (heading \u00b7 body \u00b7 full card) and all 9 controls hold in both trees \u2014 the pre-existing vocabulary (access denied / admin only / permission denied), 403, and signed-out still PASS, and the true-500 page, ordinary member content, a benign 'needs one of', and a bare 'Admin' label all still fall through.",
+ "id": "NO-ACCESS-VOCABULARY",
+ "kind": "repro-steps",
+ "packet_id": "walker@dcf886f2de:v1",
+ "reviewer": "zuko-desk",
+ "status": "draft",
+ "steps": [
+  "On the walker build carrying the fix (walker/ultimate-lens-walker @ dcf886f2de or a descendant), run walker/selftest/test_no_access_vocabulary.py \u2014 expected ALL PASS (12/12).",
+  "Re-walk the five held gates (admin, ops, psyops, repair-telemetry, system): each gate check PASSes on its gate card and no 'gate did not hold' finding files \u2014 the H1 findings do not re-file.",
+  "Control: a genuinely unguarded surface (member content rendered to a non-admin account, no gate card) still falls through and files its HIGH finding."
+ ],
+ "tier": 1,
+ "title": "GB-1560 item 1: the platform gate card is a no-access page \u2014 the walker's NO_ACCESS_TEXT carries the card's own phrases, so held admin gates PASS the gate check while unguarded surfaces still file",
+ "verified_against": null
+}
