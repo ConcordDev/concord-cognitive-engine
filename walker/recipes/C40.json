@@ -1,0 +1,26 @@
+{
+  "id": "C40",
+  "kind": "repro-steps",
+  "title": "Section-6 click deny list completed into safety.py: a canonical MONEY_VERBS set drives HARD_DENY / SWEEP_DENY / WRITE_NEVER and is_tab_safe consults it — money verbs refuse on every surface, substring lookalikes stay safe",
+  "author": "muse-b8",
+  "reviewer": "zuko-desk",
+  "status": "draft",
+  "authored_on": "2026-11-19",
+  "tier": 1,
+  "case_source": "observed",
+  "packet_id": "walker@18170fde8:v1",
+  "verified_against": null,
+  "covers": "Hand recipe (kind repro-steps) for C40, registered by the author of record (muse-b8, named at claim time per CB-0828) under the Item 4 standing approval for recipe-branch DRAFT registrations, from the fixer's supplied content: CHECK-C40.md in /Users/dutch/.zuko/quality/ (fixer muse-b6, branch walker/ultimate-lens-walker). Build of record: commit 50bae66c0 — walker/concord_walker/safety.py gains the canonical MONEY_VERBS tuple (transfer, withdraw, payout, mint, stake, tip, gift, donate, subscribe, checkout, buy, purchase, pay) + MONEY_DENY + money_deny(); HARD_DENY gains payout + gift, SWEEP_DENY gains payout/checkout/tip/gift/donate/stake/subscribe, WRITE_NEVER gains gift, and is_tab_safe now consults MONEY_DENY (tabs previously consulted no money list). Ticket stands FIXED_PENDING_VERIFY (dossier 2026-11-19, the B6 family lines 872-874). Provenance: INDEPENDENT — the verb set is the plan's own section-6 text (UPGRADE-PLAN-20261114); the pre-fix gaps were counted from the source lists at cc9f2bcd6. Selftest re-run by the author of record against the landed walker head 18170fde8: test_c40_safety.py 6/6. Activation stays with the reviewers of record (dutch / zuko-desk); VERIFIED waits on the walk-2 exercise.",
+  "discriminator": "Pristine control (from CHECK-C40.md, premise executed at cc9f2bcd6): test_c40_safety.py on the pre-fix safety.py scores 0/6 — HARD_DENY misses 'payout'; sweep_decision(\"Gift\") returns clickable (no reason); write_step_decision(\"Gift\") classifies it a READ; is_tab_safe(\"Transfer\") passes. On the landed tree the same suite passes 6/6 (also re-run 6/6 by the author of record at head 18170fde8). Neighbours at the C40 landing: test_replay_budget_write 0 failures, test_write_flows_pass2 95/95 (a later C3 landing changed a step-action name that suite looks for — B7's reconciliation, filed separately), test_budget_hook 0, test_coverage 55/55.",
+  "steps": [
+    "On any lens, for each section-6 verb, form the control names \"<Verb>\", \"<Verb> now\", \"<Verb> funds\": concord_walker.safety.sweep_decision(name) must refuse.",
+    "Run the same names through write_step_decision with allow_write=True and a live fixture label: must still refuse (money verbs are never write-lane actions).",
+    "\"Export <verb> history\" must fail is_opener_safe; a bare \"<Verb>\" tab name must fail is_tab_safe.",
+    "Benign controls survive: \"Export CSV\" / \"Download CSV\" are opener-safe; sweep_decision(\"Calculate\") is clickable on a writable lens; money_deny(\"Display settings\") and money_deny(\"Gifted students roster\") are false."
+  ],
+  "adversarial": [
+    "allow_write must not rescue a money verb (step 2).",
+    "Substring lookalikes are not verbs: \"Display\" (pay) and \"Gifted\" (gift) stay safe.",
+    "Admin mode: sweep_decision(name, admin=True) refuses all thirteen verbs too."
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "id": "C28",
+  "kind": "repro-steps",
+  "title": "A real second account for the write lane: a dedicated tw write account (config slot + proof) runs create/delete, form fuzz and write-bearing replays — never t1, never a phantom fallback",
+  "author": "muse-b8",
+  "reviewer": "zuko-desk",
+  "status": "draft",
+  "authored_on": "2026-11-19",
+  "tier": 1,
+  "case_source": "observed",
+  "packet_id": "walker@18170fde8:v1",
+  "verified_against": null,
+  "covers": "Hand recipe (kind repro-steps) for C28, registered by the author of record (muse-b8, named at claim time per CB-0828) under the Item 4 standing approval for recipe-branch DRAFT registrations, from the fixer's supplied content: CHECK-C28.md in /Users/dutch/.zuko/quality/ (fixer muse-b6, branch walker/ultimate-lens-walker). Build of record: main landing e511ae85b + the formfuzz repair chain d8df99bca / 172c1618e / cc6cfcf0d / 341769226 — config.json gains the accounts.tw slot (zukoqw, write lane ONLY) + write_account: tw; auth.py gains write_account_key + write_account_proof (configured, session present, username distinct from t1 AND t2, roles admissible; problems named); checks.py LensWalk.write_acct opens write_flow in its OWN write-account context and records result[\"write_account\"]; formfuzz uses the opened context's own account (lw.acct), never a hardcoded t1; reverify runs a write-bearing replay entirely as the write account with -tw- label stems; walker.py login/whoami accept any configured account key. Ticket stands FIXED_PENDING_VERIFY (dossier 2026-11-19, the B6 family lines 872-874). Race record (in the open, from the check file): two whole-file races hit this family the night it landed, both repaired and verified on the assembled tree — B7's C25 push overwrote formfuzz.py (restored, final re-apply at 341769226 on the verified base blob) and B6's own C28 push staged checks.py from pre-C26 bytes (B7 restored C26's readback hunks at cd2d67cc4 preserving the write-account work). Provenance: INDEPENDENT for the premise counts (source-read at cc9f2bcd6); the live firing (a real tw session + a walk-2 write exercise) is the desk's run act. Selftest re-run by the author of record against the landed walker head 18170fde8: test_c28_write_account.py 7/7. Activation stays with the reviewers of record; VERIFIED waits on the walk-2 exercise.",
+  "discriminator": "Pristine control (from CHECK-C28.md, premise executed at cc9f2bcd6): test_c28_write_account.py on the pre-C28 tree scores 1/7 — resolution, proof, LensWalk.write_acct and the formfuzz pins all fail (the formfuzz account reads 't1'); the one pass is the label-stem carriage pin, which documents the pre-existing stem format the build relies on. On the assembled head the same suite passes 7/7 (also re-run 7/7 by the author of record at head 18170fde8). Neighbours: WALK-02 config selftest PASS with the tw entry; replay budget/write suites green; 04e dispatch 26/26; C26 readback 0 failures.",
+  "steps": [
+    "Load the shipped config: write_account_key == \"tw\"; write_account_proof reports configured, username distinct from t1/t2, roles ok, and exactly the not-yet-provisioned session problem (until the desk runs the tw login).",
+    "LensWalk(allow_write=True) on the shipped config: write_acct == \"tw\"; on a config without write_account: write_acct == the walk account (the named pre-C28 behaviour).",
+    "FormFuzz on the shipped config: its LensWalk account is \"tw\"; the fuzz source carries no hardcoded \"t1\" assert.",
+    "_write_ctx for a write-bearing ticket names account \"tw\" and the label stem carries \"-tw-\", distinct from t1's stem."
+  ],
+  "adversarial": [
+    "A write account reusing t1's username is refused by the proof (distinctness).",
+    "A dangling write_account (naming no configured account) resolves to None — the lane falls back to the named pre-C28 behaviour, never to a phantom.",
+    "Once tw is configured, a missing tw session fails pre-flight (C8) BEFORE lens 1 — the lane never silently writes as t1."
+  ]
+}

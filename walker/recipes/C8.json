@@ -1,0 +1,26 @@
+{
+  "id": "C8",
+  "kind": "repro-steps",
+  "title": "Pre-flight verification before lens 1: sessions asserted per account, the write-skip list published in the report, and create/delete coverage computed as a number (228 of 270 on day one)",
+  "author": "muse-b8",
+  "reviewer": "zuko-desk",
+  "status": "draft",
+  "authored_on": "2026-11-19",
+  "tier": 1,
+  "case_source": "observed",
+  "packet_id": "walker@18170fde8:v1",
+  "verified_against": null,
+  "covers": "Hand recipe (kind repro-steps) for C8, registered by the author of record (muse-b8, named at claim time per CB-0828) under the Item 4 standing approval for recipe-branch DRAFT registrations, from the fixer's supplied content: CHECK-C8.md in /Users/dutch/.zuko/quality/ (fixer muse-b6, branch walker/ultimate-lens-walker). Build of record: commit fd4b3befc — NEW walker/concord_walker/preflight.py (verify_config browser-free + verify_sessions_live + run_preflight; the report carries per-account session presence for t1, t2, admin when configured, and the C28 write account, the write account's proof, the write-lane labelling proof, the WRITE-SKIP LIST PUBLISHED in the report, and create/delete COVERAGE AS A NUMBER) + walker.py preflight subcommand (--no-live for the config legs) writing audit/preflight-latest.json and exiting non-zero on any problem — a run does not start lens 1 on a failed pre-flight, and the failure is published, not whispered. Day-one number on the shipped config + inventory (270 lenses): create/delete covered 228, blocked 42 — all 42 write-skip lenses (the 8 admin lenses sit inside the skip list); coverage computed from config + inventory, never asserted. Ticket stands FIXED_PENDING_VERIFY (dossier 2026-11-19, the B6 family lines 872-874). Provenance: INDEPENDENT — coverage and lists computed from the shipped config + inventory at a named head; the live session assertions are the desk's walk-2 firing of this machinery. Selftest re-run by the author of record against the landed walker head 18170fde8: test_c8_preflight.py 6/6. Activation stays with the reviewers of record; VERIFIED waits on the walk-2 exercise.",
+  "discriminator": "Pristine control (from CHECK-C8.md, premise executed at cc9f2bcd6): test_c8_preflight.py on the pre-C8 tree fails at import (no preflight module — a tree-wide search found zero hits in concord_walker). On the landed tree the same suite passes 6/6 (also re-run 6/6 by the author of record at head 18170fde8). Live CLI leg from the check file: on a fresh checkout with no auth files, walker.py preflight --no-live writes the report and fails with exactly the three missing sessions named (t1, t2, tw) — the honest day-one state, published before lens 1 rather than discovered at lens 40.",
+  "steps": [
+    "Run preflight against the shipped config + inventory: the report's write_skip_lenses equals the config list (sorted); coverage sums to the inventory total (covered + blocked == 270 at this inventory).",
+    "On a provisioned config (session files present): report ok, zero problems, labelling stems differ.",
+    "Coverage arithmetic on a synthetic set (skip {a,b}, admin {b,c} over a-e): covered 2, blocked 3, admin-only 1 — an overlap counted once.",
+    "Live leg with a stub browser: a t2 session asserting the wrong user is reported as a t2 problem; the leg returns problems, never raises."
+  ],
+  "adversarial": [
+    "Missing sessions are problems BY ACCOUNT NAME, never a generic failure.",
+    "A write account alias of t1 fails the proof inside the same report (C28).",
+    "The report is written even when pre-flight fails (the desk sees the published failure state before any lens runs)."
+  ]
+}
