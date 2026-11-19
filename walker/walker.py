@@ -603,6 +603,39 @@ def cmd_reverify_ci(args, cfg, log):
     return results
 
 
+def cmd_preflight(args, cfg, log):
+    """ULW C8: verify sessions + write-lane labelling, publish the write-skip
+    list and the create/delete coverage number — before lens 1. The JSON
+    report is written under the audit dir either way; exit 1 on problems."""
+    from concord_walker import preflight as _pf
+    inv_path = os.path.join(cfg["_walker_dir"], "inventory.json")
+    inventory = json.load(open(inv_path)) if os.path.exists(inv_path) else []
+    browser = None
+    pw = None
+    if not args.no_live:
+        from playwright.sync_api import sync_playwright
+        pw = sync_playwright().start()
+        browser = pw.chromium.launch(channel="chrome", headless=True)
+    try:
+        report = _pf.run_preflight(cfg, inventory, browser=browser, log=log)
+    finally:
+        if browser is not None:
+            browser.close()
+        if pw is not None:
+            pw.stop()
+    report["checked_at"] = human_et()
+    report["base_url"] = cfg["base_url"]
+    out_dir = os.path.join(cfg["_walker_dir"], cfg.get("audit_dir", "audit"))
+    os.makedirs(out_dir, exist_ok=True)
+    out_path = os.path.join(out_dir, "preflight-latest.json")
+    with open(out_path, "w") as f:
+        json.dump(report, f, indent=1, sort_keys=True)
+    print(json.dumps({k: report[k] for k in ("ok", "problems", "coverage", "write_skip_lenses") if k in report}, indent=1))
+    log("preflight report -> %s (ok=%s, %d problem(s))" % (out_path, report["ok"], len(report["problems"])))
+    if not report["ok"]:
+        raise SystemExit("preflight FAILED: " + "; ".join(report["problems"]))
+
+
 def cmd_whoami(args, cfg, log):
     from playwright.sync_api import sync_playwright
     with sync_playwright() as pw:
@@ -668,14 +701,16 @@ def main():
     p.add_argument("--fix-commit", action="append", help="MST-W0-01: TICKET=SHA (repeatable): say whether the live build contains that fix commit")
     p.add_argument("--containment-repo", help="MST-W0-01: git checkout used for merge-base --is-ancestor (defaults to --from-repo); without one the answer is 'unknown'")
     p.add_argument("--dry-run", action="store_true")
+    p = sub.add_parser("preflight", help="ULW C8: verify sessions + write-lane labelling, publish write-skip list + create/delete coverage (before lens 1)")
+    p.add_argument("--no-live", action="store_true", help="config/filesystem legs only (no browser session assertions)")
     p = sub.add_parser("login", help="save a session for a QA account")
-    p.add_argument("--account", choices=["t1", "t2", "admin"], required=True)
+    p.add_argument("--account", required=True, help="any account key in config (t1, t2, admin, tw, ...)")
     g = p.add_mutually_exclusive_group(required=True)
     g.add_argument("--headed", action="store_true")
     g.add_argument("--secrets-file", action="store_true")
     p.add_argument("--login-timeout", type=int, default=600, help="seconds to wait for /api/auth/me to show a session after submit (default 600)")
     p = sub.add_parser("whoami", help="GET /api/auth/me with a saved session")
-    p.add_argument("--account", choices=["t1", "t2", "admin"], default="t1")
+    p.add_argument("--account", default="t1", help="any account key in config")
     args = ap.parse_args()
     cfg = load_config(args.config)
     if getattr(args, "base_url", None):
@@ -693,9 +728,15 @@ def main():
             raise SystemExit("give ticket ids (e.g. FIX-007 FIX-deities-002) or --from-status FIXED_PENDING_VERIFY")
         else:
             cmd_reverify(args, cfg, log)
+    elif args.cmd == "preflight":
+        cmd_preflight(args, cfg, log)
     elif args.cmd == "login":
+        if args.account not in cfg.get("accounts", {}):
+            raise SystemExit("account %r is not in config (have: %s)" % (args.account, ", ".join(sorted(cfg.get("accounts", {})))))
         login(cfg, args.account, "headed" if args.headed else "secrets-file", log, timeout_s=args.login_timeout)
     elif args.cmd == "whoami":
+        if args.account not in cfg.get("accounts", {}):
+            raise SystemExit("account %r is not in config (have: %s)" % (args.account, ", ".join(sorted(cfg.get("accounts", {})))))
         cmd_whoami(args, cfg, log)
 
 
