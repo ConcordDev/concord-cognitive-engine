@@ -43,9 +43,29 @@ const extOf = (p) => (String(p).split(".").pop() || "").toLowerCase();
 const isCode = (p) => RUNNABLE.has(extOf(p));
 export const isTestPath = (p) => TEST_FILE_RE.test(String(p));
 
+/** Lines of a text; an empty text has none, and a final newline ends the last line rather than starting another. */
+function linesOf(text) {
+  if (text === "") return [];
+  const l = text.split("\n");
+  if (l.length > 1 && l[l.length - 1] === "") l.pop();
+  return l;
+}
+
+/**
+ * The line diff, with an empty side meaning zero lines: an added file is all
+ * additions and a deleted one all deletions (a plain split would count the
+ * empty side as one blank line and invent a removal).
+ */
+export function proofDiff(lineDiff, before, after) {
+  if (before === "" && after === "") return [];
+  if (before === "") return linesOf(after).map((text, i) => ({ type: "add", text, newLine: i + 1 }));
+  if (after === "") return linesOf(before).map((text, i) => ({ type: "del", text, oldLine: i + 1 }));
+  return lineDiff(before, after);
+}
+
 function countDiff(lineDiff, before, after) {
   let additions = 0, deletions = 0;
-  for (const h of lineDiff(before, after)) {
+  for (const h of proofDiff(lineDiff, before, after)) {
     if (h.type === "add") additions++;
     else if (h.type === "del") deletions++;
   }
@@ -326,7 +346,7 @@ export function registerCodeProof(registerLensAction, h) {
       if (!change) return { ok: false, error: "not_changed", message: "That file has no change against the base." };
       const before = typeof base.tree[path] === "string" ? base.tree[path] : "";
       const after = files.has(path) ? files.get(path).content : "";
-      return { ok: true, result: { path, status: change.status, hash: change.hash, before, after, base: { kind: base.kind, label: base.label }, hunks: lineDiff(before, after) } };
+      return { ok: true, result: { path, status: change.status, hash: change.hash, before, after, base: { kind: base.kind, label: base.label }, hunks: proofDiff(lineDiff, before, after) } };
     } catch (e) { return { ok: false, error: "proof_failed", message: String(e?.message || e) }; }
   });
 

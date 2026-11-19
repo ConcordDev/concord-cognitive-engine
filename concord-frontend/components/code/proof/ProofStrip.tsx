@@ -10,6 +10,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ChevronRight, GitBranch, Play, FlaskConical, Eye, UploadCloud, Wand2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ProofSeal } from './ProofSeal';
 import { ago, BLOCKER_TEXT, CHECK_LABEL, type CheckKey, type CheckStatus, type Ledger } from './proofApi';
 
 export type Busy = Partial<Record<CheckKey, string>>;
@@ -60,6 +61,8 @@ export function evidence(key: CheckKey, l: Ledger): string {
     }
   }
 }
+
+const VERDICT: Record<CheckStatus | 'running', string> = { proved: 'proved', failed: 'failed', stale: 'stale', not_run: 'open', not_applicable: 'n/a', unavailable: 'n/a', running: 'running' };
 
 export function sealLine(l: Ledger): string {
   if (l.changes.length === 0) return 'Nothing to prove yet. Change a file and the ledger starts.';
@@ -127,13 +130,13 @@ export function ProofStrip({ ledger, busy, onOpenProblem, onRunTests, onWriteTes
   return (
     <aside className={cn('pf-panel flex min-h-0 flex-col border-l pf-rule', className)} aria-label="Proof" data-testid="pf-strip">
       <div className="border-b pf-rule p-3">
-        <div className="pf-seal p-2.5" data-green={l.green ? 'true' : 'false'} data-testid="pf-seal">
-          <div className="mb-2 flex items-baseline justify-between">
-            <span className="pf-label" style={l.green ? { color: 'var(--pf-proved)' } : undefined}>{l.green ? 'Proved' : 'Proof'}</span>
-            <span className="pf-num text-[11px] pf-muted" data-testid="pf-seal-count">{done}/{l.order.length}</span>
+        <div className="pf-seal flex items-center gap-3 p-3" data-green={l.green ? 'true' : 'false'} data-testid="pf-seal">
+          <ProofSeal order={l.order} states={Object.fromEntries(l.order.map((k) => [k, l.checks[k].status])) as Record<CheckKey, CheckStatus>} green={l.green} size={84} />
+          <div className="min-w-0 flex-1">
+            <p className="pf-label" style={l.green ? { color: 'var(--pf-proved)' } : undefined}>{l.green ? 'Proved' : 'Proof ledger'}</p>
+            <p className="sr-only" data-testid="pf-seal-count">{done}/{l.order.length}</p>
+            <p className="mt-1 text-[12px] leading-snug pf-text-2" data-testid="pf-seal-line">{sealLine(l)}</p>
           </div>
-          <div className="pf-seal-bar" aria-hidden>{l.order.map((k) => <span key={k} data-s={l.checks[k].status} />)}</div>
-          <p className="mt-2 text-[12px] pf-text-2" data-testid="pf-seal-line">{sealLine(l)}</p>
         </div>
       </div>
 
@@ -153,11 +156,14 @@ export function ProofStrip({ ledger, busy, onOpenProblem, onRunTests, onWriteTes
                   aria-expanded={expandable ? isOpen : undefined}
                   disabled={!expandable}
                 >
-                  <span className="flex items-center gap-1">
-                    <span className="pf-check-name pf-mono text-[12px] pf-text-2">{CHECK_LABEL[k]}</span>
+                  <span className="pf-ledger-head">
+                    <span className="pf-ledger-no">{String(l.order.indexOf(k) + 1).padStart(2, '0')}</span>
+                    <span className="pf-check-name pf-ledger-name">{CHECK_LABEL[k]}</span>
                     {expandable && <ChevronRight className={cn('h-3 w-3 pf-faint transition-transform', isOpen && 'rotate-90')} aria-hidden />}
+                    <span className="pf-ledger-leader" aria-hidden />
+                    <span className="pf-ledger-verdict">{VERDICT[busy[k] ? 'running' : c.status]}</span>
                   </span>
-                  <span className={cn('mt-0.5 block text-[11.5px] leading-snug', c.status === 'failed' ? 'pf-fail' : c.status === 'stale' ? 'pf-stale' : 'pf-muted')} data-testid={`pf-evidence-${k}`}>{evidence(k, l)}</span>
+                  <span className={cn('mt-0.5 block pl-[24px] text-[11.5px] leading-snug', c.status === 'failed' ? 'pf-fail' : c.status === 'stale' ? 'pf-stale' : 'pf-muted')} data-testid={`pf-evidence-${k}`}>{evidence(k, l)}</span>
                 </button>
                 <span className="flex-shrink-0">{action(k)}</span>
               </div>

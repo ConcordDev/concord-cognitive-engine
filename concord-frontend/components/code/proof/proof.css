@@ -148,3 +148,37 @@ textarea.pf-input { height: auto; padding: 6px 8px; resize: vertical; }
 @media (prefers-reduced-motion: reduce) {
   .pf-state[data-landed='true'], .pf-state[data-s='running'] { animation: none; }
 }
+
+/* ── The seal ─────────────────────────────────────────────────────────── */
+.pf-ring-seg { fill: none; stroke-width: 7; stroke-linecap: butt; stroke: var(--pf-line-2); transition: stroke 220ms ease; }
+.pf-ring-seg[data-s='proved'] { stroke: var(--pf-proved); }
+.pf-ring-seg[data-s='not_applicable'] { stroke: var(--pf-proved); opacity: 0.3; }
+.pf-ring-seg[data-s='failed'] { stroke: var(--pf-fail); }
+.pf-ring-seg[data-s='stale'] { stroke: var(--pf-stale); }
+.pf-ring-seg[data-s='not_run'], .pf-ring-seg[data-s='unavailable'] { stroke: var(--pf-faint); stroke-dasharray: 2.5 2.5; }
+.pf-ring-count { font-family: var(--pf-font-mono), monospace; font-size: 22px; font-weight: 600; fill: var(--pf-text); }
+.pf-ring-of { font-size: 12px; fill: var(--pf-muted); }
+.pf-ring-stamp circle { fill: var(--pf-proved); }
+.pf-ring-stamp text { font-family: var(--pf-font-mono), monospace; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; fill: var(--pf-proved-ink); }
+.pf-ring[data-green='true'] .pf-ring-stamp { animation: pf-stamp 420ms cubic-bezier(.2,.9,.25,1.2) both; transform-origin: 50% 50%; transform-box: fill-box; }
+@keyframes pf-stamp { from { transform: scale(1.5) rotate(-12deg); opacity: 0; } to { transform: scale(1) rotate(-6deg); opacity: 1; } }
+
+/* ── Ledger rows ──────────────────────────────────────────────────────── */
+.pf-ledger-no { font-family: var(--pf-font-mono), monospace; font-size: 10px; color: var(--pf-faint); width: 18px; flex-shrink: 0; }
+.pf-ledger-head { display: flex; align-items: baseline; gap: 6px; }
+.pf-ledger-name { font-family: var(--pf-font-mono), monospace; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--pf-text-2); }
+.pf-check[data-s='proved'] .pf-ledger-name { color: var(--pf-text); }
+.pf-ledger-leader { flex: 1; border-bottom: 1px dotted var(--pf-line-2); transform: translateY(-3px); min-width: 12px; }
+.pf-ledger-verdict { font-family: var(--pf-font-mono), monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--pf-faint); }
+.pf-check[data-s='proved'] .pf-ledger-verdict { color: var(--pf-proved); }
+.pf-check[data-s='failed'] .pf-ledger-verdict { color: var(--pf-fail); }
+.pf-check[data-s='stale'] .pf-ledger-verdict { color: var(--pf-stale); }
+
+/* ── The change, in the editor gutter ─────────────────────────────────── */
+.pf .monaco-editor .pf-gutter-add { background: var(--pf-proved); width: 3px !important; margin-left: 3px; }
+.pf .monaco-editor .pf-gutter-del { border-left: 3px solid transparent; }
+.pf .monaco-editor .pf-gutter-del::after { content: ''; position: absolute; left: 3px; bottom: -1px; width: 0; height: 0; border-left: 5px solid var(--pf-fail); border-top: 3px solid transparent; border-bottom: 3px solid transparent; }
+.pf .monaco-editor .pf-line-add { background: rgba(182, 240, 60, 0.04); }
+
+@media (prefers-reduced-motion: reduce) { .pf-ring[data-green='true'] .pf-ring-stamp { animation: none; } }
+@media (max-width: 640px) { .pf-seal .pf-ring { width: 60px; height: 60px; } .pf-seal { padding: 8px 10px; } }

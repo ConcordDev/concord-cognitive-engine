@@ -14,7 +14,7 @@ import dynamic from 'next/dynamic';
 import type { editor } from 'monaco-editor';
 import { ArrowLeft, Files, Search, History, Sparkles, Library, X, Command as CommandIcon, Circle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { code, languageOf, type DiffHunk, type Ledger } from './proofApi';
+import { code, languageOf, type CheckKey, type CheckStatus, type DiffHunk, type Ledger } from './proofApi';
 import { useProject } from './useProject';
 import { ProofStrip, type Busy } from './ProofStrip';
 import { FilesPane, SearchPane, ChangesPane } from './SidePanes';
@@ -26,6 +26,8 @@ import { ProposalView } from './ProposalView';
 import { Palette, type Command } from './Palette';
 import { proveRun, proveTests, type TestRunReport } from './proofRunner';
 import { PROOF_CODE_FONT, PROOF_EDITOR_THEME } from './proofTheme';
+import { ProofSeal } from './ProofSeal';
+import { gutterMarks } from './proofGutter';
 import { isLocallyRunnable } from '../localExec';
 
 const MonacoWrapper = dynamic(() => import('../MonacoWrapper'), { ssr: false, loading: () => <div className="h-full animate-pulse bg-[var(--pf-ink)]" role="status" aria-label="Loading editor" /> });
@@ -279,9 +281,38 @@ export function Workbench({ projectId, onExit }: { projectId: string; onExit: ()
     const r = await code<{ completion: string }>('tab-completion', { prefix: c.textBeforeCursor.slice(-3000), suffix: c.textAfterCursor.slice(0, 1000), language: c.language, maxTokens: 64 });
     return r.ok ? r.result.completion || '' : '';
   }, []);
-  const onEditorReady = useCallback((ed: editor.IStandaloneCodeEditor) => { editorRef.current = ed; }, []);
+  const [editorReady, setEditorReady] = useState(0);
+  const gutter = useRef<editor.IEditorDecorationsCollection | null>(null);
+  // Review and proposals swap the editor out; a new editor gets a new gutter.
+  const onEditorReady = useCallback((ed: editor.IStandaloneCodeEditor) => { editorRef.current = ed; gutter.current = null; setEditorReady((n) => n + 1); }, []);
+
+  // The proof's own diff in the editor gutter: lime for lines this change adds,
+  // a coral notch where it removed lines. Drawn from code.proof-diff on the
+  // saved file, and only when the editor holds exactly that saved text.
+  const activeChange = ps.ledger?.changes.find((c) => c.path === active?.path && c.status !== 'deleted') || null;
+  const activeLoaded = !!active && !active.loading;
+  useEffect(() => {
+    const ed = editorRef.current;
+    if (!ed) return;
+    if (!gutter.current) gutter.current = ed.createDecorationsCollection();
+    const coll = gutter.current;
+    if (!activeChange || !activeLoaded || !ps.ledger) { coll.clear(); return; }
+    let live = true;
+    void (async () => {
+      const r = await code<{ after: string; hunks: DiffHunk[] }>('proof-diff', { projectId: ps.ledger!.projectId, path: activeChange.path });
+      const model = ed.getModel();
+      if (!live || !model) return;
+      if (!r.ok || model.getValue() !== r.result.after) { coll.clear(); return; }
+      const m = gutterMarks(r.result.hunks, model.getLineCount());
+      coll.set([
+        ...m.added.map((line) => ({ range: { startLineNumber: line, startColumn: 1, endLineNumber: line, endColumn: 1 }, options: { isWholeLine: true, linesDecorationsClassName: 'pf-gutter-add', className: 'pf-line-add' } })),
+        ...m.removedAbove.map((line) => ({ range: { startLineNumber: line, startColumn: 1, endLineNumber: line, endColumn: 1 }, options: { linesDecorationsClassName: 'pf-gutter-del' } })),
+      ]);
+    })();
+    return () => { live = false; };
+  }, [activeChange?.path, activeChange?.hash, activeLoaded, ps.ledger?.codeFingerprint, editorReady]); // eslint-disable-line react-hooks/exhaustive-deps
   const onSelection = useCallback((s: { text: string }) => setSelection(s.text), []);
-  const editorOptions = useMemo(() => ({ fontFamily: PROOF_CODE_FONT, fontSize: 13, lineHeight: 20, fontLigatures: false, minimap: { enabled: false }, bracketPairColorization: { enabled: false }, automaticLayout: true, padding: { top: 10, bottom: 10 }, renderLineHighlight: 'line' as const, cursorBlinking: 'solid' as const, smoothScrolling: false, cursorSmoothCaretAnimation: 'off' as const, glyphMargin: false, folding: true, scrollbar: { verticalScrollbarSize: 8, horizontalScrollbarSize: 8 } }), []);
+  const editorOptions = useMemo(() => ({ fontFamily: PROOF_CODE_FONT, fontSize: 13, lineHeight: 20, fontLigatures: false, minimap: { enabled: false }, bracketPairColorization: { enabled: false }, automaticLayout: true, padding: { top: 10, bottom: 10 }, renderLineHighlight: 'line' as const, cursorBlinking: 'solid' as const, smoothScrolling: false, cursorSmoothCaretAnimation: 'off' as const, glyphMargin: false, lineDecorationsWidth: 12, folding: true, scrollbar: { verticalScrollbarSize: 8, horizontalScrollbarSize: 8 } }), []);
 
   const insertAtCursor = useCallback((text: string) => {
     const ed = editorRef.current;
@@ -390,7 +421,7 @@ export function Workbench({ projectId, onExit }: { projectId: string; onExit: ()
         <button type="button" className="pf-btn pf-btn-ghost hidden h-7 px-2 sm:inline-flex" onClick={() => setPalette('commands')} data-testid="pf-open-palette"><CommandIcon className="h-3 w-3" /><span className="text-[11.5px] pf-muted">Commands</span><span className="pf-kbd">⌘⇧P</span></button>
         {l && (
           <button type="button" className="pf-btn h-7 px-2" onClick={() => (narrow ? setMobileTab('proof') : void review())} data-testid="pf-proof-chip" aria-label={`Proof ${done} of ${l.order.length}`}>
-            <span className="pf-seal-bar w-12" aria-hidden>{l.order.map((k) => <span key={k} data-s={l.checks[k].status} />)}</span>
+            <ProofSeal order={l.order} states={Object.fromEntries(l.order.map((k) => [k, l.checks[k].status])) as Record<CheckKey, CheckStatus>} green={l.green} size={20} label={false} />
             <span className={cn('pf-num text-[11px]', l.green ? 'pf-ok' : 'pf-muted')}>{done}/{l.order.length}</span>
           </button>
         )}

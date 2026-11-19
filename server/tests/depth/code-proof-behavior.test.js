@@ -261,6 +261,16 @@ describe("code.proof-review — reading the diff is part of the proof", () => {
     assert.equal(p.checks.review.reviewed, 0);
   });
 
+  it("an added file is all additions: an empty base is zero lines, not one blank line that was removed", async () => {
+    const ctx = await depthCtx("proof-diff-empty-base");
+    const id = await newProject(ctx);
+    await write(ctx, id, "src/k.ts", "export const k = 1;\n  \nexport const j = 2;");
+    const p = await proof(ctx, id);
+    assert.deepEqual(p.changes.map((c) => [c.path, c.additions, c.deletions]), [["src/k.ts", 3, 0]]);
+    const d = await lensRun("code", "proof-diff", { params: { projectId: id, path: "src/k.ts" } }, ctx);
+    assert.deepEqual(d.result.hunks.map((x) => [x.type, x.newLine]), [["add", 1], ["add", 2], ["add", 3]]);
+  });
+
   it("proof-diff returns the exact before/after the review reads, against the proof's base", async () => {
     const ctx = await depthCtx("proof-diff");
     const id = await newProject(ctx);

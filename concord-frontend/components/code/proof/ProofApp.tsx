@@ -37,13 +37,24 @@ export function ProofApp() {
       for (const node of document.elementsFromPoint(window.innerWidth / 2, window.innerHeight - 2)) {
         if (el.contains(node)) continue;
         const pos = getComputedStyle(node).position;
-        if (pos === 'fixed' || pos === 'sticky') { bottom = Math.min(bottom, node.getBoundingClientRect().top); break; }
+        if (pos !== 'fixed' && pos !== 'sticky') continue;
+        // Only a bar pinned to the bottom counts. A full-screen overlay (a
+        // dialog, a scrim) also sits under that point; it is not a bar.
+        const r = node.getBoundingClientRect();
+        if (r.top > top && r.height < window.innerHeight * 0.25) { bottom = Math.min(bottom, r.top); break; }
       }
       setHeight(Math.max(420, bottom - top));
     };
     fit();
     window.addEventListener('resize', fit);
-    return () => window.removeEventListener('resize', fit);
+        const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => fit());
+    // Watch every sibling on the way up: a status row added above the
+    // scroll area moves the lens down without resizing the window.
+    for (let node: Element | null = root.current; ro && node && node !== document.body; node = node.parentElement) {
+      const up = node.parentElement;
+      if (up) for (const c of Array.from(up.children)) if (c !== node) ro.observe(c);
+    }
+    return () => { window.removeEventListener('resize', fit); ro?.disconnect(); };
   }, []);
 
   const go = useCallback((id: string | null) => {
