@@ -559,7 +559,7 @@ describe("studio EXTEND — fx racks + midi maps", () => {
     const empty = await lensRun("studio", "fx-rack-save", { params: { name: "Empty", units: [] } }, ctx);
     assert.equal(empty.result.ok, false);
     assert.match(empty.result.error, /at least one effect unit required/);
-    const badType = await lensRun("studio", "fx-rack-save", { params: { name: "Bad", units: [{ type: "phaser" }] } }, ctx);
+    const badType = await lensRun("studio", "fx-rack-save", { params: { name: "Bad", units: [{ type: "bogus" }] } }, ctx);
     assert.equal(badType.result.ok, false);
     assert.match(badType.result.error, /unit type must be/);
   });
