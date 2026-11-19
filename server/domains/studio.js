@@ -2447,7 +2447,9 @@ export default function registerStudioActions(registerLensAction) {
     const op = String(params.op || "").trim();
     if (!s.collab) s.collab = new Map();
     const session = s.collab.get(projectId);
-    if (!session) return { ok: false, error: "no active session" };
+    // Edits are logged to a live session only. With no session open there is
+    // nothing to log, which is the normal solo case, not a failure.
+    if (!session) return { ok: true, result: { logged: false, reason: "no active session" } };
     if (!session.collaborators.find(c => c.userId === userId)) return { ok: false, error: "not a collaborator" };
     if (!op) return { ok: false, error: "op required" };
     const entry = {
@@ -2460,7 +2462,7 @@ export default function registerStudioActions(registerLensAction) {
     session.editLog.push(entry);
     if (session.editLog.length > 500) session.editLog.splice(0, session.editLog.length - 500);
     saveStudioState();
-    return { ok: true, result: { entry, logLength: session.editLog.length } };
+    return { ok: true, result: { logged: true, entry, logLength: session.editLog.length } };
   });
 
   registerLensAction("studio", "collab-since", (ctx, _a, params = {}) => {

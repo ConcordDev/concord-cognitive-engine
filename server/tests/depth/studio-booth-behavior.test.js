@@ -223,3 +223,23 @@ describe("studio booth — saved chains", () => {
     assert.equal((await lensRun("studio", "fx-rack-list", {}, ctx)).result.racks.length, mine.length);
   });
 });
+
+describe("studio booth — session edit log", () => {
+  it("logging with no session open is a no-op, not an error; a stranger still cannot write into a session", async () => {
+    const host = await depthCtx("booth-collab-host");
+    const stranger = await depthCtx("booth-collab-stranger");
+    const projectId = await newProject(host, "Booth collab");
+    const solo = await lensRun("studio", "collab-edit", { params: { projectId, op: "markers-add", target: "mk_1" } }, host);
+    assert.equal(solo.ok, true);
+    assert.deepEqual([solo.result.logged, solo.result.reason], [false, "no active session"]);
+    await lensRun("studio", "collab-session-start", { params: { projectId, displayName: "Host" } }, host);
+    const logged = await lensRun("studio", "collab-edit", { params: { projectId, op: "markers-add", target: "mk_1" } }, host);
+    assert.equal(logged.result.logged, true);
+    assert.equal(logged.result.entry.op, "markers-add");
+    const intruder = await lensRun("studio", "collab-edit", { params: { projectId, op: "markers-delete", target: "mk_1" } }, stranger);
+    assert.equal(intruder.result.ok, false);
+    assert.match(intruder.result.error, /not a collaborator/);
+    const since = await lensRun("studio", "collab-since", { params: { projectId, sinceSeq: 0 } }, host);
+    assert.deepEqual(since.result.entries.map((e) => e.op), ["markers-add"]);
+  });
+});
