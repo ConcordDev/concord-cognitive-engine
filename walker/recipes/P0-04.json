@@ -1,0 +1,27 @@
+{
+ "adversarial": [
+  "Pull with an empty or absent manifest: a named failure, never a silent empty set.",
+  "Pull twice: idempotent \u2014 the second pull changes nothing.",
+  "A set whose source is missing from the Aura branch: a named gap in the inventory, not a fabricated asset.",
+  "Git check: the landed tree contains no regenerated binary (the Mixamo clips especially) \u2014 raw Mixamo in a public git history is redistribution (founder Q2 answer, 2026-11-13)."
+ ],
+ "author": "muse-b7",
+ "authored_on": "2026-11-19",
+ "case_source": "observed",
+ "covers": "P0-04 \u2014 'Asset rail: R2 + content-addressed manifest + pull/push' (parent MST-W1-26, Wave 1, Step 27; fixer muse-b10; author of record muse-b7 per CB-0828, named at claim time 2026-11-18; content supplied by the fixer, registration is the author's, activation the reviewer's). LANDED on v1/concordia-pf @ 0b9612ee8 (parent f4f1f77ff; one plumbing commit; six files: apps/concordia-living-world/unity-client/ASSET_MANIFEST.json (223 rows) \u00b7 docs/concordia/ASSET_RAIL.md \u00b7 scripts/assets/asset-manifest.mjs \u00b7 scripts/assets/pull-assets.mjs \u00b7 scripts/assets/push-assets.mjs \u00b7 server/tests/asset-rail.test.js). Method of record: REGENERATION (founder ruling 2026-11-18) \u2014 regenerate what is missing on the builder's own machine from the PR carrying the current Aura work; regeneration source of record: branch backup/aura-wt-20261103 (AN-01's clips live there, not on main). The full R2/catalog rail build does NOT precede the consumers; the office scopes what of the rail remains after regeneration satisfies them. Consumers: WF-04 (B7 \u2014 a WebGL build loading a tile group from the catalog; its end goal was unattainable while the catalog/rail did not exist) \u00b7 P0-18's Unity CI workflow step (1), which runs node scripts/assets/pull-assets.mjs \u00b7 AN-01's clips via P0-05. CAPTURE-MAP GAP (flagged per CB-0809, carried from the fixer's draft): Concordia has no walker capture map; control names / served-build steps finalize against the served build at replay time \u2014 this recipe carries the endpoint/script surface (scripts/assets/pull-assets.mjs) and the consumer failure names, the discriminating surface available pre-build. Tier 1 per the fixer's CB-0810 seat flag (persistence-bearing: the asset rail is the persistence layer for Concordia binary sets).",
+ "discriminator": "Pre-fix shape at f4f1f77ff (the fixer's recorded transcript, standing per CB-0810 \u2014 no transcript, no state change): the rail is ABSENT \u2014 no scripts/assets/pull-assets.mjs exists; there is no content-addressed manifest and no pull/push path for Concordia binary sets. Named consumer failure, standing: P0-18's Unity CI workflow step (1) runs `node scripts/assets/pull-assets.mjs` and fails BY NAME while the rail is absent \u2014 by design, because tests without the rail's assets would test a different project (P0-18.check.md). WF-04 cannot attain its end goal: a WebGL build loading a tile group from the catalog \u2014 the catalog/rail it consumes does not exist. The Mixamo clips exist only on branch backup/aura-wt-20261103, not on main, and must never enter git (the repo is PUBLIC \u2014 founder Q2 answer, 2026-11-13; raw Mixamo in a public git history is redistribution).",
+ "id": "P0-04",
+ "kind": "repro-steps",
+ "packet_id": "world@0b9612ee8:v1",
+ "reviewer": "zuko-desk",
+ "status": "draft",
+ "steps": [
+  "Run the regeneration inventory (scripts/assets/asset-manifest.mjs against ASSET_MANIFEST.json): every missing binary set the consumers need is named \u2014 WF-04's tile group \u00b7 P0-18's pull-assets set \u00b7 AN-01's clips via P0-05 \u2014 each traced to its source on the Aura branch/PR (backup/aura-wt-20261103).",
+  "Invoke the pull path the consumers invoke: node scripts/assets/pull-assets.mjs resolves and materializes the set locally \u2014 the regenerated assets are present through the pull path.",
+  "Run P0-18's Unity CI workflow step (1): it no longer fails by name for absence of the rail.",
+  "Git check on the landed tree: no regenerated binary is present in git history (the clips especially)."
+ ],
+ "tier": 1,
+ "title": "P0-04 asset rail: the content-addressed manifest + pull/push path exists \u2014 consumers pull Concordia binary sets locally, P0-18's step (1) no longer fails by name, and no regenerated binary enters git",
+ "verified_against": null
+}
