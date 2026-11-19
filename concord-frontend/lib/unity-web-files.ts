@@ -104,6 +104,30 @@ export function unityPayloadIsGzip(body: Uint8Array): boolean {
   return body.length >= 2 && body[0] === 0x1f && body[1] === 0x8b;
 }
 
+/**
+ * The compression a `*.unityweb` payload actually carries (PF-10).
+ *
+ * Unity exports `.unityweb` in exactly two compressed formats, gzip and
+ * Brotli, and the serving layer must name the payload's own format in
+ * Content-Encoding: a Brotli payload served with no encoding (the pre-PF-10
+ * route only recognised gzip) hands raw Brotli bytes to the wasm loader and
+ * the canvas stays black. Brotli has no magic bytes, so it is identified by
+ * elimination: not gzip, not an LFS pointer, and not plain text — an
+ * uncompressed export is ordinary JS/text and needs no Content-Encoding.
+ */
+export function unityPayloadCompression(body: Uint8Array): 'gzip' | 'brotli' | null {
+  if (body.length < 4) return null;
+  if (unityPayloadIsLfsPointer(body)) return null;
+  if (unityPayloadIsGzip(body)) return 'gzip';
+  const head = body.subarray(0, 64);
+  let printable = 0;
+  for (const b of head) {
+    if (b === 9 || b === 10 || b === 13 || (b >= 32 && b < 127)) printable++;
+  }
+  if (printable / head.length > 0.9) return null;
+  return 'brotli';
+}
+
 /** Reject path traversal. Relative POSIX path inside the player root, or null. */
 export function safeUnityRelativePath(rel: string): string | null {
   const cleaned = rel.replace(/\\/g, '/').replace(/^\/+/, '');

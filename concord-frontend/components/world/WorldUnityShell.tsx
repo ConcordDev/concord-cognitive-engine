@@ -3,8 +3,9 @@
 /**
  * World lens retail shell — Unity WebGL viewport first.
  *
- * Default: full-bleed Concordia WebGL (env UNITY_WEBGL_URL / /unity-client /
- * the Unity living world) with id=concordia-unity-webgl for the ConKay postMessage
+ * Default: full-bleed Concordia WebGL (env UNITY_WEBGL_URL /
+ * NEXT_PUBLIC_UNITY_BUILD_BASE_URL CDN build / /unity-client — the ordered
+ * candidates live in lib/unity-build-url) with id=concordia-unity-webgl for the ConKay postMessage
  * bridge + /unity-ws config injection. Escape (or the floating Menu chip)
  * opens a minimal overlay: leave lens, settings, advanced OS tools.
  *
@@ -21,6 +22,7 @@ import { LensShell } from '@/components/lens/LensShell';
 import { getInjectedJwt } from '@/lib/auth-bridge';
 import { UNITY_IFRAME_ID } from '@/lib/conkay/unity-bridge';
 import { buildUnityIframeSearch, showUnityGatewayDevBadge } from '@/lib/unity-iframe-config';
+import { unityPlayerCandidates } from '@/lib/unity-build-url';
 
 const WorldOsSurface = dynamic(() => import('@/components/world/WorldOsSurface'), {
   ssr: false,
@@ -36,20 +38,17 @@ const WorldAccessibilityMenu = dynamic(
   { ssr: false },
 );
 
-const UNITY_WEBGL_URL =
-  process.env.NEXT_PUBLIC_UNITY_WEBGL_URL ||
-  process.env.NEXT_PUBLIC_CONCORDIA_UNITY_URL ||
-  '';
-
 type UnityStatus = 'checking' | 'ready' | 'missing';
 
 type ShellPanel = null | 'menu' | 'settings' | 'advanced';
 
-/** Committed player first. Env override only if it is a real HTML player. */
-const CANDIDATE_SRCS = [
-  UNITY_WEBGL_URL,
-  '/unity-client/index.html',
-].filter((u, i, arr) => Boolean(u) && arr.indexOf(u) === i);
+/**
+ * Player candidates from the shared resolver (lib/unity-build-url):
+ * explicit env override, then the configured CDN build (PF-10), then the
+ * committed same-origin player. Each is probed before it is mounted, so an
+ * override still only wins if it is a real HTML player.
+ */
+const CANDIDATE_SRCS = unityPlayerCandidates();
 
 const LFS_POINTER_PREFIX = 'version https://git-lfs.github.com/spec/v1';
 

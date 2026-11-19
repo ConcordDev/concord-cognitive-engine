@@ -6,6 +6,15 @@ const { spawnSync } = require("node:child_process");
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const path = require("node:path");
 
+// Unity WebGL export compression (PF-10). The committed export is gzip;
+// when the export switches to Brotli, set UNITY_WEBGL_COMPRESSION=brotli so
+// this static rule names the same Content-Encoding the App Router catch-all
+// detects per payload (concord-frontend/lib/unity-web-files.ts). The two
+// must agree: a mismatch serves compressed bytes under the wrong encoding
+// and the player canvas stays black.
+const UNITYWEB_CONTENT_ENCODING =
+  process.env.UNITY_WEBGL_COMPRESSION === 'brotli' ? 'br' : 'gzip';
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -192,13 +201,15 @@ const nextConfig = {
         ],
       },
       {
-        // Unity gzip-compresses *.unityweb at export time. The browser must
-        // see Content-Encoding: gzip (or Unity's decompressionFallback, which
-        // the index route also injects). Without this, createUnityInstance
-        // treats gzip bytes as wasm and the canvas stays black.
+        // Unity compresses *.unityweb at export time (gzip today, Brotli
+        // when UNITY_WEBGL_COMPRESSION=brotli). The browser must see the
+        // matching Content-Encoding (or Unity's decompressionFallback,
+        // which the index route also injects). Without this,
+        // createUnityInstance treats compressed bytes as wasm and the
+        // canvas stays black.
         source: '/unity-client/Build/:file*.unityweb',
         headers: [
-          { key: 'Content-Encoding', value: 'gzip' },
+          { key: 'Content-Encoding', value: UNITYWEB_CONTENT_ENCODING },
           { key: 'Content-Type', value: 'application/octet-stream' },
         ],
       },

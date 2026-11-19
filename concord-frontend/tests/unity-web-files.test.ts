@@ -8,6 +8,7 @@ import {
   safeUnityRelativePath,
   unityAssetContentType,
   unityAssetIsGzipped,
+  unityPayloadCompression,
   unityPayloadIsGzip,
   unityPayloadIsLfsPointer,
 } from '@/lib/unity-web-files';
@@ -46,6 +47,23 @@ describe('unity web files', () => {
     const gzip = new Uint8Array([0x1f, 0x8b, 0x08, 0x00]);
     expect(unityPayloadIsLfsPointer(gzip)).toBe(false);
     expect(unityPayloadIsGzip(gzip)).toBe(true);
+  });
+
+  it('names the payload compression: gzip, brotli, or none (PF-10)', () => {
+    const gzip = new Uint8Array([0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00]);
+    expect(unityPayloadCompression(gzip)).toBe('gzip');
+    const pointer = new TextEncoder().encode('version https://git-lfs.github.com/spec/v1\noid sha256:abc\nsize 1\n');
+    expect(unityPayloadCompression(pointer)).toBeNull();
+    // An uncompressed export is plain JS text: no Content-Encoding.
+    const plainJs = new TextEncoder().encode('var unityFramework = (() => { return { start: true }; })();\n');
+    expect(unityPayloadCompression(plainJs)).toBeNull();
+    // A Brotli payload: binary, no gzip magic, not text.
+    const brotli = new Uint8Array(64).map((_, i) => (i * 37 + 0x8b) % 256);
+    brotli[0] = 0x1b;
+    expect(unityPayloadCompression(brotli)).toBe('brotli');
+    // Too small to judge.
+    expect(unityPayloadCompression(new Uint8Array([0x1f]))).toBeNull();
+    expect(unityPayloadCompression(new Uint8Array(0))).toBeNull();
   });
 
   it('the committed framework is gzip bytes or an LFS pointer, never both', () => {
