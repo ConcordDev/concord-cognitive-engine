@@ -15,12 +15,25 @@ contains_commit() answers "does build X contain fix commit Y" with
 git merge-base --is-ancestor and returns "unknown" whenever git cannot decide.
 v1 records stay readable: load_lens_record() normalizes them (schema_version 1,
 no controls, a `v1` marker) so every consumer can take either.
+
+Packet identity (walk-2 gate §16, ULW C30/C32/C27): every record carries ONE
+canonical packet_id — {slug}@{backend_sha[:12]}:v{packet_version} — the single
+field the packet is cited by (the recipe layer validates this exact shape).
+packet_version is the capture generation for the lens: v1 is the first
+capture; a re-capture that supersedes a prior packet bumps the version and
+names the replaced packet_id in `supersedes`, so an old map is retired by
+name, never by drift. `wiring_provenance` records that the record's wiring
+(controls/endpoints/actions) was captured on the clean happy path (§12):
+fuzz observations file as findings only and never enter capture wiring —
+formfuzz runs in the reverify lane, not in the capture walk.
 """
 import json, os, subprocess
 from .util import human_et, now_et
 from . import sha_gate
 
 SCHEMA_VERSION = 2
+PACKET_VERSION = 1
+WIRING_PROVENANCE = "clean_happy_path"
 V1_KEYS = ("slug", "url", "account", "admin", "started", "finished", "elapsed_s", "checks", "timing_desktop",
            "initial_evidence", "perf_metrics", "surface", "console", "budget", "budget_aborted", "new_tickets", "duplicates")
 
@@ -67,6 +80,43 @@ def row_stamp(deploy):
     """The compact stamp copied onto every ledger row / finding."""
     d = deploy or {}
     return {"build_sha": (d.get("backend_sha") or None) and d["backend_sha"][:12], "walked_at": d.get("walked_at")}
+
+
+def packet_id_for(slug, deploy, version=None):
+    """The canonical packet ID (gate §16): lens + build + version as ONE
+    machine-readable field. The build segment is the record's own deploy
+    stamp (12 chars, the row_stamp convention); a record with no build stamp
+    names the segment 'unknown' — its deploy.sha_status already flags it as
+    not tied to a known build, and the ID stays shape-valid so consumers can
+    still cite (and distrust) it by name."""
+    d = deploy or {}
+    sha = (d.get("backend_sha") or "unknown")[:12]
+    return "%s@%s:v%d" % (slug, sha, int(version or PACKET_VERSION))
+
+
+def apply_supersession(rec, prior):
+    """Record that `rec` supersedes the prior packet `prior` (a lens record
+    dict or a bare packet_id string): rec names the replaced packet_id in
+    `supersedes`, its packet_version becomes the prior's + 1, and its
+    packet_id is recomputed. Returns rec. A prior from a DIFFERENT lens is a
+    caller error and raises — supersession is per-lens by construction."""
+    if isinstance(prior, dict):
+        prior_id = prior.get("packet_id") or packet_id_for(prior.get("slug"), prior.get("deploy"),
+                                                           prior.get("packet_version"))
+        prior_version = int(prior.get("packet_version") or PACKET_VERSION)
+        prior_slug = prior.get("slug")
+    else:
+        prior_id, prior_version, prior_slug = str(prior), None, None
+        m = prior_id.rsplit(":v", 1)
+        if len(m) == 2 and m[1].isdigit():
+            prior_version = int(m[1])
+        prior_slug = prior_id.split("@", 1)[0] if "@" in prior_id else None
+    if prior_slug and rec.get("slug") and prior_slug != rec.get("slug"):
+        raise ValueError("supersession is per-lens: %s cannot supersede %s" % (rec.get("slug"), prior_id))
+    rec["supersedes"] = prior_id
+    rec["packet_version"] = (prior_version or PACKET_VERSION) + 1
+    rec["packet_id"] = packet_id_for(rec.get("slug"), rec.get("deploy"), rec["packet_version"])
+    return rec
 
 
 def contains_commit(repo, build_sha, fix_sha, runner=subprocess.run):
@@ -135,8 +185,11 @@ def findings_v2(filed, slugs, deploy):
     return out
 
 
-def upgrade_record(res, deploy, filed, slugs, screenshots, net=None, premap_findings=None):
-    """Add the v2 keys to a v1 result dict in place (v1 keys untouched)."""
+def upgrade_record(res, deploy, filed, slugs, screenshots, net=None, premap_findings=None, prior=None):
+    """Add the v2 keys to a v1 result dict in place (v1 keys untouched).
+    `prior` (the lens's previous record, when the finalize path has one)
+    records supersession on the new packet (§16); without one the packet is
+    its lens's current generation as stamped."""
     res["schema_version"] = SCHEMA_VERSION
     res["deploy"] = deploy
     res["findings"] = findings_v2(filed, slugs, deploy)
@@ -145,6 +198,11 @@ def upgrade_record(res, deploy, filed, slugs, screenshots, net=None, premap_find
     if net is not None:
         controls, endpoints, actions, summary = net
         res["controls"], res["endpoints"], res["actions"], res["net"] = controls, endpoints, actions, summary
+    res["packet_version"] = int(res.get("packet_version") or PACKET_VERSION)
+    res["packet_id"] = packet_id_for(res.get("slug"), deploy, res["packet_version"])
+    res["wiring_provenance"] = WIRING_PROVENANCE
+    if prior is not None:
+        apply_supersession(res, prior)
     return res
 
 
@@ -162,6 +220,12 @@ def load_lens_record(path):
         rec.setdefault("findings", [])
         rec.setdefault("screenshots", [{"path": rec["initial_evidence"], "kind": "initial"}]
                        if rec.get("initial_evidence") else [])
+    # Packet identity (§16): records written before the field existed derive
+    # it from slug + deploy stamp at generation v1, so every consumer can
+    # cite any record by its canonical ID. A stamped field is never rewritten.
+    if not rec.get("packet_id"):
+        rec["packet_version"] = int(rec.get("packet_version") or PACKET_VERSION)
+        rec["packet_id"] = packet_id_for(rec.get("slug"), rec.get("deploy"), rec["packet_version"])
     return rec
 
 

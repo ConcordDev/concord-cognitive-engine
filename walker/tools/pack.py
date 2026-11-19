@@ -271,6 +271,12 @@ def lens_data(inp, slug, ticket=None):
     d["run_id"] = run_id_of(path)
     d["schema"] = "v2" if v2 else "v1"
     d["build_sha"] = (dep.get("backend_sha") or "")[:12] or None
+    d["packet_id"] = rec.get("packet_id")
+    d["wiring_provenance"] = rec.get("wiring_provenance")
+    sup = rec.get("supersedes")
+    if not sup and inp.prev is not None and slug in inp.prev:
+        sup = (inp.prev[slug][1] or {}).get("packet_id")
+    d["supersedes"] = sup
     d["frontend_build"] = dep.get("frontend_build_id")
     d["walked_at"] = dep.get("walked_at") or rec.get("started") or rec.get("finished")
     flags = []
@@ -622,7 +628,8 @@ def lens_packet(inp, slug):
                           for r in d["root_causes"]], 8, inp.paths.get("root_causes") or "-"))
     S += lens_sections(d, "## Walk:", more, 0)
     text = fit(S, footer([more]), LENS_CAP)
-    js = OrderedDict([("packet", "lens-" + slug), ("kind", "lens"), ("slug", slug), ("inputs", hashes),
+    js = OrderedDict([("packet", "lens-" + slug), ("packet_id", d.get("packet_id")), ("supersedes", d.get("supersedes")),
+                      ("kind", "lens"), ("slug", slug), ("inputs", hashes),
                       ("master_tickets", [t["id"] for t in mts]), ("cross_cutting_tickets", star),
                       ("steps", [OrderedDict([("id", s["id"]), ("wave", s.get("wave")), ("parent", s.get("master_parent")), ("title", s.get("title"))]) for s in steps]),
                       ("star_steps", star_steps), ("walk", d), ("trimmed", OrderedDict((s.key, s.cut) for s in S if s.cut))])
@@ -786,7 +793,8 @@ def main(argv=None):
         try:
             text, js, h = lens_packet(inp, s)
             n = write(a.out, "lens-" + s.replace("/", "__"), text, js, LENS_CAP)
-            index["lens-" + s] = OrderedDict([("bytes", n), ("sha256", hashlib.sha256(text.encode()).hexdigest()[:16]), ("inputs", h)])
+            index["lens-" + s] = OrderedDict([("bytes", n), ("sha256", hashlib.sha256(text.encode()).hexdigest()[:16]), ("inputs", h),
+                                              ("packet_id", js.get("packet_id")), ("supersedes", js.get("supersedes"))])
         except OverCap as e:
             over.append("lens-%s: %s" % (s, e))
     meta = OrderedDict([("index", os.path.abspath(a.index)), ("registry", a.registry and os.path.abspath(a.registry)),

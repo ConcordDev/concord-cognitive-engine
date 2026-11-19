@@ -8,6 +8,11 @@ FOLD SHA), and produces
   * live_labels.json       exactly the live_labels_index.json format (source/lenses) + run provenance,
                            so rewrites.py can cite `live:<lens>`.
 Rules (binding):
+  * provenance (gate §12, ULW C27): every wiring document is stamped
+    `provenance: clean_happy_path` (lensrecord.WIRING_PROVENANCE) — the wiring
+    was captured from the walk's clean control exercises; fuzz observations
+    file as findings only and never enter wiring (formfuzz runs in the
+    reverify lane, not in the capture walk).
   * request/response SHAPE only: keys and JSON type names, recursively, arrays as one merged element shape.
     VALUES are never stored. A key that names a secret (token/secret/password/cookie/authorization/session/
     apikey/key/...) is kept as a key name but its type is replaced by "redacted"; a key that LOOKS like a value
@@ -20,6 +25,7 @@ import gzip, json, os, re
 from collections import OrderedDict
 
 from . import routematch as RM
+from .lensrecord import WIRING_PROVENANCE
 
 SCHEMA = 1
 MAX_DEPTH, MAX_KEYS, MAX_ELEMS = 6, 40, 20
@@ -280,7 +286,8 @@ def build_lens(lens, controls, reg, run_id, fold_sha, extras=None):
                                                                               if q.get("error") and q["error"] not in ("pending", "aborted")}))]))])
         out_controls.append(row)
     flows = infer_flows([{"sid": r["sid"], "requests": r["requests"]} for r in out_controls])
-    return OrderedDict([("schema", SCHEMA), ("lens", lens), ("run_id", run_id), ("fold_sha", fold_sha), ("controls", out_controls), ("flows", flows)])
+    return OrderedDict([("schema", SCHEMA), ("lens", lens), ("run_id", run_id), ("fold_sha", fold_sha),
+                        ("provenance", WIRING_PROVENANCE), ("controls", out_controls), ("flows", flows)])
 
 
 # ------------------------------------------------------------------ cross-lens indexes
@@ -326,7 +333,8 @@ def live_labels(lens_wirings, run_id, fold_sha, backend_sha=None):
         lenses[lw["lens"]] = OrderedDict([("labels", sorted(labels)), ("tabs", sorted(tabs)), ("inputs", sorted(inputs)),
                                           ("runs", [run_id]), ("backend_sha", backend_sha or fold_sha)])
     return OrderedDict([("source", "wiring-capture run %s at fold %s; read-only, shapes and control names only, no creds" % (run_id, fold_sha)),
-                        ("provenance", OrderedDict([("run_id", run_id), ("fold_sha", fold_sha), ("schema", SCHEMA)])),
+                        ("provenance", OrderedDict([("run_id", run_id), ("fold_sha", fold_sha), ("schema", SCHEMA),
+                                                    ("wiring", WIRING_PROVENANCE)])),
                         ("lenses", lenses)])
 
 
@@ -351,6 +359,7 @@ def write_all(out_dir, lens_wirings, run_id, fold_sha, backend_sha=None):
     lens_wirings = sorted(lens_wirings, key=lambda x: x["lens"])
     docs = [("wiring-%s.json" % re.sub(r"[^a-z0-9_-]", "_", lw["lens"].lower()), lw) for lw in lens_wirings]
     index = OrderedDict([("schema", SCHEMA), ("run_id", run_id), ("fold_sha", fold_sha),
+                         ("provenance", WIRING_PROVENANCE),
                          ("lenses", OrderedDict((lw["lens"], OrderedDict([("controls", len(lw["controls"])),
                                                                           ("requests", sum(len(c["requests"]) for c in lw["controls"])),
                                                                           ("flows", len(lw["flows"]))])) for lw in lens_wirings)),

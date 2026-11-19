@@ -104,7 +104,7 @@ def _is_browser_crash(e):
 
 def cmd_walk(args, cfg, log):
     from playwright.sync_api import sync_playwright
-    from concord_walker.lensrecord import deploy_stamp, upgrade_record, Manifest, checks_not_run
+    from concord_walker.lensrecord import deploy_stamp, upgrade_record, Manifest, checks_not_run, load_lens_record
     from concord_walker.replay import ReplayRun
     inv = load_inventory(cfg)
     lenses = pick_lenses(inv, args)
@@ -285,7 +285,15 @@ def cmd_walk(args, cfg, log):
                 # replay the original tickets for this lens on the SAME walk (no second walk)
                 res["replay"] = replay.replay_lens(slug, lw, admin_gate=gate)
                 net_out = lw.net.build()
-                upgrade_record(res, deploy, filed, all_slugs, lw.screens, net_out, premap_findings=lw.premap_findings)
+                prior_rec = None
+                _prior_path = lens_result_path(rec.run_dir, slug)
+                if os.path.exists(_prior_path):
+                    try:
+                        prior_rec = load_lens_record(_prior_path)
+                    except Exception:
+                        prior_rec = None
+                upgrade_record(res, deploy, filed, all_slugs, lw.screens, net_out, premap_findings=lw.premap_findings,
+                               prior=prior_rec)
                 if wiring_col is not None and not gate:
                     wiring_col.add(slug, net_out[0], deploy.get("backend_sha"), {c: m.get("label_data") for c, m in lw.net.meta.items() if m.get("label_data")})
                 res["state"] = _LW.lens_state(res, gate=gate)

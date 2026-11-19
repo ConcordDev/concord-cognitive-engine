@@ -10,6 +10,10 @@ Use `concord_walker.lensrecord.load_lens_record()` to load a record:
 | key | meaning |
 |---|---|
 | `schema_version` | `2` |
+| `packet_id` | The packet's canonical identity (gate §16): `{slug}@{backend_sha[:12]}:v{packet_version}` — ONE machine-readable field the packet is cited by; recipes cite this ID, never a bare control name. Stamped at finalize (`upgrade_record`); derived on load for records written before the field existed |
+| `packet_version` | The capture generation for the lens: `1` for the first capture; a superseding re-capture increments it |
+| `supersedes` | On a superseding packet only: the `packet_id` it replaces (v2 names v1). A record whose `packet_id` appears in another record's `supersedes` is retired by name |
+| `wiring_provenance` | `clean_happy_path` (gate §12): the record's wiring (controls/endpoints/actions) was captured on the clean happy path; fuzz observations file as findings only, never as wiring |
 | `deploy` | `backend_sha` (from `/health` buildSha; must be hex), `frontend_build_id`, `walker_sha`, `walker_dirty`, `base_url`, `checked_at` (ET), `walked_at` (ISO with offset), `sha_status` (see below), `sha_note` |
 | `findings[]` | `id`, `signature` (root-cause signature), `check`, `severity`, `area`, `title`, `evidence[]`, `filed` (new / dup / candidate), `build_sha`, `walked_at` |
 | `screenshots[]` | `{path, kind}`. `kind` is one of `initial`, `open`, `after_escape`, `m390`, `mid_task`, `failure` |
