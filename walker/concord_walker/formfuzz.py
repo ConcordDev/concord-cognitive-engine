@@ -161,6 +161,8 @@ class FormFuzz:
         from .checks import LensWalk
         self.rv, self.t = rv, t
         self.lens = t["lens"]
+        # ULW C28: form fuzz is write work — it runs as the dedicated write account
+        # when one is configured, never as the evidence account t1.
         self.lw = LensWalk(rv.b, rv.cfg, rv.rec, rv.inv[self.lens], write_account_key(rv.cfg) or "t1", rv.log,
                            allow_write=True, inv_entry=rv.inv[self.lens])
         self.label = "%s-%s-%s" % (rv.cfg["fixture_prefix"], self.lens, rv.rec.rid[-6:])
