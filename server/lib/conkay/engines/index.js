@@ -6,6 +6,7 @@
  * fleet can never drift apart.
  */
 
+import "./entries/index.js";
 import { getEngine, listEngines, defineEngine, validateManifestEntry } from "./manifest.js";
 import { runEngine, runProcessKernel, engineHealth, resolveEngineBinary, kernelHash } from "./run-engine.js";
 import { runRemoteEngine, createEngineHost, resolveRpcEndpoint } from "./rpc.js";
