@@ -154,6 +154,9 @@ export default function registerMusicReleases(registerLensAction, { getMusicStat
         const p = s.releases.get(pid);
         return p && p.status === "published" ? { id: p.id, title: p.title, artist: artistCard(ctx, p.artistId) } : null;
       }).filter(Boolean),
+      remixes: r.status === "published"
+        ? [...s.releases.values()].filter((x) => x.status === "published" && (x.parents || []).includes(r.id)).map((x) => ({ id: x.id, title: x.title, artist: artistCard(ctx, x.artistId) }))
+        : [],
       artist: artistCard(ctx, r.artistId),
       tracks: r.tracks.map((t) => trackView(s, r, t, me)),
       durationSec: r.tracks.reduce((a, t) => a + (t.durationSec || 0), 0),
@@ -585,7 +588,56 @@ export default function registerMusicReleases(registerLensAction, { getMusicStat
     const rec = s.trackPlays.get(mediaId) || { count: 0, last: {} };
     const now = Date.now();
     const counted = !rec.last[me] || now - rec.last[me] >= PLAY_DEDUPE_MS;
-    if (counted) { rec.count += 1; rec.last[me] = now; s.trackPlays.set(mediaId, rec); saveMusicState(); }
+    if (counted) {
+      rec.count += 1; rec.last[me] = now; s.trackPlays.set(mediaId, rec);
+      // The listener's own history (recently played, Replay, radio) runs on library entries.
+      const lib = s.tracks.get(me) || [];
+      const entry = lib.find((t) => t.mediaId === mediaId);
+      if (entry) {
+        entry.playCount = (entry.playCount || 0) + 1;
+        if (!(s.plays.get(me) instanceof Array)) s.plays.set(me, []);
+        s.plays.get(me).push({ trackId: entry.id, durationSec: entry.durationSec, at: nowIso() });
+      }
+      saveMusicState();
+    }
     return { ok: true, result: { counted, plays: rec.count } };
+  });
+
+  // Save a release track into the listener's library, built from the release itself
+  // (never from client-supplied titles), so likes, playlists, radio, recently played
+  // and Replay all work on indie releases. Idempotent per track.
+  registerLensAction("music", "library-add-release-track", (ctx, _a, params = {}) => {
+    const s = store(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const me = viewer(ctx);
+    if (!me) return { ok: false, error: "sign in to save music" };
+    const r = s.releases.get(clean(params.id, 100));
+    if (!r || r.status !== "published") return { ok: false, error: "release not found" };
+    const t = r.tracks.find((x) => x.mediaId === clean(params.mediaId, 100));
+    if (!t) return { ok: false, error: "track not on this release" };
+    if (!(s.tracks.get(me) instanceof Array)) s.tracks.set(me, []);
+    const lib = s.tracks.get(me);
+    const existing = lib.find((x) => x.mediaId === t.mediaId);
+    if (existing) return { ok: true, result: { track: existing, added: false } };
+    if (lib.length >= 20000) return { ok: false, error: "your library is full" };
+    const artist = artistCard(ctx, r.artistId);
+    const track = {
+      id: newId("trk"),
+      title: t.title,
+      artist: artist.name,
+      artistKey: artist.key,
+      album: r.title,
+      genre: (r.genre || "unknown").toLowerCase(),
+      durationSec: t.durationSec || 1,
+      liked: params.like === true,
+      playCount: 0,
+      addedAt: nowIso(),
+      releaseId: r.id,
+      mediaId: t.mediaId,
+      audioUrl: `/api/media/${encodeURIComponent(t.mediaId)}/stream`,
+      coverUrl: r.coverDtuId ? `/api/artifact/${encodeURIComponent(r.coverDtuId)}/stream` : null,
+    };
+    lib.push(track);
+    saveMusicState();
+    return { ok: true, result: { track, added: true } };
   });
 }

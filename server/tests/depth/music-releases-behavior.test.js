@@ -277,4 +277,26 @@ describe("music releases — publish, storefront, buy, own", () => {
     assert.equal(media(tracks[0]).tiers.find((t) => t.tier === "commercial").price, 12);
     assert.match((await lensRun("music", "release-update", { params: { id: releaseId, type: "album" } }, artist)).result.error, /cannot change after release/);
   });
+
+  it("saving a release track builds the library entry from the release; likes, plays and playlists then work on it", async () => {
+    const add = await lensRun("music", "library-add-release-track", { params: { id: releaseId, mediaId: tracks[1], like: true } }, fan);
+    assert.equal(add.ok, true);
+    const t = add.result.track;
+    assert.deepEqual([t.title, t.album, t.liked, t.releaseId, t.mediaId, t.genre], ["Side B", "Paper Moons", true, releaseId, tracks[1], "indie"]);
+    assert.ok(!JSON.stringify(t).includes("ln-seller"), "raw artist id leaked into the library");
+    const again = await lensRun("music", "library-add-release-track", { params: { id: releaseId, mediaId: tracks[1] } }, fan);
+    assert.deepEqual([again.result.added, again.result.track.id], [false, t.id]);
+    const liked = await lensRun("music", "liked-songs", {}, fan);
+    assert.ok(liked.result.tracks.some((x) => x.id === t.id));
+    const pl = await lensRun("music", "playlist-create", { params: { name: "Late" } }, fan);
+    const put = await lensRun("music", "playlist-add-track", { params: { playlistId: pl.result.playlist.id, trackId: t.id } }, fan);
+    assert.equal(put.result.trackCount, 1);
+    const play = await lensRun("music", "release-play", { params: { id: releaseId, mediaId: tracks[1] } }, fan);
+    assert.equal(play.result.counted, true);
+    const recent = await lensRun("music", "recently-played", {}, fan);
+    assert.equal(recent.result.tracks[0].id, t.id);
+    assert.match((await lensRun("music", "library-add-release-track", { params: { id: releaseId, mediaId: "media_nope" } }, fan)).result.error, /not on this release/);
+    const page = await lensRun("music", "release-get", { params: { id: releaseId } }, fan);
+    assert.deepEqual(page.result.release.remixes.map((x) => x.title), ["Paper Moons (Dusk Mix)"]);
+  });
 });
