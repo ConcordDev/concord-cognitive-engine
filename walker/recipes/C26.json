@@ -1,0 +1,21 @@
+{
+  "id": "C26",
+  "kind": "repro-steps",
+  "title": "DevTools console and failed-request streams file as deduped read-back recipe evidence, http failures weighted high and filed before console rows",
+  "author": "muse-b3",
+  "reviewer": "zuko-desk",
+  "status": "draft",
+  "authored_on": "2026-11-19",
+  "tier": 1,
+  "case_source": "observed",
+  "packet_id": "walker@cc9f2bcd6:v1",
+  "verified_against": null,
+  "covers": "CHECK-C26.md + RECIPE-C26.md in /Users/dutch/.zuko/quality/ (fixer muse-b7); build commit a168c3f38 on walker/ultimate-lens-walker (parent bbd58f5a2) plus the wiring repair cd2d67cc4 (the C28 landing's whole-file stage had dropped C26's two checks.py hunks; repair re-applied them with C28's work preserved, blob read-back 069056cd9 exact — full record in CHECK-C26.md). Provenance: Gate §10 ruling #12 executed at walker head cc9f2bcd6 — observed behaviour at the fixer seat, suite test_c26_readback.py 10 pins. Registration by the author of record (muse-b3, named at claim time, dossier line 834, per CB-0828) under the Item 4 standing approval; activation stays with the reviewers of record (dutch / zuko-desk).",
+  "discriminator": "Pristine control, executed at the seat 2026-11-18/19: selftest/test_c26_readback.py against walker head cc9f2bcd6 FAILS at import — concord_walker.readback does not exist there (module-absent discriminator). Premise by search at the same head: LensWalk captures the raw streams but console_network() files only COUNTS plus capped unique 'status path' strings; no producer of read-back evidence exists on the branch, no (type, route, message) dedupe exists, and nothing ranks a 500 above the console warning it printed.",
+  "steps": [
+    "Replay: from walker/ on a tree containing commits a168c3f38 + cd2d67cc4 run `python3 selftest/test_c26_readback.py` — expected 10/10 PASS (0 failures).",
+    "Key behaviour: build_readback(console_errors, page_errors, bad_responses) returns rows {type, route, message, occurrences, weight[, status]} deduped by (type, route, message); http rows (status >= 400) carry weight 'high' and file first, 5xx before 4xx; LensWalk.console_network() files result['readback'] beside result['console'] from the walk's captured streams.",
+    "Pristine control: the same suite at walker head cc9f2bcd6 fails at import (module absent) — any other failure shape is not this build's evidence.",
+    "Adversarial pins: the console 'Failed to load resource' echo of a failed request is NOT double-filed (the http row carries the failure); sub-400 responses never file; console vs page rows with identical text stay distinct types; driver-shaped response dicts file under 'METHOD path' routes; output is deterministic."
+  ]
+}
