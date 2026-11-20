@@ -1,0 +1,209 @@
+"""fix_tickets.jsonl: load, dedupe, id assignment, append in the testers' exact format."""
+import json, os, re, shutil, difflib
+from .util import file_lock, ts_et, run_id, append_jsonl
+
+TICKET_KEYS = ["id", "lens", "severity", "title", "repro_steps", "expected", "actual",
+               "evidence_path", "suspected_area", "status", "tester", "ts"]
+
+# Category keyword sets used to match a walker finding to a human-filed ticket on the same lens.
+CATEGORY_WORDS = {
+    "contrast": r"contrast|wcag|legib|low.contrast|hard to read|faint|grey on|gray on",
+    "escape": r"escape|\besc\b",
+    "focus_return": r"focus.{0,30}(return|restore|lost|back)|return.{0,10}focus",
+    "focus_trap": r"focus.{0,15}trap|focus (escapes|leaves)|tab.{0,20}(behind|background)",
+    "focus_visible": r"focus (ring|indicator|outline|visible)|visible focus|no focus",
+    "keyboard": r"keyboard|tab order|not focusable|tabindex|unreachable by tab",
+    "unnamed": r"accessible name|aria-label|unlabel|unnamed|no label|icon.only|screen reader",
+    "export": r"export|download",
+    "delete_confirm": r"(no|without|missing|skips?|lacks?)\b.{0,25}(confirm|prompt|warning|undo)|confirm.{0,30}(delet|remov)|(delet|remov|trash).{0,40}(confirm|undo|instant|immediate)",
+    "overflow390": r"(390|mobile|narrow|phone).{0,80}(horizontal(ly)?|sideways|overflow|cut off|clipp|off.?screen|wider|truncat)|(horizontal(ly)?|sideways|overflow|cut off|clipp|off.?screen|wider|truncat).{0,80}(390|mobile|narrow|phone)",
+    "timing": r"slow|latency|takes \d|seconds|\d+\s?ms|timeout|timed out|load time|hang",
+    "pageerror": r"console|uncaught|exception|typeerror|error boundary|crash",
+    "http": r"\b(4\d\d|5\d\d)\b|500|502|503|404|failed request|network error",
+    # WALK-03: narrowed to render-context phrases. The bare words (error|crash|blank|404|not found)
+    # swallowed validation, export and console tickets (FIX-trades-009 "accepts blank form" classified
+    # here); those classes must win or fall out, never be decided as a tab error.
+    "tab_error": r"something went wrong|white screen|fails to render|error (page|screen|state|boundary)|renders? an error|\btab\b.{0,30}(error|blank|crash|empty|not found)",
+    "crash": r"crash|aw, snap|renderer|out of memory|oom",
+    "reach": r"404|not found|doesn.t load|fails to load|blank page|redirect",
+    "hotkey": r"hotkey|keystroke|first key|steal|closes on (first )?(key|typing)",
+    "persistence": r"reload|persist|vanish|disappear|lost after",
+    "privacy": r"another (user|account)|other (user|account)|someone else|cross.account|visible to (others|everyone|all users)|leaks?\b|websocket|socket\.io|real.?time (update|message|notification)s? (not|never|doesn|don)",
+    # WALK-04a: form validation / bad-input tickets (the recipe lives in formfuzz.py).
+    "validation": r"valid|invalid|accepts? (a )?(blank|empty|negative|invalid)|blank (form|title|field|input|name)|"
+                  r"empty (form|title|field|input|name)|negative (value|amount|number|input|price)|"
+                  r"no error (message|shown|appears)|missing.{0,20}error|error message|out.of.range|"
+                  r"reversed dates?|end (date )?before start|99999|whitespace.only",
+    # WALK-04b: missing-CRUD tickets (no way to delete/edit/archive/create).
+    # Decided by the write lane's own create+delete exercise in reverify.py.
+    "crud_missing": r"(no|missing|without|can'?t|cannot|unable to|nowhere to|no way to)\b.{0,30}(delete|remove|edit|archive|create|add)\b|(delete|remove|edit|archive).{0,24}(is |are )?(missing|not available|no button|no option|does ?n'?t exist|unavailable)",
+    # WALK-04h: chat / LLM-output tickets (the recipe lives in chatcheck.py).
+    "chat": r"\b(chat|composer|chatbot|assistant|llm)\b|ai (reply|response|answer|output)|model (reply|response)",
+    # WALK-04e: click-sends-request tickets (the recipes live in
+    # clickpersist.py, dispatched from reverify.generic). Narrow phrases:
+    # a click that fires nothing, named as such — never a bare "click".
+    "dead_click": r"dead click|click(ing|s|ed)? (does|did) nothing|button (does|did) nothing|"
+                  r"nothing happens (when|on) click|no request (is )?(fired|sent)|sends? no request|"
+                  r"click.{0,24}(no|never sends?|doesn'?t send) (a )?request|"
+                  r"does nothing when clicked|unresponsive (button|control)",
+    # WALK-04e: computed-value tickets — the lens displays a value that
+    # disagrees with the value the ticket expects (amounts, dates).
+    "computed": r"wrong (total|amount|sum|balance|price|value|date|count|calculation)|"
+                r"incorrect (total|amount|sum|balance|date|calculation)|miscalculat|"
+                r"total (is|shows|reads) (wrong|incorrect)|date (is|shows) (wrong|incorrect|off)|"
+                r"off by one day",
+    # WALK-04e: upload tickets (file input, attach, upload flows).
+    "upload": r"upload|attach(ing)? (a |the )?file|file (input|picker|upload)|image upload|photo upload",
+    # WALK-04g: hidden text / test data on live (the scanner lives in hiddentext.py).
+    "hidden_text": r"hidden (text|content|data|element)|invisible (text|content|data)|ai[- ]directed|prompt injection|test data (on|in|visible|shown|leak)|seeded (demo )?data (shown|visible|on)|harness (data|text|string|value|mentor|transaction)",
+}
+
+
+def _norm(s):
+    return re.sub(r"[^a-z0-9 ]+", " ", (s or "").lower())
+
+
+def _text(t):
+    parts = [t.get("title"), t.get("actual"), t.get("expected")]
+    rs = t.get("repro_steps")
+    parts.append(" ".join(rs) if isinstance(rs, list) else rs)
+    return _norm(" ".join(p for p in parts if isinstance(p, str)))
+
+
+class TicketStore:
+    def __init__(self, audit_dir, fold=None):
+        # WALK-01: with a fold (GB-1544), the read path is the branch fold at a
+        # pinned sha (fix_tickets.jsonl + records/*.jsonl); without one, the
+        # legacy single-file read stands. self.path stays the main file either
+        # way: it is written ONLY by append_tickets (new walker tickets).
+        self.path = os.path.join(audit_dir, "fix_tickets.jsonl")
+        self.fold = fold
+        if fold is not None:
+            self.base, self.updates = fold.base, fold.updates
+        else:
+            self.reload()
+
+    def reload(self):
+        if self.fold is not None:
+            self.base, self.updates = self.fold.base, self.fold.updates
+            return
+        self.base, self.updates = {}, {}
+        with open(self.path) as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    d = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if d.get("type"):
+                    self.updates.setdefault(d.get("id"), []).append(d)
+                elif d.get("id") and d["id"] not in self.base:
+                    self.base[d["id"]] = d
+                elif d.get("id"):
+                    # later full record for same id: treat as update of status/fields
+                    self.updates.setdefault(d["id"], []).append(d)
+
+    def get(self, tid):
+        t = self.base.get(tid)
+        if not t:
+            return None
+        t = dict(t)
+        for u in self.updates.get(tid, []):
+            if u.get("status") and u.get("type") in (None, "retest_update", "followup", "correction", "record"):
+                t["status"] = u["status"]
+            t.setdefault("_updates", []).append(u)
+        if self.fold is not None:
+            # the fold owns the status: an unbacked VERIFIED reads as FIXED_PENDING_VERIFY
+            t["status"] = self.fold.status(tid)
+        return t
+
+    def status(self, tid):
+        t = self.get(tid)
+        return str((t or {}).get("status") or "OPEN").strip().upper()
+
+    def lane(self, tid):
+        from .fold import lane_of
+        return lane_of(self.get(tid))
+
+    def lens_tickets(self, lens):
+        return [self.get(i) for i, t in self.base.items() if t.get("lens") == lens]
+
+    def next_id(self, lens, reserved=()):
+        mx = 0
+        pat = re.compile(r"^FIX-" + re.escape(lens) + r"-(\d+)$")
+        for i in list(self.base) + list(reserved):
+            m = pat.match(i)
+            if m:
+                mx = max(mx, int(m.group(1)))
+        return "FIX-%s-%03d" % (lens, mx + 1)
+
+    # Findings that describe the whole lens (no specific element) may match on category alone.
+    LENS_LEVEL = {"contrast", "overflow390", "unnamed", "focus_visible", "pageerror", "http", "delete_confirm", "reach", "crash", "hotkey"}
+
+    def find_duplicate(self, finding):
+        """Return the existing ticket id this finding duplicates, or None.
+        Rules (same lens only): title similarity >= 0.72; or category keywords hit AND the finding's
+        element (tab/dialog/control name) appears in the ticket; or, for lens-level findings with no
+        element, category keywords hit in the ticket TITLE (or anywhere with similarity >= 0.45)."""
+        cat = finding["check"]
+        words = CATEGORY_WORDS.get(cat)
+        elem = _norm(finding.get("element") or "").strip()
+        best, best_score = None, 0.0
+        for t in self.lens_tickets(finding["lens"]):
+            if not t:
+                continue
+            txt = _text(t)
+            sim = difflib.SequenceMatcher(None, _norm(finding["title"]), _norm(t.get("title"))).ratio()
+            cat_hit = bool(words and re.search(words, txt))
+            cat_title = bool(words and re.search(words, _norm(t.get("title"))))
+            elem_hit = bool(elem) and len(elem) >= 3 and re.search(r"\b" + re.escape(elem) + r"\b", txt) is not None
+            if sim >= 0.72:
+                dup = True
+            elif elem:
+                dup = cat_hit and elem_hit
+            else:
+                dup = cat in self.LENS_LEVEL and (cat_title or (cat_hit and sim >= 0.45))
+            score = sim + (0.5 if cat_hit else 0) + (0.4 if elem_hit else 0)
+            if dup and score > best_score:
+                best, best_score = t["id"], score
+        return best
+
+    def to_ticket(self, finding, tid, tester):
+        ev = finding.get("evidence") or []
+        t = {
+            "id": tid,
+            "lens": finding["lens"],
+            "severity": finding.get("severity", "low"),
+            "title": finding["title"],
+            "repro_steps": finding["repro_steps"],
+            "expected": finding["expected"],
+            "actual": finding["actual"],
+            "evidence_path": "; ".join(ev),
+            "suspected_area": finding.get("suspected_area", "%s/%s" % (finding["lens"], finding["check"])),
+            "status": "OPEN",
+            "tester": tester,
+            "ts": ts_et(),
+        }
+        if finding.get("root_cause"):
+            t["root_cause"] = finding["root_cause"]
+        return t
+
+    def append_tickets(self, tickets, backup_tag):
+        if not tickets:
+            return None
+        with file_lock(self.path):
+            bak = "%s.bak-walker-%s-%s" % (self.path, backup_tag, run_id())
+            shutil.copy2(self.path, bak)
+            with open(self.path, "a") as f:
+                for t in tickets:
+                    f.write(json.dumps(t) + "\n")
+        self.reload()
+        return bak
+
+    def append_update(self, rec):
+        with file_lock(self.path):
+            with open(self.path, "a") as f:
+                f.write(json.dumps(rec) + "\n")
+        self.reload()

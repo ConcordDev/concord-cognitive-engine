@@ -1,0 +1,57 @@
+{
+  "slug": "whiteboard",
+  "name": "Whiteboard",
+  "url": "https://concord-os.org/lenses/whiteboard",
+  "category": "knowledge",
+  "group": {
+    "master_parent": "MST-W2-16",
+    "walk_ticket": "LC-46",
+    "fpv_tickets": 3,
+    "milestone": "LC-G3: The 17 lenses never walked"
+  },
+  "block_class": "error-boundary-on-load",
+  "block_reason": "The lens loads to its own error boundary on desktop: the run's reach check FAILs with finding FIX-whiteboard-004 (HIGH, 'Lens fails to load on desktop (Something went wrong)') — the Gate §19 whiteboard load defect. Surface phases inventory the error shell, so no substantive walk of the canvas exists; its create phase is NA by surface design (a canvas exposes no New/Create/Add control).",
+  "nov17_run": {
+    "run_id": "20261117-080754",
+    "live_sha": "f4f1f77ff610252fba82f35ec0b83da0829d53c6",
+    "account": "t1",
+    "elapsed_s": 50,
+    "reach": {
+      "status": "FAIL",
+      "gate": null,
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://concord-os.org/lenses/whiteboard"
+    },
+    "phases_not_exercised": [
+      "create_delete",
+      "tabs_reachable"
+    ],
+    "create_delete": {
+      "status": "NA",
+      "reason": "no New/Create/Add control on main view"
+    },
+    "replay": {
+      "tickets": 4,
+      "counts": {
+        "NEEDS_HUMAN": 4
+      },
+      "skipped": 0
+    },
+    "findings": 4,
+    "high_findings": [
+      "FIX-whiteboard-004"
+    ],
+    "packet": "runs/20261117-080754/lens-whiteboard.json (Mac walker-runs/capture-20261117)"
+  },
+  "config_state": {
+    "admin_lens": false,
+    "write_skip": false
+  },
+  "unblock": [
+    "Land and deploy the Gate §19 whiteboard load fix (2 HIGH) — the presenting deploy is this profile's arming trigger.",
+    "Walk 2 re-checks reach first; on a clean load the surface phases walk the real canvas.",
+    "Create/delete stays NA by surface design (canvas, no create control) — that disposition is correct and needs no unblock."
+  ],
+  "walk2_disposition": "Re-check reach on the post-load-fix build; walk on a clean load."
+}

@@ -1,0 +1,57 @@
+{
+  "slug": "audit",
+  "name": "Audit",
+  "url": "https://concord-os.org/lenses/audit",
+  "category": "system",
+  "group": {
+    "master_parent": "MST-W2-15",
+    "walk_ticket": "LC-35",
+    "fpv_tickets": 0,
+    "milestone": "LC-G3: The 17 lenses never walked"
+  },
+  "block_class": "route-absent",
+  "block_reason": "The lens is in the walk inventory (generated from the registry) but its route does not exist at the deploy sha: reach returns HTTP 404 at /lenses/audit and the surface phases run on the 404 page's shell. There is no lens surface to walk until the route is mounted (or the lens is struck from the registry/inventory). UPGRADE-PLAN U6 carries this lens's inclusion as conditional on the plan's Q14 being answered.",
+  "nov17_run": {
+    "run_id": "20261117-080754",
+    "live_sha": "f4f1f77ff610252fba82f35ec0b83da0829d53c6",
+    "account": "t1",
+    "elapsed_s": 40,
+    "reach": {
+      "status": "FAIL",
+      "gate": null,
+      "reason": null,
+      "http_status": 404,
+      "final_url": "https://concord-os.org/lenses/audit"
+    },
+    "phases_not_exercised": [
+      "create_delete",
+      "tabs_reachable"
+    ],
+    "create_delete": {
+      "status": "NA",
+      "reason": "no New/Create/Add control on main view"
+    },
+    "replay": {
+      "tickets": 1,
+      "counts": {
+        "STILL_FAILING": 1
+      },
+      "skipped": 0
+    },
+    "findings": 4,
+    "high_findings": [
+      "FIX-audit-001"
+    ],
+    "packet": "runs/20261117-080754/lens-audit.json (Mac walker-runs/capture-20261117)"
+  },
+  "config_state": {
+    "admin_lens": false,
+    "write_skip": false
+  },
+  "unblock": [
+    "Mount the /lenses/audit route at the deploy sha, or strike the lens from lens-registry/inventory so the universe stops promising it.",
+    "Answer the plan's Q14 (this lens's inclusion condition per UPGRADE-PLAN U6).",
+    "Once the route exists, FIX-audit-001 (STILL_FAILING on the 404 shell) re-runs against the real surface."
+  ],
+  "walk2_disposition": "Do not walk until the route exists; carry as NOT_RUN with this profile as the reason of record."
+}
